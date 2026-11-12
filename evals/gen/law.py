@@ -600,3 +600,248 @@ def latest_notice_receipt(end: date, amount: int, unit: str) -> date:
         if fwd <= end:
             return d
         d -= timedelta(days=1)
+
+
+# --------------------------------------------------------------------------------------------------
+# the newkinds letters: court orders in the Mahnverfahren, dismissals, tenancy letters, withdrawal
+# (each function from the statute texts in evals/law/ only; its norms are named in its docstring)
+# --------------------------------------------------------------------------------------------------
+
+
+def last_day_of_month(year: int, month: int) -> date:
+    """The last day of a calendar month (§ 192 BGB: "Ende des Monats" is its last day)."""
+    return date(year, month, calendar.monthrange(year, month)[1])
+
+
+def _zpo_two_weeks(served: date, region: str | None, why: Derivation, period: str) -> date:
+    """Two weeks from a Zustellung under the ZPO: § 222 Abs. 1 ZPO with §§ 187 Abs. 1, 188 Abs. 2 BGB, and an end on a
+    Saturday, Sunday or general holiday moved to the next working day (§ 222 Abs. 2 ZPO)."""
+    why.add(
+        f"Zustellung {fmt(served)}, the day the service note on the document states (§ 180 S. 3 ZPO); {period}."
+    )
+    end = raw_period_end(served, 2, "weeks", region, why)
+    return shift_to_working_day(end, region, why, "§ 222 Abs. 2 ZPO")
+
+
+def mahnbescheid_objection_end(served: date, region: str | None, why: Derivation) -> date:
+    """The end of the period a Mahnbescheid sets for paying or objecting (Widerspruch).
+
+    Legal basis: § 692 Abs. 1 Nr. 3 ZPO (two weeks from the Zustellung of the Mahnbescheid), § 694 Abs. 1 ZPO (the
+    Widerspruch is possible as long as no Vollstreckungsbescheid has been issued, which sets no fixed date), § 180 S. 3
+    ZPO (the day of the Zustellung), § 222 Abs. 1 ZPO with §§ 187 Abs. 1, 188 Abs. 2 BGB, § 222 Abs. 2 ZPO."""
+    return _zpo_two_weeks(served, region, why, "§ 692 Abs. 1 Nr. 3 ZPO: two weeks from the Zustellung")
+
+
+def vollstreckungsbescheid_objection_end(served: date, region: str | None, why: Derivation) -> date:
+    """The end of the Einspruch period against a Vollstreckungsbescheid.
+
+    Legal basis: § 700 Abs. 1 ZPO (the Vollstreckungsbescheid stands for a Versäumnisurteil), § 339 Abs. 1 ZPO (two
+    weeks, a Notfrist, from the Zustellung), § 180 S. 3 ZPO, § 222 Abs. 1 ZPO with §§ 187 Abs. 1, 188 Abs. 2 BGB,
+    § 222 Abs. 2 ZPO."""
+    return _zpo_two_weeks(
+        served, region, why, "§ 700 Abs. 1 with § 339 Abs. 1 ZPO: two weeks from the Zustellung (Notfrist)"
+    )
+
+
+def employer_notice_end(received: date, *, years: int, probation: bool, why: Derivation) -> date:
+    """The day an employment ends on the employer's ordinary notice that the employee received on ``received``, after
+    ``years`` full years of employment.
+
+    Legal basis: § 622 Abs. 3 BGB (in an agreed probation of at most six months: two weeks, to any day), § 622 Abs. 1
+    BGB (four weeks to the 15th or to the end of a calendar month), § 622 Abs. 2 S. 1 Nr. 1–7 BGB (the employer's longer
+    periods after 2, 5, 8, 10, 12, 15 and 20 years, to the end of a calendar month), § 623 BGB (written form), § 130
+    Abs. 1 S. 1 BGB (effective on receipt), §§ 187 Abs. 1, 188 Abs. 2 BGB. A notice period is not moved by § 193 BGB:
+    no declaration is due at its end."""
+    if probation:
+        end = received + timedelta(days=14)
+        why.add(
+            f"§ 622 Abs. 3 BGB (probation): two weeks; § 187 Abs. 1 BGB: {fmt(received)} is not counted; § 188 Abs. 2 "
+            f"BGB → {fmt(end)}."
+        )
+        return end
+    steps = ((20, 7), (15, 6), (12, 5), (10, 4), (8, 3), (5, 2), (2, 1))
+    months = next((m for y, m in steps if years >= y), 0)
+    if months == 0:
+        earliest = received + timedelta(days=28)
+        why.add(
+            f"§ 622 Abs. 1 BGB: four weeks to the 15th or the end of a month; § 187 Abs. 1 BGB: {fmt(received)} is not "
+            f"counted; § 188 Abs. 2 BGB: the four weeks end {fmt(earliest)}."
+        )
+        mid = date(earliest.year, earliest.month, 15)
+        end = mid if earliest <= mid else last_day_of_month(earliest.year, earliest.month)
+        why.add(f"The first 15th or month end not before it: {fmt(end)}.")
+        return end
+    earliest = add_months(received, months)
+    why.add(
+        f"§ 622 Abs. 2 S. 1 BGB ({years} years of employment): {months} month(s) to the end of a calendar month; "
+        f"§ 187 Abs. 1 BGB: {fmt(received)} is not counted; § 188 Abs. 2 BGB: the period ends {fmt(earliest)}."
+    )
+    end = last_day_of_month(earliest.year, earliest.month)
+    why.add(f"The first month end not before it: {fmt(end)}.")
+    return end
+
+
+def dismissal_claim_end(received: date, region: str | None, why: Derivation) -> date:
+    """The last day to bring the action of § 4 KSchG against a written dismissal received on ``received``.
+
+    Legal basis: § 4 S. 1 KSchG (three weeks from the receipt of the written dismissal, whatever the ground of
+    invalidity), § 7 KSchG (otherwise the dismissal counts as valid from the start), § 130 Abs. 1 S. 1 BGB, §§ 187
+    Abs. 1, 188 Abs. 2 BGB. The statute texts here do not say which rule would move an end on a Saturday, Sunday or
+    holiday for this action, so only an end on a working day in ``region`` is dated (ValueError otherwise)."""
+    end = received + timedelta(days=21)
+    why.add(
+        f"§ 4 S. 1 KSchG: three weeks from receipt of the written dismissal on {fmt(received)}; § 187 Abs. 1 BGB: that "
+        f"day is not counted; § 188 Abs. 2 BGB → {fmt(end)}."
+    )
+    if not is_working_day(end, region):
+        raise ValueError(
+            f"§ 4 KSchG period ends on {fmt(end)}, {why_not_working(end, region)}: not dated here"
+        )
+    why.add(f"{fmt(end)} is a working day ({calendar_label(region)}), so no shift question arises.")
+    return end
+
+
+def _third_werktag(year: int, month: int, region: str | None, *, saturday_counts: bool) -> date:
+    """The third Werktag of a month (§ 573c Abs. 1 S. 1 BGB): Sundays and public holidays never count; whether a
+    Saturday does is the caller's reading."""
+    counted = count_days(date(year, month, 1) - timedelta(days=1), 3, region, saturday_counts=saturday_counts)
+    return counted[-1]
+
+
+def landlord_notice_end(
+    received: date, *, years: int, region: str | None, why: Derivation, saturday_counts: bool = True
+) -> date:
+    """The day a residential lease ends on the landlord's ordinary notice received on ``received``, when the flat was
+    handed over ``years`` full years before.
+
+    Legal basis: § 573c Abs. 1 S. 1 BGB (notice by the third Werktag of a calendar month to the end of the month after
+    next), § 573c Abs. 1 S. 2 BGB (three months longer for the landlord after five and again after eight years since
+    the handover), § 573c Abs. 4 BGB, § 130 Abs. 1 S. 1 BGB, § 192 BGB. A notice received after the third Werktag of a
+    month counts for the next month. ``saturday_counts`` is the reading of "Werktag" (Monday to Saturday, or Monday to
+    Friday): the caller checks that both give the same day."""
+    year, month = received.year, received.month
+    while received > _third_werktag(year, month, region, saturday_counts=saturday_counts):
+        year, month = (year + 1, 1) if month == 12 else (year, month + 1)
+    third = _third_werktag(year, month, region, saturday_counts=saturday_counts)
+    extra = 3 * ((years >= 5) + (years >= 8))
+    end_month = date(year, month, 1)
+    end_month = add_months(end_month, 2 + extra)
+    end = last_day_of_month(end_month.year, end_month.month)
+    why.add(
+        f"Notice received {fmt(received)}; § 573c Abs. 1 S. 1 BGB: the first month whose third Werktag "
+        f"({fmt(third)}) is not before it is {date(year, month, 1).strftime('%Y-%m')}, so the end of the month after next"
+        + (
+            f", plus {extra} months for {years} years since the handover (§ 573c Abs. 1 S. 2 BGB)"
+            if extra
+            else ""
+        )
+        + f" → lease ends {fmt(end)} (§ 192 BGB)."
+    )
+    return end
+
+
+def tenant_objection_last_day(lease_end: date, why: Derivation, *, same_day_number: bool = False) -> date:
+    """The last day the tenant's Widerspruch must reach the landlord: two months before the lease ends.
+
+    Legal basis: § 574b Abs. 2 S. 1 BGB (spätestens zwei Monate vor der Beendigung), § 574b Abs. 1 S. 1 BGB (Textform),
+    § 574 BGB, §§ 187, 188 Abs. 2, 3 BGB applied backward from the end (§ 186 BGB). A lease that ends on a month's last
+    day ends two months before on the last day of that month (``latest_notice_receipt``); ``same_day_number`` takes the
+    other reading, the day with the lease end's day number two months earlier (or that month's last day)."""
+    if same_day_number:
+        day = add_months(lease_end, -2)
+        why.add(f"§ 574b Abs. 2 S. 1 BGB, counted back to the same day number: {fmt(day)}.")
+        return day
+    day = latest_notice_receipt(lease_end, 2, "months")
+    why.add(
+        f"§ 574b Abs. 2 S. 1 BGB: two months before the lease ends on {fmt(lease_end)}; counted back (§§ 187, 188 "
+        f"Abs. 2, 3 BGB): the latest day from which two months still end by then is {fmt(day)}."
+    )
+    return day
+
+
+def rent_increase_consent_end(
+    received: date, region: str | None, why: Derivation, *, shift: bool = True
+) -> date:
+    """The end of the tenant's period to consent to a rent increase up to the local comparative rent.
+
+    Legal basis: § 558b Abs. 2 S. 1 BGB (until the end of the second calendar month after the request's receipt),
+    § 558a Abs. 1 BGB (Textform), § 130 Abs. 1 S. 1 BGB, § 192 BGB, § 193 BGB (the consent is a declaration due within a
+    period, so an end on a Saturday, Sunday or holiday moves to the next working day; ``shift=False`` takes the
+    reading that it stays)."""
+    month = add_months(date(received.year, received.month, 1), 2)
+    end = last_day_of_month(month.year, month.month)
+    why.add(
+        f"Request received {fmt(received)}; § 558b Abs. 2 S. 1 BGB: the second calendar month after that month ends "
+        f"{fmt(end)}."
+    )
+    if not shift:
+        return end
+    return shift_to_working_day(end, region, why, "§ 193 BGB")
+
+
+def rent_increase_effective(received: date, why: Derivation) -> date:
+    """The day from which a consented rent increase is owed: the start of the third calendar month after receipt.
+
+    Legal basis: § 558b Abs. 1 BGB, § 558 Abs. 1 BGB (the rent unchanged for 15 months at that day), § 192 BGB."""
+    start = add_months(date(received.year, received.month, 1), 3)
+    why.add(
+        f"§ 558b Abs. 1 BGB: the third calendar month after receipt ({fmt(received)}) begins {fmt(start)}."
+    )
+    return start
+
+
+def operating_costs_statement_due(period_end: date, why: Derivation) -> date:
+    """The last day a landlord can give the tenant the operating-cost statement for a period that ends on
+    ``period_end`` (a month's last day).
+
+    Legal basis: § 556 Abs. 3 S. 1, 2 BGB (yearly statement, given by the end of the twelfth month after the period),
+    § 556 Abs. 3 S. 3 BGB (later, a Nachforderung is excluded unless the landlord is not responsible for the delay),
+    § 192 BGB."""
+    if period_end != last_day_of_month(period_end.year, period_end.month):
+        raise ValueError(
+            f"billing period ending {period_end}: only periods ending on a month's last day are dated"
+        )
+    month = add_months(date(period_end.year, period_end.month, 1), 12)
+    due = last_day_of_month(month.year, month.month)
+    why.add(
+        f"§ 556 Abs. 3 S. 2 BGB: period ended {fmt(period_end)}; the twelfth month after it ends {fmt(due)}."
+    )
+    return due
+
+
+def operating_costs_objection_end(
+    received: date, region: str | None, why: Derivation, *, calendar_months: bool = False
+) -> date:
+    """The last day for the tenant's objections (Einwendungen) to an operating-cost statement received on
+    ``received``.
+
+    Legal basis: § 556 Abs. 3 S. 5, 6 BGB (by the end of the twelfth month after receipt), § 130 Abs. 1 S. 1 BGB,
+    §§ 187 Abs. 1, 188 Abs. 2, 3 BGB, § 193 BGB (an end on a Saturday, Sunday or holiday moves to the next working
+    day). ``calendar_months`` takes the other reading: the end of the twelfth calendar month after the month of
+    receipt (§ 192 BGB), not moved."""
+    if calendar_months:
+        month = add_months(date(received.year, received.month, 1), 12)
+        end = last_day_of_month(month.year, month.month)
+        why.add(
+            f"§ 556 Abs. 3 S. 5 BGB read by calendar months: the twelfth month after receipt ends {fmt(end)}."
+        )
+        return end
+    why.add(f"Statement received {fmt(received)}; § 556 Abs. 3 S. 5 BGB: twelve months.")
+    end = raw_period_end(received, 12, "months", region, why)
+    return shift_to_working_day(end, region, why, "§ 193 BGB")
+
+
+def withdrawal_end(start: date, region: str | None, why: Derivation, *, start_rule: str) -> date:
+    """The last day to send a consumer's withdrawal (Widerruf) from a contract made away from business premises or at
+    a distance, when the withdrawal information was given on paper by ``start``.
+
+    Legal basis: § 355 Abs. 1 S. 5 BGB (sending in time is enough), § 355 Abs. 2 BGB (14 days from conclusion unless
+    otherwise provided), § 356 Abs. 2 Nr. 1 a BGB (sale of goods: from receipt of the goods), § 356 Abs. 2 Nr. 2 BGB
+    (electricity, gas: from conclusion), § 356 Abs. 3 S. 1 BGB with Art. 246a § 1 Abs. 2 S. 1 Nr. 1 EGBGB (not before
+    the information), §§ 187 Abs. 1, 188 Abs. 1 BGB, § 193 BGB (the withdrawal is a declaration due within a period).
+    ``start_rule`` names the start that applies."""
+    why.add(
+        f"{start_rule}: the period starts with {fmt(start)}; the information was handed over on paper that day."
+    )
+    end = raw_period_end(start, 14, "days", region, why)
+    return shift_to_working_day(end, region, why, "§ 193 BGB")

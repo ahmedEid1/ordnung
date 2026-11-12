@@ -1,0 +1,663 @@
+{
+ "letters": {
+  "newkinds-betriebskosten-1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "f03",
+      "f09"
+     ],
+     "event": "receipt of the statement (messenger)",
+     "from": "2026-11-19",
+     "land": null,
+     "source": "A1p",
+     "steps": [
+      {
+       "n": 12,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    },
+    "o0": {
+     "conventions": [
+      "f10",
+      "c10"
+     ],
+     "event": "payment date stated",
+     "from": "2026-12-15",
+     "land": null,
+     "source": "A1p",
+     "steps": []
+    }
+   }
+  },
+  "newkinds-betriebskosten-2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "f03",
+      "f09"
+     ],
+     "event": "receipt of the statement (caretaker)",
+     "from": "2026-11-18",
+     "land": null,
+     "source": "A1p",
+     "steps": [
+      {
+       "n": 12,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    },
+    "o0": {
+     "conventions": [
+      "f10",
+      "c10"
+     ],
+     "event": "payment date stated",
+     "from": "2026-12-11",
+     "land": null,
+     "source": "A1p",
+     "steps": []
+    }
+   }
+  },
+  "newkinds-betriebskosten-3": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "f03",
+      "f09"
+     ],
+     "event": "receipt of the statement (put into letterbox in person)",
+     "from": "2026-11-20",
+     "land": null,
+     "source": "A1p",
+     "steps": [
+      {
+       "n": 12,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "newkinds-betriebskosten-4": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "f03",
+      "f09"
+     ],
+     "event": "receipt of statement (f03)",
+     "from": "2026-11-18",
+     "land": "TH",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 12,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    },
+    "o0": {
+     "conventions": [
+      "f10",
+      "c10"
+     ],
+     "event": "payment date stated",
+     "from": "2027-01-08",
+     "land": null,
+     "source": "A1p",
+     "steps": []
+    }
+   }
+  },
+  "newkinds-kuendigung_arbeit-1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "f03",
+      "f06"
+     ],
+     "event": "personal handover of the notice",
+     "from": "2026-11-19",
+     "land": "HH",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 3,
+       "op": "forward",
+       "shift": true,
+       "unit": "weeks"
+      }
+     ]
+    }
+   }
+  },
+  "newkinds-kuendigung_arbeit-2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "f03",
+      "f06"
+     ],
+     "event": "receipt of the notice (handed over)",
+     "from": "2026-11-18",
+     "land": "RP",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 3,
+       "op": "forward",
+       "shift": true,
+       "unit": "weeks"
+      }
+     ]
+    }
+   }
+  },
+  "newkinds-kuendigung_arbeit-3": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "f03",
+      "f06"
+     ],
+     "event": "dismissal handed over in person",
+     "from": "2026-11-18",
+     "land": "TH",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 3,
+       "op": "forward",
+       "shift": true,
+       "unit": "weeks"
+      }
+     ]
+    }
+   }
+  },
+  "newkinds-kuendigung_arbeit-4": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "f03",
+      "f06"
+     ],
+     "event": "dismissal handed over",
+     "from": "2026-11-19",
+     "land": "BB",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 3,
+       "op": "forward",
+       "shift": true,
+       "unit": "weeks"
+      }
+     ]
+    }
+   }
+  },
+  "newkinds-kuendigung_miete-1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "f03",
+      "f07",
+      "f02"
+     ],
+     "event": "receipt of the notice (messenger)",
+     "from": "2026-11-19",
+     "land": null,
+     "source": "A1p",
+     "steps": [
+      {
+       "n": 3,
+       "op": "month_end",
+       "shift": false
+      },
+      {
+       "n": 2,
+       "op": "back",
+       "shift": false,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "newkinds-kuendigung_miete-2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "f03",
+      "f07"
+     ],
+     "event": "end of tenancy stated in the notice",
+     "from": "2027-05-31",
+     "land": "BY",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 2,
+       "op": "back",
+       "shift": false,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "newkinds-kuendigung_miete-3": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "f03",
+      "f07"
+     ],
+     "event": "receipt of landlord's notice",
+     "from": "2026-11-20",
+     "land": "HB",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 9,
+       "op": "month_end",
+       "shift": false
+      },
+      {
+       "n": 2,
+       "op": "back",
+       "shift": false,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "newkinds-kuendigung_miete-4": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "f02",
+      "f03",
+      "f07"
+     ],
+     "event": "notice put in the letterbox (received, f03)",
+     "from": "2026-11-18",
+     "land": "MV",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 3,
+       "op": "month_end",
+       "shift": false
+      },
+      {
+       "n": 2,
+       "op": "back",
+       "shift": false,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "newkinds-mahnbescheid-1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "f04",
+      "f05"
+     ],
+     "event": "service by letterbox insertion",
+     "from": "2026-11-23",
+     "land": "NW",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 2,
+       "op": "forward",
+       "shift": true,
+       "unit": "weeks"
+      }
+     ]
+    }
+   }
+  },
+  "newkinds-mahnbescheid-2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "f04",
+      "f05"
+     ],
+     "event": "personal service (Zustellungsvermerk)",
+     "from": "2026-11-20",
+     "land": "BY",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 2,
+       "op": "forward",
+       "shift": true,
+       "unit": "weeks"
+      }
+     ]
+    }
+   }
+  },
+  "newkinds-mahnbescheid-3": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "f04",
+      "f05"
+     ],
+     "event": "service noted by postman",
+     "from": "2026-11-20",
+     "land": "NI",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 2,
+       "op": "forward",
+       "shift": true,
+       "unit": "weeks"
+      }
+     ]
+    }
+   }
+  },
+  "newkinds-mahnbescheid-4": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "f04",
+      "f05"
+     ],
+     "event": "service by letterbox insertion",
+     "from": "2026-11-20",
+     "land": "HE",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 2,
+       "op": "forward",
+       "shift": true,
+       "unit": "weeks"
+      }
+     ]
+    }
+   }
+  },
+  "newkinds-mieterhoehung-1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "f03",
+      "f08"
+     ],
+     "event": "receipt in letterbox (f03)",
+     "from": "2026-11-19",
+     "land": "BE",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 2,
+       "op": "month_end",
+       "shift": true
+      }
+     ]
+    }
+   }
+  },
+  "newkinds-mieterhoehung-2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "f03",
+      "f08"
+     ],
+     "event": "request put into letterbox",
+     "from": "2026-11-18",
+     "land": "HE",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 2,
+       "op": "month_end",
+       "shift": true
+      }
+     ]
+    }
+   }
+  },
+  "newkinds-mieterhoehung-3": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "f03",
+      "f08"
+     ],
+     "event": "delivery into mailbox by messenger (stated)",
+     "from": "2026-11-18",
+     "land": "SL",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 2,
+       "op": "month_end",
+       "shift": true
+      }
+     ]
+    }
+   }
+  },
+  "newkinds-mieterhoehung-4": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "f03",
+      "f08"
+     ],
+     "event": "receipt in letterbox (f03)",
+     "from": "2026-11-20",
+     "land": "NI",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 2,
+       "op": "month_end",
+       "shift": true
+      }
+     ]
+    }
+   }
+  },
+  "newkinds-vollstreckungsbescheid-1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "f04"
+     ],
+     "event": "service by deposit in mailbox (note on envelope)",
+     "from": "2026-11-20",
+     "land": "BW",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 2,
+       "op": "forward",
+       "shift": true,
+       "unit": "weeks"
+      }
+     ]
+    }
+   }
+  },
+  "newkinds-vollstreckungsbescheid-2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "f04"
+     ],
+     "event": "service by deposit in mailbox (Zustellvermerk)",
+     "from": "2026-11-23",
+     "land": "SN",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 2,
+       "op": "forward",
+       "shift": true,
+       "unit": "weeks"
+      }
+     ]
+    }
+   }
+  },
+  "newkinds-vollstreckungsbescheid-3": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "f04"
+     ],
+     "event": "service by post",
+     "from": "2026-11-23",
+     "land": "SH",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 2,
+       "op": "forward",
+       "shift": true,
+       "unit": "weeks"
+      }
+     ]
+    }
+   }
+  },
+  "newkinds-vollstreckungsbescheid-4": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "f04"
+     ],
+     "event": "service of the enforcement order (server's note)",
+     "from": "2026-11-23",
+     "land": "BE",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 2,
+       "op": "forward",
+       "shift": true,
+       "unit": "weeks"
+      }
+     ]
+    }
+   }
+  },
+  "newkinds-widerruf-1": {
+   "slots": {
+    "o0": {
+     "conventions": [
+      "c10",
+      "f11"
+     ],
+     "event": "contract concluded at home",
+     "from": "2026-11-20",
+     "land": "HH",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 14,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      }
+     ]
+    }
+   }
+  },
+  "newkinds-widerruf-2": {
+   "slots": {
+    "o0": {
+     "conventions": [
+      "c10",
+      "f11"
+     ],
+     "event": "contract signed at the door (Vertragsschluss)",
+     "from": "2026-11-20",
+     "land": "NW",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 14,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      }
+     ]
+    }
+   }
+  },
+  "newkinds-widerruf-3": {
+   "slots": {
+    "o0": {
+     "conventions": [
+      "c10",
+      "f11"
+     ],
+     "event": "goods delivered and received with the withdrawal information (f11)",
+     "from": "2026-11-18",
+     "land": "BY",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 14,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      }
+     ]
+    }
+   }
+  },
+  "newkinds-widerruf-4": {
+   "slots": {
+    "o0": {
+     "conventions": [
+      "f11",
+      "c10"
+     ],
+     "event": "conclusion of contract, information handed over",
+     "from": "2026-11-21",
+     "land": null,
+     "source": "A1p",
+     "steps": [
+      {
+       "n": 14,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      }
+     ]
+    }
+   }
+  }
+ },
+ "split": "newkinds"
+}

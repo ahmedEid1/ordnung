@@ -3,9 +3,9 @@
  "about": "Every results file with its sha256, role, recording and how `make eval-reproduce` checks it, the replay's verdict at HEAD and every changed date with the fix that changed it; the dataset's and the recordings' hashes, the CI gates and every cell. Written by `python -m evals.reproduce --write`; a change's `because` by a person.",
  "pinned_model": "claude-sonnet-5",
  "dataset": {
-  "manifest_sha256": "c8f2bff11ce0102fd1bf0f070d333efaf4962b0f15d4244770a933110dd82870",
-  "files": 283,
-  "tree_sha256": "0921ed198fdd91bb180874ee1f8374ec79fd0a5e81c3a8a1a886de76bbed8503"
+  "manifest_sha256": "7bf30e0b171222622a7a24fd321e4137fa18f3d87786d56a05e6d3ed668b9d02",
+  "files": 682,
+  "tree_sha256": "be9d50fce8383b6b3e7528ce55b3751eed0c0c86a82aa234fee952ccc760ee75"
  },
  "recordings": {
   "claude-sonnet-5": {
@@ -2278,7 +2278,7 @@
   },
   {
    "file": "2026-10-30-claude-sonnet-5-e2e.json",
-   "sha256": "8d52b0e77222779d2bbdd9473cc95998a8c1ec2e42bd8bc219d94f3337ef516c",
+   "sha256": "771355311f6501a58fdbbd7c83bb0d03ca38c134ae660cf9ebb769f413d4b579",
    "kind": "e2e",
    "role": "replay",
    "splits": [
@@ -2290,7 +2290,7 @@
    ],
    "recorded": {
     "date": "2026-10-30",
-    "commit": "3b4a3f86",
+    "commit": "9df8afa1",
     "backend": "replay"
    },
    "gates": [],

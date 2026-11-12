@@ -1,0 +1,8 @@
+commit 29fd1afeb08326fcb683553ee4d9e7ad534f6d73
+profile adjudicate
+git-archive skipped
+from-commit evals/law -> law
+from-commit evals/dataset/FACTS.md -> FACTS.md
+extra dir:9660697bc626a1592a7e99b73966b47bf3e111e0ca6d6dd50297ab47f7dc4e4a $S/ev8/final/a1p-pack/pack -> pack
+rendered conventions.md d6f1480cd2e1044cf2ba5b0009564f14503a78b6fdc028c046e9c3116d69ca83 from 29fd1afeb08326fcb683553ee4d9e7ad534f6d73:evals/dataset/manifest.json (33 conventions, 11 disputed)
+anchor expect f9f23cb51dfaf002f1b87246dc2dcedad77c15dba522b512cea57575e6897759 $S/ev8/final/a1p-pack/pack.sha256

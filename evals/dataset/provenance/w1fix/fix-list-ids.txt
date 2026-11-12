@@ -1,0 +1,3 @@
+# fix-list.md (sha256 in fix-list.sha256): the ids and slots only; the reasons are the adjudication's and stay in scratch with it
+holdout4-price_increase-L1 o0 undatable
+holdout4-price_increase-N1 o0 undatable

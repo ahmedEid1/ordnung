@@ -1,0 +1,383 @@
+{
+ "schema": "ordnung-prereg-calibration/1",
+ "about": "The pre-registered analysis run on the held-out splits recorded before the freeze, pooled into one split and used as its three identical reads (holdout3 stands in for the secondary split): what the registered rules decide on data whose answer is known. Not a result of the final run.",
+ "inputs": [
+  {
+   "file": "2026-09-30-claude-sonnet-5-holdout.json",
+   "sha256": "ad5cdee834c7ed4fbfb5234b28e76126e2bee35eb1685b823c2ea52f36c62c4c",
+   "role": "pooled reads"
+  },
+  {
+   "file": "2026-10-01-claude-sonnet-5-holdout2.json",
+   "sha256": "47a5aec4f07193fa8fcb5edaf01a17eb7ff69c04036142df344bfbd7e357b1c9",
+   "role": "pooled reads"
+  },
+  {
+   "file": "2026-10-06-claude-sonnet-5-holdout3.json",
+   "sha256": "f4ae7042ed6e59f8914c2a563f1638232a597190deb5d5f2b2218ef3a724ebf3",
+   "role": "pooled reads and newkinds"
+  }
+ ],
+ "analysis": {
+  "schema": "ordnung-prereg-analysis/1",
+  "model": "claude-sonnet-5",
+  "primary": {
+   "split": "holdout4",
+   "reads": 3
+  },
+  "secondary": [
+   {
+    "split": "newkinds",
+    "reads": 1
+   }
+  ],
+  "reference": "ordnung",
+  "baselines": [
+   "llm_only",
+   "llm_rules_text",
+   "llm_rules_tool"
+  ],
+  "noninferior_to": [
+   "llm_rules_tool"
+  ],
+  "seed": 20261029,
+  "signflip": {
+   "exact_max": 20,
+   "draws": 100000
+  },
+  "bootstrap_resamples": 10000,
+  "crossover_resamples": 2000,
+  "alpha": 0.05,
+  "level": 0.95,
+  "noninferiority_margin": 0.05,
+  "loss_ratios": [
+   1,
+   2,
+   5,
+   10,
+   20,
+   50
+  ],
+  "pool_with": [
+   "2026-09-30-claude-sonnet-5-holdout.json",
+   "2026-10-01-claude-sonnet-5-holdout2.json",
+   "2026-10-06-claude-sonnet-5-holdout3.json"
+  ],
+  "rules": {
+   "harmful": "late_or_missed",
+   "instability": "date_or_no_date_differs_between_reads",
+   "f1_f2_test": "cluster_signflip_two_sided_item_weighted",
+   "interval": "paired_cluster_bootstrap_percentile",
+   "f3_test": "mcnemar_midp_bonett_price",
+   "multiplicity": "holm_within_each_family",
+   "noninferiority": "signflip_test_inversion",
+   "sensitivity_r1": "exact_mcnemar_midp_bonett_price"
+  },
+  "min_reads": 2,
+  "confirmatory": {
+   "family": "F1_accuracy",
+   "baseline": "llm_only"
+  },
+  "sensitivities": [
+   "s_conv",
+   "label_corrected",
+   "first_attempt",
+   "same_day_f3",
+   "same_cli_f3"
+  ],
+  "exploratory": [
+   "by_family",
+   "by_modality",
+   "by_adversarial_class",
+   "by_recording_day",
+   "pooled_held_out"
+  ]
+ },
+ "primary": {
+  "split": "holdout4",
+  "reads": 3,
+  "items": 168,
+  "letters": 189,
+  "clusters": 129,
+  "conditions": {
+   "ordnung": {
+    "exact_per_read": [
+     163,
+     163,
+     163
+    ],
+    "n": 168,
+    "mean_accuracy": {
+     "value": 0.9702380952,
+     "ci": [
+      0.9425204305,
+      0.994011976
+     ],
+     "method": "percentile"
+    },
+    "harmful_per_read": [
+     3,
+     3,
+     3
+    ],
+    "unstable": 0
+   },
+   "llm_only": {
+    "exact_per_read": [
+     136,
+     136,
+     136
+    ],
+    "n": 168,
+    "mean_accuracy": {
+     "value": 0.8095238095,
+     "ci": [
+      0.743902439,
+      0.870597723
+     ],
+     "method": "percentile"
+    },
+    "harmful_per_read": [
+     13,
+     13,
+     13
+    ],
+    "unstable": 0
+   },
+   "llm_rules_text": {
+    "exact_per_read": [
+     154,
+     154,
+     154
+    ],
+    "n": 168,
+    "mean_accuracy": {
+     "value": 0.9166666667,
+     "ci": [
+      0.8734177215,
+      0.9551282051
+     ],
+     "method": "percentile"
+    },
+    "harmful_per_read": [
+     1,
+     1,
+     1
+    ],
+    "unstable": 0
+   },
+   "llm_rules_tool": {
+    "exact_per_read": [
+     167,
+     167,
+     167
+    ],
+    "n": 168,
+    "mean_accuracy": {
+     "value": 0.994047619,
+     "ci": [
+      0.9813664596,
+      1.0
+     ],
+     "method": "percentile"
+    },
+    "harmful_per_read": [
+     1,
+     1,
+     1
+    ],
+    "unstable": 0
+   }
+  },
+  "families": {
+   "F1_accuracy": {
+    "ordnung-vs-llm_only": {
+     "diff": 0.1607142857,
+     "p": 9.999900001e-06,
+     "method": "monte-carlo",
+     "nonzero": 32,
+     "holm": 2.99997e-05,
+     "bootstrap": [
+      0.09444444444,
+      0.2307692308
+     ]
+    },
+    "ordnung-vs-llm_rules_text": {
+     "diff": 0.05357142857,
+     "p": 0.06356811523,
+     "method": "exact",
+     "nonzero": 19,
+     "holm": 0.1271362305,
+     "bootstrap": [
+      0.005780346821,
+      0.1040462428
+     ]
+    },
+    "ordnung-vs-llm_rules_tool": {
+     "diff": -0.02380952381,
+     "p": 0.21875,
+     "method": "exact",
+     "nonzero": 6,
+     "holm": 0.21875,
+     "bootstrap": [
+      -0.05357142857,
+      0.0
+     ]
+    }
+   },
+   "F2_harm": {
+    "ordnung-vs-llm_only": {
+     "diff": -0.05952380952,
+     "p": 0.02960205078,
+     "method": "exact",
+     "nonzero": 15,
+     "holm": 0.08880615234,
+     "bootstrap": [
+      -0.1084337349,
+      -0.01226993865
+     ]
+    },
+    "ordnung-vs-llm_rules_text": {
+     "diff": 0.0119047619,
+     "p": 0.625,
+     "method": "exact",
+     "nonzero": 4,
+     "holm": 1.0,
+     "bootstrap": [
+      -0.01169590643,
+      0.03636363636
+     ]
+    },
+    "ordnung-vs-llm_rules_tool": {
+     "diff": 0.0119047619,
+     "p": 0.625,
+     "method": "exact",
+     "nonzero": 4,
+     "holm": 1.0,
+     "bootstrap": [
+      -0.01169590643,
+      0.03636363636
+     ]
+    }
+   },
+   "F3_stability": {
+    "ordnung-vs-llm_only": {
+     "b": 0,
+     "c": 0,
+     "midp": 1.0,
+     "holm": 1.0
+    },
+    "ordnung-vs-llm_rules_text": {
+     "b": 0,
+     "c": 0,
+     "midp": 1.0,
+     "holm": 1.0
+    },
+    "ordnung-vs-llm_rules_tool": {
+     "b": 0,
+     "c": 0,
+     "midp": 1.0,
+     "holm": 1.0
+    }
+   }
+  },
+  "sensitivity_r1": {
+   "accuracy": {
+    "ordnung-vs-llm_only": {
+     "b": 31,
+     "c": 4,
+     "exact_p": 3.4654513e-06,
+     "midp": 1.941574737e-06,
+     "bonett_price": [
+      0.0928831933,
+      0.2247638655
+     ]
+    },
+    "ordnung-vs-llm_rules_text": {
+     "b": 14,
+     "c": 5,
+     "exact_p": 0.06356811523,
+     "midp": 0.04138946533,
+     "bonett_price": [
+      0.0007105549617,
+      0.105171798
+     ]
+    },
+    "ordnung-vs-llm_rules_tool": {
+     "b": 1,
+     "c": 5,
+     "exact_p": 0.21875,
+     "midp": 0.125,
+     "bonett_price": [
+      -0.05594652539,
+      0.008887701865
+     ]
+    }
+   },
+   "harmful": {
+    "ordnung-vs-llm_only": {
+     "b": 3,
+     "c": 13,
+     "exact_p": 0.02127075195,
+     "midp": 0.01272583008,
+     "bonett_price": [
+      -0.1069318908,
+      -0.01071516805
+     ]
+    },
+    "ordnung-vs-llm_rules_text": {
+     "b": 3,
+     "c": 1,
+     "exact_p": 0.625,
+     "midp": 0.375,
+     "bonett_price": [
+      -0.01642052281,
+      0.03994993457
+     ]
+    },
+    "ordnung-vs-llm_rules_tool": {
+     "b": 3,
+     "c": 1,
+     "exact_p": 0.625,
+     "midp": 0.375,
+     "bonett_price": [
+      -0.01642052281,
+      0.03994993457
+     ]
+    }
+   }
+  },
+  "decisions": {
+   "beats_llm_only": "clear",
+   "vs_llm_rules_text": "level_within_noise",
+   "vs_llm_rules_tool": "cannot_tell",
+   "f2_vs_llm_only": "no_clear_difference",
+   "f2_vs_llm_rules_text": "no_clear_difference",
+   "harmful": {
+    "dates": 9,
+    "reads": 504,
+    "none": false
+   },
+   "more_stable_than_llm_only": false,
+   "flags_caught": {
+    "caught": 0,
+    "wrong": 5,
+    "caught_reads": 0,
+    "wrong_reads": 15
+   }
+  },
+  "noninferiority": {
+   "ordnung-vs-llm_rules_tool": {
+    "lo": -0.05194805195,
+    "hi": 0.0,
+    "decision": "cannot_tell"
+   }
+  }
+ },
+ "exploratory_pooled_splits": [
+  "holdout",
+  "holdout2",
+  "holdout3",
+  "holdout4"
+ ]
+}

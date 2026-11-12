@@ -1,0 +1,3 @@
+tool calls in the run log: 29 {'Bash': 28, 'Read': 1}
+hook log lines: 29, denied: 1, mismatches: 0
+  denied Read [['file_path', '/home/writer/.claude/projects/-work/5f2429ff-99d0-49ce-a8d4-7e68728c11ad/tool-results/bs84tcpxt.txt']]: file_path outside /work: /home/writer/.claude/projects/-work/5f2429ff-99d0-49ce-a8d4-7e68728c11ad/tool-results/bs84tcpxt.txt

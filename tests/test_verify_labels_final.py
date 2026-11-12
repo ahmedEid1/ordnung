@@ -767,14 +767,15 @@ def test_run_and_main_on_a_final_split(tmp_path: Path, capsys: pytest.CaptureFix
     assert vl.main(["--dataset", str(tmp_path), "--require-facts"]) == 0
 
 
-def test_the_earlier_splits_are_unchanged() -> None:
-    """The committed dataset (dev … holdout3, no final letters yet) is re-derived from the hand-read facts alone:
-    every one of its 272 dated labels, with no problem and nothing waiting for facts."""
+def test_the_earlier_splits_are_unchanged(tmp_path: Path) -> None:
+    """The committed dataset's earlier splits (dev … holdout3) are re-derived from the hand-read facts alone: every
+    one of their 272 dated labels, with no problem and nothing waiting for facts. The final splits' facts.json files
+    are left out (the facts folder here holds none): they are checked with their own letters, by the whole manifest."""
     manifest = json.loads((DATASET / "manifest.json").read_text(encoding="utf-8"))
     earlier = [
         e for e in manifest["entries"] if e["split"] in ("dev", "test", "holdout", "holdout2", "holdout3")
     ]
-    report = vl.check_facts(DATASET, earlier, vl.convention_ids(manifest))
+    report = vl.check_facts(tmp_path, earlier, vl.convention_ids(manifest))
     assert report["dated_labels_checked"] == 272
     assert report["date_problems"] == [] and report["splits_without_facts"] == []
     assert vl.check_window(earlier) == []

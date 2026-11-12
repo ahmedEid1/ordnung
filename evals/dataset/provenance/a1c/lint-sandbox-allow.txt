@@ -1,0 +1,17 @@
+# lint-sandbox allow-list for A1c's audit-conv sandbox (sealed/ = the four sealed A1 derived files, never edited; conventions.md, law/, FACTS.md: 0 hits)
+# 14 sealed lines: the A1 step's reviewed proposal (a1c-sealed-proposal.txt a96fd46b…), re-classified here by lint term and booleans only (12 'recorded' = legal prose, 2 'model' = statutory model form); + the a1c template's K16 rule line
+sealed/derived-b1.json:40c4e4c0ca0feb2d150f5e85fa77f9f8e1d501150dde0cf77d846d898413ed2b  # class: legal-prose-recorded; line 168
+sealed/derived-b2.json:19f5ac949eae9afd17a014f72aa71dd93b0ef23768726d5a7d4806f344f1ed37  # class: legal-prose-recorded; line 109
+sealed/derived-b2.json:2b16e2006daf388b9888abc859461e455a6f36ecb3879845fcf8a50ede31ea9b  # class: legal-prose-recorded; line 123
+sealed/derived-b2.json:ae92f748a73416075315e72d236c0a23719f8bfa2315730fd707e12803cb068d  # class: legal-prose-recorded; line 136
+sealed/derived-b2.json:2f652b05ca1ce6a74c7d98c47ab9d36e470cc0623a25b4b4a127e5a5bd293993  # class: legal-prose-recorded; line 150
+sealed/derived-b3.json:aab619a7935f4d2a868284c40e33e48e26d7fa44283318c472456e3164c95925  # class: legal-prose-recorded; line 221
+sealed/derived-b3.json:79ffaba2742e5008e476d26193dd73ba16e743d69275cfb40200152ba16b32cc  # class: legal-prose-recorded; line 599
+sealed/derived-b3.json:22c073acfe0981d8ac86d44e3c463ebc56b079c9659fff286508468a7ffe3115  # class: statutory-model-form; line 1462
+sealed/derived-b3.json:8ff639305d05b4bdf913dcfaf05f26e49e45569b20c1543b035c4fe10742ee48  # class: statutory-model-form; line 1557
+sealed/derived-b3.json:f5e7181f8f1c575c4f12f38f1ff243ff8b6ddfd865eb542f9669a3e8bab8ff24  # class: legal-prose-recorded; line 1697
+sealed/derived-b3.json:6200a8a5de4d5543dc6c59c9ed6adfd495a27bc431034d899ee9ea819a9cab13  # class: legal-prose-recorded; line 1710
+sealed/derived-b3.json:d46c0b09da5575e37cacb45dd1727f3f1c91a1399ffe832fc410016feed6e1f4  # class: legal-prose-recorded; line 1832
+sealed/derived-b4.json:6255f979b3fc0396b86ddcf4024d5e0b4271e5241ab96cd706965254fbe455b9  # class: legal-prose-recorded; line 747
+sealed/derived-b4.json:62cdae8c8644541e472268246bf480c5faf46079e8ae35ac385fb8bd02adb36e  # class: legal-prose-recorded; line 1400
+@brief:66472c7d5756dab5395210895128b158c5ce5411354c4b442e00574e439d7a65  # class: brief-rule: the a1c template's own K16 rule line (here brief line 68) (the word 'model' in 'name no ... model'); reviewed by the orchestrator, names nothing

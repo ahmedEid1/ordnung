@@ -1,0 +1,2 @@
+# lint-sandbox allow-list for the A1' sandbox (profile adjudicate: pack/, law/, FACTS.md, conventions.md); no pack line hits
+@brief:66472c7d5756dab5395210895128b158c5ce5411354c4b442e00574e439d7a65  # class: brief-rule: the a1p template's own K16 rule line (line 102; the word 'model' in 'name no ... model'), the same line hash as A1/A1c; reviewed by the orchestrator, names nothing

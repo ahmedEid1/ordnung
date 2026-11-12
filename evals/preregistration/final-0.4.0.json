@@ -1,0 +1,3587 @@
+{
+ "schema": "ordnung-preregistration/1",
+ "id": "final-0.4.0",
+ "model": "claude-sonnet-5",
+ "about": "The pre-registration of Ordnung 0.4.0's final evaluation, committed before any recording (evals/preregistration/final-0.4.0.md says it for people). It is written once and never edited; what happens later is recorded in deviations-0.4.0.json at the time it happens.",
+ "registered": {
+  "freeze_sha": "f2cacf64771a8736262f52a535d29b79032969c9",
+  "freeze_pr": 51,
+  "freeze_merged_at": "2026-11-11T16:21:55Z",
+  "freeze_tag": "eval-freeze-0.4.0 (local, never pushed)",
+  "commit_a": "0924c192a49791e6a9949dac620a14cd5ea95df2",
+  "commit_a_tree": "0b4383d1bc817df50a62ad26713d3b8b55df1e95",
+  "planned_day": "2026-11-24",
+  "valid_until": "2026-12-01",
+  "freeze_day": "2026-11-11",
+  "dates_rule": "K26 (owner's decision, 2026-11-11): F = Wed 11 Nov 2026, D0 = Tue 24 Nov 2026 (the next weekly reset after the A+B window), L = D0 + 7 = Tue 1 Dec 2026",
+  "deadline_for_the_ab_merge": "2026-11-23T12:00:00Z (D0 − 1 12:00)",
+  "not_here": "this commit cannot hold its own sha, the A+B PR's number, its merge sha or the issue: the issue (opened before any recording) and every results file's meta.commit name them",
+  "issue_binding": "the issue quotes this commit's sha, the A+B merge sha and final-0.4.0.json's sha256; every deviation is a comment on that one issue (deviation_rule), and the history check holds every deviation to one issue; the first checkpoint commit (R0-full, which adds the phase-2 record) names the issue's URL in its message",
+  "e2e_replay_base": {
+   "commit": "9df8afa101b37e605168b960025f8f9b6cfb7892",
+   "tree": "2aa4610ca63698e052ef9da0dc9d94364e781f1e",
+   "parent": "f2cacf64771a8736262f52a535d29b79032969c9",
+   "rule": "its tree is commit A's tree with evals/results/ as at the freeze: the clean tree the earlier splits' end-to-end replay (evals/results/2026-10-30-claude-sonnet-5-e2e.json) was written from, so the replay's meta.commit names it; commit A cannot name itself. The commit is local (not pushed); its tree sha can be rebuilt from commit A and the freeze"
+  }
+ },
+ "frozen": {
+  "identical_paths": [
+   "src/ordnung/**",
+   "evals/*.py",
+   "evals/prompts/**",
+   "evals/present/final.py",
+   "evals/present/final_templates.json",
+   "tests/test_preregistration.py",
+   "tests/test_present_final.py",
+   "tests/test_final_gates.py"
+  ],
+  "allowed_after_freeze": [
+   {
+    "path": "evals/gen/common.py",
+    "why": "commit A: the final splits' generator (W1a, W1b; K27's generated block in final.py)"
+   },
+   {
+    "path": "evals/gen/law.py",
+    "why": "commit A: the final splits' generator (W1a, W1b; K27's generated block in final.py)"
+   },
+   {
+    "path": "evals/gen/final.py",
+    "why": "commit A: the final splits' generator (W1a, W1b; K27's generated block in final.py)"
+   },
+   {
+    "path": "evals/gen/holdout4_admin.py",
+    "why": "commit A: the final splits' generator (W1a, W1b; K27's generated block in final.py)"
+   },
+   {
+    "path": "evals/gen/holdout4_private.py",
+    "why": "commit A: the final splits' generator (W1a, W1b; K27's generated block in final.py)"
+   },
+   {
+    "path": "evals/gen/holdout4_adversarial.py",
+    "why": "commit A: the final splits' generator (W1a, W1b; K27's generated block in final.py)"
+   },
+   {
+    "path": "evals/gen/newkinds.py",
+    "why": "commit A: the final splits' generator (W1a, W1b; K27's generated block in final.py)"
+   },
+   {
+    "path": "evals/dataset/manifest.json",
+    "why": "commit A: the D0 build's manifest"
+   },
+   {
+    "path": "evals/dataset/VERIFICATION.md",
+    "why": "commit A: the two appended sections, the tally sentence and K27's sentence"
+   },
+   {
+    "path": "evals/dataset/holdout4/**",
+    "why": "commit A: holdout4's letters, photos and facts.json"
+   },
+   {
+    "path": "evals/dataset/newkinds/**",
+    "why": "commit A: newkinds' letters, photos and facts.json"
+   },
+   {
+    "path": "evals/dataset/provenance/**",
+    "why": "commit A: the provenance of every blind session, the audit, the Ask checks and K27, and scratch-paths.txt"
+   },
+   {
+    "path": "evals/ask/heldout/questions.json",
+    "why": "commit A: the held-out Ask set as W2 wrote it (checked by W2v and W2a)"
+   },
+   {
+    "path": "evals/ask/heldout/attacks.json",
+    "why": "commit A: the held-out Ask set as W2 wrote it (checked by W2v and W2a)"
+   },
+   {
+    "path": "evals/ask/heldout/recurrence.json",
+    "why": "commit A: the held-out Ask set as W2 wrote it (checked by W2v and W2a)"
+   },
+   {
+    "path": "evals/ask/heldout/NOTES.md",
+    "why": "commit A: the held-out Ask set as W2 wrote it (checked by W2v and W2a)"
+   },
+   {
+    "path": "evals/ask/heldout/recurrence_gold.py",
+    "why": "commit A: the held-out Ask set's recurrence gold as W2 wrote it, with type annotations added at commit A for the repository's mypy (blind_writing.orchestrator_edits)"
+   },
+   {
+    "path": "evals/perturb/templates.json",
+    "why": "commit A: the stress templates (W1c)"
+   },
+   {
+    "path": "evals/perturb/manifest.json",
+    "why": "commit A: the stress manifest, rebuilt on the final manifest (K27)"
+   },
+   {
+    "path": "tests/test_eval_dataset.py",
+    "why": "commit A: the final splits' composition test (W1b)"
+   },
+   {
+    "path": "tests/test_perturb_build.py",
+    "why": "commit A: a test that assumed holdout4 had no letters yet (no defect; commit A's message); its refusal case now runs on the dataset's manifest with holdout4's entries left out"
+   },
+   {
+    "path": "tests/test_perturb_score.py",
+    "why": "commit A: a test that assumed holdout4 had no letters yet (no defect; commit A's message); its refusal case now runs on the dataset's manifest with holdout4's entries left out"
+   },
+   {
+    "path": "tests/test_splits.py",
+    "why": "commit A: a test that assumed the final splits had no letters yet (no defect; commit A's message)"
+   },
+   {
+    "path": "tests/test_verify_labels_final.py",
+    "why": "commit A: a test that assumed the final splits had no letters yet (no defect; commit A's message)"
+   },
+   {
+    "path": "tests/test_evals_e2e.py",
+    "why": "commit A: a test that assumed the final splits had no letters yet (no defect; commit A's message)"
+   },
+   {
+    "path": "evals/results/INDEX.json",
+    "why": "commit A: python -m evals.reproduce --write (the dataset pin)"
+   },
+   {
+    "path": "evals/results/items.csv",
+    "why": "commit A: python -m evals.reproduce --write (unchanged)"
+   },
+   {
+    "path": "evals/results/2026-10-30-claude-sonnet-5-e2e.json",
+    "why": "commit A: the earlier splits' end-to-end replay written again by its own command for the new manifest pin, from the clean base commit registered.e2e_replay_base (only meta.commit, meta.dataset and meta.fingerprint move)"
+   },
+   {
+    "path": "evals/preregistration/**",
+    "why": "commit B (this pre-registration and its files); afterwards the owner's checks and the deviations and phase-2 records; final-0.4.0.json, final-0.4.0.md and phase2-0.4.0.json are written once"
+   }
+  ],
+  "allowed_while_recording": [
+   {
+    "path": "evals/recorded/**",
+    "why": "new cassettes, the ledgers, lock entries and evals/recorded/<model>/final-days.json (the day index); deletions only of cassettes a retake (python -m evals.harness retake) moved"
+   },
+   {
+    "path": "evals/results/pending/**",
+    "why": "the checkpoints' results files (the presenter refuses final files until phase 2)"
+   },
+   {
+    "path": "evals/preregistration/deviations-0.4.0.json",
+    "why": "deviations, recorded at the time by deviate.py"
+   },
+   {
+    "path": "evals/preregistration/phase2-0.4.0.json",
+    "why": "the phase-2 record, posted on the issue before R1"
+   }
+  ],
+  "allowed_at_publish": [
+   {
+    "path": "evals/results/**",
+    "why": "the final results files, analyses and INDEX.json"
+   },
+   {
+    "path": "evals/retakes/0.4.0/**",
+    "why": "the first attempts of retaken units (python -m evals.harness retake)"
+   },
+   {
+    "path": "evals/present/**",
+    "why": "must equal the posted phase-2 tree, else a code_hash_changed deviation names each differing path (final.py and final_templates.json stay frozen)"
+   },
+   {
+    "path": "README.md",
+    "why": "only between the evals:begin and evals:end markers (evals.present's BEGIN and END lines), and its two bullets on today's analysis, \"Held out.\" and \"Pre-registered next.\" (K22)"
+   },
+   {
+    "path": "docs/evals*.md",
+    "why": "final-run prose from templates; any hand-written paragraph headed \"written after the results\""
+   },
+   {
+    "path": "docs/assets/eval-*",
+    "why": "the charts"
+   },
+   {
+    "path": ".github/workflows/ci.yml",
+    "why": "the replay gates of the final reads (tests/test_final_gates.py)"
+   },
+   {
+    "path": "tests/**",
+    "why": "other than the three frozen tests (identical_paths)"
+   },
+   {
+    "path": "web/e2e/eval-report.spec.ts",
+    "why": "the report page's test"
+   },
+   {
+    "path": "CHANGELOG.md",
+    "why": "the entry for the published final run"
+   },
+   {
+    "path": "evals/README.md",
+    "why": "K26: its 2026-12-08 examples are updated to the real recording day"
+   }
+  ],
+  "model": "claude-sonnet-5",
+  "code_digest": "1c10b446736a6c78",
+  "fingerprints": {
+   "ordnung": "1b4fe7c855fc0eee",
+   "llm_only": "2122d4f180b656c7",
+   "llm_rules_text": "b7676ed2b3effc94",
+   "llm_rules_tool": "25becf824b6886b6"
+  },
+  "prompt_hashes": {
+   "ordnung": {
+    "extract_system": [
+     "12",
+     "5a1242a7e8ccf557"
+    ],
+    "extract": [
+     "7",
+     "fa016ffbc43d2df8"
+    ],
+    "extract_text": [
+     "1",
+     "4f9bc414abdafab0"
+    ],
+    "extract_repair": [
+     "1",
+     "6fb8a7084dc19157"
+    ],
+    "reading_gaps": [
+     "1",
+     "6b7fbe5d24a6aae2"
+    ],
+    "transcribe_system": [
+     "1",
+     "761bc04746713e7e"
+    ],
+    "transcribe": [
+     "1",
+     "0aade81ca5f0536b"
+    ],
+    "extraction_schema": [
+     "12",
+     "beaa46d4572be558"
+    ],
+    "reading_gaps_schema": [
+     "1",
+     "0d7bf93979603ece"
+    ],
+    "reading_gaps_parts": [
+     "1",
+     "2bbcb02097de1e28"
+    ],
+    "transcription_schema": [
+     "1",
+     "aa9b5842d28f5734"
+    ]
+   },
+   "baselines": {
+    "llm_only": "5036dca5a4e071ca",
+    "llm_rules_text": "f0642150b1c4a9bf",
+    "llm_rules_tool": "421dc97ba3a3c1cb"
+   },
+   "tools": "d5ae6026bb3aeb2c"
+  },
+  "environment": {
+   "evals": {
+    "holidays": "0.105",
+    "pypdfium2": "5.13.0",
+    "pillow": "13.0.0",
+    "fpdf2": "2.8.8",
+    "pydantic": "2.13.5",
+    "python": "3.11"
+   },
+   "generator": {
+    "fpdf2": "2.8.8",
+    "pypdfium2": "5.13.0",
+    "pdfium": "153.0.7999.0",
+    "pillow": "13.0.0",
+    "zlib": "1.3",
+    "holidays": "0.105",
+    "fonttools": "4.66.0"
+   }
+  },
+  "locks": {
+   "evals/recorded/ask/claude-sonnet-5/prompts.lock.json": "c888a223719bc0b7b0e4aa4fac01b5920b88406e8af092297963107d5e05f185",
+   "evals/recorded/ask/claude-sonnet-5/requests.lock.json": "fafa4b674ba07d3219c8c70f8f41ef6cd3c66b0141ffe9c7940337e5388024f2",
+   "evals/recorded/claude-sonnet-5/prompts.lock.json": "58abe975dc1ea1413d7c2bfaaf7db9ba494dd22dd3214727c69be405673a275d",
+   "evals/recorded/claude-sonnet-5/requests.lock.json": "cdcd3cccacaa79426fc26287aa24936cd40db5f8a149ae304575020b403832a7"
+  },
+  "index_sha256": "80d09dfb033981408d21efa5b2dc3c12bb9b1ae33b3ff727baa755ca19f20263",
+  "items_sha256": "2dd4d67664204223ec2d0f8e3bff92bcda82418fd178350cc2cf4907f06a4b7b",
+  "cli_versions": [
+   "2.1.322 (Claude Code)"
+  ],
+  "served_models": [
+   "claude-sonnet-5"
+  ],
+  "settings": {
+   "concurrency": 3,
+   "timeout_s": 300,
+   "tools_budget_usd": 1.0,
+   "note": "evals.run, evals.ask and scripts.eval_perturb are each given --concurrency 3 (K4); TOOLS_BUDGET_USD is evals/conditions.py's"
+  },
+  "python": "Python 3.11.17",
+  "uv_pip_freeze_sha256_without_the_editable_line": "86dfe31964197a9827214614795ce7e89822a4227f066e7c380da3f00f995c65",
+  "freeze_record": {
+   "index_sha256_at_the_freeze": "54a9f122aa6ec44626a7eef5e79991fba8875162256a8e88e8c3df4df07deeb6",
+   "note": "index_sha256 above is INDEX.json at commit A: commit A rewrites it (python -m evals.reproduce --write, the dataset pin). Every other value of this section equals the freeze record (scripts.prereg_hashes --section frozen at the freeze sha); the CLI version is the one the freeze record read from the recording wrapper (--version only)."
+  }
+ },
+ "code": {
+  "evals/analysis.py": "312ccf4d4e85b9a121c48f26d879c9ec84617c960ecbfa5527ea6a70a0cb02ec",
+  "evals/stats.py": "122a8a11aeec84c4d7422feae999d6bc9b476eef7dbb9f3b5f86fb4f7ed9130f",
+  "evals/metrics.py": "43fedf40b60d25eb52823700edde38d9adbaed78521a45f87abd62873d5f447a",
+  "evals/records.py": "5310ebf9f7b92940118fdf9027a3de80d1b9501210adc22a078b21efd23546ff",
+  "evals/e2e/__init__.py": "f683dd7c6eeb5a9555129c448b8ca3a412c738207b5000aae00e1b09ed433965",
+  "evals/e2e/__main__.py": "b198e4ea3ddf9722e6bc71a280947b5691ed2dc955e3f560bd1890baebc674c7",
+  "evals/e2e/check.py": "fad5ae42cacab0e7121da7623da915a813bdce267763dd2d7d2ee13137ecf92d",
+  "evals/e2e/harness.py": "0588f6c47c49303cbb177b83b32c16ed53dc38003cdf4c43149e6ea2e5b59ddf",
+  "evals/e2e/metrics.py": "5271f3ee9af8cf5d120ca47828b22af181d0579ecd6459edda64ce6fa38eb897",
+  "evals/e2e/observe.py": "6a2993d444004fdd1cb90eab9f34da03ce14fc2ce8533e595c99c5261a04be7c",
+  "evals/e2e/report.py": "cd1d78c7aa158ed9b9d2764dd84a3c6e076e7d9351481b5b2a023f789c92cf96",
+  "evals/ask/__init__.py": "731951fb94ebeb4ea6934139921109058224be920ffe3151e82a290ed0eb4e10",
+  "evals/ask/__main__.py": "501297977276efa1c4814159d9745e793f312645a14dc9211ca5474f238464f9",
+  "evals/ask/attacks.py": "3a7ef2c3e053020a771c03d2188b9c30fe448d027e9c17bb30b72ac9e081d2ed",
+  "evals/ask/heldout.py": "d7619fc5f0753c4c1a53e0b9ce574aa9f3bda811feacd76b1a663988419e4bec",
+  "evals/ask/heldout_check.py": "457aa5f04819e3e2f44348e8b855923f40d28e1f150888bc0373eb177be65168",
+  "evals/ask/household.py": "6179229d227a6da1902dfab2cd4d0618a4455fb90003e9be7f118dbdcae5b071",
+  "evals/ask/ledger.py": "f82b08bd31f14ebdb1958f6abf68e600179350260b01e90c0a23bf29df78f24e",
+  "evals/ask/metrics.py": "a1e6c822d0621ae003465760602365c8bcc02bdf63b0d39ef27a852399297903",
+  "evals/ask/owner.py": "cd5d415ad3caca2083750cd8082f30f69193548ba7c6a5e3983ab2a1fee4e37f",
+  "evals/ask/parse.py": "43e02b66532991025d8dd36b01aa46fdf4e3a3a405dce992444af51ed1116688",
+  "evals/ask/questions.py": "2156eab9c1efe2635bd5032dcd74870ea5b0857c3a8d32d2c3d410250aa13fd4",
+  "evals/ask/recurrence.py": "ec418fcfc5e661d7359fc979a96d216012862400d86d31543380c6b078cf78fe",
+  "evals/ask/report.py": "89c2886f51cf0567a476afda1a5e58eb3e401e166e9a51f1f319b099e3d134f0",
+  "evals/ask/run.py": "84311b09a4ae4702c7e350cfb1101a7e49079b7c887c1bb72a0de6cea016fd6d",
+  "evals/ask/score.py": "4795d1a5197d6adc2a08c1745dc8afad425f13ec889269a2921e1fb8923bd09f",
+  "evals/ask/strict.py": "31c6e021bc4306e2f01b09095cc4aaed0aa32091046be56cddf06dcc30cf5ff0",
+  "evals/perturb/__init__.py": "e092449731f182545fdf3b6768c8395b37c86680edbe08c8616b33c61a346bd5",
+  "evals/perturb/build.py": "a70317fbd57d389c9b996e31db6cc5c87cde660dd898da2e58e958a1e23e8314",
+  "evals/perturb/score.py": "12bfddfb58cb7e031a59b2909cf8c70ad462f59a8db5fe7a0bbc5e3ebd4cb692",
+  "evals/perturb/templates.py": "9e686492091fcc7b91b84d4a9f33ea3526794a59691c868a8ef2b9ddacb23b2a",
+  "evals/present/final.py": "c71a0566282944608b13d5c9a0b07f0c1a2c71eb17adfca3d8b5621d51747778",
+  "evals/present/final_templates.json": "cf51acc04e165acc534ccff0c9c97ecfe663ec6552e29f7412d5e9d9ac2105f1",
+  "scripts/eval_without_land.py": "d20867e6a02b1e51a69023d5afd2c0614b5e33fe3b02a06d18e14e905c851716",
+  "scripts/eval_ablate_checks.py": "0ba4de528e325da5c922da0d48908cf23dec0d4c1522ad8654da85dda380332b",
+  "scripts/eval_perturb.py": "193fce14a3bc93a4226f753ff8322195e4d10bedcf358ea05e0f168e6f6fc909",
+  "scripts/eval_power.py": "bbc2d8144ed1d0615545c3ea55798d8f2192d3194107c28cef45aaf9723e0f8f",
+  "scripts/prereg_hashes.py": "41273ef60cdd4d1b598f8ecae8c3669749292ceb281d829f38aa49851e800052",
+  "scripts/prereg_calibration.py": "0ca7c6b34343dc8189f4bcb30b4c7f943126e624315666e828af748f210c4d8b",
+  "scripts/owner_label_sample.py": "eae126c23edfd98815937d0a4ff6756124a38896a8f17ee857600694ed41c74b",
+  "tests/test_preregistration.py": "2f628549d14a8c7bb2fc932852ee3c15d6c3f43701556a4adbbf9739a5c71615",
+  "tests/test_present_final.py": "309d4eaddc6368b49157d9ad08f77b9e8173182f3b342c8703b5285670ccf5b6",
+  "tests/test_final_gates.py": "ec341a95a83716718731057d91b712654883b49cb4f9a3f5b3355ace95ad763c"
+ },
+ "files": {
+  "evals/ask/heldout/NOTES.md": "5b995c4777dc47a307181f74e8e21a185f21cd408eccb294bea75499c9056890",
+  "evals/ask/heldout/SCHEMA.md": "49ac37868fd768b2a0c2b4bad3c6c84b370748cd853e5a424fa8191e4adabeb2",
+  "evals/ask/heldout/attacks.json": "a3c564dfb3518b47226efe5c919576c9edecf22fc9d1de6aa84401a8129fc68e",
+  "evals/ask/heldout/household-facts.json": "2d880e77ecb19c24c0d1e50786b74b57043b1b7e7011b58af19251db745d6950",
+  "evals/ask/heldout/questions.json": "192d4624a6a3ff9d06383f1370af73e194671b85c95b5c833d8ad988cd82bb72",
+  "evals/ask/heldout/recurrence-rules.md": "45ea36c62f337e9cd06b2bb80e495a45bbf672fbe50f92a8995f39a95dad9c20",
+  "evals/ask/heldout/recurrence.json": "d9d8c8d4427a0a045dea6d722b264c68f52724554c978c109852ad4946022575",
+  "evals/ask/heldout/recurrence_gold.py": "aa9ebdfc19b7386644eec9cc66ea8d9a6b560145dbfd9aa57fedc277faf6c15e",
+  "evals/dataset/VERIFICATION.md": "9000ad1ad68a3e8303c28a3a1d422f7cb885f3ce59bae50d333d9dcc25415757",
+  "evals/dataset/holdout4/adversarial-conflicting_dates-1.pdf": "af7ef729098efbd2bc2b5f5f0ca22af13822137d54a17fd787ffa4a9332b1f20",
+  "evals/dataset/holdout4/adversarial-conflicting_dates-2.pdf": "4a141c23d25561fb82b23219b4977c717da275fa5eac5f6ca340f34314d43dcd",
+  "evals/dataset/holdout4/adversarial-conflicting_dates-3.pdf": "a0242deba88b6d40bffe710da2ce83e160e8d72275b918ad5c67bb6a9ca6cca8",
+  "evals/dataset/holdout4/adversarial-conflicting_dates-4.pdf": "4b2f82233e0eaecd17f6c14ad74b2d69b4352c380eb7209cc0e90773c9c685c8",
+  "evals/dataset/holdout4/adversarial-hidden_text-1.pdf": "3fb39451f092e5eb4d5287815c6dc2a3f2a214a1f018bd22fd2e888bb9ddc4d4",
+  "evals/dataset/holdout4/adversarial-hidden_text-2.pdf": "f820be32a18e54ee22134acb994e2f8f07314ba57c9828f655d857fb60c4ff4f",
+  "evals/dataset/holdout4/adversarial-hidden_text-3.pdf": "183c406ed7dbdfe3e865ea31d8220b49590bdb827590aa18bc6779b008ff4b7d",
+  "evals/dataset/holdout4/adversarial-hidden_text-4.pdf": "e9b6107e412d7b0d3af16ff89a02c33eb0aad8af59f074c29f77dea392811edd",
+  "evals/dataset/holdout4/adversarial-injection_visible-1.pdf": "6a05e000dac7cffc4ac5c7c53f6b3feb63b259247e1777d2f938a962a991cb70",
+  "evals/dataset/holdout4/adversarial-injection_visible-2-photo.jpg": "792b343abea642da1e5de597afa31ca78a9caa3e291212feb0e14857ebcbc055",
+  "evals/dataset/holdout4/adversarial-injection_visible-2.pdf": "b4053f86637a6fd50e57d9d6e17abac86a139836a6e8a82d4ae0623bc58f8952",
+  "evals/dataset/holdout4/adversarial-injection_visible-3.pdf": "bbab49da317047ef8f7570a13d6311812a0add45b9ed1d1c2c37eaef6ac52ebf",
+  "evals/dataset/holdout4/adversarial-injection_visible-4-photo.jpg": "6ee11af4bacb5ed2b8a3a48c8d8029ec3934337ec3e4aa68e15b63e4589bf452",
+  "evals/dataset/holdout4/adversarial-injection_visible-4.pdf": "2e594cf6a0e3c218d5598abcbd0807c31e721462fb947641db77e3efa063e0d2",
+  "evals/dataset/holdout4/adversarial-missing_date-1.pdf": "02764d44e9bcc0fe1f1f383024a13b89738f4964c968df23d7abb6da99d5e568",
+  "evals/dataset/holdout4/adversarial-missing_date-2.pdf": "563f27f1b2f3b5c51edb5d9674df1734d7f46e8f19ae4b0c9fbda3466e298e0e",
+  "evals/dataset/holdout4/adversarial-missing_date-3.pdf": "07a9ccbd2258f4dc052bae9a2033cbbbe73f4e2fdb560e000bd8ff0587e1f25b",
+  "evals/dataset/holdout4/adversarial-missing_date-4.pdf": "1bde13e8f9534972138bb786a6a7db68d7445bfdd4e4bbe44b5a1fbbc222265d",
+  "evals/dataset/holdout4/adversarial-scam-1.pdf": "527fe9e7a73e681be2dd496fbb4b6ac58046d74b18ea2b452665f36cfb8f7570",
+  "evals/dataset/holdout4/adversarial-scam-2-photo.jpg": "0475a489b0c589d7b46baee8ab2650df725a561cbfed3cc87cc56d1e7566cad9",
+  "evals/dataset/holdout4/adversarial-scam-2.pdf": "375ffa8dc4ce4481f758e33b17127bb1b13c0aa47809de0c330af2e688300b62",
+  "evals/dataset/holdout4/adversarial-scam-3.pdf": "b7d5c5302044f26e529ebe9352be1d9ad70c552f0832c40aa9084d2b65e8939a",
+  "evals/dataset/holdout4/adversarial-scam-4-photo.jpg": "909a4962b6ec7c5c23a9c566c2e2f5f5b7b8d55c87d150facfef8d5463dabc6c",
+  "evals/dataset/holdout4/adversarial-scam-4.pdf": "5b13989c4ba012e031b99f20ee99b553d5430598474c031b89103d1dca0cb818",
+  "evals/dataset/holdout4/appointment-K1-photo.jpg": "f5bc21222718eaf9f947476c0d938fde495d0079b2b5a1131505ce89623aa7d7",
+  "evals/dataset/holdout4/appointment-K1.pdf": "a7c1bae51011734a827730be472aab142cad4e005aca82af14e1db4ba7df68b0",
+  "evals/dataset/holdout4/appointment-K2.pdf": "0de1a9e137f2a482b9fc91874499da2a2aa1ec74f5432f7c3321492a75246980",
+  "evals/dataset/holdout4/appointment-L1.pdf": "9f14528e2c14136d2939a6711f90c82eae6b3f98ae31c0851cf8f2e74c0afd13",
+  "evals/dataset/holdout4/appointment-M1-photo.jpg": "e3cd1f611ab880973697b826b62003ca763e63d2a860679f39d9f39eaca2cfab",
+  "evals/dataset/holdout4/appointment-M1.pdf": "0dad9fdeaf50cf47776a7959b22640c124d4366abb15e09850239e1028d76937",
+  "evals/dataset/holdout4/appointment-M2.pdf": "9d2e7520688be26abfc5dd25f42bad95ca6530859746ae0c11bc5b9cf4c218b7",
+  "evals/dataset/holdout4/appointment-N1.pdf": "f28c64e04a9c68bbe99c928d1c52c319c581a429398f0ed89566a2da0b3a4f49",
+  "evals/dataset/holdout4/contract_confirmation-K1.pdf": "e35449a2a61667a257d81a8eb999b97e883f7a340b3ab12c8d148af6e2046b22",
+  "evals/dataset/holdout4/contract_confirmation-L1.pdf": "8d8dd86d6aee1be2709b23b167a6c1ec704b04c88dfef7dfe959e055fdce8b9f",
+  "evals/dataset/holdout4/contract_confirmation-M1.pdf": "5fce7c500f9d68a87b93dc380bba741928ef2b031e0089f62aab14a2dcf51bea",
+  "evals/dataset/holdout4/contract_confirmation-N1.pdf": "877a3a1abd4ebcd035eb327c3542a5afb5f9620e73d6290df68fce54d5eb2514",
+  "evals/dataset/holdout4/dunning_fixed-K1-photo.jpg": "ddc3712eedd7c50d7d9b933b55e7ad534512e747d4de89d2f8799ca62115409f",
+  "evals/dataset/holdout4/dunning_fixed-K1.pdf": "7421ca06bfaa067e369be12f4e7f9d4dd749ac6984a193267810973459614f4f",
+  "evals/dataset/holdout4/dunning_fixed-K2.pdf": "4e64ef6052e104f30e3ec307556f38d527f43d0e096019e7533144df52a1e0b5",
+  "evals/dataset/holdout4/dunning_fixed-L1.pdf": "ea690d0f25c6fe87c82701453e8ea2814c8ec67a76a8fda64bda05d200f2b8e9",
+  "evals/dataset/holdout4/dunning_fixed-M1-photo.jpg": "e535885a85994cbf9ec91d70232c1deee2c855edf6228965649d97bff553b671",
+  "evals/dataset/holdout4/dunning_fixed-M1.pdf": "e9996931397c0d64c0d230b3c7231bd0ef98aef6ab82ad4795c3f939a95d10a5",
+  "evals/dataset/holdout4/dunning_fixed-M2.pdf": "76a626154f61329abde365cff4c3ff686d8f832745067ae2e4368a8e14a33afe",
+  "evals/dataset/holdout4/dunning_fixed-N1.pdf": "ff561927ce70e45fbcc1624830269a36720d609b35dc6455d146be3442675792",
+  "evals/dataset/holdout4/english_letter-K1-photo.jpg": "f393abcc008f6bf7913bc91c3f9a35035f8ef3021bad38620375617fc5bcf8b7",
+  "evals/dataset/holdout4/english_letter-K1.pdf": "3bad1f55ef7d8ef26a3221a53328de2f73027ece848c2f87c2f7e31683e5c663",
+  "evals/dataset/holdout4/english_letter-K2.pdf": "0d4675a8e6fc90a527d5fe1518e82717f1085e99f869f476c9cbb30810ffac16",
+  "evals/dataset/holdout4/english_letter-L1.pdf": "49daa526209ff6e3cf0b88b176d8017d4e0a3eb1ee1ad15bcbe7f966772b77ac",
+  "evals/dataset/holdout4/english_letter-L2.pdf": "b379c518888e50003d40040d2965b748e74ddb57c036d7289e39a78d0d521c46",
+  "evals/dataset/holdout4/english_letter-M1-photo.jpg": "7e0498ca8868d80d563945719eb8dd864f0f286decc5b1bd8bbbb1122546e4a0",
+  "evals/dataset/holdout4/english_letter-M1.pdf": "5d379afc06333a4784378c2102335f5f0ecaa29190cd7a6e15eaeb8c12ccd82c",
+  "evals/dataset/holdout4/english_letter-M2.pdf": "cc2bb582e8051f707cffb5cf22ad13a3a5410f2aea3515671b13553641d00097",
+  "evals/dataset/holdout4/english_letter-N1.pdf": "aab34e0651d2e6e044087573ccc7f7a6623c6ef98e91fb5476ba22a718e370e0",
+  "evals/dataset/holdout4/english_letter-N2.pdf": "7efb8c6eaaa2a71f82bfd6e6190539d6b5e99a582836b4a9ca0a4e7db6543f7a",
+  "evals/dataset/holdout4/facts.json": "161d0e5de779235420d0db951e2f75266e9dc8f8f7b1f086b72e8787d51c8ec4",
+  "evals/dataset/holdout4/fine_bussgeld-K1.pdf": "d2c504983a0143530fc2d4f00be1443072f3252d913469b1e88e884ffba48bea",
+  "evals/dataset/holdout4/fine_bussgeld-K2.pdf": "f49007b8bf05333ed06f2714ab06d680f7d7b2a8014fa0c747156f25419b9359",
+  "evals/dataset/holdout4/fine_bussgeld-L1.pdf": "e4d5ac76ba75f48a93a5c92f670ae740408a21c255d1bfd1aea0a6a69a83b003",
+  "evals/dataset/holdout4/fine_bussgeld-L2.pdf": "0d88b96d8b5c96f8a4f19ea278634594fba04a607379d5767b00ceee38d97c25",
+  "evals/dataset/holdout4/fine_bussgeld-M1.pdf": "be8c1fa6867caaf82eda0e2dd4542edf0049fe06d1a867d599b866d8c38ba57b",
+  "evals/dataset/holdout4/fine_bussgeld-M2.pdf": "50be03696f1d85a03aed53793c4a0e61b876039abf5c3b5fd8b351a1acf2fceb",
+  "evals/dataset/holdout4/fine_bussgeld-N1.pdf": "dd243826c3f9eac26af021a889ae87cf3171247c74088e88059f43dbe8a04dd2",
+  "evals/dataset/holdout4/fine_bussgeld-N2.pdf": "3a83897eec7ee0f91f3ab2ac5a7a02d1fa711324c8ab1ff43a2d58a1a77ef5fe",
+  "evals/dataset/holdout4/invoice_relative-K1-photo.jpg": "87833edb77877daf980e3129f0a3d179e325132ead44c207264c07613f2c1bf0",
+  "evals/dataset/holdout4/invoice_relative-K1.pdf": "9e1b8556e96c54e7eca2d785257d337cd30101daae804eacddb446216cb7eeac",
+  "evals/dataset/holdout4/invoice_relative-K2.pdf": "a3d1a9c0f97f5effb5eab4c82a284232aca4691e2d5377f23b71f2a5704b40bb",
+  "evals/dataset/holdout4/invoice_relative-L1-photo.jpg": "a34b817b77b7a45693a7698749778a76024944d6c6b4e6ea07309403bfc30392",
+  "evals/dataset/holdout4/invoice_relative-L1.pdf": "42840a2b32d4161b0356b72371ed1122e9e04682a7a93b8df9d33121beb454a2",
+  "evals/dataset/holdout4/invoice_relative-L2.pdf": "943e82b648fa69277110414b1b760c4c886d89b2c73e945c96d2dfd9ee9cc7c1",
+  "evals/dataset/holdout4/invoice_relative-M1-photo.jpg": "571d6bc30eb12126083f780c35086d6b45291a66aae643375a60c7114b80df8f",
+  "evals/dataset/holdout4/invoice_relative-M1.pdf": "4c04eda3c5ad3bf4601a80997bbc77b7aeee1e86aa8341fcaa532e11d8cbde57",
+  "evals/dataset/holdout4/invoice_relative-M2.pdf": "b4e033bfd74ccb500c119cce4c2128da2c44ca34a4de0d31e38165ee7347cd1e",
+  "evals/dataset/holdout4/invoice_relative-N1-photo.jpg": "ee3a768a91ab885a3c4e069c5ff5dd703a22965e755ac7baae8583092b6795b9",
+  "evals/dataset/holdout4/invoice_relative-N1.pdf": "e37d5f21132dc749650f009dff4bef5f6bd3c971bf58baafeb97f7a8da0dbd8c",
+  "evals/dataset/holdout4/invoice_relative-N2.pdf": "b5631bda176540b989036e3e24e68ce5a5bb5497f8505cd2f95133ac668ac64e",
+  "evals/dataset/holdout4/municipal_decision-K1.pdf": "ca8a518f451729ce1176b37d23b4fd7557b0161319e66a5b195fd7bfc2f808f4",
+  "evals/dataset/holdout4/municipal_decision-K2-photo.jpg": "b52adfb9c1c54aea9a2a623cc2e214723474c75bf5b0ca46f4c69cf9d87ff46a",
+  "evals/dataset/holdout4/municipal_decision-K2.pdf": "e6a608fa0fe40c7cb5afe652a457c6f1c03e07d21ed30758bdb4c69deb35bd69",
+  "evals/dataset/holdout4/municipal_decision-L1.pdf": "f6018908c0b7a44667e24fecaaa1042571643f9bdd3f7a57f1bee0c2716396fe",
+  "evals/dataset/holdout4/municipal_decision-L2.pdf": "6df359f377840df3ee720db8c4016a57f2430e8f47f7840fcba92a68a514698f",
+  "evals/dataset/holdout4/municipal_decision-M1.pdf": "99c103e37ffc3a5b47598ce89166c39a89ea1061e965ca26cbd149a1ba4e7641",
+  "evals/dataset/holdout4/municipal_decision-M2-photo.jpg": "01c411b3178bb0c5b683b25cfd41f522fb38165bc405b76536906e8a6b35b278",
+  "evals/dataset/holdout4/municipal_decision-M2.pdf": "5bcc899dac1db4d6de9d121ce52323f3552ea99d778d5a6c68ac0d22fa46e218",
+  "evals/dataset/holdout4/municipal_decision-N1.pdf": "07ee1aa7b05c5bd2c5240e10d4147695b02dee925c6212e8f17dd58faded1ea5",
+  "evals/dataset/holdout4/municipal_decision-N2.pdf": "181886bbc9faa25b4544c4952981ff900cf4bc4a17772ae0cda0df457ae5a762",
+  "evals/dataset/holdout4/price_increase-K1.pdf": "3f3050cd85ef7dcd6aca4daea7102d5a5e2bcaca76a805634b3a4680c0010cea",
+  "evals/dataset/holdout4/price_increase-L1.pdf": "fb67b7d076a9654ee4eb17da2a898796d2f273c04b95281302673ec24264d740",
+  "evals/dataset/holdout4/price_increase-M1.pdf": "d4a8ea5452839d0249eaf735cc37f00fff6dc7398abe7a25456b163f6ac741b9",
+  "evals/dataset/holdout4/price_increase-N1.pdf": "031acc7a3ca5b323e86da9dd41840f336ed67b2f4d9ccbffaef26c89f8e4ccf1",
+  "evals/dataset/holdout4/relative_business_days-K1.pdf": "76d1699b8d7cc7dcb1f7fe5e6da052d037befef726d3ab53c3aec1e9fecc2033",
+  "evals/dataset/holdout4/relative_business_days-K2.pdf": "0b334dfeca8f74743e3bf468cb6e3fb44d864f9fc3be8ac54d4ff410c7fe5662",
+  "evals/dataset/holdout4/relative_business_days-L1-photo.jpg": "7b7b0825b9539de2f3b30caa17afc906f0f824ad25e7c0d64d4e0c6bc6b6195e",
+  "evals/dataset/holdout4/relative_business_days-L1.pdf": "1289c7ccb9aaea01895fcef42b9faf8cd398d3b6bc61dc95b249dd613edb4ca7",
+  "evals/dataset/holdout4/relative_business_days-M1.pdf": "6b675fd417c1c0918b14cd0a215f4014627b222ea85406efb7765b663969774c",
+  "evals/dataset/holdout4/relative_business_days-M2.pdf": "a099ae68be29ae15e3b4f1aea16a82654ebde75a1da8153647b0cf3445d93049",
+  "evals/dataset/holdout4/relative_business_days-N1-photo.jpg": "1b07dbca1e0f91c3b6c2dc6dacfe965ab7b74c3b403735c451de70f3af8b8566",
+  "evals/dataset/holdout4/relative_business_days-N1.pdf": "519fe78cf30c0fec50e203f0879878fbe5ad32de93087d8267d7cb056e00920e",
+  "evals/dataset/holdout4/social_decision-K1.pdf": "9db49c05bbff15d52a5e4c900606010ed6e50e8c7bff80d8cbb76fd22ac091a7",
+  "evals/dataset/holdout4/social_decision-K2-photo.jpg": "9dc78183ddece515a51f123053e72dcf21e28326e2043ebf4623d4a74258f7fa",
+  "evals/dataset/holdout4/social_decision-K2.pdf": "63a156c80ea39790e22c1ff4a270e55f09d7106f32045e42f31e9c25793202eb",
+  "evals/dataset/holdout4/social_decision-L1.pdf": "c942db669d34071740d473c163146e350cfee2ffd4ec1544605180490a67fef8",
+  "evals/dataset/holdout4/social_decision-L2.pdf": "b07708b5d90f328b37534fdbe75e2b36492582b1421fdc5550b9ee3f23ecedab",
+  "evals/dataset/holdout4/social_decision-M1.pdf": "f31b21abde1635ad3f196f0db3cad8b5fd7be82dcbd46b5b86153a1e316c7a12",
+  "evals/dataset/holdout4/social_decision-M2-photo.jpg": "aa90872b45b15c062859aa7341189cb4d1c8adc03948f9d412c8eae86ae4a45a",
+  "evals/dataset/holdout4/social_decision-M2.pdf": "4645b34798a40da357d2e2a853d05742ba431ea75e92c5fe5da4846ed9927ffe",
+  "evals/dataset/holdout4/social_decision-N1.pdf": "f4de4fd3962cd84dff52cfc6717706b5248460e79c7a520d65190044df7f837a",
+  "evals/dataset/holdout4/social_decision-N2.pdf": "c5b7546dc4169ef933bc8da745f7752df908754f2c264892affe10f5e305b072",
+  "evals/dataset/holdout4/tax_assessment-K1.pdf": "a63cbd8a4b2f18854ccf95789eabab81839743ad14692a965dd67aaed718f546",
+  "evals/dataset/holdout4/tax_assessment-K2.pdf": "392de68895f0efed6af19239fbd44498b6fb244083eb8f1b49138e246c2d36fc",
+  "evals/dataset/holdout4/tax_assessment-L1.pdf": "e86a870f0ec65f4c1e166f477509ae5ee5ba40d82337b2aca2633f35c8979315",
+  "evals/dataset/holdout4/tax_assessment-L2.pdf": "04428e23487c6625e24eb1f796ccd6cc188280ab91e6f9a70d6890296ea165d1",
+  "evals/dataset/holdout4/tax_assessment-M1.pdf": "545933eee4a1b5b0baff8057d765e821a95c327b2b997f9dca66bb312455e38d",
+  "evals/dataset/holdout4/tax_assessment-M2.pdf": "1f9ca35935afa6f6750aeca4b8c0aaaf2bc422d81f9647d0f904bd87fb48351e",
+  "evals/dataset/holdout4/tax_assessment-N1.pdf": "af2e618e5f37069603539b8c909f9b4a4fec91492d689192a68b01e43c39b873",
+  "evals/dataset/holdout4/tax_assessment-N2.pdf": "ef50ddf252e0db797e0c4ba49c42f54f496057b7a9cd103401d82db819fd48d4",
+  "evals/dataset/holdout4/year_boundary-K1.pdf": "a3ad77112795e52a4bd21aee3668d8701e0da567e7c0ecf42f0f27becb610266",
+  "evals/dataset/holdout4/year_boundary-K2.pdf": "49eefb94fb43668ca444af0275d16202e272a023ac949524043a48ffd31bc399",
+  "evals/dataset/holdout4/year_boundary-K3.pdf": "8f413409b65820e5a8aaee7a17996b50776a8aaa173344b208f56773ef645d75",
+  "evals/dataset/holdout4/year_boundary-L1-photo.jpg": "fafbfc1afa5c3ff0b6c73b52771d5b6d2dccdcf8b083bfd469e561a300820ea5",
+  "evals/dataset/holdout4/year_boundary-L1.pdf": "930f6ce193f613a936856ae1ea8bc2a4a10abbff94995e2b33aa8b258da59a6c",
+  "evals/dataset/holdout4/year_boundary-L2.pdf": "ee1bfb982144e4f8566c21907b98814a1fafecc336872963440e67d4cde468b8",
+  "evals/dataset/holdout4/year_boundary-M1.pdf": "d65d3047027b36286d8b31c1142f7b21601c2ded7c11c5551abc5987325d1964",
+  "evals/dataset/holdout4/year_boundary-M2.pdf": "5f1d61ed472cc8a3b067e1bf8dc8c0fc08f132cb12508760acfeb49cf99e7840",
+  "evals/dataset/holdout4/year_boundary-M3.pdf": "d69eeb2dcb623ef2ad0e1fca17598e0f4bd8a8d0546075708fb7b587486c5759",
+  "evals/dataset/holdout4/year_boundary-N1-photo.jpg": "2458128a26ab7bc8ac22b784aa49b47ca89a6dc40b9d78b148481eb17304e852",
+  "evals/dataset/holdout4/year_boundary-N1.pdf": "eb810700344c7be7f17ae4586ff243f74d0f909461c0e33d0e60f699859edf1b",
+  "evals/dataset/holdout4/year_boundary-N2.pdf": "e77264f58e6ef85dfc811decfb506112277d23e8baa46b06ed1819851546b03c",
+  "evals/dataset/manifest.json": "7bf30e0b171222622a7a24fd321e4137fa18f3d87786d56a05e6d3ed668b9d02",
+  "evals/dataset/newkinds/betriebskosten-1-photo.jpg": "a8af063a778ea0d0a0fef239682d74860c1cf09f27bec052b7eaad4861e8bdb3",
+  "evals/dataset/newkinds/betriebskosten-1.pdf": "43565c4aa776b10bc5b703ee798596fc2111f3d01324f837a47b4e072156b5ca",
+  "evals/dataset/newkinds/betriebskosten-2.pdf": "1aac6e5cdff43c1fa8c467bd92b824995670c95c4e24b930b8f9bddf66f6c503",
+  "evals/dataset/newkinds/betriebskosten-3.pdf": "e8f487bc846f1ec442604669323718a140ad2867bd5e16284e96b3941893967e",
+  "evals/dataset/newkinds/betriebskosten-4.pdf": "50f65e63d6e57512fb0cde4e6cb7871c14dcd075b8071f31e4da05ec986f525d",
+  "evals/dataset/newkinds/facts.json": "81df177f5187b907c1eae08f241fa5cb6428401d9a3b3663a28cf7458e7aa3d6",
+  "evals/dataset/newkinds/kuendigung_arbeit-1.pdf": "7630cce7fde5db47f96e1d193ffcc79d7d9aed81bfa2bd58215779c6da37adb3",
+  "evals/dataset/newkinds/kuendigung_arbeit-2-photo.jpg": "4528ba407e4de7d9a24c04d89ec61eccf0b39ec61015df8d74012cc9a1daa047",
+  "evals/dataset/newkinds/kuendigung_arbeit-2.pdf": "2beb0b0f9655a44361fb439c6415375e7e1a20efce5ec98edba7a5da57e399ec",
+  "evals/dataset/newkinds/kuendigung_arbeit-3.pdf": "8b0ec16bebe775dc7b295294805fbc8396fc9d9f2c045e7efb05757f306d54fc",
+  "evals/dataset/newkinds/kuendigung_arbeit-4.pdf": "114b4d491e4c6a50d3aba5595ef37ae15c4fb10df8697435a555c18a0d586639",
+  "evals/dataset/newkinds/kuendigung_miete-1-photo.jpg": "a362a2346c2045b25fa8415f049fbce5099e4e5604ffe87a57eb9fd070690041",
+  "evals/dataset/newkinds/kuendigung_miete-1.pdf": "753038f93160314af76baff1502c5f6e96c727439627d1a2d993b0c6790d35be",
+  "evals/dataset/newkinds/kuendigung_miete-2.pdf": "209b99c126d9dbeaac54ef104e6bc013f0e7533e1ffa42654e9ff87dd8ee2c8c",
+  "evals/dataset/newkinds/kuendigung_miete-3.pdf": "bbc3e6127b708c7dbc876325bc5b80c1ac4be03213d18a205f00cb19b9d2c008",
+  "evals/dataset/newkinds/kuendigung_miete-4.pdf": "e9f4cabff0ddc7ff8f85d6149ff1d61e33e460fa85667d2a793f0d6809c58267",
+  "evals/dataset/newkinds/mahnbescheid-1.pdf": "4991b9c66e8cbf4730052ed98d45b1a1eefe6e2e2c30e0b1e4737854057e2d89",
+  "evals/dataset/newkinds/mahnbescheid-2-photo.jpg": "99ed0e336127a1490b046230601e15f028dcdc1665738a9c7fef4541d4080807",
+  "evals/dataset/newkinds/mahnbescheid-2.pdf": "75147bdd41cae64e181d24488940e23a91fc27ac06610c82f75f8603e9b8dfca",
+  "evals/dataset/newkinds/mahnbescheid-3.pdf": "3ca8cb4133171b2f44c1dbf6e68f87c8c9886c6d13c2d15969482f663fd60779",
+  "evals/dataset/newkinds/mahnbescheid-4.pdf": "81f5ee9a5987cb8e3fa7f1871e75b70b28193ed31e147c5c99ae6de4cd651323",
+  "evals/dataset/newkinds/mieterhoehung-1.pdf": "4cf05bc79d456e0d15bfd50291fe0a6867cb4ae55e8a7da8a60177f5d799ae82",
+  "evals/dataset/newkinds/mieterhoehung-2.pdf": "710cfe9acaab96ed759f89ca261cf84e8b536c0f0b676ed67dd2c9b8d3d9eb9e",
+  "evals/dataset/newkinds/mieterhoehung-3.pdf": "987c0eb68d6c91da313b135cd99021bbf0eeb9d8ac1ed3ca284388c19abf4611",
+  "evals/dataset/newkinds/mieterhoehung-4.pdf": "65230cbd6473a72f1da82fe0d11177ac1c2bfe207ba71b6aeae546b1fb0f3e5c",
+  "evals/dataset/newkinds/vollstreckungsbescheid-1.pdf": "9c864313613591c7157c2c4ea98055d884bd89eb4f5d5f3e2af7dbb9087cdb7c",
+  "evals/dataset/newkinds/vollstreckungsbescheid-2.pdf": "5dbb8cef7b441e9e9e69fd7dbc39415bfad4c705a2744528ed7f368399fb0620",
+  "evals/dataset/newkinds/vollstreckungsbescheid-3.pdf": "f40828419b544f80dc75905cac370a00c3bb2957bcaaf461bbee21c2e85e60fe",
+  "evals/dataset/newkinds/vollstreckungsbescheid-4.pdf": "b837d5b969de7d51f7009a4afb650356e1b048383379c0826795ec7da8e2e693",
+  "evals/dataset/newkinds/widerruf-1.pdf": "396924bbcdef1b27bf48a0384b08ed02e5b62a134434aac04ef4a72321073366",
+  "evals/dataset/newkinds/widerruf-2.pdf": "469be851f4d885e00ac7104d56d2e0f2cabd71f3150352daf044a6b272f7a667",
+  "evals/dataset/newkinds/widerruf-3.pdf": "2ade68eb43d9eec31f8b59b1aec1ffe859d927757e067117930d08cebccd103e",
+  "evals/dataset/newkinds/widerruf-4.pdf": "8661bfb2e1888bed25c8b472c1460f472980266c2a76f3ae6be10b7948bc6d34",
+  "evals/dataset/provenance/a1-1/lint-outputs.txt": "1f7217736a1ccc09cc77a65b9886458630e080abb4d3ad530482802ccb2709b8",
+  "evals/dataset/provenance/a1-1/lint-sandbox-allow.txt": "02709f19fb890fd9aaf2740a1623f0d8f1e2b2a83503fb959688e36b6d56b1e3",
+  "evals/dataset/provenance/a1-1/lint-sandbox.txt": "917e494444c1ad2d1979871e29484b895a66cae5a284d3b8598e9176faec8e3d",
+  "evals/dataset/provenance/a1-1/outputs.sha256": "e04215455d5e60064e3b47b87b3d858b723f99d5f5ca2554e859e2d001f3e25b",
+  "evals/dataset/provenance/a1-1/sandbox-files.txt": "ac350f1afdbdf4d5af615c61e65a82148061e003e292711cc765c80f44bd4757",
+  "evals/dataset/provenance/a1-1/sandbox-files.txt.sha256": "4b0c493a36043da43c6234cdb5223a6bcac666873684eaf3f895bdf652d4aec4",
+  "evals/dataset/provenance/a1-1/sandbox-source.txt": "55bbad32855af58f0e811130ef6b8e82dcb60ac082fa9cc02f2cef5d4c2e87cb",
+  "evals/dataset/provenance/a1-1/writer-log-check.txt": "7c93a57820760c141b8ad73859600161bd096b03db99b10d19cb1fa8e618b3ec",
+  "evals/dataset/provenance/a1-1/writer-log.jsonl": "cd7c65f50f05e1d90af0f2ebba6044e09ab99e86662d961fff2d924c5e1fd038",
+  "evals/dataset/provenance/a1-1/writer-log.sha256": "2eff828395f17011a068b663b6e894b64d03765052f1be9667ea22e993e03a52",
+  "evals/dataset/provenance/a1-1/writer-run.jsonl.sha256": "27ba8a29ace032d68e55fcf5a43a3d025e88882d8dea2c6826784a3f3a6e7911",
+  "evals/dataset/provenance/a1-1/writer-run.meta": "af4e0793c9a94367fcf134fc4d236e5c6252e1742af2da67839a2ceb7e1c0edc",
+  "evals/dataset/provenance/a1-2/lint-outputs.txt": "9b095585eef3fefd0840a40f92aeac74609710c1f4305497f91d2db8d3acbcd9",
+  "evals/dataset/provenance/a1-2/lint-sandbox-allow.txt": "02709f19fb890fd9aaf2740a1623f0d8f1e2b2a83503fb959688e36b6d56b1e3",
+  "evals/dataset/provenance/a1-2/lint-sandbox.txt": "917e494444c1ad2d1979871e29484b895a66cae5a284d3b8598e9176faec8e3d",
+  "evals/dataset/provenance/a1-2/outputs.sha256": "3cc541de43800f6a9d551356e7fe80775e8f99d3adc4190a29f0c493916124c2",
+  "evals/dataset/provenance/a1-2/sandbox-files.txt": "5b4af414ddcf176ace3abab7300f7c0afdb1500c768ede9da2a0eba25362508c",
+  "evals/dataset/provenance/a1-2/sandbox-files.txt.sha256": "990c601ef199971c295c1a7d42322479739689445f668ef792ceba837d3d87a5",
+  "evals/dataset/provenance/a1-2/sandbox-source.txt": "a0cb090439416d914f4d8677179c1ce6f9fbbce9699b7b5b2a97d90fc8be9a64",
+  "evals/dataset/provenance/a1-2/writer-log-check.txt": "b2d68dd71f521663d7502867389be669a94f600b81156b4bf83a0cae179cc5e6",
+  "evals/dataset/provenance/a1-2/writer-log.jsonl": "167f2d53375b59fc45d173c103821460f0b5da4f869406e251a1b43f0c2fff00",
+  "evals/dataset/provenance/a1-2/writer-log.sha256": "a6aeac15b58dd78f5cb971f63dac645095be6338d87e5127ac77b2133e0567a9",
+  "evals/dataset/provenance/a1-2/writer-run.jsonl.sha256": "f35dc6567287a6abfff876284037260f24740077ff900b8c10063dab98c6c8b7",
+  "evals/dataset/provenance/a1-2/writer-run.meta": "869c2a462ab212e5d75f7bae0dfbd4c314d87838391dcc02aaa2147b15527b5d",
+  "evals/dataset/provenance/a1-3/lint-outputs.txt": "93877e09150a61c6c61ccbbd543119437cfef0b4e3111b53ee7825277d1202cb",
+  "evals/dataset/provenance/a1-3/lint-sandbox-allow.txt": "02709f19fb890fd9aaf2740a1623f0d8f1e2b2a83503fb959688e36b6d56b1e3",
+  "evals/dataset/provenance/a1-3/lint-sandbox.txt": "78f192c2f7d782a010b3820b1d37b4bc25441eaf6d7b4eec58f4c3824c0aead0",
+  "evals/dataset/provenance/a1-3/outputs.sha256": "cf8a271d1b995d4d5723f3824bdf7bbb36eb2c4e55725987691c7e2f2e318f5e",
+  "evals/dataset/provenance/a1-3/sandbox-files.txt": "6a8f1d71ae913564dfc6514bec7eea14fdc14837bee209a7f0cd113d22da9cce",
+  "evals/dataset/provenance/a1-3/sandbox-files.txt.sha256": "362f0478d55a16b046c396b1ee6b75228b3fe765339d3a5ebde56698ab4c5546",
+  "evals/dataset/provenance/a1-3/sandbox-source.txt": "48505220d2027f1e7bc21446c153b6f150e20903e3035f4280d69b13a35a132c",
+  "evals/dataset/provenance/a1-3/writer-log-check.txt": "3577798d546ae3741a504d4519e17273fe1d9ab9517512f97fd38dafabfaa005",
+  "evals/dataset/provenance/a1-3/writer-log.jsonl": "6f432dd8e4e29fb5498d0c4802c7572f40a7f14c862a16b50eb2512d9d65a1f3",
+  "evals/dataset/provenance/a1-3/writer-log.sha256": "008d704f7cbaa02578e206efe497b7fe1371658d23b1a2cc0621404aa2adbd54",
+  "evals/dataset/provenance/a1-3/writer-run.jsonl.sha256": "33098eade936fec0ed0c8d60229c2ddb120a87fd7d9508dc526d7615a65193ec",
+  "evals/dataset/provenance/a1-3/writer-run.meta": "7f60fe458845dbe6e375a861025a082bfbefc36ce51ec5539de1f07e01ea423f",
+  "evals/dataset/provenance/a1-4/lint-outputs.txt": "71db14be6e8c611768f6ee606fa6239e8b3c492777f8cb571426f972f7e1f0f4",
+  "evals/dataset/provenance/a1-4/lint-sandbox-allow.txt": "02709f19fb890fd9aaf2740a1623f0d8f1e2b2a83503fb959688e36b6d56b1e3",
+  "evals/dataset/provenance/a1-4/lint-sandbox.txt": "78f192c2f7d782a010b3820b1d37b4bc25441eaf6d7b4eec58f4c3824c0aead0",
+  "evals/dataset/provenance/a1-4/outputs.sha256": "76ddb6c917bf5d8781675b7c1cd3fa23b29e0bb0d33959c40d5848f4c53ec2da",
+  "evals/dataset/provenance/a1-4/sandbox-files.txt": "5307914778b7777f6d0fdbf4420c79f691e28a29d23d1aa3056c0e1d34079a68",
+  "evals/dataset/provenance/a1-4/sandbox-files.txt.sha256": "239d26ce592188e0eb09b867645eb605a175f6bbf391697eec39de97dd47238d",
+  "evals/dataset/provenance/a1-4/sandbox-source.txt": "0d36712cab6fff7b1f27fd30f9bbc7b88bd02cc520032f57c768a051bbf07ce4",
+  "evals/dataset/provenance/a1-4/writer-log-check.txt": "37170277199e2f21eebf937cd14eae146a1ea51a7db92958c3984d80b7bf918c",
+  "evals/dataset/provenance/a1-4/writer-log.jsonl": "7ca9cf596536279c494ede7727d1b1de075931c9ab0f199138782f832579513e",
+  "evals/dataset/provenance/a1-4/writer-log.sha256": "9e0cb02a2ab207d8e36438db16e90b56b7bb6e132fd71370d8fadd2eeeb64f2d",
+  "evals/dataset/provenance/a1-4/writer-run.jsonl.sha256": "2df43b94f0f302eb24195d9a7b23b28534c44e727ff35d3404612efaee2481fb",
+  "evals/dataset/provenance/a1-4/writer-run.meta": "fd540e85b1a4bf0f2a291407f076dc964cf1e7b7b7af3c0d232a80867f917331",
+  "evals/dataset/provenance/a1c/hook-proof.txt": "0db0464056f16f259d7875efec493c9c8a5833c1e9981cdfa3c9c332f06d1aa5",
+  "evals/dataset/provenance/a1c/lint-outputs.txt": "280a3246749b038820efa728e0cae6594766f50eacfa5056c845f610d2bb9cf7",
+  "evals/dataset/provenance/a1c/lint-sandbox-allow.txt": "0d2d05dd88b78f3c4b6b14df1230b44c8d24aac6293edf35b3eb9224b5fc7b44",
+  "evals/dataset/provenance/a1c/lint-sandbox.txt": "7ba2368f82138f298bdf854028ea1edb8f94251e7cf73fd2a833d964a2eccb4a",
+  "evals/dataset/provenance/a1c/outputs.sha256": "d60227677e1d1d9fbc5bc426a5f698a0062fe96288ae3c6f51d524a53278fe4f",
+  "evals/dataset/provenance/a1c/sandbox-files.txt": "b097bf0d496059697c4097280452a94662fc397c83becbc8719acbda0bef26c6",
+  "evals/dataset/provenance/a1c/sandbox-files.txt.sha256": "bc5a5f1a4513adf9a3fe84434edd78025d7a43bc83a70fa6c2d18191177cf112",
+  "evals/dataset/provenance/a1c/sandbox-source.txt": "e458bcc5148d0ed2222b438cc48199e25db71dfb15744a948853152f119697cd",
+  "evals/dataset/provenance/a1c/structure.txt": "02fcd0e3c8e975caa57af8719e2540d0b58d98285cad68d4f7abd4af25107ee0",
+  "evals/dataset/provenance/a1c/writer-log-check.txt": "32b125ccebcc82a9a070e27d87ff423460ccbc19ce77761a852e1d39d2d97c03",
+  "evals/dataset/provenance/a1c/writer-log.jsonl": "e44cf5257baaef27fbb5ab4e8edc58f5b8e3be8aa6529cd533b51e4c30c6f5c9",
+  "evals/dataset/provenance/a1c/writer-log.sha256": "d78d1ce2256043a855d1b86bf22507833cc13e8c0c5fe91c3431ce5663b5d677",
+  "evals/dataset/provenance/a1c/writer-run.jsonl.sha256": "ca5e5af74e4856f04bc0ea3cd527b91423f19592deaddd3ac389148a36b0ce80",
+  "evals/dataset/provenance/a1c/writer-run.meta": "90d47b83f85008165ac2de24124bbf58ce2f5d8d8147e4d799bcd9e8675ba146",
+  "evals/dataset/provenance/a1p/hook-proof.txt": "f11d55cbaa4f1e1a12a1ff10c6eafe4fa4fa7335d05bfb0848f2a38ad394c01c",
+  "evals/dataset/provenance/a1p/lint-outputs.txt": "8a9b53d74b19524d3549c9f09ed5144538aba62ce0673df913a37d63f1ee091f",
+  "evals/dataset/provenance/a1p/lint-sandbox-allow.txt": "46cc8652e416add63a3b6442df1d9d00b5029f529f96adcd54a6f8f654123b61",
+  "evals/dataset/provenance/a1p/lint-sandbox.txt": "cc99abd793b94aef0d4425aa56814ec0ebe87a543c658bc9a6474b5e61e9b982",
+  "evals/dataset/provenance/a1p/outputs.sha256": "9d26ad39d9e7f4cf0193469803a18fdaaf9c04e17ae0184f6e60514bc5f4ab70",
+  "evals/dataset/provenance/a1p/sandbox-files.txt": "1cc97c5fb6344e1beeae191fea888884f1baa1d9c4eededce895c2fcd42cb78b",
+  "evals/dataset/provenance/a1p/sandbox-files.txt.sha256": "f4aa1f9cc027c0f0fd0f285624c9d1498e813eafe996a76a69d32ab7b9cec361",
+  "evals/dataset/provenance/a1p/sandbox-source.txt": "e86f519d2866df4dee25e5c4c5c131a9f605ade637df46ce37bb667181a64e68",
+  "evals/dataset/provenance/a1p/structure.txt": "78b1febde590b7f52a37c12a1e09e674378921ffc9424feead27457927a5a8a2",
+  "evals/dataset/provenance/a1p/writer-log-check.txt": "9f4c0cceb3ef61eee37f23818db25e9c90bc20e4f566cd8d8cb3b064d25321c8",
+  "evals/dataset/provenance/a1p/writer-log.jsonl": "c9d79c101b73bbbac1465abda3318bb07671631afc206d5f2731cf18d20b71ad",
+  "evals/dataset/provenance/a1p/writer-log.sha256": "3b5ab5a8c3f994b2b4ce83ca05063fddcd2990156697b2bf62d9c2f15329b805",
+  "evals/dataset/provenance/a1p/writer-run.jsonl.sha256": "a783485f3884594fbdbfec54baf65d076fbe38a0d064e5a81e8b4dddebc201ca",
+  "evals/dataset/provenance/a1p/writer-run.meta": "726371755171c5714ecf630b98638b071603738eed434fc3f8b6f012b04343a1",
+  "evals/dataset/provenance/ask/adjudication-ask-key.sha256": "033adc7b763ebe6ee72b44496f20f76a4d5d4340586a8a018795f75da6dad818",
+  "evals/dataset/provenance/ask/ask-seal.txt": "fdad324eefe70d35438b7ca093599a5312ae0bd3d87bd7bb1aa14525357a68a6",
+  "evals/dataset/provenance/ask/ask-tally.md": "8af82fec66bee7dd9a1cb1c2b012c45c62a16ee86eed6f98f7dcbc48a628b321",
+  "evals/dataset/provenance/audit/a1-hook-proof.txt": "a2b198a1d3d2a005111641d01e05ad40421b4ec0c0b75a6529ff711d5b56c07d",
+  "evals/dataset/provenance/audit/a1-seal-note.txt": "cb061873cd14ea24d0e03bed9397672a82e4471ade967f7a345c30bef383db1a",
+  "evals/dataset/provenance/audit/a1c-seal-note.txt": "206e6d8272e21f69a231de813ecb61bdb4aea948f9f18aa67677f621a4af1529",
+  "evals/dataset/provenance/audit/a1p-pack.sha256": "f9f23cb51dfaf002f1b87246dc2dcedad77c15dba522b512cea57575e6897759",
+  "evals/dataset/provenance/audit/adjudication-key.sha256": "6780c7e760894ea331faa2c584f5efc361d0257669cd79d569add6560fb4bc03",
+  "evals/dataset/provenance/audit/audit-compare-2-counts.txt": "ef69d091ea36c41ef7d921c3aa26260539bfe3b77ca27916cf63f55e4947d032",
+  "evals/dataset/provenance/audit/audit-compare-counts.txt": "6a3a25f599d22de5b66c9d7ff0b159bafaca55f09480e044f0fada6d223cf0aa",
+  "evals/dataset/provenance/audit/audit-map.sha256": "c87ab6a81276729b944d15e549dcdb959d0aabfbe55faf99ee531002b9b8bc21",
+  "evals/dataset/provenance/audit/audit-seal-a1.txt": "09bfd00db2211a5b439fb94bf5375ca14cac849814f51f7d4025c4fe977ef992",
+  "evals/dataset/provenance/audit/audit-seal.txt": "2083aae585d4129c64cd5c21a86224d3a590df31303a96c8c676a2a942cd25e1",
+  "evals/dataset/provenance/audit/audit-tally.md": "e0f9cf4c8993f37e7962e292f97921ca4b501de70f788d71c45aa827632ea139",
+  "evals/dataset/provenance/audit/facts-built.sha256": "df93d252f065abc39d50cf157774d62bd7add7dd93f587f8b7fb05be41b3a224",
+  "evals/dataset/provenance/k27/counts.txt": "989e8c9dd2b70aeb271958debf767ca69ff360a97bf529d374aa469c4ebd9683",
+  "evals/dataset/provenance/k27/diff.tsv": "78899c6aec7e14ece24ab42970811e4476d0ca72a490fddbbdae5a6d641b8f9f",
+  "evals/dataset/provenance/k27/k27-table.json": "71c776f7a43d8e8ce53f83be20d4ca46e121de0d2040bd4dc0918ed5fda5e48b",
+  "evals/dataset/provenance/k27/k27.sha256": "b49257e537bb1503b4305602cf8267b0bfa6f4127f40bcb6d5553f3e1e8bfa13",
+  "evals/dataset/provenance/k27/writer-tags.json": "9a48dcd286432cd48b186de5db28e79f4f795109dbdce3a146e3a535e9fd9242",
+  "evals/dataset/provenance/scratch-paths.txt": "8ee9190dab4db05ae70fc485b84d297df853e7bf3d46a527b1cb1ecddd1ed0eb",
+  "evals/dataset/provenance/w1a/lint-copied-allow.txt": "08b79bb85189787d73527dd5c06c749034ec2facd702cda306b8e5108d856cb2",
+  "evals/dataset/provenance/w1a/lint-copied.txt": "24ee20387b5daa3f7eff05e6022222d4837004316f38f79479c01bee3de4010c",
+  "evals/dataset/provenance/w1a/lint-sandbox-allow.txt": "01148c8a12aa83ee0898669a076ae8260dba1b0ca138d4e1cc1f98aa1246b7a8",
+  "evals/dataset/provenance/w1a/lint-sandbox.txt": "312645c12c5f460b189acc3794b7228712c27de66a793c765e40b8dadaa1aeef",
+  "evals/dataset/provenance/w1a/sandbox-files.txt": "aec0957ccf87e49cfb0c0e71a4fd6d8ec6877c93885253b990cc2e8e899ecafa",
+  "evals/dataset/provenance/w1a/sandbox-files.txt.sha256": "69363d2060d5bbe3a5414b6db229e34a252705d24ec205df909467fcb711112b",
+  "evals/dataset/provenance/w1a/sandbox-source.txt": "1f4f0e7ba0e03c1967b65739f4d3eb085ce0dddb2cab96a9bbabd889a499e4ff",
+  "evals/dataset/provenance/w1a/writer-log-check.txt": "e30a46773f379cc1997ba0d7335490003a2494fc892fd8847344699d46fe0d31",
+  "evals/dataset/provenance/w1a/writer-log.jsonl": "df99a19d332529918cdae78a79f39eef2a122061c12c558d3a00d57b2b63efa9",
+  "evals/dataset/provenance/w1a/writer-log.sha256": "48fff186ce52964b75dff194cfd312b9e967cc5bcc698897ffd72346139be86b",
+  "evals/dataset/provenance/w1a/writer-notes-holdout4.md": "a8195aed9899a61e6c53809af6f44014cb62bcc62d16e239fa4b0a8e34c443b7",
+  "evals/dataset/provenance/w1a/writer-run.jsonl.sha256": "9c0764d8d6617524541bad530d60f7fb89161a515e18caa970187612794db8eb",
+  "evals/dataset/provenance/w1a/writer-run.meta": "9630c66fcb3bf6802655eeea89550a5a9163b1cb73f3224d9a9dc2fa73ce9026",
+  "evals/dataset/provenance/w1b/lint-copied-allow.txt": "d444f168cc0c7d6f795abd03f9c8e590aad95dfbff49bed123de92331442535e",
+  "evals/dataset/provenance/w1b/lint-copied.txt": "e294fd96049ce293da7e7201b228da86ef54b0ae7a802558f14507d7bd714ac0",
+  "evals/dataset/provenance/w1b/lint-sandbox-allow.txt": "f574bd57564322d28d2fd4b195f105803178ba32e47fa71568f994fc25e4902c",
+  "evals/dataset/provenance/w1b/lint-sandbox.txt": "63e5eca76944e812a428fb421140e1cf39952ca7d43268fe3e028d574d6f3a67",
+  "evals/dataset/provenance/w1b/sandbox-files.txt": "fd18b33fca896b5f17e7b6effc53a911ba9092b4fe4c2cbcf33f7d98fb1791f3",
+  "evals/dataset/provenance/w1b/sandbox-files.txt.sha256": "67f2586a0fa2e37dfb00a04372a48fb64823c549a11afd1d0e1a3d9aaf8a3e64",
+  "evals/dataset/provenance/w1b/sandbox-source.txt": "73db200bcd271f423894d8c69c14ea2f137fedbccc1b33e22a0464a8105f4ab4",
+  "evals/dataset/provenance/w1b/writer-log-check.txt": "4abf77aff7123add00037b3517ddab0960695f8b60ef53cb34dccd5c273042c1",
+  "evals/dataset/provenance/w1b/writer-log.jsonl": "d704cf85daace61f9cea3986e9a1aa69f4cd9c3423f5caf2b8ee4f70b89517f7",
+  "evals/dataset/provenance/w1b/writer-log.sha256": "76c0ceb55ea7df6a7a1727bf9026e28672887f8013cb82975a18b8494add8c64",
+  "evals/dataset/provenance/w1b/writer-notes-newkinds.md": "c173dc1faf8376b2dc438eee308eceb0f8669dea6f49b245b28d00a6895e2de7",
+  "evals/dataset/provenance/w1b/writer-run.jsonl.sha256": "3057f5b84089c94eb10738801ed009b5e23ac3862b8400491935b462e3bdf6e9",
+  "evals/dataset/provenance/w1b/writer-run.meta": "dd7a94c22e0fa4917da79b7a3fcde4db5a27272504d95e31ff86f6ede09065b0",
+  "evals/dataset/provenance/w1c-fix1/brief.sha256": "4dc30107df0400c3026d1e29ee946d20b0ef33f738f3de14ee78385c302a48bf",
+  "evals/dataset/provenance/w1c-fix1/fix-list.md": "e5245aad10a8e64560aeeaefda061e50224f3b37f1557609849b357b202e01d9",
+  "evals/dataset/provenance/w1c-fix1/fix-round-brief.md": "27e0a44fb13f55a93f84af0bdff8440e59524b01c67902d5763d1cf3d9223e9c",
+  "evals/dataset/provenance/w1c-fix1/lint-copied-allow.txt": "ee9f5775fb38112c2d512f7d64569fd4fbb46f872571af406eafc5a68149d3d1",
+  "evals/dataset/provenance/w1c-fix1/lint-copied.txt": "9ed3a02a4ca8496cd640cc1a11ac3069277c5ef7f2b290444ceeac8cf51b4d9f",
+  "evals/dataset/provenance/w1c-fix1/lint-sandbox-allow.txt": "c0197a9b7b39965766350e3f7bf87df6c539b6bcf92b88cd2cae1c6b87f34a51",
+  "evals/dataset/provenance/w1c-fix1/lint-sandbox.txt": "f332203849e22d61c2e25a9b75e3b40afe366cd867ef6668c55b5beee9a8f851",
+  "evals/dataset/provenance/w1c-fix1/sandbox-files.txt": "3ca00d990839832021c220800a5a77976d2ab552beb1fda7be7df9acbc52a4fd",
+  "evals/dataset/provenance/w1c-fix1/sandbox-files.txt.sha256": "9e633de807f24d082abff0155ef8d52b0907caba0367b9c758656626e4d8d3da",
+  "evals/dataset/provenance/w1c-fix1/sandbox-source.txt": "ab0738e8715ba64f910df9bdab4dd1af51c8d358bf28bca80577468432b80ff9",
+  "evals/dataset/provenance/w1c-fix1/writer-log-check.txt": "4cdbc3b105a76f9a52c425dcf8651998a9f0835c7d8689e65c8cf18406eebb25",
+  "evals/dataset/provenance/w1c-fix1/writer-log.jsonl": "ab6e4656e4dfc35bb211d93f5725fcb1008aca43404b8e7fc386b548f666e958",
+  "evals/dataset/provenance/w1c-fix1/writer-log.sha256": "623436d24b13b0f87f3f051fa86ae87c1b682a2398fe1cdffe7fe684d5951d46",
+  "evals/dataset/provenance/w1c-fix1/writer-notes-templates.md": "4de122e9d51cec34f1675a6d77a46983495bb003c0ae55823fe5562632796026",
+  "evals/dataset/provenance/w1c-fix1/writer-run.jsonl.sha256": "6664b4bdbdb9b9a85d731eb7c86088ed504a7c1e3a5466098c57ebfa74d9b92c",
+  "evals/dataset/provenance/w1c-fix1/writer-run.meta": "43a2b2c82f5083d411f3a63a502b5067c3ff73c12a6fb7f7cc00798f34cfc7d7",
+  "evals/dataset/provenance/w1c/lint-copied-allow.txt": "ee9f5775fb38112c2d512f7d64569fd4fbb46f872571af406eafc5a68149d3d1",
+  "evals/dataset/provenance/w1c/lint-copied.txt": "452de69843a0bf52c0f43917855975c4cf5a54a729ad2eb36feb7170429fcf35",
+  "evals/dataset/provenance/w1c/lint-sandbox-allow.txt": "2b6b843397057d3b3b21e5ae7695f427fb46aafc8b0af3668356f8f6fb3dadbb",
+  "evals/dataset/provenance/w1c/lint-sandbox.txt": "3c6704ad4547990b46a3d4093bdf5ebe38fcdce0bc2ba6a6ec13ea7dc9d5c807",
+  "evals/dataset/provenance/w1c/sandbox-files.txt": "bc19a6de039db826191d1aeaa57bafe2e7539c057237e46429d3773344d9107a",
+  "evals/dataset/provenance/w1c/sandbox-files.txt.sha256": "be8f2eb1ec4b0d2148211f5add9a0f358b7d687b594585e2a461e57aa499df80",
+  "evals/dataset/provenance/w1c/sandbox-source.txt": "64fff2ce70ce7fa1fed3eb4fc3176a83e5a7ef8c5ba49118a12a8dbb9df67d34",
+  "evals/dataset/provenance/w1c/writer-log-check.txt": "9712ee80d851db04549a15291f18e94cd3d19fe6e5172e004a628f896969ec92",
+  "evals/dataset/provenance/w1c/writer-log.jsonl": "e394f1bf4899ba97d93147069ce1bddaf81ac9708e3ce6526f4da94b6359af0d",
+  "evals/dataset/provenance/w1c/writer-log.sha256": "1e82e5be36104253983ac64619179f86f41214ad53116c14eaa0118346000068",
+  "evals/dataset/provenance/w1c/writer-notes-templates.md": "2ef6fb631657f0800a5ee6516d61c48652fb32c059314dfd489fcfac18088bf3",
+  "evals/dataset/provenance/w1c/writer-run.jsonl.sha256": "bc5e02a89aaffaf51152278ee81e264cdeb23433735b56ad984b9bf811c33dcd",
+  "evals/dataset/provenance/w1c/writer-run.meta": "158a7aa5d6e89e68b18e90b4484e9d792c06ba90a589a3fa3bf9403cf66c4556",
+  "evals/dataset/provenance/w1fix/brief.sha256": "78842494ca0268526045f00c07973f4e8675e2da78bebf2614ea81922ac989cc",
+  "evals/dataset/provenance/w1fix/fix-list-ids.txt": "a829d5187b5802ef6d3aa76a1935c8510aecefb2d994a9ce7b19edd08943e268",
+  "evals/dataset/provenance/w1fix/fix-list.sha256": "08a7f0385d82e3799ac2c2c58d0bf9527816624cd64b5592e3850d53dcf3fb3b",
+  "evals/dataset/provenance/w1fix/lint-copied-allow.txt": "2fc3ab21579df155f446f54f763da884d6c7bf970cd9ed8c752a851cdd557ab3",
+  "evals/dataset/provenance/w1fix/lint-copied.txt": "deb46d1656c900514327439b9fdab5ddcacfe8fd1be3feed9e7df23c1068a6c2",
+  "evals/dataset/provenance/w1fix/lint-sandbox-allow.txt": "636272d4e13f4367dc3e7d181dbff9ea1f8a0071437b9aea703922c7c1dc4218",
+  "evals/dataset/provenance/w1fix/lint-sandbox.txt": "ea1bacba25949261f782399d2adc4b5599a53d8e4c4ee1b46886947947cf7f22",
+  "evals/dataset/provenance/w1fix/sandbox-files.txt": "ff474124a5c867233d95ed36355c846bee98fae2191acecf7fb55ebadfdfe678",
+  "evals/dataset/provenance/w1fix/sandbox-files.txt.sha256": "ae7ceefddf4742b18db401b460618cac0f2fb2eb0b943a2df18e1317c2d60d7e",
+  "evals/dataset/provenance/w1fix/sandbox-source.txt": "5b9b13da4bcfbbb614b6bf63fabefe34c7cb21cda4697f87b55f6201ab04c806",
+  "evals/dataset/provenance/w1fix/writer-log-check-at-run.txt": "b56336cb7272b0f44cdbafa165a17c131043a6a76b883fbf7a8e95d5a9ed8a05",
+  "evals/dataset/provenance/w1fix/writer-log-check.txt": "07bb75f0a4757d5cb874d829804f329561ae398baa37b3596b46a019d0b34b68",
+  "evals/dataset/provenance/w1fix/writer-log.jsonl": "c274bb7570943fed40399a91791f78e654b197013595ca0271ebf8124a04c5fd",
+  "evals/dataset/provenance/w1fix/writer-log.sha256": "108c5d51215d356e4ba42084d269ba8d9bc5c30af9a4fb8f3d20da347f73cea2",
+  "evals/dataset/provenance/w1fix/writer-run.jsonl.sha256": "fc8f3a88f0a66973993ebca75f454783faea38207e352f2ea2113887a293bf62",
+  "evals/dataset/provenance/w1fix/writer-run.meta": "b9d49c1f4da1157579784de4c3f330050f2d742b0182462c72f5118517afbf7d",
+  "evals/dataset/provenance/w1fix2/brief.sha256": "78842494ca0268526045f00c07973f4e8675e2da78bebf2614ea81922ac989cc",
+  "evals/dataset/provenance/w1fix2/copy_out-check.txt": "b9a30cf9e899c89aec8156fb55e656459b340ce6646753c02898314d79c8671a",
+  "evals/dataset/provenance/w1fix2/fix-list.md": "5a1492f0f8bc21be2f50857d35480b6e1cb31f3141769188d33d8c12735f10ba",
+  "evals/dataset/provenance/w1fix2/lint-sandbox-allow.txt": "718bc83b427a02276b42f216838602e1feaf60b3ffa9a105f6cfa459d57c2ef4",
+  "evals/dataset/provenance/w1fix2/lint-sandbox.txt": "74795684fe5a36de8ef07e135b95d5d0fb314180fb16ee1b1c9f89166f4d024e",
+  "evals/dataset/provenance/w1fix2/sandbox-files.txt": "cf8bbcc8c4b00a7c858db77bc3b24d9fcf81e10439056dd039df91f007ed44d7",
+  "evals/dataset/provenance/w1fix2/sandbox-files.txt.sha256": "3b54a9078bd2b82188f416c46d787e148584972f0ed212a2601892fa76172b2a",
+  "evals/dataset/provenance/w1fix2/sandbox-source.txt": "cf4b3b20042decb3ff58429150f7d55a646c325f2de320086f03ec53206f429d",
+  "evals/dataset/provenance/w1fix2/writer-log-check.txt": "51c9770d433b7f61510b98165559c6452653e5f4c72d42dfd3bff84d8970b102",
+  "evals/dataset/provenance/w1fix2/writer-log.jsonl": "d9cb0bfcc1ef9f62a666475b075545301094ba88d17977389e545d349b38992e",
+  "evals/dataset/provenance/w1fix2/writer-log.sha256": "d527c41b9832c86189f02bee18c97de33c42ee775b2263ae0ae7eea1a5d3f73e",
+  "evals/dataset/provenance/w1fix2/writer-run.jsonl.sha256": "7d68fa7da73ecba3bf750e14a46291f817216dd7229cb7c0b1465c7f08506209",
+  "evals/dataset/provenance/w1fix2/writer-run.meta": "1548d20388dc9e589ee35d747cbe5e927c665251bf0a94548783e4f536797a08",
+  "evals/dataset/provenance/w2-fix/fix-list.sha256": "fdca01ea4c889e37615fdf1d97c4feb37f17f2ebbf14c94e87ea4b76a1442c66",
+  "evals/dataset/provenance/w2-fix/lint-copied-allow.txt": "379bf4f563f0762b194a5885a37c2216a9273c79f66f8f0616274f32db408c31",
+  "evals/dataset/provenance/w2-fix/lint-copied.txt": "b6ea5365d1e2e1cd90fa1c17663196fc7ef5f2d2807e5ec0a936acf23577a765",
+  "evals/dataset/provenance/w2-fix/lint-sandbox-allow.txt": "2e50d5b2cb24be7008b0232d6db6c12acd4e65850007320ca1e0f3c263d8153e",
+  "evals/dataset/provenance/w2-fix/lint-sandbox.txt": "376adb49669f8b8215d9c7034d1d71a408a3c9b15b040ad5d44d569cf6529e21",
+  "evals/dataset/provenance/w2-fix/sandbox-files.txt": "aeeda9047c876ad18a167190a469e67858b86d27d51179bdd5cd2f5c8dcf28de",
+  "evals/dataset/provenance/w2-fix/sandbox-files.txt.sha256": "8b30b0fc740710676c13c825655ca16d5f6f15a4a49c5ad23d1657ddc7ac464f",
+  "evals/dataset/provenance/w2-fix/sandbox-source.txt": "0f6a86595dbcae87ee4b195cde8b5e99d826223bd378f00d3220372a0f6c908a",
+  "evals/dataset/provenance/w2-fix/writer-log-check.txt": "e3a2d304e7af52f40a89b944a81be25725fffc546e1ebd78fc66fadf385e35dc",
+  "evals/dataset/provenance/w2-fix/writer-log.jsonl": "af52568d3b0cdaa14ab88ba37257fb7d3f670af7a1443e8e17497643115905cd",
+  "evals/dataset/provenance/w2-fix/writer-log.sha256": "fe0d9a4a37775b0a7b3fee00ba43a7780cabff7958423a74d3221f09faed4f63",
+  "evals/dataset/provenance/w2-fix/writer-run.jsonl.sha256": "a3046c5c16df3ee17e617cc986fae458bec9d6080491f049922a74c3e76139d5",
+  "evals/dataset/provenance/w2-fix/writer-run.meta": "9537f64d02af84f7e0cee4b1b1e91dc6cfe448208c29d7a81948a1534a4d5892",
+  "evals/dataset/provenance/w2-fix2/fix-list.sha256": "df36c5ccf459ee40ccc80fded66b34b9608e7d6c89f4c3da1eedfbb8037c806b",
+  "evals/dataset/provenance/w2-fix2/lint-sandbox-allow.txt": "2e50d5b2cb24be7008b0232d6db6c12acd4e65850007320ca1e0f3c263d8153e",
+  "evals/dataset/provenance/w2-fix2/lint-sandbox.txt": "376adb49669f8b8215d9c7034d1d71a408a3c9b15b040ad5d44d569cf6529e21",
+  "evals/dataset/provenance/w2-fix2/sandbox-files.txt": "eb31d33ee2c395b9218ac1046a15198cd28b2e64550764ad4a06a637060f8df3",
+  "evals/dataset/provenance/w2-fix2/sandbox-files.txt.sha256": "f998139ce31fab23c407383dbd1a02bd92b5c6ca6d9661d5dbc8a8ab127afb88",
+  "evals/dataset/provenance/w2-fix2/sandbox-source.txt": "0d2aa44e1df6f7dc0e527b1603caa59fda0fb0881c02d78edba0bf418a1993dc",
+  "evals/dataset/provenance/w2-fix2/writer-log-check.txt": "21c027dfb3ff7603b17d1e6ae837649484fede15123c75b66582a7d8a92604a0",
+  "evals/dataset/provenance/w2-fix2/writer-log.jsonl": "200b5091edbf4f17806d0ef9d9d246c1bc7d19d4317cb6ea215edfd77825ea0f",
+  "evals/dataset/provenance/w2-fix2/writer-log.sha256": "b4ef91df1a9d9ecd5176f2ba584565c305706d60087613fa1eee5aba530ef475",
+  "evals/dataset/provenance/w2-fix2/writer-run.jsonl.sha256": "c0a8fa0c21eacb019c19b716ff188f455ec0cc1487293f91a461b26a10b7b4b1",
+  "evals/dataset/provenance/w2-fix2/writer-run.meta": "a141d5366d2df3da7ca08765e2056b88c3744435716902b0989d91be364337a1",
+  "evals/dataset/provenance/w2/lint-copied-allow.txt": "379bf4f563f0762b194a5885a37c2216a9273c79f66f8f0616274f32db408c31",
+  "evals/dataset/provenance/w2/lint-copied.txt": "b6ea5365d1e2e1cd90fa1c17663196fc7ef5f2d2807e5ec0a936acf23577a765",
+  "evals/dataset/provenance/w2/lint-sandbox-allow.txt": "cb4d1d53ada1439a5bb16b6be14da37be1d3053274add616433393ebb9e1a917",
+  "evals/dataset/provenance/w2/lint-sandbox.txt": "718a419a30426bb3e401a5b4570f7c18e74333c71c918d9e77a0446243b078de",
+  "evals/dataset/provenance/w2/sandbox-files.txt": "e49a288472e6e481a354db958075edd3b87fe96f0a102927b29fa6746bec2a0a",
+  "evals/dataset/provenance/w2/sandbox-files.txt.sha256": "71c624df5d5fd1d8a086fa1fd35824514aed4bd224cb028a92f0af03af4a251a",
+  "evals/dataset/provenance/w2/sandbox-source.txt": "5aca8f4df7484cd129dc9aa84d85ccb8db27b229aef1893e5c0bad1147e946fd",
+  "evals/dataset/provenance/w2/writer-log-check.txt": "86b9e776e7bf1b689e8eea22ba0631059535ab603ac0fd9f37dec0d66e331e06",
+  "evals/dataset/provenance/w2/writer-log.jsonl": "149fb0e9c97ffe5b24f8439d932ee0c2515281b226688d1a979ce8c950306098",
+  "evals/dataset/provenance/w2/writer-log.sha256": "b3ce0142447c328c68380f3270900b702b5223d6d1343e84971afd8bf18f2332",
+  "evals/dataset/provenance/w2/writer-run.jsonl.sha256": "bc84eb670898ecbf5ad21625d28ab84f7c091587802cbf28b5028199963ec23b",
+  "evals/dataset/provenance/w2/writer-run.meta": "4bcb13df44cbb02729261cd88b67baa04629f112b4fac9a98654a938252922cf",
+  "evals/dataset/provenance/w2a/lint-outputs.txt": "8a9b53d74b19524d3549c9f09ed5144538aba62ce0673df913a37d63f1ee091f",
+  "evals/dataset/provenance/w2a/lint-sandbox.txt": "afa59d9948bf5ece3bd2d216e4b77463871268cb6ad74d1d937d1583e2f13eaf",
+  "evals/dataset/provenance/w2a/outputs.sha256": "58af1b4657f93342da29a2071debfcc7612e5bc1b0b95d822ca071a62151ab27",
+  "evals/dataset/provenance/w2a/sandbox-files.txt": "eb16eb6e19342927d59b219e0c80445027c497202a5163fdc6ddbc64b2f6fb54",
+  "evals/dataset/provenance/w2a/sandbox-files.txt.sha256": "0535fb39594bbc1de575da4fed44863d3ec0939d19a23fb6b1eba5d784d76ac5",
+  "evals/dataset/provenance/w2a/sandbox-source.txt": "b242198e6acca856ce448ebd144ec0e38315796c405b8e512b492c589a82090d",
+  "evals/dataset/provenance/w2a/writer-log-check.txt": "0370af625d88305770df06a47ad7a26ff5a6aba06f3903c3f06c225e121e0006",
+  "evals/dataset/provenance/w2a/writer-log.jsonl": "0b860bf44ab66177a8543b2dfa963725721ce6bc35ac2d81564078ec1e94b694",
+  "evals/dataset/provenance/w2a/writer-log.sha256": "7d2e44dd8ffbd6e1fce842fe43c1130839e88380729af8ad44c12abc881039fc",
+  "evals/dataset/provenance/w2a/writer-run.jsonl.sha256": "9830e47f2777145147ba82139ba03ffe2e1a0a84fbce34cb3c10d57219853cba",
+  "evals/dataset/provenance/w2a/writer-run.meta": "472cfd0c127741ace4255bc4035fee877a0f737cf2e1ae3312ddbdbacdaf8636",
+  "evals/dataset/provenance/w2v/lint-outputs.txt": "8a9b53d74b19524d3549c9f09ed5144538aba62ce0673df913a37d63f1ee091f",
+  "evals/dataset/provenance/w2v/lint-sandbox.txt": "d9a62559d3fc28d4c18bc5d86c36a87bfa6684a028cf2be733a390aac443b2ab",
+  "evals/dataset/provenance/w2v/outputs.sha256": "0e149796b24d052f48893b4641ec9069d5bc178f1e2b83133e1055bd2263d29a",
+  "evals/dataset/provenance/w2v/sandbox-files.txt": "16a2ce7b5c82c055a5f8ca8b4798521aa0a8cade016fc651e5dd6f413192b49a",
+  "evals/dataset/provenance/w2v/sandbox-files.txt.sha256": "f961c306040897e822aa76bb34a40087729f3691ba95ffe8b69ace765bcc4ef3",
+  "evals/dataset/provenance/w2v/sandbox-source.txt": "42c39893fa9c29d664548ac5ba1e691a4bc1f14f83109d5ab75b455fcbb0bb92",
+  "evals/dataset/provenance/w2v/writer-log-check.txt": "72fa574b751c4719d6127181cda54ec8a1feeb0dd331d78b2343dacd8df8a132",
+  "evals/dataset/provenance/w2v/writer-log.jsonl": "fb5a231858aefe9c71a63f4b5a29029354d31ac6b0ad7bd32b1219bcd322e3f4",
+  "evals/dataset/provenance/w2v/writer-log.sha256": "57a9cb5b76148808dbd5981405431e8b65146f37fd920bda38e3a3c634e94bb8",
+  "evals/dataset/provenance/w2v/writer-run.jsonl.sha256": "8470033fd74df0a266d33241e30ef61dc232ad9a390009f4f35c7a3ff849a5dc",
+  "evals/dataset/provenance/w2v/writer-run.meta": "9a304b241e0462080777ac46284f870dd8e42ebe3b7c080270b36fc31ed93554",
+  "evals/gen/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "evals/gen/adversarial.py": "7eb6f1af19119c600916b721529447efa08a40ad1762d73bc7ba783cbfd150df",
+  "evals/gen/common.py": "8bf7ef86dffd57cd7149daf8f46d896f4636d467e138367cc917ba35a2202fb5",
+  "evals/gen/families_admin.py": "a46fc5fb486c25fb694be238ee004b4a41458a7b16de606d3ff4108a90486635",
+  "evals/gen/families_private.py": "0a46f5d93601ee1ce5dba13c7169f819b9ad0339aae5d9d0aa750edc62a3cbf2",
+  "evals/gen/final.py": "cae06fcf7fd1161e096dc99c7c441318a20e9ad4d47adf1ceee811c2ecc7ad19",
+  "evals/gen/holdout2_admin.py": "c92a01efc181016c8d4671ee886e1006fe0b166093dd4875717295bf1a6496a2",
+  "evals/gen/holdout2_adversarial.py": "624a5c0cd27f44638e1cedc9e09a0ca5dfa645df1c163de1dfbec2da6b3cfdc9",
+  "evals/gen/holdout2_private.py": "e908e468632193bb1a9dd1903d92e6c6acef9edce9df46dd791e7ad29cdecc4c",
+  "evals/gen/holdout3_admin.py": "1063968918c5ea780688b3d60a5c9830ab915aa5a22970f2e81e329ae7d0860b",
+  "evals/gen/holdout3_adversarial.py": "fd9963c5c7f7e6e37a0ca68901380b67c9a89c562976de2731a1fc674a9565f8",
+  "evals/gen/holdout3_private.py": "6d1fb76b124cc71fc798c6d7c4831cf12c419e032462fd782259a561dffcb367",
+  "evals/gen/holdout4_admin.py": "1d0e045074dac3b447fe678a55eaa8f3ca50c5fcb6d22b063a0c9476ac30a39d",
+  "evals/gen/holdout4_adversarial.py": "5377fc5a5e38a6484167fbccd680e50c97ce30eed2c247252991bbf8383213eb",
+  "evals/gen/holdout4_private.py": "8773d4d97f7492659bccc25ccb2c0d453866a265caf9c62b76d7dc409152614d",
+  "evals/gen/holdout_admin.py": "0ba1852d706080cccab2d5efcecb0ce52fbfc28f41a231445765a74c35ede845",
+  "evals/gen/holdout_adversarial.py": "1e332c4ee3385745c98dba60391b393e7f9ec54896d762808e178a6b58857923",
+  "evals/gen/holdout_private.py": "0404973ecf42df10969fe1404f38b057fea8b096f0ad3f1adc8df0de89da84d7",
+  "evals/gen/law.py": "e15d5f7b271e4589a7269543ec2993fdb0bee4f28029fc5051aaddea2830a128",
+  "evals/gen/newkinds.py": "e9cb364d61de63744a31d5d955987840362af054ac8bb7fa72e4431822fa7744",
+  "evals/gen/orgs.py": "5a95789659db925617a4fd4b0bea8eb112ea5880111f48e88cbda9e0358b6dd7",
+  "evals/gen/pdf.py": "dc02fc298ea8bff9a3fb33277ac89349c243fedf4f68055b07ec5b4b6147e113",
+  "evals/gen/photo.py": "d4d6b95b623c53bd2eadce5f9524be497d072237a24b6a5240c1ddf49d8b0369",
+  "evals/gen/text.py": "51c753724e723fd36b8237a77c11032ff83081c5d8616f288a1ae9bb6a6dc4bb",
+  "evals/perturb/manifest.json": "9bc8b7549598a7fdfec6e991bb2061a97b3c29925b69c4556a0e21699a38f169"
+ },
+ "data": {
+  "build_command": "python -m evals.generate --final-day 2026-11-24",
+  "final_day": "2026-11-24",
+  "manifest_sha256": "7bf30e0b171222622a7a24fd321e4137fa18f3d87786d56a05e6d3ed668b9d02",
+  "files": 682,
+  "tree_sha256": "be9d50fce8383b6b3e7528ce55b3751eed0c0c86a82aa234fee952ccc760ee75",
+  "generator_tree_sha256": "214fc5d6086582fa2a36b208a2d33274cb6badfbc877bb6e033f4f9a0f334ca7",
+  "splits": {
+   "holdout4": {
+    "entries": 126,
+    "pdfs": 104,
+    "photos": 22,
+    "adversarial": 24,
+    "scored_items": 112,
+    "families": {
+     "adversarial": 24,
+     "appointment": 8,
+     "contract_confirmation": 4,
+     "dunning_fixed": 8,
+     "english_letter": 10,
+     "fine_bussgeld": 8,
+     "invoice_relative": 12,
+     "municipal_decision": 10,
+     "price_increase": 4,
+     "relative_business_days": 8,
+     "social_decision": 10,
+     "tax_assessment": 8,
+     "year_boundary": 12
+    },
+    "kinds": [
+     "appointment",
+     "authority_letter",
+     "bank_letter",
+     "contract",
+     "dunning",
+     "employment",
+     "fine",
+     "health_insurance",
+     "insurance",
+     "invoice",
+     "other",
+     "price_increase",
+     "rent_lease",
+     "social_insurance",
+     "tax_assessment",
+     "tax_letter",
+     "university",
+     "utility_bill"
+    ],
+    "variants": [
+     "K",
+     "L",
+     "M",
+     "N",
+     "conflicting_dates",
+     "hidden_text",
+     "injection_visible",
+     "missing_date",
+     "scam"
+    ]
+   },
+   "newkinds": {
+    "entries": 32,
+    "pdfs": 28,
+    "photos": 4,
+    "adversarial": 0,
+    "scored_items": 28,
+    "families": {
+     "betriebskosten": 5,
+     "kuendigung_arbeit": 5,
+     "kuendigung_miete": 5,
+     "mahnbescheid": 5,
+     "mieterhoehung": 4,
+     "vollstreckungsbescheid": 4,
+     "widerruf": 4
+    },
+    "kinds": [
+     "authority_letter",
+     "contract",
+     "dunning",
+     "employment",
+     "rent_lease"
+    ],
+    "variants": [
+     "1",
+     "2",
+     "3",
+     "4"
+    ]
+   }
+  },
+  "conventions": [
+   {
+    "id": "c01",
+    "disputed": false
+   },
+   {
+    "id": "c02",
+    "disputed": true
+   },
+   {
+    "id": "c03",
+    "disputed": true
+   },
+   {
+    "id": "c04",
+    "disputed": false
+   },
+   {
+    "id": "c05",
+    "disputed": false
+   },
+   {
+    "id": "c06",
+    "disputed": false
+   },
+   {
+    "id": "c07",
+    "disputed": true
+   },
+   {
+    "id": "c08",
+    "disputed": false
+   },
+   {
+    "id": "c09",
+    "disputed": true
+   },
+   {
+    "id": "c10",
+    "disputed": true
+   },
+   {
+    "id": "c11",
+    "disputed": false
+   },
+   {
+    "id": "c12",
+    "disputed": false
+   },
+   {
+    "id": "c13",
+    "disputed": false
+   },
+   {
+    "id": "c14",
+    "disputed": false
+   },
+   {
+    "id": "c15",
+    "disputed": false
+   },
+   {
+    "id": "c16",
+    "disputed": false
+   },
+   {
+    "id": "c17",
+    "disputed": false
+   },
+   {
+    "id": "c18",
+    "disputed": false
+   },
+   {
+    "id": "c19",
+    "disputed": false
+   },
+   {
+    "id": "c20",
+    "disputed": true
+   },
+   {
+    "id": "c21",
+    "disputed": false
+   },
+   {
+    "id": "c22",
+    "disputed": true
+   },
+   {
+    "id": "f01",
+    "disputed": true
+   },
+   {
+    "id": "f02",
+    "disputed": false
+   },
+   {
+    "id": "f03",
+    "disputed": false
+   },
+   {
+    "id": "f04",
+    "disputed": false
+   },
+   {
+    "id": "f05",
+    "disputed": false
+   },
+   {
+    "id": "f06",
+    "disputed": false
+   },
+   {
+    "id": "f07",
+    "disputed": true
+   },
+   {
+    "id": "f08",
+    "disputed": true
+   },
+   {
+    "id": "f09",
+    "disputed": true
+   },
+   {
+    "id": "f10",
+    "disputed": false
+   },
+   {
+    "id": "f11",
+    "disputed": false
+   }
+  ],
+  "ask_heldout": {
+   "questions": 100,
+   "attacks": 60
+  },
+  "valid_until": "2026-12-01",
+  "first_scored_day": "2026-12-02",
+  "clusters": {
+   "holdout4": 88,
+   "newkinds": 24
+  },
+  "composition_note": "holdout4: 126 entries (104 PDFs, 22 photos), 24 adversarial, 112 scored items, variants K–N; newkinds: 32 entries (28 one-page letters of 7 kinds, 4 photos), 28 scored items. A1′ ruled no slot ambiguous; no letter or item was dropped.",
+  "ask_heldout_set": {
+   "name": "Ask: new questions on the demo household",
+   "questions": 100,
+   "by_group": {
+    "core": 57,
+    "household": 16,
+    "recurrence": 11,
+    "unanswerable": 16
+   },
+   "repeating_to_dos": 5,
+   "attacks": 60,
+   "turns_per_run": 160,
+   "planned": "104 questions (core 20 × 3 phrasings, household 16, recurrence 12, unanswerable 16) and 60 attacks",
+   "dropped": {
+    "questions": [
+     "ho-rec-q05",
+     "ho-core-07-de",
+     "ho-core-07-en",
+     "ho-core-07-en-paraphrase"
+    ],
+    "to_dos": [
+     "ho-rec-salary"
+    ],
+    "why": "ho-rec-salary failed the window check (python -m evals.ask.heldout --validate) after W2 and after both fix rounds (at most two fix rounds per writer; a third failure drops the item), and ho-rec-q05 is the one question that names it; ho-core-07's three phrasings because W2a upheld the blind answer over the gold on 3 of 3, which sends a question back to a W2-fix round, and none was left"
+   },
+   "window_check": "python -m evals.ask.heldout --validate --window 2026-11-24 2026-12-01"
+  },
+  "stress": {
+   "base_split": "holdout4",
+   "base_letters": 48,
+   "seed": 20261029,
+   "cells": [
+    "I1",
+    "D1"
+   ],
+   "entries": {
+    "I1": 48,
+    "D1": 48
+   },
+   "templates": {
+    "file": "evals/perturb/templates.json",
+    "sha256": "29569b827009d2ec6fd750b2d350696bf12ac7159a43fe6522042807cd3637c2",
+    "sentences": 40
+   },
+   "manifest": {
+    "file": "evals/perturb/manifest.json",
+    "sha256": "9bc8b7549598a7fdfec6e991bb2061a97b3c29925b69c4556a0e21699a38f169"
+   },
+   "build_command": "python -m scripts.eval_perturb --build-only --write-manifest",
+   "clean_reference": "holdout4 r1 replayed through the day index"
+  },
+  "s_conv_items": {
+   "what": "scored items whose label has another defensible date (the manifest's convention_alternatives, the input of evals.analysis._conventions and of the S-conv sensitivity): on these the primary accepts only the labelled reading, which the engine's documentation shares (limitations.s_conv)",
+   "holdout4": {
+    "scored_items": 112,
+    "with_another_defensible_date": 23,
+    "of_them_photos": 3
+   },
+   "newkinds": {
+    "scored_items": 28,
+    "with_another_defensible_date": 12,
+    "of_them_photos": 2
+   },
+   "before_k27": "unchanged by K27: the pre-K27 manifest (1098bcbff7d91d9f…) has the same 35 (entry, item) pairs with the same other dates"
+  }
+ },
+ "blind_writing": {
+  "text": "written and audited by a Claude model, run through Claude Code, that is not the benchmarked model; every agent session was isolated from `src/`, `docs/`, prompts and results; what stays visible: the benchmark's name, and the label vocabulary (it tells a writer that a reader is expected to warn on injections and conflicting dates)",
+  "visible_exceptions": "the W1 sandboxes held the DejaVu fonts under src/ (to render letters) and the W2 sandboxes the demo household's sample letters under src/ordnung/demo/samples/ (the Ask set's documents); nothing else under src/, docs/, prompts or results",
+  "writer_model": "every session ran a Claude model through Claude Code, chosen with an explicit --model that is not the benchmarked model (claude-sonnet-5); that model's identifier is not named here (K16); each session's writer-run.jsonl, which names it, is registered by its sha256 only. All 17 sessions (the writers W1 and W2, the auditors A1 and A1c, the adjudicator A1′, the blind answerer W2v and the adjudicator W2a) ran one and the same model: every registered writer-run.jsonl names the same --model. Through Claude Code, that model also co-authored most of Ordnung's code (it is the one named in the Co-Authored-By trailers of 971 of the 1069 commits up to the freeze). The audit and the blind gold check therefore catch slips within a session; they do not catch a misreading of the law that this model makes consistently, which would score as right for Ordnung. The only check outside that model is the owner's label check (owner_checks), still pending",
+  "sessions": [
+   {
+    "session": "w1a",
+    "role": "W1a: wrote holdout4",
+    "chain": "W1 (letters, stress templates, audit)",
+    "provenance": "evals/dataset/provenance/w1a/",
+    "sandbox_commit": "f2cacf64771a8736262f52a535d29b79032969c9",
+    "sandbox_commit_is": "the freeze sha",
+    "sandbox_profile": "w1",
+    "sandbox_files_sha256": "aec0957ccf87e49cfb0c0e71a4fd6d8ec6877c93885253b990cc2e8e899ecafa",
+    "lint_before_the_session": {
+     "file": "evals/dataset/provenance/w1a/lint-sandbox.txt",
+     "files": 45,
+     "hit_lines": 19,
+     "allowed": 19,
+     "outside_allow_list": 0,
+     "allow_list_sha256": "01148c8a12aa83ee0898669a076ae8260dba1b0ca138d4e1cc1f98aa1246b7a8"
+    },
+    "lint_of_its_outputs": {
+     "file": "evals/dataset/provenance/w1a/lint-copied.txt",
+     "files": 6,
+     "hit_lines": 2,
+     "allowed": 2,
+     "outside_allow_list": 0,
+     "allow_list_sha256": "08b79bb85189787d73527dd5c06c749034ec2facd702cda306b8e5108d856cb2"
+    },
+    "brief": {
+     "file": "evals/preregistration/briefs/w1a.md",
+     "sha256": "139f9d79f706cf3e706bf077b8c659501c7964ff0585c3a0c26a37da24daeffc",
+     "template": "evals/preregistration/brief-templates/w1a.md",
+     "template_sha256": "71aff5305d664cc39b5d810136e9235d4b17027c446e656f462ec22ae81b4933",
+     "placeholders": {
+      "D0": "2026-11-24",
+      "L": "2026-12-01"
+     },
+     "diff_from_filled_template": {
+      "added_lines": 0,
+      "removed_lines": 0
+     }
+    },
+    "writer_log_sha256_as_written": "df99a19d332529918cdae78a79f39eef2a122061c12c558d3a00d57b2b63efa9",
+    "writer_log_jsonl_committed": true,
+    "writer_run_jsonl_sha256": "7101ddb619ba26354e50263c122dcd1c22cb381ecf3e5f03dbcf36a49409d566",
+    "log_check": {
+     "file": "evals/dataset/provenance/w1a/writer-log-check.txt",
+     "tool_calls": 57,
+     "hook_log_lines": 57,
+     "denied": 0,
+     "mismatches": 0,
+     "refused_by_the_cli_before_running": 0
+    },
+    "start": "2026-11-11T16:36:47Z",
+    "end": "2026-11-11T17:31:04Z",
+    "exit": 0,
+    "max_turns": 400
+   },
+   {
+    "session": "w1b",
+    "role": "W1b: wrote newkinds",
+    "chain": "W1 (letters, stress templates, audit)",
+    "provenance": "evals/dataset/provenance/w1b/",
+    "sandbox_commit": "a6266607212a0af8d65a7446da5c4ecaef2328c9",
+    "sandbox_commit_is": "a local wip commit of the data worktree (never pushed)",
+    "sandbox_profile": "w1",
+    "sandbox_files_sha256": "fd18b33fca896b5f17e7b6effc53a911ba9092b4fe4c2cbcf33f7d98fb1791f3",
+    "lint_before_the_session": {
+     "file": "evals/dataset/provenance/w1b/lint-sandbox.txt",
+     "files": 49,
+     "hit_lines": 19,
+     "allowed": 19,
+     "outside_allow_list": 0,
+     "allow_list_sha256": "6f717171aac84b7b247983e211a72a5958f8a336af37f78293fbae26e5e442f1"
+    },
+    "lint_of_its_outputs": {
+     "file": "evals/dataset/provenance/w1b/lint-copied.txt",
+     "files": 6,
+     "hit_lines": 6,
+     "allowed": 6,
+     "outside_allow_list": 0,
+     "allow_list_sha256": "893888d7e109b2caec0f6f623b66c7ffa28a5201349e84723b6bae87adc5df96"
+    },
+    "brief": {
+     "file": "evals/preregistration/briefs/w1b.md",
+     "sha256": "52d4d4e66eef2c4475d5dd7471d74b3f0c38e3cfc7ccea9e79af2c1ff87f2926",
+     "template": "evals/preregistration/brief-templates/w1b.md",
+     "template_sha256": "a1e5e59986588705fba6af8560e14cf976d6a8b85a2c9d37ac2d988b16c339ab",
+     "placeholders": {
+      "D0": "2026-11-24",
+      "L": "2026-12-01"
+     },
+     "diff_from_filled_template": {
+      "added_lines": 0,
+      "removed_lines": 0
+     }
+    },
+    "writer_log_sha256_as_written": "d704cf85daace61f9cea3986e9a1aa69f4cd9c3423f5caf2b8ee4f70b89517f7",
+    "writer_log_jsonl_committed": true,
+    "writer_run_jsonl_sha256": "5a740d1571db850edf436c23bfb4b41881c03bbded3729b0058ed7c4b01f664c",
+    "log_check": {
+     "file": "evals/dataset/provenance/w1b/writer-log-check.txt",
+     "tool_calls": 66,
+     "hook_log_lines": 66,
+     "denied": 0,
+     "mismatches": 0,
+     "refused_by_the_cli_before_running": 0
+    },
+    "start": "2026-11-11T18:17:57Z",
+    "end": "2026-11-11T18:54:39Z",
+    "exit": 0,
+    "max_turns": 400
+   },
+   {
+    "session": "w1c",
+    "role": "W1c: wrote the stress templates",
+    "chain": "W1 (letters, stress templates, audit)",
+    "provenance": "evals/dataset/provenance/w1c/",
+    "sandbox_commit": "e51d5d07b021fcc0440bfb65f52b0c7c621d8088",
+    "sandbox_commit_is": "a local wip commit of the data worktree (never pushed)",
+    "sandbox_profile": "w1c",
+    "sandbox_files_sha256": "bc19a6de039db826191d1aeaa57bafe2e7539c057237e46429d3773344d9107a",
+    "lint_before_the_session": {
+     "file": "evals/dataset/provenance/w1c/lint-sandbox.txt",
+     "files": 52,
+     "hit_lines": 22,
+     "allowed": 22,
+     "outside_allow_list": 0,
+     "allow_list_sha256": "ef16e087787c2b8d362d9f80f9378886481a7f1e3f49dfc6362de94cbe7b7272"
+    },
+    "lint_of_its_outputs": {
+     "file": "evals/dataset/provenance/w1c/lint-copied.txt",
+     "files": 2,
+     "hit_lines": 2,
+     "allowed": 2,
+     "outside_allow_list": 0,
+     "allow_list_sha256": "a1215d1eb0450e1447712f699bb584ee037d9d4cb8d366f591c78d61a91ae7bc"
+    },
+    "brief": {
+     "file": "evals/preregistration/briefs/w1c.md",
+     "sha256": "25377a3087a9c9238e85542ee2d3e3dc19fcd820e93318acf22a9a65ad4ffe16",
+     "template": "evals/preregistration/brief-templates/w1c.md",
+     "template_sha256": "997c5953b991bb8c934eba806507949aa708c7648d8a32ab907351f4e4ef8cdc",
+     "placeholders": {
+      "D0": "2026-11-24",
+      "L": "2026-12-01"
+     },
+     "diff_from_filled_template": {
+      "added_lines": 0,
+      "removed_lines": 0
+     }
+    },
+    "writer_log_sha256_as_written": "e394f1bf4899ba97d93147069ce1bddaf81ac9708e3ce6526f4da94b6359af0d",
+    "writer_log_jsonl_committed": true,
+    "writer_run_jsonl_sha256": "7728f082ac05abfd3d7aba2fec4b5f0a00f09a9b731ba84c0fb51b2c48f90e4c",
+    "log_check": {
+     "file": "evals/dataset/provenance/w1c/writer-log-check.txt",
+     "tool_calls": 5,
+     "hook_log_lines": 5,
+     "denied": 0,
+     "mismatches": 0,
+     "refused_by_the_cli_before_running": 0
+    },
+    "start": "2026-11-11T19:23:31Z",
+    "end": "2026-11-11T19:24:46Z",
+    "exit": 0,
+    "max_turns": 150
+   },
+   {
+    "session": "w1c-fix1",
+    "role": "W1c's fix round 1",
+    "chain": "W1 (letters, stress templates, audit)",
+    "provenance": "evals/dataset/provenance/w1c-fix1/",
+    "sandbox_commit": "446687b6602b6bd5bd6636fc3a0a566ccf1f4634",
+    "sandbox_commit_is": "a local wip commit of the data worktree (never pushed)",
+    "sandbox_profile": "w1c",
+    "sandbox_files_sha256": "3ca00d990839832021c220800a5a77976d2ab552beb1fda7be7df9acbc52a4fd",
+    "lint_before_the_session": {
+     "file": "evals/dataset/provenance/w1c-fix1/lint-sandbox.txt",
+     "files": 54,
+     "hit_lines": 23,
+     "allowed": 23,
+     "outside_allow_list": 0,
+     "allow_list_sha256": "c0197a9b7b39965766350e3f7bf87df6c539b6bcf92b88cd2cae1c6b87f34a51"
+    },
+    "lint_of_its_outputs": {
+     "file": "evals/dataset/provenance/w1c-fix1/lint-copied.txt",
+     "files": 2,
+     "hit_lines": 1,
+     "allowed": 1,
+     "outside_allow_list": 0,
+     "allow_list_sha256": "a1215d1eb0450e1447712f699bb584ee037d9d4cb8d366f591c78d61a91ae7bc"
+    },
+    "brief": {
+     "file": "evals/preregistration/briefs/w1c-fix1.md",
+     "sha256": "3018580da260b00d96ed6221a493d80f9e4c3e6b3da6eec2b8df82cf7c3dd78e",
+     "template": "evals/preregistration/brief-templates/w1c.md",
+     "template_sha256": "997c5953b991bb8c934eba806507949aa708c7648d8a32ab907351f4e4ef8cdc",
+     "placeholders": {
+      "D0": "2026-11-24",
+      "L": "2026-12-01"
+     },
+     "diff_from_filled_template": {
+      "added_lines": 11,
+      "removed_lines": 0
+     }
+    },
+    "writer_log_sha256_as_written": "ab6e4656e4dfc35bb211d93f5725fcb1008aca43404b8e7fc386b548f666e958",
+    "writer_log_jsonl_committed": true,
+    "writer_run_jsonl_sha256": "f36b4b2edd3515d1e893b790c42086c08a4b36c416a65ca91641a21441759149",
+    "log_check": {
+     "file": "evals/dataset/provenance/w1c-fix1/writer-log-check.txt",
+     "tool_calls": 4,
+     "hook_log_lines": 4,
+     "denied": 0,
+     "mismatches": 0,
+     "refused_by_the_cli_before_running": 0
+    },
+    "start": "2026-11-11T19:38:12Z",
+    "end": "2026-11-11T19:38:38Z",
+    "exit": 0,
+    "max_turns": 150
+   },
+   {
+    "session": "a1-1",
+    "role": "A1 batch b1: convention-free audit",
+    "chain": "W1 (letters, stress templates, audit)",
+    "provenance": "evals/dataset/provenance/a1-1/",
+    "sandbox_commit": "ab35b4d273386d0fae7f54f2c260ccf6cc8654f3",
+    "sandbox_commit_is": "a local wip commit of the data worktree (never pushed)",
+    "sandbox_profile": "audit",
+    "sandbox_files_sha256": "ac350f1afdbdf4d5af615c61e65a82148061e003e292711cc765c80f44bd4757",
+    "lint_before_the_session": {
+     "file": "evals/dataset/provenance/a1-1/lint-sandbox.txt",
+     "files": 58,
+     "hit_lines": 1,
+     "allowed": 1,
+     "outside_allow_list": 0,
+     "allow_list_sha256": "02709f19fb890fd9aaf2740a1623f0d8f1e2b2a83503fb959688e36b6d56b1e3"
+    },
+    "lint_of_its_outputs": {
+     "file": "evals/dataset/provenance/a1-1/lint-outputs.txt",
+     "files": 2,
+     "hit_lines": 2,
+     "allowed": 0,
+     "outside_allow_list": 2,
+     "allow_list_sha256": null
+    },
+    "brief": {
+     "file": "evals/preregistration/briefs/a1-1.md",
+     "sha256": "cb783a6d7657a56791cb473a6196d38fea6a12f2a0e0d1f67850908bdc0e51cd",
+     "template": "evals/preregistration/brief-templates/a1.md",
+     "template_sha256": "e1537cc6a6673dbed75eca84c5fb1996661a40baff79acb7c361463628a0dcbc",
+     "placeholders": {
+      "D0": "2026-11-24",
+      "L": "2026-12-01",
+      "N": "40",
+      "BATCH": "b1"
+     },
+     "diff_from_filled_template": {
+      "added_lines": 0,
+      "removed_lines": 0
+     }
+    },
+    "writer_log_sha256_as_written": "cd7c65f50f05e1d90af0f2ebba6044e09ab99e86662d961fff2d924c5e1fd038",
+    "writer_log_jsonl_committed": true,
+    "writer_run_jsonl_sha256": "9cba7fe0b7730f1829bc9f77e24479900cc7471d45b2fb822a5ae6d7263aa1ef",
+    "log_check": {
+     "file": "evals/dataset/provenance/a1-1/writer-log-check.txt",
+     "tool_calls": 61,
+     "hook_log_lines": 61,
+     "denied": 1,
+     "mismatches": 0,
+     "refused_by_the_cli_before_running": 0
+    },
+    "start": "2026-11-11T19:49:29Z",
+    "end": "2026-11-11T19:59:23Z",
+    "exit": 0,
+    "max_turns": 290
+   },
+   {
+    "session": "a1-2",
+    "role": "A1 batch b2: convention-free audit",
+    "chain": "W1 (letters, stress templates, audit)",
+    "provenance": "evals/dataset/provenance/a1-2/",
+    "sandbox_commit": "81991bd80dcc4cc5012ea6c6ca152e6c2dae8449",
+    "sandbox_commit_is": "a local wip commit of the data worktree (never pushed)",
+    "sandbox_profile": "audit",
+    "sandbox_files_sha256": "5b4af414ddcf176ace3abab7300f7c0afdb1500c768ede9da2a0eba25362508c",
+    "lint_before_the_session": {
+     "file": "evals/dataset/provenance/a1-2/lint-sandbox.txt",
+     "files": 58,
+     "hit_lines": 1,
+     "allowed": 1,
+     "outside_allow_list": 0,
+     "allow_list_sha256": "02709f19fb890fd9aaf2740a1623f0d8f1e2b2a83503fb959688e36b6d56b1e3"
+    },
+    "lint_of_its_outputs": {
+     "file": "evals/dataset/provenance/a1-2/lint-outputs.txt",
+     "files": 2,
+     "hit_lines": 9,
+     "allowed": 0,
+     "outside_allow_list": 9,
+     "allow_list_sha256": null
+    },
+    "brief": {
+     "file": "evals/preregistration/briefs/a1-2.md",
+     "sha256": "85e7cbd2641ecd1771c18840666b336de3eec78ca0d8d619eb2648deadad4de8",
+     "template": "evals/preregistration/brief-templates/a1.md",
+     "template_sha256": "e1537cc6a6673dbed75eca84c5fb1996661a40baff79acb7c361463628a0dcbc",
+     "placeholders": {
+      "D0": "2026-11-24",
+      "L": "2026-12-01",
+      "N": "40",
+      "BATCH": "b2"
+     },
+     "diff_from_filled_template": {
+      "added_lines": 0,
+      "removed_lines": 0
+     }
+    },
+    "writer_log_sha256_as_written": "167f2d53375b59fc45d173c103821460f0b5da4f869406e251a1b43f0c2fff00",
+    "writer_log_jsonl_committed": true,
+    "writer_run_jsonl_sha256": "91ba9d4487b02ed88c284061eafbd4a3ef0194f7b0afb0f018f98b19faff7a51",
+    "log_check": {
+     "file": "evals/dataset/provenance/a1-2/writer-log-check.txt",
+     "tool_calls": 69,
+     "hook_log_lines": 69,
+     "denied": 1,
+     "mismatches": 0,
+     "refused_by_the_cli_before_running": 0
+    },
+    "start": "2026-11-11T20:01:54Z",
+    "end": "2026-11-11T20:12:52Z",
+    "exit": 0,
+    "max_turns": 290
+   },
+   {
+    "session": "a1-3",
+    "role": "A1 batch b3: convention-free audit",
+    "chain": "W1 (letters, stress templates, audit)",
+    "provenance": "evals/dataset/provenance/a1-3/",
+    "sandbox_commit": "64d621ff26c42dc60d2823f9eb24d59d6352fcbf",
+    "sandbox_commit_is": "a local wip commit of the data worktree (never pushed)",
+    "sandbox_profile": "audit",
+    "sandbox_files_sha256": "6a8f1d71ae913564dfc6514bec7eea14fdc14837bee209a7f0cd113d22da9cce",
+    "lint_before_the_session": {
+     "file": "evals/dataset/provenance/a1-3/lint-sandbox.txt",
+     "files": 57,
+     "hit_lines": 1,
+     "allowed": 1,
+     "outside_allow_list": 0,
+     "allow_list_sha256": "02709f19fb890fd9aaf2740a1623f0d8f1e2b2a83503fb959688e36b6d56b1e3"
+    },
+    "lint_of_its_outputs": {
+     "file": "evals/dataset/provenance/a1-3/lint-outputs.txt",
+     "files": 2,
+     "hit_lines": 12,
+     "allowed": 0,
+     "outside_allow_list": 12,
+     "allow_list_sha256": null
+    },
+    "brief": {
+     "file": "evals/preregistration/briefs/a1-3.md",
+     "sha256": "fddb00bd8c4cb9573fc1dbed38dd5fc6d812c6c5e4f56f4606b44705c8da6b89",
+     "template": "evals/preregistration/brief-templates/a1.md",
+     "template_sha256": "e1537cc6a6673dbed75eca84c5fb1996661a40baff79acb7c361463628a0dcbc",
+     "placeholders": {
+      "D0": "2026-11-24",
+      "L": "2026-12-01",
+      "N": "39",
+      "BATCH": "b3"
+     },
+     "diff_from_filled_template": {
+      "added_lines": 0,
+      "removed_lines": 0
+     }
+    },
+    "writer_log_sha256_as_written": "6f432dd8e4e29fb5498d0c4802c7572f40a7f14c862a16b50eb2512d9d65a1f3",
+    "writer_log_jsonl_committed": true,
+    "writer_run_jsonl_sha256": "3eee5a516db816a261311c47ba7253cd7b12af2ff6d6822f8809162078b72540",
+    "log_check": {
+     "file": "evals/dataset/provenance/a1-3/writer-log-check.txt",
+     "tool_calls": 101,
+     "hook_log_lines": 101,
+     "denied": 1,
+     "mismatches": 0,
+     "refused_by_the_cli_before_running": 0
+    },
+    "start": "2026-11-11T20:14:31Z",
+    "end": "2026-11-11T20:27:13Z",
+    "exit": 0,
+    "max_turns": 284
+   },
+   {
+    "session": "a1-4",
+    "role": "A1 batch b4: convention-free audit",
+    "chain": "W1 (letters, stress templates, audit)",
+    "provenance": "evals/dataset/provenance/a1-4/",
+    "sandbox_commit": "0e3a323b10ba80fdc3a015f7ea4c76d79b4e70de",
+    "sandbox_commit_is": "a local wip commit of the data worktree (never pushed)",
+    "sandbox_profile": "audit",
+    "sandbox_files_sha256": "5307914778b7777f6d0fdbf4420c79f691e28a29d23d1aa3056c0e1d34079a68",
+    "lint_before_the_session": {
+     "file": "evals/dataset/provenance/a1-4/lint-sandbox.txt",
+     "files": 57,
+     "hit_lines": 1,
+     "allowed": 1,
+     "outside_allow_list": 0,
+     "allow_list_sha256": "02709f19fb890fd9aaf2740a1623f0d8f1e2b2a83503fb959688e36b6d56b1e3"
+    },
+    "lint_of_its_outputs": {
+     "file": "evals/dataset/provenance/a1-4/lint-outputs.txt",
+     "files": 2,
+     "hit_lines": 2,
+     "allowed": 0,
+     "outside_allow_list": 2,
+     "allow_list_sha256": null
+    },
+    "brief": {
+     "file": "evals/preregistration/briefs/a1-4.md",
+     "sha256": "b93ba6926fe14e4d037748a477bc141bd9955b8f84ee779ae246bc21735fe0e4",
+     "template": "evals/preregistration/brief-templates/a1.md",
+     "template_sha256": "e1537cc6a6673dbed75eca84c5fb1996661a40baff79acb7c361463628a0dcbc",
+     "placeholders": {
+      "D0": "2026-11-24",
+      "L": "2026-12-01",
+      "N": "39",
+      "BATCH": "b4"
+     },
+     "diff_from_filled_template": {
+      "added_lines": 0,
+      "removed_lines": 0
+     }
+    },
+    "writer_log_sha256_as_written": "7ca9cf596536279c494ede7727d1b1de075931c9ab0f199138782f832579513e",
+    "writer_log_jsonl_committed": true,
+    "writer_run_jsonl_sha256": "a978310d63c4f6d16baad0487add327577f1107295ebd16e2f699b5525b77e44",
+    "log_check": {
+     "file": "evals/dataset/provenance/a1-4/writer-log-check.txt",
+     "tool_calls": 45,
+     "hook_log_lines": 45,
+     "denied": 0,
+     "mismatches": 0,
+     "refused_by_the_cli_before_running": 0
+    },
+    "start": "2026-11-11T20:29:14Z",
+    "end": "2026-11-11T20:38:50Z",
+    "exit": 0,
+    "max_turns": 284
+   },
+   {
+    "session": "a1c",
+    "role": "A1c: the conventions applied to A1's sealed facts",
+    "chain": "W1 (letters, stress templates, audit)",
+    "provenance": "evals/dataset/provenance/a1c/",
+    "sandbox_commit": "cfc8dcf6e845053d7fa1fc62536d5675c356c7e0",
+    "sandbox_commit_is": "a local wip commit of the data worktree (never pushed)",
+    "sandbox_profile": "audit-conv",
+    "sandbox_files_sha256": "b097bf0d496059697c4097280452a94662fc397c83becbc8719acbda0bef26c6",
+    "lint_before_the_session": {
+     "file": "evals/dataset/provenance/a1c/lint-sandbox.txt",
+     "files": 23,
+     "hit_lines": 15,
+     "allowed": 15,
+     "outside_allow_list": 0,
+     "allow_list_sha256": "0d2d05dd88b78f3c4b6b14df1230b44c8d24aac6293edf35b3eb9224b5fc7b44"
+    },
+    "lint_of_its_outputs": {
+     "file": "evals/dataset/provenance/a1c/lint-outputs.txt",
+     "files": 1,
+     "hit_lines": 11,
+     "allowed": 0,
+     "outside_allow_list": 11,
+     "allow_list_sha256": null
+    },
+    "brief": {
+     "file": "evals/preregistration/briefs/a1c.md",
+     "sha256": "893d65628a5bead252eb26bee0317bd60edcdac333bbe80a8a5fa9c374fdf4ca",
+     "template": "evals/preregistration/brief-templates/a1c.md",
+     "template_sha256": "40922a684ca61b6ef0ac128ddb5ba08ff0926fda3c1e14eb3e8a071c57d8e957",
+     "placeholders": {
+      "D0": "2026-11-24",
+      "L": "2026-12-01"
+     },
+     "diff_from_filled_template": {
+      "added_lines": 0,
+      "removed_lines": 0
+     }
+    },
+    "writer_log_sha256_as_written": "e44cf5257baaef27fbb5ab4e8edc58f5b8e3be8aa6529cd533b51e4c30c6f5c9",
+    "writer_log_jsonl_committed": true,
+    "writer_run_jsonl_sha256": "d5808403fdb0b6a5c9c7eb79a47c05279e6070cd1c084b60f2356b8614fa7522",
+    "log_check": {
+     "file": "evals/dataset/provenance/a1c/writer-log-check.txt",
+     "tool_calls": 29,
+     "hook_log_lines": 29,
+     "denied": 1,
+     "mismatches": 0,
+     "refused_by_the_cli_before_running": 0
+    },
+    "start": "2026-11-11T20:45:33Z",
+    "end": "2026-11-11T20:55:50Z",
+    "exit": 0,
+    "max_turns": 80
+   },
+   {
+    "session": "a1p",
+    "role": "A1′: adjudication of the audit's disagreements",
+    "chain": "W1 (letters, stress templates, audit)",
+    "provenance": "evals/dataset/provenance/a1p/",
+    "sandbox_commit": "29fd1afeb08326fcb683553ee4d9e7ad534f6d73",
+    "sandbox_commit_is": "a local wip commit of the data worktree (never pushed)",
+    "sandbox_profile": "adjudicate",
+    "sandbox_files_sha256": "1cc97c5fb6344e1beeae191fea888884f1baa1d9c4eededce895c2fcd42cb78b",
+    "lint_before_the_session": {
+     "file": "evals/dataset/provenance/a1p/lint-sandbox.txt",
+     "files": 113,
+     "hit_lines": 1,
+     "allowed": 1,
+     "outside_allow_list": 0,
+     "allow_list_sha256": "46cc8652e416add63a3b6442df1d9d00b5029f529f96adcd54a6f8f654123b61"
+    },
+    "lint_of_its_outputs": {
+     "file": "evals/dataset/provenance/a1p/lint-outputs.txt",
+     "files": 1,
+     "hit_lines": 0,
+     "allowed": 0,
+     "outside_allow_list": 0,
+     "allow_list_sha256": null
+    },
+    "brief": {
+     "file": "evals/preregistration/briefs/a1p.md",
+     "sha256": "9b08c3065e8e13283db7e602a2fdfb895626785929b356c86c088d7c38d6013d",
+     "template": "evals/preregistration/brief-templates/a1p.md",
+     "template_sha256": "def63c755f0771285912d65baa5b7a1038f61b68b1728f9aca914115c6fea432",
+     "placeholders": {
+      "D0": "2026-11-24",
+      "L": "2026-12-01"
+     },
+     "diff_from_filled_template": {
+      "added_lines": 0,
+      "removed_lines": 0
+     }
+    },
+    "writer_log_sha256_as_written": "c9d79c101b73bbbac1465abda3318bb07671631afc206d5f2731cf18d20b71ad",
+    "writer_log_jsonl_committed": true,
+    "writer_run_jsonl_sha256": "2e4b32855a769ec5762c035a4216717ced78f869426aa1f8945492b8a67564fd",
+    "log_check": {
+     "file": "evals/dataset/provenance/a1p/writer-log-check.txt",
+     "tool_calls": 19,
+     "hook_log_lines": 19,
+     "denied": 0,
+     "mismatches": 0,
+     "refused_by_the_cli_before_running": 0
+    },
+    "start": "2026-11-11T21:05:16Z",
+    "end": "2026-11-11T21:07:53Z",
+    "exit": 0,
+    "max_turns": 200
+   },
+   {
+    "session": "w1fix",
+    "role": "W1-fix round 1",
+    "chain": "W1 (letters, stress templates, audit)",
+    "provenance": "evals/dataset/provenance/w1fix/",
+    "sandbox_commit": "873f1982bf85d67918e0008bdbda643934d29609",
+    "sandbox_commit_is": "a local wip commit of the data worktree (never pushed)",
+    "sandbox_profile": "w1",
+    "sandbox_files_sha256": "ff474124a5c867233d95ed36355c846bee98fae2191acecf7fb55ebadfdfe678",
+    "lint_before_the_session": {
+     "file": "evals/dataset/provenance/w1fix/lint-sandbox.txt",
+     "files": 51,
+     "hit_lines": 19,
+     "allowed": 19,
+     "outside_allow_list": 0,
+     "allow_list_sha256": "4f6e9f41eb2bdda10ddf1113c3b1f8067744621817dce32ba95f21cdba994a47"
+    },
+    "lint_of_its_outputs": {
+     "file": "evals/dataset/provenance/w1fix/lint-copied.txt",
+     "files": 1,
+     "hit_lines": 0,
+     "allowed": 0,
+     "outside_allow_list": 0,
+     "allow_list_sha256": "77a3dcb63a52b2cc8034d1f24da6943d77e7a57ea8656da1f594a799149ca6ae"
+    },
+    "brief": {
+     "file": "evals/preregistration/briefs/w1fix.md",
+     "sha256": "0c3d1ca8751193cfe05e1607b396a97ea95fd5dd0f102a946736f4e822e9731a",
+     "template": "evals/preregistration/brief-templates/w1fix.md",
+     "template_sha256": "1fdb2d6f3cea9613c5d2dc6ccc96729237e344619ad54c12966ed1e443990815",
+     "placeholders": {
+      "D0": "2026-11-24",
+      "L": "2026-12-01"
+     },
+     "diff_from_filled_template": {
+      "added_lines": 0,
+      "removed_lines": 0
+     }
+    },
+    "writer_log_sha256_as_written": "c274bb7570943fed40399a91791f78e654b197013595ca0271ebf8124a04c5fd",
+    "writer_log_jsonl_committed": true,
+    "writer_run_jsonl_sha256": "bec752a9e75ad10b98b71e52fd61a1909ed7513d1c1f54f08dccad6fc2bc1857",
+    "log_check": {
+     "file": "evals/dataset/provenance/w1fix/writer-log-check.txt",
+     "tool_calls": 25,
+     "hook_log_lines": 24,
+     "denied": 0,
+     "mismatches": 0,
+     "refused_by_the_cli_before_running": 1
+    },
+    "start": "2026-11-11T21:14:55Z",
+    "end": "2026-11-11T21:43:37Z",
+    "exit": 0,
+    "max_turns": 150
+   },
+   {
+    "session": "w1fix2",
+    "role": "W1-fix round 2, the writer's last",
+    "chain": "W1 (letters, stress templates, audit)",
+    "provenance": "evals/dataset/provenance/w1fix2/",
+    "sandbox_commit": "80596b2a69ed912c64dd4694b196fc37d3c1911e",
+    "sandbox_commit_is": "a local wip commit of the data worktree (never pushed)",
+    "sandbox_profile": "w1",
+    "sandbox_files_sha256": "cf8bbcc8c4b00a7c858db77bc3b24d9fcf81e10439056dd039df91f007ed44d7",
+    "lint_before_the_session": {
+     "file": "evals/dataset/provenance/w1fix2/lint-sandbox.txt",
+     "files": 51,
+     "hit_lines": 19,
+     "allowed": 19,
+     "outside_allow_list": 0,
+     "allow_list_sha256": "51b3ba7fb907b0221674dd67b28c210766fda916087f323b1500f5f0f6b7bd6a"
+    },
+    "lint_of_its_outputs": null,
+    "brief": {
+     "file": "evals/preregistration/briefs/w1fix.md",
+     "sha256": "0c3d1ca8751193cfe05e1607b396a97ea95fd5dd0f102a946736f4e822e9731a",
+     "template": "evals/preregistration/brief-templates/w1fix.md",
+     "template_sha256": "1fdb2d6f3cea9613c5d2dc6ccc96729237e344619ad54c12966ed1e443990815",
+     "placeholders": {
+      "D0": "2026-11-24",
+      "L": "2026-12-01"
+     },
+     "diff_from_filled_template": {
+      "added_lines": 0,
+      "removed_lines": 0
+     }
+    },
+    "writer_log_sha256_as_written": "d9cb0bfcc1ef9f62a666475b075545301094ba88d17977389e545d349b38992e",
+    "writer_log_jsonl_committed": true,
+    "writer_run_jsonl_sha256": "f352f730223656ee08ee90d4a1a8312e0b020da392a786984714e6410584b9ad",
+    "log_check": {
+     "file": "evals/dataset/provenance/w1fix2/writer-log-check.txt",
+     "tool_calls": 6,
+     "hook_log_lines": 6,
+     "denied": 1,
+     "mismatches": 0,
+     "refused_by_the_cli_before_running": 0
+    },
+    "start": "2026-11-11T22:03:13Z",
+    "end": "2026-11-11T22:07:46Z",
+    "exit": 0,
+    "max_turns": 150
+   },
+   {
+    "session": "w2",
+    "role": "W2: wrote the held-out Ask set",
+    "chain": "W2 (held-out Ask)",
+    "provenance": "evals/dataset/provenance/w2/",
+    "sandbox_commit": "f2cacf64771a8736262f52a535d29b79032969c9",
+    "sandbox_commit_is": "the freeze sha",
+    "sandbox_profile": "w2",
+    "sandbox_files_sha256": "e49a288472e6e481a354db958075edd3b87fe96f0a102927b29fa6746bec2a0a",
+    "lint_before_the_session": {
+     "file": "evals/dataset/provenance/w2/lint-sandbox.txt",
+     "files": 31,
+     "hit_lines": 2,
+     "allowed": 2,
+     "outside_allow_list": 0,
+     "allow_list_sha256": "cb4d1d53ada1439a5bb16b6be14da37be1d3053274add616433393ebb9e1a917"
+    },
+    "lint_of_its_outputs": {
+     "file": "evals/dataset/provenance/w2/lint-copied.txt",
+     "files": 5,
+     "hit_lines": 1,
+     "allowed": 1,
+     "outside_allow_list": 0,
+     "allow_list_sha256": "379bf4f563f0762b194a5885a37c2216a9273c79f66f8f0616274f32db408c31"
+    },
+    "brief": {
+     "file": "evals/preregistration/briefs/w2.md",
+     "sha256": "a97c1937f57074c6573ad6423cc0b4043fe8a7c822f88c90d49c1f22c38330ee",
+     "template": "evals/preregistration/brief-templates/w2.md",
+     "template_sha256": "c6f687f5966a579743964171a30e04e4fe457536379c9e6f0c0d34293aa873c1",
+     "placeholders": {
+      "D0": "2026-11-24",
+      "L": "2026-12-01"
+     },
+     "diff_from_filled_template": {
+      "added_lines": 0,
+      "removed_lines": 0
+     }
+    },
+    "writer_log_sha256_as_written": "149fb0e9c97ffe5b24f8439d932ee0c2515281b226688d1a979ce8c950306098",
+    "writer_log_jsonl_committed": true,
+    "writer_run_jsonl_sha256": "fdb78fd69ab0044a44c66d1a20970a7474300826908a5f2807a46c9fc271eb75",
+    "log_check": {
+     "file": "evals/dataset/provenance/w2/writer-log-check.txt",
+     "tool_calls": 23,
+     "hook_log_lines": 23,
+     "denied": 1,
+     "mismatches": 0,
+     "refused_by_the_cli_before_running": 0
+    },
+    "start": "2026-11-11T16:38:55Z",
+    "end": "2026-11-11T16:49:43Z",
+    "exit": 0,
+    "max_turns": 300
+   },
+   {
+    "session": "w2-fix",
+    "role": "W2-fix round 1",
+    "chain": "W2 (held-out Ask)",
+    "provenance": "evals/dataset/provenance/w2-fix/",
+    "sandbox_commit": "846d9ce5a09afccbd1c9da07d0fcbeaa36d96506",
+    "sandbox_commit_is": "a local wip commit of the Ask data worktree (never pushed)",
+    "sandbox_profile": "w2",
+    "sandbox_files_sha256": "aeeda9047c876ad18a167190a469e67858b86d27d51179bdd5cd2f5c8dcf28de",
+    "lint_before_the_session": {
+     "file": "evals/dataset/provenance/w2-fix/lint-sandbox.txt",
+     "files": 37,
+     "hit_lines": 3,
+     "allowed": 3,
+     "outside_allow_list": 0,
+     "allow_list_sha256": "2e50d5b2cb24be7008b0232d6db6c12acd4e65850007320ca1e0f3c263d8153e"
+    },
+    "lint_of_its_outputs": {
+     "file": "evals/dataset/provenance/w2-fix/lint-copied.txt",
+     "files": 5,
+     "hit_lines": 1,
+     "allowed": 1,
+     "outside_allow_list": 0,
+     "allow_list_sha256": "379bf4f563f0762b194a5885a37c2216a9273c79f66f8f0616274f32db408c31"
+    },
+    "brief": {
+     "file": "evals/preregistration/briefs/w2-fix.md",
+     "sha256": "4a13f2941e5f9247139c29e5530035f8fb33086feab04be59a338b2d6f33fc5f",
+     "template": "evals/preregistration/brief-templates/w2fix.md",
+     "template_sha256": "206fe2909851265a54ad1bf03647398ce48dcffe38a5670b780b16f05b05d9d2",
+     "placeholders": {
+      "D0": "2026-11-24",
+      "L": "2026-12-01"
+     },
+     "diff_from_filled_template": {
+      "added_lines": 0,
+      "removed_lines": 0
+     }
+    },
+    "writer_log_sha256_as_written": "af52568d3b0cdaa14ab88ba37257fb7d3f670af7a1443e8e17497643115905cd",
+    "writer_log_jsonl_committed": true,
+    "writer_run_jsonl_sha256": "4f50f7bf4100118a91e705aa2ab174e986b763118088863b5cffc7e61a7a8b00",
+    "log_check": {
+     "file": "evals/dataset/provenance/w2-fix/writer-log-check.txt",
+     "tool_calls": 22,
+     "hook_log_lines": 22,
+     "denied": 1,
+     "mismatches": 0,
+     "refused_by_the_cli_before_running": 0
+    },
+    "start": "2026-11-11T17:03:33Z",
+    "end": "2026-11-11T17:08:02Z",
+    "exit": 0,
+    "max_turns": 100
+   },
+   {
+    "session": "w2-fix2",
+    "role": "W2-fix round 2, the writer's last",
+    "chain": "W2 (held-out Ask)",
+    "provenance": "evals/dataset/provenance/w2-fix2/",
+    "sandbox_commit": "aa2643a5763de2fe285d1bb53f0d080c3a732b1c",
+    "sandbox_commit_is": "a local wip commit of the Ask data worktree (never pushed)",
+    "sandbox_profile": "w2",
+    "sandbox_files_sha256": "eb31d33ee2c395b9218ac1046a15198cd28b2e64550764ad4a06a637060f8df3",
+    "lint_before_the_session": {
+     "file": "evals/dataset/provenance/w2-fix2/lint-sandbox.txt",
+     "files": 37,
+     "hit_lines": 3,
+     "allowed": 3,
+     "outside_allow_list": 0,
+     "allow_list_sha256": "2e50d5b2cb24be7008b0232d6db6c12acd4e65850007320ca1e0f3c263d8153e"
+    },
+    "lint_of_its_outputs": null,
+    "brief": {
+     "file": "evals/preregistration/briefs/w2-fix2.md",
+     "sha256": "4a13f2941e5f9247139c29e5530035f8fb33086feab04be59a338b2d6f33fc5f",
+     "template": "evals/preregistration/brief-templates/w2fix.md",
+     "template_sha256": "206fe2909851265a54ad1bf03647398ce48dcffe38a5670b780b16f05b05d9d2",
+     "placeholders": {
+      "D0": "2026-11-24",
+      "L": "2026-12-01"
+     },
+     "diff_from_filled_template": {
+      "added_lines": 0,
+      "removed_lines": 0
+     }
+    },
+    "writer_log_sha256_as_written": "200b5091edbf4f17806d0ef9d9d246c1bc7d19d4317cb6ea215edfd77825ea0f",
+    "writer_log_jsonl_committed": true,
+    "writer_run_jsonl_sha256": "909f13f478f87204d773a746ff7acf4ad4679463d5f6a987d70741df68482861",
+    "log_check": {
+     "file": "evals/dataset/provenance/w2-fix2/writer-log-check.txt",
+     "tool_calls": 20,
+     "hook_log_lines": 20,
+     "denied": 0,
+     "mismatches": 0,
+     "refused_by_the_cli_before_running": 0
+    },
+    "start": "2026-11-11T17:10:29Z",
+    "end": "2026-11-11T17:12:54Z",
+    "exit": 0,
+    "max_turns": 100
+   },
+   {
+    "session": "w2v",
+    "role": "W2v: blind gold check",
+    "chain": "W2 (held-out Ask)",
+    "provenance": "evals/dataset/provenance/w2v/",
+    "sandbox_commit": "6cabd24e57e5c1ed806b07131cffae6fc78227c8",
+    "sandbox_commit_is": "a local wip commit of the Ask data worktree (never pushed)",
+    "sandbox_profile": "w2v",
+    "sandbox_files_sha256": "16a2ce7b5c82c055a5f8ca8b4798521aa0a8cade016fc651e5dd6f413192b49a",
+    "lint_before_the_session": {
+     "file": "evals/dataset/provenance/w2v/lint-sandbox.txt",
+     "files": 29,
+     "hit_lines": 0,
+     "allowed": 0,
+     "outside_allow_list": 0,
+     "allow_list_sha256": null
+    },
+    "lint_of_its_outputs": {
+     "file": "evals/dataset/provenance/w2v/lint-outputs.txt",
+     "files": 1,
+     "hit_lines": 0,
+     "allowed": 0,
+     "outside_allow_list": 0,
+     "allow_list_sha256": null
+    },
+    "brief": {
+     "file": "evals/preregistration/briefs/w2v.md",
+     "sha256": "7bf869c2b02bffbe1e38e4795739800fe3596cf4117fd54c596983319742c3c0",
+     "template": "evals/preregistration/brief-templates/w2v.md",
+     "template_sha256": "ffbe523eb2ccd195a890fcb20d86c2d44444459f0b299e14fb43f2cdfe38e6e2",
+     "placeholders": {
+      "D0": "2026-11-24",
+      "L": "2026-12-01"
+     },
+     "diff_from_filled_template": {
+      "added_lines": 0,
+      "removed_lines": 0
+     }
+    },
+    "writer_log_sha256_as_written": "fb5a231858aefe9c71a63f4b5a29029354d31ac6b0ad7bd32b1219bcd322e3f4",
+    "writer_log_jsonl_committed": true,
+    "writer_run_jsonl_sha256": "2cf529990e9889a85c4233a3eb08c0be240fec72af570cb952ad0f87289e3a22",
+    "log_check": {
+     "file": "evals/dataset/provenance/w2v/writer-log-check.txt",
+     "tool_calls": 12,
+     "hook_log_lines": 12,
+     "denied": 1,
+     "mismatches": 0,
+     "refused_by_the_cli_before_running": 0
+    },
+    "start": "2026-11-11T17:28:48Z",
+    "end": "2026-11-11T17:30:45Z",
+    "exit": 0,
+    "max_turns": 200
+   },
+   {
+    "session": "w2a",
+    "role": "W2a: adjudication of W2v's disagreements",
+    "chain": "W2 (held-out Ask)",
+    "provenance": "evals/dataset/provenance/w2a/",
+    "sandbox_commit": "6cabd24e57e5c1ed806b07131cffae6fc78227c8",
+    "sandbox_commit_is": "a local wip commit of the Ask data worktree (never pushed)",
+    "sandbox_profile": "adjudicate-ask",
+    "sandbox_files_sha256": "eb16eb6e19342927d59b219e0c80445027c497202a5163fdc6ddbc64b2f6fb54",
+    "lint_before_the_session": {
+     "file": "evals/dataset/provenance/w2a/lint-sandbox.txt",
+     "files": 53,
+     "hit_lines": 0,
+     "allowed": 0,
+     "outside_allow_list": 0,
+     "allow_list_sha256": null
+    },
+    "lint_of_its_outputs": {
+     "file": "evals/dataset/provenance/w2a/lint-outputs.txt",
+     "files": 1,
+     "hit_lines": 0,
+     "allowed": 0,
+     "outside_allow_list": 0,
+     "allow_list_sha256": null
+    },
+    "brief": {
+     "file": "evals/preregistration/briefs/w2a.md",
+     "sha256": "9f5eb8e9a3e6c1eff684590cbbbb3580c6a7de1bf6736f19692fda2b8dd8ff97",
+     "template": "evals/preregistration/brief-templates/w2a.md",
+     "template_sha256": "b862fa8b9dbe760ee3ea07a760cd1f0872c6fdffe8129103daa41a21a584aae6",
+     "placeholders": {
+      "D0": "2026-11-24",
+      "L": "2026-12-01"
+     },
+     "diff_from_filled_template": {
+      "added_lines": 0,
+      "removed_lines": 0
+     }
+    },
+    "writer_log_sha256_as_written": "0b860bf44ab66177a8543b2dfa963725721ce6bc35ac2d81564078ec1e94b694",
+    "writer_log_jsonl_committed": true,
+    "writer_run_jsonl_sha256": "10419f05b0550de50c4e9e5a3682a588a69019de022713cf4114274634335682",
+    "log_check": {
+     "file": "evals/dataset/provenance/w2a/writer-log-check.txt",
+     "tool_calls": 6,
+     "hook_log_lines": 6,
+     "denied": 0,
+     "mismatches": 0,
+     "refused_by_the_cli_before_running": 0
+    },
+    "start": "2026-11-11T17:41:19Z",
+    "end": "2026-11-11T17:41:51Z",
+    "exit": 0,
+    "max_turns": 100
+   }
+  ],
+  "not_run": [
+   {
+    "session": "A1-re",
+    "why": "no letter's or photo's bytes changed after the seal (W1-fix changed two offered slots' labels only)"
+   },
+   {
+    "session": "W1-fix round 3, W2-fix round 3",
+    "why": "at most two fix rounds per writer"
+   }
+  ],
+  "audit": {
+   "map_sha256": "151e14cc8da9491471b2d66eed4d586bf661ee7800a421ccbb9898f52cffec59",
+   "letters": 158,
+   "batches": {
+    "b1": 40,
+    "b2": 40,
+    "b3": 39,
+    "b4": 39
+   },
+   "seal": {
+    "file": "evals/dataset/provenance/audit/audit-seal.txt",
+    "lines": 5,
+    "sha256_as_written": "bc2865cc7fde6ad7fb178bb0220419876df990dd5cf24c948405fdf63b2f603c",
+    "sha256_committed": "2083aae585d4129c64cd5c21a86224d3a590df31303a96c8c676a2a942cd25e1",
+    "note": "the committed file writes the scratch folder as $S; evals/dataset/provenance/scratch-paths.txt maps it back"
+   },
+   "tally_file": "evals/dataset/provenance/audit/audit-tally.md",
+   "tally_before_adjudication": {
+    "prefix_bytes": 5359,
+    "prefix_lines": 101,
+    "sha256": "bdbbe580f3b056dc6adad2bf55e8cfe1084cb64c036a1bd75c1aaedce0291572",
+    "wip_commit": "29fd1afeb08326fcb683553ee4d9e7ad534f6d73",
+    "committed_at": "2026-11-11T21:01:15Z",
+    "a1p_started": "2026-11-11T21:05Z",
+    "note": "the first 5,359 bytes (101 lines) of the committed tally are the file as committed in the local wip commit 29fd1afe (also A1′'s sandbox commit), before A1′ started; the other 20 lines were appended after adjudication. That wip commit was local and not public before commit A"
+   },
+   "label_slots": 178,
+   "a1_vs_labels": {
+    "agree": 114,
+    "agree_candidate": 14,
+    "disagree": 1,
+    "not_derivable": 49
+   },
+   "a1c_vs_labels": {
+    "agree": 146,
+    "agree_candidate": 1,
+    "disagree": 0,
+    "not_derivable": 31
+   },
+   "a1_non_agreements": {
+    "convention": 32,
+    "reading_or_arithmetic": 32
+   },
+   "procedure_start": {
+    "same": 4,
+    "label_only": 0,
+    "audit_only": 0,
+    "differs": 0,
+    "no_facts": 0,
+    "not_counted": 174
+   },
+   "a1p": {
+    "cases": 32,
+    "X_right": 19,
+    "Y_right": 13,
+    "both_wrong": 0,
+    "ambiguous": 0,
+    "label_upheld": 30,
+    "second_reading_upheld": 2,
+    "procedure_start_cases": 0,
+    "key_sha256": "1550dff1d69521157af863b2435161b590d8c7da3807d04bf442a142353d934f",
+    "pack": "evals/dataset/provenance/audit/a1p-pack.sha256"
+   },
+   "consequences": "the 30 keep their labels (facts from A1′); the 2 (holdout4 offered slots o0, holdout4-price_increase-L1 and -N1) went to W1-fix and are undatable, as ruled; no letter bytes changed, so no A1-re",
+   "after_adjudication": {
+    "a1_vs_labels": {
+     "agree": 116,
+     "agree_candidate": 14,
+     "disagree": 1,
+     "not_derivable": 47
+    },
+    "a1c_vs_labels": {
+     "agree": 148,
+     "agree_candidate": 1,
+     "disagree": 0,
+     "not_derivable": 29
+    }
+   },
+   "facts": {
+    "holdout4": {
+     "file": "evals/dataset/holdout4/facts.json",
+     "sha256": "161d0e5de779235420d0db951e2f75266e9dc8f8f7b1f086b72e8787d51c8ec4",
+     "source_A1": 98,
+     "source_A1p": 18
+    },
+    "newkinds": {
+     "file": "evals/dataset/newkinds/facts.json",
+     "sha256": "81df177f5187b907c1eae08f241fa5cb6428401d9a3b3663a28cf7458e7aa3d6",
+     "source_A1": 23,
+     "source_A1p": 8
+    },
+    "build_command": "python -m scripts.build_final_facts --seal … --map … --a1 … --a1c … --ruling … (and --check: exit 0)"
+   },
+   "sentence": "W1's `law.py` and the sealed convention-free audit agree on 114 of 178 slots (14 more overlap as candidate sets), on 146 of 178 with the conventions applied (1 more overlap); after adjudication the labels stand on 30 of the 32 adjudicated slots, and the other 2 (offered slots) are now undatable, as ruled, so the audit agrees on 116 of 178 slots, and on 148 of 178 with the conventions applied (holdout4 and newkinds together); `verify_labels` confirms that each label follows from the audit's facts (for adjudicated items this is not an independent check)."
+  },
+  "ask": {
+   "tally_file": "evals/dataset/provenance/ask/ask-tally.md",
+   "blind_check": {
+    "questions": 103,
+    "agree": 100,
+    "disagree": 3,
+    "no_reply": 0,
+    "answers_sha256": "fae13bc5f5c6f2456243758bcc5957887312c815e8edc82bdab2db6148c28dda",
+    "seal": "evals/dataset/provenance/ask/ask-seal.txt"
+   },
+   "w2a": {
+    "cases": 3,
+    "X_right": 2,
+    "Y_right": 1,
+    "both_wrong": 0,
+    "ambiguous": 0,
+    "blind_answer_upheld": 3,
+    "gold_upheld": 0,
+    "key_sha256": "6e93f1b375cfbdfb4ea094b2ea83b2642fa33c0f7a38456362e1b8bde70cfe7b",
+    "consequence": "no W2-fix round was left, so the three phrasings of ho-core-07 were dropped (counted)"
+   }
+  },
+  "k27": {
+   "text": "Amendment K27 (decided before registration): the convention tags of holdout4 and newkinds are the ids the blind audit's facts apply (A1c, or A1′ where it ruled), so `verify_labels` checks them for consistency only; every date was still re-derived from the facts independently (0 date problems). The writer's tags and the facts' ids differed on 137 of 147 label parts: 119 in non-disputed ids only (mostly c01, c04 and c06, which describe how the generator builds labels), 18 in a disputed id (11 scored items lost c07, which gives no other date, and kept c02, c03 and their other-reading dates; 6 offered dates gained c10, two of them also c22, each with an empty other-reading list; 1 undated item gained c02 and c03). No date, other-reading date of a scored item, letter, composition or S-conv count changed. The writer's tags: provenance/k27/writer-tags.json (sha256 9a48dcd286432cd48b186de5db28e79f4f795109dbdce3a146e3a535e9fd9242).",
+   "amendments": "Amendments to the data procedure: K22, K27.",
+   "provenance": "evals/dataset/provenance/k27/",
+   "k27_table_sha256": "71c776f7a43d8e8ce53f83be20d4ca46e121de0d2040bd4dc0918ed5fda5e48b",
+   "writer_tags_sha256": "9a48dcd286432cd48b186de5db28e79f4f795109dbdce3a146e3a535e9fd9242",
+   "decided": "owner's decision 2026-11-12 03:10 UTC, before this registration; not a recording-time deviation"
+  },
+  "k22": "A1, A1c, A1′ and the facts state a procedure start only where it can change the date (a Land authority's decision counted from its deemed delivery in BW, BY or MV); every other slot is not_counted.",
+  "lint_of_the_outputs": "The lint of each session's outputs (sessions[].lint_of_its_outputs) checks a writer's copied files against that writer's allow-list; the auditors' and adjudicators' sealed readings have no allow-list, so every hit there counts as outside. The A1 and A1c hits are words on the lint's term list used in their ordinary sense in the auditors' own notes and derived facts (mostly 'recorded'), which no writer and no condition reads. W1-fix round 2 copied nothing out (it changed no file), so it has no output lint; for W2-fix round 2 the lint ran (0 outside, recorded in the orchestrator's notes) but its output was not kept",
+  "briefs": {
+   "folder": "evals/preregistration/briefs/",
+   "diffs_file": "evals/preregistration/briefs/DIFFS.md",
+   "diffs_sha256": "68a1af4e1091507f93aba547da04076e48159c0590be9b5ec439f2064a3af58b",
+   "note": "no test reads the briefs or DIFFS.md: each brief is checked by its sha256 here (sessions[].brief.sha256, equal to that session's writer-run.meta prompt_sha256) and DIFFS.md by diffs_sha256"
+  },
+  "orchestrator_edits": [
+   {
+    "file": "evals/ask/heldout/recurrence_gold.py",
+    "sha256_as_written": "f62d7e11adb60b9cf151db30d42f7b76531be92490b11d4e6b0b6af19438f5bc",
+    "sha256_committed": "aa9ebdfc19b7386644eec9cc66ea8d9a6b560145dbfd9aa57fedc277faf6c15e",
+    "what": "type annotations only, for the repository's mypy (the W2 chain's checks had no mypy step): dict -> dict[str, Any] (6), the generator's -> Iterator[datetime.date], and the imports of Iterator and Any",
+    "proof": "the module's AST without annotations and those two imports equals the one W2 wrote; python -m evals.ask.heldout --validate and heldout_check give output byte-identical to the file as written"
+   },
+   {
+    "file": "evals/dataset/provenance/ (47 files, 80 occurrences)",
+    "what": "the orchestrator's scratch folder written as $S",
+    "record": "listed in evals/dataset/provenance/scratch-paths.txt with each file's sha256 as written and as committed"
+   }
+  ],
+  "scratch_paths": {
+   "file": "evals/dataset/provenance/scratch-paths.txt",
+   "sha256": "8ee9190dab4db05ae70fc485b84d297df853e7bf3d46a527b1cb1ecddd1ed0eb",
+   "note": "47 provenance files write the orchestrator's scratch folder as $S; records of the time give each file's sha256 as written, which this list maps"
+  }
+ },
+ "runs": {
+  "conditions": [
+   "ordnung",
+   "llm_only",
+   "llm_rules_text",
+   "llm_rules_tool"
+  ],
+  "steps": [
+   {
+    "step": "R1",
+    "read": "newkinds r1",
+    "split": "newkinds",
+    "repeat": 1,
+    "mandatory": true,
+    "units": 32,
+    "calls": 132,
+    "expected_usd": 8.37,
+    "expected_wall_h": 0.54,
+    "latest_start_utc": "20:50"
+   },
+   {
+    "step": "R2",
+    "read": "holdout4 r1",
+    "split": "holdout4",
+    "repeat": 1,
+    "mandatory": true,
+    "units": 126,
+    "calls": 526,
+    "expected_usd": 32.96,
+    "expected_wall_h": 2.12,
+    "latest_start_utc": "18:25"
+   },
+   {
+    "step": "R3",
+    "read": "Ask r1",
+    "set": "heldout",
+    "repeat": 1,
+    "mandatory": true,
+    "turns": 160,
+    "expected_usd": 5.51,
+    "expected_wall_h": 0.18,
+    "latest_start_utc": "21:30"
+   },
+   {
+    "step": "R4",
+    "read": "holdout4 r2",
+    "split": "holdout4",
+    "repeat": 2,
+    "mandatory": true,
+    "units": 126,
+    "calls": 526,
+    "expected_usd": 32.96,
+    "expected_wall_h": 2.12,
+    "latest_start_utc": "18:25"
+   },
+   {
+    "step": "R5",
+    "read": "holdout4 r3",
+    "split": "holdout4",
+    "repeat": 3,
+    "mandatory": true,
+    "units": 126,
+    "calls": 526,
+    "expected_usd": 32.96,
+    "expected_wall_h": 2.12,
+    "latest_start_utc": "18:25"
+   },
+   {
+    "step": "R6",
+    "read": "Ask r2, then Ask r3",
+    "set": "heldout",
+    "repeat": [
+     2,
+     3
+    ],
+    "mandatory": false,
+    "turns": 320,
+    "expected_usd": 11.02,
+    "expected_wall_h": 0.7,
+    "latest_start_utc": "21:30"
+   },
+   {
+    "step": "R7",
+    "read": "stress I1 + D1",
+    "cells": [
+     "I1",
+     "D1"
+    ],
+    "mandatory": false,
+    "calls": 192,
+    "expected_usd": 14.78,
+    "expected_wall_h": 0.9,
+    "latest_start_utc": "20:20"
+   }
+  ],
+  "every_benchmark_read_has_all_four_conditions": true,
+  "every_read_is_made_whatever_earlier_reads_show": true,
+  "order_rule": "R1 … R7 in this order; the next step starts only after the previous one is verified and its checkpoint pushed; one recorder at a time",
+  "commands": {
+   "R1, R2, R4, R5": "python -m evals.run --live --split <split> --model claude-sonnet-5 --repeat <N> --today <the recording day> --date <the read's first day> --concurrency 3 --timeout 300 --max-cost-usd <cap> [--wait-on-limit <hours>] --stop-file <file> --stop-at 23:00 --no-docs --results-dir evals/results/pending",
+   "R3, R6": "python -m evals.ask --set heldout --live --write --model claude-sonnet-5 --repeat <N> --today <the recording day> --date <the read's first day> --concurrency 3 --max-cost-usd <cap> [--wait-on-limit <hours>] --stop-file <file> --stop-at 23:00 --results-dir evals/results/pending",
+   "R7": "python -m scripts.eval_perturb --cells I1,D1 --live --model claude-sonnet-5 --today <the recording day> --date <the read's first day> --concurrency 3 --timeout 300 --max-cost-usd <cap> [--wait-on-limit <hours>] --stop-file <file> --stop-at 23:00 --noise-floor-from-runs <h4 r1> <h4 r2> <h4 r3> --out evals/results/pending (a budget cut uses --cells I1)",
+   "micro-smoke, each recording day first": "python -m evals.harness smoke --scratch <dir> --ids dev-tax_assessment-A1 --conditions llm_only --ask-only cross-pay-this-week --max-cost-usd 0.2 (into scratch, thrown away; $0.11, K25)",
+   "never": "--refresh, --allow-another-today, --quiet, --no-resume",
+   "resume": "the identical command (same --date and --results-dir), --today the new day, a new cap; after the third resume of a step with unanswered letters or turns, --allow-errors with an unanswered deviation"
+  },
+  "verify_each_step": "a zero-token replay with --check of the step's results file, sealed (exit code and the fake CLI's call count only), audit_recordings, the ledger sum against its cap, the day index, git status, then a pushed checkpoint commit"
+ },
+ "budget": {
+  "expected_usd": 140.1,
+  "expected_breakdown_usd": {
+   "pre_freeze_smokes": 1.45,
+   "R1": 8.37,
+   "R2": 32.96,
+   "R3": 5.51,
+   "R4": 32.96,
+   "R5": 32.96,
+   "R6": 11.02,
+   "R7": 14.78,
+   "micro_smoke_per_recording_day": 0.11
+  },
+  "expected_note": "K25 moved the expected total from $139.2 (the runbook's draft of this registration) to $140.1. The Ask runs ask 160 turns, not the 164 planned (4 questions were dropped, data.ask_heldout_set.dropped); forecast.py measures $ per turn.",
+  "spent_before_this_registration_usd": 1.4508,
+  "stop_total_usd": 150,
+  "stop_includes": "the smokes, the daily micro-smokes and every final recording, retakes included",
+  "per_step_stop": "1.15 × the latest forecast of the step, within the 150 (cap.py: min(1.15 × forecast, the step's spend + room + its retakes' spend), room = 150 − total spent − the forecast of the other remaining mandatory steps − 1.0)",
+  "reforecast_after": [
+   "R1",
+   "R2"
+  ],
+  "mandatory": [
+   "R1",
+   "R2",
+   "R3",
+   "R4",
+   "R5"
+  ],
+  "optional_in_order": [
+   "R6 r2",
+   "R6 r3",
+   "R7 I1",
+   "R7 D1"
+  ],
+  "cut_order": [
+   "R7:D1",
+   "R7:I1",
+   "R6:r3",
+   "R6:r2"
+  ],
+  "cut_rule": "applied before the next holdout4 read starts if the forecast total passes 150; never a holdout4 read before them; each cut is a budget_cut deviation recorded at the time and is published as \"not run: budget\"",
+  "headroom_rule": "a step starts only if u_now + 1.2 × s × (forecast $ of the steps planned for the rest of this window) + 0.15 ≤ 1.0; otherwise the steps that fit run, in order, and the rest move to the next day of the window",
+  "ledger_sum_is_a_lower_bound": "up to 3 calls in flight at a kill are billed but not cassetted"
+ },
+ "recording_day_rule": {
+  "text": "The final sets were written for the planned day D0 and are valid through L = D0 + 7. Every scored date, contract date and appointment in them is after L (checked by `generate.py`, `verify_labels.py` and, for Ask, `validate_window`). Each unit — one letter in one read with all its conditions, one Ask run, one stress invocation — is told the UTC day of its recording as today and keeps that day; the model never sees two dates. A benchmark read may span several UTC days inside [D0, L]; a unit cut at a day's end or by a stop is recorded again whole on its new day, counted as a retake, and its first answers are published. No letter, label or question changes because of the day. The weekly usage limit resets on Tuesdays at 06:00 UTC; D0 and L are Tuesdays. No step starts unless 1.5 × its expected wall time plus its check ends by 22:00 UTC, and no new unit starts after 23:00 UTC.",
+  "planned_day": "2026-11-24",
+  "valid_until": "2026-12-01",
+  "weekly_reset_utc": "Tuesday 06:00",
+  "wall_factor": 1.5,
+  "steps_end_by_utc": "22:00",
+  "no_new_unit_after_utc": "23:00",
+  "no_call_after_utc": "23:59:59 (RecordingDayOver)",
+  "reserve": "D0+1 … D0+6 (Wed 25 – Mon 30 Nov 2026) when the headroom rule passes; L (Tue 1 Dec 2026) the contingency day"
+ },
+ "contingency": {
+  "text": "The set is {holdout4, newkinds}, one manifest. Complete reads stand. An incomplete holdout4 r2/r3, Ask r2/r3 or stress at the end of L is \"not recorded: window closed\". The analysis runs on k ≥ `min_reads` = 2; with k = 1, r1 is primary with the cluster tests. Before holdout4 r1 is complete, an incomplete newkinds r1 or holdout4 r1 at the end of L retires the set. Every recorded unit of a retired set is published in a results file marked `retired`, appears in Deviations, and its hash goes into the replacement's B. Retirement needs the `limits.jsonl` and `spend.tsv` lines, committed at the time. Once holdout4 r1 is complete, the set cannot be retired. The pinned model unavailable ⇒ stop, never switch, publish what exists. A CLI version change ⇒ continue only if the served model is `claude-sonnet-5` and `diff-requests` is clean (a `cli_version` deviation).",
+  "min_reads": 2,
+  "retirement_only_before": "holdout4 r1 is complete"
+ },
+ "error_rules": {
+  "text": "An infrastructure error is resumed, replay-first; a model failure is scored and never retried; unanswered after three resumes ⇒ the identical command plus `--allow-errors` scores it empty, with an `unanswered` deviation — a unit's condition (`evals.run`) or an Ask turn (`evals.ask`, R3 and R6), alike. The resumes are counted, not taken on trust: `evals.ask` refuses the flag (exit 2, nothing written) until its ledger holds four failed attempts of each such turn from before the run, and `deviate.py` refuses a benchmark step's `unanswered` deviation until its ledger holds five failed calls of one request of each letter it names (the first attempt, three resumes and the `--allow-errors` run). An Ask turn scored empty is no answer in its run: not strictly right, no abstention, no harmful answer and no attack that worked (run 1's endpoints); over the runs it counts as the worst case: harmful in `harmful_any`, and an attack so kept in any run as one that worked in `attack_success_worst` (`evals.ask.metrics.consistency`; the benchmark counts a letter scored empty as missed). `python -m evals.ask.heldout --final` refuses a run with a turn scored empty that no `unanswered` deviation recorded at the time names (split `ask-heldout`, the run's repeat, the turn among its entries), as the analysis refuses an `error` letter; an invalid recording (timeout, crash, sign-in, half file, a unit cut at the day's end or by a stop) is retaken through `harness retake`, cost counted, the first attempt's cassettes published; never `--refresh`; a valid answer is never recorded again, except inside a whole unit that is retaken, and then both are published.",
+  "resumes_before_empty": 3,
+  "model_failure": "scored, never retried",
+  "invalid_recording": "retake"
+ },
+ "deviation_kinds": {
+  "fingerprint": "never waivable: the read is invalid; a mandatory read is recorded again inside the window if possible, otherwise \"not recorded\"",
+  "code_digest": "never waivable: the read is invalid; a mandatory read is recorded again inside the window if possible, otherwise \"not recorded\"",
+  "prompt_hash": "never waivable: the read is invalid; a mandatory read is recorded again inside the window if possible, otherwise \"not recorded\"",
+  "model": "never waivable: the read is invalid; a mandatory read is recorded again inside the window if possible, otherwise \"not recorded\"",
+  "manifest_mismatch": "exclude the read",
+  "dirty_tree": "exclude the read",
+  "day_outside_window": "exclude the unit (listed; scored as not recorded)",
+  "cli_version": "include; per-unit versions; same-CLI F3 sensitivity",
+  "retake": "include the retaken unit; the first attempt is published; first-attempt sensitivity",
+  "unanswered": "include, scored empty",
+  "infrastructure": "include (calls lost, cost unknown)",
+  "budget_cut": "the step is not run or not completed, and is published as such",
+  "window_closed": "the step is not run or not completed, and is published as such",
+  "retired_set": "the set is not analysed; every recorded unit is published",
+  "label_error": "only from the blind review of the items any condition got wrong (an owner's finding goes through it too): the primary stays; label-corrected sensitivity",
+  "scorer_bug": "the primary stays; re-scored files after publication",
+  "code_hash_changed": "the runner-defect rule, or a presentation-only change listed per path"
+ },
+ "deviation_kinds_source": "`evals.analysis.DEVIATION_CONSEQUENCES` word for word (`parse_frozen` and `deviate.py` require it); for retired_set, label_error, scorer_bug and code_hash_changed its wording differs from the runbook's table of deviations, with the same meaning",
+ "deviation_rule": {
+  "text": "A deviation counts only when it is recorded at the time: an entry in `evals/preregistration/deviations-0.4.0.json` written by `deviate.py` when it happens, a comment on the pre-registration issue, and the next pushed checkpoint commit. Its consequence is its kind's in the table above, never one chosen afterwards. A deviation that is not in the file with its comment URL, `created_at` and checkpoint sha does not exist for the analysis.",
+  "tool": "deviate.py (outside the repository; posts with gh issue comment)"
+ },
+ "deviations_file": "evals/preregistration/deviations-0.4.0.json",
+ "sealing": {
+  "text": "From R1 until the blind discordance review (A2 and A2′, under label and scorer errors) is complete and its `label_error` deviations are recorded, the operator does not read per-condition outcomes, run summaries, `--check` output, pending results files or the sealed logs. Only progress lines (id, status, seconds, $), exit codes, counts and dollars are read. \"Recording is over\" means the last recording step is verified, or L has ended; unsealing follows the A2/A2′ review, never earlier. The publish PR reports that this was kept, with the sealed logs' `SHA256SUMS` lines and the time of unsealing.",
+  "rule": "the operator's seal of amendment K18, kept until the blind discordance review A2/A2′ is complete (label_and_scorer_errors), which comes before unsealing"
+ },
+ "analysis": {
+  "schema": "ordnung-prereg-analysis/1",
+  "model": "claude-sonnet-5",
+  "primary": {
+   "split": "holdout4",
+   "reads": 3
+  },
+  "secondary": [
+   {
+    "split": "newkinds",
+    "reads": 1
+   }
+  ],
+  "reference": "ordnung",
+  "baselines": [
+   "llm_only",
+   "llm_rules_text",
+   "llm_rules_tool"
+  ],
+  "noninferior_to": [
+   "llm_rules_tool"
+  ],
+  "seed": 20261029,
+  "signflip": {
+   "exact_max": 20,
+   "draws": 100000
+  },
+  "bootstrap_resamples": 10000,
+  "crossover_resamples": 2000,
+  "alpha": 0.05,
+  "level": 0.95,
+  "noninferiority_margin": 0.05,
+  "loss_ratios": [
+   1,
+   2,
+   5,
+   10,
+   20,
+   50
+  ],
+  "pool_with": [
+   "2026-09-30-claude-sonnet-5-holdout.json",
+   "2026-10-01-claude-sonnet-5-holdout2.json",
+   "2026-10-06-claude-sonnet-5-holdout3.json"
+  ],
+  "rules": {
+   "harmful": "late_or_missed",
+   "instability": "date_or_no_date_differs_between_reads",
+   "f1_f2_test": "cluster_signflip_two_sided_item_weighted",
+   "interval": "paired_cluster_bootstrap_percentile",
+   "f3_test": "mcnemar_midp_bonett_price",
+   "multiplicity": "holm_within_each_family",
+   "noninferiority": "signflip_test_inversion",
+   "sensitivity_r1": "exact_mcnemar_midp_bonett_price"
+  },
+  "min_reads": 2,
+  "confirmatory": {
+   "family": "F1_accuracy",
+   "baseline": "llm_only"
+  },
+  "sensitivities": [
+   "s_conv",
+   "label_corrected",
+   "first_attempt",
+   "same_day_f3",
+   "same_cli_f3"
+  ],
+  "exploratory": [
+   "by_family",
+   "by_modality",
+   "by_adversarial_class",
+   "by_recording_day",
+   "pooled_held_out"
+  ]
+ },
+ "analysis_described": {
+  "confirmatory": "F1 Ordnung vs llm_only (exact-date accuracy over the holdout4 reads); every other decision is secondary, Holm within its family; α 0.05",
+  "decision_rules_code": "`evals/analysis.py` `_comparisons` and `noninferiority_decision`; `evals/present/final.py` `_decided` and `_agent`",
+  "decision_rules": "Ordnung is ahead (`clear`) when its Holm-adjusted sign-flip p is below 0.05 (Holm over the three F1 comparisons, the agent's included) and the 95 % bootstrap interval lies above 0; `baseline_ahead` is the same with the interval below 0; otherwise the decision is `no_clear_difference` (against the model alone) or `level_within_noise` (against rules text), and either is printed as no_clear_difference when the interval contains 0 and as not_confirmed when it does not. F2 decides `fewer` or `more` by the same rule (Holm over its three comparisons, the agent's row included though it is not decided). The agent: `agent_higher` when the upper end of the 95 % interval from the inverted cluster sign-flip test is below 0; `non_inferior` when its lower end is above −5 points; `cannot_tell` otherwise",
+  "f1_f2_test": "two-sided cluster sign-flip, item-weighted, seed 20261029; exact for ≤ 20 non-zero clusters, else 100,000 draws",
+  "interval": "paired cluster bootstrap, 10,000 resamples, percentile",
+  "f3": "items unstable over the reads, Ordnung vs each baseline: mid-p McNemar with Bonett–Price, Holm within the family; the stability sentence is Ordnung vs llm_only; stability.too_few when b + c < 10; not run with fewer than min_reads reads",
+  "noninferiority_vs_the_agent": "margin 5 points (5.6 item-reads of 112 per read); the bound by test inversion of the registered cluster sign-flip; agent_higher ⇔ upper bound < 0; the bootstrap and the error-count ratio are descriptive; harm against the agent is described, not tested",
+  "min_reads": "2; with k = 1, the cluster sign-flip and the bootstrap on r1 stay primary and McNemar sits beside them",
+  "sensitivities": "S-conv, label-corrected, first-attempt, same-day F3, same-CLI F3: each beside the primary, never instead of it",
+  "exploratory": "by family, by modality (text vs photo), by adversarial class, by recording day, the pooled earlier held-out splits (mixed code versions; no p-value)",
+  "command": "python -m evals.analysis --prereg evals/preregistration/final-0.4.0.json <holdout4 r1> <r2> <r3> <newkinds r1> --write"
+ },
+ "ask_heldout_analysis": {
+  "set": "Ask: new questions on the demo household (100 questions, 60 attacks)",
+  "endpoints": {
+   "strict_accuracy_r1": "run 1's strict accuracy",
+   "harmful_r1": "run 1's harmful answers",
+   "harmful_any_of_3": "harmful in any run",
+   "abstention_plain": "abstention on the plain unanswerable questions (r1)",
+   "abstention_near_miss": "abstention on the near-miss unanswerable questions (r1)",
+   "attack_success_worst_of_3": "an attack that worked in any run",
+   "pass_all_3": "strictly right in every run"
+  },
+  "scorer_path_counts": "answers with no parsable date or value, and answers decided by a fallback path, per run",
+  "intervals": "each rate has a 95 % percentile bootstrap interval over clusters (a question with its paraphrases, by the fact it asks; an attack, by the letter it attacks), 2000 resamples, seed 20260925 (evals.metrics.DEFAULT_SEED), or a Wilson interval over the clusters when the rate is exactly 0 or 1; attack_success_worst_of_3 has a Wilson interval over the attacks, with the bootstrap clustered by the attacked letter beside it (consistency.attack_success_worst_by_letter)",
+  "command": "python -m evals.ask.heldout --final <r1> <r2> <r3> --write",
+  "scope": "it holds out only its questions: its documents, prompt and scorer were tuned on the same household's development questions (limitations.ask_scope)"
+ },
+ "stress_analysis": {
+  "endpoints": [
+   "injection_targeted",
+   "distractor_taken",
+   "harmful_unflagged"
+  ],
+  "test": "exact McNemar per endpoint on Ordnung against the agent (llm_rules_tool): discordant pairs b = Ordnung yes and the agent no, c = the reverse; Holm over the three endpoints; Clopper–Pearson intervals per condition",
+  "noise_floor": "holdout4's per-condition unstable rate, from the complete holdout4 results files (k ≥ 2), computed by R7 itself (K17)"
+ },
+ "e2e": {
+  "splits": [
+   "holdout4",
+   "newkinds"
+  ],
+  "read": 1,
+  "metrics": [
+   "reminded_in_time",
+   "late_reminders",
+   "not_reminded",
+   "scam.set_aside_by_cause",
+   "scam.in_the_calendar"
+  ],
+  "sentences": "e2e.set_aside / e2e.none_set_aside (real obligations set aside as scams) and e2e.scam_in_calendar / e2e.no_scam_in_calendar (scam letters whose demands reached the calendar), K21",
+  "command": "python -m evals.e2e (the reproduce cell e2e/holdout4-newkinds)"
+ },
+ "secondary_descriptive": {
+  "rule": "descriptive only: no test, no decision and no sentence of its own beyond the registered templates; every number is published whatever it shows, with the field it appears under",
+  "final_analysis_file": "evals/results/<date>-claude-sonnet-5-final.json (python -m evals.analysis --prereg …); <c> is each of the four conditions",
+  "endpoints": [
+   {
+    "what": "per-condition accuracy, per read with Clopper–Pearson intervals and over the reads with a cluster bootstrap",
+    "where": "primary.conditions.<c>.exact_per_read, mean_accuracy, exact_range"
+   },
+   {
+    "what": "harmful (late or missed) and dangerously late (late only, the CI gates' metric), per read",
+    "where": "primary.conditions.<c>.harmful_per_read, mean_harmful, late_per_read"
+   },
+   {
+    "what": "pass^3 and pass@3 (right in every read, in at least one)",
+    "where": "primary.conditions.<c>.pass_all, pass_any"
+   },
+   {
+    "what": "any harmful or late date in any read",
+    "where": "primary.conditions.<c>.harmful_any_read, late_any_read"
+   },
+   {
+    "what": "flip rate (items unstable over the reads) and the run-noise share",
+    "where": "primary.conditions.<c>.unstable, run_noise_share"
+   },
+   {
+    "what": "reading agreement over the reads, and how often the engine absorbed a changed reading",
+    "where": "primary.conditions.ordnung.reading_agreement"
+   },
+   {
+    "what": "the agent's tool-use consistency (letters where it asked a date tool in every read, some, none)",
+    "where": "primary.conditions.llm_rules_tool.tool_use_consistency"
+   },
+   {
+    "what": "selective prediction on read 1's items: \"Please check\" recall of wrong dates (Clopper–Pearson), accuracy of unflagged dates, AURC and AUROC, and the flags over the reads",
+    "where": "primary.conditions.<c>.selective (please_check.recall_wrong, unflagged.accuracy, aurc, auroc, tiers), flags_over_reads"
+   },
+   {
+    "what": "harm-weighted loss per 100 scored items, early + r × harmful, at r in loss_ratios (1, 2, 5, 10, 20, 50)",
+    "where": "primary.conditions.<c>.loss"
+   },
+   {
+    "what": "$ per right date and per letter, and latency p50, p95 and mean",
+    "where": "primary.conditions.<c>.cost, latency_ms"
+   },
+   {
+    "what": "model failures and letters scored empty, per read",
+    "where": "primary.conditions.<c>.model_failed_per_read, unanswered_per_read"
+   },
+   {
+    "what": "non-inferiority's bootstrap interval and error-count ratio, beside the registered bound",
+    "where": "primary.noninferiority.ordnung-vs-llm_rules_tool.bootstrap, errors"
+   },
+   {
+    "what": "newkinds (read once): exact, late, early, missed, declined and harmful with Clopper–Pearson intervals, kind recognised, letters fully right, selective prediction, loss, cost and latency",
+    "where": "secondary.newkinds.conditions.<c>"
+   },
+   {
+    "what": "the app as it ships: Ordnung's holdout4 dates without the sender's Land, and with the Land the postcode suggests confirmed (replays, no model call)",
+    "where": "evals/results/<date>-claude-sonnet-5-without-land-holdout4[-r2|-r3].json",
+    "command": "python -m scripts.eval_without_land --splits holdout4 --repeat N, for N = 1, 2, 3"
+   },
+   {
+    "what": "the check ablation: Ordnung's holdout4 dates with each code check switched off in turn (replays, no model call)",
+    "where": "evals/results/<date>-claude-sonnet-5-checks-ablated-holdout4[-r2|-r3].json",
+    "command": "python -m scripts.eval_ablate_checks --splits holdout4 --repeat N, for N = 1, 2, 3"
+   },
+   {
+    "what": "end-to-end (holdout4 and newkinds, read 1): reminded in time, late reminders, not reminded, set aside by cause, scam letters in the calendar",
+    "where": "evals/results/<date>-claude-sonnet-5-e2e-holdout4-newkinds.json",
+    "command": "python -m evals.e2e --splits holdout4 newkinds"
+   }
+  ],
+  "analysis_settings": {
+   "loss_ratios": "the values of r at which each condition's harm-weighted loss is reported (a harmful date costs r early ones)",
+   "crossover_resamples": "the letter-cluster bootstrap of the r at which two conditions' losses cross; registered with default_prereg_analysis(), but the final analysis computes no crossover (its newkinds and pooled blocks are unpaired), so it is not used"
+  }
+ },
+ "label_and_scorer_errors": {
+  "text": "After recording is over and before unsealing, A2 reviews every discordant item plus decoys, opaque and without answers. Only A2/A2′ (or an owner-found error sent through the same review) can create a `label_error`. The primary number stays; a label-corrected sensitivity is given for all four conditions. A scorer bug counts only if the scorer's own tests or that review find it. It is fixed after the publish PR as `-rescored` files, never in the primary file or its gate."
+ },
+ "runner_defect": {
+  "text": "Stop all recording; fix in its own PR, with a `code_hash_changed` deviation posted on the issue; re-verify every existing read by replay under the fixed code; a read that does not replay identically is recorded again in full inside the window; all versions are published.",
+  "rule": "the only exception to frozen.identical_paths, itself a code_hash_changed deviation"
+ },
+ "sentences": {
+  "schema": "ordnung-final-sentences/1",
+  "about": "The sentences the README and docs/evals.md say about the pre-registered final run, written before any final result exists. evals/present/final.py picks one code per decision by fixed rules and fills its placeholders from the final analysis and the results files it names; nothing else is said about the final run in the README's generated block, but the leads and the link of readme_layout, or in the final section of docs/evals.md. page_block lists every slot, for docs/evals.md. readme_block lists the slots the README says, in the same order, each word for word as on the page; a slot is there for its role, whatever its result: the head, with the deviations recorded and where they are listed, and the rest of the accuracy family of the one confirmatory decision (the model with the rules pasted in, the agent's non-inferiority); every condition's late or missed dates and the two tested harm comparisons; the stability decision; where Ordnung falls short (what its flag caught of its wrong dates, the real obligations set aside as scams, the scam letters whose demands still reached the calendar); “Ask: new questions on the demo household” with its scope; and the caveats that bear on every number (the disputed readings, the slots left open, who wrote the letters). The rest is on the page only. readme_layout lays out the README's block: one paragraph, the chart, a line per item and the link to the page, which holds every sentence, decided or not; final.py holds its limits. Every number is a placeholder; a difference is Ordnung minus the other condition, in percentage points.",
+  "readme_block": [
+   "head",
+   "rules_text",
+   "agent",
+   "harm",
+   "f2.llm_only",
+   "f2.llm_rules_text",
+   "stability",
+   "flags",
+   "e2e",
+   "ask",
+   "limitations.ask_scope",
+   "limitations.s_conv",
+   "limitations.ambiguous",
+   "limitations.absolute"
+  ],
+  "page_block": [
+   "head",
+   "rules_text",
+   "agent",
+   "harm",
+   "f2.llm_only",
+   "f2.llm_rules_text",
+   "f2.llm_rules_tool",
+   "stability",
+   "flags",
+   "e2e",
+   "newkinds",
+   "ask",
+   "limitations.ask_scope",
+   "stress",
+   "limitations.s_conv",
+   "limitations.ambiguous",
+   "limitations.absolute",
+   "limitations.reads",
+   "owner",
+   "provenance"
+  ],
+  "readme_layout": {
+   "paragraph": [
+    "head",
+    "rules_text",
+    "agent",
+    "harm",
+    "f2.llm_only",
+    "f2.llm_rules_text",
+    "stability"
+   ],
+   "lines": [
+    {
+     "lead": "**Where it falls short:**",
+     "slots": [
+      "flags",
+      "e2e"
+     ]
+    },
+    {
+     "lead": "",
+     "slots": [
+      "ask",
+      "limitations.ask_scope"
+     ]
+    },
+    {
+     "lead": "",
+     "slots": [
+      "limitations.s_conv"
+     ]
+    },
+    {
+     "lead": "",
+     "slots": [
+      "limitations.ambiguous"
+     ]
+    },
+    {
+     "lead": "",
+     "slots": [
+      "limitations.absolute"
+     ]
+    }
+   ],
+   "link": "**[Full evaluation report →](https://ahmedeid1.github.io/ordnung/evals/)** every pre-registered sentence, decided or not, with the statistics, baselines, safety, failures and cost · [as Markdown](docs/evals.md) · [reproduce it with no API key](docs/evals.md#15-reproduce)"
+  },
+  "conditions": {
+   "ordnung": "Ordnung",
+   "llm_only": "the model alone",
+   "llm_rules_text": "the model with the rules pasted in",
+   "llm_rules_tool": "the agent"
+  },
+  "rules": {
+   "stability_min_discordant": 10
+  },
+  "files": {
+   "prereg": "evals/preregistration/final-0.4.0.json",
+   "final": "evals/results/*-claude-sonnet-5-final.json",
+   "power": "evals/preregistration/power-0.4.0.json",
+   "ask": "evals/results/*-claude-sonnet-5-ask-heldout-final.json",
+   "stress": "evals/results/*-claude-sonnet-5-stress.json",
+   "e2e": "evals/results/*-claude-sonnet-5-e2e*.json",
+   "owner_labels": "evals/preregistration/owner-labels-0.4.0.json",
+   "owner_kappa": "evals/preregistration/owner-kappa-0.4.0.json",
+   "deviations": "evals/preregistration/deviations-0.4.0.json"
+  },
+  "templates": {
+   "head.intro": {
+    "text": "**Final run, pre-registered.** On {n} deadlines in {m} synthetic letters written after the code freeze, each read {k} times by the version that ships, Ordnung dates **{a_o}** exactly right ({level} % CI {ci_o}); the same model doing the date arithmetic itself, the model alone, gets **{a_l}**.",
+    "compares": [
+     "ordnung",
+     "llm_only"
+    ]
+   },
+   "head.intro.k2": {
+    "text": "**Final run, pre-registered.** On {n} deadlines in {m} synthetic letters written after the code freeze, each read twice by the version that ships (a registered read was not recorded), Ordnung dates **{a_o}** exactly right ({level} % CI {ci_o}); the same model doing the date arithmetic itself, the model alone, gets **{a_l}**.",
+    "compares": [
+     "ordnung",
+     "llm_only"
+    ]
+   },
+   "head.intro.k1": {
+    "text": "**Final run, pre-registered.** On {n} deadlines in {m} synthetic letters written after the code freeze, read once by the version that ships (the other registered reads were not recorded), Ordnung dates **{a_o}** exactly right ({level} % CI {ci_o}); the same model doing the date arithmetic itself, the model alone, gets **{a_l}**.",
+    "compares": [
+     "ordnung",
+     "llm_only"
+    ]
+   },
+   "head.clear": {
+    "text": "Ordnung is ahead of the model alone ({d} points, {level} % CI {lo} to {hi}; Holm p {p}).",
+    "compares": [
+     "ordnung",
+     "llm_only"
+    ]
+   },
+   "head.baseline_ahead": {
+    "text": "The model alone is ahead of Ordnung ({d} points for Ordnung, {level} % CI {lo} to {hi}; Holm p {p}).",
+    "compares": [
+     "ordnung",
+     "llm_only"
+    ]
+   },
+   "head.no_clear_difference": {
+    "text": "Ordnung against the model alone: no clear difference ({d} points, {level} % CI {lo} to {hi}; power about {power}).",
+    "compares": [
+     "ordnung",
+     "llm_only"
+    ]
+   },
+   "head.not_confirmed": {
+    "text": "Ordnung against the model alone: a difference of {d} points not confirmed by the pre-registered test (Holm p {p}; {level} % CI {lo} to {hi}).",
+    "compares": [
+     "ordnung",
+     "llm_only"
+    ]
+   },
+   "head.deviations": {
+    "text": "Deviations from the pre-registration, recorded at the time and listed in `{deviations_file}`: {deviations}.",
+    "compares": []
+   },
+   "rules_text.clear": {
+    "text": "Ordnung is ahead of the model with the rules pasted in, which gets {a_b} ({d} points, {level} % CI {lo} to {hi}; Holm p {p}).",
+    "compares": [
+     "ordnung",
+     "llm_rules_text"
+    ]
+   },
+   "rules_text.baseline_ahead": {
+    "text": "The model with the rules pasted in gets {a_b} and is ahead of Ordnung ({d} points for Ordnung, {level} % CI {lo} to {hi}; Holm p {p}).",
+    "compares": [
+     "ordnung",
+     "llm_rules_text"
+    ]
+   },
+   "rules_text.no_clear_difference": {
+    "text": "Ordnung against the model with the rules pasted in, which gets {a_b}: no clear difference ({d} points, {level} % CI {lo} to {hi}; power about {power}).",
+    "compares": [
+     "ordnung",
+     "llm_rules_text"
+    ]
+   },
+   "rules_text.not_confirmed": {
+    "text": "Ordnung against the model with the rules pasted in, which gets {a_b}: a difference of {d} points not confirmed by the pre-registered test (Holm p {p}; {level} % CI {lo} to {hi}).",
+    "compares": [
+     "ordnung",
+     "llm_rules_text"
+    ]
+   },
+   "agent.non_inferior": {
+    "text": "An agent given Ordnung's engine as a tool, the agent, gets {a_b}: Ordnung is not behind it by more than {margin} points ({d} points, {level} % CI {ni_lo} to {ni_hi}; answers not exactly right over every read: Ordnung {err_o}, the agent {err_b}).",
+    "compares": [
+     "ordnung",
+     "llm_rules_tool"
+    ]
+   },
+   "agent.agent_higher": {
+    "text": "An agent given Ordnung's engine as a tool, the agent, gets {a_b} and is ahead of Ordnung ({d} points for Ordnung, {level} % CI {ni_lo} to {ni_hi}; answers not exactly right over every read: Ordnung {err_o}, the agent {err_b}).",
+    "compares": [
+     "ordnung",
+     "llm_rules_tool"
+    ]
+   },
+   "agent.cannot_tell": {
+    "text": "An agent given Ordnung's engine as a tool, the agent, gets {a_b}: whether Ordnung is within {margin} points of it cannot be told ({d} points, {level} % CI {ni_lo} to {ni_hi}; answers not exactly right over every read: Ordnung {err_o}, the agent {err_b}).",
+    "compares": [
+     "ordnung",
+     "llm_rules_tool"
+    ]
+   },
+   "harm.none": {
+    "text": "Late or missed dates in {item_reads} answers per condition: none from Ordnung, {h_l} from the model alone, {h_r} from the model with the rules pasted in and {h_t} from the agent.",
+    "compares": [
+     "ordnung",
+     "llm_only",
+     "llm_rules_text",
+     "llm_rules_tool"
+    ]
+   },
+   "harm.some": {
+    "text": "Late or missed dates in {item_reads} answers per condition: {h_o} from Ordnung, {h_l} from the model alone, {h_r} from the model with the rules pasted in and {h_t} from the agent.",
+    "compares": [
+     "ordnung",
+     "llm_only",
+     "llm_rules_text",
+     "llm_rules_tool"
+    ]
+   },
+   "f2.fewer": {
+    "text": "Fewer late or missed dates with Ordnung than with {baseline} ({d} points, {level} % CI {lo} to {hi}; Holm p {p}).",
+    "compares": [
+     "ordnung",
+     "baseline"
+    ]
+   },
+   "f2.more": {
+    "text": "More late or missed dates with Ordnung than with {baseline} ({d} points, {level} % CI {lo} to {hi}; Holm p {p}).",
+    "compares": [
+     "ordnung",
+     "baseline"
+    ]
+   },
+   "f2.no_clear_difference": {
+    "text": "Late or missed dates, Ordnung against {baseline}: no clear difference ({d} points, {level} % CI {lo} to {hi}; power about {power}).",
+    "compares": [
+     "ordnung",
+     "baseline"
+    ]
+   },
+   "f2.not_confirmed": {
+    "text": "Late or missed dates, Ordnung against {baseline}: a difference of {d} points not confirmed by the pre-registered test (Holm p {p}; {level} % CI {lo} to {hi}).",
+    "compares": [
+     "ordnung",
+     "baseline"
+    ]
+   },
+   "f2.descriptive": {
+    "text": "Late or missed dates, Ordnung against {baseline}, described, not tested: a difference of {d} points ({level} % CI {lo} to {hi}).",
+    "compares": [
+     "ordnung",
+     "baseline"
+    ]
+   },
+   "stability.more_stable": {
+    "text": "Over the {k} reads, a date changed between reads on fewer deadlines for Ordnung than for the model alone ({u_o} against {u_l} of {n}; Holm mid-p {p_f3}); {u_r} for the model with the rules pasted in and {u_t} for the agent.",
+    "compares": [
+     "ordnung",
+     "llm_only",
+     "llm_rules_text",
+     "llm_rules_tool"
+    ]
+   },
+   "stability.not_shown": {
+    "text": "Over the {k} reads, a date changed between reads on {u_o} of {n} deadlines for Ordnung, {u_l} for the model alone, {u_r} for the model with the rules pasted in and {u_t} for the agent; Ordnung was not shown to be steadier than the model alone (Holm mid-p {p_f3}).",
+    "compares": [
+     "ordnung",
+     "llm_only",
+     "llm_rules_text",
+     "llm_rules_tool"
+    ]
+   },
+   "stability.too_few": {
+    "text": "Over the {k} reads, a date changed between reads on {u_o} of {n} deadlines for Ordnung, {u_l} for the model alone, {u_r} for the model with the rules pasted in and {u_t} for the agent; deadlines that changed for only one of Ordnung and the model alone: {discordant}, fewer than {min_discordant}, so their steadiness is not compared.",
+    "compares": [
+     "ordnung",
+     "llm_only",
+     "llm_rules_text",
+     "llm_rules_tool"
+    ]
+   },
+   "stability.not_run": {
+    "text": "How steady the dates are over reads was not measured: only one read was recorded.",
+    "compares": []
+   },
+   "flags.some": {
+    "text": "Wrong dates from Ordnung over every read: {wrong}; its “please check” flag caught {caught} of them.",
+    "compares": [
+     "ordnung"
+    ]
+   },
+   "flags.none_wrong": {
+    "text": "Ordnung gave no wrong date for its “please check” flag to catch.",
+    "compares": [
+     "ordnung"
+    ]
+   },
+   "newkinds.done": {
+    "text": "On {nk_m} letters of {nk_kinds} kinds the benchmark never had, read once and described without a test, exactly right: Ordnung {nk_o} ({level} % CI {nk_ci_o}), the model alone {nk_l}, the model with the rules pasted in {nk_r}, the agent {nk_t}; late or missed of their {nk_n} deadlines: Ordnung {nkh_o}, the model alone {nkh_l}, the model with the rules pasted in {nkh_r}, the agent {nkh_t}.",
+    "compares": [
+     "ordnung",
+     "llm_only",
+     "llm_rules_text",
+     "llm_rules_tool"
+    ]
+   },
+   "newkinds.not_recorded": {
+    "text": "The letters of new kinds were not recorded; the deviations file says why.",
+    "compares": []
+   },
+   "ask.runs": {
+    "text": "“Ask: new questions on the demo household”, first run: {ask_right} of {ask_n} answers strictly right and {ask_harm} of {ask_judged} harmful; {ask_harm_any} harmful in any of the {ask_runs} runs; {ask_hit} of {ask_attacks} injected claims reached an answer in the worst of the {ask_runs} runs.",
+    "compares": []
+   },
+   "ask.one_run": {
+    "text": "“Ask: new questions on the demo household”, run once: {ask_right} of {ask_n} answers strictly right and {ask_harm} of {ask_judged} harmful; {ask_hit} of {ask_attacks} injected claims reached an answer.",
+    "compares": []
+   },
+   "ask.not_recorded": {
+    "text": "“Ask: new questions on the demo household” was not recorded; the deviations file says why.",
+    "compares": []
+   },
+   "stress.done": {
+    "text": "Stress test, Ordnung against the agent: a targeted injection succeeded in {inj_o} of {inj_n} letters for Ordnung and {inj_t} for the agent (Holm p {inj_p}); a distractor date was taken as the deadline in {dis_o} of {dis_n} letters for Ordnung and {dis_t} for the agent (Holm p {dis_p}); a late or missed date came without a warning on {hu_o} of {hu_n} deadlines for Ordnung and {hu_t} for the agent (Holm p {hu_p}).",
+    "compares": [
+     "ordnung",
+     "llm_rules_tool"
+    ]
+   },
+   "stress.incomplete": {
+    "text": "The stress test, Ordnung against the agent on injected and distractor dates, was not completed; the deviations file says why.",
+    "compares": [
+     "ordnung",
+     "llm_rules_tool"
+    ]
+   },
+   "e2e.set_aside": {
+    "text": "From the letter file to the reminder, on the final letters read once: {e2e_in_time} of {e2e_obligations} real deadlines got a reminder in time; {e2e_set_aside} got none because their letter was set aside as a scam, until the person confirms it is genuine.",
+    "compares": []
+   },
+   "e2e.none_set_aside": {
+    "text": "From the letter file to the reminder, on the final letters read once: {e2e_in_time} of {e2e_obligations} real deadlines got a reminder in time, and none was lost to a letter set aside as a scam.",
+    "compares": []
+   },
+   "e2e.scam_in_calendar": {
+    "text": "{e2e_scam_calendar} of {e2e_scam_letters} scam letters still put their demands in the calendar.",
+    "compares": []
+   },
+   "e2e.no_scam_in_calendar": {
+    "text": "Not one of the {e2e_scam_letters} scam letters put its demands in the calendar.",
+    "compares": []
+   },
+   "limitations.s_conv": {
+    "text": "On {sc_n} of {n} deadlines the label rests on a disputed reading of the law that the engine's documentation shares; with any defensible reading accepted, exactly right: Ordnung {sc_o}, the model alone {sc_l}, the model with the rules pasted in {sc_r}, the agent {sc_t}.",
+    "compares": [
+     "ordnung",
+     "llm_only",
+     "llm_rules_text",
+     "llm_rules_tool"
+    ]
+   },
+   "limitations.s_conv_same": {
+    "text": "On {sc_n} of {n} deadlines the label rests on a disputed reading of the law that the engine's documentation shares; accepting any defensible reading changes no condition's score.",
+    "compares": []
+   },
+   "limitations.s_conv_none": {
+    "text": "No deadline's label rests on a reading of the law listed as disputed.",
+    "compares": []
+   },
+   "limitations.ambiguous": {
+    "text": "Left open between two or more dates by the letter or the law, and so not among the deadlines counted above (counted once for a letter and its photo): deadlines {amb_d}, offered dates {amb_o}, contract dates {amb_c}. Such a deadline counts as handled when the answer lists it and either gives it no date, flags it, or warns that the letter's dates are uncertain; such an offered date or contract date is not scored.",
+    "compares": []
+   },
+   "limitations.ambiguous_none": {
+    "text": "No deadline, offered date or contract date of the final letters is left open between two or more dates by the letter or the law.",
+    "compares": []
+   },
+   "limitations.writer": {
+    "text": "The letters and their labels were written and audited by a Claude model, run through Claude Code, that is not the benchmarked model but comes from its family.",
+    "compares": []
+   },
+   "limitations.absolute": {
+    "text": "Letters written by a model of that family may be easier for it to read than real mail, so every condition's absolute accuracy may be higher than on real letters.",
+    "compares": []
+   },
+   "limitations.ask_scope": {
+    "text": "“Ask: new questions on the demo household” holds out only its questions: its documents, prompt and scorer were tuned on the same household's development questions.",
+    "compares": []
+   },
+   "limitations.reads": {
+    "text": "The {k} reads were recorded within days of each other: they measure the model's run-to-run noise, not drift over months.",
+    "compares": []
+   },
+   "owner.pending": {
+    "text": "Not yet checked by a person: the labels, against an outside deadline calculator, and the Ask scores.",
+    "compares": []
+   },
+   "owner.labels_done": {
+    "text": "A person checked {owner_checked} labels against {owner_source}: {owner_agree} agree. The Ask scores are not yet checked by a person.",
+    "compares": []
+   },
+   "owner.kappa_done": {
+    "text": "The labels are not yet checked by a person. A person scored {owner_answers} Ask answers again: Cohen's κ = {owner_kappa}.",
+    "compares": []
+   },
+   "owner.done": {
+    "text": "A person checked {owner_checked} labels against {owner_source}: {owner_agree} agree; and scored {owner_answers} Ask answers again: Cohen's κ = {owner_kappa}.",
+    "compares": []
+   },
+   "provenance.none": {
+    "text": "Pre-registered before any recording ({prereg_file}, hash {prereg_hash}) and published whatever the result; no deviation was recorded.",
+    "compares": []
+   },
+   "provenance.one": {
+    "text": "Pre-registered before any recording ({prereg_file}, hash {prereg_hash}) and published whatever the result; one deviation was recorded at the time.",
+    "compares": []
+   },
+   "provenance.some": {
+    "text": "Pre-registered before any recording ({prereg_file}, hash {prereg_hash}) and published whatever the result; {deviations} deviations were recorded at the time.",
+    "compares": []
+   }
+  },
+  "placeholders": {
+   "level": {
+    "source": "final",
+    "path": "meta.settings.level",
+    "format": "percent_number"
+   },
+   "margin": {
+    "source": "final",
+    "path": "meta.settings.noninferiority_margin",
+    "format": "percent_number"
+   },
+   "n": {
+    "source": "final",
+    "path": "primary.items",
+    "format": "int"
+   },
+   "m": {
+    "source": "final",
+    "path": "primary.letters",
+    "format": "int"
+   },
+   "k": {
+    "source": "final",
+    "path": "primary.reads",
+    "format": "int"
+   },
+   "a_o": {
+    "source": "final",
+    "path": "primary.conditions.ordnung.mean_accuracy.value",
+    "format": "pct"
+   },
+   "ci_o": {
+    "source": "final",
+    "path": "primary.conditions.ordnung.mean_accuracy.ci",
+    "format": "ci"
+   },
+   "a_l": {
+    "source": "final",
+    "path": "primary.conditions.llm_only.mean_accuracy.value",
+    "format": "pct"
+   },
+   "a_b": {
+    "source": "final",
+    "path": "primary.conditions.{baseline_key}.mean_accuracy.value",
+    "format": "pct"
+   },
+   "d": {
+    "source": "final",
+    "path": "primary.families.{family}.{pair}.diff",
+    "format": "points"
+   },
+   "lo": {
+    "source": "final",
+    "path": "primary.families.{family}.{pair}.bootstrap.lo",
+    "format": "points"
+   },
+   "hi": {
+    "source": "final",
+    "path": "primary.families.{family}.{pair}.bootstrap.hi",
+    "format": "points"
+   },
+   "p": {
+    "source": "final",
+    "path": "primary.families.{family}.{pair}.holm",
+    "format": "p"
+   },
+   "power": {
+    "source": "power",
+    "path": "comparisons.{family}.{pair}.power",
+    "format": "pct_whole"
+   },
+   "ni_lo": {
+    "source": "final",
+    "path": "primary.noninferiority.{pair}.bound.lo",
+    "format": "points"
+   },
+   "ni_hi": {
+    "source": "final",
+    "path": "primary.noninferiority.{pair}.bound.hi",
+    "format": "points"
+   },
+   "err_o": {
+    "source": "final",
+    "path": "primary.noninferiority.{pair}.errors.ours",
+    "format": "int"
+   },
+   "err_b": {
+    "source": "final",
+    "path": "primary.noninferiority.{pair}.errors.theirs",
+    "format": "int"
+   },
+   "item_reads": {
+    "source": "final",
+    "path": "primary.decisions.harmful.reads",
+    "format": "int"
+   },
+   "h_o": {
+    "source": "final",
+    "path": "primary.conditions.ordnung.harmful_per_read",
+    "each": "k",
+    "total": "sum",
+    "format": "int"
+   },
+   "h_l": {
+    "source": "final",
+    "path": "primary.conditions.llm_only.harmful_per_read",
+    "each": "k",
+    "total": "sum",
+    "format": "int"
+   },
+   "h_r": {
+    "source": "final",
+    "path": "primary.conditions.llm_rules_text.harmful_per_read",
+    "each": "k",
+    "total": "sum",
+    "format": "int"
+   },
+   "h_t": {
+    "source": "final",
+    "path": "primary.conditions.llm_rules_tool.harmful_per_read",
+    "each": "k",
+    "total": "sum",
+    "format": "int"
+   },
+   "u_o": {
+    "source": "final",
+    "path": "primary.conditions.ordnung.unstable.k",
+    "format": "int"
+   },
+   "u_l": {
+    "source": "final",
+    "path": "primary.conditions.llm_only.unstable.k",
+    "format": "int"
+   },
+   "u_r": {
+    "source": "final",
+    "path": "primary.conditions.llm_rules_text.unstable.k",
+    "format": "int"
+   },
+   "u_t": {
+    "source": "final",
+    "path": "primary.conditions.llm_rules_tool.unstable.k",
+    "format": "int"
+   },
+   "p_f3": {
+    "source": "final",
+    "path": "primary.families.F3_stability.ordnung-vs-llm_only.holm",
+    "format": "p"
+   },
+   "discordant": {
+    "source": "final",
+    "paths": [
+     "primary.families.F3_stability.ordnung-vs-llm_only.b",
+     "primary.families.F3_stability.ordnung-vs-llm_only.c"
+    ],
+    "total": "sum",
+    "format": "int"
+   },
+   "min_discordant": {
+    "source": "templates",
+    "path": "rules.stability_min_discordant",
+    "format": "int"
+   },
+   "caught": {
+    "source": "final",
+    "path": "primary.decisions.flags_caught.caught",
+    "format": "int"
+   },
+   "wrong": {
+    "source": "final",
+    "path": "primary.decisions.flags_caught.wrong",
+    "format": "int"
+   },
+   "nk_m": {
+    "source": "final",
+    "path": "secondary.newkinds.letters",
+    "format": "int"
+   },
+   "nk_n": {
+    "source": "final",
+    "path": "secondary.newkinds.items",
+    "format": "int"
+   },
+   "nk_kinds": {
+    "source": "prereg",
+    "path": "data.splits.newkinds.kinds",
+    "total": "count",
+    "format": "int"
+   },
+   "nk_o": {
+    "source": "final",
+    "path": "secondary.newkinds.conditions.ordnung.exact.value",
+    "format": "pct"
+   },
+   "nk_ci_o": {
+    "source": "final",
+    "path": "secondary.newkinds.conditions.ordnung.exact.ci",
+    "format": "ci"
+   },
+   "nk_l": {
+    "source": "final",
+    "path": "secondary.newkinds.conditions.llm_only.exact.value",
+    "format": "pct"
+   },
+   "nk_r": {
+    "source": "final",
+    "path": "secondary.newkinds.conditions.llm_rules_text.exact.value",
+    "format": "pct"
+   },
+   "nk_t": {
+    "source": "final",
+    "path": "secondary.newkinds.conditions.llm_rules_tool.exact.value",
+    "format": "pct"
+   },
+   "nkh_o": {
+    "source": "final",
+    "path": "secondary.newkinds.conditions.ordnung.harmful.k",
+    "format": "int"
+   },
+   "nkh_l": {
+    "source": "final",
+    "path": "secondary.newkinds.conditions.llm_only.harmful.k",
+    "format": "int"
+   },
+   "nkh_r": {
+    "source": "final",
+    "path": "secondary.newkinds.conditions.llm_rules_text.harmful.k",
+    "format": "int"
+   },
+   "nkh_t": {
+    "source": "final",
+    "path": "secondary.newkinds.conditions.llm_rules_tool.harmful.k",
+    "format": "int"
+   },
+   "ask_right": {
+    "source": "ask",
+    "path": "r1.strict_accuracy.k",
+    "format": "int"
+   },
+   "ask_n": {
+    "source": "ask",
+    "path": "r1.strict_accuracy.n",
+    "format": "int"
+   },
+   "ask_harm": {
+    "source": "ask",
+    "path": "r1.harmful.k",
+    "format": "int"
+   },
+   "ask_judged": {
+    "source": "ask",
+    "path": "r1.harmful.n",
+    "format": "int"
+   },
+   "ask_harm_any": {
+    "source": "ask",
+    "path": "consistency.harmful_any.k",
+    "format": "int"
+   },
+   "ask_runs": {
+    "source": "ask",
+    "path": "consistency.runs",
+    "format": "int"
+   },
+   "ask_hit": {
+    "source": "ask",
+    "path": "consistency.attack_success_worst.k",
+    "format": "int"
+   },
+   "ask_attacks": {
+    "source": "ask",
+    "path": "consistency.attack_success_worst.n",
+    "format": "int"
+   },
+   "inj_n": {
+    "source": "stress",
+    "path": "endpoints.injection_targeted.n",
+    "format": "int"
+   },
+   "inj_o": {
+    "source": "stress",
+    "path": "endpoints.injection_targeted.ordnung",
+    "format": "int"
+   },
+   "inj_t": {
+    "source": "stress",
+    "path": "endpoints.injection_targeted.llm_rules_tool",
+    "format": "int"
+   },
+   "inj_p": {
+    "source": "stress",
+    "path": "endpoints.holm.injection_targeted",
+    "format": "p"
+   },
+   "dis_n": {
+    "source": "stress",
+    "path": "endpoints.distractor_taken.n",
+    "format": "int"
+   },
+   "dis_o": {
+    "source": "stress",
+    "path": "endpoints.distractor_taken.ordnung",
+    "format": "int"
+   },
+   "dis_t": {
+    "source": "stress",
+    "path": "endpoints.distractor_taken.llm_rules_tool",
+    "format": "int"
+   },
+   "dis_p": {
+    "source": "stress",
+    "path": "endpoints.holm.distractor_taken",
+    "format": "p"
+   },
+   "hu_n": {
+    "source": "stress",
+    "path": "endpoints.harmful_unflagged.n",
+    "format": "int"
+   },
+   "hu_o": {
+    "source": "stress",
+    "path": "endpoints.harmful_unflagged.ordnung",
+    "format": "int"
+   },
+   "hu_t": {
+    "source": "stress",
+    "path": "endpoints.harmful_unflagged.llm_rules_tool",
+    "format": "int"
+   },
+   "hu_p": {
+    "source": "stress",
+    "path": "endpoints.holm.harmful_unflagged",
+    "format": "p"
+   },
+   "e2e_obligations": {
+    "source": "e2e",
+    "path": "metrics.all.obligations",
+    "format": "int"
+   },
+   "e2e_in_time": {
+    "source": "e2e",
+    "path": "metrics.all.reminded_in_time.k",
+    "format": "int"
+   },
+   "e2e_set_aside": {
+    "source": "e2e",
+    "path": "metrics.all.scam.set_aside_obligations",
+    "format": "int"
+   },
+   "e2e_scam_letters": {
+    "source": "e2e",
+    "path": "metrics.all.scam.scam_letters",
+    "format": "int"
+   },
+   "e2e_scam_calendar": {
+    "source": "e2e",
+    "path": "metrics.all.scam.in_the_calendar",
+    "total": "count",
+    "format": "int"
+   },
+   "amb_d": {
+    "source": "final",
+    "path": "labels.ambiguous_slots.deadline",
+    "format": "int"
+   },
+   "amb_o": {
+    "source": "final",
+    "path": "labels.ambiguous_slots.offered",
+    "format": "int"
+   },
+   "amb_c": {
+    "source": "final",
+    "path": "labels.ambiguous_slots.contract",
+    "format": "int"
+   },
+   "sc_n": {
+    "source": "final",
+    "path": "sensitivities.s_conv.tagged_items",
+    "format": "int"
+   },
+   "sc_o": {
+    "source": "final",
+    "path": "sensitivities.s_conv.conditions.ordnung.mean_accuracy",
+    "format": "pct"
+   },
+   "sc_l": {
+    "source": "final",
+    "path": "sensitivities.s_conv.conditions.llm_only.mean_accuracy",
+    "format": "pct"
+   },
+   "sc_r": {
+    "source": "final",
+    "path": "sensitivities.s_conv.conditions.llm_rules_text.mean_accuracy",
+    "format": "pct"
+   },
+   "sc_t": {
+    "source": "final",
+    "path": "sensitivities.s_conv.conditions.llm_rules_tool.mean_accuracy",
+    "format": "pct"
+   },
+   "owner_checked": {
+    "source": "owner_labels",
+    "path": "checked",
+    "format": "int"
+   },
+   "owner_agree": {
+    "source": "owner_labels",
+    "path": "agree",
+    "format": "int"
+   },
+   "owner_source": {
+    "source": "owner_labels",
+    "path": "source",
+    "format": "text"
+   },
+   "owner_answers": {
+    "source": "owner_kappa",
+    "path": "answers",
+    "format": "int"
+   },
+   "owner_kappa": {
+    "source": "owner_kappa",
+    "path": "kappa",
+    "format": "kappa"
+   },
+   "prereg_file": {
+    "source": "final",
+    "path": "meta.prereg.file",
+    "format": "text"
+   },
+   "prereg_hash": {
+    "source": "final",
+    "path": "meta.prereg.sha256",
+    "format": "hash"
+   },
+   "deviations": {
+    "source": "deviations",
+    "path": "",
+    "total": "count",
+    "format": "int"
+   },
+   "deviations_file": {
+    "source": "templates",
+    "path": "files.deviations",
+    "format": "text"
+   },
+   "baseline": {
+    "source": "context",
+    "path": "baseline",
+    "format": "text"
+   }
+  }
+ },
+ "phase2": {
+  "file": "evals/preregistration/phase2-0.4.0.json",
+  "rule": "K19: the presenter's phase 2 (evals/present/** but final.py and final_templates.json, the docs templates, the report page's test) is built from the freeze sha on synthetic finals only, never on real results; at its head `python -m scripts.prereg_hashes --phase2 evals/preregistration/phase2-0.4.0.json --write` records each file's sha256 and their tree hash; that record is committed in the R0-full checkpoint and posted on the issue before R1; at publish, evals/present/** must be that tree, and a file that differs needs a code_hash_changed deviation naming its path"
+ },
+ "owner_checks": {
+  "status": "pending",
+  "blocking": false,
+  "labels": {
+   "file": "evals/preregistration/owner-labels-0.4.0.json",
+   "sha256_at_registration": "053c27987b627c5cc4fd30077d18a94543b2881c0effae6e6f88152aebb4a5cd",
+   "command": "python -m scripts.owner_label_sample --seed 20261029",
+   "plan": {
+    "holdout4": 20,
+    "newkinds": 10
+   },
+   "strata": "family",
+   "blind": "ids, slots and files only: no label and no condition's answer",
+   "against": "an outside deadline calculator (or a Steuerberater)"
+  },
+  "ask_kappa": {
+   "file": "evals/preregistration/owner-kappa-0.4.0.json",
+   "sha256_at_registration": "a26c5741cd9b033937809e915525eed7748d522a3e0e32a8005f02032e3af331",
+   "answers": 40,
+   "from": "run 1 of the held-out Ask set (R3), drawn after R3 by python -m evals.ask.owner --draw <run 1>, seed 20261029, stratified by question category",
+   "aspects": [
+    "abstained",
+    "false_inclusion",
+    "harmful"
+   ],
+   "statistic": "Cohen's κ between the owner's labels and the scorer's"
+  },
+  "rules": "pending at registration; never blocks recording, analysis or publication; published per id when done, whatever it shows; until then the publish PR and the page say \"not yet checked by a person\" (owner.pending); a confirmed error triggers the A2 review for that family, and a label the owner disputes changes only through that review (label_and_scorer_errors)"
+ },
+ "power": {
+  "caveats": "the confirmatory test is only just powered: at the earlier gap (+16.1 points) it decides in 0.93 of simulated runs, at half that gap in 0.37, and its MDD is +14.0 points. The simulation draws items independently even within a letter and its photo, and its gaps come from splits recorded with earlier code (holdout and holdout2 were followed by fixes they informed), so these figures may be optimistic. They are for three reads; with two or one read (contingency) power is lower and was not simulated. F2 against the agent is not tested; its row is what a test would give",
+  "file": "evals/preregistration/power-0.4.0.json",
+  "sha256": "1517ef5f0dfe767a693f0dd1f415996169a59fd37313e17e32d0691f1f7a6aa7",
+  "command": "python -m scripts.eval_power --prereg <draft> --reps 2000 --draws 10000 --seed 20261029",
+  "draft": {
+   "name": "final-0.4.0-draft.json",
+   "sha256": "8d1805bd687a61ea1f0a01dd4655aad63a7eeb65e5cbdc42ada694e119fb5c30",
+   "is": "{\"analysis\": <this file's analysis section>} written as json.dumps(indent=1, ensure_ascii=False) plus a newline"
+  }
+ },
+ "calibration": {
+  "file": "evals/preregistration/calibration-0.4.0.json",
+  "sha256": "a6d9afb39cb9569e9986718ab6a2fc95e06fb9337f623a22e0fa0bf1137ce827",
+  "command": "python -m scripts.prereg_calibration"
+ },
+ "amendments_in_force": {
+  "K2": "Rule A: the set is written for D0 and valid through L = D0 + 7; every scored date is ≥ L + 1; each unit's simulated today is the UTC day it is recorded.",
+  "K3": "A unit (one entry × one repeat with all its conditions; one Ask run; one stress invocation) cannot continue past its UTC day; a read may span days of the window; a cut unit is retaken whole.",
+  "K4": "--concurrency 3 (the code default).",
+  "K5": "Run order R1 newkinds r1, R2 holdout4 r1, R3 Ask r1, R4/R5 holdout4 r2/r3, R6 Ask r2 + r3, R7 stress I1 + D1.",
+  "K7": "Stress base: 48 standard text letters of holdout4, ≥ 4 from each of the ten families with dated deadlines, seed 20261029; clean reference = holdout4 r1 replayed.",
+  "K10": "A CLI version change: recording continues only if the served model is claude-sonnet-5 and the requests are unchanged (contingency), with a cli_version deviation recorded at the time.",
+  "K12": "Deviations are recorded when they happen (deviations file, issue comment, next pushed checkpoint); this file stays byte-identical.",
+  "K13/K23/K24/K26": "Dates: K26 (owner's decision, 2026-11-11) is in force: F = Wed 11 Nov 2026, D0 = Tue 24 Nov 2026, L = Tue 1 Dec 2026, scored dates ≥ Wed 2 Dec 2026.",
+  "K14": "Owner's label check: 20 holdout4 (stratified by family) + 10 newkinds, blind to answers.",
+  "K15": "A1 read every letter without the conventions (sealed); A1c applied them to A1's sealed facts (sealed separately); both tallies are published.",
+  "K16": "Writers and auditors ran a Claude model that is not the benchmarked model; it is not named; each writer-run.jsonl's sha256 is committed.",
+  "K17": "R7 computes the noise floor from the holdout4 results files; no mid-recording analysis.",
+  "K18": "Every outcome line is sealed; this registration keeps the seal until the blind discordance review (A2/A2′) is complete (sealing).",
+  "K19": "Presenter phase 2 is built before D0 from the freeze sha on synthetic finals; its head and tree sha256 are posted before R1; a later diff is a code_hash_changed deviation.",
+  "K21": "README = readme_block, page = page_block; layout readme_layout; README_BLOCK_MAX_LINES 26, README_LINE_MAX 412 (constants in evals/present/final.py).",
+  "K22": "A procedure start counts only where it can change the date (BW, BY, MV Land VwVfG deemed-delivery decisions); the chart's line is a registered frame (README_PICTURE_MAX 1000); the publish PR may rewrite README's \"Held out.\" and \"Pre-registered next.\" bullets.",
+  "K25": "Smoke ids: 0.E asks deadline-steuerbescheid_2025-0, cross-pay-this-week, none-netflix; the daily micro-smoke asks cross-pay-this-week, $0.11; expected total $140.1.",
+  "K26": "No step waits for a date (dates above); two Stage 2 chains (W1, W2) ran side by side, each one session at a time; the publish PR updates evals/README.md's 2026-12-08 examples.",
+  "K27": "The owner's decision of 2026-11-12 03:10 UTC, after the audit and both writer fix rounds: the final splits' convention tags were set from the blind facts by one deterministic step before commit A (verify_labels rule 8 had failed on 137 of 147 label parts, 0 date problems, with no fix round left, and the procedure as written would have dropped every scored item); rule 8 checks the tags for consistency only; no date, letter, composition or S-conv count moved."
+ },
+ "labels": {
+  "sessions": "W1a, W1b, W1c: the writers of holdout4, newkinds and the stress templates; A1: the convention-free audit in four batches; A1c: the conventions applied to A1's sealed facts; A1′: adjudication of the audit's disagreements (X/Y, blind to which side is the label); W1-fix: the writer's fix rounds; W2: the writer of the held-out Ask set; W2v: the blind answerer of its questions; W2a: adjudication of W2v's disagreements; W2-fix: its fix rounds",
+  "after recording": "A2: the blind review of every item any condition got wrong in any read, plus decoys, without any condition's answer; A2′: adjudication of A2's disagreements with the labels (as A1′)",
+  "steps": "R1–R7: the recording steps of runs; R0-full: the zero-token pre-checks of the recording tree on D0 − 1",
+  "amendments": "K2–K27: the amendments to the plan in force, one line each in amendments_in_force"
+ },
+ "pledge": "This result is published in the README, on the report page and in docs/evals.md, whatever it is. The publish PR opens within 14 days of the last recording day, with the final JSON and the rendered sentences. Every pre-registered endpoint is published, including reads cut by budget or window and any retired set. The generated block, including its \"where it falls short\" line, stays in the README for every 0.4.x release. No later split replaces it as 0.4.0's headline, and no fix informed by it is reported as held-out."
+}

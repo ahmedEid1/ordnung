@@ -1,0 +1,7 @@
+format ev8-adjudication/1
+cases in pack 32 in output 32 missing [] extra []
+verdicts {'X_right': 19, 'Y_right': 13}
+fact source {'A1p': 32} facts with procedure_began 0
+outcomes (via key) {'audit_upheld': 2, 'label_upheld': 30}
+sides in key {('a1c', 'label'): 11, ('label', 'a1c'): 21}
+RESULT PASS

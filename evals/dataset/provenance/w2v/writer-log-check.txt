@@ -1,0 +1,3 @@
+tool calls in the run log: 12 {'Bash': 11, 'Read': 1}
+hook log lines: 12, denied: 1, mismatches: 0
+  denied Read [['file_path', '/home/writer/.claude/projects/-work/32d7f6be-26a3-4b3a-81de-52a7a97aa56d/tool-results/byfx6awqb.txt']]: file_path outside /work: /home/writer/.claude/projects/-work/32d7f6be-26a3-4b3a-81de-52a7a97aa56d/tool-results/byfx6awqb.txt

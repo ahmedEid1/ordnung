@@ -1,0 +1,3 @@
+tool calls in the run log: 25 {'Bash': 25}
+hook log lines: 24, denied: 0, mismatches: 1
+  MISMATCH toolu_011AJi49RPr9jYJYKD2d7bhV Bash: 0 hook lines

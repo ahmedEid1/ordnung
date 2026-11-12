@@ -60,7 +60,8 @@ def test_a_split_is_recorded_once_a_live_results_file_of_it_is_published(tmp_pat
 
 def test_letters_exist_when_the_manifest_has_entries_of_the_split(tmp_path: Path) -> None:
     assert splits.has_letters("holdout3") and splits.has_letters("dev")
-    assert not splits.has_letters("holdout4") and not splits.has_letters("newkinds")
+    # the final splits' letters are committed (written blind after the code freeze, before their recording)
+    assert splits.has_letters("holdout4") and splits.has_letters("newkinds")
     manifest = tmp_path / "manifest.json"
     manifest.write_text(
         json.dumps({"entries": [{"id": "holdout4-x-K1", "split": "holdout4"}]}), encoding="utf-8"

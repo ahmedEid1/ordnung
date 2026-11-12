@@ -1,0 +1,20 @@
+{
+ "schema": "ordnung-owner-kappa/1",
+ "status": "pending",
+ "about": "The owner's check of the held-out Ask scorer: answers of the first run, drawn blind, labelled by hand on abstained, false_inclusion, harmful, and Cohen's kappa between the owner's labels and the scorer's. It never blocks anything; until it is done the report says the scores are not yet checked by a person.",
+ "sampler": "evals.ask.owner.sample_answers",
+ "seed": 20261029,
+ "n": 40,
+ "strata": "category",
+ "aspects": [
+  "abstained",
+  "false_inclusion",
+  "harmful"
+ ],
+ "run": null,
+ "sample": null,
+ "labels": null,
+ "answers": null,
+ "kappa": null,
+ "by_aspect": null
+}

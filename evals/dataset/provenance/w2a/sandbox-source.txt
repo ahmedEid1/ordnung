@@ -1,0 +1,7 @@
+commit 6cabd24e57e5c1ed806b07131cffae6fc78227c8
+profile adjudicate-ask
+git-archive skipped
+from-commit evals/law -> law
+from-commit evals/dataset/FACTS.md -> FACTS.md
+extra dir:c7ef6d00f2f2d9588dec677fa5ff35cd2a5320ede32e42751f1f57a4a354bda6 $S/ev8/final/w2a-in/pack-out/pack -> pack
+anchor expect 2ad03f3cd465fa46c9f5a9720819198757e467aa156b613a735fabe2b4d4be46 $S/ev8/final/w2a-in/pack-out/pack.sha256

@@ -1,0 +1,2 @@
+HIT evals/perturb/templates.json:2 b868233bc5b857cf allowed
+summary: files 2, hit lines 1, allowed 1, outside allow-list 0, unused allow-list entries 21, allow-list sha256 a1215d1eb0450e1447712f699bb584ee037d9d4cb8d366f591c78d61a91ae7bc

@@ -1,0 +1,17 @@
+commit 446687b6602b6bd5bd6636fc3a0a566ccf1f4634
+profile w1c
+path evals/gen
+path evals/generate.py
+path evals/verify_labels.py
+path tests/test_eval_dataset.py
+path constraints.txt
+path src/ordnung/drafts/fonts/DejaVuSans.ttf
+path src/ordnung/drafts/fonts/DejaVuSans-Bold.ttf
+path src/ordnung/drafts/fonts/LICENSE-DejaVu.txt
+path evals/law
+path evals/perturb/templates.py
+path evals/perturb/README.md
+path evals/perturb/templates.json
+extra c581b215211d558c31ebf9e6a6efe70db96ac38d736cfa76b0303942971c1be3 $S/ev8/final/redacted/VERIFICATION-e51d5d07.md -> evals/dataset/VERIFICATION.md
+extra 86bdc14ca9b475cc86700d30a67f9e3d8c541ee4f4598e4853b0ca8d7c28739a $S/ev8/final/redacted/pyproject.toml -> pyproject.toml
+extra e5245aad10a8e64560aeeaefda061e50224f3b37f1557609849b357b202e01d9 $S/ev8/final/w1c-fix1-in/fix-list.md -> fix-list.md

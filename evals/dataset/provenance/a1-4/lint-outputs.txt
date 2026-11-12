@@ -1,0 +1,3 @@
+HIT audit/derived-b4.json:747 6255f979b3fc0396 OUTSIDE
+HIT audit/derived-b4.json:1400 62cdae8c8644541e OUTSIDE
+summary: files 2, hit lines 2, allowed 0, outside allow-list 2, unused allow-list entries 0, allow-list sha256 none

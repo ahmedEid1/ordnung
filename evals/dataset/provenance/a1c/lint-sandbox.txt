@@ -1,0 +1,16 @@
+HIT sealed/derived-b1.json:168 40c4e4c0ca0feb2d allowed
+HIT sealed/derived-b2.json:109 19f5ac949eae9afd allowed
+HIT sealed/derived-b2.json:123 2b16e2006daf388b allowed
+HIT sealed/derived-b2.json:136 ae92f748a7341607 allowed
+HIT sealed/derived-b2.json:150 2f652b05ca1ce6a7 allowed
+HIT sealed/derived-b3.json:221 aab619a7935f4d2a allowed
+HIT sealed/derived-b3.json:599 79ffaba2742e5008 allowed
+HIT sealed/derived-b3.json:1462 22c073acfe0981d8 allowed
+HIT sealed/derived-b3.json:1557 8ff639305d05b4bd allowed
+HIT sealed/derived-b3.json:1697 f5e7181f8f1c575c allowed
+HIT sealed/derived-b3.json:1710 6200a8a5de4d5543 allowed
+HIT sealed/derived-b3.json:1832 d46c0b09da5575e3 allowed
+HIT sealed/derived-b4.json:747 6255f979b3fc0396 allowed
+HIT sealed/derived-b4.json:1400 62cdae8c8644541e allowed
+HIT @brief:68 66472c7d5756dab5 allowed
+summary: files 23, hit lines 15, allowed 15, outside allow-list 0, unused allow-list entries 0, allow-list sha256 0d2d05dd88b78f3c4b6b14df1230b44c8d24aac6293edf35b3eb9224b5fc7b44

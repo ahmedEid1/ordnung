@@ -1,0 +1,2 @@
+tool calls in the run log: 20 {'Bash': 18, 'Read': 1, 'Edit': 1}
+hook log lines: 20, denied: 0, mismatches: 0
