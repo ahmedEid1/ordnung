@@ -5,9 +5,16 @@ It is built from ``presentation.json`` alone, so the Pages job needs no install 
 CSS variables for light and dark), a table and a CSV behind every chart, ``data.json`` (``presentation.json`` as it
 is) and the README's charts (``eval-*-{light,dark}.svg``), which PyPI's copy of the README loads from here.
 
+Once ``presentation.json`` holds the final run, the page is the final run's: its tiles (Ordnung's and the model
+alone's mean accuracy over the reads, and the late or missed dates over the reads), lede, description and timeline
+caption are view templates filled from it (:mod:`evals.present.finaltext`), the final run's charts join the others
+with their tables and CSVs, sections 16 (deviations) and 17 (provenance) join the contents, and the footer names the
+hash of ``presentation.json``, the one section 17 lists.
+
 :func:`check_site` fails on a chart without its description or table, a link to nowhere, a picture without alt
 text, a number the presenter does not render from ``presentation.json``, or a sentence of a benchmark letter (named
-by its hash, never printed).
+by its hash, never printed); with a final run, also on a final chart without its table or CSV, section 16 or 17
+missing, or a registered page sentence that is not on the page as ``presentation.json`` holds it.
 """
 
 from __future__ import annotations
@@ -29,6 +36,11 @@ TITLE = "Ordnung evaluation"
 DESCRIPTION = (
     "How well Ordnung reads German letters and dates their deadlines: held-out results against three baselines on "
     "the same model, with intervals, safety, failures and cost."
+)
+LEDE = (
+    "The model reads the letter; tested code computes the deadline. Does that beat the same model doing the date "
+    "arithmetic itself? Measured on synthetic letters nothing was tuned on, against three baselines that use the same "
+    "model."
 )
 #: Fields of the dataset manifest that never hold a letter's words (ids, files, hashes, codes).
 _NOT_TEXT = frozenset(
@@ -140,6 +152,10 @@ def csv_text(header: Sequence[str], rows: Sequence[Sequence[str]]) -> str:
 
 def caption(name: str, doc: Mapping[str, Any]) -> str:
     """The chart's one-line "What this shows", generated from the numbers."""
+    if name in charts.FINAL_NAMES:
+        from evals.present import finalcharts
+
+        return finalcharts.caption(name, doc)
     conditions = doc["headline"]["conditions"]
     o, alone, agent = (conditions[c] for c in ("ordnung", "llm_only", "llm_rules_tool"))
     if name == "held-out":
@@ -149,6 +165,10 @@ def caption(name: str, doc: Mapping[str, Any]) -> str:
             f"as a tool {fmt.pct(agent['exact']['value'])} with {agent['harmful']['k']}."
         )
     if name == "timeline":
+        if doc.get("final") is not None:
+            from evals.present import finaltext
+
+            return finaltext.timeline_caption(doc)
         return (
             "The dev split was tuned on and the test split iterated on; each held-out split was written before any "
             "recording on it and recorded once."
@@ -182,7 +202,7 @@ def _figure(name: str, doc: Mapping[str, Any]) -> str:
         f'<div class="narrow">{charts.svg(name, doc, "css", narrow=True)}</div>'
         f"<figcaption>What this shows: {escape(caption(name, doc))}</figcaption>"
         f"<details><summary>Show the numbers as a table</summary>"
-        f"{_table(header, rows, charts.title(name) + ' (table)')}"
+        f"{_table(header, rows, charts.title(name, doc) + ' (table)')}"
         f'<p><a href="{name}.csv" download>Download the numbers (CSV)</a></p></details></figure>'
     )
 
@@ -203,24 +223,56 @@ def _blocks(blocks: Sequence[text.Block], doc: Mapping[str, Any]) -> str:
                 '<div class="tablewrap" tabindex="0" role="region" aria-label="Commands">'
                 "<pre><code>" + escape("\n".join(block.lines)) + "</code></pre></div>"
             )
+        elif isinstance(block, text.Marker):
+            continue  # a line that marks a generated part of the Markdown page; the page shows the part alone
         else:
             out.append(f"<h3>{inline(block.text)}</h3>")
     return "".join(out)
 
 
-def page(doc: Mapping[str, Any], *, commit: str | None = None) -> str:
-    """``index.html`` of the report page."""
+def _headline(doc: Mapping[str, Any]) -> tuple[list[tuple[str, str]], str, str, str]:
+    """The page's tiles (``(value, what it is)`` as HTML), lede, description and the footer's sentence on
+    ``presentation.json`` (none while there is no final run)."""
+    if doc.get("final") is not None:
+        from evals.present import finaltext
+
+        tiles = [(escape(value), inline(label)) for value, label in finaltext.page_tiles(doc)]
+        return (
+            tiles,
+            finaltext.page_lede(doc),
+            finaltext.page_description(doc),
+            " " + finaltext.page_footer(doc),
+        )
     conditions = doc["headline"]["conditions"]
     o, alone = conditions["ordnung"], conditions["llm_only"]
+    tiles = [
+        (
+            fmt.pct(o["exact"]["value"]),
+            f"deadlines dated exactly right by Ordnung ({fmt.of(o['exact'])}, held out)",
+        ),
+        (
+            fmt.of(o["harmful"]),
+            f"late or missed with Ordnung, against {alone['harmful']['k']} for the model alone",
+        ),
+        (
+            fmt.pct(alone["exact"]["value"]),
+            f"the same model doing the date arithmetic itself ({fmt.of(alone['exact'])})",
+        ),
+    ]
+    return tiles, LEDE, DESCRIPTION, ""
+
+
+def page(doc: Mapping[str, Any], *, commit: str | None = None) -> str:
+    """``index.html`` of the report page."""
     sections = text.sections(doc)
+    shown, lede, description, hashed = _headline(doc)
     tiles = (
         '<ul class="tiles" aria-label="The headline">'
-        f'<li class="tile"><span class="v">{fmt.pct(o["exact"]["value"])}</span><span class="l">deadlines dated '
-        f"exactly right by Ordnung ({fmt.of(o['exact'])}, held out)</span></li>"
-        f'<li class="tile"><span class="v">{fmt.of(o["harmful"])}</span><span class="l">late or missed with '
-        f"Ordnung, against {alone['harmful']['k']} for the model alone</span></li>"
-        f'<li class="tile"><span class="v">{fmt.pct(alone["exact"]["value"])}</span><span class="l">the same model '
-        f"doing the date arithmetic itself ({fmt.of(alone['exact'])})</span></li></ul>"
+        + "".join(
+            f'<li class="tile"><span class="v">{value}</span><span class="l">{label}</span></li>'
+            for value, label in shown
+        )
+        + "</ul>"
     )
     toc = "".join(f'<li><a href="#{s.anchor}">{escape(s.title)}</a></li>' for s in sections)
     body = "".join(
@@ -235,18 +287,18 @@ def page(doc: Mapping[str, Any], *, commit: str | None = None) -> str:
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{TITLE}</title>
-<meta name="description" content="{escape(DESCRIPTION)}">
+<meta name="description" content="{escape(description)}">
 <style>{CSS}</style>
 </head>
 <body>
 <main>
 <p class="top"><a href="../">Online demo</a> · <a href="{REPO_URL}">Source</a> · <a href="{REPO_URL}/blob/main/docs/evals.md">This report on GitHub</a></p>
 <h1>{TITLE}</h1>
-<p class="lede">The model reads the letter; tested code computes the deadline. Does that beat the same model doing the date arithmetic itself? Measured on synthetic letters nothing was tuned on, against three baselines that use the same model.</p>
+<p class="lede">{escape(lede, quote=False)}</p>
 {tiles}
 <nav class="toc" aria-label="Report sections"><ul>{toc}</ul></nav>
 {body}
-<footer><p>Built by <code>python -m evals.present --site</code> from <a href="data.json">presentation.json</a>{built}, never by hand. Every number replays from the recorded answers with no model call: <a href="#15-reproduce">Reproduce</a>. This page: <a href="{PAGES_URL}">{PAGES_URL}</a>.</p></footer>
+<footer><p>Built by <code>python -m evals.present --site</code> from <a href="data.json">presentation.json</a>{built}, never by hand.{inline(hashed)} Every number replays from the recorded answers with no model call: <a href="#15-reproduce">Reproduce</a>. This page: <a href="{PAGES_URL}">{PAGES_URL}</a>.</p></footer>
 </main>
 </body>
 </html>
@@ -262,10 +314,10 @@ def build_site(doc: Mapping[str, Any], out: Path, *, commit: str | None = None) 
     """Write the report page into ``out``; returns the files written."""
     out.mkdir(parents=True, exist_ok=True)
     files = {"index.html": page(doc, commit=commit), "data.json": dumps(doc)}
-    for name in charts.NAMES:
+    for name in charts.names(doc):
         header, rows = charts.table(name, doc)
         files[f"{name}.csv"] = csv_text(header, rows)
-    for name in charts.COMMITTED:
+    for name in charts.committed(doc):
         for theme in ("light", "dark"):
             files[f"eval-{name}-{theme}.svg"] = charts.svg(name, doc, theme)
     written = []
@@ -350,6 +402,33 @@ def _numbers(html: str) -> set[str]:
     return set(_PERCENT.findall(words)) | set(_OF.findall(words))
 
 
+def _visible(html: str) -> str:
+    """What a reader sees of ``html``: its text, markup and entities read, white space made one space."""
+    parsed = _Page()
+    parsed.feed(html)
+    return " ".join("".join(parsed.text).split())
+
+
+def _final_problems(parsed: _Page, html: str, doc: Mapping[str, Any]) -> list[str]:
+    """What the page of a final run lacks: section 16 or 17 (or its line in the contents), or a registered page
+    sentence as ``presentation.json`` holds it (named by its slot and code)."""
+    from evals.present import finaltext
+
+    problems = [
+        f"section {section.title} is missing from the page or its contents (#{section.anchor})"
+        for section in finaltext.appendix(doc)
+        if section.anchor not in parsed.ids or f"#{section.anchor}" not in parsed.links
+    ]
+    seen = _visible(html)
+    for number, sentence in enumerate(doc["final"]["sentences"]["page"], 1):
+        if _visible(inline(sentence["text"])) not in seen:
+            problems.append(
+                f"registered sentence {number} ({sentence['slot']}, {sentence['code']}) is not on the page as "
+                "presentation.json holds it"
+            )
+    return problems
+
+
 def dataset_sentences(manifest: Path | None = None) -> tuple[str, ...]:
     """The benchmark letters' sentences (label quotes, key and hidden phrases): what no page may hold."""
     path = manifest or ROOT / "evals" / "dataset" / "manifest.json"
@@ -389,7 +468,7 @@ def check_site(out: Path, doc: Mapping[str, Any], *, forbidden: Sequence[str] = 
     for image in parsed.images:
         if not image.get("alt"):
             problems.append(f"a picture without alt text: {image.get('src')}")
-    for name in charts.NAMES:
+    for name in charts.names(doc):
         figure = parsed.figures.get(name)
         if figure is None:
             problems.append(f"the chart {name} is missing")
@@ -402,10 +481,12 @@ def check_site(out: Path, doc: Mapping[str, Any], *, forbidden: Sequence[str] = 
             problems.append(f"the chart {name} has no table")
         if f"{name}.csv" not in figure["csv"] or not (out / f"{name}.csv").is_file():
             problems.append(f"the chart {name} has no CSV beside it")
-    for name in charts.COMMITTED:
+    for name in charts.committed(doc):
         for theme in ("light", "dark"):
             if not (out / f"eval-{name}-{theme}.svg").is_file():
                 problems.append(f"eval-{name}-{theme}.svg is missing (the README's charts on PyPI load it)")
+    if doc.get("final") is not None:
+        problems += _final_problems(parsed, html, doc)
     rendered = _numbers(page(doc))
     for number in sorted(_numbers(html) - rendered):
         problems.append(f"{number}: a number the presenter does not render from presentation.json")
