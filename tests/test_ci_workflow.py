@@ -1,7 +1,8 @@
 """.github/workflows/ci.yml: the slow checks have a job of their own, the end-to-end job runs beside the backend's,
 a push to main never cuts off a running run, macOS and Windows must pass, every published benchmark number is
 replayed with a gate at that number, coverage has floors, the weekly run checks the rules' age and the real Claude
-Code's flags, and a real Tesseract is installed only where a test needs it (ADR 0024)."""
+Code's flags, a real Tesseract is installed only where a test needs it (ADR 0024), and each job that runs the
+pre-registration's tests checks out the whole history."""
 
 from __future__ import annotations
 
@@ -11,6 +12,7 @@ import shlex
 import subprocess
 import sys
 import tomllib
+from fnmatch import fnmatch
 from pathlib import Path
 from typing import Any
 
@@ -177,6 +179,84 @@ def test_the_backend_legs_have_room_for_a_slow_runner() -> None:
     assert backend["timeout-minutes"] >= 1.5 * slowest_leg_seen
     assert backend["strategy"]["matrix"]["python"] == ["3.11", "3.12", "3.13", "3.14"]
     assert "pytest" in _script(backend)
+
+
+#: the tests that read the git history from the pre-registration's freeze commit on
+PREREGISTRATION_TESTS = "tests/test_preregistration.py"
+#: pytest's options whose value is the next argument (``-m "not slow"``, ``--deselect tests/x.py::y``)
+_PYTEST_OPTION_VALUES = ("-m", "-k", "-p", "-c", "--deselect", "--ignore", "--ignore-glob", "--rootdir")
+
+
+def _pytest_runs(job: dict[str, Any]) -> list[list[str]]:
+    """The arguments of each pytest run in ``job``'s steps (a line continued with a backslash read as one)."""
+    runs = []
+    for line in _script(job).replace("\\\n", " ").splitlines():
+        found = re.search(r"(?:^|[\s/])pytest(?=\s|$)", line)
+        if found:
+            runs.append(shlex.split(line[found.end() :]))
+    return runs
+
+
+def _can_run(args: list[str], test_file: str) -> bool:
+    """Whether a pytest run with ``args`` can include ``test_file``: one that names no test path runs the whole
+    suite, whatever its ``-m`` (the pre-registration's file has slow and not-slow tests); one that names paths runs
+    what they match; an ``--ignore`` that matches leaves it out."""
+    paths, ignored = [], []
+    rest = iter(args)
+    for arg in rest:
+        if arg in _PYTEST_OPTION_VALUES:
+            value = next(rest, "")
+            if arg.startswith("--ignore"):
+                ignored.append(value)
+        elif arg.startswith(("--ignore=", "--ignore-glob=")):
+            ignored.append(arg.split("=", 1)[1])
+        elif not arg.startswith("-"):
+            paths.append(arg.split("::", 1)[0].rstrip("/"))
+    if any(fnmatch(test_file, pattern) for pattern in ignored):
+        return False
+    return not paths or any(path in (".", "tests") or fnmatch(test_file, path) for path in paths)
+
+
+@pytest.mark.parametrize(
+    ("command", "runs_it"),
+    [
+        ('-m "not slow" --cov=ordnung --cov-report=term-missing:skip-covered', True),
+        ("-m slow", True),
+        ('-m "not slow" --deselect tests/test_openapi_contract.py::test_web_openapi_json_is_current', True),
+        ("-q tests", True),
+        ("tests/test_pre*.py", True),
+        ("tests/test_preregistration.py::test_every_required_field_is_there", True),
+        ("tests/test_rules_*.py --cov=ordnung.rules --cov-branch", False),
+        ("-q tests/test_mock_numbers.py tests/test_docs_claims.py::test_x", False),
+        ('-m "not slow" --ignore=tests/test_preregistration.py', False),
+    ],
+)
+def test_a_pytest_run_is_read_as_running_the_pre_registration_s_tests_or_not(
+    command: str, runs_it: bool
+) -> None:
+    assert _can_run(shlex.split(command), PREREGISTRATION_TESTS) is runs_it
+
+
+def test_every_job_that_runs_the_pre_registration_s_tests_checks_out_the_whole_history() -> None:
+    """tests/test_preregistration.py reads the git history from the freeze commit on (the paths changed since, the
+    files written once, each deviation recorded at the time). A clone without that commit skips those checks only
+    until a final result is published, and fails them from then on: CI's clone must hold the history.
+    actions/checkout fetches one commit unless ``fetch-depth: 0`` asks for all of them, so each job whose pytest run
+    can include that file asks for all: the backend's legs, the slow checks and the lowest and newest versions. The
+    macOS and Windows job and the end-to-end job name their tests, and it is not among them."""
+    jobs = _jobs()
+    history = {
+        name
+        for name, job in jobs.items()
+        if any(_can_run(args, PREREGISTRATION_TESTS) for args in _pytest_runs(job))
+    }
+    assert {"backend", "backend-slow", "lowest", "latest"} <= history
+    assert not history & {"other-systems", "e2e"}
+    for name in sorted(history):
+        (checkout,) = [
+            step for step in jobs[name]["steps"] if step.get("uses", "").startswith("actions/checkout@")
+        ]
+        assert checkout.get("with", {}).get("fetch-depth") == 0, name
 
 
 def _final_gate(line: str) -> bool:
