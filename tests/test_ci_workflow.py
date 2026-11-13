@@ -183,24 +183,81 @@ def test_the_backend_legs_have_room_for_a_slow_runner() -> None:
 
 #: the tests that read the git history from the pre-registration's freeze commit on
 PREREGISTRATION_TESTS = "tests/test_preregistration.py"
-#: pytest's options whose value is the next argument (``-m "not slow"``, ``--deselect tests/x.py::y``)
-_PYTEST_OPTION_VALUES = ("-m", "-k", "-p", "-c", "--deselect", "--ignore", "--ignore-glob", "--rootdir")
+#: pytest's options whose value is the next argument (``-m "not slow"``, ``--deselect tests/x.py::y``,
+#: ``--durations 20``)
+_PYTEST_OPTION_VALUES = (
+    "-m",
+    "-k",
+    "-p",
+    "-c",
+    "-n",
+    "-o",
+    "-W",
+    "--deselect",
+    "--ignore",
+    "--ignore-glob",
+    "--rootdir",
+    "--confcutdir",
+    "--basetemp",
+    "--durations",
+    "--maxfail",
+    "--tb",
+    "--junitxml",
+)
 
 
-def _pytest_runs(job: dict[str, Any]) -> list[list[str]]:
-    """The arguments of each pytest run in ``job``'s steps (a line continued with a backslash read as one)."""
+def _make_rules() -> dict[str, tuple[list[str], list[str]]]:
+    """The Makefile's rules: each target's prerequisites and recipe lines."""
+    rules: dict[str, tuple[list[str], list[str]]] = {}
+    target = None
+    for line in (ROOT / "Makefile").read_text(encoding="utf-8").splitlines():
+        rule = re.match(r"([a-z][a-z0-9-]*):(?!=)([^#]*)", line)
+        if rule:
+            target = rule.group(1)
+            rules[target] = (rule.group(2).split(), [])
+        elif line.startswith("\t") and target is not None:
+            rules[target][1].append(line[1:])
+        elif line.strip():
+            target = None
+    return rules
+
+
+def _script_runs(
+    script: str, rules: dict[str, tuple[list[str], list[str]]], seen: set[str]
+) -> list[list[str]]:
     runs = []
-    for line in _script(job).replace("\\\n", " ").splitlines():
+    for line in script.replace("\\\n", " ").splitlines():
         found = re.search(r"(?:^|[\s/])pytest(?=\s|$)", line)
         if found:
             runs.append(shlex.split(line[found.end() :]))
+            continue
+        make = re.search(r"(?:^|[\s;&|(])make\s+(.*)", line)
+        for target in shlex.split(make.group(1)) if make else []:
+            if target.startswith("-") or "=" in target or target in seen or target not in rules:
+                continue
+            seen.add(target)
+            prerequisites, recipe = rules[target]
+            runs += _script_runs("\n".join(f"make {name}" for name in prerequisites), rules, seen)
+            runs += _script_runs("\n".join(recipe), rules, seen)
     return runs
+
+
+def _pytest_runs(job: dict[str, Any]) -> list[list[str]]:
+    """The arguments of each pytest run in ``job``'s steps (a line continued with a backslash read as one; a
+    ``make <target>`` read as that target's recipe, its prerequisites' first)."""
+    return _script_runs(_script(job), _make_rules(), set())
+
+
+def _is_test_path(arg: str) -> bool:
+    """Whether a pytest argument names tests (a file, a folder, a node id or a glob of them), not an option's value."""
+    return arg in (".", "tests") or arg.startswith(("tests/", "./")) or "::" in arg or arg.endswith(".py")
 
 
 def _can_run(args: list[str], test_file: str) -> bool:
     """Whether a pytest run with ``args`` can include ``test_file``: one that names no test path runs the whole
     suite, whatever its ``-m`` (the pre-registration's file has slow and not-slow tests); one that names paths runs
-    what they match; an ``--ignore`` that matches leaves it out."""
+    what they match; an ``--ignore`` that matches leaves it out. An argument that names no test (an option's value,
+    as in ``--durations 20``) is not read as a path."""
     paths, ignored = [], []
     rest = iter(args)
     for arg in rest:
@@ -210,11 +267,11 @@ def _can_run(args: list[str], test_file: str) -> bool:
                 ignored.append(value)
         elif arg.startswith(("--ignore=", "--ignore-glob=")):
             ignored.append(arg.split("=", 1)[1])
-        elif not arg.startswith("-"):
-            paths.append(arg.split("::", 1)[0].rstrip("/"))
+        elif not arg.startswith("-") and _is_test_path(arg):
+            paths.append(arg.split("::", 1)[0].removeprefix("./").rstrip("/"))
     if any(fnmatch(test_file, pattern) for pattern in ignored):
         return False
-    return not paths or any(path in (".", "tests") or fnmatch(test_file, path) for path in paths)
+    return not paths or any(path in (".", "", "tests") or fnmatch(test_file, path) for path in paths)
 
 
 @pytest.mark.parametrize(
@@ -229,6 +286,14 @@ def _can_run(args: list[str], test_file: str) -> bool:
         ("tests/test_rules_*.py --cov=ordnung.rules --cov-branch", False),
         ("-q tests/test_mock_numbers.py tests/test_docs_claims.py::test_x", False),
         ('-m "not slow" --ignore=tests/test_preregistration.py', False),
+        # an option's value is no test path, whether or not the option is known to take one
+        ('-m "not slow" --durations 20', True),
+        ("-n 4 -q", True),
+        ("-W error -m slow", True),
+        ("-m slow --junitxml reports/junit.xml", True),
+        ("-o addopts= -q", True),
+        ("--durations 20 tests/test_rules_dates.py", False),
+        ('-m "not slow" tests/test_platform_smoke.py tests/test_cli.py::test_x tests/test_sync_*.py', False),
     ],
 )
 def test_a_pytest_run_is_read_as_running_the_pre_registration_s_tests_or_not(
@@ -237,13 +302,27 @@ def test_a_pytest_run_is_read_as_running_the_pre_registration_s_tests_or_not(
     assert _can_run(shlex.split(command), PREREGISTRATION_TESTS) is runs_it
 
 
+def test_a_make_target_s_pytest_runs_are_read_as_the_job_s() -> None:
+    """A step that runs a Makefile target runs that target's recipe (and its prerequisites'): `make test` runs the
+    whole suite twice (not slow, then slow), `make eval-reproduce` runs no pytest."""
+    assert _pytest_runs({"steps": [{"run": "make test"}]}) == [
+        ["-m", "not slow", "--cov=ordnung", "--cov-report=term-missing:skip-covered"],
+        ["-m", "slow"],
+    ]
+    assert _pytest_runs({"steps": [{"run": "make eval-reproduce"}]}) == []
+    assert any(
+        _can_run(args, PREREGISTRATION_TESTS) for args in _pytest_runs({"steps": [{"run": "make test"}]})
+    )
+
+
 def test_every_job_that_runs_the_pre_registration_s_tests_checks_out_the_whole_history() -> None:
     """tests/test_preregistration.py reads the git history from the freeze commit on (the paths changed since, the
     files written once, each deviation recorded at the time). A clone without that commit skips those checks only
     until a final result is published, and fails them from then on: CI's clone must hold the history.
     actions/checkout fetches one commit unless ``fetch-depth: 0`` asks for all of them, so each job whose pytest run
-    can include that file asks for all: the backend's legs, the slow checks and the lowest and newest versions. The
-    macOS and Windows job and the end-to-end job name their tests, and it is not among them."""
+    can include that file asks for all: the backend's legs, the slow checks and the lowest and newest versions (and
+    any job that comes to run it). The macOS and Windows job and the end-to-end job name their tests, and it is not
+    among them today; the parser's cases above hold that reading."""
     jobs = _jobs()
     history = {
         name
@@ -251,7 +330,6 @@ def test_every_job_that_runs_the_pre_registration_s_tests_checks_out_the_whole_h
         if any(_can_run(args, PREREGISTRATION_TESTS) for args in _pytest_runs(job))
     }
     assert {"backend", "backend-slow", "lowest", "latest"} <= history
-    assert not history & {"other-systems", "e2e"}
     for name in sorted(history):
         (checkout,) = [
             step for step in jobs[name]["steps"] if step.get("uses", "").startswith("actions/checkout@")
