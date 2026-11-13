@@ -31,6 +31,11 @@ It prints hashes, versions, counts and paths, never a prompt's, a letter's or a 
 
 ``--root DIR`` reads another checkout (default: this one); the ``frozen`` section always describes the code that
 runs it. ``tests/test_preregistration.py`` runs these checks on the pre-registration once it exists.
+
+B's runner-defect rule is the one exception to the code map and the frozen paths: a file a runner fix changed
+passes :func:`code_problems` and :func:`path_problems` only when a ``code_hash_changed`` deviation recorded at the
+time names it by the exact evidence line ``<path> sha256 <sha256 of the file the checkout holds>``
+(:func:`excused_paths`). ``--section … --check`` takes no exception: it prints every difference.
 """
 
 from __future__ import annotations
@@ -408,6 +413,22 @@ def mismatches(computed: Mapping[str, Any], prereg: Mapping[str, Any]) -> list[s
     return sorted(out)
 
 
+def code_problems(code: Mapping[str, Any], root: Path = ROOT, excused: Iterable[str] = ()) -> list[str]:
+    """Each path of the pre-registration's ``code`` map whose file at ``root`` is not the registered one, and each
+    path one map names and the other does not. A path of ``excused`` (:func:`excused_paths`) may differ in its
+    sha256, never be added or removed; with none excused (the default) this is ``code == code_section(root)``."""
+    now = code_section(root)
+    skip = set(excused)
+    out = [f"{path}: in the code map, not in this checkout's" for path in sorted(code.keys() - now.keys())]
+    out += [f"{path}: not in the code map" for path in sorted(now.keys() - code.keys())]
+    out += [
+        f"{path}: differs from the code map (sha256)"
+        for path in sorted(code.keys() & now.keys())
+        if code[path] != now[path] and path not in skip
+    ]
+    return out
+
+
 # --------------------------------------------------------------------------------------------------
 # The deviations file
 # --------------------------------------------------------------------------------------------------
@@ -492,6 +513,36 @@ def deviation_problems(entries: Any, kinds: Mapping[str, str]) -> list[str]:
             continue
         seen.add(ident)
         out += [f"{ident}: {problem}" for problem in _entry_problems(entry, kinds)]
+    return out
+
+
+#: The evidence line by which a ``code_hash_changed`` deviation names a file a runner fix changed.
+EXCUSE_LINE = re.compile(r"(?P<path>\S+) sha256 (?P<sha>[0-9a-f]{64})")
+
+
+def excused_paths(deviations: Any, kinds: Mapping[str, str], root: Path = ROOT) -> set[str]:
+    """The paths B's runner-defect rule excuses from the code map and the frozen paths ("the only exception to
+    frozen.identical_paths, itself a code_hash_changed deviation"): each path a ``code_hash_changed`` deviation
+    names in its evidence by the exact line ``<path> sha256 <sha256>``, where the sha256 is that of the file
+    ``root`` holds, and only when the deviation was recorded at the time: no problem :func:`deviation_problems`
+    names (its comment on the issue, ``created_at``, its checkpoint commit and the registered consequence; B's
+    deviation_rule: a deviation without them does not exist). An entry not yet posted or checkpointed, another
+    kind, a path named any other way, or a file changed again since, excuses nothing."""
+    out: set[str] = set()
+    if not isinstance(deviations, list):
+        return out
+    for entry in deviations:
+        if not isinstance(entry, Mapping) or entry.get("kind") != "code_hash_changed":
+            continue
+        if _entry_problems(entry, kinds):
+            continue
+        for line in entry.get("evidence") or []:
+            named = EXCUSE_LINE.fullmatch(line) if isinstance(line, str) else None
+            if named is None:
+                continue
+            file = root / named["path"]
+            if file.is_file() and sha256_file(file) == named["sha"]:
+                out.add(named["path"])
     return out
 
 
@@ -779,16 +830,22 @@ def _patterns(values: Any) -> list[str]:
     return [str(v["path"]) if isinstance(v, Mapping) else str(v) for v in values or []]
 
 
-def path_problems(changed: Iterable[str], frozen: Mapping[str, Any]) -> list[str]:
-    """Each changed path that the pre-registration froze (``identical_paths``), or allows in none of its lists."""
+def path_problems(
+    changed: Iterable[str], frozen: Mapping[str, Any], excused: Iterable[str] = ()
+) -> list[str]:
+    """Each changed path that the pre-registration froze (``identical_paths``), or allows in none of its lists, but
+    those of ``excused`` (:func:`excused_paths`; none by default)."""
     identical = _patterns(frozen.get("identical_paths"))
     allowed = [
         pattern
         for key in ("allowed_after_freeze", "allowed_while_recording", "allowed_at_publish")
         for pattern in _patterns(frozen.get(key))
     ]
+    skip = set(excused)
     frozen_hits, unlisted = [], []
     for path in changed:
+        if path in skip:
+            continue
         if any(matches(path, p) for p in identical):
             frozen_hits.append(f"{path}: frozen since the freeze (identical_paths)")
         elif not any(matches(path, p) for p in allowed):
