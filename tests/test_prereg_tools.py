@@ -515,6 +515,355 @@ def test_a_path_changed_since_the_freeze_must_be_allowed_and_never_an_identical_
     ]
 
 
+# --------------------------------------------------------------------------------------------------
+# B's runner-defect rule: a code_hash_changed deviation of step runner-fix, recorded at the time by the history, that
+# names a path with its sha256 at HEAD excuses it
+# --------------------------------------------------------------------------------------------------
+
+RUNNER_FIX = ("evals/perturb/score.py", "scripts/eval_perturb.py", "tests/test_preregistration.py")
+#: What no deviation excuses: inputs of the code digest and the fingerprints, and the code that picks the sentences.
+NEVER = (
+    "evals/stats.py",
+    "src/ordnung/rules/x.py",
+    "evals/prompts/baseline.md",
+    "evals/present/final.py",
+    "evals/present/final_templates.json",
+)
+ISSUE = COMMENT.split("#", 1)[0]
+RUNNER_FIX_DEVIATIONS = "evals/preregistration/deviations-0.4.0.json"
+FROZEN_LISTS = {
+    "identical_paths": [
+        "src/ordnung/**",
+        "evals/*.py",
+        "evals/prompts/**",
+        "evals/present/final.py",
+        "evals/present/final_templates.json",
+        "tests/test_preregistration.py",
+    ],
+    "allowed_after_freeze": ["evals/perturb/manifest.json"],
+    "allowed_while_recording": [
+        "evals/recorded/**",
+        RUNNER_FIX_DEVIATIONS,
+        "evals/preregistration/phase2-0.4.0.json",
+    ],
+    "allowed_at_publish": ["tests/**", "evals/present/**"],
+}
+TARGET = "evals/perturb/score.py"
+
+
+def _commit(root: Path, message: str, *paths: str) -> str:
+    _git(root, "add", *(paths or ("-A",)))
+    _git(root, "commit", "-q", "-m", message)
+    return _git(root, "rev-parse", "HEAD")
+
+
+def _fixed_repo(root: Path, message: str) -> tuple[Path, dict[str, Any], str]:
+    root.mkdir()
+    _git(root, "init", "-q")
+    for path in (*RUNNER_FIX, *NEVER):
+        _put(root, path, f"# {path} as frozen\n")
+    _put(root, RUNNER_FIX_DEVIATIONS, "[]\n")
+    freeze = _commit(root, "the freeze")
+    registered = prereg_hashes.code_section(root)
+    _put(root, "evals/preregistration/phase2-0.4.0.json", "{}\n")
+    _commit(root, message)
+    for path in RUNNER_FIX:
+        _put(root, path, f"# {path} with the runner fix\n")
+    _commit(root, "the runner fix")
+    return root, registered, freeze
+
+
+@pytest.fixture()
+def fixed(tmp_path: Path) -> tuple[Path, dict[str, Any], str]:
+    """A repository whose code map was registered at the freeze; then the first checkpoint, which adds the phase-2
+    record and names the issue in its message (B's registered.issue_binding); then a runner fix. The repository, the
+    code map as registered, and the freeze."""
+    message = f"Final run checkpoint: phase2 (0 calls, $0.00)\n\nPre-registration issue: {ISSUE}\n"
+    return _fixed_repo(tmp_path / "checkout", message)
+
+
+def _runner_fix(root: Path, *paths: str, **changes: Any) -> dict[str, Any]:
+    """The deviation of a runner fix as deviate.py writes it, before its checkpoint: kind code_hash_changed, step
+    runner-fix, one evidence line ``<path> sha256 <sha>`` per path (the file the checkout holds), and the fix's PR."""
+    lines = [f"{path} sha256 {_sha((root / path).read_bytes())}" for path in paths]
+    entry = _deviation(
+        kind="code_hash_changed",
+        consequence=TABLE["code_hash_changed"],
+        step="runner-fix",
+        what="the stress check compared what describes the run; fixed before any recording",
+        evidence=[*lines, "https://github.com/owner/repo/pull/9"],
+        created_at="2020-01-01T00:00:00Z",
+        checkpoint_sha=None,
+    )
+    entry.update(changes)
+    return entry
+
+
+def _checkpoint(root: Path, *entries: dict[str, Any], fill: bool = True) -> list[dict[str, Any]]:
+    """These entries appended to the deviations file and committed, then (``fill``) the commit that writes that
+    commit's sha into each entry without one, as checkpoint.sh does (none when each has one): the file as it ends."""
+    held = json.loads((root / RUNNER_FIX_DEVIATIONS).read_text(encoding="utf-8"))
+    _put(root, RUNNER_FIX_DEVIATIONS, json.dumps([*held, *entries], indent=1) + "\n")
+    sha = _commit(root, "Final run checkpoint: runner-fix", RUNNER_FIX_DEVIATIONS)
+    if not fill or all(e.get("checkpoint_sha") for e in entries):
+        return [*held, *entries]
+    filled = [*held, *(dict(e, checkpoint_sha=e.get("checkpoint_sha") or sha) for e in entries)]
+    _put(root, RUNNER_FIX_DEVIATIONS, json.dumps(filled, indent=1) + "\n")
+    _commit(root, "Deviations: checkpoint sha", RUNNER_FIX_DEVIATIONS)
+    return filled
+
+
+def _flagged(root: Path, registered: dict[str, Any], freeze: str, deviations: Any) -> list[str]:
+    excused = prereg_hashes.excused_paths(deviations, TABLE, root, freeze=freeze)
+    changed = prereg_hashes.changed_since(root, freeze)
+    return prereg_hashes.code_problems(registered, root, excused) + prereg_hashes.path_problems(
+        changed, FROZEN_LISTS, excused
+    )
+
+
+def test_without_a_deviation_a_runner_fix_is_flagged_in_the_code_map_and_the_frozen_paths(
+    fixed: tuple[Path, dict[str, Any], str],
+) -> None:
+    root, registered, freeze = fixed
+    assert prereg_hashes.excused_paths([], TABLE, root, freeze=freeze) == set()
+    assert prereg_hashes.code_problems(registered, root) == [
+        "evals/perturb/score.py: differs from the code map (sha256)",
+        "scripts/eval_perturb.py: differs from the code map (sha256)",
+        "tests/test_preregistration.py: differs from the code map (sha256)",
+    ]
+    # the default is no excused path: every other caller of path_problems is unchanged
+    changed = prereg_hashes.changed_since(root, freeze)
+    assert prereg_hashes.path_problems(changed, FROZEN_LISTS) == [
+        "tests/test_preregistration.py: frozen since the freeze (identical_paths)",
+        "evals/perturb/score.py: not in any list of paths allowed to change after the freeze",
+        "scripts/eval_perturb.py: not in any list of paths allowed to change after the freeze",
+    ]
+    assert _flagged(root, registered, freeze, []) == [
+        *prereg_hashes.code_problems(registered, root),
+        *prereg_hashes.path_problems(changed, FROZEN_LISTS),
+    ]
+    assert prereg_hashes.code_problems(prereg_hashes.code_section(root), root) == []
+
+
+def test_a_runner_fix_deviation_recorded_at_the_time_excuses_exactly_the_paths_it_names(
+    fixed: tuple[Path, dict[str, Any], str],
+) -> None:
+    root, registered, freeze = fixed
+    deviations = _checkpoint(root, _runner_fix(root, *RUNNER_FIX))
+    assert prereg_hashes.excused_paths(deviations, TABLE, root, freeze=freeze) == set(RUNNER_FIX)
+    assert _flagged(root, registered, freeze, deviations) == []
+    # what the frozen tests and the publish check read: the checkout's deviations file, B's kinds and B's freeze
+    prereg = {"deviation_kinds": TABLE, "registered": {"freeze_sha": freeze}}
+    assert prereg_hashes.excused_at(root, prereg) == set(RUNNER_FIX)
+
+
+def test_a_path_the_deviation_leaves_out_stays_flagged(fixed: tuple[Path, dict[str, Any], str]) -> None:
+    root, registered, freeze = fixed
+    deviations = _checkpoint(root, _runner_fix(root, "evals/perturb/score.py", "scripts/eval_perturb.py"))
+    assert _flagged(root, registered, freeze, deviations) == [
+        "tests/test_preregistration.py: differs from the code map (sha256)",
+        "tests/test_preregistration.py: frozen since the freeze (identical_paths)",
+    ]
+
+
+def test_one_deviation_per_path_does_what_one_for_all_does(fixed: tuple[Path, dict[str, Any], str]) -> None:
+    root, registered, freeze = fixed
+    each = [_runner_fix(root, path, id=f"D00{n}") for n, path in enumerate(RUNNER_FIX, start=1)]
+    deviations = _checkpoint(root, *each)
+    assert _flagged(root, registered, freeze, deviations) == []
+
+
+SPOILS = (
+    "wrong sha",
+    "sha of the frozen file",
+    "path alone",
+    "more on the line",
+    "upper-case sha",
+    "a path spelled another way",
+    "another kind",
+    "another consequence",
+    "a presentation-only change",
+    "unposted",
+    "posted elsewhere",
+    "a comment on another issue",
+    "no checkpoint",
+    "a checkpoint that is no commit",
+    "written after its checkpoint",
+    "changed after its checkpoint",
+    "no id",
+    "the same id twice",
+    "applies_to the analysis cannot read",
+    "the file changed again since",
+    "the file at HEAD is not the one named",
+    "not a list",
+)
+
+
+def _spoiled(root: Path, registered: dict[str, Any], spoil: str) -> Any:
+    """The deviations file once a runner-fix deviation spoiled in this one way was recorded (the rest as it should
+    be)."""
+    if spoil == "the file at HEAD is not the one named":
+        _put(root, TARGET, "# changed, never committed\n")
+    entry = _runner_fix(root, *RUNNER_FIX)
+    line = next(i for i, e in enumerate(entry["evidence"]) if e.startswith(f"{TARGET} "))
+    now = _sha((root / TARGET).read_bytes())
+    evidence = {
+        "wrong sha": f"{TARGET} sha256 {'0' * 64}",
+        "sha of the frozen file": f"{TARGET} sha256 {registered[TARGET]}",
+        "path alone": TARGET,  # enough for the phase-2 record, not here
+        "more on the line": f"{TARGET} sha256 {now} (and more)",
+        "upper-case sha": f"{TARGET} sha256 {now.upper()}",
+        "a path spelled another way": f"./{TARGET} sha256 {now}",
+    }
+    if spoil in evidence:
+        entry["evidence"][line] = evidence[spoil]
+    changes: dict[str, dict[str, Any]] = {
+        "another kind": {"kind": "retake", "consequence": TABLE["retake"]},
+        "another consequence": {"consequence": "include the read"},
+        # B's other kind of code_hash_changed: listed per path in the same form, it excuses nothing here
+        "a presentation-only change": {"step": "publish", "what": "presentation-only change listed per path"},
+        "unposted": {"issue_comment_url": None},
+        "posted elsewhere": {"issue_comment_url": "file:///tmp/issue.md#D001"},
+        "a comment on another issue": {
+            "issue_comment_url": "https://github.com/someone/else/issues/1#issuecomment-2"
+        },
+        "a checkpoint that is no commit": {"checkpoint_sha": "0" * 40},
+        "written after its checkpoint": {"created_at": "2099-01-01T00:00:00Z"},
+        "applies_to the analysis cannot read": {"applies_to": {"repeat": 0}},
+    }
+    entry.update(changes.get(spoil, {}))
+    if spoil == "no id":
+        del entry["id"]
+    if spoil == "no checkpoint":
+        return _checkpoint(root, entry, fill=False)
+    if spoil == "the same id twice":
+        return _checkpoint(root, entry, copy.deepcopy(entry))
+    deviations = _checkpoint(root, entry)
+    if spoil == "changed after its checkpoint":
+        deviations[-1]["what"] = "something else"
+        _put(root, RUNNER_FIX_DEVIATIONS, json.dumps(deviations, indent=1) + "\n")
+        _commit(root, "edited", RUNNER_FIX_DEVIATIONS)
+    if spoil == "the file changed again since":
+        _put(root, TARGET, "# changed once more\n")
+        _commit(root, "changed again", TARGET)
+    if spoil == "not a list":
+        return {"D001": deviations[-1]}
+    return deviations
+
+
+@pytest.mark.parametrize("spoil", SPOILS)
+def test_nothing_else_excuses_a_path(fixed: tuple[Path, dict[str, Any], str], spoil: str) -> None:
+    """Only a ``runner-fix`` code_hash_changed deviation recorded at the time excuses a path: well formed with its
+    whole file (ids, keys, an applies_to the analysis reads), a comment on the issue the first checkpoint names, a
+    checkpoint commit of HEAD's history that holds it as it is and was made after it was written; and only by the
+    exact line ``<path> sha256 <the sha256 of the file the checkout and HEAD hold>``."""
+    root, registered, freeze = fixed
+    deviations = _spoiled(root, registered, spoil)
+    assert TARGET not in prereg_hashes.excused_paths(deviations, TABLE, root, freeze=freeze)
+    found = _flagged(root, registered, freeze, deviations)
+    assert f"{TARGET}: differs from the code map (sha256)" in found
+    assert f"{TARGET}: not in any list of paths allowed to change after the freeze" in found
+
+
+def test_no_deviation_excuses_a_code_digest_or_fingerprint_input_or_the_sentence_code(
+    fixed: tuple[Path, dict[str, Any], str],
+) -> None:
+    """B: a changed code digest or fingerprint is "never waivable: the read is invalid", and final.py and
+    final_templates.json "stay frozen". A runner-fix deviation recorded at the time that names them as well excuses
+    only the rest."""
+    root, registered, freeze = fixed
+    for path in NEVER:
+        _put(root, path, f"# {path} changed by the fix too\n")
+    _commit(root, "a runner fix that reaches too far")
+    deviations = _checkpoint(root, _runner_fix(root, *RUNNER_FIX, *NEVER))
+    assert prereg_hashes.excused_paths(deviations, TABLE, root, freeze=freeze) == set(RUNNER_FIX)
+    found = _flagged(root, registered, freeze, deviations)
+    for path in NEVER:
+        assert f"{path}: frozen since the freeze (identical_paths)" in found
+        if path in registered:
+            assert f"{path}: differs from the code map (sha256)" in found
+    assert not [line for line in found if line.split(":")[0] in RUNNER_FIX]
+
+
+def test_the_paths_no_deviation_excuses_are_b_s_identical_paths_but_the_three_frozen_tests() -> None:
+    prereg = ROOT / "evals" / "preregistration" / "final-0.4.0.json"
+    if not prereg.is_file():
+        pytest.skip("no pre-registration yet")
+    identical = prereg_hashes._patterns(
+        json.loads(prereg.read_text(encoding="utf-8"))["frozen"]["identical_paths"]
+    )
+    frozen_tests = {
+        "tests/test_preregistration.py",
+        "tests/test_present_final.py",
+        "tests/test_final_gates.py",
+    }
+    assert sorted(prereg_hashes.NEVER_EXCUSED) == sorted(set(identical) - frozen_tests)
+
+
+def test_a_clone_without_the_freeze_commit_excuses_nothing(
+    fixed: tuple[Path, dict[str, Any], str], tmp_path: Path
+) -> None:
+    """The exception is read from the history; a clone without it (CI's shallow checkout) cannot use it."""
+    root, registered, freeze = fixed
+    deviations = _checkpoint(root, _runner_fix(root, *RUNNER_FIX))
+    shallow = tmp_path / "shallow"
+    _git(tmp_path, "clone", "-q", "--depth", "1", f"file://{root}", str(shallow))
+    assert (shallow / RUNNER_FIX_DEVIATIONS).read_bytes() == (root / RUNNER_FIX_DEVIATIONS).read_bytes()
+    assert prereg_hashes.excused_paths(deviations, TABLE, shallow, freeze=freeze) == set()
+    assert len(prereg_hashes.code_problems(registered, shallow, set())) == len(RUNNER_FIX)
+    assert prereg_hashes.excused_paths(deviations, TABLE, root, freeze="e" * 40) == set()
+
+
+def test_the_issue_is_the_one_the_first_checkpoint_names(fixed: tuple[Path, dict[str, Any], str]) -> None:
+    root, _, freeze = fixed
+    assert prereg_hashes.bound_issue(root, freeze) == ISSUE
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Final run checkpoint: phase2 (0 calls, $0.00)",
+        f"Final run checkpoint: phase2\n\nPre-registration issue: {ISSUE}\nAlso: https://github.com/owner/repo/issues/8\n",
+    ],
+)
+def test_without_one_issue_named_by_the_first_checkpoint_nothing_is_excused(
+    tmp_path: Path, message: str
+) -> None:
+    root, registered, freeze = _fixed_repo(tmp_path / "checkout", message)
+    assert prereg_hashes.bound_issue(root, freeze) is None
+    deviations = _checkpoint(root, _runner_fix(root, *RUNNER_FIX))
+    assert prereg_hashes.excused_paths(deviations, TABLE, root, freeze=freeze) == set()
+    assert len(_flagged(root, registered, freeze, deviations)) == 2 * len(RUNNER_FIX)
+
+
+def test_a_path_named_but_not_in_the_checkout_is_not_excused(fixed: tuple[Path, dict[str, Any], str]) -> None:
+    root, registered, freeze = fixed
+    deviations = _checkpoint(root, _runner_fix(root, *RUNNER_FIX))
+    (root / "scripts/eval_perturb.py").unlink()
+    assert prereg_hashes.excused_paths(deviations, TABLE, root, freeze=freeze) == {
+        "evals/perturb/score.py",
+        "tests/test_preregistration.py",
+    }
+    assert _flagged(root, registered, freeze, deviations) == [
+        "scripts/eval_perturb.py: differs from the code map (sha256)",
+        "scripts/eval_perturb.py: not in any list of paths allowed to change after the freeze",
+    ]
+
+
+def test_the_code_map_must_keep_its_paths_whatever_is_excused(tmp_path: Path) -> None:
+    root = tmp_path / "checkout"
+    now = prereg_hashes.code_section(root)
+    assert prereg_hashes.code_problems(now, root) == []
+    extra = {**now, "evals/perturb/extra.py": None}
+    fewer = {key: value for key, value in now.items() if key != "evals/perturb/score.py"}
+    assert prereg_hashes.code_problems(extra, root, {"evals/perturb/extra.py"}) == [
+        "evals/perturb/extra.py: in the code map, not in this checkout's"
+    ]
+    assert prereg_hashes.code_problems(fewer, root, {"evals/perturb/score.py"}) == [
+        "evals/perturb/score.py: not in the code map"
+    ]
+
+
 def test_a_pre_registration_without_a_required_field_is_named() -> None:
     complete = {key: {} for key in prereg_hashes.REQUIRED}
     complete["registered"] = {key: "x" for key in prereg_hashes.REQUIRED_IN["registered"]}
