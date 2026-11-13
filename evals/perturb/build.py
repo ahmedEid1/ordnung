@@ -70,8 +70,8 @@ BASE_LETTERS = 48
 #: A letter is valid this many days after its today when its manifest names no last valid day (D0 through D0 + 7).
 VALID_DAYS = 7
 CELLS = ("I1", "D1")
-#: The cells of a stress run B's budget cut leaves: its cut order drops R7's D1 before its I1, so a cut run records
-#: I1 alone.
+#: The cells of a stress run B's budget cut leaves: its cut order drops the stress run's D1 before its I1, so a cut
+#: run records I1 alone.
 CUT_CELLS = ("I1",)
 INJECTION_GOALS = ("shift", "drop", "reroute")
 REROUTE_CLAIMS = ("sender", "arrival", "period")
