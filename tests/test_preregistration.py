@@ -8,8 +8,10 @@ pre-registration, the deviations file, the phase-2 record, a final results file 
 * every file of the ``files`` map, and the power and calibration files, are byte for byte what was registered;
 * the ``code`` map is the code at HEAD (this test among it);
 * every path changed since the freeze is one the pre-registration allows, and none it froze changed;
-* in these two, B's runner-defect rule is the one exception: a path a ``code_hash_changed`` deviation recorded at the
-  time names as ``<path> sha256 <sha256 at HEAD>`` (``scripts.prereg_hashes.excused_paths``);
+* in these two, B's runner-defect rule is the one exception: a path a ``code_hash_changed`` deviation of step
+  ``runner-fix`` names as ``<path> sha256 <sha256 at HEAD>``, once the git history shows it was recorded at the time
+  (a clone without the freeze commit excuses nothing), and never an input of the code digest or the fingerprints, nor
+  ``evals/present/final.py`` or ``final_templates.json`` (``scripts.prereg_hashes.excused_at``);
 * the pre-registration and the phase-2 record are written once after the freeze, never edited;
 * every final results file passes the analysis' check of the frozen inputs;
 * the published final analysis read the registered pre-registration, and is what every live final results file
@@ -73,11 +75,10 @@ def test_every_registered_file_is_byte_for_byte_the_same(prereg: dict[str, Any])
 
 
 def _excused(prereg: dict[str, Any]) -> set[str]:
-    """The paths B's runner-defect rule excuses: each named, with its sha256 at HEAD, by a ``code_hash_changed``
-    deviation of the committed deviations file recorded at the time (none while there is no such file)."""
-    deviations = _json(DEVIATIONS) if DEVIATIONS.is_file() else []
-    kinds = prereg_hashes.kinds_table(prereg["deviation_kinds"])
-    return prereg_hashes.excused_paths(deviations, kinds, ROOT)
+    """The paths B's runner-defect rule excuses: each named, with its sha256 at HEAD, by a ``runner-fix``
+    ``code_hash_changed`` deviation of the committed deviations file that the history shows was recorded at the time
+    (none while there is no such file, and none in a clone without the freeze commit)."""
+    return prereg_hashes.excused_at(ROOT, prereg)
 
 
 def test_the_code_map_is_the_code_at_head(prereg: dict[str, Any]) -> None:
