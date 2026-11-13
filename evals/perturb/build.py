@@ -961,7 +961,11 @@ def write_manifest(doc: Mapping[str, Any], path: Path = STRESS_MANIFEST) -> Path
 
 def check_build(built: Mapping[str, Any], committed: Mapping[str, Any]) -> list[str]:
     """Where a fresh build differs from the committed stress manifest (an empty list when it does not; a manifest
-    that names a day differs in ``today``: the stress manifest names none)."""
+    that names a day differs in ``today``: the stress manifest names none). A build of some of the cells (a budget
+    cut records I1 alone) is checked against those cells' entries; a cell the committed manifest does not hold, or
+    none, differs in ``cells``."""
+    cells = list(built.get("cells") or [])
+    held = list(committed.get("cells") or [])
     differences = [
         key
         for key in (
@@ -975,10 +979,14 @@ def check_build(built: Mapping[str, Any], committed: Mapping[str, Any]) -> list[
             "base",
             "today",
         )
-        if built.get(key) != committed.get(key)
+        if (
+            not cells or any(cell not in held for cell in cells)
+            if key == "cells"
+            else built.get(key) != committed.get(key)
+        )
     ]
     fresh = {row["id"]: row for row in built.get("entries", [])}
-    known = {row["id"]: row for row in committed.get("entries", [])}
+    known = {row["id"]: row for row in committed.get("entries", []) if row.get("cell") in cells}
     differences += [f"entries.{i}: missing from the build" for i in sorted(known.keys() - fresh.keys())]
     differences += [
         f"entries.{i}: not in the committed manifest" for i in sorted(fresh.keys() - known.keys())

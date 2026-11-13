@@ -534,6 +534,38 @@ def test_the_stress_cells_share_one_budget_and_one_recorder_lock(
         assert none is None
 
 
+def test_a_check_replays_the_cells_the_published_file_holds(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """make eval-reproduce runs ``--check`` with no ``--cells``: a budget cut's file (I1 alone, B's cut order) is
+    replayed as I1 alone, a file of both cells as both. ``--cells`` still chooses when it is given, and a run
+    without ``--check`` (or with a file that names no cell) takes both."""
+    from scripts import eval_perturb
+
+    seen: list[list[str]] = []
+
+    async def run(args: Any) -> int:
+        seen.append(list(args.cells))
+        return 0
+
+    monkeypatch.setattr(eval_perturb, "_run", run)
+
+    def published(cells: list[str]) -> str:
+        path = tmp_path / f"{'-'.join(cells) or 'none'}.json"
+        path.write_text(json.dumps({"meta": {"cells": cells}}), encoding="utf-8")
+        return str(path)
+
+    out = ["--out", str(tmp_path / "out"), "--quiet"]
+    assert eval_perturb.main([*out, "--check", published(["I1"])]) == 0
+    assert eval_perturb.main([*out, "--check", published(["I1", "D1"])]) == 0
+    assert eval_perturb.main([*out, "--check", published(["D1"])]) == 0
+    assert eval_perturb.main([*out, "--check", published([])]) == 0
+    assert eval_perturb.main([*out, "--cells", "D1", "--check", published(["I1"])]) == 0
+    assert eval_perturb.main(out) == 0
+    assert eval_perturb.main(["--live", "--max-cost-usd", "1", "--cells", "I1"]) == 0
+    assert seen == [["I1"], ["I1", "D1"], ["D1"], ["I1", "D1"], ["D1"], ["I1", "D1"], ["I1"]]
+
+
 def test_a_replay_needs_its_own_results_folder(capsys: pytest.CaptureFixture[str]) -> None:
     from scripts import eval_perturb
 

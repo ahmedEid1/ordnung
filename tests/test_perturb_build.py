@@ -846,6 +846,32 @@ def test_built_files_match_the_manifest_and_two_builds_are_byte_identical(
     assert doc_a["base_splits"] == ["holdout4"] and "today" not in doc_a
 
 
+def test_a_build_of_one_cell_is_checked_against_that_cell_s_entries(
+    tmp_path: Path, small_build: Any, synthetic: Path, fixture_templates: templates.Templates
+) -> None:
+    """A budget cut records I1 alone (B's cut order takes R7's D1 first, with ``--cells I1``): its build must be the
+    committed manifest's I1 entries, and nothing else may differ. A changed entry is still refused, and so is a cell
+    the committed manifest does not hold, or a build of no cell."""
+    only, _, _, committed, _ = small_build
+    alone = build.build(
+        templates=fixture_templates, out=tmp_path / "I1", only=only, manifest_path=synthetic, cells=["I1"]
+    )
+    assert alone["cells"] == ["I1"] and {row["cell"] for row in alone["entries"]} == {"I1"}
+    assert len(alone["entries"]) == len(only)
+    assert build.check_build(alone, committed) == []
+    changed = copy.deepcopy(alone)
+    changed["entries"][0]["sentence_sha256"] = "f" * 64
+    assert build.check_build(changed, committed) == [f"entries.{changed['entries'][0]['id']}.sentence_sha256"]
+    dropped = copy.deepcopy(alone)
+    lost = dropped["entries"].pop()
+    assert build.check_build(dropped, committed) == [f"entries.{lost['id']}: missing from the build"]
+    # both cells against a committed manifest of I1 alone: D1 is not in it
+    found = build.check_build(committed, alone)
+    assert found[0] == "cells" and len(found) == 1 + len(only)
+    assert all(line.endswith(": not in the committed manifest") for line in found[1:])
+    assert build.check_build({**alone, "cells": [], "entries": []}, committed) == ["cells"]
+
+
 def test_truth_is_unchanged_except_the_injection_warning(small_build: Any, entries: list[Entry]) -> None:
     _, first, _, doc, _ = small_build
     by_id = {e.id: e for e in entries}
