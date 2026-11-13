@@ -33,9 +33,11 @@ It prints hashes, versions, counts and paths, never a prompt's, a letter's or a 
 runs it. ``tests/test_preregistration.py`` runs these checks on the pre-registration once it exists.
 
 B's runner-defect rule is the one exception to the code map and the frozen paths: a file a runner fix changed
-passes :func:`code_problems` and :func:`path_problems` only when a ``code_hash_changed`` deviation recorded at the
-time names it by the exact evidence line ``<path> sha256 <sha256 of the file the checkout holds>``
-(:func:`excused_paths`). ``--section … --check`` takes no exception: it prints every difference.
+passes :func:`code_problems` and :func:`path_problems` only when a ``code_hash_changed`` deviation of step
+``runner-fix``, recorded at the time by the git history, names it by the exact evidence line ``<path> sha256 <sha256
+of the file the checkout and its HEAD hold>``, and never an input of the code digest or the fingerprints, nor
+``evals/present/final.py`` or ``final_templates.json`` (:func:`excused_paths`, :func:`excused_at`). ``--section …
+--check`` takes no exception: it prints every difference.
 """
 
 from __future__ import annotations
@@ -516,36 +518,6 @@ def deviation_problems(entries: Any, kinds: Mapping[str, str]) -> list[str]:
     return out
 
 
-#: The evidence line by which a ``code_hash_changed`` deviation names a file a runner fix changed.
-EXCUSE_LINE = re.compile(r"(?P<path>\S+) sha256 (?P<sha>[0-9a-f]{64})")
-
-
-def excused_paths(deviations: Any, kinds: Mapping[str, str], root: Path = ROOT) -> set[str]:
-    """The paths B's runner-defect rule excuses from the code map and the frozen paths ("the only exception to
-    frozen.identical_paths, itself a code_hash_changed deviation"): each path a ``code_hash_changed`` deviation
-    names in its evidence by the exact line ``<path> sha256 <sha256>``, where the sha256 is that of the file
-    ``root`` holds, and only when the deviation was recorded at the time: no problem :func:`deviation_problems`
-    names (its comment on the issue, ``created_at``, its checkpoint commit and the registered consequence; B's
-    deviation_rule: a deviation without them does not exist). An entry not yet posted or checkpointed, another
-    kind, a path named any other way, or a file changed again since, excuses nothing."""
-    out: set[str] = set()
-    if not isinstance(deviations, list):
-        return out
-    for entry in deviations:
-        if not isinstance(entry, Mapping) or entry.get("kind") != "code_hash_changed":
-            continue
-        if _entry_problems(entry, kinds):
-            continue
-        for line in entry.get("evidence") or []:
-            named = EXCUSE_LINE.fullmatch(line) if isinstance(line, str) else None
-            if named is None:
-                continue
-            file = root / named["path"]
-            if file.is_file() and sha256_file(file) == named["sha"]:
-                out.add(named["path"])
-    return out
-
-
 #: Where the deviations are recorded at the time (``deviate.py`` appends, the next checkpoint commits and pushes).
 DEVIATIONS_PATH = "evals/preregistration/deviations-0.4.0.json"
 #: Written once after the freeze, never edited: the pre-registration and the posted phase-2 record.
@@ -677,6 +649,116 @@ def write_once_problems(root: Path, freeze: str, paths: Sequence[str] = WRITE_ON
         if count > 1:
             out.append(f"{path}: changed by {count} commits since the freeze; it is written once")
     return out
+
+
+# --------------------------------------------------------------------------------------------------
+# B's runner-defect rule: the one exception to the code map and frozen.identical_paths
+# --------------------------------------------------------------------------------------------------
+
+#: The evidence line by which a runner fix's deviation names a file it changed: ``<path> sha256 <sha256>``.
+EXCUSE_LINE = re.compile(r"(?P<path>\S+) sha256 (?P<sha>[0-9a-f]{64})")
+#: The step a deviation of B's runner-defect rule is recorded under (``deviate.py --step runner-fix``). B's other
+#: ``code_hash_changed`` entry, "a presentation-only change listed per path", is recorded under another step and
+#: excuses nothing here: B allows no other exception to ``identical_paths``.
+RUNNER_FIX_STEP = "runner-fix"
+#: What no deviation excuses: the inputs of the code digest and of the fingerprints (B: a changed digest or
+#: fingerprint is "never waivable: the read is invalid") and the code that picks the registered sentences (B's
+#: allowed_at_publish: "final.py and final_templates.json stay frozen"). B's ``identical_paths`` but the three
+#: frozen tests.
+NEVER_EXCUSED = (
+    "src/ordnung/**",
+    "evals/*.py",
+    "evals/prompts/**",
+    "evals/present/final.py",
+    "evals/present/final_templates.json",
+)
+#: The first checkpoint (R0-full) adds the phase-2 record; its message names the pre-registration issue.
+PHASE2_RECORD = "evals/preregistration/phase2-0.4.0.json"
+ISSUE_URL = re.compile(r"https://github\.com/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+/issues/\d+")
+
+
+def bound_issue(root: Path, freeze: str) -> str | None:
+    """The pre-registration issue as B's ``registered.issue_binding`` pins it: the one issue URL in the message of
+    the first checkpoint commit after the freeze (R0-full, the commit that adds the phase-2 record); ``None`` when
+    there is no such commit, or its message names no issue or more than one."""
+    added = _commits(root, freeze, PHASE2_RECORD, added=True)
+    if not added:
+        return None
+    message = _run_git(root, "show", "-s", "--format=%B", added[0]).stdout.decode("utf-8", "replace")
+    named = set(ISSUE_URL.findall(message))
+    return named.pop() if len(named) == 1 else None
+
+
+def _plain_path(path: str) -> bool:
+    """A repository path as git names it: relative, ``/``-separated, without ``.``, ``..`` or empty parts."""
+    return "\\" not in path and all(part not in ("", ".", "..") for part in path.split("/"))
+
+
+def _sha_at_head(root: Path, path: str) -> str | None:
+    done = _run_git(root, "cat-file", "blob", f"HEAD:{path}")
+    return hashlib.sha256(done.stdout).hexdigest() if done.returncode == 0 else None
+
+
+def _applies_to_problems(entries: Sequence[Any]) -> list[str]:
+    """Each entry whose ``applies_to`` the analysis cannot read (``evals.analysis`` refuses the whole file then)."""
+    from evals import analysis
+
+    out = []
+    for entry in entries:
+        try:
+            analysis._applies_to(entry.get("applies_to", {}) if isinstance(entry, Mapping) else None)
+        except (KeyError, TypeError, ValueError, AttributeError) as exc:
+            out.append(f"{entry.get('id') if isinstance(entry, Mapping) else entry!r}: applies_to ({exc})")
+    return out
+
+
+def excused_paths(deviations: Any, kinds: Mapping[str, str], root: Path = ROOT, *, freeze: str) -> set[str]:
+    """The paths B's runner-defect rule excuses from the code map and the frozen paths ("the only exception to
+    frozen.identical_paths, itself a code_hash_changed deviation"): each path a ``code_hash_changed`` deviation of
+    step :data:`RUNNER_FIX_STEP` names in its evidence by the exact line ``<path> sha256 <sha256>``, where the sha256
+    is that of the file ``root`` holds and of the file at its HEAD, and the path is none of :data:`NEVER_EXCUSED`.
+
+    Only deviations recorded at the time count (B's deviation_rule: a deviation without its comment URL,
+    ``created_at`` and checkpoint sha "does not exist"), checked by the git history, so nothing is excused unless:
+    the whole file is well formed (:func:`deviation_problems`, and every ``applies_to`` one the analysis reads);
+    ``freeze`` is a commit of HEAD's history; every entry is a comment on the issue the first checkpoint commit names
+    (:func:`bound_issue`); and :func:`history_problems` finds nothing (each entry's checkpoint is a commit of HEAD's
+    history that holds it as it is, made no earlier than it was written and before the results were published; the
+    file only grew). A clone without the freeze commit (a shallow checkout) excuses nothing."""
+    if not isinstance(deviations, list) or not deviations:
+        return set()
+    if deviation_problems(deviations, kinds) or _applies_to_problems(deviations):
+        return set()
+    if _run_git(root, "merge-base", "--is-ancestor", freeze, "HEAD").returncode != 0:
+        return set()
+    issue = bound_issue(root, freeze)
+    if issue is None or history_problems(root, deviations, freeze=freeze, issue=issue):
+        return set()
+    out: set[str] = set()
+    for entry in deviations:
+        if entry.get("kind") != "code_hash_changed" or entry.get("step") != RUNNER_FIX_STEP:
+            continue
+        for line in entry["evidence"]:
+            named = EXCUSE_LINE.fullmatch(line)
+            if named is None:
+                continue
+            path, sha = named["path"], named["sha"]
+            if not _plain_path(path) or any(matches(path, pattern) for pattern in NEVER_EXCUSED):
+                continue
+            file = root / path
+            if file.is_file() and sha256_file(file) == sha and _sha_at_head(root, path) == sha:
+                out.add(path)
+    return out
+
+
+def excused_at(root: Path, prereg: Mapping[str, Any]) -> set[str]:
+    """:func:`excused_paths` over the deviations file ``root`` holds (none: nothing), with the pre-registration's
+    table of kinds and its freeze: what the frozen tests excuse, and what the publish check (§5.2 step 12) passes to
+    :func:`path_problems`."""
+    file = root / DEVIATIONS_PATH
+    deviations = json.loads(file.read_text(encoding="utf-8")) if file.is_file() else []
+    kinds = kinds_table(prereg["deviation_kinds"])
+    return excused_paths(deviations, kinds, root, freeze=str(prereg["registered"]["freeze_sha"]))
 
 
 def analysis_table_problems(kinds: Mapping[str, str]) -> list[str]:
