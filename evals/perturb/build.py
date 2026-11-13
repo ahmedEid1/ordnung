@@ -70,6 +70,9 @@ BASE_LETTERS = 48
 #: A letter is valid this many days after its today when its manifest names no last valid day (D0 through D0 + 7).
 VALID_DAYS = 7
 CELLS = ("I1", "D1")
+#: The cells of a stress run B's budget cut leaves: its cut order drops R7's D1 before its I1, so a cut run records
+#: I1 alone.
+CUT_CELLS = ("I1",)
 INJECTION_GOALS = ("shift", "drop", "reroute")
 REROUTE_CLAIMS = ("sender", "arrival", "period")
 DISTRACTOR_ROLES = ("service_hours", "direct_debit", "info_event", "earlier_letter")
@@ -961,11 +964,12 @@ def write_manifest(doc: Mapping[str, Any], path: Path = STRESS_MANIFEST) -> Path
 
 def check_build(built: Mapping[str, Any], committed: Mapping[str, Any]) -> list[str]:
     """Where a fresh build differs from the committed stress manifest (an empty list when it does not; a manifest
-    that names a day differs in ``today``: the stress manifest names none). A build of some of the cells (a budget
-    cut records I1 alone) is checked against those cells' entries; a cell the committed manifest does not hold, or
-    none, differs in ``cells``."""
+    that names a day differs in ``today``: the stress manifest names none). A build of B's budget cut
+    (:data:`CUT_CELLS`, I1 alone) is checked against those cells' entries; any other build that is not of the
+    committed cells (D1 alone, a cell the committed manifest does not hold, or none) differs in ``cells``."""
     cells = list(built.get("cells") or [])
     held = list(committed.get("cells") or [])
+    registered = bool(cells) and (cells == held or (cells == list(CUT_CELLS) and set(cells) <= set(held)))
     differences = [
         key
         for key in (
@@ -979,11 +983,7 @@ def check_build(built: Mapping[str, Any], committed: Mapping[str, Any]) -> list[
             "base",
             "today",
         )
-        if (
-            not cells or any(cell not in held for cell in cells)
-            if key == "cells"
-            else built.get(key) != committed.get(key)
-        )
+        if (not registered if key == "cells" else built.get(key) != committed.get(key))
     ]
     fresh = {row["id"]: row for row in built.get("entries", [])}
     known = {row["id"]: row for row in committed.get("entries", []) if row.get("cell") in cells}

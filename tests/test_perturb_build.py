@@ -872,6 +872,20 @@ def test_a_build_of_one_cell_is_checked_against_that_cell_s_entries(
     assert build.check_build({**alone, "cells": [], "entries": []}, committed) == ["cells"]
 
 
+def test_a_build_of_d1_alone_is_no_registered_cut(
+    tmp_path: Path, small_build: Any, synthetic: Path, fixture_templates: templates.Templates
+) -> None:
+    """B's cut order takes R7's D1 before its I1: a cut run records I1 alone, never D1 alone. A build of D1 alone
+    differs in ``cells`` even when its entries are the committed manifest's D1 entries."""
+    only, _, _, committed, _ = small_build
+    alone = build.build(
+        templates=fixture_templates, out=tmp_path / "D1", only=only, manifest_path=synthetic, cells=["D1"]
+    )
+    assert alone["cells"] == ["D1"] and {row["cell"] for row in alone["entries"]} == {"D1"}
+    assert build.check_build(alone, committed) == ["cells"]
+    assert build.CUT_CELLS == ("I1",)
+
+
 def test_truth_is_unchanged_except_the_injection_warning(small_build: Any, entries: list[Entry]) -> None:
     _, first, _, doc, _ = small_build
     by_id = {e.id: e for e in entries}
