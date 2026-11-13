@@ -1,1 +1,21 @@
-[]
+[
+  {
+    "id": "D001",
+    "kind": "code_hash_changed",
+    "at": "2026-11-13T09:15:44Z",
+    "step": "runner-fix",
+    "what": "Runner defect found before any recording (synthetic, zero tokens): the stress check compared what describes a run (meta.date; each read's commit, backend, CLI version), so no committed stress file could pass it, and B's budget cut --cells I1 was refused by the build check. Fixed in its own PR; the frozen checks excuse exactly the paths below by sha256.",
+    "evidence": [
+      "evals/perturb/build.py sha256 8c8353380f0df5d2362e2fd2c22c712b6a006868fb14f1115633bde41ec8c3b7",
+      "evals/perturb/score.py sha256 c463b65de24bfd5769e99033bebf144f6838455160402e724972bd6c49cc3317",
+      "scripts/eval_perturb.py sha256 1bf1ddcbaf05ffdbd56bd76cef2346db743ea045335b024bade513c53e98f541",
+      "scripts/prereg_hashes.py sha256 f308c2fcdda067db814daea4913724aad00b7c6e1980ea1005a3cb1b6ffb9de2",
+      "tests/test_preregistration.py sha256 2ad95833cc5da2153dbc7f8144d55a5d4087594bbe45f5227dd146314e1f08fe",
+      "https://github.com/ahmedEid1/ordnung/pull/55"
+    ],
+    "consequence": "the runner-defect rule, or a presentation-only change listed per path",
+    "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6848948141",
+    "created_at": "2026-11-13T09:15:44Z",
+    "checkpoint_sha": null
+  }
+]
