@@ -5012,7 +5012,7 @@ def test_the_docs_say_whose_a_number_an_idea_and_a_date_is() -> None:
 
 def test_the_docs_describe_the_switch_and_the_info_rows() -> None:
     """SPEC (settings, health, the doctor, the API and Settings → Data), ADR 0024's amendment, ADR 0022's note,
-    docs/privacy.md and docs/architecture.md against e2-pictures-intake."""
+    docs/privacy.md and docs/architecture.md against the Text in pictures switch and the doctor's info rows."""
     from typing import get_args
 
     from ordnung import doctor, models
