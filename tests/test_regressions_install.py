@@ -250,6 +250,34 @@ def test_the_changelog_names_this_version_and_the_package_links_to_it() -> None:
     assert re.search(rf"^## {re.escape(ordnung.__version__)} — \d{{4}}-\d{{2}}-\d{{2}}$", changelog, re.M)
 
 
+def test_the_package_summary_says_what_the_readme_s_hero_says() -> None:
+    """PyPI's one-line summary says what the README's hero says: Claude reads the letters, tested code works out
+    each deadline and shows the law behind it, on your own computer. It said Ordnung runs "with your own Claude
+    subscription", but a paid Claude plan or an Anthropic Console account both sign Claude Code in (the README's
+    *Install and run*); test_cli.py keeps its opening words."""
+    description = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["description"]
+    readme = " ".join((ROOT / "README.md").read_text(encoding="utf-8").split())
+    for words in (
+        "Claude reads your letters",
+        "tested code works out each deadline and shows the law behind it",
+        "on your own computer",
+    ):
+        assert words in description and words in readme, words
+    assert "subscription" not in description.lower()
+    assert "\n" not in description and len(description) <= 250
+
+
+def test_pypi_links_the_online_demo_and_the_evaluation_report() -> None:
+    """Beside the code, the docs and the changelog, the project's links on PyPI open the online demo (nothing to
+    install) and the evaluation report."""
+    from evals.present import PAGES_URL
+
+    urls = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["urls"]
+    assert urls["Demo"] == PAGES_URL.removesuffix("evals/")
+    assert urls["Evaluation report"] == "https://github.com/ahmedEid1/ordnung/blob/main/docs/evals.md"
+    assert (ROOT / "docs" / "evals.md").is_file()
+
+
 def test_the_guide_says_how_to_update() -> None:
     """The README installed from git but never said how to update; ``pipx upgrade`` alone keeps the old
     code when the version didn't change (measured with pipx 1.17 on its pip backend). The guide's *Updating*
