@@ -261,15 +261,6 @@ def counter(store: Store) -> int:
     return int(store.get_meta(PERSON_META_KEY) or 0)
 
 
-def _counter_at(db: Path) -> int:
-    conn = sqlite3.connect(f"{db.resolve().as_uri()}?mode=ro", uri=True)
-    try:
-        row = conn.execute("SELECT value FROM meta WHERE key = ?", (PERSON_META_KEY,)).fetchone()
-    finally:
-        conn.close()
-    return int(row[0]) if row else 0
-
-
 def digest_of(db: Path) -> tuple[str, int, list[str]]:
     """The fake's state digest of a database file (synced rows only), its letters and newest titles."""
     conn = sqlite3.connect(f"{db.resolve().as_uri()}?mode=ro", uri=True)

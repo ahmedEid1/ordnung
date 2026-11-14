@@ -967,7 +967,7 @@ def test_the_guide_s_limitations_say_the_interface_is_english() -> None:
         "Ask's answers, Today's note and the weekly review's Ideas) follows the language you choose in Settings; "
         "letters to German offices stay in German."
     ) in limitation
-    # audit (batch A review): the weekly review's Ideas and Today's note are Claude's, in the chosen language
+    # the weekly review's Ideas and Today's note are Claude's, in the chosen language
     for module, prompt in (("secretary/review.py", "review_system"), ("secretary/brief.py", "brief_system")):
         source = " ".join((ROOT / "src" / "ordnung" / module).read_text(encoding="utf-8").split())
         assert re.search(rf'"{prompt}",[^)]*language_name=language_name\(', source), module
@@ -2546,7 +2546,7 @@ def test_the_changelog_claims_still_hold_after_the_next_release() -> None:
 
 
 def test_the_changelog_s_label_in_name_fix_quotes_the_inbox_link_as_the_app_names_it() -> None:
-    """CHANGELOG, Unreleased → Fixed: links and buttons are named by the words they show (WCAG 2.5.3, issue #37).
+    """CHANGELOG, 0.4.0 → Fixed: links and buttons are named by the words they show (WCAG 2.5.3, issue #37).
     The Inbox link's new name is the one the web app's shell test pins, and the shell no longer builds the old
     one ("Inbox, 1 letter to check, …")."""
     (bullet,) = [part for part in _unreleased("Fixed").split(" - ") if "*Label in Name*" in part]
@@ -3261,7 +3261,7 @@ def test_the_spec_lists_the_weekly_repeats_and_still_one_entry_at_the_next_day()
 
 
 def test_the_changelog_s_package_updates_are_the_repository_s() -> None:
-    """CHANGELOG, Unreleased → Changed: motion 14, version 7 of checkout, setup-node and upload-artifact in CI
+    """CHANGELOG, 0.3.0 → Changed: motion 14, version 7 of checkout, setup-node and upload-artifact in CI
     (major tags) and the release workflow (commits pinned with their version), Dependabot without labels and holding
     TypeScript majors back; CONTRIBUTING's Dependencies say how such updates land."""
     import yaml
@@ -4748,7 +4748,7 @@ def test_the_pages_say_what_the_docs_quote_about_pictures() -> None:
 # --------------------------------------------------------------------------------------------------
 
 _ADR_WHOSE_LINK = f"[ADR 0025](docs/decisions/{_ADR_WHOSE.name})"
-#: CHANGELOG, Unreleased → Added: My numbers per person (e2-numbers), its sentences in order.
+#: CHANGELOG, 0.4.0 → Added: My numbers per person, its sentences in order.
 UNRELEASED_WHOSE_NUMBER = (
     "A number from a letter you filed for someone in your household is listed under *About Alex Rivera* on My "
     "numbers, whose first tab is then *People*.",
@@ -4756,7 +4756,7 @@ UNRELEASED_WHOSE_NUMBER = (
     "sender's numbers or a case that are only theirs say *For Alex Rivera*.",
     "On a paired phone their numbers show only their last 4 characters, like yours.",
 )
-#: CHANGELOG, Unreleased → Added: Ask, the Ideas, reminders and the Timeline (e2-ask, e2-ideas-whose).
+#: CHANGELOG, 0.4.0 → Added: Ask, the Ideas, reminders and the Timeline.
 UNRELEASED_WHOSE_SAID = (
     "Ask is told who is in your household, which letters you filed for whom and whose each number is; letters you "
     "keep private stay out.",
@@ -4768,14 +4768,14 @@ UNRELEASED_WHOSE_SAID = (
     "On the Timeline, a date from their letter says *For Alex Rivera ·*, as Today does.",
     f"Ordnung still files a letter only when you say so ({_ADR_WHOSE_LINK}).",
 )
-#: CHANGELOG, Unreleased → Added: repeat fields in Ask's records (e2-ask).
+#: CHANGELOG, 0.4.0 → Added: repeat fields in Ask's records.
 UNRELEASED_REPEATS = (
     "For a to-do or date that repeats, Ask is told how, in the words the app uses (*every month on the 3rd working "
     "day*), and the date it moves on to once you mark this one done — also for a date you moved by hand, whose "
     "schedule carries on after it.",
     "A rent a later rent replaces says from which month.",
 )
-#: CHANGELOG, Unreleased → Added: the Settings switch (e2-pictures-intake).
+#: CHANGELOG, 0.4.0 → Added: the Settings switch.
 UNRELEASED_PICTURE_SWITCH = (
     "Settings → Data → *Text in pictures* turns off reading the words in photos and scans Claude isn't reading.",
     "It counts at once: a reading under way stops and the words read before are deleted; turned on again, Ordnung "
@@ -4784,14 +4784,14 @@ UNRELEASED_PICTURE_SWITCH = (
     "install it; or turned off by `ORDNUNG_OCR=off`, which still wins on that computer.",
     "With hand-off sync the switch travels with your settings.",
 )
-#: CHANGELOG, Unreleased → Changed: Ask and the weekly Ideas follow *For taxes* (e2-ask).
+#: CHANGELOG, 0.4.0 → Changed: Ask and the weekly Ideas follow *For taxes*.
 UNRELEASED_FOR_TAXES = (
     "A letter you took off your letters for taxes no longer reaches them as one for taxes, and Ask no longer gets "
     "Claude's note on why it could matter for your tax return; a letter you marked yourself reaches them as one "
     "for taxes, and Ask is told you marked it.",
     "Letters you keep private stay private: neither sees anything of them, your choice included.",
 )
-#: CHANGELOG, Unreleased → Changed: the other lines.
+#: CHANGELOG, 0.4.0 → Changed: the other lines.
 UNRELEASED_CHANGED = (
     "`ordnung doctor` marks a row that is neither fine nor a problem as info (`i`): Tesseract not installed, text "
     "in pictures turned off, and on Windows a new *Disk encryption* row that says where to check BitLocker or "
@@ -4802,7 +4802,7 @@ UNRELEASED_CHANGED = (
     "In the demo, adding someone to your household or marking a letter for taxes makes the suggested questions' "
     "recorded answers stop fitting, as changing a letter does; Ask says how to start the demo over.",
 )
-#: CHANGELOG, Unreleased → Fixed (e2-ideas-whose, e2-pictures-intake).
+#: CHANGELOG, 0.4.0 → Fixed.
 UNRELEASED_FIXED = (
     "*Renew your passport before extending your residence permit* pairs a passport and a residence permit of the "
     "same person, and the student permit card reads only your own residence permit: a letter filed for someone "
@@ -4810,7 +4810,7 @@ UNRELEASED_FIXED = (
     "An Outlook e-mail or older Office file is never taken for a PDF, even one with a PDF in its first bytes: if "
     "it reaches the reading without being opened as an e-mail, Ordnung says what it is and how to add it.",
 )
-#: CHANGELOG, Unreleased → Upgrading: what a computer still on 0.3.0 does.
+#: CHANGELOG, 0.4.0 → Upgrading: what a computer still on 0.3.0 does.
 UNRELEASED_UPGRADING = (
     "A computer still on 0.3.0 shows every number as yours and the Ideas' titles without names, and Ideas it "
     "refreshes lose the name until an updated computer refreshes them. Update both computers.",
@@ -4838,7 +4838,7 @@ SPEC_NOT_BUILT = (
 
 
 def test_the_unreleased_changelog_says_what_the_code_does() -> None:
-    """CHANGELOG, Unreleased: My numbers per person, whose it is in Ask, the Ideas, reminders and the Timeline,
+    """CHANGELOG, 0.4.0: My numbers per person, whose it is in Ask, the Ideas, reminders and the Timeline,
     repeat fields, the Settings switch (Added); For taxes in Ask and the review, info rows, the `.msg` message,
     the demo (Changed); the passport rule and an unopened Outlook file (Fixed); what 0.3.0 does (Upgrading) —
     each against the code it describes."""
