@@ -141,6 +141,17 @@ below; the recording commands, with each step's budget and stop, are pre-registe
 .venv/bin/python -m evals.harness retake --invalid D003 --to /tmp/retakes   # a read a recorded deviation made invalid
 ```
 
+**After publication.** `tests/test_preregistration.py` held every commit from the code freeze to the publication
+to the pre-registration. Then a record, `published-0.4.0.json` in `preregistration/`, names the publish commit and
+the amendment on issue #54 that ends the freeze there. From then on the checks of the frozen code and paths (the
+code map, the paths changed since the freeze, the published analysis rendered again, the planned day's build) run
+at that commit, from its own copy of the test, in a temporary worktree with its own code: every test must pass and
+none skip (`pytest -m slow tests/test_preregistration.py`, in a clone with the whole history). At later commits the
+test holds only what stays for good: the pre-registration, the phase-2 record and every results file the run
+published, byte for byte (a re-score is a new `-rescored` file); the deviations file, which only grows, by label
+errors and scorer bugs; and, for every 0.4.x release, the README's generated block, word for word but for its
+count of deviations (`scripts/prereg_published.py`).
+
 ## Where results go
 
 - A live run writes its answers into `recorded/`, each under a key made from what was sent

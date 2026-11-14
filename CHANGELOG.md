@@ -115,6 +115,13 @@ install this version by its commit, as *Updating* says for a release without a t
 - The web app is built with newer minor and patch versions of its packages (React Query 5.105, lucide-react
   1.64, motion 14.8, React Router 8.5.1), and a test checks that the committed build bundles exactly the
   versions `web/package-lock.json` pins.
+- **The pre-registration is checked at the commit that published the final run.** `tests/test_preregistration.py`
+  held every commit from the code freeze to the publication to it. Now a record committed after publication
+  names the publish commit and the amendment on [issue #54](https://github.com/ahmedEid1/ordnung/issues/54);
+  the checks of the frozen code and paths run that commit's own copy of the test there, in a temporary worktree,
+  and later commits are held only to what stays for good: the pre-registration and the run's results files byte
+  for byte, the deviations file only growing, and the README's generated block for every 0.4.x release. The code
+  can change again without failing CI.
 
 ### Fixed
 
