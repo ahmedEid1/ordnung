@@ -349,7 +349,8 @@ def test_the_publish_commit_s_own_copy_of_this_file_passes_there(
     record, _ = _record(prereg)
     outcome = prereg_published.run_frozen_tests(ROOT, record["commit"], tmp_path)
     print(f"{record['commit']}: {len(outcome.tests)} tests in {outcome.seconds:.0f} s")
-    assert prereg_published.outcome_problems(outcome) == []
+    problems = prereg_published.outcome_problems(outcome)
+    assert not problems, "\n".join(problems)
 
 
 def test_the_registered_files_are_the_publish_commit_s(prereg: dict[str, Any]) -> None:
