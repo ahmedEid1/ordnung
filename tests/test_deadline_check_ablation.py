@@ -34,7 +34,9 @@ def _claim() -> tuple[int, str]:
         for block in rules.split("\n\n")
         if "with the readings' to-dos removed it finds" in " ".join(block.split())
     )
-    found = re.search(r"with the readings' to-dos removed it finds (\d+) dates on the benchmark letters", paragraph)
+    found = re.search(
+        r"with the readings' to-dos removed it finds (\d+) dates on the benchmark letters", paragraph
+    )
     assert found is not None, paragraph
     return int(found[1]), paragraph
 
@@ -58,7 +60,15 @@ def test_a_replay_of_the_four_splits_finds_the_page_s_dates(tmp_path: Path) -> N
     out = tmp_path / "ablation.json"
     env = {key: value for key, value in os.environ.items() if key != "PYTHONPATH"}
     done = subprocess.run(
-        [sys.executable, "-m", "scripts.deadline_check_ablation", "--splits", *FOUR_SPLITS, "--out", str(out)],
+        [
+            sys.executable,
+            "-m",
+            "scripts.deadline_check_ablation",
+            "--splits",
+            *FOUR_SPLITS,
+            "--out",
+            str(out),
+        ],
         cwd=ROOT,
         env=env,
         capture_output=True,

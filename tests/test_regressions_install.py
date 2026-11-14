@@ -255,7 +255,9 @@ def test_the_package_summary_says_what_the_readme_s_hero_says() -> None:
     each deadline and shows the law behind it, on your own computer. It said Ordnung runs "with your own Claude
     subscription", but a paid Claude plan or an Anthropic Console account both sign Claude Code in (the README's
     *Install and run*); test_cli.py keeps its opening words."""
-    description = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["description"]
+    description = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"][
+        "description"
+    ]
     readme = " ".join((ROOT / "README.md").read_text(encoding="utf-8").split())
     for words in (
         "Claude reads your letters",

@@ -532,7 +532,16 @@ def test_make_constraints_leaves_no_file_in_the_checkout(tmp_path: Path, resolve
     uv.chmod(0o755)
     env = {key: value for key, value in os.environ.items() if key not in {"MAKEFLAGS", "MFLAGS", "MAKELEVEL"}}
     done = subprocess.run(
-        ["make", "--no-print-directory", "-s", "-C", str(checkout), "constraints", f"UV={uv}", f"PY={sys.executable}"],
+        [
+            "make",
+            "--no-print-directory",
+            "-s",
+            "-C",
+            str(checkout),
+            "constraints",
+            f"UV={uv}",
+            f"PY={sys.executable}",
+        ],
         capture_output=True,
         text=True,
         env={**env, "TMPDIR": str(temp)},

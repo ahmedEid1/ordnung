@@ -448,7 +448,9 @@ def test_every_link_between_the_docs_resolves() -> None:
 _LAYOUT_FOLDERS = ("scripts/", "evals/", "docs/", "tests/")
 #: A name in a layout line: a file (``capture.sh``, ``gen_mock_*.py``), a folder (``samplelife/``) or a path with
 #: an anchor (``evals/README.md#layout``).
-_LAYOUT_NAME = re.compile(r"(?<![\w./*-])([\w*.-]+(?:/[\w*.-]+)*(?:\.(?:py|sh|mjs|md)|/)(?:#[\w-]+)?)(?![\w/])")
+_LAYOUT_NAME = re.compile(
+    r"(?<![\w./*-])([\w*.-]+(?:/[\w*.-]+)*(?:\.(?:py|sh|mjs|md)|/)(?:#[\w-]+)?)(?![\w/])"
+)
 
 
 def _layout_lines() -> dict[str, str]:
@@ -473,7 +475,9 @@ def _layout_names(folder: str) -> list[tuple[str, Path]]:
     for name in _LAYOUT_NAME.findall(_layout_lines()[folder]):
         path = name.split("#", 1)[0]
         top = path.split("/", 1)[0] + "/"
-        names.append((name, ROOT / path if top in ("src/", "web/", *_LAYOUT_FOLDERS) else ROOT / folder / path))
+        names.append(
+            (name, ROOT / path if top in ("src/", "web/", *_LAYOUT_FOLDERS) else ROOT / folder / path)
+        )
     return names
 
 
@@ -489,7 +493,9 @@ def test_the_layout_names_only_what_exists_beside_the_package() -> None:
         names = _layout_names(folder)
         assert names, folder
         for name, path in names:
-            found = sorted(path.parent.glob(path.name)) if "*" in path.name else [path] if path.exists() else []
+            found = (
+                sorted(path.parent.glob(path.name)) if "*" in path.name else [path] if path.exists() else []
+            )
             anchor = name.partition("#")[2]
             if not found or (anchor and anchor not in _anchors(path)):
                 missing.append(f"{folder}: {name}")
