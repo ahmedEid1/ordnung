@@ -1,33 +1,45 @@
 """After publication, the final run's pre-registration is checked at the commit that published it (zero tokens).
 
 Until the final run is published, ``tests/test_preregistration.py`` holds HEAD to the freeze: the frozen paths, the
-code map, the paths allowed to change. Those checks are what the publication rests on, and they held at every commit
-from the freeze to the publish commit. They cannot hold after it: the pre-registration itself plans later changes (a
-scorer bug fixed as ``-rescored`` files, the owner's checks filled in), and the code goes on. So once
-:data:`RECORD` names the publish commit, the checks that hold HEAD to the freeze verify that commit, read from git, for
-good; HEAD may move on. The record is committed after the publish commit, never in it, with the URL of the amendment
-on the pre-registration issue that says so.
+code map, the paths allowed to change. CI ran it on every pull request and every push to main from the freeze on, and
+the publication rests on the run at the publish commit: there its own copy passes whole. The checks cannot hold after
+it: the pre-registration itself plans later changes (a scorer bug fixed as ``-rescored`` files, a label error or the
+owner's checks sent through the blind review), and the code goes on. So once :data:`RECORD` names the publish commit,
+the checks that hold HEAD to the freeze verify that commit, read from git, for good; HEAD may move on. The record is
+committed after the publish commit, never in it, with the URL of the amendment on the pre-registration issue that says
+so, and the sha256 of the files that check the pre-registration after publication (:data:`CHECKED_BY`).
 
-* :func:`record_problems`: the record names a commit of HEAD's history after the freeze, and a comment on the
-  pre-registration issue; :func:`final_analyses_at` finds the final analysis of the registered pre-registration that
-  the commit published (a commit before publication has none).
+* :func:`record_problems`: the record names a commit on HEAD's first-parent line (main's own history) after the
+  freeze, a comment on the pre-registration issue, and the files that check it; :func:`first_publication_problems`
+  asks that commit to be the one that first published the final analysis of the registered pre-registration (its
+  first parent holds none), so neither a commit before publication nor a later one can be named;
+  :func:`checked_by_problems` and :func:`record_history_problems` hold those files to the record, and a change to them
+  or to the commit to a new amendment.
 * :func:`run_frozen_tests` runs that commit's own ``tests/test_preregistration.py``, every test, the slow ones too,
-  in a temporary detached worktree of it, with its own code first on ``sys.path`` (not this checkout's, not its
-  editable install); :func:`outcome_problems` asks every test to pass, none skipped, and every first-party module
-  imported from the worktree. The worktree is removed whatever happens.
+  in a temporary detached worktree of it, with its own first-party code first on ``sys.path`` (not this checkout's,
+  not its editable install; the interpreter and the libraries are this checkout's); :func:`outcome_problems` asks
+  every test to pass, none skipped, and every first-party module imported from the worktree. The run is stopped and
+  the worktree removed whatever happens.
 * What was published stays at HEAD: :func:`unchanged_problems` (the registered files, and the results files the final
-  run added, :func:`added_results`), :func:`deviations_kept_problems` (the deviations file only grows, by
-  ``label_error`` and ``scorer_bug`` entries) and :func:`readme_problems` (the README's generated block, for every
-  0.4.x release, with only its count of deviations growing with the file).
+  run added, :func:`added_results`), :func:`final_analysis_problems` (the final analysis, byte for byte until a
+  deviation is recorded after publication; then rendered again with only its list of deviations, the deviations
+  file's sha256 and count and, for a label error, the label-corrected sensitivity changed),
+  :func:`deviations_kept_problems` (the deviations file only grows, by ``label_error`` and ``scorer_bug`` entries),
+  :func:`stress_fingerprint_problems` (the stress run was recorded with the registered code) and
+  :func:`readme_problems` (the README's generated block, for every 0.4.x release, with only its count of deviations
+  growing with the file).
 
 It prints and returns paths, ids, commits and counts, never a letter, a label or a prompt.
 """
 
 from __future__ import annotations
 
+import argparse
 import ast
 import contextlib
 import fnmatch
+import hashlib
+import itertools
 import json
 import os
 import re
@@ -37,22 +49,34 @@ import subprocess
 import sys
 import time
 import xml.etree.ElementTree as ElementTree
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from scripts.prereg_hashes import AFTER_PUBLICATION, COMMENT_URL, COMMIT
 
+ROOT = Path(__file__).resolve().parents[1]
+
 #: The record of the publication, committed after the publish commit (``evals/preregistration/**`` may change).
 RECORD = "evals/preregistration/published-0.4.0.json"
 SCHEMA = "ordnung-prereg-published/1"
-#: The record's keys: its schema, the publish commit's full sha and the amendment's comment URL; ``about`` may say
-#: in words what it is.
-RECORD_KEYS = ("schema", "commit", "amendment")
+#: The record's keys: its schema, the publish commit's full sha, the amendment's comment URL and the sha256 of each
+#: file in :data:`CHECKED_BY`; ``about`` may say in words what it is.
+RECORD_KEYS = ("schema", "commit", "amendment", "checked_by")
 OPTIONAL_RECORD_KEYS = ("about",)
 #: The test the publish commit runs on itself, frozen with the pre-registration.
 FROZEN_TEST = "tests/test_preregistration.py"
+#: The files that check the pre-registration after publication. Once the freeze checks skip at HEAD nothing else holds
+#: them, so the record names each one's sha256 as merged, and the amendment does too: changing one is a new amendment
+#: on the pre-registration issue, which the record then names (:func:`record_history_problems`).
+CHECKED_BY = (FROZEN_TEST, "scripts/prereg_published.py", "scripts/prereg_hashes.py")
+ABOUT = (
+    "The commit on main that published the final run of 0.4.0, the amendment on the pre-registration issue that moves "
+    "the freeze checks of tests/test_preregistration.py to it, and the sha256 of the files that check the "
+    "pre-registration after publication."
+)
+_SHA256 = re.compile(r"[0-9a-f]{64}")
 #: Where the final run's results files land at publish (``evals/results/pending/`` holds the checkpoints until then).
 RESULTS = ("evals/results", "evals/retakes")
 PENDING = "evals/results/pending/"
@@ -94,13 +118,26 @@ def load_record(root: Path) -> Any:
 # --------------------------------------------------------------------------------------------------
 
 
+def _first_parents(root: Path) -> set[str]:
+    """The commits of HEAD's first-parent line: on main, main's own commits (a merged PR's commits are not)."""
+    return set(_git(root, "rev-list", "--first-parent", "HEAD").stdout.decode().split())
+
+
 def record_problems(record: Any, root: Path, *, freeze: str, issue: str | None) -> list[str]:
     """Why ``record`` does not name a commit that can end the freeze (empty: it does): its keys and schema; its
-    ``commit`` a full sha of this repository, in HEAD's history and after ``freeze``; its ``amendment`` a comment on
-    ``issue``, the pre-registration issue (the first checkpoint commit names it, ``prereg_hashes.bound_issue``)."""
+    ``commit`` a full sha of this repository, on HEAD's first-parent line and after ``freeze``; its ``amendment`` a
+    comment on ``issue``, the pre-registration issue (the first checkpoint commit names it,
+    ``prereg_hashes.bound_issue``); its ``checked_by`` a sha256 for each of :data:`CHECKED_BY`."""
     if not isinstance(record, Mapping):
         return [f"{RECORD} is not a JSON object"]
     out = [f"{RECORD}: {key} missing" for key in RECORD_KEYS if key not in record]
+    checks = record.get("checked_by")
+    if "checked_by" in record and (
+        not isinstance(checks, Mapping)
+        or sorted(checks) != sorted(CHECKED_BY)
+        or not all(isinstance(value, str) and _SHA256.fullmatch(value) for value in checks.values())
+    ):
+        out.append(f"{RECORD}: checked_by is not the sha256 of each of {', '.join(CHECKED_BY)}")
     out += [
         f"{RECORD}: unknown key {key}" for key in sorted(set(record) - {*RECORD_KEYS, *OPTIONAL_RECORD_KEYS})
     ]
@@ -114,6 +151,11 @@ def record_problems(record: Any, root: Path, *, freeze: str, issue: str | None) 
             out.append(f"{RECORD}: {commit} is not a commit of this repository (a shallow clone?)")
         elif not _ancestor(root, commit, "HEAD"):
             out.append(f"{RECORD}: {commit} is not in HEAD's history")
+        elif commit not in _first_parents(root):
+            out.append(
+                f"{RECORD}: {commit} is not on HEAD's first-parent line (main's own history): name the commit on main "
+                "that published the final run (the publish PR's merge commit), not one main reached through a merge"
+            )
         elif not _ancestor(root, freeze, commit):
             out.append(f"{RECORD}: {commit} does not descend from the freeze {freeze}")
     amendment = record.get("amendment")
@@ -147,6 +189,84 @@ def final_analyses_at(root: Path, commit: str, pattern: str, prereg: Mapping[str
     return found
 
 
+def first_publication_problems(root: Path, commit: str, pattern: str, prereg: Mapping[str, str]) -> list[str]:
+    """Why ``commit`` is not the commit that published the final run (empty: it is): it holds a final analysis of the
+    registered pre-registration (:func:`final_analyses_at`) and its first parent holds none. A later commit holds the
+    analysis too, and may have changed what its own frozen test allows to change (the README's block, a results file
+    other than the final reads); naming it would hold HEAD to that version."""
+    if not final_analyses_at(root, commit, pattern, prereg):
+        return [f"{commit} published no final analysis of the registered pre-registration"]
+    if _is_commit(root, f"{commit}^1") and final_analyses_at(root, f"{commit}^1", pattern, prereg):
+        return [
+            f"{commit}: its first parent already holds the final analysis: name the commit that first published it"
+        ]
+    return []
+
+
+def checked_by(root: Path) -> dict[str, str]:
+    """The sha256 of each file in :data:`CHECKED_BY`, as this checkout holds it."""
+    return {path: hashlib.sha256((root / path).read_bytes()).hexdigest() for path in CHECKED_BY}
+
+
+def checked_by_problems(record: Mapping[str, Any], root: Path) -> list[str]:
+    """Each file in :data:`CHECKED_BY` that is not the one the record names by its sha256."""
+    given = record.get("checked_by")
+    named: Mapping[str, Any] = given if isinstance(given, Mapping) else {}
+    out = []
+    for path in CHECKED_BY:
+        file = root / path
+        if not file.is_file() or hashlib.sha256(file.read_bytes()).hexdigest() != named.get(path):
+            out.append(
+                f"{path}: not the file the record names (its sha256 differs): a change to the checks after "
+                "publication is an amendment on the pre-registration issue, and the record names it"
+            )
+    return out
+
+
+def record_history_problems(root: Path) -> list[str]:
+    """Each change of the record, over HEAD's history and the checkout, that changed its ``commit`` or ``checked_by``
+    but named no new amendment (each such change is posted on the pre-registration issue first)."""
+    shas = _git(root, "log", "--format=%H", "--reverse", "HEAD", "--", RECORD).stdout.decode().split()
+    versions: list[Any] = []
+    for sha in shas:
+        raw = at_commit(root, sha, RECORD)
+        try:
+            versions.append(json.loads(raw) if raw is not None else None)
+        except ValueError:
+            versions.append(None)
+    current = load_record(root)
+    if current is not None and (not versions or current != versions[-1]):
+        versions.append(current)
+    out = []
+    for before, after in itertools.pairwise(versions):
+        if not isinstance(before, Mapping) or not isinstance(after, Mapping):
+            continue
+        if before.get("amendment") != after.get("amendment"):
+            continue
+        out += [
+            f"{RECORD}: its {key} changed without a new amendment"
+            for key in ("commit", "checked_by")
+            if before.get(key) != after.get(key)
+        ]
+    return out
+
+
+def write_record(root: Path, commit: str, amendment: str) -> dict[str, Any]:
+    """Write :data:`RECORD`: the publish commit, the amendment and the sha256 of the files that check after
+    publication, as this checkout holds them (run it on the after-publish branch as it will be merged)."""
+    record = {
+        "schema": SCHEMA,
+        "commit": commit,
+        "amendment": amendment,
+        "checked_by": checked_by(root),
+        "about": ABOUT,
+    }
+    path = root / RECORD
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return record
+
+
 # --------------------------------------------------------------------------------------------------
 # What was published stays
 # --------------------------------------------------------------------------------------------------
@@ -174,6 +294,104 @@ def unchanged_problems(root: Path, commit: str, paths: Iterable[str]) -> list[st
             out.append(f"{path}: removed since the publish commit {commit[:12]}")
         elif file.read_bytes() != then:
             out.append(f"{path}: changed since the publish commit {commit[:12]}")
+    return out
+
+
+#: What a deviation recorded after publication changes in the final analysis rendered again: the deviations it lists
+#: (:func:`deviations_kept_problems` holds them) and the deviations file it read, its sha256 and count; a label error
+#: also changes the label-corrected sensitivity (§17: "the primary stays; label-corrected sensitivity").
+_REDRAWN = (("meta", "deviations"), ("meta", "frozen_check", "deviations_file", "sha256"))
+_REDRAWN_COUNT = ("meta", "frozen_check", "deviations_file", "entries")
+_LABEL_CORRECTED = ("sensitivities", "label_corrected")
+_MISSING = object()
+
+
+def _differences(
+    then: Any, now: Any, path: tuple[str, ...], allowed: Collection[tuple[str, ...]]
+) -> Iterator[tuple[str, ...]]:
+    if path in allowed:
+        return
+    if isinstance(then, Mapping) and isinstance(now, Mapping):
+        for key in sorted({*then, *now}, key=str):
+            yield from _differences(
+                then.get(key, _MISSING), now.get(key, _MISSING), (*path, str(key)), allowed
+            )
+    elif isinstance(then, list) and isinstance(now, list) and len(then) == len(now):
+        for index, (old, new) in enumerate(zip(then, now, strict=True)):
+            yield from _differences(old, new, (*path, str(index)), allowed)
+    elif then is _MISSING or now is _MISSING or then != now or type(then) is not type(now):
+        yield path
+
+
+def final_analysis_problems(path: str, now: bytes, published: bytes) -> list[str]:
+    """Why the final analysis ``now`` is not the one published (empty: it is). Byte for byte, until a deviation is
+    recorded after publication: the analysis reads the deviations file, so it is rendered again then (§10, §17), and
+    only its list of deviations (the published ones unchanged and first; only label errors and scorer bugs after
+    them), the file's sha256 and count and, for a label error, the label-corrected sensitivity may change. The
+    primary, secondary and exploratory results stay what was published."""
+    if now == published:
+        return []
+    changed = [f"{path}: changed since the publish commit"]
+    try:
+        then_doc, now_doc = json.loads(published), json.loads(now)
+    except ValueError:
+        return changed
+    if not isinstance(then_doc, Mapping) or not isinstance(now_doc, Mapping):
+        return changed
+    then_list = (then_doc.get("meta") or {}).get("deviations")
+    now_list = (now_doc.get("meta") or {}).get("deviations")
+    if not isinstance(then_list, list) or not isinstance(now_list, list) or len(now_list) == len(then_list):
+        return changed
+    out = [f"{path}: meta.deviations: {problem}" for problem in deviations_kept_problems(now_list, then_list)]
+    allowed = {*_REDRAWN, _REDRAWN_COUNT}
+    added = now_list[len(then_list) :]
+    if any(isinstance(entry, Mapping) and entry.get("kind") == "label_error" for entry in added):
+        allowed.add(_LABEL_CORRECTED)
+    out += [
+        f"{path}: {'.'.join(where)} differs from the publish commit's"
+        for where in _differences(then_doc, now_doc, (), allowed)
+    ]
+    return out
+
+
+def stress_fingerprint_problems(
+    doc: Any, registered: Mapping[str, str], deviations: Sequence[Any]
+) -> list[str]:
+    """Why the stress results file ``doc`` was not recorded with the registered code (empty: it was): every
+    fingerprint it holds, the run's and each read's (``meta.runs``), is the pre-registration's for its condition, or
+    one a runner fix's ``code_hash_changed`` deviation names (``applies_to.fingerprints``). The stress replay compares
+    numbers, not fingerprints, which the code of a later commit changes; this holds the recording to the registration
+    instead."""
+    allowed: dict[str, set[str]] = {condition: {value} for condition, value in registered.items()}
+    for entry in deviations:
+        if not isinstance(entry, Mapping) or entry.get("kind") != "code_hash_changed":
+            continue
+        fixed = (entry.get("applies_to") or {}).get("fingerprints")
+        if isinstance(fixed, Mapping):
+            for condition, value in fixed.items():
+                allowed.setdefault(str(condition), set()).add(str(value))
+    meta = doc.get("meta") if isinstance(doc, Mapping) else None
+    if not isinstance(meta, Mapping):
+        return ["the stress results file has no meta"]
+    runs = meta.get("runs")
+    places: list[tuple[str, Any]] = [("meta.fingerprints", meta.get("fingerprints"))]
+    if isinstance(runs, Mapping):
+        places += [
+            (f"meta.runs.{name}.fingerprints", (run or {}).get("fingerprints"))
+            for name, run in sorted(runs.items())
+        ]
+    else:
+        places.append(("meta.runs", None))
+    out = []
+    for place, prints in places:
+        if not isinstance(prints, Mapping) or not prints:
+            out.append(f"{place}: no fingerprints")
+            continue
+        out += [
+            f"{place}.{condition}: not the registered fingerprint"
+            for condition, value in sorted(prints.items())
+            if value not in allowed.get(str(condition), set())
+        ]
     return out
 
 
@@ -367,9 +585,10 @@ def run_frozen_tests(
     extra_args: Sequence[str] = (),
 ) -> Outcome:
     """Run ``commit``'s own ``test_file`` in a temporary detached worktree of it (``scratch/published``), with that
-    commit's code first on ``sys.path`` and pytest's options its own, and report every test case (JUnit XML). The
-    worktree is removed whatever happens; a run longer than ``timeout`` seconds is stopped and raises
-    ``subprocess.TimeoutExpired``."""
+    commit's first-party code first on ``sys.path`` and pytest's options its own, and report every test case (JUnit
+    XML). The interpreter and the libraries are ``python``'s, this checkout's. The worktree is removed whatever
+    happens; a run longer than ``timeout`` seconds is stopped and raises ``subprocess.TimeoutExpired``, and a run
+    interrupted otherwise (Ctrl-C) is stopped too before the exception goes on."""
     scratch.mkdir(parents=True, exist_ok=True)
     tree, probe, report = scratch / "published", scratch / "probe", scratch / "junit.xml"
     probe.mkdir(exist_ok=True)
@@ -398,7 +617,9 @@ def run_frozen_tests(
         )
         try:
             output, _ = process.communicate(timeout=timeout)
-        except subprocess.TimeoutExpired:
+        except BaseException:
+            # the timeout, Ctrl-C or anything else: the run is in a process group of its own, which the terminal's
+            # interrupt never reaches, so it is stopped here, before the worktree it runs in goes
             _stop(process)
             process.communicate()
             raise
@@ -453,3 +674,34 @@ def outcome_problems(outcome: Outcome) -> list[str]:
         if not Path(path).is_relative_to(outcome.tree)
     ]
     return out
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="python -m scripts.prereg_published",
+        description="After publication: print or write the record that names the publish commit.",
+    )
+    action = parser.add_mutually_exclusive_group(required=True)
+    action.add_argument(
+        "--checked-by",
+        action="store_true",
+        help="print the sha256 of each file that checks the pre-registration after publication (for the amendment)",
+    )
+    action.add_argument(
+        "--write-record",
+        nargs=2,
+        metavar=("COMMIT", "AMENDMENT"),
+        help=f"write {RECORD}: the publish commit on main (40 hex) and the amendment's comment URL",
+    )
+    args = parser.parse_args(argv)
+    if args.checked_by:
+        print(json.dumps(checked_by(ROOT), indent=2))
+        return 0
+    commit, amendment = args.write_record
+    record = write_record(ROOT, commit, amendment)
+    print(f"wrote {RECORD}: {record['commit']}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
