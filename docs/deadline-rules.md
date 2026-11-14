@@ -585,6 +585,8 @@ On every recorded reading (the four benchmark splits at the current and the old 
 no to-do; with the readings' to-dos removed it finds 15 dates on the benchmark letters and each to-do comes
 out on the labelled obligation's date (one, on a letter that gives a payment two dates, reads the later; the
 two-dates rule of § 1 then keeps the earlier), none on a scam letter.
+`python -m scripts.deadline_check_ablation --splits dev test holdout holdout2 --out <file>` replays that count
+with no model call.
 
 ---
 

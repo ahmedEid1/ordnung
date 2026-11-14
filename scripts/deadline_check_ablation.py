@@ -14,7 +14,7 @@ are printed or written — never a letter's text, a reading or a quote.
 
 Run it from the repository root::
 
-    PYTHONPATH=src:. .venv/bin/python -m scripts.deadline_check_ablation --out PATH [--splits dev test …]
+    .venv/bin/python -m scripts.deadline_check_ablation --out PATH [--splits dev test …]
 """
 
 from __future__ import annotations
