@@ -93,8 +93,8 @@ is on [docs/evals-history.md](../docs/evals-history.md).
 The final splits (`holdout4` and `newkinds`, written after the code freeze) and "Ask: new questions on the demo
 household" are recorded in the one pre-registered run, on the days their letters are written for, with the flags
 below; the recording commands, with each step's budget and stop, are pre-registered with it
-([`preregistration/final-0.4.0.md`](preregistration/final-0.4.0.md), posted on
-[issue #54](https://github.com/ahmedEid1/ordnung/issues/54) before any recording).
+([`preregistration/final-0.4.0.md`](preregistration/final-0.4.0.md), registered with its sha256 on
+[issue #54](https://github.com/ahmedEid1/ordnung/issues/54) before any final recording).
 
 - **A unit at a time.** A unit is one letter in one read, with all its conditions; an Ask run, and a stress
   invocation, is one unit. When a unit completes, its day and the `claude` version go into the day index beside the
