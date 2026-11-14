@@ -47,7 +47,7 @@ from evals.present import (
     views,
 )
 from evals.present.__main__ import main
-from scripts import prereg_hashes
+from scripts import prereg_hashes, prereg_published
 
 import helpers_final as hf
 import test_present_final as builders
@@ -2461,7 +2461,12 @@ def test_the_site_with_no_final_is_the_freeze_s_byte_for_byte(tmp_path: Path) ->
     freeze's ``evals/present`` (from git) and this checkout's each build it from their own ``presentation.json``, in
     folders of their own. Once the final run is published, this checkout's ``presentation.json`` holds it: this
     checkout's side then builds from the presentation with no final run, rendered from the results as they were
-    before the publish PR."""
+    before the publish PR. It holds the presenter to the freeze, so it ends with it: once the publish record names
+    the publish commit, the presenter may change (the README's generated block stays: tests/test_preregistration.py)."""
+    if (hf.ROOT / prereg_published.RECORD).is_file():
+        pytest.skip(
+            f"after publication: {prereg_published.RECORD} ends the freeze, and the presenter may change"
+        )
     if shutil.which("git") is None or _git("cat-file", "-e", f"{FREEZE}^{{commit}}").returncode != 0:
         pytest.skip("the freeze commit is not in this clone (a shallow checkout)")
     frozen, here = tmp_path / "freeze", tmp_path / "head"

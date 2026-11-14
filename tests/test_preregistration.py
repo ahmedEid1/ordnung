@@ -1,8 +1,9 @@
 """The pre-registration of the final run holds (``evals/preregistration/final-0.4.0.json`` and ``.md``).
 
-This file is frozen from the code freeze on, with ``tests/test_present_final.py`` and ``tests/test_final_gates.py``:
-the pre-registration's ``code`` map names all three. Each part skips until what it checks exists — the
-pre-registration, the deviations file, the phase-2 record, a final results file — and then holds for good:
+From the code freeze to the publication of the final run, this file was frozen with ``tests/test_present_final.py``
+and ``tests/test_final_gates.py`` (the pre-registration's ``code`` map names all three), and CI ran it on every commit
+in between. Each part skips until what it checks exists — the pre-registration, the deviations file, the phase-2
+record, a final results file — and then holds:
 
 * every required field is there;
 * every file of the ``files`` map, and the power and calibration files, are byte for byte what was registered;
@@ -23,10 +24,31 @@ pre-registration, the deviations file, the phase-2 record, a final results file 
   (``scripts.prereg_hashes --deviations --history``);
 * (slow) the planned day's build regenerates to the registered manifest.
 
+After publication, the publish commit holds them. The pre-registration plans changes after the publish commit (a
+scorer bug fixed in ``-rescored`` files, the owner's checks filled in), and the code goes on, so the checks that hold
+HEAD to the freeze cannot hold at HEAD for good. Once ``evals/preregistration/published-0.4.0.json`` names the
+publish commit and the amendment on the pre-registration issue that says so (``scripts.prereg_published``), they
+verify that commit, read from git, and skip at HEAD: the ``files`` map, the code map, the paths changed since the
+freeze, the final results' frozen-input check and their analysis rendered again, the held-out Ask file of runs, the
+phase-2 tree and the planned day's build. At HEAD, from then on:
+
+* the record names a commit of HEAD's history after the freeze that published a final analysis of the registered
+  pre-registration, and a comment on the pre-registration issue;
+* (slow) that commit's own copy of this file passes there, every test and none skipped, in a temporary worktree of it
+  with its own code first on ``sys.path``;
+* the pre-registration, its ``.md``, the phase-2 record and the power and calibration files are byte for byte the
+  publish commit's, and so is every results file the final run added (a re-score is a new ``-rescored`` file);
+* the deviations file starts with the publish commit's entries, unchanged; only label errors and scorer bugs are added;
+* for every 0.4.x release, the README's generated block is the one published, word for word, but for its count of the
+  deviations recorded at the time, which follows the file (the pledge);
+* the required fields, the templates, the pledge and the rule texts, the files written once and the deviations (well
+  formed, recorded at the time) hold as before.
+
 The checks that read the git history skip in a clone without the freeze commit only while no final result is
 published; from then on such a clone fails them (CI's clone must hold the history).
 
-The checks themselves are :mod:`scripts.prereg_hashes`'s, also on the code map."""
+The checks themselves are :mod:`scripts.prereg_hashes`'s (on the code map) and, after publication,
+:mod:`scripts.prereg_published`'s."""
 
 from __future__ import annotations
 
@@ -41,7 +63,7 @@ from typing import Any
 
 import pytest
 from evals import analysis
-from scripts import prereg_hashes
+from scripts import prereg_hashes, prereg_published
 
 ROOT = Path(__file__).resolve().parents[1]
 PREREG = ROOT / "evals" / "preregistration" / "final-0.4.0.json"
@@ -50,10 +72,23 @@ DEVIATIONS = ROOT / "evals" / "preregistration" / "deviations-0.4.0.json"
 PHASE2 = ROOT / "evals" / "preregistration" / "phase2-0.4.0.json"
 FINAL_SPLITS = ("holdout4", "newkinds")
 FROZEN_TESTS = ("tests/test_preregistration.py", "tests/test_present_final.py", "tests/test_final_gates.py")
+#: Committed after the publish commit, never in it: it names that commit and the amendment on the issue.
+PUBLISHED = ROOT / prereg_published.RECORD
+#: The test that runs the publish commit's own copy of this file at that commit.
+AT_THE_PUBLISH_COMMIT = "test_the_publish_commit_s_own_copy_of_this_file_passes_there"
 
 
 def _json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _until_published() -> None:
+    """A check that holds HEAD to the freeze runs at HEAD until the publish record exists, then at that commit."""
+    if PUBLISHED.is_file():
+        pytest.skip(
+            f"after publication: {prereg_published.RECORD} names the publish commit, where this check holds "
+            f"({AT_THE_PUBLISH_COMMIT} runs that commit's own copy of this file there)"
+        )
 
 
 @pytest.fixture(scope="module")
@@ -70,6 +105,7 @@ def test_every_required_field_is_there(prereg: dict[str, Any]) -> None:
 
 
 def test_every_registered_file_is_byte_for_byte_the_same(prereg: dict[str, Any]) -> None:
+    _until_published()
     assert prereg["files"], "the files map is empty"
     assert prereg_hashes.files_problems(prereg, ROOT) == []
 
@@ -82,6 +118,7 @@ def _excused(prereg: dict[str, Any]) -> set[str]:
 
 
 def test_the_code_map_is_the_code_at_head(prereg: dict[str, Any]) -> None:
+    _until_published()
     code = prereg["code"]
     for path in FROZEN_TESTS:
         assert path in code, f"the code map leaves out {path}"
@@ -103,6 +140,7 @@ def _freeze_in_history(prereg: dict[str, Any]) -> str:
 
 
 def test_only_allowed_paths_changed_since_the_freeze(prereg: dict[str, Any]) -> None:
+    _until_published()
     freeze = _freeze_in_history(prereg)
     changed = prereg_hashes.changed_since(ROOT, freeze)
     assert prereg_hashes.path_problems(changed, prereg["frozen"], _excused(prereg)) == []
@@ -128,6 +166,7 @@ def _final_results() -> list[Path]:
 
 
 def test_every_final_results_file_passes_the_frozen_input_check(prereg: dict[str, Any]) -> None:
+    _until_published()
     files = _final_results()
     if not files:
         pytest.skip("no final results file is published yet (checkpoints stay in evals/results/pending/)")
@@ -157,6 +196,7 @@ def test_the_published_final_analysis_is_the_registered_one_over_every_final_rea
 ) -> None:
     """The final analysis published read ``final-0.4.0.json`` as registered (its path and sha256), took every live
     final results file as an input, and is what they give rendered again, byte for byte."""
+    _until_published()
     published = _published_final_analyses()
     if not published:
         pytest.skip("no final analysis is published yet")
@@ -177,6 +217,7 @@ def test_the_published_final_analysis_is_the_registered_one_over_every_final_rea
 
 
 def test_the_held_out_ask_file_of_runs_holds_every_run_recorded() -> None:
+    _until_published()
     from evals.ask import heldout
     from evals.ask.run import DEFAULT_MODEL
 
@@ -212,6 +253,7 @@ def test_the_pledge_and_the_rule_texts_are_word_for_word_in_the_md_and_the_json(
 
 
 def test_the_presenter_is_the_posted_phase2_tree() -> None:
+    _until_published()
     if not PHASE2.is_file():
         pytest.skip("phase 2 is not posted yet")
     deviations = _json(DEVIATIONS) if DEVIATIONS.is_file() else []
@@ -242,6 +284,7 @@ def test_the_planned_day_s_build_regenerates_the_registered_manifest(
 ) -> None:
     """The committed manifest is the registered one; a build of the planned day gives the same letters and labels,
     and the same bytes where the generator's libraries are the registered ones (the manifest names their versions)."""
+    _until_published()
     data = prereg["data"]
     committed = ROOT / "evals" / "dataset" / "manifest.json"
     assert hashlib.sha256(committed.read_bytes()).hexdigest() == data["manifest_sha256"]
@@ -261,3 +304,95 @@ def test_the_planned_day_s_build_regenerates_the_registered_manifest(
     )  # keys only, no letter text
     if built.get("environment") == registered.get("environment"):
         assert hashlib.sha256(built_path.read_bytes()).hexdigest() == data["manifest_sha256"]
+
+
+# --------------------------------------------------------------------------------------------------
+# After publication: the publish commit holds the checks above, and what it published stays
+# --------------------------------------------------------------------------------------------------
+
+
+def _record(prereg: dict[str, Any]) -> tuple[dict[str, Any], str]:
+    """The publish record, checked: a commit of HEAD's history after the freeze, and a comment on the
+    pre-registration issue the first checkpoint commit names. Until it is committed, this skips."""
+    record = prereg_published.load_record(ROOT)
+    if record is None:
+        pytest.skip(
+            f"not published yet: no {prereg_published.RECORD}, so the checks above hold HEAD to the freeze"
+        )
+    freeze = _freeze_in_history(prereg)
+    issue = prereg_hashes.bound_issue(ROOT, freeze)
+    assert prereg_published.record_problems(record, ROOT, freeze=freeze, issue=issue) == []
+    return record, freeze
+
+
+def test_the_publish_record_names_the_commit_that_published_the_final_run(prereg: dict[str, Any]) -> None:
+    """Only a commit that published a final analysis of the registered pre-registration can end the freeze: a commit
+    before publication publishes none."""
+    record, _ = _record(prereg)
+    registered = {
+        "file": PREREG.relative_to(ROOT).as_posix(),
+        "sha256": hashlib.sha256(PREREG.read_bytes()).hexdigest(),
+    }
+    pattern = prereg["sentences"]["files"]["final"]
+    assert prereg_published.final_analyses_at(ROOT, record["commit"], pattern, registered), (
+        f"{record['commit']} published no final analysis of the registered pre-registration"
+    )
+
+
+@pytest.mark.slow
+def test_the_publish_commit_s_own_copy_of_this_file_passes_there(
+    prereg: dict[str, Any], tmp_path: Path
+) -> None:
+    """Every check above that holds HEAD to the freeze, at the publish commit: its own copy of this file, every test
+    and the slow one too, none skipped, in a temporary worktree of that commit, with that commit's code (``src``,
+    ``evals``, ``scripts``) first on ``sys.path``. The worktree is removed afterwards, whatever happened."""
+    record, _ = _record(prereg)
+    outcome = prereg_published.run_frozen_tests(ROOT, record["commit"], tmp_path)
+    print(f"{record['commit']}: {len(outcome.tests)} tests in {outcome.seconds:.0f} s")
+    assert prereg_published.outcome_problems(outcome) == []
+
+
+def test_the_registered_files_are_the_publish_commit_s(prereg: dict[str, Any]) -> None:
+    record, _ = _record(prereg)
+    kept = [*prereg_hashes.WRITE_ONCE, *(str(prereg[name]["file"]) for name in prereg_hashes.NAMED_FILES)]
+    assert prereg_published.unchanged_problems(ROOT, record["commit"], kept) == []
+
+
+def test_the_final_run_s_results_files_are_the_publish_commit_s(prereg: dict[str, Any]) -> None:
+    """Every results file the final run added (under evals/results, but the checkpoints of ``pending/``, and
+    evals/retakes) stays byte for byte: a scorer bug is fixed after publication in new ``-rescored`` files, never in
+    the primary file."""
+    record, freeze = _record(prereg)
+    added = prereg_published.added_results(ROOT, freeze, record["commit"])
+    assert added, "the publish commit added no results file"
+    assert prereg_published.unchanged_problems(ROOT, record["commit"], added) == []
+
+
+def test_the_deviations_file_only_grows_after_publication(prereg: dict[str, Any]) -> None:
+    record, _ = _record(prereg)
+    published = prereg_published.at_commit(ROOT, record["commit"], prereg_hashes.DEVIATIONS_PATH)
+    assert published is not None, "the publish commit has no deviations file"
+    assert prereg_published.deviations_kept_problems(_json(DEVIATIONS), json.loads(published)) == []
+
+
+def test_the_readme_keeps_the_published_block_for_every_0_4_x_release(prereg: dict[str, Any]) -> None:
+    """The pledge: "The generated block, including its 'where it falls short' line, stays in the README for every
+    0.4.x release." Word for word the publish commit's, but for the count of deviations recorded at the time, which
+    grows with the deviations file when a label error or a scorer bug is recorded after publication."""
+    record, _ = _record(prereg)
+    version = prereg_published.version(ROOT)
+    if version is None or not version.startswith("0.4."):
+        pytest.skip(f"the pledge holds the block for every 0.4.x release; this is {version}")
+    published = prereg_published.at_commit(ROOT, record["commit"], "README.md")
+    assert published is not None, "the publish commit has no README.md"
+    sentences = prereg["sentences"]
+    assert (
+        prereg_published.readme_problems(
+            (ROOT / "README.md").read_text(encoding="utf-8"),
+            published.decode("utf-8"),
+            template=sentences["templates"]["head.deviations"]["text"],
+            deviations_file=sentences["files"]["deviations"],
+            deviations=len(_json(DEVIATIONS)),
+        )
+        == []
+    )
