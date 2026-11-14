@@ -76,7 +76,11 @@ the tag every change goes under `## X.Y.Z`, not under `## Unreleased`, which sta
 with anything listed above the version. The pull request whose merge is tagged sets the section's date to the day
 of the release and drops that sentence: `scripts/release_notes.py --tag` refuses a section that still has it.
 For 0.4.0 that is not the pull request that publishes the evaluation but the one after it, which adds
-`evals/preregistration/published-0.4.0.json`: its merge gets the `v0.4.0` tag.
+`evals/preregistration/published-0.4.0.json`: its merge gets the `v0.4.0` tag. The publishing pull request is
+merged with a merge commit, never squashed or rebased (the deviations name its checkpoint commits), and the record
+names that merge commit on `main`. Once the amendment is posted on the pre-registration issue,
+`python -m scripts.prereg_published --write-record <merge commit> <the amendment's URL>` writes it, with the
+sha256 of the files that check the pre-registration from then on, on a branch made from `main` after that merge.
 
 A pre-release works the same way, with a version such as `X.Y.Zrc1`, its own changelog section and the tag
 `vX.Y.Zrc1`. `pipx install ordnung` skips it; `pipx install "ordnung==X.Y.Zrc1"` installs it.

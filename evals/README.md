@@ -141,16 +141,21 @@ below; the recording commands, with each step's budget and stop, are pre-registe
 .venv/bin/python -m evals.harness retake --invalid D003 --to /tmp/retakes   # a read a recorded deviation made invalid
 ```
 
-**After publication.** `tests/test_preregistration.py` checked every commit from the code freeze to the
-publication against the pre-registration. Then a record, `published-0.4.0.json` in `preregistration/`, names the
-publish commit and the amendment on issue #54 that ends the freeze there. From then on the checks of the frozen
-code and paths (the code map, the paths changed since the freeze, the published analysis rendered again, the
-planned day's build) run at that commit, from its own copy of the test, in a temporary worktree with its own code:
-every test must pass and none skip (`pytest -m slow tests/test_preregistration.py`, in a clone with the whole
-history). At later commits the test keeps only what stays for good: the pre-registration, the phase-2 record and
-every results file the run published, byte for byte (a re-score is a new `-rescored` file); the deviations file,
-which only grows, by label errors and scorer bugs; and, for every 0.4.x release, the README's generated block,
-word for word but for its count of deviations (`scripts/prereg_published.py`).
+**After publication.** Until the final run is published, `tests/test_preregistration.py` holds HEAD to the freeze;
+CI ran it on every pull request and every push to main, and at the publish commit it passes whole. Then a record,
+`published-0.4.0.json` in `preregistration/`, names the commit on `main` that published the run (the publish pull
+request's merge commit), the amendment on issue #54 that ends the freeze there, and the sha256 of the files that
+check the pre-registration from then on. The checks that hold the code and the data to the freeze (the files and
+code maps, the paths changed since the freeze, the frozen-input check and the published analysis rendered again, the
+file of the Ask set's runs, the phase-2 tree and the planned day's build) run at that commit, from its own copy of
+the test, in a temporary worktree with its own code: every test must pass and none skip
+(`pytest -m slow tests/test_preregistration.py`, in a clone with the whole history). At later commits the test keeps
+what stays for good: the pre-registration and the phase-2 record byte for byte; every results file the run
+published, byte for byte (a re-score is a new `-rescored` file), but the final analysis, which a label error or a
+scorer bug recorded later renders again with only its list of deviations and, for a label error, its label-corrected
+sensitivity changed; the stress run's registered fingerprints; the deviations file, which only grows, by label
+errors and scorer bugs; and, for every 0.4.x release, the README's generated block, word for word but for its count
+of deviations (`scripts/prereg_published.py`).
 
 ## Where results go
 

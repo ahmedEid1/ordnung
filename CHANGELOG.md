@@ -115,13 +115,16 @@ install this version by its commit, as *Updating* says for a release without a t
 - The web app is built with newer minor and patch versions of its packages (React Query 5.105, lucide-react
   1.64, motion 14.8, React Router 8.5.1), and a test checks that the committed build bundles exactly the
   versions `web/package-lock.json` pins.
-- **The pre-registration is checked at the commit that published the final run.** `tests/test_preregistration.py`
-  checked every commit from the code freeze to the publication against it. A record committed after publication
-  now names the publish commit and the amendment on [issue #54](https://github.com/ahmedEid1/ordnung/issues/54):
-  the checks of the frozen code and paths run that commit's own copy of the test there, in a temporary worktree,
-  and later commits keep only what stays for good: the pre-registration and the run's results files byte for
-  byte, a deviations file that only grows, and the README's generated block for every 0.4.x release. The code can
-  change again without failing CI.
+- **The pre-registration is checked at the commit that published the final run.** Until the publication
+  `tests/test_preregistration.py` held each pull request and each push to `main` to the code freeze, and it passes
+  whole at the publish commit. A record committed after publication now names that commit on `main`, the amendment on
+  [issue #54](https://github.com/ahmedEid1/ordnung/issues/54) and the sha256 of the files that check the
+  pre-registration from then on: the checks of the frozen code and paths run that commit's own copy of the test
+  there, in a temporary worktree, and later commits keep what stays for good: the pre-registration and the run's
+  results files byte for byte (the final analysis is rendered again only when a label error or a scorer bug is
+  recorded, and its results stay), the stress run's registered fingerprints, a deviations file that only grows, and
+  the README's generated block for every 0.4.x release. The code can change again without failing CI: the stress
+  replay of `make eval-reproduce` compares the numbers, not the fingerprints of the code that replays.
 
 ### Fixed
 
