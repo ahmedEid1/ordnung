@@ -19,7 +19,7 @@ What is measured:
 - **Ablations** (`scripts/eval_ablate_checks.py`, `scripts/eval_without_land.py`): the same recordings with each
   of Ordnung's checks switched off in turn, and the app without the sender's Land.
 - **Stress** (`perturb/`): held-out letters with one sentence added, aimed at the deadline or naming a date that is
-  not one; not recorded yet.
+  not one; part of the pre-registered final run only ([docs/evals.md](../docs/evals.md) says what was recorded).
 
 ## Layout
 
@@ -32,7 +32,7 @@ What is measured:
 | `splits.py` | the splits: their role, their letters' variants, and which are recorded yet |
 | `conditions.py`, `prompts/` | the four conditions, and the prompts of the three that are not Ordnung's pipeline (Ordnung's own are in `src/ordnung/llm/prompts/`) |
 | `run.py`, `records.py`, `metrics.py`, `report.py` | the runner, the manifest's and the answers' types, the scoring, and the results files |
-| `stats.py`, `analysis.py` | the statistics, and the analysis of the held-out splits (and of the final run, once it is recorded) |
+| `stats.py`, `analysis.py` | the statistics, and the analysis of the held-out splits and of the pre-registered final run |
 | `preregistration/` | the pre-registered final run: `preregistration/brief-templates/`, the briefs of its blind sessions (writing the new letters, Ask questions and stress sentences; reading letters and deriving their dates; deciding between two derivations or answers), and, as they are made, the pre-registration, its deviations and the files it rests on |
 | `harness.py` | recording: a cost cap, waiting through a usage limit, repeats, one recorder at a time, the ledger and the request lock |
 | `ask/`, `e2e/`, `perturb/` | the Ask benchmark, the run through the real app, and the stress cells ([their own README](perturb/README.md)) |
@@ -92,7 +92,9 @@ is on [docs/evals-history.md](../docs/evals-history.md).
 
 The final splits (`holdout4` and `newkinds`, written after the code freeze) and "Ask: new questions on the demo
 household" are recorded in the one pre-registered run, on the days their letters are written for, with the flags
-below; the recording commands, with each step's budget and stop, are pre-registered with it.
+below; the recording commands, with each step's budget and stop, are pre-registered with it
+([`preregistration/final-0.4.0.md`](preregistration/final-0.4.0.md), posted on
+[issue #54](https://github.com/ahmedEid1/ordnung/issues/54) before any recording).
 
 - **A unit at a time.** A unit is one letter in one read, with all its conditions; an Ask run, and a stress
   invocation, is one unit. When a unit completes, its day and the `claude` version go into the day index beside the
