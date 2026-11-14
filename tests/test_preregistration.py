@@ -319,8 +319,9 @@ def test_the_planned_day_s_build_regenerates_the_registered_manifest(
 
 
 def _record(prereg: dict[str, Any]) -> tuple[dict[str, Any], str]:
-    """The publish record, checked: a commit of HEAD's history after the freeze, and a comment on the
-    pre-registration issue the first checkpoint commit names. Until it is committed, this skips."""
+    """The publish record, checked: a commit on HEAD's first-parent line (main's own history) after the freeze, a
+    comment on the pre-registration issue the first checkpoint commit names, and the sha256 of the files that check
+    after publication. Until it is committed, this skips."""
     record = prereg_published.load_record(ROOT)
     if record is None:
         pytest.skip(
