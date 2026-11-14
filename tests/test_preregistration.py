@@ -8,6 +8,10 @@ pre-registration, the deviations file, the phase-2 record, a final results file 
 * every file of the ``files`` map, and the power and calibration files, are byte for byte what was registered;
 * the ``code`` map is the code at HEAD (this test among it);
 * every path changed since the freeze is one the pre-registration allows, and none it froze changed;
+* in these two, B's runner-defect rule is the one exception: a path a ``code_hash_changed`` deviation of step
+  ``runner-fix`` names as ``<path> sha256 <sha256 at HEAD>``, once the git history shows it was recorded at the time
+  (a clone without the freeze commit excuses nothing), and never an input of the code digest or the fingerprints, nor
+  ``evals/present/final.py`` or ``final_templates.json`` (``scripts.prereg_hashes.excused_at``);
 * the pre-registration and the phase-2 record are written once after the freeze, never edited;
 * every final results file passes the analysis' check of the frozen inputs;
 * the published final analysis read the registered pre-registration, and is what every live final results file
@@ -70,11 +74,18 @@ def test_every_registered_file_is_byte_for_byte_the_same(prereg: dict[str, Any])
     assert prereg_hashes.files_problems(prereg, ROOT) == []
 
 
+def _excused(prereg: dict[str, Any]) -> set[str]:
+    """The paths B's runner-defect rule excuses: each named, with its sha256 at HEAD, by a ``runner-fix``
+    ``code_hash_changed`` deviation of the committed deviations file that the history shows was recorded at the time
+    (none while there is no such file, and none in a clone without the freeze commit)."""
+    return prereg_hashes.excused_at(ROOT, prereg)
+
+
 def test_the_code_map_is_the_code_at_head(prereg: dict[str, Any]) -> None:
     code = prereg["code"]
     for path in FROZEN_TESTS:
         assert path in code, f"the code map leaves out {path}"
-    assert code == prereg_hashes.code_section(ROOT)
+    assert prereg_hashes.code_problems(code, ROOT, _excused(prereg)) == []
 
 
 def _git(*args: str) -> subprocess.CompletedProcess[str]:
@@ -94,7 +105,7 @@ def _freeze_in_history(prereg: dict[str, Any]) -> str:
 def test_only_allowed_paths_changed_since_the_freeze(prereg: dict[str, Any]) -> None:
     freeze = _freeze_in_history(prereg)
     changed = prereg_hashes.changed_since(ROOT, freeze)
-    assert prereg_hashes.path_problems(changed, prereg["frozen"]) == []
+    assert prereg_hashes.path_problems(changed, prereg["frozen"], _excused(prereg)) == []
 
 
 def test_the_pre_registration_and_the_phase2_record_are_written_once(prereg: dict[str, Any]) -> None:
