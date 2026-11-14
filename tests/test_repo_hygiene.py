@@ -1047,3 +1047,40 @@ def test_the_repository_settings_are_the_project_s_own() -> None:
         assert setting in settings, setting
     assert "Private vulnerability reporting" in settings
     assert "private vulnerability reporting" in _text("SECURITY.md").lower()
+
+
+#: The About box's topics as docs/releasing.md records them, for the owner to set on GitHub.
+ABOUT_TOPICS = [
+    "claude",
+    "llm",
+    "llm-evaluation",
+    "ai-agents",
+    "mcp",
+    "local-first",
+    "privacy",
+    "germany",
+    "paperwork",
+    "fastapi",
+    "react",
+    "sqlite",
+]
+
+
+def test_the_about_box_says_what_the_readme_says() -> None:
+    """docs/releasing.md records the About box the owner sets on GitHub. Its description fits GitHub's 350
+    characters and says what the README says: Claude reads the letters, tested code works out each deadline with
+    the law behind it, and a held-out benchmark replays with zero tokens. Its topics name what Ordnung is and is
+    built with, never `rag`. The 0.4.0 tag goes on the merge of the pull request after the evaluation's
+    publication."""
+    releasing = _text("docs/releasing.md")
+    settings = " ".join(_section(releasing, "Repository settings (once, by the owner)").split())
+    description = re.search(r'\*Description\*: "([^"]+)"', settings)
+    assert description is not None and len(description[1]) <= 350, description
+    for words in ("Claude reads your letters", "tested code", "the law behind it", "held-out", "zero tokens"):
+        assert words in description[1], words
+    topics = re.search(r"\*Topics\*: (.+?) - \*", settings)
+    assert topics is not None
+    assert re.findall(r"`([^`]+)`", topics[1].split(";", 1)[0]) == ABOUT_TOPICS
+    flat = " ".join(releasing.split())
+    assert "`evals/preregistration/published-0.4.0.json`" in flat
+    assert "its merge gets the `v0.4.0` tag" in flat
