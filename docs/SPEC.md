@@ -137,10 +137,17 @@ src/ordnung/            (the main modules; the package itself is the complete li
   api/ (app.py, security.py, deps.py, phone_gate.py, routes/*.py)
   web/dist/                                                     # built SPA (generated)
 web/            React + TS + Vite + Tailwind v4 source
-scripts/        make_sample_life.py (+ scan simulation), capture.sh (README assets; web/scripts/capture.mjs), gen_mock_*.py
-evals/          dataset manifest, runner, results/*.json
-docs/           SPEC, architecture, deadline-rules, privacy, evals, evals-ask, decisions/ (ADRs), assets/ (README pictures)
-tests/          pytest (+ tests/fake_claude.py, the fake claude CLI)
+scripts/        generated data: make_sample_life.py (+ samplelife/; the demo's sample life), gen_mock_*.py (the
+                static demo's), make_*_fixture.py (end-to-end fixtures), make_postcode_table.py (the postcode table);
+                the README's media: capture.sh (web/scripts/capture.mjs); releases and CI's weekly checks:
+                release_notes.py, check_rules_age.py, check_claude_flags.py; the evaluation: eval_*.py,
+                deadline_check_ablation.py, build_final_facts.py, export_household_facts.py, owner_label_sample.py,
+                prereg_*.py
+evals/          the benchmarks: letters, runner, recordings, results and presenter (evals/README.md#layout)
+docs/           every document, by its reader in docs/README.md; decisions/ (the ADRs), assets/ (the README's pictures
+                and the evaluation's charts)
+tests/          pytest; fake_claude.py (the fake claude CLI), fake_tesseract.py, fake_caldav.py, helpers_*.py,
+                e2e_support/
 ```
 
 ### 3.2 Stack

@@ -438,3 +438,73 @@ def test_every_link_between_the_docs_resolves() -> None:
                 elif anchor and destination.suffix == ".md" and anchor not in _anchors(destination):
                     broken.append(f"{where} (no such heading)")
     assert not broken, "links that lead nowhere:\n" + "\n".join(broken)
+
+
+# --------------------------------------------------------------------------------------------------
+# SPEC §3.1, the repository's layout: the folders beside the package
+# --------------------------------------------------------------------------------------------------
+
+#: The folders beside ``src/ordnung/`` whose line in SPEC §3.1 names what they hold.
+_LAYOUT_FOLDERS = ("scripts/", "evals/", "docs/", "tests/")
+#: A name in a layout line: a file (``capture.sh``, ``gen_mock_*.py``), a folder (``samplelife/``) or a path with
+#: an anchor (``evals/README.md#layout``).
+_LAYOUT_NAME = re.compile(r"(?<![\w./*-])([\w*.-]+(?:/[\w*.-]+)*(?:\.(?:py|sh|mjs|md)|/)(?:#[\w-]+)?)(?![\w/])")
+
+
+def _layout_lines() -> dict[str, str]:
+    """SPEC §3.1's line of each top-level folder, with the lines that continue it, by folder."""
+    block = _spec_sections()["3.1"].split("```", 2)[1]
+    lines: dict[str, str] = {}
+    current = ""
+    for line in block.splitlines():
+        match = re.match(r"^([a-z]+/)\s", line)
+        if match:
+            current = match[1]
+            lines[current] = line[len(current) :].strip()
+        elif current in _LAYOUT_FOLDERS and line.startswith(" "):
+            lines[current] += " " + line.strip()
+    return lines
+
+
+def _layout_names(folder: str) -> list[tuple[str, Path]]:
+    """Each name in a folder's layout line, with the path it names: from the root when it starts with a
+    top-level folder, else inside the folder."""
+    names = []
+    for name in _LAYOUT_NAME.findall(_layout_lines()[folder]):
+        path = name.split("#", 1)[0]
+        top = path.split("/", 1)[0] + "/"
+        names.append((name, ROOT / path if top in ("src/", "web/", *_LAYOUT_FOLDERS) else ROOT / folder / path))
+    return names
+
+
+def test_the_layout_names_only_what_exists_beside_the_package() -> None:
+    """SPEC §3.1 said `scripts/` held the sample life, the README's media and the static demo's data, `evals/` a
+    manifest, a runner and results, and `docs/` six pages: each has grown since. Every file, folder and pattern
+    its lines for `scripts/`, `evals/`, `docs/` and `tests/` name is in the repository, and an anchor is a heading
+    of its page."""
+    lines = _layout_lines()
+    assert set(_LAYOUT_FOLDERS) <= set(lines), lines
+    missing = []
+    for folder in _LAYOUT_FOLDERS:
+        names = _layout_names(folder)
+        assert names, folder
+        for name, path in names:
+            found = sorted(path.parent.glob(path.name)) if "*" in path.name else [path] if path.exists() else []
+            anchor = name.partition("#")[2]
+            if not found or (anchor and anchor not in _anchors(path)):
+                missing.append(f"{folder}: {name}")
+    assert missing == []
+
+
+def test_the_layout_lists_every_script_and_points_at_the_benchmark_s_own_layout() -> None:
+    """Every script is in SPEC §3.1's `scripts/` line, by its name or a pattern, so a new script fails here until
+    the line says what it is for; `evals/` points at the benchmark's own table of its layout, and `docs/` at the
+    map of every document."""
+    folder = ROOT / "scripts"
+    named = [path for _, path in _layout_names("scripts/")]
+    patterns = [path.relative_to(folder).as_posix() for path in named if path.is_relative_to(folder)]
+    scripts = sorted(path.name for path in folder.iterdir() if path.suffix in (".py", ".sh"))
+    unlisted = [name for name in scripts if not any(fnmatch.fnmatch(name, pattern) for pattern in patterns)]
+    assert unlisted == [], "scripts SPEC §3.1 does not list"
+    assert "evals/README.md#layout" in _layout_lines()["evals/"]
+    assert "docs/README.md" in _layout_lines()["docs/"]
