@@ -390,7 +390,9 @@ def test_every_environment_variable_contributing_names_is_read_somewhere() -> No
 
 
 def test_contributing_gives_ci_s_own_checks_and_the_rule_about_real_letters() -> None:
-    """The checks CONTRIBUTING.md lists are CI's commands with CI's thresholds, word for word."""
+    """The checks CONTRIBUTING.md lists are CI's commands with CI's thresholds, word for word. They left out three
+    of CI's backend checks: the evaluation's pages against the results files (``evals.present --check``), every
+    published number replayed (``make eval-reproduce``) and the coverage floors of hand-off sync and phone access."""
     contributing = _text("CONTRIBUTING.md")
     for command in ("make install", "make check", "make e2e", "make build-web", "make openapi"):
         assert command in contributing, command
@@ -398,10 +400,20 @@ def test_contributing_gives_ci_s_own_checks_and_the_rule_about_real_letters() ->
     listed = [" ".join(line.split()) for line in checks.splitlines() if line.startswith(".venv/bin/")]
     jobs = _yaml(".github/workflows/ci.yml")["jobs"]
     ci = "\n".join(" ".join(step.get("run", "").split()) for job in jobs.values() for step in job["steps"])
-    for needed in ("--cov=ordnung.rules", "ordnung eval", "evals.ask", "ordnung demo --check"):
+    for needed in (
+        "--cov=ordnung.rules",
+        "ordnung eval",
+        "evals.ask",
+        "ordnung demo --check",
+        "evals.present --check",
+        "--include='*/ordnung/sync/*'",
+        "--include='*/ordnung/phone/*'",
+    ):
         assert any(needed in command for command in listed), needed
     for command in listed:
         assert command in ci, command
+    made = [" ".join(line.split()) for line in checks.splitlines() if line.startswith("make ")]
+    assert "make eval-reproduce" in made and "make eval-reproduce" in ci.splitlines()
     assert re.search(r"\*\*Never (commit|attach|paste|share)[^*]*real letters", contributing)
     assert "SECURITY.md" in contributing
 
