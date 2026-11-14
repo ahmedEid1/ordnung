@@ -1,9 +1,10 @@
 """The pre-registration of the final run holds (``evals/preregistration/final-0.4.0.json`` and ``.md``).
 
 From the code freeze to the publication of the final run, this file was frozen with ``tests/test_present_final.py``
-and ``tests/test_final_gates.py`` (the pre-registration's ``code`` map names all three), and CI ran it on every commit
-in between. Each part skips until what it checks exists — the pre-registration, the deviations file, the phase-2
-record, a final results file — and then holds:
+and ``tests/test_final_gates.py`` (the pre-registration's ``code`` map names all three); CI ran it on every pull
+request and every push to main in between, and at the publish commit it passes whole. Each part skips until what it
+checks exists — the pre-registration, the deviations file, the phase-2 record, a final results file — and then
+holds:
 
 * every required field is there;
 * every file of the ``files`` map, and the power and calibration files, are byte for byte what was registered;
@@ -25,19 +26,25 @@ record, a final results file — and then holds:
 * (slow) the planned day's build regenerates to the registered manifest.
 
 After publication, the publish commit holds them. The pre-registration plans changes after the publish commit (a
-scorer bug fixed in ``-rescored`` files, the owner's checks filled in), and the code goes on, so the checks that hold
-HEAD to the freeze cannot hold at HEAD for good. Once ``evals/preregistration/published-0.4.0.json`` names the
-publish commit and the amendment on the pre-registration issue that says so (``scripts.prereg_published``), they
-verify that commit, read from git, and skip at HEAD: the ``files`` map, the code map, the paths changed since the
-freeze, the final results' frozen-input check and their analysis rendered again, the held-out Ask file of runs, the
-phase-2 tree and the planned day's build. At HEAD, from then on:
+scorer bug fixed in ``-rescored`` files, a label error or the owner's checks sent through the blind review), and the
+code goes on, so the checks that hold HEAD to the freeze cannot hold at HEAD for good. Once
+``evals/preregistration/published-0.4.0.json`` names the publish commit and the amendment on the pre-registration
+issue that says so (``scripts.prereg_published``), they verify that commit, read from git, and skip at HEAD: the
+``files`` map, the code map, the paths changed since the freeze, the final results' frozen-input check and their
+analysis rendered again, the held-out Ask file of runs, the phase-2 tree and the planned day's build. At HEAD, from
+then on:
 
-* the record names a commit of HEAD's history after the freeze that published a final analysis of the registered
-  pre-registration, and a comment on the pre-registration issue;
+* the record names the commit on HEAD's first-parent line (main's own history) that first published a final analysis
+  of the registered pre-registration (its first parent holds none), a comment on the pre-registration issue, and the
+  sha256 of this file, ``scripts/prereg_published.py`` and ``scripts/prereg_hashes.py``, which stay those; a change to
+  the record's commit or to those files names a new amendment;
 * (slow) that commit's own copy of this file passes there, every test and none skipped, in a temporary worktree of it
-  with its own code first on ``sys.path``;
+  with its own first-party code first on ``sys.path`` (the interpreter and the libraries are this checkout's);
 * the pre-registration, its ``.md``, the phase-2 record and the power and calibration files are byte for byte the
-  publish commit's, and so is every results file the final run added (a re-score is a new ``-rescored`` file);
+  publish commit's, and so is every results file the final run added (a re-score is a new ``-rescored`` file), but
+  the final analysis: it is rendered again when a label error or a scorer bug is recorded, and then only its list of
+  deviations, the deviations file's sha256 and count and, for a label error, the label-corrected sensitivity change;
+* the stress run carries the registered fingerprints (its replay compares numbers, not the replaying code);
 * the deviations file starts with the publish commit's entries, unchanged; only label errors and scorer bugs are added;
 * for every 0.4.x release, the README's generated block is the one published, word for word, but for its count of the
   deviations recorded at the time, which follows the file (the pledge);
@@ -325,18 +332,28 @@ def _record(prereg: dict[str, Any]) -> tuple[dict[str, Any], str]:
     return record, freeze
 
 
-def test_the_publish_record_names_the_commit_that_published_the_final_run(prereg: dict[str, Any]) -> None:
-    """Only a commit that published a final analysis of the registered pre-registration can end the freeze: a commit
-    before publication publishes none."""
-    record, _ = _record(prereg)
-    registered = {
+def _registered() -> dict[str, str]:
+    return {
         "file": PREREG.relative_to(ROOT).as_posix(),
         "sha256": hashlib.sha256(PREREG.read_bytes()).hexdigest(),
     }
+
+
+def test_the_publish_record_names_the_commit_that_published_the_final_run(prereg: dict[str, Any]) -> None:
+    """Only the commit on main that first published a final analysis of the registered pre-registration can end the
+    freeze: a commit before publication publishes none, a later one's first parent already holds it."""
+    record, _ = _record(prereg)
     pattern = prereg["sentences"]["files"]["final"]
-    assert prereg_published.final_analyses_at(ROOT, record["commit"], pattern, registered), (
-        f"{record['commit']} published no final analysis of the registered pre-registration"
-    )
+    assert prereg_published.first_publication_problems(ROOT, record["commit"], pattern, _registered()) == []
+
+
+def test_the_files_that_check_after_publication_are_the_ones_the_record_names(prereg: dict[str, Any]) -> None:
+    """Once the checks above skip at HEAD, nothing else holds this file and the scripts it runs: the record names
+    their sha256 as merged (and the amendment does), and a change to them, or to the record's commit, names a new
+    amendment on the pre-registration issue."""
+    record, _ = _record(prereg)
+    assert prereg_published.checked_by_problems(record, ROOT) == []
+    assert prereg_published.record_history_problems(ROOT) == []
 
 
 @pytest.mark.slow
@@ -362,11 +379,49 @@ def test_the_registered_files_are_the_publish_commit_s(prereg: dict[str, Any]) -
 def test_the_final_run_s_results_files_are_the_publish_commit_s(prereg: dict[str, Any]) -> None:
     """Every results file the final run added (under evals/results, but the checkpoints of ``pending/``, and
     evals/retakes) stays byte for byte: a scorer bug is fixed after publication in new ``-rescored`` files, never in
-    the primary file."""
+    the primary file. The final analysis reads the deviations file, so a label error or a scorer bug recorded after
+    publication renders it again: then only its list of deviations, the file's sha256 and count and, for a label
+    error, the label-corrected sensitivity change, and its results stay what was published."""
     record, freeze = _record(prereg)
     added = prereg_published.added_results(ROOT, freeze, record["commit"])
     assert added, "the publish commit added no results file"
-    assert prereg_published.unchanged_problems(ROOT, record["commit"], added) == []
+    finals = set(
+        prereg_published.final_analyses_at(
+            ROOT, record["commit"], prereg["sentences"]["files"]["final"], _registered()
+        )
+    )
+    assert finals and finals <= set(added), "the final run added no final analysis"
+    assert (
+        prereg_published.unchanged_problems(ROOT, record["commit"], [p for p in added if p not in finals])
+        == []
+    )
+    for path in sorted(finals):
+        published = prereg_published.at_commit(ROOT, record["commit"], path)
+        assert published is not None and (ROOT / path).is_file(), f"{path}: removed since the publish commit"
+        assert prereg_published.final_analysis_problems(path, (ROOT / path).read_bytes(), published) == []
+
+
+def test_the_stress_run_was_recorded_with_the_registered_code(prereg: dict[str, Any]) -> None:
+    """The stress replay (``make eval-reproduce``) compares the numbers, not the fingerprints of the code that
+    replays, which every later change to the code moves: the fingerprints the stress run recorded are held to the
+    registered ones here (or to a runner fix's, which its ``code_hash_changed`` deviation names)."""
+    record, freeze = _record(prereg)
+    stress = []
+    for path in prereg_published.added_results(ROOT, freeze, record["commit"]):
+        try:
+            doc = _json(ROOT / path)
+        except ValueError:
+            continue
+        if isinstance(doc, dict) and str(doc.get("schema", "")).startswith("ordnung-eval-stress/"):
+            stress.append((path, doc))
+    if not stress:
+        pytest.skip("the final run published no stress results file")
+    deviations = _json(DEVIATIONS) if DEVIATIONS.is_file() else []
+    for path, doc in stress:
+        found = prereg_published.stress_fingerprint_problems(
+            doc, prereg["frozen"]["fingerprints"], deviations
+        )
+        assert found == [], f"{path}: {found}"
 
 
 def test_the_deviations_file_only_grows_after_publication(prereg: dict[str, Any]) -> None:
