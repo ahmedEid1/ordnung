@@ -506,6 +506,49 @@ def test_make_help_prints_every_target_with_its_text() -> None:
     assert _make("-n") == _make("-n", "help")
 
 
+@_needs_make
+@pytest.mark.parametrize("resolved", [True, False], ids=["uv resolves", "uv fails"])
+def test_make_constraints_leaves_no_file_in_the_checkout(tmp_path: Path, resolved: bool) -> None:
+    """`make constraints` hands uv the versions of the samples' libraries as constraints. It wrote them to
+    `.sample-pins.txt` in the checkout and removed that file only once uv had succeeded, so a failed resolve
+    (offline, or a conflict) left it behind, untracked and not ignored. The pins now go to a temporary file,
+    removed whether uv succeeds or not. A stand-in uv records what it was given."""
+    checkout = tmp_path / "checkout"
+    manifest = Path("src/ordnung/demo/samples/manifest.json")
+    (checkout / manifest.parent).mkdir(parents=True)
+    shutil.copyfile(ROOT / "Makefile", checkout / "Makefile")
+    shutil.copyfile(ROOT / manifest, checkout / manifest)
+    temp = tmp_path / "tmp"
+    temp.mkdir()
+    seen = tmp_path / "seen"
+    uv = tmp_path / "uv"
+    uv.write_text(
+        "#!/bin/sh\n"
+        f'echo "$@" > "{seen}.args"\n'
+        'while [ "$#" -gt 0 ]; do [ "$1" = -c ] && cat "$2" > "' + str(seen) + '.pins"; shift; done\n'
+        f"exit {0 if resolved else 1}\n",
+        encoding="utf-8",
+    )
+    uv.chmod(0o755)
+    env = {key: value for key, value in os.environ.items() if key not in {"MAKEFLAGS", "MFLAGS", "MAKELEVEL"}}
+    done = subprocess.run(
+        ["make", "--no-print-directory", "-s", "-C", str(checkout), "constraints", f"UV={uv}", f"PY={sys.executable}"],
+        capture_output=True,
+        text=True,
+        env={**env, "TMPDIR": str(temp)},
+        check=False,
+        timeout=60,
+    )
+    assert (done.returncode == 0) == resolved, done.stderr
+    environment = json.loads((ROOT / manifest).read_text(encoding="utf-8"))["generator"]["environment"]
+    pins = (tmp_path / "seen.pins").read_text(encoding="utf-8").split()
+    assert pins == [f"{name}=={environment[name]}" for name in ("fpdf2", "fonttools", "pillow", "pypdfium2")]
+    assert "--custom-compile-command make constraints" in (tmp_path / "seen.args").read_text(encoding="utf-8")
+    left = sorted(path.relative_to(checkout).as_posix() for path in checkout.rglob("*") if path.is_file())
+    assert left == ["Makefile", manifest.as_posix()]
+    assert list(temp.iterdir()) == []
+
+
 def test_make_eval_says_what_it_writes() -> None:
     """`make eval` (`ordnung eval`, no gate) writes the test split's results file into evals/results/ with
     today's date, unlike CI's gate (evals/run.py: a replay with thresholds writes none)."""
