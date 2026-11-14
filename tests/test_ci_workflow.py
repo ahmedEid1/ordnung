@@ -147,13 +147,16 @@ def test_a_hung_test_is_named_and_no_unread_coverage_report_is_written() -> None
 def test_the_type_check_covers_the_scripts_each_under_one_name() -> None:
     """CI's type check (``mypy`` with pyproject.toml's list) covers scripts/ too: they write data the tests and the
     static demo pin (the sample life, the postcode table, the mock data). scripts/eval_without_land.py is left off
-    the list and checked as ``scripts.eval_without_land``, the name evals/ imports it by: listed as a file as well,
-    mypy would find it under two names and stop before checking anything."""
+    the list and checked as ``scripts.eval_without_land``, the name evals/ imports it by, and scripts/prereg_hashes.py
+    as ``scripts.prereg_hashes``, the name scripts/prereg_published.py imports it by: listed as a file as well, mypy
+    would find it under two names and stop before checking anything."""
     mypy = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["mypy"]
     assert mypy["files"] == ["src/ordnung", "evals", "scripts"]
-    assert mypy["exclude"] == [r"^scripts/eval_without_land\.py$"]
+    assert mypy["exclude"] == [r"^scripts/eval_without_land\.py$", r"^scripts/prereg_hashes\.py$"]
     harness = (ROOT / "evals" / "e2e" / "harness.py").read_text(encoding="utf-8")
     assert re.search(r"^\s*from scripts\.eval_without_land import ", harness, re.M)
+    published = (ROOT / "scripts" / "prereg_published.py").read_text(encoding="utf-8")
+    assert re.search(r"^from scripts\.prereg_hashes import ", published, re.M)
     assert [step["run"] for step in _jobs()["backend"]["steps"] if "mypy" in step.get("run", "")] == [
         ".venv/bin/mypy"
     ]

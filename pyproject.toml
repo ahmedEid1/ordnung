@@ -166,12 +166,13 @@ ignore = ["RUF001", "RUF002", "RUF003", "E501", "B008", "RUF012"]
 
 # The whole package, the benchmark code (evals/) and the scripts get every check of `mypy --strict` (the tests
 # aren't type-checked). CI installs only the dev extras, so evals/ has to pass without matplotlib too.
-# scripts/eval_without_land.py is checked as scripts.eval_without_land, the name evals/e2e imports it by: listed
-# as a file as well, mypy would find it under two names.
+# scripts/eval_without_land.py is checked as scripts.eval_without_land, the name evals/e2e imports it by, and
+# scripts/prereg_hashes.py as scripts.prereg_hashes, the name scripts/prereg_published.py imports it by: listed as
+# files as well, mypy would find them under two names.
 [tool.mypy]
 python_version = "3.11"
 files = ["src/ordnung", "evals", "scripts"]
-exclude = ['^scripts/eval_without_land\.py$']
+exclude = ['^scripts/eval_without_land\.py$', '^scripts/prereg_hashes\.py$']
 strict = true
 ignore_missing_imports = true
 plugins = ["pydantic.mypy"]
