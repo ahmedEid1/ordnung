@@ -120,6 +120,7 @@ class World:
             "schema": prereg_published.SCHEMA,
             "commit": self.publish,
             "amendment": AMENDMENT,
+            "checked_by": {path: "0" * 64 for path in prereg_published.CHECKED_BY},
         }
         record.update(changes)
         return {key: value for key, value in record.items() if value is not None}
@@ -446,3 +447,311 @@ def test_the_skip_reason_names_the_test_that_runs_the_publish_commit_s_checks() 
         test_preregistration.PUBLISHED.relative_to(test_preregistration.ROOT).as_posix()
         == prereg_published.RECORD
     )
+
+
+def test_a_run_interrupted_stops_its_inner_pytest_before_the_worktree_goes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ctrl-C (or any other exception) while the publish commit's test runs stops that run too: it runs in a process
+    group of its own, which the terminal's interrupt never reaches, so it would go on in a removed worktree."""
+    root, published = _inner_repo(tmp_path, "import time\n\n\ndef test_hangs():\n    time.sleep(120)\n")
+    started: list[subprocess.Popen[str]] = []
+
+    class Interrupted(subprocess.Popen):  # type: ignore[type-arg]
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            super().__init__(*args, **kwargs)
+            started.append(self)
+
+        def communicate(self, *args: Any, **kwargs: Any) -> Any:
+            if kwargs.get("timeout") is not None:
+                raise KeyboardInterrupt
+            return super().communicate(*args, **kwargs)
+
+    monkeypatch.setattr(prereg_published.subprocess, "Popen", Interrupted)
+    before = _worktrees(root)
+    with pytest.raises(KeyboardInterrupt):
+        prereg_published.run_frozen_tests(root, published, tmp_path / "scratch", timeout=300)
+    monkeypatch.undo()
+    inner = [process for process in started if list(process.args[1:3]) == ["-m", "pytest"]]
+    assert len(inner) == 1
+    assert inner[0].poll() is not None, "the publish commit's test still runs after the interrupt"
+    assert _worktrees(root) == before
+
+
+# --------------------------------------------------------------------------------------------------
+# Only the commit on main that first published the final analysis can be named
+# --------------------------------------------------------------------------------------------------
+
+
+def _first_publication(world: World, commit: str) -> list[str]:
+    return prereg_published.first_publication_problems(
+        world.root, commit, FINAL_PATTERN, {"file": PREREG, "sha256": world.prereg_sha}
+    )
+
+
+def test_a_later_commit_that_still_holds_the_analysis_cannot_be_named(world: World) -> None:
+    """A commit after publication holds the final analysis too, and may have changed the README's block or a results
+    file in a way its own frozen test allows: naming it would hold HEAD to that version. Only the commit whose first
+    parent holds no final analysis of the registered pre-registration published it."""
+    assert _first_publication(world, world.publish) == []
+    assert any("first parent already holds" in p for p in _first_publication(world, world.after))
+    assert any("published no final analysis" in p for p in _first_publication(world, world.checkpoint))
+
+
+def test_the_record_names_main_s_merge_commit_not_the_publish_pull_request_s_head(tmp_path: Path) -> None:
+    """The publish PR is merged with a merge commit: main's first-parent line holds that merge, not the PR's head,
+    which a later commit's history reaches through the merge's second parent only."""
+    root = tmp_path / "repo"
+    root.mkdir()
+    _git(root, "init", "-q", "-b", "main")
+    _put(root, "README.md", "# Ordnung\n")
+    freeze = _commit(root, "the freeze")
+    prereg = '{"id": "final-0.4.0"}\n'
+    _put(root, PREREG, prereg)
+    _commit(root, "the pre-registration")
+    _git(root, "checkout", "-q", "-b", "publish")
+    analysis = {
+        "meta": {
+            "kind": "final",
+            "prereg": {"file": PREREG, "sha256": hashlib.sha256(prereg.encode()).hexdigest()},
+        }
+    }
+    _put(root, FINAL, json.dumps(analysis) + "\n")
+    head = _commit(root, "Final evaluation of 0.4.0: results, analyses and report")
+    _git(root, "checkout", "-q", "main")
+    _git(root, "merge", "-q", "--no-ff", "-m", "Merge the publish PR", "publish")
+    merge = _git(root, "rev-parse", "HEAD")
+    _put(root, "src/ordnung/engine.py", "# later\n")
+    _commit(root, "a later change")
+    record = {
+        "schema": prereg_published.SCHEMA,
+        "amendment": AMENDMENT,
+        "checked_by": {path: "0" * 64 for path in prereg_published.CHECKED_BY},
+    }
+    assert (
+        prereg_published.record_problems({**record, "commit": merge}, root, freeze=freeze, issue=ISSUE) == []
+    )
+    on_the_side = prereg_published.record_problems(
+        {**record, "commit": head}, root, freeze=freeze, issue=ISSUE
+    )
+    assert any("first-parent" in p for p in on_the_side), on_the_side
+    registered = {"file": PREREG, "sha256": hashlib.sha256(prereg.encode()).hexdigest()}
+    assert prereg_published.first_publication_problems(root, merge, FINAL_PATTERN, registered) == []
+
+
+# --------------------------------------------------------------------------------------------------
+# A deviation recorded after publication renders the final analysis again
+# --------------------------------------------------------------------------------------------------
+
+DEVIATIONS_READ = {"file": DEVIATIONS, "sha256": "a" * 64, "entries": 2}
+
+
+def _analysis(deviations: list[dict[str, Any]], read: dict[str, Any], *, corrected: float = 0.5) -> bytes:
+    document = {
+        "schema": "ordnung-eval-final-analysis/1",
+        "meta": {
+            "kind": "final",
+            "prereg": {"file": PREREG, "sha256": "b" * 64},
+            "frozen_check": {"reads_left_out": [], "deviations_file": read},
+            "deviations": deviations,
+        },
+        "primary": {"f1": {"rate": 0.8, "decision": "ahead"}},
+        "secondary": {"f2": {"rate": 0.7}},
+        "sensitivities": {
+            "label_corrected": {
+                "deviations": [d["id"] for d in deviations if d["kind"] == "label_error"],
+                "rate": corrected,
+            },
+            "first_attempt": {"deviations": ["D001"], "rate": 0.79},
+        },
+        "exploratory": {"by_family": {"a": 1}},
+    }
+    return (json.dumps(document, indent=2) + "\n").encode()
+
+
+PUBLISHED_DEVIATIONS = [_deviation("D001", "retake"), _deviation("D002", "code_hash_changed")]
+
+
+def _final_problems(now: bytes, published: bytes) -> list[str]:
+    return prereg_published.final_analysis_problems(FINAL, now, published)
+
+
+def test_the_final_analysis_stays_byte_for_byte_until_a_deviation_is_recorded_after_publication() -> None:
+    published = _analysis(PUBLISHED_DEVIATIONS, DEVIATIONS_READ)
+    assert _final_problems(published, published) == []
+    same_json = json.dumps(json.loads(published)).encode()
+    assert any("changed since the publish commit" in p for p in _final_problems(same_json, published))
+    moved = _analysis(PUBLISHED_DEVIATIONS, {**DEVIATIONS_READ, "sha256": "c" * 64})
+    assert any("changed since the publish commit" in p for p in _final_problems(moved, published))
+
+
+def test_a_scorer_bug_recorded_later_changes_only_the_analysis_s_list_of_deviations() -> None:
+    """§17: a scorer bug is recorded as a deviation and fixed in new -rescored files; the final analysis is rendered
+    again over the grown deviations file (its list and the file's sha256 and count), and the primary stays."""
+    published = _analysis(PUBLISHED_DEVIATIONS, DEVIATIONS_READ)
+    grown = [*PUBLISHED_DEVIATIONS, _deviation("D003", "scorer_bug")]
+    read = {**DEVIATIONS_READ, "sha256": "c" * 64, "entries": 3}
+    assert _final_problems(_analysis(grown, read), published) == []
+    changed = json.loads(_analysis(grown, read))
+    changed["primary"]["f1"]["rate"] = 0.81
+    found = _final_problems((json.dumps(changed, indent=2) + "\n").encode(), published)
+    assert found == [f"{FINAL}: primary.f1.rate differs from the publish commit's"]
+    for path in (
+        ("secondary", "f2", "rate"),
+        ("exploratory", "by_family", "a"),
+        ("meta", "prereg", "sha256"),
+    ):
+        edited = json.loads(_analysis(grown, read))
+        target = edited
+        for key in path[:-1]:
+            target = target[key]
+        target[path[-1]] = "edited"
+        assert _final_problems((json.dumps(edited) + "\n").encode(), published) == [
+            f"{FINAL}: {'.'.join(path)} differs from the publish commit's"
+        ]
+    moved_file = {**read, "file": "evals/preregistration/deviations-other.json"}
+    assert any(
+        "meta.frozen_check.deviations_file.file" in p
+        for p in _final_problems(_analysis(grown, moved_file), published)
+    )
+    # a scorer bug does not change the label-corrected sensitivity
+    assert any(
+        "sensitivities.label_corrected" in p
+        for p in _final_problems(_analysis(grown, read, corrected=0.6), published)
+    )
+
+
+def test_a_label_error_recorded_later_also_changes_the_label_corrected_sensitivity() -> None:
+    published = _analysis(PUBLISHED_DEVIATIONS, DEVIATIONS_READ)
+    grown = [*PUBLISHED_DEVIATIONS, _deviation("D003", "label_error")]
+    read = {**DEVIATIONS_READ, "sha256": "c" * 64, "entries": 3}
+    assert _final_problems(_analysis(grown, read, corrected=0.6), published) == []
+
+
+def test_the_analysis_s_published_deviations_stay_and_only_two_kinds_join() -> None:
+    published = _analysis(PUBLISHED_DEVIATIONS, DEVIATIONS_READ)
+    read = {**DEVIATIONS_READ, "sha256": "c" * 64, "entries": 3}
+    late_retake = [*PUBLISHED_DEVIATIONS, _deviation("D003", "retake")]
+    assert any("retake" in p for p in _final_problems(_analysis(late_retake, read), published))
+    rewritten = [
+        dict(PUBLISHED_DEVIATIONS[0], what="said again"),
+        PUBLISHED_DEVIATIONS[1],
+        _deviation("D003", "scorer_bug"),
+    ]
+    assert any("append-only" in p for p in _final_problems(_analysis(rewritten, read), published))
+    assert _final_problems(b"not json", published) != []
+
+
+# --------------------------------------------------------------------------------------------------
+# The stress run carries the registered fingerprints
+# --------------------------------------------------------------------------------------------------
+
+REGISTERED = {"ordnung": "fp-o", "llm_rules_tool": "fp-t", "llm_only": "fp-l"}
+
+
+def _stress(fingerprint: str = "fp-o") -> dict[str, Any]:
+    prints = {"ordnung": fingerprint, "llm_rules_tool": "fp-t"}
+    return {
+        "schema": "ordnung-eval-stress/1",
+        "meta": {
+            "fingerprints": dict(prints),
+            "runs": {name: {"fingerprints": dict(prints)} for name in ("clean", "I1", "D1")},
+        },
+    }
+
+
+def test_the_stress_run_was_recorded_with_the_registered_code() -> None:
+    """The stress replay compares numbers, not the replaying code's fingerprints (which a later commit changes): the
+    recorded fingerprints are held to the registered ones instead, or to a runner fix's (``code_hash_changed``)."""
+    assert prereg_published.stress_fingerprint_problems(_stress(), REGISTERED, []) == []
+    found = prereg_published.stress_fingerprint_problems(_stress("fp-other"), REGISTERED, [])
+    assert "meta.fingerprints.ordnung: not the registered fingerprint" in found
+    assert "meta.runs.I1.fingerprints.ordnung: not the registered fingerprint" in found
+    assert len(found) == 4
+    fixed = {
+        "id": "D002",
+        "kind": "code_hash_changed",
+        "applies_to": {"fingerprints": {"ordnung": "fp-other"}},
+    }
+    assert prereg_published.stress_fingerprint_problems(_stress("fp-other"), REGISTERED, [fixed]) == []
+    retake = dict(fixed, kind="retake")
+    assert prereg_published.stress_fingerprint_problems(_stress("fp-other"), REGISTERED, [retake]) != []
+    assert prereg_published.stress_fingerprint_problems({"meta": {}}, REGISTERED, []) != []
+
+
+# --------------------------------------------------------------------------------------------------
+# The record holds the files that check the pre-registration after publication
+# --------------------------------------------------------------------------------------------------
+
+
+def test_the_record_names_the_sha256_of_each_file_that_checks_after_publication(world: World) -> None:
+    assert any("checked_by" in p for p in world.problems(world.record(checked_by=None)))
+    assert any("checked_by" in p for p in world.problems(world.record(checked_by={"tests/x.py": "0" * 64})))
+    short = {path: "0" * 12 for path in prereg_published.CHECKED_BY}
+    assert any("checked_by" in p for p in world.problems(world.record(checked_by=short)))
+    for path in prereg_published.CHECKED_BY:
+        _put(world.root, path, f"# {path} as merged\n")
+    record = world.record(checked_by=prereg_published.checked_by(world.root))
+    assert prereg_published.checked_by_problems(record, world.root) == []
+    _put(world.root, prereg_published.CHECKED_BY[0], "# the checks, weakened\n")
+    assert prereg_published.checked_by_problems(record, world.root) == [
+        f"{prereg_published.CHECKED_BY[0]}: not the file the record names (its sha256 differs): a change to the "
+        "checks after publication is an amendment on the pre-registration issue, and the record names it"
+    ]
+
+
+def test_a_change_to_the_record_s_commit_or_checks_needs_a_new_amendment(world: World) -> None:
+    for path in prereg_published.CHECKED_BY:
+        _put(world.root, path, f"# {path} as merged\n")
+    first = world.record(checked_by=prereg_published.checked_by(world.root))
+    _put(world.root, prereg_published.RECORD, json.dumps(first) + "\n")
+    _commit(world.root, "the record")
+    assert prereg_published.record_history_problems(world.root) == []
+    _put(world.root, prereg_published.CHECKED_BY[1], "# changed after publication\n")
+    again = dict(first, checked_by=prereg_published.checked_by(world.root))
+    _put(world.root, prereg_published.RECORD, json.dumps(again) + "\n")
+    assert prereg_published.record_history_problems(world.root) == [
+        f"{prereg_published.RECORD}: its checked_by changed without a new amendment"
+    ]
+    _commit(world.root, "the checks changed, the record with them, no amendment")
+    assert prereg_published.record_history_problems(world.root) != []
+    amended = dict(again, amendment=f"{ISSUE}#issuecomment-987654321")
+    _put(world.root, prereg_published.RECORD, json.dumps(amended) + "\n")
+    _commit(world.root, "the amendment named")
+    # the commit before still changed the checks without one: the history keeps it
+    assert prereg_published.record_history_problems(world.root) != []
+
+
+def test_the_record_s_history_holds_when_each_change_names_a_new_amendment(world: World) -> None:
+    for path in prereg_published.CHECKED_BY:
+        _put(world.root, path, f"# {path} as merged\n")
+    first = world.record(checked_by=prereg_published.checked_by(world.root))
+    _put(world.root, prereg_published.RECORD, json.dumps(first) + "\n")
+    _commit(world.root, "the record")
+    _put(world.root, prereg_published.CHECKED_BY[1], "# changed after publication\n")
+    amended = dict(
+        first,
+        checked_by=prereg_published.checked_by(world.root),
+        amendment=f"{ISSUE}#issuecomment-987654321",
+    )
+    _put(world.root, prereg_published.RECORD, json.dumps(amended) + "\n")
+    _commit(world.root, "the checks changed with a new amendment")
+    assert prereg_published.record_history_problems(world.root) == []
+    moved = dict(amended, commit=world.after)
+    _put(world.root, prereg_published.RECORD, json.dumps(moved) + "\n")
+    assert prereg_published.record_history_problems(world.root) == [
+        f"{prereg_published.RECORD}: its commit changed without a new amendment"
+    ]
+
+
+def test_the_record_is_written_with_the_checks_sha256(world: World) -> None:
+    for path in prereg_published.CHECKED_BY:
+        _put(world.root, path, f"# {path} as merged\n")
+    written = prereg_published.write_record(world.root, world.publish, AMENDMENT)
+    assert json.loads((world.root / prereg_published.RECORD).read_text(encoding="utf-8")) == written
+    assert written["checked_by"] == {
+        path: hashlib.sha256((world.root / path).read_bytes()).hexdigest()
+        for path in prereg_published.CHECKED_BY
+    }
+    assert world.problems(written) == []
+    assert prereg_published.checked_by_problems(written, world.root) == []
