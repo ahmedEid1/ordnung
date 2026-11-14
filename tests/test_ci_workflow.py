@@ -464,10 +464,21 @@ def test_make_eval_reproduce_replays_every_published_number_in_the_slow_job() ->
     """One command reproduces every published number: every split, condition, Ask set, end-to-end,
     ablation and stress cell that exists replayed with no model call, the analysis and the presenter checked, all
     compared with ``evals/results/INDEX.json``. It runs in backend-slow beside the gates, which stay; like them it
-    gets no ``claude`` and no secret (``evals/reproduce.py`` points any stray call at a path that doesn't exist)."""
+    gets no ``claude`` and no secret (``evals/reproduce.py`` points any stray call at a path that doesn't exist).
+    It runs under the Python the pre-registration records for the evaluation code, in a venv of its own outside
+    the checkout (the job's ``.venv`` stays on 3.12): the final run was recorded under it, and a stress read's
+    fingerprints, which the publish commit's stress check compares, take in the Python version."""
     slow = _jobs()["backend-slow"]
     at, step = _step(slow, "make eval-reproduce")
-    assert step["run"].strip() == "make eval-reproduce" and "env" not in step
+    registered = json.loads((ROOT / "evals/preregistration/final-0.4.0.json").read_text(encoding="utf-8"))
+    python = registered["frozen"]["environment"]["evals"]["python"]
+    assert python == "3.11"
+    assert step["run"].strip().splitlines() == [
+        f'uv venv --python {python} "$RUNNER_TEMP/py311"',
+        'uv pip install --python "$RUNNER_TEMP/py311" -e ".[dev]" -c constraints.txt',
+        'make eval-reproduce PY="$RUNNER_TEMP/py311/bin/python"',
+    ]
+    assert "env" not in step and step["name"].endswith(f"under the pre-registration's Python {python}")
     gates_at, _ = _step(slow, "--split holdout2")
     assert gates_at < at  # the gates say first what failed, then reproduce says everything that differs
     assert set(_gates(_script(slow))) == set(GATED_SPLITS)  # the gates stay
