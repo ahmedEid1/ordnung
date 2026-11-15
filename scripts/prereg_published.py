@@ -39,7 +39,6 @@ import ast
 import contextlib
 import fnmatch
 import hashlib
-import itertools
 import json
 import os
 import re
@@ -54,7 +53,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from scripts.prereg_hashes import AFTER_PUBLICATION, COMMENT_URL, COMMIT
+from scripts.prereg_hashes import AFTER_PUBLICATION, COMMENT_URL, COMMIT, DEVIATIONS_PATH
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -223,31 +222,130 @@ def checked_by_problems(record: Mapping[str, Any], root: Path) -> list[str]:
     return out
 
 
+#: What a commit holds of a JSON file when it holds no JSON: no file, or one that is not JSON (:func:`_states`).
+_ABSENT, _INVALID = object(), object()
+#: The checkout itself, after HEAD, in :func:`record_history_problems`.
+_CHECKOUT = "the checkout"
+
+
+def _graph(root: Path, *span: str) -> list[tuple[str, tuple[str, ...]]]:
+    """The commits of ``span`` (``git rev-list`` arguments; HEAD's whole history by default), parents before
+    children, each with its parents."""
+    done = _git(root, "rev-list", "--topo-order", "--reverse", "--parents", *(span or ("HEAD",)))
+    rows = [line.split() for line in done.stdout.decode().splitlines() if line.strip()]
+    return [(row[0], tuple(row[1:])) for row in rows]
+
+
+def _states(root: Path, commits: Iterable[str], path: str) -> dict[str, Any]:
+    """What ``path`` holds at each of ``commits``: its JSON, :data:`_INVALID` or :data:`_ABSENT` (one ``git cat-file
+    --batch-check`` for them all, and one read for each distinct file)."""
+    shas = list(dict.fromkeys(commits))
+    if not shas:
+        return {}
+    done = subprocess.run(
+        ["git", "-C", str(root), "cat-file", "--batch-check=%(objectname) %(objecttype)"],
+        input="".join(f"{sha}:{path}\n" for sha in shas).encode(),
+        capture_output=True,
+        check=False,
+    )
+    lines = done.stdout.decode().splitlines()
+    if len(lines) != len(shas):
+        raise RuntimeError(f"git cat-file --batch-check answered {len(lines)} lines for {len(shas)} commits")
+    files: dict[str, Any] = {}
+    out: dict[str, Any] = {}
+    for sha, line in zip(shas, lines, strict=True):
+        oid, _, kind = line.partition(" ")
+        if kind != "blob":
+            out[sha] = _ABSENT
+            continue
+        if oid not in files:
+            try:
+                files[oid] = json.loads(_git(root, "cat-file", "blob", oid).stdout)
+            except ValueError:
+                files[oid] = _INVALID
+        out[sha] = files[oid]
+    return out
+
+
+def _deviation_comments(root: Path) -> set[str]:
+    """The comment URLs the deviations file in the checkout names (``issue_comment_url``)."""
+    path = root / DEVIATIONS_PATH
+    try:
+        entries = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else []
+    except ValueError:
+        return set()
+    if not isinstance(entries, list):
+        return set()
+    return {
+        str(entry["issue_comment_url"])
+        for entry in entries
+        if isinstance(entry, Mapping) and entry.get("issue_comment_url")
+    }
+
+
 def record_history_problems(root: Path) -> list[str]:
-    """Each change of the record, over HEAD's history and the checkout, that changed its ``commit`` or ``checked_by``
-    but named no new amendment (each such change is posted on the pre-registration issue first)."""
-    shas = _git(root, "log", "--format=%H", "--reverse", "HEAD", "--", RECORD).stdout.decode().split()
-    versions: list[Any] = []
-    for sha in shas:
-        raw = at_commit(root, sha, RECORD)
+    """Why the record's history, over every commit of HEAD's history and the checkout, does not keep the amendment
+    rule (empty: it does). Once a commit holds the record, every commit after it holds it as a JSON object (a commit
+    that removed it, or broke it, is reported, and the next version is compared with the last one that held). Each
+    version that changed the ``commit`` or ``checked_by`` of the version before it names a new amendment: one no
+    earlier version named. No version names a deviation's comment as its amendment, and none goes back to an
+    amendment an earlier version named. Merges compare with each parent."""
+    graph = _graph(root)
+    states = _states(root, (sha for sha, _ in graph), RECORD)
+    path = root / RECORD
+    if path.is_file():
         try:
-            versions.append(json.loads(raw) if raw is not None else None)
+            states[_CHECKOUT] = json.loads(path.read_text(encoding="utf-8"))
         except ValueError:
-            versions.append(None)
-    current = load_record(root)
-    if current is not None and (not versions or current != versions[-1]):
-        versions.append(current)
-    out = []
-    for before, after in itertools.pairwise(versions):
-        if not isinstance(before, Mapping) or not isinstance(after, Mapping):
+            states[_CHECKOUT] = _INVALID
+        head = graph[-1][0] if graph else None
+        if head is None or states[_CHECKOUT] != states.get(head):
+            graph.append((_CHECKOUT, (head,) if head else ()))
+    deviations = _deviation_comments(root)
+    #: per commit: the last version that held along its history, and every amendment its history named
+    last: dict[str, Mapping[str, Any] | None] = {}
+    named: dict[str, frozenset[str]] = {}
+    out: list[str] = []
+
+    def note(problem: str) -> None:
+        if problem not in out:
+            out.append(problem)
+
+    for sha, parents in graph:
+        known = [p for p in parents if p in last]
+        state = states.get(sha, _ABSENT)
+        before = [last[p] for p in known if last[p] is not None]
+        seen = frozenset().union(*(named[p] for p in known)) if known else frozenset()
+        where = sha if sha == _CHECKOUT else sha[:12]
+        if not isinstance(state, Mapping):
+            if before:
+                what = "missing" if state is _ABSENT else "not a JSON object"
+                note(
+                    f"{RECORD}: {what} at {where}, after an earlier commit held it (once written, the record stays)"
+                )
+            last[sha] = before[0] if before else None
+            named[sha] = seen
             continue
-        if before.get("amendment") != after.get("amendment"):
-            continue
-        out += [
-            f"{RECORD}: its {key} changed without a new amendment"
-            for key in ("commit", "checked_by")
-            if before.get(key) != after.get(key)
-        ]
+        amendment = state.get("amendment")
+        if isinstance(amendment, str) and amendment in deviations:
+            note(
+                f"{RECORD}: its amendment {amendment} is a deviation's comment on the issue, not an amendment"
+            )
+        for parent in known:
+            previous = last[parent]
+            if previous is None or previous == state:
+                continue
+            if previous.get("amendment") == amendment:
+                for key in ("commit", "checked_by"):
+                    if previous.get(key) != state.get(key):
+                        note(f"{RECORD}: its {key} changed without a new amendment")
+            elif amendment in named[parent]:
+                note(
+                    f"{RECORD}: it names the amendment {amendment} again, which an earlier version named: each "
+                    "change names a new amendment"
+                )
+        last[sha] = state
+        named[sha] = (seen | {amendment}) if isinstance(amendment, str) else seen
     return out
 
 

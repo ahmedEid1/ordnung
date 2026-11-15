@@ -755,3 +755,97 @@ def test_the_record_is_written_with_the_checks_sha256(world: World) -> None:
     }
     assert world.problems(written) == []
     assert prereg_published.checked_by_problems(written, world.root) == []
+
+
+def _write_record(world: World, record: dict[str, Any], message: str) -> str:
+    _put(world.root, prereg_published.RECORD, json.dumps(record) + "\n")
+    return _commit(world.root, message)
+
+
+def _recorded(world: World) -> dict[str, Any]:
+    for path in prereg_published.CHECKED_BY:
+        _put(world.root, path, f"# {path} as merged\n")
+    first = world.record(checked_by=prereg_published.checked_by(world.root))
+    _write_record(world, first, "the record")
+    return first
+
+
+@pytest.mark.parametrize("gap", ["removed", "not JSON"])
+def test_a_gap_in_the_record_s_history_neither_passes_nor_resets_the_comparison(
+    world: World, gap: str
+) -> None:
+    """Once written, the record stays: a commit without it, or with a file that is no JSON object, is reported, and the
+    next version is compared with the last one that held, so a gap cannot carry a change of the checks past the
+    amendment rule."""
+    first = _recorded(world)
+    if gap == "removed":
+        _git(world.root, "rm", "-q", prereg_published.RECORD)
+        gone = _commit(world.root, "the record removed")
+    else:
+        _put(world.root, prereg_published.RECORD, "{\n")
+        gone = _commit(world.root, "the record broken")
+    found = prereg_published.record_history_problems(world.root)
+    assert any(gone[:12] in p and "the record stays" in p for p in found), found
+    _put(world.root, prereg_published.CHECKED_BY[1], "# weakened after publication\n")
+    _write_record(world, dict(first, checked_by=prereg_published.checked_by(world.root)), "written again")
+    found = prereg_published.record_history_problems(world.root)
+    assert f"{prereg_published.RECORD}: its checked_by changed without a new amendment" in found, found
+    assert any(gone[:12] in p for p in found), found
+
+
+def test_a_change_names_an_amendment_no_earlier_version_named(world: World) -> None:
+    """A new amendment is one the record's history never named: going back to an earlier one, which lists the earlier
+    files' sha256, does not vouch for the changed ones."""
+    first = _recorded(world)
+    _put(world.root, prereg_published.CHECKED_BY[0], "# changed after publication\n")
+    other = f"{ISSUE}#issuecomment-987654321"
+    second = dict(first, checked_by=prereg_published.checked_by(world.root), amendment=other)
+    _write_record(world, second, "the checks changed with a new amendment")
+    assert prereg_published.record_history_problems(world.root) == []
+    _write_record(world, dict(second, amendment=AMENDMENT), "the first amendment named again")
+    assert prereg_published.record_history_problems(world.root) == [
+        f"{prereg_published.RECORD}: it names the amendment {AMENDMENT} again, which an earlier version named: "
+        "each change names a new amendment"
+    ]
+
+
+def test_a_deviation_s_comment_is_no_amendment(world: World) -> None:
+    first = _recorded(world)
+    comment = f"{ISSUE}#issuecomment-555"
+    _put(
+        world.root,
+        DEVIATIONS,
+        json.dumps([dict(_deviation("D001", "retake"), issue_comment_url=comment)]) + "\n",
+    )
+    _commit(world.root, "a deviation's comment")
+    _put(world.root, prereg_published.CHECKED_BY[0], "# changed after publication\n")
+    _write_record(
+        world, dict(first, checked_by=prereg_published.checked_by(world.root), amendment=comment), "x"
+    )
+    assert prereg_published.record_history_problems(world.root) == [
+        f"{prereg_published.RECORD}: its amendment {comment} is a deviation's comment on the issue, not an amendment"
+    ]
+
+
+def test_merged_branches_keep_the_record_s_history_whole(world: World) -> None:
+    """A branch made before the record existed, merged after it, holds no record and is fine; a branch that changes
+    the checks with a new amendment, merged with a merge commit, is fine too."""
+    _git(world.root, "branch", "-q", "older", world.after)
+    first = _recorded(world)
+    _git(world.root, "checkout", "-q", "older")
+    _put(world.root, "docs/later.md", "a change from a branch made before the record\n")
+    _commit(world.root, "an older branch")
+    _git(world.root, "checkout", "-q", "-")
+    _git(world.root, "merge", "-q", "--no-ff", "-m", "merge the older branch", "older")
+    assert prereg_published.record_history_problems(world.root) == []
+    _git(world.root, "checkout", "-q", "-b", "amend")
+    _put(world.root, prereg_published.CHECKED_BY[2], "# changed after publication\n")
+    amended = dict(
+        first, checked_by=prereg_published.checked_by(world.root), amendment=f"{ISSUE}#issuecomment-987654321"
+    )
+    _write_record(world, amended, "the checks changed with a new amendment")
+    _git(world.root, "checkout", "-q", "-")
+    _put(world.root, "docs/main.md", "main went on\n")
+    _commit(world.root, "main went on")
+    _git(world.root, "merge", "-q", "--no-ff", "-m", "merge the amendment", "amend")
+    assert prereg_published.record_history_problems(world.root) == []
