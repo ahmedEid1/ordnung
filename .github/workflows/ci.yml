@@ -259,7 +259,10 @@ jobs:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
       - name: Python packages (the versions in constraints.txt)
-        run: uvx pip-audit --strict --no-deps --disable-pip -r constraints.txt
+        # CVE-2026-126360 (opentelemetry-api 1.45.1, which mcp pulls in; fixed in 1.45.2) was listed after the
+        # pre-registration froze constraints.txt, which may not change until the final evaluation is published:
+        # the pull request after publication moves it to 1.45.2 and takes this exception out
+        run: uvx pip-audit --strict --no-deps --disable-pip -r constraints.txt --ignore-vuln CVE-2026-126360
       - uses: actions/setup-node@v7
         with:
           node-version: 22
