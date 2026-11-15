@@ -432,10 +432,14 @@ def test_the_stress_run_was_recorded_with_the_registered_code(prereg: dict[str, 
 
 
 def test_the_deviations_file_only_grows_after_publication(prereg: dict[str, Any]) -> None:
+    """The publish commit's entries stay first and unchanged, and only label errors and scorer bugs are added; at
+    every commit after the publish commit the file is there, and an entry added later stays as it was recorded (its
+    ``checkpoint_sha`` filled in once), so removing the file and writing it again rewrites nothing."""
     record, _ = _record(prereg)
     published = prereg_published.at_commit(ROOT, record["commit"], prereg_hashes.DEVIATIONS_PATH)
     assert published is not None, "the publish commit has no deviations file"
     assert prereg_published.deviations_kept_problems(_json(DEVIATIONS), json.loads(published)) == []
+    assert prereg_published.deviations_history_problems(ROOT, record["commit"]) == []
 
 
 def test_the_readme_keeps_the_published_block_for_every_0_4_x_release(prereg: dict[str, Any]) -> None:

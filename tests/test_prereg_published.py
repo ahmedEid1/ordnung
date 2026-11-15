@@ -871,3 +871,65 @@ def test_merged_branches_keep_the_record_s_history_whole(world: World) -> None:
     _commit(world.root, "main went on")
     _git(world.root, "merge", "-q", "--no-ff", "-m", "merge the amendment", "amend")
     assert prereg_published.record_history_problems(world.root) == []
+
+
+# --------------------------------------------------------------------------------------------------
+# A deviation recorded after publication stays as it was recorded
+# --------------------------------------------------------------------------------------------------
+
+
+def _deviations(world: World, entries: list[dict[str, Any]], message: str) -> str:
+    _put(world.root, DEVIATIONS, json.dumps(entries) + "\n")
+    return _commit(world.root, message)
+
+
+def _later_deviation(world: World) -> list[dict[str, Any]]:
+    """D003, a label error recorded after publication: its checkpoint commit, then its sha filled in."""
+    published = json.loads((world.root / DEVIATIONS).read_text(encoding="utf-8"))
+    entry = dict(_deviation("D003", "label_error"), corrected="2027-01-15", checkpoint_sha="")
+    checkpoint = _deviations(world, [*published, entry], "Final run checkpoint: label error D003")
+    filled = [*published, dict(entry, checkpoint_sha=checkpoint)]
+    _deviations(world, filled, "D003's checkpoint")
+    return filled
+
+
+def test_a_deviation_recorded_after_publication_is_kept_as_recorded(world: World) -> None:
+    filled = _later_deviation(world)
+    assert prereg_published.deviations_history_problems(world.root, world.publish) == []
+    rewritten = [*filled[:-1], dict(filled[-1], corrected="2027-02-15")]
+    changed = _deviations(world, rewritten, "D003 rewritten")
+    assert prereg_published.deviations_history_problems(world.root, world.publish) == [
+        f"{DEVIATIONS}: D003 changed or removed at {changed[:12]} (an entry stays as it was recorded; only its "
+        "checkpoint_sha is filled in, once)"
+    ]
+
+
+def test_removing_the_deviations_file_and_writing_it_again_rewrites_nothing(world: World) -> None:
+    """A commit without the deviations file after publication is reported, and the file written again is compared with
+    the last one that held, so a rewritten entry shows."""
+    filled = _later_deviation(world)
+    _git(world.root, "rm", "-q", DEVIATIONS)
+    gone = _commit(world.root, "the deviations file removed")
+    rewritten = [*filled[:-1], dict(filled[-1], corrected="2027-02-15", checkpoint_sha="")]
+    back = _deviations(world, rewritten, "written again")
+    found = prereg_published.deviations_history_problems(world.root, world.publish)
+    assert f"{DEVIATIONS}: missing at {gone[:12]}, after the publish commit (it stays for good)" in found, (
+        found
+    )
+    assert any(p.startswith(f"{DEVIATIONS}: D003 changed or removed at {back[:12]}") for p in found), found
+    _put(world.root, DEVIATIONS, "[\n")
+    assert f"{DEVIATIONS}: not a JSON list in the checkout" in (
+        prereg_published.deviations_history_problems(world.root, world.publish)
+    )
+
+
+def test_a_branch_made_before_publication_and_merged_later_keeps_the_deviations_whole(world: World) -> None:
+    """Commits that do not descend from the publish commit are not after it, whatever they hold."""
+    _git(world.root, "branch", "-q", "older", world.registration)
+    _later_deviation(world)
+    _git(world.root, "checkout", "-q", "older")
+    _put(world.root, "docs/later.md", "a change from a branch made before publication\n")
+    _commit(world.root, "an older branch")
+    _git(world.root, "checkout", "-q", "-")
+    _git(world.root, "merge", "-q", "--no-ff", "-m", "merge the older branch", "older")
+    assert prereg_published.deviations_history_problems(world.root, world.publish) == []

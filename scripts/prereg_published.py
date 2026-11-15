@@ -524,6 +524,69 @@ def deviations_kept_problems(now: Any, published: Any) -> list[str]:
     return out
 
 
+def _entry_key(entry: Any) -> str:
+    if isinstance(entry, Mapping) and isinstance(entry.get("id"), str):
+        return entry["id"]
+    return json.dumps(entry, sort_keys=True)
+
+
+def _kept(before: Any, after: Any) -> bool:
+    """``after`` is the entry ``before`` was, but for a ``checkpoint_sha`` filled in where it was empty."""
+    if not isinstance(before, Mapping) or not isinstance(after, Mapping):
+        return bool(before == after)
+    rest = {key: value for key, value in before.items() if key != "checkpoint_sha"}
+    if rest != {key: value for key, value in after.items() if key != "checkpoint_sha"}:
+        return False
+    return not before.get("checkpoint_sha") or before.get("checkpoint_sha") == after.get("checkpoint_sha")
+
+
+def deviations_history_problems(root: Path, commit: str) -> list[str]:
+    """Why the deviations file's history after the publish commit ``commit`` does not keep what it recorded (empty:
+    it does). At every commit that descends from ``commit`` (``git rev-list --ancestry-path``) and in the checkout the
+    file is there and a JSON list, and each entry the commit's parent held (the publish commit, or a commit after it)
+    is still there, unchanged but for a ``checkpoint_sha`` filled in once. A commit that removes or breaks the file is
+    reported, and the next version is compared with the last one that held, so an entry cannot be rewritten through a
+    gap. Entries are matched by id, so a merge of two branches that each added one is fine."""
+    path = DEVIATIONS_PATH
+    graph = _graph(root, "--ancestry-path", f"{commit}..HEAD")
+    states = _states(root, [commit, *(sha for sha, _ in graph)], path)
+    file = root / path
+    try:
+        checkout: Any = json.loads(file.read_text(encoding="utf-8")) if file.is_file() else _ABSENT
+    except ValueError:
+        checkout = _INVALID
+    head = graph[-1][0] if graph else commit
+    graph.append((_CHECKOUT, (head,)))
+    states[_CHECKOUT] = checkout
+    last: dict[str, dict[str, Any] | None] = {
+        commit: {_entry_key(e): e for e in states[commit]} if isinstance(states[commit], list) else None
+    }
+    out: list[str] = []
+    for sha, parents in graph:
+        held = [entries for p in parents if (entries := last.get(p)) is not None]
+        state = states.get(sha, _ABSENT)
+        where = "in the checkout" if sha == _CHECKOUT else f"at {sha[:12]}"
+        if not isinstance(state, list):
+            if state is _ABSENT:
+                out.append(f"{path}: missing {where}, after the publish commit (it stays for good)")
+            else:
+                out.append(f"{path}: not a JSON list {where}")
+            last[sha] = held[0] if held else None
+            continue
+        now = {_entry_key(e): e for e in state}
+        for entries in held:
+            for key, entry in entries.items():
+                if key not in now or not _kept(entry, now[key]):
+                    problem = (
+                        f"{path}: {key} changed or removed {where} (an entry stays as it was recorded; only its "
+                        "checkpoint_sha is filled in, once)"
+                    )
+                    if problem not in out:
+                        out.append(problem)
+        last[sha] = now
+    return out
+
+
 def readme_block(text: str) -> list[str] | None:
     """The README's generated block, its two marker lines included (``None`` without them)."""
     lines = text.splitlines()
