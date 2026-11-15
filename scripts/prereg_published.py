@@ -527,9 +527,8 @@ def deviations_kept_problems(now: Any, published: Any) -> list[str]:
 
 
 def _entry_key(entry: Any) -> str:
-    if isinstance(entry, Mapping) and isinstance(entry.get("id"), str):
-        return entry["id"]
-    return json.dumps(entry, sort_keys=True)
+    ident = entry.get("id") if isinstance(entry, Mapping) else None
+    return ident if isinstance(ident, str) else json.dumps(entry, sort_keys=True)
 
 
 def _kept(before: Any, after: Any) -> bool:
