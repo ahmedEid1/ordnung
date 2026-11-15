@@ -55,6 +55,7 @@ from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from typing import Any, Literal, NamedTuple
 
+from ordnung import clock
 from ordnung.ingest.conflicts import (
     _BLOCK_ABOVE,
     _BLOCK_BELOW,
@@ -3238,7 +3239,7 @@ def _reading_days(extraction: DocumentExtraction, start: date | None, today: dat
     from ordnung.rules import compute_due  # the rules engine's entry point
 
     written = _iso(extraction.document_date) or start
-    ctx = RuleContext(today=today or written or date.today(), document_date=written)
+    ctx = RuleContext(today=today or written or clock.today(), document_date=written)
     days: list[date] = []
     for item in extraction.items:
         spec = item.date

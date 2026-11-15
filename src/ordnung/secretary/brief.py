@@ -20,6 +20,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from ordnung import clock
 from ordnung.clock import now_iso
 from ordnung.db.store import Store
 from ordnung.ingest.normalize import fold_punctuation
@@ -307,7 +308,7 @@ def _listing(entries: list[AgendaEntry], today: date, *, with_date: bool = True)
 
 def agenda_text(agenda: Agenda) -> str:
     """The brief without any model: short plain-English sentences, always available."""
-    today = parse_day(agenda.date) or date.today()
+    today = parse_day(agenda.date) or clock.today()
     parts: list[str] = []
     if agenda.overdue:
         parts.append(f"Overdue: {_listing(agenda.overdue, today)}.")
@@ -674,7 +675,7 @@ def mislabelled_dates(text: str, agenda: Agenda) -> list[str]:
     what day it is, so "Today, Tue 29 Sep, the fee is due" is not checked). The to-dos it is about are
     :func:`_about`; whether the label is wrong, :func:`_mislabelled`.
     """
-    today = parse_day(agenda.date) or date.today()
+    today = parse_day(agenda.date) or clock.today()
     todos = _todos(agenda)
     words = _own_words(todos)
     wrong: list[str] = []
