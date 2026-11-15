@@ -12,6 +12,7 @@ import shlex
 import subprocess
 import sys
 import tomllib
+import zlib
 from fnmatch import fnmatch
 from pathlib import Path
 from typing import Any
@@ -433,7 +434,8 @@ def test_the_ask_benchmark_gates_strict_correctness_and_harm_at_their_recorded_n
 
 
 def _comparison(script: str) -> str:
-    """The Python the without-Land step runs to compare its replay with the published file."""
+    """The Python a step runs from its ``<<'EOF'`` block: the without-Land step's comparison of its replay with the
+    published file, or the reproduce step's check of its Python and zlib."""
     return script.split("<<'EOF'\n", 1)[1].split("\nEOF", 1)[0]
 
 
@@ -467,18 +469,38 @@ def test_make_eval_reproduce_replays_every_published_number_in_the_slow_job() ->
     gets no ``claude`` and no secret (``evals/reproduce.py`` points any stray call at a path that doesn't exist).
     It runs under the Python the pre-registration records for the evaluation code, in a venv of its own outside
     the checkout (the job's ``.venv`` stays on 3.12): the final run was recorded under it, and a stress read's
-    fingerprints, which the publish commit's stress check compares, take in the Python version."""
+    fingerprints, which the publish commit's stress check compares, take in the Python version. That Python is
+    the deadsnakes PPA's, built on Ubuntu's zlib, as the recording's was: the 3.11 uv downloads brings zlib 1.3.2,
+    and the stress files' build check wants the zlib the dataset was rendered with. The step checks both before
+    the replay."""
     slow = _jobs()["backend-slow"]
     at, step = _step(slow, "make eval-reproduce")
     registered = json.loads((ROOT / "evals/preregistration/final-0.4.0.json").read_text(encoding="utf-8"))
-    python = registered["frozen"]["environment"]["evals"]["python"]
-    assert python == "3.11"
-    assert step["run"].strip().splitlines() == [
-        f'uv venv --python {python} "$RUNNER_TEMP/py311"',
-        'uv pip install --python "$RUNNER_TEMP/py311" -e ".[dev]" -c constraints.txt',
-        'make eval-reproduce PY="$RUNNER_TEMP/py311/bin/python"',
+    environment = registered["frozen"]["environment"]
+    python, zlib_version = environment["evals"]["python"], environment["generator"]["zlib"]
+    assert (python, zlib_version) == ("3.11", "1.3")
+    stress = json.loads((ROOT / "evals/perturb/manifest.json").read_text(encoding="utf-8"))
+    assert stress["environment"]["zlib"] == zlib_version  # what the stress build check compares with
+    install = slow["steps"][at - 1]
+    assert install["run"].strip().splitlines() == [
+        "sudo add-apt-repository -y -n ppa:deadsnakes/ppa",
+        f"sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends python{python}",
     ]
+    lines = step["run"].strip().splitlines()
+    assert lines[:2] == [
+        f'uv venv --python /usr/bin/python{python} "$RUNNER_TEMP/py311"',
+        'uv pip install --python "$RUNNER_TEMP/py311" -e ".[dev]" -c constraints.txt',
+    ]
+    assert lines[2] == "\"$RUNNER_TEMP/py311/bin/python\" - <<'EOF'" and lines[-2] == "EOF"
+    assert lines[-1] == 'make eval-reproduce PY="$RUNNER_TEMP/py311/bin/python"'
     assert "env" not in step and step["name"].endswith(f"under the pre-registration's Python {python}")
+    # the check passes only on the registered Python with the registered zlib (whatever runs this test)
+    done = subprocess.run(
+        [sys.executable, "-c", _comparison(step["run"])], cwd=ROOT, capture_output=True, text=True
+    )
+    here = (f"{sys.version_info.major}.{sys.version_info.minor}", zlib.ZLIB_RUNTIME_VERSION)
+    assert done.returncode == (0 if here == (python, zlib_version) else 1), done.stderr
+    assert f"zlib {zlib.ZLIB_RUNTIME_VERSION}" in done.stdout
     gates_at, _ = _step(slow, "--split holdout2")
     assert gates_at < at  # the gates say first what failed, then reproduce says everything that differs
     assert set(_gates(_script(slow))) == set(GATED_SPLITS)  # the gates stay
