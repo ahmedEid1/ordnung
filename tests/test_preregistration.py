@@ -448,7 +448,11 @@ def test_the_readme_keeps_the_published_block_for_every_0_4_x_release(prereg: di
     grows with the deviations file when a label error or a scorer bug is recorded after publication."""
     record, _ = _record(prereg)
     version = prereg_published.version(ROOT)
-    if version is None or not version.startswith("0.4."):
+    assert version is not None, (
+        "the package's version cannot be read (src/ordnung/__init__.py's __version__, or pyproject.toml's "
+        "[project] version): the pledge holds the block for every 0.4.x release, so the check must know which"
+    )
+    if not version.startswith("0.4."):
         pytest.skip(f"the pledge holds the block for every 0.4.x release; this is {version}")
     published = prereg_published.at_commit(ROOT, record["commit"], "README.md")
     assert published is not None, "the publish commit has no README.md"

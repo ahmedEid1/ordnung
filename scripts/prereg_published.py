@@ -47,6 +47,7 @@ import signal
 import subprocess
 import sys
 import time
+import tomllib
 import xml.etree.ElementTree as ElementTree
 from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -85,7 +86,7 @@ FIRST_PARTY = ("ordnung", "evals", "scripts")
 TIMEOUT = 1500.0
 _BEGIN = "<!-- evals:begin"
 _END = "<!-- evals:end"
-_VERSION = re.compile(r"""^__version__\s*=\s*["']([^"']+)["']""", re.MULTILINE)
+_VERSION = re.compile(r"""^__version__\s*(?::[^=\n]+)?=\s*["']([^"']+)["']""", re.MULTILINE)
 
 
 def _git(root: Path, *args: str) -> subprocess.CompletedProcess[bytes]:
@@ -643,10 +644,24 @@ def readme_problems(
 
 
 def version(root: Path) -> str | None:
-    """The package's version (``__version__`` in ``src/ordnung/__init__.py``), read without importing it."""
+    """The package's version, read without importing it: ``__version__`` in ``src/ordnung/__init__.py`` (annotated
+    or not), else ``pyproject.toml``'s ``[project] version``; ``None`` when neither names one (the pledge's check then
+    fails, it does not skip)."""
     path = root / "src" / "ordnung" / "__init__.py"
     found = _VERSION.search(path.read_text(encoding="utf-8")) if path.is_file() else None
-    return found.group(1) if found else None
+    if found:
+        return found.group(1)
+    pyproject = root / "pyproject.toml"
+    try:
+        project = (
+            tomllib.loads(pyproject.read_text(encoding="utf-8")).get("project")
+            if pyproject.is_file()
+            else None
+        )
+    except tomllib.TOMLDecodeError:
+        return None
+    named = project.get("version") if isinstance(project, Mapping) else None
+    return named if isinstance(named, str) else None
 
 
 # --------------------------------------------------------------------------------------------------

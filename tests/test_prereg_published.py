@@ -310,6 +310,23 @@ def test_the_version_is_read_from_the_package(world: World) -> None:
     assert prereg_published.version(world.root) is None
 
 
+@pytest.mark.parametrize(
+    "init",
+    ['__version__: str = "0.4.1"\n', "__version__: Final = '0.4.1'  # the release\n"],
+)
+def test_an_annotated_version_is_read_too(world: World, init: str) -> None:
+    _put(world.root, "src/ordnung/__init__.py", init)
+    assert prereg_published.version(world.root) == "0.4.1"
+
+
+def test_a_version_pyproject_names_is_read_when_the_package_names_none(world: World) -> None:
+    _put(world.root, "src/ordnung/__init__.py", "from importlib.metadata import version\n")
+    _put(world.root, "pyproject.toml", '[project]\nname = "ordnung"\nversion = "0.4.2"\n')
+    assert prereg_published.version(world.root) == "0.4.2"
+    _put(world.root, "pyproject.toml", '[project]\nname = "ordnung"\ndynamic = ["version"]\n')
+    assert prereg_published.version(world.root) is None
+
+
 # --------------------------------------------------------------------------------------------------
 # The publish commit's own frozen test, run in a temporary worktree
 # --------------------------------------------------------------------------------------------------
