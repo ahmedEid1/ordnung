@@ -237,8 +237,16 @@ def test_timeline_says_transfer_by_for_transfers_and_nothing_to_send_for_a_direc
 
 def test_letters_about_the_home_are_never_under_the_residence_permit(store: Store) -> None:
     """The model may read a running-costs statement under "residence" (the
-    residence-permit area); Today, the timeline and the lanes show it and its to-dos under Home."""
-    statement = add_doc(store, "statement", area="residence", kind="utility_bill", title="Running costs 2025")
+    residence-permit area); Today, the timeline and the lanes show it and its to-dos under Home. Both letters carry
+    their own date inside the timeline's window: undated, a letter sits on the day it was added, the real one."""
+    statement = add_doc(
+        store,
+        "statement",
+        area="residence",
+        kind="utility_bill",
+        title="Running costs 2025",
+        doc_date="2026-09-20",
+    )
     back_payment = add_item(
         store,
         kind="payment",
@@ -250,7 +258,9 @@ def test_letters_about_the_home_are_never_under_the_residence_permit(store: Stor
         amount=18.4,
         direction="out",
     )
-    permit = add_doc(store, "permit", area="residence", kind="residence_permit", title="Appointment")
+    permit = add_doc(
+        store, "permit", area="residence", kind="residence_permit", title="Appointment", doc_date="2026-09-22"
+    )
     add_item(
         store, kind="appointment", title="Appointment", doc_id=permit, area="residence", due_date="2026-10-14"
     )
