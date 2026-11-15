@@ -35,6 +35,7 @@ from ordnung.models import Page
 from test_reading_reask import (
     BLANK,
     COMPLETE,
+    DAY,
     DECISION,
     HALF,
     OBJECTION,
@@ -166,24 +167,31 @@ def test_a_to_do_quote_not_on_the_page_counts_against_the_re_ask() -> None:
     pages = pages_of(DECISION)
     # a dated to-do it adds must be found on the letter at all (ADR 0016's rule 6) ...
     dated = {**COMPLETE, "items": [{**OBJECTION, "quote": OFF_PAGE}]}
-    assert judge_completion("doc_x", reading(BLANK), reading(dated), pages, gap="empty") == "ungrounded"
+    assert (
+        judge_completion("doc_x", reading(BLANK), reading(dated), pages, gap="empty", today=DAY)
+        == "ungrounded"
+    )
     # ... and an undated one still counts in the share of quotes found
     undated = {
         **COMPLETE,
         "items": [OBJECTION, {"kind": "task", "title": "T", "date": {"type": "none"}, "quote": OFF_PAGE}],
     }
-    assert judge_completion("doc_x", reading(BLANK), reading(undated), pages, gap="empty") == "quotes"
+    assert (
+        judge_completion("doc_x", reading(BLANK), reading(undated), pages, gap="empty", today=DAY) == "quotes"
+    )
 
 
 def test_a_contract_quote_not_on_the_page_counts_against_the_re_ask() -> None:
     second = {**COMPLETE, "contract": {"name": "Fee", "category": "other", "quotes": [OFF_PAGE]}}
     pages = pages_of(DECISION)
-    assert judge_completion("doc_x", reading(BLANK), reading(second), pages, gap="empty") == "quotes"
+    assert (
+        judge_completion("doc_x", reading(BLANK), reading(second), pages, gap="empty", today=DAY) == "quotes"
+    )
 
 
 def test_quotes_found_in_a_photo_s_transcript_count_as_found() -> None:
     pages = [page.model_copy(update={"text_source": "transcript"}) for page in pages_of(DECISION)]
-    assert judge_completion("doc_x", reading(BLANK), reading(COMPLETE), pages, gap="empty") is None
+    assert judge_completion("doc_x", reading(BLANK), reading(COMPLETE), pages, gap="empty", today=DAY) is None
 
 
 def two_pages() -> list[Page]:
@@ -276,7 +284,7 @@ def test_an_answer_that_drops_or_postpones_a_dated_to_do_is_not_used(
     first = {**HALF, "remedy": None, "items": [PAYMENT]}
     second = {**first, "items": second_items}
     verdict = judge_completion(
-        "doc_x", reading(first), reading(second), DUE_DECISION_PAGES, gap="remedy_left_out"
+        "doc_x", reading(first), reading(second), DUE_DECISION_PAGES, gap="remedy_left_out", today=DAY
     )
     assert verdict is not None
 
@@ -328,7 +336,9 @@ def test_a_sender_read_as_a_firm_does_not_lift_the_check_s_deadline(first: dict[
     }
     found = check_item(reading(first), SW_PAGES)
     assert found is not None and found.gap == gap and found.item.kind == "deadline"
-    assert judge_completion("doc_x", reading(first), reading(second), SW_PAGES, gap=gap) is not None
+    assert (
+        judge_completion("doc_x", reading(first), reading(second), SW_PAGES, gap=gap, today=DAY) is not None
+    )
 
 
 def test_a_re_read_without_a_to_do_does_not_lift_the_read_it_yourself_to_do() -> None:
@@ -355,4 +365,6 @@ def test_a_re_read_without_a_to_do_does_not_lift_the_read_it_yourself_to_do() ->
         "sender": {"name": "Stadt Musterhausen", "kind": "authority"},
         "document_date": "2026-09-15",
     }
-    assert judge_completion("doc_x", reading(BLANK), reading(second), pages, gap="empty") is not None
+    assert (
+        judge_completion("doc_x", reading(BLANK), reading(second), pages, gap="empty", today=DAY) is not None
+    )

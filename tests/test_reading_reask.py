@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import sys
 from collections.abc import Callable, Iterator
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -66,6 +67,9 @@ MANIFEST = ROOT / "evals" / "dataset" / "manifest.json"
 RECORDED = ROOT / "evals" / "recorded" / "claude-sonnet-5"
 #: The recorded reading that came back with only the four required fields.
 EMPTY_READING = "holdout2-adversarial-injection_visible-1"
+#: The day the tests read on. ``judge_completion`` takes the real date when it is given no ``today`` (it does
+#: not read :mod:`ordnung.clock`, which the fixture below pins), so every call of it here is given this day.
+DAY = date.fromisoformat(TODAY)
 
 
 @pytest.fixture(autouse=True)
@@ -396,11 +400,16 @@ def test_quotes_must_be_found_at_least_as_well_as_the_first_answer_s() -> None:
     # a complete answer with one quote of three not found beats it (2/3 ≥ 1/2) ...
     two_of_three = {**COMPLETE, "key_facts": half_found["key_facts"]}
     assert (
-        judge_completion("doc_x", reading(half_found), reading(two_of_three), pages, gap="remedy_left_out")
+        judge_completion(
+            "doc_x", reading(half_found), reading(two_of_three), pages, gap="remedy_left_out", today=DAY
+        )
         is None
     )
     # ... but not an empty first answer, which quotes nothing the letter doesn't hold
-    assert judge_completion("doc_x", reading(BLANK), reading(two_of_three), pages, gap="empty") == "quotes"
+    assert (
+        judge_completion("doc_x", reading(BLANK), reading(two_of_three), pages, gap="empty", today=DAY)
+        == "quotes"
+    )
 
 
 # --------------------------------------------------------------------------------------------------
