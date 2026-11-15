@@ -653,13 +653,41 @@ def version(root: Path) -> str | None:
 # The publish commit's own test
 # --------------------------------------------------------------------------------------------------
 
-#: A pytest plugin for the inner run: at the end it writes where every first-party module and every test module came
-#: from (``__file__``, or a namespace package's folders) to the file ``PREREG_INNER_PROBE`` names.
-_PROBE = """
-import importlib
-import json
+#: Where a path is this checkout's but neither the worktree's nor the interpreter's (whose venv may sit in the
+#: checkout): the inner run's ``sitecustomize`` and probe both use it.
+_OUTSIDE = """
 import os
 import sys
+
+
+def _under(path, top):
+    return bool(top) and (path == top or path.startswith(top.rstrip(os.sep) + os.sep))
+
+
+def _outside(path):
+    real = os.path.realpath(path or os.curdir)
+    keep = [os.environ.get("PREREG_INNER_TREE", ""), sys.prefix, sys.base_prefix, sys.exec_prefix]
+    outer = os.path.realpath(os.environ.get("PREREG_OUTER_ROOT", "")) if os.environ.get("PREREG_OUTER_ROOT") else ""
+    return _under(real, outer) and not any(_under(real, os.path.realpath(top)) for top in keep if top)
+"""
+#: The inner run's ``sitecustomize`` (first on ``PYTHONPATH`` after the worktree, so the checkout's own one never
+#: runs): it takes this checkout's folders (its editable install's ``src``) off ``sys.path`` before anything else is
+#: imported. It stands in for the interpreter's own ``sitecustomize``, which Debian's Python ships for apport only.
+_SITECUSTOMIZE = (
+    _OUTSIDE
+    + """
+
+sys.path[:] = [entry for entry in sys.path if not _outside(entry)]
+"""
+)
+#: A pytest plugin for the inner run: at the end it writes where every first-party module and every test module came
+#: from (``__file__``, or a namespace package's folders), and every module of any name that came from this checkout, to
+#: the file ``PREREG_INNER_PROBE`` names.
+_PROBE = (
+    _OUTSIDE
+    + """
+import importlib
+import json
 
 
 def _files(module):
@@ -674,15 +702,16 @@ def pytest_sessionfinish(session, exitstatus):
             importlib.import_module(name)
         except Exception:
             pass
-    modules = {
-        name: _files(module)
-        for name, module in sorted(sys.modules.items())
-        if module is not None and name.split(".")[0] in FIRST_PARTY
+    loaded = sorted((name, module) for name, module in list(sys.modules.items()) if module is not None)
+    modules = {name: _files(module) for name, module in loaded if name.split(".")[0] in FIRST_PARTY}
+    outside = {
+        name: files for name, module in loaded if (files := [f for f in _files(module) if _outside(f)])
     }
     tests = sorted({os.path.realpath(item.module.__file__) for item in session.items if getattr(item, "module", None)})
     with open(os.environ["PREREG_INNER_PROBE"], "w", encoding="utf-8") as out:
-        json.dump({"modules": modules, "tests": tests}, out)
+        json.dump({"modules": modules, "outside": outside, "tests": tests}, out)
 """
+)
 _PROBE_MODULE = "prereg_inner_probe"
 
 
@@ -690,7 +719,8 @@ _PROBE_MODULE = "prereg_inner_probe"
 class Outcome:
     """What the publish commit's own test did: each test function's name and result (``passed``, ``failed``,
     ``error``, ``skipped``), the test functions its file defines, where the first-party and test modules came from,
-    pytest's exit code and output, and the seconds it took."""
+    the modules of any name that came from the checkout that runs it, pytest's exit code and output, and the seconds
+    it took."""
 
     tree: Path
     returncode: int
@@ -698,18 +728,27 @@ class Outcome:
     defined: list[str]
     modules: dict[str, list[str]] = field(default_factory=dict)
     test_files: list[str] = field(default_factory=list)
+    outside: dict[str, list[str]] = field(default_factory=dict)
     output: str = ""
     seconds: float = 0.0
 
 
-def inner_environment(tree: Path, probe: Path, outer: Mapping[str, str]) -> dict[str, str]:
+def inner_environment(
+    tree: Path, probe: Path, outer: Mapping[str, str], *, checkout: Path | None = None
+) -> dict[str, str]:
     """The inner run's environment: the outer one without its Python and pytest settings (``PYTHON*``, ``PYTEST_*``)
-    and coverage's subprocess hooks, and ``PYTHONPATH`` the worktree's ``src``, the worktree, then the probe's folder,
-    joined with ``os.pathsep``: before the site folder, so the editable install of this checkout cannot answer."""
-    dropped = ("PYTHON", "PYTEST", "COV_CORE", "COVERAGE")
+    and coverage's subprocess hooks; ``PYTHONPATH`` the worktree's ``src``, the worktree, then the probe's folder,
+    joined with ``os.pathsep``, before the site folder; pytest's plugin autoload off, so no plugin of this checkout's
+    environment loads (the publish commit's test needs none); and, for the probe's ``sitecustomize``, where the
+    worktree and this ``checkout`` are, so the checkout's folders (its editable install's ``src``) leave ``sys.path``."""
+    dropped = ("PYTHON", "PYTEST", "COV_CORE", "COVERAGE", "PREREG_")
     env = {key: value for key, value in outer.items() if not key.upper().startswith(dropped)}
     env["PYTHONPATH"] = os.pathsep.join([str(tree / "src"), str(tree), str(probe)])
     env["PYTHONDONTWRITEBYTECODE"] = "1"
+    env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
+    env["PREREG_INNER_TREE"] = str(tree)
+    if checkout is not None:
+        env["PREREG_OUTER_ROOT"] = str(checkout.resolve())
     return env
 
 
@@ -762,6 +801,7 @@ def run_frozen_tests(
     tree, probe, report = scratch / "published", scratch / "probe", scratch / "junit.xml"
     probe.mkdir(exist_ok=True)
     (probe / f"{_PROBE_MODULE}.py").write_text(f"FIRST_PARTY = {FIRST_PARTY!r}\n{_PROBE}", encoding="utf-8")
+    (probe / "sitecustomize.py").write_text(_SITECUSTOMIZE, encoding="utf-8")
     added = _git(root, "worktree", "add", "--detach", "--quiet", str(tree), commit)
     if added.returncode != 0:
         raise RuntimeError(
@@ -770,7 +810,7 @@ def run_frozen_tests(
     try:
         tree = tree.resolve()
         defined = _defined((tree / test_file).read_text(encoding="utf-8"))
-        env = inner_environment(tree, probe, os.environ)
+        env = inner_environment(tree, probe, os.environ, checkout=root)
         env["PREREG_INNER_PROBE"] = str(scratch / "probe.json")
         command = [python, "-m", "pytest", test_file, "-p", "no:cacheprovider", "-p", _PROBE_MODULE]
         command += ["-rA", f"--junitxml={report}", *extra_args]
@@ -805,6 +845,7 @@ def run_frozen_tests(
             defined=defined,
             modules=dict(probed.get("modules") or {}),
             test_files=list(probed.get("tests") or []),
+            outside=dict(probed.get("outside") or {}),
             output=output,
             seconds=seconds,
         )
@@ -841,6 +882,10 @@ def outcome_problems(outcome: Outcome) -> list[str]:
         f"{path}: a test module from outside the publish commit's worktree"
         for path in outcome.test_files
         if not Path(path).is_relative_to(outcome.tree)
+    ]
+    out += [
+        f"{name}: imported from this checkout, not the publish commit's worktree ({', '.join(files)})"
+        for name, files in sorted(outcome.outside.items())
     ]
     return out
 

@@ -12,6 +12,7 @@ import hashlib
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -437,6 +438,80 @@ def test_the_inner_run_s_environment_puts_the_worktree_first(tmp_path: Path) -> 
         env
     )
     assert env["ORDNUNG_OCR"] == "off" and env["PATH"] == outer["PATH"]
+
+
+HEAD_PLUGIN = """
+import os
+
+import pytest
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    outcome = yield
+    if os.environ.get("PREREG_INNER_PROBE"):
+        outcome.get_result().outcome = "passed"
+"""
+
+SEES_HEAD = """
+import importlib
+
+import pytest
+
+
+def test_fails():
+    raise AssertionError("the publish commit's check fails")
+
+
+def test_this_checkout_s_own_packages_are_not_on_the_path():
+    with pytest.raises(ImportError):
+        importlib.import_module("head_only")
+"""
+
+
+@pytest.mark.skipif(os.name != "posix", reason="the stand-in for an editable install is a shell script")
+def test_this_checkout_s_install_cannot_answer_in_the_publish_commit_s_run(tmp_path: Path) -> None:
+    """The checkout's editable install puts its ``src`` on ``sys.path`` (a ``.pth`` file) and its entry points in
+    reach of pytest's plugin autoload. A pytest plugin there (here one that turns every failure into a pass, but only
+    in the inner run), or any package only the checkout has, must not run in the publish commit's own run: plugin
+    autoload is off, and the checkout's folders leave ``sys.path`` before anything is imported."""
+    root, published = _inner_repo(tmp_path, SEES_HEAD)
+    _put(root, "src/head_only/__init__.py", "")
+    _put(root, "src/head_only/plugin.py", HEAD_PLUGIN)
+    _put(
+        root, "src/head_only-0.0.dist-info/METADATA", "Metadata-Version: 2.1\nName: head-only\nVersion: 0.0\n"
+    )
+    _put(root, "src/head_only-0.0.dist-info/entry_points.txt", "[pytest11]\nhead_only = head_only.plugin\n")
+    wrapper = tmp_path / "python-with-the-checkout-installed"
+    wrapper.write_text(
+        f'#!/bin/sh\nPYTHONPATH="$PYTHONPATH:{root / "src"}" exec "{sys.executable}" "$@"\n', encoding="utf-8"
+    )
+    wrapper.chmod(0o755)
+    outcome = prereg_published.run_frozen_tests(
+        root, published, tmp_path / "scratch", python=str(wrapper), timeout=300
+    )
+    found = prereg_published.outcome_problems(outcome)
+    assert "test_fails: failed" in found, (found, outcome.output)
+    assert dict(outcome.tests)["test_this_checkout_s_own_packages_are_not_on_the_path"] == "passed", (
+        outcome.output
+    )
+
+
+def test_a_module_from_this_checkout_in_the_publish_commit_s_run_is_reported(tmp_path: Path) -> None:
+    tree = tmp_path / "published"
+    outcome = prereg_published.Outcome(
+        tree=tree,
+        returncode=0,
+        tests=[("test_ok", "passed")],
+        defined=["test_ok"],
+        modules={"ordnung": [str(tree / "src" / "ordnung" / "__init__.py")]},
+        test_files=[str(tree / "tests" / "test_preregistration.py")],
+        outside={"head_only.plugin": ["/checkout/src/head_only/plugin.py"]},
+    )
+    assert prereg_published.outcome_problems(outcome) == [
+        "head_only.plugin: imported from this checkout, not the publish commit's worktree "
+        "(/checkout/src/head_only/plugin.py)"
+    ]
 
 
 def test_the_skip_reason_names_the_test_that_runs_the_publish_commit_s_checks() -> None:
