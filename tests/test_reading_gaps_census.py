@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from evals import harness, splits  # noqa: E402
 from evals.conditions import CallLog, MeteredBackend, prepare_document, run_ordnung  # noqa: E402
 from evals.records import Entry, load_manifest  # noqa: E402
 from evals.run import RecordedFailures  # noqa: E402
@@ -49,6 +50,18 @@ def recorded_letters(entries: Sequence[Entry], results_dir: Path = RESULTS) -> l
     with no edit here."""
     unrecorded = unrecorded_final_splits(results_dir)
     return [entry for entry in entries if entry.split not in unrecorded]
+
+
+def on_their_days(entries: Sequence[Entry], recorded: Path = RECORDED) -> list[Entry]:
+    """Each final split's letter on the day its first read recorded it (the day index, ``final-days.json``), as
+    ``ordnung eval --split <split>`` replays it: a recording's request holds the day it was made on, and the final
+    run's reads span several days. Every other letter keeps the manifest's day."""
+    index = harness.DayIndex(recorded / "final-days.json")
+    on_days = []
+    for entry in entries:
+        unit = index.attempted(entry.split, 1).get(entry.id) if splits.is_final(entry.split) else None
+        on_days.append(entry.model_copy(update={"today": str(unit["day"])}) if unit else entry)
+    return on_days
 
 
 async def _fires(entries: list[Entry], work: Path) -> tuple[set[str], set[str], set[str], int]:
@@ -83,7 +96,7 @@ async def test_the_reading_check_fires_on_exactly_the_one_empty_recorded_reading
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     as_first_recorded(monkeypatch)  # the readings as first recorded: the empty one's re-ask is missed
-    entries = recorded_letters(load_manifest(DATASET / "manifest.json"))
+    entries = on_their_days(recorded_letters(load_manifest(DATASET / "manifest.json")))
     fired, replaced, dropped, read = await _fires(entries, tmp_path)
     splits = {entry.split for entry in entries}
     assert splits >= {"dev", "test", "holdout", "holdout2"}
