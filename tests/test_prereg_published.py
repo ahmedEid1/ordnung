@@ -485,17 +485,36 @@ def test_a_run_interrupted_stops_its_inner_pytest_before_the_worktree_goes(
 
 def _first_publication(world: World, commit: str) -> list[str]:
     return prereg_published.first_publication_problems(
-        world.root, commit, FINAL_PATTERN, {"file": PREREG, "sha256": world.prereg_sha}
+        world.root, commit, FINAL_PATTERN, {"file": PREREG, "sha256": world.prereg_sha}, freeze=world.freeze
     )
 
 
 def test_a_later_commit_that_still_holds_the_analysis_cannot_be_named(world: World) -> None:
     """A commit after publication holds the final analysis too, and may have changed the README's block or a results
-    file in a way its own frozen test allows: naming it would hold HEAD to that version. Only the commit whose first
-    parent holds no final analysis of the registered pre-registration published it."""
+    file in a way its own frozen test allows: naming it would hold HEAD to that version. Only the first commit on
+    HEAD's first-parent line after the freeze that holds a final analysis of the registered pre-registration
+    published it."""
     assert _first_publication(world, world.publish) == []
-    assert any("first parent already holds" in p for p in _first_publication(world, world.after))
+    assert any("not the first commit" in p for p in _first_publication(world, world.after))
     assert any("published no final analysis" in p for p in _first_publication(world, world.checkpoint))
+
+
+def test_a_commit_that_adds_the_analysis_back_after_a_removal_is_no_publication(world: World) -> None:
+    """A commit that removes the final analysis and a later one that adds it back (with, say, another README block):
+    the later one's first parent holds none, but it is not the first on the first-parent line that holds one."""
+    (world.root / FINAL).unlink()
+    _commit(world.root, "the final analysis removed")
+    readded = {"meta": {"kind": "final", "prereg": {"file": PREREG, "sha256": world.prereg_sha}}}
+    _put(world.root, FINAL, json.dumps(readded) + "\n")
+    _put(world.root, "README.md", _readme(1).replace("Ordnung is ahead.", "Ordnung is far ahead."))
+    again = _commit(world.root, "the final analysis added back")
+    assert world.finals(again) == [FINAL]
+    found = _first_publication(world, again)
+    assert found == [
+        f"{again}: not the first commit on HEAD's first-parent line after the freeze that holds a final analysis of "
+        f"the registered pre-registration ({world.publish[:12]} is): name that one"
+    ], found
+    assert _first_publication(world, world.publish) == []
 
 
 def test_the_record_names_main_s_merge_commit_not_the_publish_pull_request_s_head(tmp_path: Path) -> None:
@@ -536,7 +555,10 @@ def test_the_record_names_main_s_merge_commit_not_the_publish_pull_request_s_hea
     )
     assert any("first-parent" in p for p in on_the_side), on_the_side
     registered = {"file": PREREG, "sha256": hashlib.sha256(prereg.encode()).hexdigest()}
-    assert prereg_published.first_publication_problems(root, merge, FINAL_PATTERN, registered) == []
+    assert (
+        prereg_published.first_publication_problems(root, merge, FINAL_PATTERN, registered, freeze=freeze)
+        == []
+    )
 
 
 # --------------------------------------------------------------------------------------------------

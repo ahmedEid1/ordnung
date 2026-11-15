@@ -188,16 +188,24 @@ def final_analyses_at(root: Path, commit: str, pattern: str, prereg: Mapping[str
     return found
 
 
-def first_publication_problems(root: Path, commit: str, pattern: str, prereg: Mapping[str, str]) -> list[str]:
+def first_publication_problems(
+    root: Path, commit: str, pattern: str, prereg: Mapping[str, str], *, freeze: str
+) -> list[str]:
     """Why ``commit`` is not the commit that published the final run (empty: it is): it holds a final analysis of the
-    registered pre-registration (:func:`final_analyses_at`) and its first parent holds none. A later commit holds the
-    analysis too, and may have changed what its own frozen test allows to change (the README's block, a results file
-    other than the final reads); naming it would hold HEAD to that version."""
+    registered pre-registration (:func:`final_analyses_at`), and it is the first commit on HEAD's first-parent line
+    after ``freeze`` that holds one. A later commit holds the analysis too, even one that adds it back after a commit
+    that removed it, and may have changed what its own frozen test allows to change (the README's block, a results
+    file other than the final reads); naming it would hold HEAD to that version."""
     if not final_analyses_at(root, commit, pattern, prereg):
         return [f"{commit} published no final analysis of the registered pre-registration"]
-    if _is_commit(root, f"{commit}^1") and final_analyses_at(root, f"{commit}^1", pattern, prereg):
+    line = (
+        _git(root, "rev-list", "--first-parent", "--reverse", "HEAD", "--not", freeze).stdout.decode().split()
+    )
+    first = next((sha for sha in line if final_analyses_at(root, sha, pattern, prereg)), None)
+    if first != commit:
         return [
-            f"{commit}: its first parent already holds the final analysis: name the commit that first published it"
+            f"{commit}: not the first commit on HEAD's first-parent line after the freeze that holds a final analysis "
+            f"of the registered pre-registration ({first[:12] if first else 'none'} is): name that one"
         ]
     return []
 

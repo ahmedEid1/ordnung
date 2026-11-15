@@ -342,10 +342,16 @@ def _registered() -> dict[str, str]:
 
 def test_the_publish_record_names_the_commit_that_published_the_final_run(prereg: dict[str, Any]) -> None:
     """Only the commit on main that first published a final analysis of the registered pre-registration can end the
-    freeze: a commit before publication publishes none, a later one's first parent already holds it."""
-    record, _ = _record(prereg)
+    freeze: the first one on HEAD's first-parent line after the freeze that holds one. A commit before publication
+    holds none; a later one, even one that adds the analysis back after a removal, is not the first."""
+    record, freeze = _record(prereg)
     pattern = prereg["sentences"]["files"]["final"]
-    assert prereg_published.first_publication_problems(ROOT, record["commit"], pattern, _registered()) == []
+    assert (
+        prereg_published.first_publication_problems(
+            ROOT, record["commit"], pattern, _registered(), freeze=freeze
+        )
+        == []
+    )
 
 
 def test_the_files_that_check_after_publication_are_the_ones_the_record_names(prereg: dict[str, Any]) -> None:
