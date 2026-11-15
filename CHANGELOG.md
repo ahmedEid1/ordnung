@@ -253,6 +253,8 @@ install this version by its commit, as *Updating* says for a release without a t
   of the photo is run 1's request byte for byte. Every other request made under the key of one of run 1's must
   still be run 1's byte for byte, run 1's transcriptions of each letter Ordnung read must all be asked again (a
   transcription's key is its page image's hash), and a smoke that judges none fails. No published number changes.
+- **The dependency audit passes again.** `constraints.txt` pins opentelemetry-api 1.45.2, which the MCP SDK pulls
+  in; 1.45.1 has CVE-2026-126360, and CI's `pip-audit` step failed on it.
 
 ### Upgrading
 
