@@ -150,12 +150,13 @@ code maps, the paths changed since the freeze, the frozen-input check and the pu
 file of the Ask set's runs, the phase-2 tree and the planned day's build) run at that commit, from its own copy of
 the test, in a temporary worktree with its own code: every test must pass and none skip
 (`pytest -m slow tests/test_preregistration.py`, in a clone with the whole history). At later commits the test keeps
-what stays for good: the pre-registration and the phase-2 record byte for byte; every results file the run
-published, byte for byte (a re-score is a new `-rescored` file), but the final analysis, which a label error or a
-scorer bug recorded later renders again with only its list of deviations and, for a label error, its label-corrected
-sensitivity changed; the stress run's registered fingerprints; the deviations file, which only grows, by label
-errors and scorer bugs; and, for every 0.4.x release, the README's generated block, word for word but for its count
-of deviations (`scripts/prereg_published.py`).
+what stays for good: the pre-registration (`.json` and `.md`), the phase-2 record and the power and calibration
+files byte for byte; every results file the run published, byte for byte (a re-score is a new `-rescored` file), but
+the final analysis, which a label error or a scorer bug recorded later renders again with only its list of
+deviations, the deviations file's sha256 and count and, for a label error, its label-corrected sensitivity changed;
+the stress run's registered fingerprints; the deviations file, which only grows, by label errors and scorer bugs,
+each kept as it was recorded; and, for every 0.4.x release, the README's generated block, word for word but for its
+count of deviations (`scripts/prereg_published.py`).
 
 ## Where results go
 

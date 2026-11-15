@@ -80,7 +80,12 @@ For 0.4.0 that is not the pull request that publishes the evaluation but the one
 merged with a merge commit, never squashed or rebased (the deviations name its checkpoint commits), and the record
 names that merge commit on `main`. Once the amendment is posted on the pre-registration issue,
 `python -m scripts.prereg_published --write-record <merge commit> <the amendment's URL>` writes it, with the
-sha256 of the files that check the pre-registration from then on, on a branch made from `main` after that merge.
+sha256 of the files that check the pre-registration from then on, on a branch made from `main` after that merge; it
+runs the record's checks first and writes nothing if one fails (`--check-record` runs them on the committed record).
+From that merge on, `main` moves only through pull requests merged on GitHub, never by a direct push: the record's
+checks need the publish commit on `main`'s first-parent line. If a push ever moves `main` so that it leaves that line
+(a `git pull` merge pushed from an old branch), a merge with the last good `main` as first parent puts it back,
+pushed as a fast-forward; the record and the amendment stay as they are.
 
 A pre-release works the same way, with a version such as `X.Y.Zrc1`, its own changelog section and the tag
 `vX.Y.Zrc1`. `pipx install ordnung` skips it; `pipx install "ordnung==X.Y.Zrc1"` installs it.
@@ -115,6 +120,9 @@ What only the owner can set on GitHub, written down so that it can be checked or
 - *Pull Requests* (*Settings → General*): merge commits take the default message *Pull request title and
   description*, so `main`'s history reads as the pull requests' titles; and *Automatically delete head
   branches* is on (pushing to a deleted branch again creates it anew).
+- *Branch protection* for `main` (*Settings → Branches*): require a pull request before merging, and allow
+  neither direct pushes nor force pushes, so `main`'s first-parent line keeps the commit that published the final
+  run (see *Making a release* above).
 - *Private vulnerability reporting*, in the repository's security settings: on. SECURITY.md sends reporters to
   it, and to the *Security contact* issue form only while it is off.
 

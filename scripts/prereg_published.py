@@ -3,31 +3,41 @@
 Until the final run is published, ``tests/test_preregistration.py`` holds HEAD to the freeze: the frozen paths, the
 code map, the paths allowed to change. CI ran it on every pull request and every push to main from the freeze on, and
 the publication rests on the run at the publish commit: there its own copy passes whole. The checks cannot hold after
-it: the pre-registration itself plans later changes (a scorer bug fixed as ``-rescored`` files, a label error or the
-owner's checks sent through the blind review), and the code goes on. So once :data:`RECORD` names the publish commit,
-the checks that hold HEAD to the freeze verify that commit, read from git, for good; HEAD may move on. The record is
-committed after the publish commit, never in it, with the URL of the amendment on the pre-registration issue that says
-so, and the sha256 of the files that check the pre-registration after publication (:data:`CHECKED_BY`).
+it: the pre-registration itself plans later changes (a scorer bug fixed in ``-rescored`` files, a label error from the
+blind review or from an owner's finding sent through it, and the owner's checks published per id), and the code goes
+on. So once :data:`RECORD` names the publish commit, the checks that hold HEAD to the freeze verify that commit, read
+from git, for good; HEAD may move on. The record is committed after the publish commit, never in it, with the URL of
+the amendment on the pre-registration issue that says so, and the sha256 of the files that check the
+pre-registration after publication (:data:`CHECKED_BY`).
 
 * :func:`record_problems`: the record names a commit on HEAD's first-parent line (main's own history) after the
   freeze, a comment on the pre-registration issue, and the files that check it; :func:`first_publication_problems`
-  asks that commit to be the one that first published the final analysis of the registered pre-registration (its
-  first parent holds none), so neither a commit before publication nor a later one can be named;
-  :func:`checked_by_problems` and :func:`record_history_problems` hold those files to the record, and a change to them
-  or to the commit to a new amendment.
+  asks that commit to be the first on that line after the freeze that holds a final analysis of the registered
+  pre-registration, so neither a commit before publication nor a later one (not even one that adds the analysis
+  back after a removal) can be named; :func:`checked_by_problems` holds those files to the record, and
+  :func:`record_history_problems` holds the record's history: once written it stays, and a change of its commit or
+  of those files names an amendment no earlier version named. :func:`record_check` runs them all on a record about
+  to be written (``--write-record``) or committed (``--check-record``).
 * :func:`run_frozen_tests` runs that commit's own ``tests/test_preregistration.py``, every test, the slow ones too,
-  in a temporary detached worktree of it, with its own first-party code first on ``sys.path`` (not this checkout's,
-  not its editable install; the interpreter and the libraries are this checkout's); :func:`outcome_problems` asks
-  every test to pass, none skipped, and every first-party module imported from the worktree. The run is stopped and
-  the worktree removed whatever happens.
+  in a temporary detached worktree of it, with its own first-party code first on ``sys.path``; this checkout's own
+  folders (its editable install's ``src``) are taken off ``sys.path`` and pytest's plugin autoload is off, so neither
+  its packages nor its plugins run there. The interpreter and the libraries installed in it are this checkout's.
+  :func:`outcome_problems` asks every test to pass, none skipped, every first-party module imported from the
+  worktree and no module from this checkout. The run is stopped and the worktree removed whatever happens (a
+  timeout, Ctrl-C, SIGTERM).
 * What was published stays at HEAD: :func:`unchanged_problems` (the registered files, and the results files the final
   run added, :func:`added_results`), :func:`final_analysis_problems` (the final analysis, byte for byte until a
   deviation is recorded after publication; then rendered again with only its list of deviations, the deviations
   file's sha256 and count and, for a label error, the label-corrected sensitivity changed),
-  :func:`deviations_kept_problems` (the deviations file only grows, by ``label_error`` and ``scorer_bug`` entries),
-  :func:`stress_fingerprint_problems` (the stress run was recorded with the registered code) and
-  :func:`readme_problems` (the README's generated block, for every 0.4.x release, with only its count of deviations
-  growing with the file).
+  :func:`deviations_kept_problems` (the deviations file only grows, by ``label_error`` and ``scorer_bug`` entries) and
+  :func:`deviations_history_problems` (at every commit after the publish commit the file is there, and an entry
+  stays as it was recorded), :func:`stress_fingerprint_problems` (the stress run was recorded with the registered
+  code) and :func:`readme_problems` (the README's generated block, for every 0.4.x release, with only its count of
+  deviations growing with the file).
+
+Only the files in :data:`CHECKED_BY` are held; what runs them (``tests/conftest.py``, pyproject.toml's pytest
+settings, ``.github/workflows/ci.yml``) is not, so a change there shows in review, not in these checks. The checks
+guard against changes made by mistake; a change made on purpose shows in the history and on the issue.
 
 It prints and returns paths, ids, commits and counts, never a letter, a label or a prompt.
 """
@@ -157,7 +167,9 @@ def record_problems(record: Any, root: Path, *, freeze: str, issue: str | None) 
         elif commit not in _first_parents(root):
             out.append(
                 f"{RECORD}: {commit} is not on HEAD's first-parent line (main's own history): name the commit on main "
-                "that published the final run (the publish PR's merge commit), not one main reached through a merge"
+                "that published the final run (the publish PR's merge commit), not one main reached through a merge; "
+                "if a push moved main so that this commit left its first-parent line, a merge with the last good "
+                "main as first parent puts it back (docs/releasing.md)"
             )
         elif not _ancestor(root, freeze, commit):
             out.append(f"{RECORD}: {commit} does not descend from the freeze {freeze}")

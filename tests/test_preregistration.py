@@ -26,26 +26,28 @@ holds:
 * (slow) the planned day's build regenerates to the registered manifest.
 
 After publication, the publish commit holds them. The pre-registration plans changes after the publish commit (a
-scorer bug fixed in ``-rescored`` files, a label error or the owner's checks sent through the blind review), and the
-code goes on, so the checks that hold HEAD to the freeze cannot hold at HEAD for good. Once
+scorer bug fixed in ``-rescored`` files, a label error from the blind review or from an owner's finding sent through
+it, and the owner's checks published per id), and the code goes on, so the checks that hold HEAD to the freeze cannot hold at HEAD for good. Once
 ``evals/preregistration/published-0.4.0.json`` names the publish commit and the amendment on the pre-registration
 issue that says so (``scripts.prereg_published``), they verify that commit, read from git, and skip at HEAD: the
 ``files`` map, the code map, the paths changed since the freeze, the final results' frozen-input check and their
 analysis rendered again, the held-out Ask file of runs, the phase-2 tree and the planned day's build. At HEAD, from
 then on:
 
-* the record names the commit on HEAD's first-parent line (main's own history) that first published a final analysis
-  of the registered pre-registration (its first parent holds none), a comment on the pre-registration issue, and the
-  sha256 of this file, ``scripts/prereg_published.py`` and ``scripts/prereg_hashes.py``, which stay those; a change to
-  the record's commit or to those files names a new amendment;
+* the record names the first commit on HEAD's first-parent line (main's own history) after the freeze that holds a
+  final analysis of the registered pre-registration, a comment on the pre-registration issue, and the sha256 of this
+  file, ``scripts/prereg_published.py`` and ``scripts/prereg_hashes.py``, which stay those; once written the record
+  stays, and a change to its commit or to those files names an amendment no earlier version named;
 * (slow) that commit's own copy of this file passes there, every test and none skipped, in a temporary worktree of it
-  with its own first-party code first on ``sys.path`` (the interpreter and the libraries are this checkout's);
+  with its own first-party code first on ``sys.path``, and none of this checkout's own packages or pytest plugins
+  (the interpreter and the libraries installed in it are this checkout's);
 * the pre-registration, its ``.md``, the phase-2 record and the power and calibration files are byte for byte the
   publish commit's, and so is every results file the final run added (a re-score is a new ``-rescored`` file), but
   the final analysis: it is rendered again when a label error or a scorer bug is recorded, and then only its list of
   deviations, the deviations file's sha256 and count and, for a label error, the label-corrected sensitivity change;
 * the stress run carries the registered fingerprints (its replay compares numbers, not the replaying code);
-* the deviations file starts with the publish commit's entries, unchanged; only label errors and scorer bugs are added;
+* the deviations file starts with the publish commit's entries, unchanged; only label errors and scorer bugs are added,
+  and at every commit after the publish commit the file is there and an entry stays as it was recorded;
 * for every 0.4.x release, the README's generated block is the one published, word for word, but for its count of the
   deviations recorded at the time, which follows the file (the pledge);
 * the required fields, the templates, the pledge and the rule texts, the files written once and the deviations (well
@@ -55,7 +57,9 @@ The checks that read the git history skip in a clone without the freeze commit o
 published; from then on such a clone fails them (CI's clone must hold the history).
 
 The checks themselves are :mod:`scripts.prereg_hashes`'s (on the code map) and, after publication,
-:mod:`scripts.prereg_published`'s."""
+:mod:`scripts.prereg_published`'s. After publication only the three files the record names are held; what runs them
+(``tests/conftest.py``, pyproject.toml's pytest settings, ``.github/workflows/ci.yml``) is not, so a change there
+shows in review, not here."""
 
 from __future__ import annotations
 

@@ -120,10 +120,10 @@ install this version by its commit, as *Updating* says for a release without a t
   whole at the publish commit. A record committed after publication now names that commit on `main`, the amendment on
   [issue #54](https://github.com/ahmedEid1/ordnung/issues/54) and the sha256 of the files that check the
   pre-registration from then on: the checks of the frozen code and paths run that commit's own copy of the test
-  there, in a temporary worktree, and later commits keep what stays for good: the pre-registration and the run's
-  results files byte for byte (the final analysis is rendered again only when a label error or a scorer bug is
-  recorded, and its results stay), the stress run's registered fingerprints, a deviations file that only grows, and
-  the README's generated block for every 0.4.x release. The code can change again without failing CI: the stress
+  there, in a temporary worktree, and later commits keep what stays for good: the pre-registration, the phase-2
+  record, the power and calibration files and the run's results files byte for byte (the final analysis is rendered
+  again only when a label error or a scorer bug is recorded, and its results stay), the stress run's registered
+  fingerprints, a deviations file that only grows, and the README's generated block for every 0.4.x release. The code can change again without failing CI: the stress
   replay of `make eval-reproduce` compares the numbers, not the fingerprints of the code that replays.
 
 ### Fixed
