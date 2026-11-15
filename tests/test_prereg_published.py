@@ -11,14 +11,17 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import signal
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
 import pytest
 from scripts import prereg_published
 
+REPO = Path(__file__).resolve().parents[1]
 ISSUE = "https://github.com/example/repo/issues/54"
 AMENDMENT = f"{ISSUE}#issuecomment-123456789"
 PREREG = "evals/preregistration/final-0.4.0.json"
@@ -568,6 +571,58 @@ def test_a_run_interrupted_stops_its_inner_pytest_before_the_worktree_goes(
     assert len(inner) == 1
     assert inner[0].poll() is not None, "the publish commit's test still runs after the interrupt"
     assert _worktrees(root) == before
+
+
+def _wait_for(check: Any, seconds: float) -> Any:
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        found = check()
+        if found:
+            return found
+        time.sleep(0.1)
+    return None
+
+
+def _alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    stat = Path(f"/proc/{pid}/stat")
+    return not (stat.is_file() and stat.read_text().split(") ", 1)[-1].startswith("Z"))
+
+
+@pytest.mark.skipif(os.name != "posix", reason="SIGTERM is a POSIX signal")
+def test_a_run_terminated_stops_its_inner_pytest_and_removes_the_worktree(tmp_path: Path) -> None:
+    """SIGTERM (a supervisor, a CI cancel) takes the same way out as Ctrl-C: the inner run, in a process group of its
+    own that the signal never reaches, is stopped, the worktree removed, and then the process ends by the signal."""
+    pidfile = tmp_path / "inner.pid"
+    hangs = (
+        "import os\nimport time\n\n\ndef test_hangs():\n"
+        f"    with open({str(pidfile)!r}, 'w') as out:\n        out.write(str(os.getpid()))\n"
+        "    time.sleep(120)\n"
+    )
+    root, published = _inner_repo(tmp_path, hangs)
+    before = _worktrees(root)
+    scratch = tmp_path / "scratch"
+    driver = (
+        f"import sys\nfrom pathlib import Path\nsys.path.insert(0, {str(REPO)!r})\n"
+        "from scripts import prereg_published\n"
+        f"prereg_published.run_frozen_tests(Path({str(root)!r}), {published!r}, Path({str(scratch)!r}), timeout=300)\n"
+    )
+    outer = subprocess.Popen([sys.executable, "-c", driver], cwd=REPO)
+    try:
+        inner = _wait_for(lambda: pidfile.is_file() and pidfile.read_text().strip(), 120)
+        assert inner, "the inner run never started"
+        outer.send_signal(signal.SIGTERM)
+        assert outer.wait(timeout=60) == -signal.SIGTERM
+    finally:
+        if outer.poll() is None:
+            outer.kill()
+            outer.wait()
+    assert _wait_for(lambda: not _alive(int(inner)), 10), "the publish commit's test still runs after SIGTERM"
+    assert _worktrees(root) == before
+    assert not (scratch / "published").exists()
 
 
 # --------------------------------------------------------------------------------------------------

@@ -46,6 +46,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import threading
 import time
 import tomllib
 import xml.etree.ElementTree as ElementTree
@@ -797,6 +798,38 @@ def _stop(process: subprocess.Popen[str]) -> None:
         process.kill()
 
 
+class _Terminated(BaseException):
+    """SIGTERM while the publish commit's test runs (:func:`_sigterm_stops_the_run`)."""
+
+
+@contextlib.contextmanager
+def _sigterm_stops_the_run() -> Iterator[None]:
+    """While the block runs, SIGTERM raises :class:`_Terminated` instead of ending the process at once, so the inner
+    run is stopped and its worktree removed as for Ctrl-C; then the signal is delivered again with the handler that
+    was there before (by default the process ends by it). Only in the main thread of a POSIX process, and not where
+    SIGTERM is ignored."""
+    if os.name != "posix" or threading.current_thread() is not threading.main_thread():
+        yield
+        return
+    previous = signal.getsignal(signal.SIGTERM)
+    if previous is signal.SIG_IGN:
+        yield
+        return
+
+    def terminated(signum: int, frame: Any) -> None:
+        raise _Terminated
+
+    signal.signal(signal.SIGTERM, terminated)
+    try:
+        yield
+    except _Terminated:
+        signal.signal(signal.SIGTERM, previous)
+        signal.raise_signal(signal.SIGTERM)
+        raise SystemExit(128 + signal.SIGTERM) from None
+    finally:
+        signal.signal(signal.SIGTERM, previous)
+
+
 def run_frozen_tests(
     root: Path,
     commit: str,
@@ -809,14 +842,33 @@ def run_frozen_tests(
 ) -> Outcome:
     """Run ``commit``'s own ``test_file`` in a temporary detached worktree of it (``scratch/published``), with that
     commit's first-party code first on ``sys.path`` and pytest's options its own, and report every test case (JUnit
-    XML). The interpreter and the libraries are ``python``'s, this checkout's. The worktree is removed whatever
-    happens; a run longer than ``timeout`` seconds is stopped and raises ``subprocess.TimeoutExpired``, and a run
-    interrupted otherwise (Ctrl-C) is stopped too before the exception goes on."""
+    XML). The interpreter and the libraries installed in it are ``python``'s, this checkout's; the checkout's own
+    folders and plugins are kept out (:func:`inner_environment`). The worktree is removed whatever happens, and
+    worktrees left by a run that was killed are pruned; a run longer than ``timeout`` seconds is stopped and raises
+    ``subprocess.TimeoutExpired``, and a run interrupted otherwise (Ctrl-C, SIGTERM) is stopped too before the
+    exception or the signal goes on."""
+    with _sigterm_stops_the_run():
+        return _run_frozen_tests(
+            root, commit, scratch, python=python, test_file=test_file, timeout=timeout, extra_args=extra_args
+        )
+
+
+def _run_frozen_tests(
+    root: Path,
+    commit: str,
+    scratch: Path,
+    *,
+    python: str,
+    test_file: str,
+    timeout: float,
+    extra_args: Sequence[str],
+) -> Outcome:
     scratch.mkdir(parents=True, exist_ok=True)
     tree, probe, report = scratch / "published", scratch / "probe", scratch / "junit.xml"
     probe.mkdir(exist_ok=True)
     (probe / f"{_PROBE_MODULE}.py").write_text(f"FIRST_PARTY = {FIRST_PARTY!r}\n{_PROBE}", encoding="utf-8")
     (probe / "sitecustomize.py").write_text(_SITECUSTOMIZE, encoding="utf-8")
+    _git(root, "worktree", "prune")
     added = _git(root, "worktree", "add", "--detach", "--quiet", str(tree), commit)
     if added.returncode != 0:
         raise RuntimeError(
@@ -842,8 +894,8 @@ def run_frozen_tests(
         try:
             output, _ = process.communicate(timeout=timeout)
         except BaseException:
-            # the timeout, Ctrl-C or anything else: the run is in a process group of its own, which the terminal's
-            # interrupt never reaches, so it is stopped here, before the worktree it runs in goes
+            # the timeout, Ctrl-C, SIGTERM or anything else: the run is in a process group of its own, which the
+            # terminal's interrupt never reaches, so it is stopped here, before the worktree it runs in goes
             _stop(process)
             process.communicate()
             raise
@@ -868,6 +920,7 @@ def run_frozen_tests(
         removed = _git(root, "worktree", "remove", "--force", "--force", str(tree))
         if removed.returncode != 0 and tree.exists():
             shutil.rmtree(tree, ignore_errors=True)
+        _git(root, "worktree", "prune")
 
 
 def outcome_problems(outcome: Outcome) -> list[str]:
