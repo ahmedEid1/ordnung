@@ -55,12 +55,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from scripts.prereg_hashes import AFTER_PUBLICATION, COMMENT_URL, COMMIT, DEVIATIONS_PATH
+from scripts.prereg_hashes import AFTER_PUBLICATION, COMMENT_URL, COMMIT, DEVIATIONS_PATH, bound_issue
 
 ROOT = Path(__file__).resolve().parents[1]
 
 #: The record of the publication, committed after the publish commit (``evals/preregistration/**`` may change).
 RECORD = "evals/preregistration/published-0.4.0.json"
+#: The registered pre-registration, whose final analysis the record's commit published.
+PREREG_PATH = "evals/preregistration/final-0.4.0.json"
 SCHEMA = "ordnung-prereg-published/1"
 #: The record's keys: its schema, the publish commit's full sha, the amendment's comment URL and the sha256 of each
 #: file in :data:`CHECKED_BY`; ``about`` may say in words what it is.
@@ -293,19 +295,22 @@ def _deviation_comments(root: Path) -> set[str]:
     }
 
 
-def record_history_problems(root: Path) -> list[str]:
+def record_history_problems(root: Path, *, current: Any = None) -> list[str]:
     """Why the record's history, over every commit of HEAD's history and the checkout, does not keep the amendment
     rule (empty: it does). Once a commit holds the record, every commit after it holds it as a JSON object (a commit
     that removed it, or broke it, is reported, and the next version is compared with the last one that held). Each
     version that changed the ``commit`` or ``checked_by`` of the version before it names a new amendment: one no
     earlier version named. No version names a deviation's comment as its amendment, and none goes back to an
-    amendment an earlier version named. Merges compare with each parent."""
+    amendment an earlier version named. Merges compare with each parent. ``current`` stands for the checkout's record
+    (one about to be written)."""
     graph = _graph(root)
     states = _states(root, (sha for sha, _ in graph), RECORD)
     path = root / RECORD
-    if path.is_file():
+    if current is not None or path.is_file():
         try:
-            states[_CHECKOUT] = json.loads(path.read_text(encoding="utf-8"))
+            states[_CHECKOUT] = (
+                current if current is not None else json.loads(path.read_text(encoding="utf-8"))
+            )
         except ValueError:
             states[_CHECKOUT] = _INVALID
         head = graph[-1][0] if graph else None
@@ -359,16 +364,48 @@ def record_history_problems(root: Path) -> list[str]:
     return out
 
 
-def write_record(root: Path, commit: str, amendment: str) -> dict[str, Any]:
-    """Write :data:`RECORD`: the publish commit, the amendment and the sha256 of the files that check after
-    publication, as this checkout holds them (run it on the after-publish branch as it will be merged)."""
-    record = {
+def new_record(root: Path, commit: str, amendment: str) -> dict[str, Any]:
+    """The record :func:`write_record` writes: the publish commit, the amendment and the sha256 of the files that
+    check after publication, as this checkout holds them."""
+    return {
         "schema": SCHEMA,
         "commit": commit,
         "amendment": amendment,
         "checked_by": checked_by(root),
         "about": ABOUT,
     }
+
+
+def _registered_prereg(root: Path) -> dict[str, Any]:
+    data = json.loads((root / PREREG_PATH).read_text(encoding="utf-8"))
+    return data if isinstance(data, dict) else {}
+
+
+def record_check(root: Path, record: Any, prereg: Mapping[str, Any], *, issue: str | None) -> list[str]:
+    """Every reason ``record`` cannot be the record, by the checks the tests make (empty: it can):
+    :func:`record_problems`, :func:`first_publication_problems`, :func:`checked_by_problems` and
+    :func:`record_history_problems` with ``record`` as the checkout's. ``prereg`` is the registered
+    pre-registration (its freeze and the final analysis' file pattern), ``issue`` the issue it is bound to."""
+    freeze = str(prereg["registered"]["freeze_sha"])
+    out = record_problems(record, root, freeze=freeze, issue=issue)
+    if not isinstance(record, Mapping):
+        return out
+    if not out:
+        registered = {
+            "file": PREREG_PATH,
+            "sha256": hashlib.sha256((root / PREREG_PATH).read_bytes()).hexdigest(),
+        }
+        pattern = str(prereg["sentences"]["files"]["final"])
+        out += first_publication_problems(root, str(record["commit"]), pattern, registered, freeze=freeze)
+    out += checked_by_problems(record, root)
+    out += record_history_problems(root, current=record)
+    return out
+
+
+def write_record(root: Path, commit: str, amendment: str) -> dict[str, Any]:
+    """Write :data:`RECORD`: the publish commit, the amendment and the sha256 of the files that check after
+    publication, as this checkout holds them (run it on the after-publish branch as it will be merged)."""
+    record = new_record(root, commit, amendment)
     path = root / RECORD
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -972,14 +1009,38 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--write-record",
         nargs=2,
         metavar=("COMMIT", "AMENDMENT"),
-        help=f"write {RECORD}: the publish commit on main (40 hex) and the amendment's comment URL",
+        help=(
+            f"write {RECORD}: the publish commit on main (40 hex) and the amendment's comment URL; nothing is "
+            "written, and it exits 1, unless the record passes the checks the tests make"
+        ),
+    )
+    action.add_argument(
+        "--check-record",
+        action="store_true",
+        help=f"run the checks the tests make on the {RECORD} this checkout holds (exit 1 on a problem)",
     )
     args = parser.parse_args(argv)
     if args.checked_by:
         print(json.dumps(checked_by(ROOT), indent=2))
         return 0
+    prereg = _registered_prereg(ROOT)
+    issue = bound_issue(ROOT, str(prereg["registered"]["freeze_sha"]))
+    if args.check_record:
+        record = load_record(ROOT)
+        problems = record_check(ROOT, record, prereg, issue=issue) if record is not None else [f"no {RECORD}"]
+        for problem in problems:
+            print(problem, file=sys.stderr)
+        print(f"{RECORD}: {'holds' if not problems else f'{len(problems)} problem(s)'}")
+        return 1 if problems else 0
     commit, amendment = args.write_record
-    record = write_record(ROOT, commit, amendment)
+    record = new_record(ROOT, commit, amendment)
+    problems = record_check(ROOT, record, prereg, issue=issue)
+    if problems:
+        for problem in problems:
+            print(problem, file=sys.stderr)
+        print(f"{RECORD} not written: {len(problems)} problem(s)", file=sys.stderr)
+        return 1
+    write_record(ROOT, commit, amendment)
     print(f"wrote {RECORD}: {record['commit']}")
     return 0
 

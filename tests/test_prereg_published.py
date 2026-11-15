@@ -1080,3 +1080,50 @@ def test_a_branch_made_before_publication_and_merged_later_keeps_the_deviations_
     _git(world.root, "checkout", "-q", "-")
     _git(world.root, "merge", "-q", "--no-ff", "-m", "merge the older branch", "older")
     assert prereg_published.deviations_history_problems(world.root, world.publish) == []
+
+
+# --------------------------------------------------------------------------------------------------
+# --write-record checks the record before it writes it, and --check-record checks the committed one
+# --------------------------------------------------------------------------------------------------
+
+
+def _prereg_of(world: World) -> dict[str, Any]:
+    return {"registered": {"freeze_sha": world.freeze}, "sentences": {"files": {"final": FINAL_PATTERN}}}
+
+
+def test_the_record_s_checks_name_every_reason_before_it_is_written(world: World) -> None:
+    for path in prereg_published.CHECKED_BY:
+        _put(world.root, path, f"# {path} as merged\n")
+    prereg = _prereg_of(world)
+    good = world.record(checked_by=prereg_published.checked_by(world.root))
+    assert prereg_published.record_check(world.root, good, prereg, issue=ISSUE) == []
+    short = prereg_published.record_check(
+        world.root, dict(good, commit=world.publish[:8]), prereg, issue=ISSUE
+    )
+    assert any("full commit sha" in p for p in short), short
+    later = prereg_published.record_check(world.root, dict(good, commit=world.after), prereg, issue=ISSUE)
+    assert any("not the first commit" in p for p in later), later
+    url = prereg_published.record_check(world.root, dict(good, amendment="not a url"), prereg, issue=ISSUE)
+    assert any("amendment" in p for p in url), url
+    stale = prereg_published.record_check(world.root, world.record(), prereg, issue=ISSUE)
+    assert any("not the file the record names" in p for p in stale), stale
+
+
+def test_write_record_refuses_a_record_that_does_not_hold(
+    world: World, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(prereg_published, "ROOT", world.root)
+    monkeypatch.setattr(prereg_published, "_registered_prereg", lambda root: _prereg_of(world))
+    monkeypatch.setattr(prereg_published, "bound_issue", lambda root, freeze: ISSUE)
+    for path in prereg_published.CHECKED_BY:
+        _put(world.root, path, f"# {path} as merged\n")
+    assert prereg_published.main(["--write-record", world.publish[:8], "not a url"]) == 1
+    assert not (world.root / prereg_published.RECORD).exists()
+    assert "not written" in capsys.readouterr().err
+    assert prereg_published.main(["--check-record"]) == 1
+    assert prereg_published.main(["--write-record", world.publish, AMENDMENT]) == 0
+    assert (
+        json.loads((world.root / prereg_published.RECORD).read_text(encoding="utf-8"))["commit"]
+        == world.publish
+    )
+    assert prereg_published.main(["--check-record"]) == 0
