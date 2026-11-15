@@ -1,7 +1,7 @@
 """A function that takes an optional "today" and is given none counts from the app's day (``ordnung.clock.today()``:
 the pinned day, else ``ORDNUNG_TODAY``, else the computer's date), never from the computer's date alone.
 
-Each test pins the clock to fixed days in the past and calls the function without a day: the answer is the one for
+Each test pins the clock to fixed days and calls the function without a day: the answer is the one for
 the pinned day, on whatever date the test runs. Invented letters only; nothing calls a model."""
 
 from __future__ import annotations
