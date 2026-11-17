@@ -59,5 +59,30 @@
     "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6942459566",
     "created_at": "2026-11-17T08:10:25Z",
     "checkpoint_sha": "7db55f639d64f6635cc09b344081d7d06adcf789"
+  },
+  {
+    "id": "D004",
+    "kind": "retake",
+    "at": "2026-11-17T08:44:46Z",
+    "step": "R3",
+    "what": "R3: held-out Ask turn ho-atk-06 asked again the same recording day. In its first attempt the first two tool calls got the CLI's reply that the tool was not available yet (the Ordnung MCP server had not connected); the model called both again and answered. That recording does not replay and evals.ask writes no run with one, so it is set aside (published as first attempt) and the turn recorded again",
+    "evidence": [
+      "clock (K29, #54): at/created_at real UTC; times below on the recording clock, real + 7 d",
+      "first attempt set aside: evals/recorded/ask-heldout/claude-sonnet-5/ask/3ef628bb4af6f7169d826b53.json sha256 3fe73cf51f2e267588ba38dae3899946ddb34b7996bbaa8b761f02bb1d691ec4 ok $0.0658, moved to $R/retakes/2026-11-24/R3/; its request-lock entry removed",
+      "its tool results 1-2 (search, list_contracts) are exactly the CLI's '<tool_use_error>Error: No such tool available: <tool></tool_use_error>'; results 3-5 (search, list_contracts, get_document) equal what the tools answer for the recording day",
+      "zero-token replay of the run, 3 times: 160 of 160 turns answered, 0 misses, 0 request-lock drift, 1 recording that does not replay (this one); both live attempts (2026-11-24 08:11-08:27 and 08:30-08:31, recording clock) therefore wrote no results file (exit 1)",
+      "consequence as registered: the retaken turn is included; the first attempt is published"
+    ],
+    "consequence": "include the retaken unit; the first attempt is published; first-attempt sensitivity",
+    "applies_to": {
+      "split": "ask-heldout",
+      "repeat": 1,
+      "entries": [
+        "ho-atk-06"
+      ]
+    },
+    "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6943168083",
+    "created_at": "2026-11-17T08:44:46Z",
+    "checkpoint_sha": null
   }
 ]
