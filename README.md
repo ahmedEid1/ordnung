@@ -111,7 +111,8 @@ The letters and their labels were written and audited by a Claude model, run thr
 Why these numbers can be checked:
 
 - **Held out (written after the results).** The final run's letters were written after the code freeze by agents
-  that saw neither the reading code, the prompts nor any result; nothing was tuned on them.
+  that saw neither the reading code, the prompts nor any result; nothing was tuned on them. The block leaves out the
+  letters of new kinds ([§ 6.1](docs/evals.md#61-the-final-run)) and why reminders were missed end to end ([§ 13](docs/evals.md#13-from-a-letter-to-a-reminder)).
 - **Generated, never typed.** `python -m evals.present` writes the block above from the results files. CI fails when
   one character of it differs, and a test fails when this README types a results file's rate or "k of n" outside it.
 - **Replayable at zero tokens.** `make eval-reproduce` replays every published number from the recorded answers, with

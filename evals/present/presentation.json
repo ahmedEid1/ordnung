@@ -4521,7 +4521,8 @@
     "date": "2026-11-24",
     "commit": "16d92de3",
     "backend": "live",
-    "role": "primary"
+    "role": "primary",
+    "generated_at": "2026-11-24T08:06:40+00:00"
    },
    {
     "file": "2026-11-24-claude-sonnet-5-holdout4-r2.json",
@@ -4531,7 +4532,8 @@
     "date": "2026-11-24",
     "commit": "f94a77d0",
     "backend": "live",
-    "role": "primary"
+    "role": "primary",
+    "generated_at": "2026-11-24T10:39:50+00:00"
    },
    {
     "file": "2026-11-24-claude-sonnet-5-holdout4-r3.json",
@@ -4541,7 +4543,8 @@
     "date": "2026-11-24",
     "commit": "917dc7fa",
     "backend": "live",
-    "role": "primary"
+    "role": "primary",
+    "generated_at": "2026-11-24T12:28:20+00:00"
    },
    {
     "file": "2026-11-24-claude-sonnet-5-newkinds.json",
@@ -4551,7 +4554,8 @@
     "date": "2026-11-24",
     "commit": "17c7ca3b",
     "backend": "live",
-    "role": "secondary"
+    "role": "secondary",
+    "generated_at": "2026-11-24T13:12:49+00:00"
    },
    {
     "file": "2026-09-30-claude-sonnet-5-holdout.json",
@@ -4561,7 +4565,8 @@
     "date": "2026-09-30",
     "commit": "2463764",
     "backend": "live",
-    "role": "pooled"
+    "role": "pooled",
+    "generated_at": "2026-09-30T13:41:00+00:00"
    },
    {
     "file": "2026-10-01-claude-sonnet-5-holdout2.json",
@@ -4571,7 +4576,8 @@
     "date": "2026-10-01",
     "commit": "0add891",
     "backend": "live",
-    "role": "pooled"
+    "role": "pooled",
+    "generated_at": "2026-10-01T08:25:50+00:00"
    },
    {
     "file": "2026-10-06-claude-sonnet-5-holdout3.json",
@@ -4581,7 +4587,8 @@
     "date": "2026-10-06",
     "commit": "55bedab",
     "backend": "live",
-    "role": "pooled"
+    "role": "pooled",
+    "generated_at": "2026-10-06T20:09:49+00:00"
    }
   ],
   "date": "2026-11-24",
@@ -6787,13 +6794,13 @@
     "repeat": null,
     "entries": null,
     "items": null,
+    "offered": 0,
     "paths": [
      "evals/perturb/build.py",
      "evals/perturb/score.py",
      "scripts/eval_perturb.py",
      "scripts/prereg_hashes.py",
-     "tests/test_preregistration.py",
-     "https://github.com/ahmedEid1/ordnung/pull/55"
+     "tests/test_preregistration.py"
     ],
     "consequence": "the runner-defect rule, or a presentation-only change listed per path",
     "created_at": "2026-11-13T09:15:44Z",
@@ -6809,6 +6816,7 @@
     "repeat": 1,
     "entries": null,
     "items": null,
+    "offered": 0,
     "paths": [],
     "consequence": "include; per-unit versions; same-CLI F3 sensitivity",
     "created_at": "2026-11-17T06:18:40Z",
@@ -6824,6 +6832,7 @@
     "repeat": 1,
     "entries": null,
     "items": null,
+    "offered": 0,
     "paths": [],
     "consequence": "include; per-unit versions; same-CLI F3 sensitivity",
     "created_at": "2026-11-17T08:10:25Z",
@@ -6839,6 +6848,7 @@
     "repeat": 1,
     "entries": 1,
     "items": null,
+    "offered": 0,
     "paths": [],
     "consequence": "include the retaken unit; the first attempt is published; first-attempt sensitivity",
     "created_at": "2026-11-17T08:44:46Z",
@@ -6854,6 +6864,7 @@
     "repeat": 2,
     "entries": null,
     "items": null,
+    "offered": 0,
     "paths": [],
     "consequence": "include; per-unit versions; same-CLI F3 sensitivity",
     "created_at": "2026-11-17T08:50:27Z",
@@ -6869,6 +6880,7 @@
     "repeat": 3,
     "entries": null,
     "items": null,
+    "offered": 0,
     "paths": [],
     "consequence": "include; per-unit versions; same-CLI F3 sensitivity",
     "created_at": "2026-11-17T10:42:39Z",
@@ -6884,6 +6896,7 @@
     "repeat": 1,
     "entries": null,
     "items": null,
+    "offered": 0,
     "paths": [],
     "consequence": "include; per-unit versions; same-CLI F3 sensitivity",
     "created_at": "2026-11-17T12:30:59Z",
@@ -6899,6 +6912,7 @@
     "repeat": 2,
     "entries": null,
     "items": null,
+    "offered": 0,
     "paths": [],
     "consequence": "include; per-unit versions; same-CLI F3 sensitivity",
     "created_at": "2026-11-17T13:15:11Z",
@@ -6914,6 +6928,7 @@
     "repeat": 3,
     "entries": null,
     "items": null,
+    "offered": 0,
     "paths": [],
     "consequence": "include; per-unit versions; same-CLI F3 sensitivity",
     "created_at": "2026-11-17T13:35:06Z",
@@ -6929,6 +6944,7 @@
     "repeat": 3,
     "entries": 1,
     "items": null,
+    "offered": 0,
     "paths": [],
     "consequence": "include the retaken unit; the first attempt is published; first-attempt sensitivity",
     "created_at": "2026-11-17T13:53:40Z",
@@ -6944,6 +6960,7 @@
     "repeat": 1,
     "entries": null,
     "items": null,
+    "offered": 0,
     "paths": [],
     "consequence": "include; per-unit versions; same-CLI F3 sensitivity",
     "created_at": "2026-11-17T13:59:02Z",
@@ -6958,7 +6975,8 @@
     "split": "holdout4",
     "repeat": null,
     "entries": null,
-    "items": 1,
+    "items": 0,
+    "offered": 1,
     "paths": [],
     "consequence": "only from the blind review of the items any condition got wrong (an owner's finding goes through it too): the primary stays; label-corrected sensitivity",
     "created_at": "2026-11-17T15:30:51Z",
@@ -6973,7 +6991,8 @@
     "split": "holdout4",
     "repeat": null,
     "entries": null,
-    "items": 1,
+    "items": 0,
+    "offered": 1,
     "paths": [],
     "consequence": "only from the blind review of the items any condition got wrong (an owner's finding goes through it too): the primary stays; label-corrected sensitivity",
     "created_at": "2026-11-17T15:30:52Z",
@@ -6989,10 +7008,9 @@
     "repeat": null,
     "entries": null,
     "items": null,
+    "offered": 0,
     "paths": [
-     "clock",
-     "tests/e2e_support/final_report.py",
-     "before:"
+     "tests/e2e_support/final_report.py"
     ],
     "consequence": "the runner-defect rule, or a presentation-only change listed per path",
     "created_at": "2026-11-17T15:35:11Z",
@@ -7060,6 +7078,30 @@
   },
   "e2e": {
    "file": "2026-11-24-claude-sonnet-5-e2e-holdout4-newkinds.json",
+   "not_reminded": {
+    "not_stored": 5,
+    "set_aside:scam_signs": 7
+   },
+   "by_split": {
+    "holdout4": {
+     "reminded_in_time": {
+      "k": 105,
+      "n": 112
+     },
+     "not_reminded": {
+      "set_aside:scam_signs": 7
+     }
+    },
+    "newkinds": {
+     "reminded_in_time": {
+      "k": 23,
+      "n": 28
+     },
+     "not_reminded": {
+      "not_stored": 5
+     }
+    }
+   },
    "obligations": 140,
    "reminded_in_time": {
     "k": 128.0,
@@ -7091,6 +7133,428 @@
     "ordnung-vs-llm_rules_tool": 0.0
    }
   },
+  "power_at": {
+   "F1_accuracy": {
+    "ordnung-vs-llm_only": {
+     "gap": 0.1607142857,
+     "power_half_gap": 0.366,
+     "mdd": 0.14,
+     "mdd_power": 0.8195
+    },
+    "ordnung-vs-llm_rules_text": {
+     "gap": 0.05357142857,
+     "power_half_gap": 0.053,
+     "mdd": 0.1,
+     "mdd_power": 0.848
+    },
+    "ordnung-vs-llm_rules_tool": {
+     "gap": -0.02380952381,
+     "power_half_gap": 0.5875,
+     "mdd": 0.01,
+     "mdd_power": 0.904
+    }
+   },
+   "F2_harm": {
+    "ordnung-vs-llm_only": {
+     "gap": -0.05952380952,
+     "power_half_gap": 0.0505,
+     "mdd": -0.09,
+     "mdd_power": 0.814
+    },
+    "ordnung-vs-llm_rules_text": {
+     "gap": 0.0119047619,
+     "power_half_gap": 0.0,
+     "mdd": -0.09,
+     "mdd_power": 0.8795
+    },
+    "ordnung-vs-llm_rules_tool": {
+     "gap": 0.0119047619,
+     "power_half_gap": 0.0,
+     "mdd": -0.09,
+     "mdd_power": 0.872
+    }
+   }
+  },
+  "power_caveat": "the confirmatory test is only just powered: at the earlier gap (+16.1 points) it decides in 0.93 of simulated runs, at half that gap in 0.37, and its MDD is +14.0 points. The simulation draws items independently even within a letter and its photo, and its gaps come from splits recorded with earlier code (holdout and holdout2 were followed by fixes they informed), so these figures may be optimistic. They are for three reads; with two or one read (contingency) power is lower and was not simulated. F2 against the agent is not tested; its row is what a test would give",
+  "cost": {
+   "ordnung": {
+    "usd_per_letter": 0.07831016402,
+    "usd_per_right_date": 0.09487577564,
+    "letters": 378
+   },
+   "llm_only": {
+    "usd_per_letter": 0.0466068709,
+    "usd_per_right_date": 0.05971999051,
+    "letters": 378
+   },
+   "llm_rules_text": {
+    "usd_per_letter": 0.04081530053,
+    "usd_per_right_date": 0.04689417508,
+    "letters": 378
+   },
+   "llm_rules_tool": {
+    "usd_per_letter": 0.05058864339,
+    "usd_per_right_date": 0.05759791325,
+    "letters": 378
+   }
+  },
+  "selective": {
+   "ordnung": {
+    "please_check": {
+     "k": 0,
+     "n": 8
+    },
+    "any_flag": {
+     "k": 1,
+     "n": 8
+    },
+    "unflagged_right": {
+     "k": 77,
+     "n": 84
+    },
+    "unflagged_harmful": {
+     "k": 1,
+     "n": 84
+    },
+    "aurc": 0.08173786057,
+    "excess": 0.07880594268,
+    "auroc": 0.4314903846
+   },
+   "llm_only": {
+    "please_check": {
+     "k": 0,
+     "n": 11
+    },
+    "any_flag": {
+     "k": 7,
+     "n": 11
+    },
+    "unflagged_right": {
+     "k": 82,
+     "n": 86
+    },
+    "unflagged_harmful": {
+     "k": 3,
+     "n": 86
+    },
+    "aurc": 0.05357450761,
+    "excess": 0.04814826445,
+    "auroc": 0.7209720972
+   },
+   "llm_rules_text": {
+    "please_check": {
+     "k": 0,
+     "n": 2
+    },
+    "any_flag": {
+     "k": 0,
+     "n": 2
+    },
+    "unflagged_right": {
+     "k": 107,
+     "n": 109
+    },
+    "unflagged_harmful": {
+     "k": 1,
+     "n": 109
+    },
+    "aurc": 0.01833979446,
+    "excess": 0.0180999181,
+    "auroc": 0.4863636364
+   },
+   "llm_rules_tool": {
+    "please_check": {
+     "k": 0,
+     "n": 1
+    },
+    "any_flag": {
+     "k": 1,
+     "n": 1
+    },
+    "unflagged_right": {
+     "k": 106,
+     "n": 106
+    },
+    "unflagged_harmful": {
+     "k": 0,
+     "n": 106
+    },
+    "aurc": 0.0002832847599,
+    "excess": 0.0002035653722,
+    "auroc": 0.9774774775
+   }
+  },
+  "replays": {
+   "without_land": [
+    {
+     "file": "2026-11-24-claude-sonnet-5-without-land-holdout4.json",
+     "read": 1,
+     "with_land": {
+      "k": 104,
+      "n": 112
+     },
+     "without_land": {
+      "k": 92,
+      "n": 112,
+      "value": 0.8214285714285714
+     },
+     "with_suggestion": {
+      "k": 104,
+      "n": 112
+     },
+     "late": 0,
+     "changed": 14
+    },
+    {
+     "file": "2026-11-24-claude-sonnet-5-without-land-holdout4-r2.json",
+     "read": 2,
+     "with_land": {
+      "k": 104,
+      "n": 112
+     },
+     "without_land": {
+      "k": 91,
+      "n": 112,
+      "value": 0.8125
+     },
+     "with_suggestion": {
+      "k": 104,
+      "n": 112
+     },
+     "late": 0,
+     "changed": 15
+    },
+    {
+     "file": "2026-11-24-claude-sonnet-5-without-land-holdout4-r3.json",
+     "read": 3,
+     "with_land": {
+      "k": 104,
+      "n": 112
+     },
+     "without_land": {
+      "k": 91,
+      "n": 112,
+      "value": 0.8125
+     },
+     "with_suggestion": {
+      "k": 104,
+      "n": 112
+     },
+     "late": 1,
+     "changed": 15
+    }
+   ],
+   "ablation": [
+    {
+     "file": "2026-11-24-claude-sonnet-5-checks-ablated-holdout4.json",
+     "read": 1,
+     "rows": [
+      {
+       "name": "all_on",
+       "label": "As it ships",
+       "scored": 112,
+       "right": 104,
+       "late": 1,
+       "missed": 0,
+       "early": 7
+      },
+      {
+       "name": "no_two_dates_check",
+       "label": "Two-dates check off",
+       "scored": 112,
+       "right": 103,
+       "late": 2,
+       "missed": 0,
+       "early": 7
+      },
+      {
+       "name": "no_notice_guard",
+       "label": "Notice guard off",
+       "scored": 112,
+       "right": 104,
+       "late": 1,
+       "missed": 0,
+       "early": 7
+      },
+      {
+       "name": "no_reask",
+       "label": "Re-ask off",
+       "scored": 112,
+       "right": 104,
+       "late": 1,
+       "missed": 0,
+       "early": 7
+      },
+      {
+       "name": "no_reading_check",
+       "label": "Reading check off",
+       "scored": 112,
+       "right": 104,
+       "late": 1,
+       "missed": 0,
+       "early": 7
+      },
+      {
+       "name": "no_reask_no_reading_check",
+       "label": "Re-ask and reading check off",
+       "scored": 112,
+       "right": 104,
+       "late": 1,
+       "missed": 0,
+       "early": 7
+      },
+      {
+       "name": "all_off",
+       "label": "All code checks off",
+       "scored": 112,
+       "right": 103,
+       "late": 2,
+       "missed": 0,
+       "early": 7
+      }
+     ]
+    },
+    {
+     "file": "2026-11-24-claude-sonnet-5-checks-ablated-holdout4-r2.json",
+     "read": 2,
+     "rows": [
+      {
+       "name": "all_on",
+       "label": "As it ships",
+       "scored": 112,
+       "right": 104,
+       "late": 1,
+       "missed": 0,
+       "early": 7
+      },
+      {
+       "name": "no_two_dates_check",
+       "label": "Two-dates check off",
+       "scored": 112,
+       "right": 103,
+       "late": 2,
+       "missed": 0,
+       "early": 7
+      },
+      {
+       "name": "no_notice_guard",
+       "label": "Notice guard off",
+       "scored": 112,
+       "right": 104,
+       "late": 1,
+       "missed": 0,
+       "early": 7
+      },
+      {
+       "name": "no_reask",
+       "label": "Re-ask off",
+       "scored": 112,
+       "right": 104,
+       "late": 1,
+       "missed": 0,
+       "early": 7
+      },
+      {
+       "name": "no_reading_check",
+       "label": "Reading check off",
+       "scored": 112,
+       "right": 103,
+       "late": 2,
+       "missed": 0,
+       "early": 7
+      },
+      {
+       "name": "no_reask_no_reading_check",
+       "label": "Re-ask and reading check off",
+       "scored": 112,
+       "right": 103,
+       "late": 2,
+       "missed": 0,
+       "early": 7
+      },
+      {
+       "name": "all_off",
+       "label": "All code checks off",
+       "scored": 112,
+       "right": 102,
+       "late": 3,
+       "missed": 0,
+       "early": 7
+      }
+     ]
+    },
+    {
+     "file": "2026-11-24-claude-sonnet-5-checks-ablated-holdout4-r3.json",
+     "read": 3,
+     "rows": [
+      {
+       "name": "all_on",
+       "label": "As it ships",
+       "scored": 112,
+       "right": 104,
+       "late": 2,
+       "missed": 0,
+       "early": 6
+      },
+      {
+       "name": "no_two_dates_check",
+       "label": "Two-dates check off",
+       "scored": 112,
+       "right": 103,
+       "late": 3,
+       "missed": 0,
+       "early": 6
+      },
+      {
+       "name": "no_notice_guard",
+       "label": "Notice guard off",
+       "scored": 112,
+       "right": 104,
+       "late": 2,
+       "missed": 0,
+       "early": 6
+      },
+      {
+       "name": "no_reask",
+       "label": "Re-ask off",
+       "scored": 112,
+       "right": 104,
+       "late": 2,
+       "missed": 0,
+       "early": 6
+      },
+      {
+       "name": "no_reading_check",
+       "label": "Reading check off",
+       "scored": 112,
+       "right": 104,
+       "late": 2,
+       "missed": 0,
+       "early": 6
+      },
+      {
+       "name": "no_reask_no_reading_check",
+       "label": "Re-ask and reading check off",
+       "scored": 112,
+       "right": 104,
+       "late": 2,
+       "missed": 0,
+       "early": 6
+      },
+      {
+       "name": "all_off",
+       "label": "All code checks off",
+       "scored": 112,
+       "right": 103,
+       "late": 3,
+       "missed": 0,
+       "early": 6
+      }
+     ]
+    }
+   ]
+  },
+  "retakes": "evals/retakes/0.4.0/",
   "sentences": {
    "page": [
     {
@@ -8220,7 +8684,7 @@
      ]
     },
     "stats.lead": {
-     "text": "The final run's analysis, as pre-registered: each comparison by a sign-flip test over letter clusters ({draws} draws where the clusters are too many to enumerate), Holm within each family, with a bootstrap interval over letter clusters ({resamples} resamples, seed {seed}); non-inferiority against the agent by inverting the sign-flip test, with a margin of {margin} points; how steady the dates are by McNemar's mid-p on the deadlines that changed between reads for only one of the two, with a Bonett–Price interval. The power beside each comparison was computed before any recording.",
+     "text": "The final run's analysis, as pre-registered: each comparison by a sign-flip test over letter clusters ({draws} draws where the clusters are too many to enumerate), Holm within each family, with a bootstrap interval over letter clusters ({resamples} resamples, seed {seed}); non-inferiority against the agent by inverting the sign-flip test, with a margin of {margin} points; how steady the dates are by McNemar's mid-p on the deadlines that changed between reads for only one of the two, with a Bonett–Price interval. The power beside each comparison was computed before any recording, at the gap the earlier held-out splits showed, not at the difference the final run found: the table after the chart gives each gap, and the pre-registration's caveat follows it.",
      "fields": [
       "draws",
       "resamples",
@@ -8654,6 +9118,243 @@
       "sha",
       "anchor"
      ]
+    },
+    "deviations.applies.offered": {
+     "text": "offered dates, not scored: {count}",
+     "fields": [
+      "count"
+     ]
+    },
+    "deviations.retake.ask": {
+     "text": "{ids} retook a turn of the held-out Ask set. Their registered consequence names a first-attempt sensitivity, which counts a timed-out first attempt of a retaken letter as missed: the final analysis computes it for the benchmark's reads only, and the held-out Ask analysis has none, so none is shown for these retakes. Their first attempts are published under `{path}`.",
+     "fields": [
+      "ids",
+      "path"
+     ]
+    },
+    "deviations.retake.ask.unpublished": {
+     "text": "{ids} retook a turn of the held-out Ask set. Their registered consequence names a first-attempt sensitivity, which counts a timed-out first attempt of a retaken letter as missed: the final analysis computes it for the benchmark's reads only, and the held-out Ask analysis has none, so none is shown for these retakes.",
+     "fields": [
+      "ids"
+     ]
+    },
+    "results.final.sens.label_corrected.offered": {
+     "text": "The labels the blind review corrected ({deviations}) are offered dates, which are not scored: no scored answer changes, so the label-corrected analysis equals the primary by construction.",
+     "fields": [
+      "deviations"
+     ]
+    },
+    "stats.power.caption": {
+     "text": "Where each pre-registered power was simulated",
+     "fields": []
+    },
+    "stats.power.col.pair": {
+     "text": "Ordnung minus",
+     "fields": []
+    },
+    "stats.power.col.measure": {
+     "text": "Measure",
+     "fields": []
+    },
+    "stats.power.col.gap": {
+     "text": "Simulated at the gap of the earlier held-out splits, points",
+     "fields": []
+    },
+    "stats.power.col.power": {
+     "text": "Power at that gap",
+     "fields": []
+    },
+    "stats.power.col.half": {
+     "text": "Power at half that gap",
+     "fields": []
+    },
+    "stats.power.col.mdd": {
+     "text": "Minimum detectable difference, points",
+     "fields": []
+    },
+    "stats.power.caveat": {
+     "text": "The pre-registration's caveat on these figures (`{file}`), as registered: {caveat}.",
+     "fields": [
+      "file",
+      "caveat"
+     ]
+    },
+    "data.not_real": {
+     "text": "What the letters are not: real post. They are one or two clean pages in a fixed set of letter families; the rarer high-stakes kinds the engine covers (court orders, dismissals, a landlord's notice) are only in the final run's new kinds, a small set read once ([Results]({anchor})).",
+     "fields": [
+      "anchor"
+     ]
+    },
+    "replays.without_land.lead": {
+     "text": "The final run's reads of {split}, replayed the same way, one file per read ({files}): Ordnung's dates exactly right with the letterhead's Land, without it and with the suggested state confirmed, its late dates without the Land, and how many dates change without it.",
+     "fields": [
+      "split",
+      "files"
+     ]
+    },
+    "replays.without_land.caption": {
+     "text": "Ordnung without the sender's Land, the final run's reads",
+     "fields": []
+    },
+    "replays.without_land.col.read": {
+     "text": "Read",
+     "fields": []
+    },
+    "replays.without_land.col.with": {
+     "text": "With the letterhead's Land",
+     "fields": []
+    },
+    "replays.without_land.col.without": {
+     "text": "Without the sender's Land",
+     "fields": []
+    },
+    "replays.without_land.col.suggested": {
+     "text": "With the suggested state confirmed",
+     "fields": []
+    },
+    "replays.without_land.col.late": {
+     "text": "Late without the Land",
+     "fields": []
+    },
+    "replays.without_land.col.changed": {
+     "text": "Dates that change without the Land",
+     "fields": []
+    },
+    "replays.ablation.lead": {
+     "text": "The final run's reads of {split}, replayed with each check switched off, one file per read ({files}): Ordnung's dates exactly right and late in each read.",
+     "fields": [
+      "split",
+      "files"
+     ]
+    },
+    "replays.ablation.caption": {
+     "text": "The check ablation, the final run's reads",
+     "fields": []
+    },
+    "replays.ablation.col.configuration": {
+     "text": "Configuration",
+     "fields": []
+    },
+    "replays.ablation.col.right": {
+     "text": "Read {read}: exactly right",
+     "fields": [
+      "read"
+     ]
+    },
+    "replays.ablation.col.late": {
+     "text": "Read {read}: late",
+     "fields": [
+      "read"
+     ]
+    },
+    "selective.lead": {
+     "text": "The final run's flags as a selective prediction, from `{source}`: over the reads, the first read's deadlines, each wrong date counted once and caught when it was flagged in every read in which it was wrong.",
+     "fields": [
+      "source"
+     ]
+    },
+    "selective.caption": {
+     "text": "Flags and selective prediction, the final run",
+     "fields": []
+    },
+    "selective.col.condition": {
+     "text": "Condition",
+     "fields": []
+    },
+    "selective.col.please_check": {
+     "text": "Wrong dates “Please check” caught",
+     "fields": []
+    },
+    "selective.col.any_flag": {
+     "text": "Wrong dates any flag caught",
+     "fields": []
+    },
+    "selective.col.right": {
+     "text": "Without a flag: right",
+     "fields": []
+    },
+    "selective.col.harmful": {
+     "text": "Without a flag: late or missed",
+     "fields": []
+    },
+    "selective.col.aurc": {
+     "text": "AURC (excess over a perfect flag)",
+     "fields": []
+    },
+    "selective.col.auroc": {
+     "text": "AUROC",
+     "fields": []
+    },
+    "cost.lead": {
+     "text": "The final run's cost over its reads, from `{source}`: the API-equivalent price the Claude CLI reports, per letter read and per date exactly right.",
+     "fields": [
+      "source"
+     ]
+    },
+    "cost.caption": {
+     "text": "Cost, the final run",
+     "fields": []
+    },
+    "cost.col.condition": {
+     "text": "Condition",
+     "fields": []
+    },
+    "cost.col.letter": {
+     "text": "$ per letter",
+     "fields": []
+    },
+    "cost.col.right": {
+     "text": "$ per right date",
+     "fields": []
+    },
+    "cost.col.letters": {
+     "text": "Letters read",
+     "fields": []
+    },
+    "e2e.lead": {
+     "text": "The final run's letters read once, through to the calendar (`{file}`): the genuine dated obligations that got a reminder in time, by split, and why the others got none.",
+     "fields": [
+      "file"
+     ]
+    },
+    "e2e.caption": {
+     "text": "From a letter to a reminder, the final run",
+     "fields": []
+    },
+    "e2e.col.split": {
+     "text": "Split",
+     "fields": []
+    },
+    "e2e.col.in_time": {
+     "text": "Reminded in time",
+     "fields": []
+    },
+    "e2e.col.causes": {
+     "text": "Not reminded, by cause",
+     "fields": []
+    },
+    "e2e.cause": {
+     "text": "{cause}: {count}",
+     "fields": [
+      "cause",
+      "count"
+     ]
+    },
+    "e2e.cause.not_stored": {
+     "text": "no to-do stored for it",
+     "fields": []
+    },
+    "e2e.cause.set_aside_scam_signs": {
+     "text": "set aside as a scam",
+     "fields": []
+    },
+    "e2e.cause.reading_failed": {
+     "text": "the reading failed",
+     "fields": []
+    },
+    "e2e.cause.no_date": {
+     "text": "stored without a date",
+     "fields": []
     }
    }
   }

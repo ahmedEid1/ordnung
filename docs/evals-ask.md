@@ -4,6 +4,8 @@
 
 **Development set:** the check, the tools and the prompt were revised over many review rounds on these questions and their recordings, so its numbers are not held out.
 
+**Held out:** the held-out set, new questions on the same household recorded three times, is reported in the evaluation report's [final run](evals.md#61-the-final-run). It holds out only its questions: its documents, prompt and scorer were tuned on the same household's development questions, the ones on this page.
+
 *Ask* answers questions about the person's letters with an agent: the `claude` CLI with only Ordnung's read-only tools. Every tool result has two parts — Ordnung's **record** (what code computed, the person confirmed, or the pipeline filed with verified evidence) and the **letters' text** — and every sentence of an answer that states a date, time or amount must cite a record whose record part holds it; a value only a letter's text holds is shown as "[date only in the letter]", never as Ordnung's answer ([ADR 0008](decisions/0008-two-channels-and-claim-level-citations.md)). This page measures the answers and that check on Sam Rivera's sample life, the one the demo uses.
 
 ## Headline

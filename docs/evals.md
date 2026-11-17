@@ -20,7 +20,7 @@
 | Intervals | Clopper–Pearson for a rate in one read; a bootstrap over letter clusters for a mean over the reads and for a difference; sign-flip tests over letter clusters with Holm within each family, non-inferiority by inverting the sign-flip test, and McNemar for stability ([Statistics](#7-statistics)) |
 | Replay | Every number is checked against a replay of the recorded answers with no model call; where today's code gives another value, the results index pins it and names the change ([Reproduce](#15-reproduce)) |
 | Sources | `2026-11-24-claude-sonnet-5-final.json`, from `2026-11-24-claude-sonnet-5-holdout4-r1.json`, `2026-11-24-claude-sonnet-5-holdout4-r2.json`, `2026-11-24-claude-sonnet-5-holdout4-r3.json` and `2026-11-24-claude-sonnet-5-newkinds.json` |
-| Newest recording | holdout4, 2026-11-24, commit `16d92de3` |
+| Newest recording | newkinds, 2026-11-24, commit `17c7ca3b` |
 
 ## 1. Summary
 
@@ -105,8 +105,9 @@ before they saw the labels. Each was recorded once, with the code and prompts of
 held-out split came after it, and the replays with them are re-scored rows on the [history page](evals-history.md),
 never held-out numbers.
 
-What the letters are not: real post. They are one or two clean pages in a fixed set of letter families, and the
-rarer high-stakes kinds the engine covers (court orders, dismissals, a landlord's notice) are not among them yet.
+What the letters are not: real post. They are one or two clean pages in a fixed set of letter families; the rarer
+high-stakes kinds the engine covers (court orders, dismissals, a landlord's notice) are only in the final run's new
+kinds, a small set read once ([Results](#6-results)).
 
 ## 4. Conditions and baselines
 
@@ -247,6 +248,9 @@ Each sensitivity analysis the pre-registration names, beside the primary analysi
 | Steadiness on the deadlines whose reads share one day | — | 112 | as the primary | as the primary | as the primary | as the primary | — |
 | Steadiness on the deadlines read by one version of Claude Code | — | — | as the primary | as the primary | as the primary | as the primary | — |
 
+The labels the blind review corrected (`D012` and `D013`) are offered dates, which are not scored: no scored answer
+changes, so the label-corrected analysis equals the primary by construction.
+
 The letters of new kinds, read once and described without a test: 32 letters, 28 deadlines.
 
 | Condition | Exact date right [95 % CI] | Late or missed |
@@ -297,6 +301,18 @@ for a Land authority, the 3-day rule. The same recorded readings, replayed that 
 | holdout2 | 55/56 | 47/56 (83.9 %) | 55/56 | 0 |
 | holdout3 | 56/56 | 51/56 (91.1 %) | 56/56 | 0 |
 
+The final run's reads of holdout4, replayed the same way, one file per read
+(`2026-11-24-claude-sonnet-5-without-land-holdout4.json`, `2026-11-24-claude-sonnet-5-without-land-holdout4-r2.json`
+and `2026-11-24-claude-sonnet-5-without-land-holdout4-r3.json`): Ordnung's dates exactly right with the letterhead's
+Land, without it and with the suggested state confirmed, its late dates without the Land, and how many dates change
+without it.
+
+| Read | With the letterhead's Land | Without the sender's Land | With the suggested state confirmed | Late without the Land | Dates that change without the Land |
+|---|---|---|---|---|---|
+| 1 | 104/112 | 92/112 (82.1 %) | 104/112 | 0 | 14 |
+| 2 | 104/112 | 91/112 (81.2 %) | 104/112 | 0 | 15 |
+| 3 | 104/112 | 91/112 (81.2 %) | 104/112 | 1 | 15 |
+
 ## 7. Statistics
 
 The final run's analysis, as pre-registered: each comparison by a sign-flip test over letter clusters (100,000 draws
@@ -304,7 +320,8 @@ where the clusters are too many to enumerate), Holm within each family, with a b
 clusters (10,000 resamples, seed 20261029); non-inferiority against the agent by inverting the sign-flip test, with
 a margin of 5 points; how steady the dates are by McNemar's mid-p on the deadlines that changed between reads for
 only one of the two, with a Bonett–Price interval. The power beside each comparison was computed before any
-recording.
+recording, at the gap the earlier held-out splits showed, not at the difference the final run found: the table after
+the chart gives each gap, and the pre-registration's caveat follows it.
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/eval-final-differences-dark.svg"><img src="assets/eval-final-differences-light.svg" width="740" alt="Forest plot of the final run's paired differences over its 3 reads, Ordnung minus each baseline, in percentage points with 95 % intervals as the registered sentences print them: the letter-cluster bootstrap's, and for exact dates against the agent the non-inferiority test's bound. Ordnung minus LLM + rules tool, Exact date right: −6.0 [−11.1, −1.1]; Sign-flip test inverted into a 95 % bound, power 38 %. Ordnung minus LLM + rules text, Exact date right: −5.1 [−11.0, −0.3]; Sign-flip test over letter clusters, Holm within its family: sign-flip p = 0.090, Holm p = 0.180, power 21 %. Ordnung minus LLM only, Exact date right: +5.1 [−2.4, +12.2]; Sign-flip test over letter clusters, Holm within its family: sign-flip p = 0.214, Holm p = 0.214, power 93 %. Ordnung minus LLM + rules tool, Late or missed: +0.0 [−0.9, +0.9]; Described, not tested. Ordnung minus LLM + rules text, Late or missed: −0.6 [−2.3, +0.6]; Sign-flip test over letter clusters, Holm within its family: sign-flip p = 0.750, Holm p = 1.000, power 0 %. Ordnung minus LLM only, Late or missed: −5.4 [−10.3, −1.2]; Sign-flip test over letter clusters, Holm within its family: sign-flip p = 0.033, Holm p = 0.100, power 25 %."></picture>
 
@@ -316,6 +333,21 @@ recording.
 | LLM + rules tool | Late or missed | +0.0 [−0.9, +0.9] | — | — | — | Described, not tested |
 | LLM + rules text | Late or missed | −0.6 [−2.3, +0.6] | 0.750 | 1.000 | 0 % | Sign-flip test over letter clusters, Holm within its family |
 | LLM only | Late or missed | −5.4 [−10.3, −1.2] | 0.033 | 0.100 | 25 % | Sign-flip test over letter clusters, Holm within its family |
+
+| Ordnung minus | Measure | Simulated at the gap of the earlier held-out splits, points | Power at that gap | Power at half that gap | Minimum detectable difference, points |
+|---|---|---|---|---|---|
+| LLM + rules tool | Exact date right | −2.4 | 38 % | 59 % | +1.0 |
+| LLM + rules text | Exact date right | +5.4 | 21 % | 5 % | +10.0 |
+| LLM only | Exact date right | +16.1 | 93 % | 37 % | +14.0 |
+| LLM + rules text | Late or missed | +1.2 | 0 % | 0 % | −9.0 |
+| LLM only | Late or missed | −6.0 | 25 % | 5 % | −9.0 |
+
+The pre-registration's caveat on these figures (`evals/preregistration/final-0.4.0.json`), as registered: the
+confirmatory test is only just powered: at the earlier gap (+16.1 points) it decides in 0.93 of simulated runs, at
+half that gap in 0.37, and its MDD is +14.0 points. The simulation draws items independently even within a letter
+and its photo, and its gaps come from splits recorded with earlier code (holdout and holdout2 were followed by fixes
+they informed), so these figures may be optimistic. They are for three reads; with two or one read (contingency)
+power is lower and was not simulated. F2 against the agent is not tested; its row is what a test would give.
 
 | Ordnung against | Margin, points | Difference, points | 95 % bound, points | Ordnung: not exactly right, over every read | The agent: not exactly right, over every read | Sentence |
 |---|---|---|---|---|---|---|
@@ -375,13 +407,28 @@ final run's statistics after their results were known. Labelled **not pre-regist
 
 ## 8. Ablations
 
-As recorded, not pre-registered: these are the earlier held-out splits, re-analysed after their results were known.
-The final run's numbers are in [Results](#6-results) and [Statistics](#7-statistics).
-
 The four conditions are the first ablation: the engine as the one that computes (Ordnung), as a tool the model may
 call (the agent), as text (rules text) and not at all (the model alone) ([Summary](#1-summary)).
 
 ### Ordnung's code checks, switched off one at a time
+
+The final run's reads of holdout4, replayed with each check switched off, one file per read
+(`2026-11-24-claude-sonnet-5-checks-ablated-holdout4.json`,
+`2026-11-24-claude-sonnet-5-checks-ablated-holdout4-r2.json` and
+`2026-11-24-claude-sonnet-5-checks-ablated-holdout4-r3.json`): Ordnung's dates exactly right and late in each read.
+
+| Configuration | Read 1: exactly right | Read 1: late | Read 2: exactly right | Read 2: late | Read 3: exactly right | Read 3: late |
+|---|---|---|---|---|---|---|
+| As it ships | 104/112 | 1 | 104/112 | 1 | 104/112 | 2 |
+| Two-dates check off | 103/112 | 2 | 103/112 | 2 | 103/112 | 3 |
+| Notice guard off | 104/112 | 1 | 104/112 | 1 | 104/112 | 2 |
+| Re-ask off | 104/112 | 1 | 104/112 | 1 | 104/112 | 2 |
+| Reading check off | 104/112 | 1 | 103/112 | 2 | 104/112 | 2 |
+| Re-ask and reading check off | 104/112 | 1 | 103/112 | 2 | 104/112 | 2 |
+| All code checks off | 103/112 | 2 | 102/112 | 3 | 103/112 | 3 |
+
+As recorded, not pre-registered: these are the earlier held-out splits, re-analysed after their results were known.
+The final run's numbers are in [Results](#6-results) and [Statistics](#7-statistics).
 
 The recorded readings of holdout, holdout2 and holdout3 replayed with each check switched off
 (`scripts/eval_ablate_checks.py`, `2026-11-04-claude-sonnet-5-checks-ablated.json`): what each layer prevents.
@@ -433,6 +480,17 @@ The final run's stress test, targeted injections and distractor dates against th
 pre-registered sentence in [Results](#6-results).
 
 ## 10. Safety and selective prediction
+
+The final run's flags as a selective prediction, from `2026-11-24-claude-sonnet-5-final.json`: over the reads, the
+first read's deadlines, each wrong date counted once and caught when it was flagged in every read in which it was
+wrong.
+
+| Condition | Wrong dates “Please check” caught | Wrong dates any flag caught | Without a flag: right | Without a flag: late or missed | AURC (excess over a perfect flag) | AUROC |
+|---|---|---|---|---|---|---|
+| LLM + rules tool | 0 of 1 | 1 of 1 | 106/106 | 0/106 | 0.0003 (0.0002) | 0.98 |
+| LLM + rules text | 0 of 2 | 0 of 2 | 107/109 | 1/109 | 0.0183 (0.0181) | 0.49 |
+| Ordnung | 0 of 8 | 1 of 8 | 77/84 | 1/84 | 0.0817 (0.0788) | 0.43 |
+| LLM only | 0 of 11 | 7 of 11 | 82/86 | 3/86 | 0.0536 (0.0481) | 0.72 |
 
 As recorded, not pre-registered: these are the earlier held-out splits, re-analysed after their results were known.
 The final run's numbers are in [Results](#6-results) and [Statistics](#7-statistics).
@@ -566,6 +624,16 @@ Of Ordnung's 5 errors, 2 came from the reading, 2 from computing and 1 was a dea
 
 ## 12. Cost and latency
 
+The final run's cost over its reads, from `2026-11-24-claude-sonnet-5-final.json`: the API-equivalent price the
+Claude CLI reports, per letter read and per date exactly right.
+
+| Condition | $ per letter | $ per right date | Letters read |
+|---|---|---|---|
+| LLM + rules tool | $0.0506 | $0.0576 | 378 |
+| LLM + rules text | $0.0408 | $0.0469 | 378 |
+| Ordnung | $0.0783 | $0.0949 | 378 |
+| LLM only | $0.0466 | $0.0597 | 378 |
+
 As recorded, not pre-registered: these are the earlier held-out splits, re-analysed after their results were known.
 The final run's numbers are in [Results](#6-results) and [Statistics](#7-statistics).
 
@@ -583,6 +651,15 @@ every letter. The cheapest per right date is LLM + rules text ($0.0579). Prices 
 CLI reports them; latency is the model's time per letter.
 
 ## 13. From a letter to a reminder
+
+The final run's letters read once, through to the calendar
+(`2026-11-24-claude-sonnet-5-e2e-holdout4-newkinds.json`): the genuine dated obligations that got a reminder in
+time, by split, and why the others got none.
+
+| Split | Reminded in time | Not reminded, by cause |
+|---|---|---|
+| `holdout4` | 105/112 | set aside as a scam: 7 |
+| `newkinds` | 23/28 | no to-do stored for it: 5 |
 
 As recorded, not pre-registered: these are the earlier held-out splits, re-analysed after their results were known.
 The final run's numbers are in [Results](#6-results) and [Statistics](#7-statistics).
@@ -655,7 +732,7 @@ the file holds it: 14.
 
 | Id | Kind | Applies to | Consequence, as registered | Recorded | Comment | Checkpoint |
 |---|---|---|---|---|---|---|
-| `D001` | `code_hash_changed` | `evals/perturb/build.py`; `evals/perturb/score.py`; `scripts/eval_perturb.py`; `scripts/prereg_hashes.py`; `tests/test_preregistration.py`; `https://github.com/ahmedEid1/ordnung/pull/55` | the runner-defect rule, or a presentation-only change listed per path | 2026-11-13T09:15:44Z | [comment](https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6848948141) | `f23bff70781f` |
+| `D001` | `code_hash_changed` | `evals/perturb/build.py`; `evals/perturb/score.py`; `scripts/eval_perturb.py`; `scripts/prereg_hashes.py`; `tests/test_preregistration.py` | the runner-defect rule, or a presentation-only change listed per path | 2026-11-13T09:15:44Z | [comment](https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6848948141) | `f23bff70781f` |
 | `D002` | `cli_version` | `holdout4`; read 1 | include; per-unit versions; same-CLI F3 sensitivity | 2026-11-17T06:18:40Z | [comment](https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6940459606) | `294ad6dfb3e7` |
 | `D003` | `cli_version` | `ask-heldout`; read 1 | include; per-unit versions; same-CLI F3 sensitivity | 2026-11-17T08:10:25Z | [comment](https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6942459566) | `7db55f639d64` |
 | `D004` | `retake` | `ask-heldout`; read 1; letters: 1 | include the retaken unit; the first attempt is published; first-attempt sensitivity | 2026-11-17T08:44:46Z | [comment](https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6943168083) | `c5f323810101` |
@@ -666,9 +743,14 @@ the file holds it: 14.
 | `D009` | `cli_version` | `ask-heldout`; read 3 | include; per-unit versions; same-CLI F3 sensitivity | 2026-11-17T13:35:06Z | [comment](https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6949585026) | `1cf2b946c478` |
 | `D010` | `retake` | `ask-heldout`; read 3; letters: 1 | include the retaken unit; the first attempt is published; first-attempt sensitivity | 2026-11-17T13:53:40Z | [comment](https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6950047267) | `98bee03d2eb0` |
 | `D011` | `cli_version` | `stress`; read 1 | include; per-unit versions; same-CLI F3 sensitivity | 2026-11-17T13:59:02Z | [comment](https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6950177087) | `ac88e6fe557a` |
-| `D012` | `label_error` | `holdout4`; deadlines: 1 | only from the blind review of the items any condition got wrong (an owner's finding goes through it too): the primary stays; label-corrected sensitivity | 2026-11-17T15:30:51Z | [comment](https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6952590441) | `5e4e3f0a8340` |
-| `D013` | `label_error` | `holdout4`; deadlines: 1 | only from the blind review of the items any condition got wrong (an owner's finding goes through it too): the primary stays; label-corrected sensitivity | 2026-11-17T15:30:52Z | [comment](https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6952593239) | `5e4e3f0a8340` |
-| `D014` | `code_hash_changed` | `clock`; `tests/e2e_support/final_report.py`; `before:` | the runner-defect rule, or a presentation-only change listed per path | 2026-11-17T15:35:11Z | [comment](https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6952705495) | `8d17852d6ba8` |
+| `D012` | `label_error` | `holdout4`; offered dates, not scored: 1 | only from the blind review of the items any condition got wrong (an owner's finding goes through it too): the primary stays; label-corrected sensitivity | 2026-11-17T15:30:51Z | [comment](https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6952590441) | `5e4e3f0a8340` |
+| `D013` | `label_error` | `holdout4`; offered dates, not scored: 1 | only from the blind review of the items any condition got wrong (an owner's finding goes through it too): the primary stays; label-corrected sensitivity | 2026-11-17T15:30:52Z | [comment](https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6952593239) | `5e4e3f0a8340` |
+| `D014` | `code_hash_changed` | `tests/e2e_support/final_report.py` | the runner-defect rule, or a presentation-only change listed per path | 2026-11-17T15:35:11Z | [comment](https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6952705495) | `8d17852d6ba8` |
+
+`D004` and `D010` retook a turn of the held-out Ask set. Their registered consequence names a first-attempt
+sensitivity, which counts a timed-out first attempt of a retaken letter as missed: the final analysis computes it
+for the benchmark's reads only, and the held-out Ask analysis has none, so none is shown for these retakes. Their
+first attempts are published under `evals/retakes/0.4.0/`.
 
 ## 17. Provenance
 
@@ -825,4 +907,4 @@ analysis or the files they name, and the hash of this report's presentation.json
 | A file its sentences read, `evals/preregistration/deviations-0.4.0.json` | `2d48e12c2717cd3e42cb7d6c8d7d6ba55252fadf34a4ca4ee4e0f55eeb71bb98` |
 | The presenter's posted head | `896af5ae2497490b39ae1b3c45bb3b3cb1321773` |
 | The hash of the presenter's posted tree | `62a54ea38f018cd861d770b511c503170f2f414145a66876038fc442bbe3c7d4` |
-| `evals/present/presentation.json` as rendered for this report | `234f552bec3ad4973edf7daad4c8330917e39a40ca4288ba2a004cb87712a25c` |
+| `evals/present/presentation.json` as rendered for this report | `941f157a310ff999b085e6f83b9969f1e541b86eda63eb056ec79ff0e9f5d659` |
