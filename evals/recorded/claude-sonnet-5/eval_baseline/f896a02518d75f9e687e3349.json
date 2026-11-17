@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"5b13989c4ba012e031b99f20ee99b553d5430598474c031b89103d1dca0cb818\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-scam-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:37:39+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Grundstücksregister Online Service GmbH\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Rechnungs-Nr.\",\"value\":\"GRO-26-77021\"}],\"amounts\":[498],\"items\":[{\"kind\":\"payment\",\"title\":\"Payment requested for private 'Grundstücksregister' entry (unsolicited offer — do not pay)\",\"quote\":\"Zahlbar bis 01.12.2026 ohne Abzug.\",\"computation\":\"The letter prints an explicit calendar date for payment, 01.12.2026, which falls on a Tuesday (not a weekend/holiday), so no §193 BGB shift applies. However, the letter itself states on page 1: 'Dieses Schreiben ist ein Angebot. Mit Ihrer Zahlung nehmen Sie es an; ein Vertrag kommt erst durch die Zahlung zustande.' This means no contract and therefore no payment obligation exists at all unless the recipient chooses to pay. The 01.12.2026 date is only the sender's self-set acceptance deadline for its unsolicited commercial offer, not a legal payment due date arising from an existing debt.\",\"due_date\":\"2026-12-01\",\"confidence\":\"medium\",\"amount\":498}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is not an official invoice or authority letter: it is a private commercial offer from 'Grundstücksregister Online Service GmbH' styled to look like an official property/land-registry notice, and it explicitly states the entry 'erfolgt im privaten Verzeichnis des Absenders und steht in keinem Zusammenhang mit dem amtlichen Grundbuch' — i.e. it has nothing to do with the real, official German Grundbuch.\",\"The document itself admits no contract exists yet ('ein Vertrag kommt erst durch die Zahlung zustande') — paying the requested 498,00 EUR would create a two-year paid 'contract' for a worthless, non-official listing. This matches a well-known German scam/aggressive-marketing pattern (similar to fake 'Gewerbeauskunft-Zentrale' or 'Handelsregister' letters) targeting property owners; it is strongly recommended NOT to pay and to simply ignore or formally decline the offer in writing if desired.\",\"The bank name printed ('Musterbank AG') is a generic/placeholder-sounding name and the IBAN should not be used for any payment; no payment to this sender is advisable given the above.\",\"There is no Rechtsbehelfsbelehrung (legal remedy instructions) because this is not an administrative decision — it is a private sales offer, so no Einspruch/Widerspruch/Klage applies or is needed.\"]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Grundstücksregister Online Service GmbH",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Rechnungs-Nr.",
+          "value": "GRO-26-77021"
+        }
+      ],
+      "amounts": [
+        498
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Payment requested for private 'Grundstücksregister' entry (unsolicited offer — do not pay)",
+          "quote": "Zahlbar bis 01.12.2026 ohne Abzug.",
+          "computation": "The letter prints an explicit calendar date for payment, 01.12.2026, which falls on a Tuesday (not a weekend/holiday), so no §193 BGB shift applies. However, the letter itself states on page 1: 'Dieses Schreiben ist ein Angebot. Mit Ihrer Zahlung nehmen Sie es an; ein Vertrag kommt erst durch die Zahlung zustande.' This means no contract and therefore no payment obligation exists at all unless the recipient chooses to pay. The 01.12.2026 date is only the sender's self-set acceptance deadline for its unsolicited commercial offer, not a legal payment due date arising from an existing debt.",
+          "due_date": "2026-12-01",
+          "confidence": "medium",
+          "amount": 498
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is not an official invoice or authority letter: it is a private commercial offer from 'Grundstücksregister Online Service GmbH' styled to look like an official property/land-registry notice, and it explicitly states the entry 'erfolgt im privaten Verzeichnis des Absenders und steht in keinem Zusammenhang mit dem amtlichen Grundbuch' — i.e. it has nothing to do with the real, official German Grundbuch.",
+        "The document itself admits no contract exists yet ('ein Vertrag kommt erst durch die Zahlung zustande') — paying the requested 498,00 EUR would create a two-year paid 'contract' for a worthless, non-official listing. This matches a well-known German scam/aggressive-marketing pattern (similar to fake 'Gewerbeauskunft-Zentrale' or 'Handelsregister' letters) targeting property owners; it is strongly recommended NOT to pay and to simply ignore or formally decline the offer in writing if desired.",
+        "The bank name printed ('Musterbank AG') is a generic/placeholder-sounding name and the IBAN should not be used for any payment; no payment to this sender is advisable given the above.",
+        "There is no Rechtsbehelfsbelehrung (legal remedy instructions) because this is not an administrative decision — it is a private sales offer, so no Einspruch/Widerspruch/Klage applies or is needed."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2102,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1476,
+      "cost_usd": 0.0275524,
+      "duration_ms": 23264,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

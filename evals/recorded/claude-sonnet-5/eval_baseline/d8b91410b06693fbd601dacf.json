@@ -1,0 +1,93 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"f49007b8bf05333ed06f2714ab06d680f7d7b2a8014fa0c747156f25419b9359\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-fine_bussgeld-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:59:15+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[55,28.5,3.5,87],\"contract\":null,\"kind\":\"fine\",\"sender_name\":\"Stadt Musterquellen – Bußgeldstelle\",\"document_date\":\"2026-11-18\",\"remedy_type\":\"einspruch\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"OA-VÜ 26.501234\"},{\"label\":\"Kennzeichen\",\"value\":\"MQ-BQ 207\"}],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"Gegen diesen Bescheid können Sie innerhalb von zwei Wochen ab seiner Zustellung Einspruch einlegen, schriftlich oder zur Niederschrift bei der Stadt Musterquellen – Bußgeldstelle.\",\"computation\":\"The letter is dated 18.11.2026, but page 2 contains a copy of the Zustellungsurkunde (formal proof of service, § 182 ZPO) on which the postal carrier noted the actual delivery date as 21.11.2026 (a Saturday). Because an actual, documented delivery date exists, it governs over the fictional 3‑day delivery rule used for ordinary mail. The two‑week Einspruch period of § 67 OWiG is computed under §§ 42, 43 StPO: the day of delivery (21.11.2026) is not counted (§ 43 Abs.1 StPO / § 187 Abs.1 BGB analogy); the period starts 22.11.2026 and ends, per § 188 Abs.2 BGB, on the day two weeks later bearing the same name as the delivery day, i.e. Saturday 05.12.2026. Since the last day falls on a Saturday, § 43 Abs.2 StPO (parallel to § 193 BGB) extends the deadline to the next business day, Monday 07.12.2026 (no NRW public holiday intervenes).\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Bescheid becomes final (rechtskräftig) if no Einspruch is filed\",\"quote\":\"Ohne Einspruch wird der Bescheid rechtskräftig und kann vollstreckt werden.\",\"computation\":\"If no Einspruch is lodged by the deadline of 07.12.2026 (see above), the Bescheid becomes rechtskräftig (final) on the following day, i.e. 08.12.2026.\",\"due_date\":\"2026-12-08\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine (Gesamtbetrag 87,00 €) after the Bescheid becomes final\",\"quote\":\"Zahlen Sie erst, wenn dieser Bescheid rechtskräftig geworden ist, und dann binnen zwei Wochen auf das Konto DE29 5135 0025 0002 1403 00.\",\"computation\":\"Payment is due only after the Bescheid becomes rechtskräftig, which (assuming no Einspruch is filed) occurs on 08.12.2026 (Tuesday) per the milestone item above. Applying §§ 187 Abs.1, 188 Abs.2 BGB, the day of the triggering event (08.12.2026) is excluded, the two‑week period starts 09.12.2026 and ends on the day two weeks later bearing the same name as the start‑event day (Tuesday), i.e. 22.12.2026. That date is a Tuesday and not a NRW public holiday, so no extension under § 193 BGB is needed. This date is contingent on no Einspruch being filed; if an Einspruch is lodged, this payment obligation is suspended pending the outcome.\",\"due_date\":\"2026-12-22\",\"confidence\":\"medium\",\"amount\":87}],\"warnings\":[\"The letter uses obviously placeholder/template-style names throughout (sender city \\\"Musterquellen\\\", recipient town \\\"Beispielwetzlar\\\", bank name \\\"Landesmusterbank\\\") which strongly suggests this is a sample/template document rather than a genuine authority notice — verify the sender's real identity before acting or paying.\",\"The sender's email domain (stadt-musterquellen-bußgelds.example) uses the reserved, non-routable \\\".example\\\" top-level domain, which real organisations never use for an actual mailbox — this is a strong indicator of a template or spoofed document.\",\"The Zustellungsurkunde copy shows a delivery date of Saturday 21.11.2026; formal postal service (Zustellung) by a Postzusteller is normally carried out on business days, so this date should be double‑checked against the person's own copy of the delivery certificate before relying on it for the Einspruch deadline.\",\"Before paying, verify the IBAN (DE29 5135 0025 0002 1403 00) independently via the authority's official channels, since fine notices are a common target for payment-redirection fraud.\"]}",
+    "data": {
+      "amounts": [
+        55,
+        28.5,
+        3.5,
+        87
+      ],
+      "contract": null,
+      "kind": "fine",
+      "sender_name": "Stadt Musterquellen – Bußgeldstelle",
+      "document_date": "2026-11-18",
+      "remedy_type": "einspruch",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "OA-VÜ 26.501234"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "MQ-BQ 207"
+        }
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "Gegen diesen Bescheid können Sie innerhalb von zwei Wochen ab seiner Zustellung Einspruch einlegen, schriftlich oder zur Niederschrift bei der Stadt Musterquellen – Bußgeldstelle.",
+          "computation": "The letter is dated 18.11.2026, but page 2 contains a copy of the Zustellungsurkunde (formal proof of service, § 182 ZPO) on which the postal carrier noted the actual delivery date as 21.11.2026 (a Saturday). Because an actual, documented delivery date exists, it governs over the fictional 3‑day delivery rule used for ordinary mail. The two‑week Einspruch period of § 67 OWiG is computed under §§ 42, 43 StPO: the day of delivery (21.11.2026) is not counted (§ 43 Abs.1 StPO / § 187 Abs.1 BGB analogy); the period starts 22.11.2026 and ends, per § 188 Abs.2 BGB, on the day two weeks later bearing the same name as the delivery day, i.e. Saturday 05.12.2026. Since the last day falls on a Saturday, § 43 Abs.2 StPO (parallel to § 193 BGB) extends the deadline to the next business day, Monday 07.12.2026 (no NRW public holiday intervenes).",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Bescheid becomes final (rechtskräftig) if no Einspruch is filed",
+          "quote": "Ohne Einspruch wird der Bescheid rechtskräftig und kann vollstreckt werden.",
+          "computation": "If no Einspruch is lodged by the deadline of 07.12.2026 (see above), the Bescheid becomes rechtskräftig (final) on the following day, i.e. 08.12.2026.",
+          "due_date": "2026-12-08",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine (Gesamtbetrag 87,00 €) after the Bescheid becomes final",
+          "quote": "Zahlen Sie erst, wenn dieser Bescheid rechtskräftig geworden ist, und dann binnen zwei Wochen auf das Konto DE29 5135 0025 0002 1403 00.",
+          "computation": "Payment is due only after the Bescheid becomes rechtskräftig, which (assuming no Einspruch is filed) occurs on 08.12.2026 (Tuesday) per the milestone item above. Applying §§ 187 Abs.1, 188 Abs.2 BGB, the day of the triggering event (08.12.2026) is excluded, the two‑week period starts 09.12.2026 and ends on the day two weeks later bearing the same name as the start‑event day (Tuesday), i.e. 22.12.2026. That date is a Tuesday and not a NRW public holiday, so no extension under § 193 BGB is needed. This date is contingent on no Einspruch being filed; if an Einspruch is lodged, this payment obligation is suspended pending the outcome.",
+          "due_date": "2026-12-22",
+          "confidence": "medium",
+          "amount": 87
+        }
+      ],
+      "warnings": [
+        "The letter uses obviously placeholder/template-style names throughout (sender city \"Musterquellen\", recipient town \"Beispielwetzlar\", bank name \"Landesmusterbank\") which strongly suggests this is a sample/template document rather than a genuine authority notice — verify the sender's real identity before acting or paying.",
+        "The sender's email domain (stadt-musterquellen-bußgelds.example) uses the reserved, non-routable \".example\" top-level domain, which real organisations never use for an actual mailbox — this is a strong indicator of a template or spoofed document.",
+        "The Zustellungsurkunde copy shows a delivery date of Saturday 21.11.2026; formal postal service (Zustellung) by a Postzusteller is normally carried out on business days, so this date should be double‑checked against the person's own copy of the delivery certificate before relying on it for the Einspruch deadline.",
+        "Before paying, verify the IBAN (DE29 5135 0025 0002 1403 00) independently via the authority's official channels, since fine notices are a common target for payment-redirection fraud."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 7533,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2177,
+      "cost_usd": 0.0846664,
+      "duration_ms": 74981,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

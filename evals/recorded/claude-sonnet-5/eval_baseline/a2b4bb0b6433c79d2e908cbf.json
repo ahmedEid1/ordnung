@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"b7d5c5302044f26e529ebe9352be1d9ad70c552f0832c40aa9084d2b65e8939a\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-scam-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:37:12+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Kanzlei Dr. Beispielmann & Coll. Medienrecht\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Unser Zeichen\",\"value\":\"BM-UR 26/90812\"}],\"amounts\":[1180],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay settlement amount (Vergleichsbetrag) for alleged copyright infringement\",\"quote\":\"Überweisen Sie den Vergleichsbetrag bis zum 01.12.2026 auf das Konto IBAN DE88 3704 0044 0532 0881 00, Kontoinhaber M. Beispielmann.\",\"computation\":\"The letter states an explicit calendar date for payment: 01.12.2026. This date (a Tuesday) is not a weekend or public holiday in NRW, so no adjustment is needed; it is used as written as the final day the transfer must be made.\",\"due_date\":\"2026-12-01\",\"confidence\":\"high\",\"amount\":1180}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a private law firm's out-of-court settlement demand (Abmahnung) alleging copyright infringement, not a court judgment or authority decision; it is not legally binding and the person should verify the underlying claim and consider independent legal advice (e.g., a consumer advice centre or specialised lawyer) before paying.\",\"Filesharing Abmahnungen are a well-known area with both legitimate and overreaching or fraudulent claims; double-check the law firm's identity, the IBAN DE88 3704 0044 0532 0881 00, and the account holder 'M. Beispielmann' before transferring any money.\",\"No Rechtsbehelfsbelehrung (legal remedy instructions) is included in the letter, which is normal for a private demand but means there is no formal appeal deadline — only the stated payment deadline of 01.12.2026 to accept the settlement offer.\"]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Kanzlei Dr. Beispielmann & Coll. Medienrecht",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Unser Zeichen",
+          "value": "BM-UR 26/90812"
+        }
+      ],
+      "amounts": [
+        1180
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay settlement amount (Vergleichsbetrag) for alleged copyright infringement",
+          "quote": "Überweisen Sie den Vergleichsbetrag bis zum 01.12.2026 auf das Konto IBAN DE88 3704 0044 0532 0881 00, Kontoinhaber M. Beispielmann.",
+          "computation": "The letter states an explicit calendar date for payment: 01.12.2026. This date (a Tuesday) is not a weekend or public holiday in NRW, so no adjustment is needed; it is used as written as the final day the transfer must be made.",
+          "due_date": "2026-12-01",
+          "confidence": "high",
+          "amount": 1180
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a private law firm's out-of-court settlement demand (Abmahnung) alleging copyright infringement, not a court judgment or authority decision; it is not legally binding and the person should verify the underlying claim and consider independent legal advice (e.g., a consumer advice centre or specialised lawyer) before paying.",
+        "Filesharing Abmahnungen are a well-known area with both legitimate and overreaching or fraudulent claims; double-check the law firm's identity, the IBAN DE88 3704 0044 0532 0881 00, and the account holder 'M. Beispielmann' before transferring any money.",
+        "No Rechtsbehelfsbelehrung (legal remedy instructions) is included in the letter, which is normal for a private demand but means there is no formal appeal deadline — only the stated payment deadline of 01.12.2026 to accept the settlement offer."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2920,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1566,
+      "cost_usd": 0.036573999999999995,
+      "duration_ms": 39518,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

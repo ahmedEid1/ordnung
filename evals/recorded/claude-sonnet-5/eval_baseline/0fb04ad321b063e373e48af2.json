@@ -1,0 +1,97 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"0b334dfeca8f74743e3bf468cb6e3fb44d864f9fc3be8ac54d4ff410c7fe5662\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-relative_business_days-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:30:21+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract\",\"sender_name\":\"Wohnbau Beispielgrund eG\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Mitgliedsnummer\",\"value\":\"WB-4402\"},{\"label\":\"Wohnung\",\"value\":\"SW18-EG-R\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Return signed usage contract (Nutzungsvertrag)\",\"quote\":\"Den unterschriebenen Vertrag benötigen wir innerhalb von 14 Werktagen ab dem Briefdatum zurück.\",\"computation\":\"Letter is dated Wed 18.11.2026 (Briefdatum). Period runs 'ab dem Briefdatum' for 14 Werktage, where the letter itself defines Werktage as Montag bis Samstag, Sonn- und Feiertage nicht gezählt. Under §187 Abs.1 BGB the day of the event (18.11.) is not counted, so counting starts 19.11.2026. Counting 14 Mon-Sat days from there, skipping Sundays (22.11. and 29.11., no public holidays fall in this window in NW) lands on Friday 04.12.2026. Confirmed by the working-day calculator.\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "contract",
+      "sender_name": "Wohnbau Beispielgrund eG",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Mitgliedsnummer",
+          "value": "WB-4402"
+        },
+        {
+          "label": "Wohnung",
+          "value": "SW18-EG-R"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Return signed usage contract (Nutzungsvertrag)",
+          "quote": "Den unterschriebenen Vertrag benötigen wir innerhalb von 14 Werktagen ab dem Briefdatum zurück.",
+          "computation": "Letter is dated Wed 18.11.2026 (Briefdatum). Period runs 'ab dem Briefdatum' for 14 Werktage, where the letter itself defines Werktage as Montag bis Samstag, Sonn- und Feiertage nicht gezählt. Under §187 Abs.1 BGB the day of the event (18.11.) is not counted, so counting starts 19.11.2026. Counting 14 Mon-Sat days from there, skipping Sundays (22.11. and 29.11., no public holidays fall in this window in NW) lands on Friday 04.12.2026. Confirmed by the working-day calculator.",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1883,
+      "cache_read_tokens": 14594,
+      "cache_creation_tokens": 3560,
+      "cost_usd": 0.035996799999999995,
+      "duration_ms": 19392,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 14,
+            "unit": "werktage",
+            "anchor": "explicit_date",
+            "anchor_date": "2026-11-18",
+            "nature": "other",
+            "shift_rule": "auto",
+            "legal_basis": "Nutzungsvertrag Rückgabe",
+            "text": "Den unterschriebenen Vertrag benötigen wir innerhalb von 14 Werktagen ab dem Briefdatum zurück."
+          },
+          "document_date": "2026-11-18",
+          "sender_kind": "other",
+          "sender_name": "Wohnbau Beispielgrund eG",
+          "region": "NW"
+        },
+        "result": "{\"due_date\":\"2026-12-04\",\"weekday\":\"Friday\",\"summary\":\"14 working days (Mon–Sat) after Wed 18 Nov 2026 is Fri 4 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Wed 18 Nov 2026\",\"date\":\"2026-11-18\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"14 working days (Mon–Sat) later: Fri 4 Dec 2026\",\"date\":\"2026-12-04\",\"rule_id\":\"unit_werktage\",\"citation\":\"BGH VIII ZR 206/04\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"unit_werktage\",\"title\":\"Counting working days (Werktage)\",\"citation\":\"BGH VIII ZR 206/04\",\"url\":\"https://dejure.org/dienste/vernetzung/rechtsprechung?Gericht=BGH&Datum=27.04.2005&Aktenzeichen=VIII+ZR+206/04\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-18\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__add_working_days",
+        "input": {
+          "start": "2026-11-18",
+          "days": 14,
+          "day_type": "werktage",
+          "region": "NW"
+        },
+        "result": "{\"start\":\"2026-11-18\",\"days\":14,\"day_type\":\"werktage\",\"date\":\"2026-12-04\",\"weekday\":\"Friday\",\"skipped\":[{\"date\":\"2026-11-22\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"},{\"date\":\"2026-11-29\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"}],\"counting\":\"Werktage: Monday to Saturday, public holidays excluded; the start day itself is not counted.\",\"calendar\":\"Nordrhein-Westfalen\",\"disclaimer\":\"Information, not legal advice: working days counted on Ordnung's holiday calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer. A legal period may count differently — compute_deadline applies the deadline rules.\"}"
+      }
+    ]
+  }
+}

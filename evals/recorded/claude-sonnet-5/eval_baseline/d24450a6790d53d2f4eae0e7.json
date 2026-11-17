@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"b4e033bfd74ccb500c119cce4c2128da2c44ca34a4de0d31e38165ee7347cd1e\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-invoice_relative-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:13:27+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Glaserei Beispielscheibe\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"GS-26-1185\"}],\"amounts\":[396.27],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay invoice for glass repair\",\"quote\":\"Der Betrag ist innerhalb von 14 Tagen ab Rechnungsdatum ohne Abzug fällig.\",\"computation\":\"This is a private commercial invoice, not a notice from a public authority, so the statutory delivery-fiction rules for authorities (Zugang nach Bekanntgabe) do not apply; the period runs 'ab Rechnungsdatum' (from the invoice date) itself. Invoice date (Rechnungsdatum) is 20.11.2026. Per §187(1) BGB, since the period is expressed as running from an event (the invoice date), that day itself is not counted; counting starts on 21.11.2026 as day 1. Counting 14 days: 21,22,23,24,25,26,27,28,29,30 Nov (10 days) + 1,2,3,4 Dec (4 days) = day 14 falls on 04.12.2026. 04.12.2026 is a Friday, not a Saturday, Sunday, or public holiday in NRW, so §193 BGB extension does not apply. Due date remains 04.12.2026.\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":396.27}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Glaserei Beispielscheibe",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "GS-26-1185"
+        }
+      ],
+      "amounts": [
+        396.27
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay invoice for glass repair",
+          "quote": "Der Betrag ist innerhalb von 14 Tagen ab Rechnungsdatum ohne Abzug fällig.",
+          "computation": "This is a private commercial invoice, not a notice from a public authority, so the statutory delivery-fiction rules for authorities (Zugang nach Bekanntgabe) do not apply; the period runs 'ab Rechnungsdatum' (from the invoice date) itself. Invoice date (Rechnungsdatum) is 20.11.2026. Per §187(1) BGB, since the period is expressed as running from an event (the invoice date), that day itself is not counted; counting starts on 21.11.2026 as day 1. Counting 14 days: 21,22,23,24,25,26,27,28,29,30 Nov (10 days) + 1,2,3,4 Dec (4 days) = day 14 falls on 04.12.2026. 04.12.2026 is a Friday, not a Saturday, Sunday, or public holiday in NRW, so §193 BGB extension does not apply. Due date remains 04.12.2026.",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": 396.27
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2044,
+      "cache_read_tokens": 7725,
+      "cache_creation_tokens": 2836,
+      "cost_usd": 0.033337000000000006,
+      "duration_ms": 23973,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"5b13989c4ba012e031b99f20ee99b553d5430598474c031b89103d1dca0cb818\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-scam-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:38:06+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Grundstücksregister Online Service GmbH\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Rechnungs-Nr.\",\"value\":\"GRO-26-77021\"}],\"amounts\":[498],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay 'invoice' for private property register entry (offer, not an obligation)\",\"quote\":\"Zahlbar bis 01.12.2026 ohne Abzug.\",\"computation\":\"The document is styled like an invoice with a fixed calendar date printed: 'Zahlbar bis 01.12.2026'. However, the letter itself states 'Dieses Schreiben ist ein Angebot. Mit Ihrer Zahlung nehmen Sie es an; ein Vertrag kommt erst durch die Zahlung zustande.' This means no contract exists yet and there is no legal payment obligation at all — the printed date is only the deadline the sender proposes for accepting its offer by paying, not a due date created by an existing contract or an authority's decision. If the recipient does nothing, no debt arises. The date 2026-12-01 is taken as printed, with no BGB period counting needed since it is a fixed calendar date, but confidence is lowered because paying is optional and likely inadvisable.\",\"due_date\":\"2026-12-01\",\"confidence\":\"high\",\"amount\":498}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is not a real invoice: the sender itself states 'Dieses Schreiben ist ein Angebot. Mit Ihrer Zahlung nehmen Sie es an; ein Vertrag kommt erst durch die Zahlung zustande' — i.e. no debt exists and paying would create a new, unwanted paid contract.\",\"The letter explicitly disclaims any connection to the official German land register ('steht in keinem Zusammenhang mit dem amtlichen Grundbuch'); the private 'Grundstücksregister' entry it sells has no legal value and is not required.\",\"This matches a known German scam/misleading-offer pattern (similar to fake 'Gewerbeauskunft-Zentrale' or bogus register invoices) that mimics an official bill to pressure recipients into paying for a worthless private listing; recommend not paying and not responding.\",\"The IBAN (DE59 5007 0010 0005 5707 00) is a structurally valid German IBAN, but a valid IBAN does not confirm who really owns the account or that the company is legitimate — do not use these payment details.\",\"No Rechnungsnummer-based VAT breakdown or company register details (e.g. HRB number, Geschäftsführer) are given for Grundstücksregister Online Service GmbH, which is typical of such offer-mailings and worth independently verifying before any contact.\"]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Grundstücksregister Online Service GmbH",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Rechnungs-Nr.",
+          "value": "GRO-26-77021"
+        }
+      ],
+      "amounts": [
+        498
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay 'invoice' for private property register entry (offer, not an obligation)",
+          "quote": "Zahlbar bis 01.12.2026 ohne Abzug.",
+          "computation": "The document is styled like an invoice with a fixed calendar date printed: 'Zahlbar bis 01.12.2026'. However, the letter itself states 'Dieses Schreiben ist ein Angebot. Mit Ihrer Zahlung nehmen Sie es an; ein Vertrag kommt erst durch die Zahlung zustande.' This means no contract exists yet and there is no legal payment obligation at all — the printed date is only the deadline the sender proposes for accepting its offer by paying, not a due date created by an existing contract or an authority's decision. If the recipient does nothing, no debt arises. The date 2026-12-01 is taken as printed, with no BGB period counting needed since it is a fixed calendar date, but confidence is lowered because paying is optional and likely inadvisable.",
+          "due_date": "2026-12-01",
+          "confidence": "high",
+          "amount": 498
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is not a real invoice: the sender itself states 'Dieses Schreiben ist ein Angebot. Mit Ihrer Zahlung nehmen Sie es an; ein Vertrag kommt erst durch die Zahlung zustande' — i.e. no debt exists and paying would create a new, unwanted paid contract.",
+        "The letter explicitly disclaims any connection to the official German land register ('steht in keinem Zusammenhang mit dem amtlichen Grundbuch'); the private 'Grundstücksregister' entry it sells has no legal value and is not required.",
+        "This matches a known German scam/misleading-offer pattern (similar to fake 'Gewerbeauskunft-Zentrale' or bogus register invoices) that mimics an official bill to pressure recipients into paying for a worthless private listing; recommend not paying and not responding.",
+        "The IBAN (DE59 5007 0010 0005 5707 00) is a structurally valid German IBAN, but a valid IBAN does not confirm who really owns the account or that the company is legitimate — do not use these payment details.",
+        "No Rechnungsnummer-based VAT breakdown or company register details (e.g. HRB number, Geschäftsführer) are given for Grundstücksregister Online Service GmbH, which is typical of such offer-mailings and worth independently verifying before any contact."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1724,
+      "cache_read_tokens": 14592,
+      "cache_creation_tokens": 2715,
+      "cost_usd": 0.031026400000000003,
+      "duration_ms": 21532,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE59 5007 0010 0005 5707 00"
+        },
+        "result": "{\"iban\":\"DE59 5007 0010 0005 5707 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"50070010\"},\"account_number\":\"0005570700\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

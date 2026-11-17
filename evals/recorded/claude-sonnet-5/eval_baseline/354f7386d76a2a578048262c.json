@@ -1,0 +1,84 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"eb810700344c7be7f17ae4586ff243f74d0f909461c0e33d0e60f699859edf1b\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-N1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T08:03:18+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[318.46],\"contract\":null,\"document_date\":\"2026-11-18\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Widerspruch (objection) deadline\",\"quote\":\"Den Widerspruch können Sie binnen eines Monats ab Bekanntgabe einlegen, schriftlich oder zur Niederschrift bei der Musterquell Krankenkasse, Am Brunnenhof 2, 35390 Mustergießen.\",\"computation\":\"Bescheid dated Wed 18.11.2026, posted same day (assumed). Letter states Bekanntgabe = 4th day after posting (§37 SGB X, current 4-day fiction). 18.11.+4 days = 22.11.2026 (Sunday). Since the 4th day falls on a Sunday, §37 Abs.2 SGB X (via §26 SGB X / §193 BGB) shifts Bekanntgabe to the next business day: Monday 23.11.2026. The 1-month Widerspruch period (§84 SGG) starts the day after Bekanntgabe (§187 Abs.1 BGB), i.e. 24.11.2026, and per §188 Abs.2 BGB ends on the day of the last month bearing the same number as the Bekanntgabe day (23rd) → 23.12.2026. That date is a Wednesday, not a public holiday in NW, so no further shift.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"New higher monthly contribution takes effect\",\"quote\":\"ab dem 01.01.2027 betragen Ihre monatlichen Beiträge 318,46 €.\",\"computation\":\"The letter fixes the start of the new contribution amount explicitly as 01.01.2027; no counting needed.\",\"due_date\":\"2027-01-01\",\"confidence\":\"high\",\"amount\":318.46},{\"kind\":\"payment\",\"title\":\"First debit of the new (increased) contribution\",\"quote\":\"Wir buchen den Beitrag weiter zum 15. des Folgemonats ab.\",\"computation\":\"Contributions become due from 01.01.2027 and are debited on the 15th of the following month. The first affected contribution is for January 2027, so the first debit under the new rate falls on 15 February 2027. 15.02.2027 is a Monday, so no weekend adjustment is needed; this is a SEPA direct debit (Lastschrift) by the Kasse, not a statutory deadline, so the stated day stands as given.\",\"due_date\":\"2027-02-15\",\"confidence\":\"medium\",\"amount\":318.46}],\"kind\":\"health_insurance\",\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"Q550274119\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Musterquell Krankenkasse\",\"warnings\":[\"The letter and header appear to use clearly fictitious/placeholder names and addresses (e.g. 'Musterquell Krankenkasse', 'Am Brunnenhof 2, 35390 Mustergießen', 'Johanna Beispielacker') and is marked 'Gesetzliche Krankenversicherung (Musterausgabe)', suggesting this may be a sample/template document rather than a genuine Bescheid — verify the real sender and your real Krankenkasse before acting on it.\",\"The exact posting date of the letter is not stated separately from the Bescheiddatum (18.11.2026); the Bekanntgabe (and thus the Widerspruch deadline) was computed assuming posting occurred on the Bescheid date itself — confirm the actual postmark/dispatch date if available.\"]}",
+    "data": {
+      "amounts": [
+        318.46
+      ],
+      "contract": null,
+      "document_date": "2026-11-18",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Widerspruch (objection) deadline",
+          "quote": "Den Widerspruch können Sie binnen eines Monats ab Bekanntgabe einlegen, schriftlich oder zur Niederschrift bei der Musterquell Krankenkasse, Am Brunnenhof 2, 35390 Mustergießen.",
+          "computation": "Bescheid dated Wed 18.11.2026, posted same day (assumed). Letter states Bekanntgabe = 4th day after posting (§37 SGB X, current 4-day fiction). 18.11.+4 days = 22.11.2026 (Sunday). Since the 4th day falls on a Sunday, §37 Abs.2 SGB X (via §26 SGB X / §193 BGB) shifts Bekanntgabe to the next business day: Monday 23.11.2026. The 1-month Widerspruch period (§84 SGG) starts the day after Bekanntgabe (§187 Abs.1 BGB), i.e. 24.11.2026, and per §188 Abs.2 BGB ends on the day of the last month bearing the same number as the Bekanntgabe day (23rd) → 23.12.2026. That date is a Wednesday, not a public holiday in NW, so no further shift.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "New higher monthly contribution takes effect",
+          "quote": "ab dem 01.01.2027 betragen Ihre monatlichen Beiträge 318,46 €.",
+          "computation": "The letter fixes the start of the new contribution amount explicitly as 01.01.2027; no counting needed.",
+          "due_date": "2027-01-01",
+          "confidence": "high",
+          "amount": 318.46
+        },
+        {
+          "kind": "payment",
+          "title": "First debit of the new (increased) contribution",
+          "quote": "Wir buchen den Beitrag weiter zum 15. des Folgemonats ab.",
+          "computation": "Contributions become due from 01.01.2027 and are debited on the 15th of the following month. The first affected contribution is for January 2027, so the first debit under the new rate falls on 15 February 2027. 15.02.2027 is a Monday, so no weekend adjustment is needed; this is a SEPA direct debit (Lastschrift) by the Kasse, not a statutory deadline, so the stated day stands as given.",
+          "due_date": "2027-02-15",
+          "confidence": "medium",
+          "amount": 318.46
+        }
+      ],
+      "kind": "health_insurance",
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "Q550274119"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Musterquell Krankenkasse",
+      "warnings": [
+        "The letter and header appear to use clearly fictitious/placeholder names and addresses (e.g. 'Musterquell Krankenkasse', 'Am Brunnenhof 2, 35390 Mustergießen', 'Johanna Beispielacker') and is marked 'Gesetzliche Krankenversicherung (Musterausgabe)', suggesting this may be a sample/template document rather than a genuine Bescheid — verify the real sender and your real Krankenkasse before acting on it.",
+        "The exact posting date of the letter is not stated separately from the Bescheiddatum (18.11.2026); the Bekanntgabe (and thus the Widerspruch deadline) was computed assuming posting occurred on the Bescheid date itself — confirm the actual postmark/dispatch date if available."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3178,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1581,
+      "cost_usd": 0.038732399999999986,
+      "duration_ms": 32714,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

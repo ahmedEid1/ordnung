@@ -1,0 +1,142 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"a3ad77112795e52a4bd21aee3668d8701e0da567e7c0ecf42f0f27becb610266\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:53:34+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_letter\",\"sender_name\":\"Familienkasse Beispielweser\",\"document_date\":\"2026-11-19\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against revocation of Kindergeld\",\"quote\":\"Gegen diesen Bescheid kann binnen eines Monats nach Bekanntgabe Einspruch bei der Familienkasse Beispielweser eingelegt werden, schriftlich, elektronisch oder zur Niederschrift.\",\"computation\":\"The letter itself fixes the delivery day: 'Der Bescheid gilt als am vierten Tag nach der oben genannten Aufgabe zur Post bekannt gegeben.' The stated Aufgabe zur Post is Saturday 21.11.2026. Day 4 after 21.11.2026 is Wednesday 25.11.2026 (not a weekend/holiday, so no shift under § 108 Abs. 3 AO) — this is the deemed Bekanntgabe date. Under § 187 Abs. 1 BGB / § 108 Abs. 1 AO the one-month Einspruch period starts the next day (26.11.2026) and ends, per § 188 Abs. 2 BGB, on the day of the following month with the same number as the start day of the delivery (25.), i.e. 25.12.2026. 25.12.2026 is Erster Weihnachtstag, a nationwide public holiday (and in NI, the sender's seat, also a holiday), so under § 108 Abs. 3 AO the deadline moves to the next working day. 26.12.2026 (2. Weihnachtstag) and 27.12.2026 (Sunday) are also non-working, so the deadline falls on Monday 28.12.2026.\",\"due_date\":\"2026-12-28\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"expiry\",\"title\":\"Kindergeld entitlement for son Lukas ends\",\"quote\":\"Nach Abschluss der Ausbildung besteht nach § 32 Abs. 4 EStG kein Anspruch mehr; die Festsetzung heben wir deshalb mit Wirkung ab 01.01.2027 auf.\",\"computation\":\"The Festsetzung is revoked 'mit Wirkung ab 01.01.2027', i.e. entitlement ends with the last day before that date. The last day Lukas still counts as a child for Kindergeld purposes is therefore 31.12.2026.\",\"due_date\":\"2026-12-31\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Final Kindergeld payment (December 2026)\",\"quote\":\"Bis einschließlich Dezember 2026 zahlen wir das Kindergeld von 259,00 € im Monat weiter.\",\"computation\":\"The Familienkasse confirms it will keep paying the monthly 259,00 € up to and including the month of December 2026; no specific pay-out day within the month is given, so the last day of that final entitlement month, 31.12.2026, is used as the due date.\",\"due_date\":\"2026-12-31\",\"confidence\":\"medium\",\"amount\":259}],\"remedy_type\":\"einspruch\",\"contract\":null,\"references\":[{\"label\":\"Kindergeldnummer\",\"value\":\"377FK104258\"}],\"amounts\":[259],\"warnings\":[\"The letter is dated Thursday 19.11.2026 but states 'Aufgabe zur Post' as Saturday 21.11.2026 — an unusual combination (mail is not normally handed to the post office on a date after the letter's own date, and rarely on a Saturday); double-check the actual envelope postmark, since if the real posting day was earlier than 21.11.2026 the Einspruch deadline could fall a few days earlier than 28.12.2026.\",\"The letter's recipient address (35576 Beispielwetzlar) is in Hesse, not in Nordrhein-Westfalen; worth checking that this is the correct, current address on file with the Familienkasse.\",\"The deemed-delivery rule only applies if the letter was sent by ordinary post; if it was instead formally served (yellow envelope / 'zugestellt am'), the one-month period would run from that service date instead.\"]}",
+    "data": {
+      "kind": "tax_letter",
+      "sender_name": "Familienkasse Beispielweser",
+      "document_date": "2026-11-19",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against revocation of Kindergeld",
+          "quote": "Gegen diesen Bescheid kann binnen eines Monats nach Bekanntgabe Einspruch bei der Familienkasse Beispielweser eingelegt werden, schriftlich, elektronisch oder zur Niederschrift.",
+          "computation": "The letter itself fixes the delivery day: 'Der Bescheid gilt als am vierten Tag nach der oben genannten Aufgabe zur Post bekannt gegeben.' The stated Aufgabe zur Post is Saturday 21.11.2026. Day 4 after 21.11.2026 is Wednesday 25.11.2026 (not a weekend/holiday, so no shift under § 108 Abs. 3 AO) — this is the deemed Bekanntgabe date. Under § 187 Abs. 1 BGB / § 108 Abs. 1 AO the one-month Einspruch period starts the next day (26.11.2026) and ends, per § 188 Abs. 2 BGB, on the day of the following month with the same number as the start day of the delivery (25.), i.e. 25.12.2026. 25.12.2026 is Erster Weihnachtstag, a nationwide public holiday (and in NI, the sender's seat, also a holiday), so under § 108 Abs. 3 AO the deadline moves to the next working day. 26.12.2026 (2. Weihnachtstag) and 27.12.2026 (Sunday) are also non-working, so the deadline falls on Monday 28.12.2026.",
+          "due_date": "2026-12-28",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "expiry",
+          "title": "Kindergeld entitlement for son Lukas ends",
+          "quote": "Nach Abschluss der Ausbildung besteht nach § 32 Abs. 4 EStG kein Anspruch mehr; die Festsetzung heben wir deshalb mit Wirkung ab 01.01.2027 auf.",
+          "computation": "The Festsetzung is revoked 'mit Wirkung ab 01.01.2027', i.e. entitlement ends with the last day before that date. The last day Lukas still counts as a child for Kindergeld purposes is therefore 31.12.2026.",
+          "due_date": "2026-12-31",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Final Kindergeld payment (December 2026)",
+          "quote": "Bis einschließlich Dezember 2026 zahlen wir das Kindergeld von 259,00 € im Monat weiter.",
+          "computation": "The Familienkasse confirms it will keep paying the monthly 259,00 € up to and including the month of December 2026; no specific pay-out day within the month is given, so the last day of that final entitlement month, 31.12.2026, is used as the due date.",
+          "due_date": "2026-12-31",
+          "confidence": "medium",
+          "amount": 259
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "references": [
+        {
+          "label": "Kindergeldnummer",
+          "value": "377FK104258"
+        }
+      ],
+      "amounts": [
+        259
+      ],
+      "warnings": [
+        "The letter is dated Thursday 19.11.2026 but states 'Aufgabe zur Post' as Saturday 21.11.2026 — an unusual combination (mail is not normally handed to the post office on a date after the letter's own date, and rarely on a Saturday); double-check the actual envelope postmark, since if the real posting day was earlier than 21.11.2026 the Einspruch deadline could fall a few days earlier than 28.12.2026.",
+        "The letter's recipient address (35576 Beispielwetzlar) is in Hesse, not in Nordrhein-Westfalen; worth checking that this is the correct, current address on file with the Familienkasse.",
+        "The deemed-delivery rule only applies if the letter was sent by ordinary post; if it was instead formally served (yellow envelope / 'zugestellt am'), the one-month period would run from that service date instead."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 6902,
+      "cache_read_tokens": 25925,
+      "cache_creation_tokens": 9747,
+      "cost_usd": 0.113205,
+      "duration_ms": 83094,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "anchor_date": "2026-11-21",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§32 Abs.4 EStG, Rechtsbehelfsbelehrung",
+            "text": "Gegen diesen Bescheid kann binnen eines Monats nach Bekanntgabe Einspruch bei der Familienkasse Beispielweser eingelegt werden"
+          },
+          "document_date": "2026-11-19",
+          "sender_kind": "authority",
+          "sender_name": "Familienkasse Beispielweser",
+          "recipient_region": "NW",
+          "region": "NI",
+          "remedy_type": "einspruch"
+        },
+        "result": "{\"due_date\":\"2026-12-23\",\"weekday\":\"Wednesday\",\"send_by\":\"2026-12-17\",\"summary\":\"Letter dated Thu 19 Nov 2026 counts as delivered on Mon 23 Nov; one month later is Wed 23 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[\"The letter mentions Sat 21 Nov 2026 as the posting day, later than its date (Thu 19 Nov 2026). If that is when it was really posted, the deadline may be a few days later — we count from the letter's date to be safe.\",\"Deemed delivery was applied: the letter counts as delivered some days after it was posted. If it was formally served instead — in a yellow envelope (Postzustellungsurkunde), or it says it was 'zugestellt' on a date — that rule does not apply and the period runs from the date written on the envelope, usually earlier.\"],\"steps\":[{\"label\":\"Posting day: Thu 19 Nov 2026 (the letter's date; the real posting day can only be later)\",\"date\":\"2026-11-19\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Mon 23 Nov 2026\",\"date\":\"2026-11-23\",\"rule_id\":\"ao_122_2_1\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\"},{\"label\":\"Counting starts the day after Mon 23 Nov 2026\",\"date\":\"2026-11-23\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Wed 23 Dec 2026\",\"date\":\"2026-12-23\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Wed 23 Dec 2026 is a working day, so it stays\",\"date\":\"2026-12-23\",\"rule_id\":\"ao_108_3\",\"citation\":\"§ 108 Abs. 3 AO\"},{\"label\":\"Send by Thu 17 Dec 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-12-17\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"ao_122_2_1\",\"title\":\"Tax letters: delivered on the 4th day after posting\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"ao_108_3\",\"title\":\"Weekend and holiday shift (tax)\",\"citation\":\"§ 108 Abs. 3 AO\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__108.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-19\",\"delivery_law\":\"tax law (§ 122 AO)\",\"holiday_calendar\":\"Niedersachsen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"If the letter was formally served (a yellow envelope, or 'zugestellt am …'), pass spec.anchor receipt with the envelope's date as spec.anchor_date and spec.delivery_rule none.\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "anchor_date": "2026-11-21",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§32 Abs.4 EStG, Rechtsbehelfsbelehrung",
+            "text": "Der Bescheid gilt als am vierten Tag nach der oben genannten Aufgabe zur Post bekannt gegeben"
+          },
+          "document_date": "2026-11-21",
+          "sender_kind": "authority",
+          "sender_name": "Familienkasse Beispielweser",
+          "recipient_region": "NW",
+          "region": "NI",
+          "remedy_type": "einspruch"
+        },
+        "result": "{\"due_date\":\"2026-12-28\",\"weekday\":\"Monday\",\"send_by\":\"2026-12-21\",\"summary\":\"Letter dated Sat 21 Nov 2026 counts as delivered on Wed 25 Nov; one month later is Fri 25 Dec 2026, a public holiday, Erster Weihnachtstag, so the deadline moves to Mon 28 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[\"Deemed delivery was applied: the letter counts as delivered some days after it was posted. If it was formally served instead — in a yellow envelope (Postzustellungsurkunde), or it says it was 'zugestellt' on a date — that rule does not apply and the period runs from the date written on the envelope, usually earlier.\"],\"steps\":[{\"label\":\"Posting day: Sat 21 Nov 2026 (the letter's date; the real posting day can only be later)\",\"date\":\"2026-11-21\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Wed 25 Nov 2026\",\"date\":\"2026-11-25\",\"rule_id\":\"ao_122_2_1\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\"},{\"label\":\"Counting starts the day after Wed 25 Nov 2026\",\"date\":\"2026-11-25\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Fri 25 Dec 2026\",\"date\":\"2026-12-25\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Fri 25 Dec 2026 is a public holiday, Erster Weihnachtstag, so the deadline moves to Mon 28 Dec 2026\",\"date\":\"2026-12-28\",\"rule_id\":\"ao_108_3\",\"citation\":\"§ 108 Abs. 3 AO\"},{\"label\":\"Send by Mon 21 Dec 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-12-21\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"ao_122_2_1\",\"title\":\"Tax letters: delivered on the 4th day after posting\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"ao_108_3\",\"title\":\"Weekend and holiday shift (tax)\",\"citation\":\"§ 108 Abs. 3 AO\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__108.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-21\",\"delivery_law\":\"tax law (§ 122 AO)\",\"holiday_calendar\":\"Niedersachsen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"If the letter was formally served (a yellow envelope, or 'zugestellt am …'), pass spec.anchor receipt with the envelope's date as spec.anchor_date and spec.delivery_rule none.\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__german_holidays",
+        "input": {
+          "year": 2026,
+          "region": "NI"
+        },
+        "result": "{\"year\":2026,\"region\":\"NI\",\"calendar\":\"Niedersachsen\",\"holidays\":[{\"date\":\"2026-01-01\",\"weekday\":\"Thursday\",\"name\":\"Neujahr\",\"nationwide\":true},{\"date\":\"2026-04-03\",\"weekday\":\"Friday\",\"name\":\"Karfreitag\",\"nationwide\":true},{\"date\":\"2026-04-06\",\"weekday\":\"Monday\",\"name\":\"Ostermontag\",\"nationwide\":true},{\"date\":\"2026-05-01\",\"weekday\":\"Friday\",\"name\":\"Erster Mai\",\"nationwide\":true},{\"date\":\"2026-05-14\",\"weekday\":\"Thursday\",\"name\":\"Christi Himmelfahrt\",\"nationwide\":true},{\"date\":\"2026-05-25\",\"weekday\":\"Monday\",\"name\":\"Pfingstmontag\",\"nationwide\":true},{\"date\":\"2026-10-03\",\"weekday\":\"Saturday\",\"name\":\"Tag der Deutschen Einheit\",\"nationwide\":true},{\"date\":\"2026-10-31\",\"weekday\":\"Saturday\",\"name\":\"Reformationstag\",\"nationwide\":false},{\"date\":\"2026-12-25\",\"weekday\":\"Friday\",\"name\":\"Erster Weihnachtstag\",\"nationwide\":true},{\"date\":\"2026-12-26\",\"weekday\":\"Saturday\",\"name\":\"Zweiter Weihnachtstag\",\"nationwide\":true}],\"disclaimer\":\"Information, not legal advice: the public holidays in Ordnung's calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer.\"}"
+      }
+    ]
+  }
+}

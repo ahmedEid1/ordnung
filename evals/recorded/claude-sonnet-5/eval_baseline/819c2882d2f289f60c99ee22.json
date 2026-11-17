@@ -1,0 +1,79 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"d2c504983a0143530fc2d4f00be1443072f3252d913469b1e88e884ffba48bea\",\"mode\":\"text\",\"region\":\"SL\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-fine_bussgeld-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Saarland (SL), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> t",
+    "recorded_at": "2026-11-24T06:57:53+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Zentrale Bußgeldbehörde Beispielsaarland\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"VOW 4.1-26/308812\"},{\"label\":\"Kennzeichen\",\"value\":\"SB-MW 418\"}],\"amounts\":[182],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the fine notice\",\"quote\":\"Gegen diesen Bescheid können Sie innerhalb von zwei Wochen ab seiner Zustellung Einspruch einlegen,\",\"computation\":\"Formal delivery (Zustellungsurkunde) states the envelope was handed over on 21.11.2026 (Saturday); for formal delivery the date on the envelope is the delivery day, no days are added. Per §187 BGB the delivery day itself is not counted; the two-week period runs from 22.11.2026. Counting by weeks, two weeks after Saturday 21.11.2026 lands on Saturday 05.12.2026. Since that is a Saturday, the deadline for an Einspruch (§67 OWiG, §43 Abs.2 StPO) moves to the next working day. Sunday 06.12.2026 is also non-working, so the next working day is Monday 07.12.2026. No Saarland public holiday falls in that window.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the fine, fee and delivery costs once the notice is final\",\"quote\":\"Zahlen Sie erst, wenn dieser Bescheid rechtskräftig geworden ist, und dann binnen zwei Wochen auf das Konto\\nDE94 5901 0000 0006 6121 00.\",\"computation\":\"The notice only becomes rechtskräftig (final) if no Einspruch is filed by the deadline of 07.12.2026; finality then takes effect the following day, 08.12.2026. Treating 08.12.2026 as the triggering event (not counted per §187 BGB), the two-week payment period runs to the same weekday two weeks later: 08.12.2026 + 14 days = 22.12.2026 (Tuesday), which is not a weekend day or a Saarland public holiday, so no shift is needed. This date is conditional on no Einspruch being filed; if an Einspruch is filed, this payment obligation does not arise on this schedule.\",\"due_date\":\"2026-12-22\",\"confidence\":\"medium\",\"amount\":182}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment due date depends on the notice becoming rechtskräftig (i.e. no Einspruch filed by 07.12.2026); if an Einspruch is lodged, this payment schedule no longer applies and a new timeline would follow any later decision.\",\"Please double-check that the IBAN DE94 5901 0000 0006 6121 00 printed for payment matches the one shown in the sender's own contact footer before paying, as a basic safety check against payment fraud.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Zentrale Bußgeldbehörde Beispielsaarland",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "VOW 4.1-26/308812"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "SB-MW 418"
+        }
+      ],
+      "amounts": [
+        182
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the fine notice",
+          "quote": "Gegen diesen Bescheid können Sie innerhalb von zwei Wochen ab seiner Zustellung Einspruch einlegen,",
+          "computation": "Formal delivery (Zustellungsurkunde) states the envelope was handed over on 21.11.2026 (Saturday); for formal delivery the date on the envelope is the delivery day, no days are added. Per §187 BGB the delivery day itself is not counted; the two-week period runs from 22.11.2026. Counting by weeks, two weeks after Saturday 21.11.2026 lands on Saturday 05.12.2026. Since that is a Saturday, the deadline for an Einspruch (§67 OWiG, §43 Abs.2 StPO) moves to the next working day. Sunday 06.12.2026 is also non-working, so the next working day is Monday 07.12.2026. No Saarland public holiday falls in that window.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the fine, fee and delivery costs once the notice is final",
+          "quote": "Zahlen Sie erst, wenn dieser Bescheid rechtskräftig geworden ist, und dann binnen zwei Wochen auf das Konto\nDE94 5901 0000 0006 6121 00.",
+          "computation": "The notice only becomes rechtskräftig (final) if no Einspruch is filed by the deadline of 07.12.2026; finality then takes effect the following day, 08.12.2026. Treating 08.12.2026 as the triggering event (not counted per §187 BGB), the two-week payment period runs to the same weekday two weeks later: 08.12.2026 + 14 days = 22.12.2026 (Tuesday), which is not a weekend day or a Saarland public holiday, so no shift is needed. This date is conditional on no Einspruch being filed; if an Einspruch is filed, this payment obligation does not arise on this schedule.",
+          "due_date": "2026-12-22",
+          "confidence": "medium",
+          "amount": 182
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment due date depends on the notice becoming rechtskräftig (i.e. no Einspruch filed by 07.12.2026); if an Einspruch is lodged, this payment schedule no longer applies and a new timeline would follow any later decision.",
+        "Please double-check that the IBAN DE94 5901 0000 0006 6121 00 printed for payment matches the one shown in the sender's own contact footer before paying, as a basic safety check against payment fraud."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 5050,
+      "cache_read_tokens": 13268,
+      "cache_creation_tokens": 6047,
+      "cost_usd": 0.0773496,
+      "duration_ms": 54069,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

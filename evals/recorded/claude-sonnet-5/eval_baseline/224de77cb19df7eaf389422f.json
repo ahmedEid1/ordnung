@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"e77264f58e6ef85dfc811decfb506112277d23e8baa46b06ed1819851546b03c\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-N2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T08:05:44+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Musterbau-Berufsgenossenschaft\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Mitgliedsnummer\",\"value\":\"BG 4471 0938 2\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against Gefahrklasse assessment\",\"quote\":\"Den Widerspruch können Sie binnen eines Monats ab Bekanntgabe einlegen, schriftlich oder zur Niederschrift bei der Musterbau-Berufsgenossenschaft, Gerüstweg 7, 30159 Musterhannover.\",\"computation\":\"Letter dated 19.11.2026 (Thursday), presumed handed to the post the same day. The letter itself states (and current §37 Abs. 2 SGB X, as amended for the 2025 postal-service reform, confirms) that notice is deemed given on the 4th day after posting: 19.11.+4 days = 23.11.2026, which is a Sunday. Under the statutory rule, if that day falls on a Saturday, Sunday or public holiday, notice is deemed given on the next Werktag, i.e. Monday 24.11.2026 (today). The one-month Widerspruchsfrist then runs under §§187 Abs.1, 188 Abs.2 BGB: the day of Bekanntgabe (24.11.) is not counted, the period starts 25.11.2026, and a 'month' ends on the day of the following month bearing the same number as the day of the triggering event (24.11. -> 24.12.). 24.12.2026 is a Thursday and not a statutory holiday in NW, so no further shift is needed.\",\"due_date\":\"2026-12-24\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Musterbau-Berufsgenossenschaft",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Mitgliedsnummer",
+          "value": "BG 4471 0938 2"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against Gefahrklasse assessment",
+          "quote": "Den Widerspruch können Sie binnen eines Monats ab Bekanntgabe einlegen, schriftlich oder zur Niederschrift bei der Musterbau-Berufsgenossenschaft, Gerüstweg 7, 30159 Musterhannover.",
+          "computation": "Letter dated 19.11.2026 (Thursday), presumed handed to the post the same day. The letter itself states (and current §37 Abs. 2 SGB X, as amended for the 2025 postal-service reform, confirms) that notice is deemed given on the 4th day after posting: 19.11.+4 days = 23.11.2026, which is a Sunday. Under the statutory rule, if that day falls on a Saturday, Sunday or public holiday, notice is deemed given on the next Werktag, i.e. Monday 24.11.2026 (today). The one-month Widerspruchsfrist then runs under §§187 Abs.1, 188 Abs.2 BGB: the day of Bekanntgabe (24.11.) is not counted, the period starts 25.11.2026, and a 'month' ends on the day of the following month bearing the same number as the day of the triggering event (24.11. -> 24.12.). 24.12.2026 is a Thursday and not a statutory holiday in NW, so no further shift is needed.",
+          "due_date": "2026-12-24",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 4644,
+      "cache_read_tokens": 7867,
+      "cache_creation_tokens": 5274,
+      "cost_usd": 0.0691174,
+      "duration_ms": 47770,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

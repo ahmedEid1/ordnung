@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"ff561927ce70e45fbcc1624830269a36720d609b35dc6455d146be3442675792\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-dunning_fixed-N1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:51:23+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Möbelhaus Beispielwohnen KG\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Auftrag\",\"value\":\"BW-26-30871\"},{\"label\":\"Kundennummer\",\"value\":\"K-881 204\"}],\"amounts\":[695],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding balance for dining furniture\",\"quote\":\"Wir bitten Sie dringend, den Gesamtbetrag bis Freitag, 11.12.2026 zu begleichen.\",\"computation\":\"The letter explicitly states the payment deadline as Friday, 11.12.2026. Checking: today (24.11.2026) is a Tuesday; 11.12.2026 is 17 days later, 17 mod 7 = 3, so Tue+3 = Friday - the printed weekday matches the printed date, confirming no ambiguity. 11.12.2026 is not a weekend day nor a public holiday in NRW, so the due date stands as stated.\",\"due_date\":\"2026-12-11\",\"confidence\":\"high\",\"amount\":695}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Möbelhaus Beispielwohnen KG",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Auftrag",
+          "value": "BW-26-30871"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "K-881 204"
+        }
+      ],
+      "amounts": [
+        695
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding balance for dining furniture",
+          "quote": "Wir bitten Sie dringend, den Gesamtbetrag bis Freitag, 11.12.2026 zu begleichen.",
+          "computation": "The letter explicitly states the payment deadline as Friday, 11.12.2026. Checking: today (24.11.2026) is a Tuesday; 11.12.2026 is 17 days later, 17 mod 7 = 3, so Tue+3 = Friday - the printed weekday matches the printed date, confirming no ambiguity. 11.12.2026 is not a weekend day nor a public holiday in NRW, so the due date stands as stated.",
+          "due_date": "2026-12-11",
+          "confidence": "high",
+          "amount": 695
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 2387,
+      "cache_read_tokens": 13615,
+      "cache_creation_tokens": 3374,
+      "cost_usd": 0.040101,
+      "duration_ms": 26104,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

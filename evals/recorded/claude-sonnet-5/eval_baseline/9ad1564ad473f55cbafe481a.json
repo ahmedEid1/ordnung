@@ -1,0 +1,100 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"3f3050cd85ef7dcd6aca4daea7102d5a5e2bcaca76a805634b3a4680c0010cea\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-price_increase-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:25:49+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Beispielstrom Mittelhessen GmbH\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Vertragsnummer\",\"value\":\"BM-31 774 208\"}],\"amounts\":[32.1,34.45,13.2,14.1,86,92],\"items\":[{\"kind\":\"expiry\",\"title\":\"Deadline to object to price change by special termination\",\"quote\":\"Ihre Kündigung muss uns vor diesem Tag in Textform erreichen; Kosten entstehen Ihnen dadurch nicht.\",\"computation\":\"The letter announces a price change effective 01.01.2027 and grants a special right of termination ('fristlos zum 01.01.2027'). The cancellation must reach the provider 'vor diesem Tag' (before 01.01.2027), i.e. it must arrive at the latest on the day before, which is 31.12.2026. This is a fixed calendar deadline stated in the letter, not a statutory period subject to §§ 187-193 BGB counting; no weekend/holiday shift applies because the letter itself fixes the last day of arrival, and 31.12.2026 is a Thursday (business day) in any case.\",\"due_date\":\"2026-12-31\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":{\"current_term_end\":\"2026-12-31\",\"cancel_by\":\"2026-12-31\"},\"warnings\":[\"The letter is a price-increase notice from a private energy company, not an authority, so no statutory deemed-delivery rule applies; the cancellation deadline (31.12.2026) is taken directly from the wording 'vor diesem Tag' (before 01.01.2027). The IBAN printed (DE62 3705 0198 0005 5334 40) is a validly formatted German IBAN, but this only confirms its format, not that it truly belongs to Beispielstrom Mittelhessen GmbH; if you ever need to pay or verify account details, confirm them independently rather than relying solely on this letter.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Beispielstrom Mittelhessen GmbH",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Vertragsnummer",
+          "value": "BM-31 774 208"
+        }
+      ],
+      "amounts": [
+        32.1,
+        34.45,
+        13.2,
+        14.1,
+        86,
+        92
+      ],
+      "items": [
+        {
+          "kind": "expiry",
+          "title": "Deadline to object to price change by special termination",
+          "quote": "Ihre Kündigung muss uns vor diesem Tag in Textform erreichen; Kosten entstehen Ihnen dadurch nicht.",
+          "computation": "The letter announces a price change effective 01.01.2027 and grants a special right of termination ('fristlos zum 01.01.2027'). The cancellation must reach the provider 'vor diesem Tag' (before 01.01.2027), i.e. it must arrive at the latest on the day before, which is 31.12.2026. This is a fixed calendar deadline stated in the letter, not a statutory period subject to §§ 187-193 BGB counting; no weekend/holiday shift applies because the letter itself fixes the last day of arrival, and 31.12.2026 is a Thursday (business day) in any case.",
+          "due_date": "2026-12-31",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": {
+        "current_term_end": "2026-12-31",
+        "cancel_by": "2026-12-31"
+      },
+      "warnings": [
+        "The letter is a price-increase notice from a private energy company, not an authority, so no statutory deemed-delivery rule applies; the cancellation deadline (31.12.2026) is taken directly from the wording 'vor diesem Tag' (before 01.01.2027). The IBAN printed (DE62 3705 0198 0005 5334 40) is a validly formatted German IBAN, but this only confirms its format, not that it truly belongs to Beispielstrom Mittelhessen GmbH; if you ever need to pay or verify account details, confirm them independently rather than relying solely on this letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1838,
+      "cache_read_tokens": 14666,
+      "cache_creation_tokens": 3780,
+      "cost_usd": 0.03644120000000001,
+      "duration_ms": 20750,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE62 3705 0198 0005 5334 40"
+        },
+        "result": "{\"iban\":\"DE62 3705 0198 0005 5334 40\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005533440\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "fixed",
+            "date": "2026-12-31",
+            "nature": "notice",
+            "shift_rule": "none",
+            "legal_basis": "§ 41 EnWG / Sonderkündigungsrecht bei Preisänderung",
+            "text": "Ihre Kündigung muss uns vor diesem Tag in Textform erreichen"
+          },
+          "document_date": "2026-11-19",
+          "sender_kind": "utility",
+          "sender_name": "Beispielstrom Mittelhessen GmbH",
+          "region": "HE",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":\"2026-12-31\",\"weekday\":\"Thursday\",\"send_by\":\"2026-12-24\",\"safe_date\":\"2026-12-31\",\"summary\":\"The notice must arrive by Thu 31 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"The date given is Thu 31 Dec 2026\",\"date\":\"2026-12-31\",\"rule_id\":\"date_as_written\",\"citation\":\"The document's own wording\"},{\"label\":\"Send by Thu 24 Dec 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-12-24\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"date_as_written\",\"title\":\"Dates stated in the letter\",\"citation\":\"The document's own wording\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-19\",\"holiday_calendar\":\"Hessen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

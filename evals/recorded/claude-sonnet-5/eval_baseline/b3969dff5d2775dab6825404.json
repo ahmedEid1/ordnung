@@ -1,0 +1,60 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"5fce7c500f9d68a87b93dc380bba741928ef2b031e0089f62aab14a2dcf51bea\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-contract_confirmation-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:45:29+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"insurance\",\"sender_name\":\"Beispielschutz Versicherung AG\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Versicherungsschein-Nr.\",\"value\":\"HR-27-0044186\"}],\"amounts\":[96.6,65000],\"items\":[],\"remedy_type\":\"none\",\"contract\":{\"current_term_end\":\"2028-01-14\",\"cancel_by\":\"2027-10-14\"},\"warnings\":[\"This is a policy confirmation (Versicherungsschein), not an invoice; it states the annual premium (96,60 €) but does not itself set a payment due date, so no payment item could be derived from this letter alone.\",\"The first insurance year runs 15.01.2027–14.01.2028 (start 'Beginn 15.01.2027, 0 Uhr', duration 1 year); cancellation to end the contract at that date must reach the insurer by 14.10.2027 (three months before 14.01.2028), per the clause 'die Kündigung muss der anderen Seite spätestens drei Monate vorher in Textform zugehen.' After that it auto-renews yearly with the same 3-month notice rule.\"]}",
+    "data": {
+      "kind": "insurance",
+      "sender_name": "Beispielschutz Versicherung AG",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Versicherungsschein-Nr.",
+          "value": "HR-27-0044186"
+        }
+      ],
+      "amounts": [
+        96.6,
+        65000
+      ],
+      "items": [],
+      "remedy_type": "none",
+      "contract": {
+        "current_term_end": "2028-01-14",
+        "cancel_by": "2027-10-14"
+      },
+      "warnings": [
+        "This is a policy confirmation (Versicherungsschein), not an invoice; it states the annual premium (96,60 €) but does not itself set a payment due date, so no payment item could be derived from this letter alone.",
+        "The first insurance year runs 15.01.2027–14.01.2028 (start 'Beginn 15.01.2027, 0 Uhr', duration 1 year); cancellation to end the contract at that date must reach the insurer by 14.10.2027 (three months before 14.01.2028), per the clause 'die Kündigung muss der anderen Seite spätestens drei Monate vorher in Textform zugehen.' After that it auto-renews yearly with the same 3-month notice rule."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3602,
+      "cache_read_tokens": 14642,
+      "cache_creation_tokens": 4831,
+      "cost_usd": 0.0582804,
+      "duration_ms": 38357,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

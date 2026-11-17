@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"1289c7ccb9aaea01895fcef42b9faf8cd398d3b6bc61dc95b249dd613edb4ca7\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-relative_business_days-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:30:37+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"insurance\",\"sender_name\":\"Kfz-Versicherung Beispielsicher AG\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Schadennummer\",\"value\":\"KS-26-1109-218\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Return completed claim form and wildlife damage certificate\",\"quote\":\"Senden Sie uns das ausgefüllte Formular bitte binnen 13 Werktagen nach dem Datum dieses Schreibens zurück (Werktage: Montag bis Samstag ohne gesetzliche Feiertage).\",\"computation\":\"Letter is dated Saturday 21.11.2026 (private insurer, so ordinary BGB rules on time periods apply, not the authority delivery-fiction rules). The period runs 'nach dem Datum dieses Schreibens', so under §187 Abs. 1 BGB the day of the letter itself (21.11.2026) is excluded and counting of the 13 Werktage starts with the next day. The letter defines Werktage as Monday to Saturday excluding statutory public holidays, so Sundays are skipped when counting. Counting workdays from 22.11.2026: 22.11 Sun (skipped); 23.11 Mon =1; 24.11 Tue =2; 25.11 Wed =3; 26.11 Thu =4; 27.11 Fri =5; 28.11 Sat =6; 29.11 Sun (skipped); 30.11 Mon =7; 01.12 Tue =8; 02.12 Wed =9; 03.12 Thu =10; 04.12 Fri =11; 05.12 Sat =12; 06.12 Sun (skipped); 07.12 Mon =13. No NRW public holidays fall in this window (All Saints' Day on 01.11 already passed; no other NRW holiday until Christmas). The 13th Werktag is therefore Monday 07.12.2026, which is itself a working day, so no further weekend/holiday shift is needed.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "insurance",
+      "sender_name": "Kfz-Versicherung Beispielsicher AG",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Schadennummer",
+          "value": "KS-26-1109-218"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Return completed claim form and wildlife damage certificate",
+          "quote": "Senden Sie uns das ausgefüllte Formular bitte binnen 13 Werktagen nach dem Datum dieses Schreibens zurück (Werktage: Montag bis Samstag ohne gesetzliche Feiertage).",
+          "computation": "Letter is dated Saturday 21.11.2026 (private insurer, so ordinary BGB rules on time periods apply, not the authority delivery-fiction rules). The period runs 'nach dem Datum dieses Schreibens', so under §187 Abs. 1 BGB the day of the letter itself (21.11.2026) is excluded and counting of the 13 Werktage starts with the next day. The letter defines Werktage as Monday to Saturday excluding statutory public holidays, so Sundays are skipped when counting. Counting workdays from 22.11.2026: 22.11 Sun (skipped); 23.11 Mon =1; 24.11 Tue =2; 25.11 Wed =3; 26.11 Thu =4; 27.11 Fri =5; 28.11 Sat =6; 29.11 Sun (skipped); 30.11 Mon =7; 01.12 Tue =8; 02.12 Wed =9; 03.12 Thu =10; 04.12 Fri =11; 05.12 Sat =12; 06.12 Sun (skipped); 07.12 Mon =13. No NRW public holidays fall in this window (All Saints' Day on 01.11 already passed; no other NRW holiday until Christmas). The 13th Werktag is therefore Monday 07.12.2026, which is itself a working day, so no further weekend/holiday shift is needed.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2291,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1514,
+      "cost_usd": 0.0295944,
+      "duration_ms": 22562,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

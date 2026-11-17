@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"0de1a9e137f2a482b9fc91874499da2a2aa1ec74f5432f7c3321492a75246980\",\"mode\":\"text\",\"region\":\"ST\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-appointment-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Sachsen-Anhalt (ST), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docum",
+    "recorded_at": "2026-11-24T06:40:29+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"appointment\",\"sender_name\":\"Amtsgericht Musterquedlin\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"2 C 318/26\"}],\"amounts\":[],\"items\":[{\"kind\":\"appointment\",\"title\":\"Witness hearing at Amtsgericht Musterquedlin\",\"quote\":\"Mittwoch, 13.01.2027, 09:00 Uhr\",\"computation\":\"The letter states a fixed calendar date and time for the court appointment as a witness: Wednesday, 13 January 2027, 09:00. Appointment dates are used as written and never shift for weekends/holidays.\",\"due_date\":\"2027-01-13\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Bring summons and official ID to the hearing\",\"quote\":\"Bringen Sie bitte diese Ladung und einen amtlichen Ausweis mit.\",\"computation\":\"This task must be fulfilled at the appointment itself, i.e. on the hearing date 13 January 2027.\",\"due_date\":\"2027-01-13\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "appointment",
+      "sender_name": "Amtsgericht Musterquedlin",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "2 C 318/26"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Witness hearing at Amtsgericht Musterquedlin",
+          "quote": "Mittwoch, 13.01.2027, 09:00 Uhr",
+          "computation": "The letter states a fixed calendar date and time for the court appointment as a witness: Wednesday, 13 January 2027, 09:00. Appointment dates are used as written and never shift for weekends/holidays.",
+          "due_date": "2027-01-13",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Bring summons and official ID to the hearing",
+          "quote": "Bringen Sie bitte diese Ladung und einen amtlichen Ausweis mit.",
+          "computation": "This task must be fulfilled at the appointment itself, i.e. on the hearing date 13 January 2027.",
+          "due_date": "2027-01-13",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2187,
+      "cache_read_tokens": 12684,
+      "cache_creation_tokens": 2848,
+      "cost_usd": 0.0358068,
+      "duration_ms": 23602,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

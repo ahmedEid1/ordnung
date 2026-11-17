@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"76d1699b8d7cc7dcb1f7fe5e6da052d037befef726d3ab53c3aec1e9fecc2033\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-relative_business_days-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:29:16+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"kind\":\"bank_letter\",\"sender_name\":\"Bauspar Beispielheim AG\",\"document_date\":\"2026-11-21\",\"remedy_type\":\"none\",\"references\":[{\"label\":\"Vertragsnummer\",\"value\":\"BH 6 330 418-02\"}],\"items\":[{\"kind\":\"task\",\"title\":\"Submit proof that the Bauspardarlehen funds are used for the home (heating company invoice or signed order)\",\"quote\":\"Bitte reichen Sie den Nachweis binnen 10 Arbeitstagen nach dem Briefdatum ein.\",\"computation\":\"The letter is dated Saturday 21.11.2026 and the 10-working-day period runs 'nach dem Briefdatum' (after the letter date), so per § 187 Abs. 1 BGB the letter date itself is not counted; counting starts 22.11.2026. 'Arbeitstage' are defined by the letter as Monday-Friday excluding statutory holidays. Counting forward: Mon 23.11 (1), Tue 24.11 (2), Wed 25.11 (3), Thu 26.11 (4), Fri 27.11 (5) [weekend 28-29.11 skipped], Mon 30.11 (6), Tue 01.12 (7), Wed 02.12 (8), Thu 03.12 (9), Fri 04.12 (10). No NW public holidays fall in this window, so the 10th Arbeitstag is Friday 04.12.2026, which is itself a working day and needs no further shift.\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":null}],\"warnings\":[]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "kind": "bank_letter",
+      "sender_name": "Bauspar Beispielheim AG",
+      "document_date": "2026-11-21",
+      "remedy_type": "none",
+      "references": [
+        {
+          "label": "Vertragsnummer",
+          "value": "BH 6 330 418-02"
+        }
+      ],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Submit proof that the Bauspardarlehen funds are used for the home (heating company invoice or signed order)",
+          "quote": "Bitte reichen Sie den Nachweis binnen 10 Arbeitstagen nach dem Briefdatum ein.",
+          "computation": "The letter is dated Saturday 21.11.2026 and the 10-working-day period runs 'nach dem Briefdatum' (after the letter date), so per § 187 Abs. 1 BGB the letter date itself is not counted; counting starts 22.11.2026. 'Arbeitstage' are defined by the letter as Monday-Friday excluding statutory holidays. Counting forward: Mon 23.11 (1), Tue 24.11 (2), Wed 25.11 (3), Thu 26.11 (4), Fri 27.11 (5) [weekend 28-29.11 skipped], Mon 30.11 (6), Tue 01.12 (7), Wed 02.12 (8), Thu 03.12 (9), Fri 04.12 (10). No NW public holidays fall in this window, so the 10th Arbeitstag is Friday 04.12.2026, which is itself a working day and needs no further shift.",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2217,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1505,
+      "cost_usd": 0.0293,
+      "duration_ms": 20801,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

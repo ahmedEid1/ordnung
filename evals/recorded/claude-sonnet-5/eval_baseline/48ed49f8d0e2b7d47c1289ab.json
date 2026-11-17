@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"5d379afc06333a4784378c2102335f5f0ecaa29190cd7a6e15eaeb8c12ccd82c\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:54:21+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Sprachforum Beispiellahn e.V.\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Student no.\",\"value\":\"SF-26-1190\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Register for placement test slot\",\"quote\":\"Please register for one of the test slots by 10 December 2026, using the link in our e-mail.\",\"computation\":\"The letter states an explicit calendar deadline: 10 December 2026. This date is a Thursday, not a weekend day or a public holiday in NRW, so no extension under § 193 BGB is needed. The registration must therefore reach/occur by this date as printed.\",\"due_date\":\"2026-12-10\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Sprachforum Beispiellahn e.V.",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Student no.",
+          "value": "SF-26-1190"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Register for placement test slot",
+          "quote": "Please register for one of the test slots by 10 December 2026, using the link in our e-mail.",
+          "computation": "The letter states an explicit calendar deadline: 10 December 2026. This date is a Thursday, not a weekend day or a public holiday in NRW, so no extension under § 193 BGB is needed. The registration must therefore reach/occur by this date as printed.",
+          "due_date": "2026-12-10",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1028,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1272,
+      "cost_usd": 0.0159964,
+      "duration_ms": 12189,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

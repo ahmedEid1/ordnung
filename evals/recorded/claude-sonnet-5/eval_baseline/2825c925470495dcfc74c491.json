@@ -1,0 +1,74 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"1f9ca35935afa6f6750aeca4b8c0aaaf2bc422d81f9647d0f904bd87fb48351e\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-tax_assessment-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:49:16+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[2377,2916,539],\"contract\":null,\"document_date\":\"2026-11-19\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the tax assessment\",\"quote\":\"Legen Sie ihn innerhalb eines Monats ab Bekanntgabe beim Finanzamt Beispielau ein, schriftlich, elektronisch oder zur Niederschrift.\",\"computation\":\"Bescheid dated Thu 19.11.2026, sent by post. Letter states: 'Für einen per Post zugesandten Bescheid ist Bekanntgabetag der vierte Tag nach seiner Aufgabe zur Post' (§122 Abs.2 Nr.1 AO). Aufgabe zur Post = 19.11.2026 (Thu); 4th day after = 23.11.2026 (Mon) = Bekanntgabetag. One-month Einspruch period runs per §108 AO i.V.m. §187 Abs.1, §188 Abs.2 BGB: the day of Bekanntgabe (23.11.) is not counted; the period starts 24.11.2026 and ends on the day of the following month bearing the same number as the triggering day, i.e. 23.12.2026 (Wed). 23.12.2026 is not a Saturday, Sunday or NRW public holiday (holidays 24./25./26.12. do not affect this date), so the deadline stands at 23.12.2026.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Receive tax refund (Guthaben) by bank transfer\",\"quote\":\"Das Guthaben von 539,00 € überweisen wir auf Ihr Konto DE14 5139 0000 0074 4022 18.\",\"computation\":\"The letter states the Finanzamt will transfer the credit balance but gives no specific transfer date; this is an automatic payment by the authority, not an obligation of the taxpayer, so no exact due date can be determined from the text.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":539}],\"kind\":\"tax_assessment\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"337/5140/8862\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Finanzamt Beispielau\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        2377,
+        2916,
+        539
+      ],
+      "contract": null,
+      "document_date": "2026-11-19",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the tax assessment",
+          "quote": "Legen Sie ihn innerhalb eines Monats ab Bekanntgabe beim Finanzamt Beispielau ein, schriftlich, elektronisch oder zur Niederschrift.",
+          "computation": "Bescheid dated Thu 19.11.2026, sent by post. Letter states: 'Für einen per Post zugesandten Bescheid ist Bekanntgabetag der vierte Tag nach seiner Aufgabe zur Post' (§122 Abs.2 Nr.1 AO). Aufgabe zur Post = 19.11.2026 (Thu); 4th day after = 23.11.2026 (Mon) = Bekanntgabetag. One-month Einspruch period runs per §108 AO i.V.m. §187 Abs.1, §188 Abs.2 BGB: the day of Bekanntgabe (23.11.) is not counted; the period starts 24.11.2026 and ends on the day of the following month bearing the same number as the triggering day, i.e. 23.12.2026 (Wed). 23.12.2026 is not a Saturday, Sunday or NRW public holiday (holidays 24./25./26.12. do not affect this date), so the deadline stands at 23.12.2026.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Receive tax refund (Guthaben) by bank transfer",
+          "quote": "Das Guthaben von 539,00 € überweisen wir auf Ihr Konto DE14 5139 0000 0074 4022 18.",
+          "computation": "The letter states the Finanzamt will transfer the credit balance but gives no specific transfer date; this is an automatic payment by the authority, not an obligation of the taxpayer, so no exact due date can be determined from the text.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 539
+        }
+      ],
+      "kind": "tax_assessment",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "337/5140/8862"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Finanzamt Beispielau",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3150,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1708,
+      "cost_usd": 0.03896039999999999,
+      "duration_ms": 31289,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

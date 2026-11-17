@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"b379c518888e50003d40040d2965b748e74ddb57c036d7289e39a78d0d521c46\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-L2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:54:08+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"sender_name\":\"Beispielhof Serviced Living GmbH\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Apartment\",\"value\":\"B 3.07\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Reply whether to extend the lease\",\"quote\":\"Please tell us in writing by 16 December 2026 whether you would like to extend.\",\"computation\":\"The landlord names a specific calendar date, 16 December 2026, as the deadline to reply in writing about the extension. This is a private contractual deadline, used exactly as stated in the letter (no statutory period to count). Checking the weekday: counting forward from today (Tue 24 Nov 2026) to 16 Dec 2026 lands on a Wednesday, a normal working day in NW, so no weekend/holiday adjustment is needed.\",\"due_date\":\"2026-12-16\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":{\"current_term_end\":\"2027-01-31\",\"cancel_by\":null},\"warnings\":[\"The current fixed-term lease simply expires on 31 January 2027 unless the tenant opts to extend by 16 December 2026; no cancellation notice is required to end it, so no separate 'cancel_by' date applies.\",\"No specific new rent figure is given ('at the current rent'), so the exact amount for any extension could not be listed.\"]}",
+    "data": {
+      "kind": "rent_lease",
+      "sender_name": "Beispielhof Serviced Living GmbH",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Apartment",
+          "value": "B 3.07"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Reply whether to extend the lease",
+          "quote": "Please tell us in writing by 16 December 2026 whether you would like to extend.",
+          "computation": "The landlord names a specific calendar date, 16 December 2026, as the deadline to reply in writing about the extension. This is a private contractual deadline, used exactly as stated in the letter (no statutory period to count). Checking the weekday: counting forward from today (Tue 24 Nov 2026) to 16 Dec 2026 lands on a Wednesday, a normal working day in NW, so no weekend/holiday adjustment is needed.",
+          "due_date": "2026-12-16",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": {
+        "current_term_end": "2027-01-31",
+        "cancel_by": null
+      },
+      "warnings": [
+        "The current fixed-term lease simply expires on 31 January 2027 unless the tenant opts to extend by 16 December 2026; no cancellation notice is required to end it, so no separate 'cancel_by' date applies.",
+        "No specific new rent figure is given ('at the current rent'), so the exact amount for any extension could not be listed."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2756,
+      "cache_read_tokens": 12388,
+      "cache_creation_tokens": 3382,
+      "cost_usd": 0.043573600000000004,
+      "duration_ms": 25953,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

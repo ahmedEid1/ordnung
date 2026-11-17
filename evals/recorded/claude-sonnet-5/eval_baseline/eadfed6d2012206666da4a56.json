@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"1bde13e8f9534972138bb786a6a7db68d7445bfdd4e4bbe44b5a1fbbc222265d\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-missing_date-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:33:33+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"sender_name\":\"Immobilien Beispielstein KG\",\"document_date\":null,\"references\":[{\"label\":\"Mieter-Nr.\",\"value\":\"IB-3307\"}],\"amounts\":[2183.18,1920,263.18],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay service charge balance (Betriebskosten-Nachzahlung) 2025\",\"quote\":\"Den Betrag von 263,18 € zahlen Sie bitte binnen 30 Tagen nach Zugang dieser Abrechnung.\",\"computation\":\"The letter sets a 30-day payment period running from 'Zugang' (actual receipt) of the statement, not from a printed document date. Under §§ 187 I, 188 I BGB the day of receipt itself is not counted, and the period ends 30 days later (end of that day), with the usual shift to the next business day if that day is a Saturday, Sunday or public holiday in NW. However, the letter carries no printed date and does not state when it was sent or received; between a private landlord and tenant the §122 AO 'Bekanntgabefiktion' (3-day delivery presumption used for authorities) does not apply, so the actual receipt date must be known to start the count. Since no receipt or dispatch date is given anywhere in the letter, the start of the 30-day period - and therefore the exact due date - cannot be determined from the document alone.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":263.18}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter has no printed date ('document_date'), and the 30-day payment period for the Nachzahlung runs from 'Zugang' (actual receipt), not from a fixed statutory delivery presumption as with authority letters; the tenant should note the actual day the letter arrived and count 30 days from the day after that to find the true due date.\",\"This is a private landlord/property management letter, so the statutory 3-day delivery fiction used for public authorities (§122 AO) does not apply here.\"]}",
+    "data": {
+      "kind": "rent_lease",
+      "sender_name": "Immobilien Beispielstein KG",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Mieter-Nr.",
+          "value": "IB-3307"
+        }
+      ],
+      "amounts": [
+        2183.18,
+        1920,
+        263.18
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay service charge balance (Betriebskosten-Nachzahlung) 2025",
+          "quote": "Den Betrag von 263,18 € zahlen Sie bitte binnen 30 Tagen nach Zugang dieser Abrechnung.",
+          "computation": "The letter sets a 30-day payment period running from 'Zugang' (actual receipt) of the statement, not from a printed document date. Under §§ 187 I, 188 I BGB the day of receipt itself is not counted, and the period ends 30 days later (end of that day), with the usual shift to the next business day if that day is a Saturday, Sunday or public holiday in NW. However, the letter carries no printed date and does not state when it was sent or received; between a private landlord and tenant the §122 AO 'Bekanntgabefiktion' (3-day delivery presumption used for authorities) does not apply, so the actual receipt date must be known to start the count. Since no receipt or dispatch date is given anywhere in the letter, the start of the 30-day period - and therefore the exact due date - cannot be determined from the document alone.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 263.18
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter has no printed date ('document_date'), and the 30-day payment period for the Nachzahlung runs from 'Zugang' (actual receipt), not from a fixed statutory delivery presumption as with authority letters; the tenant should note the actual day the letter arrived and count 30 days from the day after that to find the true due date.",
+        "This is a private landlord/property management letter, so the statutory 3-day delivery fiction used for public authorities (§122 AO) does not apply here."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2990,
+      "cache_read_tokens": 7647,
+      "cache_creation_tokens": 3650,
+      "cost_usd": 0.046037400000000006,
+      "duration_ms": 32952,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

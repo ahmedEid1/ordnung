@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"4c04eda3c5ad3bf4601a80997bbc77b7aeee1e86aa8341fcaa532e11d8cbde57\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-invoice_relative-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:12:20+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Hundeschule Beispielpfote\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"HP-1121\"}],\"amounts\":[255.85],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay dog-training course invoice\",\"quote\":\"Zahlbar 14 Tage nach Rechnungsdatum per Überweisung.\",\"computation\":\"Invoice date (Rechnungsdatum) is 21.11.2026 (a Saturday). Per §187 Abs. 1 BGB, since the period is measured 'nach' (after) a specifying day, that day itself is not counted; the period begins on 22.11.2026. Per §188 Abs. 1 BGB a period of 14 days ends on the 14th day after the triggering day, i.e. 21.11.2026 + 14 days = 05.12.2026. 05.12.2026 falls on a Sunday. Per §193 BGB, if the last day of a period for performing an act (here: making a payment) falls on a Sunday, Saturday or statutory holiday, the period ends on the next working day, i.e. Monday 07.12.2026 (no public holiday in NW on that date).\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":255.85}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Hundeschule Beispielpfote",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "HP-1121"
+        }
+      ],
+      "amounts": [
+        255.85
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay dog-training course invoice",
+          "quote": "Zahlbar 14 Tage nach Rechnungsdatum per Überweisung.",
+          "computation": "Invoice date (Rechnungsdatum) is 21.11.2026 (a Saturday). Per §187 Abs. 1 BGB, since the period is measured 'nach' (after) a specifying day, that day itself is not counted; the period begins on 22.11.2026. Per §188 Abs. 1 BGB a period of 14 days ends on the 14th day after the triggering day, i.e. 21.11.2026 + 14 days = 05.12.2026. 05.12.2026 falls on a Sunday. Per §193 BGB, if the last day of a period for performing an act (here: making a payment) falls on a Sunday, Saturday or statutory holiday, the period ends on the next working day, i.e. Monday 07.12.2026 (no public holiday in NW on that date).",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": 255.85
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3019,
+      "cache_read_tokens": 7676,
+      "cache_creation_tokens": 3649,
+      "cost_usd": 0.0463292,
+      "duration_ms": 30128,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

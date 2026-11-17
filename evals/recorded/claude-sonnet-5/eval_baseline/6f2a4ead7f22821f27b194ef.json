@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"e77264f58e6ef85dfc811decfb506112277d23e8baa46b06ed1819851546b03c\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-N2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T08:05:23+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Musterbau-Berufsgenossenschaft\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Mitgliedsnummer\",\"value\":\"BG 4471 0938 2\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Widerspruch gegen Gefahrklassen-Veranlagung\",\"quote\":\"Den Widerspruch können Sie binnen eines Monats ab Bekanntgabe einlegen, schriftlich oder zur Niederschrift bei der Musterbau-Berufsgenossenschaft, Gerüstweg 7, 30159 Musterhannover.\",\"computation\":\"Letter is dated (and, absent a separate 'zur Post gegeben' date, counted as posted on) 19.11.2026 (Thursday). The letter itself states: 'Als bekannt gegeben gilt der Bescheid am vierten Tag nach seiner Aufgabe zur Post.' Counting 4 calendar days from 19.11.2026: 20.11 (Fri), 21.11 (Sat), 22.11 (Sun), 23.11 (Mon) -> deemed delivery (Bekanntgabe) = 23.11.2026. A Berufsgenossenschaft is a social-insurance body (§ 37 Abs. 2 SGB X), so unlike tax offices the delivery day is NOT shifted even if it fell on a weekend/holiday - but here it already falls on a Monday, a working day. The one-month Widerspruch period (§ 84 SGG) runs from the day after delivery (§ 187 Abs. 1 BGB) and ends on the day with the same number one month later (§ 188 Abs. 2 BGB): 23.11.2026 + 1 month = 23.12.2026 (Wednesday) - not a weekend or NW public holiday, so no shift under § 193 BGB is needed.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The sender, addresses, phone number, email, bank name ('Landesmusterbank') and even the person's name appear to use placeholder/sample values (e.g. 'Musterbau-Berufsgenossenschaft', 'Musterhannover', 'Gerüstweg'), suggesting this is a template or specimen document rather than a genuine Bescheid; verify the real sender and IBAN before relying on this letter or sending any payment.\",\"The letter sets only hazard classification rates (Gefahrklasse 7,4 and 0,6), not a specific contribution amount; the actual Beitrag will be calculated later from year-end reported wages, so no payment amount or due date can be given yet.\"]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Musterbau-Berufsgenossenschaft",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Mitgliedsnummer",
+          "value": "BG 4471 0938 2"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Widerspruch gegen Gefahrklassen-Veranlagung",
+          "quote": "Den Widerspruch können Sie binnen eines Monats ab Bekanntgabe einlegen, schriftlich oder zur Niederschrift bei der Musterbau-Berufsgenossenschaft, Gerüstweg 7, 30159 Musterhannover.",
+          "computation": "Letter is dated (and, absent a separate 'zur Post gegeben' date, counted as posted on) 19.11.2026 (Thursday). The letter itself states: 'Als bekannt gegeben gilt der Bescheid am vierten Tag nach seiner Aufgabe zur Post.' Counting 4 calendar days from 19.11.2026: 20.11 (Fri), 21.11 (Sat), 22.11 (Sun), 23.11 (Mon) -> deemed delivery (Bekanntgabe) = 23.11.2026. A Berufsgenossenschaft is a social-insurance body (§ 37 Abs. 2 SGB X), so unlike tax offices the delivery day is NOT shifted even if it fell on a weekend/holiday - but here it already falls on a Monday, a working day. The one-month Widerspruch period (§ 84 SGG) runs from the day after delivery (§ 187 Abs. 1 BGB) and ends on the day with the same number one month later (§ 188 Abs. 2 BGB): 23.11.2026 + 1 month = 23.12.2026 (Wednesday) - not a weekend or NW public holiday, so no shift under § 193 BGB is needed.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The sender, addresses, phone number, email, bank name ('Landesmusterbank') and even the person's name appear to use placeholder/sample values (e.g. 'Musterbau-Berufsgenossenschaft', 'Musterhannover', 'Gerüstweg'), suggesting this is a template or specimen document rather than a genuine Bescheid; verify the real sender and IBAN before relying on this letter or sending any payment.",
+        "The letter sets only hazard classification rates (Gefahrklasse 7,4 and 0,6), not a specific contribution amount; the actual Beitrag will be calculated later from year-end reported wages, so no payment amount or due date can be given yet."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2649,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1623,
+      "cost_usd": 0.034092,
+      "duration_ms": 25257,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

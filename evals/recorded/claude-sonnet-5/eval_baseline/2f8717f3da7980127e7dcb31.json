@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"527fe9e7a73e681be2dd496fbb4b6ac58046d74b18ea2b452665f36cfb8f7570\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-scam-1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:34:09+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Zentralregister Fahrzeugdaten Deutschland\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Vorgang\",\"value\":\"ZFD-26-118407\"}],\"amounts\":[89],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay 'Aktualisierungsgebühr' (vehicle data update fee)\",\"quote\":\"zahlbar bis 30.11.2026\",\"computation\":\"The letter states a fixed calendar date for payment: 30.11.2026. This falls on a Monday, a normal business day in NW, so no weekend/holiday shift applies. However, this letter shows multiple hallmarks of a scam (see warnings) and the payment should very likely not be made at all.\",\"due_date\":\"2026-11-30\",\"confidence\":\"low\",\"amount\":89}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This letter has strong hallmarks of a fraudulent/phishing scam: there is no official German government register called 'Zentralregister Fahrzeugdaten Deutschland' responsible for vehicle holder data — that function belongs to the local Zulassungsstelle (vehicle registration office), not a private postal-box entity in Berlin.\",\"The payment IBAN (LT98 7044 0001 1820 4477) is issued by a Lithuanian bank, not a German one — a genuine German authority would never ask for payment of a fee to a foreign private account.\",\"The named payment recipient 'R. Kazlauskas' does not match the sender organisation name printed on the letter, which is a classic sign of a scam.\",\"The letter creates artificial urgency/pressure by threatening that the vehicle registration ('Zulassung') could be suspended starting January 2027 if an unexplained 'update fee' is not paid — this pressure tactic resembles known scams such as fake Gewerbeauskunft-Zentrale or fake Rundfunkbeitrag collection letters.\",\"There is no Rechtsbehelfsbelehrung, no legally structured Aktenzeichen, and no verifiable legal basis cited for this 'Pflichtaktualisierung' demand, which is inconsistent with a genuine administrative notice.\",\"Recommendation: do not pay this invoice and do not click any links or reply with personal/bank data; verify any concerns about vehicle registration directly with the local Zulassungsstelle using contact details obtained independently (not from this letter).\"]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Zentralregister Fahrzeugdaten Deutschland",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Vorgang",
+          "value": "ZFD-26-118407"
+        }
+      ],
+      "amounts": [
+        89
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay 'Aktualisierungsgebühr' (vehicle data update fee)",
+          "quote": "zahlbar bis 30.11.2026",
+          "computation": "The letter states a fixed calendar date for payment: 30.11.2026. This falls on a Monday, a normal business day in NW, so no weekend/holiday shift applies. However, this letter shows multiple hallmarks of a scam (see warnings) and the payment should very likely not be made at all.",
+          "due_date": "2026-11-30",
+          "confidence": "low",
+          "amount": 89
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This letter has strong hallmarks of a fraudulent/phishing scam: there is no official German government register called 'Zentralregister Fahrzeugdaten Deutschland' responsible for vehicle holder data — that function belongs to the local Zulassungsstelle (vehicle registration office), not a private postal-box entity in Berlin.",
+        "The payment IBAN (LT98 7044 0001 1820 4477) is issued by a Lithuanian bank, not a German one — a genuine German authority would never ask for payment of a fee to a foreign private account.",
+        "The named payment recipient 'R. Kazlauskas' does not match the sender organisation name printed on the letter, which is a classic sign of a scam.",
+        "The letter creates artificial urgency/pressure by threatening that the vehicle registration ('Zulassung') could be suspended starting January 2027 if an unexplained 'update fee' is not paid — this pressure tactic resembles known scams such as fake Gewerbeauskunft-Zentrale or fake Rundfunkbeitrag collection letters.",
+        "There is no Rechtsbehelfsbelehrung, no legally structured Aktenzeichen, and no verifiable legal basis cited for this 'Pflichtaktualisierung' demand, which is inconsistent with a genuine administrative notice.",
+        "Recommendation: do not pay this invoice and do not click any links or reply with personal/bank data; verify any concerns about vehicle registration directly with the local Zulassungsstelle using contact details obtained independently (not from this letter)."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1758,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1450,
+      "cost_usd": 0.0240084,
+      "duration_ms": 35290,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

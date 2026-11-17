@@ -1,0 +1,72 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"aab34e0651d2e6e044087573ccc7f7a6623c6ef98e91fb5476ba22a718e370e0\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-N1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:55:55+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"health_insurance\",\"sender_name\":\"Beispielvita Expat Health AG\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Policy no.\",\"value\":\"BV-EXP-40917\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit certificate of enrolment for winter semester 2026/27\",\"quote\":\"Please send us the certificate for the winter semester 2026/27 by 11 January 2027.\",\"computation\":\"The letter states an explicit calendar date by which the certificate must reach the insurer: 11 January 2027. Checking the weekday: counting forward from today (Tuesday, 2026-11-24) in 7-day steps lands on Tuesday 2027-01-12, so 2027-01-11 is a Monday, a normal business day in NW (not a weekend or public holiday). No statutory period-counting rule applies since this is a privately set deadline given as a fixed date, not a period running from service of the letter. The date as printed is therefore the due date.\",\"due_date\":\"2027-01-11\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Policy switches to standard rate if certificate not received in time\",\"quote\":\"If it does not reach us by then, we will switch your policy to the standard rate from February 2027.\",\"computation\":\"This is the stated consequence if the certificate is not received by 2027-01-11; the insurer specifies the rate change takes effect from February 2027, i.e. starting 2027-02-01. This is informational (a consequence), not a separate action the person must take.\",\"due_date\":\"2027-02-01\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The sender, addresses and names in this letter (e.g. 'Beispielvita', 'Musterwiesbaden', 'Beispielwetzlar') contain German words for 'example'/'sample', suggesting this may be a template or test document rather than a genuine insurer letter — verify the sender's real identity and contact details before acting.\"]}",
+    "data": {
+      "kind": "health_insurance",
+      "sender_name": "Beispielvita Expat Health AG",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Policy no.",
+          "value": "BV-EXP-40917"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit certificate of enrolment for winter semester 2026/27",
+          "quote": "Please send us the certificate for the winter semester 2026/27 by 11 January 2027.",
+          "computation": "The letter states an explicit calendar date by which the certificate must reach the insurer: 11 January 2027. Checking the weekday: counting forward from today (Tuesday, 2026-11-24) in 7-day steps lands on Tuesday 2027-01-12, so 2027-01-11 is a Monday, a normal business day in NW (not a weekend or public holiday). No statutory period-counting rule applies since this is a privately set deadline given as a fixed date, not a period running from service of the letter. The date as printed is therefore the due date.",
+          "due_date": "2027-01-11",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Policy switches to standard rate if certificate not received in time",
+          "quote": "If it does not reach us by then, we will switch your policy to the standard rate from February 2027.",
+          "computation": "This is the stated consequence if the certificate is not received by 2027-01-11; the insurer specifies the rate change takes effect from February 2027, i.e. starting 2027-02-01. This is informational (a consequence), not a separate action the person must take.",
+          "due_date": "2027-02-01",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The sender, addresses and names in this letter (e.g. 'Beispielvita', 'Musterwiesbaden', 'Beispielwetzlar') contain German words for 'example'/'sample', suggesting this may be a template or test document rather than a genuine insurer letter — verify the sender's real identity and contact details before acting."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1823,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1265,
+      "cost_usd": 0.0239184,
+      "duration_ms": 19681,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

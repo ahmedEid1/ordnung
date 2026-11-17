@@ -1,0 +1,76 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"5f1d61ed472cc8a3b067e1bf8dc8c0fc08f132cb12508760acfeb49cf99e7840\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T08:01:48+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Familienkasse Musterfulda\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Kindergeldnummer\",\"value\":\"355FK662019\"}],\"amounts\":[259],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against Kindergeld assessment\",\"quote\":\"Sie können gegen diese Festsetzung innerhalb eines Monats Einspruch bei der Familienkasse Musterfulda erheben. Die Frist beginnt mit der Bekanntgabe, die bei Versand durch die Post am vierten Tag nach der Aufgabe zur Post eintritt.\",\"computation\":\"Letter is dated Thursday 19.11.2026; absent other information, posting (Aufgabe zur Post) is assumed to occur the same day. Kindergeld is set by the Familienkasse under the procedural rules of the Abgabenordnung (§ 155 EStG i.V.m. § 122 Abs. 2 Nr. 1 AO), under which a letter sent by ordinary post is deemed delivered on the THIRD day after posting (not the fourth day as the letter incorrectly states) – i.e. 19.11.2026 + 3 days = 22.11.2026, a Sunday. Since this falls on a Sunday, delivery is deemed to occur on the next business day, Monday 23.11.2026 (not a public holiday in NRW). This Bekanntgabe triggers the one-month Einspruchsfrist. Per § 187 Abs. 1 BGB the day of the triggering event (23.11.2026) is not counted, so the period begins 24.11.2026; per § 188 Abs. 2 BGB a period defined in months ends with the day of the last month that bears the same number as the day of the triggering event, i.e. 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in NRW (24.12. is not a statutory holiday; only 25./26.12. are), so the deadline stands at 23.12.2026.\",\"due_date\":\"2026-12-23\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Submit new Studienbescheinigung for Clara\",\"quote\":\"Bitte reichen Sie uns zum Ende des Sommersemesters eine neue Studienbescheinigung ein.\",\"computation\":\"Clara began studies in the Wintersemester 2026/27 (running roughly Oct 2026–March 2027). The letter asks for a new certificate of enrolment 'zum Ende des Sommersemesters', referring to the following Sommersemester (SS 2027), which at German universities conventionally runs from 1 April to 30 September. No exact calendar date is given in the letter and the precise end date depends on the individual university's semester calendar, so this is only an approximate reading.\",\"due_date\":\"2027-09-30\",\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter states the postal delivery fiction as the 'vierten Tag nach der Aufgabe zur Post' (fourth day), but the applicable rule for Familienkasse/tax-procedure letters (§ 122 Abs. 2 Nr. 1 AO) actually provides for the THIRD day after posting – this discrepancy was corrected in the computation above and should be double-checked against the original if a precise deadline matters.\",\"All names and addresses in this letter (Familienkasse Musterfulda, Bastian Musterquell, Hochschule Beispielfulda, Landesmusterbank, etc.) appear to be generic placeholder/sample names, suggesting this may be a template or test document rather than a genuine, identifiable letter – verify the real sender details before relying on this assessment.\",\"The deadline for submitting the new Studienbescheinigung ('zum Ende des Sommersemesters') is not a fixed calendar date in the letter; the actual due date depends on the specific university's semester calendar and should be confirmed with Hochschule Beispielfulda or the Familienkasse directly.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Familienkasse Musterfulda",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Kindergeldnummer",
+          "value": "355FK662019"
+        }
+      ],
+      "amounts": [
+        259
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against Kindergeld assessment",
+          "quote": "Sie können gegen diese Festsetzung innerhalb eines Monats Einspruch bei der Familienkasse Musterfulda erheben. Die Frist beginnt mit der Bekanntgabe, die bei Versand durch die Post am vierten Tag nach der Aufgabe zur Post eintritt.",
+          "computation": "Letter is dated Thursday 19.11.2026; absent other information, posting (Aufgabe zur Post) is assumed to occur the same day. Kindergeld is set by the Familienkasse under the procedural rules of the Abgabenordnung (§ 155 EStG i.V.m. § 122 Abs. 2 Nr. 1 AO), under which a letter sent by ordinary post is deemed delivered on the THIRD day after posting (not the fourth day as the letter incorrectly states) – i.e. 19.11.2026 + 3 days = 22.11.2026, a Sunday. Since this falls on a Sunday, delivery is deemed to occur on the next business day, Monday 23.11.2026 (not a public holiday in NRW). This Bekanntgabe triggers the one-month Einspruchsfrist. Per § 187 Abs. 1 BGB the day of the triggering event (23.11.2026) is not counted, so the period begins 24.11.2026; per § 188 Abs. 2 BGB a period defined in months ends with the day of the last month that bears the same number as the day of the triggering event, i.e. 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in NRW (24.12. is not a statutory holiday; only 25./26.12. are), so the deadline stands at 23.12.2026.",
+          "due_date": "2026-12-23",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Submit new Studienbescheinigung for Clara",
+          "quote": "Bitte reichen Sie uns zum Ende des Sommersemesters eine neue Studienbescheinigung ein.",
+          "computation": "Clara began studies in the Wintersemester 2026/27 (running roughly Oct 2026–March 2027). The letter asks for a new certificate of enrolment 'zum Ende des Sommersemesters', referring to the following Sommersemester (SS 2027), which at German universities conventionally runs from 1 April to 30 September. No exact calendar date is given in the letter and the precise end date depends on the individual university's semester calendar, so this is only an approximate reading.",
+          "due_date": "2027-09-30",
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter states the postal delivery fiction as the 'vierten Tag nach der Aufgabe zur Post' (fourth day), but the applicable rule for Familienkasse/tax-procedure letters (§ 122 Abs. 2 Nr. 1 AO) actually provides for the THIRD day after posting – this discrepancy was corrected in the computation above and should be double-checked against the original if a precise deadline matters.",
+        "All names and addresses in this letter (Familienkasse Musterfulda, Bastian Musterquell, Hochschule Beispielfulda, Landesmusterbank, etc.) appear to be generic placeholder/sample names, suggesting this may be a template or test document rather than a genuine, identifiable letter – verify the real sender details before relying on this assessment.",
+        "The deadline for submitting the new Studienbescheinigung ('zum Ende des Sommersemesters') is not a fixed calendar date in the letter; the actual due date depends on the specific university's semester calendar and should be confirmed with Hochschule Beispielfulda or the Familienkasse directly."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4887,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1521,
+      "cost_usd": 0.05558239999999999,
+      "duration_ms": 50095,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

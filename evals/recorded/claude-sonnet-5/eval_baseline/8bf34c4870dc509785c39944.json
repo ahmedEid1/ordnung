@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"930f6ce193f613a936856ae1ea8bc2a4a10abbff94995e2b33aa8b258da59a6c\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:56:48+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Rentenversicherung Musterhessen-Lahn\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Versicherungsnummer\",\"value\":\"53 120681 B 517\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against rehabilitation rejection\",\"quote\":\"Gegen den Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden, schriftlich oder zur Niederschrift bei der Rentenversicherung Musterhessen-Lahn, Rentenweg 8, 35394 Mustergießen.\",\"computation\":\"Versandtag (dispatch day) stated as Samstag, 21.11.2026. The letter itself fixes Bekanntgabe (deemed notice) as the 4th day after the dispatch day: counting 22.11 (day1), 23.11 (day2), 24.11 (day3), 25.11 (day4) → Bekanntgabe = Wednesday, 25.11.2026 (this is not a Sat/Sun/holiday, so no shift needed; note this 4-day rule deviates from the standard 3-day fiction of § 37 Abs. 2 SGB X). Per § 187 Abs. 1 BGB the event day (25.11.2026) is not counted; the one-month Widerspruchsfrist (§ 84 Abs. 1 SGG, § 36a SGB I) therefore starts 26.11.2026. Per § 188 Abs. 2 BGB a one-month period ends on the day of the following month bearing the same number as the event day, i.e. 25.12.2026. However 25.12.2026 (1. Weihnachtstag) is a statutory holiday in NW; the next days 26.12.2026 (2. Weihnachtstag, also a Saturday) and 27.12.2026 (Sunday) are also non-working. Per § 193 BGB the deadline moves to the next working day, which is Monday, 28.12.2026.\",\"due_date\":\"2026-12-28\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter states the Bescheid is deemed delivered on the 4th day after dispatch, but the standard statutory fiction under § 37 Abs. 2 SGB X for social-insurance notices is 3 days after dispatch; if the actual rule applicable to this provider is 3 days instead of 4, the Widerspruchsfrist would run from 24.11.2026 and end on 24.12.2026 (shifted, since Dec 25-27 are non-working, to Monday 28.12.2026 as well in this case) — double-check which rule actually applies to be safe, though in this instance both readings converge on the same final date.\"]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Rentenversicherung Musterhessen-Lahn",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Versicherungsnummer",
+          "value": "53 120681 B 517"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against rehabilitation rejection",
+          "quote": "Gegen den Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden, schriftlich oder zur Niederschrift bei der Rentenversicherung Musterhessen-Lahn, Rentenweg 8, 35394 Mustergießen.",
+          "computation": "Versandtag (dispatch day) stated as Samstag, 21.11.2026. The letter itself fixes Bekanntgabe (deemed notice) as the 4th day after the dispatch day: counting 22.11 (day1), 23.11 (day2), 24.11 (day3), 25.11 (day4) → Bekanntgabe = Wednesday, 25.11.2026 (this is not a Sat/Sun/holiday, so no shift needed; note this 4-day rule deviates from the standard 3-day fiction of § 37 Abs. 2 SGB X). Per § 187 Abs. 1 BGB the event day (25.11.2026) is not counted; the one-month Widerspruchsfrist (§ 84 Abs. 1 SGG, § 36a SGB I) therefore starts 26.11.2026. Per § 188 Abs. 2 BGB a one-month period ends on the day of the following month bearing the same number as the event day, i.e. 25.12.2026. However 25.12.2026 (1. Weihnachtstag) is a statutory holiday in NW; the next days 26.12.2026 (2. Weihnachtstag, also a Saturday) and 27.12.2026 (Sunday) are also non-working. Per § 193 BGB the deadline moves to the next working day, which is Monday, 28.12.2026.",
+          "due_date": "2026-12-28",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter states the Bescheid is deemed delivered on the 4th day after dispatch, but the standard statutory fiction under § 37 Abs. 2 SGB X for social-insurance notices is 3 days after dispatch; if the actual rule applicable to this provider is 3 days instead of 4, the Widerspruchsfrist would run from 24.11.2026 and end on 24.12.2026 (shifted, since Dec 25-27 are non-working, to Monday 28.12.2026 as well in this case) — double-check which rule actually applies to be safe, though in this instance both readings converge on the same final date."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4358,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1681,
+      "cost_usd": 0.050932399999999996,
+      "duration_ms": 47041,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

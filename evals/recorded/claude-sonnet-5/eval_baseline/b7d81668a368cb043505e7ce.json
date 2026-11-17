@@ -1,0 +1,77 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"527fe9e7a73e681be2dd496fbb4b6ac58046d74b18ea2b452665f36cfb8f7570\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-scam-1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:34:42+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Zentralregister Fahrzeugdaten Deutschland\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Vorgang\",\"value\":\"ZFD-26-118407\"}],\"amounts\":[89],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay 'Aktualisierungsgebühr' (likely scam demand)\",\"quote\":\"Aktualisierungsgebühr: 89,00 €\\nzahlbar bis 30.11.2026\",\"computation\":\"The letter prints a fixed calendar date for payment: 'zahlbar bis 30.11.2026'. This is a stated date, not a period to be counted, so no delivery-fiction or §187/188 BGB counting applies; the due date is simply the date printed. 2026-11-30 is a Monday, so no weekend/holiday shift is needed either.\",\"due_date\":\"2026-11-30\",\"amount\":89,\"confidence\":\"high\"}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This strongly resembles a scam / fake-invoice letter: there is no official German authority or 'Zentralregister' that stores or 'updates' vehicle-owner data for a fee — vehicle registration is handled only by the local Zulassungsstelle and the Kraftfahrt-Bundesamt, which do not send private fee demands like this.\",\"The payment IBAN (LT98 7044 0001 1820 4477) is Lithuanian, not German, and the stated payee 'R. Kazlauskas' does not match the sender organisation's name at all — a classic sign of a fraudulent payee account; do not transfer money to it.\",\"The letter uses a pressure tactic ('Ohne Aktualisierung kann die Zulassung ab Januar 2027 ruhen') to push for a quick payment, and threatens to report the matter to the 'zuständige Zulassungsstelle' — another common scam pattern.\",\"No Impressum-style verifiable company register details, VAT ID, or managing-director name are given, and the generic PO-box address plus example.com-style email domain are typical of mass-mailed scam letters.\",\"Recommendation: do not pay; verify any real vehicle-registration matters only through your local Zulassungsstelle or the KBA, and consider reporting this letter to the police (Verbraucherzentrale/Polizei) as suspected fraud.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Zentralregister Fahrzeugdaten Deutschland",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Vorgang",
+          "value": "ZFD-26-118407"
+        }
+      ],
+      "amounts": [
+        89
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay 'Aktualisierungsgebühr' (likely scam demand)",
+          "quote": "Aktualisierungsgebühr: 89,00 €\nzahlbar bis 30.11.2026",
+          "computation": "The letter prints a fixed calendar date for payment: 'zahlbar bis 30.11.2026'. This is a stated date, not a period to be counted, so no delivery-fiction or §187/188 BGB counting applies; the due date is simply the date printed. 2026-11-30 is a Monday, so no weekend/holiday shift is needed either.",
+          "due_date": "2026-11-30",
+          "amount": 89,
+          "confidence": "high"
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This strongly resembles a scam / fake-invoice letter: there is no official German authority or 'Zentralregister' that stores or 'updates' vehicle-owner data for a fee — vehicle registration is handled only by the local Zulassungsstelle and the Kraftfahrt-Bundesamt, which do not send private fee demands like this.",
+        "The payment IBAN (LT98 7044 0001 1820 4477) is Lithuanian, not German, and the stated payee 'R. Kazlauskas' does not match the sender organisation's name at all — a classic sign of a fraudulent payee account; do not transfer money to it.",
+        "The letter uses a pressure tactic ('Ohne Aktualisierung kann die Zulassung ab Januar 2027 ruhen') to push for a quick payment, and threatens to report the matter to the 'zuständige Zulassungsstelle' — another common scam pattern.",
+        "No Impressum-style verifiable company register details, VAT ID, or managing-director name are given, and the generic PO-box address plus example.com-style email domain are typical of mass-mailed scam letters.",
+        "Recommendation: do not pay; verify any real vehicle-registration matters only through your local Zulassungsstelle or the KBA, and consider reporting this letter to the police (Verbraucherzentrale/Polizei) as suspected fraud."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2233,
+      "cache_read_tokens": 14563,
+      "cache_creation_tokens": 2496,
+      "cost_usd": 0.035234600000000005,
+      "duration_ms": 47848,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "LT98 7044 0001 1820 4477"
+        },
+        "result": "{\"iban\":\"LT98 7044 0001 1820 4477\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"LT\",\"name\":\"Lithuania\"},\"length\":{\"expected\":20,\"actual\":20},\"checksum_ok\":true,\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

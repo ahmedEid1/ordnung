@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"519fe78cf30c0fec50e203f0879878fbe5ad32de93087d8267d7cb056e00920e\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-relative_business_days-N1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:33:22+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2026-11-19\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Accept or decline the offered nursery place\",\"quote\":\"Bitte sagen Sie uns binnen 12 Arbeitstagen ab dem Datum dieses Briefes zu oder ab.\",\"computation\":\"The letter is dated Thursday, 19.11.2026, and states the 12-day period runs 'ab dem Datum dieses Briefes' (from the date of this letter), counting only Monday–Friday and disregarding holidays. Treating the letter's date as the triggering event, per §187 Abs.1 BGB the day of the letter itself (19.11.) is not counted; counting of working days starts the next day, Friday 20.11.2026. Working days (skipping Sat/Sun, no NRW holidays fall in this window): 20.11 (Fri)=1, 23.11 (Mon)=2, 24.11 (Tue)=3, 25.11 (Wed)=4, 26.11 (Thu)=5, 27.11 (Fri)=6, 30.11 (Mon)=7, 01.12 (Tue)=8, 02.12 (Wed)=9, 03.12 (Thu)=10, 04.12 (Fri)=11, 07.12 (Mon)=12. The 12th working day is Monday 07.12.2026, which is not a weekend or NRW public holiday, so no further adjustment is needed.\",\"due_date\":\"2026-12-07\",\"confidence\":\"medium\",\"amount\":null}],\"kind\":\"other\",\"references\":[{\"label\":\"Vormerknummer\",\"value\":\"KV-2026-0815\"}],\"remedy_type\":\"none\",\"sender_name\":\"Kita-Verbund Beispielkinder gGmbH\",\"warnings\":[\"The deadline calculation assumes the 12 working-day period starts the day after the letter's date (per §187 Abs.1 BGB); if the sender actually intends the letter's own date to count as day 1, the deadline would instead be 04.12.2026 — confirm with the sender if the exact day is critical, since missing it means losing the place to the next family on the waiting list.\"]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2026-11-19",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Accept or decline the offered nursery place",
+          "quote": "Bitte sagen Sie uns binnen 12 Arbeitstagen ab dem Datum dieses Briefes zu oder ab.",
+          "computation": "The letter is dated Thursday, 19.11.2026, and states the 12-day period runs 'ab dem Datum dieses Briefes' (from the date of this letter), counting only Monday–Friday and disregarding holidays. Treating the letter's date as the triggering event, per §187 Abs.1 BGB the day of the letter itself (19.11.) is not counted; counting of working days starts the next day, Friday 20.11.2026. Working days (skipping Sat/Sun, no NRW holidays fall in this window): 20.11 (Fri)=1, 23.11 (Mon)=2, 24.11 (Tue)=3, 25.11 (Wed)=4, 26.11 (Thu)=5, 27.11 (Fri)=6, 30.11 (Mon)=7, 01.12 (Tue)=8, 02.12 (Wed)=9, 03.12 (Thu)=10, 04.12 (Fri)=11, 07.12 (Mon)=12. The 12th working day is Monday 07.12.2026, which is not a weekend or NRW public holiday, so no further adjustment is needed.",
+          "due_date": "2026-12-07",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "kind": "other",
+      "references": [
+        {
+          "label": "Vormerknummer",
+          "value": "KV-2026-0815"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Kita-Verbund Beispielkinder gGmbH",
+      "warnings": [
+        "The deadline calculation assumes the 12 working-day period starts the day after the letter's date (per §187 Abs.1 BGB); if the sender actually intends the letter's own date to count as day 1, the deadline would instead be 04.12.2026 — confirm with the sender if the exact day is critical, since missing it means losing the place to the next family on the waiting list."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2792,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1504,
+      "cost_usd": 0.0345644,
+      "duration_ms": 28371,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

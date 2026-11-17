@@ -1,0 +1,73 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"4e64ef6052e104f30e3ec307556f38d527f43d0e096019e7533144df52a1e0b5\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-dunning_fixed-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:47:25+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Inkassobüro Beispielrecht GmbH\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"IB-26-552019\"},{\"label\":\"Kundennummer Gläubiger\",\"value\":\"KD 7 118 205\"}],\"amounts\":[79.98,2.5,49,131.48],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding debt collection claim\",\"quote\":\"Zahlen Sie den Gesamtbetrag spätestens am Mittwoch, 02.12.2026 auf unser Treuhandkonto.\",\"computation\":\"The letter states an explicit calendar due date for payment: Wednesday, 02.12.2026. This is a fixed date set by the collection agency, not a statutory period requiring counting from delivery, so no §187/§188 BGB calculation is needed. Checked against the calendar: 2026-12-02 does fall on a Wednesday as stated, and it is not a Saturday, Sunday or public holiday in NW, so no shift under §193 BGB is required.\",\"due_date\":\"2026-12-02\",\"confidence\":\"high\",\"amount\":131.48}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a demand from a private debt-collection agency (Inkassobüro), not from a court or authority, and carries no formal Rechtsbehelfsbelehrung (right-of-appeal notice); if the person disputes owing the money for August/September 2026 internet service, they should contact Beispielnetz Kabel GmbH and/or the collection agency in writing with reasons before paying, rather than treat the 02.12.2026 date as a legally enforced deadline.\",\"Before paying, verify that the underlying invoices for August and September 2026 and the referenced reminder of 12.10.2026 actually exist and are correct, and double-check the IBAN/account details given (DE20 3705 0198 0005 5664 00) independently rather than trusting this letter alone, since debt-collection letters are a common vector for fraud.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Inkassobüro Beispielrecht GmbH",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "IB-26-552019"
+        },
+        {
+          "label": "Kundennummer Gläubiger",
+          "value": "KD 7 118 205"
+        }
+      ],
+      "amounts": [
+        79.98,
+        2.5,
+        49,
+        131.48
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding debt collection claim",
+          "quote": "Zahlen Sie den Gesamtbetrag spätestens am Mittwoch, 02.12.2026 auf unser Treuhandkonto.",
+          "computation": "The letter states an explicit calendar due date for payment: Wednesday, 02.12.2026. This is a fixed date set by the collection agency, not a statutory period requiring counting from delivery, so no §187/§188 BGB calculation is needed. Checked against the calendar: 2026-12-02 does fall on a Wednesday as stated, and it is not a Saturday, Sunday or public holiday in NW, so no shift under §193 BGB is required.",
+          "due_date": "2026-12-02",
+          "confidence": "high",
+          "amount": 131.48
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a demand from a private debt-collection agency (Inkassobüro), not from a court or authority, and carries no formal Rechtsbehelfsbelehrung (right-of-appeal notice); if the person disputes owing the money for August/September 2026 internet service, they should contact Beispielnetz Kabel GmbH and/or the collection agency in writing with reasons before paying, rather than treat the 02.12.2026 date as a legally enforced deadline.",
+        "Before paying, verify that the underlying invoices for August and September 2026 and the referenced reminder of 12.10.2026 actually exist and are correct, and double-check the IBAN/account details given (DE20 3705 0198 0005 5664 00) independently rather than trusting this letter alone, since debt-collection letters are a common vector for fraud."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1802,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1694,
+      "cost_usd": 0.025424400000000003,
+      "duration_ms": 18604,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

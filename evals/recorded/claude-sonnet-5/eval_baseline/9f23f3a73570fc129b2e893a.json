@@ -1,0 +1,82 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"d2c504983a0143530fc2d4f00be1443072f3252d913469b1e88e884ffba48bea\",\"mode\":\"text\",\"region\":\"SL\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-fine_bussgeld-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Saarland (SL), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> t",
+    "recorded_at": "2026-11-24T06:57:34+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[150,28.5,3.5,182],\"contract\":null,\"document_date\":\"2026-11-20\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"Gegen diesen Bescheid können Sie innerhalb von zwei Wochen ab seiner Zustellung Einspruch einlegen, schriftlich oder zur Niederschrift bei der Zentralen Bußgeldbehörde Beispielsaarland.\",\"computation\":\"Formal delivery (Zustellung) was effected by Postzustellungsauftrag with Zustellungsurkunde per §182 ZPO; the delivery certificate on page 2 records 'Zugestellt am 21.11.2026' (a Saturday) — this documented date governs regardless of weekday, since formal postal delivery is valid on any day. Per §187 Abs. 1 BGB, the day of the triggering event (Zustellung) is not counted; the two-week period begins the next day, 22.11.2026. Per §188 Abs. 2 BGB, a period of weeks ends with the expiry of the day of the following week that bears the same name as the day of the event, i.e. the Saturday two weeks after 21.11.2026 = 05.12.2026. Since 05.12.2026 is a Saturday, §193 BGB extends the deadline to the next working day; 06.12.2026 (Sunday) is also not a working day, so the deadline moves to Monday 07.12.2026, which is not a public holiday in Saarland. The written Einspruch must reach the Zentrale Bußgeldbehörde by this date.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the fine, fee and delivery costs (total) once the notice is final\",\"quote\":\"Zahlen Sie erst, wenn dieser Bescheid rechtskräftig geworden ist, und dann binnen zwei Wochen auf das Konto DE94 5901 0000 0006 6121 00.\",\"computation\":\"Payment is conditional on the Bescheid becoming 'rechtskräftig' (legally final), which happens once the Einspruch period lapses without an objection being filed. Based on the Einspruch deadline computed above (extended to 07.12.2026), Rechtskraft would occur the following day, 08.12.2026 (a Tuesday), assuming no Einspruch is lodged. From Rechtskraft, a further two-week payment period runs: per §187 Abs. 1 BGB the day of Rechtskraft itself (08.12.2026) is excluded and the period starts 09.12.2026; per §188 Abs. 2 BGB it ends two weeks after the Rechtskraft day, i.e. the Tuesday 22.12.2026, which is not a Saturday, Sunday or public holiday in Saarland, so no further shift applies. This date is only valid if no Einspruch is filed; if one is filed, this payment obligation does not arise (at least not under this notice) and the date must be reassessed.\",\"due_date\":\"2026-12-22\",\"confidence\":\"medium\",\"amount\":182}],\"kind\":\"fine\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"VOW 4.1-26/308812\"},{\"label\":\"Kennzeichen\",\"value\":\"SB-MW 418\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Zentrale Bußgeldbehörde Beispielsaarland\",\"warnings\":[\"The payment deadline (2026-12-22) assumes the notice becomes legally final on 2026-12-08, i.e. that no Einspruch is filed by 2026-12-07; if an Einspruch is filed, no payment is due under this notice and the dates must be reassessed with the authority.\",\"Sender, address and account details (Zentrale Bußgeldbehörde Beispielsaarland, Beispielbrücke, 'Landesmusterbank') contain the word 'Beispiel' (example), suggesting this may be a template/sample document rather than a genuine authority — verify the sender and IBAN independently before paying anything.\"]}",
+    "data": {
+      "amounts": [
+        150,
+        28.5,
+        3.5,
+        182
+      ],
+      "contract": null,
+      "document_date": "2026-11-20",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "Gegen diesen Bescheid können Sie innerhalb von zwei Wochen ab seiner Zustellung Einspruch einlegen, schriftlich oder zur Niederschrift bei der Zentralen Bußgeldbehörde Beispielsaarland.",
+          "computation": "Formal delivery (Zustellung) was effected by Postzustellungsauftrag with Zustellungsurkunde per §182 ZPO; the delivery certificate on page 2 records 'Zugestellt am 21.11.2026' (a Saturday) — this documented date governs regardless of weekday, since formal postal delivery is valid on any day. Per §187 Abs. 1 BGB, the day of the triggering event (Zustellung) is not counted; the two-week period begins the next day, 22.11.2026. Per §188 Abs. 2 BGB, a period of weeks ends with the expiry of the day of the following week that bears the same name as the day of the event, i.e. the Saturday two weeks after 21.11.2026 = 05.12.2026. Since 05.12.2026 is a Saturday, §193 BGB extends the deadline to the next working day; 06.12.2026 (Sunday) is also not a working day, so the deadline moves to Monday 07.12.2026, which is not a public holiday in Saarland. The written Einspruch must reach the Zentrale Bußgeldbehörde by this date.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the fine, fee and delivery costs (total) once the notice is final",
+          "quote": "Zahlen Sie erst, wenn dieser Bescheid rechtskräftig geworden ist, und dann binnen zwei Wochen auf das Konto DE94 5901 0000 0006 6121 00.",
+          "computation": "Payment is conditional on the Bescheid becoming 'rechtskräftig' (legally final), which happens once the Einspruch period lapses without an objection being filed. Based on the Einspruch deadline computed above (extended to 07.12.2026), Rechtskraft would occur the following day, 08.12.2026 (a Tuesday), assuming no Einspruch is lodged. From Rechtskraft, a further two-week payment period runs: per §187 Abs. 1 BGB the day of Rechtskraft itself (08.12.2026) is excluded and the period starts 09.12.2026; per §188 Abs. 2 BGB it ends two weeks after the Rechtskraft day, i.e. the Tuesday 22.12.2026, which is not a Saturday, Sunday or public holiday in Saarland, so no further shift applies. This date is only valid if no Einspruch is filed; if one is filed, this payment obligation does not arise (at least not under this notice) and the date must be reassessed.",
+          "due_date": "2026-12-22",
+          "confidence": "medium",
+          "amount": 182
+        }
+      ],
+      "kind": "fine",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "VOW 4.1-26/308812"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "SB-MW 418"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Zentrale Bußgeldbehörde Beispielsaarland",
+      "warnings": [
+        "The payment deadline (2026-12-22) assumes the notice becomes legally final on 2026-12-08, i.e. that no Einspruch is filed by 2026-12-07; if an Einspruch is filed, no payment is due under this notice and the dates must be reassessed with the authority.",
+        "Sender, address and account details (Zentrale Bußgeldbehörde Beispielsaarland, Beispielbrücke, 'Landesmusterbank') contain the word 'Beispiel' (example), suggesting this may be a template/sample document rather than a genuine authority — verify the sender and IBAN independently before paying anything."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 5777,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2208,
+      "cost_usd": 0.0672304,
+      "duration_ms": 55158,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

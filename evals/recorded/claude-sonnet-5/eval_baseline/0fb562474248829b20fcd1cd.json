@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"ff561927ce70e45fbcc1624830269a36720d609b35dc6455d146be3442675792\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-dunning_fixed-N1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:51:28+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[695],\"contract\":null,\"document_date\":\"2026-11-20\",\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding balance for dining table and chairs\",\"quote\":\"Wir bitten Sie dringend, den Gesamtbetrag bis Freitag, 11.12.2026 zu begleichen.\",\"computation\":\"The letter states a fixed calendar date for payment: Friday, 11 December 2026. This is a private commercial dunning letter (not an authority), so the statutory delivery-fiction rules (§ 108 AO / § 41 VwVfG) do not apply; the creditor simply names the due date in writing. 11 December 2026 is indeed a Friday (checked against 24 Nov 2026 = Tuesday), so no weekend/holiday adjustment is needed; the date is used as written.\",\"due_date\":\"2026-12-11\",\"confidence\":\"high\",\"amount\":695}],\"kind\":\"dunning\",\"references\":[{\"label\":\"Auftrag\",\"value\":\"BW-26-30871\"},{\"label\":\"Kundennummer\",\"value\":\"K-881 204\"}],\"remedy_type\":\"none\",\"sender_name\":\"Möbelhaus Beispielwohnen KG\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        695
+      ],
+      "contract": null,
+      "document_date": "2026-11-20",
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding balance for dining table and chairs",
+          "quote": "Wir bitten Sie dringend, den Gesamtbetrag bis Freitag, 11.12.2026 zu begleichen.",
+          "computation": "The letter states a fixed calendar date for payment: Friday, 11 December 2026. This is a private commercial dunning letter (not an authority), so the statutory delivery-fiction rules (§ 108 AO / § 41 VwVfG) do not apply; the creditor simply names the due date in writing. 11 December 2026 is indeed a Friday (checked against 24 Nov 2026 = Tuesday), so no weekend/holiday adjustment is needed; the date is used as written.",
+          "due_date": "2026-12-11",
+          "confidence": "high",
+          "amount": 695
+        }
+      ],
+      "kind": "dunning",
+      "references": [
+        {
+          "label": "Auftrag",
+          "value": "BW-26-30871"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "K-881 204"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Möbelhaus Beispielwohnen KG",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1393,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1542,
+      "cost_usd": 0.021207999999999998,
+      "duration_ms": 14846,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"930f6ce193f613a936856ae1ea8bc2a4a10abbff94995e2b33aa8b258da59a6c\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:56:34+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"kind\":\"social_insurance\",\"sender_name\":\"Rentenversicherung Musterhessen-Lahn\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Versicherungsnummer\",\"value\":\"53 120681 B 517\"}],\"remedy_type\":\"widerspruch\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against rehab rejection\",\"quote\":\"Gegen den Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden, schriftlich oder zur Niederschrift bei der Rentenversicherung Musterhessen-Lahn, Rentenweg 8, 35394 Mustergießen. Der Bescheid gilt mit dem vierten Tag nach dem angegebenen Versandtag als bekannt gegeben.\",\"computation\":\"Stated dispatch day (Versandtag) is Saturday 21.11.2026. Rentenversicherung is a social-law body (pension fund), so per the rule set the delivery day is the 4th day after posting and does NOT move even though it falls on a weekend/holiday (unlike tax offices). Counting from 21.11.2026 (day 0, not counted): 22.11, 23.11, 24.11, 25.11 = 4th day → delivery (Bekanntgabe) on Wednesday 25.11.2026. One-month Widerspruch period under § 84 SGG / § 26 SGB X starts the next day and ends on the day with the same number one month later: 25.12.2026. That day is Christmas Day (Friday), a nationwide public holiday, so per § 26 Abs. 3 SGB X / § 64 Abs. 3 SGG the period moves to the next working day. 26.12.2026 (2. Weihnachtstag, holiday) and 27.12.2026 (Sunday) are also non-working, so the first working day is Monday 28.12.2026.\",\"due_date\":\"2026-12-28\",\"confidence\":\"high\",\"amount\":null}],\"warnings\":[]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "kind": "social_insurance",
+      "sender_name": "Rentenversicherung Musterhessen-Lahn",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Versicherungsnummer",
+          "value": "53 120681 B 517"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against rehab rejection",
+          "quote": "Gegen den Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden, schriftlich oder zur Niederschrift bei der Rentenversicherung Musterhessen-Lahn, Rentenweg 8, 35394 Mustergießen. Der Bescheid gilt mit dem vierten Tag nach dem angegebenen Versandtag als bekannt gegeben.",
+          "computation": "Stated dispatch day (Versandtag) is Saturday 21.11.2026. Rentenversicherung is a social-law body (pension fund), so per the rule set the delivery day is the 4th day after posting and does NOT move even though it falls on a weekend/holiday (unlike tax offices). Counting from 21.11.2026 (day 0, not counted): 22.11, 23.11, 24.11, 25.11 = 4th day → delivery (Bekanntgabe) on Wednesday 25.11.2026. One-month Widerspruch period under § 84 SGG / § 26 SGB X starts the next day and ends on the day with the same number one month later: 25.12.2026. That day is Christmas Day (Friday), a nationwide public holiday, so per § 26 Abs. 3 SGB X / § 64 Abs. 3 SGG the period moves to the next working day. 26.12.2026 (2. Weihnachtstag, holiday) and 27.12.2026 (Sunday) are also non-working, so the first working day is Monday 28.12.2026.",
+          "due_date": "2026-12-28",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2848,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1680,
+      "cost_usd": 0.036309999999999995,
+      "duration_ms": 28676,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

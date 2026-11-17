@@ -1,0 +1,83 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"3bad1f55ef7d8ef26a3221a53328de2f73027ece848c2f87c2f7e31683e5c663\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:52:18+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"university\",\"sender_name\":\"Beispielwetzlar Graduate School of Engineering\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Application ID\",\"value\":\"GSE-26-7713\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Upload certified bachelor's certificate and transcript\",\"quote\":\"Please upload a certified copy of your bachelor's certificate and your final transcript to the applicant portal no later than 14 December 2026.\",\"computation\":\"The letter states a fixed calendar date for an online portal upload: 14 December 2026. This date falls on a Monday, a normal business day, so no weekend/holiday shift under §§ 187-193 BGB is needed. The deadline stands as written: 2026-12-14. (The letter states the offer lapses automatically if materials are not received by that day, so there is no grace period.)\",\"due_date\":\"2026-12-14\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a conditional offer with a self-executing lapse clause ('If we have not received them by that day, the offer lapses') rather than a formal legal remedy, so no Rechtsbehelfsbelehrung applies.\",\"No IBAN or payment is requested in this letter; verify the applicant portal link independently rather than any link in a forwarded email, as a precaution against phishing impersonating admissions offices.\"]}",
+    "data": {
+      "kind": "university",
+      "sender_name": "Beispielwetzlar Graduate School of Engineering",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Application ID",
+          "value": "GSE-26-7713"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Upload certified bachelor's certificate and transcript",
+          "quote": "Please upload a certified copy of your bachelor's certificate and your final transcript to the applicant portal no later than 14 December 2026.",
+          "computation": "The letter states a fixed calendar date for an online portal upload: 14 December 2026. This date falls on a Monday, a normal business day, so no weekend/holiday shift under §§ 187-193 BGB is needed. The deadline stands as written: 2026-12-14. (The letter states the offer lapses automatically if materials are not received by that day, so there is no grace period.)",
+          "due_date": "2026-12-14",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a conditional offer with a self-executing lapse clause ('If we have not received them by that day, the offer lapses') rather than a formal legal remedy, so no Rechtsbehelfsbelehrung applies.",
+        "No IBAN or payment is requested in this letter; verify the applicant portal link independently rather than any link in a forwarded email, as a precaution against phishing impersonating admissions offices."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 2111,
+      "cache_read_tokens": 23497,
+      "cache_creation_tokens": 3442,
+      "cost_usd": 0.0395894,
+      "duration_ms": 27651,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "fixed",
+            "date": "2026-12-14",
+            "nature": "declaration",
+            "shift_rule": "none",
+            "text": "no later than 14 December 2026",
+            "legal_basis": null
+          },
+          "document_date": "2026-11-20",
+          "sender_kind": "university",
+          "sender_name": "Beispielwetzlar Graduate School of Engineering",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":\"2026-12-14\",\"weekday\":\"Monday\",\"send_by\":\"2026-12-08\",\"summary\":\"The date given is Mon 14 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"The date given is Mon 14 Dec 2026\",\"date\":\"2026-12-14\",\"rule_id\":\"date_as_written\",\"citation\":\"The document's own wording\"},{\"label\":\"Send by Tue 8 Dec 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-12-08\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"date_as_written\",\"title\":\"Dates stated in the letter\",\"citation\":\"The document's own wording\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-20\",\"holiday_calendar\":\"Germany (nationwide holidays only)\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

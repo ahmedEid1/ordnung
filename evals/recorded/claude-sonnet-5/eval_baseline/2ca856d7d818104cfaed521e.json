@@ -1,0 +1,108 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"4e64ef6052e104f30e3ec307556f38d527f43d0e096019e7533144df52a1e0b5\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-dunning_fixed-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:48:16+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Inkassobüro Beispielrecht GmbH\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"IB-26-552019\"},{\"label\":\"Kundennummer Gläubiger\",\"value\":\"KD 7 118 205\"}],\"amounts\":[131.48],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding debt-collection claim\",\"quote\":\"Zahlen Sie den Gesamtbetrag spätestens am Mittwoch, 02.12.2026 auf unser Treuhandkonto.\",\"computation\":\"The letter states a fixed calendar date for payment: Wednesday, 02.12.2026. Checked that 2 December 2026 does fall on a Wednesday and is not a Saturday, Sunday or public holiday in NRW, so no weekend/holiday shift applies. The due date is simply the date printed. (To arrive in time via bank transfer, §675s BGB suggests sending the transfer by 01.12.2026 at the latest.)\",\"due_date\":\"2026-12-02\",\"confidence\":\"high\",\"amount\":131.48},{\"kind\":\"task\",\"title\":\"Dispute the claim in writing, if contested\",\"quote\":\"Wenn Sie die Forderung bestreiten, teilen Sie uns das bitte mit Begründung mit; wir klären den Sachverhalt dann mit unserer Auftraggeberin.\",\"computation\":\"The letter gives no explicit deadline for raising a dispute; it is only sensible to do so before the payment deadline of 02.12.2026 to avoid further collection steps, but this is not a stated legal cut-off date, so no exact due date can be derived.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a private debt-collection agency's demand, not a decision by a court or public authority — there is no statutory Einspruch/Widerspruch/Klage period; 'bestreiten' is just an informal way to dispute the underlying claim with the agency.\",\"The IBAN DE20 3705 0198 0005 5664 00 is formally valid (Musterbank AG, BLZ 37050198), but a valid IBAN does not prove who owns the account — before paying, verify this is genuinely the collection account of Inkassobüro Beispielrecht GmbH (e.g. via their known website/phone number), since paying the wrong account cannot easily be reversed.\",\"The Mahngebühr (€2.50) and Inkassovergütung (€49.00, described as 'nach RVG begrenzt') on a two-month, €79.98 cable/internet bill are relatively high; such ancillary collection fees are often legally capped or disputable — check whether you already received and paid the underlying Beispielnetz Kabel GmbH invoices and whether the prior Mahnung of 12.10.2026 was actually received before accepting these add-on charges.\",\"No proof is shown in the letter that the original creditor (Beispielnetz Kabel GmbH) actually authorised this specific collection agency or that the August/September 2026 invoices were correctly billed; consider asking the collector for the underlying invoices/contract before paying if you are unsure the debt is yours.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Inkassobüro Beispielrecht GmbH",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "IB-26-552019"
+        },
+        {
+          "label": "Kundennummer Gläubiger",
+          "value": "KD 7 118 205"
+        }
+      ],
+      "amounts": [
+        131.48
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding debt-collection claim",
+          "quote": "Zahlen Sie den Gesamtbetrag spätestens am Mittwoch, 02.12.2026 auf unser Treuhandkonto.",
+          "computation": "The letter states a fixed calendar date for payment: Wednesday, 02.12.2026. Checked that 2 December 2026 does fall on a Wednesday and is not a Saturday, Sunday or public holiday in NRW, so no weekend/holiday shift applies. The due date is simply the date printed. (To arrive in time via bank transfer, §675s BGB suggests sending the transfer by 01.12.2026 at the latest.)",
+          "due_date": "2026-12-02",
+          "confidence": "high",
+          "amount": 131.48
+        },
+        {
+          "kind": "task",
+          "title": "Dispute the claim in writing, if contested",
+          "quote": "Wenn Sie die Forderung bestreiten, teilen Sie uns das bitte mit Begründung mit; wir klären den Sachverhalt dann mit unserer Auftraggeberin.",
+          "computation": "The letter gives no explicit deadline for raising a dispute; it is only sensible to do so before the payment deadline of 02.12.2026 to avoid further collection steps, but this is not a stated legal cut-off date, so no exact due date can be derived.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a private debt-collection agency's demand, not a decision by a court or public authority — there is no statutory Einspruch/Widerspruch/Klage period; 'bestreiten' is just an informal way to dispute the underlying claim with the agency.",
+        "The IBAN DE20 3705 0198 0005 5664 00 is formally valid (Musterbank AG, BLZ 37050198), but a valid IBAN does not prove who owns the account — before paying, verify this is genuinely the collection account of Inkassobüro Beispielrecht GmbH (e.g. via their known website/phone number), since paying the wrong account cannot easily be reversed.",
+        "The Mahngebühr (€2.50) and Inkassovergütung (€49.00, described as 'nach RVG begrenzt') on a two-month, €79.98 cable/internet bill are relatively high; such ancillary collection fees are often legally capped or disputable — check whether you already received and paid the underlying Beispielnetz Kabel GmbH invoices and whether the prior Mahnung of 12.10.2026 was actually received before accepting these add-on charges.",
+        "No proof is shown in the letter that the original creditor (Beispielnetz Kabel GmbH) actually authorised this specific collection agency or that the August/September 2026 invoices were correctly billed; consider asking the collector for the underlying invoices/contract before paying if you are unsure the debt is yours."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3314,
+      "cache_read_tokens": 14808,
+      "cache_creation_tokens": 4862,
+      "cost_usd": 0.0555576,
+      "duration_ms": 41183,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "fixed",
+            "date": "2026-12-02",
+            "nature": "payment",
+            "shift_rule": "none",
+            "legal_basis": "Zahlungsaufforderung Inkassobüro",
+            "text": "Zahlen Sie den Gesamtbetrag spätestens am Mittwoch, 02.12.2026 auf unser Treuhandkonto."
+          },
+          "document_date": "2026-11-18",
+          "sender_kind": "company",
+          "sender_name": "Inkassobüro Beispielrecht GmbH",
+          "recipient_region": "NW",
+          "region": "NW"
+        },
+        "result": "{\"due_date\":\"2026-12-02\",\"weekday\":\"Wednesday\",\"send_by\":\"2026-12-01\",\"summary\":\"The date given is Wed 2 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"The date given is Wed 2 Dec 2026\",\"date\":\"2026-12-02\",\"rule_id\":\"date_as_written\",\"citation\":\"The document's own wording\"},{\"label\":\"Send by Tue 1 Dec 2026 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2026-12-01\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"date_as_written\",\"title\":\"Dates stated in the letter\",\"citation\":\"The document's own wording\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-18\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"recipient_region: a payment to a company or person is made where the payer lives (§§ 269, 270 Abs. 4 BGB), so that Land's holidays apply\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE20370501980005566400"
+        },
+        "result": "{\"iban\":\"DE20 3705 0198 0005 5664 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005566400\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

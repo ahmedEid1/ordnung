@@ -1,0 +1,82 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"50be03696f1d85a03aed53793c4a0e61b876039abf5c3b5fd8b351a1acf2fceb\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-fine_bussgeld-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:04:58+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[100,28.5,3.5,132],\"contract\":null,\"kind\":\"fine\",\"sender_name\":\"Kreis Beispielborken – Bußgeldstelle\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"51.3-26/0779413\"},{\"label\":\"Kennzeichen\",\"value\":\"BOR-JB 315\"}],\"items\":[{\"kind\":\"deadline\",\"title\":\"File objection (Einspruch) against the fine notice\",\"quote\":\"Binnen zwei Wochen nach der Zustellung dieses Bescheids kann Einspruch eingelegt werden, schriftlich oder zur Niederschrift beim Kreis Beispielborken – Bußgeldstelle.\",\"computation\":\"The notice was formally delivered (Postzustellungsurkunde, § 182 ZPO); the envelope copy on page 2 is stamped 'Zugestellt 24.11.2026', so the delivery day is 24.11.2026 (Tuesday) exactly as written on the envelope - no days are added for formal delivery. Under § 43 StPO / § 67 OWiG the objection period is two weeks from delivery, counted per § 187 Abs. 1 BGB: the day of delivery (24.11.) is not counted, and the two-week period ends on the day bearing the same name as the delivery day two weeks later, i.e. Tuesday 08.12.2026. 08.12.2026 is not a Saturday, Sunday or public holiday in Nordrhein-Westfalen, so no shift under § 43 Abs. 2 StPO is needed.\",\"due_date\":\"2026-12-08\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay total fine amount after the decision becomes final\",\"quote\":\"Bitte überweisen Sie den Gesamtbetrag erst nach Rechtskraft, und zwar innerhalb von zwei Wochen.\",\"computation\":\"Payment is explicitly to be made only after Rechtskraft (finality) of the Bußgeldbescheid, within two weeks of that event. Assuming no Einspruch is filed, the objection period ends 08.12.2026 (see above), so the decision becomes rechtskräftig on the following day, 09.12.2026 (Wednesday). Counting two weeks from there per § 187 Abs. 1 BGB (the day of Rechtskraft itself not counted), the period ends on the same weekday two weeks later: Wednesday 23.12.2026. This date is not a Saturday, Sunday or public holiday in NRW, so no shift applies. This date is contingent on no objection being filed; if an Einspruch is lodged, Rechtskraft and this payment deadline do not occur as calculated.\",\"due_date\":\"2026-12-23\",\"confidence\":\"low\",\"amount\":132}],\"remedy_type\":\"einspruch\",\"warnings\":[\"The payment due date (23.12.2026) is only valid if no Einspruch is filed by 08.12.2026; filing an objection suspends Rechtskraft and resets the timeline, so treat this payment date as provisional.\",\"The sender's email domain ('kreis-beispielborken-bußgeld.example') and IBAN should be independently verified against the official Kreis Beispielborken website before making any payment, as fake Bußgeldstelle collection letters are a known scam pattern.\"]}",
+    "data": {
+      "amounts": [
+        100,
+        28.5,
+        3.5,
+        132
+      ],
+      "contract": null,
+      "kind": "fine",
+      "sender_name": "Kreis Beispielborken – Bußgeldstelle",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "51.3-26/0779413"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "BOR-JB 315"
+        }
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File objection (Einspruch) against the fine notice",
+          "quote": "Binnen zwei Wochen nach der Zustellung dieses Bescheids kann Einspruch eingelegt werden, schriftlich oder zur Niederschrift beim Kreis Beispielborken – Bußgeldstelle.",
+          "computation": "The notice was formally delivered (Postzustellungsurkunde, § 182 ZPO); the envelope copy on page 2 is stamped 'Zugestellt 24.11.2026', so the delivery day is 24.11.2026 (Tuesday) exactly as written on the envelope - no days are added for formal delivery. Under § 43 StPO / § 67 OWiG the objection period is two weeks from delivery, counted per § 187 Abs. 1 BGB: the day of delivery (24.11.) is not counted, and the two-week period ends on the day bearing the same name as the delivery day two weeks later, i.e. Tuesday 08.12.2026. 08.12.2026 is not a Saturday, Sunday or public holiday in Nordrhein-Westfalen, so no shift under § 43 Abs. 2 StPO is needed.",
+          "due_date": "2026-12-08",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay total fine amount after the decision becomes final",
+          "quote": "Bitte überweisen Sie den Gesamtbetrag erst nach Rechtskraft, und zwar innerhalb von zwei Wochen.",
+          "computation": "Payment is explicitly to be made only after Rechtskraft (finality) of the Bußgeldbescheid, within two weeks of that event. Assuming no Einspruch is filed, the objection period ends 08.12.2026 (see above), so the decision becomes rechtskräftig on the following day, 09.12.2026 (Wednesday). Counting two weeks from there per § 187 Abs. 1 BGB (the day of Rechtskraft itself not counted), the period ends on the same weekday two weeks later: Wednesday 23.12.2026. This date is not a Saturday, Sunday or public holiday in NRW, so no shift applies. This date is contingent on no objection being filed; if an Einspruch is lodged, Rechtskraft and this payment deadline do not occur as calculated.",
+          "due_date": "2026-12-23",
+          "confidence": "low",
+          "amount": 132
+        }
+      ],
+      "remedy_type": "einspruch",
+      "warnings": [
+        "The payment due date (23.12.2026) is only valid if no Einspruch is filed by 08.12.2026; filing an objection suspends Rechtskraft and resets the timeline, so treat this payment date as provisional.",
+        "The sender's email domain ('kreis-beispielborken-bußgeld.example') and IBAN should be independently verified against the official Kreis Beispielborken website before making any payment, as fake Bußgeldstelle collection letters are a known scam pattern."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3702,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2105,
+      "cost_usd": 0.046549999999999994,
+      "duration_ms": 35699,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

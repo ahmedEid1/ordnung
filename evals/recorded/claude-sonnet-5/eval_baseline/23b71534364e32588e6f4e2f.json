@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"1bde13e8f9534972138bb786a6a7db68d7445bfdd4e4bbe44b5a1fbbc222265d\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-missing_date-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:33:22+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"utility_bill\",\"sender_name\":\"Immobilien Beispielstein KG\",\"document_date\":null,\"references\":[{\"label\":\"Mieter-Nr.\",\"value\":\"IB-3307\"}],\"amounts\":[263.18],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay Betriebskosten-Nachzahlung 2025\",\"quote\":\"Den Betrag von 263,18 € zahlen Sie bitte binnen 30 Tagen nach Zugang dieser Abrechnung.\",\"computation\":\"The payment period is 30 days starting from 'Zugang' (actual receipt) of this statement, not from any printed date. The letter carries no document date and no posting date (no 'zur Post gegeben am' notice), so the start of the 30-day period (date of receipt by the tenant) cannot be determined from the letter itself. Without a known start date, the 30-day count under §§ 187, 188 BGB cannot be anchored, and the end-of-period weekend/holiday shift of § 193 BGB cannot be applied either. The exact due date is therefore indeterminate from the letter alone; the tenant must supply the actual date they received the letter/envelope to compute it (received date + 30 days, moved to the next working day in NRW if that falls on a Saturday, Sunday or public holiday).\",\"due_date\":null,\"confidence\":\"low\",\"amount\":263.18}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter has no printed date and no stated posting date ('zur Post gegeben am'), so the start of the 30-day payment period ('Zugang dieser Abrechnung') cannot be determined; the actual due date depends entirely on when the tenant physically received the letter, which is not stated anywhere in the document.\",\"This is a private landlord/property-management statement, not a government authority decision, so the statutory Bekanntgabefiktion (deemed delivery) rules for authorities do not apply; only the tenant's actual date of receipt counts.\"]}",
+    "data": {
+      "kind": "utility_bill",
+      "sender_name": "Immobilien Beispielstein KG",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Mieter-Nr.",
+          "value": "IB-3307"
+        }
+      ],
+      "amounts": [
+        263.18
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay Betriebskosten-Nachzahlung 2025",
+          "quote": "Den Betrag von 263,18 € zahlen Sie bitte binnen 30 Tagen nach Zugang dieser Abrechnung.",
+          "computation": "The payment period is 30 days starting from 'Zugang' (actual receipt) of this statement, not from any printed date. The letter carries no document date and no posting date (no 'zur Post gegeben am' notice), so the start of the 30-day period (date of receipt by the tenant) cannot be determined from the letter itself. Without a known start date, the 30-day count under §§ 187, 188 BGB cannot be anchored, and the end-of-period weekend/holiday shift of § 193 BGB cannot be applied either. The exact due date is therefore indeterminate from the letter alone; the tenant must supply the actual date they received the letter/envelope to compute it (received date + 30 days, moved to the next working day in NRW if that falls on a Saturday, Sunday or public holiday).",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 263.18
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter has no printed date and no stated posting date ('zur Post gegeben am'), so the start of the 30-day payment period ('Zugang dieser Abrechnung') cannot be determined; the actual due date depends entirely on when the tenant physically received the letter, which is not stated anywhere in the document.",
+        "This is a private landlord/property-management statement, not a government authority decision, so the statutory Bekanntgabefiktion (deemed delivery) rules for authorities do not apply; only the tenant's actual date of receipt counts."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1857,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1403,
+      "cost_usd": 0.025292,
+      "duration_ms": 19515,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"1289c7ccb9aaea01895fcef42b9faf8cd398d3b6bc61dc95b249dd613edb4ca7\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-relative_business_days-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:30:50+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"insurance\",\"sender_name\":\"Kfz-Versicherung Beispielsicher AG\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Schadennummer\",\"value\":\"KS-26-1109-218\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Return completed claim questionnaire and wildlife-damage certificate\",\"quote\":\"Senden Sie uns das ausgefüllte Formular bitte binnen 13 Werktagen nach dem Datum dieses Schreibens zurück (Werktage: Montag bis Samstag ohne gesetzliche Feiertage).\",\"computation\":\"The letter is dated 21.11.2026 (a Saturday) and the period runs '13 Werktage nach dem Datum dieses Schreibens', i.e. 13 working days counted from the day after the letter's date, with Werktage expressly defined by the letter as Monday to Saturday excluding statutory public holidays. Counting forward from 21.11.2026 (start day not counted, per the usual §187 BGB logic the letter's own wording mirrors) and skipping Sundays (22.11., 29.11., 06.12.2026) with no public holiday falling in the window in either NW or the insurer's seat (Hessen), 13 Werktage are reached on Monday, 07.12.2026. The deadline is the same whether NRW's or Hessen's holiday calendar is used, since no holiday falls in this stretch.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "insurance",
+      "sender_name": "Kfz-Versicherung Beispielsicher AG",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Schadennummer",
+          "value": "KS-26-1109-218"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Return completed claim questionnaire and wildlife-damage certificate",
+          "quote": "Senden Sie uns das ausgefüllte Formular bitte binnen 13 Werktagen nach dem Datum dieses Schreibens zurück (Werktage: Montag bis Samstag ohne gesetzliche Feiertage).",
+          "computation": "The letter is dated 21.11.2026 (a Saturday) and the period runs '13 Werktage nach dem Datum dieses Schreibens', i.e. 13 working days counted from the day after the letter's date, with Werktage expressly defined by the letter as Monday to Saturday excluding statutory public holidays. Counting forward from 21.11.2026 (start day not counted, per the usual §187 BGB logic the letter's own wording mirrors) and skipping Sundays (22.11., 29.11., 06.12.2026) with no public holiday falling in the window in either NW or the insurer's seat (Hessen), 13 Werktage are reached on Monday, 07.12.2026. The deadline is the same whether NRW's or Hessen's holiday calendar is used, since no holiday falls in this stretch.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2433,
+      "cache_read_tokens": 14629,
+      "cache_creation_tokens": 3757,
+      "cost_usd": 0.042291800000000004,
+      "duration_ms": 26977,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__add_working_days",
+        "input": {
+          "start": "2026-11-21",
+          "days": 13,
+          "day_type": "werktage",
+          "region": "NW"
+        },
+        "result": "{\"start\":\"2026-11-21\",\"days\":13,\"day_type\":\"werktage\",\"date\":\"2026-12-07\",\"weekday\":\"Monday\",\"skipped\":[{\"date\":\"2026-11-22\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"},{\"date\":\"2026-11-29\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"},{\"date\":\"2026-12-06\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"}],\"counting\":\"Werktage: Monday to Saturday, public holidays excluded; the start day itself is not counted.\",\"calendar\":\"Nordrhein-Westfalen\",\"disclaimer\":\"Information, not legal advice: working days counted on Ordnung's holiday calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer. A legal period may count differently — compute_deadline applies the deadline rules.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__add_working_days",
+        "input": {
+          "start": "2026-11-21",
+          "days": 13,
+          "day_type": "werktage",
+          "region": "HE"
+        },
+        "result": "{\"start\":\"2026-11-21\",\"days\":13,\"day_type\":\"werktage\",\"date\":\"2026-12-07\",\"weekday\":\"Monday\",\"skipped\":[{\"date\":\"2026-11-22\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"},{\"date\":\"2026-11-29\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"},{\"date\":\"2026-12-06\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"}],\"counting\":\"Werktage: Monday to Saturday, public holidays excluded; the start day itself is not counted.\",\"calendar\":\"Hessen\",\"disclaimer\":\"Information, not legal advice: working days counted on Ordnung's holiday calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer. A legal period may count differently — compute_deadline applies the deadline rules.\"}"
+      }
+    ]
+  }
+}

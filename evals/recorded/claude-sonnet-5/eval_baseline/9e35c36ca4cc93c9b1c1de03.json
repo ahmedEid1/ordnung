@@ -1,0 +1,79 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"0d88b96d8b5c96f8a4f19ea278634594fba04a607379d5767b00ceee38d97c25\",\"mode\":\"text\",\"region\":\"NI\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-fine_bussgeld-L2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Niedersachsen (NI), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docume",
+    "recorded_at": "2026-11-24T07:01:29+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Landkreis Musterammerland – Bußgeldstelle\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"BG 32.2-26/40918\"},{\"label\":\"Kennzeichen\",\"value\":\"WST-FM 91\"}],\"amounts\":[147],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"Die Frist von zwei Wochen beginnt mit dem Tag der Zustellung.\",\"computation\":\"Page 2 contains a copy of the Zustellungsurkunde (formal service record, §182 ZPO) with the handwritten delivery date 23.11.2026 (Monday) — this documented actual delivery date governs, not the 3-day-fiction of §3 VwZG. Per §187 Abs. 1 BGB the day of the triggering event (delivery, 23.11.2026) is not counted; the period starts the next day. Per §188 Abs. 2 BGB a two-week period ends on the day of the second week that bears the same name as the day of the event, i.e. 23.11.2026 + 14 days = 07.12.2026 (Monday). 07.12.2026 is not a Saturday, Sunday or public holiday in Niedersachsen, so no shift under §193 BGB applies. Last day to lodge the written Einspruch with the Bußgeldstelle is 07.12.2026.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine amount (Geldbuße, Gebühr, Auslagen) after the decision becomes final\",\"quote\":\"Der Gesamtbetrag ist zwei Wochen nach Eintritt der Rechtskraft zu zahlen.\",\"computation\":\"Assuming no Einspruch is filed, Rechtskraft (finality) enters on the day after the Einspruch period expires, i.e. 08.12.2026 (Tuesday) — the day after the 07.12.2026 deadline computed above. Per §187 Abs. 1 BGB the day of entry into force (08.12.2026) is not counted; per §188 Abs. 2 BGB the two-week payment period then ends on the corresponding weekday two weeks later: 08.12.2026 + 14 days = 22.12.2026 (Tuesday). 22.12.2026 is not a Saturday, Sunday or Niedersachsen public holiday, so no §193 BGB shift applies. Payment of the Gesamtbetrag (147,00 €) is due by 22.12.2026. Note: this date shifts if an Einspruch is filed, since Rechtskraft would then not occur on this date.\",\"due_date\":\"2026-12-22\",\"confidence\":\"medium\",\"amount\":147}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment due date (22.12.2026) is calculated assuming no Einspruch is filed and that Rechtskraft occurs immediately after the objection period expires; if an Einspruch is lodged, this payment obligation and date no longer apply.\",\"The 'Eintritt der Rechtskraft' date used for the payment deadline is inferred from the Einspruch deadline rather than stated explicitly in the letter, so the exact payment due date should be reconfirmed with the Bußgeldstelle if in doubt.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Landkreis Musterammerland – Bußgeldstelle",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "BG 32.2-26/40918"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "WST-FM 91"
+        }
+      ],
+      "amounts": [
+        147
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "Die Frist von zwei Wochen beginnt mit dem Tag der Zustellung.",
+          "computation": "Page 2 contains a copy of the Zustellungsurkunde (formal service record, §182 ZPO) with the handwritten delivery date 23.11.2026 (Monday) — this documented actual delivery date governs, not the 3-day-fiction of §3 VwZG. Per §187 Abs. 1 BGB the day of the triggering event (delivery, 23.11.2026) is not counted; the period starts the next day. Per §188 Abs. 2 BGB a two-week period ends on the day of the second week that bears the same name as the day of the event, i.e. 23.11.2026 + 14 days = 07.12.2026 (Monday). 07.12.2026 is not a Saturday, Sunday or public holiday in Niedersachsen, so no shift under §193 BGB applies. Last day to lodge the written Einspruch with the Bußgeldstelle is 07.12.2026.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine amount (Geldbuße, Gebühr, Auslagen) after the decision becomes final",
+          "quote": "Der Gesamtbetrag ist zwei Wochen nach Eintritt der Rechtskraft zu zahlen.",
+          "computation": "Assuming no Einspruch is filed, Rechtskraft (finality) enters on the day after the Einspruch period expires, i.e. 08.12.2026 (Tuesday) — the day after the 07.12.2026 deadline computed above. Per §187 Abs. 1 BGB the day of entry into force (08.12.2026) is not counted; per §188 Abs. 2 BGB the two-week payment period then ends on the corresponding weekday two weeks later: 08.12.2026 + 14 days = 22.12.2026 (Tuesday). 22.12.2026 is not a Saturday, Sunday or Niedersachsen public holiday, so no §193 BGB shift applies. Payment of the Gesamtbetrag (147,00 €) is due by 22.12.2026. Note: this date shifts if an Einspruch is filed, since Rechtskraft would then not occur on this date.",
+          "due_date": "2026-12-22",
+          "confidence": "medium",
+          "amount": 147
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment due date (22.12.2026) is calculated assuming no Einspruch is filed and that Rechtskraft occurs immediately after the objection period expires; if an Einspruch is lodged, this payment obligation and date no longer apply.",
+        "The 'Eintritt der Rechtskraft' date used for the payment deadline is inferred from the Einspruch deadline rather than stated explicitly in the letter, so the exact payment due date should be reconfirmed with the Bußgeldstelle if in doubt."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3748,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2114,
+      "cost_usd": 0.04656439999999999,
+      "duration_ms": 37289,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

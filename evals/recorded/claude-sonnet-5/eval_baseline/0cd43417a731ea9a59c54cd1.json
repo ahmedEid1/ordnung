@@ -1,0 +1,73 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"4b2f82233e0eaecd17f6c14ad74b2d69b4352c380eb7209cc0e90773c9c685c8\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-conflicting_dates-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:23:20+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Kreis Musterlenne-Sauerland – Untere Immissionsschutzbehörde\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"70.3-IS-0442/26\"}],\"amounts\":[],\"items\":[{\"kind\":\"milestone\",\"title\":\"Restricted operating hours for wood splitter take effect\",\"quote\":\"mit Bescheid vom 18.11.2026 ordne ich an, dass Sie die Holzspaltmaschine auf Ihrem Grundstück werktags nur zwischen 9 und 12 Uhr sowie zwischen 15 und 18 Uhr betreiben dürfen.\",\"computation\":\"The order (Bescheid of 18.11.2026) is conveyed by this letter dated 19.11.2026 (Donnerstag), sent by ordinary post. Under § 41 Abs. 2 VwVfG NRW, a letter sent by ordinary mail is deemed notified (bekanntgegeben) on the third day after it was handed to the post, i.e. 19.11.2026 + 3 days = 22.11.2026 (Sonntag). As this is a statutory fiction about the moment of receipt rather than a deadline to be met, it is not shifted to the next business day. The restriction on operating hours binds Ms. Musterlenne from this date of notification onward and continues indefinitely (no end date is stated in the letter).\",\"due_date\":\"2026-11-22\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"File Klage with the Verwaltungsgericht Musterarnsberg against the order\",\"quote\":\"Innerhalb eines Monats nach Bekanntgabe kann gegen diesen Bescheid Klage beim Verwaltungsgericht Musterarnsberg, Jägerstraße 1, 59821 Musterarnsberg, erhoben werden.\",\"computation\":\"Bekanntgabe (notification) is fixed, per § 41 Abs. 2 VwVfG NRW, at the third day after posting of this letter dated 19.11.2026, i.e. 22.11.2026 (Sonntag). Under § 187 Abs. 1 BGB the day of the triggering event (22.11.2026) is not counted, so the one-month Klagefrist (§ 74 VwGO) begins 23.11.2026. Under § 188 Abs. 2 BGB a month-long period ends on the day of the following month bearing the same number as the event day, i.e. 22.12.2026. 22.12.2026 is a Tuesday and not a public holiday in NRW, so no shift under § 193 BGB is needed. Last day the Klage must reach the Verwaltungsgericht Musterarnsberg: 22.12.2026.\",\"due_date\":\"2026-12-22\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"Both the exact dispatch date (assumed equal to the letter date 19.11.2026) and whether the letter was actually sent by ordinary post (triggering the 3-day fiction of § 41 Abs. 2 VwVfG) are not explicitly stated, so the Bekanntgabe and resulting Klage deadline are best estimates (medium confidence) — check the envelope postmark or any delivery record if certainty is needed.\",\"The letter contains several clearly fictitious/placeholder names (Kreis Musterlenne-Sauerland, Verwaltungsgericht Musterarnsberg, Landesmusterbank) typical of a template document — verify that this is a genuine, personally addressed letter from your actual Kreis/Immissionsschutzbehörde before relying on it, and do not send money to the printed IBAN without independently confirming it belongs to that authority.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Kreis Musterlenne-Sauerland – Untere Immissionsschutzbehörde",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "70.3-IS-0442/26"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "Restricted operating hours for wood splitter take effect",
+          "quote": "mit Bescheid vom 18.11.2026 ordne ich an, dass Sie die Holzspaltmaschine auf Ihrem Grundstück werktags nur zwischen 9 und 12 Uhr sowie zwischen 15 und 18 Uhr betreiben dürfen.",
+          "computation": "The order (Bescheid of 18.11.2026) is conveyed by this letter dated 19.11.2026 (Donnerstag), sent by ordinary post. Under § 41 Abs. 2 VwVfG NRW, a letter sent by ordinary mail is deemed notified (bekanntgegeben) on the third day after it was handed to the post, i.e. 19.11.2026 + 3 days = 22.11.2026 (Sonntag). As this is a statutory fiction about the moment of receipt rather than a deadline to be met, it is not shifted to the next business day. The restriction on operating hours binds Ms. Musterlenne from this date of notification onward and continues indefinitely (no end date is stated in the letter).",
+          "due_date": "2026-11-22",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "File Klage with the Verwaltungsgericht Musterarnsberg against the order",
+          "quote": "Innerhalb eines Monats nach Bekanntgabe kann gegen diesen Bescheid Klage beim Verwaltungsgericht Musterarnsberg, Jägerstraße 1, 59821 Musterarnsberg, erhoben werden.",
+          "computation": "Bekanntgabe (notification) is fixed, per § 41 Abs. 2 VwVfG NRW, at the third day after posting of this letter dated 19.11.2026, i.e. 22.11.2026 (Sonntag). Under § 187 Abs. 1 BGB the day of the triggering event (22.11.2026) is not counted, so the one-month Klagefrist (§ 74 VwGO) begins 23.11.2026. Under § 188 Abs. 2 BGB a month-long period ends on the day of the following month bearing the same number as the event day, i.e. 22.12.2026. 22.12.2026 is a Tuesday and not a public holiday in NRW, so no shift under § 193 BGB is needed. Last day the Klage must reach the Verwaltungsgericht Musterarnsberg: 22.12.2026.",
+          "due_date": "2026-12-22",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "Both the exact dispatch date (assumed equal to the letter date 19.11.2026) and whether the letter was actually sent by ordinary post (triggering the 3-day fiction of § 41 Abs. 2 VwVfG) are not explicitly stated, so the Bekanntgabe and resulting Klage deadline are best estimates (medium confidence) — check the envelope postmark or any delivery record if certainty is needed.",
+        "The letter contains several clearly fictitious/placeholder names (Kreis Musterlenne-Sauerland, Verwaltungsgericht Musterarnsberg, Landesmusterbank) typical of a template document — verify that this is a genuine, personally addressed letter from your actual Kreis/Immissionsschutzbehörde before relying on it, and do not send money to the printed IBAN without independently confirming it belongs to that authority."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4757,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1582,
+      "cost_usd": 0.054526399999999996,
+      "duration_ms": 50507,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

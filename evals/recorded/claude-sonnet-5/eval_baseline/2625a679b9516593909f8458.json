@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"5b13989c4ba012e031b99f20ee99b553d5430598474c031b89103d1dca0cb818\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-scam-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:38:16+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Grundstücksregister Online Service GmbH\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Rechnungs-Nr.\",\"value\":\"GRO-26-77021\"}],\"amounts\":[498],\"items\":[{\"kind\":\"payment\",\"title\":\"Payment for private registry entry offer\",\"quote\":\"Zahlbar bis 01.12.2026 ohne Abzug.\",\"computation\":\"The letter states a fixed calendar date for payment: 01.12.2026. This date (Tuesday) is not a Saturday, Sunday or public holiday in NW, so no shift applies. However, the letter itself states on the same page that it is only an offer ('Dieses Schreiben ist ein Angebot') and that a contract only comes into existence if and when the recipient pays ('ein Vertrag kommt erst durch die Zahlung zustande'). This means there is currently no binding debt and no legal obligation to pay by this date — the 'due date' is only the date the sender wants payment by if the recipient chooses to accept the offer.\",\"due_date\":\"2026-12-01\",\"confidence\":\"high\",\"amount\":498}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This letter is formatted to look like an official invoice for a mandatory land-register entry, but it explicitly states it is merely a commercial 'Angebot' (offer) for a private, unofficial registry run by a private GmbH — it has no connection to the real, official German Grundbuch (land register), which is maintained by the local court (Amtsgericht/Grundbuchamt) and does not send such invoices.\",\"This matches a well-known German scam/deceptive-marketing pattern (similar to fake 'Gewerbeauskunft-Zentrale' or fake business-registry letters) that relies on recipients mistaking a private commercial offer for an official, legally required fee notice.\",\"Because the letter itself says a contract only arises upon payment, there is no existing legal obligation to pay the stated amount; paying would create a new contract for a service of doubtful value. The recipient should not pay and should verify the sender before taking any action.\",\"Do not use the IBAN or payment details in this letter without first independently confirming the legitimacy of the sender; consider reporting this to consumer protection (Verbraucherzentrale) if suspected to be a scam.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Grundstücksregister Online Service GmbH",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Rechnungs-Nr.",
+          "value": "GRO-26-77021"
+        }
+      ],
+      "amounts": [
+        498
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Payment for private registry entry offer",
+          "quote": "Zahlbar bis 01.12.2026 ohne Abzug.",
+          "computation": "The letter states a fixed calendar date for payment: 01.12.2026. This date (Tuesday) is not a Saturday, Sunday or public holiday in NW, so no shift applies. However, the letter itself states on the same page that it is only an offer ('Dieses Schreiben ist ein Angebot') and that a contract only comes into existence if and when the recipient pays ('ein Vertrag kommt erst durch die Zahlung zustande'). This means there is currently no binding debt and no legal obligation to pay by this date — the 'due date' is only the date the sender wants payment by if the recipient chooses to accept the offer.",
+          "due_date": "2026-12-01",
+          "confidence": "high",
+          "amount": 498
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This letter is formatted to look like an official invoice for a mandatory land-register entry, but it explicitly states it is merely a commercial 'Angebot' (offer) for a private, unofficial registry run by a private GmbH — it has no connection to the real, official German Grundbuch (land register), which is maintained by the local court (Amtsgericht/Grundbuchamt) and does not send such invoices.",
+        "This matches a well-known German scam/deceptive-marketing pattern (similar to fake 'Gewerbeauskunft-Zentrale' or fake business-registry letters) that relies on recipients mistaking a private commercial offer for an official, legally required fee notice.",
+        "Because the letter itself says a contract only arises upon payment, there is no existing legal obligation to pay the stated amount; paying would create a new contract for a service of doubtful value. The recipient should not pay and should verify the sender before taking any action.",
+        "Do not use the IBAN or payment details in this letter without first independently confirming the legitimacy of the sender; consider reporting this to consumer protection (Verbraucherzentrale) if suspected to be a scam."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3556,
+      "cache_read_tokens": 12534,
+      "cache_creation_tokens": 3769,
+      "cost_usd": 0.0531508,
+      "duration_ms": 36585,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"07ee1aa7b05c5bd2c5240e10d4147695b02dee925c6212e8f17dd58faded1ea5\",\"mode\":\"text\",\"region\":\"BY\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-N1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bayern (BY), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag",
+    "recorded_at": "2026-11-24T07:24:10+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Landratsamt Musterinn – Bauamt – Untere Bauaufsichtsbehörde\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Az.\",\"value\":\"B-2026-1406\"}],\"amounts\":[120],\"items\":[{\"kind\":\"deadline\",\"title\":\"File action (Klage) against rejection of building permit\",\"quote\":\"Gegen diesen Bescheid können Sie binnen eines Monats nach seiner Bekanntgabe Klage beim Bayerischen Verwaltungsgericht Musterregensburg, Haidplatz 4, 93047 Musterregensburg erheben, schriftlich oder zur Niederschrift bei der Geschäftsstelle des Gerichts.\",\"computation\":\"Letter is dated 18.11.2026 (Wednesday) and the office itself states it was given to the post that day, applying Art. 41 Abs. 2 BayVwVfG: deemed delivered on the 4th day after posting. Counting 4 calendar days after 18.11.2026: 19.11 (Thu), 20.11 (Fri), 21.11 (Sat), 22.11 (Sun) -> deemed delivery (Bekanntgabe) = 22.11.2026. The Landratsamt is a general administrative authority (not a Finanzamt), so under Art. 41 Abs. 2 BayVwVfG the deemed-delivery day is NOT moved even though it falls on a Sunday; it stays 22.11.2026. The one-month Klage period runs from this Bekanntgabe per §§187 Abs.1, 188 Abs.2 BGB (analogous via § 57 VwGO): the period ends one month later on the day bearing the same number, i.e. 22.12.2026 (Tuesday), which is a normal working day in Bayern (not a holiday), so no further shift under § 222 Abs. 2 ZPO/§ 193 BGB is needed.\",\"due_date\":\"2026-12-22\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The letter states that a separate fee notice (Kostenbescheid) of 120 € for the rejection will follow; no payment is due from this letter itself and no due date for that fee can be determined yet.\",\"The letter explicitly states no Widerspruch (objection) procedure is available in this matter - only Klage before the Verwaltungsgericht Musterregensburg within one month.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Landratsamt Musterinn – Bauamt – Untere Bauaufsichtsbehörde",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Az.",
+          "value": "B-2026-1406"
+        }
+      ],
+      "amounts": [
+        120
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File action (Klage) against rejection of building permit",
+          "quote": "Gegen diesen Bescheid können Sie binnen eines Monats nach seiner Bekanntgabe Klage beim Bayerischen Verwaltungsgericht Musterregensburg, Haidplatz 4, 93047 Musterregensburg erheben, schriftlich oder zur Niederschrift bei der Geschäftsstelle des Gerichts.",
+          "computation": "Letter is dated 18.11.2026 (Wednesday) and the office itself states it was given to the post that day, applying Art. 41 Abs. 2 BayVwVfG: deemed delivered on the 4th day after posting. Counting 4 calendar days after 18.11.2026: 19.11 (Thu), 20.11 (Fri), 21.11 (Sat), 22.11 (Sun) -> deemed delivery (Bekanntgabe) = 22.11.2026. The Landratsamt is a general administrative authority (not a Finanzamt), so under Art. 41 Abs. 2 BayVwVfG the deemed-delivery day is NOT moved even though it falls on a Sunday; it stays 22.11.2026. The one-month Klage period runs from this Bekanntgabe per §§187 Abs.1, 188 Abs.2 BGB (analogous via § 57 VwGO): the period ends one month later on the day bearing the same number, i.e. 22.12.2026 (Tuesday), which is a normal working day in Bayern (not a holiday), so no further shift under § 222 Abs. 2 ZPO/§ 193 BGB is needed.",
+          "due_date": "2026-12-22",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The letter states that a separate fee notice (Kostenbescheid) of 120 € for the rejection will follow; no payment is due from this letter itself and no due date for that fee can be determined yet.",
+        "The letter explicitly states no Widerspruch (objection) procedure is available in this matter - only Klage before the Verwaltungsgericht Musterregensburg within one month."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3415,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2092,
+      "cost_usd": 0.043628,
+      "duration_ms": 34355,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"07a9ccbd2258f4dc052bae9a2033cbbbe73f4e2fdb560e000bd8ff0587e1f25b\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-missing_date-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:32:58+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Beispielkey Lettings GmbH\",\"document_date\":null,\"references\":[{\"label\":\"Tenancy\",\"value\":\"BKL-0418\"}],\"amounts\":[240],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay for professional cleaning (kitchen and bathroom)\",\"quote\":\"Please pay this amount within 14 days of receiving this letter.\",\"computation\":\"The letter sets a 14-day period running from the day the tenant receives the letter, but the letter itself carries no printed date and does not state when it was sent or posted. Without a known start date, the 14-day count (§§ 187, 188 BGB) cannot be anchored to a specific calendar day, so the exact due date cannot be computed.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":240}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter has no printed date and does not state when it was posted or when the tenant received it, so the stated 14-day payment deadline could not be converted into an exact calendar date; the posting/receipt date is needed to compute it (14 days from that day, moved to the next working day if it falls on a weekend or NW public holiday).\",\"The sender withholds the full deposit until this payment arrives; verify the €240.00 cleaning charge and the underlying cleaning invoice before paying, and double-check the IBAN given (DE95 3705 0198 0005 5505 00) matches prior correspondence with this landlord.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Beispielkey Lettings GmbH",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Tenancy",
+          "value": "BKL-0418"
+        }
+      ],
+      "amounts": [
+        240
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay for professional cleaning (kitchen and bathroom)",
+          "quote": "Please pay this amount within 14 days of receiving this letter.",
+          "computation": "The letter sets a 14-day period running from the day the tenant receives the letter, but the letter itself carries no printed date and does not state when it was sent or posted. Without a known start date, the 14-day count (§§ 187, 188 BGB) cannot be anchored to a specific calendar day, so the exact due date cannot be computed.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 240
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter has no printed date and does not state when it was posted or when the tenant received it, so the stated 14-day payment deadline could not be converted into an exact calendar date; the posting/receipt date is needed to compute it (14 days from that day, moved to the next working day if it falls on a weekend or NW public holiday).",
+        "The sender withholds the full deposit until this payment arrives; verify the €240.00 cleaning charge and the underlying cleaning invoice before paying, and double-check the IBAN given (DE95 3705 0198 0005 5505 00) matches prior correspondence with this landlord."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2303,
+      "cache_read_tokens": 12403,
+      "cache_creation_tokens": 2981,
+      "cost_usd": 0.03744259999999999,
+      "duration_ms": 25151,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

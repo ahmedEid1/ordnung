@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"a3ad77112795e52a4bd21aee3668d8701e0da567e7c0ecf42f0f27becb610266\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:52:15+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[259],\"contract\":null,\"kind\":\"tax_letter\",\"sender_name\":\"Familienkasse Beispielweser\",\"document_date\":\"2026-11-19\",\"remedy_type\":\"einspruch\",\"references\":[{\"label\":\"Kindergeldnummer\",\"value\":\"377FK104258\"}],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against Kindergeld cancellation\",\"quote\":\"Gegen diesen Bescheid kann binnen eines Monats nach Bekanntgabe Einspruch bei der Familienkasse Beispielweser eingelegt werden, schriftlich, elektronisch oder zur Niederschrift.\",\"computation\":\"The letter states a separate 'Aufgabe zur Post' (posting) date of Saturday, 21.11.2026, which governs instead of the Bescheid date of 19.11.2026. The Familienkasse is treated like a tax office for the delivery fiction (per the rule set), so delivery is deemed to occur on the 4th day after posting, counting calendar days: 22.11 (Sun)=1, 23.11 (Mon)=2, 24.11 (Tue)=3, 25.11 (Wed)=4. 25.11.2026 is a Wednesday, not a weekend or holiday, so no shift of the delivery day is needed (tax-office rule only shifts if the 4th day itself falls on a weekend/holiday). Deemed delivery (Bekanntgabe) = 25.11.2026. The one-month Einspruch period (§355 Abs.1 AO) starts the day after delivery and ends on the day in the following month bearing the same number as the delivery day (§188 Abs.2 BGB): 25.12.2026. 25.12.2026 (Christmas Day) is a nationwide public holiday; 26.12.2026 (2nd Christmas Day) is also a nationwide holiday and a Saturday; 27.12.2026 is a Sunday. The next working day is Monday, 28.12.2026, so the deadline moves there under §108 Abs.3 AO / §193 BGB.\",\"due_date\":\"2026-12-28\",\"confidence\":\"high\",\"amount\":null}],\"warnings\":[\"The letter includes the Familienkasse's own IBAN in the footer even though no payment from the recipient is requested in this letter; this is unusual for an authority notice and should be treated with caution if any payment request ever references it.\",\"The letter's main date (Bescheid vom 19.11.2026) differs from the separately stated posting date (Aufgabe zur Post, Samstag, 21.11.2026); the posting date was used to compute deadlines as instructed by the delivery-fiction rules.\"]}",
+    "data": {
+      "amounts": [
+        259
+      ],
+      "contract": null,
+      "kind": "tax_letter",
+      "sender_name": "Familienkasse Beispielweser",
+      "document_date": "2026-11-19",
+      "remedy_type": "einspruch",
+      "references": [
+        {
+          "label": "Kindergeldnummer",
+          "value": "377FK104258"
+        }
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against Kindergeld cancellation",
+          "quote": "Gegen diesen Bescheid kann binnen eines Monats nach Bekanntgabe Einspruch bei der Familienkasse Beispielweser eingelegt werden, schriftlich, elektronisch oder zur Niederschrift.",
+          "computation": "The letter states a separate 'Aufgabe zur Post' (posting) date of Saturday, 21.11.2026, which governs instead of the Bescheid date of 19.11.2026. The Familienkasse is treated like a tax office for the delivery fiction (per the rule set), so delivery is deemed to occur on the 4th day after posting, counting calendar days: 22.11 (Sun)=1, 23.11 (Mon)=2, 24.11 (Tue)=3, 25.11 (Wed)=4. 25.11.2026 is a Wednesday, not a weekend or holiday, so no shift of the delivery day is needed (tax-office rule only shifts if the 4th day itself falls on a weekend/holiday). Deemed delivery (Bekanntgabe) = 25.11.2026. The one-month Einspruch period (§355 Abs.1 AO) starts the day after delivery and ends on the day in the following month bearing the same number as the delivery day (§188 Abs.2 BGB): 25.12.2026. 25.12.2026 (Christmas Day) is a nationwide public holiday; 26.12.2026 (2nd Christmas Day) is also a nationwide holiday and a Saturday; 27.12.2026 is a Sunday. The next working day is Monday, 28.12.2026, so the deadline moves there under §108 Abs.3 AO / §193 BGB.",
+          "due_date": "2026-12-28",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "warnings": [
+        "The letter includes the Familienkasse's own IBAN in the footer even though no payment from the recipient is requested in this letter; this is unusual for an authority notice and should be treated with caution if any payment request ever references it.",
+        "The letter's main date (Bescheid vom 19.11.2026) differs from the separately stated posting date (Aufgabe zur Post, Samstag, 21.11.2026); the posting date was used to compute deadlines as instructed by the delivery-fiction rules."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3771,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1673,
+      "cost_usd": 0.045512,
+      "duration_ms": 38294,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

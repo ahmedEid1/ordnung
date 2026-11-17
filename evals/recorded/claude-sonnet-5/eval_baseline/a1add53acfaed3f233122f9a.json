@@ -1,0 +1,96 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"a099ae68be29ae15e3b4f1aea16a82654ebde75a1da8153647b0cf3445d93049\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-relative_business_days-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:33:01+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Musterhausen Bausachverständige GbR\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Anfrage-Nr.\",\"value\":\"SV-26-311\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Confirm whether to commission the Gutachten (soil/basement moisture survey)\",\"quote\":\"Bitte geben Sie uns innerhalb von 15 Werktagen nach dem Briefdatum Bescheid, ob wir das Gutachten erstellen sollen; als Werktage zählen Montag bis Samstag, nicht aber Sonn- und Feiertage.\",\"computation\":\"Start: the letter's own date, 20.11.2026 (Friday). The letter explicitly defines the period's start as 'nach dem Briefdatum' and its unit as Werktage = Monday to Saturday, excluding Sundays and public holidays, matching § 187 Abs. 1 BGB (day of the event not counted, counting begins the next day, 21.11.2026). Counting 15 such working days forward from 20.11.2026, skipping the three Sundays that fall in the window (22.11., 29.11., 06.12.2026) and no public holiday falls in that window in either NW or the sender's seat (Hessen), lands on Tuesday, 08.12.2026 (confirmed by the rules engine). That day is itself a business day, so no further weekend/holiday shift is needed.\",\"due_date\":\"2026-12-08\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The sender's postal code (35394 Mustergießen) corresponds to Hessen, not Nordrhein-Westfalen; no public holiday falls between 20.11.2026 and 08.12.2026 in either Land, so this does not change the computed due date, but it is worth noting for future deadlines from this sender.\",\"This is a private company's quote/inquiry letter, not an authority, so no statutory deemed-delivery rule applies — only the letter's own stated period (15 Werktage from the Briefdatum) governs the deadline.\",\"No amount for the quoted flat fee (Pauschalpreis) is stated in this letter itself; it says the offer (Angebot) is enclosed separately, so the price could not be captured here.\"]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Musterhausen Bausachverständige GbR",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Anfrage-Nr.",
+          "value": "SV-26-311"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Confirm whether to commission the Gutachten (soil/basement moisture survey)",
+          "quote": "Bitte geben Sie uns innerhalb von 15 Werktagen nach dem Briefdatum Bescheid, ob wir das Gutachten erstellen sollen; als Werktage zählen Montag bis Samstag, nicht aber Sonn- und Feiertage.",
+          "computation": "Start: the letter's own date, 20.11.2026 (Friday). The letter explicitly defines the period's start as 'nach dem Briefdatum' and its unit as Werktage = Monday to Saturday, excluding Sundays and public holidays, matching § 187 Abs. 1 BGB (day of the event not counted, counting begins the next day, 21.11.2026). Counting 15 such working days forward from 20.11.2026, skipping the three Sundays that fall in the window (22.11., 29.11., 06.12.2026) and no public holiday falls in that window in either NW or the sender's seat (Hessen), lands on Tuesday, 08.12.2026 (confirmed by the rules engine). That day is itself a business day, so no further weekend/holiday shift is needed.",
+          "due_date": "2026-12-08",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The sender's postal code (35394 Mustergießen) corresponds to Hessen, not Nordrhein-Westfalen; no public holiday falls between 20.11.2026 and 08.12.2026 in either Land, so this does not change the computed due date, but it is worth noting for future deadlines from this sender.",
+        "This is a private company's quote/inquiry letter, not an authority, so no statutory deemed-delivery rule applies — only the letter's own stated period (15 Werktage from the Briefdatum) governs the deadline.",
+        "No amount for the quoted flat fee (Pauschalpreis) is stated in this letter itself; it says the offer (Angebot) is enclosed separately, so the price could not be captured here."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2828,
+      "cache_read_tokens": 14606,
+      "cache_creation_tokens": 3601,
+      "cost_usd": 0.045613200000000007,
+      "duration_ms": 33220,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__add_working_days",
+        "input": {
+          "start": "2026-11-20",
+          "days": 15,
+          "day_type": "werktage",
+          "region": "NW"
+        },
+        "result": "{\"start\":\"2026-11-20\",\"days\":15,\"day_type\":\"werktage\",\"date\":\"2026-12-08\",\"weekday\":\"Tuesday\",\"skipped\":[{\"date\":\"2026-11-22\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"},{\"date\":\"2026-11-29\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"},{\"date\":\"2026-12-06\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"}],\"counting\":\"Werktage: Monday to Saturday, public holidays excluded; the start day itself is not counted.\",\"calendar\":\"Nordrhein-Westfalen\",\"disclaimer\":\"Information, not legal advice: working days counted on Ordnung's holiday calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer. A legal period may count differently — compute_deadline applies the deadline rules.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 15,
+            "unit": "werktage",
+            "anchor": "document_date",
+            "anchor_date": "2026-11-20",
+            "nature": "other",
+            "text": "Bitte geben Sie uns innerhalb von 15 Werktagen nach dem Briefdatum Bescheid, ob wir das Gutachten erstellen sollen; als Werktage zählen Montag bis Samstag, nicht aber Sonn- und Feiertage."
+          },
+          "document_date": "2026-11-20",
+          "sender_kind": "company",
+          "sender_name": "Musterhausen Bausachverständige GbR",
+          "region": "NW",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":\"2026-12-08\",\"weekday\":\"Tuesday\",\"summary\":\"15 working days (Mon–Sat) after the letter's date (Fri 20 Nov 2026) is Tue 8 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Fri 20 Nov 2026\",\"date\":\"2026-11-20\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"15 working days (Mon–Sat) later: Tue 8 Dec 2026\",\"date\":\"2026-12-08\",\"rule_id\":\"unit_werktage\",\"citation\":\"BGH VIII ZR 206/04\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"unit_werktage\",\"title\":\"Counting working days (Werktage)\",\"citation\":\"BGH VIII ZR 206/04\",\"url\":\"https://dejure.org/dienste/vernetzung/rechtsprechung?Gericht=BGH&Datum=27.04.2005&Aktenzeichen=VIII+ZR+206/04\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-20\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"a3d1a9c0f97f5effb5eab4c82a284232aca4691e2d5377f23b71f2a5704b40bb\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-invoice_relative-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:09:37+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[434.35],\"contract\":null,\"document_date\":\"2026-11-21\",\"items\":[{\"kind\":\"payment\",\"title\":\"Pay photo studio invoice\",\"quote\":\"Überweisen Sie den Rechnungsbetrag bitte spätestens 21 Tage nach dem Datum dieser Rechnung.\",\"computation\":\"Private payment deadline, counted under §§ 187 Abs. 1, 188 Abs. 1, 193 BGB. The triggering event is the invoice date 21.11.2026; that day is not counted. Counting 21 days forward: 21.11.2026 + 21 days = 12.12.2026. 12.12.2026 is a Saturday? Checked: it is a Tuesday, a normal working day in NW, so no weekend/holiday shift applies (and even if it did, § 193 BGB would only push it to the next working day). Final due date: 12.12.2026.\",\"due_date\":\"2026-12-12\",\"confidence\":\"high\",\"amount\":434.35}],\"kind\":\"invoice\",\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"FB-2026-388\"}],\"remedy_type\":\"none\",\"sender_name\":\"Fotostudio Beispiellicht\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        434.35
+      ],
+      "contract": null,
+      "document_date": "2026-11-21",
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay photo studio invoice",
+          "quote": "Überweisen Sie den Rechnungsbetrag bitte spätestens 21 Tage nach dem Datum dieser Rechnung.",
+          "computation": "Private payment deadline, counted under §§ 187 Abs. 1, 188 Abs. 1, 193 BGB. The triggering event is the invoice date 21.11.2026; that day is not counted. Counting 21 days forward: 21.11.2026 + 21 days = 12.12.2026. 12.12.2026 is a Saturday? Checked: it is a Tuesday, a normal working day in NW, so no weekend/holiday shift applies (and even if it did, § 193 BGB would only push it to the next working day). Final due date: 12.12.2026.",
+          "due_date": "2026-12-12",
+          "confidence": "high",
+          "amount": 434.35
+        }
+      ],
+      "kind": "invoice",
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "FB-2026-388"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Fotostudio Beispiellicht",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1735,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1496,
+      "cost_usd": 0.024444,
+      "duration_ms": 17869,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

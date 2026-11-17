@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"76a626154f61329abde365cff4c3ff686d8f832745067ae2e4368a8e14a33afe\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-dunning_fixed-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:50:38+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Stadtwerke Beispielsoest GmbH\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Vertragskonto\",\"value\":\"4007 3318 52\"}],\"amounts\":[226],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay overdue electricity and water advance payments plus dunning fee\",\"quote\":\"Wir fordern Sie auf, den offenen Betrag bis spätestens 10.12.2026 zu zahlen.\",\"computation\":\"The letter states an explicit calendar due date: 'bis spätestens 10.12.2026'. 2026-12-10 is a Thursday, not a Saturday, Sunday or public holiday in NW, so no shift under §193 BGB is needed. Due date = 2026-12-10.\",\"due_date\":\"2026-12-10\",\"confidence\":\"high\",\"amount\":226}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter threatens to interrupt electricity and water supply after prior notice if payment is not made; this is standard dunning language but the person should verify the open items (October and November 2026 advance payments) against their own bank records before paying.\",\"Before paying, double-check that the IBAN given (DE31 3705 0198 0005 5404 00) matches the IBAN previously used by Stadtwerke Beispielsoest, as a precaution against fraudulent dunning letters.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Stadtwerke Beispielsoest GmbH",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Vertragskonto",
+          "value": "4007 3318 52"
+        }
+      ],
+      "amounts": [
+        226
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay overdue electricity and water advance payments plus dunning fee",
+          "quote": "Wir fordern Sie auf, den offenen Betrag bis spätestens 10.12.2026 zu zahlen.",
+          "computation": "The letter states an explicit calendar due date: 'bis spätestens 10.12.2026'. 2026-12-10 is a Thursday, not a Saturday, Sunday or public holiday in NW, so no shift under §193 BGB is needed. Due date = 2026-12-10.",
+          "due_date": "2026-12-10",
+          "confidence": "high",
+          "amount": 226
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter threatens to interrupt electricity and water supply after prior notice if payment is not made; this is standard dunning language but the person should verify the open items (October and November 2026 advance payments) against their own bank records before paying.",
+        "Before paying, double-check that the IBAN given (DE31 3705 0198 0005 5404 00) matches the IBAN previously used by Stadtwerke Beispielsoest, as a precaution against fraudulent dunning letters."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2214,
+      "cache_read_tokens": 7734,
+      "cache_creation_tokens": 2825,
+      "cost_usd": 0.034994800000000006,
+      "duration_ms": 24773,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}
