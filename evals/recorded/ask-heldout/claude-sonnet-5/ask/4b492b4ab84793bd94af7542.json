@@ -1,0 +1,342 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"4e7d476235fd96d344e34b098e8622ce72739dff44f880bf5328b85449ba19dd\",\"question\":\"By when must the semester fee for summer 2027 be paid?\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "doc_nba3k0ka85q0",
+      "doc_tszxajp80vd5"
+    ],
+    "prompt_head": "The person asks:\nBy when must the semester fee for summer 2027 be paid?\n",
+    "recorded_at": "2026-11-24T13:46:45+00:00",
+    "repeat": 3,
+    "commit": "84270dc0",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "The semester fee for summer semester 2027 is due Fri 15 Jan 2027, and must be sent by Thu 14 Jan 2027 to arrive in time [item:itm_85xesrap412m].\n\n- Amount: 312.40 € [item:itm_85xesrap412m]\n- From the letter: late payment adds a late fee (Säumnisgebühr), and missing the deadline risks deregistration (Exmatrikulation) — check the exact late-fee amount in the letter itself.\n- Related letter: \"Semester documents for winter semester 2026/27 and re-registration for summer semester 2027\" from Hochschule Musterstadt [doc:doc_nba3k0ka85q0] [party:pty_fhp8fzemmzvt].",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 445,
+      "cache_read_tokens": 12778,
+      "cache_creation_tokens": 2154,
+      "cost_usd": 0.0156296,
+      "duration_ms": 8186,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Semesterbeitrag Sommersemester 2027"
+      },
+      "tool_use_id": "toolu_01PWB3LfqxH3GGu12sQa6zEo"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_nba3k0ka85q0\",\"kind\":\"university\",\"date\":\"2026-09-01\",\"party_id\":\"pty_fhp8fzemmzvt\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_nba3k0ka85q0\":{\"title\":\"Semester documents for winter semester 2026/27 and re-registration for summer semester 2027\",\"snippet\":\"…Sommersemester 2027 Nach der Urabstimmung der Studierendenschaft ist ab dem Sommersemester 2027 das Deutschlandsemesterticket im Semesterbeitrag…\"},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01PWB3LfqxH3GGu12sQa6zEo"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "from_date": "2026-11-24",
+        "to_date": "2027-12-31",
+        "kind": "payment"
+      },
+      "tool_use_id": "toolu_017BAKnrv633SoDKnoftqyCd"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-11-24\",\"items\":[{\"id\":\"itm_93jvwb6nxzhe\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-12-01\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"low\",\"area\":\"insurance\",\"party_id\":\"pty_re9nde1xqtfn\",\"doc_id\":\"doc_tszxajp80vd5\",\"contract_id\":\"ctr_w97tm6xhn7zw\",\"repeats\":\"every year on the 1st\",\"following_due_date\":\"2027-12-01\",\"amount\":59.9,\"currency\":\"EUR\"},{\"id\":\"itm_85xesrap412m\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2027-01-15\",\"send_by\":\"2027-01-14\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"study\",\"party_id\":\"pty_fhp8fzemmzvt\",\"doc_id\":\"doc_nba3k0ka85q0\",\"amount\":312.4,\"currency\":\"EUR\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_93jvwb6nxzhe\":{\"title\":\"Annual liability insurance premium direct debit\",\"action\":\"Make sure the linked bank account has enough funds for the automatic direct debit.\"},\"pty_re9nde1xqtfn\":{\"name\":\"Muster Versicherung AG\"},\"itm_85xesrap412m\":{\"title\":\"Pay the semester fee (Semesterbeitrag) for summer semester 2027\",\"action\":\"Transfer the semester fee of €312.40 to the university's account, using the given reference, so it arrives by the deadline shown.\",\"consequence\":\"Late payment adds a €15.00 late fee (Säumnisgebühr), and if the fee is not received in time you risk being deregistered (Exmatrikulation).\"},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_017BAKnrv633SoDKnoftqyCd"
+    },
+    {
+      "type": "text",
+      "text": "The"
+    },
+    {
+      "type": "text",
+      "text": " semester fee for"
+    },
+    {
+      "type": "text",
+      "text": " summ"
+    },
+    {
+      "type": "text",
+      "text": "er semester 2027 is"
+    },
+    {
+      "type": "text",
+      "text": " due"
+    },
+    {
+      "type": "text",
+      "text": " F"
+    },
+    {
+      "type": "text",
+      "text": "ri "
+    },
+    {
+      "type": "text",
+      "text": "15 Jan 2027"
+    },
+    {
+      "type": "text",
+      "text": ","
+    },
+    {
+      "type": "text",
+      "text": " and must"
+    },
+    {
+      "type": "text",
+      "text": " be sent by Th"
+    },
+    {
+      "type": "text",
+      "text": "u 14 Jan "
+    },
+    {
+      "type": "text",
+      "text": "2027 to arrive in"
+    },
+    {
+      "type": "text",
+      "text": " time [item:"
+    },
+    {
+      "type": "text",
+      "text": "itm_85"
+    },
+    {
+      "type": "text",
+      "text": "x"
+    },
+    {
+      "type": "text",
+      "text": "es"
+    },
+    {
+      "type": "text",
+      "text": "r"
+    },
+    {
+      "type": "text",
+      "text": "ap"
+    },
+    {
+      "type": "text",
+      "text": "412"
+    },
+    {
+      "type": "text",
+      "text": "m"
+    },
+    {
+      "type": "text",
+      "text": "].\n\n- Amount:"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "312"
+    },
+    {
+      "type": "text",
+      "text": ".40 €"
+    },
+    {
+      "type": "text",
+      "text": " [item:itm_85x"
+    },
+    {
+      "type": "text",
+      "text": "esrap412m]\n-"
+    },
+    {
+      "type": "text",
+      "text": " From"
+    },
+    {
+      "type": "text",
+      "text": " the letter:"
+    },
+    {
+      "type": "text",
+      "text": " late payment adds a late"
+    },
+    {
+      "type": "text",
+      "text": " fee ("
+    },
+    {
+      "type": "text",
+      "text": "Säumnisgebühr"
+    },
+    {
+      "type": "text",
+      "text": "), and miss"
+    },
+    {
+      "type": "text",
+      "text": "ing the deadline risks de"
+    },
+    {
+      "type": "text",
+      "text": "registration ("
+    },
+    {
+      "type": "text",
+      "text": "Exmatrikulation"
+    },
+    {
+      "type": "text",
+      "text": ") —"
+    },
+    {
+      "type": "text",
+      "text": " check the ex"
+    },
+    {
+      "type": "text",
+      "text": "act late"
+    },
+    {
+      "type": "text",
+      "text": "-"
+    },
+    {
+      "type": "text",
+      "text": "fee amount in"
+    },
+    {
+      "type": "text",
+      "text": " the letter itself.\n-"
+    },
+    {
+      "type": "text",
+      "text": " Related"
+    },
+    {
+      "type": "text",
+      "text": " letter: \""
+    },
+    {
+      "type": "text",
+      "text": "Semester docum"
+    },
+    {
+      "type": "text",
+      "text": "ents for win"
+    },
+    {
+      "type": "text",
+      "text": "ter semester 2026"
+    },
+    {
+      "type": "text",
+      "text": "/27"
+    },
+    {
+      "type": "text",
+      "text": " and re"
+    },
+    {
+      "type": "text",
+      "text": "-registration for summer semester"
+    },
+    {
+      "type": "text",
+      "text": " 2027\" from"
+    },
+    {
+      "type": "text",
+      "text": " Hochschule Musterst"
+    },
+    {
+      "type": "text",
+      "text": "adt [doc:do"
+    },
+    {
+      "type": "text",
+      "text": "c_nba"
+    },
+    {
+      "type": "text",
+      "text": "3k"
+    },
+    {
+      "type": "text",
+      "text": "0"
+    },
+    {
+      "type": "text",
+      "text": "ka"
+    },
+    {
+      "type": "text",
+      "text": "85"
+    },
+    {
+      "type": "text",
+      "text": "q"
+    },
+    {
+      "type": "text",
+      "text": "0"
+    },
+    {
+      "type": "text",
+      "text": "]"
+    },
+    {
+      "type": "text",
+      "text": " [party:pty_fh"
+    },
+    {
+      "type": "text",
+      "text": "p8fzemmzv"
+    },
+    {
+      "type": "text",
+      "text": "t]."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "The semester fee for summer semester 2027 is due Fri 15 Jan 2027, and must be sent by Thu 14 Jan 2027 to arrive in time [item:itm_85xesrap412m].\n\n- Amount: 312.40 € [item:itm_85xesrap412m]\n- From the letter: late payment adds a late fee (Säumnisgebühr), and missing the deadline risks deregistration (Exmatrikulation) — check the exact late-fee amount in the letter itself.\n- Related letter: \"Semester documents for winter semester 2026/27 and re-registration for summer semester 2027\" from Hochschule Musterstadt [doc:doc_nba3k0ka85q0] [party:pty_fhp8fzemmzvt].",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 445,
+          "cache_read_tokens": 12778,
+          "cache_creation_tokens": 2154,
+          "cost_usd": 0.0156296,
+          "duration_ms": 8186,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

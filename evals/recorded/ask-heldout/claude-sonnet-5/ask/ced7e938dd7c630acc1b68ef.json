@@ -1,0 +1,516 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"99ef00b98b6fd5502888ae20ae978adbae84ea70eb1fc4ab660a1a4790b44772\",\"question\":\"Wie viel Semesterbeitrag zahle ich 2027 zusammen?\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "doc_nba3k0ka85q0"
+    ],
+    "prompt_head": "The person asks:\nWie viel Semesterbeitrag zahle ich 2027 zusammen?\n",
+    "recorded_at": "2026-11-24T13:44:10+00:00",
+    "repeat": 3,
+    "commit": "84270dc0",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "In Ihren Unterlagen ist für 2027 bisher eine wiederkehrende Semesterbeitrags-Zahlung der Hochschule Musterstadt gespeichert, und zwar zweimal:\n\n- Fällig am 15.01.2027 (spätestens 14.01.2027 zu versenden): 312,40 € [item:itm_85xesrap412m]\n- Die Folgezahlung ist für den 15.07.2027 vorgesehen, laut Wiederholungsregel \"every 6 months on the 15th\" desselben Eintrags [item:itm_85xesrap412m]\n\nBeide Zahlungen stammen aus demselben Posten mit Betrag 312,40 € [item:itm_85xesrap412m]. Eine automatische Summe für das ganze Jahr führt Ordnung nicht; rechnerisch wären das zwei Zahlungen zu je 312,40 €.\n\nHinweis: Bei verspätetem Zahlungseingang der Januar-Rate drohen laut Schreiben eine Säumnisgebühr sowie im Extremfall die Exmatrikulation – das jeweilige Datum sollten Sie sich im Kalender vormerken.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 1584,
+      "cache_read_tokens": 20072,
+      "cache_creation_tokens": 5061,
+      "cost_usd": 0.040110400000000004,
+      "duration_ms": 24900,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Semesterbeitrag"
+      },
+      "tool_use_id": "toolu_01BhF56wDtJjAN2fBDYRxZgc"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_nba3k0ka85q0\",\"kind\":\"university\",\"date\":\"2026-09-01\",\"party_id\":\"pty_fhp8fzemmzvt\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_nba3k0ka85q0\":{\"title\":\"Semester documents for winter semester 2026/27 and re-registration for summer semester 2027\",\"snippet\":\"…Der Semesterbeitrag in Höhe von 312,40 € muss bis spätestens zum 15.01.2027 auf dem…\"},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01BhF56wDtJjAN2fBDYRxZgc"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_document",
+      "input": {
+        "doc_id": "doc_nba3k0ka85q0"
+      },
+      "tool_use_id": "toolu_01MRVTTjyw8Xwgg1GBKDMG4i"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"id\":\"doc_nba3k0ka85q0\",\"kind\":\"university\",\"date\":\"2026-09-01\",\"status\":\"processed\",\"direction\":\"incoming\",\"received_date\":\"2026-09-03\",\"language\":\"de\",\"party_id\":\"pty_fhp8fzemmzvt\",\"case_id\":\"cas_9ym6hn1y9zwb\",\"urgency\":\"high\",\"pages\":1,\"tax_relevant\":true,\"payment\":{\"iban_valid\":true},\"items\":[{\"id\":\"itm_85xesrap412m\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2027-01-15\",\"send_by\":\"2027-01-14\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"study\",\"party_id\":\"pty_fhp8fzemmzvt\",\"doc_id\":\"doc_nba3k0ka85q0\",\"repeats\":\"every 6 months on the 15th\",\"following_due_date\":\"2027-07-15\",\"amount\":312.4,\"currency\":\"EUR\"},{\"id\":\"itm_kn5zf3bdwew8\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2027-02-28\",\"send_by\":\"2027-02-22\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_fhp8fzemmzvt\",\"doc_id\":\"doc_nba3k0ka85q0\"}],\"contracts\":[]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_85xesrap412m\":{\"title\":\"Pay the semester fee (Semesterbeitrag) for summer semester 2027\",\"action\":\"Transfer the semester fee of €312.40 to the university's account, using the given reference, so it arrives by the deadline shown.\",\"consequence\":\"Late payment adds a €15.00 late fee (Säumnisgebühr), and if the fee is not received in time you risk being deregistered (Exmatrikulation).\"},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"},\"itm_kn5zf3bdwew8\":{\"title\":\"Cancel any separate Deutschlandticket subscription\",\"action\":\"If you hold a separate Deutschlandticket subscription, cancel it in time, since the ticket will be included in your semester fee from summer semester 2027.\",\"consequence\":\"You may otherwise end up paying for two tickets at the same time.\"},\"doc_nba3k0ka85q0\":{\"tax_note\":\"As a Master's programme following a first degree, semester and study-related costs may be claimable as income-related expenses (Werbungskosten) for a second degree (Zweitausbildung) — keep this letter and the payment proof for the tax return.\",\"title\":\"Semester documents for winter semester 2026/27 and re-registration for summer semester 2027\",\"summary\":\"Hochschule Musterstadt confirms that Sam Rivera's re-registration (Rückmeldung) for winter semester 2026/27 is complete and encloses the enrollment certificate. To re-register for summer semester 2027, the semester fee of €312.40 must reach the university's account by 15 January 2027.\",\"explanation\":\"Your university confirms you are enrolled for winter semester 2026/27 and includes your enrollment certificate (Immatrikulationsbescheinigung). To stay enrolled for summer semester 2027 you don't file a separate form — you simply transfer the semester fee of €312.40 so it arrives in the university's account by the deadline shown; the re-registration window opens 1 December 2026. Paying late adds a €15.00 late fee, and if the fee is not received in time you risk being deregistered (Exmatrikulation). From summer semester 2027 the Deutschlandsemesterticket is included in this fee — if you separately hold a Deutschlandticket subscription, remember to cancel it in time so you don't pay for two tickets.\",\"key_facts\":[{\"label\":\"Matriculation number (Matrikelnummer)\",\"value\":\"4711123\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Programme (Studiengang)\",\"value\":\"Data Science (M.Sc.)\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Semester fee (Semesterbeitrag)\",\"value\":\"312,40 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Re-registration period start (Rückmeldezeitraum)\",\"value\":\"01.12.2026\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Late fee (Säumnisgebühr)\",\"value\":\"15,00 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Risk of non-payment\",\"value\":\"Exmatrikulation\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Deutschlandsemesterticket validity\",\"value\":\"01.04.–30.09.2027\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Deadline to cancel a separate Deutschlandticket subscription\",\"value\":\"31.03.2027\",\"page\":1,\"grounding\":\"verified\"}],\"references\":[{\"label\":\"Matrikelnummer\",\"value\":\"4711123\"}],\"payment\":{\"iban\":\"DE10123456000007700220\",\"payee\":\"Hochschule Musterstadt\",\"reference\":\"4711123 SoSe 2027\"},\"warnings\":[\"We couldn't match this letter to one of your contracts — add the contract to track it.\"],\"text\":\"=== Page 1 ===\\nStudierendenservice\\nHochschule Musterstadt   Studierendensekretariat\\nHochschulallee 1\\nUniversity of Applied Sciences   12347 Musterstadt\\nwww.hs-musterstadt.example\\n\\nMatrikelnummer 4711123\\nStudiengang   Data Science (M.Sc.)\\nHochschule Musterstadt · Hochschulallee 1 · 12347 Musterstadt   Studierendenservice\\nIhr Kontakt\\nTelefon   0123 7788-2210\\nHerrn\\nDatum   01.09.2026\\nSam Rivera\\nBeispielweg 5\\n12345 Musterstadt\\n\\nSemesterunterlagen Wintersemester 2026/27 und Rückmeldung zum\\nSommersemester 2027\\n\\nSehr geehrter Herr Rivera,\\n\\nIhre Rückmeldung zum Wintersemester 2026/27 ist abgeschlossen. Anbei erhalten Sie Ihre\\nImmatrikulationsbescheinigung.\\n\\nRückmeldung zum Sommersemester 2027\\nDie Rückmeldung zum Sommersemester 2027 erfolgt ausschließlich durch die fristgerechte Zahlung\\ndes Semesterbeitrags. Der Rückmeldezeitraum beginnt am 01.12.2026. Der Semesterbeitrag in Höhe\\nvon 312,40 € muss bis spätestens zum 15.01.2027 auf dem unten genannten Konto der Hochschule\\neingegangen sein.\\n\\nZusammensetzung des Semesterbeitrags   Betrag\\n\\nSozialbeitrag Studierendenwerk Musterstadt   68,00 €\\n\\nBeitrag der Studierendenschaft   17,60 €\\n\\nDeutschlandsemesterticket (6 × 37,80 €)   226,80 €\\n\\nSemesterbeitrag Sommersemester 2027   312,40 €\\n\\nZahlungsangaben\\n\\nEmpfänger: Hochschule Musterstadt · IBAN DE10 1234 5600 0007 7002 20 · BIC MUSKDEM1XXX\\nVerwendungszweck (bitte unbedingt angeben): 4711123 SoSe 2027\\n\\nBei späterem Zahlungseingang wird eine Säumnisgebühr von 15,00 € erhoben. Ohne fristgerechte\\nRückmeldung droht die Exmatrikulation (§ 51 Abs. 2 HG NRW).\\n\\nNeu: Deutschlandsemesterticket ab dem Sommersemester 2027\\nNach der Urabstimmung der Studierendenschaft ist ab dem Sommersemester 2027 das\\nDeutschlandsemesterticket im Semesterbeitrag enthalten (gültig 01.04.–30.09.2027). Falls Sie ein\\nDeutschlandticket im Abonnement besitzen, denken Sie bitte daran, dieses rechtzeitig zum 31.03.2027\\nzu kündigen.\\n\\nMit freundlichen Grüßen\\nIhr Studierendenservice\\n\\nDieses Schreiben wurde maschinell erstellt und ist ohne Unterschrift gültig.\\n\\nHochschule Musterstadt   Studierendenservice, Gebäude A, Raum A 0.12   Sparkasse Musterstadt\\nHochschulallee 1 · 12347 Musterstadt   Mo, Di, Do 9–12 Uhr, Mi 13–16 Uhr   IBAN DE10 1234 5600 0007 7002 20\\nwww.hs-musterstadt.example   Telefon 0123 7788-2210   BIC MUSKDEM1XXX\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01MRVTTjyw8Xwgg1GBKDMG4i"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Rückmeldung Sommersemester 2027"
+      },
+      "tool_use_id": "toolu_01Db3PdX6Z6GWyqFaUQtrVSc"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_nba3k0ka85q0\",\"kind\":\"university\",\"date\":\"2026-09-01\",\"party_id\":\"pty_fhp8fzemmzvt\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_nba3k0ka85q0\":{\"title\":\"Semester documents for winter semester 2026/27 and re-registration for summer semester 2027\",\"snippet\":\"…Rückmeldung zum Sommersemester 2027 Die Rückmeldung zum Sommersemester 2027 erfolgt ausschließlich durch die fristgerechte Zahlung des…\"},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01Db3PdX6Z6GWyqFaUQtrVSc"
+    },
+    {
+      "type": "text",
+      "text": "In"
+    },
+    {
+      "type": "text",
+      "text": " Ihren Un"
+    },
+    {
+      "type": "text",
+      "text": "terlagen "
+    },
+    {
+      "type": "text",
+      "text": "ist für 2027 b"
+    },
+    {
+      "type": "text",
+      "text": "isher e"
+    },
+    {
+      "type": "text",
+      "text": "ine w"
+    },
+    {
+      "type": "text",
+      "text": "iederk"
+    },
+    {
+      "type": "text",
+      "text": "ehrende Semesterb"
+    },
+    {
+      "type": "text",
+      "text": "eitr"
+    },
+    {
+      "type": "text",
+      "text": "ags-Zahlung der"
+    },
+    {
+      "type": "text",
+      "text": " Hochschule Muster"
+    },
+    {
+      "type": "text",
+      "text": "stadt g"
+    },
+    {
+      "type": "text",
+      "text": "espeichert,"
+    },
+    {
+      "type": "text",
+      "text": " und"
+    },
+    {
+      "type": "text",
+      "text": " z"
+    },
+    {
+      "type": "text",
+      "text": "war zwe"
+    },
+    {
+      "type": "text",
+      "text": "imal:\n\n-"
+    },
+    {
+      "type": "text",
+      "text": " Fällig am 15.01"
+    },
+    {
+      "type": "text",
+      "text": ".2027 ("
+    },
+    {
+      "type": "text",
+      "text": "sp"
+    },
+    {
+      "type": "text",
+      "text": "ätestens"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "14"
+    },
+    {
+      "type": "text",
+      "text": ".01.2027 zu"
+    },
+    {
+      "type": "text",
+      "text": " versenden): 312,40"
+    },
+    {
+      "type": "text",
+      "text": " € [item"
+    },
+    {
+      "type": "text",
+      "text": ":itm_85xesr"
+    },
+    {
+      "type": "text",
+      "text": "ap412m]\n- Die"
+    },
+    {
+      "type": "text",
+      "text": " Folgez"
+    },
+    {
+      "type": "text",
+      "text": "ahlung "
+    },
+    {
+      "type": "text",
+      "text": "ist für"
+    },
+    {
+      "type": "text",
+      "text": " den"
+    },
+    {
+      "type": "text",
+      "text": " 15.07.2027 "
+    },
+    {
+      "type": "text",
+      "text": "v"
+    },
+    {
+      "type": "text",
+      "text": "orgesehen,"
+    },
+    {
+      "type": "text",
+      "text": " la"
+    },
+    {
+      "type": "text",
+      "text": "ut"
+    },
+    {
+      "type": "text",
+      "text": " Wiederholungsreg"
+    },
+    {
+      "type": "text",
+      "text": "el \""
+    },
+    {
+      "type": "text",
+      "text": "every"
+    },
+    {
+      "type": "text",
+      "text": " 6 months on"
+    },
+    {
+      "type": "text",
+      "text": " the 15th\" des"
+    },
+    {
+      "type": "text",
+      "text": "selben E"
+    },
+    {
+      "type": "text",
+      "text": "intrags [item:itm"
+    },
+    {
+      "type": "text",
+      "text": "_85xesrap412m"
+    },
+    {
+      "type": "text",
+      "text": "]"
+    },
+    {
+      "type": "text",
+      "text": "\n\nBeide Zahl"
+    },
+    {
+      "type": "text",
+      "text": "ungen st"
+    },
+    {
+      "type": "text",
+      "text": "ammen a"
+    },
+    {
+      "type": "text",
+      "text": "us dem"
+    },
+    {
+      "type": "text",
+      "text": "selben Pos"
+    },
+    {
+      "type": "text",
+      "text": "ten"
+    },
+    {
+      "type": "text",
+      "text": " mit Betrag 312"
+    },
+    {
+      "type": "text",
+      "text": ",40 € [item:it"
+    },
+    {
+      "type": "text",
+      "text": "m_85xesrap412"
+    },
+    {
+      "type": "text",
+      "text": "m]"
+    },
+    {
+      "type": "text",
+      "text": ". E"
+    },
+    {
+      "type": "text",
+      "text": "ine autom"
+    },
+    {
+      "type": "text",
+      "text": "at"
+    },
+    {
+      "type": "text",
+      "text": "ische Summe für"
+    },
+    {
+      "type": "text",
+      "text": " das"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "ganze Jahr führ"
+    },
+    {
+      "type": "text",
+      "text": "t Ordnung nic"
+    },
+    {
+      "type": "text",
+      "text": "ht;"
+    },
+    {
+      "type": "text",
+      "text": " r"
+    },
+    {
+      "type": "text",
+      "text": "echn"
+    },
+    {
+      "type": "text",
+      "text": "er"
+    },
+    {
+      "type": "text",
+      "text": "is"
+    },
+    {
+      "type": "text",
+      "text": "ch wären das"
+    },
+    {
+      "type": "text",
+      "text": " zwei Zahlung"
+    },
+    {
+      "type": "text",
+      "text": "en zu je"
+    },
+    {
+      "type": "text",
+      "text": " 312,40 €"
+    },
+    {
+      "type": "text",
+      "text": ".\n\nH"
+    },
+    {
+      "type": "text",
+      "text": "inweis: B"
+    },
+    {
+      "type": "text",
+      "text": "ei ver"
+    },
+    {
+      "type": "text",
+      "text": "spätetem Zahl"
+    },
+    {
+      "type": "text",
+      "text": "ungseingang der"
+    },
+    {
+      "type": "text",
+      "text": " Janu"
+    },
+    {
+      "type": "text",
+      "text": "ar"
+    },
+    {
+      "type": "text",
+      "text": "-R"
+    },
+    {
+      "type": "text",
+      "text": "ate"
+    },
+    {
+      "type": "text",
+      "text": " dr"
+    },
+    {
+      "type": "text",
+      "text": "oh"
+    },
+    {
+      "type": "text",
+      "text": "en"
+    },
+    {
+      "type": "text",
+      "text": " la"
+    },
+    {
+      "type": "text",
+      "text": "ut Sch"
+    },
+    {
+      "type": "text",
+      "text": "reiben eine Sä"
+    },
+    {
+      "type": "text",
+      "text": "um"
+    },
+    {
+      "type": "text",
+      "text": "n"
+    },
+    {
+      "type": "text",
+      "text": "is"
+    },
+    {
+      "type": "text",
+      "text": "gebühr sowie im"
+    },
+    {
+      "type": "text",
+      "text": " Ext"
+    },
+    {
+      "type": "text",
+      "text": "remfall die Exmat"
+    },
+    {
+      "type": "text",
+      "text": "rikulation –"
+    },
+    {
+      "type": "text",
+      "text": " das j"
+    },
+    {
+      "type": "text",
+      "text": "e"
+    },
+    {
+      "type": "text",
+      "text": "weilige Datum s"
+    },
+    {
+      "type": "text",
+      "text": "ollten"
+    },
+    {
+      "type": "text",
+      "text": " S"
+    },
+    {
+      "type": "text",
+      "text": "ie sich"
+    },
+    {
+      "type": "text",
+      "text": " im"
+    },
+    {
+      "type": "text",
+      "text": " Kalender v"
+    },
+    {
+      "type": "text",
+      "text": "orm"
+    },
+    {
+      "type": "text",
+      "text": "erken."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "In Ihren Unterlagen ist für 2027 bisher eine wiederkehrende Semesterbeitrags-Zahlung der Hochschule Musterstadt gespeichert, und zwar zweimal:\n\n- Fällig am 15.01.2027 (spätestens 14.01.2027 zu versenden): 312,40 € [item:itm_85xesrap412m]\n- Die Folgezahlung ist für den 15.07.2027 vorgesehen, laut Wiederholungsregel \"every 6 months on the 15th\" desselben Eintrags [item:itm_85xesrap412m]\n\nBeide Zahlungen stammen aus demselben Posten mit Betrag 312,40 € [item:itm_85xesrap412m]. Eine automatische Summe für das ganze Jahr führt Ordnung nicht; rechnerisch wären das zwei Zahlungen zu je 312,40 €.\n\nHinweis: Bei verspätetem Zahlungseingang der Januar-Rate drohen laut Schreiben eine Säumnisgebühr sowie im Extremfall die Exmatrikulation – das jeweilige Datum sollten Sie sich im Kalender vormerken.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 1584,
+          "cache_read_tokens": 20072,
+          "cache_creation_tokens": 5061,
+          "cost_usd": 0.040110400000000004,
+          "duration_ms": 24900,
+          "turns": 4
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

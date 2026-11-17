@@ -1,0 +1,350 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"99ef00b98b6fd5502888ae20ae978adbae84ea70eb1fc4ab660a1a4790b44772\",\"question\":\"From mid-December 2026 to mid-January 2027 (15th to 15th), on which days are my library fees due?\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "doc_pa2w9q3gxzqk",
+      "doc_xa0f5gvpe0w2",
+      "doc_nba3k0ka85q0"
+    ],
+    "prompt_head": "The person asks:\nFrom mid-December 2026 to mid-January 2027 (15th to 15th), on which days are my library fees due?\n",
+    "recorded_at": "2026-11-24T13:44:21+00:00",
+    "repeat": 3,
+    "commit": "84270dc0",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "No library fees are due in that period. Checking the to-dos and dates between **15 Dec 2026 and 15 Jan 2027**, none of them relate to a library — the items in that window are a scholarship progress report deadline [item:itm_zse7bv6ce3s1], a dental appointment [item:itm_sncxha9wbsxc], and a university semester fee payment [item:itm_85xesrap412m]. A search for \"library\"/\"Bibliothek\" fees also returned nothing in the records.\n\nIf you have a library membership or fine, it isn't currently stored in Ordnung — you may want to check the letter or app directly.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 429,
+      "cache_read_tokens": 20828,
+      "cache_creation_tokens": 2311,
+      "cost_usd": 0.0177116,
+      "duration_ms": 13688,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "from_date": "2026-12-15",
+        "to_date": "2027-01-15"
+      },
+      "tool_use_id": "toolu_012826hkYeHXj7EKrTJtq9d3"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-11-24\",\"items\":[{\"id\":\"itm_zse7bv6ce3s1\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-12-15\",\"send_by\":\"2026-12-09\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\",\"repeats\":\"every month on the 15th\",\"following_due_date\":\"2027-01-15\"},{\"id\":\"itm_sncxha9wbsxc\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2027-01-08\",\"due_time\":\"09:15\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_m3rttkfq94qn\",\"doc_id\":\"doc_xa0f5gvpe0w2\",\"repeats\":\"every 3 months\",\"following_due_date\":\"2027-04-08\"},{\"id\":\"itm_85xesrap412m\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2027-01-15\",\"send_by\":\"2027-01-14\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"study\",\"party_id\":\"pty_fhp8fzemmzvt\",\"doc_id\":\"doc_nba3k0ka85q0\",\"repeats\":\"every 6 months on the 15th\",\"following_due_date\":\"2027-07-15\",\"amount\":312.4,\"currency\":\"EUR\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_zse7bv6ce3s1\":{\"title\":\"Submit first progress report\",\"action\":\"Submit your first progress report (max. two pages, countersigned by your academic supervisor) via the scholarship portal using the provided template.\"},\"pty_efmwq4xym8cm\":{\"name\":\"Global Talent Scholarship Foundation\"},\"itm_sncxha9wbsxc\":{\"title\":\"Dental checkup and cleaning (PZR)\",\"action\":\"Arrive 10 minutes early and bring your health insurance card (Gesundheitskarte)\",\"consequence\":\"Cancel at least 24 hours in advance if you cannot attend\",\"location\":\"Lindenallee 8, 12345 Musterstadt\"},\"pty_m3rttkfq94qn\":{\"name\":\"Zahnarztpraxis Dr. Anna Beispiel\"},\"itm_85xesrap412m\":{\"title\":\"Pay the semester fee (Semesterbeitrag) for summer semester 2027\",\"action\":\"Transfer the semester fee of €312.40 to the university's account, using the given reference, so it arrives by the deadline shown.\",\"consequence\":\"Late payment adds a €15.00 late fee (Säumnisgebühr), and if the fee is not received in time you risk being deregistered (Exmatrikulation).\"},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_012826hkYeHXj7EKrTJtq9d3"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "library fee Bibliothek Mahngebühr"
+      },
+      "tool_use_id": "toolu_01JTUUbsRh5h8LtFjRyKFTWe"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01JTUUbsRh5h8LtFjRyKFTWe"
+    },
+    {
+      "type": "text",
+      "text": "No"
+    },
+    {
+      "type": "text",
+      "text": " library fees are"
+    },
+    {
+      "type": "text",
+      "text": " due"
+    },
+    {
+      "type": "text",
+      "text": " in that"
+    },
+    {
+      "type": "text",
+      "text": " period. Chec"
+    },
+    {
+      "type": "text",
+      "text": "king the to"
+    },
+    {
+      "type": "text",
+      "text": "-d"
+    },
+    {
+      "type": "text",
+      "text": "os and dates"
+    },
+    {
+      "type": "text",
+      "text": " between **"
+    },
+    {
+      "type": "text",
+      "text": "15 "
+    },
+    {
+      "type": "text",
+      "text": "Dec 2026"
+    },
+    {
+      "type": "text",
+      "text": " and 15 Jan"
+    },
+    {
+      "type": "text",
+      "text": " 2027**, none of them"
+    },
+    {
+      "type": "text",
+      "text": " relate to a"
+    },
+    {
+      "type": "text",
+      "text": " library —"
+    },
+    {
+      "type": "text",
+      "text": " the items"
+    },
+    {
+      "type": "text",
+      "text": " in that window are a scholar"
+    },
+    {
+      "type": "text",
+      "text": "ship progress report"
+    },
+    {
+      "type": "text",
+      "text": " deadline ["
+    },
+    {
+      "type": "text",
+      "text": "item"
+    },
+    {
+      "type": "text",
+      "text": ":it"
+    },
+    {
+      "type": "text",
+      "text": "m_zse"
+    },
+    {
+      "type": "text",
+      "text": "7b"
+    },
+    {
+      "type": "text",
+      "text": "v"
+    },
+    {
+      "type": "text",
+      "text": "6"
+    },
+    {
+      "type": "text",
+      "text": "ce"
+    },
+    {
+      "type": "text",
+      "text": "3"
+    },
+    {
+      "type": "text",
+      "text": "s"
+    },
+    {
+      "type": "text",
+      "text": "1"
+    },
+    {
+      "type": "text",
+      "text": "], a dental"
+    },
+    {
+      "type": "text",
+      "text": " appointment [item:itm"
+    },
+    {
+      "type": "text",
+      "text": "_snc"
+    },
+    {
+      "type": "text",
+      "text": "xha"
+    },
+    {
+      "type": "text",
+      "text": "9"
+    },
+    {
+      "type": "text",
+      "text": "w"
+    },
+    {
+      "type": "text",
+      "text": "b"
+    },
+    {
+      "type": "text",
+      "text": "s"
+    },
+    {
+      "type": "text",
+      "text": "x"
+    },
+    {
+      "type": "text",
+      "text": "c"
+    },
+    {
+      "type": "text",
+      "text": "], and a university semester f"
+    },
+    {
+      "type": "text",
+      "text": "ee payment [item:itm"
+    },
+    {
+      "type": "text",
+      "text": "_85x"
+    },
+    {
+      "type": "text",
+      "text": "es"
+    },
+    {
+      "type": "text",
+      "text": "r"
+    },
+    {
+      "type": "text",
+      "text": "ap"
+    },
+    {
+      "type": "text",
+      "text": "412"
+    },
+    {
+      "type": "text",
+      "text": "m"
+    },
+    {
+      "type": "text",
+      "text": "]. A search for \"library\""
+    },
+    {
+      "type": "text",
+      "text": "/\""
+    },
+    {
+      "type": "text",
+      "text": "Bibliothek\" fees"
+    },
+    {
+      "type": "text",
+      "text": " also"
+    },
+    {
+      "type": "text",
+      "text": " retur"
+    },
+    {
+      "type": "text",
+      "text": "ned nothing in the"
+    },
+    {
+      "type": "text",
+      "text": " records.\n\nIf"
+    },
+    {
+      "type": "text",
+      "text": " you"
+    },
+    {
+      "type": "text",
+      "text": " have a library memb"
+    },
+    {
+      "type": "text",
+      "text": "ership or fine"
+    },
+    {
+      "type": "text",
+      "text": ", it is"
+    },
+    {
+      "type": "text",
+      "text": "n't curr"
+    },
+    {
+      "type": "text",
+      "text": "ently st"
+    },
+    {
+      "type": "text",
+      "text": "ored in"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung —"
+    },
+    {
+      "type": "text",
+      "text": " you"
+    },
+    {
+      "type": "text",
+      "text": " may want to check the"
+    },
+    {
+      "type": "text",
+      "text": " let"
+    },
+    {
+      "type": "text",
+      "text": "ter or app directly."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "No library fees are due in that period. Checking the to-dos and dates between **15 Dec 2026 and 15 Jan 2027**, none of them relate to a library — the items in that window are a scholarship progress report deadline [item:itm_zse7bv6ce3s1], a dental appointment [item:itm_sncxha9wbsxc], and a university semester fee payment [item:itm_85xesrap412m]. A search for \"library\"/\"Bibliothek\" fees also returned nothing in the records.\n\nIf you have a library membership or fine, it isn't currently stored in Ordnung — you may want to check the letter or app directly.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 429,
+          "cache_read_tokens": 20828,
+          "cache_creation_tokens": 2311,
+          "cost_usd": 0.0177116,
+          "duration_ms": 13688,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

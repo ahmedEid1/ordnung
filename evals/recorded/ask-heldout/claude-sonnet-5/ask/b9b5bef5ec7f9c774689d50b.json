@@ -1,0 +1,233 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"258c9eb533aae0c2414271a7fda8681ea1fb736426b2999a45141753d332ff7e\",\"question\":\"How much dog tax does the city charge me this year?\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nHow much dog tax does the city charge me this year?\n",
+    "recorded_at": "2026-11-24T13:41:19+00:00",
+    "repeat": 3,
+    "commit": "84270dc0",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "I couldn't find any letter, to-do, or contract about dog tax (Hundesteuer) in your records — there's nothing filed on this, so Ordnung has no amount or due date for it.\n\nIf you have a notice from the city about this, you could add/search for it by its exact letter title, or check your city's \"Hundesteuer\" portal directly.",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 250,
+      "cache_read_tokens": 12775,
+      "cache_creation_tokens": 1235,
+      "cost_usd": 0.010003,
+      "duration_ms": 6643,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Hundesteuer"
+      },
+      "tool_use_id": "toolu_0163xVuszQdiaRKpJqd1zeR5"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "dog tax"
+      },
+      "tool_use_id": "toolu_01EvyVtinm2ZBoeJf1KmNtt2"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_0163xVuszQdiaRKpJqd1zeR5"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01EvyVtinm2ZBoeJf1KmNtt2"
+    },
+    {
+      "type": "text",
+      "text": "I"
+    },
+    {
+      "type": "text",
+      "text": " cou"
+    },
+    {
+      "type": "text",
+      "text": "ldn't find any let"
+    },
+    {
+      "type": "text",
+      "text": "ter,"
+    },
+    {
+      "type": "text",
+      "text": " to"
+    },
+    {
+      "type": "text",
+      "text": "-do, or cont"
+    },
+    {
+      "type": "text",
+      "text": "ract about"
+    },
+    {
+      "type": "text",
+      "text": " dog tax ("
+    },
+    {
+      "type": "text",
+      "text": "Hund"
+    },
+    {
+      "type": "text",
+      "text": "es"
+    },
+    {
+      "type": "text",
+      "text": "teuer) in your records —"
+    },
+    {
+      "type": "text",
+      "text": " there's n"
+    },
+    {
+      "type": "text",
+      "text": "othing fil"
+    },
+    {
+      "type": "text",
+      "text": "ed on"
+    },
+    {
+      "type": "text",
+      "text": " this"
+    },
+    {
+      "type": "text",
+      "text": ", so"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung has no amount"
+    },
+    {
+      "type": "text",
+      "text": " or"
+    },
+    {
+      "type": "text",
+      "text": " due"
+    },
+    {
+      "type": "text",
+      "text": " date for it.\n\nIf"
+    },
+    {
+      "type": "text",
+      "text": " you have"
+    },
+    {
+      "type": "text",
+      "text": " a"
+    },
+    {
+      "type": "text",
+      "text": " not"
+    },
+    {
+      "type": "text",
+      "text": "ice from the city about this, you"
+    },
+    {
+      "type": "text",
+      "text": " could"
+    },
+    {
+      "type": "text",
+      "text": " add/"
+    },
+    {
+      "type": "text",
+      "text": "search"
+    },
+    {
+      "type": "text",
+      "text": " for"
+    },
+    {
+      "type": "text",
+      "text": " it by its"
+    },
+    {
+      "type": "text",
+      "text": " exact let"
+    },
+    {
+      "type": "text",
+      "text": "ter title"
+    },
+    {
+      "type": "text",
+      "text": ","
+    },
+    {
+      "type": "text",
+      "text": " or check"
+    },
+    {
+      "type": "text",
+      "text": " your city"
+    },
+    {
+      "type": "text",
+      "text": "'s \""
+    },
+    {
+      "type": "text",
+      "text": "Hundesteuer\""
+    },
+    {
+      "type": "text",
+      "text": " port"
+    },
+    {
+      "type": "text",
+      "text": "al directly."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "I couldn't find any letter, to-do, or contract about dog tax (Hundesteuer) in your records — there's nothing filed on this, so Ordnung has no amount or due date for it.\n\nIf you have a notice from the city about this, you could add/search for it by its exact letter title, or check your city's \"Hundesteuer\" portal directly.",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 250,
+          "cache_read_tokens": 12775,
+          "cache_creation_tokens": 1235,
+          "cost_usd": 0.010003,
+          "duration_ms": 6643,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

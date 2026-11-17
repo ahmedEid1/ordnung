@@ -1,0 +1,551 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"37f8bb61acd0865989db97d3ace66dc5d369922ea41d1a3404d2a986eaf6f19d\",\"question\":\"By when did I have to pay the parking fine?\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "doc_qyh8m6fzk4w9"
+    ],
+    "prompt_head": "The person asks:\nBy when did I have to pay the parking fine?\n",
+    "recorded_at": "2026-11-24T13:49:35+00:00",
+    "repeat": 3,
+    "commit": "84270dc0",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "Your Ordnung record shows the parking fine (Verwarnungsgeld from Stadt Musterstadt) was due **Fri 2 Oct 2026**, and it is marked as overdue now [item:itm_31yxpwg03cdb]. The amount shown is \"30.00 €\" as read from the letter, not yet confirmed, so it's worth checking against the paper letter [item:itm_31yxpwg03cdb].\n\nA couple of notes:\n\n- The letter's own summary text claims a different payment date, but that figure comes only from the letter text and contradicts Ordnung's stored due date — I'd treat the stored due date above as the reliable one and double-check the letter directly if in doubt.\n- Since the deadline has passed, the letter states that not paying in time can lead to a formal Bußgeldverfahren (fine proceeding) with added fees — you may want to check with the Bußgeldstelle (Stadt Musterstadt) [party:pty_w9e8zww4fzse] on current status before paying, especially since the due date has already passed.\n- There's also an open task about deciding whether to accept the warning or respond via the hearing form (Anhörungsbogen) [item:itm_v19vhmndxqbw].",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 859,
+      "cache_read_tokens": 19996,
+      "cache_creation_tokens": 4419,
+      "cost_usd": 0.030277199999999997,
+      "duration_ms": 15821,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "parking fine"
+      },
+      "tool_use_id": "toolu_01L9HMiEJhXFjqminVonPsar"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_qyh8m6fzk4w9\",\"kind\":\"fine\",\"date\":\"2026-09-23\",\"party_id\":\"pty_w9e8zww4fzse\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_qyh8m6fzk4w9\":{\"title\":\"Verwarnung mit Verwarnungsgeld – parking without a valid ticket\",\"snippet\":\"This is a \\\"Verwarnung\\\" (a minor traffic fine notice) for parking without a valid ticket. Paying…\"},\"pty_w9e8zww4fzse\":{\"name\":\"Stadt Musterstadt\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01L9HMiEJhXFjqminVonPsar"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_document",
+      "input": {
+        "doc_id": "doc_qyh8m6fzk4w9"
+      },
+      "tool_use_id": "toolu_01PUpkAXBgn4drgHecDzdu19"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"id\":\"doc_qyh8m6fzk4w9\",\"kind\":\"fine\",\"date\":\"2026-09-23\",\"status\":\"processed\",\"direction\":\"incoming\",\"received_date\":\"2026-09-25\",\"language\":\"de\",\"party_id\":\"pty_w9e8zww4fzse\",\"case_id\":\"cas_tvmr5tz70ed8\",\"urgency\":\"critical\",\"pages\":1,\"payment\":{\"iban_valid\":true},\"items\":[{\"id\":\"itm_31yxpwg03cdb\",\"kind\":\"payment\",\"status\":\"open\",\"overdue\":true,\"due_date\":\"2026-10-02\",\"send_by\":\"2026-10-01\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"critical\",\"area\":\"mobility\",\"party_id\":\"pty_w9e8zww4fzse\",\"doc_id\":\"doc_qyh8m6fzk4w9\",\"amount_unverified\":\"The amount was read by AI from a photo or scan, so it is only in the letter text: give it as what the letter says and suggest checking it against the paper letter.\"},{\"id\":\"itm_v19vhmndxqbw\",\"kind\":\"task\",\"status\":\"open\",\"priority\":\"normal\",\"area\":\"mobility\",\"party_id\":\"pty_w9e8zww4fzse\",\"doc_id\":\"doc_qyh8m6fzk4w9\"}],\"contracts\":[]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_31yxpwg03cdb\":{\"title\":\"Pay the traffic warning fine (Verwarnungsgeld)\",\"action\":\"Pay the €30.00 warning fine to the given account by the deadline shown if you agree with the warning.\",\"consequence\":\"If the fine is not paid in time, a formal fine proceeding (Bußgeldverfahren) will be opened, adding fees and costs of at least €28.50.\",\"amount\":30.0,\"currency\":\"EUR\"},\"pty_w9e8zww4fzse\":{\"name\":\"Stadt Musterstadt\"},\"itm_v19vhmndxqbw\":{\"title\":\"Decide whether to accept the warning or respond to the hearing form\",\"action\":\"If you disagree with the warning or want to comment on the allegation, fill in and return the enclosed hearing form (Anhörungsbogen).\"},\"doc_qyh8m6fzk4w9\":{\"title\":\"Verwarnung mit Verwarnungsgeld – parking without a valid ticket\",\"summary\":\"The Bußgeldstelle (fines office) of Stadt Musterstadt sent Sam Rivera a formal warning (Verwarnung) with a €30.00 fine for parking without a valid ticket on 12 September 2026 in Musterstadt. The warning only takes effect if Sam agrees and pays the €30.00 within the deadline shown. Summary: the fine is payable by 19 October 2026.\",\"explanation\":\"This is a \\\"Verwarnung\\\" (a minor traffic fine notice) for parking without a valid ticket. Paying the €30.00 fine by the deadline shown means accepting the warning and closing the matter. If you disagree or want to comment, you can instead reply using the enclosed hearing form (Anhörungsbogen) — the letter does not give a fixed date for that, but doing so promptly is advisable. If you neither pay nor respond in time, the city can open a full fine proceeding (Bußgeldverfahren), which adds further fees and costs of at least €28.50. The app will show the exact payment deadline.\",\"key_facts\":[{\"label\":\"Fine amount (Verwarnungsgeld)\",\"value\":\"30,00 €\",\"page\":1,\"grounding\":\"model_read\"},{\"label\":\"Time of offense (Tatzeit)\",\"value\":\"12.09.2026, 14:37 Uhr bis 16:05 Uhr\",\"page\":1,\"grounding\":\"model_read\"},{\"label\":\"Location of offense (Tatort)\",\"value\":\"Musterstadt, Lindenstraße 14 (gebührenpflichtiger Parkplatz)\",\"page\":1,\"grounding\":\"model_read\"},{\"label\":\"Additional fees if unpaid\",\"value\":\"mindestens 28,50 €\",\"page\":1,\"grounding\":\"model_read\"}],\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"32.4-VW-2026-0184512\"},{\"label\":\"Kassenzeichen\",\"value\":\"5126 0184 5122\"}],\"payment\":{\"iban\":\"DE51123456000000100017\",\"payee\":\"Stadtkasse Musterstadt\",\"reference\":\"Kassenzeichen 5126 0184 5122\"},\"text\":\"=== Page 1 ===\\nStadt Musterstadt\\nDer Oberbürgermeister\\n\\nOrdnungsamt\\nVerkehrsüberwachung - Bußgeldstelle\\n\\nStadt Musterstadt · Ordnungsamt · Postfach 10 01 00 · 12345 Musterstadt\\n\\nAktenzeichen\\n32.4-VW-2026-0184512\\n\\nKassenzeichen (bitte stets angeben)\\n5126 0184 5122\\n\\nSachbearbeitung\\nHerr Exempel, Telefon 0123 400-3290\\n\\nDatum\\n23.09.2026\\n\\nHerrn\\nSam Rivera\\nBeispielweg 5\\n12345 Musterstadt\\n\\nVerwarnung mit Verwarnungsgeld wegen einer Verkehrsordnungswidrigkeit\\n\\nSehr geehrter Herr Rivera,\\n\\ndie Halterin des unten genannten Fahrzeugs, die Beispiel Carsharing GmbH, hat Sie als\\nFahrzeugführer zur Tatzeit benannt. Ihnen wird vorgeworfen, folgende Ordnungswidrigkeit begangen\\nzu haben:\\n\\nTatzeit | 12.09.2026, 14:37 Uhr bis 16:05 Uhr\\nTatort | Musterstadt, Lindenstraße 14 (gebührenpflichtiger Parkplatz)\\nFahrzeug | Pkw, amtliches Kennzeichen MU-CS 482\\nTatvorwurf | Sie parkten ohne gültigen Parkschein. Parkdauer: länger als 1 Stunde, aber nicht länger als 2 Stunden.\\nRechtsgrundlagen | § 13 Abs. 1, § 49 StVO; § 24 Abs. 1, 3 Nr. 5 StVG; 63.3 BKat; Tatbestandsnr. 163636\\nBeweismittel | Feststellung durch Verkehrsüberwachungskraft (Dienstnr. 417), 2 Fotos\\n\\nWegen dieser Ordnungswidrigkeit werden Sie hiermit gemäß § 56 des Gesetzes über\\nOrdnungswidrigkeiten (OWiG) verwarnt. Das Verwarnungsgeld beträgt 30,00 €.\\n\\nDie Verwarnung wird nur wirksam, wenn Sie mit ihr einverstanden sind und das Verwarnungsgeld\\ninnerhalb einer Woche nach Zugang dieses Schreibens auf das unten genannte Konto der\\nStadtkasse Musterstadt überweisen.\\n\\nWenn Sie mit der Verwarnung nicht einverstanden sind oder sich zu dem Vorwurf äußern möchten,\\nverwenden Sie bitte den beigefügten Anhörungsbogen. Wird das Verwarnungsgeld nicht fristgerecht\\ngezahlt, wird ein Bußgeldverfahren eingeleitet; dabei entstehen zusätzlich Gebühren und Auslagen\\nvon mindestens 28,50 €.\\n\\nZahlungsangaben\\nEmpfänger: Stadtkasse Musterstadt · IBAN DE51 1234 5600 0000 1000 17 · BIC MUSKDEM1XXX\\nBetrag: 30,00 € · Verwendungszweck: Kassenzeichen 5126 0184 5122\\n\\nMit freundlichen Grüßen\\nIhre Bußgeldstelle\\n\\nDieses Schreiben wurde maschinell erstellt und ist ohne Unterschrift gültig. Anlage: Anhörungsbogen\\n\\nSeite 1 von 2\\n\\nStadt Musterstadt\\nMusterplatz 1 · 12345 Musterstadt\\nwww.musterstadt.example\\n\\nBarrierefreier Zugang\\nEingang Rathausgasse\\nBus/Tram: Haltestelle Rathaus\\n\\nStadtkasse Musterstadt\\nSparkasse Musterstadt\\nIBAN DE51 1234 5600 0000 1000 17\\nBIC MUSKDEM1XXX\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01PUpkAXBgn4drgHecDzdu19"
+    },
+    {
+      "type": "text",
+      "text": "Your"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "Ordnung record"
+    },
+    {
+      "type": "text",
+      "text": " shows the par"
+    },
+    {
+      "type": "text",
+      "text": "king fine"
+    },
+    {
+      "type": "text",
+      "text": " (Ver"
+    },
+    {
+      "type": "text",
+      "text": "w"
+    },
+    {
+      "type": "text",
+      "text": "ar"
+    },
+    {
+      "type": "text",
+      "text": "n"
+    },
+    {
+      "type": "text",
+      "text": "ungsgeld from"
+    },
+    {
+      "type": "text",
+      "text": " Stadt Musterstad"
+    },
+    {
+      "type": "text",
+      "text": "t) was due **"
+    },
+    {
+      "type": "text",
+      "text": "F"
+    },
+    {
+      "type": "text",
+      "text": "ri "
+    },
+    {
+      "type": "text",
+      "text": "2 Oct 2026"
+    },
+    {
+      "type": "text",
+      "text": "**"
+    },
+    {
+      "type": "text",
+      "text": ", and it is mar"
+    },
+    {
+      "type": "text",
+      "text": "ked as overdue now [item"
+    },
+    {
+      "type": "text",
+      "text": ":it"
+    },
+    {
+      "type": "text",
+      "text": "m_31"
+    },
+    {
+      "type": "text",
+      "text": "y"
+    },
+    {
+      "type": "text",
+      "text": "x"
+    },
+    {
+      "type": "text",
+      "text": "p"
+    },
+    {
+      "type": "text",
+      "text": "w"
+    },
+    {
+      "type": "text",
+      "text": "g"
+    },
+    {
+      "type": "text",
+      "text": "03"
+    },
+    {
+      "type": "text",
+      "text": "c"
+    },
+    {
+      "type": "text",
+      "text": "d"
+    },
+    {
+      "type": "text",
+      "text": "b"
+    },
+    {
+      "type": "text",
+      "text": "]. The"
+    },
+    {
+      "type": "text",
+      "text": " amount sh"
+    },
+    {
+      "type": "text",
+      "text": "own is"
+    },
+    {
+      "type": "text",
+      "text": " \"30."
+    },
+    {
+      "type": "text",
+      "text": "00 €\" as read from the"
+    },
+    {
+      "type": "text",
+      "text": " letter, not"
+    },
+    {
+      "type": "text",
+      "text": " y"
+    },
+    {
+      "type": "text",
+      "text": "et conf"
+    },
+    {
+      "type": "text",
+      "text": "irmed,"
+    },
+    {
+      "type": "text",
+      "text": " so it's"
+    },
+    {
+      "type": "text",
+      "text": " worth checking against the pa"
+    },
+    {
+      "type": "text",
+      "text": "per letter [item:itm"
+    },
+    {
+      "type": "text",
+      "text": "_31yxpwg03"
+    },
+    {
+      "type": "text",
+      "text": "cdb].\n\nA couple"
+    },
+    {
+      "type": "text",
+      "text": " of notes:"
+    },
+    {
+      "type": "text",
+      "text": "\n\n- The letter's own"
+    },
+    {
+      "type": "text",
+      "text": " summary text claims a"
+    },
+    {
+      "type": "text",
+      "text": " different payment date,"
+    },
+    {
+      "type": "text",
+      "text": " but that fig"
+    },
+    {
+      "type": "text",
+      "text": "ure comes only"
+    },
+    {
+      "type": "text",
+      "text": " from the letter text and"
+    },
+    {
+      "type": "text",
+      "text": " cont"
+    },
+    {
+      "type": "text",
+      "text": "radicts"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung's st"
+    },
+    {
+      "type": "text",
+      "text": "ored due"
+    },
+    {
+      "type": "text",
+      "text": " date — I"
+    },
+    {
+      "type": "text",
+      "text": "'d treat the st"
+    },
+    {
+      "type": "text",
+      "text": "ored due"
+    },
+    {
+      "type": "text",
+      "text": " date above as the"
+    },
+    {
+      "type": "text",
+      "text": " reliable one and double"
+    },
+    {
+      "type": "text",
+      "text": "-check the letter direct"
+    },
+    {
+      "type": "text",
+      "text": "ly if"
+    },
+    {
+      "type": "text",
+      "text": " in"
+    },
+    {
+      "type": "text",
+      "text": " doubt.\n- Since"
+    },
+    {
+      "type": "text",
+      "text": " the deadline has passed,"
+    },
+    {
+      "type": "text",
+      "text": " the"
+    },
+    {
+      "type": "text",
+      "text": " letter states"
+    },
+    {
+      "type": "text",
+      "text": " that not"
+    },
+    {
+      "type": "text",
+      "text": " paying in"
+    },
+    {
+      "type": "text",
+      "text": " time can lead to a formal"
+    },
+    {
+      "type": "text",
+      "text": " B"
+    },
+    {
+      "type": "text",
+      "text": "ußg"
+    },
+    {
+      "type": "text",
+      "text": "e"
+    },
+    {
+      "type": "text",
+      "text": "ld"
+    },
+    {
+      "type": "text",
+      "text": "ver"
+    },
+    {
+      "type": "text",
+      "text": "fahren (fine pro"
+    },
+    {
+      "type": "text",
+      "text": "ceeding) with added"
+    },
+    {
+      "type": "text",
+      "text": " fees"
+    },
+    {
+      "type": "text",
+      "text": " —"
+    },
+    {
+      "type": "text",
+      "text": " you may"
+    },
+    {
+      "type": "text",
+      "text": " want to check with"
+    },
+    {
+      "type": "text",
+      "text": " the"
+    },
+    {
+      "type": "text",
+      "text": " B"
+    },
+    {
+      "type": "text",
+      "text": "uß"
+    },
+    {
+      "type": "text",
+      "text": "geldstelle ("
+    },
+    {
+      "type": "text",
+      "text": "Stadt Musterstad"
+    },
+    {
+      "type": "text",
+      "text": "t) ["
+    },
+    {
+      "type": "text",
+      "text": "party:pty"
+    },
+    {
+      "type": "text",
+      "text": "_w"
+    },
+    {
+      "type": "text",
+      "text": "9"
+    },
+    {
+      "type": "text",
+      "text": "e"
+    },
+    {
+      "type": "text",
+      "text": "8zww"
+    },
+    {
+      "type": "text",
+      "text": "4"
+    },
+    {
+      "type": "text",
+      "text": "f"
+    },
+    {
+      "type": "text",
+      "text": "z"
+    },
+    {
+      "type": "text",
+      "text": "se"
+    },
+    {
+      "type": "text",
+      "text": "] on current"
+    },
+    {
+      "type": "text",
+      "text": " status before paying, espec"
+    },
+    {
+      "type": "text",
+      "text": "ially since the due"
+    },
+    {
+      "type": "text",
+      "text": " date has already passed.\n-"
+    },
+    {
+      "type": "text",
+      "text": " There's also an"
+    },
+    {
+      "type": "text",
+      "text": " open task about"
+    },
+    {
+      "type": "text",
+      "text": " deciding whether to acc"
+    },
+    {
+      "type": "text",
+      "text": "ept the war"
+    },
+    {
+      "type": "text",
+      "text": "ning or resp"
+    },
+    {
+      "type": "text",
+      "text": "ond via"
+    },
+    {
+      "type": "text",
+      "text": " the hearing form"
+    },
+    {
+      "type": "text",
+      "text": " (Anh"
+    },
+    {
+      "type": "text",
+      "text": "örungsbogen) ["
+    },
+    {
+      "type": "text",
+      "text": "item:itm_v"
+    },
+    {
+      "type": "text",
+      "text": "19v"
+    },
+    {
+      "type": "text",
+      "text": "h"
+    },
+    {
+      "type": "text",
+      "text": "m"
+    },
+    {
+      "type": "text",
+      "text": "nd"
+    },
+    {
+      "type": "text",
+      "text": "x"
+    },
+    {
+      "type": "text",
+      "text": "q"
+    },
+    {
+      "type": "text",
+      "text": "b"
+    },
+    {
+      "type": "text",
+      "text": "w]."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Your Ordnung record shows the parking fine (Verwarnungsgeld from Stadt Musterstadt) was due **Fri 2 Oct 2026**, and it is marked as overdue now [item:itm_31yxpwg03cdb]. The amount shown is \"30.00 €\" as read from the letter, not yet confirmed, so it's worth checking against the paper letter [item:itm_31yxpwg03cdb].\n\nA couple of notes:\n\n- The letter's own summary text claims a different payment date, but that figure comes only from the letter text and contradicts Ordnung's stored due date — I'd treat the stored due date above as the reliable one and double-check the letter directly if in doubt.\n- Since the deadline has passed, the letter states that not paying in time can lead to a formal Bußgeldverfahren (fine proceeding) with added fees — you may want to check with the Bußgeldstelle (Stadt Musterstadt) [party:pty_w9e8zww4fzse] on current status before paying, especially since the due date has already passed.\n- There's also an open task about deciding whether to accept the warning or respond via the hearing form (Anhörungsbogen) [item:itm_v19vhmndxqbw].",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 859,
+          "cache_read_tokens": 19996,
+          "cache_creation_tokens": 4419,
+          "cost_usd": 0.030277199999999997,
+          "duration_ms": 15821,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

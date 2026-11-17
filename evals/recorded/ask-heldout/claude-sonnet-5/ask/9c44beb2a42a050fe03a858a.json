@@ -1,0 +1,508 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"258c9eb533aae0c2414271a7fda8681ea1fb736426b2999a45141753d332ff7e\",\"question\":\"Wie viel zahle ich laut dem neuen Bescheid monatlich für Kranken- und Pflegeversicherung?\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "doc_9t9tmrv1ypba",
+      "doc_hynqaw58f550"
+    ],
+    "prompt_head": "The person asks:\nWie viel zahle ich laut dem neuen Bescheid monatlich für Kranken- und Pflegeversicherung?\n",
+    "recorded_at": "2026-11-24T13:37:54+00:00",
+    "repeat": 3,
+    "commit": "84270dc0",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "Laut dem Beitragsbescheid von Muster BKK zahlen Sie seit 01.10.2026 monatlich **156,55 €** für Kranken- und Pflegeversicherung [item:itm_00sbt9f3e0pe].\n\n- Der Betrag wird automatisch per Lastschrift jeweils am 15. eines Monats abgebucht, erstmals am 15.10.2026 [item:itm_00sbt9f3e0pe].\n- Zuvor lag Ihr Beitrag bei 146,29 € – die Erhöhung beruht laut Brief auf dem gestiegenen BAföG-Bedarfssatz (\"915,00 €\" statt \"855,00 €\", nicht in Ordnungs Datensatz bestätigt – bitte im Originalschreiben prüfen).\n- Es gibt zudem ein offenes To-do zur Entscheidung über einen Widerspruch, dessen Frist bereits überfällig ist [item:itm_tj3z83ve4hfg].",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 489,
+      "cache_read_tokens": 20324,
+      "cache_creation_tokens": 5051,
+      "cost_usd": 0.0291708,
+      "duration_ms": 10813,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Kranken- und Pflegeversicherung Bescheid"
+      },
+      "tool_use_id": "toolu_015oLvSYg1erkgXNwNmoNWvR"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_9t9tmrv1ypba\",\"kind\":\"health_insurance\",\"date\":\"2026-09-10\",\"party_id\":\"pty_eatxsexnt9s3\"},{\"id\":\"doc_hynqaw58f550\",\"kind\":\"tax_assessment\",\"date\":\"2026-09-15\",\"party_id\":\"pty_mcq97yavgqjy\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_9t9tmrv1ypba\":{\"title\":\"Notice of increased health and long-term care insurance contribution (Beitragsbescheid)\",\"snippet\":\"…12345 Musterstadt Beitragsbescheid – Ihre Beiträge zur Kranken- und Pflegeversicherung ab 01.10.2026 Sehr geehrter Herr…\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"doc_hynqaw58f550\":{\"title\":\"Income Tax Assessment 2025 – Finanzamt Musterstadt\",\"snippet\":\"…Daten Ihrer Arbeitgeber (Lohnsteuerbescheinigungen) sowie Ihrer Kranken- und Pflegeversicherung berücksichtigt. • Die geltend gemachten Aufwendungen für Arbeitsmittel…\"},\"pty_mcq97yavgqjy\":{\"name\":\"Finanzamt Musterstadt\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_015oLvSYg1erkgXNwNmoNWvR"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_document",
+      "input": {
+        "doc_id": "doc_9t9tmrv1ypba"
+      },
+      "tool_use_id": "toolu_01WhhjBECKr64N4KaD1gF1VA"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"id\":\"doc_9t9tmrv1ypba\",\"kind\":\"health_insurance\",\"date\":\"2026-09-10\",\"status\":\"processed\",\"direction\":\"incoming\",\"received_date\":\"2026-09-12\",\"language\":\"de\",\"party_id\":\"pty_eatxsexnt9s3\",\"case_id\":\"cas_jmphbycg8vfz\",\"urgency\":\"high\",\"pages\":1,\"tax_relevant\":true,\"remedy\":{\"type\":\"widerspruch\"},\"payment\":{\"iban_valid\":true},\"items\":[{\"id\":\"itm_tj3z83ve4hfg\",\"kind\":\"deadline\",\"status\":\"open\",\"overdue\":true,\"due_date\":\"2026-10-14\",\"send_by\":\"2026-10-08\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"health\",\"party_id\":\"pty_eatxsexnt9s3\",\"doc_id\":\"doc_9t9tmrv1ypba\"},{\"id\":\"itm_00sbt9f3e0pe\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-15\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_eatxsexnt9s3\",\"doc_id\":\"doc_9t9tmrv1ypba\",\"repeats\":\"every month on the 15th\",\"following_due_date\":\"2026-12-15\",\"amount\":156.55,\"currency\":\"EUR\"}],\"contracts\":[]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_tj3z83ve4hfg\":{\"title\":\"Decide whether to object (Widerspruch) to the contribution notice\",\"action\":\"If you disagree with the new contribution assessment, file a written or electronic objection (Widerspruch) with Muster BKK by the deadline shown.\",\"consequence\":\"Contributions must still be paid at the assessed amount even if you object, since an objection has no suspensive effect (keine aufschiebende Wirkung).\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"itm_00sbt9f3e0pe\":{\"title\":\"Pay the health & long-term care insurance contribution (automatic direct debit)\",\"action\":\"Ensure your account has sufficient funds for the automatic direct debit around the 15th of each month.\"},\"doc_9t9tmrv1ypba\":{\"tax_note\":\"Statutory health and long-term care insurance contributions are deductible as special expenses (Sonderausgaben) in the German tax return.\",\"title\":\"Notice of increased health and long-term care insurance contribution (Beitragsbescheid)\",\"summary\":\"Muster BKK, Sam Rivera's statutory health/long-term care insurer, raises the monthly contribution as a student member from €146.29 to €156.55 as of 1 October 2026, because the student income basis (BAföG-Bedarf) rises from €855.00 to €915.00 for the winter semester 2026/27. An objection (Widerspruch) can be filed within one month of notification.\",\"explanation\":\"Muster BKK adjusted the fixed notional income used to calculate student health/long-term care insurance contributions for the new semester, so your monthly contribution goes up. The amount is collected automatically by direct debit around the 15th of each month; the new, higher amount is first collected on 15 October 2026 — make sure your account has enough funds. If you disagree with the assessment, you may file a written or electronic objection (Widerspruch); the app shows the deadline for this. Note that filing an objection does not stop the higher contribution from being due in the meantime, so you must keep paying it either way. Consider consulting the insurer or a student advisory service if unsure.\",\"key_facts\":[{\"label\":\"New monthly contribution (Monatsbeitrag)\",\"value\":\"156,55 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Previous monthly contribution\",\"value\":\"146,29 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"New income basis (Bemessungsgrundlage)\",\"value\":\"915,00 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Previous income basis\",\"value\":\"855,00 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Additional contribution rate (Zusatzbeitrag)\",\"value\":\"2,69 %\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Direct debit day\",\"value\":\"15. eines Monats\",\"page\":1,\"grounding\":\"verified\"}],\"references\":[{\"label\":\"Versicherten-Nr.\",\"value\":\"R482019379\"},{\"label\":\"Unser Zeichen\",\"value\":\"BZ-S/2026/0917\"},{\"label\":\"Gläubiger-ID\",\"value\":\"DE22ZZZ00000606017\"}],\"remedy\":{\"addressee\":\"Muster BKK, Kassenstraße 3, 12346 Musterstadt\",\"period_text\":\"innerhalb eines Monats nach Bekanntgabe\",\"form_text\":\"Der Widerspruch ist schriftlich, in elektronischer Form nach § 36a Abs. 2 SGB I oder zur Niederschrift bei der Muster BKK, Kassenstraße 3, 12346 Musterstadt, einzulegen.\",\"quote\":\"Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.\"},\"payment\":{\"iban\":\"DE18123456000006060000\",\"payee\":\"Muster BKK\"},\"warnings\":[\"We couldn't match this letter to one of your contracts — add the contract to track it.\"],\"text\":\"=== Page 1 ===\\nMuster BKK\\nDie Betriebskrankenkasse für Musterstadt\\n\\nVersicherten-Nr. R482019379\\nUnser Zeichen   BZ-S/2026/0917\\nMuster BKK · Kassenstraße 3 · 12346 Musterstadt   Nadine Beispiel\\nIhr Kontakt\\nTelefon   0123 6060-417\\nHerrn\\nDatum   10.09.2026\\nSam Rivera\\nBeispielweg 5\\n12345 Musterstadt\\n\\nBeitragsbescheid – Ihre Beiträge zur Kranken- und Pflegeversicherung ab\\n01.10.2026\\n\\nSehr geehrter Herr Rivera,\\n\\nSie sind bei uns als Student nach § 5 Abs. 1 Nr. 9 SGB V kranken- und pflegeversichert. Als\\nbeitragspflichtige Einnahme gilt für Studierende der monatliche Bedarf nach dem BAföG (§ 236 SGB V);\\ner beträgt ab dem Wintersemester 2026/27 915,00 € (bisher 855,00 €). Ab dem 01.10.2026 beträgt Ihr\\nmonatlicher Beitrag 156,55 € (bisher 146,29 €).\\n\\nBeitragsart   Satz   Monatsbeitrag\\n\\nKrankenversicherung (7/10 des allgemeinen Beitragssatzes von 14,6 %, §   10,22 %   93,51 €\\n245 SGB V)\\n\\nKassenindividueller Zusatzbeitrag der Muster BKK (§ 242 SGB V)   2,69 %   24,61 €\\n\\nPflegeversicherung (§ 55 Abs. 1 SGB XI)   3,60 %   32,94 €\\n\\nBeitragszuschlag für Kinderlose (§ 55 Abs. 3 SGB XI)   0,60 %   5,49 €\\n\\nGesamtbeitrag ab 01.10.2026 (Bemessungsgrundlage 915,00 €)   156,55 €\\n\\nWas ist der Zusatzbeitrag?\\nJede Krankenkasse erhebt zusätzlich zum allgemeinen Beitragssatz einen eigenen Zusatzbeitrag.\\nAnders als Arbeitnehmer tragen Studierende ihn – wie den gesamten Beitrag – allein. Der\\nZusatzbeitragssatz der Muster BKK ist unverändert und liegt mit 2,69 % unter dem Durchschnitt von\\n2,9 %. Wir buchen den Beitrag wie bisher zum 15. eines Monats ab, den neuen Betrag erstmals am\\n15.10.2026.\\n\\nRechtsbehelfsbelehrung\\nGegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.\\nDer Widerspruch ist schriftlich, in elektronischer Form nach § 36a Abs. 2 SGB I oder zur Niederschrift\\nbei der Muster BKK, Kassenstraße 3, 12346 Musterstadt, einzulegen.\\n\\nHinweis: Widerspruch und Klage haben keine aufschiebende Wirkung (§ 86a Abs. 2 Nr. 1 SGG); die Beiträge sind daher\\nauch bei einem Widerspruch zunächst in der festgesetzten Höhe zu zahlen.\\n\\nMit freundlichen Grüßen\\nIhre Muster BKK\\nNadine Beispiel\\nBeitragsservice\\n\\nMuster BKK · Körperschaft des öffentlichen Rechts   Vorstand: Andrea Beispiel   Sparkasse Musterstadt\\nKassenstraße 3 · 12346 Musterstadt   Verwaltungsratsvorsitzender: Peter Muster   IBAN DE18 1234 5600 0006 0600 00\\nServicetelefon 0123 6060-0 (Mo–Fr 8–18 Uhr)   Gläubiger-ID DE22ZZZ00000606017   BIC MUSKDEM1XXX\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01WhhjBECKr64N4KaD1gF1VA"
+    },
+    {
+      "type": "text",
+      "text": "La"
+    },
+    {
+      "type": "text",
+      "text": "ut dem Be"
+    },
+    {
+      "type": "text",
+      "text": "itragsb"
+    },
+    {
+      "type": "text",
+      "text": "escheid von"
+    },
+    {
+      "type": "text",
+      "text": " Mu"
+    },
+    {
+      "type": "text",
+      "text": "ster B"
+    },
+    {
+      "type": "text",
+      "text": "KK"
+    },
+    {
+      "type": "text",
+      "text": " zahlen"
+    },
+    {
+      "type": "text",
+      "text": " Sie se"
+    },
+    {
+      "type": "text",
+      "text": "it "
+    },
+    {
+      "type": "text",
+      "text": "01.10.2026"
+    },
+    {
+      "type": "text",
+      "text": " monatlich **"
+    },
+    {
+      "type": "text",
+      "text": "156"
+    },
+    {
+      "type": "text",
+      "text": ",55"
+    },
+    {
+      "type": "text",
+      "text": " €** für Kran"
+    },
+    {
+      "type": "text",
+      "text": "ken"
+    },
+    {
+      "type": "text",
+      "text": "- und P"
+    },
+    {
+      "type": "text",
+      "text": "flegeversicherung ["
+    },
+    {
+      "type": "text",
+      "text": "item"
+    },
+    {
+      "type": "text",
+      "text": ":"
+    },
+    {
+      "type": "text",
+      "text": "it"
+    },
+    {
+      "type": "text",
+      "text": "m_00s"
+    },
+    {
+      "type": "text",
+      "text": "b"
+    },
+    {
+      "type": "text",
+      "text": "t"
+    },
+    {
+      "type": "text",
+      "text": "9"
+    },
+    {
+      "type": "text",
+      "text": "f"
+    },
+    {
+      "type": "text",
+      "text": "3e"
+    },
+    {
+      "type": "text",
+      "text": "0p"
+    },
+    {
+      "type": "text",
+      "text": "e"
+    },
+    {
+      "type": "text",
+      "text": "]."
+    },
+    {
+      "type": "text",
+      "text": "\n\n-"
+    },
+    {
+      "type": "text",
+      "text": " Der"
+    },
+    {
+      "type": "text",
+      "text": " Bet"
+    },
+    {
+      "type": "text",
+      "text": "rag wird autom"
+    },
+    {
+      "type": "text",
+      "text": "atisch per"
+    },
+    {
+      "type": "text",
+      "text": " L"
+    },
+    {
+      "type": "text",
+      "text": "astschrift j"
+    },
+    {
+      "type": "text",
+      "text": "eweils am"
+    },
+    {
+      "type": "text",
+      "text": " 15. e"
+    },
+    {
+      "type": "text",
+      "text": "ines Monats abgeb"
+    },
+    {
+      "type": "text",
+      "text": "uc"
+    },
+    {
+      "type": "text",
+      "text": "ht, er"
+    },
+    {
+      "type": "text",
+      "text": "stmals am 15.10"
+    },
+    {
+      "type": "text",
+      "text": ".2026 [item:it"
+    },
+    {
+      "type": "text",
+      "text": "m_00sbt9f"
+    },
+    {
+      "type": "text",
+      "text": "3e0pe].\n-"
+    },
+    {
+      "type": "text",
+      "text": " Z"
+    },
+    {
+      "type": "text",
+      "text": "uvor l"
+    },
+    {
+      "type": "text",
+      "text": "ag"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "Ihr Beitrag b"
+    },
+    {
+      "type": "text",
+      "text": "ei 146"
+    },
+    {
+      "type": "text",
+      "text": ",29"
+    },
+    {
+      "type": "text",
+      "text": " € –"
+    },
+    {
+      "type": "text",
+      "text": " die"
+    },
+    {
+      "type": "text",
+      "text": " Erhöhung be"
+    },
+    {
+      "type": "text",
+      "text": "ruht la"
+    },
+    {
+      "type": "text",
+      "text": "ut"
+    },
+    {
+      "type": "text",
+      "text": " Brief auf d"
+    },
+    {
+      "type": "text",
+      "text": "em gestiegenen B"
+    },
+    {
+      "type": "text",
+      "text": "Afö"
+    },
+    {
+      "type": "text",
+      "text": "G"
+    },
+    {
+      "type": "text",
+      "text": "-Bedarf"
+    },
+    {
+      "type": "text",
+      "text": "ssatz (\"915"
+    },
+    {
+      "type": "text",
+      "text": ","
+    },
+    {
+      "type": "text",
+      "text": "00 €\" stat"
+    },
+    {
+      "type": "text",
+      "text": "t \""
+    },
+    {
+      "type": "text",
+      "text": "855"
+    },
+    {
+      "type": "text",
+      "text": ",00 €\", nicht"
+    },
+    {
+      "type": "text",
+      "text": " in Ord"
+    },
+    {
+      "type": "text",
+      "text": "n"
+    },
+    {
+      "type": "text",
+      "text": "ung"
+    },
+    {
+      "type": "text",
+      "text": "s Dat"
+    },
+    {
+      "type": "text",
+      "text": "ens"
+    },
+    {
+      "type": "text",
+      "text": "atz b"
+    },
+    {
+      "type": "text",
+      "text": "estätigt –"
+    },
+    {
+      "type": "text",
+      "text": " b"
+    },
+    {
+      "type": "text",
+      "text": "itte im"
+    },
+    {
+      "type": "text",
+      "text": " Origin"
+    },
+    {
+      "type": "text",
+      "text": "alsch"
+    },
+    {
+      "type": "text",
+      "text": "reiben pr"
+    },
+    {
+      "type": "text",
+      "text": "üfen).\n- Es"
+    },
+    {
+      "type": "text",
+      "text": " gibt z"
+    },
+    {
+      "type": "text",
+      "text": "udem ein offen"
+    },
+    {
+      "type": "text",
+      "text": "es"
+    },
+    {
+      "type": "text",
+      "text": " To"
+    },
+    {
+      "type": "text",
+      "text": "-do"
+    },
+    {
+      "type": "text",
+      "text": " zur"
+    },
+    {
+      "type": "text",
+      "text": " Entscheidung über"
+    },
+    {
+      "type": "text",
+      "text": " einen Widerspruch"
+    },
+    {
+      "type": "text",
+      "text": ", d"
+    },
+    {
+      "type": "text",
+      "text": "essen Fr"
+    },
+    {
+      "type": "text",
+      "text": "ist b"
+    },
+    {
+      "type": "text",
+      "text": "ereits überf"
+    },
+    {
+      "type": "text",
+      "text": "äll"
+    },
+    {
+      "type": "text",
+      "text": "ig ist [item:itm"
+    },
+    {
+      "type": "text",
+      "text": "_tj"
+    },
+    {
+      "type": "text",
+      "text": "3"
+    },
+    {
+      "type": "text",
+      "text": "z"
+    },
+    {
+      "type": "text",
+      "text": "83"
+    },
+    {
+      "type": "text",
+      "text": "ve"
+    },
+    {
+      "type": "text",
+      "text": "4"
+    },
+    {
+      "type": "text",
+      "text": "h"
+    },
+    {
+      "type": "text",
+      "text": "f"
+    },
+    {
+      "type": "text",
+      "text": "g"
+    },
+    {
+      "type": "text",
+      "text": "]."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Laut dem Beitragsbescheid von Muster BKK zahlen Sie seit 01.10.2026 monatlich **156,55 €** für Kranken- und Pflegeversicherung [item:itm_00sbt9f3e0pe].\n\n- Der Betrag wird automatisch per Lastschrift jeweils am 15. eines Monats abgebucht, erstmals am 15.10.2026 [item:itm_00sbt9f3e0pe].\n- Zuvor lag Ihr Beitrag bei 146,29 € – die Erhöhung beruht laut Brief auf dem gestiegenen BAföG-Bedarfssatz (\"915,00 €\" statt \"855,00 €\", nicht in Ordnungs Datensatz bestätigt – bitte im Originalschreiben prüfen).\n- Es gibt zudem ein offenes To-do zur Entscheidung über einen Widerspruch, dessen Frist bereits überfällig ist [item:itm_tj3z83ve4hfg].",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 489,
+          "cache_read_tokens": 20324,
+          "cache_creation_tokens": 5051,
+          "cost_usd": 0.0291708,
+          "duration_ms": 10813,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,593 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"258c9eb533aae0c2414271a7fda8681ea1fb736426b2999a45141753d332ff7e\",\"question\":\"Wie viel sollte ich TechMarkt für die Kopfhörer samt Mahngebühr zahlen und bis wann?\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "doc_jcbakmxv29p8",
+      "doc_1ndcj96tf28z",
+      "doc_5c5axexztnw6",
+      "doc_hjxvf5t7dqnw"
+    ],
+    "prompt_head": "The person asks:\nWie viel sollte ich TechMarkt für die Kopfhörer samt Mahngebühr zahlen und bis wann?\n",
+    "recorded_at": "2026-11-24T13:38:54+00:00",
+    "repeat": 3,
+    "commit": "84270dc0",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "Sie sollten **94,99 €** an TechMarkt Online GmbH zahlen – das ist der Gesamtbetrag aus Rechnung plus Mahngebühr [item:itm_c05nsrmyz6av].\n\n- Fällig/zu zahlen bis: **30.09.2026** [item:itm_c05nsrmyz6av] (dieser Termin liegt bereits in der Vergangenheit, das To-do ist als überfällig markiert)\n- Verwendungszweck laut Mahnung: TM-2026-0048213, IBAN DE70 1234 7800 0048 2130 00 (bitte im Original-Brief prüfen)\n- Falls Sie die ursprüngliche Rechnung bereits bezahlt haben, ist dieses Schreiben gegenstandslos – bitte vorher prüfen, bevor Sie erneut zahlen.\n- Bei weiterer Verzögerung droht laut dem Schreiben die Übergabe an ein Inkassounternehmen mit zusätzlichen Kosten.\n\nDa die Frist bereits verstrichen ist, würde ich den Betrag zeitnah überweisen bzw. den Status in Ordnung prüfen/als erledigt markieren, falls bereits gezahlt.",
+    "data": null,
+    "usage": {
+      "input_tokens": 8,
+      "output_tokens": 797,
+      "cache_read_tokens": 29034,
+      "cache_creation_tokens": 5702,
+      "cost_usd": 0.0366008,
+      "duration_ms": 16364,
+      "turns": 6
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "TechMarkt Kopfhörer Mahngebühr"
+      },
+      "tool_use_id": "toolu_012bXJKS45nL3CZ7meELNuN5"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_012bXJKS45nL3CZ7meELNuN5"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "TechMarkt"
+      },
+      "tool_use_id": "toolu_017NuAHdJUzNZVEqmdkSR4Bm"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_jcbakmxv29p8\",\"kind\":\"invoice\",\"date\":\"2026-08-20\",\"party_id\":\"pty_adyabnsvdbpg\"},{\"id\":\"doc_1ndcj96tf28z\",\"kind\":\"dunning\",\"date\":\"2026-09-10\",\"party_id\":\"pty_adyabnsvdbpg\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_jcbakmxv29p8\":{\"title\":\"Invoice from TechMarkt Online GmbH – €89.99\",\"snippet\":\"…www.techmarkt-online.example · 0123 6655440 Rechnungs-Nr. TM-2026-0048213 Rechnungsdatum 20.08.2026 TechMarkt…\"},\"pty_adyabnsvdbpg\":{\"name\":\"TechMarkt Online GmbH\"},\"doc_1ndcj96tf28z\":{\"title\":\"1. Mahnung – Invoice TM-2026-0048213\",\"snippet\":\"…www.techmarkt-online.example · 0123 6655440 Kundennummer K-7719034 Rechnungs-Nr. TM-2026-0048213 TechMarkt Online…\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_017NuAHdJUzNZVEqmdkSR4Bm"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Kopfhörer"
+      },
+      "tool_use_id": "toolu_01CLhPvy4xTUy4oxsAefeMc5"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_jcbakmxv29p8\",\"kind\":\"invoice\",\"date\":\"2026-08-20\",\"party_id\":\"pty_adyabnsvdbpg\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_jcbakmxv29p8\":{\"title\":\"Invoice from TechMarkt Online GmbH – €89.99\",\"snippet\":\"…Bezeichnung Menge Einzelpreis Gesamt 1 4471190 MusterSound Q30 Bluetooth-Kopfhörer, 1 89,99 € 89,99 € Over…\"},\"pty_adyabnsvdbpg\":{\"name\":\"TechMarkt Online GmbH\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01CLhPvy4xTUy4oxsAefeMc5"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Mahnung"
+      },
+      "tool_use_id": "toolu_01QhGtMUEBj1RNBqM1bErh1g"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_1ndcj96tf28z\",\"kind\":\"dunning\",\"date\":\"2026-09-10\",\"party_id\":\"pty_adyabnsvdbpg\"},{\"id\":\"doc_5c5axexztnw6\",\"kind\":\"dunning\",\"date\":\"2026-09-22\",\"party_id\":\"pty_d2ymm5s3htd0\"},{\"id\":\"doc_jcbakmxv29p8\",\"kind\":\"invoice\",\"date\":\"2026-08-20\",\"party_id\":\"pty_adyabnsvdbpg\"},{\"id\":\"doc_hjxvf5t7dqnw\",\"kind\":\"dunning\",\"date\":\"2026-09-26\",\"party_id\":\"pty_dbn2zg2kxj4d\",\"scam_warning\":true}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_1ndcj96tf28z\":{\"title\":\"1. Mahnung – Invoice TM-2026-0048213\",\"snippet\":\"1. Mahnung – Invoice TM-2026-0048213 15_mahnung_techmarkt.pdf\"},\"pty_adyabnsvdbpg\":{\"name\":\"TechMarkt Online GmbH\"},\"doc_5c5axexztnw6\":{\"title\":\"First reminder: overdue library loan (1. Mahnung)\",\"snippet\":\"First reminder: overdue library loan (1. Mahnung) 20_stadtbibliothek_mahnung.pdf\"},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\"},\"doc_jcbakmxv29p8\":{\"title\":\"Invoice from TechMarkt Online GmbH – €89.99\",\"snippet\":\"…If you miss it, the seller can send a reminder (Mahnung) and eventually charge late fees…\"},\"doc_hjxvf5t7dqnw\":{\"title\":\"Letter claiming to be from a \\\"Zahlungszentrale\\\" demanding €254.35 within 48 hours for broadcasting fee arrears\",\"snippet\":\"…Herr Sam Rivera Beispielweg 5 12345 Musterstadt LETZTE MAHNUNG VOR PFÄNDUNG – Rückstand Rundfunkbeitrag Sehr geehrte Herr…\",\"scam_signs\":[\"The letter contains hidden text that you can't see on the page.\",\"The payee IBAN (LT08...) is Lithuanian, not German — a foreign account for a German public broadcasting fee is a strong scam indicator.\",\"This document should be verified as potentially fraudulent before taking any action or making any payment.\",\"Possible scam: “Rundfunk-Beitragsservice Zahlungszentrale” asks you to pay to LT08 3999 0000 0543 9871, but “Beitragsservice Musterstadt”, which has a similar name, used DE57 1234 8900 0055 0818 36 before. Check the sender using contact details you already have before paying.\"]},\"pty_dbn2zg2kxj4d\":{\"name\":\"Rundfunk-Beitragsservice Zahlungszentrale\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01QhGtMUEBj1RNBqM1bErh1g"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_document",
+      "input": {
+        "doc_id": "doc_1ndcj96tf28z"
+      },
+      "tool_use_id": "toolu_01EDDWL6xJZCxtEYB5ezFVQQ"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"id\":\"doc_1ndcj96tf28z\",\"kind\":\"dunning\",\"date\":\"2026-09-10\",\"status\":\"processed\",\"direction\":\"incoming\",\"received_date\":\"2026-09-12\",\"language\":\"de\",\"party_id\":\"pty_adyabnsvdbpg\",\"case_id\":\"cas_95a95m88gh32\",\"urgency\":\"critical\",\"pages\":1,\"payment\":{\"iban_valid\":true},\"items\":[{\"id\":\"itm_c05nsrmyz6av\",\"kind\":\"payment\",\"status\":\"open\",\"overdue\":true,\"due_date\":\"2026-09-30\",\"send_by\":\"2026-09-29\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"critical\",\"area\":\"money\",\"party_id\":\"pty_adyabnsvdbpg\",\"doc_id\":\"doc_1ndcj96tf28z\",\"amount\":94.99,\"currency\":\"EUR\"}],\"contracts\":[]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_c05nsrmyz6av\":{\"title\":\"Pay the reminder amount for invoice TM-2026-0048213\",\"action\":\"Transfer the total amount of €94.99 to TechMarkt Online GmbH's account using the reference TM-2026-0048213, unless you already paid the original invoice.\",\"consequence\":\"If the payment does not arrive on time, TechMarkt Online GmbH will hand the claim over to a debt collection agency (Inkassodienstleister), causing further costs.\"},\"pty_adyabnsvdbpg\":{\"name\":\"TechMarkt Online GmbH\"},\"doc_1ndcj96tf28z\":{\"title\":\"1. Mahnung – Invoice TM-2026-0048213\",\"summary\":\"TechMarkt Online GmbH sent a first payment reminder (1. Mahnung) for invoice TM-2026-0048213, which was due on 3 September 2026. With a €5.00 reminder fee added, the total of €94.99 must now be paid by 30 September 2026.\",\"explanation\":\"This is a first dunning notice for an unpaid invoice, now including a €5 reminder fee. Pay the total amount shown to the given account by the stated deadline. If you already paid, you can disregard this letter. If you miss the deadline, the company says it will hand the claim over to a debt collection agency (Inkassodienstleister), which would add further costs. Check first whether the original invoice was already settled before paying again.\",\"key_facts\":[{\"label\":\"Invoice number (Rechnungs-Nr.)\",\"value\":\"TM-2026-0048213\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Invoice date (Rechnungsdatum)\",\"value\":\"20.08.2026\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Original due date (fällig am)\",\"value\":\"03.09.2026\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Open amount (offener Betrag)\",\"value\":\"89,99 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Reminder fee (Mahngebühr)\",\"value\":\"5,00 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Total amount (Gesamtbetrag)\",\"value\":\"94,99 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"New payment deadline\",\"value\":\"30.09.2026\",\"page\":1,\"grounding\":\"verified\"}],\"references\":[{\"label\":\"Kundennummer\",\"value\":\"K-7719034\"},{\"label\":\"Rechnungs-Nr.\",\"value\":\"TM-2026-0048213\"},{\"label\":\"USt-IdNr.\",\"value\":\"DE482133778\"},{\"label\":\"Amtsgericht Beispielburg HRB\",\"value\":\"48213\"},{\"label\":\"Steuernummer\",\"value\":\"212/5812/0048\"}],\"payment\":{\"iban\":\"DE70123478000048213000\",\"payee\":\"TechMarkt Online GmbH\",\"reference\":\"TM-2026-0048213\"},\"warnings\":[\"This is a payment reminder about “Invoice from TechMarkt Online GmbH – €89.99”, which is still open. Pay the amount asked here once — not both.\"],\"text\":\"=== Page 1 ===\\nTechMarktonline   Technik. Morgen da.\\nwww.techmarkt-online.example · 0123 6655440\\n\\nKundennummer K-7719034\\nRechnungs-Nr.   TM-2026-0048213\\nTechMarkt Online GmbH · Handelsstraße 88 · 12353 Beispielburg   0123 6655440\\nService\\nDatum   10.09.2026\\nHerrn\\nSam Rivera\\nBeispielweg 5\\n12345 Musterstadt\\n\\nZahlungserinnerung – 1. Mahnung zur Rechnung TM-2026-0048213\\n\\nSehr geehrter Herr Rivera,\\n\\nsicher ist es im Alltag untergegangen: Für die unten aufgeführte Rechnung konnten wir bis heute keinen\\nZahlungseingang feststellen. Die Zahlung war am 03.09.2026 fällig.\\n\\nRechnungs-Nr.   Rechnungsdatum   fällig am   offener Betrag\\n\\nTM-2026-0048213   20.08.2026   03.09.2026   89,99 €\\n\\nMahngebühr   5,00 €\\n\\nGesamtbetrag   94,99 €\\n\\nBitte überweisen Sie den Gesamtbetrag von 94,99 € bis spätestens 30.09.2026 auf unser\\nKonto.\\n\\nEmpfänger: TechMarkt Online GmbH · IBAN DE70 1234 7800 0048 2130 00 · BIC BEKRDEM1XXX ·\\nVerwendungszweck: TM-2026-0048213\\n\\nSollten Sie die Zahlung inzwischen veranlasst haben, betrachten Sie dieses Schreiben bitte als\\ngegenstandslos. Geht der Betrag nicht fristgerecht ein, müssen wir die Forderung an unseren\\nInkassodienstleister übergeben; dadurch entstehen Ihnen weitere Kosten.\\n\\nMit freundlichen Grüßen\\nIhr TechMarkt Online Team – Forderungsmanagement\\n\\nTechMarkt Online GmbH   Geschäftsführer: Jan Exempel, Aylin Muster   USt-IdNr. DE482133778   Beispiel Kreditbank AG\\nHandelsstraße 88 · 12353 Beispielburg   Sitz: Beispielburg   WEEE-Reg.-Nr. DE 00000000   IBAN DE70 1234 7800 0048 2130 00\\nkundenservice@techmarkt-online.example   Amtsgericht Beispielburg HRB 48213   Steuernummer 212/5812/0048   BIC BEKRDEM1XXX\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01EDDWL6xJZCxtEYB5ezFVQQ"
+    },
+    {
+      "type": "text",
+      "text": "S"
+    },
+    {
+      "type": "text",
+      "text": "ie s"
+    },
+    {
+      "type": "text",
+      "text": "ollten **"
+    },
+    {
+      "type": "text",
+      "text": "94"
+    },
+    {
+      "type": "text",
+      "text": ",99"
+    },
+    {
+      "type": "text",
+      "text": " €"
+    },
+    {
+      "type": "text",
+      "text": "** an T"
+    },
+    {
+      "type": "text",
+      "text": "echMarkt"
+    },
+    {
+      "type": "text",
+      "text": " Online G"
+    },
+    {
+      "type": "text",
+      "text": "mbH zahlen –"
+    },
+    {
+      "type": "text",
+      "text": " das ist der"
+    },
+    {
+      "type": "text",
+      "text": " G"
+    },
+    {
+      "type": "text",
+      "text": "esamtbetrag a"
+    },
+    {
+      "type": "text",
+      "text": "us"
+    },
+    {
+      "type": "text",
+      "text": " Rechnung"
+    },
+    {
+      "type": "text",
+      "text": " pl"
+    },
+    {
+      "type": "text",
+      "text": "us M"
+    },
+    {
+      "type": "text",
+      "text": "ahng"
+    },
+    {
+      "type": "text",
+      "text": "ebüh"
+    },
+    {
+      "type": "text",
+      "text": "r ["
+    },
+    {
+      "type": "text",
+      "text": "item"
+    },
+    {
+      "type": "text",
+      "text": ":it"
+    },
+    {
+      "type": "text",
+      "text": "m"
+    },
+    {
+      "type": "text",
+      "text": "_c05"
+    },
+    {
+      "type": "text",
+      "text": "n"
+    },
+    {
+      "type": "text",
+      "text": "s"
+    },
+    {
+      "type": "text",
+      "text": "r"
+    },
+    {
+      "type": "text",
+      "text": "m"
+    },
+    {
+      "type": "text",
+      "text": "y"
+    },
+    {
+      "type": "text",
+      "text": "z"
+    },
+    {
+      "type": "text",
+      "text": "6av"
+    },
+    {
+      "type": "text",
+      "text": "]."
+    },
+    {
+      "type": "text",
+      "text": "\n\n-"
+    },
+    {
+      "type": "text",
+      "text": " F"
+    },
+    {
+      "type": "text",
+      "text": "ällig/"
+    },
+    {
+      "type": "text",
+      "text": "z"
+    },
+    {
+      "type": "text",
+      "text": "u"
+    },
+    {
+      "type": "text",
+      "text": " zahlen bis: **"
+    },
+    {
+      "type": "text",
+      "text": "30"
+    },
+    {
+      "type": "text",
+      "text": "."
+    },
+    {
+      "type": "text",
+      "text": "09.2026"
+    },
+    {
+      "type": "text",
+      "text": "**"
+    },
+    {
+      "type": "text",
+      "text": " [item:itm_c05"
+    },
+    {
+      "type": "text",
+      "text": "nsrmyz6av"
+    },
+    {
+      "type": "text",
+      "text": "]"
+    },
+    {
+      "type": "text",
+      "text": " (d"
+    },
+    {
+      "type": "text",
+      "text": "ieser Term"
+    },
+    {
+      "type": "text",
+      "text": "in li"
+    },
+    {
+      "type": "text",
+      "text": "egt bereits in der"
+    },
+    {
+      "type": "text",
+      "text": " Vergangenheit, das"
+    },
+    {
+      "type": "text",
+      "text": " To"
+    },
+    {
+      "type": "text",
+      "text": "-do"
+    },
+    {
+      "type": "text",
+      "text": " ist als"
+    },
+    {
+      "type": "text",
+      "text": " überf"
+    },
+    {
+      "type": "text",
+      "text": "ällig markiert)\n-"
+    },
+    {
+      "type": "text",
+      "text": " Verwendungsz"
+    },
+    {
+      "type": "text",
+      "text": "we"
+    },
+    {
+      "type": "text",
+      "text": "ck la"
+    },
+    {
+      "type": "text",
+      "text": "ut M"
+    },
+    {
+      "type": "text",
+      "text": "ahnung: TM"
+    },
+    {
+      "type": "text",
+      "text": "-2"
+    },
+    {
+      "type": "text",
+      "text": "026"
+    },
+    {
+      "type": "text",
+      "text": "-0048213"
+    },
+    {
+      "type": "text",
+      "text": ","
+    },
+    {
+      "type": "text",
+      "text": " IBAN DE70 "
+    },
+    {
+      "type": "text",
+      "text": "1234 7800 0048"
+    },
+    {
+      "type": "text",
+      "text": " 2130 00 ("
+    },
+    {
+      "type": "text",
+      "text": "b"
+    },
+    {
+      "type": "text",
+      "text": "itte im"
+    },
+    {
+      "type": "text",
+      "text": " Original"
+    },
+    {
+      "type": "text",
+      "text": "-Brief prüfen"
+    },
+    {
+      "type": "text",
+      "text": ")"
+    },
+    {
+      "type": "text",
+      "text": "\n- Falls"
+    },
+    {
+      "type": "text",
+      "text": " Sie die "
+    },
+    {
+      "type": "text",
+      "text": "ursprüngliche R"
+    },
+    {
+      "type": "text",
+      "text": "echnung b"
+    },
+    {
+      "type": "text",
+      "text": "ereits b"
+    },
+    {
+      "type": "text",
+      "text": "ezahlt haben, "
+    },
+    {
+      "type": "text",
+      "text": "ist dieses Schrei"
+    },
+    {
+      "type": "text",
+      "text": "ben geg"
+    },
+    {
+      "type": "text",
+      "text": "enstand"
+    },
+    {
+      "type": "text",
+      "text": "slos –"
+    },
+    {
+      "type": "text",
+      "text": " bit"
+    },
+    {
+      "type": "text",
+      "text": "te v"
+    },
+    {
+      "type": "text",
+      "text": "orher prüfen, b"
+    },
+    {
+      "type": "text",
+      "text": "evor Sie er"
+    },
+    {
+      "type": "text",
+      "text": "neut zahlen."
+    },
+    {
+      "type": "text",
+      "text": "\n- Bei we"
+    },
+    {
+      "type": "text",
+      "text": "iterer Ver"
+    },
+    {
+      "type": "text",
+      "text": "zögerung dro"
+    },
+    {
+      "type": "text",
+      "text": "ht la"
+    },
+    {
+      "type": "text",
+      "text": "ut dem Sch"
+    },
+    {
+      "type": "text",
+      "text": "reiben die Überg"
+    },
+    {
+      "type": "text",
+      "text": "abe an "
+    },
+    {
+      "type": "text",
+      "text": "ein Inkassoun"
+    },
+    {
+      "type": "text",
+      "text": "ternehmen m"
+    },
+    {
+      "type": "text",
+      "text": "it z"
+    },
+    {
+      "type": "text",
+      "text": "usätzlichen K"
+    },
+    {
+      "type": "text",
+      "text": "osten.\n\nDa"
+    },
+    {
+      "type": "text",
+      "text": " die Fr"
+    },
+    {
+      "type": "text",
+      "text": "ist bereits ver"
+    },
+    {
+      "type": "text",
+      "text": "st"
+    },
+    {
+      "type": "text",
+      "text": "richen ist, wür"
+    },
+    {
+      "type": "text",
+      "text": "de ich den"
+    },
+    {
+      "type": "text",
+      "text": " Betrag z"
+    },
+    {
+      "type": "text",
+      "text": "eitnah über"
+    },
+    {
+      "type": "text",
+      "text": "weisen b"
+    },
+    {
+      "type": "text",
+      "text": "zw. den Status"
+    },
+    {
+      "type": "text",
+      "text": " in Ordnung pr"
+    },
+    {
+      "type": "text",
+      "text": "üfen/"
+    },
+    {
+      "type": "text",
+      "text": "als"
+    },
+    {
+      "type": "text",
+      "text": " er"
+    },
+    {
+      "type": "text",
+      "text": "ledigt markieren,"
+    },
+    {
+      "type": "text",
+      "text": " fal"
+    },
+    {
+      "type": "text",
+      "text": "ls b"
+    },
+    {
+      "type": "text",
+      "text": "ereits g"
+    },
+    {
+      "type": "text",
+      "text": "ezahlt."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Sie sollten **94,99 €** an TechMarkt Online GmbH zahlen – das ist der Gesamtbetrag aus Rechnung plus Mahngebühr [item:itm_c05nsrmyz6av].\n\n- Fällig/zu zahlen bis: **30.09.2026** [item:itm_c05nsrmyz6av] (dieser Termin liegt bereits in der Vergangenheit, das To-do ist als überfällig markiert)\n- Verwendungszweck laut Mahnung: TM-2026-0048213, IBAN DE70 1234 7800 0048 2130 00 (bitte im Original-Brief prüfen)\n- Falls Sie die ursprüngliche Rechnung bereits bezahlt haben, ist dieses Schreiben gegenstandslos – bitte vorher prüfen, bevor Sie erneut zahlen.\n- Bei weiterer Verzögerung droht laut dem Schreiben die Übergabe an ein Inkassounternehmen mit zusätzlichen Kosten.\n\nDa die Frist bereits verstrichen ist, würde ich den Betrag zeitnah überweisen bzw. den Status in Ordnung prüfen/als erledigt markieren, falls bereits gezahlt.",
+        "usage": {
+          "input_tokens": 8,
+          "output_tokens": 797,
+          "cache_read_tokens": 29034,
+          "cache_creation_tokens": 5702,
+          "cost_usd": 0.0366008,
+          "duration_ms": 16364,
+          "turns": 6
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}
