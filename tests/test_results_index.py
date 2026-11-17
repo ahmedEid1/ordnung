@@ -20,6 +20,8 @@ from evals import analysis, reproduce, splits
 from evals.present import model as present_model
 from evals.run import DEFAULT_MODEL, RESULTS_DIR
 
+from helpers_publication import FINAL_SPLITS, final_published
+
 ROOT = Path(__file__).resolve().parents[1]
 INDEX = RESULTS_DIR / "INDEX.json"
 CITING = ("README.md", "docs/evals.md", "docs/evals-ask.md", "docs/evals-history.md")
@@ -110,6 +112,12 @@ def test_every_changed_date_is_declared_with_a_reason(rows: dict[str, dict[str, 
     assert declared == 8
 
 
+def _of_the_final_run(row: dict[str, Any]) -> bool:
+    """Whether an INDEX.json row is a file of the final run: one of its reads, Ask runs or analyses (role
+    ``final``), or a replay of one of its splits (without the Land, the check ablation, end to end)."""
+    return row.get("role") == "final" or bool(set(row.get("splits") or ()) & set(FINAL_SPLITS))
+
+
 def test_todays_verdicts(rows: dict[str, dict[str, Any]]) -> None:
     """Known values of the replay at HEAD (zero tokens): holdout3 and the newest holdout2 re-scoring give the same
     dates (the Länder delivery rules checked on 4 Nov 2026 moved confidences only: holdout3 I1 and J1, holdout2 G1
@@ -161,7 +169,9 @@ def test_todays_verdicts(rows: dict[str, dict[str, Any]]) -> None:
         for condition in ("llm_only", "llm_rules_text", "llm_rules_tool"):
             assert row["conditions"][condition]["verdict"] in ("exact", "same-dates"), (name, condition)
     checked = {name for name, row in rows.items() if row["verdict"] == "checked"}
-    assert checked == {
+    # the final run's files (its Ask runs and analyses, and the replays of its splits), published by the publish PR
+    final_run = {name for name in checked if _of_the_final_run(rows[name])}
+    assert checked - final_run == {
         "2026-10-30-claude-sonnet-5-ask.json",
         "2026-10-31-claude-sonnet-5-ask-rescored.json",
         "2026-10-08-claude-sonnet-5-without-land.json",
@@ -447,26 +457,30 @@ def test_every_cell_is_replayed_or_says_it_is_not_recorded_yet(index: dict[str, 
             "llm_rules_tool",
         ]
     waiting = sorted(name for name, cell in cells.items() if cell["status"] == "not recorded yet")
-    assert waiting == [
-        "ablation/holdout4/r1",
-        "ablation/holdout4/r2",
-        "ablation/holdout4/r3",
-        "analysis/final",
-        "ask/heldout/final",
-        "ask/heldout/r1",
-        "ask/heldout/r2",
-        "ask/heldout/r3",
-        "benchmark/holdout4/r1",
-        "benchmark/holdout4/r2",
-        "benchmark/holdout4/r3",
-        "benchmark/newkinds/r1",
-        "e2e/holdout4-newkinds",
-        "stress/D1",
-        "stress/I1",
-        "without-land/holdout4/r1",
-        "without-land/holdout4/r2",
-        "without-land/holdout4/r3",
-    ]
+    if final_published():
+        # what the pre-registration does not require of the final run may still wait (Ask runs 2 and 3, the stress)
+        assert set(waiting) <= {"ask/heldout/r2", "ask/heldout/r3", "stress/D1", "stress/I1"}, waiting
+    else:
+        assert waiting == [
+            "ablation/holdout4/r1",
+            "ablation/holdout4/r2",
+            "ablation/holdout4/r3",
+            "analysis/final",
+            "ask/heldout/final",
+            "ask/heldout/r1",
+            "ask/heldout/r2",
+            "ask/heldout/r3",
+            "benchmark/holdout4/r1",
+            "benchmark/holdout4/r2",
+            "benchmark/holdout4/r3",
+            "benchmark/newkinds/r1",
+            "e2e/holdout4-newkinds",
+            "stress/D1",
+            "stress/I1",
+            "without-land/holdout4/r1",
+            "without-land/holdout4/r2",
+            "without-land/holdout4/r3",
+        ]
     for name in waiting:
         assert cells[name]["needs"], name
     for name in (
@@ -1174,12 +1188,17 @@ def test_a_run_as_recorded_rewritten_as_a_re_scoring_stays_pinned(
 def test_no_run_as_recorded_moved_undeclared(rows: dict[str, dict[str, Any]]) -> None:
     """The committed index pins every live Ask run as recorded, and declares any move of one with its reason."""
     recorded = [name for name, row in rows.items() if reproduce.is_as_recorded(row)]
-    assert sorted(recorded) == [
-        "2026-09-29-sonnet-ask.json",
-        "2026-09-30-claude-sonnet-5-ask.json",
-        "2026-10-01-claude-sonnet-5-ask.json",
-        "2026-10-30-claude-sonnet-5-ask.json",
-    ]
+    # and the held-out Ask set's runs once the final run is published
+    held_out = [name for name, row in rows.items() if row.get("role") == "final" and row.get("kind") == "ask"]
+    assert sorted(recorded) == sorted(
+        [
+            "2026-09-29-sonnet-ask.json",
+            "2026-09-30-claude-sonnet-5-ask.json",
+            "2026-10-01-claude-sonnet-5-ask.json",
+            "2026-10-30-claude-sonnet-5-ask.json",
+            *held_out,
+        ]
+    )
     for name in recorded:
         moved = rows[name].get("sha256_moved")
         assert moved is None or re.search(

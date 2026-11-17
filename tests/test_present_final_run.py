@@ -51,6 +51,7 @@ from scripts import prereg_hashes
 
 import helpers_final as hf
 import test_present_final as builders
+from helpers_publication import final_published, final_run_files, results_before_publication
 
 #: what a path of the building computer starts with (as tests/test_present.py)
 PATH_MARKS = ("/home/", "/Users/", "/root/", "/tmp/", "\\Users\\")
@@ -99,12 +100,40 @@ class Made:
 
 
 @pytest.fixture(scope="module", autouse=True)
-def _legacy_page_once() -> Iterator[None]:
+def _results_before_publication(tmp_path_factory: pytest.TempPathFactory) -> Iterator[None]:
+    """Every synthetic final here is rendered over the results files as they are before the publish PR. Once the real
+    final run is published, ``evals/results`` holds it too, and a checkout of ``tests/helpers_final.py`` (which links
+    every committed results file) would hold two final analyses: the helpers then read the results folder as it was
+    before the publish PR (``tests/helpers_publication.py``), so that "with no final run" stays what it says."""
+    if not final_published():
+        yield
+        return
+    folder = results_before_publication(tmp_path_factory.mktemp("results-before-publication"))
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(hf, "RESULTS", folder)
+        yield
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _legacy_page_once(_results_before_publication: None) -> Iterator[None]:
     """The history page's earlier runs, rendered once: every temporary checkout links the same results files."""
     page = build.legacy_page(hf.RESULTS)
     with pytest.MonkeyPatch.context() as patch:
         patch.setattr(build, "legacy_page", lambda results_dir: page)
         yield
+
+
+@pytest.fixture(scope="module")
+def no_final_outputs() -> dict[str, str]:
+    """Every output with no final run: the committed ones (``build.OUTPUT_PATHS``) until the final run is published;
+    once it is, the committed outputs are its own, and these are rendered from the results as they were before the
+    publish PR, the committed README around their block."""
+    if not final_published():
+        return {relative: (hf.ROOT / relative).read_text(encoding="utf-8") for relative in build.OUTPUT_PATHS}
+    rendered = build.outputs(hf.ROOT, hf.RESULTS)
+    assert set(rendered) == set(build.OUTPUT_PATHS)
+    assert json.loads(rendered[build.PRESENTATION])["final"] is None
+    return rendered
 
 
 @pytest.fixture(scope="module")
@@ -337,6 +366,40 @@ def test_a_final_in_pending_is_never_read(tmp_path: Path) -> None:
     assert not (root / FINAL_SVGS[0]).exists()
     (root / FINAL_SVGS[0]).write_text("<svg/>\n", encoding="utf-8")
     assert build.check(root) == [FINAL_SVGS[0]]
+
+
+def test_the_results_before_publication_leave_out_the_final_run_s_files_only(tmp_path: Path) -> None:
+    """Once the final run is published, the presenter's tests read the results folder as it was before the publish
+    PR (``tests/helpers_publication.py``): every results file but the final run's own. Shown on a checkout with a
+    synthetic final run beside the results with none: its analysis, its reads, the files it names (the held-out Ask
+    set's file, the stress test, its end-to-end replay), a re-scored read and a replay without the sender's Land of a
+    final split are left out, and nothing else."""
+    doc, src, reads = hf.realistic()
+    rescored = json.loads(reads[0][1])
+    rescored["meta"]["backend"] = "replay"
+    without_land = next(
+        json.loads(path.read_text(encoding="utf-8"))
+        for path in sorted(hf.RESULTS.glob("*-without-land.json"))
+    )
+    without_land["splits"] = {"holdout4": next(iter(without_land["splits"].values()))}
+    more = [
+        ("2027-01-09-claude-sonnet-5-holdout4-rescored.json", hf._text(rescored)),
+        ("2027-01-12-claude-sonnet-5-without-land-holdout4.json", hf._text(without_land)),
+    ]
+    prereg = hf.complete_prereg(builders.prereg())
+    root = hf.final_root(tmp_path, doc, sources=src, prereg=prereg, reads=[*reads, *more])
+    results = root / "evals" / "results"
+    today = sorted(path.name for path in hf.RESULTS.glob("*.json"))
+    added = sorted(path.name for path in results.glob("*.json") if path.name not in today)
+    assert {hf.FINAL_NAME, hf.ASK_NAME, hf.STRESS_NAME, hf.E2E_NAME, *(name for name, _ in reads)} < set(
+        added
+    )
+    assert final_published(results) and final_run_files(results) == added
+    before = results_before_publication(tmp_path / "before", results)
+    assert sorted(path.name for path in before.iterdir()) == today
+    assert all((before / name).resolve() == (hf.RESULTS / name).resolve() for name in today)
+    assert not final_published(before) and final_run_files(before) == []
+    assert model.build(before) == model.build(hf.RESULTS)
 
 
 def _tree(root: Path) -> dict[str, bytes]:
@@ -680,12 +743,14 @@ def test_the_card_says_pre_registered_with_file_and_hash(made: Callable[[str], M
         ]
 
 
-def test_the_report_keeps_its_anchors_with_a_final(made: Callable[[str], Made]) -> None:
+def test_the_report_keeps_its_anchors_with_a_final(
+    made: Callable[[str], Made], no_final_outputs: dict[str, str]
+) -> None:
     """Other pages link into docs/evals.md by its headings' anchors, and the registered README link names
     ``#15-reproduce``: the report with a final keeps every section of today's, in order, and every in-page link
     resolves."""
     report = made("good").outputs["docs/evals.md"]
-    today = (hf.ROOT / "docs" / "evals.md").read_text(encoding="utf-8")
+    today = no_final_outputs["docs/evals.md"]
 
     def headings(page: str) -> list[str]:
         return [line for line in page.splitlines() if line.startswith("## ")]
@@ -2311,14 +2376,12 @@ def _plain_text(value: str) -> str:
 
 
 @pytest.fixture(scope="module")
-def no_final_units(tmp_path_factory: pytest.TempPathFactory) -> set[str]:
-    """Every unit a reader sees with no final run (the committed README, report, history and charts, and the report
-    page built from the committed ``presentation.json``), as plain text: the earlier held-out splits' own words."""
-    doc = json.loads((hf.ROOT / build.PRESENTATION).read_text(encoding="utf-8"))
+def no_final_units(tmp_path_factory: pytest.TempPathFactory, no_final_outputs: dict[str, str]) -> set[str]:
+    """Every unit a reader sees with no final run (``no_final_outputs``: the README, report, history and charts, and
+    the report page built from their ``presentation.json``), as plain text: the earlier held-out splits' own words."""
+    doc = json.loads(no_final_outputs[build.PRESENTATION])
     texts = {
-        relative: (hf.ROOT / relative).read_text(encoding="utf-8")
-        for relative in build.OUTPUT_PATHS
-        if relative != build.PRESENTATION
+        relative: content for relative, content in no_final_outputs.items() if relative != build.PRESENTATION
     }
     texts |= _site_texts(doc, tmp_path_factory.mktemp("no-final") / "site")
     units = [unit for relative, content in texts.items() for unit in _units(relative, content)]
@@ -2396,7 +2459,9 @@ def _git(*args: str) -> subprocess.CompletedProcess[bytes]:
 def test_the_site_with_no_final_is_the_freeze_s_byte_for_byte(tmp_path: Path) -> None:
     """With no final run the report page this presenter builds is the freeze's, file for file and byte for byte: the
     freeze's ``evals/present`` (from git) and this checkout's each build it from their own ``presentation.json``, in
-    folders of their own."""
+    folders of their own. Once the final run is published, this checkout's ``presentation.json`` holds it: this
+    checkout's side then builds from the presentation with no final run, rendered from the results as they were
+    before the publish PR."""
     if shutil.which("git") is None or _git("cat-file", "-e", f"{FREEZE}^{{commit}}").returncode != 0:
         pytest.skip("the freeze commit is not in this clone (a shallow checkout)")
     frozen, here = tmp_path / "freeze", tmp_path / "head"
@@ -2411,6 +2476,10 @@ def test_the_site_with_no_final_is_the_freeze_s_byte_for_byte(tmp_path: Path) ->
         here / "evals" / "present",
         ignore=shutil.ignore_patterns("__pycache__"),
     )
+    if final_published():
+        no_final = model.build(hf.RESULTS)
+        assert no_final["final"] is None
+        (here / build.PRESENTATION).write_text(model.dumps(no_final), encoding="utf-8")
     environment = {key: value for key, value in os.environ.items() if key != "PYTHONPATH"}
     built = {}
     for side in (frozen, here):

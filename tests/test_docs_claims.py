@@ -375,6 +375,12 @@ def test_the_readme_block_says_what_the_newest_ask_run_s_wrong_answers_are() -> 
     household answers, and says what each wrong answer is — never a gap in the ledger when it is not one."""
     from evals.ask.report import latest_results
 
+    from helpers_publication import final_published
+
+    if final_published():
+        pytest.skip(
+            "the README block holds the final run's registered sentences, without the development set's Ask line"
+        )
     latest = latest_results(ROOT / "evals" / "results", "claude-sonnet-5")
     assert latest is not None
     results = json.loads(latest.read_text(encoding="utf-8"))

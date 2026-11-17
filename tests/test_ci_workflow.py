@@ -1,7 +1,8 @@
 """.github/workflows/ci.yml: the slow checks have a job of their own, the end-to-end job runs beside the backend's,
 a push to main never cuts off a running run, macOS and Windows must pass, every published benchmark number is
 replayed with a gate at that number, coverage has floors, the weekly run checks the rules' age and the real Claude
-Code's flags, and a real Tesseract is installed only where a test needs it (ADR 0024)."""
+Code's flags, a real Tesseract is installed only where a test needs it (ADR 0024), and each job that runs the
+pre-registration's tests checks out the whole history."""
 
 from __future__ import annotations
 
@@ -11,6 +12,7 @@ import shlex
 import subprocess
 import sys
 import tomllib
+from fnmatch import fnmatch
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +21,7 @@ import pytest
 from ordnung.doctor import native_install, tesseract_install
 from ordnung.llm.claude_cli import MIN_CLAUDE_VERSION, version_text
 from test_docs_claims import WITHOUT_LAND
+from test_final_gates import FINAL, workflow_gates
 
 ROOT = Path(__file__).resolve().parents[1]
 #: The splits whose numbers the README and docs/evals.md publish as replayed on the current code (holdout3 is
@@ -178,11 +181,175 @@ def test_the_backend_legs_have_room_for_a_slow_runner() -> None:
     assert "pytest" in _script(backend)
 
 
+#: the tests that read the git history from the pre-registration's freeze commit on
+PREREGISTRATION_TESTS = "tests/test_preregistration.py"
+#: pytest's options whose value is the next argument (``-m "not slow"``, ``--deselect tests/x.py::y``,
+#: ``--durations 20``)
+_PYTEST_OPTION_VALUES = (
+    "-m",
+    "-k",
+    "-p",
+    "-c",
+    "-n",
+    "-o",
+    "-W",
+    "--deselect",
+    "--ignore",
+    "--ignore-glob",
+    "--rootdir",
+    "--confcutdir",
+    "--basetemp",
+    "--durations",
+    "--maxfail",
+    "--tb",
+    "--junitxml",
+)
+
+
+def _make_rules() -> dict[str, tuple[list[str], list[str]]]:
+    """The Makefile's rules: each target's prerequisites and recipe lines."""
+    rules: dict[str, tuple[list[str], list[str]]] = {}
+    target = None
+    for line in (ROOT / "Makefile").read_text(encoding="utf-8").splitlines():
+        rule = re.match(r"([a-z][a-z0-9-]*):(?!=)([^#]*)", line)
+        if rule:
+            target = rule.group(1)
+            rules[target] = (rule.group(2).split(), [])
+        elif line.startswith("\t") and target is not None:
+            rules[target][1].append(line[1:])
+        elif line.strip():
+            target = None
+    return rules
+
+
+def _script_runs(
+    script: str, rules: dict[str, tuple[list[str], list[str]]], seen: set[str]
+) -> list[list[str]]:
+    runs = []
+    for line in script.replace("\\\n", " ").splitlines():
+        found = re.search(r"(?:^|[\s/])pytest(?=\s|$)", line)
+        if found:
+            runs.append(shlex.split(line[found.end() :]))
+            continue
+        make = re.search(r"(?:^|[\s;&|(])make\s+(.*)", line)
+        for target in shlex.split(make.group(1)) if make else []:
+            if target.startswith("-") or "=" in target or target in seen or target not in rules:
+                continue
+            seen.add(target)
+            prerequisites, recipe = rules[target]
+            runs += _script_runs("\n".join(f"make {name}" for name in prerequisites), rules, seen)
+            runs += _script_runs("\n".join(recipe), rules, seen)
+    return runs
+
+
+def _pytest_runs(job: dict[str, Any]) -> list[list[str]]:
+    """The arguments of each pytest run in ``job``'s steps (a line continued with a backslash read as one; a
+    ``make <target>`` read as that target's recipe, its prerequisites' first)."""
+    return _script_runs(_script(job), _make_rules(), set())
+
+
+def _is_test_path(arg: str) -> bool:
+    """Whether a pytest argument names tests (a file, a folder, a node id or a glob of them), not an option's value."""
+    return arg in (".", "tests") or arg.startswith(("tests/", "./")) or "::" in arg or arg.endswith(".py")
+
+
+def _can_run(args: list[str], test_file: str) -> bool:
+    """Whether a pytest run with ``args`` can include ``test_file``: one that names no test path runs the whole
+    suite, whatever its ``-m`` (the pre-registration's file has slow and not-slow tests); one that names paths runs
+    what they match; an ``--ignore`` that matches leaves it out. An argument that names no test (an option's value,
+    as in ``--durations 20``) is not read as a path."""
+    paths, ignored = [], []
+    rest = iter(args)
+    for arg in rest:
+        if arg in _PYTEST_OPTION_VALUES:
+            value = next(rest, "")
+            if arg.startswith("--ignore"):
+                ignored.append(value)
+        elif arg.startswith(("--ignore=", "--ignore-glob=")):
+            ignored.append(arg.split("=", 1)[1])
+        elif not arg.startswith("-") and _is_test_path(arg):
+            paths.append(arg.split("::", 1)[0].removeprefix("./").rstrip("/"))
+    if any(fnmatch(test_file, pattern) for pattern in ignored):
+        return False
+    return not paths or any(path in (".", "", "tests") or fnmatch(test_file, path) for path in paths)
+
+
+@pytest.mark.parametrize(
+    ("command", "runs_it"),
+    [
+        ('-m "not slow" --cov=ordnung --cov-report=term-missing:skip-covered', True),
+        ("-m slow", True),
+        ('-m "not slow" --deselect tests/test_openapi_contract.py::test_web_openapi_json_is_current', True),
+        ("-q tests", True),
+        ("tests/test_pre*.py", True),
+        ("tests/test_preregistration.py::test_every_required_field_is_there", True),
+        ("tests/test_rules_*.py --cov=ordnung.rules --cov-branch", False),
+        ("-q tests/test_mock_numbers.py tests/test_docs_claims.py::test_x", False),
+        ('-m "not slow" --ignore=tests/test_preregistration.py', False),
+        # an option's value is no test path, whether or not the option is known to take one
+        ('-m "not slow" --durations 20', True),
+        ("-n 4 -q", True),
+        ("-W error -m slow", True),
+        ("-m slow --junitxml reports/junit.xml", True),
+        ("-o addopts= -q", True),
+        ("--durations 20 tests/test_rules_dates.py", False),
+        ('-m "not slow" tests/test_platform_smoke.py tests/test_cli.py::test_x tests/test_sync_*.py', False),
+    ],
+)
+def test_a_pytest_run_is_read_as_running_the_pre_registration_s_tests_or_not(
+    command: str, runs_it: bool
+) -> None:
+    assert _can_run(shlex.split(command), PREREGISTRATION_TESTS) is runs_it
+
+
+def test_a_make_target_s_pytest_runs_are_read_as_the_job_s() -> None:
+    """A step that runs a Makefile target runs that target's recipe (and its prerequisites'): `make test` runs the
+    whole suite twice (not slow, then slow), `make eval-reproduce` runs no pytest."""
+    assert _pytest_runs({"steps": [{"run": "make test"}]}) == [
+        ["-m", "not slow", "--cov=ordnung", "--cov-report=term-missing:skip-covered"],
+        ["-m", "slow"],
+    ]
+    assert _pytest_runs({"steps": [{"run": "make eval-reproduce"}]}) == []
+    assert any(
+        _can_run(args, PREREGISTRATION_TESTS) for args in _pytest_runs({"steps": [{"run": "make test"}]})
+    )
+
+
+def test_every_job_that_runs_the_pre_registration_s_tests_checks_out_the_whole_history() -> None:
+    """tests/test_preregistration.py reads the git history from the freeze commit on (the paths changed since, the
+    files written once, each deviation recorded at the time). A clone without that commit skips those checks only
+    until a final result is published, and fails them from then on: CI's clone must hold the history.
+    actions/checkout fetches one commit unless ``fetch-depth: 0`` asks for all of them, so each job whose pytest run
+    can include that file asks for all: the backend's legs, the slow checks and the lowest and newest versions (and
+    any job that comes to run it). The macOS and Windows job and the end-to-end job name their tests, and it is not
+    among them today; the parser's cases above hold that reading."""
+    jobs = _jobs()
+    history = {
+        name
+        for name, job in jobs.items()
+        if any(_can_run(args, PREREGISTRATION_TESTS) for args in _pytest_runs(job))
+    }
+    assert {"backend", "backend-slow", "lowest", "latest"} <= history
+    for name in sorted(history):
+        (checkout,) = [
+            step for step in jobs[name]["steps"] if step.get("uses", "").startswith("actions/checkout@")
+        ]
+        assert checkout.get("with", {}).get("fetch-depth") == 0, name
+
+
+def _final_gate(line: str) -> bool:
+    """Whether ``line`` is a gate of the final run (a replay of one of its reads: a final split's, or a held-out Ask
+    run's), found as tests/test_final_gates.py finds them. That test, frozen with the pre-registration, holds each
+    to its own read's replay and INDEX.json; the checks here are of every other gate."""
+    return bool(workflow_gates({"jobs": {"backend-slow": {"steps": [{"run": line}]}}}))
+
+
 def _gates(script: str) -> dict[str, tuple[float, float]]:
-    """Each ``ordnung eval`` gate in ``script``: its split's minimum accuracy and maximum dangerous-late rate."""
+    """Each ``ordnung eval`` gate in ``script`` but the final run's: its split's minimum accuracy and maximum
+    dangerous-late rate."""
     gates = {}
     for line in script.splitlines():
-        if "ordnung eval" not in line:
+        if "ordnung eval" not in line or _final_gate(line):
             continue
         args = shlex.split(line.split("ordnung eval", 1)[1])
         option = {
@@ -215,6 +382,16 @@ def test_every_published_split_is_replayed_with_a_gate_at_its_published_number()
         assert late == 0 == published["dangerous_late_rate"]["k"], split
 
 
+def _ask_line() -> str:
+    """The development set's Ask gate: the one ``-m evals.ask`` line of backend-slow that is not the final run's."""
+    (line,) = [
+        line
+        for line in _script(_jobs()["backend-slow"]).splitlines()
+        if "-m evals.ask" in line and not _final_gate(line)
+    ]
+    return line
+
+
 def _newest_ask() -> Path:
     """The development set's newest Ask results file: a day's re-scoring (``-rescored``) after that day's live run."""
     from evals.ask.report import latest_results
@@ -228,8 +405,7 @@ def test_the_ask_benchmark_gates_the_household_group_at_its_recorded_number() ->
     """The Ask benchmark's household group (whose a number is) is gated at the share its newest recording
     measured, as each reading split is: a change that loses one of its answers fails the build. The headline
     thresholds hold for that recording too (its notes say why each is where it is)."""
-    (line,) = [line for line in _script(_jobs()["backend-slow"]).splitlines() if "-m evals.ask" in line]
-    args = shlex.split(line.split("-m evals.ask", 1)[1])
+    args = shlex.split(_ask_line().split("-m evals.ask", 1)[1])
     option = {name: args[args.index(name) + 1] for name in args if name.startswith(("--min-", "--max-"))}
     latest = _newest_ask()
     summary = json.loads(latest.read_text(encoding="utf-8"))["summary"]
@@ -245,8 +421,7 @@ def test_the_ask_benchmark_gates_strict_correctness_and_harm_at_their_recorded_n
     it measured, as the household group is: one more strictly wrong answer, or one more harmful answer (a date still
     open called passed, a later date or a wrong amount given as Ordnung's), fails the build. Never a gate the
     published numbers fail."""
-    (line,) = [line for line in _script(_jobs()["backend-slow"]).splitlines() if "-m evals.ask" in line]
-    args = shlex.split(line.split("-m evals.ask", 1)[1])
+    args = shlex.split(_ask_line().split("-m evals.ask", 1)[1])
     option = {name: args[args.index(name) + 1] for name in args if name.startswith(("--min-", "--max-"))}
     latest = _newest_ask()
     data = json.loads(latest.read_text(encoding="utf-8"))
@@ -311,15 +486,13 @@ def test_reproduce_holds_the_replays_to_the_gates_this_workflow_runs() -> None:
 
     gates = reproduce.ci_gates(ROOT / ".github/workflows/ci.yml")
     parsed = _gates(_script(_jobs()["backend-slow"]))
+    # the final splits' gates are tests/test_final_gates.py's
     assert {
         name.split("/", 1)[1]: (gate["min_accuracy"], gate["max_dangerous_late"])
         for name, gate in gates.items()
-        if name.startswith("benchmark/")
+        if name.startswith("benchmark/") and name.split("/")[1] not in FINAL
     } == parsed
-    (ask,) = [
-        step["run"] for step in _jobs()["backend-slow"]["steps"] if "-m evals.ask" in step.get("run", "")
-    ]
-    assert gates["ask/dev"]["args"] == shlex.split(ask.split("-m evals.ask", 1)[1])
+    assert gates["ask/dev"]["args"] == shlex.split(_ask_line().split("-m evals.ask", 1)[1])
     (without_land,) = [
         step for step in _jobs()["backend-slow"]["steps"] if "eval_without_land" in step.get("run", "")
     ]
