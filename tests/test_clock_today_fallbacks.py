@@ -19,31 +19,33 @@ from test_brief import MON_28, TUE_29, _week
 from test_reading_gaps import blank, page
 from test_reading_reask import BLANK, COMPLETE, DECISION, answering, data_for, pages_of, reading
 
-#: While the decision's objection period runs, and once it has ended.
-RUNNING, ENDED = date(2026, 9, 25), date(2027, 3, 1)
+#: A day on which the decision's own date (15 Sep 2026) still counts as the start of its period, and one on which it
+#: is more than ``STALE_DAYS`` (60) days old and no longer does.
+RECENT, STALE = date(2026, 9, 25), date(2027, 3, 1)
 
 
 def test_the_re_ask_s_judge_counts_from_the_app_s_day_when_given_none() -> None:
-    """The re-ask's answer on the decision is used while the objection period runs, and kept out once it has ended
-    (its date would be one the person can no longer keep)."""
+    """The re-ask's answer on the decision is used while the decision's own date still counts as the start of its
+    period, and kept out ("date") once that date is more than 60 days before the app's day: the first reading then has
+    no letter date to hold the answer's date against."""
     first, second, pages = reading(BLANK), reading(COMPLETE), pages_of(DECISION)
     verdicts = {}
-    for day in (RUNNING, ENDED):
+    for day in (RECENT, STALE):
         clock.set_today(day)
         verdicts[day] = judge_completion("doc_x", first, second, pages, gap="empty")
-    assert verdicts == {RUNNING: None, ENDED: "date"}
+    assert verdicts == {RECENT: None, STALE: "date"}
 
 
 async def test_a_reading_without_its_day_judges_the_re_ask_on_the_app_s_day() -> None:
     """No arrival day and no readable ``today`` in the input: the re-ask is judged on the app's day."""
     data = replace(data_for(), today="")
     outcomes = {}
-    for day in (RUNNING, ENDED):
+    for day in (RECENT, STALE):
         clock.set_today(day)
         result = await read_document(LLMService(answering(BLANK, COMPLETE)), data, model="m")
         assert result.completion is not None
         outcomes[day] = (result.completion.accepted, result.completion.kept_because)
-    assert outcomes == {RUNNING: (True, None), ENDED: (False, "date")}
+    assert outcomes == {RECENT: (True, None), STALE: (False, "date")}
 
 
 #: A bill with no date of its own, and a reading whose one to-do is due 20 days from today.
@@ -65,9 +67,9 @@ IN_20_DAYS = {
 
 def test_the_dropped_date_check_counts_the_reading_s_to_dos_from_the_app_s_day() -> None:
     reading_ = blank(sender={"name": "Stadtwerke Beispielhausen GmbH", "kind": "utility"}, items=[IN_20_DAYS])
-    clock.set_today(RUNNING)  # 20 days on is 15 Oct, the bill's own date: the reading has it
+    clock.set_today(RECENT)  # 20 days on is 15 Oct, the bill's payment date: the reading has it
     assert deadline_items(reading_, [BILL]) == []
-    clock.set_today(date(2026, 6, 1))  # 20 days on is 21 Jun: the bill's 15 Oct is left out
+    clock.set_today(date(2026, 6, 1))  # 20 days on is 21 Jun: the bill's payment date, 15 Oct, is left out
     assert [item.date.date for item in deadline_items(reading_, [BILL])] == ["2026-10-15"]
 
 
