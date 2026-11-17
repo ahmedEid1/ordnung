@@ -699,6 +699,10 @@
     "cli": "2.1.326 (Claude Code)",
     "day": "2026-11-24"
    },
+   "holdout4-english_letter-L2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
    "holdout4-english_letter-M1": {
     "cli": "2.1.326 (Claude Code)",
     "day": "2026-11-24"

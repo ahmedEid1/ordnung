@@ -524,6 +524,7 @@
 "eval_baseline/52637ff6f8311b7d145f24ed": {"content":"8b3d5f5eb9fa59db7b993781450e7c67","docs":["holdout-year_boundary-F1"],"fields":"30c1f9 770fa4 eb65b6 823f1a 4f53cd 74234e 4f53cd 74234e 4f53cd"},
 "eval_baseline/52f7e6b3b667d4188be1e4e7": {"content":"741af5c2076c84f222594ce530056403","docs":["holdout3-year_boundary-I2"],"fields":"30c1f9 827c42 4dbc25 823f1a 4f53cd 74234e 4f53cd 74234e 4f53cd"},
 "eval_baseline/5309ba26a813a8549e918240": {"content":"c1626ef5e64eb21b330aa7f5c99006f2","docs":["test-contract_confirmation-C1"],"fields":"30c1f9 827c42 708352 823f1a 4f53cd 74234e 4f53cd 74234e 4f53cd"},
+"eval_baseline/531869e809c8ee85bb9c3709": {"content":"468e6925c9362311f1658cc5a8092e8a","docs":["holdout4-english_letter-L2"],"fields":"30c1f9 770fa4 58d2d5 823f1a 4f53cd 74234e 4f53cd 74234e 4f53cd","of":"eval_baseline/090c930a2201ad3eb2939597","repeat":2},
 "eval_baseline/532f601186fdf5f4eb1789e4": {"content":"0ec65156d4f7f1518106f87a398b1aa5","docs":["holdout-adversarial-missing_date-1"],"fields":"30c1f9 827c42 c280c9 823f1a 4f53cd 74234e 4f53cd 74234e 4f53cd"},
 "eval_baseline/533aa2c646f45cbb17578496": {"content":"e0abe9984d68f47750ac79cb6501cd0a","docs":["holdout2-invoice_relative-G1-photo"],"fields":"30c1f9 827c42 1439bf 823f1a 4f53cd 74234e 4f53cd 74234e eee75a"},
 "eval_baseline/533d80a2ffcd908da7bfe138": {"content":"dd3eabdacf5474d5d71226de2cacaeca","docs":["holdout-contract_confirmation-F1"],"fields":"30c1f9 c15141 25bef2 823f1a 4f53cd 983e80 707530 d0ff59 4f53cd"},
