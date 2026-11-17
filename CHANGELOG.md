@@ -15,6 +15,8 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   changes. The README's lead into its evaluation block names the decision rule the final run used.
 - `make eval-reproduce` holds every CI gate to its own replay, each read of holdout4 and of Ask's new questions
   on the demo household included, and `evals/results/INDEX.json` names the gate of each such cell.
+- The web app is built with newer minor and patch versions of its packages (React Query 5.107, lucide-react
+  1.72, motion 14.13, Vite 8.3.8, Tailwind CSS 4.3.5).
 
 ### Fixed
 
