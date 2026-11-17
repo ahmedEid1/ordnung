@@ -1093,6 +1093,20 @@ def task_of(row: Mapping[str, Any]) -> str | None:
     return None
 
 
+def _without(args: list[str], flag: str) -> list[str]:
+    """``args`` without ``flag`` and the value after it."""
+    kept: list[str] = []
+    skip = False
+    for arg in args:
+        if skip:
+            skip = False
+        elif arg == flag:
+            skip = True
+        else:
+            kept.append(arg)
+    return kept
+
+
 def plan(index: Mapping[str, Any], results_dir: Path, work: Path) -> list[Task]:
     """The zero-token commands that check every replayed cell and every checked row, longest first."""
     today = date.today().isoformat()
@@ -1139,8 +1153,12 @@ def plan(index: Mapping[str, Any], results_dir: Path, work: Path) -> list[Task]:
             )
             tasks.append(Task(name, argv, out))
         elif row["kind"] == "ask":
+            held_out_gate = f"ask/heldout/r{row['repeat']}"
             if row["set"] == "dev" and row["repeat"] == 1 and "ask/dev" in index["gates"]:
                 args = list(index["gates"]["ask/dev"]["args"])
+            elif row["set"] == "heldout" and held_out_gate in index["gates"]:
+                # the held-out run's CI gate, its thresholds included; its day is the file's (below)
+                args = _without(list(index["gates"][held_out_gate]["args"]), "--today")
             else:
                 args = ["--set", row["set"], "--repeat", str(row["repeat"])]
             if row["set"] == "heldout" and data.get("today"):
@@ -1298,39 +1316,51 @@ def without_land_problems(
 def gate_problems(
     index: Mapping[str, Any], replays: Mapping[str, Mapping[str, Any]], done: Mapping[str, Done]
 ) -> tuple[list[str], list[str]]:
-    """``(problems, scoreboard parts)``: the CI gates held to the replays (as ``evals.run``'s ``gate_failures``)."""
+    """``(problems, scoreboard parts)``: every CI gate held to its own replay (as ``evals.run``'s ``gate_failures``
+    and ``evals.ask``'s gate). A benchmark gate (``benchmark/<split>`` for read 1, ``benchmark/<split>/r<N>`` for a
+    later read of the final run) is held to that read's replay, its exact dates and its dangerously late ones each
+    against the gate's own limit; an Ask gate is its replay's exit, which runs with the gate's thresholds. A gate whose
+    replay did not run (a partial run, ``--only``) is neither held nor named."""
     problems: list[str] = []
     parts: list[str] = []
-    late_ok = True
     for name, gate in index["gates"].items():
-        if name.startswith("benchmark/"):
-            split = name.split("/", 1)[1]
-            if f"benchmark/{split}/r1" not in done:  # a partial run (--only)
-                continue
-            replay = replays.get(f"benchmark/{split}/r1")
-            if replay is None:
-                problems.append(f"gate {name}: no replay to hold it to")
-                parts.append(f"{split} ✗")
-                continue
-            metrics = replay["metrics"]["ordnung"]
-            accuracy, late = metrics["due_date_accuracy"], metrics["dangerous_late_rate"]
-            ok = accuracy.get("value") is not None and accuracy["value"] >= gate["min_accuracy"]
-            late_ok &= late.get("value") is not None and late["value"] <= gate["max_dangerous_late"]
-            if not ok:
-                problems.append(
-                    f"gate {name}: Ordnung {int(accuracy['k'])}/{int(accuracy['n'])} < {gate['min_accuracy']}"
+        if name.startswith("ask/"):
+            cell = "ask/dev/r1" if name == "ask/dev" else name
+            if cell in done:
+                label = (
+                    "Ask (development set)" if name == "ask/dev" else f"Ask held-out {name.rsplit('/', 1)[1]}"
                 )
-            if late.get("value") is None or late["value"] > gate["max_dangerous_late"]:
-                problems.append(
-                    f"gate {name}: Ordnung dangerously late {late.get('value')} > {gate['max_dangerous_late']}"
-                )
-            parts.append(
-                f"{split} {int(accuracy['k'])}/{int(accuracy['n'])} ≥ {gate['min_accuracy']} {'✓' if ok else '✗'}"
+                parts.append(f"{label} {'✓' if done[cell].rc == 0 else '✗'}")
+            continue
+        if not name.startswith("benchmark/"):
+            continue
+        _, split, *rest = name.split("/")
+        read = rest[0] if rest else "r1"
+        cell = f"benchmark/{split}/{read}"
+        if cell not in done:  # a partial run (--only)
+            continue
+        shown = split if read == "r1" else f"{split} {read}"
+        replay = replays.get(cell)
+        if replay is None:
+            problems.append(f"gate {name}: no replay to hold it to")
+            parts.append(f"{shown} ✗")
+            continue
+        metrics = replay["metrics"]["ordnung"]
+        accuracy, late = metrics["due_date_accuracy"], metrics["dangerous_late_rate"]
+        ok = accuracy.get("value") is not None and accuracy["value"] >= gate["min_accuracy"]
+        late_ok = late.get("value") is not None and late["value"] <= gate["max_dangerous_late"]
+        if not ok:
+            problems.append(
+                f"gate {name}: Ordnung {int(accuracy['k'])}/{int(accuracy['n'])} < {gate['min_accuracy']}"
             )
-    if parts:
-        parts.append(f"late 0 everywhere {'✓' if late_ok else '✗'}")
-    if "ask/dev" in index["gates"] and "ask/dev/r1" in done:
-        parts.append(f"Ask {'✓' if done['ask/dev/r1'].rc == 0 else '✗'}")
+        if not late_ok:
+            problems.append(
+                f"gate {name}: Ordnung dangerously late {late.get('value')} > {gate['max_dangerous_late']}"
+            )
+        parts.append(
+            f"{shown} {int(accuracy['k'])}/{int(accuracy['n'])} ≥ {gate['min_accuracy']}, late "
+            f"{int(late.get('k') or 0)}/{int(late.get('n') or 0)} ≤ {gate['max_dangerous_late']} {'✓' if ok and late_ok else '✗'}"
+        )
     return problems, parts
 
 
