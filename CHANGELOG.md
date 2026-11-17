@@ -5,7 +5,7 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ## Unreleased
 
-## 0.4.0 — 2026-11-11
+## 0.4.0 — 2026-11-17
 
 The third numbered release. [Updating](docs/guide.md#updating) says how to install it; *Upgrading* below says
 what a computer still on 0.3.0 does with what this version adds, if you use hand-off sync between the two.
@@ -15,9 +15,6 @@ In short: whose it is, on My numbers and in Ask, the Ideas, your reminders and t
 wherever it could be read (not yet the Saarland's), and why an e-mailed decision's date waits until you say which
 state its sender is in; an evaluation report anyone can reproduce, and the tooling for a pre-registered final run;
 macOS and Windows required in CI; and a short README with a guide for the rest.
-
-The `v0.4.0` tag and its GitHub release follow once the pre-registered evaluation is published; until then,
-install this version by its commit, as *Updating* says for a release without a tag.
 
 ### Added
 
