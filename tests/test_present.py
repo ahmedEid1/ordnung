@@ -159,16 +159,21 @@ def test_an_input_whose_bytes_changed_is_refused(tmp_path: Path) -> None:
         model.build(tmp_path)
 
 
-def test_a_final_run_is_never_shown_under_the_pooled_headline(tmp_path: Path) -> None:
-    """Once a pre-registered final run exists, it takes the headline by rule (phase 2): the phase-1 presenter
-    refuses to render the pooled headline beside it rather than publish it as 0.4.0's."""
+def test_a_final_read_without_its_analysis_is_refused(tmp_path: Path) -> None:
+    """A read of a final split takes the headline only through the pre-registered final analysis that reads it
+    (tests/test_present_final_run.py): a read with no final analysis beside it is refused, never shown under the
+    pooled headline nor left out of the pages."""
+    from helpers_final import synthetic_read
+
+    results = tmp_path / "evals" / "results"
+    results.mkdir(parents=True)
     for path in RESULTS.glob("*.json"):
-        (tmp_path / path.name).write_bytes(path.read_bytes())
-    final = {"schema": "ordnung-eval-analysis/1", "meta": {"kind": "final", "model": "claude-sonnet-5"}}
-    (tmp_path / "2026-12-01-claude-sonnet-5-final.json").write_text(json.dumps(final), encoding="utf-8")
-    assert model.roles(tmp_path)["2026-12-01-claude-sonnet-5-final.json"] == "final"
-    with pytest.raises(PresentError, match="final"):
-        model.build(tmp_path)
+        (results / path.name).symlink_to(path)
+    name = "2027-01-01-claude-sonnet-5-holdout4.json"
+    (results / name).write_text(json.dumps(synthetic_read("holdout4", 1, 12)), encoding="utf-8")
+    assert model.roles(results)[name] == "final"
+    with pytest.raises(PresentError, match="without the final analysis"):
+        model.build(results)
 
 
 def test_the_test_split_s_first_run_facts_come_from_its_results_file(doc: dict[str, Any]) -> None:

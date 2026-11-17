@@ -9,6 +9,10 @@ end rounded down to 10, and its range is printed); one row order, the page's (``
 each condition's colour *and* shape, and its name on every row; text in text colours only; a ``<title>`` and a
 ``<desc>`` naming every value, a ``<title>`` on every mark (the native tooltip) and a table with the same numbers
 (:func:`table`).
+
+Once ``presentation.json`` holds the final run, its charts (:data:`FINAL_NAMES`, drawn by
+:mod:`evals.present.finalcharts` with these primitives) join the others: :func:`names` and :func:`committed` list them
+for that document, and :func:`svg`, :func:`table`, :func:`description` and :func:`title` dispatch to them.
 """
 
 from __future__ import annotations
@@ -24,6 +28,9 @@ from evals.present import fmt, palette
 NAMES = ("held-out", "timeline", "differences", "risk-coverage", "cost")
 #: Committed as ``docs/assets/eval-<name>-{light,dark}.svg`` (``docs/evals.md`` shows each; the README the first).
 COMMITTED = NAMES
+#: The final run's charts, once ``presentation.json`` holds it (:mod:`evals.present.finalcharts`): the headline, the
+#: differences and, with two reads or more, how steady the dates are over the reads.
+FINAL_NAMES = ("final", "final-differences", "final-stability")
 WIDE, NARROW = 740, 320
 #: The protocol of each split, in a few words, for the timeline.
 SPLIT_SHORT = {
@@ -474,8 +481,13 @@ def _timeline_parts(doc: Mapping[str, Any]) -> tuple[list[str], list[list[str]],
             else "not yet"
         )
         deadlines = str(split["scored_items"]) if split["recorded"] else "not yet"
-        score = fmt.of(split["ordnung"]) if split.get("ordnung") else "not a held-out number"
-        short = SPLIT_SHORT.get(split["split"], split["role"])
+        score = _final_score(doc, split) or (
+            fmt.of(split["ordnung"]) if split.get("ordnung") else "not a held-out number"
+        )
+        short = _final_short(doc, split["split"]) or SPLIT_SHORT.get(split["split"], split["role"])
+        if split["recorded"] and split.get("photos") is None:
+            # a final split shown from the final analysis alone, which does not count photos and adversarial letters
+            letters = str(split["entries"])
         rows.append([split["split"], recorded, letters, deadlines, short, score])
         said.append(
             f"{split['split']}: {short}; recorded {recorded}; letters (photos, adversarial) {letters}; dated "
@@ -487,11 +499,46 @@ def _timeline_parts(doc: Mapping[str, Any]) -> tuple[list[str], list[list[str]],
     return header, rows, description
 
 
+def _final_short(doc: Mapping[str, Any], split: str) -> str | None:
+    """A final split's part in the timeline once the final run is published (a view template's words), else
+    ``None``."""
+    if doc.get("final") is None:
+        return None
+    from evals.present import finalcharts
+
+    return finalcharts.split_short(doc, split)
+
+
+def _final_score(doc: Mapping[str, Any], split: Mapping[str, Any]) -> str | None:
+    """Ordnung's exact dates on the final run's primary split, as the final analysis holds them: the mean over the
+    reads, in a view template's words (``None`` for any other split)."""
+    if doc.get("final") is None or split["split"] != doc["final"]["split"] or not split.get("ordnung"):
+        return None
+    from evals.present import views
+
+    value = fmt.pct(split["ordnung"]["value"])
+    return views.fill(doc["final"]["views"], "chart.timeline.mean", value=value)
+
+
+def _drawn_score(split: Mapping[str, Any], score: str) -> str:
+    """The score under a split's ring: a count as the table gives it, or the final run's mean alone."""
+    return score if "k" in split["ordnung"] else fmt.pct(split["ordnung"]["value"])
+
+
+def _timeline_footnote(doc: Mapping[str, Any]) -> str:
+    if doc.get("final") is None:
+        return "Filled: held out, recorded once. Hollow: tuned, iterated on, or not yet run."
+    from evals.present import views
+
+    return views.fill(doc["final"]["views"], "chart.timeline.footnote")
+
+
 def _timeline(doc: Mapping[str, Any], theme: str, narrow: bool, ident: str) -> str:
     _, rows, description = _timeline_parts(doc)
     splits = doc["splits"]
     title = "What was held out, and when"
     subtitle = "Each split in the order it was written; Ordnung's exact dates where it was held out"
+    footnote = _timeline_footnote(doc)
 
     def tip(split: Mapping[str, Any], row: Sequence[str]) -> str:
         return f"{row[0]}: {row[4]}; recorded {row[1]}; Ordnung {row[5]}"
@@ -511,19 +558,14 @@ def _timeline(doc: Mapping[str, Any], theme: str, narrow: bool, ident: str) -> s
             canvas.text(x, y + 47, row[1], size=11, role="text2", anchor="middle")
             below = canvas.lines(x, y + 64, _wrap(row[4], 18), size=11, gap=15, role="text2", anchor="middle")
             if split.get("ordnung"):
-                canvas.text(x, below + 2, f"Ordnung {row[5]}", size=11, anchor="middle", weight=600)
-        canvas.text(
-            16,
-            height - 10,
-            "Filled: held out, recorded once. Hollow: tuned, iterated on, or not yet run.",
-            size=11,
-            role="text2",
-        )
+                score = _drawn_score(split, row[5])
+                canvas.text(x, below + 2, f"Ordnung {score}", size=11, anchor="middle", weight=600)
+        canvas.text(16, height - 10, footnote, size=11, role="text2")
         return canvas.render()
     gap = 76
     title_lines, head = _wrap(title, 32), _wrap(subtitle, 38)
     top = 24 + 22 * len(title_lines) + 19 * len(head) + 20
-    notes = _wrap("Filled: held out, recorded once. Hollow: tuned, iterated on, or not yet run.", 38)
+    notes = _wrap(footnote, 38)
     height = int(top + gap * len(splits) + 19 * len(notes))
     canvas = Canvas(NARROW, height, theme, ident, title, description)
     y = canvas.lines(12, 24, title_lines, size=16, gap=22, weight=600)
@@ -535,7 +577,7 @@ def _timeline(doc: Mapping[str, Any], theme: str, narrow: bool, ident: str) -> s
         canvas.text(40, y + 5, f"{row[0]} · {row[1]}", size=14, weight=600)
         canvas.text(40, y + 25, row[4], size=14, role="text2")
         if split.get("ordnung"):
-            canvas.text(40, y + 45, f"Ordnung {row[5]}", size=14)
+            canvas.text(40, y + 45, f"Ordnung {_drawn_score(split, row[5])}", size=14)
     canvas.lines(12, top + gap * len(splits) - 10, notes, size=14, gap=19, role="text2")
     return canvas.render()
 
@@ -822,22 +864,61 @@ _CHARTS: dict[
 }
 
 
+def names(doc: Mapping[str, Any]) -> tuple[str, ...]:
+    """The charts of ``doc``, in the order the report shows them: :data:`NAMES`, and the final run's once it is
+    there."""
+    if doc.get("final") is None:
+        return NAMES
+    from evals.present import finalcharts
+
+    return (*NAMES, *finalcharts.names(doc))
+
+
+def committed(doc: Mapping[str, Any]) -> tuple[str, ...]:
+    """The charts of ``doc`` committed as ``docs/assets/eval-<name>-{light,dark}.svg``: :data:`COMMITTED`, and the
+    final run's once it is there."""
+    if doc.get("final") is None:
+        return COMMITTED
+    from evals.present import finalcharts
+
+    return (*COMMITTED, *finalcharts.committed(doc))
+
+
 def svg(name: str, doc: Mapping[str, Any], theme: str = "light", *, narrow: bool = False) -> str:
     """Chart ``name`` of the presentation ``doc``: ``theme`` is ``light``, ``dark`` or ``css``."""
+    if name in FINAL_NAMES:
+        from evals.present import finalcharts
+
+        return finalcharts.svg(name, doc, theme, narrow=narrow)
     draw, _, _ = _CHARTS[name]
     return draw(doc, theme, narrow, f"{name}-{theme}-{'n' if narrow else 'w'}")
 
 
 def table(name: str, doc: Mapping[str, Any]) -> tuple[list[str], list[list[str]]]:
     """The chart's numbers as a table: its header and rows, in the page's row order."""
+    if name in FINAL_NAMES:
+        from evals.present import finalcharts
+
+        return finalcharts.table(name, doc)
     header, rows, _ = _CHARTS[name][1](doc)
     return header, rows
 
 
 def description(name: str, doc: Mapping[str, Any]) -> str:
     """Every value the chart shows, in words: its ``<desc>`` and the README picture's alt text."""
+    if name in FINAL_NAMES:
+        from evals.present import finalcharts
+
+        return finalcharts.description(name, doc)
     return _CHARTS[name][1](doc)[2]
 
 
-def title(name: str) -> str:
+def title(name: str, doc: Mapping[str, Any] | None = None) -> str:
+    """The chart's title (a final run's chart needs its ``doc``, whose view templates word it)."""
+    if name in FINAL_NAMES:
+        from evals.present import finalcharts
+
+        if doc is None:
+            raise ValueError(f"the chart {name} is titled from its presentation document")
+        return finalcharts.title(name, doc)
     return _CHARTS[name][2]

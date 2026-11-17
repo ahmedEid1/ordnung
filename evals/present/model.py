@@ -3,18 +3,21 @@
 The role of each results file is derived from the file itself (its schema, model, split and backend), so no
 second list of files can drift from the folder:
 
-* ``final`` — a run on a pre-registered final split, or the final analysis (``evals.analysis --prereg``);
+* ``final`` — the pre-registered final run: a live read of a final split, the final analysis (``evals.analysis
+  --prereg``), the held-out Ask set's runs and their file of runs, and the stress test;
 * ``held-out`` — the one live recording of a held-out split (holdout, holdout2, holdout3);
 * ``re-analysis`` — the held-out splits as recorded, re-analysed after their results were known (not
   pre-registered);
-* ``re-scored`` — a replay of a held-out split's recordings with later code;
+* ``re-scored`` — a replay of a held-out or final split's recordings with later code;
 * ``iterated`` — the dev and test splits (tuned or iterated on) and Ask's development set;
 * ``replay`` — a replay of the recordings another way (without the sender's Land, the check ablation, end to end);
 * ``archive`` — a run on another model than the pinned one: listed by date in the history, never charted.
 
 Only ``final`` and ``held-out`` recordings (``backend == "live"``) feed a headline. The headline is the final run
-once it exists (phase 2, refused here until its renderer lands), else the newest re-analysis of the held-out
-splits, whose inputs must be those recordings byte for byte.
+once its analysis is published (:mod:`evals.present.finalrun` checks it and its files, and fills
+``presentation.json``'s ``final``); the newest re-analysis of the held-out splits, whose inputs must be those
+recordings byte for byte, is then shown as recorded, not pre-registered, and is the headline only while there is no
+final run.
 """
 
 from __future__ import annotations
@@ -27,7 +30,7 @@ from pathlib import Path
 from typing import Any
 
 from evals import stats
-from evals.present import MODEL, RESULTS_DIR, PresentError, palette
+from evals.present import MODEL, RESULTS_DIR, PresentError, finalrun, palette, views
 
 SCHEMA = "ordnung-eval-presentation/1"
 ROLES = ("final", "held-out", "re-analysis", "re-scored", "iterated", "replay", "archive")
@@ -79,8 +82,9 @@ def _load(path: Path) -> dict[str, Any]:
 
 
 def kind_of(name: str, data: Mapping[str, Any]) -> str:
-    """What a results file holds: ``run``, ``ask``, ``analysis``, ``without-land``, ``checks-ablated`` or
-    ``e2e``; raises :class:`PresentError` naming the file for anything else."""
+    """What a results file holds: ``run``, ``ask``, ``ask-final`` (the held-out Ask set's file of runs),
+    ``stress``, ``analysis``, ``without-land``, ``checks-ablated`` or ``e2e`` (the names ``evals.reproduce`` gives
+    them); raises :class:`PresentError` naming the file for anything else."""
     schema = data.get("schema")
     meta: Mapping[str, Any] = data["meta"] if isinstance(data.get("meta"), dict) else {}
     if data.get("benchmark") == "ask":
@@ -90,6 +94,8 @@ def kind_of(name: str, data: Mapping[str, Any]) -> str:
             ("ordnung-eval-analysis/", "analysis"),
             ("ordnung-eval-without-land/", "without-land"),
             ("ordnung-eval-checks-ablated/", "checks-ablated"),
+            ("ordnung-eval-ask-final/", "ask-final"),
+            ("ordnung-eval-stress/", "stress"),
         ):
             if schema.startswith(prefix):
                 return kind
@@ -109,8 +115,13 @@ def role_of(name: str, data: Mapping[str, Any]) -> str:
     model = data.get("model") if kind == "ask" else meta.get("model")
     if model != MODEL:
         return "archive"
+    # evals.reproduce takes these roles for its results index too (its ``_kind``): a held-out Ask run is listed as
+    # ``final``, and a final split's non-live replay as ``re-scored`` (a history row, never the final run)
     if kind == "ask":
-        return "iterated"
+        # the held-out Ask set is the final run's (shown only through its file of runs); the rest is the dev set
+        return "final" if data.get("set") == "heldout" else "iterated"
+    if kind in ("ask-final", "stress"):
+        return "final"
     if kind == "analysis":
         analysis = meta.get("kind")
         if analysis == "final":
@@ -122,9 +133,8 @@ def role_of(name: str, data: Mapping[str, Any]) -> str:
         return "replay"
     split, backend = meta.get("split"), meta.get("backend")
     if split in FINAL_SPLITS:
-        if backend != "live":
-            raise PresentError(f"{name}: a {split} file that is not a live recording")
-        return "final"
+        # a final split's reads replayed with later code (a fix after the run) are re-scored, never the final run
+        return "final" if backend == "live" else "re-scored"
     if split in HELD_OUT_SPLITS:
         return "held-out" if backend == "live" else "re-scored"
     if split in ITERATED_SPLITS:
@@ -533,10 +543,18 @@ def _first_test_run(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> dic
     }
 
 
-def _composition(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> list[dict[str, Any]]:
-    """Each split's size, from the newest live run of the pinned model on it, and its role in the protocol."""
+def _composition(
+    found: Mapping[str, tuple[str, str, dict[str, Any]]], final: Mapping[str, Any] | None = None
+) -> list[dict[str, Any]]:
+    """Each split's size, from the newest live run of the pinned model on it, and its role in the protocol; with a
+    final run, the final splits as it recorded them (:func:`_final_split`)."""
     rows: list[dict[str, Any]] = []
     for split in SPLIT_ORDER:
+        if final is not None and split in FINAL_SPLITS:
+            row = _final_split(found, final, split)
+            if row is not None:
+                rows.append(row)
+            continue
         names = sorted(
             name
             for name, (kind, role, data) in found.items()
@@ -567,6 +585,55 @@ def _composition(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> list[d
             }
         )
     return rows
+
+
+def _final_split(
+    found: Mapping[str, tuple[str, str, dict[str, Any]]], final: Mapping[str, Any], split: str
+) -> dict[str, Any] | None:
+    """A final split as the final run recorded it: when, how many reads, the letters and deadlines (from its reads'
+    files, or from the final analysis when they are not among the results), Ordnung's exact dates as the final
+    analysis holds them (the primary split's mean over the reads with its interval, never a count summed over the
+    reads; the new kinds' one read), and its part in the words of the final run's view templates, with the count of
+    deviations recorded at the time. The new kinds have no row when they were not recorded."""
+    role: dict[str, object] = {}
+    if split == final["split"]:
+        mean = final["conditions"]["ordnung"]["mean_accuracy"]
+        ordnung = {"value": mean["value"], "ci": mean["ci"]}
+        reads, letters, items = len(final["reads_used"]), final["letters"], final["items"]
+        role = {"count": len(final["deviations"])}
+    else:
+        newkinds = final["newkinds"]
+        if "not_recorded" in newkinds:
+            return None
+        ordnung = dict(newkinds["conditions"]["ordnung"]["exact"])
+        reads, letters, items = 1, newkinds["letters"], newkinds["items"]
+    names = sorted(
+        name
+        for name, (kind, role, data) in found.items()
+        if kind == "run" and role == "final" and data["meta"].get("split") == split
+    )
+    dates = sorted(
+        str(row["date"]) for row in final["inputs"] if row.get("split") == split and row.get("date")
+    )
+    row: dict[str, Any] = {
+        "split": split,
+        "role": str(views.fill(final["views"], f"split.role.{split}", **role)),
+        "recorded": dates[0] if dates else final["date"],
+        "recordings": reads,
+        "entries": letters,
+        "photos": None,
+        "adversarial": None,
+        "scored_items": items,
+        "ordnung": ordnung,
+    }
+    if names:
+        meta = found[names[-1]][2]["meta"]
+        row |= {
+            "recorded": sorted(found[name][2]["meta"]["date"] for name in names)[0],
+            "recordings": len(names),
+            **{key: int(meta[key]) for key in ("entries", "photos", "adversarial", "scored_items")},
+        }
+    return row
 
 
 def _file_rows(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> list[dict[str, Any]]:
@@ -601,17 +668,18 @@ def _file_rows(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> list[dic
 def build(results_dir: Path = RESULTS_DIR) -> dict[str, Any]:
     """The presentation model of ``results_dir``: what ``presentation.json`` holds."""
     found = _classified(results_dir)
-    finals = sorted(name for name, (_, role, _) in found.items() if role == "final")
-    if finals:
-        raise PresentError(
-            f"a final run exists ({', '.join(finals)}): it takes the headline by the pre-registered rule, which the "
-            "presenter's phase 2 renders; the pooled held-out headline is never published beside it"
-        )
+    # the final run, once its analysis is published: checked against its files, or refused (never left out)
+    final = finalrun.section(results_dir, found)
     headline = _headline(results_dir, found)
     conditions = headline["conditions"]
-    order = sorted(
-        palette.CONDITIONS,
-        key=lambda c: (-conditions[c]["exact"]["value"], palette.CONDITIONS.index(c)),
+    # one row order on every page: the headline's headline metric, ties in the fixed order
+    order = (
+        finalrun.order(final)
+        if final is not None
+        else sorted(
+            palette.CONDITIONS,
+            key=lambda c: (-conditions[c]["exact"]["value"], palette.CONDITIONS.index(c)),
+        )
     )
     return {
         "schema": SCHEMA,
@@ -623,9 +691,9 @@ def build(results_dir: Path = RESULTS_DIR) -> dict[str, Any]:
         "ablation": _ablation(found),
         "e2e": _e2e(found),
         "llm_only_first_run": _first_test_run(found),
-        "splits": _composition(found),
+        "splits": _composition(found, final),
         "files": _file_rows(found),
-        "final": None,
+        "final": final,
     }
 
 
