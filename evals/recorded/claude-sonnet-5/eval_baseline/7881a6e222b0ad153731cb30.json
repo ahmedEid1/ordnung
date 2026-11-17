@@ -1,0 +1,73 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"4cf05bc79d456e0d15bfd50291fe0a6867cb4ae55e8a7da8a60177f5d799ae82\",\"mode\":\"text\",\"region\":\"BE\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-mieterhoehung-1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Berlin (BE), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag",
+    "recorded_at": "2026-11-24T12:56:57+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[642,718],\"contract\":null,\"kind\":\"rent_lease\",\"sender_name\":\"Exempelkiez Wohnbau GmbH\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Mieternummer\",\"value\":\"EW-3304-12\"}],\"remedy_type\":\"none\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Consent (or refuse) to the rent increase\",\"quote\":\"Für Ihre Entscheidung haben Sie bis zum Ablauf des zweiten Kalendermonats nach dem Zugang dieses Schreibens Zeit.\",\"computation\":\"The letter was not sent by post but delivered by a messenger directly into the tenant's mailbox on 19.11.2026 (vormittags), per the note 'Durch Boten zugestellt: Einwurf in Ihren Briefkasten am 19.11.2026 vormittags.' This is actual delivery, so no postal delivery-fiction applies; Zugang = 19.11.2026. Under § 558b Abs. 2 BGB the tenant may consent until the end of the second calendar month after receipt. Counting calendar months from November 2026: first following calendar month = December 2026, second following calendar month = January 2027. The period therefore ends on the last day of January 2027, i.e. 31.01.2027. That date is a Sunday, so under § 193 BGB the deadline moves to the next working day, Monday 01.02.2027. No Berlin public holiday falls on that day, so the deadline is 01.02.2027.\",\"due_date\":\"2027-02-01\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"New rent amount takes effect\",\"quote\":\"Wir bitten Sie daher, einer Erhöhung der Nettokaltmiete auf 718,00 € (10,56 € je m²) mit Wirkung ab dem 01.02.2027 zuzustimmen.\",\"computation\":\"The letter states the increased rent is requested to take effect from 01.02.2027 as printed; this is a fixed calendar date and not subject to recalculation.\",\"due_date\":\"2027-02-01\",\"confidence\":\"high\",\"amount\":718}],\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        642,
+        718
+      ],
+      "contract": null,
+      "kind": "rent_lease",
+      "sender_name": "Exempelkiez Wohnbau GmbH",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Mieternummer",
+          "value": "EW-3304-12"
+        }
+      ],
+      "remedy_type": "none",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Consent (or refuse) to the rent increase",
+          "quote": "Für Ihre Entscheidung haben Sie bis zum Ablauf des zweiten Kalendermonats nach dem Zugang dieses Schreibens Zeit.",
+          "computation": "The letter was not sent by post but delivered by a messenger directly into the tenant's mailbox on 19.11.2026 (vormittags), per the note 'Durch Boten zugestellt: Einwurf in Ihren Briefkasten am 19.11.2026 vormittags.' This is actual delivery, so no postal delivery-fiction applies; Zugang = 19.11.2026. Under § 558b Abs. 2 BGB the tenant may consent until the end of the second calendar month after receipt. Counting calendar months from November 2026: first following calendar month = December 2026, second following calendar month = January 2027. The period therefore ends on the last day of January 2027, i.e. 31.01.2027. That date is a Sunday, so under § 193 BGB the deadline moves to the next working day, Monday 01.02.2027. No Berlin public holiday falls on that day, so the deadline is 01.02.2027.",
+          "due_date": "2027-02-01",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "New rent amount takes effect",
+          "quote": "Wir bitten Sie daher, einer Erhöhung der Nettokaltmiete auf 718,00 € (10,56 € je m²) mit Wirkung ab dem 01.02.2027 zuzustimmen.",
+          "computation": "The letter states the increased rent is requested to take effect from 01.02.2027 as printed; this is a fixed calendar date and not subject to recalculation.",
+          "due_date": "2027-02-01",
+          "confidence": "high",
+          "amount": 718
+        }
+      ],
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3784,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1788,
+      "cost_usd": 0.046102,
+      "duration_ms": 36789,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

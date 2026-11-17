@@ -1,0 +1,78 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"987c0eb68d6c91da313b135cd99021bbf0eeb9d8ac1ed3ca284388c19abf4611\",\"mode\":\"text\",\"region\":\"SL\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-mieterhoehung-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Saarland (SL), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> t",
+    "recorded_at": "2026-11-24T13:00:33+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Beispielsaar Wohnungsgenossenschaft eG\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Mitgliedsnummer\",\"value\":\"4471-B\"},{\"label\":\"Nutzungsvertrag\",\"value\":\"NV 12-0087\"}],\"amounts\":[395,434.5,39.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"Declare consent to rent increase\",\"quote\":\"Ihre Antwort benötigen wir bis Ende Januar 2027.\",\"computation\":\"Letter was hand-delivered by the cooperative's own messenger into the mailbox on 18.11.2026 at 8:50, so receipt (Empfang) is confirmed as 18.11.2026 (no postal-delivery fiction needed). Under § 558b Abs. 1 BGB the tenant must declare consent to a rent increase 'bis zum Ablauf des zweiten Kalendermonats nach Empfang des Erhöhungsverlangens'. Counting calendar months after the month of receipt (November 2026): 1st following calendar month = December 2026, 2nd = January 2027. So the statutory period ends with the expiry of 31.01.2027. That date, 31 January 2027, falls on a Sunday. Under § 193 BGB, when the last day of a period for a declaration falls on a Sunday, Saturday or public holiday, the period ends on the next business day. The next day, 01.02.2027, is a Monday and not a public holiday in Saarland, so it becomes the final day for the tenant's consent to reach the cooperative.\",\"due_date\":\"2027-02-01\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"New rent (434,50 €) takes effect\",\"quote\":\"Wir bitten Sie um Ihre Zustimmung, das Nutzungsentgelt ab dem 01.02.2027 um 10 % auf\\n434,50 € zu erhöhen.\",\"computation\":\"The letter states the increase is to take effect from 01.02.2027. This matches § 558b Abs. 1 BGB, under which (if consent is given in time) the increased rent is owed from the start of the third calendar month after receipt of the increase request: receipt in November 2026 → 1st following month December 2026, 2nd January 2027, 3rd February 2027 → effective date 01.02.2027. No weekend/holiday adjustment applies to an effective date (as opposed to a deadline for an act), so it stays 01.02.2027.\",\"due_date\":\"2027-02-01\",\"confidence\":\"high\",\"amount\":434.5}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Beispielsaar Wohnungsgenossenschaft eG",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Mitgliedsnummer",
+          "value": "4471-B"
+        },
+        {
+          "label": "Nutzungsvertrag",
+          "value": "NV 12-0087"
+        }
+      ],
+      "amounts": [
+        395,
+        434.5,
+        39.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Declare consent to rent increase",
+          "quote": "Ihre Antwort benötigen wir bis Ende Januar 2027.",
+          "computation": "Letter was hand-delivered by the cooperative's own messenger into the mailbox on 18.11.2026 at 8:50, so receipt (Empfang) is confirmed as 18.11.2026 (no postal-delivery fiction needed). Under § 558b Abs. 1 BGB the tenant must declare consent to a rent increase 'bis zum Ablauf des zweiten Kalendermonats nach Empfang des Erhöhungsverlangens'. Counting calendar months after the month of receipt (November 2026): 1st following calendar month = December 2026, 2nd = January 2027. So the statutory period ends with the expiry of 31.01.2027. That date, 31 January 2027, falls on a Sunday. Under § 193 BGB, when the last day of a period for a declaration falls on a Sunday, Saturday or public holiday, the period ends on the next business day. The next day, 01.02.2027, is a Monday and not a public holiday in Saarland, so it becomes the final day for the tenant's consent to reach the cooperative.",
+          "due_date": "2027-02-01",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "New rent (434,50 €) takes effect",
+          "quote": "Wir bitten Sie um Ihre Zustimmung, das Nutzungsentgelt ab dem 01.02.2027 um 10 % auf\n434,50 € zu erhöhen.",
+          "computation": "The letter states the increase is to take effect from 01.02.2027. This matches § 558b Abs. 1 BGB, under which (if consent is given in time) the increased rent is owed from the start of the third calendar month after receipt of the increase request: receipt in November 2026 → 1st following month December 2026, 2nd January 2027, 3rd February 2027 → effective date 01.02.2027. No weekend/holiday adjustment applies to an effective date (as opposed to a deadline for an act), so it stays 01.02.2027.",
+          "due_date": "2027-02-01",
+          "confidence": "high",
+          "amount": 434.5
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 7342,
+      "cache_read_tokens": 7966,
+      "cache_creation_tokens": 7892,
+      "cost_usd": 0.1065892,
+      "duration_ms": 79571,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

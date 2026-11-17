@@ -1,0 +1,106 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"4991b9c66e8cbf4730052ed98d45b1a1eefe6e2e2c30e0b1e4737854057e2d89\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-mahnbescheid-1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T12:50:59+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Amtsgericht Exempelbrück – Zentrales Mahngericht\",\"document_date\":\"2026-11-20\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the Mahnbescheid\",\"quote\":\"Ihnen bleiben zwei Wochen ab der Zustellung. In dieser Zeit sollen Sie den Gesamtbetrag nebst weiteren Zinsen an die Antragstellerin zahlen, wenn Sie die Forderung für berechtigt halten, oder dem Gericht auf dem beigefügten Vordruck mitteilen, ob und wie weit Sie Widerspruch erheben.\",\"computation\":\"The letter states formal service (Zustellung) by placing the letter in the letterbox on 23.11.2026, noted by the delivery person on the envelope — this is an explicit, stated delivery date, so no deemed-delivery fiction applies. Under § 222 Abs. 1 ZPO i.V.m. § 187 Abs. 1 BGB, the day of the event (23.11.2026, a Monday) is not counted; counting starts 24.11.2026. The period is two weeks (14 days). Under § 188 Abs. 2 BGB, a period expressed in weeks ends with the expiry of the day of the second week that bears the same name as the day on which the event occurred, i.e. Monday 07.12.2026. That day is a working day (no weekend/holiday in NRW), so § 222 Abs. 2 ZPO does not shift it. Verified with the deadline tool.\",\"due_date\":\"2026-12-07\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total claimed amount (if not objecting)\",\"quote\":\"Ihnen bleiben zwei Wochen ab der Zustellung. In dieser Zeit sollen Sie den Gesamtbetrag nebst weiteren Zinsen an die Antragstellerin zahlen, wenn Sie die Forderung für berechtigt halten, oder dem Gericht auf dem beigefügten Vordruck mitteilen, ob und wie weit Sie Widerspruch erheben.\",\"computation\":\"Same two-week period as the Widerspruch deadline above, running from the stated Zustellung on 23.11.2026 (day of event not counted, § 187 Abs. 1 BGB) to 07.12.2026 (§ 188 Abs. 2 BGB, § 222 ZPO), which falls on a working day. This is the alternative to objecting: pay the Gesamtbetrag of EUR 272,49 plus any further interest, or object instead.\",\"due_date\":\"2026-12-07\",\"confidence\":\"medium\",\"amount\":272.49}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"references\":[{\"label\":\"Geschäftsnummer\",\"value\":\"26-5531904-0-7\"}],\"amounts\":[214.37,4.12,36,18,272.49],\"warnings\":[\"This is a court Mahnbescheid: the court has NOT checked whether the underlying claim (mobile-phone charges from Beispielfunk Mobilnetz GmbH) is actually justified — the letter itself says so ('Ob das zutrifft, hat das Gericht nicht untersucht'); if you dispute the debt, file the Widerspruch on the enclosed form rather than paying.\",\"If neither payment nor Widerspruch reaches the court within the two weeks, the creditor can apply for a Vollstreckungsbescheid (enforcement order) and pursue compulsory enforcement against you — act before 2026-12-07.\",\"No IBAN or payment account is printed on this page; verify any payment details (e.g. on the attached form) directly against official Beispielfunk Mobilnetz GmbH correspondence before paying.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Amtsgericht Exempelbrück – Zentrales Mahngericht",
+      "document_date": "2026-11-20",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the Mahnbescheid",
+          "quote": "Ihnen bleiben zwei Wochen ab der Zustellung. In dieser Zeit sollen Sie den Gesamtbetrag nebst weiteren Zinsen an die Antragstellerin zahlen, wenn Sie die Forderung für berechtigt halten, oder dem Gericht auf dem beigefügten Vordruck mitteilen, ob und wie weit Sie Widerspruch erheben.",
+          "computation": "The letter states formal service (Zustellung) by placing the letter in the letterbox on 23.11.2026, noted by the delivery person on the envelope — this is an explicit, stated delivery date, so no deemed-delivery fiction applies. Under § 222 Abs. 1 ZPO i.V.m. § 187 Abs. 1 BGB, the day of the event (23.11.2026, a Monday) is not counted; counting starts 24.11.2026. The period is two weeks (14 days). Under § 188 Abs. 2 BGB, a period expressed in weeks ends with the expiry of the day of the second week that bears the same name as the day on which the event occurred, i.e. Monday 07.12.2026. That day is a working day (no weekend/holiday in NRW), so § 222 Abs. 2 ZPO does not shift it. Verified with the deadline tool.",
+          "due_date": "2026-12-07",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total claimed amount (if not objecting)",
+          "quote": "Ihnen bleiben zwei Wochen ab der Zustellung. In dieser Zeit sollen Sie den Gesamtbetrag nebst weiteren Zinsen an die Antragstellerin zahlen, wenn Sie die Forderung für berechtigt halten, oder dem Gericht auf dem beigefügten Vordruck mitteilen, ob und wie weit Sie Widerspruch erheben.",
+          "computation": "Same two-week period as the Widerspruch deadline above, running from the stated Zustellung on 23.11.2026 (day of event not counted, § 187 Abs. 1 BGB) to 07.12.2026 (§ 188 Abs. 2 BGB, § 222 ZPO), which falls on a working day. This is the alternative to objecting: pay the Gesamtbetrag of EUR 272,49 plus any further interest, or object instead.",
+          "due_date": "2026-12-07",
+          "confidence": "medium",
+          "amount": 272.49
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "references": [
+        {
+          "label": "Geschäftsnummer",
+          "value": "26-5531904-0-7"
+        }
+      ],
+      "amounts": [
+        214.37,
+        4.12,
+        36,
+        18,
+        272.49
+      ],
+      "warnings": [
+        "This is a court Mahnbescheid: the court has NOT checked whether the underlying claim (mobile-phone charges from Beispielfunk Mobilnetz GmbH) is actually justified — the letter itself says so ('Ob das zutrifft, hat das Gericht nicht untersucht'); if you dispute the debt, file the Widerspruch on the enclosed form rather than paying.",
+        "If neither payment nor Widerspruch reaches the court within the two weeks, the creditor can apply for a Vollstreckungsbescheid (enforcement order) and pursue compulsory enforcement against you — act before 2026-12-07.",
+        "No IBAN or payment account is printed on this page; verify any payment details (e.g. on the attached form) directly against official Beispielfunk Mobilnetz GmbH correspondence before paying."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3459,
+      "cache_read_tokens": 14923,
+      "cache_creation_tokens": 4428,
+      "cost_usd": 0.0552946,
+      "duration_ms": 35165,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "document_date": "2026-11-20",
+          "received_date": "2026-11-23",
+          "recipient_region": "NW",
+          "region": "NW",
+          "remedy_type": "widerspruch",
+          "sender_kind": "authority",
+          "sender_name": "Amtsgericht Exempelbrück – Zentrales Mahngericht",
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "receipt",
+            "anchor_date": "2026-11-23",
+            "nature": "objection",
+            "delivery_rule": "none",
+            "shift_rule": "auto",
+            "legal_basis": "§ 692 Abs. 1 Nr. 3, § 693 ZPO; Widerspruch gegen Mahnbescheid",
+            "text": "Ihnen bleiben zwei Wochen ab der Zustellung."
+          }
+        },
+        "result": "{\"due_date\":\"2026-12-07\",\"weekday\":\"Monday\",\"send_by\":\"2026-12-01\",\"summary\":\"Two weeks after delivery on Mon 23 Nov 2026 (as stated on the letter) is Mon 7 Dec 2026.\",\"confidence\":\"medium\",\"warnings\":[\"This is a court deadline. Ordnung's date is information, not legal advice — if you don't owe the money, object in time and get advice (see the card on this letter).\",\"A late objection still counts until the enforcement order is issued (§ 694 ZPO) — but don't rely on that.\"],\"steps\":[{\"label\":\"Counting starts the day after Mon 23 Nov 2026\",\"date\":\"2026-11-23\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 222 Abs. 1 ZPO; § 187 Abs. 1 BGB\"},{\"label\":\"Two weeks later: Mon 7 Dec 2026\",\"date\":\"2026-12-07\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 222 Abs. 1 ZPO; § 188 Abs. 1, 2 BGB\"},{\"label\":\"Mon 7 Dec 2026 is a working day, so it stays\",\"date\":\"2026-12-07\",\"rule_id\":\"zpo_222\",\"citation\":\"§ 222 Abs. 1, 2 ZPO\"},{\"label\":\"Send by Tue 1 Dec 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-12-01\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"zpo_692\",\"title\":\"Court payment order (Mahnbescheid): two weeks to pay or object\",\"citation\":\"§ 692 Abs. 1 Nr. 3 ZPO; § 694 ZPO; § 699 Abs. 1 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/zpo/__692.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"zpo_180\",\"title\":\"Court letters count from delivery (Zustellung)\",\"citation\":\"§ 180 ZPO; § 166 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/zpo/__180.html\"},{\"id\":\"zpo_222\",\"title\":\"Court deadlines: weekend and holiday shift\",\"citation\":\"§ 222 Abs. 1, 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/zpo/__222.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-20\",\"received_date\":\"2026-11-23\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"delivery_law\":\"a court's letter: formal service (§ 180 ZPO), no deemed delivery\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

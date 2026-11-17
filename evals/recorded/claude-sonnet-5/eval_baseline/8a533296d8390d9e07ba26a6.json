@@ -1,0 +1,79 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"75147bdd41cae64e181d24488940e23a91fc27ac06610c82f75f8603e9b8dfca\",\"mode\":\"text\",\"region\":\"BY\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-mahnbescheid-2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bayern (BY), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag",
+    "recorded_at": "2026-11-24T12:52:31+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Amtsgericht Beispielcoburg\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Geschäftsnummer\",\"value\":\"26-2208415-1-2\"}],\"amounts\":[249.5,9,36,70.2,364.7],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay claimed debt to creditor\",\"quote\":\"Halten Sie die Forderung für berechtigt, begleichen Sie die Summe samt laufender Zinsen binnen zwei Wochen seit Zustellung dieses Bescheids direkt bei der Antragstellerin.\",\"computation\":\"Formal personal delivery is stated explicitly: uebergeben am 20.11.2026 an den Empfaenger persoenlich. That stated delivery date (Friday, 20 Nov 2026) is the delivery day and counts as such, no delivery-fiction days are added for formal personal service. Period is two weeks from delivery. Under Section 187(1) BGB the delivery day itself is not counted; for a period in weeks it ends on the day bearing the same weekday name two weeks later, i.e. 20 Nov 2026 plus 14 days equals 4 Dec 2026, a Friday. That day is not a Saturday, Sunday or Bavarian public holiday, so Section 193 BGB does not move it.\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":364.7},{\"kind\":\"deadline\",\"title\":\"File Widerspruch with the Mahngericht\",\"quote\":\"Bestreiten Sie sie ganz oder zum Teil, teilen Sie dem Mahngericht innerhalb derselben Frist mit, dass Sie Widerspruch erheben; verwenden Sie dafür möglichst den beigelegten Vordruck.\",\"computation\":\"Same two-week period as the payment obligation, running from the stated personal delivery date of 20 Nov 2026 (Friday). The delivery day is not counted (Section 187(1) BGB); the period ends two weeks later on the corresponding weekday (Section 188(2) BGB), i.e. 4 Dec 2026, a Friday. Since this day is not a Saturday, Sunday or Bavarian public holiday, Section 193 BGB does not shift it. The Widerspruch must reach the Mahngericht by that date.\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"This Mahnbescheid is issued solely on the creditor's own statements and has not been checked by the court; the recipient should independently verify whether the underlying membership-fee claim is actually owed before paying.\",\"If no payment is made and no Widerspruch is filed within the two-week period, the creditor can obtain a Vollstreckungsbescheid allowing enforcement measures such as an account garnishment, so missing the 4 Dec 2026 deadline has serious consequences.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Amtsgericht Beispielcoburg",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Geschäftsnummer",
+          "value": "26-2208415-1-2"
+        }
+      ],
+      "amounts": [
+        249.5,
+        9,
+        36,
+        70.2,
+        364.7
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay claimed debt to creditor",
+          "quote": "Halten Sie die Forderung für berechtigt, begleichen Sie die Summe samt laufender Zinsen binnen zwei Wochen seit Zustellung dieses Bescheids direkt bei der Antragstellerin.",
+          "computation": "Formal personal delivery is stated explicitly: uebergeben am 20.11.2026 an den Empfaenger persoenlich. That stated delivery date (Friday, 20 Nov 2026) is the delivery day and counts as such, no delivery-fiction days are added for formal personal service. Period is two weeks from delivery. Under Section 187(1) BGB the delivery day itself is not counted; for a period in weeks it ends on the day bearing the same weekday name two weeks later, i.e. 20 Nov 2026 plus 14 days equals 4 Dec 2026, a Friday. That day is not a Saturday, Sunday or Bavarian public holiday, so Section 193 BGB does not move it.",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": 364.7
+        },
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch with the Mahngericht",
+          "quote": "Bestreiten Sie sie ganz oder zum Teil, teilen Sie dem Mahngericht innerhalb derselben Frist mit, dass Sie Widerspruch erheben; verwenden Sie dafür möglichst den beigelegten Vordruck.",
+          "computation": "Same two-week period as the payment obligation, running from the stated personal delivery date of 20 Nov 2026 (Friday). The delivery day is not counted (Section 187(1) BGB); the period ends two weeks later on the corresponding weekday (Section 188(2) BGB), i.e. 4 Dec 2026, a Friday. Since this day is not a Saturday, Sunday or Bavarian public holiday, Section 193 BGB does not shift it. The Widerspruch must reach the Mahngericht by that date.",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "This Mahnbescheid is issued solely on the creditor's own statements and has not been checked by the court; the recipient should independently verify whether the underlying membership-fee claim is actually owed before paying.",
+        "If no payment is made and no Widerspruch is filed within the two-week period, the creditor can obtain a Vollstreckungsbescheid allowing enforcement measures such as an account garnishment, so missing the 4 Dec 2026 deadline has serious consequences."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 6859,
+      "cache_read_tokens": 24337,
+      "cache_creation_tokens": 7376,
+      "cost_usd": 0.10297339999999999,
+      "duration_ms": 68421,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

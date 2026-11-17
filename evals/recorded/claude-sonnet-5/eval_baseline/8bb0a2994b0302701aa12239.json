@@ -1,0 +1,106 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"3ca8cb4133171b2f44c1dbf6e68f87c8c9886c6d13c2d15969482f663fd60779\",\"mode\":\"text\",\"region\":\"NI\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-mahnbescheid-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Niedersachsen (NI), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docume",
+    "recorded_at": "2026-11-24T12:55:26+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Amtsgericht Musteruelzen – Zentrales Mahngericht\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Geschäftsnummer\",\"value\":\"26-7710623-0-5\"}],\"amounts\":[389.9,7.5,11.64,36,445.04],\"items\":[{\"kind\":\"deadline\",\"title\":\"Object to the court payment order (Widerspruch)\",\"quote\":\"Für das eine wie das andere bleiben Ihnen vierzehn Tage, beginnend mit dem Tag, an dem Ihnen dieser Bescheid zugestellt wurde.\",\"computation\":\"The letter states the postal carrier's recorded delivery date: Friday, 20.11.2026 ('Vom Postzusteller vermerktes Zustelldatum: Freitag, 20.11.2026'). For a court letter formally served, the day of delivery itself is not counted (§ 222 Abs. 1 ZPO i.V.m. § 187 Abs. 1 BGB), so the 14-day period starts on Saturday 21.11.2026. Counting 14 days under § 188 Abs. 1 BGB lands on Friday 04.12.2026. That day is a business day in Niedersachsen (not a weekend or holiday), so no shift is needed under § 222 Abs. 2 ZPO. Final day to object: Friday, 04.12.2026.\",\"due_date\":\"2026-12-04\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the claimed debt if not disputed\",\"quote\":\"Begleichen Sie die Schuld, soweit Sie sie anerkennen, oder erheben Sie Widerspruch, soweit Sie sie bestreiten. Für das eine wie das andere bleiben Ihnen vierzehn Tage, beginnend mit dem Tag, an dem Ihnen dieser Bescheid zugestellt wurde.\",\"computation\":\"Same 14-day period as the Widerspruch deadline above: it runs from the day after the stated delivery date (Fri 20.11.2026), i.e. from 21.11.2026, and ends 14 days later on Friday 04.12.2026 (no weekend/holiday shift needed). Paying by this date (to the extent the debt is acknowledged) avoids a possible Vollstreckungsbescheid.\",\"due_date\":\"2026-12-04\",\"confidence\":\"medium\",\"amount\":445.04}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"This is a court payment order (Mahnbescheid), not a judgment: the court explicitly states it has not checked whether the claimant's claim is actually justified ('Das Gericht hat nicht nachgeprüft, ob ihr der Anspruch wirklich zusteht') — verify the underlying order of 14.04.2026 before deciding to pay or let the deadline pass.\",\"The letter's own wording ('beginnend mit dem Tag, an dem Ihnen dieser Bescheid zugestellt wurde') is simplified; the statutory count under § 187 Abs. 1 BGB actually starts the day after delivery — in this case both readings happen to give the same due date (04.12.2026), but double-check if the delivery date you actually experienced differs from the carrier's noted date of 20.11.2026.\",\"No payment account (IBAN) is printed on this page of the letter; confirm the correct payment details only via the official Amtsgericht Musteruelzen contact (phone 0581 555 74 00) or the full Mahnbescheid form before transferring any money.\",\"If you let the 14-day deadline pass without objecting or paying, the claimant can request a Vollstreckungsbescheid (enforcement order), which can lead to enforcement measures — but a late objection can still count until that enforcement order is actually issued (§ 694 ZPO).\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Amtsgericht Musteruelzen – Zentrales Mahngericht",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Geschäftsnummer",
+          "value": "26-7710623-0-5"
+        }
+      ],
+      "amounts": [
+        389.9,
+        7.5,
+        11.64,
+        36,
+        445.04
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Object to the court payment order (Widerspruch)",
+          "quote": "Für das eine wie das andere bleiben Ihnen vierzehn Tage, beginnend mit dem Tag, an dem Ihnen dieser Bescheid zugestellt wurde.",
+          "computation": "The letter states the postal carrier's recorded delivery date: Friday, 20.11.2026 ('Vom Postzusteller vermerktes Zustelldatum: Freitag, 20.11.2026'). For a court letter formally served, the day of delivery itself is not counted (§ 222 Abs. 1 ZPO i.V.m. § 187 Abs. 1 BGB), so the 14-day period starts on Saturday 21.11.2026. Counting 14 days under § 188 Abs. 1 BGB lands on Friday 04.12.2026. That day is a business day in Niedersachsen (not a weekend or holiday), so no shift is needed under § 222 Abs. 2 ZPO. Final day to object: Friday, 04.12.2026.",
+          "due_date": "2026-12-04",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the claimed debt if not disputed",
+          "quote": "Begleichen Sie die Schuld, soweit Sie sie anerkennen, oder erheben Sie Widerspruch, soweit Sie sie bestreiten. Für das eine wie das andere bleiben Ihnen vierzehn Tage, beginnend mit dem Tag, an dem Ihnen dieser Bescheid zugestellt wurde.",
+          "computation": "Same 14-day period as the Widerspruch deadline above: it runs from the day after the stated delivery date (Fri 20.11.2026), i.e. from 21.11.2026, and ends 14 days later on Friday 04.12.2026 (no weekend/holiday shift needed). Paying by this date (to the extent the debt is acknowledged) avoids a possible Vollstreckungsbescheid.",
+          "due_date": "2026-12-04",
+          "confidence": "medium",
+          "amount": 445.04
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "This is a court payment order (Mahnbescheid), not a judgment: the court explicitly states it has not checked whether the claimant's claim is actually justified ('Das Gericht hat nicht nachgeprüft, ob ihr der Anspruch wirklich zusteht') — verify the underlying order of 14.04.2026 before deciding to pay or let the deadline pass.",
+        "The letter's own wording ('beginnend mit dem Tag, an dem Ihnen dieser Bescheid zugestellt wurde') is simplified; the statutory count under § 187 Abs. 1 BGB actually starts the day after delivery — in this case both readings happen to give the same due date (04.12.2026), but double-check if the delivery date you actually experienced differs from the carrier's noted date of 20.11.2026.",
+        "No payment account (IBAN) is printed on this page of the letter; confirm the correct payment details only via the official Amtsgericht Musteruelzen contact (phone 0581 555 74 00) or the full Mahnbescheid form before transferring any money.",
+        "If you let the 14-day deadline pass without objecting or paying, the claimant can request a Vollstreckungsbescheid (enforcement order), which can lead to enforcement measures — but a late objection can still count until that enforcement order is actually issued (§ 694 ZPO)."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 5631,
+      "cache_read_tokens": 14867,
+      "cache_creation_tokens": 5409,
+      "cost_usd": 0.08092739999999998,
+      "duration_ms": 62003,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 14,
+            "unit": "days",
+            "anchor": "receipt",
+            "anchor_date": "2026-11-20",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§§ 339, 692 ZPO i.V.m. § 187 Abs. 1 BGB",
+            "text": "Für das eine wie das andere bleiben Ihnen vierzehn Tage, beginnend mit dem Tag, an dem Ihnen dieser Bescheid zugestellt wurde."
+          },
+          "document_date": "2026-11-19",
+          "received_date": "2026-11-20",
+          "sender_kind": "authority",
+          "sender_name": "Amtsgericht Musteruelzen – Zentrales Mahngericht",
+          "region": "NI",
+          "recipient_region": "NI",
+          "remedy_type": "widerspruch"
+        },
+        "result": "{\"due_date\":\"2026-12-04\",\"weekday\":\"Friday\",\"send_by\":\"2026-11-30\",\"summary\":\"14 days after delivery on Fri 20 Nov 2026 (as stated on the letter) is Fri 4 Dec 2026.\",\"confidence\":\"medium\",\"warnings\":[\"This is a court deadline. Ordnung's date is information, not legal advice — if you don't owe the money, object in time and get advice (see the card on this letter).\",\"A late objection still counts until the enforcement order is issued (§ 694 ZPO) — but don't rely on that.\"],\"steps\":[{\"label\":\"Counting starts the day after Fri 20 Nov 2026\",\"date\":\"2026-11-20\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 222 Abs. 1 ZPO; § 187 Abs. 1 BGB\"},{\"label\":\"14 days later: Fri 4 Dec 2026\",\"date\":\"2026-12-04\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 222 Abs. 1 ZPO; § 188 Abs. 1, 2 BGB\"},{\"label\":\"Fri 4 Dec 2026 is a working day, so it stays\",\"date\":\"2026-12-04\",\"rule_id\":\"zpo_222\",\"citation\":\"§ 222 Abs. 1, 2 ZPO\"},{\"label\":\"Send by Mon 30 Nov 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-11-30\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"zpo_692\",\"title\":\"Court payment order (Mahnbescheid): two weeks to pay or object\",\"citation\":\"§ 692 Abs. 1 Nr. 3 ZPO; § 694 ZPO; § 699 Abs. 1 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/zpo/__692.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"zpo_180\",\"title\":\"Court letters count from delivery (Zustellung)\",\"citation\":\"§ 180 ZPO; § 166 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/zpo/__180.html\"},{\"id\":\"zpo_222\",\"title\":\"Court deadlines: weekend and holiday shift\",\"citation\":\"§ 222 Abs. 1, 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/zpo/__222.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-19\",\"received_date\":\"2026-11-20\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"delivery_law\":\"a court's letter: formal service (§ 180 ZPO), no deemed delivery\",\"holiday_calendar\":\"Niedersachsen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"43565c4aa776b10bc5b703ee798596fc2111f3d01324f837a47b4e072156b5ca\",\"mode\":\"text\",\"region\":\"BW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-betriebskosten-1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Baden-Württemberg (BW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_do",
+    "recorded_at": "2026-11-24T12:32:17+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"utility_bill\",\"sender_name\":\"Hausverwaltung Exempeldreisam\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Mieterkonto\",\"value\":\"HE-0711-08\"}],\"amounts\":[1506.6,1320,186.6],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay Betriebskosten (operating cost) balance\",\"quote\":\"Den Nachzahlungsbetrag überweisen Sie bitte bis zum 15.12.2026 auf unser Konto.\",\"computation\":\"The letter states a fixed calendar date for payment: 'bis zum 15.12.2026'. No period to count - the due date is printed directly. 2026-12-15 is a Tuesday (counting forward 21 days / 3 weeks from Tuesday 2026-11-24, the weekday is unchanged), so no weekend/holiday shift under §193 BGB is needed.\",\"due_date\":\"2026-12-15\",\"confidence\":\"high\",\"amount\":186.6}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a private landlord/property-management invoice (not an authority), so the statutory deemed-delivery and Rechtsbehelfsbelehrung rules for administrative letters do not apply; the hand-delivery on 19.11.2026 at 10:20 is stated directly and used as the document/delivery date.\",\"The IBAN DE61 6805 0101 0005 5133 00 is well-formed (checksum and length valid, BLZ 68050101), but this only confirms the IBAN's format, not that the account truly belongs to Hausverwaltung Exempeldreisam; compare it with earlier statements or the management's known bank details before paying.\",\"German tenancy law (§556 Abs. 3 BGB) generally allows the tenant to raise objections to a Betriebskostenabrechnung within 12 months of receiving it (i.e. roughly by 19.11.2027), even though the letter itself states no such remedy or deadline for objections.\"]}",
+    "data": {
+      "kind": "utility_bill",
+      "sender_name": "Hausverwaltung Exempeldreisam",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Mieterkonto",
+          "value": "HE-0711-08"
+        }
+      ],
+      "amounts": [
+        1506.6,
+        1320,
+        186.6
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay Betriebskosten (operating cost) balance",
+          "quote": "Den Nachzahlungsbetrag überweisen Sie bitte bis zum 15.12.2026 auf unser Konto.",
+          "computation": "The letter states a fixed calendar date for payment: 'bis zum 15.12.2026'. No period to count - the due date is printed directly. 2026-12-15 is a Tuesday (counting forward 21 days / 3 weeks from Tuesday 2026-11-24, the weekday is unchanged), so no weekend/holiday shift under §193 BGB is needed.",
+          "due_date": "2026-12-15",
+          "confidence": "high",
+          "amount": 186.6
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a private landlord/property-management invoice (not an authority), so the statutory deemed-delivery and Rechtsbehelfsbelehrung rules for administrative letters do not apply; the hand-delivery on 19.11.2026 at 10:20 is stated directly and used as the document/delivery date.",
+        "The IBAN DE61 6805 0101 0005 5133 00 is well-formed (checksum and length valid, BLZ 68050101), but this only confirms the IBAN's format, not that the account truly belongs to Hausverwaltung Exempeldreisam; compare it with earlier statements or the management's known bank details before paying.",
+        "German tenancy law (§556 Abs. 3 BGB) generally allows the tenant to raise objections to a Betriebskostenabrechnung within 12 months of receiving it (i.e. roughly by 19.11.2027), even though the letter itself states no such remedy or deadline for objections."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1866,
+      "cache_read_tokens": 14840,
+      "cache_creation_tokens": 3097,
+      "cost_usd": 0.034024,
+      "duration_ms": 22988,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE61 6805 0101 0005 5133 00"
+        },
+        "result": "{\"iban\":\"DE61 6805 0101 0005 5133 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"68050101\"},\"account_number\":\"0005513300\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

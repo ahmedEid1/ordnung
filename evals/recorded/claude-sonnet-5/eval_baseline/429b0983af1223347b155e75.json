@@ -1,0 +1,71 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"710cfe9acaab96ed759f89ca261cf84e8b536c0f0b676ed67dd2c9b8d3d9eb9e\",\"mode\":\"text\",\"region\":\"HE\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-mieterhoehung-2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hessen (HE), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag",
+    "recorded_at": "2026-11-24T12:59:12+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"sender_name\":\"Roswitha Musterrhön\",\"document_date\":\"2026-11-18\",\"references\":[],\"amounts\":[480,545],\"items\":[{\"kind\":\"deadline\",\"title\":\"Consent to rent increase under § 558b BGB due\",\"quote\":\"Diesen Brief hat mein Sohn am 18. November 2026 um 10:30 Uhr bei Ihnen eingeworfen.\",\"computation\":\"The letter was personally hand-delivered (eingeworfen) by the landlord's son on 18 November 2026 at 10:30, so receipt (Zugang) is 18 November 2026 itself - no postal delivery-fiction days apply since this was direct hand delivery during normal daytime hours. Under § 558b Abs. 2 BGB, the tenant must consent to a rent increase request by the end of the second calendar month following receipt. The calendar month of receipt is November 2026; the first following calendar month is December 2026; the second following calendar month is January 2027, so the period ends with the expiry (Ablauf) of January 2027, i.e. 31 January 2027. Checking that date: 1 January 2027 falls on a Friday (derived from 1 January 2026 being a Thursday, 2026 being a non-leap year), so 31 January 2027 falls on a Sunday. Since this is a declaration (Zustimmung) deadline, § 193 BGB extends the end of the period to the next working day, which is Monday, 1 February 2027 (not a public holiday in Hessen).\",\"due_date\":\"2027-02-01\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"New (increased) net cold rent takes effect\",\"quote\":\"Ich bitte Sie, der Erhöhung Ihrer Nettokaltmiete von 480,00 € auf 545,00 € (7,90 € je m² bei 69 m²) ab dem 01.02.2027 zuzustimmen.\",\"computation\":\"The landlord states explicitly that the increased net cold rent of 545,00 € should apply from 01.02.2027. This matches the statutory rule of § 558b Abs. 1 BGB that, if timely consent is given, the increased rent is owed from the beginning of the third calendar month after receipt of the request (receipt 18 November 2026 → third following calendar month begins 1 February 2027). Date taken as printed in the letter.\",\"due_date\":\"2027-02-01\",\"confidence\":\"high\",\"amount\":545}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter itself does not quote a sentence stating the exact legal consent deadline; it was calculated from the stated hand-delivery date (18 November 2026, 10:30) using the statutory rule of § 558b Abs. 2 BGB and should be verified against the tenant's actual date of receipt.\",\"No Mietvertrags- or reference number is given in the letter, so no identifiers could be extracted.\"]}",
+    "data": {
+      "kind": "rent_lease",
+      "sender_name": "Roswitha Musterrhön",
+      "document_date": "2026-11-18",
+      "references": [],
+      "amounts": [
+        480,
+        545
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Consent to rent increase under § 558b BGB due",
+          "quote": "Diesen Brief hat mein Sohn am 18. November 2026 um 10:30 Uhr bei Ihnen eingeworfen.",
+          "computation": "The letter was personally hand-delivered (eingeworfen) by the landlord's son on 18 November 2026 at 10:30, so receipt (Zugang) is 18 November 2026 itself - no postal delivery-fiction days apply since this was direct hand delivery during normal daytime hours. Under § 558b Abs. 2 BGB, the tenant must consent to a rent increase request by the end of the second calendar month following receipt. The calendar month of receipt is November 2026; the first following calendar month is December 2026; the second following calendar month is January 2027, so the period ends with the expiry (Ablauf) of January 2027, i.e. 31 January 2027. Checking that date: 1 January 2027 falls on a Friday (derived from 1 January 2026 being a Thursday, 2026 being a non-leap year), so 31 January 2027 falls on a Sunday. Since this is a declaration (Zustimmung) deadline, § 193 BGB extends the end of the period to the next working day, which is Monday, 1 February 2027 (not a public holiday in Hessen).",
+          "due_date": "2027-02-01",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "New (increased) net cold rent takes effect",
+          "quote": "Ich bitte Sie, der Erhöhung Ihrer Nettokaltmiete von 480,00 € auf 545,00 € (7,90 € je m² bei 69 m²) ab dem 01.02.2027 zuzustimmen.",
+          "computation": "The landlord states explicitly that the increased net cold rent of 545,00 € should apply from 01.02.2027. This matches the statutory rule of § 558b Abs. 1 BGB that, if timely consent is given, the increased rent is owed from the beginning of the third calendar month after receipt of the request (receipt 18 November 2026 → third following calendar month begins 1 February 2027). Date taken as printed in the letter.",
+          "due_date": "2027-02-01",
+          "confidence": "high",
+          "amount": 545
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter itself does not quote a sentence stating the exact legal consent deadline; it was calculated from the stated hand-delivery date (18 November 2026, 10:30) using the statutory rule of § 558b Abs. 2 BGB and should be verified against the tenant's actual date of receipt.",
+        "No Mietvertrags- or reference number is given in the letter, so no identifiers could be extracted."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 5616,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1690,
+      "cost_usd": 0.06403,
+      "duration_ms": 53167,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

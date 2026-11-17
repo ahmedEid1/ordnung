@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"bbc3e6127b708c7dbc876325bc5b80c1ac4be03213d18a205f00cb19b9d2c008\",\"mode\":\"text\",\"region\":\"HB\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-kuendigung_miete-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bremen (HB), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag",
+    "recorded_at": "2026-11-24T12:48:17+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2026-11-20\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Deadline for tenant's objection (Widerspruch) to the termination\",\"quote\":\"Der Widerspruch bedarf der Textform und muss mir spätestens am 30.06.2027 zugehen.\",\"computation\":\"The landlord's termination letter itself names a fixed calendar date by which a tenant's Widerspruch under §§574-574b BGB must reach him. The date is printed explicitly ('spätestens am 30.06.2027'), so it is taken as written; no period calculation is needed. This is a civil-law deadline set by the sender, not subject to the authority deemed-delivery rules.\",\"due_date\":\"2027-06-30\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"End of the current tenancy (lease termination takes effect)\",\"quote\":\"Wegen der langen Mietdauer endet er erst am 31.08.2027.\",\"computation\":\"The letter states the exact calendar date on which the ordentliche Kündigung takes effect and the lease ends, reflecting the extended notice period for an eleven-year tenancy under §573c BGB. Taken as printed.\",\"due_date\":\"2027-08-31\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"rent_lease\",\"references\":[],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Hinrich Musterlesum\",\"warnings\":[\"This is a private letter between a landlord and a tenant (an ordentliche Kündigung of a residential lease); no scam indicators or authority-related deadline rules apply, but the recipient should independently check whether the stated notice period and the 30.06.2027 objection deadline correctly reflect the statutory periods under §§573c, 574b BGB for their specific tenancy length.\"]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2026-11-20",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Deadline for tenant's objection (Widerspruch) to the termination",
+          "quote": "Der Widerspruch bedarf der Textform und muss mir spätestens am 30.06.2027 zugehen.",
+          "computation": "The landlord's termination letter itself names a fixed calendar date by which a tenant's Widerspruch under §§574-574b BGB must reach him. The date is printed explicitly ('spätestens am 30.06.2027'), so it is taken as written; no period calculation is needed. This is a civil-law deadline set by the sender, not subject to the authority deemed-delivery rules.",
+          "due_date": "2027-06-30",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "End of the current tenancy (lease termination takes effect)",
+          "quote": "Wegen der langen Mietdauer endet er erst am 31.08.2027.",
+          "computation": "The letter states the exact calendar date on which the ordentliche Kündigung takes effect and the lease ends, reflecting the extended notice period for an eleven-year tenancy under §573c BGB. Taken as printed.",
+          "due_date": "2027-08-31",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "rent_lease",
+      "references": [],
+      "remedy_type": "widerspruch",
+      "sender_name": "Hinrich Musterlesum",
+      "warnings": [
+        "This is a private letter between a landlord and a tenant (an ordentliche Kündigung of a residential lease); no scam indicators or authority-related deadline rules apply, but the recipient should independently check whether the stated notice period and the 30.06.2027 objection deadline correctly reflect the statutory periods under §§573c, 574b BGB for their specific tenancy length."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3750,
+      "cache_read_tokens": 6440,
+      "cache_creation_tokens": 1843,
+      "cost_usd": 0.046164,
+      "duration_ms": 39518,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

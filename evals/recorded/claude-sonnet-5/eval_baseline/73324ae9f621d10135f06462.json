@@ -1,0 +1,140 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"7630cce7fde5db47f96e1d193ffcc79d7d9aed81bfa2bd58215779c6da37adb3\",\"mode\":\"text\",\"region\":\"HH\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-kuendigung_arbeit-1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hamburg (HH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> ta",
+    "recorded_at": "2026-11-24T12:37:44+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"employment\",\"sender_name\":\"Exempel Logistik Hafenrand GmbH\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Personalnummer\",\"value\":\"EL-40917\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Register as job-seeking with the Agentur für Arbeit\",\"quote\":\"Bitte melden Sie sich unverzüglich bei der Agentur für Arbeit arbeitsuchend; sonst kann es Nachteile beim Arbeitslosengeld geben.\",\"computation\":\"§ 38 Abs. 1 SGB III requires registering as job-seeking within three days of learning the exact end date of the employment, unless that end date is known more than three months in advance (then: three months before the end). The letter was personally handed over and the end date (03.12.2026, about two weeks later) was learned on 19.11.2026 — well under three months away — so the three-day rule applies: 19.11.2026 + 3 days = 22.11.2026 (a Sunday). As today is already 24.11.2026, this deadline has already passed; registration should be done immediately to limit any reduction of Arbeitslosengeld.\",\"due_date\":\"2026-11-22\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"File Kündigungsschutzklage at the labour court\",\"quote\":\"Sie muss binnen drei Wochen nach Zugang dieses Schreibens erhoben werden.\",\"computation\":\"The letter was personally handed over and receipt acknowledged on 19.11.2026 ('Persönlich übergeben am 19.11.2026 ... Empfang quittiert'), so Zugang is 19.11.2026. Under § 4 KSchG the three-week period to bring a Kündigungsschutzklage starts the day after delivery (§ 187 Abs. 1 BGB): 20.11.2026 is day 1. Three weeks later, per § 188 Abs. 1, 2 BGB, is Thursday 10.12.2026, which is a normal working day (no shift needed under § 193 BGB).\",\"due_date\":\"2026-12-10\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Employment relationship ends\",\"quote\":\"Innerhalb der Probezeit kündigen wir das Arbeitsverhältnis mit der vereinbarten Frist von zwei Wochen, also zum 03.12.2026.\",\"computation\":\"The letter states the termination date directly as 03.12.2026; this is the last day of employment as printed, no further calculation needed.\",\"due_date\":\"2026-12-03\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Return work clothing and the transponder\",\"quote\":\"Ihre Arbeitskleidung und den Transponder geben Sie bitte am letzten Arbeitstag ab.\",\"computation\":\"The letter ties this task to the 'last working day', which per the termination clause is 03.12.2026 (the date the employment ends).\",\"due_date\":\"2026-12-03\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The calculated three-day deadline to register as job-seeking with the Agentur für Arbeit (around 22.11.2026) has already passed as of today (24.11.2026); register online or by phone immediately, as a delay can reduce Arbeitslosengeld (§ 159 SGB III).\",\"The three-week deadline to file a Kündigungsschutzklage (by 10.12.2026) is a hard court deadline set by § 4 KSchG — if the person wants to challenge the dismissal, they should contact a lawyer, their union, or the Arbeitsgericht's Rechtsantragstelle well before that date, since Ordnung cannot file it for them.\",\"The letter only gives an 'unverzüglich' instruction for the Agentur für Arbeit registration without a fixed calendar date; the exact statutory deadline depends on facts (e.g. exact date the end date became known) that could shift it slightly.\"]}",
+    "data": {
+      "kind": "employment",
+      "sender_name": "Exempel Logistik Hafenrand GmbH",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Personalnummer",
+          "value": "EL-40917"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Register as job-seeking with the Agentur für Arbeit",
+          "quote": "Bitte melden Sie sich unverzüglich bei der Agentur für Arbeit arbeitsuchend; sonst kann es Nachteile beim Arbeitslosengeld geben.",
+          "computation": "§ 38 Abs. 1 SGB III requires registering as job-seeking within three days of learning the exact end date of the employment, unless that end date is known more than three months in advance (then: three months before the end). The letter was personally handed over and the end date (03.12.2026, about two weeks later) was learned on 19.11.2026 — well under three months away — so the three-day rule applies: 19.11.2026 + 3 days = 22.11.2026 (a Sunday). As today is already 24.11.2026, this deadline has already passed; registration should be done immediately to limit any reduction of Arbeitslosengeld.",
+          "due_date": "2026-11-22",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "File Kündigungsschutzklage at the labour court",
+          "quote": "Sie muss binnen drei Wochen nach Zugang dieses Schreibens erhoben werden.",
+          "computation": "The letter was personally handed over and receipt acknowledged on 19.11.2026 ('Persönlich übergeben am 19.11.2026 ... Empfang quittiert'), so Zugang is 19.11.2026. Under § 4 KSchG the three-week period to bring a Kündigungsschutzklage starts the day after delivery (§ 187 Abs. 1 BGB): 20.11.2026 is day 1. Three weeks later, per § 188 Abs. 1, 2 BGB, is Thursday 10.12.2026, which is a normal working day (no shift needed under § 193 BGB).",
+          "due_date": "2026-12-10",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Employment relationship ends",
+          "quote": "Innerhalb der Probezeit kündigen wir das Arbeitsverhältnis mit der vereinbarten Frist von zwei Wochen, also zum 03.12.2026.",
+          "computation": "The letter states the termination date directly as 03.12.2026; this is the last day of employment as printed, no further calculation needed.",
+          "due_date": "2026-12-03",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Return work clothing and the transponder",
+          "quote": "Ihre Arbeitskleidung und den Transponder geben Sie bitte am letzten Arbeitstag ab.",
+          "computation": "The letter ties this task to the 'last working day', which per the termination clause is 03.12.2026 (the date the employment ends).",
+          "due_date": "2026-12-03",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The calculated three-day deadline to register as job-seeking with the Agentur für Arbeit (around 22.11.2026) has already passed as of today (24.11.2026); register online or by phone immediately, as a delay can reduce Arbeitslosengeld (§ 159 SGB III).",
+        "The three-week deadline to file a Kündigungsschutzklage (by 10.12.2026) is a hard court deadline set by § 4 KSchG — if the person wants to challenge the dismissal, they should contact a lawyer, their union, or the Arbeitsgericht's Rechtsantragstelle well before that date, since Ordnung cannot file it for them.",
+        "The letter only gives an 'unverzüglich' instruction for the Agentur für Arbeit registration without a fixed calendar date; the exact statutory deadline depends on facts (e.g. exact date the end date became known) that could shift it slightly."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 6593,
+      "cache_read_tokens": 27086,
+      "cache_creation_tokens": 9089,
+      "cost_usd": 0.1077152,
+      "duration_ms": 65132,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 3,
+            "unit": "weeks",
+            "anchor": "receipt",
+            "anchor_date": "2026-11-19",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§4 KSchG",
+            "text": "Sie muss binnen drei Wochen nach Zugang dieses Schreibens erhoben werden."
+          },
+          "document_date": "2026-11-19",
+          "received_date": "2026-11-19",
+          "sender_kind": "employer",
+          "sender_name": "Exempel Logistik Hafenrand GmbH",
+          "remedy_type": "klage",
+          "region": "HH",
+          "recipient_region": "HH"
+        },
+        "result": "{\"due_date\":\"2026-12-10\",\"weekday\":\"Thursday\",\"send_by\":\"2026-12-04\",\"summary\":\"Three weeks after delivery on Thu 19 Nov 2026 (as stated on the letter) is Thu 10 Dec 2026.\",\"confidence\":\"medium\",\"warnings\":[\"This is the deadline for a court action at the labour court (Kündigungsschutzklage). Ordnung can't draft or file it — get advice now from a union, an employment lawyer or the court's Rechtsantragstelle.\"],\"steps\":[{\"label\":\"Counting starts the day after Thu 19 Nov 2026\",\"date\":\"2026-11-19\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB\"},{\"label\":\"Three weeks later: Thu 10 Dec 2026\",\"date\":\"2026-12-10\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB\"},{\"label\":\"Thu 10 Dec 2026 is a working day, so it stays\",\"date\":\"2026-12-10\",\"rule_id\":\"bgb_193\",\"citation\":\"§ 193 BGB\"},{\"label\":\"Send by Fri 4 Dec 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-12-04\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"kschg_4\",\"title\":\"Dismissal: three weeks to go to the labour court\",\"citation\":\"§ 4 S. 1 KSchG; § 7 KSchG\",\"url\":\"https://www.gesetze-im-internet.de/kschg/__4.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"bgb_193\",\"title\":\"Weekend and holiday shift (private law)\",\"citation\":\"§ 193 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__193.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-19\",\"received_date\":\"2026-11-19\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"holiday_calendar\":\"Hamburg\",\"holidays_from\":\"region and recipient_region: the action may be filed at the labour court of the employer's seat or of the place of work (§ 48 Abs. 1a ArbGG), so only a holiday both Länder have counts (with either unknown, nationwide holidays only)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 3,
+            "unit": "days",
+            "anchor": "receipt",
+            "anchor_date": "2026-11-19",
+            "nature": "declaration",
+            "shift_rule": "none",
+            "legal_basis": "§38 SGB III",
+            "text": "Bitte melden Sie sich unverzüglich bei der Agentur für Arbeit arbeitsuchend; sonst kann es Nachteile beim Arbeitslosengeld geben."
+          },
+          "document_date": "2026-11-19",
+          "received_date": "2026-11-19",
+          "sender_kind": "employer",
+          "sender_name": "Exempel Logistik Hafenrand GmbH",
+          "region": "HH",
+          "recipient_region": "HH"
+        },
+        "result": "{\"due_date\":\"2026-11-22\",\"weekday\":\"Sunday\",\"summary\":\"Register as job-seeking by Sun 22 Nov 2026: three days after you learned the end date (Thu 19 Nov 2026).\",\"confidence\":\"medium\",\"warnings\":[\"We don't know when the job ends. If it ends more than three months after you learned of it, you have until three months before the end — we show the earlier date.\",\"Sun 22 Nov 2026 is not a working day. The deadline may run to the next working day (§ 26 Abs. 3 SGB X), but registering online works on any day — do it in time.\"],\"steps\":[{\"label\":\"You learned when the job ends on Thu 19 Nov 2026\",\"date\":\"2026-11-19\",\"rule_id\":\"sgb3_38\",\"citation\":\"§ 38 Abs. 1 SGB III; § 159 Abs. 1 S. 2 Nr. 9, Abs. 6 SGB III\"},{\"label\":\"As we don't know when the job ends, register within three days: by Sun 22 Nov 2026\",\"date\":\"2026-11-22\",\"rule_id\":\"sgb3_38\",\"citation\":\"§ 38 Abs. 1 SGB III; § 159 Abs. 1 S. 2 Nr. 9, Abs. 6 SGB III\"},{\"label\":\"Register online, by phone or in person — it counts the day you do it\",\"date\":\"2026-11-22\",\"rule_id\":\"sgb3_38\",\"citation\":\"§ 38 Abs. 1 SGB III; § 159 Abs. 1 S. 2 Nr. 9, Abs. 6 SGB III\"}],\"rules\":[{\"id\":\"sgb3_38\",\"title\":\"Register as job-seeking (arbeitsuchend)\",\"citation\":\"§ 38 Abs. 1 SGB III; § 159 Abs. 1 S. 2 Nr. 9, Abs. 6 SGB III\",\"url\":\"https://www.gesetze-im-internet.de/sgb_3/__38.html\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-19\",\"received_date\":\"2026-11-19\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"holiday_calendar\":\"Germany (nationwide holidays only)\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"65230cbd6473a72f1da82fe0d11177ac1c2bfe207ba71b6aeae546b1fb0f3e5c\",\"mode\":\"text\",\"region\":\"NI\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-mieterhoehung-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Niedersachsen (NI), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docume",
+    "recorded_at": "2026-11-24T13:02:57+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Immobilienverwaltung Musterheide OHG\",\"document_date\":\"2026-11-20\",\"references\":[],\"amounts\":[560,616],\"items\":[{\"kind\":\"deadline\",\"title\":\"Give or refuse consent to the rent increase\",\"quote\":\"Sie können Ihre Zustimmung bis zum Ende des übernächsten Monats nach Erhalt dieses Schreibens erklären.\",\"computation\":\"The letter states it was personally placed in the tenant's mailbox on Fri 20 Nov 2026, so receipt is 2026-11-20 (no statutory deemed-delivery fiction applies to a landlord's letter). Under § 558b Abs. 2 BGB the tenant may consent until the end of the second calendar month following the month of receipt: receipt month = November 2026 → +1 month = December 2026 → +2 months = January 2027, so the statutory deadline is the end of January 2027, i.e. 2027-01-31. 2027-01-31 is a Sunday; under § 193 BGB a declaration due on a Sunday, Saturday or public holiday is instead due on the next business day, which is Monday 2027-02-01 (confirmed against the Niedersachsen 2027 holiday calendar, which has no holiday on 1 Feb 2027). A landlord's wording cannot shorten the statutory period, so the legally controlling last day is 2027-02-01.\",\"due_date\":\"2027-02-01\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Immobilienverwaltung Musterheide OHG",
+      "document_date": "2026-11-20",
+      "references": [],
+      "amounts": [
+        560,
+        616
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Give or refuse consent to the rent increase",
+          "quote": "Sie können Ihre Zustimmung bis zum Ende des übernächsten Monats nach Erhalt dieses Schreibens erklären.",
+          "computation": "The letter states it was personally placed in the tenant's mailbox on Fri 20 Nov 2026, so receipt is 2026-11-20 (no statutory deemed-delivery fiction applies to a landlord's letter). Under § 558b Abs. 2 BGB the tenant may consent until the end of the second calendar month following the month of receipt: receipt month = November 2026 → +1 month = December 2026 → +2 months = January 2027, so the statutory deadline is the end of January 2027, i.e. 2027-01-31. 2027-01-31 is a Sunday; under § 193 BGB a declaration due on a Sunday, Saturday or public holiday is instead due on the next business day, which is Monday 2027-02-01 (confirmed against the Niedersachsen 2027 holiday calendar, which has no holiday on 1 Feb 2027). A landlord's wording cannot shorten the statutory period, so the legally controlling last day is 2027-02-01.",
+          "due_date": "2027-02-01",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 5346,
+      "cache_read_tokens": 14796,
+      "cache_creation_tokens": 7013,
+      "cost_usd": 0.0844792,
+      "duration_ms": 67011,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "fixed",
+            "date": "2027-01-31",
+            "nature": "declaration",
+            "shift_rule": "auto",
+            "legal_basis": "§ 558b BGB",
+            "text": "Sie können Ihre Zustimmung bis zum Ende des übernächsten Monats nach Erhalt dieses Schreibens erklären."
+          },
+          "document_date": "2026-11-20",
+          "received_date": "2026-11-20",
+          "sender_kind": "landlord",
+          "region": "NI",
+          "recipient_region": "NI"
+        },
+        "result": "{\"due_date\":\"2027-02-01\",\"weekday\":\"Monday\",\"send_by\":\"2027-01-26\",\"summary\":\"You have until Mon 1 Feb 2027 to decide whether to agree; if you agree, the higher rent is owed from Mon 1 Feb 2027.\",\"confidence\":\"high\",\"warnings\":[\"The letter names Sun 31 Jan 2027; by law the date is Mon 1 Feb 2027 — a landlord can't shorten the time you have to decide, so the law's date is shown.\"],\"steps\":[{\"label\":\"The request arrived on Fri 20 Nov 2026\",\"date\":\"2026-11-20\",\"rule_id\":\"bgb_558b\",\"citation\":\"§ 558b Abs. 1, 2 BGB\"},{\"label\":\"The end of the second calendar month after November: Sun 31 Jan 2027\",\"date\":\"2027-01-31\",\"rule_id\":\"bgb_558b\",\"citation\":\"§ 558b Abs. 1, 2 BGB\"},{\"label\":\"Sun 31 Jan 2027 is a Sunday, so the deadline moves to Mon 1 Feb 2027\",\"date\":\"2027-02-01\",\"rule_id\":\"bgb_193\",\"citation\":\"§ 193 BGB\"},{\"label\":\"Only if you agree, the higher rent is owed from Mon 1 Feb 2027\",\"date\":\"2027-02-01\",\"rule_id\":\"bgb_558b\",\"citation\":\"§ 558b Abs. 1, 2 BGB\"},{\"label\":\"Send by Tue 26 Jan 2027 to allow 4 business days for a letter to arrive\",\"date\":\"2027-01-26\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_558b\",\"title\":\"Rent increase request: decide by the end of the second month\",\"citation\":\"§ 558b Abs. 1, 2 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__558b.html\"},{\"id\":\"bgb_193\",\"title\":\"Weekend and holiday shift (private law)\",\"citation\":\"§ 193 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__193.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-20\",\"received_date\":\"2026-11-20\",\"received_date_from\":\"received_date\",\"holiday_calendar\":\"Niedersachsen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__german_holidays",
+        "input": {
+          "year": 2027,
+          "region": "NI"
+        },
+        "result": "{\"year\":2027,\"region\":\"NI\",\"calendar\":\"Niedersachsen\",\"holidays\":[{\"date\":\"2027-01-01\",\"weekday\":\"Friday\",\"name\":\"Neujahr\",\"nationwide\":true},{\"date\":\"2027-03-26\",\"weekday\":\"Friday\",\"name\":\"Karfreitag\",\"nationwide\":true},{\"date\":\"2027-03-29\",\"weekday\":\"Monday\",\"name\":\"Ostermontag\",\"nationwide\":true},{\"date\":\"2027-05-01\",\"weekday\":\"Saturday\",\"name\":\"Erster Mai\",\"nationwide\":true},{\"date\":\"2027-05-06\",\"weekday\":\"Thursday\",\"name\":\"Christi Himmelfahrt\",\"nationwide\":true},{\"date\":\"2027-05-17\",\"weekday\":\"Monday\",\"name\":\"Pfingstmontag\",\"nationwide\":true},{\"date\":\"2027-10-03\",\"weekday\":\"Sunday\",\"name\":\"Tag der Deutschen Einheit\",\"nationwide\":true},{\"date\":\"2027-10-31\",\"weekday\":\"Sunday\",\"name\":\"Reformationstag\",\"nationwide\":false},{\"date\":\"2027-12-25\",\"weekday\":\"Saturday\",\"name\":\"Erster Weihnachtstag\",\"nationwide\":true},{\"date\":\"2027-12-26\",\"weekday\":\"Sunday\",\"name\":\"Zweiter Weihnachtstag\",\"nationwide\":true}],\"disclaimer\":\"Information, not legal advice: the public holidays in Ordnung's calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer.\"}"
+      }
+    ]
+  }
+}

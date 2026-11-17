@@ -1518,5 +1518,113 @@
     "day": "2026-11-24"
    }
   }
+ },
+ "newkinds": {
+  "r1": {
+   "newkinds-betriebskosten-1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-betriebskosten-1-photo": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-betriebskosten-2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-betriebskosten-3": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-betriebskosten-4": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-kuendigung_arbeit-1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-kuendigung_arbeit-2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-kuendigung_arbeit-2-photo": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-kuendigung_arbeit-3": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-kuendigung_arbeit-4": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-kuendigung_miete-1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-kuendigung_miete-1-photo": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-kuendigung_miete-2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-kuendigung_miete-3": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-kuendigung_miete-4": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-mahnbescheid-1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-mahnbescheid-2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-mahnbescheid-2-photo": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-mahnbescheid-3": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-mahnbescheid-4": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-mieterhoehung-1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-mieterhoehung-2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-mieterhoehung-3": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-mieterhoehung-4": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-vollstreckungsbescheid-1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-vollstreckungsbescheid-2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   }
+  }
  }
 }

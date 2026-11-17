@@ -1,0 +1,107 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"50f65e63d6e57512fb0cde4e6cb7871c14dcd075b8071f31e4da05ec986f525d\",\"mode\":\"text\",\"region\":\"TH\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-betriebskosten-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Thüringen (TH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> ",
+    "recorded_at": "2026-11-24T12:36:02+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"utility_bill\",\"sender_name\":\"Wohnungsbau Exempelhörsel GmbH\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Mietvertrag\",\"value\":\"WE-4417\"}],\"amounts\":[1277.25,1200,77.25],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay operating cost balance (Nachzahlung)\",\"quote\":\"Wir bitten um Zahlung der Nachforderung bis zum 08.01.2027.\",\"computation\":\"The letter prints a fixed calendar date for the payment: 08.01.2027. This date is set directly by the landlord in the letter, so it is taken as given rather than computed from a period. (For reference: 2027-01-08 is a Friday, a normal business day, so no weekend/holiday shift applies.)\",\"due_date\":\"2027-01-08\",\"confidence\":\"high\",\"amount\":77.25},{\"kind\":\"deadline\",\"title\":\"Raise objections (Einwendungen) to the Betriebskostenabrechnung\",\"quote\":\"Einwendungen gegen diese Abrechnung teilen Sie uns bitte schriftlich mit.\",\"computation\":\"The letter itself names no deadline for objections, only asking that they be communicated in writing. German tenancy law (§ 556 Abs. 3 S. 5 BGB) gives the tenant 12 months after receipt of the statement to raise objections (unless the tenant was not responsible for missing this period). The statement was handed over by messenger directly into the letterbox on 18 November 2026 at 11:05, so receipt = 2026-11-18. Counting under § 187 Abs. 1 BGB starts the next day; the 12-month period under § 188 Abs. 2 BGB ends on 2027-11-18 (a Thursday), which is a normal working day in Thüringen, so no shift under § 193 BGB is needed. This is a statutory deadline, not one printed in the letter, hence lower confidence.\",\"due_date\":\"2027-11-18\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The 12-month objection deadline (2027-11-18) is based on the general statutory rule of § 556 Abs. 3 BGB, not on a date printed in the letter itself; the landlord could in principle set a different (shorter, tenant-favourable) arrangement in the Mietvertrag, which was not provided.\",\"The IBAN printed (DE49 8205 0084 0005 5840 00) is a well-formed German IBAN consistent with the sender's details, but ownership cannot be verified from the letter alone; confirm payee-name matching before paying if your bank flags a mismatch.\"]}",
+    "data": {
+      "kind": "utility_bill",
+      "sender_name": "Wohnungsbau Exempelhörsel GmbH",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Mietvertrag",
+          "value": "WE-4417"
+        }
+      ],
+      "amounts": [
+        1277.25,
+        1200,
+        77.25
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay operating cost balance (Nachzahlung)",
+          "quote": "Wir bitten um Zahlung der Nachforderung bis zum 08.01.2027.",
+          "computation": "The letter prints a fixed calendar date for the payment: 08.01.2027. This date is set directly by the landlord in the letter, so it is taken as given rather than computed from a period. (For reference: 2027-01-08 is a Friday, a normal business day, so no weekend/holiday shift applies.)",
+          "due_date": "2027-01-08",
+          "confidence": "high",
+          "amount": 77.25
+        },
+        {
+          "kind": "deadline",
+          "title": "Raise objections (Einwendungen) to the Betriebskostenabrechnung",
+          "quote": "Einwendungen gegen diese Abrechnung teilen Sie uns bitte schriftlich mit.",
+          "computation": "The letter itself names no deadline for objections, only asking that they be communicated in writing. German tenancy law (§ 556 Abs. 3 S. 5 BGB) gives the tenant 12 months after receipt of the statement to raise objections (unless the tenant was not responsible for missing this period). The statement was handed over by messenger directly into the letterbox on 18 November 2026 at 11:05, so receipt = 2026-11-18. Counting under § 187 Abs. 1 BGB starts the next day; the 12-month period under § 188 Abs. 2 BGB ends on 2027-11-18 (a Thursday), which is a normal working day in Thüringen, so no shift under § 193 BGB is needed. This is a statutory deadline, not one printed in the letter, hence lower confidence.",
+          "due_date": "2027-11-18",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The 12-month objection deadline (2027-11-18) is based on the general statutory rule of § 556 Abs. 3 BGB, not on a date printed in the letter itself; the landlord could in principle set a different (shorter, tenant-favourable) arrangement in the Mietvertrag, which was not provided.",
+        "The IBAN printed (DE49 8205 0084 0005 5840 00) is a well-formed German IBAN consistent with the sender's details, but ownership cannot be verified from the letter alone; confirm payee-name matching before paying if your bank flags a mismatch."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3001,
+      "cache_read_tokens": 14816,
+      "cache_creation_tokens": 5185,
+      "cost_usd": 0.053721200000000004,
+      "duration_ms": 33629,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 12,
+            "unit": "months",
+            "anchor": "receipt",
+            "anchor_date": "2026-11-18",
+            "nature": "declaration",
+            "shift_rule": "auto",
+            "legal_basis": "§ 556 Abs. 3 S. 5 BGB",
+            "text": "Einwendungen gegen diese Abrechnung teilen Sie uns bitte schriftlich mit."
+          },
+          "sender_kind": "landlord",
+          "sender_name": "Wohnungsbau Exempelhörsel GmbH",
+          "document_date": "2026-11-18",
+          "recipient_region": "TH",
+          "region": "TH"
+        },
+        "result": "{\"due_date\":\"2027-11-18\",\"weekday\":\"Thursday\",\"send_by\":\"2027-11-12\",\"summary\":\"12 months after delivery on Wed 18 Nov 2026 (as stated on the letter) is Thu 18 Nov 2027.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Wed 18 Nov 2026\",\"date\":\"2026-11-18\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"12 months later: Thu 18 Nov 2027\",\"date\":\"2027-11-18\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Thu 18 Nov 2027 is a working day, so it stays\",\"date\":\"2027-11-18\",\"rule_id\":\"bgb_193\",\"citation\":\"§ 193 BGB\"},{\"label\":\"Send by Fri 12 Nov 2027 to allow 4 business days for a letter to arrive\",\"date\":\"2027-11-12\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"bgb_193\",\"title\":\"Weekend and holiday shift (private law)\",\"citation\":\"§ 193 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__193.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-18\",\"received_date\":\"2026-11-18\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"holiday_calendar\":\"Thüringen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE49 8205 0084 0005 5840 00"
+        },
+        "result": "{\"iban\":\"DE49 8205 0084 0005 5840 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"82050084\"},\"account_number\":\"0005584000\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

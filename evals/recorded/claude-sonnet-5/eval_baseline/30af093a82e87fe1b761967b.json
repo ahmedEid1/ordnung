@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"43565c4aa776b10bc5b703ee798596fc2111f3d01324f837a47b4e072156b5ca\",\"mode\":\"text\",\"region\":\"BW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-betriebskosten-1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Baden-Württemberg (BW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_do",
+    "recorded_at": "2026-11-24T12:31:59+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"utility_bill\",\"sender_name\":\"Hausverwaltung Exempeldreisam\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Mieterkonto\",\"value\":\"HE-0711-08\"}],\"amounts\":[186.6],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay utility cost balance (Nachzahlung)\",\"quote\":\"Den Nachzahlungsbetrag überweisen Sie bitte bis zum 15.12.2026 auf unser Konto.\",\"computation\":\"The letter states a fixed calendar due date of 15.12.2026 for the Nachzahlung, not a period to be counted from delivery. Checking the calendar: 2026-11-24 is a Tuesday, and 2026-12-15 is exactly 3 weeks later (21 days), so it is also a Tuesday - a normal working day in Baden-Württemberg, not a Saturday, Sunday or public holiday. No adjustment under § 193 BGB is needed; the stated date stands.\",\"due_date\":\"2026-12-15\",\"confidence\":\"high\",\"amount\":186.6}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "utility_bill",
+      "sender_name": "Hausverwaltung Exempeldreisam",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Mieterkonto",
+          "value": "HE-0711-08"
+        }
+      ],
+      "amounts": [
+        186.6
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay utility cost balance (Nachzahlung)",
+          "quote": "Den Nachzahlungsbetrag überweisen Sie bitte bis zum 15.12.2026 auf unser Konto.",
+          "computation": "The letter states a fixed calendar due date of 15.12.2026 for the Nachzahlung, not a period to be counted from delivery. Checking the calendar: 2026-11-24 is a Tuesday, and 2026-12-15 is exactly 3 weeks later (21 days), so it is also a Tuesday - a normal working day in Baden-Württemberg, not a Saturday, Sunday or public holiday. No adjustment under § 193 BGB is needed; the stated date stands.",
+          "due_date": "2026-12-15",
+          "confidence": "high",
+          "amount": 186.6
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2365,
+      "cache_read_tokens": 12784,
+      "cache_creation_tokens": 3413,
+      "cost_usd": 0.0398668,
+      "duration_ms": 25545,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"75147bdd41cae64e181d24488940e23a91fc27ac06610c82f75f8603e9b8dfca\",\"mode\":\"text\",\"region\":\"BY\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-mahnbescheid-2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bayern (BY), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag",
+    "recorded_at": "2026-11-24T12:51:46+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[249.5,9,36,70.2,364.7],\"contract\":null,\"document_date\":\"2026-11-18\",\"items\":[{\"kind\":\"payment\",\"title\":\"Pay disputed membership-fee claim (Mahnbescheid total)\",\"quote\":\"begleichen Sie die Summe samt laufender Zinsen binnen zwei Wochen seit Zustellung dieses Bescheids direkt bei der Antragstellerin.\",\"computation\":\"Service (Zustellung) occurred on 20.11.2026 per the 'Zustellungsvermerk: übergeben am 20.11.2026 an den Empfänger persönlich' (a Friday). The 2-week period runs via §222 ZPO in conjunction with §§187, 188 BGB: the day of service itself is not counted (§187 Abs.1 BGB), so the period starts 21.11.2026. A period measured in weeks ends, per §188 Abs.2 BGB, with the expiry of the day in the last week that bears the same name as the day on which the triggering event occurred — i.e. the second Friday after service. 20.11.2026 + 14 days = 04.12.2026, which is also a Friday and not a Saturday, Sunday, or Bavarian public holiday, so no shift under §193 BGB is needed.\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":364.7},{\"kind\":\"deadline\",\"title\":\"File Widerspruch (objection) with the Mahngericht\",\"quote\":\"Bestreiten Sie sie ganz oder zum Teil, teilen Sie dem Mahngericht innerhalb derselben Frist mit, dass Sie Widerspruch erheben; verwenden Sie dafür möglichst den beigelegten Vordruck.\",\"computation\":\"Same two-week period as the payment deadline above, running from service on 20.11.2026 (a Friday), first day not counted (§187 Abs.1 BGB via §222 ZPO), ending per §188 Abs.2 BGB on the corresponding weekday two weeks later: 04.12.2026 (Friday). This falls on a normal business day, so §193 BGB causes no shift. The Widerspruch must reach (not just be sent by) the Mahngericht Amtsgericht Beispielcoburg by this date.\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"dunning\",\"references\":[{\"label\":\"Geschäftsnummer\",\"value\":\"26-2208415-1-2\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Amtsgericht Beispielcoburg – Mahngericht für Bayern\",\"warnings\":[\"This is a court-issued Mahnbescheid based solely on the creditor's own assertions (\\\"Das Gericht hat ihren Anspruch nicht geprüft\\\") — the court has not checked whether the underlying gym-membership debt is actually owed, so the recipient should verify the claim before paying, and should file a Widerspruch by the deadline if any part of it is disputed, since missing both payment and Widerspruch allows a Vollstreckungsbescheid (enforceable title, e.g. account seizure) to be issued.\"]}",
+    "data": {
+      "amounts": [
+        249.5,
+        9,
+        36,
+        70.2,
+        364.7
+      ],
+      "contract": null,
+      "document_date": "2026-11-18",
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay disputed membership-fee claim (Mahnbescheid total)",
+          "quote": "begleichen Sie die Summe samt laufender Zinsen binnen zwei Wochen seit Zustellung dieses Bescheids direkt bei der Antragstellerin.",
+          "computation": "Service (Zustellung) occurred on 20.11.2026 per the 'Zustellungsvermerk: übergeben am 20.11.2026 an den Empfänger persönlich' (a Friday). The 2-week period runs via §222 ZPO in conjunction with §§187, 188 BGB: the day of service itself is not counted (§187 Abs.1 BGB), so the period starts 21.11.2026. A period measured in weeks ends, per §188 Abs.2 BGB, with the expiry of the day in the last week that bears the same name as the day on which the triggering event occurred — i.e. the second Friday after service. 20.11.2026 + 14 days = 04.12.2026, which is also a Friday and not a Saturday, Sunday, or Bavarian public holiday, so no shift under §193 BGB is needed.",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": 364.7
+        },
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch (objection) with the Mahngericht",
+          "quote": "Bestreiten Sie sie ganz oder zum Teil, teilen Sie dem Mahngericht innerhalb derselben Frist mit, dass Sie Widerspruch erheben; verwenden Sie dafür möglichst den beigelegten Vordruck.",
+          "computation": "Same two-week period as the payment deadline above, running from service on 20.11.2026 (a Friday), first day not counted (§187 Abs.1 BGB via §222 ZPO), ending per §188 Abs.2 BGB on the corresponding weekday two weeks later: 04.12.2026 (Friday). This falls on a normal business day, so §193 BGB causes no shift. The Widerspruch must reach (not just be sent by) the Mahngericht Amtsgericht Beispielcoburg by this date.",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "dunning",
+      "references": [
+        {
+          "label": "Geschäftsnummer",
+          "value": "26-2208415-1-2"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Amtsgericht Beispielcoburg – Mahngericht für Bayern",
+      "warnings": [
+        "This is a court-issued Mahnbescheid based solely on the creditor's own assertions (\"Das Gericht hat ihren Anspruch nicht geprüft\") — the court has not checked whether the underlying gym-membership debt is actually owed, so the recipient should verify the claim before paying, and should file a Widerspruch by the deadline if any part of it is disputed, since missing both payment and Widerspruch allows a Vollstreckungsbescheid (enforceable title, e.g. account seizure) to be issued."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 5063,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1861,
+      "cost_usd": 0.05870239999999999,
+      "duration_ms": 46615,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

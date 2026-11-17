@@ -1,0 +1,91 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"7630cce7fde5db47f96e1d193ffcc79d7d9aed81bfa2bd58215779c6da37adb3\",\"mode\":\"text\",\"region\":\"HH\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-kuendigung_arbeit-1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hamburg (HH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> ta",
+    "recorded_at": "2026-11-24T12:36:53+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"employment\",\"sender_name\":\"Exempel Logistik Hafenrand GmbH\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Personalnummer\",\"value\":\"EL-40917\"}],\"amounts\":[],\"items\":[{\"kind\":\"milestone\",\"title\":\"Last day of employment (termination effective date)\",\"quote\":\"Innerhalb der Probezeit kündigen wir das Arbeitsverhältnis mit der vereinbarten Frist von zwei Wochen, also zum 03.12.2026.\",\"computation\":\"Letter was personally handed over and receipt signed on 19.11.2026 (Thursday) — this is the day of Zugang (actual delivery), no postal deemed-delivery rule needed. During the 6-month probation period, §622 Abs.3 BGB allows a 2-week notice period ending on any calendar day. Per §187 Abs.1 BGB the day of receipt (19.11.) is not counted; the period starts 20.11.2026 and runs 14 days, ending on 03.12.2026 (Thursday), matching the date stated in the letter. No weekend/holiday adjustment needed as 03.12.2026 is itself a Thursday and this is not a deadline that moves under §193 BGB (notice periods for termination dates are calendar dates, not shifted).\",\"due_date\":\"2026-12-03\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Return work clothing and transponder\",\"quote\":\"Ihre Arbeitskleidung und den Transponder geben Sie bitte am letzten Arbeitstag ab.\",\"computation\":\"The letter ties this obligation to \\\"der letzte Arbeitstag\\\" (the last working day), which is the termination effective date computed above: 03.12.2026.\",\"due_date\":\"2026-12-03\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"File Kündigungsschutzklage (unfair dismissal lawsuit) with the Labor Court\",\"quote\":\"Sie muss binnen drei Wochen nach Zugang dieses Schreibens erhoben werden.\",\"computation\":\"Zugang (receipt) occurred on 19.11.2026 (Thursday), confirmed by personal hand-over with signed receipt at 9:40. Under §4 Satz 1 KSchG the three-week period to file suit runs from this Zugang. Per §187 Abs.1 BGB, 19.11. itself is not counted; the period starts 20.11.2026 and ends three weeks later on the day with the same name, i.e. Thursday 10.12.2026. 10.12.2026 is a regular Thursday, not a Saturday, Sunday or public holiday in Hamburg, so no shift under §193 BGB is needed.\",\"due_date\":\"2026-12-10\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Register as jobseeker (arbeitsuchend) with the Agentur für Arbeit\",\"quote\":\"Bitte melden Sie sich unverzüglich bei der Agentur für Arbeit arbeitsuchend; sonst kann es Nachteile beim Arbeitslosengeld geben.\",\"computation\":\"The letter only says 'unverzüglich' (without delay) without giving a specific date. Under §38 Abs.1 SGB III, if less than 3 months remain until the end of the employment relationship once the person learns the termination date, they must register as jobseeking within 3 days of gaining that knowledge. Knowledge was gained on the day of receiving the notice, 19.11.2026 (not counted per §187 Abs.1 BGB analogy); 3 days later would be 22.11.2026. As today (24.11.2026) is already after this statutory 3-day point, the deadline implied by the letter's own wording has already passed; registering as soon as possible remains advisable regardless.\",\"due_date\":\"2026-11-22\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The letter itself only says the jobseeker registration with the Agentur für Arbeit must happen 'unverzüglich' (without a specific date); the 3-day statutory deadline derived from §38 SGB III (around 22.11.2026) has already passed as of today (24.11.2026), so this should be done immediately if not already completed.\",\"The Kündigungsschutzklage deadline (10.12.2026) is a hard cut-off set by §4 KSchG; missing it generally makes the dismissal legally valid regardless of its merits, so legal advice should be sought promptly if the person wants to contest the termination.\"]}",
+    "data": {
+      "kind": "employment",
+      "sender_name": "Exempel Logistik Hafenrand GmbH",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Personalnummer",
+          "value": "EL-40917"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "Last day of employment (termination effective date)",
+          "quote": "Innerhalb der Probezeit kündigen wir das Arbeitsverhältnis mit der vereinbarten Frist von zwei Wochen, also zum 03.12.2026.",
+          "computation": "Letter was personally handed over and receipt signed on 19.11.2026 (Thursday) — this is the day of Zugang (actual delivery), no postal deemed-delivery rule needed. During the 6-month probation period, §622 Abs.3 BGB allows a 2-week notice period ending on any calendar day. Per §187 Abs.1 BGB the day of receipt (19.11.) is not counted; the period starts 20.11.2026 and runs 14 days, ending on 03.12.2026 (Thursday), matching the date stated in the letter. No weekend/holiday adjustment needed as 03.12.2026 is itself a Thursday and this is not a deadline that moves under §193 BGB (notice periods for termination dates are calendar dates, not shifted).",
+          "due_date": "2026-12-03",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Return work clothing and transponder",
+          "quote": "Ihre Arbeitskleidung und den Transponder geben Sie bitte am letzten Arbeitstag ab.",
+          "computation": "The letter ties this obligation to \"der letzte Arbeitstag\" (the last working day), which is the termination effective date computed above: 03.12.2026.",
+          "due_date": "2026-12-03",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "File Kündigungsschutzklage (unfair dismissal lawsuit) with the Labor Court",
+          "quote": "Sie muss binnen drei Wochen nach Zugang dieses Schreibens erhoben werden.",
+          "computation": "Zugang (receipt) occurred on 19.11.2026 (Thursday), confirmed by personal hand-over with signed receipt at 9:40. Under §4 Satz 1 KSchG the three-week period to file suit runs from this Zugang. Per §187 Abs.1 BGB, 19.11. itself is not counted; the period starts 20.11.2026 and ends three weeks later on the day with the same name, i.e. Thursday 10.12.2026. 10.12.2026 is a regular Thursday, not a Saturday, Sunday or public holiday in Hamburg, so no shift under §193 BGB is needed.",
+          "due_date": "2026-12-10",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Register as jobseeker (arbeitsuchend) with the Agentur für Arbeit",
+          "quote": "Bitte melden Sie sich unverzüglich bei der Agentur für Arbeit arbeitsuchend; sonst kann es Nachteile beim Arbeitslosengeld geben.",
+          "computation": "The letter only says 'unverzüglich' (without delay) without giving a specific date. Under §38 Abs.1 SGB III, if less than 3 months remain until the end of the employment relationship once the person learns the termination date, they must register as jobseeking within 3 days of gaining that knowledge. Knowledge was gained on the day of receiving the notice, 19.11.2026 (not counted per §187 Abs.1 BGB analogy); 3 days later would be 22.11.2026. As today (24.11.2026) is already after this statutory 3-day point, the deadline implied by the letter's own wording has already passed; registering as soon as possible remains advisable regardless.",
+          "due_date": "2026-11-22",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The letter itself only says the jobseeker registration with the Agentur für Arbeit must happen 'unverzüglich' (without a specific date); the 3-day statutory deadline derived from §38 SGB III (around 22.11.2026) has already passed as of today (24.11.2026), so this should be done immediately if not already completed.",
+        "The Kündigungsschutzklage deadline (10.12.2026) is a hard cut-off set by §4 KSchG; missing it generally makes the dismissal legally valid regardless of its merits, so legal advice should be sought promptly if the person wants to contest the termination."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4822,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1647,
+      "cost_usd": 0.055917999999999995,
+      "duration_ms": 49743,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"753038f93160314af76baff1502c5f6e96c727439627d1a2d993b0c6790d35be\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-kuendigung_miete-1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T12:44:26+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2026-11-19\",\"items\":[{\"kind\":\"expiry\",\"title\":\"End of tenancy (ordinary termination)\",\"quote\":\"hiermit kündige ich das Mietverhältnis über die Wohnung Ruhrallee 77, 2. Obergeschoss rechts, ordentlich zum 28.02.2027.\",\"computation\":\"The letter states an explicit calendar end date for the ordinary termination of the lease: 28.02.2027. No period calculation is needed since the date is given directly.\",\"due_date\":\"2027-02-28\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Tenant's objection (Widerspruch) to termination must reach landlord\",\"quote\":\"Der Widerspruch bedarf der Textform und muss mir spätestens am 31.12.2026 zugehen.\",\"computation\":\"The letter fixes an explicit calendar deadline for the tenant's objection under §§ 574–574b BGB: it must reach (zugehen) the landlord by 31.12.2026 at the latest. 31.12.2026 falls on a Thursday and is not a Sunday or statutory public holiday in NRW (Silvester is not a legal holiday), so no shift under § 193 BGB is required; the stated date stands as the final day.\",\"due_date\":\"2026-12-31\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"rent_lease\",\"references\":[],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Gisela Beispielruhr\",\"warnings\":[]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2026-11-19",
+      "items": [
+        {
+          "kind": "expiry",
+          "title": "End of tenancy (ordinary termination)",
+          "quote": "hiermit kündige ich das Mietverhältnis über die Wohnung Ruhrallee 77, 2. Obergeschoss rechts, ordentlich zum 28.02.2027.",
+          "computation": "The letter states an explicit calendar end date for the ordinary termination of the lease: 28.02.2027. No period calculation is needed since the date is given directly.",
+          "due_date": "2027-02-28",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Tenant's objection (Widerspruch) to termination must reach landlord",
+          "quote": "Der Widerspruch bedarf der Textform und muss mir spätestens am 31.12.2026 zugehen.",
+          "computation": "The letter fixes an explicit calendar deadline for the tenant's objection under §§ 574–574b BGB: it must reach (zugehen) the landlord by 31.12.2026 at the latest. 31.12.2026 falls on a Thursday and is not a Sunday or statutory public holiday in NRW (Silvester is not a legal holiday), so no shift under § 193 BGB is required; the stated date stands as the final day.",
+          "due_date": "2026-12-31",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "rent_lease",
+      "references": [],
+      "remedy_type": "widerspruch",
+      "sender_name": "Gisela Beispielruhr",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2750,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1642,
+      "cost_usd": 0.034696399999999995,
+      "duration_ms": 27339,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

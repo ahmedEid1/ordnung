@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"50f65e63d6e57512fb0cde4e6cb7871c14dcd075b8071f31e4da05ec986f525d\",\"mode\":\"text\",\"region\":\"TH\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-betriebskosten-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Thüringen (TH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> ",
+    "recorded_at": "2026-11-24T12:35:55+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"utility_bill\",\"sender_name\":\"Wohnungsbau Exempelhörsel GmbH\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Mietvertrag\",\"value\":\"WE-4417\"}],\"amounts\":[1277.25,1200,77.25],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay utility cost balance (Nachzahlung)\",\"quote\":\"Wir bitten um Zahlung der Nachforderung bis zum 08.01.2027.\",\"computation\":\"The letter states a fixed calendar date for payment: 08.01.2027. This is a private landlord-tenant obligation, so the stated date is used as written. 08.01.2027 falls on a Friday, which is neither a weekend day nor a public holiday in Thueringen, so no shift under section 193 BGB is required. Due date: 08.01.2027.\",\"due_date\":\"2027-01-08\",\"confidence\":\"high\",\"amount\":77.25}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter mentions objections (Einwendungen) can be raised in writing but states no deadline for doing so, so no due date could be computed for that obligation.\"]}",
+    "data": {
+      "kind": "utility_bill",
+      "sender_name": "Wohnungsbau Exempelhörsel GmbH",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Mietvertrag",
+          "value": "WE-4417"
+        }
+      ],
+      "amounts": [
+        1277.25,
+        1200,
+        77.25
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay utility cost balance (Nachzahlung)",
+          "quote": "Wir bitten um Zahlung der Nachforderung bis zum 08.01.2027.",
+          "computation": "The letter states a fixed calendar date for payment: 08.01.2027. This is a private landlord-tenant obligation, so the stated date is used as written. 08.01.2027 falls on a Friday, which is neither a weekend day nor a public holiday in Thueringen, so no shift under section 193 BGB is required. Due date: 08.01.2027.",
+          "due_date": "2027-01-08",
+          "confidence": "high",
+          "amount": 77.25
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter mentions objections (Einwendungen) can be raised in writing but states no deadline for doing so, so no due date could be computed for that obligation."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 3180,
+      "cache_read_tokens": 21732,
+      "cache_creation_tokens": 4460,
+      "cost_usd": 0.0539984,
+      "duration_ms": 34121,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

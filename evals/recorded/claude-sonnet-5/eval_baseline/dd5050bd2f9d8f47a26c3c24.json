@@ -1,0 +1,91 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"7630cce7fde5db47f96e1d193ffcc79d7d9aed81bfa2bd58215779c6da37adb3\",\"mode\":\"text\",\"region\":\"HH\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-kuendigung_arbeit-1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hamburg (HH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> ta",
+    "recorded_at": "2026-11-24T12:36:40+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"employment\",\"sender_name\":\"Exempel Logistik Hafenrand GmbH\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Personalnummer\",\"value\":\"EL-40917\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Register as jobseeking with the Agentur für Arbeit\",\"quote\":\"Bitte melden Sie sich unverzüglich bei der Agentur für Arbeit arbeitsuchend; sonst kann es Nachteile beim Arbeitslosengeld geben.\",\"computation\":\"The letter itself only says 'unverzüglich', but the underlying statutory duty is §38 Abs. 1 SGB III: if less than three months remain until the end of employment, the employee must register as jobseeking no later than three days after learning the end date. Knowledge (Zugang) occurred at personal hand-over on Thursday 19.11.2026. Day of the event is not counted (§187 Abs. 1 BGB analogy), so the 3-day count starts 20.11.2026 (Fri): day 1 = 20.11 (Fri), day 2 = 21.11 (Sat), day 3 = 22.11 (Sun). The last day falls on a Sunday, so under §193 BGB it moves to the next business day, Monday 23.11.2026. That date has already passed as of today (24.11.2026).\",\"due_date\":\"2026-11-23\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"End of employment (notice takes effect)\",\"quote\":\"Innerhalb der Probezeit kündigen wir das Arbeitsverhältnis mit der vereinbarten Frist von zwei Wochen, also zum 03.12.2026.\",\"computation\":\"The letter states the explicit calendar date on which the notice takes effect: 03.12.2026 (a Thursday, no weekend/holiday adjustment needed since it is stated as a fixed calendar date, not a computed period).\",\"due_date\":\"2026-12-03\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Return work clothing and transponder\",\"quote\":\"Ihre Arbeitskleidung und den Transponder geben Sie bitte am letzten Arbeitstag ab.\",\"computation\":\"The letter ties this to 'the last working day'. As no other end date is given, the last working day is taken to be the stated termination date, 03.12.2026.\",\"due_date\":\"2026-12-03\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"File Kündigungsschutzklage at the Arbeitsgericht\",\"quote\":\"Sie muss binnen drei Wochen nach Zugang dieses Schreibens erhoben werden.\",\"computation\":\"Zugang occurred by personal hand-over on Thursday 19.11.2026 (signed receipt). Per §187 Abs. 1 BGB the day of the event is not counted, so the three-week period runs from 20.11.2026. Per §188 Abs. 2 BGB a period of weeks ends on the day of the last week that bears the same name as the day of the triggering event, i.e. Thursday: 19.11 + 1 week = 26.11, +2 weeks = 03.12, +3 weeks = 10.12.2026 (Thursday). 10.12.2026 is not a Saturday, Sunday, or public holiday in Hamburg, so no shift under §193 BGB applies. This is also the statutory 3-week Klagefrist of §4 KSchG.\",\"due_date\":\"2026-12-10\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The statutory 3-day deadline to register as jobseeking with the Agentur für Arbeit (§38 SGB III) appears to have already expired on 23.11.2026, one day before today; the person should contact the Agentur für Arbeit immediately and explain the delay to minimize any disadvantage to Arbeitslosengeld.\",\"The letter was handed over personally with a signed receipt, so the exact moment of Zugang (19.11.2026, 9:40) is well documented; this is relied upon for the 3-week Klagefrist calculation.\"]}",
+    "data": {
+      "kind": "employment",
+      "sender_name": "Exempel Logistik Hafenrand GmbH",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Personalnummer",
+          "value": "EL-40917"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Register as jobseeking with the Agentur für Arbeit",
+          "quote": "Bitte melden Sie sich unverzüglich bei der Agentur für Arbeit arbeitsuchend; sonst kann es Nachteile beim Arbeitslosengeld geben.",
+          "computation": "The letter itself only says 'unverzüglich', but the underlying statutory duty is §38 Abs. 1 SGB III: if less than three months remain until the end of employment, the employee must register as jobseeking no later than three days after learning the end date. Knowledge (Zugang) occurred at personal hand-over on Thursday 19.11.2026. Day of the event is not counted (§187 Abs. 1 BGB analogy), so the 3-day count starts 20.11.2026 (Fri): day 1 = 20.11 (Fri), day 2 = 21.11 (Sat), day 3 = 22.11 (Sun). The last day falls on a Sunday, so under §193 BGB it moves to the next business day, Monday 23.11.2026. That date has already passed as of today (24.11.2026).",
+          "due_date": "2026-11-23",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "End of employment (notice takes effect)",
+          "quote": "Innerhalb der Probezeit kündigen wir das Arbeitsverhältnis mit der vereinbarten Frist von zwei Wochen, also zum 03.12.2026.",
+          "computation": "The letter states the explicit calendar date on which the notice takes effect: 03.12.2026 (a Thursday, no weekend/holiday adjustment needed since it is stated as a fixed calendar date, not a computed period).",
+          "due_date": "2026-12-03",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Return work clothing and transponder",
+          "quote": "Ihre Arbeitskleidung und den Transponder geben Sie bitte am letzten Arbeitstag ab.",
+          "computation": "The letter ties this to 'the last working day'. As no other end date is given, the last working day is taken to be the stated termination date, 03.12.2026.",
+          "due_date": "2026-12-03",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "File Kündigungsschutzklage at the Arbeitsgericht",
+          "quote": "Sie muss binnen drei Wochen nach Zugang dieses Schreibens erhoben werden.",
+          "computation": "Zugang occurred by personal hand-over on Thursday 19.11.2026 (signed receipt). Per §187 Abs. 1 BGB the day of the event is not counted, so the three-week period runs from 20.11.2026. Per §188 Abs. 2 BGB a period of weeks ends on the day of the last week that bears the same name as the day of the triggering event, i.e. Thursday: 19.11 + 1 week = 26.11, +2 weeks = 03.12, +3 weeks = 10.12.2026 (Thursday). 10.12.2026 is not a Saturday, Sunday, or public holiday in Hamburg, so no shift under §193 BGB applies. This is also the statutory 3-week Klagefrist of §4 KSchG.",
+          "due_date": "2026-12-10",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The statutory 3-day deadline to register as jobseeking with the Agentur für Arbeit (§38 SGB III) appears to have already expired on 23.11.2026, one day before today; the person should contact the Agentur für Arbeit immediately and explain the delay to minimize any disadvantage to Arbeitslosengeld.",
+        "The letter was handed over personally with a signed receipt, so the exact moment of Zugang (19.11.2026, 9:40) is well documented; this is relied upon for the 3-week Klagefrist calculation."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4539,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1648,
+      "cost_usd": 0.052610399999999995,
+      "duration_ms": 44867,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"e9f4cabff0ddc7ff8f85d6149ff1d61e33e460fa85667d2a793f0d6809c58267\",\"mode\":\"text\",\"region\":\"MV\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-kuendigung_miete-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Mecklenburg-Vorpommern (MV), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrust",
+    "recorded_at": "2026-11-24T12:50:21+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"sender_name\":\"Hausverwaltung Beispielbodden GmbH\",\"document_date\":\"2026-11-18\",\"references\":[],\"amounts\":[],\"items\":[{\"kind\":\"expiry\",\"title\":\"End of tenancy (lease termination date)\",\"quote\":\"kündigen wir das Mietverhältnis über die Wohnung Nr. 4 in der Straßstraße 3 fristgerecht zum 28.02.2027.\",\"computation\":\"The letter states the fixed termination date in writing as 28.02.2027 (an ordinary landlord termination for Eigenbedarf, delivered in person into the tenant's mailbox on 18.11.2026 at 11:00, which the letter also states). This is a printed calendar date, so no period counting is needed; it is simply the last day of the tenancy as stated.\",\"due_date\":\"2027-02-28\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Deadline to object (Widerspruch) to the termination under §§ 574-574b BGB\",\"quote\":\"Der Widerspruch bedarf der Textform und muss mir spätestens zwei Monate vor dem Ende des Mietverhältnisses zugehen.\",\"computation\":\"Anchor: end of tenancy = 28.02.2027 (fixed in the letter). The objection must reach the landlord's agent at the latest two months before that date. Counting two calendar months backwards from 28.02.2027 under § 188 Abs. 2, 3 BGB lands on 27.12.2026 — a Sunday. Unlike forward-running deadlines, a backward-counted deadline is never pushed to a later day when it falls on a weekend/holiday (§ 193 BGB only extends deadlines running forward); it must arrive no later than the stated cut-off, so arrival has to happen on the last day that is actually open before it. The days immediately before 27.12.2026 are Sat 26.12. (2. Weihnachtstag, a public holiday in MV) and Fri 25.12. (1. Weihnachtstag, a public holiday), so the last practical day the Widerspruch can still reach the landlord in time is Thursday 24.12.2026. To be safe, send it several business days earlier.\",\"due_date\":\"2026-12-24\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter refers to a power of attorney (\\\"beigefügter Vollmacht\\\") for the owner, Herr Olaf Exempeldüne, but that document is not included in the text provided here — ask the Hausverwaltung to see it and confirm the owner's identity and signature.\",\"This is an Eigenbedarfskündigung (termination for the owner's own use); check that the 3-month statutory notice period of § 573c BGB (which can be longer depending on how long you have lived there) was correctly applied to reach 28.02.2027, and that the reasons for self-use given in the letter are genuine — consider consulting a tenants' association (Mieterverein) or lawyer before the Widerspruch deadline.\",\"No specific date for the Wohnungsabnahme (handover inspection) is fixed yet (\\\"im Februar\\\" only), so no deadline could be computed for it; watch for a follow-up letter naming the exact date.\"]}",
+    "data": {
+      "kind": "rent_lease",
+      "sender_name": "Hausverwaltung Beispielbodden GmbH",
+      "document_date": "2026-11-18",
+      "references": [],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "expiry",
+          "title": "End of tenancy (lease termination date)",
+          "quote": "kündigen wir das Mietverhältnis über die Wohnung Nr. 4 in der Straßstraße 3 fristgerecht zum 28.02.2027.",
+          "computation": "The letter states the fixed termination date in writing as 28.02.2027 (an ordinary landlord termination for Eigenbedarf, delivered in person into the tenant's mailbox on 18.11.2026 at 11:00, which the letter also states). This is a printed calendar date, so no period counting is needed; it is simply the last day of the tenancy as stated.",
+          "due_date": "2027-02-28",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Deadline to object (Widerspruch) to the termination under §§ 574-574b BGB",
+          "quote": "Der Widerspruch bedarf der Textform und muss mir spätestens zwei Monate vor dem Ende des Mietverhältnisses zugehen.",
+          "computation": "Anchor: end of tenancy = 28.02.2027 (fixed in the letter). The objection must reach the landlord's agent at the latest two months before that date. Counting two calendar months backwards from 28.02.2027 under § 188 Abs. 2, 3 BGB lands on 27.12.2026 — a Sunday. Unlike forward-running deadlines, a backward-counted deadline is never pushed to a later day when it falls on a weekend/holiday (§ 193 BGB only extends deadlines running forward); it must arrive no later than the stated cut-off, so arrival has to happen on the last day that is actually open before it. The days immediately before 27.12.2026 are Sat 26.12. (2. Weihnachtstag, a public holiday in MV) and Fri 25.12. (1. Weihnachtstag, a public holiday), so the last practical day the Widerspruch can still reach the landlord in time is Thursday 24.12.2026. To be safe, send it several business days earlier.",
+          "due_date": "2026-12-24",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter refers to a power of attorney (\"beigefügter Vollmacht\") for the owner, Herr Olaf Exempeldüne, but that document is not included in the text provided here — ask the Hausverwaltung to see it and confirm the owner's identity and signature.",
+        "This is an Eigenbedarfskündigung (termination for the owner's own use); check that the 3-month statutory notice period of § 573c BGB (which can be longer depending on how long you have lived there) was correctly applied to reach 28.02.2027, and that the reasons for self-use given in the letter are genuine — consider consulting a tenants' association (Mieterverein) or lawyer before the Widerspruch deadline.",
+        "No specific date for the Wohnungsabnahme (handover inspection) is fixed yet (\"im Februar\" only), so no deadline could be computed for it; watch for a follow-up letter naming the exact date."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 6313,
+      "cache_read_tokens": 14853,
+      "cache_creation_tokens": 5320,
+      "cost_usd": 0.08738860000000001,
+      "duration_ms": 70929,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "anchor": "explicit_date",
+            "anchor_date": "2027-02-28",
+            "amount": -2,
+            "unit": "months",
+            "nature": "declaration",
+            "shift_rule": "auto",
+            "legal_basis": "§§ 574 bis 574b BGB",
+            "text": "Der Widerspruch bedarf der Textform und muss mir spätestens zwei Monate vor dem Ende des Mietverhältnisses zugehen."
+          },
+          "sender_name": "Hausverwaltung Beispielbodden GmbH",
+          "sender_kind": "landlord",
+          "document_date": "2026-11-18",
+          "received_date": "2026-11-18",
+          "recipient_region": "MV",
+          "region": "MV"
+        },
+        "result": "{\"due_date\":\"2026-12-27\",\"weekday\":\"Sunday\",\"send_by\":\"2026-12-18\",\"safe_date\":\"2026-12-24\",\"summary\":\"Two months before Sun 28 Feb 2027 is Sun 27 Dec 2026, a Sunday; deadlines counted backwards don't move, so aim for Thu 24 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Two months before Sun 28 Feb 2027: it must arrive by Sun 27 Dec 2026\",\"date\":\"2026-12-27\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Sun 27 Dec 2026 is a Sunday, but a period counted backwards never moves to a later day\",\"date\":\"2026-12-27\",\"rule_id\":\"backward_no_shift\",\"citation\":\"§ 193 BGB; Ordnung safety policy\"},{\"label\":\"Safe date: make sure it arrives by Thu 24 Dec 2026\",\"date\":\"2026-12-24\",\"rule_id\":\"safe_date\",\"citation\":\"Ordnung safety policy\"},{\"label\":\"Send by Fri 18 Dec 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-12-18\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"backward_no_shift\",\"title\":\"Periods counted backwards never move later\",\"citation\":\"§ 193 BGB; Ordnung safety policy\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__193.html\"},{\"id\":\"safe_date\",\"title\":\"Safe date\",\"citation\":\"Ordnung safety policy\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-18\",\"received_date_not_used\":\"2026-11-18\",\"holiday_calendar\":\"Mecklenburg-Vorpommern\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}
