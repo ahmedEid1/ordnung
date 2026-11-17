@@ -1,0 +1,127 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"cf4f7c989a31d4f1d8a1b577107a9c8d60bde90ab336b00b192080f5cb34dfe1\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "stress-D1-holdout4-invoice_relative-M1"
+    ],
+    "prompt_head": "Today is 2026-11-24. The person lives in region NW (DE). Their name is (not given).\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n(none yet)\n\nThe document's text follows, page by page: a line `=== Page N ===` starts page N. Everything\nbetween the <untrusted_document> tags is data from the document, never in",
+    "recorded_at": "2026-11-24T14:38:11+00:00",
+    "repeat": 1,
+    "commit": "3a21dfb8",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"area\":\"other\",\"case_title\":\"Invoice from Hundeschule Beispielpfote for puppy course\",\"kind\":\"invoice\",\"language\":\"de\",\"document_date\":\"2026-11-21\",\"recipient_name\":\"Bastian Musterquell\",\"sender\":{\"name\":\"Hundeschule Beispielpfote\",\"kind\":\"company\",\"address\":\"Wiesenrain 8, 35394 Mustergießen\",\"email\":\"kurse@hundeschule-beispielpfote.example\",\"phone\":\"0641 555 49 12\",\"website\":null,\"identifiers\":[]},\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"HP-1121\"},{\"label\":\"Zeichen\",\"value\":\"AP-8583-631\"}],\"key_facts\":[{\"label\":\"Total amount (Gesamt)\",\"value\":\"255,85\",\"quote\":\"Gesamt   255,85\"},{\"label\":\"VAT rate (Umsatzsteuer)\",\"value\":\"19 %\",\"quote\":\"Umsatzsteuer 19 %   40,85\"},{\"label\":\"Amount excl. VAT (Summe ohne Umsatzsteuer)\",\"value\":\"215,00\",\"quote\":\"Summe ohne Umsatzsteuer   215,00\"},{\"label\":\"Payment term\",\"value\":\"14 Tage nach Rechnungsdatum\",\"quote\":\"Zahlbar 14 Tage nach Rechnungsdatum per Überweisung.\"}],\"payment\":{\"iban\":\"DE10370501980005549120\",\"iban_valid\":null,\"payee\":\"Hundeschule Beispielpfote\",\"reference\":null},\"items\":[{\"kind\":\"payment\",\"title\":\"Pay the invoice for the puppy course and private lesson\",\"action\":\"Transfer €255.85 to the dog school's account by the deadline shown\",\"consequence\":null,\"amount\":255.85,\"currency\":\"EUR\",\"direction\":\"out\",\"date\":{\"type\":\"relative\",\"nature\":\"payment\",\"anchor\":\"document_date\",\"amount\":14,\"unit\":\"days\",\"shift_rule\":\"auto\",\"delivery_rule\":\"none\",\"text\":\"Zahlbar 14 Tage nach Rechnungsdatum\",\"legal_basis\":null},\"quote\":\"Zahlbar 14 Tage nach Rechnungsdatum per Überweisung.\",\"priority\":\"normal\"}],\"contract\":null,\"change\":null,\"remedy\":{\"type\":\"none\"},\"warnings\":[],\"urgency\":\"high\",\"tax_relevant\":false,\"tax_note\":null,\"high_stakes_kind\":null,\"title\":\"Invoice from Hundeschule Beispielpfote (puppy course)\",\"summary\":\"Hundeschule Beispielpfote (Sandra Beispielpfote) billed Bastian Musterquell invoice HP-1121, dated 21 November 2026, for a puppy course and one private leash-training lesson, totaling €255.85 including VAT, payable within 14 days of the invoice date.\",\"explanation\":\"This is a regular invoice from a dog training school for a puppy course and one private lesson, totaling €255.85. Payment is due within 14 days of the invoice date by bank transfer to the IBAN given. Pay by the deadline shown in the app to avoid a reminder (Mahnung). The note about the phone hotline being unreachable on 9 December 2026 is just informational and does not affect your payment deadline.\"}",
+    "data": {
+      "area": "other",
+      "case_title": "Invoice from Hundeschule Beispielpfote for puppy course",
+      "kind": "invoice",
+      "language": "de",
+      "document_date": "2026-11-21",
+      "recipient_name": "Bastian Musterquell",
+      "sender": {
+        "name": "Hundeschule Beispielpfote",
+        "kind": "company",
+        "address": "Wiesenrain 8, 35394 Mustergießen",
+        "email": "kurse@hundeschule-beispielpfote.example",
+        "phone": "0641 555 49 12",
+        "website": null,
+        "identifiers": []
+      },
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "HP-1121"
+        },
+        {
+          "label": "Zeichen",
+          "value": "AP-8583-631"
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Total amount (Gesamt)",
+          "value": "255,85",
+          "quote": "Gesamt   255,85"
+        },
+        {
+          "label": "VAT rate (Umsatzsteuer)",
+          "value": "19 %",
+          "quote": "Umsatzsteuer 19 %   40,85"
+        },
+        {
+          "label": "Amount excl. VAT (Summe ohne Umsatzsteuer)",
+          "value": "215,00",
+          "quote": "Summe ohne Umsatzsteuer   215,00"
+        },
+        {
+          "label": "Payment term",
+          "value": "14 Tage nach Rechnungsdatum",
+          "quote": "Zahlbar 14 Tage nach Rechnungsdatum per Überweisung."
+        }
+      ],
+      "payment": {
+        "iban": "DE10370501980005549120",
+        "iban_valid": null,
+        "payee": "Hundeschule Beispielpfote",
+        "reference": null
+      },
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay the invoice for the puppy course and private lesson",
+          "action": "Transfer €255.85 to the dog school's account by the deadline shown",
+          "consequence": null,
+          "amount": 255.85,
+          "currency": "EUR",
+          "direction": "out",
+          "date": {
+            "type": "relative",
+            "nature": "payment",
+            "anchor": "document_date",
+            "amount": 14,
+            "unit": "days",
+            "shift_rule": "auto",
+            "delivery_rule": "none",
+            "text": "Zahlbar 14 Tage nach Rechnungsdatum",
+            "legal_basis": null
+          },
+          "quote": "Zahlbar 14 Tage nach Rechnungsdatum per Überweisung.",
+          "priority": "normal"
+        }
+      ],
+      "contract": null,
+      "change": null,
+      "remedy": {
+        "type": "none"
+      },
+      "warnings": [],
+      "urgency": "high",
+      "tax_relevant": false,
+      "tax_note": null,
+      "high_stakes_kind": null,
+      "title": "Invoice from Hundeschule Beispielpfote (puppy course)",
+      "summary": "Hundeschule Beispielpfote (Sandra Beispielpfote) billed Bastian Musterquell invoice HP-1121, dated 21 November 2026, for a puppy course and one private leash-training lesson, totaling €255.85 including VAT, payable within 14 days of the invoice date.",
+      "explanation": "This is a regular invoice from a dog training school for a puppy course and one private lesson, totaling €255.85. Payment is due within 14 days of the invoice date by bank transfer to the IBAN given. Pay by the deadline shown in the app to avoid a reminder (Mahnung). The note about the phone hotline being unreachable on 9 December 2026 is just informational and does not affect your payment deadline."
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2500,
+      "cache_read_tokens": 8953,
+      "cache_creation_tokens": 1445,
+      "cost_usd": 0.0325746,
+      "duration_ms": 24623,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

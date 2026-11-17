@@ -1,0 +1,90 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"eb08014ade192762a1199f3eb6bf17d2ecf8d30a55b18532670e234fe36ec3b6\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "stress-D1-holdout4-dunning_fixed-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T14:30:31+00:00",
+    "repeat": 1,
+    "commit": "3a21dfb8",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Sportverein Beispielau 1911 e.V.\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Mitgliedsnummer\",\"value\":\"SV-2207\"},{\"label\":\"Vertrag\",\"value\":\"DX-2411-496\"}],\"amounts\":[168,4.5,172.5],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding 2026 family membership fee plus return-debit charge\",\"quote\":\"Bitte überweisen Sie den Betrag bis zum 03.12.2026 auf das Vereinskonto.\",\"computation\":\"The letter prints a fixed calendar date, 03.12.2026, as the payment deadline. That date (Thursday) is a regular business day in NW (no weekend or public-holiday adjustment needed), so it stands as the due date.\",\"due_date\":\"2026-12-03\",\"confidence\":\"high\",\"amount\":172.5},{\"kind\":\"payment\",\"title\":\"Next automatic direct debit under contract DX-2411-496\",\"quote\":\"Die nächste Abbuchung per Lastschrift erfolgt automatisch am 10.12.2026, in unveränderter Höhe.\",\"computation\":\"The letter states a fixed calendar date, 10.12.2026, for the next automatic direct debit under the separate contract DX-2411-496. That date (Thursday) is a regular business day in NW, so no adjustment is needed; this is informational (automatic collection), not an action required from the person, but it is included as an upcoming financial event.\",\"due_date\":\"2026-12-10\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a reminder from a sports club, not a public authority, so no statutory deemed-delivery or legal-remedy rules apply; the dates are simply those printed in the letter.\",\"Before paying, confirm the club's IBAN (DE39 3705 0198 0005 5191 10) matches what you already have on file or on the club's official website, since a failed direct debit followed by a payment request to an account is a pattern also used in scams (the IBAN itself is well-formed, which does not prove it is correct).\",\"The letter invites changing bank details by simply sending a new SEPA mandate without further verification ('Hat sich Ihre Bankverbindung geändert, schicken Sie uns einfach ein neues SEPA-Mandat.'); only do this through contact channels you already trust, not in reply to an unsolicited request.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Sportverein Beispielau 1911 e.V.",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Mitgliedsnummer",
+          "value": "SV-2207"
+        },
+        {
+          "label": "Vertrag",
+          "value": "DX-2411-496"
+        }
+      ],
+      "amounts": [
+        168,
+        4.5,
+        172.5
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding 2026 family membership fee plus return-debit charge",
+          "quote": "Bitte überweisen Sie den Betrag bis zum 03.12.2026 auf das Vereinskonto.",
+          "computation": "The letter prints a fixed calendar date, 03.12.2026, as the payment deadline. That date (Thursday) is a regular business day in NW (no weekend or public-holiday adjustment needed), so it stands as the due date.",
+          "due_date": "2026-12-03",
+          "confidence": "high",
+          "amount": 172.5
+        },
+        {
+          "kind": "payment",
+          "title": "Next automatic direct debit under contract DX-2411-496",
+          "quote": "Die nächste Abbuchung per Lastschrift erfolgt automatisch am 10.12.2026, in unveränderter Höhe.",
+          "computation": "The letter states a fixed calendar date, 10.12.2026, for the next automatic direct debit under the separate contract DX-2411-496. That date (Thursday) is a regular business day in NW, so no adjustment is needed; this is informational (automatic collection), not an action required from the person, but it is included as an upcoming financial event.",
+          "due_date": "2026-12-10",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a reminder from a sports club, not a public authority, so no statutory deemed-delivery or legal-remedy rules apply; the dates are simply those printed in the letter.",
+        "Before paying, confirm the club's IBAN (DE39 3705 0198 0005 5191 10) matches what you already have on file or on the club's official website, since a failed direct debit followed by a payment request to an account is a pattern also used in scams (the IBAN itself is well-formed, which does not prove it is correct).",
+        "The letter invites changing bank details by simply sending a new SEPA mandate without further verification ('Hat sich Ihre Bankverbindung geändert, schicken Sie uns einfach ein neues SEPA-Mandat.'); only do this through contact channels you already trust, not in reply to an unsolicited request."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1556,
+      "cache_read_tokens": 14657,
+      "cache_creation_tokens": 2546,
+      "cost_usd": 0.028683399999999998,
+      "duration_ms": 19358,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE39 3705 0198 0005 5191 10"
+        },
+        "result": "{\"iban\":\"DE39 3705 0198 0005 5191 10\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005519110\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

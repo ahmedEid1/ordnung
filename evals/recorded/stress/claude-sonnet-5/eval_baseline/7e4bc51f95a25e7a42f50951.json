@@ -1,0 +1,91 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"71953cafa8b3ccab6c086afa7b6d9d34ae9b576a030432a6fbfaaf03480704b6\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "stress-D1-holdout4-dunning_fixed-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T14:29:29+00:00",
+    "repeat": 1,
+    "commit": "3a21dfb8",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Inkassobüro Beispielrecht GmbH\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"IB-26-552019\"},{\"label\":\"Kundennummer Gläubiger\",\"value\":\"KD 7 118 205\"},{\"label\":\"Zeichen (Vorbrief)\",\"value\":\"LS-9147-629\"}],\"amounts\":[131.48],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding debt-collection total\",\"quote\":\"Zahlen Sie den Gesamtbetrag spätestens am Mittwoch, 02.12.2026 auf unser Treuhandkonto.\",\"computation\":\"The letter states a fixed calendar date for payment: Mittwoch, 02.12.2026. The sender is a private debt-collection company (Inkassobüro), not a German authority, so no statutory deemed-delivery rule applies; the date given is used directly. Verified that 2026-12-02 is indeed a Wednesday and not a public holiday in NRW, so no weekend/holiday shift applies. Due date = 2026-12-02 as stated in the letter.\",\"due_date\":\"2026-12-02\",\"confidence\":\"high\",\"amount\":131.48},{\"kind\":\"task\",\"title\":\"Dispute the claim with reasons, if contested\",\"quote\":\"Wenn Sie die Forderung bestreiten, teilen Sie uns das bitte mit Begründung mit; wir klären den Sachverhalt dann mit unserer Auftraggeberin.\",\"computation\":\"The letter invites the recipient to dispute the claim 'mit Begründung' but states no explicit deadline or period for doing so. In practice this should happen promptly, ideally before the stated payment date, to avoid further collection steps, but no firm date can be derived from the text.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a demand from a private debt-collection agency (not a court or public authority) acting on behalf of Beispielnetz Kabel GmbH; before paying, it is worth verifying the underlying August/September 2026 invoices and the claimed 12.10.2026 dunning directly with Beispielnetz Kabel GmbH, since the added Mahngebühr and Inkassovergütung are only owed if the underlying debt and the earlier dunning were themselves valid and properly issued.\",\"The letter refers to an earlier letter dated 02.11.2026 (Zeichen LS-9147-629) that was not provided, so its contents could not be checked against this one.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Inkassobüro Beispielrecht GmbH",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "IB-26-552019"
+        },
+        {
+          "label": "Kundennummer Gläubiger",
+          "value": "KD 7 118 205"
+        },
+        {
+          "label": "Zeichen (Vorbrief)",
+          "value": "LS-9147-629"
+        }
+      ],
+      "amounts": [
+        131.48
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding debt-collection total",
+          "quote": "Zahlen Sie den Gesamtbetrag spätestens am Mittwoch, 02.12.2026 auf unser Treuhandkonto.",
+          "computation": "The letter states a fixed calendar date for payment: Mittwoch, 02.12.2026. The sender is a private debt-collection company (Inkassobüro), not a German authority, so no statutory deemed-delivery rule applies; the date given is used directly. Verified that 2026-12-02 is indeed a Wednesday and not a public holiday in NRW, so no weekend/holiday shift applies. Due date = 2026-12-02 as stated in the letter.",
+          "due_date": "2026-12-02",
+          "confidence": "high",
+          "amount": 131.48
+        },
+        {
+          "kind": "task",
+          "title": "Dispute the claim with reasons, if contested",
+          "quote": "Wenn Sie die Forderung bestreiten, teilen Sie uns das bitte mit Begründung mit; wir klären den Sachverhalt dann mit unserer Auftraggeberin.",
+          "computation": "The letter invites the recipient to dispute the claim 'mit Begründung' but states no explicit deadline or period for doing so. In practice this should happen promptly, ideally before the stated payment date, to avoid further collection steps, but no firm date can be derived from the text.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a demand from a private debt-collection agency (not a court or public authority) acting on behalf of Beispielnetz Kabel GmbH; before paying, it is worth verifying the underlying August/September 2026 invoices and the claimed 12.10.2026 dunning directly with Beispielnetz Kabel GmbH, since the added Mahngebühr and Inkassovergütung are only owed if the underlying debt and the earlier dunning were themselves valid and properly issued.",
+        "The letter refers to an earlier letter dated 02.11.2026 (Zeichen LS-9147-629) that was not provided, so its contents could not be checked against this one."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 3637,
+      "cache_read_tokens": 24067,
+      "cache_creation_tokens": 5236,
+      "cost_usd": 0.062139400000000004,
+      "duration_ms": 39644,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE20 3705 0198 0005 5664 00"
+        },
+        "result": "{\"iban\":\"DE20 3705 0198 0005 5664 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005566400\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

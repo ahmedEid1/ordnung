@@ -1,0 +1,147 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"de93f08ddc04df539649cd89c99d40a53420a11648cd227e3397ab6f07440cc9\",\"mode\":\"text\",\"region\":\"NI\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "stress-D1-holdout4-fine_bussgeld-N2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Niedersachsen (NI), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docume",
+    "recorded_at": "2026-11-24T14:37:27+00:00",
+    "repeat": 1,
+    "commit": "3a21dfb8",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Stadt Musterwilhelmshaven – Bußgeldstelle\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"32.12-26/61107\"},{\"label\":\"Kennzeichen\",\"value\":\"WHV-FM 88\"},{\"label\":\"Aktenzeichen (früheres Schreiben vom 13.10.2026)\",\"value\":\"VZ-6195-527\"}],\"amounts\":[60,28.5,3.5,92],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"Er muss zwei Wochen nach der Zustellung bei der Stadt Musterwilhelmshaven – Bußgeldstelle vorliegen, schriftlich oder zur Niederschrift.\",\"computation\":\"The letter was formally served (Postzustellungsurkunde, § 182 ZPO); the scanned envelope shows 'zugest. am 23.11.2026' (Monday) as the actual delivery day, so this (not a deemed-delivery fiction) is the anchor. Under § 187 Abs. 1 BGB the day of delivery itself is not counted, so the two-week period starts on 2026-11-24. Under § 188 Abs. 2 BGB a period of weeks ends on the day of the last week that bears the same name as the day the period began, i.e. 2026-12-07 (Monday). 2026-12-07 is a normal working day in Niedersachsen (no public holiday), so no weekend/holiday shift applies (§ 31 Abs. 3 VwVfG / § 193 BGB analogy). The Einspruch must be in writing or recorded at the Bußgeldstelle by this date.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the fine, fee and delivery costs (total)\",\"quote\":\"Fällig wird der Betrag zwei Wochen, nachdem der Bescheid rechtskräftig geworden ist.\",\"computation\":\"Payment falls due two weeks after the Bescheid becomes rechtskräftig (final). It becomes final the day after the Einspruch period lapses unused (assuming no Einspruch is filed by 2026-12-07), i.e. on 2026-12-08. Counting the two-week payment period from the day after that date per § 187 Abs. 1 BGB (starting 2026-12-09) and ending per § 188 Abs. 2 BGB gives 2026-12-22 (Tuesday), which is a normal working day in Niedersachsen so no shift is needed. This date is contingent on no Einspruch being filed; if an Einspruch is lodged by 2026-12-07, the Bescheid does not become final on this schedule and the payment date given here no longer applies.\",\"due_date\":\"2026-12-22\",\"confidence\":\"medium\",\"amount\":92}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment due date (2026-12-22) is only valid if no Einspruch is filed; filing an Einspruch by 2026-12-07 would prevent the Bescheid from becoming rechtskräftig on the assumed schedule and change when (or whether) payment falls due.\",\"The sender's email address ends in '.example' (bussgeld@stadt-musterwilhelmshaven-bu.example), which is a placeholder/reserved domain and not a real top-level domain used by any genuine organisation — if this were a real letter, verify the sender's contact details and IBAN independently through the city's official website before paying, rather than relying on the letter alone.\",\"The IBAN (DE68 2825 0110 0002 6382 00) has a valid German checksum and bank code, but a valid IBAN does not prove the account belongs to the Stadt Musterwilhelmshaven Bußgeldstelle; confirm payee details before transferring money.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Stadt Musterwilhelmshaven – Bußgeldstelle",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "32.12-26/61107"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "WHV-FM 88"
+        },
+        {
+          "label": "Aktenzeichen (früheres Schreiben vom 13.10.2026)",
+          "value": "VZ-6195-527"
+        }
+      ],
+      "amounts": [
+        60,
+        28.5,
+        3.5,
+        92
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "Er muss zwei Wochen nach der Zustellung bei der Stadt Musterwilhelmshaven – Bußgeldstelle vorliegen, schriftlich oder zur Niederschrift.",
+          "computation": "The letter was formally served (Postzustellungsurkunde, § 182 ZPO); the scanned envelope shows 'zugest. am 23.11.2026' (Monday) as the actual delivery day, so this (not a deemed-delivery fiction) is the anchor. Under § 187 Abs. 1 BGB the day of delivery itself is not counted, so the two-week period starts on 2026-11-24. Under § 188 Abs. 2 BGB a period of weeks ends on the day of the last week that bears the same name as the day the period began, i.e. 2026-12-07 (Monday). 2026-12-07 is a normal working day in Niedersachsen (no public holiday), so no weekend/holiday shift applies (§ 31 Abs. 3 VwVfG / § 193 BGB analogy). The Einspruch must be in writing or recorded at the Bußgeldstelle by this date.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the fine, fee and delivery costs (total)",
+          "quote": "Fällig wird der Betrag zwei Wochen, nachdem der Bescheid rechtskräftig geworden ist.",
+          "computation": "Payment falls due two weeks after the Bescheid becomes rechtskräftig (final). It becomes final the day after the Einspruch period lapses unused (assuming no Einspruch is filed by 2026-12-07), i.e. on 2026-12-08. Counting the two-week payment period from the day after that date per § 187 Abs. 1 BGB (starting 2026-12-09) and ending per § 188 Abs. 2 BGB gives 2026-12-22 (Tuesday), which is a normal working day in Niedersachsen so no shift is needed. This date is contingent on no Einspruch being filed; if an Einspruch is lodged by 2026-12-07, the Bescheid does not become final on this schedule and the payment date given here no longer applies.",
+          "due_date": "2026-12-22",
+          "confidence": "medium",
+          "amount": 92
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment due date (2026-12-22) is only valid if no Einspruch is filed; filing an Einspruch by 2026-12-07 would prevent the Bescheid from becoming rechtskräftig on the assumed schedule and change when (or whether) payment falls due.",
+        "The sender's email address ends in '.example' (bussgeld@stadt-musterwilhelmshaven-bu.example), which is a placeholder/reserved domain and not a real top-level domain used by any genuine organisation — if this were a real letter, verify the sender's contact details and IBAN independently through the city's official website before paying, rather than relying on the letter alone.",
+        "The IBAN (DE68 2825 0110 0002 6382 00) has a valid German checksum and bank code, but a valid IBAN does not prove the account belongs to the Stadt Musterwilhelmshaven Bußgeldstelle; confirm payee details before transferring money."
+      ]
+    },
+    "usage": {
+      "input_tokens": 8,
+      "output_tokens": 5974,
+      "cache_read_tokens": 42636,
+      "cache_creation_tokens": 8644,
+      "cost_usd": 0.1028592,
+      "duration_ms": 62927,
+      "turns": 6
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "receipt",
+            "anchor_date": "2026-11-23",
+            "nature": "objection",
+            "delivery_rule": "none",
+            "legal_basis": "§ 182 ZPO (formal service, Zustellungsurkunde); Einspruchsfrist Bußgeldbescheid",
+            "text": "Er muss zwei Wochen nach der Zustellung bei der Stadt Musterwilhelmshaven – Bußgeldstelle vorliegen, schriftlich oder zur Niederschrift."
+          },
+          "document_date": "2026-11-20",
+          "received_date": "2026-11-23",
+          "sender_kind": "authority",
+          "sender_name": "Stadt Musterwilhelmshaven – Bußgeldstelle",
+          "region": "NI",
+          "recipient_region": "NI",
+          "remedy_type": "einspruch"
+        },
+        "result": "{\"due_date\":\"2026-12-07\",\"weekday\":\"Monday\",\"send_by\":\"2026-12-01\",\"summary\":\"Two weeks after delivery on Mon 23 Nov 2026 (as stated on the letter) is Mon 7 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Mon 23 Nov 2026\",\"date\":\"2026-11-23\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Mon 7 Dec 2026\",\"date\":\"2026-12-07\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Mon 7 Dec 2026 is a working day, so it stays\",\"date\":\"2026-12-07\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Tue 1 Dec 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-12-01\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-20\",\"received_date\":\"2026-11-23\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"holiday_calendar\":\"Niedersachsen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__german_holidays",
+        "input": {
+          "year": 2026,
+          "region": "NI"
+        },
+        "result": "{\"year\":2026,\"region\":\"NI\",\"calendar\":\"Niedersachsen\",\"holidays\":[{\"date\":\"2026-01-01\",\"weekday\":\"Thursday\",\"name\":\"Neujahr\",\"nationwide\":true},{\"date\":\"2026-04-03\",\"weekday\":\"Friday\",\"name\":\"Karfreitag\",\"nationwide\":true},{\"date\":\"2026-04-06\",\"weekday\":\"Monday\",\"name\":\"Ostermontag\",\"nationwide\":true},{\"date\":\"2026-05-01\",\"weekday\":\"Friday\",\"name\":\"Erster Mai\",\"nationwide\":true},{\"date\":\"2026-05-14\",\"weekday\":\"Thursday\",\"name\":\"Christi Himmelfahrt\",\"nationwide\":true},{\"date\":\"2026-05-25\",\"weekday\":\"Monday\",\"name\":\"Pfingstmontag\",\"nationwide\":true},{\"date\":\"2026-10-03\",\"weekday\":\"Saturday\",\"name\":\"Tag der Deutschen Einheit\",\"nationwide\":true},{\"date\":\"2026-10-31\",\"weekday\":\"Saturday\",\"name\":\"Reformationstag\",\"nationwide\":false},{\"date\":\"2026-12-25\",\"weekday\":\"Friday\",\"name\":\"Erster Weihnachtstag\",\"nationwide\":true},{\"date\":\"2026-12-26\",\"weekday\":\"Saturday\",\"name\":\"Zweiter Weihnachtstag\",\"nationwide\":true}],\"disclaimer\":\"Information, not legal advice: the public holidays in Ordnung's calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "explicit_date",
+            "anchor_date": "2026-12-08",
+            "nature": "payment",
+            "delivery_rule": "none",
+            "legal_basis": "Bescheid: \"Fällig wird der Betrag zwei Wochen, nachdem der Bescheid rechtskräftig geworden ist.\" Rechtskraft assumed on the day after the unused Einspruchsfrist (2026-12-07) expires, i.e. 2026-12-08, if no Einspruch is filed.",
+            "text": "Fällig wird der Betrag zwei Wochen, nachdem der Bescheid rechtskräftig geworden ist."
+          },
+          "sender_kind": "authority",
+          "sender_name": "Stadt Musterwilhelmshaven – Bußgeldstelle",
+          "region": "NI"
+        },
+        "result": "{\"due_date\":\"2026-12-22\",\"weekday\":\"Tuesday\",\"send_by\":\"2026-12-21\",\"summary\":\"Two weeks after Tue 8 Dec 2026 is Tue 22 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Tue 8 Dec 2026\",\"date\":\"2026-12-08\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Tue 22 Dec 2026\",\"date\":\"2026-12-22\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Tue 22 Dec 2026 is a working day, so it stays\",\"date\":\"2026-12-22\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Mon 21 Dec 2026 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2026-12-21\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2026-11-24\",\"holiday_calendar\":\"Niedersachsen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE68 2825 0110 0002 6382 00"
+        },
+        "result": "{\"iban\":\"DE68 2825 0110 0002 6382 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"28250110\"},\"account_number\":\"0002638200\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

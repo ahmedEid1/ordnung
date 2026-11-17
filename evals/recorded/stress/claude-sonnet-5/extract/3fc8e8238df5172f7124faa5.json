@@ -1,0 +1,187 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"71953cafa8b3ccab6c086afa7b6d9d34ae9b576a030432a6fbfaaf03480704b6\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "stress-D1-holdout4-dunning_fixed-K2"
+    ],
+    "prompt_head": "Today is 2026-11-24. The person lives in region NW (DE). Their name is (not given).\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n(none yet)\n\nThe document's text follows, page by page: a line `=== Page N ===` starts page N. Everything\nbetween the <untrusted_document> tags is data from the document, never in",
+    "recorded_at": "2026-11-24T14:30:09+00:00",
+    "repeat": 1,
+    "commit": "3a21dfb8",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"area\":\"money\",\"case_title\":\"Debt collection demand from Inkassobüro Beispielrecht GmbH (for Beispielnetz Kabel GmbH)\",\"kind\":\"dunning\",\"language\":\"de\",\"document_date\":\"2026-11-18\",\"recipient_name\":\"Johanna Beispielacker\",\"sender\":{\"name\":\"Inkassobüro Beispielrecht GmbH\",\"kind\":\"company\",\"address\":\"Paragraphenring 3, 48151 Mustermünster\",\"email\":\"fall@inkasso-beispielrecht.example\",\"phone\":\"0251 555 66 40\",\"website\":null,\"identifiers\":[{\"label\":\"Handelsregister\",\"value\":\"AG Mustermünster HRB 18 033\"}]},\"title\":\"Debt collection demand (Inkasso) for unpaid internet invoices – €131.48 total\",\"summary\":\"Inkassobüro Beispielrecht GmbH, acting for Beispielnetz Kabel GmbH, demands payment of €131.48 (unpaid August and September 2026 internet invoices plus a reminder fee and the collection agency's own fee) by 2 December 2026.\",\"explanation\":\"This is a payment demand from a debt collection agency (Inkassobüro) acting on behalf of your internet provider, Beispielnetz Kabel GmbH, over two unpaid invoices from August and September 2026. The total now claimed, €131.48, includes the original bills plus a reminder fee and the collector's own fee. Pay this amount to the account shown by the deadline shown to avoid further steps. If you believe you don't actually owe this money, write to the agency before the deadline explaining why, instead of paying; they say they will then check the matter with the provider. Since this isn't a court order, you are not legally required to pay immediately, but ignoring it may lead to further collection steps or a court procedure, so consider getting independent advice if you want to dispute it.\",\"urgency\":\"high\",\"tax_relevant\":false,\"tax_note\":null,\"high_stakes_kind\":null,\"remedy\":{\"type\":\"none\",\"addressee\":null,\"period_text\":null,\"form_text\":null,\"quote\":null},\"contract\":null,\"change\":null,\"payment\":{\"iban\":\"DE20370501980005566400\",\"payee\":\"Inkassobüro Beispielrecht GmbH\",\"reference\":null,\"iban_valid\":null},\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"IB-26-552019\"},{\"label\":\"Kundennummer Gläubiger\",\"value\":\"KD 7 118 205\"},{\"label\":\"Zeichen des Vorschreibens\",\"value\":\"LS-9147-629\"}],\"key_facts\":[{\"label\":\"Total amount due (Summe offen)\",\"value\":\"131,48 EUR\",\"quote\":\"Summe offen   131,48\"},{\"label\":\"Main claim (Hauptforderung)\",\"value\":\"79,98 EUR\",\"quote\":\"Hauptforderung: Rechnungen August und September 2026   79,98\"},{\"label\":\"Reminder fee (Mahngebühr der Gläubigerin)\",\"value\":\"2,50 EUR\",\"quote\":\"Mahngebühr der Gläubigerin   2,50\"},{\"label\":\"Collection fee (Inkassovergütung)\",\"value\":\"49,00 EUR\",\"quote\":\"Inkassovergütung (nach RVG begrenzt)   49,00\"},{\"label\":\"Payment due date\",\"value\":\"02.12.2026\",\"quote\":\"Zahlen Sie den Gesamtbetrag spätestens am Mittwoch, 02.12.2026 auf unser Treuhandkonto.\"},{\"label\":\"Previous reminder date (gemahnt am)\",\"value\":\"12.10.2026\",\"quote\":\"Sie wurden am 12.10.2026 gemahnt.\"},{\"label\":\"Previous letter date\",\"value\":\"02.11.2026\",\"quote\":\"Dieses Schreiben knüpft an unseren Brief vom 02.11.2026 unter dem Zeichen LS-9147-629 an.\"}],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay the total amount claimed by the collection agency\",\"action\":\"Transfer the total amount due to the Treuhandkonto shown on the letter by the deadline.\",\"consequence\":null,\"amount\":131.48,\"currency\":\"EUR\",\"direction\":\"out\",\"location\":null,\"priority\":\"high\",\"quote\":\"Zahlen Sie den Gesamtbetrag spätestens am Mittwoch, 02.12.2026 auf unser Treuhandkonto.\",\"date\":{\"type\":\"fixed\",\"date\":\"2026-12-02\",\"text\":\"spätestens am Mittwoch, 02.12.2026\",\"nature\":\"payment\",\"anchor\":null,\"anchor_date\":null,\"amount\":null,\"unit\":null,\"time\":null,\"delivery_rule\":\"none\",\"shift_rule\":\"auto\",\"legal_basis\":null},\"recurrence\":null},{\"kind\":\"task\",\"title\":\"Dispute the claim if you disagree\",\"action\":\"If you believe you don't owe this money, write to the agency stating your reasons for disputing the claim.\",\"consequence\":\"The agency says it will check the matter with the original creditor (Beispielnetz Kabel GmbH) before proceeding further.\",\"amount\":null,\"currency\":null,\"direction\":null,\"location\":null,\"priority\":\"normal\",\"quote\":\"Wenn Sie die Forderung bestreiten, teilen Sie uns das bitte mit Begründung mit; wir klären den Sachverhalt dann mit unserer Auftraggeberin.\",\"date\":{\"type\":\"none\",\"date\":null,\"text\":\"kein Datum genannt\",\"nature\":\"declaration\",\"anchor\":null,\"anchor_date\":null,\"amount\":null,\"unit\":null,\"time\":null,\"delivery_rule\":\"none\",\"shift_rule\":\"auto\",\"legal_basis\":null},\"recurrence\":null}],\"warnings\":[]}",
+    "data": {
+      "area": "money",
+      "case_title": "Debt collection demand from Inkassobüro Beispielrecht GmbH (for Beispielnetz Kabel GmbH)",
+      "kind": "dunning",
+      "language": "de",
+      "document_date": "2026-11-18",
+      "recipient_name": "Johanna Beispielacker",
+      "sender": {
+        "name": "Inkassobüro Beispielrecht GmbH",
+        "kind": "company",
+        "address": "Paragraphenring 3, 48151 Mustermünster",
+        "email": "fall@inkasso-beispielrecht.example",
+        "phone": "0251 555 66 40",
+        "website": null,
+        "identifiers": [
+          {
+            "label": "Handelsregister",
+            "value": "AG Mustermünster HRB 18 033"
+          }
+        ]
+      },
+      "title": "Debt collection demand (Inkasso) for unpaid internet invoices – €131.48 total",
+      "summary": "Inkassobüro Beispielrecht GmbH, acting for Beispielnetz Kabel GmbH, demands payment of €131.48 (unpaid August and September 2026 internet invoices plus a reminder fee and the collection agency's own fee) by 2 December 2026.",
+      "explanation": "This is a payment demand from a debt collection agency (Inkassobüro) acting on behalf of your internet provider, Beispielnetz Kabel GmbH, over two unpaid invoices from August and September 2026. The total now claimed, €131.48, includes the original bills plus a reminder fee and the collector's own fee. Pay this amount to the account shown by the deadline shown to avoid further steps. If you believe you don't actually owe this money, write to the agency before the deadline explaining why, instead of paying; they say they will then check the matter with the provider. Since this isn't a court order, you are not legally required to pay immediately, but ignoring it may lead to further collection steps or a court procedure, so consider getting independent advice if you want to dispute it.",
+      "urgency": "high",
+      "tax_relevant": false,
+      "tax_note": null,
+      "high_stakes_kind": null,
+      "remedy": {
+        "type": "none",
+        "addressee": null,
+        "period_text": null,
+        "form_text": null,
+        "quote": null
+      },
+      "contract": null,
+      "change": null,
+      "payment": {
+        "iban": "DE20370501980005566400",
+        "payee": "Inkassobüro Beispielrecht GmbH",
+        "reference": null,
+        "iban_valid": null
+      },
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "IB-26-552019"
+        },
+        {
+          "label": "Kundennummer Gläubiger",
+          "value": "KD 7 118 205"
+        },
+        {
+          "label": "Zeichen des Vorschreibens",
+          "value": "LS-9147-629"
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Total amount due (Summe offen)",
+          "value": "131,48 EUR",
+          "quote": "Summe offen   131,48"
+        },
+        {
+          "label": "Main claim (Hauptforderung)",
+          "value": "79,98 EUR",
+          "quote": "Hauptforderung: Rechnungen August und September 2026   79,98"
+        },
+        {
+          "label": "Reminder fee (Mahngebühr der Gläubigerin)",
+          "value": "2,50 EUR",
+          "quote": "Mahngebühr der Gläubigerin   2,50"
+        },
+        {
+          "label": "Collection fee (Inkassovergütung)",
+          "value": "49,00 EUR",
+          "quote": "Inkassovergütung (nach RVG begrenzt)   49,00"
+        },
+        {
+          "label": "Payment due date",
+          "value": "02.12.2026",
+          "quote": "Zahlen Sie den Gesamtbetrag spätestens am Mittwoch, 02.12.2026 auf unser Treuhandkonto."
+        },
+        {
+          "label": "Previous reminder date (gemahnt am)",
+          "value": "12.10.2026",
+          "quote": "Sie wurden am 12.10.2026 gemahnt."
+        },
+        {
+          "label": "Previous letter date",
+          "value": "02.11.2026",
+          "quote": "Dieses Schreiben knüpft an unseren Brief vom 02.11.2026 unter dem Zeichen LS-9147-629 an."
+        }
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay the total amount claimed by the collection agency",
+          "action": "Transfer the total amount due to the Treuhandkonto shown on the letter by the deadline.",
+          "consequence": null,
+          "amount": 131.48,
+          "currency": "EUR",
+          "direction": "out",
+          "location": null,
+          "priority": "high",
+          "quote": "Zahlen Sie den Gesamtbetrag spätestens am Mittwoch, 02.12.2026 auf unser Treuhandkonto.",
+          "date": {
+            "type": "fixed",
+            "date": "2026-12-02",
+            "text": "spätestens am Mittwoch, 02.12.2026",
+            "nature": "payment",
+            "anchor": null,
+            "anchor_date": null,
+            "amount": null,
+            "unit": null,
+            "time": null,
+            "delivery_rule": "none",
+            "shift_rule": "auto",
+            "legal_basis": null
+          },
+          "recurrence": null
+        },
+        {
+          "kind": "task",
+          "title": "Dispute the claim if you disagree",
+          "action": "If you believe you don't owe this money, write to the agency stating your reasons for disputing the claim.",
+          "consequence": "The agency says it will check the matter with the original creditor (Beispielnetz Kabel GmbH) before proceeding further.",
+          "amount": null,
+          "currency": null,
+          "direction": null,
+          "location": null,
+          "priority": "normal",
+          "quote": "Wenn Sie die Forderung bestreiten, teilen Sie uns das bitte mit Begründung mit; wir klären den Sachverhalt dann mit unserer Auftraggeberin.",
+          "date": {
+            "type": "none",
+            "date": null,
+            "text": "kein Datum genannt",
+            "nature": "declaration",
+            "anchor": null,
+            "anchor_date": null,
+            "amount": null,
+            "unit": null,
+            "time": null,
+            "delivery_rule": "none",
+            "shift_rule": "auto",
+            "legal_basis": null
+          },
+          "recurrence": null
+        }
+      ],
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 9671,
+      "cache_read_tokens": 19551,
+      "cache_creation_tokens": 9095,
+      "cost_usd": 0.13700820000000002,
+      "duration_ms": 89916,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

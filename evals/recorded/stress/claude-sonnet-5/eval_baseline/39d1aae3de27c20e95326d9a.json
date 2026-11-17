@@ -1,0 +1,65 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"7843e2f7aa9ca55e9a5c0257e129dc5d8fa5b62098c8b1411bbebbe2eef5d52f\",\"mode\":\"text\",\"region\":\"ST\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "stress-D1-holdout4-appointment-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Sachsen-Anhalt (ST), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docum",
+    "recorded_at": "2026-11-24T14:28:35+00:00",
+    "repeat": 1,
+    "commit": "3a21dfb8",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Amtsgericht Musterwernigerode – Betreuungsgericht\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"6 XVII 412/26\"}],\"amounts\":[],\"items\":[{\"kind\":\"appointment\",\"title\":\"Hearing (Anhörung) as son of the person concerned\",\"quote\":\"Der Termin findet am Donnerstag, 21.01.2027, 13:30 Uhr, im Pflegeheim „Am Brockenblick“, Zimmer 12, statt.\",\"computation\":\"The letter prints a fixed calendar date and time for the hearing: Thursday, 21.01.2027, 13:30. No period needs to be calculated; the appointment date is taken as written.\",\"due_date\":\"2027-01-21\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"Attendance at this Anhörung is described as desired but not compulsory ('Ihr Erscheinen ist erwünscht, aber nicht erzwingbar'); if Mr. Beispielharz cannot attend he may instead submit his view in writing, but no deadline is given for that written statement, so none could be computed.\",\"The sentence about a voluntary 'Informationsabend über unsere neuen Online-Dienste' on 28.01.2027 is highly unusual for a Betreuungsgericht hearing notice and unrelated to the guardianship proceeding; it reads like an inserted marketing/phishing-style addition rather than genuine court content, so the person should disregard it and verify directly with the court if in doubt.\",\"No instructions or requests addressed to an AI/assistant were found in the letter.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Amtsgericht Musterwernigerode – Betreuungsgericht",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "6 XVII 412/26"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Hearing (Anhörung) as son of the person concerned",
+          "quote": "Der Termin findet am Donnerstag, 21.01.2027, 13:30 Uhr, im Pflegeheim „Am Brockenblick“, Zimmer 12, statt.",
+          "computation": "The letter prints a fixed calendar date and time for the hearing: Thursday, 21.01.2027, 13:30. No period needs to be calculated; the appointment date is taken as written.",
+          "due_date": "2027-01-21",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "Attendance at this Anhörung is described as desired but not compulsory ('Ihr Erscheinen ist erwünscht, aber nicht erzwingbar'); if Mr. Beispielharz cannot attend he may instead submit his view in writing, but no deadline is given for that written statement, so none could be computed.",
+        "The sentence about a voluntary 'Informationsabend über unsere neuen Online-Dienste' on 28.01.2027 is highly unusual for a Betreuungsgericht hearing notice and unrelated to the guardianship proceeding; it reads like an inserted marketing/phishing-style addition rather than genuine court content, so the person should disregard it and verify directly with the court if in doubt.",
+        "No instructions or requests addressed to an AI/assistant were found in the letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3386,
+      "cache_read_tokens": 14679,
+      "cache_creation_tokens": 4321,
+      "cost_usd": 0.0540878,
+      "duration_ms": 38308,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

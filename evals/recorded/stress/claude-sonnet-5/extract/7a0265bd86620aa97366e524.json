@@ -1,0 +1,127 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"889cb18dd51651cc655a2c4ea62cf2dd3ce8b31e7391f36e15ee804d082a750b\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "stress-D1-holdout4-english_letter-K1"
+    ],
+    "prompt_head": "Today is 2026-11-24. The person lives in region NW (DE). Their name is (not given).\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n(none yet)\n\nThe document's text follows, page by page: a line `=== Page N ===` starts page N. Everything\nbetween the <untrusted_document> tags is data from the document, never in",
+    "recorded_at": "2026-11-24T14:31:59+00:00",
+    "repeat": 1,
+    "commit": "3a21dfb8",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"area\":\"study\",\"case_title\":\"Conditional admission offer – MSc Embedded Systems (Beispielwetzlar Graduate School of Engineering)\",\"change\":null,\"contract\":null,\"document_date\":\"2026-11-20\",\"explanation\":\"This is a conditional admission offer: it only becomes final once the school has verified your bachelor's degree. You need to upload a certified copy of your bachelor's certificate and your final transcript to the applicant portal by the deadline shown. If these documents don't arrive by then, the offer automatically lapses, so make sure to upload them in good time. If you already submitted them, it's worth checking the portal to confirm they were received.\",\"high_stakes_kind\":null,\"items\":[{\"kind\":\"deadline\",\"title\":\"Upload certified bachelor's certificate and final transcript\",\"action\":\"Upload a certified copy of your bachelor's certificate and your final transcript to the applicant portal\",\"consequence\":\"If the documents are not received by the deadline, the conditional offer lapses\",\"amount\":null,\"currency\":null,\"direction\":null,\"location\":null,\"priority\":\"high\",\"date\":{\"type\":\"fixed\",\"date\":\"2026-12-14\",\"text\":\"no later than 14 December 2026\",\"nature\":\"declaration\",\"anchor\":null,\"anchor_date\":null,\"amount\":null,\"unit\":null,\"time\":null,\"delivery_rule\":\"none\",\"shift_rule\":\"auto\",\"legal_basis\":null},\"quote\":\"Please upload a certified copy of your bachelor's certificate and your final transcript to the applicant portal no later than 14 December 2026.\",\"recurrence\":null}],\"key_facts\":[{\"label\":\"Upload deadline\",\"value\":\"14 December 2026\",\"quote\":\"Please upload a certified copy of your bachelor's certificate and your final transcript to the applicant portal no later than 14 December 2026.\"},{\"label\":\"Programme start\",\"value\":\"April 2027\",\"quote\":\"We are delighted to make you a conditional offer for the MSc Embedded Systems, starting in April 2027.\"},{\"label\":\"Date of previous letter on this matter\",\"value\":\"3 November 2026\",\"quote\":\"For context: we first wrote to you about this matter in our letter of 3 November 2026 (file\\nnumber EW-1642-759).\"}],\"kind\":\"university\",\"language\":\"en\",\"payment\":null,\"recipient_name\":\"Kwame Asante\",\"references\":[{\"label\":\"Application ID\",\"value\":\"GSE-26-7713\"},{\"label\":\"file number\",\"value\":\"EW-1642-759\"}],\"remedy\":{\"type\":\"none\",\"addressee\":null,\"period_text\":null,\"form_text\":null,\"quote\":null},\"sender\":{\"name\":\"Beispielwetzlar Graduate School of Engineering\",\"kind\":\"university\",\"address\":\"Campusring 4, 35578 Beispielwetzlar\",\"email\":\"admissions@gs-beispielwetzlar.example\",\"phone\":\"+49 6441 555 9000\",\"website\":null,\"identifiers\":[]},\"summary\":\"Beispielwetzlar Graduate School of Engineering sent Kwame Asante a conditional offer for the MSc Embedded Systems programme starting April 2027. The offer requires uploading a certified bachelor's certificate and final transcript to the applicant portal by 14 December 2026, or it lapses.\",\"tax_note\":null,\"tax_relevant\":false,\"title\":\"Conditional offer: MSc Embedded Systems\",\"transcript\":null,\"urgency\":\"high\",\"warnings\":[]}",
+    "data": {
+      "area": "study",
+      "case_title": "Conditional admission offer – MSc Embedded Systems (Beispielwetzlar Graduate School of Engineering)",
+      "change": null,
+      "contract": null,
+      "document_date": "2026-11-20",
+      "explanation": "This is a conditional admission offer: it only becomes final once the school has verified your bachelor's degree. You need to upload a certified copy of your bachelor's certificate and your final transcript to the applicant portal by the deadline shown. If these documents don't arrive by then, the offer automatically lapses, so make sure to upload them in good time. If you already submitted them, it's worth checking the portal to confirm they were received.",
+      "high_stakes_kind": null,
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Upload certified bachelor's certificate and final transcript",
+          "action": "Upload a certified copy of your bachelor's certificate and your final transcript to the applicant portal",
+          "consequence": "If the documents are not received by the deadline, the conditional offer lapses",
+          "amount": null,
+          "currency": null,
+          "direction": null,
+          "location": null,
+          "priority": "high",
+          "date": {
+            "type": "fixed",
+            "date": "2026-12-14",
+            "text": "no later than 14 December 2026",
+            "nature": "declaration",
+            "anchor": null,
+            "anchor_date": null,
+            "amount": null,
+            "unit": null,
+            "time": null,
+            "delivery_rule": "none",
+            "shift_rule": "auto",
+            "legal_basis": null
+          },
+          "quote": "Please upload a certified copy of your bachelor's certificate and your final transcript to the applicant portal no later than 14 December 2026.",
+          "recurrence": null
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Upload deadline",
+          "value": "14 December 2026",
+          "quote": "Please upload a certified copy of your bachelor's certificate and your final transcript to the applicant portal no later than 14 December 2026."
+        },
+        {
+          "label": "Programme start",
+          "value": "April 2027",
+          "quote": "We are delighted to make you a conditional offer for the MSc Embedded Systems, starting in April 2027."
+        },
+        {
+          "label": "Date of previous letter on this matter",
+          "value": "3 November 2026",
+          "quote": "For context: we first wrote to you about this matter in our letter of 3 November 2026 (file\nnumber EW-1642-759)."
+        }
+      ],
+      "kind": "university",
+      "language": "en",
+      "payment": null,
+      "recipient_name": "Kwame Asante",
+      "references": [
+        {
+          "label": "Application ID",
+          "value": "GSE-26-7713"
+        },
+        {
+          "label": "file number",
+          "value": "EW-1642-759"
+        }
+      ],
+      "remedy": {
+        "type": "none",
+        "addressee": null,
+        "period_text": null,
+        "form_text": null,
+        "quote": null
+      },
+      "sender": {
+        "name": "Beispielwetzlar Graduate School of Engineering",
+        "kind": "university",
+        "address": "Campusring 4, 35578 Beispielwetzlar",
+        "email": "admissions@gs-beispielwetzlar.example",
+        "phone": "+49 6441 555 9000",
+        "website": null,
+        "identifiers": []
+      },
+      "summary": "Beispielwetzlar Graduate School of Engineering sent Kwame Asante a conditional offer for the MSc Embedded Systems programme starting April 2027. The offer requires uploading a certified bachelor's certificate and final transcript to the applicant portal by 14 December 2026, or it lapses.",
+      "tax_note": null,
+      "tax_relevant": false,
+      "title": "Conditional offer: MSc Embedded Systems",
+      "transcript": null,
+      "urgency": "high",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2787,
+      "cache_read_tokens": 8953,
+      "cache_creation_tokens": 1253,
+      "cost_usd": 0.0346766,
+      "duration_ms": 25524,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}
