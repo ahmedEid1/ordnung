@@ -1,0 +1,371 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"99ef00b98b6fd5502888ae20ae978adbae84ea70eb1fc4ab660a1a4790b44772\",\"question\":\"List every dentist check-up date I have across the whole of 2027.\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_xa0f5gvpe0w2",
+      "doc_nba3k0ka85q0",
+      "doc_1dgp8tp2ga0c",
+      "doc_q6fqvndrg5rr",
+      "doc_tszxajp80vd5",
+      "doc_9mewc0kcj28v",
+      "doc_pa2w9q3gxzqk"
+    ],
+    "prompt_head": "The person asks:\nList every dentist check-up date I have across the whole of 2027.\n",
+    "recorded_at": "2026-11-24T08:19:49+00:00",
+    "repeat": 1,
+    "commit": "25633808",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "Only one dentist check-up date is actually stored in your records for 2027:\n\n- **Fri 8 Jan 2027, 09:15** – Dental checkup and cleaning (PZR) at Zahnarztpraxis Dr. Anna Beispiel [item:itm_sncxha9wbsxc]\n\nThis appointment repeats every 3 months, with the next one due Thu 8 Apr 2027 [item:itm_sncxha9wbsxc] — but Ordnung only keeps the next occurrence on record at a time, so later 2027 dates (e.g. around July, October) aren't stored yet and will appear once that April appointment is confirmed/updated.\n\nNo other dentist-related appointments for 2027 were found in your records.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 1031,
+      "cache_read_tokens": 21623,
+      "cache_creation_tokens": 4132,
+      "cost_usd": 0.031174600000000004,
+      "duration_ms": 15403,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "dentist"
+      },
+      "tool_use_id": "toolu_013vyq7mDyaDEuLHmkhEDGbe"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Zahnarzt"
+      },
+      "tool_use_id": "toolu_01R97bBgxcqpSh3recSrtRbh"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__timeline",
+      "input": {
+        "from_date": "2027-01-01",
+        "to_date": "2027-12-31"
+      },
+      "tool_use_id": "toolu_0161YnW14NtxiQbbxeWnFaUi"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_013vyq7mDyaDEuLHmkhEDGbe"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_xa0f5gvpe0w2\",\"kind\":\"appointment\",\"party_id\":\"pty_m3rttkfq94qn\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_xa0f5gvpe0w2\":{\"title\":\"Dental checkup and cleaning appointment\",\"snippet\":\"…0123 334455 zahnarzt-beispiel.example Ihre nächsten Termine Tag | Datum | Uhrzeit | Behandlung Do 08.10.2026…\"},\"pty_m3rttkfq94qn\":{\"name\":\"Zahnarztpraxis Dr. Anna Beispiel\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01R97bBgxcqpSh3recSrtRbh"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-11-24\",\"entries\":[{\"date\":\"2027-01-08\",\"time\":\"09:15\",\"type\":\"appointment\",\"status\":\"open\",\"ref_type\":\"item\",\"id\":\"itm_sncxha9wbsxc\",\"repeats\":\"every 3 months\",\"following_due_date\":\"2027-04-08\"},{\"date\":\"2027-01-15\",\"type\":\"payment\",\"status\":\"open\",\"ref_type\":\"item\",\"id\":\"itm_85xesrap412m\",\"repeats\":\"every 6 months on the 15th\",\"following_due_date\":\"2027-07-15\",\"amount\":312.4,\"currency\":\"EUR\"},{\"date\":\"2027-02-10\",\"type\":\"expiry\",\"status\":\"open\",\"ref_type\":\"item\",\"id\":\"itm_g321eme013j2\"},{\"date\":\"2027-02-28\",\"type\":\"deadline\",\"status\":\"open\",\"ref_type\":\"item\",\"id\":\"itm_kn5zf3bdwew8\"},{\"date\":\"2027-03-31\",\"type\":\"contract\",\"status\":\"active\",\"ref_type\":\"contract\",\"id\":\"ctr_jgb50bejm6jd\"},{\"date\":\"2027-08-25\",\"type\":\"contract\",\"status\":\"active\",\"ref_type\":\"contract\",\"id\":\"ctr_w97tm6xhn7zw\"},{\"date\":\"2027-08-31\",\"type\":\"contract\",\"status\":\"active\",\"ref_type\":\"contract\",\"id\":\"ctr_w97tm6xhn7zw\"},{\"date\":\"2027-09-10\",\"type\":\"deadline\",\"status\":\"open\",\"ref_type\":\"item\",\"id\":\"itm_rc1nagh2qjnc\"},{\"date\":\"2027-11-07\",\"type\":\"appointment\",\"status\":\"open\",\"ref_type\":\"item\",\"id\":\"itm_espa58t15ncg\",\"repeats\":\"every year\",\"following_due_date\":\"2028-11-07\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_sncxha9wbsxc\":{\"titles\":[\"Dental checkup and cleaning (PZR)\"],\"subtitles\":[\"Arrive 10 minutes early and bring your health insurance card (Gesundheitskarte)\"],\"party\":\"Zahnarztpraxis Dr. Anna Beispiel\"},\"itm_85xesrap412m\":{\"titles\":[\"Pay the semester fee (Semesterbeitrag) for summer semester 2027\"],\"subtitles\":[\"Transfer by Thu 14 Jan 2027\"],\"party\":\"Hochschule Musterstadt\"},\"itm_g321eme013j2\":{\"titles\":[\"Passport expires\"],\"subtitles\":[\"Apply for a passport renewal before it expires\"],\"party\":\"Ministry of Interior\"},\"itm_kn5zf3bdwew8\":{\"titles\":[\"Cancel any separate Deutschlandticket subscription\"],\"subtitles\":[\"Send by Mon 22 Feb 2027\"],\"party\":\"Hochschule Musterstadt\"},\"ctr_jgb50bejm6jd\":{\"titles\":[\"Befristeter Arbeitsvertrag für Werkstudierende: term ends\"],\"party\":\"Muster Tech GmbH\"},\"ctr_w97tm6xhn7zw\":{\"titles\":[\"Send the cancellation of Privat-Haftpflichtversicherung\",\"Cancellation of Privat-Haftpflichtversicherung must arrive\"],\"party\":\"Muster Versicherung AG\"},\"itm_rc1nagh2qjnc\":{\"titles\":[\"Raise objections to the 2025 cost statement, if any\"],\"subtitles\":[\"Send by Mon 6 Sep 2027\"],\"party\":\"Wohnbau Musterstadt eG\"},\"itm_espa58t15ncg\":{\"titles\":[\"Attend Autumn Meeting in Berlin\"],\"subtitles\":[\"Attend the Autumn Meeting for scholars in Berlin; wait for the separate invitation with the programme.\"],\"party\":\"Global Talent Scholarship Foundation\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_0161YnW14NtxiQbbxeWnFaUi"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "kind": "appointment",
+        "status": "all",
+        "from_date": "2027-01-01",
+        "to_date": "2027-12-31"
+      },
+      "tool_use_id": "toolu_01UJbXoyDXDzhKd5uPHWMC2R"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-11-24\",\"items\":[{\"id\":\"itm_sncxha9wbsxc\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2027-01-08\",\"due_time\":\"09:15\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_m3rttkfq94qn\",\"doc_id\":\"doc_xa0f5gvpe0w2\",\"repeats\":\"every 3 months\",\"following_due_date\":\"2027-04-08\"},{\"id\":\"itm_espa58t15ncg\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2027-11-07\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\",\"repeats\":\"every year\",\"following_due_date\":\"2028-11-07\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_sncxha9wbsxc\":{\"title\":\"Dental checkup and cleaning (PZR)\",\"action\":\"Arrive 10 minutes early and bring your health insurance card (Gesundheitskarte)\",\"consequence\":\"Cancel at least 24 hours in advance if you cannot attend\",\"location\":\"Lindenallee 8, 12345 Musterstadt\"},\"pty_m3rttkfq94qn\":{\"name\":\"Zahnarztpraxis Dr. Anna Beispiel\"},\"itm_espa58t15ncg\":{\"title\":\"Attend Autumn Meeting in Berlin\",\"action\":\"Attend the Autumn Meeting for scholars in Berlin; wait for the separate invitation with the programme.\",\"location\":\"Berlin\"},\"pty_efmwq4xym8cm\":{\"name\":\"Global Talent Scholarship Foundation\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01UJbXoyDXDzhKd5uPHWMC2R"
+    },
+    {
+      "type": "text",
+      "text": "Only"
+    },
+    {
+      "type": "text",
+      "text": " one d"
+    },
+    {
+      "type": "text",
+      "text": "ent"
+    },
+    {
+      "type": "text",
+      "text": "ist check"
+    },
+    {
+      "type": "text",
+      "text": "-up date"
+    },
+    {
+      "type": "text",
+      "text": " is actually st"
+    },
+    {
+      "type": "text",
+      "text": "ored in your records"
+    },
+    {
+      "type": "text",
+      "text": " for 2027"
+    },
+    {
+      "type": "text",
+      "text": ":\n\n- **F"
+    },
+    {
+      "type": "text",
+      "text": "ri "
+    },
+    {
+      "type": "text",
+      "text": "8 Jan 2027"
+    },
+    {
+      "type": "text",
+      "text": ", 09:15"
+    },
+    {
+      "type": "text",
+      "text": "** – Dental"
+    },
+    {
+      "type": "text",
+      "text": " chec"
+    },
+    {
+      "type": "text",
+      "text": "kup and c"
+    },
+    {
+      "type": "text",
+      "text": "leaning (PZ"
+    },
+    {
+      "type": "text",
+      "text": "R"
+    },
+    {
+      "type": "text",
+      "text": ") at Z"
+    },
+    {
+      "type": "text",
+      "text": "ahnarztpraxis"
+    },
+    {
+      "type": "text",
+      "text": " Dr. Anna"
+    },
+    {
+      "type": "text",
+      "text": " Beispiel [item"
+    },
+    {
+      "type": "text",
+      "text": ":it"
+    },
+    {
+      "type": "text",
+      "text": "m_snc"
+    },
+    {
+      "type": "text",
+      "text": "x"
+    },
+    {
+      "type": "text",
+      "text": "ha"
+    },
+    {
+      "type": "text",
+      "text": "9"
+    },
+    {
+      "type": "text",
+      "text": "w"
+    },
+    {
+      "type": "text",
+      "text": "b"
+    },
+    {
+      "type": "text",
+      "text": "s"
+    },
+    {
+      "type": "text",
+      "text": "x"
+    },
+    {
+      "type": "text",
+      "text": "c"
+    },
+    {
+      "type": "text",
+      "text": "]"
+    },
+    {
+      "type": "text",
+      "text": "\n\nThis appointment rep"
+    },
+    {
+      "type": "text",
+      "text": "eats every 3"
+    },
+    {
+      "type": "text",
+      "text": " months, with"
+    },
+    {
+      "type": "text",
+      "text": " the"
+    },
+    {
+      "type": "text",
+      "text": " next one"
+    },
+    {
+      "type": "text",
+      "text": " due"
+    },
+    {
+      "type": "text",
+      "text": " Th"
+    },
+    {
+      "type": "text",
+      "text": "u 8 Apr "
+    },
+    {
+      "type": "text",
+      "text": "2027 [item:itm"
+    },
+    {
+      "type": "text",
+      "text": "_sncxha9wb"
+    },
+    {
+      "type": "text",
+      "text": "sxc] — but "
+    },
+    {
+      "type": "text",
+      "text": "Ordnung only ke"
+    },
+    {
+      "type": "text",
+      "text": "eps the next occurrence"
+    },
+    {
+      "type": "text",
+      "text": " on"
+    },
+    {
+      "type": "text",
+      "text": " record at"
+    },
+    {
+      "type": "text",
+      "text": " a time, so later"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "2027 dates (e."
+    },
+    {
+      "type": "text",
+      "text": "g. around"
+    },
+    {
+      "type": "text",
+      "text": " July, October) aren't st"
+    },
+    {
+      "type": "text",
+      "text": "ored yet and"
+    },
+    {
+      "type": "text",
+      "text": " will appear once that"
+    },
+    {
+      "type": "text",
+      "text": " April"
+    },
+    {
+      "type": "text",
+      "text": " app"
+    },
+    {
+      "type": "text",
+      "text": "ointment is confirmed/"
+    },
+    {
+      "type": "text",
+      "text": "upd"
+    },
+    {
+      "type": "text",
+      "text": "ated.\n\nNo other d"
+    },
+    {
+      "type": "text",
+      "text": "entist-"
+    },
+    {
+      "type": "text",
+      "text": "related appointments for"
+    },
+    {
+      "type": "text",
+      "text": " 2027 were found in your"
+    },
+    {
+      "type": "text",
+      "text": " records."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Only one dentist check-up date is actually stored in your records for 2027:\n\n- **Fri 8 Jan 2027, 09:15** – Dental checkup and cleaning (PZR) at Zahnarztpraxis Dr. Anna Beispiel [item:itm_sncxha9wbsxc]\n\nThis appointment repeats every 3 months, with the next one due Thu 8 Apr 2027 [item:itm_sncxha9wbsxc] — but Ordnung only keeps the next occurrence on record at a time, so later 2027 dates (e.g. around July, October) aren't stored yet and will appear once that April appointment is confirmed/updated.\n\nNo other dentist-related appointments for 2027 were found in your records.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 1031,
+          "cache_read_tokens": 21623,
+          "cache_creation_tokens": 4132,
+          "cost_usd": 0.031174600000000004,
+          "duration_ms": 15403,
+          "turns": 5
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

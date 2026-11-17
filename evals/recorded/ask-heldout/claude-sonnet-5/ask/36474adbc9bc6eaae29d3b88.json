@@ -1,0 +1,431 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"99ef00b98b6fd5502888ae20ae978adbae84ea70eb1fc4ab660a1a4790b44772\",\"question\":\"Wann habe ich zwischen Januar und Ende Juni 2027 meine Kontrolltermine beim Zahnarzt?\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_xa0f5gvpe0w2",
+      "doc_nba3k0ka85q0",
+      "doc_1dgp8tp2ga0c",
+      "doc_q6fqvndrg5rr"
+    ],
+    "prompt_head": "The person asks:\nWann habe ich zwischen Januar und Ende Juni 2027 meine Kontrolltermine beim Zahnarzt?\n",
+    "recorded_at": "2026-11-24T08:19:37+00:00",
+    "repeat": 1,
+    "commit": "25633808",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "In Ihren Unterlagen ist für diesen Zeitraum ein fest eingetragener Kontrolltermin gespeichert:\n\n- **Fr, 08.01.2027, 09:15 Uhr** – Zahnkontrolle und Prophylaxe (PZR) bei Zahnarztpraxis Dr. Anna Beispiel [item:itm_sncxha9wbsxc]\n\nDieser Termin wiederholt sich alle drei Monate; der folgende Termin wäre laut Ordnung am **08.04.2027** [item:itm_sncxha9wbsxc] – also ebenfalls noch innerhalb Ihres Zeitraums bis Ende Juni 2027. Ein eigener Eintrag für diesen Folgetermin ist aber noch nicht als separates To-do angelegt.\n\nWeitere Zahnarzttermine zwischen Januar und Juni 2027 sind in Ihren Unterlagen nicht gespeichert.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 796,
+      "cache_read_tokens": 21029,
+      "cache_creation_tokens": 3025,
+      "cost_usd": 0.0242778,
+      "duration_ms": 12803,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__timeline",
+      "input": {
+        "from_date": "2027-01-01",
+        "to_date": "2027-06-30"
+      },
+      "tool_use_id": "toolu_01ABqzgJNHXcyiFSuVja2igk"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Zahnarzt"
+      },
+      "tool_use_id": "toolu_01WWFxCxAmYhBSYEhMKrvUdH"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-11-24\",\"entries\":[{\"date\":\"2027-01-08\",\"time\":\"09:15\",\"type\":\"appointment\",\"status\":\"open\",\"ref_type\":\"item\",\"id\":\"itm_sncxha9wbsxc\",\"repeats\":\"every 3 months\",\"following_due_date\":\"2027-04-08\"},{\"date\":\"2027-01-15\",\"type\":\"payment\",\"status\":\"open\",\"ref_type\":\"item\",\"id\":\"itm_85xesrap412m\",\"repeats\":\"every 6 months on the 15th\",\"following_due_date\":\"2027-07-15\",\"amount\":312.4,\"currency\":\"EUR\"},{\"date\":\"2027-02-10\",\"type\":\"expiry\",\"status\":\"open\",\"ref_type\":\"item\",\"id\":\"itm_g321eme013j2\"},{\"date\":\"2027-02-28\",\"type\":\"deadline\",\"status\":\"open\",\"ref_type\":\"item\",\"id\":\"itm_kn5zf3bdwew8\"},{\"date\":\"2027-03-31\",\"type\":\"contract\",\"status\":\"active\",\"ref_type\":\"contract\",\"id\":\"ctr_jgb50bejm6jd\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_sncxha9wbsxc\":{\"titles\":[\"Dental checkup and cleaning (PZR)\"],\"subtitles\":[\"Arrive 10 minutes early and bring your health insurance card (Gesundheitskarte)\"],\"party\":\"Zahnarztpraxis Dr. Anna Beispiel\"},\"itm_85xesrap412m\":{\"titles\":[\"Pay the semester fee (Semesterbeitrag) for summer semester 2027\"],\"subtitles\":[\"Transfer by Thu 14 Jan 2027\"],\"party\":\"Hochschule Musterstadt\"},\"itm_g321eme013j2\":{\"titles\":[\"Passport expires\"],\"subtitles\":[\"Apply for a passport renewal before it expires\"],\"party\":\"Ministry of Interior\"},\"itm_kn5zf3bdwew8\":{\"titles\":[\"Cancel any separate Deutschlandticket subscription\"],\"subtitles\":[\"Send by Mon 22 Feb 2027\"],\"party\":\"Hochschule Musterstadt\"},\"ctr_jgb50bejm6jd\":{\"titles\":[\"Befristeter Arbeitsvertrag für Werkstudierende: term ends\"],\"party\":\"Muster Tech GmbH\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01ABqzgJNHXcyiFSuVja2igk"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_xa0f5gvpe0w2\",\"kind\":\"appointment\",\"party_id\":\"pty_m3rttkfq94qn\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_xa0f5gvpe0w2\":{\"title\":\"Dental checkup and cleaning appointment\",\"snippet\":\"…0123 334455 zahnarzt-beispiel.example Ihre nächsten Termine Tag | Datum | Uhrzeit | Behandlung Do 08.10.2026…\"},\"pty_m3rttkfq94qn\":{\"name\":\"Zahnarztpraxis Dr. Anna Beispiel\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01WWFxCxAmYhBSYEhMKrvUdH"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "kind": "appointment",
+        "from_date": "2027-01-01",
+        "to_date": "2027-06-30",
+        "status": "all"
+      },
+      "tool_use_id": "toolu_0189pkJJzUFQagcLaqscZPwh"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-11-24\",\"items\":[{\"id\":\"itm_sncxha9wbsxc\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2027-01-08\",\"due_time\":\"09:15\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_m3rttkfq94qn\",\"doc_id\":\"doc_xa0f5gvpe0w2\",\"repeats\":\"every 3 months\",\"following_due_date\":\"2027-04-08\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_sncxha9wbsxc\":{\"title\":\"Dental checkup and cleaning (PZR)\",\"action\":\"Arrive 10 minutes early and bring your health insurance card (Gesundheitskarte)\",\"consequence\":\"Cancel at least 24 hours in advance if you cannot attend\",\"location\":\"Lindenallee 8, 12345 Musterstadt\"},\"pty_m3rttkfq94qn\":{\"name\":\"Zahnarztpraxis Dr. Anna Beispiel\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_0189pkJJzUFQagcLaqscZPwh"
+    },
+    {
+      "type": "text",
+      "text": "In"
+    },
+    {
+      "type": "text",
+      "text": " Ihren"
+    },
+    {
+      "type": "text",
+      "text": " Un"
+    },
+    {
+      "type": "text",
+      "text": "terlagen "
+    },
+    {
+      "type": "text",
+      "text": "ist für"
+    },
+    {
+      "type": "text",
+      "text": " di"
+    },
+    {
+      "type": "text",
+      "text": "esen Zeitraum"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "ein f"
+    },
+    {
+      "type": "text",
+      "text": "est"
+    },
+    {
+      "type": "text",
+      "text": " e"
+    },
+    {
+      "type": "text",
+      "text": "ingetragener"
+    },
+    {
+      "type": "text",
+      "text": " K"
+    },
+    {
+      "type": "text",
+      "text": "ontrol"
+    },
+    {
+      "type": "text",
+      "text": "ltermin g"
+    },
+    {
+      "type": "text",
+      "text": "esp"
+    },
+    {
+      "type": "text",
+      "text": "eichert:\n\n- **"
+    },
+    {
+      "type": "text",
+      "text": "F"
+    },
+    {
+      "type": "text",
+      "text": "r,"
+    },
+    {
+      "type": "text",
+      "text": " 08."
+    },
+    {
+      "type": "text",
+      "text": "01.2027"
+    },
+    {
+      "type": "text",
+      "text": ","
+    },
+    {
+      "type": "text",
+      "text": " 09:15"
+    },
+    {
+      "type": "text",
+      "text": " Uhr** –"
+    },
+    {
+      "type": "text",
+      "text": " Z"
+    },
+    {
+      "type": "text",
+      "text": "ahnk"
+    },
+    {
+      "type": "text",
+      "text": "ontrolle und"
+    },
+    {
+      "type": "text",
+      "text": " Prophylax"
+    },
+    {
+      "type": "text",
+      "text": "e"
+    },
+    {
+      "type": "text",
+      "text": " (PZR) bei"
+    },
+    {
+      "type": "text",
+      "text": " Zahnarztprax"
+    },
+    {
+      "type": "text",
+      "text": "is Dr. Anna"
+    },
+    {
+      "type": "text",
+      "text": " Beispiel [item"
+    },
+    {
+      "type": "text",
+      "text": ":it"
+    },
+    {
+      "type": "text",
+      "text": "m_snc"
+    },
+    {
+      "type": "text",
+      "text": "x"
+    },
+    {
+      "type": "text",
+      "text": "ha"
+    },
+    {
+      "type": "text",
+      "text": "9wbsxc]"
+    },
+    {
+      "type": "text",
+      "text": "\n\nDieser Termin"
+    },
+    {
+      "type": "text",
+      "text": " wiederholt sich al"
+    },
+    {
+      "type": "text",
+      "text": "le drei Monate;"
+    },
+    {
+      "type": "text",
+      "text": " der folgende Termin w"
+    },
+    {
+      "type": "text",
+      "text": "äre la"
+    },
+    {
+      "type": "text",
+      "text": "ut"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "Ordnung am"
+    },
+    {
+      "type": "text",
+      "text": " **08.04.2027**"
+    },
+    {
+      "type": "text",
+      "text": " [item:itm_snc"
+    },
+    {
+      "type": "text",
+      "text": "xha9wbsxc"
+    },
+    {
+      "type": "text",
+      "text": "]"
+    },
+    {
+      "type": "text",
+      "text": " – also eb"
+    },
+    {
+      "type": "text",
+      "text": "enfalls no"
+    },
+    {
+      "type": "text",
+      "text": "ch innerhalb"
+    },
+    {
+      "type": "text",
+      "text": " Ihres Zeitra"
+    },
+    {
+      "type": "text",
+      "text": "ums"
+    },
+    {
+      "type": "text",
+      "text": " b"
+    },
+    {
+      "type": "text",
+      "text": "is Ende Juni "
+    },
+    {
+      "type": "text",
+      "text": "2027. "
+    },
+    {
+      "type": "text",
+      "text": "Ein eigener"
+    },
+    {
+      "type": "text",
+      "text": " E"
+    },
+    {
+      "type": "text",
+      "text": "intrag für di"
+    },
+    {
+      "type": "text",
+      "text": "esen Fol"
+    },
+    {
+      "type": "text",
+      "text": "getermin ist aber"
+    },
+    {
+      "type": "text",
+      "text": " noch nicht als"
+    },
+    {
+      "type": "text",
+      "text": " separ"
+    },
+    {
+      "type": "text",
+      "text": "ates To"
+    },
+    {
+      "type": "text",
+      "text": "-do"
+    },
+    {
+      "type": "text",
+      "text": " ang"
+    },
+    {
+      "type": "text",
+      "text": "elegt.\n\nWeit"
+    },
+    {
+      "type": "text",
+      "text": "ere"
+    },
+    {
+      "type": "text",
+      "text": " Z"
+    },
+    {
+      "type": "text",
+      "text": "ahnar"
+    },
+    {
+      "type": "text",
+      "text": "z"
+    },
+    {
+      "type": "text",
+      "text": "tt"
+    },
+    {
+      "type": "text",
+      "text": "ermine z"
+    },
+    {
+      "type": "text",
+      "text": "wischen Januar und"
+    },
+    {
+      "type": "text",
+      "text": " Ju"
+    },
+    {
+      "type": "text",
+      "text": "ni 2027 sind in"
+    },
+    {
+      "type": "text",
+      "text": " Ihren"
+    },
+    {
+      "type": "text",
+      "text": " Unterlagen nic"
+    },
+    {
+      "type": "text",
+      "text": "ht g"
+    },
+    {
+      "type": "text",
+      "text": "espeichert."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "In Ihren Unterlagen ist für diesen Zeitraum ein fest eingetragener Kontrolltermin gespeichert:\n\n- **Fr, 08.01.2027, 09:15 Uhr** – Zahnkontrolle und Prophylaxe (PZR) bei Zahnarztpraxis Dr. Anna Beispiel [item:itm_sncxha9wbsxc]\n\nDieser Termin wiederholt sich alle drei Monate; der folgende Termin wäre laut Ordnung am **08.04.2027** [item:itm_sncxha9wbsxc] – also ebenfalls noch innerhalb Ihres Zeitraums bis Ende Juni 2027. Ein eigener Eintrag für diesen Folgetermin ist aber noch nicht als separates To-do angelegt.\n\nWeitere Zahnarzttermine zwischen Januar und Juni 2027 sind in Ihren Unterlagen nicht gespeichert.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 796,
+          "cache_read_tokens": 21029,
+          "cache_creation_tokens": 3025,
+          "cost_usd": 0.0242778,
+          "duration_ms": 12803,
+          "turns": 4
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

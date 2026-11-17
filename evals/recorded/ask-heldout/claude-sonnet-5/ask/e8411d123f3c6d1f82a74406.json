@@ -1,0 +1,239 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"258c9eb533aae0c2414271a7fda8681ea1fb736426b2999a45141753d332ff7e\",\"question\":\"What is the policy number of my household contents insurance?\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_tszxajp80vd5",
+      "doc_hkgxvjmpcfd5",
+      "doc_9t9tmrv1ypba",
+      "doc_d9hwr1mp3bsj",
+      "doc_hynqaw58f550",
+      "doc_9mewc0kcj28v",
+      "doc_xa0f5gvpe0w2",
+      "doc_50t54msvdfcy"
+    ],
+    "prompt_head": "The person asks:\nWhat is the policy number of my household contents insurance?\n",
+    "recorded_at": "2026-11-24T08:17:37+00:00",
+    "repeat": 1,
+    "commit": "25633808",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "No household contents insurance (Hausratversicherung) is in their records. The only insurance policy on file is a private liability insurance (Privat-Haftpflichtversicherung) with Muster Versicherung AG [doc:doc_tszxajp80vd5], not household contents insurance.\n\nIf you'd like, I can pull up the policy number for that liability insurance instead.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 354,
+      "cache_read_tokens": 19801,
+      "cache_creation_tokens": 3634,
+      "cost_usd": 0.022048200000000004,
+      "duration_ms": 14763,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Hausratversicherung household contents insurance"
+      },
+      "tool_use_id": "toolu_01HZK8MrxAzrmmYtJv93ywe1"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01HZK8MrxAzrmmYtJv93ywe1"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Versicherung"
+      },
+      "tool_use_id": "toolu_01DLqRNBTBhAN4J6sBobXsYt"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_tszxajp80vd5\",\"kind\":\"insurance\",\"date\":\"2026-01-19\",\"party_id\":\"pty_re9nde1xqtfn\"},{\"id\":\"doc_hkgxvjmpcfd5\",\"kind\":\"payslip\",\"date\":\"2026-08-31\",\"party_id\":\"pty_h9easqrf81w1\"},{\"id\":\"doc_9t9tmrv1ypba\",\"kind\":\"health_insurance\",\"date\":\"2026-09-10\",\"party_id\":\"pty_eatxsexnt9s3\"},{\"id\":\"doc_d9hwr1mp3bsj\",\"kind\":\"authority_letter\",\"date\":\"2026-09-16\",\"party_id\":\"pty_w9e8zww4fzse\"},{\"id\":\"doc_hynqaw58f550\",\"kind\":\"tax_assessment\",\"date\":\"2026-09-15\",\"party_id\":\"pty_mcq97yavgqjy\"},{\"id\":\"doc_9mewc0kcj28v\",\"kind\":\"rent_lease\",\"date\":\"2026-09-08\",\"party_id\":\"pty_4by2mq3ac4sk\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_tszxajp80vd5\":{\"title\":\"Policy amendment – private liability insurance\",\"snippet\":\"Muster Versicherung Sicher. Seit 1887. Vers.-Nr. PHV 71-4471220 Kundennummer K 2231 0917 Muster Versicherung…\"},\"pty_re9nde1xqtfn\":{\"name\":\"Muster Versicherung AG\"},\"doc_hkgxvjmpcfd5\":{\"title\":\"August 2026 payslip from Muster Tech GmbH\",\"snippet\":\"…R 005 Krankenkasse Muster BKK (Studierende, eigene Versicherung) Beitragsgruppe / Personengruppe 0-1-0-0 / 106 (Werkstudent…\"},\"pty_h9easqrf81w1\":{\"name\":\"Muster Tech GmbH\"},\"doc_9t9tmrv1ypba\":{\"title\":\"Notice of increased health and long-term care insurance contribution (Beitragsbescheid)\",\"snippet\":\"…dt Beitragsbescheid – Ihre Beiträge zur Kranken- und Pflegeversicherung ab 01.10.2026 Sehr geehrter Herr Rivera, Sie sind bei uns…\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"doc_d9hwr1mp3bsj\":{\"title\":\"Invitation to appointment for residence permit extension (Aufenthaltserlaubnis)\",\"snippet\":\"…altsabrechnungen • einen Nachweis über ausreichenden Krankenversicherungsschutz • ein aktuelles biometrisches Lichtbild (35 × 45 mm)…\"},\"pty_w9e8zww4fzse\":{\"name\":\"Stadt Musterstadt\"},\"doc_hynqaw58f550\":{\"title\":\"Income Tax Assessment 2025 – Finanzamt Musterstadt\",\"snippet\":\"…(Lohnsteuerbescheinigungen) sowie Ihrer Kranken- und Pflegeversicherung berücksichtigt. • Die geltend gemachten Aufwendungen für Ar…\"},\"pty_mcq97yavgqjy\":{\"name\":\"Finanzamt Musterstadt\"},\"doc_9mewc0kcj28v\":{\"title\":\"Betriebs- und Heizkostenabrechnung 2025 – back payment and increased advance payments\",\"snippet\":\"…Immissionsmessung 286,20 € 4,72 € Sach- und Haftpflichtversicherung 1.842,60 € 30,39 € Hauswart 2.160,00 € 35,62 € Su…\"},\"pty_4by2mq3ac4sk\":{\"name\":\"Wohnbau Musterstadt eG\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01DLqRNBTBhAN4J6sBobXsYt"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "insurance"
+      },
+      "tool_use_id": "toolu_01WADZsfXayA5WKiPgEdY2Eu"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_tszxajp80vd5\",\"kind\":\"insurance\",\"date\":\"2026-01-19\",\"party_id\":\"pty_re9nde1xqtfn\"},{\"id\":\"doc_9t9tmrv1ypba\",\"kind\":\"health_insurance\",\"date\":\"2026-09-10\",\"party_id\":\"pty_eatxsexnt9s3\"},{\"id\":\"doc_hkgxvjmpcfd5\",\"kind\":\"payslip\",\"date\":\"2026-08-31\",\"party_id\":\"pty_h9easqrf81w1\"},{\"id\":\"doc_xa0f5gvpe0w2\",\"kind\":\"appointment\",\"party_id\":\"pty_m3rttkfq94qn\"},{\"id\":\"doc_50t54msvdfcy\",\"kind\":\"university\",\"date\":\"2026-09-01\",\"party_id\":\"pty_fhp8fzemmzvt\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_tszxajp80vd5\":{\"title\":\"Policy amendment – private liability insurance\",\"snippet\":\"…1) for his private liability insurance (Privat-Haftpflichtversicherung), reflecting a change of address and bank details…\"},\"pty_re9nde1xqtfn\":{\"name\":\"Muster Versicherung AG\"},\"doc_9t9tmrv1ypba\":{\"title\":\"Notice of increased health and long-term care insurance contribution (Beitragsbescheid)\",\"snippet\":\"Muster BKK adjusted the fixed notional income used to calculate student health/long-term care insurance…\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"doc_hkgxvjmpcfd5\":{\"title\":\"August 2026 payslip from Muster Tech GmbH\",\"snippet\":\"…It shows your gross salary, deductions (income tax, pension insurance), and the net amount of €1…\"},\"pty_h9easqrf81w1\":{\"name\":\"Muster Tech GmbH\"},\"doc_xa0f5gvpe0w2\":{\"title\":\"Dental checkup and cleaning appointment\",\"snippet\":\"…Arrive 10 minutes early and bring your health insurance card (Gesundheitskarte). If you cannot make it…\"},\"pty_m3rttkfq94qn\":{\"name\":\"Zahnarztpraxis Dr. Anna Beispiel\"},\"doc_50t54msvdfcy\":{\"title\":\"Certificate of Enrolment – Winter Semester 2026/27\",\"snippet\":\"…for a bank, health insurance, transport ticket, child benefit, or landlord). There is nothing you need…\"},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01WADZsfXayA5WKiPgEdY2Eu"
+    },
+    {
+      "type": "text",
+      "text": "No"
+    },
+    {
+      "type": "text",
+      "text": " household"
+    },
+    {
+      "type": "text",
+      "text": " cont"
+    },
+    {
+      "type": "text",
+      "text": "ents ins"
+    },
+    {
+      "type": "text",
+      "text": "urance ("
+    },
+    {
+      "type": "text",
+      "text": "Hausrat"
+    },
+    {
+      "type": "text",
+      "text": "vers"
+    },
+    {
+      "type": "text",
+      "text": "icherung) is in"
+    },
+    {
+      "type": "text",
+      "text": " their"
+    },
+    {
+      "type": "text",
+      "text": " records. The only insurance polic"
+    },
+    {
+      "type": "text",
+      "text": "y on"
+    },
+    {
+      "type": "text",
+      "text": " file is a private li"
+    },
+    {
+      "type": "text",
+      "text": "ability ins"
+    },
+    {
+      "type": "text",
+      "text": "urance (Priv"
+    },
+    {
+      "type": "text",
+      "text": "at"
+    },
+    {
+      "type": "text",
+      "text": "-Haftp"
+    },
+    {
+      "type": "text",
+      "text": "flichtversicherung)"
+    },
+    {
+      "type": "text",
+      "text": " with Mu"
+    },
+    {
+      "type": "text",
+      "text": "ster Versicherung A"
+    },
+    {
+      "type": "text",
+      "text": "G [doc:"
+    },
+    {
+      "type": "text",
+      "text": "doc_t"
+    },
+    {
+      "type": "text",
+      "text": "sz"
+    },
+    {
+      "type": "text",
+      "text": "xaj"
+    },
+    {
+      "type": "text",
+      "text": "p"
+    },
+    {
+      "type": "text",
+      "text": "80"
+    },
+    {
+      "type": "text",
+      "text": "v"
+    },
+    {
+      "type": "text",
+      "text": "d"
+    },
+    {
+      "type": "text",
+      "text": "5"
+    },
+    {
+      "type": "text",
+      "text": "], not household"
+    },
+    {
+      "type": "text",
+      "text": " contents ins"
+    },
+    {
+      "type": "text",
+      "text": "urance.\n\nIf"
+    },
+    {
+      "type": "text",
+      "text": " you'd like, I can p"
+    },
+    {
+      "type": "text",
+      "text": "ull up the policy number for that"
+    },
+    {
+      "type": "text",
+      "text": " liability insurance instead."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "No household contents insurance (Hausratversicherung) is in their records. The only insurance policy on file is a private liability insurance (Privat-Haftpflichtversicherung) with Muster Versicherung AG [doc:doc_tszxajp80vd5], not household contents insurance.\n\nIf you'd like, I can pull up the policy number for that liability insurance instead.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 354,
+          "cache_read_tokens": 19801,
+          "cache_creation_tokens": 3634,
+          "cost_usd": 0.022048200000000004,
+          "duration_ms": 14763,
+          "turns": 4
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}
