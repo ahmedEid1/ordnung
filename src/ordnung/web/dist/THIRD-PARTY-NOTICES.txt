@@ -246,7 +246,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-@tanstack/query-core 5.105.0
+@tanstack/query-core 5.107.1
 Licence: MIT
 
 MIT License
@@ -272,7 +272,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-@tanstack/react-query 5.105.0
+@tanstack/react-query 5.107.1
 Licence: MIT
 
 MIT License
@@ -579,7 +579,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-framer-motion 14.8.0
+framer-motion 14.13.0
 Licence: MIT
 
 The MIT License (MIT)
@@ -649,7 +649,7 @@ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 THIS SOFTWARE.
 
 --------------------------------------------------------------------------------
-lucide-react 1.64.0
+lucide-react 1.72.0
 Licence: ISC
 
 ISC License
@@ -697,7 +697,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-motion-dom 14.8.0
+motion-dom 14.13.0
 Licence: MIT
 
 The MIT License (MIT)
@@ -749,7 +749,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-motion 14.8.0
+motion 14.13.0
 Licence: MIT
 
 The MIT License (MIT)
@@ -1011,7 +1011,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-rolldown 1.2.15
+rolldown 1.2.19
 Licence: MIT
 
 MIT License
@@ -1093,7 +1093,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-tailwindcss 4.3.3
+tailwindcss 4.3.5
 Licence: MIT
 
 MIT License
@@ -1206,7 +1206,7 @@ Author: Formidable
 Source: https://github.com/FormidableLabs/victory
 
 --------------------------------------------------------------------------------
-vite 8.3.5
+vite 8.3.8
 Licence: MIT
 
 # Vite core license
