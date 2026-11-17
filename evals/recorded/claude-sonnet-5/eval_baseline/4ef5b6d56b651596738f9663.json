@@ -1,0 +1,65 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"49daa526209ff6e3cf0b88b176d8017d4e0a3eb1ee1ad15bcbe7f966772b77ac\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:53:35+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"kind\":\"bank_letter\",\"sender_name\":\"Example Prairie Savings Bank\",\"document_date\":\"2026-11-21\",\"remedy_type\":\"none\",\"references\":[{\"label\":\"Account ending\",\"value\":\"…4471\"}],\"items\":[{\"kind\":\"task\",\"title\":\"Return address certification form\",\"quote\":\"Please complete the enclosed address certification and mail or upload it by January 15,\\n2027.\",\"computation\":\"The letter states a fixed calendar date in plain English ('by January 15, 2027') for mailing or uploading the completed address certification. This is a foreign commercial bank, not a German authority, so no statutory deemed-delivery or §§187-193 BGB counting rules apply; the date is taken as printed. January 15, 2027 is a Friday, so no weekend/holiday shift is needed even if such rules were applied.\",\"due_date\":\"2027-01-15\",\"confidence\":\"high\",\"amount\":null}],\"warnings\":[\"This is an unsolicited letter from a foreign (US) bank asking a customer to submit personal address/identity documents under threat of account restriction — a pattern also used in phishing; verify authenticity by contacting the bank through a phone number or website you already know, not any contact details printed on this letter, before sending any documents or using any enclosed form/link.\",\"The letter gives no IBAN or payment instructions itself, but any 'enclosed' form that asks for bank login details or payment should be treated with suspicion.\",\"No German deemed-delivery rules were applied because the sender is a US company, not a German authority; the due date is taken exactly as printed in the letter.\"]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "kind": "bank_letter",
+      "sender_name": "Example Prairie Savings Bank",
+      "document_date": "2026-11-21",
+      "remedy_type": "none",
+      "references": [
+        {
+          "label": "Account ending",
+          "value": "…4471"
+        }
+      ],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Return address certification form",
+          "quote": "Please complete the enclosed address certification and mail or upload it by January 15,\n2027.",
+          "computation": "The letter states a fixed calendar date in plain English ('by January 15, 2027') for mailing or uploading the completed address certification. This is a foreign commercial bank, not a German authority, so no statutory deemed-delivery or §§187-193 BGB counting rules apply; the date is taken as printed. January 15, 2027 is a Friday, so no weekend/holiday shift is needed even if such rules were applied.",
+          "due_date": "2027-01-15",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "warnings": [
+        "This is an unsolicited letter from a foreign (US) bank asking a customer to submit personal address/identity documents under threat of account restriction — a pattern also used in phishing; verify authenticity by contacting the bank through a phone number or website you already know, not any contact details printed on this letter, before sending any documents or using any enclosed form/link.",
+        "The letter gives no IBAN or payment instructions itself, but any 'enclosed' form that asks for bank login details or payment should be treated with suspicion.",
+        "No German deemed-delivery rules were applied because the sender is a US company, not a German authority; the due date is taken exactly as printed in the letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1301,
+      "cache_read_tokens": 6440,
+      "cache_creation_tokens": 1526,
+      "cost_usd": 0.020406,
+      "duration_ms": 15378,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,377 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"99ef00b98b6fd5502888ae20ae978adbae84ea70eb1fc4ab660a1a4790b44772\",\"question\":\"Bis zu welchen Tagen muss ich im Dezember 2026 und im Januar 2027 meinen Bericht für das Stipendium einreichen?\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_pa2w9q3gxzqk",
+      "doc_tszxajp80vd5",
+      "doc_xa0f5gvpe0w2",
+      "doc_nba3k0ka85q0"
+    ],
+    "prompt_head": "The person asks:\nBis zu welchen Tagen muss ich im Dezember 2026 und im Januar 2027 meinen Bericht für das Stipendium einreichen?\n",
+    "recorded_at": "2026-11-24T08:20:04+00:00",
+    "repeat": 1,
+    "commit": "25633808",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "Für den Stipendiumsbericht (Global Talent Scholarship Foundation) gilt:\n\n- **Dezember 2026:** Der erste Fortschrittsbericht muss bis **Di 15.12.2026** eingereicht werden, Postversand bis **Mi 09.12.2026** [item:itm_zse7bv6ce3s1].\n- **Januar 2027:** Da der Bericht monatlich fällig ist, ist die nächste Frist **Fr 15.01.2027** [item:itm_zse7bv6ce3s1].\n\nHinweis: Max. zwei Seiten, von Ihrem akademischen Betreuer gegenzeichnen lassen, Einreichung über das Stipendienportal mit der vorgegebenen Vorlage [item:itm_zse7bv6ce3s1].",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 553,
+      "cache_read_tokens": 19861,
+      "cache_creation_tokens": 2993,
+      "cost_usd": 0.0214862,
+      "duration_ms": 9680,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Stipendium Bericht"
+      },
+      "tool_use_id": "toolu_01QVzCaUQrN5Nv7muhX6gMPY"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01QVzCaUQrN5Nv7muhX6gMPY"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Stipendium"
+      },
+      "tool_use_id": "toolu_01NA3NY918kKYrsiRPwN6PaA"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_pa2w9q3gxzqk\",\"kind\":\"other\",\"date\":\"2026-09-05\",\"party_id\":\"pty_efmwq4xym8cm\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_pa2w9q3gxzqk\":{\"title\":\"Award of the Global Talent Scholarship 2026/27\",\"snippet\":\"Award of the Global Talent Scholarship 2026/27 12_stipendium_zusage.pdf\"},\"pty_efmwq4xym8cm\":{\"name\":\"Global Talent Scholarship Foundation\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01NA3NY918kKYrsiRPwN6PaA"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Bericht"
+      },
+      "tool_use_id": "toolu_01PVx6BaKcMvH1fuqe4caYe6"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01PVx6BaKcMvH1fuqe4caYe6"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "from_date": "2026-12-01",
+        "to_date": "2027-01-31"
+      },
+      "tool_use_id": "toolu_014nLQfQJ8vXWzMazNTvjUgJ"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-11-24\",\"items\":[{\"id\":\"itm_93jvwb6nxzhe\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-12-01\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"low\",\"area\":\"insurance\",\"party_id\":\"pty_re9nde1xqtfn\",\"doc_id\":\"doc_tszxajp80vd5\",\"contract_id\":\"ctr_w97tm6xhn7zw\",\"repeats\":\"every year on the 1st\",\"following_due_date\":\"2027-12-01\",\"amount\":59.9,\"currency\":\"EUR\"},{\"id\":\"itm_zse7bv6ce3s1\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-12-15\",\"send_by\":\"2026-12-09\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\",\"repeats\":\"every month on the 15th\",\"following_due_date\":\"2027-01-15\"},{\"id\":\"itm_sncxha9wbsxc\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2027-01-08\",\"due_time\":\"09:15\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_m3rttkfq94qn\",\"doc_id\":\"doc_xa0f5gvpe0w2\",\"repeats\":\"every 3 months\",\"following_due_date\":\"2027-04-08\"},{\"id\":\"itm_85xesrap412m\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2027-01-15\",\"send_by\":\"2027-01-14\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"study\",\"party_id\":\"pty_fhp8fzemmzvt\",\"doc_id\":\"doc_nba3k0ka85q0\",\"repeats\":\"every 6 months on the 15th\",\"following_due_date\":\"2027-07-15\",\"amount\":312.4,\"currency\":\"EUR\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_93jvwb6nxzhe\":{\"title\":\"Annual liability insurance premium direct debit\",\"action\":\"Make sure the linked bank account has enough funds for the automatic direct debit.\"},\"pty_re9nde1xqtfn\":{\"name\":\"Muster Versicherung AG\"},\"itm_zse7bv6ce3s1\":{\"title\":\"Submit first progress report\",\"action\":\"Submit your first progress report (max. two pages, countersigned by your academic supervisor) via the scholarship portal using the provided template.\"},\"pty_efmwq4xym8cm\":{\"name\":\"Global Talent Scholarship Foundation\"},\"itm_sncxha9wbsxc\":{\"title\":\"Dental checkup and cleaning (PZR)\",\"action\":\"Arrive 10 minutes early and bring your health insurance card (Gesundheitskarte)\",\"consequence\":\"Cancel at least 24 hours in advance if you cannot attend\",\"location\":\"Lindenallee 8, 12345 Musterstadt\"},\"pty_m3rttkfq94qn\":{\"name\":\"Zahnarztpraxis Dr. Anna Beispiel\"},\"itm_85xesrap412m\":{\"title\":\"Pay the semester fee (Semesterbeitrag) for summer semester 2027\",\"action\":\"Transfer the semester fee of €312.40 to the university's account, using the given reference, so it arrives by the deadline shown.\",\"consequence\":\"Late payment adds a €15.00 late fee (Säumnisgebühr), and if the fee is not received in time you risk being deregistered (Exmatrikulation).\"},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_014nLQfQJ8vXWzMazNTvjUgJ"
+    },
+    {
+      "type": "text",
+      "text": "Für"
+    },
+    {
+      "type": "text",
+      "text": " den"
+    },
+    {
+      "type": "text",
+      "text": " St"
+    },
+    {
+      "type": "text",
+      "text": "ipendi"
+    },
+    {
+      "type": "text",
+      "text": "um"
+    },
+    {
+      "type": "text",
+      "text": "sbericht ("
+    },
+    {
+      "type": "text",
+      "text": "Global Talent Sc"
+    },
+    {
+      "type": "text",
+      "text": "holarship"
+    },
+    {
+      "type": "text",
+      "text": " Foundation) gil"
+    },
+    {
+      "type": "text",
+      "text": "t:\n\n- **D"
+    },
+    {
+      "type": "text",
+      "text": "ezember 2026"
+    },
+    {
+      "type": "text",
+      "text": ":"
+    },
+    {
+      "type": "text",
+      "text": "** Der erste F"
+    },
+    {
+      "type": "text",
+      "text": "ortschrittsbericht"
+    },
+    {
+      "type": "text",
+      "text": " muss bis"
+    },
+    {
+      "type": "text",
+      "text": " **"
+    },
+    {
+      "type": "text",
+      "text": "Di"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "15.12.2026**"
+    },
+    {
+      "type": "text",
+      "text": " eingere"
+    },
+    {
+      "type": "text",
+      "text": "icht werden,"
+    },
+    {
+      "type": "text",
+      "text": " Post"
+    },
+    {
+      "type": "text",
+      "text": "vers"
+    },
+    {
+      "type": "text",
+      "text": "and"
+    },
+    {
+      "type": "text",
+      "text": " b"
+    },
+    {
+      "type": "text",
+      "text": "is"
+    },
+    {
+      "type": "text",
+      "text": " **M"
+    },
+    {
+      "type": "text",
+      "text": "i 09"
+    },
+    {
+      "type": "text",
+      "text": ".12.2026** [item"
+    },
+    {
+      "type": "text",
+      "text": ":"
+    },
+    {
+      "type": "text",
+      "text": "itm_z"
+    },
+    {
+      "type": "text",
+      "text": "se"
+    },
+    {
+      "type": "text",
+      "text": "7"
+    },
+    {
+      "type": "text",
+      "text": "b"
+    },
+    {
+      "type": "text",
+      "text": "v"
+    },
+    {
+      "type": "text",
+      "text": "6"
+    },
+    {
+      "type": "text",
+      "text": "ce3s"
+    },
+    {
+      "type": "text",
+      "text": "1"
+    },
+    {
+      "type": "text",
+      "text": "].\n- **Januar "
+    },
+    {
+      "type": "text",
+      "text": "2027:** Da"
+    },
+    {
+      "type": "text",
+      "text": " der Bericht mon"
+    },
+    {
+      "type": "text",
+      "text": "atlich f"
+    },
+    {
+      "type": "text",
+      "text": "ällig"
+    },
+    {
+      "type": "text",
+      "text": " ist,"
+    },
+    {
+      "type": "text",
+      "text": " ist die nächste Fr"
+    },
+    {
+      "type": "text",
+      "text": "ist **Fr 15."
+    },
+    {
+      "type": "text",
+      "text": "01.2027**"
+    },
+    {
+      "type": "text",
+      "text": " [item:itm_zse"
+    },
+    {
+      "type": "text",
+      "text": "7bv6ce3s"
+    },
+    {
+      "type": "text",
+      "text": "1].\n\nH"
+    },
+    {
+      "type": "text",
+      "text": "inweis: Max"
+    },
+    {
+      "type": "text",
+      "text": ". z"
+    },
+    {
+      "type": "text",
+      "text": "wei Seiten, von"
+    },
+    {
+      "type": "text",
+      "text": " Ihrem ak"
+    },
+    {
+      "type": "text",
+      "text": "ademischen Betreuer"
+    },
+    {
+      "type": "text",
+      "text": " geg"
+    },
+    {
+      "type": "text",
+      "text": "enzeichnen"
+    },
+    {
+      "type": "text",
+      "text": " l"
+    },
+    {
+      "type": "text",
+      "text": "assen,"
+    },
+    {
+      "type": "text",
+      "text": " Einreichung über das St"
+    },
+    {
+      "type": "text",
+      "text": "ipendienportal m"
+    },
+    {
+      "type": "text",
+      "text": "it der"
+    },
+    {
+      "type": "text",
+      "text": " vorgegebenen"
+    },
+    {
+      "type": "text",
+      "text": " Vorlage [item:it"
+    },
+    {
+      "type": "text",
+      "text": "m_zse7bv6"
+    },
+    {
+      "type": "text",
+      "text": "ce3s1]."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Für den Stipendiumsbericht (Global Talent Scholarship Foundation) gilt:\n\n- **Dezember 2026:** Der erste Fortschrittsbericht muss bis **Di 15.12.2026** eingereicht werden, Postversand bis **Mi 09.12.2026** [item:itm_zse7bv6ce3s1].\n- **Januar 2027:** Da der Bericht monatlich fällig ist, ist die nächste Frist **Fr 15.01.2027** [item:itm_zse7bv6ce3s1].\n\nHinweis: Max. zwei Seiten, von Ihrem akademischen Betreuer gegenzeichnen lassen, Einreichung über das Stipendienportal mit der vorgegebenen Vorlage [item:itm_zse7bv6ce3s1].",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 553,
+          "cache_read_tokens": 19861,
+          "cache_creation_tokens": 2993,
+          "cost_usd": 0.0214862,
+          "duration_ms": 9680,
+          "turns": 5
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

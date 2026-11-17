@@ -355,6 +355,88 @@ def test_compare_ignores_when_and_where_but_not_a_number() -> None:
     assert differences == ["cells.I1.ordnung.targeted.k"]
 
 
+def _read(backend: str, commit: str, cli_version: str | None) -> dict[str, Any]:
+    """One read's ``meta.runs`` entry, as scripts/eval_perturb.py copies it from the benchmark runner's meta."""
+    return {
+        "backend": backend,
+        "commit": commit,
+        "fingerprints": {"ordnung": "fp-ordnung", "llm_rules_tool": "fp-tool"},
+        "cli_version": cli_version,
+        "dirty": [],
+        "repeat": 1,
+        "dataset": {"version": 4, "manifest_sha256": "d" * 64},
+    }
+
+
+def _recorded_and_replayed() -> tuple[dict[str, Any], dict[str, Any]]:
+    """A live stress file as R7 writes it, and its replay as ``--check`` makes it later: at another commit, on
+    another day, without claude (so every read is a replay with no claude version)."""
+    live = _document(
+        {
+            "I1": _cell("I1", "shift", [(LATER, TRUTH), (TRUTH, LATER)]),
+            "D1": _cell("D1", "info_event", [(TRUTH, TRUTH), ("2026-04-09", TRUTH)]),
+        }
+    )
+    live["meta"].update(
+        {
+            "date": "2026-11-27",
+            "cells": ["I1", "D1"],
+            "backend": {"clean": "replay", "I1": "live", "D1": "live"},
+            "commit": "f85dc6e",
+            "today": "2026-11-27",
+            "runs": {
+                "clean": _read("replay", "f85dc6e", None),
+                "I1": _read("live", "f85dc6e", "9.9.9"),
+                "D1": _read("live", "f85dc6e", "9.9.9"),
+            },
+        }
+    )
+    replay = copy.deepcopy(live)
+    replay["meta"].update(
+        {
+            "date": "2026-12-02",
+            "commit": "adf8c84",
+            "backend": {"clean": "replay", "I1": "replay", "D1": "replay"},
+        }
+    )
+    for run in replay["meta"]["runs"].values():
+        run.update({"backend": "replay", "commit": "adf8c84", "cli_version": None})
+    return live, replay
+
+
+def test_a_replay_at_a_later_commit_on_another_day_equals_the_live_recording() -> None:
+    """The stress check (``scripts/eval_perturb.py --check``, which make eval-reproduce runs) replays a recorded file
+    at a later commit, on another day and with no claude: the file's date and each read's commit, backend and claude
+    version describe the run, not its numbers."""
+    live, replay = _recorded_and_replayed()
+    assert score.compare(live, replay) == []
+    assert score.compare(replay, live) == []
+
+
+@pytest.mark.parametrize(
+    ("path", "value"),
+    [
+        ("cells.I1.ordnung.targeted.k", None),  # a count, one more
+        ("meta.runs.I1.fingerprints.ordnung", "fp-other"),
+        ("meta.today", "2026-11-28"),
+        ("meta.runs.D1.dirty", ["evals/perturb/score.py"]),
+        ("meta.runs.clean.dataset.manifest_sha256", "e" * 64),
+        ("meta.runs.I1.repeat", 2),
+        ("meta.cells", ["I1"]),
+    ],
+)
+def test_a_replay_still_differs_by_each_number_fingerprint_day_and_changed_path(
+    path: str, value: Any
+) -> None:
+    live, replay = _recorded_and_replayed()
+    *parents, last = path.split(".")
+    target = replay
+    for key in parents:
+        target = target[key]
+    target[last] = target[last] + 1 if value is None else value
+    assert score.compare(live, replay) == [path]
+
+
 def test_noise_floor_rates_sit_beside_the_cells() -> None:
     doc = score.stress_results(
         meta={},
@@ -450,6 +532,38 @@ def test_the_stress_cells_share_one_budget_and_one_recorder_lock(
         live=False, options={}, model="claude-sonnet-5", recorded_dir=tmp_path, entries=()
     ) as none:
         assert none is None
+
+
+def test_a_check_replays_the_cells_the_published_file_holds(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """make eval-reproduce runs ``--check`` with no ``--cells``: a budget cut's file (I1 alone, B's cut order) is
+    replayed as I1 alone, a file of both cells as both. ``--cells`` still chooses when it is given, and a run
+    without ``--check`` (or with a file that names no cell) takes both."""
+    from scripts import eval_perturb
+
+    seen: list[list[str]] = []
+
+    async def run(args: Any) -> int:
+        seen.append(list(args.cells))
+        return 0
+
+    monkeypatch.setattr(eval_perturb, "_run", run)
+
+    def published(cells: list[str]) -> str:
+        path = tmp_path / f"{'-'.join(cells) or 'none'}.json"
+        path.write_text(json.dumps({"meta": {"cells": cells}}), encoding="utf-8")
+        return str(path)
+
+    out = ["--out", str(tmp_path / "out"), "--quiet"]
+    assert eval_perturb.main([*out, "--check", published(["I1"])]) == 0
+    assert eval_perturb.main([*out, "--check", published(["I1", "D1"])]) == 0
+    assert eval_perturb.main([*out, "--check", published(["D1"])]) == 0
+    assert eval_perturb.main([*out, "--check", published([])]) == 0
+    assert eval_perturb.main([*out, "--cells", "D1", "--check", published(["I1"])]) == 0
+    assert eval_perturb.main(out) == 0
+    assert eval_perturb.main(["--live", "--max-cost-usd", "1", "--cells", "I1"]) == 0
+    assert seen == [["I1"], ["I1", "D1"], ["D1"], ["I1", "D1"], ["D1"], ["I1", "D1"], ["I1"]]
 
 
 def test_a_replay_needs_its_own_results_folder(capsys: pytest.CaptureFixture[str]) -> None:

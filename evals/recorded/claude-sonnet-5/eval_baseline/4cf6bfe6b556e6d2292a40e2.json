@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"49daa526209ff6e3cf0b88b176d8017d4e0a3eb1ee1ad15bcbe7f966772b77ac\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:53:18+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"bank_letter\",\"sender_name\":\"Example Prairie Savings Bank\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Account ending\",\"value\":\"…4471\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit address certification form\",\"quote\":\"Please complete the enclosed address certification and mail or upload it by January 15, 2027.\",\"computation\":\"The letter states an explicit calendar date (January 15, 2027) as the deadline to mail or upload the completed address certification form. This is a private US bank's own administrative deadline, not a notice from a German authority, so none of the German statutory delivery-fiction or period-counting rules (§§187, 188, 193 BGB etc.) apply; the date is given directly in the text rather than as a period to be computed. Taking the date exactly as printed: January 15, 2027.\",\"due_date\":\"2027-01-15\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a letter from a US bank (not a German authority), so German statutory delivery-fiction and deadline-counting rules do not apply; the January 15, 2027 deadline is simply the date printed in the letter.\",\"The letter gives no specific account number (only '…4471'), no case/reference number, and only a generic phone/email contact; before mailing or uploading any personal address certification, the recipient should verify independently (e.g. via the number on an existing bank statement or card, not the number printed in this letter) that this request is genuine, since failure to respond would restrict online account access.\"]}",
+    "data": {
+      "kind": "bank_letter",
+      "sender_name": "Example Prairie Savings Bank",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Account ending",
+          "value": "…4471"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit address certification form",
+          "quote": "Please complete the enclosed address certification and mail or upload it by January 15, 2027.",
+          "computation": "The letter states an explicit calendar date (January 15, 2027) as the deadline to mail or upload the completed address certification form. This is a private US bank's own administrative deadline, not a notice from a German authority, so none of the German statutory delivery-fiction or period-counting rules (§§187, 188, 193 BGB etc.) apply; the date is given directly in the text rather than as a period to be computed. Taking the date exactly as printed: January 15, 2027.",
+          "due_date": "2027-01-15",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a letter from a US bank (not a German authority), so German statutory delivery-fiction and deadline-counting rules do not apply; the January 15, 2027 deadline is simply the date printed in the letter.",
+        "The letter gives no specific account number (only '…4471'), no case/reference number, and only a generic phone/email contact; before mailing or uploading any personal address certification, the recipient should verify independently (e.g. via the number on an existing bank statement or card, not the number printed in this letter) that this request is genuine, since failure to respond would restrict online account access."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1841,
+      "cache_read_tokens": 7533,
+      "cache_creation_tokens": 2472,
+      "cost_usd": 0.0298126,
+      "duration_ms": 20773,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

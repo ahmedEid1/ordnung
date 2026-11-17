@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"42840a2b32d4161b0356b72371ed1122e9e04682a7a93b8df9d33121beb454a2\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-invoice_relative-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:10:12+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Hörakustik Beispielklang\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"HK-11-2026-047\"}],\"amounts\":[1400],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay patient share for hearing aids\",\"quote\":\"Den Betrag erbitten wir innerhalb von 30 Tagen nach Rechnungsdatum auf unser Konto;\",\"computation\":\"Start of period: invoice date 19.11.2026. Under §187 Abs. 1 BGB, the day of the event (invoice date) is not counted, so the 30-day period begins 20.11.2026. Counting 30 days forward (November has 30 days) lands on 19.12.2026, which is the 30th day. 19.12.2026 is a Saturday. This is a private payment to a company, so under §270 Abs. 4 BGB the relevant place/Land for the §193 BGB weekend rule is the payer's own Land, Nordrhein-Westfalen. 19.12.2026 (Sat) is not a public holiday in NW regardless, and per §193 BGB the deadline moves to the next working day: Monday 21.12.2026 (not a holiday in NW).\",\"due_date\":\"2026-12-21\",\"confidence\":\"high\",\"amount\":1400}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Hörakustik Beispielklang",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "HK-11-2026-047"
+        }
+      ],
+      "amounts": [
+        1400
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay patient share for hearing aids",
+          "quote": "Den Betrag erbitten wir innerhalb von 30 Tagen nach Rechnungsdatum auf unser Konto;",
+          "computation": "Start of period: invoice date 19.11.2026. Under §187 Abs. 1 BGB, the day of the event (invoice date) is not counted, so the 30-day period begins 20.11.2026. Counting 30 days forward (November has 30 days) lands on 19.12.2026, which is the 30th day. 19.12.2026 is a Saturday. This is a private payment to a company, so under §270 Abs. 4 BGB the relevant place/Land for the §193 BGB weekend rule is the payer's own Land, Nordrhein-Westfalen. 19.12.2026 (Sat) is not a public holiday in NW regardless, and per §193 BGB the deadline moves to the next working day: Monday 21.12.2026 (not a holiday in NW).",
+          "due_date": "2026-12-21",
+          "confidence": "high",
+          "amount": 1400
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1275,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1502,
+      "cost_usd": 0.019868,
+      "duration_ms": 13775,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

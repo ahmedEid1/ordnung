@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"99c103e37ffc3a5b47598ce89166c39a89ea1061e965ca26cbd149a1ba4e7641\",\"mode\":\"text\",\"region\":\"MV\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Mecklenburg-Vorpommern (MV), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrust",
+    "recorded_at": "2026-11-24T07:21:06+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Hansestadt Beispielwismar – Untere Denkmalschutzbehörde\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"DS 63-4471/26\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against partial refusal of plastic window frames\",\"quote\":\"Binnen eines Monats ab der Bekanntgabe dieses Bescheids ist der Widerspruch zulässig; er wird schriftlich oder zur Niederschrift bei folgender Stelle erhoben: Hansestadt Beispielwismar, Am Markt 1, 23966 Beispielwismar.\",\"computation\":\"Bescheiddatum (posting day) = 19.11.2026 (Thursday); no separate 'zur Post gegeben am' date is stated, so the printed Bescheiddatum is the posting day. Letter itself states the applicable rule: 'Ein Bescheid, den die Behörde mit einfachem Brief verschickt, gilt am vierten Tag nach der Aufgabe zur Post als bekannt gegeben' (§ 41 Abs. 2 VwVfG M-V). Counting the posting day as day 0 and adding 4 calendar days: 19.11. + 4 = 23.11.2026 (Monday). This is a general (non-tax) authority, so the delivery day does not move even if it fell on a weekend/holiday; here it is a Monday anyway, so no issue. One-month Widerspruchsfrist under § 70 VwGO/§ 41 VwVfG M-V runs from this deemed delivery day (23.11.2026), the delivery day itself not counted (§ 187 Abs. 1 BGB). Under § 188 Abs. 2 BGB the month-period ends on the day of the following month numerically corresponding to the event day, i.e. 23.12.2026 (Wednesday) — not a Saturday, Sunday or public holiday in MV, so no shift under § 31 Abs. 3 VwVfG/§ 193 BGB is needed.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Hansestadt Beispielwismar – Untere Denkmalschutzbehörde",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "DS 63-4471/26"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against partial refusal of plastic window frames",
+          "quote": "Binnen eines Monats ab der Bekanntgabe dieses Bescheids ist der Widerspruch zulässig; er wird schriftlich oder zur Niederschrift bei folgender Stelle erhoben: Hansestadt Beispielwismar, Am Markt 1, 23966 Beispielwismar.",
+          "computation": "Bescheiddatum (posting day) = 19.11.2026 (Thursday); no separate 'zur Post gegeben am' date is stated, so the printed Bescheiddatum is the posting day. Letter itself states the applicable rule: 'Ein Bescheid, den die Behörde mit einfachem Brief verschickt, gilt am vierten Tag nach der Aufgabe zur Post als bekannt gegeben' (§ 41 Abs. 2 VwVfG M-V). Counting the posting day as day 0 and adding 4 calendar days: 19.11. + 4 = 23.11.2026 (Monday). This is a general (non-tax) authority, so the delivery day does not move even if it fell on a weekend/holiday; here it is a Monday anyway, so no issue. One-month Widerspruchsfrist under § 70 VwGO/§ 41 VwVfG M-V runs from this deemed delivery day (23.11.2026), the delivery day itself not counted (§ 187 Abs. 1 BGB). Under § 188 Abs. 2 BGB the month-period ends on the day of the following month numerically corresponding to the event day, i.e. 23.12.2026 (Wednesday) — not a Saturday, Sunday or public holiday in MV, so no shift under § 31 Abs. 3 VwVfG/§ 193 BGB is needed.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3488,
+      "cache_read_tokens": 12801,
+      "cache_creation_tokens": 4312,
+      "cost_usd": 0.0546962,
+      "duration_ms": 36442,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

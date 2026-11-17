@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"49eefb94fb43668ca444af0275d16202e272a023ac949524043a48ffd31bc399\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:22:56+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterweilburg\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"35 112 0447 8810\"}],\"amounts\":[184300],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against Grundsteuerwert assessment\",\"quote\":\"Gegen diesen Bescheid kann binnen eines Monats nach Bekanntgabe Einspruch beim Finanzamt Musterweilburg eingelegt werden, schriftlich, elektronisch oder zur Niederschrift.\",\"computation\":\"Letter states a separate posting date (Aufgabe zur Post): Saturday 21.11.2026 — this stated posting day controls delivery fiction, not the Bescheid date (18.11.2026). Since it is a Finanzamt letter posted after 1 Jan 2025, delivery is deemed on the 4th day after posting (§122 Abs.2 Nr.1 AO), and for tax offices this deemed-delivery day itself moves to the next working day if it falls on a weekend/holiday (§108 Abs.3 AO). Counting from Sat 21.11.2026 (day of posting, not counted): +1=Sun 22.11, +2=Mon 23.11, +3=Tue 24.11, +4=Wed 25.11.2026. 25.11.2026 is a Wednesday, a normal working day, so deemed delivery = 25.11.2026. The one-month Einspruch period (§355 Abs.1 AO, counted per §108 Abs.1 AO/§188 Abs.2 BGB) runs from the day after delivery and ends on the day in the following month bearing the same number: 25.12.2026. However 25.12.2026 (Christmas Day) and 26.12.2026 (2nd Christmas Day) are nationwide public holidays, and 27.12.2026 is a Sunday; the period therefore extends to the next working day, Monday 28.12.2026 (§108 Abs.3 AO).\",\"due_date\":\"2026-12-28\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter only fixes the Grundsteuerwert (property tax value) at 184,300 €; it does not itself demand any payment — the actual Grundsteuer will be set later by the municipality based on a separate Grundsteuermessbescheid, so no payment amount or due date could be derived from this letter.\",\"The letter footer lists an IBAN (DE36 5135 0025 0003 3001 00) under a generic 'Landesmusterbank' label even though no payment is requested in this letter; verify independently before ever using this IBAN for any payment to this office.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterweilburg",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "35 112 0447 8810"
+        }
+      ],
+      "amounts": [
+        184300
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against Grundsteuerwert assessment",
+          "quote": "Gegen diesen Bescheid kann binnen eines Monats nach Bekanntgabe Einspruch beim Finanzamt Musterweilburg eingelegt werden, schriftlich, elektronisch oder zur Niederschrift.",
+          "computation": "Letter states a separate posting date (Aufgabe zur Post): Saturday 21.11.2026 — this stated posting day controls delivery fiction, not the Bescheid date (18.11.2026). Since it is a Finanzamt letter posted after 1 Jan 2025, delivery is deemed on the 4th day after posting (§122 Abs.2 Nr.1 AO), and for tax offices this deemed-delivery day itself moves to the next working day if it falls on a weekend/holiday (§108 Abs.3 AO). Counting from Sat 21.11.2026 (day of posting, not counted): +1=Sun 22.11, +2=Mon 23.11, +3=Tue 24.11, +4=Wed 25.11.2026. 25.11.2026 is a Wednesday, a normal working day, so deemed delivery = 25.11.2026. The one-month Einspruch period (§355 Abs.1 AO, counted per §108 Abs.1 AO/§188 Abs.2 BGB) runs from the day after delivery and ends on the day in the following month bearing the same number: 25.12.2026. However 25.12.2026 (Christmas Day) and 26.12.2026 (2nd Christmas Day) are nationwide public holidays, and 27.12.2026 is a Sunday; the period therefore extends to the next working day, Monday 28.12.2026 (§108 Abs.3 AO).",
+          "due_date": "2026-12-28",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter only fixes the Grundsteuerwert (property tax value) at 184,300 €; it does not itself demand any payment — the actual Grundsteuer will be set later by the municipality based on a separate Grundsteuermessbescheid, so no payment amount or due date could be derived from this letter.",
+        "The letter footer lists an IBAN (DE36 5135 0025 0003 3001 00) under a generic 'Landesmusterbank' label even though no payment is requested in this letter; verify independently before ever using this IBAN for any payment to this office."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 4110,
+      "cache_read_tokens": 12699,
+      "cache_creation_tokens": 4513,
+      "cost_usd": 0.0616998,
+      "duration_ms": 38561,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

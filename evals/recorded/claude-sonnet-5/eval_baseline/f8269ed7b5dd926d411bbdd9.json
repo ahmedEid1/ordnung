@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"a099ae68be29ae15e3b4f1aea16a82654ebde75a1da8153647b0cf3445d93049\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-relative_business_days-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:32:26+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2026-11-20\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Confirm whether to commission the Gutachten (expert report)\",\"quote\":\"Bitte geben Sie uns innerhalb von 15 Werktagen nach dem Briefdatum Bescheid, ob wir das Gutachten erstellen sollen; als Werktage zählen Montag bis Samstag, nicht aber Sonn- und Feiertage.\",\"computation\":\"Letter is dated Friday 20.11.2026 ('Briefdatum'). Period runs 'nach dem Briefdatum', so counting starts the day after, 21.11.2026 (§187 Abs.1 BGB analogy). Letter defines workdays itself: Monday–Saturday count, Sundays and public holidays do not. Counting 15 such workdays from 21.11.2026: 21.11 Sat=1, 22.11 Sun excluded, 23.11 Mon=2, 24.11 Tue=3, 25.11 Wed=4, 26.11 Thu=5, 27.11 Fri=6, 28.11 Sat=7, 29.11 Sun excluded, 30.11 Mon=8, 01.12 Tue=9, 02.12 Wed=10, 03.12 Thu=11, 04.12 Fri=12, 05.12 Sat=13, 06.12 Sun excluded, 07.12 Mon=14, 08.12 Tue=15. No NRW public holidays fall in this window (Allerheiligen 01.11 and Reformationstag 31.10 already passed; next holiday is Christmas). The 15th workday, 08.12.2026 (Tuesday), is itself a workday per the letter's own definition, so no further shift is required.\",\"due_date\":\"2026-12-08\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"other\",\"references\":[{\"label\":\"Anfrage\",\"value\":\"SV-26-311\"}],\"remedy_type\":\"none\",\"sender_name\":\"Musterhausen Bausachverständige GbR\",\"warnings\":[]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2026-11-20",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Confirm whether to commission the Gutachten (expert report)",
+          "quote": "Bitte geben Sie uns innerhalb von 15 Werktagen nach dem Briefdatum Bescheid, ob wir das Gutachten erstellen sollen; als Werktage zählen Montag bis Samstag, nicht aber Sonn- und Feiertage.",
+          "computation": "Letter is dated Friday 20.11.2026 ('Briefdatum'). Period runs 'nach dem Briefdatum', so counting starts the day after, 21.11.2026 (§187 Abs.1 BGB analogy). Letter defines workdays itself: Monday–Saturday count, Sundays and public holidays do not. Counting 15 such workdays from 21.11.2026: 21.11 Sat=1, 22.11 Sun excluded, 23.11 Mon=2, 24.11 Tue=3, 25.11 Wed=4, 26.11 Thu=5, 27.11 Fri=6, 28.11 Sat=7, 29.11 Sun excluded, 30.11 Mon=8, 01.12 Tue=9, 02.12 Wed=10, 03.12 Thu=11, 04.12 Fri=12, 05.12 Sat=13, 06.12 Sun excluded, 07.12 Mon=14, 08.12 Tue=15. No NRW public holidays fall in this window (Allerheiligen 01.11 and Reformationstag 31.10 already passed; next holiday is Christmas). The 15th workday, 08.12.2026 (Tuesday), is itself a workday per the letter's own definition, so no further shift is required.",
+          "due_date": "2026-12-08",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "other",
+      "references": [
+        {
+          "label": "Anfrage",
+          "value": "SV-26-311"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Musterhausen Bausachverständige GbR",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2769,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1488,
+      "cost_usd": 0.034270400000000006,
+      "duration_ms": 27585,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

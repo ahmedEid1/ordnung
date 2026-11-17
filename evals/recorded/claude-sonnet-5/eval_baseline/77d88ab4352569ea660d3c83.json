@@ -1,0 +1,94 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"2ade68eb43d9eec31f8b59b1aec1ffe859d927757e067117930d08cebccd103e\",\"mode\":\"text\",\"region\":\"BY\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-widerruf-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bayern (BY), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag",
+    "recorded_at": "2026-11-24T13:11:46+00:00",
+    "repeat": 1,
+    "commit": "17c7ca3b",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"receipt\",\"sender_name\":\"Möbelmanufaktur Musterwendel GmbH\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Bestellnummer\",\"value\":\"MW-2026-10-4471\"},{\"label\":\"Lieferschein\",\"value\":\"LS-88213\"}],\"amounts\":[3034],\"items\":[{\"kind\":\"deadline\",\"title\":\"Right of withdrawal (Widerruf) from the furniture purchase\",\"quote\":\"Sie können Ihre Bestellung binnen vierzehn Tagen widerrufen, ohne Gründe zu nennen. Die Frist läuft ab dem Tag, an dem Sie die Ware erhalten haben.\",\"computation\":\"The withdrawal period is 14 days, running from the day the goods were received (§ 355 Abs. 2, § 356 Abs. 2 BGB). Goods were delivered 2026-11-18 (Wednesday), per the letter's own statement. The day of receipt is not counted (§ 187 Abs. 1 BGB), so counting starts 2026-11-19; 14 days later lands on 2026-12-02 (Wednesday). That day is a normal business day in Bavaria (no weekend/holiday shift needed under § 193 BGB). Sending the withdrawal notice by that date is sufficient (rechtzeitig, wenn vor Fristende abgesendet); it need not arrive by then.\",\"due_date\":\"2026-12-02\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a consumer right-of-withdrawal notice (Widerrufsbelehrung), not a Rechtsbehelfsbelehrung from an authority; no einspruch/widerspruch/klage applies here.\",\"The invoice total of 3.034,00 € is stated as already paid ('bereits bezahlt'), so no payment is currently due; if withdrawn, the company states it will refund this amount and collect the furniture at its own cost.\"]}",
+    "data": {
+      "kind": "receipt",
+      "sender_name": "Möbelmanufaktur Musterwendel GmbH",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Bestellnummer",
+          "value": "MW-2026-10-4471"
+        },
+        {
+          "label": "Lieferschein",
+          "value": "LS-88213"
+        }
+      ],
+      "amounts": [
+        3034
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Right of withdrawal (Widerruf) from the furniture purchase",
+          "quote": "Sie können Ihre Bestellung binnen vierzehn Tagen widerrufen, ohne Gründe zu nennen. Die Frist läuft ab dem Tag, an dem Sie die Ware erhalten haben.",
+          "computation": "The withdrawal period is 14 days, running from the day the goods were received (§ 355 Abs. 2, § 356 Abs. 2 BGB). Goods were delivered 2026-11-18 (Wednesday), per the letter's own statement. The day of receipt is not counted (§ 187 Abs. 1 BGB), so counting starts 2026-11-19; 14 days later lands on 2026-12-02 (Wednesday). That day is a normal business day in Bavaria (no weekend/holiday shift needed under § 193 BGB). Sending the withdrawal notice by that date is sufficient (rechtzeitig, wenn vor Fristende abgesendet); it need not arrive by then.",
+          "due_date": "2026-12-02",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a consumer right-of-withdrawal notice (Widerrufsbelehrung), not a Rechtsbehelfsbelehrung from an authority; no einspruch/widerspruch/klage applies here.",
+        "The invoice total of 3.034,00 € is stated as already paid ('bereits bezahlt'), so no payment is currently due; if withdrawn, the company states it will refund this amount and collect the furniture at its own cost."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 3106,
+      "cache_read_tokens": 25888,
+      "cache_creation_tokens": 5492,
+      "cost_usd": 0.0582176,
+      "duration_ms": 33077,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 14,
+            "unit": "days",
+            "anchor": "receipt",
+            "anchor_date": "2026-11-18",
+            "nature": "declaration",
+            "shift_rule": "auto",
+            "delivery_rule": "none",
+            "legal_basis": "§ 355 Abs. 2 BGB",
+            "text": "Sie können Ihre Bestellung binnen vierzehn Tagen widerrufen... Die Frist läuft ab dem Tag, an dem Sie die Ware erhalten haben."
+          },
+          "sender_kind": "company",
+          "sender_name": "Möbelmanufaktur Musterwendel GmbH",
+          "document_date": "2026-11-18",
+          "recipient_region": "BY",
+          "region": "BY"
+        },
+        "result": "{\"due_date\":\"2026-12-02\",\"weekday\":\"Wednesday\",\"send_by\":\"2026-12-02\",\"summary\":\"You can withdraw until Wed 2 Dec 2026 (counted from Wed 18 Nov 2026, sending it in time is enough).\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Wed 18 Nov 2026\",\"date\":\"2026-11-18\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB\"},{\"label\":\"14 days later: Wed 2 Dec 2026\",\"date\":\"2026-12-02\",\"rule_id\":\"bgb_355\",\"citation\":\"§ 355 Abs. 1, 2 BGB; § 356 Abs. 2 BGB; § 193 BGB\"},{\"label\":\"Wed 2 Dec 2026 is a working day, so it stays\",\"date\":\"2026-12-02\",\"rule_id\":\"bgb_193\",\"citation\":\"§ 193 BGB\"},{\"label\":\"Sending the withdrawal by Wed 2 Dec 2026 is enough — it doesn't have to arrive by then\",\"date\":\"2026-12-02\",\"rule_id\":\"bgb_355\",\"citation\":\"§ 355 Abs. 1, 2 BGB; § 356 Abs. 2 BGB; § 193 BGB\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_355\",\"title\":\"Withdrawal (Widerruf): 14 days\",\"citation\":\"§ 355 Abs. 1, 2 BGB; § 356 Abs. 2 BGB; § 193 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__355.html\"},{\"id\":\"bgb_193\",\"title\":\"Weekend and holiday shift (private law)\",\"citation\":\"§ 193 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__193.html\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-18\",\"received_date\":\"2026-11-18\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"holiday_calendar\":\"Bayern\",\"holidays_from\":\"recipient_region: a withdrawal is declared where the consumer lives (§ 193 BGB), so that Land's holidays apply\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

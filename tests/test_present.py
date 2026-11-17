@@ -5,6 +5,11 @@ rendered from the results files alone, through ``evals/present/presentation.json
 committed output differs from a fresh render. These tests pin the numbers it shows today (the three held-out
 splits as recorded, re-analysed by ``evals.analysis``), the rules that choose its sentences for good and bad
 results alike, the charts' accessibility and the palette, and that no letter's text reaches any output.
+
+Once the pre-registered final run is published (``tests/helpers_publication.py``), it takes the README's block, the
+row order and charts of its own, and the committed outputs are its outputs: the numbers and sentences of today's
+presentation are then pinned on the results as they were before the publish PR (``today``), and the committed
+outputs on the published final run (its registered sentences, its charts).
 """
 
 from __future__ import annotations
@@ -30,11 +35,15 @@ from evals.present import (
     PresentError,
     build,
     charts,
+    final,
+    finalrun,
     model,
     palette,
     site,
     text,
 )
+
+from helpers_publication import final_published, results_before_publication
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "evals" / "results"
@@ -46,11 +55,50 @@ HELD_OUT = {
 }
 #: what a path of the building computer starts with (as tests/test_media_budget.py)
 PATH_MARKS = ("/home/", "/Users/", "/root/", "/tmp/", "\\Users\\")
+#: Whether the pre-registered final run is published in this checkout (its analysis is in evals/results).
+PUBLISHED = final_published()
+
+
+def _final_chart_names() -> tuple[str, ...]:
+    """The published final run's charts: its headline and its differences, and the stability over the reads with two
+    reads or more (``tests/test_present_final_run.py``); none before the publish PR."""
+    if not PUBLISHED:
+        return ()
+    found = final.published(ROOT)
+    assert found is not None
+    reads = found[0]["primary"]["reads"]
+    return ("final", "final-differences", *(("final-stability",) if reads >= 2 else ()))
+
+
+#: The final run's charts, once it is published.
+FINAL_CHARTS = _final_chart_names()
+#: Every committed output: today's, and the final run's charts beside them once it is published.
+OUTPUTS = (
+    *build.OUTPUT_PATHS,
+    *(f"docs/assets/eval-{name}-{theme}.svg" for name in FINAL_CHARTS for theme in ("light", "dark")),
+)
+
+
+@pytest.fixture(scope="module")
+def today(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """The results with no final run: the committed ones until the final run is published, then the results folder as
+    it was before the publish PR (``tests/helpers_publication.py``)."""
+    if not PUBLISHED:
+        return RESULTS
+    return results_before_publication(tmp_path_factory.mktemp("results-before-publication"))
 
 
 @pytest.fixture(scope="module")
 def doc() -> dict[str, Any]:
+    """The committed presentation (``presentation.json``): today's, or with the final run once it is published."""
     return model.build(RESULTS)
+
+
+@pytest.fixture(scope="module")
+def today_doc(today: Path, doc: dict[str, Any]) -> dict[str, Any]:
+    """Today's presentation: the earlier held-out splits pooled, with no final run (the committed one until the final
+    run is published)."""
+    return model.build(today) if PUBLISHED else doc
 
 
 @pytest.fixture(scope="module")
@@ -146,12 +194,12 @@ def test_the_headline_is_the_held_out_splits_as_recorded(doc: dict[str, Any]) ->
     assert headline["flags"] == {"caught": 0, "wrong": 5}
 
 
-def test_the_row_order_is_the_headline_metric_s_set_once(doc: dict[str, Any]) -> None:
-    assert doc["order"] == ["llm_rules_tool", "ordnung", "llm_rules_text", "llm_only"]
+def test_the_row_order_is_the_headline_metric_s_set_once(today_doc: dict[str, Any]) -> None:
+    assert today_doc["order"] == ["llm_rules_tool", "ordnung", "llm_rules_text", "llm_only"]
 
 
-def test_an_input_whose_bytes_changed_is_refused(tmp_path: Path) -> None:
-    for path in RESULTS.glob("*.json"):
+def test_an_input_whose_bytes_changed_is_refused(tmp_path: Path, today: Path) -> None:
+    for path in today.glob("*.json"):
         (tmp_path / path.name).write_bytes(path.read_bytes())
     name = "2026-10-01-claude-sonnet-5-holdout2.json"
     (tmp_path / name).write_bytes((RESULTS / name).read_bytes() + b"\n")
@@ -159,16 +207,21 @@ def test_an_input_whose_bytes_changed_is_refused(tmp_path: Path) -> None:
         model.build(tmp_path)
 
 
-def test_a_final_run_is_never_shown_under_the_pooled_headline(tmp_path: Path) -> None:
-    """Once a pre-registered final run exists, it takes the headline by rule (phase 2): the phase-1 presenter
-    refuses to render the pooled headline beside it rather than publish it as 0.4.0's."""
-    for path in RESULTS.glob("*.json"):
-        (tmp_path / path.name).write_bytes(path.read_bytes())
-    final = {"schema": "ordnung-eval-analysis/1", "meta": {"kind": "final", "model": "claude-sonnet-5"}}
-    (tmp_path / "2026-12-01-claude-sonnet-5-final.json").write_text(json.dumps(final), encoding="utf-8")
-    assert model.roles(tmp_path)["2026-12-01-claude-sonnet-5-final.json"] == "final"
-    with pytest.raises(PresentError, match="final"):
-        model.build(tmp_path)
+def test_a_final_read_without_its_analysis_is_refused(tmp_path: Path, today: Path) -> None:
+    """A read of a final split takes the headline only through the pre-registered final analysis that reads it
+    (tests/test_present_final_run.py): a read with no final analysis beside it is refused, never shown under the
+    pooled headline nor left out of the pages."""
+    from helpers_final import synthetic_read
+
+    results = tmp_path / "evals" / "results"
+    results.mkdir(parents=True)
+    for path in today.glob("*.json"):
+        (results / path.name).symlink_to(path)
+    name = "2027-01-01-claude-sonnet-5-holdout4.json"
+    (results / name).write_text(json.dumps(synthetic_read("holdout4", 1, 12)), encoding="utf-8")
+    assert model.roles(results)[name] == "final"
+    with pytest.raises(PresentError, match="without the final analysis"):
+        model.build(results)
 
 
 def test_the_test_split_s_first_run_facts_come_from_its_results_file(doc: dict[str, Any]) -> None:
@@ -191,8 +244,8 @@ def test_the_test_split_s_first_run_facts_come_from_its_results_file(doc: dict[s
 # --------------------------------------------------------------------------------------------------
 
 
-def test_the_readme_block_states_the_headline(doc: dict[str, Any]) -> None:
-    block = _flat(text.readme_block(doc))
+def test_the_readme_block_states_the_headline(today_doc: dict[str, Any]) -> None:
+    block = _flat(text.readme_block(today_doc))
     assert (
         "**Held out, read once.** On 168 deadlines in 189 synthetic letters that nothing was tuned on"
         in block
@@ -225,22 +278,22 @@ def test_the_readme_block_states_the_headline(doc: dict[str, Any]) -> None:
     assert 'src="docs/assets/eval-held-out-light.svg"' in block
 
 
-def test_the_readme_block_is_short(doc: dict[str, Any]) -> None:
+def test_the_readme_block_is_short(today_doc: dict[str, Any]) -> None:
     """Today's block stays within 12 lines; the final run's block has its own budget, registered with its templates
     (``evals.present.final.README_BLOCK_MAX_LINES``, held by tests/test_present_final.py)."""
-    lines = text.readme_block(doc).strip("\n").splitlines()
+    lines = text.readme_block(today_doc).strip("\n").splitlines()
     assert lines[0] == BEGIN and lines[-1] == END
     assert len(lines) - 2 <= 12
 
 
-def test_today_s_chart_line_fits_the_final_block_s_frame_and_maximum(doc: dict[str, Any]) -> None:
+def test_today_s_chart_line_fits_the_final_block_s_frame_and_maximum(today_doc: dict[str, Any]) -> None:
     """The final block registers its chart's line as a frame (``evals.present.final._is_picture``: ``<source>`` tags,
     one ``<img>`` with its alt text, nothing outside the tags) of at most ``final.README_PICTURE_MAX`` characters,
     before the final chart exists. Today's chart line, in the form the presenter writes, fits it, and so does the same
     line with every number at four digits and the final run's name for its deadlines."""
     from evals.present import final
 
-    (picture,) = [line for line in text.readme_block(doc).splitlines() if line.startswith("<picture>")]
+    (picture,) = [line for line in text.readme_block(today_doc).splitlines() if line.startswith("<picture>")]
     assert final._is_picture(picture)
     worst = re.sub(r"\d+\.\d", "100.0", picture.replace("held-out", "final-run"))
     worst = re.sub(r"(?<![\d.])\d+(?![\d.])", "9999", worst)
@@ -275,37 +328,37 @@ def _variant(doc: dict[str, Any], **changes: Any) -> dict[str, Any]:
     return new
 
 
-def test_the_sentence_says_good_and_bad_results_the_same_way(doc: dict[str, Any]) -> None:
+def test_the_sentence_says_good_and_bad_results_the_same_way(today_doc: dict[str, Any]) -> None:
     """The headline sentence is chosen by rule: the same place and the same size for a good result and a bad one."""
-    good = _flat(text.headline(doc))
+    good = _flat(text.headline(today_doc))
     assert "**3 of 168** late or missed" in good
-    none_harmful = _flat(text.headline(_variant(doc, harmful_ordnung=0)))
+    none_harmful = _flat(text.headline(_variant(today_doc, harmful_ordnung=0)))
     assert "with **none of 168** late or missed" in none_harmful
-    unclear = _flat(text.headline(_variant(doc, verdict_llm_only="none")))
+    unclear = _flat(text.headline(_variant(today_doc, verdict_llm_only="none")))
     assert "**no clear difference**" in unclear and "31 vs 4 discordant" in unclear
-    behind = _flat(text.headline(_variant(doc, verdict_llm_only="clear", diff_llm_only=-0.1)))
+    behind = _flat(text.headline(_variant(today_doc, verdict_llm_only="clear", diff_llm_only=-0.1)))
     assert "**the model alone is ahead**" in behind
-    agent_ahead = _flat(text.headline(_variant(doc, verdict_llm_rules_tool="clear")))
+    agent_ahead = _flat(text.headline(_variant(today_doc, verdict_llm_rules_tool="clear")))
     assert "scores higher (99.4 %" in agent_ahead and "not accuracy" in agent_ahead
     agent_behind = _flat(
-        text.headline(_variant(doc, verdict_llm_rules_tool="clear", diff_llm_rules_tool=0.05))
+        text.headline(_variant(today_doc, verdict_llm_rules_tool="clear", diff_llm_rules_tool=0.05))
     )
     assert "scores lower (99.4 %" in agent_behind
-    agent_unsettled = _flat(text.headline(_variant(doc, verdict_llm_rules_tool="suggestive")))
+    agent_unsettled = _flat(text.headline(_variant(today_doc, verdict_llm_rules_tool="suggestive")))
     assert "scores higher, not settled (99.4 %" in agent_unsettled
     # "level" only when the interval's lower bound is above −5 points (the pre-registered margin)
-    level = _flat(text.headline(_variant(doc, bootstrap_llm_rules_tool=[-0.04, 0.01])))
+    level = _flat(text.headline(_variant(today_doc, bootstrap_llm_rules_tool=[-0.04, 0.01])))
     assert "is level within 5 points (99.4 %, 1 vs 5 discordant; −2.4 points, 95 % CI −4.0 to +1.0)" in level
     assert "we cannot tell" not in level
-    cannot = _flat(text.headline(doc))
+    cannot = _flat(text.headline(today_doc))
     assert "we cannot tell whether Ordnung is within 5 points of it" in cannot and "is level" not in cannot
-    caught = _flat(text.readme_block(_variant(doc, caught=5, set_aside=0, scam_in_calendar=[])))
+    caught = _flat(text.readme_block(_variant(today_doc, caught=5, set_aside=0, scam_in_calendar=[])))
     assert "**Where it falls short:**" not in caught and "caught 5 of Ordnung's 5 wrong dates" in caught
-    if doc.get("e2e"):  # every wrong date caught, but real obligations still set aside: still short
-        set_aside = _flat(text.readme_block(_variant(doc, caught=5, scam_in_calendar=[])))
+    if today_doc.get("e2e"):  # every wrong date caught, but real obligations still set aside: still short
+        set_aside = _flat(text.readme_block(_variant(today_doc, caught=5, scam_in_calendar=[])))
         assert "**Where it falls short:**" in set_aside and "set aside as a scam" in set_aside
         scam = _flat(
-            text.readme_block(_variant(doc, caught=5, set_aside=0))
+            text.readme_block(_variant(today_doc, caught=5, set_aside=0))
         )  # a scam's demand in the calendar
         assert "**Where it falls short:**" in scam and "scam letters still put their demands" in scam
 
@@ -334,15 +387,15 @@ REPORT_SECTIONS = [
 ]
 
 
-def test_the_report_has_its_sections_in_the_order_an_expert_reads(doc: dict[str, Any]) -> None:
-    page = text.report(doc)
+def test_the_report_has_its_sections_in_the_order_an_expert_reads(today_doc: dict[str, Any]) -> None:
+    page = text.report(today_doc)
     assert re.findall(r"^## (.+)$", page, re.M) == REPORT_SECTIONS
     assert page.startswith("# Evaluation: reading German letters for deadlines\n")
     assert "Do not edit by hand" in page
 
 
-def test_the_report_corrects_the_rules_text_claim(doc: dict[str, Any]) -> None:
-    page = _flat(text.report(doc))
+def test_the_report_corrects_the_rules_text_claim(today_doc: dict[str, Any]) -> None:
+    page = _flat(text.report(today_doc))
     assert (
         "14 vs 5 discordant, exact p 0.064, Holm-adjusted 0.127 (mid-p 0.041, Holm-adjusted 0.083): suggestive, "
         "not settled" in page
@@ -400,8 +453,8 @@ def test_a_harm_comparison_says_who_has_fewer_harmful_dates(doc: dict[str, Any])
     assert accuracy and accuracy[0].endswith("| Ordnung ahead, clearly |")
 
 
-def test_the_report_s_lists_and_failure_causes_read_right(doc: dict[str, Any]) -> None:
-    page = text.report(doc)
+def test_the_report_s_lists_and_failure_causes_read_right(today_doc: dict[str, Any]) -> None:
+    page = text.report(today_doc)
     assert "\n-  " not in page and "\n- Against the model alone:" in page
     failures = page.split("## 11. Failure analysis", 1)[1].split("\n## ", 1)[0]
     baseline_rows = [line for line in failures.splitlines() if "| LLM only |" in line]
@@ -433,10 +486,10 @@ def test_the_report_lists_every_harmful_error_by_id_only(doc: dict[str, Any]) ->
         assert row["entry_id"] in failures
 
 
-def test_sections_without_results_yet_say_so(doc: dict[str, Any]) -> None:
+def test_sections_without_results_yet_say_so(today_doc: dict[str, Any]) -> None:
     """The final run, the stress cells and (until their files exist) the check ablation and the end-to-end run are
     named as not yet run, never left out silently."""
-    bare = copy.deepcopy(doc)
+    bare = copy.deepcopy(today_doc)
     bare["e2e"] = None
     bare["ablation"] = None
     page = _flat(text.report(bare))
@@ -455,8 +508,10 @@ def test_sections_without_results_yet_say_so(doc: dict[str, Any]) -> None:
     assert "No results file of the end-to-end run yet" in page
 
 
-def test_the_ablation_and_end_to_end_sections_fill_from_their_results_files(doc: dict[str, Any]) -> None:
-    with_both = copy.deepcopy(doc)
+def test_the_ablation_and_end_to_end_sections_fill_from_their_results_files(
+    today_doc: dict[str, Any],
+) -> None:
+    with_both = copy.deepcopy(today_doc)
     with_both["ablation"] = {
         "file": "2026-10-29-claude-sonnet-5-checks-ablated.json",
         "splits": ["holdout", "holdout2", "holdout3"],
@@ -534,10 +589,10 @@ def test_a_missed_deadline_is_counted_with_the_deadlines_without_a_flag_and_said
         assert "among those shown" not in svg and "a missed deadline has no flag" in svg
 
 
-def test_the_end_to_end_scam_result_is_published_from_its_results_file(doc: dict[str, Any]) -> None:
+def test_the_end_to_end_scam_result_is_published_from_its_results_file(today_doc: dict[str, Any]) -> None:
     """The end-to-end run's scam letters, as the results file holds them: 2 of 12 put payment demands in the
     calendar with no scam warning; the report and the README say so by id."""
-    scam = doc["e2e"]["scam"]
+    scam = today_doc["e2e"]["scam"]
     assert scam["letters"] == 12
     assert (scam["kept_off_the_calendar"]["k"], scam["kept_off_the_calendar"]["n"]) == (10, 12)
     assert scam["in_the_calendar"] == [
@@ -545,10 +600,12 @@ def test_the_end_to_end_scam_result_is_published_from_its_results_file(doc: dict
         {"entry_id": "holdout3-adversarial-scam-2", "events": 2},
     ]
     assert (scam["false_scam_idea"]["k"], scam["false_scam_idea"]["n"]) == (13, 240)
-    page = _flat(text.report(doc))
+    page = _flat(text.report(today_doc))
     assert "2 of 12 scam letters still put their demands in the calendar" in page
     assert "`holdout3-adversarial-scam-1` (1 event) and `holdout3-adversarial-scam-2` (2 events)" in page
-    assert "2 of 12 scam letters still put their demands in the calendar" in _flat(text.readme_block(doc))
+    assert "2 of 12 scam letters still put their demands in the calendar" in _flat(
+        text.readme_block(today_doc)
+    )
 
 
 def test_the_history_page_keeps_the_runs_as_they_were_published(rendered: dict[str, str]) -> None:
@@ -667,14 +724,14 @@ def test_the_history_page_says_which_replay_supersedes_which_and_why(rendered: d
 
 
 def test_a_read_of_the_final_run_replayed_another_way_leaves_the_current_report_s_replays(
-    tmp_path: Path, doc: dict[str, Any]
+    tmp_path: Path, today_doc: dict[str, Any], today: Path
 ) -> None:
     """The final run's reads replayed without the sender's Land, with the code checks switched off and end to end are
     files of their own, one per read, and newer than every published replay: the current report keeps the earlier
     splits' replays (a read's replay is the final report's, before its analysis too), the history lists every file,
     and among the earlier splits' replays the index checks one file of each kind, the one each superseded file names
     (holdout3's numbers stand in for holdout4's, as in tests/test_results_index.py)."""
-    for path in RESULTS.glob("*.json"):
+    for path in today.glob("*.json"):
         (tmp_path / path.name).write_bytes(path.read_bytes())
     published = {
         "without_land": "2026-10-08-claude-sonnet-5-without-land.json",
@@ -697,7 +754,7 @@ def test_a_read_of_the_final_run_replayed_another_way_leaves_the_current_report_
         (tmp_path / name).write_text(json.dumps(data), encoding="utf-8")
     built = model.build(tmp_path)
     for section, name in published.items():
-        assert built[section]["file"] == name and built[section] == doc[section], section
+        assert built[section]["file"] == name and built[section] == today_doc[section], section
     assert set(reads.values()) <= {row["file"] for row in built["files"]}
     rows = reproduce.static_index(tmp_path)["results"]
     for row in rows:  # the verdicts a passing `make eval-reproduce` gives them
@@ -721,11 +778,42 @@ def test_a_read_of_the_final_run_replayed_another_way_leaves_the_current_report_
 
 
 def test_the_outputs_are_the_committed_files(rendered: dict[str, str]) -> None:
-    assert set(rendered) == set(build.OUTPUT_PATHS)
+    assert set(rendered) == set(OUTPUTS)
     for relative, content in rendered.items():
         assert (ROOT / relative).read_text(encoding="utf-8") == content, (
             f"{relative}: run python -m evals.present --write"
         )
+
+
+def test_the_committed_presentation_is_today_s_or_the_published_final_run_s(
+    today_doc: dict[str, Any], tmp_path: Path
+) -> None:
+    """With no final run the committed presentation is today's. Once the final run is published, it keeps today's
+    pooled numbers (the headline, Ask, the replays, the test split's first run) beside the final run's section, takes
+    its row order from the final run, and the committed README block and report say the final run's registered
+    sentences as registered; its charts are committed beside today's, and its report page passes its own check."""
+    committed = json.loads(PRESENTATION_PATH.read_text(encoding="utf-8"))
+    assert tuple(build.output_paths(committed)) == OUTPUTS
+    if not PUBLISHED:
+        assert committed == json.loads(model.dumps(today_doc)) and committed["final"] is None
+        assert FINAL_CHARTS == () and OUTPUTS == tuple(build.OUTPUT_PATHS)
+        return
+    assert committed["final"] is not None
+    for key in ("headline", "ask", "without_land", "ablation", "e2e", "llm_only_first_run"):
+        assert committed[key] == json.loads(model.dumps(today_doc))[key], key
+    assert committed["order"] == finalrun.order(committed["final"])
+    found = final.published(ROOT)
+    assert found is not None
+    source, prereg, named = found
+    said = final.coded(source, prereg, block="readme", sources=named)
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert final.readme_problems(readme, said, prereg["sentences"]) == []
+    page = [sentence.text for sentence in final.coded(source, prereg, block="page", sources=named)]
+    assert final.page_problems((ROOT / "docs" / "evals.md").read_text(encoding="utf-8"), page) == []
+    assert charts.committed(committed) == (*charts.COMMITTED, *FINAL_CHARTS)
+    out = tmp_path / "site"
+    site.build_site(committed, out)
+    assert site.check_site(out, committed, forbidden=site.dataset_sentences()) == []
 
 
 def test_two_renders_are_byte_identical(rendered: dict[str, str]) -> None:
@@ -747,7 +835,7 @@ def test_no_output_holds_a_path_of_the_building_computer(rendered: dict[str, str
 def _tree(tmp_path: Path) -> Path:
     """A copy of what the presenter reads and writes, to edit."""
     root = tmp_path / "root"
-    for relative in build.OUTPUT_PATHS:
+    for relative in OUTPUTS:
         target = root / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes((ROOT / relative).read_bytes())
@@ -758,11 +846,13 @@ def _tree(tmp_path: Path) -> Path:
 def test_check_passes_and_fails_after_a_one_character_edit_to_any_output(tmp_path: Path) -> None:
     root = _tree(tmp_path)
     assert build.check(root, RESULTS) == []
-    for relative in build.OUTPUT_PATHS:
+    for relative in OUTPUTS:
         path = root / relative
         original = path.read_bytes()
-        # README's own text outside the block is not the presenter's: the edit goes inside the block
-        middle = original.index(b"exactly right") if relative == "README.md" else len(original) // 2
+        # README's own text outside the block is not the presenter's: the edit goes inside the block (today's, or the
+        # final run's registered one once it is published)
+        inside = b"Final run, pre-registered" if PUBLISHED else b"exactly right"
+        middle = original.index(inside) if relative == "README.md" else len(original) // 2
         path.write_bytes(
             original[:middle]
             + (b"x" if original[middle : middle + 1] != b"x" else b"y")
@@ -911,7 +1001,7 @@ def test_the_palette_is_the_validated_set() -> None:
 
 def test_the_committed_charts_are_small(rendered: dict[str, str]) -> None:
     svgs = {relative: content for relative, content in rendered.items() if relative.endswith(".svg")}
-    assert len(svgs) == 2 * len(charts.COMMITTED)
+    assert len(svgs) == 2 * (len(charts.COMMITTED) + len(FINAL_CHARTS))
     for relative, content in svgs.items():
         assert len(content.encode("utf-8")) <= 40_000, relative
 
@@ -962,8 +1052,9 @@ def test_every_chart_on_the_page_has_its_table_and_csv(page_dir: Path, doc: dict
         header, rows = charts.table(name, doc)
         written = list(csv.reader(io.StringIO((page_dir / f"{name}.csv").read_text(encoding="utf-8"))))
         assert written == [header, *rows]
-    # the charts the README names are served next to the page, for PyPI (pyproject.toml rewrites them here)
-    for name in charts.COMMITTED:
+    # the charts the README names are served next to the page, for PyPI (pyproject.toml rewrites them here): the final
+    # run's too once it is published
+    for name in (*charts.COMMITTED, *FINAL_CHARTS):
         for theme in ("light", "dark"):
             assert (page_dir / f"eval-{name}-{theme}.svg").read_text(encoding="utf-8") == (
                 ROOT / "docs" / "assets" / f"eval-{name}-{theme}.svg"
@@ -1076,11 +1167,13 @@ def test_pypi_shows_the_readme_charts_from_the_pages_copy() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     for substitution in hook["substitutions"]:
         readme = re.sub(substitution["pattern"], substitution["replacement"], readme)
-    for name in charts.COMMITTED:
+    for name in (*charts.COMMITTED, *FINAL_CHARTS):
         for theme in ("light", "dark"):
             assert f"docs/assets/eval-{name}-{theme}.svg" not in readme
-    assert f'srcset="{PAGES_URL}eval-held-out-dark.svg"' in readme
-    assert f'src="{PAGES_URL}eval-held-out-light.svg"' in readme
+    # the README's chart: today's held-out headline, or the final run's once it is published
+    chart = "final" if PUBLISHED else "held-out"
+    assert f'srcset="{PAGES_URL}eval-{chart}-dark.svg"' in readme
+    assert f'src="{PAGES_URL}eval-{chart}-light.svg"' in readme
 
 
 # --------------------------------------------------------------------------------------------------

@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"e77264f58e6ef85dfc811decfb506112277d23e8baa46b06ed1819851546b03c\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-N2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T12:28:02+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Musterbau-Berufsgenossenschaft\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Mitgliedsnummer\",\"value\":\"BG 4471 0938 2\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against Gefahrklasse assessment\",\"quote\":\"Den Widerspruch können Sie binnen eines Monats ab Bekanntgabe einlegen, schriftlich oder zur Niederschrift bei der Musterbau-Berufsgenossenschaft, Gerüstweg 7, 30159 Musterhannover.\",\"computation\":\"Letter dated Thu 19.11.2026; assumed posted same day. The letter states the Bekanntgabe fiction applies on the 4th day after posting (consistent with the current §37 Abs.2 SGB X standard of 4 days, in force since the 2025 postal-law reform). Counting from 19.11. (posting day not counted): day1=20.11(Fri), day2=21.11(Sat), day3=22.11(Sun), day4=23.11.2026 (Mon) = Bekanntgabe date (a weekday, no adjustment needed). The one-month Widerspruchsfrist runs from this event; per §188 Abs.2 BGB the period ends on the day in the following month bearing the same number as the day of the triggering event, i.e. 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in NRW, so no further shift under §193 BGB is required.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"This document uses obviously fictitious/placeholder names and addresses (e.g. 'Musterbau-Berufsgenossenschaft', 'Musterhannover', 'Bastian Musterquell'), indicating it is a template/sample letter — verify the real letter's dates and figures before relying on this analysis.\"]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Musterbau-Berufsgenossenschaft",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Mitgliedsnummer",
+          "value": "BG 4471 0938 2"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against Gefahrklasse assessment",
+          "quote": "Den Widerspruch können Sie binnen eines Monats ab Bekanntgabe einlegen, schriftlich oder zur Niederschrift bei der Musterbau-Berufsgenossenschaft, Gerüstweg 7, 30159 Musterhannover.",
+          "computation": "Letter dated Thu 19.11.2026; assumed posted same day. The letter states the Bekanntgabe fiction applies on the 4th day after posting (consistent with the current §37 Abs.2 SGB X standard of 4 days, in force since the 2025 postal-law reform). Counting from 19.11. (posting day not counted): day1=20.11(Fri), day2=21.11(Sat), day3=22.11(Sun), day4=23.11.2026 (Mon) = Bekanntgabe date (a weekday, no adjustment needed). The one-month Widerspruchsfrist runs from this event; per §188 Abs.2 BGB the period ends on the day in the following month bearing the same number as the day of the triggering event, i.e. 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in NRW, so no further shift under §193 BGB is required.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "This document uses obviously fictitious/placeholder names and addresses (e.g. 'Musterbau-Berufsgenossenschaft', 'Musterhannover', 'Bastian Musterquell'), indicating it is a template/sample letter — verify the real letter's dates and figures before relying on this analysis."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 5664,
+      "cache_read_tokens": 16297,
+      "cache_creation_tokens": 6467,
+      "cost_usd": 0.08577939999999999,
+      "duration_ms": 59618,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

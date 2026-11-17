@@ -32,6 +32,9 @@ jobs:
         python: ["3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v7
+        with:
+          # all of the history: the pre-registration's history checks need the freeze commit
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python }}
@@ -64,12 +67,16 @@ jobs:
   backend-slow:
     name: Backend, slow checks (Python 3.12)
     # the slow tests, the replayed benchmarks and demo --check: in the 3.12 leg of "backend" they took the job
-    # to 36 of its then 45 minutes, so a slow runner could time it out
+    # to 36 of its then 45 minutes, so a slow runner could time it out. With the final run's replays it reached
+    # the Python 3.11 install in 32 minutes on 17 Nov 2026, and the replay under 3.11 comes after it
     if: github.event_name != 'schedule'
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
+        with:
+          # all of the history: the pre-registration's history checks need the freeze commit
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
@@ -91,6 +98,15 @@ jobs:
           .venv/bin/ordnung eval --split holdout --conditions ordnung --min-accuracy 0.98 --max-dangerous-late 0 --quiet
           .venv/bin/ordnung eval --split holdout2 --conditions ordnung --min-accuracy 0.98 --max-dangerous-late 0 --quiet
           .venv/bin/ordnung eval --split dev --conditions ordnung --min-accuracy 0.96 --max-dangerous-late 0 --quiet
+      - name: Final run replayed (holdout4 r1-r3 and newkinds, Ordnung alone; held-out Ask r1-r3)
+        run: |
+          .venv/bin/ordnung eval --split holdout4 --repeat 1 --conditions ordnung --min-accuracy 0.928 --max-dangerous-late 0.009 --quiet
+          .venv/bin/ordnung eval --split holdout4 --repeat 2 --conditions ordnung --min-accuracy 0.928 --max-dangerous-late 0.009 --quiet
+          .venv/bin/ordnung eval --split holdout4 --repeat 3 --conditions ordnung --min-accuracy 0.928 --max-dangerous-late 0.0179 --quiet
+          .venv/bin/ordnung eval --split newkinds --repeat 1 --conditions ordnung --min-accuracy 0.75 --max-dangerous-late 0 --quiet
+          .venv/bin/python -m evals.ask --set heldout --repeat 1 --today 2026-11-24 --min-strict-accuracy 0.773 --max-harmful 7
+          .venv/bin/python -m evals.ask --set heldout --repeat 2 --today 2026-11-24 --min-strict-accuracy 0.702 --max-harmful 11
+          .venv/bin/python -m evals.ask --set heldout --repeat 3 --today 2026-11-24 --min-strict-accuracy 0.738 --max-harmful 8
       - name: The replay without the sender's Land gives the published numbers
         env:
           PUBLISHED: evals/results/2026-10-08-claude-sonnet-5-without-land.json
@@ -120,12 +136,42 @@ jobs:
           --min-strict-accuracy 0.86 --max-harmful 6 --check-docs
       - name: The evaluation's README block, report, history page and charts are what the results files render
         run: .venv/bin/python -m evals.present --check
-      - name: Every published number is replayed with no model call and checked against evals/results/INDEX.json
+      - name: Install Python 3.11 from the deadsnakes PPA for the next step (it uses Ubuntu's zlib 1.3, as the recording did)
+        # Ubuntu 24.04 has no Python 3.11, and the 3.11 that uv downloads brings its own zlib 1.3.2: the stress
+        # files' build check (evals/perturb/build.py) wants the zlib the dataset was rendered with. The PPA's host
+        # answered 503 to this step twice on 17 Nov 2026, once for two packages and once for its index, which
+        # apt-get update only warned about: any failed fetch now fails the try, and the install gets 5 tries
+        run: |
+          for try in 1 2 3 4 5; do
+            if sudo add-apt-repository -y -n ppa:deadsnakes/ppa && sudo apt-get update -q --error-on=any \
+              && sudo apt-get install -y -q --no-install-recommends python3.11; then exit 0; fi
+            echo "::warning::the deadsnakes PPA did not answer (try $try of 5)"
+            [ "$try" = 5 ] || sleep $((try * 20))
+          done
+          exit 1
+      - name: Every published number is replayed with no model call and checked against evals/results/INDEX.json, under the pre-registration's Python 3.11
         # every split, condition, Ask set, end-to-end run and ablation with a recording replayed, the analysis, the
         # pages and items.csv checked, all compared with the results index (evals/reproduce.py): a changed date or
         # count, or a replayed number that moved, needs its reason there; a cell recorded after the code freeze
-        # shows as "not recorded yet" until it is
-        run: make eval-reproduce
+        # shows as "not recorded yet" until it is. It runs under Python 3.11, the pre-registration's, in a venv of
+        # its own outside the checkout: the final run was recorded under 3.11, and the publish commit's stress
+        # check compares each read's fingerprints, which take in the Python version (evals/conditions.py). The
+        # venv is checked first for the Python and the zlib the pre-registration records
+        run: |
+          uv venv --python /usr/bin/python3.11 "$RUNNER_TEMP/py311"
+          uv pip install --python "$RUNNER_TEMP/py311" -e ".[dev]" -c constraints.txt
+          "$RUNNER_TEMP/py311/bin/python" - <<'EOF'
+          import json
+          import sys
+          import zlib
+
+          frozen = json.load(open("evals/preregistration/final-0.4.0.json", encoding="utf-8"))["frozen"]["environment"]
+          wanted = (frozen["evals"]["python"], frozen["generator"]["zlib"])
+          found = (f"{sys.version_info.major}.{sys.version_info.minor}", zlib.ZLIB_RUNTIME_VERSION)
+          print(f"Python {sys.version.split()[0]} with zlib {found[1]}")
+          sys.exit(0 if found == wanted else f"the replay needs Python {wanted[0]} with zlib {wanted[1]}")
+          EOF
+          make eval-reproduce PY="$RUNNER_TEMP/py311/bin/python"
       - name: Demo rebuilds identically from the samples and recordings
         run: .venv/bin/ordnung demo --check
 
@@ -136,6 +182,9 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
+        with:
+          # all of the history: the pre-registration's history checks need the freeze commit
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.11"
@@ -156,6 +205,9 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
+        with:
+          # all of the history: the pre-registration's history checks need the freeze commit
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.14"
@@ -224,7 +276,10 @@ jobs:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
       - name: Python packages (the versions in constraints.txt)
-        run: uvx pip-audit --strict --no-deps --disable-pip -r constraints.txt
+        # CVE-2026-126360 (opentelemetry-api 1.45.1, which mcp pulls in; fixed in 1.45.2) was listed after the
+        # pre-registration froze constraints.txt, which may not change until the final evaluation is published:
+        # the pull request after publication moves it to 1.45.2 and takes this exception out
+        run: uvx pip-audit --strict --no-deps --disable-pip -r constraints.txt --ignore-vuln CVE-2026-126360
       - uses: actions/setup-node@v7
         with:
           node-version: 22

@@ -1,0 +1,72 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"3ca8cb4133171b2f44c1dbf6e68f87c8c9886c6d13c2d15969482f663fd60779\",\"mode\":\"text\",\"region\":\"NI\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-mahnbescheid-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Niedersachsen (NI), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docume",
+    "recorded_at": "2026-11-24T12:54:22+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[445.04],\"contract\":null,\"document_date\":\"2026-11-19\",\"items\":[{\"kind\":\"payment\",\"title\":\"Pay the claimed debt (if acknowledged)\",\"quote\":\"Für das eine wie das andere bleiben Ihnen vierzehn Tage, beginnend mit dem Tag, an dem Ihnen dieser Bescheid zugestellt wurde.\",\"computation\":\"Formal delivery date is stated explicitly by the postal carrier: 'Vom Postzusteller vermerktes Zustelldatum: Freitag, 20.11.2026.' Per the formal-delivery rule, this printed date is the delivery day itself (no days added for postal transit). The 14-day period for payment or Widerspruch is a statutory period under §§187, 188, 193 BGB (applicable to the Mahnbescheid Widerspruchsfrist, §692 Abs.1 Nr.3 ZPO): the day of delivery (Fri 20.11.2026) is not counted; counting starts the next day, Sat 21.11.2026 (day 1). Day 14 falls on Fri 04.12.2026 (21,22,...,30 Nov = days 1-10; 1,2,3,4 Dec = days 11-14). 04.12.2026 is a Friday, not a weekend or public holiday in Niedersachsen, so no extension applies.\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":445.04},{\"kind\":\"deadline\",\"title\":\"File Widerspruch (objection) against the Mahnbescheid, if the claim is disputed\",\"quote\":\"Für das eine wie das andere bleiben Ihnen vierzehn Tage, beginnend mit dem Tag, an dem Ihnen dieser Bescheid zugestellt wurde.\",\"computation\":\"Same 14-day statutory period as the payment obligation above, running under §§187, 188, 193 BGB from the stated formal delivery date Fri 20.11.2026 (not counted) through day 14 = Fri 04.12.2026, a regular working day in Niedersachsen, so the deadline does not move. The Widerspruch must reach the Amtsgericht Musteruelzen (Zentrales Mahngericht) by this date in writing.\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"dunning\",\"references\":[{\"label\":\"Geschäftsnummer\",\"value\":\"26-7710623-0-5\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Amtsgericht Musteruelzen · Zentrales Mahngericht\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        445.04
+      ],
+      "contract": null,
+      "document_date": "2026-11-19",
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay the claimed debt (if acknowledged)",
+          "quote": "Für das eine wie das andere bleiben Ihnen vierzehn Tage, beginnend mit dem Tag, an dem Ihnen dieser Bescheid zugestellt wurde.",
+          "computation": "Formal delivery date is stated explicitly by the postal carrier: 'Vom Postzusteller vermerktes Zustelldatum: Freitag, 20.11.2026.' Per the formal-delivery rule, this printed date is the delivery day itself (no days added for postal transit). The 14-day period for payment or Widerspruch is a statutory period under §§187, 188, 193 BGB (applicable to the Mahnbescheid Widerspruchsfrist, §692 Abs.1 Nr.3 ZPO): the day of delivery (Fri 20.11.2026) is not counted; counting starts the next day, Sat 21.11.2026 (day 1). Day 14 falls on Fri 04.12.2026 (21,22,...,30 Nov = days 1-10; 1,2,3,4 Dec = days 11-14). 04.12.2026 is a Friday, not a weekend or public holiday in Niedersachsen, so no extension applies.",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": 445.04
+        },
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch (objection) against the Mahnbescheid, if the claim is disputed",
+          "quote": "Für das eine wie das andere bleiben Ihnen vierzehn Tage, beginnend mit dem Tag, an dem Ihnen dieser Bescheid zugestellt wurde.",
+          "computation": "Same 14-day statutory period as the payment obligation above, running under §§187, 188, 193 BGB from the stated formal delivery date Fri 20.11.2026 (not counted) through day 14 = Fri 04.12.2026, a regular working day in Niedersachsen, so the deadline does not move. The Widerspruch must reach the Amtsgericht Musteruelzen (Zentrales Mahngericht) by this date in writing.",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "dunning",
+      "references": [
+        {
+          "label": "Geschäftsnummer",
+          "value": "26-7710623-0-5"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Amtsgericht Musteruelzen · Zentrales Mahngericht",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4257,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1751,
+      "cost_usd": 0.05068400000000001,
+      "duration_ms": 41504,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

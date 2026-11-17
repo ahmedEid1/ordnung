@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"9d2e7520688be26abfc5dd25f42bad95ca6530859746ae0c11bc5b9cf4c218b7\",\"mode\":\"text\",\"region\":\"ST\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-appointment-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Sachsen-Anhalt (ST), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docum",
+    "recorded_at": "2026-11-24T06:42:46+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Amtsgericht Musterwernigerode – Betreuungsgericht\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"6 XVII 412/26\"}],\"amounts\":[],\"items\":[{\"kind\":\"appointment\",\"title\":\"Hearing (Anhörung) as son in guardianship proceeding for mother\",\"quote\":\"Der Termin findet am Donnerstag, 21.01.2027, 13:30 Uhr, im Pflegeheim „Am Brockenblick“, Zimmer 12, statt.\",\"computation\":\"The letter states the appointment date and time explicitly: Thursday, 21.01.2027 at 13:30, at the nursing home 'Am Brockenblick', room 12. No computation of a period is needed; the date is fixed as printed. Attendance is stated to be desired but not compulsory ('erwünscht, aber nicht erzwingbar'), and a written statement is an alternative if the person cannot attend, but no separate deadline is given for that written submission.\",\"due_date\":\"2027-01-21\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"No deadline is given for the alternative written statement mentioned ('Ihre Sicht auch schriftlich mitteilen') – if the recipient cannot attend, they should submit it well before 21.01.2027, but the letter does not specify a cut-off date.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Amtsgericht Musterwernigerode – Betreuungsgericht",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "6 XVII 412/26"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Hearing (Anhörung) as son in guardianship proceeding for mother",
+          "quote": "Der Termin findet am Donnerstag, 21.01.2027, 13:30 Uhr, im Pflegeheim „Am Brockenblick“, Zimmer 12, statt.",
+          "computation": "The letter states the appointment date and time explicitly: Thursday, 21.01.2027 at 13:30, at the nursing home 'Am Brockenblick', room 12. No computation of a period is needed; the date is fixed as printed. Attendance is stated to be desired but not compulsory ('erwünscht, aber nicht erzwingbar'), and a written statement is an alternative if the person cannot attend, but no separate deadline is given for that written submission.",
+          "due_date": "2027-01-21",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "No deadline is given for the alternative written statement mentioned ('Ihre Sicht auch schriftlich mitteilen') – if the recipient cannot attend, they should submit it well before 21.01.2027, but the letter does not specify a cut-off date."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1366,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1497,
+      "cost_usd": 0.0202764,
+      "duration_ms": 15526,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

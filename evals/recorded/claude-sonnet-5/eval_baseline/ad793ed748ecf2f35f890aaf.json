@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"04428e23487c6625e24eb1f796ccd6cc188280ab91e6f9a70d6890296ea165d1\",\"mode\":\"text\",\"region\":\"SL\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-tax_assessment-L2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Saarland (SL), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> t",
+    "recorded_at": "2026-11-24T07:47:24+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Beispiel-Merzig\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"030/226/19083\"}],\"amounts\":[3014,3668,654],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the 2025 income tax assessment\",\"quote\":\"Wer diesen Bescheid für fehlerhaft hält, kann dagegen innerhalb eines Monats Einspruch erheben.\",\"computation\":\"The Bescheid is dated 19.11.2026 (Thursday); the date of posting (Aufgabe zur Post) is assumed to be the same date, since no separate posting date is given. Under § 122 Abs. 2 Nr. 1 AO, a notice sent by ordinary post is deemed delivered (bekannt gegeben) on the third day after posting, i.e. 22.11.2026 — a Sunday. Because this falls on a Sunday, the statutory extension shifts the deemed delivery to the next business day: Monday, 23.11.2026. (Note: the letter itself states the fiction as 'der vierte Tag' after posting, which does not match the actual statutory rule of the third day under § 122 Abs. 2 AO; the correct legal rule was applied here, not the letter's wording.) The one-month Einspruchsfrist under § 355 Abs. 1 AO begins the day after the deemed bekanntgabe (§ 108 Abs. 1 AO i.V.m. § 187 Abs. 1 BGB), i.e. 24.11.2026, and ends one month later on the day bearing the same calendar number (§ 188 Abs. 2 BGB): 23.12.2026, a Wednesday, which is not a Saturday, Sunday, or public holiday in Saarland, so this is the final day.\",\"due_date\":\"2026-12-23\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter states the postal-delivery fiction as the 'fourth day' after posting ('der vierte Tag nach dem Tag, an dem er zur Post gegeben wurde'), but the actual statutory rule in § 122 Abs. 2 Nr. 1 AO sets this as the third day after posting; the Einspruch deadline above was computed using the correct legal rule, not the letter's wording — double-check with the Finanzamt if in doubt.\",\"The exact date the notice was actually handed to the postal service (Aufgabe zur Post) is not stated separately in the letter; it was assumed to be the same as the printed document date (19.11.2026).\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Beispiel-Merzig",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "030/226/19083"
+        }
+      ],
+      "amounts": [
+        3014,
+        3668,
+        654
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the 2025 income tax assessment",
+          "quote": "Wer diesen Bescheid für fehlerhaft hält, kann dagegen innerhalb eines Monats Einspruch erheben.",
+          "computation": "The Bescheid is dated 19.11.2026 (Thursday); the date of posting (Aufgabe zur Post) is assumed to be the same date, since no separate posting date is given. Under § 122 Abs. 2 Nr. 1 AO, a notice sent by ordinary post is deemed delivered (bekannt gegeben) on the third day after posting, i.e. 22.11.2026 — a Sunday. Because this falls on a Sunday, the statutory extension shifts the deemed delivery to the next business day: Monday, 23.11.2026. (Note: the letter itself states the fiction as 'der vierte Tag' after posting, which does not match the actual statutory rule of the third day under § 122 Abs. 2 AO; the correct legal rule was applied here, not the letter's wording.) The one-month Einspruchsfrist under § 355 Abs. 1 AO begins the day after the deemed bekanntgabe (§ 108 Abs. 1 AO i.V.m. § 187 Abs. 1 BGB), i.e. 24.11.2026, and ends one month later on the day bearing the same calendar number (§ 188 Abs. 2 BGB): 23.12.2026, a Wednesday, which is not a Saturday, Sunday, or public holiday in Saarland, so this is the final day.",
+          "due_date": "2026-12-23",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter states the postal-delivery fiction as the 'fourth day' after posting ('der vierte Tag nach dem Tag, an dem er zur Post gegeben wurde'), but the actual statutory rule in § 122 Abs. 2 Nr. 1 AO sets this as the third day after posting; the Einspruch deadline above was computed using the correct legal rule, not the letter's wording — double-check with the Finanzamt if in doubt.",
+        "The exact date the notice was actually handed to the postal service (Aufgabe zur Post) is not stated separately in the letter; it was assumed to be the same as the printed document date (19.11.2026)."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6562,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2073,
+      "cost_usd": 0.0745404,
+      "duration_ms": 64822,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

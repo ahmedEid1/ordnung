@@ -1,0 +1,75 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"eb810700344c7be7f17ae4586ff243f74d0f909461c0e33d0e60f699859edf1b\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-N1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T12:25:29+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[318.46],\"contract\":null,\"document_date\":\"2026-11-18\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against contribution increase\",\"quote\":\"Den Widerspruch können Sie binnen eines Monats ab Bekanntgabe einlegen, schriftlich oder zur Niederschrift bei der Musterquell Krankenkasse, Am Brunnenhof 2, 35390 Mustergießen.\",\"computation\":\"Bescheid dated Wed 18.11.2026, presumed handed to post that day. Statutory delivery fiction under § 37 Abs. 2 SGB X is the 3rd day after posting (the letter itself wrongly states the 4th day). 3rd day after 18.11.2026 = 21.11.2026, which is a Saturday; by established practice (analogous to § 193 BGB) the fiction shifts to the next business day, i.e. Monday 23.11.2026. (Using the letter's own stated 4th-day rule gives 22.11.2026, a Sunday, which likewise shifts to Monday 23.11.2026 — both readings coincide.) So Bekanntgabe = 23.11.2026. The one-month Widerspruchsfrist (§ 84 SGG) starts the following day (§ 187 Abs. 1 BGB) = 24.11.2026 and ends, per § 188 Abs. 2 BGB, on the day of the following month bearing the same number as the day of Bekanntgabe, i.e. 23.12.2026. That day is a Wednesday, not a public holiday in NW, so no further shift applies.\",\"due_date\":\"2026-12-23\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"First direct debit of the increased monthly contribution (Jan 2027)\",\"quote\":\"Wir buchen den Beitrag weiter zum 15. des Folgemonats ab.\",\"computation\":\"The new monthly rate of 318,46 € applies from 01.01.2027. The letter states the contribution for a given month is debited on the 15th of the following month, so the January 2027 contribution (first month at the new rate) is debited on 15.02.2027; this is a recurring monthly direct debit, not a one-off deadline.\",\"due_date\":\"2027-02-15\",\"confidence\":\"medium\",\"amount\":318.46}],\"kind\":\"health_insurance\",\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"Q550274119\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Musterquell Krankenkasse\",\"warnings\":[\"The letter states the postal-delivery fiction as \\\"am vierten Tag nach seiner Aufgabe zur Post\\\", but the statutory rule under § 37 Abs. 2 SGB X for such notices is the third day after posting; in this case both readings happen to land on the same calendar day (23.11.2026) because of the intervening weekend, but the discrepancy itself is worth noting and double-checking against the envelope/postmark date if precision matters.\",\"The new contribution amount of 318,46 € is stated as already decided based on 'Ihren Einnahmen laut Steuerbescheid für 2025' without showing the prior amount or a detailed calculation, so it may be worth verifying the underlying income figures used by the Krankenkasse.\"]}",
+    "data": {
+      "amounts": [
+        318.46
+      ],
+      "contract": null,
+      "document_date": "2026-11-18",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against contribution increase",
+          "quote": "Den Widerspruch können Sie binnen eines Monats ab Bekanntgabe einlegen, schriftlich oder zur Niederschrift bei der Musterquell Krankenkasse, Am Brunnenhof 2, 35390 Mustergießen.",
+          "computation": "Bescheid dated Wed 18.11.2026, presumed handed to post that day. Statutory delivery fiction under § 37 Abs. 2 SGB X is the 3rd day after posting (the letter itself wrongly states the 4th day). 3rd day after 18.11.2026 = 21.11.2026, which is a Saturday; by established practice (analogous to § 193 BGB) the fiction shifts to the next business day, i.e. Monday 23.11.2026. (Using the letter's own stated 4th-day rule gives 22.11.2026, a Sunday, which likewise shifts to Monday 23.11.2026 — both readings coincide.) So Bekanntgabe = 23.11.2026. The one-month Widerspruchsfrist (§ 84 SGG) starts the following day (§ 187 Abs. 1 BGB) = 24.11.2026 and ends, per § 188 Abs. 2 BGB, on the day of the following month bearing the same number as the day of Bekanntgabe, i.e. 23.12.2026. That day is a Wednesday, not a public holiday in NW, so no further shift applies.",
+          "due_date": "2026-12-23",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "First direct debit of the increased monthly contribution (Jan 2027)",
+          "quote": "Wir buchen den Beitrag weiter zum 15. des Folgemonats ab.",
+          "computation": "The new monthly rate of 318,46 € applies from 01.01.2027. The letter states the contribution for a given month is debited on the 15th of the following month, so the January 2027 contribution (first month at the new rate) is debited on 15.02.2027; this is a recurring monthly direct debit, not a one-off deadline.",
+          "due_date": "2027-02-15",
+          "confidence": "medium",
+          "amount": 318.46
+        }
+      ],
+      "kind": "health_insurance",
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "Q550274119"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Musterquell Krankenkasse",
+      "warnings": [
+        "The letter states the postal-delivery fiction as \"am vierten Tag nach seiner Aufgabe zur Post\", but the statutory rule under § 37 Abs. 2 SGB X for such notices is the third day after posting; in this case both readings happen to land on the same calendar day (23.11.2026) because of the intervening weekend, but the discrepancy itself is worth noting and double-checking against the envelope/postmark date if precision matters.",
+        "The new contribution amount of 318,46 € is stated as already decided based on 'Ihren Einnahmen laut Steuerbescheid für 2025' without showing the prior amount or a detailed calculation, so it may be worth verifying the underlying income figures used by the Krankenkasse."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4754,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1581,
+      "cost_usd": 0.054492399999999996,
+      "duration_ms": 49965,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

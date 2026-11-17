@@ -1,0 +1,72 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"f31b21abde1635ad3f196f0db3cad8b5fd7be82dcbd46b5b86153a1e316c7a12\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-social_decision-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T12:02:53+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Pflegekasse bei der Musterquell Krankenkasse\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"Q441902737\"}],\"amounts\":[599],\"items\":[{\"kind\":\"deadline\",\"title\":\"Widerspruch (objection) against Pflegegrad decision\",\"quote\":\"Innerhalb eines Monats ab Bekanntgabe kann gegen diesen Bescheid Widerspruch erhoben werden, schriftlich oder zur Niederschrift bei: Pflegekasse bei der Musterquell Krankenkasse, Am Brunnenhof 2, 35390 Mustergießen.\",\"computation\":\"Bescheid dated 20.11.2026 (Friday). No separate mailing date is given, so Aufgabe zur Post is assumed to be the same day as the document date, 20.11.2026. The letter states the applicable delivery fiction: the decision counts as bekannt gegeben on the 4th day after being posted (current rule under §37 Abs.2 SGB X as amended). 20.11.2026 + 4 days = 24.11.2026 (Tuesday), which is not a Saturday, Sunday or NRW public holiday, so no shift is needed; Bekanntgabe = 24.11.2026. The one-month Widerspruch period then runs under §§187 Abs.1, 188 Abs.2 BGB: the day of Bekanntgabe itself is not counted, the period begins on 25.11.2026, and a one-month period ends on the day of the following month that bears the same calendar number as the triggering (Bekanntgabe) day, i.e. 24.12.2026 (Thursday). 24.12.2026 (Christmas Eve) is not a statutory public holiday in NRW, so the deadline stands.\",\"due_date\":\"2026-12-24\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Effective date of Pflegegrad 3 classification\",\"quote\":\"stufen wir Ihre Mutter ab dem 01.10.2026 in den Pflegegrad 3 ein.\",\"computation\":\"The letter explicitly states the classification into Pflegegrad 3 takes effect from this date; it is stated directly in the text, no further calculation needed.\",\"due_date\":\"2026-10-01\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Pflegekasse bei der Musterquell Krankenkasse",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "Q441902737"
+        }
+      ],
+      "amounts": [
+        599
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Widerspruch (objection) against Pflegegrad decision",
+          "quote": "Innerhalb eines Monats ab Bekanntgabe kann gegen diesen Bescheid Widerspruch erhoben werden, schriftlich oder zur Niederschrift bei: Pflegekasse bei der Musterquell Krankenkasse, Am Brunnenhof 2, 35390 Mustergießen.",
+          "computation": "Bescheid dated 20.11.2026 (Friday). No separate mailing date is given, so Aufgabe zur Post is assumed to be the same day as the document date, 20.11.2026. The letter states the applicable delivery fiction: the decision counts as bekannt gegeben on the 4th day after being posted (current rule under §37 Abs.2 SGB X as amended). 20.11.2026 + 4 days = 24.11.2026 (Tuesday), which is not a Saturday, Sunday or NRW public holiday, so no shift is needed; Bekanntgabe = 24.11.2026. The one-month Widerspruch period then runs under §§187 Abs.1, 188 Abs.2 BGB: the day of Bekanntgabe itself is not counted, the period begins on 25.11.2026, and a one-month period ends on the day of the following month that bears the same calendar number as the triggering (Bekanntgabe) day, i.e. 24.12.2026 (Thursday). 24.12.2026 (Christmas Eve) is not a statutory public holiday in NRW, so the deadline stands.",
+          "due_date": "2026-12-24",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Effective date of Pflegegrad 3 classification",
+          "quote": "stufen wir Ihre Mutter ab dem 01.10.2026 in den Pflegegrad 3 ein.",
+          "computation": "The letter explicitly states the classification into Pflegegrad 3 takes effect from this date; it is stated directly in the text, no further calculation needed.",
+          "due_date": "2026-10-01",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4383,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1677,
+      "cost_usd": 0.05116639999999999,
+      "duration_ms": 44402,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

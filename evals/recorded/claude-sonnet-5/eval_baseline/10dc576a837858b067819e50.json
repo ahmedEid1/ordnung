@@ -1,0 +1,73 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"e86a870f0ec65f4c1e166f477509ae5ee5ba40d82337b2aca2633f35c8979315\",\"mode\":\"text\",\"region\":\"HB\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-tax_assessment-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bremen (HB), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag",
+    "recorded_at": "2026-11-24T07:46:08+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[1624,8036],\"contract\":null,\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Beispiel-Vegesack\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"460/318/72214\"}],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the tax assessment\",\"quote\":\"Wer diesen Bescheid für fehlerhaft hält, kann dagegen innerhalb eines Monats Einspruch erheben.\",\"computation\":\"Letter states a separate posting date (\\\"Abgesandt am\\\") of 20.11.2026 (Friday); this stated posting day governs over the printed letter date. Posted on/after 1 Jan 2025, so delivery (Bekanntgabe) is deemed on the 4th calendar day after the posting day: day1=21 Nov (Sat), day2=22 Nov (Sun), day3=23 Nov (Mon), day4=24 Nov (Tue) → deemed delivery 24 Nov 2026. For tax offices, if this 4th day were a Saturday/Sunday/holiday it would move to the next working day (§108 Abs.3 AO); 24 Nov 2026 is a Tuesday, so no shift. The one-month Einspruch period (§355 Abs.1 AO) then runs under §§187 Abs.1, 188 Abs.2 BGB: the delivery day itself is not counted as the start, and the period ends on the day of the following month bearing the same number as the delivery day, i.e. 24 December 2026. 24 Dec 2026 is a Thursday and, per the stated rule, 24 December counts as a working day (not a public holiday), so the deadline is not shifted further.\",\"due_date\":\"2026-12-24\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the remaining income tax amount\",\"quote\":\"Die verbleibende Zahlung von 1.624,00 € ist am 28.12.2026 fällig.\",\"computation\":\"The letter states an explicit calendar due date for the payment: 28.12.2026. This is a fixed date printed in the letter, so it is used as written without further counting; 28 Dec 2026 falls on a Monday, a normal working day, so no weekend/holiday adjustment is needed.\",\"due_date\":\"2026-12-28\",\"confidence\":\"high\",\"amount\":1624}],\"remedy_type\":\"einspruch\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        1624,
+        8036
+      ],
+      "contract": null,
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Beispiel-Vegesack",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "460/318/72214"
+        }
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the tax assessment",
+          "quote": "Wer diesen Bescheid für fehlerhaft hält, kann dagegen innerhalb eines Monats Einspruch erheben.",
+          "computation": "Letter states a separate posting date (\"Abgesandt am\") of 20.11.2026 (Friday); this stated posting day governs over the printed letter date. Posted on/after 1 Jan 2025, so delivery (Bekanntgabe) is deemed on the 4th calendar day after the posting day: day1=21 Nov (Sat), day2=22 Nov (Sun), day3=23 Nov (Mon), day4=24 Nov (Tue) → deemed delivery 24 Nov 2026. For tax offices, if this 4th day were a Saturday/Sunday/holiday it would move to the next working day (§108 Abs.3 AO); 24 Nov 2026 is a Tuesday, so no shift. The one-month Einspruch period (§355 Abs.1 AO) then runs under §§187 Abs.1, 188 Abs.2 BGB: the delivery day itself is not counted as the start, and the period ends on the day of the following month bearing the same number as the delivery day, i.e. 24 December 2026. 24 Dec 2026 is a Thursday and, per the stated rule, 24 December counts as a working day (not a public holiday), so the deadline is not shifted further.",
+          "due_date": "2026-12-24",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the remaining income tax amount",
+          "quote": "Die verbleibende Zahlung von 1.624,00 € ist am 28.12.2026 fällig.",
+          "computation": "The letter states an explicit calendar due date for the payment: 28.12.2026. This is a fixed date printed in the letter, so it is used as written without further counting; 28 Dec 2026 falls on a Monday, a normal working day, so no weekend/holiday adjustment is needed.",
+          "due_date": "2026-12-28",
+          "confidence": "high",
+          "amount": 1624
+        }
+      ],
+      "remedy_type": "einspruch",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3304,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2286,
+      "cost_usd": 0.043294,
+      "duration_ms": 32654,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

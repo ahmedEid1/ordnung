@@ -1,0 +1,89 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"181886bbc9faa25b4544c4952981ff900cf4bc4a17772ae0cda0df457ae5a762\",\"mode\":\"text\",\"region\":\"HH\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-N2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hamburg (HH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> ta",
+    "recorded_at": "2026-11-24T07:25:05+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Bezirksamt Beispielbek – Fachamt Verbraucherschutz, Gewerbe und Umwelt\",\"document_date\":\"2026-11-19\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the refusal\",\"quote\":\"Er muss innerhalb eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift beim Bezirksamt Beispielbek, Marktplatz am Bach 1, 22081 Hamburg erhoben werden.\",\"computation\":\"Letter dated Thu 19.11.2026, sent by ordinary post by an authority. Under § 41 Abs. 2 HmbVwVfG it counts as delivered (bekannt gegeben) on the 4th day after posting = Mon 23.11.2026 (no weekend shift for the delivery-fiction day itself). Under § 31 Abs. 1 VwVfG i.V.m. § 187 Abs. 1 BGB, the one-month period starts the next day, 24.11.2026, and ends under § 188 Abs. 2 BGB one month later on the day with the same number as the day of the triggering event (23.11.) i.e. 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in Hamburg, so no further shift (§ 31 Abs. 3 VwVfG).\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"VS 22/0619-26\"}],\"amounts\":[],\"warnings\":[\"This is a refusal (Ablehnung) of an extended opening-hours exception, not a payment demand; the IBAN printed in the letter's footer is standard office contact information and is not requested as a payment to be made in response to this letter — double-check any payment request separately before using it.\",\"The due date for the Widerspruch (23.12.2026) relies on the statutory 4-day deemed-delivery fiction for ordinary post from a Hamburg authority; if the person can prove the letter actually arrived later, the one-month period would start later and the deadline would be correspondingly later — but filing by 23.12.2026 is the safe course.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Bezirksamt Beispielbek – Fachamt Verbraucherschutz, Gewerbe und Umwelt",
+      "document_date": "2026-11-19",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the refusal",
+          "quote": "Er muss innerhalb eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift beim Bezirksamt Beispielbek, Marktplatz am Bach 1, 22081 Hamburg erhoben werden.",
+          "computation": "Letter dated Thu 19.11.2026, sent by ordinary post by an authority. Under § 41 Abs. 2 HmbVwVfG it counts as delivered (bekannt gegeben) on the 4th day after posting = Mon 23.11.2026 (no weekend shift for the delivery-fiction day itself). Under § 31 Abs. 1 VwVfG i.V.m. § 187 Abs. 1 BGB, the one-month period starts the next day, 24.11.2026, and ends under § 188 Abs. 2 BGB one month later on the day with the same number as the day of the triggering event (23.11.) i.e. 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in Hamburg, so no further shift (§ 31 Abs. 3 VwVfG).",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "VS 22/0619-26"
+        }
+      ],
+      "amounts": [],
+      "warnings": [
+        "This is a refusal (Ablehnung) of an extended opening-hours exception, not a payment demand; the IBAN printed in the letter's footer is standard office contact information and is not requested as a payment to be made in response to this letter — double-check any payment request separately before using it.",
+        "The due date for the Widerspruch (23.12.2026) relies on the statutory 4-day deemed-delivery fiction for ordinary post from a Hamburg authority; if the person can prove the letter actually arrived later, the one-month period would start later and the deadline would be correspondingly later — but filing by 23.12.2026 is the safe course."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1527,
+      "cache_read_tokens": 15021,
+      "cache_creation_tokens": 4487,
+      "cost_usd": 0.036230200000000004,
+      "duration_ms": 17390,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "anchor_date": "2026-11-19",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§ 41 Abs. 2 HmbVwVfG; Widerspruch",
+            "text": "Er muss innerhalb eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift beim Bezirksamt Beispielbek ... erhoben werden."
+          },
+          "document_date": "2026-11-19",
+          "sender_kind": "authority",
+          "sender_name": "Bezirksamt Beispielbek",
+          "region": "HH",
+          "recipient_region": "HH",
+          "remedy_type": "widerspruch"
+        },
+        "result": "{\"due_date\":\"2026-12-23\",\"weekday\":\"Wednesday\",\"send_by\":\"2026-12-17\",\"summary\":\"Letter dated Thu 19 Nov 2026 counts as delivered on Mon 23 Nov; one month later is Wed 23 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[\"Deemed delivery was applied: the letter counts as delivered some days after it was posted. If it was formally served instead — in a yellow envelope (Postzustellungsurkunde), or it says it was 'zugestellt' on a date — that rule does not apply and the period runs from the date written on the envelope, usually earlier.\"],\"steps\":[{\"label\":\"Posting day: Thu 19 Nov 2026 (the letter's date; the real posting day can only be later)\",\"date\":\"2026-11-19\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Mon 23 Nov 2026\",\"date\":\"2026-11-23\",\"rule_id\":\"vwvfg_41_2\",\"citation\":\"§ 41 Abs. 2 VwVfG (and the Länder VwVfGs); OVG NRW 19 A 4216/99\"},{\"label\":\"Counting starts the day after Mon 23 Nov 2026\",\"date\":\"2026-11-23\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Wed 23 Dec 2026\",\"date\":\"2026-12-23\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Wed 23 Dec 2026 is a working day, so it stays\",\"date\":\"2026-12-23\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Thu 17 Dec 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-12-17\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"vwvfg_41_2\",\"title\":\"Authority letters: delivered on the 4th day, no weekend shift\",\"citation\":\"§ 41 Abs. 2 VwVfG (and the Länder VwVfGs); OVG NRW 19 A 4216/99\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__41.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-19\",\"delivery_law\":\"general administrative law (§ 41 VwVfG)\",\"holiday_calendar\":\"Hamburg\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"If the letter was formally served (a yellow envelope, or 'zugestellt am …'), pass spec.anchor receipt with the envelope's date as spec.anchor_date and spec.delivery_rule none.\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

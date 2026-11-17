@@ -1,0 +1,78 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"81f5ee9a5987cb8e3fa7f1871e75b70b28193ed31e147c5c99ae6de4cd651323\",\"mode\":\"text\",\"region\":\"HE\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-mahnbescheid-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hessen (HE), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag",
+    "recorded_at": "2026-11-24T12:56:18+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Amtsgericht Beispielhünfeld - Zentrales Mahngericht Hessen\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Geschäftsnummer\",\"value\":\"26-0934877-0-1\"}],\"amounts\":[666.68,612.4,15.28,39],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay total claimed amount (Mahnbescheid)\",\"quote\":\"Sie werden aufgefordert, innerhalb von zwei Wochen nach der Zustellung entweder den Gesamtbetrag samt weiterer Zinsen an die Antragstellerin zu überweisen oder dem Gericht zu erklären, ob und in welcher Höhe Sie widersprechen.\",\"computation\":\"The letter states explicit formal delivery: 'Zugestellt am 20.11.2026 – Einwurf in den Hausbriefkasten (Vermerk auf dem Briefumschlag)'. This is a formal delivery with the date noted on the envelope, so no days are added; delivery day = Fri 20.11.2026. Period: two weeks after delivery (§ 188 Abs. 2 BGB, weekly period ends on the same weekday n weeks later). Two weeks from Fri 20.11.2026 = Fri 04.12.2026. 04.12.2026 is a Friday and not a public holiday in Hessen, so no shift under § 193 BGB is needed. Payment due by 04.12.2026.\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":666.68},{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the Mahnbescheid (if claim disputed)\",\"quote\":\"Sie werden aufgefordert, innerhalb von zwei Wochen nach der Zustellung entweder den Gesamtbetrag samt weiterer Zinsen an die Antragstellerin zu überweisen oder dem Gericht zu erklären, ob und in welcher Höhe Sie widersprechen.\",\"computation\":\"Same two-week period as the payment obligation: formal delivery date stated as 20.11.2026 (Friday) counts as the day of delivery with no addition of days (yellow-envelope-style delivery). Two weeks later under § 188 Abs. 2 BGB (same weekday, n weeks later) = Friday 04.12.2026. 04.12.2026 is not a Saturday, Sunday or Hessen public holiday, so the deadline to lodge Widerspruch with the court stays 04.12.2026.\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The court explicitly states it has not examined whether the claim actually exists ('Das Gericht weist darauf hin, dass es nicht untersucht hat, ob der Anspruch der Antragstellerin besteht.') — if the person disputes the dental bill, they should file a Widerspruch rather than pay, since paying or missing the deadline can lead to an enforceable Vollstreckungsbescheid.\",\"If no Widerspruch is filed in time, the creditor can obtain a Vollstreckungsbescheid (enforcement order) allowing forced collection, so the deadline should not be missed even if the person intends to dispute the underlying dental invoice informally.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Amtsgericht Beispielhünfeld - Zentrales Mahngericht Hessen",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Geschäftsnummer",
+          "value": "26-0934877-0-1"
+        }
+      ],
+      "amounts": [
+        666.68,
+        612.4,
+        15.28,
+        39
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay total claimed amount (Mahnbescheid)",
+          "quote": "Sie werden aufgefordert, innerhalb von zwei Wochen nach der Zustellung entweder den Gesamtbetrag samt weiterer Zinsen an die Antragstellerin zu überweisen oder dem Gericht zu erklären, ob und in welcher Höhe Sie widersprechen.",
+          "computation": "The letter states explicit formal delivery: 'Zugestellt am 20.11.2026 – Einwurf in den Hausbriefkasten (Vermerk auf dem Briefumschlag)'. This is a formal delivery with the date noted on the envelope, so no days are added; delivery day = Fri 20.11.2026. Period: two weeks after delivery (§ 188 Abs. 2 BGB, weekly period ends on the same weekday n weeks later). Two weeks from Fri 20.11.2026 = Fri 04.12.2026. 04.12.2026 is a Friday and not a public holiday in Hessen, so no shift under § 193 BGB is needed. Payment due by 04.12.2026.",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": 666.68
+        },
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the Mahnbescheid (if claim disputed)",
+          "quote": "Sie werden aufgefordert, innerhalb von zwei Wochen nach der Zustellung entweder den Gesamtbetrag samt weiterer Zinsen an die Antragstellerin zu überweisen oder dem Gericht zu erklären, ob und in welcher Höhe Sie widersprechen.",
+          "computation": "Same two-week period as the payment obligation: formal delivery date stated as 20.11.2026 (Friday) counts as the day of delivery with no addition of days (yellow-envelope-style delivery). Two weeks later under § 188 Abs. 2 BGB (same weekday, n weeks later) = Friday 04.12.2026. 04.12.2026 is not a Saturday, Sunday or Hessen public holiday, so the deadline to lodge Widerspruch with the court stays 04.12.2026.",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The court explicitly states it has not examined whether the claim actually exists ('Das Gericht weist darauf hin, dass es nicht untersucht hat, ob der Anspruch der Antragstellerin besteht.') — if the person disputes the dental bill, they should file a Widerspruch rather than pay, since paying or missing the deadline can lead to an enforceable Vollstreckungsbescheid.",
+        "If no Widerspruch is filed in time, the creditor can obtain a Vollstreckungsbescheid (enforcement order) allowing forced collection, so the deadline should not be missed even if the person intends to dispute the underlying dental invoice informally."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 5381,
+      "cache_read_tokens": 12798,
+      "cache_creation_tokens": 5804,
+      "cost_usd": 0.07959359999999999,
+      "duration_ms": 51528,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

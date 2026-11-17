@@ -1,0 +1,83 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"be8c1fa6867caaf82eda0e2dd4542edf0049fe06d1a867d599b866d8c38ba57b\",\"mode\":\"text\",\"region\":\"SL\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-fine_bussgeld-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Saarland (SL), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> t",
+    "recorded_at": "2026-11-24T11:27:15+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Stadt Musterhomburg (Saar) – Ordnungsbehörde\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"OWi-26-118430\"},{\"label\":\"Kennzeichen\",\"value\":\"HOM-AM 732\"}],\"amounts\":[100,28.5,3.5,132],\"items\":[{\"kind\":\"deadline\",\"title\":\"File objection (Einspruch) against the Bußgeldbescheid\",\"quote\":\"Binnen zwei Wochen nach der Zustellung dieses Bescheids kann Einspruch eingelegt werden, schriftlich oder zur Niederschrift bei der Stadt Musterhomburg (Saar) – Ordnungsbehörde.\",\"computation\":\"Page 2 contains the Zustellungsurkunde (certificate of service, §182 ZPO) showing the actual delivery (Zustellung) occurred on 24.11.2026 (a Tuesday). Under §187 Abs. 1 BGB the day of the triggering event (delivery) is not counted; the two-week period for Einspruch under §110 OWiG therefore runs from 25.11.2026. Under §188 Abs. 2 BGB, a period expressed in weeks ends with the expiry of the day in the final week that bears the same name as the day of the triggering event, i.e. 14 calendar days after 24.11.2026 = 08.12.2026 (a Tuesday). However, 08.12.2026 is 'Mariä Empfängnis' (Immaculate Conception), a statutory public holiday specific to Saarland, so under §193 BGB the deadline is pushed to the next business day: 09.12.2026 (Wednesday).\",\"due_date\":\"2026-12-09\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine amount (after the decision becomes final)\",\"quote\":\"Bitte überweisen Sie den Gesamtbetrag erst nach Rechtskraft, und zwar innerhalb von zwei Wochen.\",\"computation\":\"The letter ties the payment deadline not to a calendar date but to 'Rechtskraft' (finality of the decision), which – assuming no Einspruch is filed – occurs the day after the Einspruch period lapses, i.e. on 10.12.2026 (Thursday), since the Einspruch deadline itself was pushed to 09.12.2026 by the Saarland public holiday on 08.12.2026 (see other item). Counting the stated two-week (14-day) payment window from that triggering day under §188 Abs. 2 BGB (same weekday 14 days later) gives 24.12.2026 (Thursday). 24.12.2026 is not a Sunday, Saturday or statutory public holiday in Saarland, so no further shift applies. This date is only valid on the assumption that no Einspruch is lodged in the meantime; if an Einspruch is filed, this payment obligation and deadline do not apply.\",\"due_date\":\"2026-12-24\",\"confidence\":\"low\",\"amount\":132}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The city name 'Musterhomburg', the postal code, and the sender email domain ending in '.example' (a domain reserved for documentation/testing, never used for real services) strongly suggest this specific letter is a template or test document rather than a genuine notice from a real authority; verify directly with the actual local Bußgeldstelle before relying on any date or paying anything.\",\"Before transferring any money, verify the IBAN (given as 'Landesmusterbank DE86 5945 0010 0004 2401 00') directly with the issuing authority through an independently obtained phone number or website, since fine/payment letters are a common scam vector and bank details in a letter should not be trusted blindly.\",\"The payment due date (24.12.2026) is an estimate derived from the stated 'within two weeks after Rechtskraft' rule and the assumption that no Einspruch is filed by 09.12.2026; if an objection is lodged, this payment deadline no longer applies and no fixed date can be given.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Stadt Musterhomburg (Saar) – Ordnungsbehörde",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "OWi-26-118430"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "HOM-AM 732"
+        }
+      ],
+      "amounts": [
+        100,
+        28.5,
+        3.5,
+        132
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File objection (Einspruch) against the Bußgeldbescheid",
+          "quote": "Binnen zwei Wochen nach der Zustellung dieses Bescheids kann Einspruch eingelegt werden, schriftlich oder zur Niederschrift bei der Stadt Musterhomburg (Saar) – Ordnungsbehörde.",
+          "computation": "Page 2 contains the Zustellungsurkunde (certificate of service, §182 ZPO) showing the actual delivery (Zustellung) occurred on 24.11.2026 (a Tuesday). Under §187 Abs. 1 BGB the day of the triggering event (delivery) is not counted; the two-week period for Einspruch under §110 OWiG therefore runs from 25.11.2026. Under §188 Abs. 2 BGB, a period expressed in weeks ends with the expiry of the day in the final week that bears the same name as the day of the triggering event, i.e. 14 calendar days after 24.11.2026 = 08.12.2026 (a Tuesday). However, 08.12.2026 is 'Mariä Empfängnis' (Immaculate Conception), a statutory public holiday specific to Saarland, so under §193 BGB the deadline is pushed to the next business day: 09.12.2026 (Wednesday).",
+          "due_date": "2026-12-09",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine amount (after the decision becomes final)",
+          "quote": "Bitte überweisen Sie den Gesamtbetrag erst nach Rechtskraft, und zwar innerhalb von zwei Wochen.",
+          "computation": "The letter ties the payment deadline not to a calendar date but to 'Rechtskraft' (finality of the decision), which – assuming no Einspruch is filed – occurs the day after the Einspruch period lapses, i.e. on 10.12.2026 (Thursday), since the Einspruch deadline itself was pushed to 09.12.2026 by the Saarland public holiday on 08.12.2026 (see other item). Counting the stated two-week (14-day) payment window from that triggering day under §188 Abs. 2 BGB (same weekday 14 days later) gives 24.12.2026 (Thursday). 24.12.2026 is not a Sunday, Saturday or statutory public holiday in Saarland, so no further shift applies. This date is only valid on the assumption that no Einspruch is lodged in the meantime; if an Einspruch is filed, this payment obligation and deadline do not apply.",
+          "due_date": "2026-12-24",
+          "confidence": "low",
+          "amount": 132
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The city name 'Musterhomburg', the postal code, and the sender email domain ending in '.example' (a domain reserved for documentation/testing, never used for real services) strongly suggest this specific letter is a template or test document rather than a genuine notice from a real authority; verify directly with the actual local Bußgeldstelle before relying on any date or paying anything.",
+        "Before transferring any money, verify the IBAN (given as 'Landesmusterbank DE86 5945 0010 0004 2401 00') directly with the issuing authority through an independently obtained phone number or website, since fine/payment letters are a common scam vector and bank details in a letter should not be trusted blindly.",
+        "The payment due date (24.12.2026) is an estimate derived from the stated 'within two weeks after Rechtskraft' rule and the assumption that no Einspruch is filed by 09.12.2026; if an objection is lodged, this payment deadline no longer applies and no fixed date can be given."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 8971,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2126,
+      "cost_usd": 0.0988424,
+      "duration_ms": 87035,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

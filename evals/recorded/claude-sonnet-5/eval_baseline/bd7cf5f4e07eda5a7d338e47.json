@@ -1,0 +1,65 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"bbc3e6127b708c7dbc876325bc5b80c1ac4be03213d18a205f00cb19b9d2c008\",\"mode\":\"text\",\"region\":\"HB\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-kuendigung_miete-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bremen (HB), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag",
+    "recorded_at": "2026-11-24T12:47:30+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"sender_name\":\"Hinrich Musterlesum\",\"document_date\":\"2026-11-20\",\"references\":[],\"amounts\":[],\"items\":[{\"kind\":\"milestone\",\"title\":\"Tenancy ends (ordinary termination by landlord)\",\"quote\":\"Wegen der langen Mietdauer endet er erst am 31.08.2027.\",\"computation\":\"The letter states the ordinary termination of the lease and explicitly names the end date of the tenancy as 31.08.2027 due to the long duration of the tenancy (§573 BGB extended notice period). No further calculation needed; date is given explicitly.\",\"due_date\":\"2027-08-31\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Deadline for tenant's objection (Widerspruch) to the termination under §§574-574b BGB\",\"quote\":\"Der Widerspruch bedarf der Textform und muss mir spätestens am 30.06.2027 zugehen.\",\"computation\":\"The landlord explicitly sets the final date by which a tenant's objection (asserting hardship under §§574-574b BGB and demanding continuation of the tenancy) must reach him in text form: spätestens am 30.06.2027. This is an explicit calendar date given in the letter, not a period to be calculated; no weekend/holiday adjustment needed since the date itself is stated.\",\"due_date\":\"2027-06-30\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "rent_lease",
+      "sender_name": "Hinrich Musterlesum",
+      "document_date": "2026-11-20",
+      "references": [],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "Tenancy ends (ordinary termination by landlord)",
+          "quote": "Wegen der langen Mietdauer endet er erst am 31.08.2027.",
+          "computation": "The letter states the ordinary termination of the lease and explicitly names the end date of the tenancy as 31.08.2027 due to the long duration of the tenancy (§573 BGB extended notice period). No further calculation needed; date is given explicitly.",
+          "due_date": "2027-08-31",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Deadline for tenant's objection (Widerspruch) to the termination under §§574-574b BGB",
+          "quote": "Der Widerspruch bedarf der Textform und muss mir spätestens am 30.06.2027 zugehen.",
+          "computation": "The landlord explicitly sets the final date by which a tenant's objection (asserting hardship under §§574-574b BGB and demanding continuation of the tenancy) must reach him in text form: spätestens am 30.06.2027. This is an explicit calendar date given in the letter, not a period to be calculated; no weekend/holiday adjustment needed since the date itself is stated.",
+          "due_date": "2027-06-30",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3362,
+      "cache_read_tokens": 7851,
+      "cache_creation_tokens": 4321,
+      "cost_usd": 0.05248220000000001,
+      "duration_ms": 39452,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

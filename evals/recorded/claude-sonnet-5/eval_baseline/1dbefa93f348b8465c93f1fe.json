@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"cc2bb582e8051f707cffb5cf22ad13a3a5410f2aea3515671b13553641d00097\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:25:35+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Beispielwort Translations\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Invoice number\",\"value\":\"BT-26-4407\"}],\"amounts\":[142.8],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay translation invoice\",\"quote\":\"Kindly transfer the total within 21 days of the date of this invoice, quoting the invoice number.\",\"computation\":\"Invoice date is 21 November 2026. Under §§ 187, 188 BGB the day of the triggering event (the invoice date) is not counted, so the 21-day period starts 22 November 2026. Counting 21 days forward: day 1 = 22 Nov, ... day 21 = 12 December 2026. 24 Nov 2026 is confirmed as a Tuesday, so 12 Dec 2026 falls 18 days later = Tuesday + 4 (18 mod 7) = Saturday. Since this is a payment deadline, § 193 BGB moves the end to the next working day: Saturday 12 Dec → Sunday 13 Dec (also non-working) → Monday 14 December 2026, which is not a public holiday in NW. Final due date: 14 December 2026.\",\"due_date\":\"2026-12-14\",\"confidence\":\"medium\",\"amount\":142.8}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Beispielwort Translations",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Invoice number",
+          "value": "BT-26-4407"
+        }
+      ],
+      "amounts": [
+        142.8
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay translation invoice",
+          "quote": "Kindly transfer the total within 21 days of the date of this invoice, quoting the invoice number.",
+          "computation": "Invoice date is 21 November 2026. Under §§ 187, 188 BGB the day of the triggering event (the invoice date) is not counted, so the 21-day period starts 22 November 2026. Counting 21 days forward: day 1 = 22 Nov, ... day 21 = 12 December 2026. 24 Nov 2026 is confirmed as a Tuesday, so 12 Dec 2026 falls 18 days later = Tuesday + 4 (18 mod 7) = Saturday. Since this is a payment deadline, § 193 BGB moves the end to the next working day: Saturday 12 Dec → Sunday 13 Dec (also non-working) → Monday 14 December 2026, which is not a public holiday in NW. Final due date: 14 December 2026.",
+          "due_date": "2026-12-14",
+          "confidence": "medium",
+          "amount": 142.8
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2030,
+      "cache_read_tokens": 12375,
+      "cache_creation_tokens": 2715,
+      "cost_usd": 0.033643,
+      "duration_ms": 21041,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

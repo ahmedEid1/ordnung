@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"0dad9fdeaf50cf47776a7959b22640c124d4366abb15e09850239e1028d76937\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-appointment-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:11:40+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"appointment\",\"sender_name\":\"Zahnarztpraxis Beispielweiß\",\"document_date\":\"2026-11-19\",\"references\":[],\"amounts\":[],\"items\":[{\"kind\":\"appointment\",\"title\":\"Professional teeth cleaning appointment\",\"quote\":\"Ihr nächster Termin zur professionellen Zahnreinigung ist am Montag, 14.12.2026 um 16:15 Uhr.\",\"computation\":\"The letter states the appointment date and time directly: Monday, 14.12.2026, 16:15. Appointments keep their stated date/time regardless of weekday.\",\"due_date\":\"2026-12-14\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Deadline to cancel the appointment\",\"quote\":\"Wenn Sie verhindert sind, sagen Sie bitte mindestens zwei Werktage vorher ab, damit wir den Termin anderweitig vergeben können.\",\"computation\":\"Appointment is Monday 14.12.2026. 'Werktage' = Monday–Saturday excluding public holidays. Counting backwards from the appointment: Sunday 13.12.2026 is not a Werktag (not counted). Saturday 12.12.2026 is a Werktag = 1st working day before. Friday 11.12.2026 is a Werktag = 2nd working day before. So cancellation must reach the practice by Friday 11.12.2026 to satisfy 'at least two Werktage vorher'. This is a private, practice-set notice period and does not shift for weekends/holidays per the letter's own wording (it is itself defined in working days).\",\"due_date\":\"2026-12-11\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a routine private dental-practice reminder with no payment demand, authority action, or suspicious elements; nothing to flag as a scam risk.\"]}",
+    "data": {
+      "kind": "appointment",
+      "sender_name": "Zahnarztpraxis Beispielweiß",
+      "document_date": "2026-11-19",
+      "references": [],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Professional teeth cleaning appointment",
+          "quote": "Ihr nächster Termin zur professionellen Zahnreinigung ist am Montag, 14.12.2026 um 16:15 Uhr.",
+          "computation": "The letter states the appointment date and time directly: Monday, 14.12.2026, 16:15. Appointments keep their stated date/time regardless of weekday.",
+          "due_date": "2026-12-14",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Deadline to cancel the appointment",
+          "quote": "Wenn Sie verhindert sind, sagen Sie bitte mindestens zwei Werktage vorher ab, damit wir den Termin anderweitig vergeben können.",
+          "computation": "Appointment is Monday 14.12.2026. 'Werktage' = Monday–Saturday excluding public holidays. Counting backwards from the appointment: Sunday 13.12.2026 is not a Werktag (not counted). Saturday 12.12.2026 is a Werktag = 1st working day before. Friday 11.12.2026 is a Werktag = 2nd working day before. So cancellation must reach the practice by Friday 11.12.2026 to satisfy 'at least two Werktage vorher'. This is a private, practice-set notice period and does not shift for weekends/holidays per the letter's own wording (it is itself defined in working days).",
+          "due_date": "2026-12-11",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a routine private dental-practice reminder with no payment demand, authority action, or suspicious elements; nothing to flag as a scam risk."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2378,
+      "cache_read_tokens": 12481,
+      "cache_creation_tokens": 2781,
+      "cost_usd": 0.0374082,
+      "duration_ms": 23879,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

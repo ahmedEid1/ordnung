@@ -1,0 +1,84 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"f6018908c0b7a44667e24fecaaa1042571643f9bdd3f7a57f1bee0c2716396fe\",\"mode\":\"text\",\"region\":\"BY\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bayern (BY), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag",
+    "recorded_at": "2026-11-24T11:42:12+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[2000],\"contract\":null,\"document_date\":\"2026-11-18\",\"items\":[{\"kind\":\"task\",\"title\":\"Remove caravan and wooden extension from the plot\",\"quote\":\"Sie haben den auf dem Grundstück Fl.-Nr. 412/3 abgestellten Wohnwagen samt dem angebauten Holzvorbau bis spätestens 26.02.2027 zu entfernen.\",\"computation\":\"The letter states an explicit calendar deadline ('bis spätestens 26.02.2027'); no period calculation is needed, the date is taken as printed.\",\"due_date\":\"2027-02-26\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"reminder\",\"title\":\"Threatened Zwangsgeld (coercive fine) of €2,000 if removal is not done in time\",\"quote\":\"Für den Fall, dass Sie Nr. 1 nicht rechtzeitig erfüllen, wird ein Zwangsgeld von 2.000 € angedroht.\",\"computation\":\"This threatened fine is conditional on missing the removal deadline in item 1; it therefore becomes relevant from the same final date, 26.02.2027, if the caravan has not been removed by then.\",\"due_date\":\"2027-02-26\",\"confidence\":\"high\",\"amount\":2000},{\"kind\":\"deadline\",\"title\":\"File Klage (lawsuit) against the order at the Verwaltungsgericht Musterregensburg\",\"quote\":\"Gegen diesen Bescheid können Sie binnen eines Monats nach seiner Bekanntgabe Klage beim Bayerischen Verwaltungsgericht Musterregensburg, Haidplatz 4, 93047 Musterregensburg erheben, schriftlich oder zur Niederschrift bei der Geschäftsstelle des Gerichts.\",\"computation\":\"The notice was sent by ordinary mail dated 18.11.2026 (Wednesday), presumed posted the same day. Under the statutory Zugangsfiktion of Art. 41 Abs. 2 BayVwVfG (and its federal counterpart), a notice sent by simple letter is deemed delivered on the THIRD day after posting — note the letter itself erroneously states 'vierten Tag' (fourth day), which contradicts the actual wording of Art. 41 Abs. 2 BayVwVfG; I apply the correct statutory third-day rule. Third day after 18.11.2026 = 21.11.2026 (a Saturday); per established case law the Zugangsfiktion date itself is not shifted merely because it falls on a weekend. Under §187 Abs. 1 BGB the day of the triggering event (21.11.2026) is excluded, so the one-month Klage period begins on 22.11.2026. Under §188 Abs. 2 BGB a one-month period ends on the day of the following month bearing the same number as the triggering (Bekanntgabe) day, i.e. 21.12.2026 (a Monday) — not a Saturday, Sunday or Bavarian public holiday, so no further shift under §193 BGB applies.\",\"due_date\":\"2026-12-21\",\"confidence\":\"medium\",\"amount\":null}],\"kind\":\"authority_letter\",\"references\":[{\"label\":\"Az.\",\"value\":\"BV-61-2026-0773\"}],\"remedy_type\":\"klage\",\"sender_name\":\"Landratsamt Beispielrott – Untere Bauaufsichtsbehörde\",\"warnings\":[\"The letter states the postal delivery fiction occurs on the 'vierten Tag' (fourth day) after posting while citing Art. 41 Abs. 2 BayVwVfG, which actually specifies the THIRD day after posting; I used the statutory third-day rule for the Klage deadline calculation, which is one day earlier than the letter's own (incorrect) statement would imply, and lowered confidence accordingly — the person should double-check the exact posting date and consult a lawyer if the deadline is close.\",\"The Zwangsgeld threat in item 2 is conditional and only becomes due if the removal obligation in item 1 is not met by 26.02.2027; it is not an independent payment demand requiring action now.\"]}",
+    "data": {
+      "amounts": [
+        2000
+      ],
+      "contract": null,
+      "document_date": "2026-11-18",
+      "items": [
+        {
+          "kind": "task",
+          "title": "Remove caravan and wooden extension from the plot",
+          "quote": "Sie haben den auf dem Grundstück Fl.-Nr. 412/3 abgestellten Wohnwagen samt dem angebauten Holzvorbau bis spätestens 26.02.2027 zu entfernen.",
+          "computation": "The letter states an explicit calendar deadline ('bis spätestens 26.02.2027'); no period calculation is needed, the date is taken as printed.",
+          "due_date": "2027-02-26",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "reminder",
+          "title": "Threatened Zwangsgeld (coercive fine) of €2,000 if removal is not done in time",
+          "quote": "Für den Fall, dass Sie Nr. 1 nicht rechtzeitig erfüllen, wird ein Zwangsgeld von 2.000 € angedroht.",
+          "computation": "This threatened fine is conditional on missing the removal deadline in item 1; it therefore becomes relevant from the same final date, 26.02.2027, if the caravan has not been removed by then.",
+          "due_date": "2027-02-26",
+          "confidence": "high",
+          "amount": 2000
+        },
+        {
+          "kind": "deadline",
+          "title": "File Klage (lawsuit) against the order at the Verwaltungsgericht Musterregensburg",
+          "quote": "Gegen diesen Bescheid können Sie binnen eines Monats nach seiner Bekanntgabe Klage beim Bayerischen Verwaltungsgericht Musterregensburg, Haidplatz 4, 93047 Musterregensburg erheben, schriftlich oder zur Niederschrift bei der Geschäftsstelle des Gerichts.",
+          "computation": "The notice was sent by ordinary mail dated 18.11.2026 (Wednesday), presumed posted the same day. Under the statutory Zugangsfiktion of Art. 41 Abs. 2 BayVwVfG (and its federal counterpart), a notice sent by simple letter is deemed delivered on the THIRD day after posting — note the letter itself erroneously states 'vierten Tag' (fourth day), which contradicts the actual wording of Art. 41 Abs. 2 BayVwVfG; I apply the correct statutory third-day rule. Third day after 18.11.2026 = 21.11.2026 (a Saturday); per established case law the Zugangsfiktion date itself is not shifted merely because it falls on a weekend. Under §187 Abs. 1 BGB the day of the triggering event (21.11.2026) is excluded, so the one-month Klage period begins on 22.11.2026. Under §188 Abs. 2 BGB a one-month period ends on the day of the following month bearing the same number as the triggering (Bekanntgabe) day, i.e. 21.12.2026 (a Monday) — not a Saturday, Sunday or Bavarian public holiday, so no further shift under §193 BGB applies.",
+          "due_date": "2026-12-21",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "kind": "authority_letter",
+      "references": [
+        {
+          "label": "Az.",
+          "value": "BV-61-2026-0773"
+        }
+      ],
+      "remedy_type": "klage",
+      "sender_name": "Landratsamt Beispielrott – Untere Bauaufsichtsbehörde",
+      "warnings": [
+        "The letter states the postal delivery fiction occurs on the 'vierten Tag' (fourth day) after posting while citing Art. 41 Abs. 2 BayVwVfG, which actually specifies the THIRD day after posting; I used the statutory third-day rule for the Klage deadline calculation, which is one day earlier than the letter's own (incorrect) statement would imply, and lowered confidence accordingly — the person should double-check the exact posting date and consult a lawyer if the deadline is close.",
+        "The Zwangsgeld threat in item 2 is conditional and only becomes due if the removal obligation in item 1 is not met by 26.02.2027; it is not an independent payment demand requiring action now."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6013,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2133,
+      "cost_usd": 0.0692904,
+      "duration_ms": 62084,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

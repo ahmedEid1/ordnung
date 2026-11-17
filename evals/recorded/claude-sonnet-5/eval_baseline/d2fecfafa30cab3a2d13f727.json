@@ -1,0 +1,96 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"42840a2b32d4161b0356b72371ed1122e9e04682a7a93b8df9d33121beb454a2\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-invoice_relative-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:40:03+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Hörakustik Beispielklang\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"HK-11-2026-047\"}],\"amounts\":[1380,20,1400],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay own share for hearing aids\",\"quote\":\"Den Betrag erbitten wir innerhalb von 30 Tagen nach Rechnungsdatum auf unser Konto;\",\"computation\":\"Period runs from the invoice date 19.11.2026 (Rechnungsdatum). Under § 187 Abs. 1 BGB the day of the event (19.11.2026) is not counted; counting starts 20.11.2026. 30 days later lands on 19.12.2026, a Saturday. Under § 193 BGB, since the obligation is owed to a private company (not a public-law deadline), a deadline falling on a Saturday, Sunday or public holiday moves to the next business day: Monday 21.12.2026. To allow for the up-to-one-business-day bank transfer time (§ 675s BGB), the transfer should be initiated by Friday 18.12.2026 at the latest.\",\"due_date\":\"2026-12-21\",\"confidence\":\"high\",\"amount\":1400}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter offers installment payment \\\"nach Absprache\\\" (by arrangement) but gives no details on how to request it; contact the provider directly using the printed phone number or email if you need this, rather than any instructions that might appear elsewhere.\",\"The IBAN printed (DE36 3705 0198 0005 5277 00) is structurally valid and matches a German bank code, but a valid IBAN does not prove who owns the account; compare it with any earlier correspondence from this provider before paying.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Hörakustik Beispielklang",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "HK-11-2026-047"
+        }
+      ],
+      "amounts": [
+        1380,
+        20,
+        1400
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay own share for hearing aids",
+          "quote": "Den Betrag erbitten wir innerhalb von 30 Tagen nach Rechnungsdatum auf unser Konto;",
+          "computation": "Period runs from the invoice date 19.11.2026 (Rechnungsdatum). Under § 187 Abs. 1 BGB the day of the event (19.11.2026) is not counted; counting starts 20.11.2026. 30 days later lands on 19.12.2026, a Saturday. Under § 193 BGB, since the obligation is owed to a private company (not a public-law deadline), a deadline falling on a Saturday, Sunday or public holiday moves to the next business day: Monday 21.12.2026. To allow for the up-to-one-business-day bank transfer time (§ 675s BGB), the transfer should be initiated by Friday 18.12.2026 at the latest.",
+          "due_date": "2026-12-21",
+          "confidence": "high",
+          "amount": 1400
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter offers installment payment \"nach Absprache\" (by arrangement) but gives no details on how to request it; contact the provider directly using the printed phone number or email if you need this, rather than any instructions that might appear elsewhere.",
+        "The IBAN printed (DE36 3705 0198 0005 5277 00) is structurally valid and matches a German bank code, but a valid IBAN does not prove who owns the account; compare it with any earlier correspondence from this provider before paying."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1325,
+      "cache_read_tokens": 14618,
+      "cache_creation_tokens": 3802,
+      "cost_usd": 0.031389600000000004,
+      "duration_ms": 15048,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 30,
+            "unit": "days",
+            "anchor": "document_date",
+            "anchor_date": "2026-11-19",
+            "nature": "payment",
+            "shift_rule": "auto",
+            "legal_basis": "§ 187, § 188 BGB",
+            "text": "Den Betrag erbitten wir innerhalb von 30 Tagen nach Rechnungsdatum auf unser Konto"
+          },
+          "document_date": "2026-11-19",
+          "sender_kind": "company",
+          "region": "NW"
+        },
+        "result": "{\"due_date\":\"2026-12-21\",\"weekday\":\"Monday\",\"send_by\":\"2026-12-18\",\"summary\":\"30 days after the letter's date (Thu 19 Nov 2026) is Sat 19 Dec 2026, a Saturday, so the deadline moves to Mon 21 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Thu 19 Nov 2026\",\"date\":\"2026-11-19\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"30 days later: Sat 19 Dec 2026\",\"date\":\"2026-12-19\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Sat 19 Dec 2026 is a Saturday, so the deadline moves to Mon 21 Dec 2026\",\"date\":\"2026-12-21\",\"rule_id\":\"bgb_193\",\"citation\":\"§ 193 BGB\"},{\"label\":\"Send by Fri 18 Dec 2026 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2026-12-18\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"bgb_193\",\"title\":\"Weekend and holiday shift (private law)\",\"citation\":\"§ 193 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__193.html\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-19\",\"holiday_calendar\":\"Germany (nationwide holidays only)\",\"holidays_from\":\"recipient_region: a payment to a company or person is made where the payer lives (§§ 269, 270 Abs. 4 BGB), so that Land's holidays apply\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE36 3705 0198 0005 5277 00"
+        },
+        "result": "{\"iban\":\"DE36 3705 0198 0005 5277 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005527700\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

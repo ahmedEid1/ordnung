@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"49eefb94fb43668ca444af0275d16202e272a023ac949524043a48ffd31bc399\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:53:16+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[184300],\"contract\":null,\"document_date\":\"2026-11-18\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Grundsteuerwert assessment\",\"quote\":\"Gegen diesen Bescheid kann binnen eines Monats nach Bekanntgabe Einspruch beim Finanzamt Musterweilburg eingelegt werden, schriftlich, elektronisch oder zur Niederschrift.\",\"computation\":\"Letter dated 18.11.2026, 'Aufgabe zur Post' (handed to postal service) stated as Samstag, 21.11.2026. Under §122 Abs.2 AO (as amended, now a 4-day fiction instead of the former 3-day rule), the notice is deemed delivered on the 4th day after posting: 21.11.2026 + 4 days = 25.11.2026 (Wednesday) — a normal business day, so no weekend/holiday shift is needed here, and it matches the letter's own statement 'gilt als am vierten Tag nach der oben genannten Aufgabe zur Post bekannt gegeben'. The one-month Einspruchsfrist (§355 AO) then runs from that Bekanntgabe date. Per §108 Abs.1 AO i.V.m. §187 Abs.1, §188 Abs.2 BGB, the day of Bekanntgabe (25.11.2026) itself is not counted; the one-month period ends on the day in the following month bearing the same number as the Bekanntgabe day, i.e. 25.12.2026. However, 25.12.2026 is a Friday and a public holiday (1. Weihnachtstag) in NRW; 26.12.2026 (2. Weihnachtstag) is also a holiday and falls on a Saturday; 27.12.2026 is a Sunday. Per §108 Abs.3 AO, the deadline moves to the next working day, which is Monday 28.12.2026.\",\"due_date\":\"2026-12-28\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"tax_assessment\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"35 112 0447 8810\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Finanzamt Musterweilburg\",\"warnings\":[\"The letter itself demands no payment (it only fortschreibt the Grundsteuerwert to €184,300; the actual Grundsteuer is later set by the municipality based on a separate Grundsteuermessbescheid), yet an IBAN is printed in the footer — double-check that no payment request citing this letter is legitimate, and never pay anything based solely on this notice.\",\"The place names used (Finanzamt 'Musterweilburg', recipient address 'Mustermünster') look like generic placeholder/template names rather than real German localities — verify the sender's actual identity and address independently before relying on this letter or replying to it.\"]}",
+    "data": {
+      "amounts": [
+        184300
+      ],
+      "contract": null,
+      "document_date": "2026-11-18",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Grundsteuerwert assessment",
+          "quote": "Gegen diesen Bescheid kann binnen eines Monats nach Bekanntgabe Einspruch beim Finanzamt Musterweilburg eingelegt werden, schriftlich, elektronisch oder zur Niederschrift.",
+          "computation": "Letter dated 18.11.2026, 'Aufgabe zur Post' (handed to postal service) stated as Samstag, 21.11.2026. Under §122 Abs.2 AO (as amended, now a 4-day fiction instead of the former 3-day rule), the notice is deemed delivered on the 4th day after posting: 21.11.2026 + 4 days = 25.11.2026 (Wednesday) — a normal business day, so no weekend/holiday shift is needed here, and it matches the letter's own statement 'gilt als am vierten Tag nach der oben genannten Aufgabe zur Post bekannt gegeben'. The one-month Einspruchsfrist (§355 AO) then runs from that Bekanntgabe date. Per §108 Abs.1 AO i.V.m. §187 Abs.1, §188 Abs.2 BGB, the day of Bekanntgabe (25.11.2026) itself is not counted; the one-month period ends on the day in the following month bearing the same number as the Bekanntgabe day, i.e. 25.12.2026. However, 25.12.2026 is a Friday and a public holiday (1. Weihnachtstag) in NRW; 26.12.2026 (2. Weihnachtstag) is also a holiday and falls on a Saturday; 27.12.2026 is a Sunday. Per §108 Abs.3 AO, the deadline moves to the next working day, which is Monday 28.12.2026.",
+          "due_date": "2026-12-28",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "tax_assessment",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "35 112 0447 8810"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Finanzamt Musterweilburg",
+      "warnings": [
+        "The letter itself demands no payment (it only fortschreibt the Grundsteuerwert to €184,300; the actual Grundsteuer is later set by the municipality based on a separate Grundsteuermessbescheid), yet an IBAN is printed in the footer — double-check that no payment request citing this letter is legitimate, and never pay anything based solely on this notice.",
+        "The place names used (Finanzamt 'Musterweilburg', recipient address 'Mustermünster') look like generic placeholder/template names rather than real German localities — verify the sender's actual identity and address independently before relying on this letter or replying to it."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 5340,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1641,
+      "cost_usd": 0.0605924,
+      "duration_ms": 52626,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

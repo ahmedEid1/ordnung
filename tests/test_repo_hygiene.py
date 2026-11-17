@@ -641,6 +641,37 @@ def test_one_test_file_runs_alone_as_the_fast_loop_runs_it() -> None:
 
 #: The facts of the final splits, which scripts/build_final_facts.py writes from the sealed blind audit.
 FINAL_FACTS = "evals/dataset/*/facts.json"
+#: The pre-registration of the final run.
+PREREG = ROOT / "evals" / "preregistration" / "final-0.4.0.json"
+
+
+def _final_analyses_the_table_cannot_list() -> tuple[str, ...]:
+    """The two files of analyses the pre-registered final run publishes, as patterns of ``evals/results`` names: its
+    final analysis (``python -m evals.analysis --prereg …``, ``analysis.FINAL_KIND``) and the held-out Ask set's file
+    of runs (``python -m evals.ask.heldout --final …``, ``heldout.FINAL_KIND``), which ``make eval-reproduce`` and
+    tests/test_preregistration.py check. The publish PR adds them (the runbook's publish steps 3 and 4), but
+    CONTRIBUTING.md is in none of the pre-registration's lists of paths allowed to change after the freeze
+    (``frozen.allowed_after_freeze``, ``allowed_while_recording``, ``allowed_at_publish``), so it cannot add their
+    rows to the "Generated files" table: tests/test_preregistration.py (frozen) would fail. Built from the frozen
+    code's own names and held to the pre-registration's ``sentences.files``; empty while the pre-registration is
+    missing or allows the table to change. Follow-up once the freeze no longer holds CONTRIBUTING.md: add their two
+    rows to the table and drop this."""
+    from evals import analysis
+    from evals.ask import heldout
+    from scripts import prereg_hashes
+
+    if not PREREG.is_file():
+        return ()
+    prereg = json.loads(PREREG.read_text(encoding="utf-8"))
+    if not prereg_hashes.path_problems(["CONTRIBUTING.md"], prereg["frozen"]):
+        return ()
+    names = (
+        analysis.output_name("*", analysis.MODEL, analysis.FINAL_KIND),
+        heldout.final_name("*", analysis.MODEL),
+    )
+    files = prereg["sentences"]["files"]
+    assert {f"evals/results/{name}" for name in names} == {files["final"], files["ask"]}, (names, files)
+    return names
 
 
 def _generated_rows() -> list[list[str]]:
@@ -737,8 +768,12 @@ def test_contributing_lists_every_generated_file_with_its_command_and_its_check(
         for path in sorted((ROOT / "evals" / "results").glob(f"*-{kind}.json"))
     ]
     assert analyses and "python -m evals.analysis" in made_by
+    # the final run's two (_final_analyses_the_table_cannot_list says why the table cannot list them yet)
+    frozen_out = _final_analyses_the_table_cannot_list()
     for path in analyses:
-        assert covered(f"evals/results/{path.name}"), path.name
+        assert covered(f"evals/results/{path.name}") or any(
+            fnmatch.fnmatch(path.name, pattern) for pattern in frozen_out
+        ), path.name
     for path in (
         "src/ordnung/web/dist/build-info.json",
         "web/openapi.json",
@@ -932,6 +967,7 @@ def test_the_evals_readme_lays_out_every_folder_and_names_every_recording_contro
         for path in (ROOT / "evals").iterdir()
         if not path.name.startswith((".", "_")) and (path.is_dir() or path.suffix == ".py")
     }
+    parts.discard("retakes")  # final-0.4.0.json lets the publish add the retakes, not a Layout row
     assert sorted(parts - laid_out) == [], "a part of evals/ without its row in evals/README.md's Layout"
 
     def named(word: str) -> bool:

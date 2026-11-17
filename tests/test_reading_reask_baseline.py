@@ -40,7 +40,7 @@ from ordnung.llm.runtime import LLMService
 from ordnung.models import DateSpec, ExtractedItem
 from ordnung.rules import RuleContext
 from ordnung.rules.delivery import VWVFG_FOUR_DAY_FROM
-from test_reading_reask import pages_of, reading
+from test_reading_reask import DAY, pages_of, reading
 from test_reading_reask_floor import (
     BLANK,
     COMPLETE,
@@ -523,7 +523,9 @@ def test_an_answer_filed_as_another_high_stakes_kind_is_no_better() -> None:
     """The gap closes with the first answer's kind pinned, but the answer files the letter as a dismissal:
     another letter's rules would date it — not the same letter read more completely."""
     second = reading({**COMPLETE, "high_stakes_kind": "dismissal"})
-    verdict = judge_completion("doc_x", reading(HALF), second, pages_of(PAY), gap="remedy_left_out")
+    verdict = judge_completion(
+        "doc_x", reading(HALF), second, pages_of(PAY), gap="remedy_left_out", today=DAY
+    )
     assert verdict == "not_better"
 
 

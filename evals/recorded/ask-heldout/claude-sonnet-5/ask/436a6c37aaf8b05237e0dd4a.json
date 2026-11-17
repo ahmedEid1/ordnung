@@ -1,0 +1,261 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"99ef00b98b6fd5502888ae20ae978adbae84ea70eb1fc4ab660a1a4790b44772\",\"question\":\"Looking about four months ahead (120 days from now), on what dates am I due at the dentist?\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "doc_xa0f5gvpe0w2"
+    ],
+    "prompt_head": "The person asks:\nLooking about four months ahead (120 days from now), on what dates am I due at the dentist?\n",
+    "recorded_at": "2026-11-24T13:43:31+00:00",
+    "repeat": 3,
+    "commit": "84270dc0",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "You have one dentist appointment in that window:\n\n- **Fri 8 Jan 2027, 09:15** – Dental checkup and cleaning (PZR) at Zahnarztpraxis Dr. Anna Beispiel [item:itm_sncxha9wbsxc]\n\nThis appointment repeats every 3 months, with the following one due **8 Apr 2027** [item:itm_sncxha9wbsxc] — that's just outside your 120-day window, so only the January date falls within the next four months.",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 417,
+      "cache_read_tokens": 12788,
+      "cache_creation_tokens": 1701,
+      "cost_usd": 0.0135396,
+      "duration_ms": 11570,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "dentist"
+      },
+      "tool_use_id": "toolu_018MoRV1ajvF3ci76Nf6GVkV"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "kind": "appointment",
+        "from_date": "2026-11-24",
+        "to_date": "2027-03-24"
+      },
+      "tool_use_id": "toolu_01SvoytEG36jRjM8j2nGjqun"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_018MoRV1ajvF3ci76Nf6GVkV"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-11-24\",\"items\":[{\"id\":\"itm_sncxha9wbsxc\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2027-01-08\",\"due_time\":\"09:15\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_m3rttkfq94qn\",\"doc_id\":\"doc_xa0f5gvpe0w2\",\"repeats\":\"every 3 months\",\"following_due_date\":\"2027-04-08\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_sncxha9wbsxc\":{\"title\":\"Dental checkup and cleaning (PZR)\",\"action\":\"Arrive 10 minutes early and bring your health insurance card (Gesundheitskarte)\",\"consequence\":\"Cancel at least 24 hours in advance if you cannot attend\",\"location\":\"Lindenallee 8, 12345 Musterstadt\"},\"pty_m3rttkfq94qn\":{\"name\":\"Zahnarztpraxis Dr. Anna Beispiel\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01SvoytEG36jRjM8j2nGjqun"
+    },
+    {
+      "type": "text",
+      "text": "You"
+    },
+    {
+      "type": "text",
+      "text": " have"
+    },
+    {
+      "type": "text",
+      "text": " one dent"
+    },
+    {
+      "type": "text",
+      "text": "ist appointment in"
+    },
+    {
+      "type": "text",
+      "text": " that window:"
+    },
+    {
+      "type": "text",
+      "text": "\n\n- **F"
+    },
+    {
+      "type": "text",
+      "text": "ri 8"
+    },
+    {
+      "type": "text",
+      "text": " Jan 2027"
+    },
+    {
+      "type": "text",
+      "text": ", 09"
+    },
+    {
+      "type": "text",
+      "text": ":15** – Dental"
+    },
+    {
+      "type": "text",
+      "text": " checkup and cleaning"
+    },
+    {
+      "type": "text",
+      "text": " (PZR) at"
+    },
+    {
+      "type": "text",
+      "text": " Zahnarztpra"
+    },
+    {
+      "type": "text",
+      "text": "xis Dr. An"
+    },
+    {
+      "type": "text",
+      "text": "na Beispiel [item"
+    },
+    {
+      "type": "text",
+      "text": ":"
+    },
+    {
+      "type": "text",
+      "text": "itm_snc"
+    },
+    {
+      "type": "text",
+      "text": "x"
+    },
+    {
+      "type": "text",
+      "text": "ha"
+    },
+    {
+      "type": "text",
+      "text": "9"
+    },
+    {
+      "type": "text",
+      "text": "w"
+    },
+    {
+      "type": "text",
+      "text": "b"
+    },
+    {
+      "type": "text",
+      "text": "s"
+    },
+    {
+      "type": "text",
+      "text": "x"
+    },
+    {
+      "type": "text",
+      "text": "c"
+    },
+    {
+      "type": "text",
+      "text": "]\n\nThis"
+    },
+    {
+      "type": "text",
+      "text": " appointment repeats every"
+    },
+    {
+      "type": "text",
+      "text": " 3 months, with"
+    },
+    {
+      "type": "text",
+      "text": " the following one"
+    },
+    {
+      "type": "text",
+      "text": " due **8"
+    },
+    {
+      "type": "text",
+      "text": " Apr 2027**"
+    },
+    {
+      "type": "text",
+      "text": " [item:itm_snc"
+    },
+    {
+      "type": "text",
+      "text": "xha9wbsxc"
+    },
+    {
+      "type": "text",
+      "text": "]"
+    },
+    {
+      "type": "text",
+      "text": " — that"
+    },
+    {
+      "type": "text",
+      "text": "'s just"
+    },
+    {
+      "type": "text",
+      "text": " outside your"
+    },
+    {
+      "type": "text",
+      "text": " 120"
+    },
+    {
+      "type": "text",
+      "text": "-day window, so only the"
+    },
+    {
+      "type": "text",
+      "text": " January date"
+    },
+    {
+      "type": "text",
+      "text": " fal"
+    },
+    {
+      "type": "text",
+      "text": "ls within"
+    },
+    {
+      "type": "text",
+      "text": " the"
+    },
+    {
+      "type": "text",
+      "text": " next four months."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "You have one dentist appointment in that window:\n\n- **Fri 8 Jan 2027, 09:15** – Dental checkup and cleaning (PZR) at Zahnarztpraxis Dr. Anna Beispiel [item:itm_sncxha9wbsxc]\n\nThis appointment repeats every 3 months, with the following one due **8 Apr 2027** [item:itm_sncxha9wbsxc] — that's just outside your 120-day window, so only the January date falls within the next four months.",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 417,
+          "cache_read_tokens": 12788,
+          "cache_creation_tokens": 1701,
+          "cost_usd": 0.0135396,
+          "duration_ms": 11570,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

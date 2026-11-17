@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"e8f487bc846f1ec442604669323718a140ad2867bd5e16284e96b3941893967e\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-betriebskosten-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d",
+    "recorded_at": "2026-11-24T12:34:34+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[1074,1140,66],\"contract\":null,\"kind\":\"rent_lease\",\"sender_name\":\"Klaus-Dieter Beispielmürwik\",\"document_date\":\"2026-11-20\",\"references\":[],\"remedy_type\":\"none\",\"items\":[{\"kind\":\"payment\",\"title\":\"Refund of utility-cost credit (Guthaben)\",\"quote\":\"Das Guthaben überweise ich Ihnen in den nächsten Tagen auf Ihr bekanntes Konto.\",\"computation\":\"The letter states the landlord will transfer the EUR 66.00 credit 'in den nächsten Tagen' (in the next few days) after the statement date of 20.11.2026, when it was personally put in the tenant's mailbox at 9:30. No fixed calendar date, period length, or statutory deadline is given for this transfer; 'in den nächsten Tagen' is not a legally defined period under §§ 187, 188 BGB, so no exact last day can be computed. There is no statutory deadline in German law forcing the landlord to pay out a Betriebskosten credit by a specific date (only the 12-month limit of § 556 Abs. 3 BGB restricts additional demands by the landlord against the tenant, which does not apply here since this is a credit owed to the tenant). Therefore the due date cannot be determined precisely; the earliest plausible reading is a few days after 20.11.2026.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":66}],\"warnings\":[\"The letter gives no exact date for the EUR 66.00 refund, only the vague phrase 'in den nächsten Tagen' (in the next few days), so no precise due date could be computed; the person may want to follow up with the landlord if the money does not arrive within about a week of 20.11.2026.\",\"This Betriebskostenabrechnung for the period 01.01.2024–31.12.2024 was issued on 20.11.2026, i.e. nearly 11 months after the statutory 12-month deadline (31.12.2025) by which a landlord must normally send such a statement (§ 556 Abs. 3 BGB); this lateness does not harm the tenant here since the result is a credit in her favour, but it is noted for completeness.\"]}",
+    "data": {
+      "amounts": [
+        1074,
+        1140,
+        66
+      ],
+      "contract": null,
+      "kind": "rent_lease",
+      "sender_name": "Klaus-Dieter Beispielmürwik",
+      "document_date": "2026-11-20",
+      "references": [],
+      "remedy_type": "none",
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Refund of utility-cost credit (Guthaben)",
+          "quote": "Das Guthaben überweise ich Ihnen in den nächsten Tagen auf Ihr bekanntes Konto.",
+          "computation": "The letter states the landlord will transfer the EUR 66.00 credit 'in den nächsten Tagen' (in the next few days) after the statement date of 20.11.2026, when it was personally put in the tenant's mailbox at 9:30. No fixed calendar date, period length, or statutory deadline is given for this transfer; 'in den nächsten Tagen' is not a legally defined period under §§ 187, 188 BGB, so no exact last day can be computed. There is no statutory deadline in German law forcing the landlord to pay out a Betriebskosten credit by a specific date (only the 12-month limit of § 556 Abs. 3 BGB restricts additional demands by the landlord against the tenant, which does not apply here since this is a credit owed to the tenant). Therefore the due date cannot be determined precisely; the earliest plausible reading is a few days after 20.11.2026.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 66
+        }
+      ],
+      "warnings": [
+        "The letter gives no exact date for the EUR 66.00 refund, only the vague phrase 'in den nächsten Tagen' (in the next few days), so no precise due date could be computed; the person may want to follow up with the landlord if the money does not arrive within about a week of 20.11.2026.",
+        "This Betriebskostenabrechnung for the period 01.01.2024–31.12.2024 was issued on 20.11.2026, i.e. nearly 11 months after the statutory 12-month deadline (31.12.2025) by which a landlord must normally send such a statement (§ 556 Abs. 3 BGB); this lateness does not harm the tenant here since the result is a credit in her favour, but it is noted for completeness."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2205,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1584,
+      "cost_usd": 0.029496,
+      "duration_ms": 23463,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"9f14528e2c14136d2939a6711f90c82eae6b3f98ae31c0851cf8f2e74c0afd13\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-appointment-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:40:52+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Beispielwohnen Lieferservice\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Auftrag\",\"value\":\"BW-26-31502\"}],\"amounts\":[],\"items\":[{\"kind\":\"appointment\",\"title\":\"Delivery and installation of wardrobe\",\"quote\":\"Wir liefern und montieren ihn am Samstag, 12.12.2026; unser Team ist ab 08:00 Uhr bei Ihnen und braucht etwa drei Stunden.\",\"computation\":\"The letter states the appointment date and time directly: Saturday, 12 December 2026, starting 08:00. Appointments are kept on the date given and are not shifted for weekends.\",\"due_date\":\"2026-12-12\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Call to reschedule if the delivery date does not suit (conditional)\",\"quote\":\"Passt Ihnen der Tag nicht, rufen Sie uns spätestens drei Werktage vorher an.\",\"computation\":\"Only relevant if she wants to change the appointment. 'Werktage' = Monday–Saturday, excluding only Sundays and public holidays. Counting backwards from the delivery date Saturday 12.12.2026 (not counted itself): 1st Werktag before = Fri 11.12.2026; 2nd = Thu 10.12.2026; 3rd = Wed 09.12.2026. No public holidays fall in this window in NW. So the call must be made by Wednesday 09.12.2026 at the latest.\",\"due_date\":\"2026-12-09\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Beispielwohnen Lieferservice",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Auftrag",
+          "value": "BW-26-31502"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Delivery and installation of wardrobe",
+          "quote": "Wir liefern und montieren ihn am Samstag, 12.12.2026; unser Team ist ab 08:00 Uhr bei Ihnen und braucht etwa drei Stunden.",
+          "computation": "The letter states the appointment date and time directly: Saturday, 12 December 2026, starting 08:00. Appointments are kept on the date given and are not shifted for weekends.",
+          "due_date": "2026-12-12",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Call to reschedule if the delivery date does not suit (conditional)",
+          "quote": "Passt Ihnen der Tag nicht, rufen Sie uns spätestens drei Werktage vorher an.",
+          "computation": "Only relevant if she wants to change the appointment. 'Werktage' = Monday–Saturday, excluding only Sundays and public holidays. Counting backwards from the delivery date Saturday 12.12.2026 (not counted itself): 1st Werktag before = Fri 11.12.2026; 2nd = Thu 10.12.2026; 3rd = Wed 09.12.2026. No public holidays fall in this window in NW. So the call must be made by Wednesday 09.12.2026 at the latest.",
+          "due_date": "2026-12-09",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1847,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1424,
+      "cost_usd": 0.025276,
+      "duration_ms": 18200,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

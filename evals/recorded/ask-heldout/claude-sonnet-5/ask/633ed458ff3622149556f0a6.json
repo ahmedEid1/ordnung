@@ -1,0 +1,250 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"c5bf343951f16ee695937237b2efb8ab43009e2379a11801cbd01cc9d384dcf9\",\"question\":\"What ID does the scholarship foundation use for me?\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "doc_pa2w9q3gxzqk"
+    ],
+    "prompt_head": "The person asks:\nWhat ID does the scholarship foundation use for me?\n",
+    "recorded_at": "2026-11-24T13:42:39+00:00",
+    "repeat": 3,
+    "commit": "84270dc0",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "The Global Talent Scholarship Foundation [party:pty_efmwq4xym8cm] identifies you with the **Scholarship ID \"GTSF-2026-0317\"** (not confirmed — this value is read from the letter text, not checked by Ordnung), as shown on their letter about the Award of the Global Talent Scholarship 2026/27 [doc:doc_pa2w9q3gxzqk].\n\nIt's worth double-checking this against the actual paper letter if you need to quote it somewhere official.",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 260,
+      "cache_read_tokens": 12775,
+      "cache_creation_tokens": 1658,
+      "cost_usd": 0.011795,
+      "duration_ms": 6713,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "text",
+      "text": "I'"
+    },
+    {
+      "type": "text",
+      "text": "ll look up the"
+    },
+    {
+      "type": "text",
+      "text": " sc"
+    },
+    {
+      "type": "text",
+      "text": "holarship fo"
+    },
+    {
+      "type": "text",
+      "text": "undation's records"
+    },
+    {
+      "type": "text",
+      "text": " to"
+    },
+    {
+      "type": "text",
+      "text": " find your"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "ID with"
+    },
+    {
+      "type": "text",
+      "text": " them."
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_my_numbers",
+      "input": {
+        "organisation": "scholarship foundation"
+      },
+      "tool_use_id": "toolu_0149NkDKq3dyLuHYNr9qPAYG"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-11-24\",\"open_cases\":[],\"organisations\":[{\"party_id\":\"pty_efmwq4xym8cm\",\"kind\":\"other\",\"numbers\":[\"n1\"],\"their_numbers\":[\"n2\"],\"last_letter\":{\"doc_id\":\"doc_pa2w9q3gxzqk\",\"date\":\"2026-09-05\"},\"open_items\":6}],\"numbers\":[{\"ref\":\"n1\",\"kind\":\"other\",\"group\":\"organisation\",\"check\":\"none\",\"doc_id\":\"doc_pa2w9q3gxzqk\",\"party_id\":\"pty_efmwq4xym8cm\",\"letters\":1},{\"ref\":\"n2\",\"kind\":\"register\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_pa2w9q3gxzqk\",\"party_id\":\"pty_efmwq4xym8cm\",\"letters\":1}],\"note\":\"Each number's label and value are in the letter text of the letter it comes from (under numbers, by ref). check is Ordnung's check-digit test: ok (passes the published check, so almost certainly no digit was misread — it does not prove the number is the person's), fails (compare it with the letter) or none (no public check for this kind of number).\"}\n</ordnung_record>\n<untrusted_document>\n{\"pty_efmwq4xym8cm\":{\"name\":\"Global Talent Scholarship Foundation\",\"phone\":\"+49 123 555 0317\"},\"doc_pa2w9q3gxzqk\":{\"title\":\"Award of the Global Talent Scholarship 2026/27\",\"numbers\":{\"n1\":{\"label\":\"Scholarship ID\",\"value\":\"GTSF-2026-0317\"},\"n2\":{\"label\":\"Foundation register\",\"value\":\"Berlin 3/GT-2011\"}}}}\n</untrusted_document>",
+      "tool_use_id": "toolu_0149NkDKq3dyLuHYNr9qPAYG"
+    },
+    {
+      "type": "text",
+      "text": "The"
+    },
+    {
+      "type": "text",
+      "text": " Global Talent Schol"
+    },
+    {
+      "type": "text",
+      "text": "arship Foundation ["
+    },
+    {
+      "type": "text",
+      "text": "party"
+    },
+    {
+      "type": "text",
+      "text": ":"
+    },
+    {
+      "type": "text",
+      "text": "pty"
+    },
+    {
+      "type": "text",
+      "text": "_efmwq4xym"
+    },
+    {
+      "type": "text",
+      "text": "8cm] identifies you"
+    },
+    {
+      "type": "text",
+      "text": " with the **Scholarship"
+    },
+    {
+      "type": "text",
+      "text": " ID \""
+    },
+    {
+      "type": "text",
+      "text": "GTSF-2026-"
+    },
+    {
+      "type": "text",
+      "text": "0317\"** ("
+    },
+    {
+      "type": "text",
+      "text": "not confirmed —"
+    },
+    {
+      "type": "text",
+      "text": " this value"
+    },
+    {
+      "type": "text",
+      "text": " is"
+    },
+    {
+      "type": "text",
+      "text": " read from the let"
+    },
+    {
+      "type": "text",
+      "text": "ter text,"
+    },
+    {
+      "type": "text",
+      "text": " not checked by Ord"
+    },
+    {
+      "type": "text",
+      "text": "n"
+    },
+    {
+      "type": "text",
+      "text": "ung"
+    },
+    {
+      "type": "text",
+      "text": "), as shown on their let"
+    },
+    {
+      "type": "text",
+      "text": "ter about"
+    },
+    {
+      "type": "text",
+      "text": " the Award of the Global"
+    },
+    {
+      "type": "text",
+      "text": " Talent Scholarship "
+    },
+    {
+      "type": "text",
+      "text": "2026/27 [doc"
+    },
+    {
+      "type": "text",
+      "text": ":do"
+    },
+    {
+      "type": "text",
+      "text": "c_pa2w9q"
+    },
+    {
+      "type": "text",
+      "text": "3gxzqk]."
+    },
+    {
+      "type": "text",
+      "text": "\n\nIt's worth double-checking"
+    },
+    {
+      "type": "text",
+      "text": " this against the actual pa"
+    },
+    {
+      "type": "text",
+      "text": "per letter if you need"
+    },
+    {
+      "type": "text",
+      "text": " to qu"
+    },
+    {
+      "type": "text",
+      "text": "ote it som"
+    },
+    {
+      "type": "text",
+      "text": "ewhere official"
+    },
+    {
+      "type": "text",
+      "text": "."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "The Global Talent Scholarship Foundation [party:pty_efmwq4xym8cm] identifies you with the **Scholarship ID \"GTSF-2026-0317\"** (not confirmed — this value is read from the letter text, not checked by Ordnung), as shown on their letter about the Award of the Global Talent Scholarship 2026/27 [doc:doc_pa2w9q3gxzqk].\n\nIt's worth double-checking this against the actual paper letter if you need to quote it somewhere official.",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 260,
+          "cache_read_tokens": 12775,
+          "cache_creation_tokens": 1658,
+          "cost_usd": 0.011795,
+          "duration_ms": 6713,
+          "turns": 2
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

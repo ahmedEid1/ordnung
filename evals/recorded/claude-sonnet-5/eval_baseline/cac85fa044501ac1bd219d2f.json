@@ -1,0 +1,88 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"be8c1fa6867caaf82eda0e2dd4542edf0049fe06d1a867d599b866d8c38ba57b\",\"mode\":\"text\",\"region\":\"SL\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-fine_bussgeld-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Saarland (SL), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> t",
+    "recorded_at": "2026-11-24T09:33:10+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Stadt Musterhomburg (Saar) – Ordnungsbehörde\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"OWi-26-118430\"},{\"label\":\"Kennzeichen\",\"value\":\"HOM-AM 732\"}],\"amounts\":[132],\"items\":[{\"kind\":\"deadline\",\"title\":\"File objection (Einspruch) against the fine notice\",\"quote\":\"Binnen zwei Wochen nach der Zustellung dieses Bescheids kann Einspruch eingelegt werden, schriftlich oder zur Niederschrift bei der Stadt Musterhomburg (Saar) – Ordnungsbehörde.\",\"computation\":\"This is a formal postal delivery with a Zustellungsurkunde (§ 182 ZPO / VwZG), so the actual delivery date shown on the certificate governs, not the usual 3-day fiction. The attached delivery certificate shows 'zugestellt' on 24.11.2026 (Tuesday). Per § 187 Abs. 1 BGB the day of the event (delivery) is not counted; the two-week period starts 25.11.2026. Per § 188 Abs. 2 BGB a period stated in weeks ends with the day of the second week whose name corresponds to the day of the event, i.e. the next Tuesday two weeks after 24.11.2026, which is 08.12.2026. That day is a normal working Tuesday in Saarland (no public holiday), so no shift under § 193 BGB is needed.\",\"due_date\":\"2026-12-08\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Fine notice becomes final (Rechtskraft) if no objection is filed\",\"quote\":\"Danach wird der Bescheid rechtskräftig.\",\"computation\":\"If no Einspruch is filed by the deadline of 08.12.2026 (end of day), the notice becomes legally final on the following day, i.e. 09.12.2026.\",\"due_date\":\"2026-12-09\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay total fine amount (132,00 €) after finality\",\"quote\":\"Bitte überweisen Sie den Gesamtbetrag erst nach Rechtskraft, und zwar innerhalb von zwei Wochen.\",\"computation\":\"The letter instructs payment only after Rechtskraft (finality), within two weeks of that event. Rechtskraft occurs on 09.12.2026 (Wednesday), the day after the Einspruch period expires. Per § 187 Abs. 1 BGB that event day is not counted; the two-week period runs from 10.12.2026. Per § 188 Abs. 2 BGB it ends on the day of the second week whose name matches the event day (Wednesday), i.e. 23.12.2026. That date is a normal working Wednesday in Saarland (not a public holiday), so no shift under § 193 BGB applies. Confidence is medium because the exact start of the 'innerhalb von zwei Wochen nach Rechtskraft' period is phrased loosely rather than tied to a fixed calendar date, and depends on no objection being filed.\",\"due_date\":\"2026-12-23\",\"confidence\":\"medium\",\"amount\":132}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The sender's email address ends in the reserved '.example' domain and the names of the recipient, the bank ('Landesmusterbank') and even the town ('Musterhomburg', 'Beispielwadern') all look like generic placeholders rather than real entities; verify independently that this notice and its IBAN are genuine before transferring any money.\",\"A Fahreignungsregister point and a Bußgeld are serious consequences; if there is any doubt about the facts (date/location/who was driving), consider filing a timely Einspruch rather than paying, since payment after Rechtskraft forecloses that option.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Stadt Musterhomburg (Saar) – Ordnungsbehörde",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "OWi-26-118430"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "HOM-AM 732"
+        }
+      ],
+      "amounts": [
+        132
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File objection (Einspruch) against the fine notice",
+          "quote": "Binnen zwei Wochen nach der Zustellung dieses Bescheids kann Einspruch eingelegt werden, schriftlich oder zur Niederschrift bei der Stadt Musterhomburg (Saar) – Ordnungsbehörde.",
+          "computation": "This is a formal postal delivery with a Zustellungsurkunde (§ 182 ZPO / VwZG), so the actual delivery date shown on the certificate governs, not the usual 3-day fiction. The attached delivery certificate shows 'zugestellt' on 24.11.2026 (Tuesday). Per § 187 Abs. 1 BGB the day of the event (delivery) is not counted; the two-week period starts 25.11.2026. Per § 188 Abs. 2 BGB a period stated in weeks ends with the day of the second week whose name corresponds to the day of the event, i.e. the next Tuesday two weeks after 24.11.2026, which is 08.12.2026. That day is a normal working Tuesday in Saarland (no public holiday), so no shift under § 193 BGB is needed.",
+          "due_date": "2026-12-08",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Fine notice becomes final (Rechtskraft) if no objection is filed",
+          "quote": "Danach wird der Bescheid rechtskräftig.",
+          "computation": "If no Einspruch is filed by the deadline of 08.12.2026 (end of day), the notice becomes legally final on the following day, i.e. 09.12.2026.",
+          "due_date": "2026-12-09",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay total fine amount (132,00 €) after finality",
+          "quote": "Bitte überweisen Sie den Gesamtbetrag erst nach Rechtskraft, und zwar innerhalb von zwei Wochen.",
+          "computation": "The letter instructs payment only after Rechtskraft (finality), within two weeks of that event. Rechtskraft occurs on 09.12.2026 (Wednesday), the day after the Einspruch period expires. Per § 187 Abs. 1 BGB that event day is not counted; the two-week period runs from 10.12.2026. Per § 188 Abs. 2 BGB it ends on the day of the second week whose name matches the event day (Wednesday), i.e. 23.12.2026. That date is a normal working Wednesday in Saarland (not a public holiday), so no shift under § 193 BGB applies. Confidence is medium because the exact start of the 'innerhalb von zwei Wochen nach Rechtskraft' period is phrased loosely rather than tied to a fixed calendar date, and depends on no objection being filed.",
+          "due_date": "2026-12-23",
+          "confidence": "medium",
+          "amount": 132
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The sender's email address ends in the reserved '.example' domain and the names of the recipient, the bank ('Landesmusterbank') and even the town ('Musterhomburg', 'Beispielwadern') all look like generic placeholders rather than real entities; verify independently that this notice and its IBAN are genuine before transferring any money.",
+        "A Fahreignungsregister point and a Bußgeld are serious consequences; if there is any doubt about the facts (date/location/who was driving), consider filing a timely Einspruch rather than paying, since payment after Rechtskraft forecloses that option."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 8286,
+      "cache_read_tokens": 8371,
+      "cache_creation_tokens": 8842,
+      "cost_usd": 0.11991020000000001,
+      "duration_ms": 80178,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

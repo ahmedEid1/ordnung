@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"9db49c05bbff15d52a5e4c900606010ed6e50e8c7bff80d8cbb76fd22ac091a7\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-social_decision-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:04:19+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Musterquell Krankenkasse\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"Q803116452\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against rejection of household help\",\"quote\":\"Gegen diesen Bescheid können Sie innerhalb eines Monats, nachdem er Ihnen bekannt gegeben wurde, Widerspruch erheben.\",\"computation\":\"Letter dated Thursday 19.11.2026, sent by ordinary post. Statutory delivery fiction under § 37 Abs. 2 SGB X (as currently in force) is the third day after posting, not the fourth day as the letter itself claims (see warning). Day of posting = 19.11.2026; 19.11 + 3 days = 22.11.2026, a Sunday. Because the fictitious delivery day falls on a weekend, established case law (consistent with the rationale of §§ 187, 193 BGB) shifts the deemed delivery (Bekanntgabe) to the next business day, i.e. Monday 23.11.2026. For the one-month Widerspruch period, the day of Bekanntgabe itself is not counted (§ 187 Abs. 1 BGB), so the period begins 24.11.2026. Per § 188 Abs. 2 BGB a one-month period ends on the day of the following month bearing the same number as the triggering event (23.11), i.e. 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in NW, so no further shift is needed.\",\"due_date\":\"2026-12-23\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter states that a posted decision is deemed received on the 'vierten Tag' (fourth day) after posting, but § 37 Abs. 2 SGB X in its current form actually provides for the third day after posting; the Widerspruch deadline above was computed using the correct statutory third-day rule (with weekend adjustment), which in this case still yields the same effective Bekanntgabe date (23.11.2026) as a fourth-day count would after a weekend shift, but the discrepancy in the letter's wording should be noted and, if in doubt, confirmed with the Krankenkasse.\",\"If the actual date the letter was handed to the postal service differs from the printed document date, the Bekanntgabe date and thus the Widerspruch deadline should be recalculated accordingly.\"]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Musterquell Krankenkasse",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "Q803116452"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against rejection of household help",
+          "quote": "Gegen diesen Bescheid können Sie innerhalb eines Monats, nachdem er Ihnen bekannt gegeben wurde, Widerspruch erheben.",
+          "computation": "Letter dated Thursday 19.11.2026, sent by ordinary post. Statutory delivery fiction under § 37 Abs. 2 SGB X (as currently in force) is the third day after posting, not the fourth day as the letter itself claims (see warning). Day of posting = 19.11.2026; 19.11 + 3 days = 22.11.2026, a Sunday. Because the fictitious delivery day falls on a weekend, established case law (consistent with the rationale of §§ 187, 193 BGB) shifts the deemed delivery (Bekanntgabe) to the next business day, i.e. Monday 23.11.2026. For the one-month Widerspruch period, the day of Bekanntgabe itself is not counted (§ 187 Abs. 1 BGB), so the period begins 24.11.2026. Per § 188 Abs. 2 BGB a one-month period ends on the day of the following month bearing the same number as the triggering event (23.11), i.e. 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in NW, so no further shift is needed.",
+          "due_date": "2026-12-23",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter states that a posted decision is deemed received on the 'vierten Tag' (fourth day) after posting, but § 37 Abs. 2 SGB X in its current form actually provides for the third day after posting; the Widerspruch deadline above was computed using the correct statutory third-day rule (with weekend adjustment), which in this case still yields the same effective Bekanntgabe date (23.11.2026) as a fourth-day count would after a weekend shift, but the discrepancy in the letter's wording should be noted and, if in doubt, confirmed with the Krankenkasse.",
+        "If the actual date the letter was handed to the postal service differs from the printed document date, the Bekanntgabe date and thus the Widerspruch deadline should be recalculated accordingly."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4150,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1743,
+      "cost_usd": 0.049100399999999995,
+      "duration_ms": 55922,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

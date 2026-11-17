@@ -1,0 +1,82 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"dd243826c3f9eac26af021a889ae87cf3171247c74088e88059f43dbe8a04dd2\",\"mode\":\"text\",\"region\":\"BB\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-fine_bussgeld-N1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Brandenburg (BB), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document",
+    "recorded_at": "2026-11-24T09:35:46+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Landkreis Musteruckermark – Bußgeldstelle\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"VB-26-501882\"},{\"label\":\"Kennzeichen\",\"value\":\"UM-RS 404\"}],\"amounts\":[200,28.5,3.5,232],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the fine notice\",\"quote\":\"Er muss zwei Wochen nach der Zustellung beim Landkreis Musteruckermark – Bußgeldstelle vorliegen, schriftlich oder zur Niederschrift.\",\"computation\":\"This is a formal delivery (Zustellungsurkunde) under § 182 ZPO. The attached envelope copy shows the delivery date filled in by the postal carrier as 'zugestellt am 24.11.2026' (Tuesday). For formal delivery the date on the envelope is the delivery day itself, with no days added (verified rule 1). The day of delivery is not counted (§ 187 Abs. 1 BGB, § 43 Abs. 1 StPO). The objection period for a Bußgeldbescheid is two weeks after delivery (§ 67 OWiG, § 43 StPO). Counting weeks: the period ends on the same weekday two weeks later (§ 188 Abs. 2 BGB) = Tuesday, 08.12.2026. That day is a normal working day in Brandenburg (no weekend/holiday), so no § 193 BGB shift is needed. The objection must have arrived (not just been sent) at the Bußgeldstelle by that date.\",\"due_date\":\"2026-12-08\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Payment of fine, fee and delivery costs (total)\",\"quote\":\"Fällig wird der Betrag zwei Wochen, nachdem der Bescheid rechtskräftig geworden ist.\",\"computation\":\"Payment falls due two weeks after the notice becomes final (rechtskräftig). The notice becomes final when the two-week Einspruch period expires without an objection having been filed, i.e. at the end of 08.12.2026, so Rechtskraft occurs on 09.12.2026 (Wednesday) — this assumes no Einspruch is filed; if one is filed, the notice does not become final and this date no longer applies. Counting two weeks from 09.12.2026 (start day not counted, weeks counted to the same weekday, § 187/§188 Abs. 2 BGB) gives Wednesday, 23.12.2026, which is a normal working day in Brandenburg, so no further adjustment is needed.\",\"due_date\":\"2026-12-23\",\"confidence\":\"low\",\"amount\":232}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment due date (2026-12-23) is conditional: it only applies if no Einspruch is filed by 08.12.2026 and the notice actually becomes final on 09.12.2026 as assumed; filing an objection suspends this and the final date is low-confidence.\",\"Double-check that the carrier-filled delivery date '24.11.2026' on the envelope copy is genuine and matches the actual postal delivery, since this date (not the letter's own date of 18.11.2026) determines the two-week Einspruch deadline.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Landkreis Musteruckermark – Bußgeldstelle",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "VB-26-501882"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "UM-RS 404"
+        }
+      ],
+      "amounts": [
+        200,
+        28.5,
+        3.5,
+        232
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the fine notice",
+          "quote": "Er muss zwei Wochen nach der Zustellung beim Landkreis Musteruckermark – Bußgeldstelle vorliegen, schriftlich oder zur Niederschrift.",
+          "computation": "This is a formal delivery (Zustellungsurkunde) under § 182 ZPO. The attached envelope copy shows the delivery date filled in by the postal carrier as 'zugestellt am 24.11.2026' (Tuesday). For formal delivery the date on the envelope is the delivery day itself, with no days added (verified rule 1). The day of delivery is not counted (§ 187 Abs. 1 BGB, § 43 Abs. 1 StPO). The objection period for a Bußgeldbescheid is two weeks after delivery (§ 67 OWiG, § 43 StPO). Counting weeks: the period ends on the same weekday two weeks later (§ 188 Abs. 2 BGB) = Tuesday, 08.12.2026. That day is a normal working day in Brandenburg (no weekend/holiday), so no § 193 BGB shift is needed. The objection must have arrived (not just been sent) at the Bußgeldstelle by that date.",
+          "due_date": "2026-12-08",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Payment of fine, fee and delivery costs (total)",
+          "quote": "Fällig wird der Betrag zwei Wochen, nachdem der Bescheid rechtskräftig geworden ist.",
+          "computation": "Payment falls due two weeks after the notice becomes final (rechtskräftig). The notice becomes final when the two-week Einspruch period expires without an objection having been filed, i.e. at the end of 08.12.2026, so Rechtskraft occurs on 09.12.2026 (Wednesday) — this assumes no Einspruch is filed; if one is filed, the notice does not become final and this date no longer applies. Counting two weeks from 09.12.2026 (start day not counted, weeks counted to the same weekday, § 187/§188 Abs. 2 BGB) gives Wednesday, 23.12.2026, which is a normal working day in Brandenburg, so no further adjustment is needed.",
+          "due_date": "2026-12-23",
+          "confidence": "low",
+          "amount": 232
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment due date (2026-12-23) is conditional: it only applies if no Einspruch is filed by 08.12.2026 and the notice actually becomes final on 09.12.2026 as assumed; filing an objection suspends this and the final date is low-confidence.",
+        "Double-check that the carrier-filled delivery date '24.11.2026' on the envelope copy is genuine and matches the actual postal delivery, since this date (not the letter's own date of 18.11.2026) determines the two-week Einspruch deadline."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3623,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2160,
+      "cost_usd": 0.04598,
+      "duration_ms": 35668,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

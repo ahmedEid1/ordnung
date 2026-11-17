@@ -1,0 +1,234 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"f22a8ad49fbde0ab344230295bffc3bd6546d8670a165d465361d475b0098c02\",\"question\":\"What is Alex's passport number?\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "doc_hynqaw58f550",
+      "doc_hkgxvjmpcfd5",
+      "doc_nba3k0ka85q0",
+      "doc_f9b3481wq2bf",
+      "doc_9t9tmrv1ypba",
+      "doc_1dgp8tp2ga0c"
+    ],
+    "prompt_head": "The person asks:\nWhat is Alex's passport number?\n",
+    "recorded_at": "2026-11-24T13:48:18+00:00",
+    "repeat": 3,
+    "commit": "84270dc0",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "Alex's passport number is **C4703958**, from the passport document filed for them [doc:doc_1dgp8tp2ga0c].\n\nNote: Ordnung has no check for this type of number, so it can't confirm it's correct — worth comparing with the physical passport.\n\nAlso worth knowing: this passport is coming up for renewal, with a due date of Tue 10 Feb 2027 flagged \"needs_check\" [item:itm_g321eme013j2].",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 492,
+      "cache_read_tokens": 12771,
+      "cache_creation_tokens": 3544,
+      "cost_usd": 0.0216582,
+      "duration_ms": 9811,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_profile",
+      "input": {},
+      "tool_use_id": "toolu_01DzzChrKcGuRf3LZiJiyQs1"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_my_numbers",
+      "input": {
+        "section": "about_you"
+      },
+      "tool_use_id": "toolu_01R8jjcfkyvgk8ScQMpGkCB8"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"name\":\"Sam Rivera\",\"language\":\"en\",\"region\":\"NW\",\"household\":[{\"id\":\"hhm_6mtw39wxdbzq\",\"name\":\"Alex Rivera\",\"letters\":[\"doc_9t9tmrv1ypba\",\"doc_1dgp8tp2ga0c\"]}],\"household_note\":\"household lists the other people whose letters come to the person (a partner, their children), with the names the person typed and the letters the person filed for each, newest first. Those letters and what they show are about that person, not the person's own; every other letter whose contents are shared is the person's own. A letter the person keeps private is never listed here, so whose it is, and whose its to-dos are, is not known — say so.\"}\n</ordnung_record>",
+      "tool_use_id": "toolu_01DzzChrKcGuRf3LZiJiyQs1"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-11-24\",\"about_you\":[\"n1\",\"n2\",\"n3\",\"n4\",\"n5\"],\"documents\":[{\"id\":\"itm_p0k64jp7r8bf\",\"kind\":\"expiry\",\"document\":\"residence_permit\",\"due_date\":\"2026-11-30\",\"status\":\"renew_soon\",\"note\":\"Apply before it expires: your permit then counts as still valid until the office decides (§ 81 Abs. 4 S. 1–2 AufenthG; not for a Schengen visa) — ask for a Fiktionsbescheinigung.\",\"doc_id\":\"doc_d9hwr1mp3bsj\"}],\"household\":[{\"id\":\"hhm_6mtw39wxdbzq\",\"name\":\"Alex Rivera\",\"about\":[\"n6\"],\"documents\":[{\"id\":\"itm_g321eme013j2\",\"kind\":\"expiry\",\"document\":\"passport\",\"due_date\":\"2027-02-10\",\"needs_check\":true,\"status\":\"renew_soon\",\"note\":\"Renewing a passport can take months, and a residence permit usually runs only as long as the passport.\",\"doc_id\":\"doc_1dgp8tp2ga0c\",\"number\":\"n7\"}]}],\"numbers\":[{\"ref\":\"n1\",\"kind\":\"tax_id\",\"group\":\"about_you\",\"check\":\"ok\",\"check_note\":\"Passes the Steuer-ID check (§ 139b AO, the BZSt's specification). A misread digit would almost always fail it; it doesn't prove the number is yours.\",\"doc_id\":\"doc_hynqaw58f550\",\"party_id\":\"pty_mcq97yavgqjy\",\"letters\":2},{\"ref\":\"n2\",\"kind\":\"tax_number\",\"group\":\"about_you\",\"check\":\"none\",\"doc_id\":\"doc_hynqaw58f550\",\"party_id\":\"pty_mcq97yavgqjy\",\"letters\":1},{\"ref\":\"n3\",\"kind\":\"social_insurance\",\"group\":\"about_you\",\"check\":\"ok\",\"check_note\":\"Passes the Rentenversicherungsnummer check (§ 147 SGB VI, § 2 VKVV). A misread digit would almost always fail it; it doesn't prove the number is yours.\",\"doc_id\":\"doc_hkgxvjmpcfd5\",\"party_id\":\"pty_h9easqrf81w1\",\"letters\":1},{\"ref\":\"n4\",\"kind\":\"student\",\"group\":\"about_you\",\"check\":\"none\",\"doc_id\":\"doc_nba3k0ka85q0\",\"party_id\":\"pty_fhp8fzemmzvt\",\"letters\":2},{\"ref\":\"n5\",\"kind\":\"broadcasting_fee\",\"group\":\"about_you\",\"check\":\"none\",\"doc_id\":\"doc_f9b3481wq2bf\",\"party_id\":\"pty_r9kabd06mafy\",\"letters\":1},{\"ref\":\"n6\",\"kind\":\"health_insurance\",\"group\":\"about_household_member\",\"check\":\"ok\",\"check_note\":\"Passes the Krankenversichertennummer check (§ 290 SGB V, the GKV-Spitzenverband's guideline). A misread digit would almost always fail it; it doesn't prove the number is yours.\",\"doc_id\":\"doc_9t9tmrv1ypba\",\"party_id\":\"pty_eatxsexnt9s3\",\"letters\":1},{\"ref\":\"n7\",\"kind\":\"passport\",\"group\":\"document\",\"check\":\"none\",\"doc_id\":\"doc_1dgp8tp2ga0c\",\"party_id\":\"pty_z1se3q2nn3k3\",\"letters\":1}],\"note\":\"Each number's label and value are in the letter text of the letter it comes from (under numbers, by ref). check is Ordnung's check-digit test: ok (passes the published check, so almost certainly no digit was misread — it does not prove the number is the person's), fails (compare it with the letter) or none (no public check for this kind of number).\",\"household_note\":\"household holds, for each person of the household, the numbers and identity documents that letters the person filed for them show. filed_for marks a number or open case all of whose letters are filed for that person of the household. also_for: letters of other people show the same number too (me: the person), so it is not certain whose it is — say so. Say whose a number is, and never give a household person's number as the person's own.\"}\n</ordnung_record>\n<untrusted_document>\n{\"doc_hynqaw58f550\":{\"title\":\"Income Tax Assessment 2025 – Finanzamt Musterstadt\",\"numbers\":{\"n1\":{\"label\":\"IdNr.\",\"value\":\"57 216 480 354\"},\"n2\":{\"label\":\"Steuernummer\",\"value\":\"123/4567/8901\"}}},\"pty_mcq97yavgqjy\":{\"name\":\"Finanzamt Musterstadt\"},\"doc_hkgxvjmpcfd5\":{\"title\":\"August 2026 payslip from Muster Tech GmbH\",\"numbers\":{\"n3\":{\"label\":\"SV-Nummer\",\"value\":\"65 140300 R 005\"}}},\"pty_h9easqrf81w1\":{\"name\":\"Muster Tech GmbH\"},\"doc_nba3k0ka85q0\":{\"title\":\"Semester documents for winter semester 2026/27 and re-registration for summer semester 2027\",\"numbers\":{\"n4\":{\"label\":\"Matrikelnummer\",\"value\":\"4711123\"}}},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"},\"doc_f9b3481wq2bf\":{\"title\":\"Rundfunkbeitrag payment request from Beitragsservice Musterstadt\",\"numbers\":{\"n5\":{\"label\":\"Beitragsnummer\",\"value\":\"512 345 678\"}}},\"pty_r9kabd06mafy\":{\"name\":\"Beitragsservice Musterstadt\"},\"doc_9t9tmrv1ypba\":{\"title\":\"Notice of increased health and long-term care insurance contribution (Beitragsbescheid)\",\"numbers\":{\"n6\":{\"label\":\"Versicherten-Nr.\",\"value\":\"M472059139\"}}},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"doc_1dgp8tp2ga0c\":{\"title\":\"Examplian Passport – Alex Rivera\",\"numbers\":{\"n7\":{\"label\":\"Passport No.\",\"value\":\"C4703958\"}}},\"pty_z1se3q2nn3k3\":{\"name\":\"Ministry of Interior\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01R8jjcfkyvgk8ScQMpGkCB8"
+    },
+    {
+      "type": "text",
+      "text": "Alex's passport number is"
+    },
+    {
+      "type": "text",
+      "text": " **C4703958**"
+    },
+    {
+      "type": "text",
+      "text": ", from"
+    },
+    {
+      "type": "text",
+      "text": " the"
+    },
+    {
+      "type": "text",
+      "text": " pass"
+    },
+    {
+      "type": "text",
+      "text": "port document"
+    },
+    {
+      "type": "text",
+      "text": " fil"
+    },
+    {
+      "type": "text",
+      "text": "ed for them"
+    },
+    {
+      "type": "text",
+      "text": " [doc:doc_1"
+    },
+    {
+      "type": "text",
+      "text": "dgp8tp2"
+    },
+    {
+      "type": "text",
+      "text": "ga0c]."
+    },
+    {
+      "type": "text",
+      "text": "\n\nNote: Ord"
+    },
+    {
+      "type": "text",
+      "text": "n"
+    },
+    {
+      "type": "text",
+      "text": "ung"
+    },
+    {
+      "type": "text",
+      "text": " has no"
+    },
+    {
+      "type": "text",
+      "text": " check for"
+    },
+    {
+      "type": "text",
+      "text": " this"
+    },
+    {
+      "type": "text",
+      "text": " type"
+    },
+    {
+      "type": "text",
+      "text": " of number, so it can"
+    },
+    {
+      "type": "text",
+      "text": "'t conf"
+    },
+    {
+      "type": "text",
+      "text": "irm it"
+    },
+    {
+      "type": "text",
+      "text": "'s correct — wor"
+    },
+    {
+      "type": "text",
+      "text": "th comparing with"
+    },
+    {
+      "type": "text",
+      "text": " the phys"
+    },
+    {
+      "type": "text",
+      "text": "ical passport."
+    },
+    {
+      "type": "text",
+      "text": "\n\nAlso"
+    },
+    {
+      "type": "text",
+      "text": " worth kn"
+    },
+    {
+      "type": "text",
+      "text": "owing: this"
+    },
+    {
+      "type": "text",
+      "text": " passport is co"
+    },
+    {
+      "type": "text",
+      "text": "ming up for renewal,"
+    },
+    {
+      "type": "text",
+      "text": " with a due date of"
+    },
+    {
+      "type": "text",
+      "text": " Tue 10"
+    },
+    {
+      "type": "text",
+      "text": " Feb 2027 "
+    },
+    {
+      "type": "text",
+      "text": "fl"
+    },
+    {
+      "type": "text",
+      "text": "agged \"needs_check\""
+    },
+    {
+      "type": "text",
+      "text": " [item:itm_g321"
+    },
+    {
+      "type": "text",
+      "text": "eme013j2]."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Alex's passport number is **C4703958**, from the passport document filed for them [doc:doc_1dgp8tp2ga0c].\n\nNote: Ordnung has no check for this type of number, so it can't confirm it's correct — worth comparing with the physical passport.\n\nAlso worth knowing: this passport is coming up for renewal, with a due date of Tue 10 Feb 2027 flagged \"needs_check\" [item:itm_g321eme013j2].",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 492,
+          "cache_read_tokens": 12771,
+          "cache_creation_tokens": 3544,
+          "cost_usd": 0.0216582,
+          "duration_ms": 9811,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"aab34e0651d2e6e044087573ccc7f7a6623c6ef98e91fb5476ba22a718e370e0\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-N1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:19:28+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2026-11-19\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit certificate of enrolment for winter semester 2026/27\",\"quote\":\"Please send us the certificate for the winter semester 2026/27 by 11 January 2027.\",\"computation\":\"The letter states a fixed calendar date (not a period to be counted): 11 January 2027. This is a company (insurer), not a German authority, so no statutory deemed-delivery rule applies; the date is taken as written. 11 January 2027 falls on a Monday, so no weekend/holiday shift is needed.\",\"due_date\":\"2027-01-11\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Policy switches to standard rate if certificate not received\",\"quote\":\"If it does not reach us by then, we will switch your policy to the standard rate from February 2027.\",\"computation\":\"Consequence stated directly in the letter: if the certificate (due 11 January 2027) is not received in time, the standard rate takes effect from February 2027, i.e. starting 1 February 2027.\",\"due_date\":\"2027-02-01\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"insurance\",\"references\":[{\"label\":\"Policy no.\",\"value\":\"BV-EXP-40917\"}],\"remedy_type\":\"none\",\"sender_name\":\"Beispielvita Expat Health AG\",\"warnings\":[]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2026-11-19",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit certificate of enrolment for winter semester 2026/27",
+          "quote": "Please send us the certificate for the winter semester 2026/27 by 11 January 2027.",
+          "computation": "The letter states a fixed calendar date (not a period to be counted): 11 January 2027. This is a company (insurer), not a German authority, so no statutory deemed-delivery rule applies; the date is taken as written. 11 January 2027 falls on a Monday, so no weekend/holiday shift is needed.",
+          "due_date": "2027-01-11",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Policy switches to standard rate if certificate not received",
+          "quote": "If it does not reach us by then, we will switch your policy to the standard rate from February 2027.",
+          "computation": "Consequence stated directly in the letter: if the certificate (due 11 January 2027) is not received in time, the standard rate takes effect from February 2027, i.e. starting 1 February 2027.",
+          "due_date": "2027-02-01",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "insurance",
+      "references": [
+        {
+          "label": "Policy no.",
+          "value": "BV-EXP-40917"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Beispielvita Expat Health AG",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1820,
+      "cache_read_tokens": 14380,
+      "cache_creation_tokens": 2767,
+      "cost_usd": 0.032152,
+      "duration_ms": 20685,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "fixed",
+            "date": "2027-01-11",
+            "nature": "declaration",
+            "text": "Please send us the certificate for the winter semester 2026/27 by 11 January 2027.",
+            "legal_basis": "contractual deadline (insurer request, student rate condition)"
+          },
+          "document_date": "2026-11-19",
+          "sender_kind": "insurer",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":\"2027-01-11\",\"weekday\":\"Monday\",\"send_by\":\"2027-01-05\",\"summary\":\"The date given is Mon 11 Jan 2027.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"The date given is Mon 11 Jan 2027\",\"date\":\"2027-01-11\",\"rule_id\":\"date_as_written\",\"citation\":\"The document's own wording\"},{\"label\":\"Send by Tue 5 Jan 2027 to allow 4 business days for a letter to arrive\",\"date\":\"2027-01-05\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"date_as_written\",\"title\":\"Dates stated in the letter\",\"citation\":\"The document's own wording\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-19\",\"holiday_calendar\":\"Germany (nationwide holidays only)\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"b379c518888e50003d40040d2965b748e74ddb57c036d7289e39a78d0d521c46\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-L2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:54:28+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2026-11-18\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Tell landlord whether to extend lease\",\"quote\":\"Please tell us in writing by 16 December 2026 whether you would like to extend.\",\"computation\":\"The letter prints a fixed calendar date for the reply: 16 December 2026. The sender is a private company (landlord), not a German authority, so no statutory deemed-delivery or §187-193 BGB counting rule applies to this request date — it is simply the stated deadline as written.\",\"due_date\":\"2026-12-16\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"rent_lease\",\"references\":[{\"label\":\"Apartment\",\"value\":\"B 3.07\"}],\"remedy_type\":\"none\",\"sender_name\":\"Beispielhof Serviced Living GmbH\",\"warnings\":[\"The letter states the lease simply ends on 31 January 2027 if no reply is given by 16 December 2026 — this is an offer to extend, not an automatically renewing contract, so no 'current_term_end / cancel_by' contract data applies here; double-check whether a separate original lease document contains its own notice/cancellation terms.\"]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2026-11-18",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Tell landlord whether to extend lease",
+          "quote": "Please tell us in writing by 16 December 2026 whether you would like to extend.",
+          "computation": "The letter prints a fixed calendar date for the reply: 16 December 2026. The sender is a private company (landlord), not a German authority, so no statutory deemed-delivery or §187-193 BGB counting rule applies to this request date — it is simply the stated deadline as written.",
+          "due_date": "2026-12-16",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "rent_lease",
+      "references": [
+        {
+          "label": "Apartment",
+          "value": "B 3.07"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Beispielhof Serviced Living GmbH",
+      "warnings": [
+        "The letter states the lease simply ends on 31 January 2027 if no reply is given by 16 December 2026 — this is an offer to extend, not an automatically renewing contract, so no 'current_term_end / cancel_by' contract data applies here; double-check whether a separate original lease document contains its own notice/cancellation terms."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1447,
+      "cache_read_tokens": 6440,
+      "cache_creation_tokens": 1566,
+      "cost_usd": 0.022026,
+      "duration_ms": 21784,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

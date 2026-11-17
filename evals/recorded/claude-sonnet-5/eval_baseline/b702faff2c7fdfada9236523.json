@@ -1,0 +1,79 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"9c864313613591c7157c2c4ea98055d884bd89eb4f5d5f3e2af7dbb9087cdb7c\",\"mode\":\"text\",\"region\":\"BW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-vollstreckungsbescheid-1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Baden-Württemberg (BW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_do",
+    "recorded_at": "2026-11-24T13:03:06+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[486.19,12.07,36,5.2,539.46],\"contract\":null,\"document_date\":\"2026-11-18\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the Vollstreckungsbescheid\",\"quote\":\"Er muss binnen einer Notfrist von zwei Wochen ab der Zustellung bei diesem Gericht eingehen; eine Verlängerung ist ausgeschlossen.\",\"computation\":\"The letter states formal delivery (Zustellung) by placing in the mailbox with a notation on the envelope, dated 20.11.2026 ('Zugestellt am 20.11.2026 durch Einlegen in den Briefkasten'). For formal delivery, the date written on the envelope is the delivery day with no days added (no 4-day fiction here, since this is a formal/Postzustellung-style delivery, not an ordinary posted letter). Start of the two-week Notfrist is 20.11.2026 (a Friday); under §§ 187 Abs. 1, 188 Abs. 2 BGB (and § 222 Abs. 2 ZPO for court periods) the day of delivery itself is not counted, and a period of weeks ends on the same weekday two weeks later: Friday 20.11.2026 + 2 weeks = Friday 04.12.2026. 04.12.2026 is a Friday and not a public holiday in Baden-Württemberg, so no shift under § 193 BGB / § 222 Abs. 2 ZPO is needed. This is a strict Notfrist with no possible extension, so the Einspruch must reach the Amtsgericht by this date.\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the enforceable total amount (if not challenging the order)\",\"quote\":\"Der Vollstreckungsbescheid hat die Wirkung eines vorläufig vollstreckbaren Versäumnisurteils. Die Antragstellerin kann daraus sofort vollstrecken.\",\"computation\":\"No specific payment due date is stated in the letter; it only says the order is provisionally enforceable and the creditor can enforce immediately. There is therefore no calculable statutory payment deadline - payment should logically be made as soon as possible, ideally before the Einspruch deadline of 2026-12-04, to avoid enforcement action and added costs, but no exact due date can be derived from the text.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":539.46}],\"kind\":\"authority_letter\",\"references\":[{\"label\":\"Geschäftsnummer\",\"value\":\"26-8812045-0-3\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Amtsgericht Musterstetten · Zentrales Mahngericht\",\"warnings\":[\"The entire Einspruch deadline calculation depends on the handwritten/stamped delivery date and notation on the actual envelope ('Zugestellt am 20.11.2026 durch Einlegen in den Briefkasten, Vermerk auf dem Umschlag') - the person should check the envelope itself to confirm this date, as any discrepancy would shift the strict two-week Notfrist (which cannot be extended).\",\"No exact payment due date is given for the EUR 539.46 total; since the order is already stated to be immediately enforceable, the person should pay or file an Einspruch promptly to avoid further enforcement costs.\"]}",
+    "data": {
+      "amounts": [
+        486.19,
+        12.07,
+        36,
+        5.2,
+        539.46
+      ],
+      "contract": null,
+      "document_date": "2026-11-18",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the Vollstreckungsbescheid",
+          "quote": "Er muss binnen einer Notfrist von zwei Wochen ab der Zustellung bei diesem Gericht eingehen; eine Verlängerung ist ausgeschlossen.",
+          "computation": "The letter states formal delivery (Zustellung) by placing in the mailbox with a notation on the envelope, dated 20.11.2026 ('Zugestellt am 20.11.2026 durch Einlegen in den Briefkasten'). For formal delivery, the date written on the envelope is the delivery day with no days added (no 4-day fiction here, since this is a formal/Postzustellung-style delivery, not an ordinary posted letter). Start of the two-week Notfrist is 20.11.2026 (a Friday); under §§ 187 Abs. 1, 188 Abs. 2 BGB (and § 222 Abs. 2 ZPO for court periods) the day of delivery itself is not counted, and a period of weeks ends on the same weekday two weeks later: Friday 20.11.2026 + 2 weeks = Friday 04.12.2026. 04.12.2026 is a Friday and not a public holiday in Baden-Württemberg, so no shift under § 193 BGB / § 222 Abs. 2 ZPO is needed. This is a strict Notfrist with no possible extension, so the Einspruch must reach the Amtsgericht by this date.",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the enforceable total amount (if not challenging the order)",
+          "quote": "Der Vollstreckungsbescheid hat die Wirkung eines vorläufig vollstreckbaren Versäumnisurteils. Die Antragstellerin kann daraus sofort vollstrecken.",
+          "computation": "No specific payment due date is stated in the letter; it only says the order is provisionally enforceable and the creditor can enforce immediately. There is therefore no calculable statutory payment deadline - payment should logically be made as soon as possible, ideally before the Einspruch deadline of 2026-12-04, to avoid enforcement action and added costs, but no exact due date can be derived from the text.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 539.46
+        }
+      ],
+      "kind": "authority_letter",
+      "references": [
+        {
+          "label": "Geschäftsnummer",
+          "value": "26-8812045-0-3"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Amtsgericht Musterstetten · Zentrales Mahngericht",
+      "warnings": [
+        "The entire Einspruch deadline calculation depends on the handwritten/stamped delivery date and notation on the actual envelope ('Zugestellt am 20.11.2026 durch Einlegen in den Briefkasten, Vermerk auf dem Umschlag') - the person should check the envelope itself to confirm this date, as any discrepancy would shift the strict two-week Notfrist (which cannot be extended).",
+        "No exact payment due date is given for the EUR 539.46 total; since the order is already stated to be immediately enforceable, the person should pay or file an Einspruch promptly to avoid further enforcement costs."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2914,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1690,
+      "cost_usd": 0.03701,
+      "duration_ms": 29081,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

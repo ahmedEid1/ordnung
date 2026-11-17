@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"0b334dfeca8f74743e3bf468cb6e3fb44d864f9fc3be8ac54d4ff410c7fe5662\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-relative_business_days-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:53:21+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"sender_name\":\"Wohnbau Beispielgrund eG\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Mitgliedsnummer\",\"value\":\"WB-4402\"},{\"label\":\"Wohnung\",\"value\":\"SW18-EG-R\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Return signed usage contract (Nutzungsvertrag)\",\"quote\":\"Den unterschriebenen Vertrag benötigen wir innerhalb von 14 Werktagen ab dem Briefdatum zurück.\",\"computation\":\"Letter is dated 18.11.2026 (Wed) and is a private contractual deadline, not an authority notice, so no statutory delivery-fiction applies - the period runs 'ab dem Briefdatum' itself. The letter defines Werktage as Mon-Sat, Sundays and holidays not counted. Following the §187 BGB rule that the day of the triggering event is not counted when a period runs 'ab'/'nach' an event, counting starts on 19.11.2026: WD1=19.11(Thu), WD2=20.11(Fri), WD3=21.11(Sat), 22.11(Sun) skipped, WD4=23.11(Mon), WD5=24.11(Tue), WD6=25.11(Wed), WD7=26.11(Thu), WD8=27.11(Fri), WD9=28.11(Sat), 29.11(Sun) skipped, WD10=30.11(Mon), WD11=01.12(Tue), WD12=02.12(Wed), WD13=03.12(Thu), WD14=04.12(Fri). No NW public holidays fall in this window. 04.12.2026 is a Friday, a Werktag, so no further shift is needed.\",\"due_date\":\"2026-12-04\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The phrase 'ab dem Briefdatum' is ambiguous: I treated the letter date (18.11.2026) itself as not counted per standard §187 BGB event-based counting, giving a deadline of 04.12.2026; if the letter date is instead counted as the first Werktag, the deadline would be one Werktag earlier, 03.12.2026 - confirm with the cooperative if the exact day matters.\",\"No contract term length, start/end dates, or cancellation terms for the new flat are stated in this letter, so no `contract` details could be extracted even though a Nutzungsvertrag is being sent for signature.\"]}",
+    "data": {
+      "kind": "rent_lease",
+      "sender_name": "Wohnbau Beispielgrund eG",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Mitgliedsnummer",
+          "value": "WB-4402"
+        },
+        {
+          "label": "Wohnung",
+          "value": "SW18-EG-R"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Return signed usage contract (Nutzungsvertrag)",
+          "quote": "Den unterschriebenen Vertrag benötigen wir innerhalb von 14 Werktagen ab dem Briefdatum zurück.",
+          "computation": "Letter is dated 18.11.2026 (Wed) and is a private contractual deadline, not an authority notice, so no statutory delivery-fiction applies - the period runs 'ab dem Briefdatum' itself. The letter defines Werktage as Mon-Sat, Sundays and holidays not counted. Following the §187 BGB rule that the day of the triggering event is not counted when a period runs 'ab'/'nach' an event, counting starts on 19.11.2026: WD1=19.11(Thu), WD2=20.11(Fri), WD3=21.11(Sat), 22.11(Sun) skipped, WD4=23.11(Mon), WD5=24.11(Tue), WD6=25.11(Wed), WD7=26.11(Thu), WD8=27.11(Fri), WD9=28.11(Sat), 29.11(Sun) skipped, WD10=30.11(Mon), WD11=01.12(Tue), WD12=02.12(Wed), WD13=03.12(Thu), WD14=04.12(Fri). No NW public holidays fall in this window. 04.12.2026 is a Friday, a Werktag, so no further shift is needed.",
+          "due_date": "2026-12-04",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The phrase 'ab dem Briefdatum' is ambiguous: I treated the letter date (18.11.2026) itself as not counted per standard §187 BGB event-based counting, giving a deadline of 04.12.2026; if the letter date is instead counted as the first Werktag, the deadline would be one Werktag earlier, 03.12.2026 - confirm with the cooperative if the exact day matters.",
+        "No contract term length, start/end dates, or cancellation terms for the new flat are stated in this letter, so no `contract` details could be extracted even though a Nutzungsvertrag is being sent for signature."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4917,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1478,
+      "cost_usd": 0.056192000000000006,
+      "duration_ms": 47050,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

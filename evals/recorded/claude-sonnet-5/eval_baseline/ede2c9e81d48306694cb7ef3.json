@@ -1,0 +1,65 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"e9996931397c0d64c0d230b3c7231bd0ef98aef6ab82ad4795c3f939a95d10a5\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-dunning_fixed-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:13:04+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[168,4.5,172.5],\"contract\":null,\"document_date\":\"2026-11-19\",\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding 2026 membership fee plus return fee\",\"quote\":\"Bitte überweisen Sie den Betrag bis zum 03.12.2026 auf das Vereinskonto.\",\"computation\":\"The letter states an explicit calendar due date of 03.12.2026 for the outstanding amount of EUR 172.50 (annual family membership fee EUR 168.00 plus returned direct debit fee EUR 4.50). This is a private deadline set directly by the club, not a statutory period, so it is used as written. 03.12.2026 is a Thursday, so no weekend/holiday adjustment is needed.\",\"due_date\":\"2026-12-03\",\"confidence\":\"high\",\"amount\":172.5}],\"kind\":\"invoice\",\"references\":[{\"label\":\"Mitgliedsnummer\",\"value\":\"SV-2207\"}],\"remedy_type\":\"none\",\"sender_name\":\"Sportverein Beispielau 1911 e.V.\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        168,
+        4.5,
+        172.5
+      ],
+      "contract": null,
+      "document_date": "2026-11-19",
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding 2026 membership fee plus return fee",
+          "quote": "Bitte überweisen Sie den Betrag bis zum 03.12.2026 auf das Vereinskonto.",
+          "computation": "The letter states an explicit calendar due date of 03.12.2026 for the outstanding amount of EUR 172.50 (annual family membership fee EUR 168.00 plus returned direct debit fee EUR 4.50). This is a private deadline set directly by the club, not a statutory period, so it is used as written. 03.12.2026 is a Thursday, so no weekend/holiday adjustment is needed.",
+          "due_date": "2026-12-03",
+          "confidence": "high",
+          "amount": 172.5
+        }
+      ],
+      "kind": "invoice",
+      "references": [
+        {
+          "label": "Mitgliedsnummer",
+          "value": "SV-2207"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Sportverein Beispielau 1911 e.V.",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 968,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1465,
+      "cost_usd": 0.016649999999999998,
+      "duration_ms": 9880,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

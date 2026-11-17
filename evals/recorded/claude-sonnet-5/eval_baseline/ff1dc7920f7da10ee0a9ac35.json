@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"e37d5f21132dc749650f009dff4bef5f6bd3c971bf58baafeb97f7a8da0dbd8c\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-invoice_relative-N1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:43:13+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Ergotherapie Beispielhand\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Rechnungs-Nr.\",\"value\":\"EH-2026-1102\"}],\"amounts\":[430],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay invoice for occupational therapy sessions\",\"quote\":\"Bitte überweisen Sie den Betrag binnen 21 Tagen nach dem Rechnungsdatum.\",\"computation\":\"The invoice date is 18.11.2026 (Wednesday). The period 'binnen 21 Tagen nach dem Rechnungsdatum' is triggered by that calendar date, so per § 187(1) BGB the day itself is not counted and the period begins the next day, 19.11.2026. Counting 21 days from 19.11.2026 (§ 188(1) BGB): Nov 19-30 = 12 days, leaving 9 more days in December, landing on 09.12.2026. That date (Wednesday) is not a Saturday, Sunday or public holiday in NRW, so no shift under § 193 BGB is needed. Final due date: 09.12.2026.\",\"due_date\":\"2026-12-09\",\"confidence\":\"high\",\"amount\":430}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Ergotherapie Beispielhand",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Rechnungs-Nr.",
+          "value": "EH-2026-1102"
+        }
+      ],
+      "amounts": [
+        430
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay invoice for occupational therapy sessions",
+          "quote": "Bitte überweisen Sie den Betrag binnen 21 Tagen nach dem Rechnungsdatum.",
+          "computation": "The invoice date is 18.11.2026 (Wednesday). The period 'binnen 21 Tagen nach dem Rechnungsdatum' is triggered by that calendar date, so per § 187(1) BGB the day itself is not counted and the period begins the next day, 19.11.2026. Counting 21 days from 19.11.2026 (§ 188(1) BGB): Nov 19-30 = 12 days, leaving 9 more days in December, landing on 09.12.2026. That date (Wednesday) is not a Saturday, Sunday or public holiday in NRW, so no shift under § 193 BGB is needed. Final due date: 09.12.2026.",
+          "due_date": "2026-12-09",
+          "confidence": "high",
+          "amount": 430
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1770,
+      "cache_read_tokens": 7728,
+      "cache_creation_tokens": 2689,
+      "cost_usd": 0.030009600000000004,
+      "duration_ms": 17982,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"8d8dd86d6aee1be2709b23b167a6c1ec704b04c88dfef7dfe959e055fdce8b9f\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-contract_confirmation-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:14:56+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract\",\"sender_name\":\"Fitnesswerk Beispielstark\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Mitgliedsnummer\",\"value\":\"FW-20871\"}],\"amounts\":[34],\"items\":[{\"kind\":\"milestone\",\"title\":\"Membership starts (end of free trial period)\",\"quote\":\"Ihre Mitgliedschaft beginnt am 01.01.2027; bis dahin dürfen Sie schon kostenlos trainieren.\",\"computation\":\"The letter states the membership begins on 01.01.2027; this date is printed explicitly and used as written.\",\"due_date\":\"2027-01-01\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":{\"current_term_end\":\"2027-12-31\",\"cancel_by\":\"2027-11-30\"},\"warnings\":[]}",
+    "data": {
+      "kind": "contract",
+      "sender_name": "Fitnesswerk Beispielstark",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Mitgliedsnummer",
+          "value": "FW-20871"
+        }
+      ],
+      "amounts": [
+        34
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "Membership starts (end of free trial period)",
+          "quote": "Ihre Mitgliedschaft beginnt am 01.01.2027; bis dahin dürfen Sie schon kostenlos trainieren.",
+          "computation": "The letter states the membership begins on 01.01.2027; this date is printed explicitly and used as written.",
+          "due_date": "2027-01-01",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": {
+        "current_term_end": "2027-12-31",
+        "cancel_by": "2027-11-30"
+      },
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1925,
+      "cache_read_tokens": 12488,
+      "cache_creation_tokens": 2961,
+      "cost_usd": 0.0335996,
+      "duration_ms": 21392,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

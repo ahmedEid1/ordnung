@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"ca8a518f451729ce1176b37d23b4fd7557b0161319e66a5b195fd7bfc2f808f4\",\"mode\":\"text\",\"region\":\"MV\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Mecklenburg-Vorpommern (MV), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrust",
+    "recorded_at": "2026-11-24T07:15:52+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"kind\":\"authority_letter\",\"sender_name\":\"Landkreis Musterpeene – Untere Naturschutzbehörde\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"UNB-67.1-2611/26\"}],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against refusal of tree-felling permit\",\"quote\":\"Gegen diesen Bescheid können Sie innerhalb eines Monats nach seiner Bekanntgabe Widerspruch einlegen, schriftlich oder zur Niederschrift bei der Behörde: Landkreis Musterpeene, Kreishausweg 1, 17109 Musterdemmin.\",\"computation\":\"Letter is dated/posted 19.11.2026 (Thursday) by a general authority (Untere Naturschutzbehörde, Landkreis Musterpeene), not a tax office, so the delivery-fiction day is not shifted even if it fell on a weekend/holiday. §41 Abs.2 VwVfG M-V: deemed delivered on the 4th day after posting = 19.11 + 4 days = 23.11.2026 (Monday). Under §187 Abs.1 BGB (incorporated via §31 VwVfG), the day of delivery itself is not counted; the one-month Widerspruch period (§70 VwGO) runs from 24.11.2026 and ends, per §188 Abs.2 BGB, on the day with the same number one month later: 23.12.2026 (Wednesday). This day is not a Saturday, Sunday or public holiday in MV, so no shift under §31 Abs.3 VwVfG/§193 BGB applies.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"warnings\":[]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "kind": "authority_letter",
+      "sender_name": "Landkreis Musterpeene – Untere Naturschutzbehörde",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "UNB-67.1-2611/26"
+        }
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against refusal of tree-felling permit",
+          "quote": "Gegen diesen Bescheid können Sie innerhalb eines Monats nach seiner Bekanntgabe Widerspruch einlegen, schriftlich oder zur Niederschrift bei der Behörde: Landkreis Musterpeene, Kreishausweg 1, 17109 Musterdemmin.",
+          "computation": "Letter is dated/posted 19.11.2026 (Thursday) by a general authority (Untere Naturschutzbehörde, Landkreis Musterpeene), not a tax office, so the delivery-fiction day is not shifted even if it fell on a weekend/holiday. §41 Abs.2 VwVfG M-V: deemed delivered on the 4th day after posting = 19.11 + 4 days = 23.11.2026 (Monday). Under §187 Abs.1 BGB (incorporated via §31 VwVfG), the day of delivery itself is not counted; the one-month Widerspruch period (§70 VwGO) runs from 24.11.2026 and ends, per §188 Abs.2 BGB, on the day with the same number one month later: 23.12.2026 (Wednesday). This day is not a Saturday, Sunday or public holiday in MV, so no shift under §31 Abs.3 VwVfG/§193 BGB applies.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1867,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1752,
+      "cost_usd": 0.026788,
+      "duration_ms": 19192,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

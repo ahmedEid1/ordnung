@@ -1,0 +1,76 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"1bde13e8f9534972138bb786a6a7db68d7445bfdd4e4bbe44b5a1fbbc222265d\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-missing_date-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:33:34+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"utility_bill\",\"sender_name\":\"Immobilien Beispielstein KG\",\"document_date\":null,\"references\":[{\"label\":\"Mieter-Nr.\",\"value\":\"IB-3307\"}],\"amounts\":[2183.18,1920,263.18],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay service-charge balance (Betriebskostennachzahlung)\",\"quote\":\"Den Betrag von 263,18 € zahlen Sie bitte binnen 30 Tagen nach Zugang dieser Abrechnung.\",\"computation\":\"The letter sets a 30-day period running from 'Zugang dieser Abrechnung' (the day the statement is received), not from a printed document date. The letter carries no date at all (no 'Beispielwetzlar, den ...' line or similar), so the start of the period (the day of Zugang) cannot be fixed from the letter itself. The sender is a private landlord/property manager, not a public authority, so the statutory deemed-delivery rules for administrative letters (e.g. the 3/4-day fiction) do not apply; only the actual day of receipt counts, and that day is not stated. Without a known receipt date, the 30-day period under §§ 187, 188 BGB cannot be counted to an exact calendar day. Earliest plausible reading: if received on the same day the letter was sent, counting would start the next day and run 30 days, shifted to the next business day if it fell on a weekend/holiday in NW — but this is speculative since no date is given.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":263.18}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter itself bears no printed date anywhere (no sender's date line), so the 30-day payment period, which runs from the day of receipt ('Zugang'), cannot be computed to an exact due date; ask the person for the postmark or the day the letter actually arrived to fix it.\",\"The IBAN printed (DE18 3705 0198 0005 5773 00) is a validly formed German domestic IBAN matching the sender's stated bank (Musterbank AG); this only confirms the IBAN's format, not that the account belongs to the landlord, so compare it with earlier rent correspondence before paying.\"]}",
+    "data": {
+      "kind": "utility_bill",
+      "sender_name": "Immobilien Beispielstein KG",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Mieter-Nr.",
+          "value": "IB-3307"
+        }
+      ],
+      "amounts": [
+        2183.18,
+        1920,
+        263.18
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay service-charge balance (Betriebskostennachzahlung)",
+          "quote": "Den Betrag von 263,18 € zahlen Sie bitte binnen 30 Tagen nach Zugang dieser Abrechnung.",
+          "computation": "The letter sets a 30-day period running from 'Zugang dieser Abrechnung' (the day the statement is received), not from a printed document date. The letter carries no date at all (no 'Beispielwetzlar, den ...' line or similar), so the start of the period (the day of Zugang) cannot be fixed from the letter itself. The sender is a private landlord/property manager, not a public authority, so the statutory deemed-delivery rules for administrative letters (e.g. the 3/4-day fiction) do not apply; only the actual day of receipt counts, and that day is not stated. Without a known receipt date, the 30-day period under §§ 187, 188 BGB cannot be counted to an exact calendar day. Earliest plausible reading: if received on the same day the letter was sent, counting would start the next day and run 30 days, shifted to the next business day if it fell on a weekend/holiday in NW — but this is speculative since no date is given.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 263.18
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter itself bears no printed date anywhere (no sender's date line), so the 30-day payment period, which runs from the day of receipt ('Zugang'), cannot be computed to an exact due date; ask the person for the postmark or the day the letter actually arrived to fix it.",
+        "The IBAN printed (DE18 3705 0198 0005 5773 00) is a validly formed German domestic IBAN matching the sender's stated bank (Musterbank AG); this only confirms the IBAN's format, not that the account belongs to the landlord, so compare it with earlier rent correspondence before paying."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2203,
+      "cache_read_tokens": 14518,
+      "cache_creation_tokens": 3290,
+      "cost_usd": 0.0381016,
+      "duration_ms": 26504,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE18370501980005577300"
+        },
+        "result": "{\"iban\":\"DE18 3705 0198 0005 5773 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005577300\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

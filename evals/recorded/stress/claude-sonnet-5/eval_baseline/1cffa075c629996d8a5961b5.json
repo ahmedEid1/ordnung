@@ -1,0 +1,88 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"b55a791937679fb4747c067d06303a44c3e597e5b047bc697243755bdbe27e15\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "stress-D1-holdout4-relative_business_days-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T14:44:13+00:00",
+    "repeat": 1,
+    "commit": "3a21dfb8",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"employment\",\"sender_name\":\"Druckerei Beispiellahn GmbH\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Personalnummer\",\"value\":\"DL-0718\"},{\"label\":\"Vertragsnummer\",\"value\":\"AG-4756-748\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Submit vacation preferences for Jan-Jun 2027\",\"quote\":\"Ihre Wünsche für den Urlaub im ersten Halbjahr tragen Sie bitte binnen 10 Arbeitstagen ab dem Briefdatum in die Liste ein; Arbeitstage sind Montag bis Freitag ohne Feiertage.\",\"computation\":\"Letter is dated 18.11.2026 (document_date, start of period, not itself counted per the letter's own 'ab dem Briefdatum'). Counting 10 Arbeitstage (Mon-Fri, excluding NW public holidays) from 18.11.2026: 19.11 (Thu, 1), 20.11 (Fri, 2), skip Sat 21.11/Sun 22.11, 23.11 (Mon, 3), 24.11 (Tue, 4), 25.11 (Wed, 5), 26.11 (Thu, 6), 27.11 (Fri, 7), skip Sat 28.11/Sun 29.11, 30.11 (Mon, 8), 01.12 (Tue, 9), 02.12 (Wed, 10). No public holidays fell in this window. 10th working day = 02.12.2026.\",\"due_date\":\"2026-12-02\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"reminder\",\"title\":\"Automatic monthly direct debit for separate contract AG-4756-748\",\"quote\":\"Der monatliche Beitrag für Ihren separaten Vertrag AG-4756-748 wird wie gewohnt am 04.12.2026 per Lastschrift von Ihrem Konto eingezogen; Sie brauchen dafür nichts zu veranlassen.\",\"computation\":\"The letter states a fixed calendar date for the automatic direct debit: 04.12.2026. No action is required from the person ('Sie brauchen dafür nichts zu veranlassen'); this is informational only, included so the person can check their account has sufficient funds on that day.\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter does not state the amount of the monthly contract debit for AG-4756-748, so it cannot be verified from this letter alone — check your bank statement or the separate contract documents for the exact amount.\",\"The letter mentions a 'separate contract' (AG-4756-748) with automatic debit but gives no other details of that contract (no amount, no term dates); this appears unrelated to the vacation-planning subject of the letter and is worth double-checking against your own records.\"]}",
+    "data": {
+      "kind": "employment",
+      "sender_name": "Druckerei Beispiellahn GmbH",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Personalnummer",
+          "value": "DL-0718"
+        },
+        {
+          "label": "Vertragsnummer",
+          "value": "AG-4756-748"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Submit vacation preferences for Jan-Jun 2027",
+          "quote": "Ihre Wünsche für den Urlaub im ersten Halbjahr tragen Sie bitte binnen 10 Arbeitstagen ab dem Briefdatum in die Liste ein; Arbeitstage sind Montag bis Freitag ohne Feiertage.",
+          "computation": "Letter is dated 18.11.2026 (document_date, start of period, not itself counted per the letter's own 'ab dem Briefdatum'). Counting 10 Arbeitstage (Mon-Fri, excluding NW public holidays) from 18.11.2026: 19.11 (Thu, 1), 20.11 (Fri, 2), skip Sat 21.11/Sun 22.11, 23.11 (Mon, 3), 24.11 (Tue, 4), 25.11 (Wed, 5), 26.11 (Thu, 6), 27.11 (Fri, 7), skip Sat 28.11/Sun 29.11, 30.11 (Mon, 8), 01.12 (Tue, 9), 02.12 (Wed, 10). No public holidays fell in this window. 10th working day = 02.12.2026.",
+          "due_date": "2026-12-02",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "reminder",
+          "title": "Automatic monthly direct debit for separate contract AG-4756-748",
+          "quote": "Der monatliche Beitrag für Ihren separaten Vertrag AG-4756-748 wird wie gewohnt am 04.12.2026 per Lastschrift von Ihrem Konto eingezogen; Sie brauchen dafür nichts zu veranlassen.",
+          "computation": "The letter states a fixed calendar date for the automatic direct debit: 04.12.2026. No action is required from the person ('Sie brauchen dafür nichts zu veranlassen'); this is informational only, included so the person can check their account has sufficient funds on that day.",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter does not state the amount of the monthly contract debit for AG-4756-748, so it cannot be verified from this letter alone — check your bank statement or the separate contract documents for the exact amount.",
+        "The letter mentions a 'separate contract' (AG-4756-748) with automatic debit but gives no other details of that contract (no amount, no term dates); this appears unrelated to the vacation-planning subject of the letter and is worth double-checking against your own records."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2648,
+      "cache_read_tokens": 14666,
+      "cache_creation_tokens": 3594,
+      "cost_usd": 0.0437972,
+      "duration_ms": 30296,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__add_working_days",
+        "input": {
+          "start": "2026-11-18",
+          "days": 10,
+          "day_type": "business_days",
+          "region": "NW"
+        },
+        "result": "{\"start\":\"2026-11-18\",\"days\":10,\"day_type\":\"business_days\",\"date\":\"2026-12-02\",\"weekday\":\"Wednesday\",\"skipped\":[{\"date\":\"2026-11-21\",\"weekday\":\"Saturday\",\"reason\":\"Saturday\"},{\"date\":\"2026-11-22\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"},{\"date\":\"2026-11-28\",\"weekday\":\"Saturday\",\"reason\":\"Saturday\"},{\"date\":\"2026-11-29\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"}],\"counting\":\"Business days: Monday to Friday, public holidays excluded; the start day itself is not counted.\",\"calendar\":\"Nordrhein-Westfalen\",\"disclaimer\":\"Information, not legal advice: working days counted on Ordnung's holiday calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer. A legal period may count differently — compute_deadline applies the deadline rules.\"}"
+      }
+    ]
+  }
+}

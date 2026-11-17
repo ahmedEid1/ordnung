@@ -1,0 +1,82 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"3a83897eec7ee0f91f3ab2ac5a7a02d1fa711324c8ab1ff43a2d58a1a77ef5fe\",\"mode\":\"text\",\"region\":\"NI\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-fine_bussgeld-N2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Niedersachsen (NI), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docume",
+    "recorded_at": "2026-11-24T07:07:35+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Stadt Musterwilhelmshaven – Bußgeldstelle\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"32.12-26/61107\"},{\"label\":\"Kennzeichen\",\"value\":\"WHV-FM 88\"}],\"amounts\":[60,28.5,3.5,92],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"Er muss zwei Wochen nach der Zustellung bei der Stadt Musterwilhelmshaven – Bußgeldstelle vorliegen, schriftlich oder zur Niederschrift.\",\"computation\":\"The attached Postzustellungsurkunde (official delivery certificate, § 182 ZPO) on page 2 records the actual delivery date as 23.11.2026 ('zugest. am 23.11.2026'), a Monday. Because formal service with a documented delivery date is used, this actual date governs instead of the usual 3-day-after-posting fiction. Per § 187 Abs. 1 BGB, since the period is triggered by an event (delivery), the day of delivery itself is not counted; the period begins on 24.11.2026. Per § 188 Abs. 2 BGB, a period stated in weeks ends with the expiry of the day in the last week that bears the same name as the day of the triggering event, i.e. the Monday two weeks after 23.11.2026, which is 07.12.2026. 07.12.2026 is not a Saturday, Sunday or public holiday in Niedersachsen, so no further shift is needed. The objection must therefore have reached the Bußgeldstelle by this date.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay total fine amount (Geldbuße + Gebühr + Auslagen) once the Bescheid becomes final\",\"quote\":\"Fällig wird der Betrag zwei Wochen, nachdem der Bescheid rechtskräftig geworden ist.\",\"computation\":\"Due date depends on when the Bescheid becomes rechtskräftig (final). It becomes final at the end of the Einspruch period if no Einspruch is filed, i.e. upon expiry of 07.12.2026 (see above), so it would be legally final as of 08.12.2026. Treating 08.12.2026 (a Tuesday) as the triggering event, under § 187 Abs. 1 BGB the period starts the next day (09.12.2026); under § 188 Abs. 2 BGB a two-week period ends on the day in the second following week bearing the same name as the triggering day, i.e. the Tuesday two weeks after 08.12.2026, which is 22.12.2026. 22.12.2026 is not a weekend day or public holiday in Niedersachsen. This calculation assumes no Einspruch is filed; if an Einspruch is filed in time, finality (and thus the due date) is postponed until the objection is resolved, so this date is only valid in the no-objection scenario.\",\"due_date\":\"2026-12-22\",\"confidence\":\"low\",\"amount\":92}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment due date (22.12.2026) is only valid if no Einspruch is filed by 07.12.2026; if an objection is lodged, the fine does not become final on that schedule and the 'two weeks after finality' payment deadline shifts accordingly — this was computed under the no-objection assumption and should be treated with low confidence.\",\"The sender's email domain (stadt-musterwilhelmshaven-bu.example) and city name appear to be a placeholder/sample pattern rather than a real municipality — verify the authenticity of this Bußgeldbescheid and the IBAN given (DE68 2825 0110 0002 6382 00) with the actual issuing authority before paying.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Stadt Musterwilhelmshaven – Bußgeldstelle",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "32.12-26/61107"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "WHV-FM 88"
+        }
+      ],
+      "amounts": [
+        60,
+        28.5,
+        3.5,
+        92
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "Er muss zwei Wochen nach der Zustellung bei der Stadt Musterwilhelmshaven – Bußgeldstelle vorliegen, schriftlich oder zur Niederschrift.",
+          "computation": "The attached Postzustellungsurkunde (official delivery certificate, § 182 ZPO) on page 2 records the actual delivery date as 23.11.2026 ('zugest. am 23.11.2026'), a Monday. Because formal service with a documented delivery date is used, this actual date governs instead of the usual 3-day-after-posting fiction. Per § 187 Abs. 1 BGB, since the period is triggered by an event (delivery), the day of delivery itself is not counted; the period begins on 24.11.2026. Per § 188 Abs. 2 BGB, a period stated in weeks ends with the expiry of the day in the last week that bears the same name as the day of the triggering event, i.e. the Monday two weeks after 23.11.2026, which is 07.12.2026. 07.12.2026 is not a Saturday, Sunday or public holiday in Niedersachsen, so no further shift is needed. The objection must therefore have reached the Bußgeldstelle by this date.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay total fine amount (Geldbuße + Gebühr + Auslagen) once the Bescheid becomes final",
+          "quote": "Fällig wird der Betrag zwei Wochen, nachdem der Bescheid rechtskräftig geworden ist.",
+          "computation": "Due date depends on when the Bescheid becomes rechtskräftig (final). It becomes final at the end of the Einspruch period if no Einspruch is filed, i.e. upon expiry of 07.12.2026 (see above), so it would be legally final as of 08.12.2026. Treating 08.12.2026 (a Tuesday) as the triggering event, under § 187 Abs. 1 BGB the period starts the next day (09.12.2026); under § 188 Abs. 2 BGB a two-week period ends on the day in the second following week bearing the same name as the triggering day, i.e. the Tuesday two weeks after 08.12.2026, which is 22.12.2026. 22.12.2026 is not a weekend day or public holiday in Niedersachsen. This calculation assumes no Einspruch is filed; if an Einspruch is filed in time, finality (and thus the due date) is postponed until the objection is resolved, so this date is only valid in the no-objection scenario.",
+          "due_date": "2026-12-22",
+          "confidence": "low",
+          "amount": 92
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment due date (22.12.2026) is only valid if no Einspruch is filed by 07.12.2026; if an objection is lodged, the fine does not become final on that schedule and the 'two weeks after finality' payment deadline shifts accordingly — this was computed under the no-objection assumption and should be treated with low confidence.",
+        "The sender's email domain (stadt-musterwilhelmshaven-bu.example) and city name appear to be a placeholder/sample pattern rather than a real municipality — verify the authenticity of this Bußgeldbescheid and the IBAN given (DE68 2825 0110 0002 6382 00) with the actual issuing authority before paying."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4465,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2212,
+      "cost_usd": 0.0541264,
+      "duration_ms": 44661,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

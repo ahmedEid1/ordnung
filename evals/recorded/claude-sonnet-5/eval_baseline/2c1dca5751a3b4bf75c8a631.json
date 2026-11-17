@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"0dad9fdeaf50cf47776a7959b22640c124d4366abb15e09850239e1028d76937\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-appointment-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:11:47+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2026-11-19\",\"items\":[{\"kind\":\"appointment\",\"title\":\"Professional dental cleaning appointment\",\"quote\":\"Ihr nächster Termin zur professionellen Zahnreinigung ist am Montag, 14.12.2026 um\\n16:15 Uhr.\",\"computation\":\"The letter states the appointment date and time directly: Monday, 14.12.2026, 16:15. Verified against calendar: 2026-01-01 falls on a Thursday (2025-01-01 was a Wednesday, 2025 has 365 days, +1 weekday = Thursday); counting 347 days forward to day 348 (14 Dec) lands on a Monday, confirming the printed weekday is correct. No further computation needed; the appointment date stands as stated.\",\"due_date\":\"2026-12-14\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Latest day to cancel the appointment without penalty/loss of slot\",\"quote\":\"Wenn Sie verhindert sind, sagen Sie bitte mindestens zwei Werktage vorher ab, damit wir\\nden Termin anderweitig vergeben können.\",\"computation\":\"Appointment is Monday 14.12.2026. 'Werktage' (working days) in German usage include Monday–Saturday, excluding Sundays and public holidays. 'Mindestens zwei Werktage vorher' means at least two full working days must lie between the cancellation notice and the appointment. Counting backward from the appointment (14.12, Monday, excluded): the days in between are Sunday 13.12 (not a Werktag) and Saturday 12.12 (a Werktag) and Friday 11.12 (a Werktag). To have at least two Werktage of gap between notice and appointment, the notice must be given by Thursday 10.12.2026 — if cancelled on Thursday, the gap (Fri 11.12, Sat 12.12) contains exactly two Werktage before the Sunday/Monday; cancelling on Friday 11.12 would leave only one Werktag (Sat 12.12) of gap, which is insufficient. Therefore the last day to cancel is Thursday 10.12.2026. No NRW public holiday falls in this window to adjust further.\",\"due_date\":\"2026-12-10\",\"confidence\":\"medium\",\"amount\":null}],\"kind\":\"appointment\",\"references\":[],\"remedy_type\":\"none\",\"sender_name\":\"Zahnarztpraxis Beispielweiß\",\"warnings\":[\"The exact meaning of 'mindestens zwei Werktage vorher' (whether Saturday counts as a Werktag for this practice, and whether the count includes or excludes the notice day) is not spelled out in the letter, so the cancellation deadline of 2026-12-10 is a reasonable but not certain reading — contacting the practice to confirm their exact policy is advisable.\"]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2026-11-19",
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Professional dental cleaning appointment",
+          "quote": "Ihr nächster Termin zur professionellen Zahnreinigung ist am Montag, 14.12.2026 um\n16:15 Uhr.",
+          "computation": "The letter states the appointment date and time directly: Monday, 14.12.2026, 16:15. Verified against calendar: 2026-01-01 falls on a Thursday (2025-01-01 was a Wednesday, 2025 has 365 days, +1 weekday = Thursday); counting 347 days forward to day 348 (14 Dec) lands on a Monday, confirming the printed weekday is correct. No further computation needed; the appointment date stands as stated.",
+          "due_date": "2026-12-14",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Latest day to cancel the appointment without penalty/loss of slot",
+          "quote": "Wenn Sie verhindert sind, sagen Sie bitte mindestens zwei Werktage vorher ab, damit wir\nden Termin anderweitig vergeben können.",
+          "computation": "Appointment is Monday 14.12.2026. 'Werktage' (working days) in German usage include Monday–Saturday, excluding Sundays and public holidays. 'Mindestens zwei Werktage vorher' means at least two full working days must lie between the cancellation notice and the appointment. Counting backward from the appointment (14.12, Monday, excluded): the days in between are Sunday 13.12 (not a Werktag) and Saturday 12.12 (a Werktag) and Friday 11.12 (a Werktag). To have at least two Werktage of gap between notice and appointment, the notice must be given by Thursday 10.12.2026 — if cancelled on Thursday, the gap (Fri 11.12, Sat 12.12) contains exactly two Werktage before the Sunday/Monday; cancelling on Friday 11.12 would leave only one Werktag (Sat 12.12) of gap, which is insufficient. Therefore the last day to cancel is Thursday 10.12.2026. No NRW public holiday falls in this window to adjust further.",
+          "due_date": "2026-12-10",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "kind": "appointment",
+      "references": [],
+      "remedy_type": "none",
+      "sender_name": "Zahnarztpraxis Beispielweiß",
+      "warnings": [
+        "The exact meaning of 'mindestens zwei Werktage vorher' (whether Saturday counts as a Werktag for this practice, and whether the count includes or excludes the notice day) is not spelled out in the letter, so the cancellation deadline of 2026-12-10 is a reasonable but not certain reading — contacting the practice to confirm their exact policy is advisable."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3661,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1420,
+      "cost_usd": 0.042918399999999995,
+      "duration_ms": 35016,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

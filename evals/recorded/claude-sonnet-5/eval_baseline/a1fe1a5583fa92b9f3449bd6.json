@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"ca8a518f451729ce1176b37d23b4fd7557b0161319e66a5b195fd7bfc2f808f4\",\"mode\":\"text\",\"region\":\"MV\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Mecklenburg-Vorpommern (MV), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrust",
+    "recorded_at": "2026-11-24T11:39:33+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Landkreis Musterpeene – Untere Naturschutzbehörde\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"UNB-67.1-2611/26\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against refusal to fell the lime trees\",\"quote\":\"Gegen diesen Bescheid können Sie innerhalb eines Monats nach seiner Bekanntgabe Widerspruch einlegen, schriftlich oder zur Niederschrift bei der Behörde: Landkreis Musterpeene, Kreishausweg 1, 17109 Musterdemmin.\",\"computation\":\"Letter dated and presumably posted 19.11.2026 (no separate 'zur Post gegeben am' date given, so letter date is used as posting day). Delivery fiction for authority letters posted on/after 1 Jan 2025: deemed delivered on the 4th day after posting (§41 Abs.2 VwVfG M-V) = 19.11.2026 + 4 days = 23.11.2026 (a Monday, not a Saturday/Sunday/holiday, and as a general authority — not a tax office — the delivery day would not move even if it fell on one). Bekanntgabe = 23.11.2026. One-month Widerspruch period under §70 VwGO/§31 VwVfG counted per §188 Abs.2 BGB: period ends on the day in the following month bearing the same number as the day of Bekanntgabe, i.e. 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in MV, so no shift under §31 Abs.3 VwVfG is needed.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Landkreis Musterpeene – Untere Naturschutzbehörde",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "UNB-67.1-2611/26"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against refusal to fell the lime trees",
+          "quote": "Gegen diesen Bescheid können Sie innerhalb eines Monats nach seiner Bekanntgabe Widerspruch einlegen, schriftlich oder zur Niederschrift bei der Behörde: Landkreis Musterpeene, Kreishausweg 1, 17109 Musterdemmin.",
+          "computation": "Letter dated and presumably posted 19.11.2026 (no separate 'zur Post gegeben am' date given, so letter date is used as posting day). Delivery fiction for authority letters posted on/after 1 Jan 2025: deemed delivered on the 4th day after posting (§41 Abs.2 VwVfG M-V) = 19.11.2026 + 4 days = 23.11.2026 (a Monday, not a Saturday/Sunday/holiday, and as a general authority — not a tax office — the delivery day would not move even if it fell on one). Bekanntgabe = 23.11.2026. One-month Widerspruch period under §70 VwGO/§31 VwVfG counted per §188 Abs.2 BGB: period ends on the day in the following month bearing the same number as the day of Bekanntgabe, i.e. 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in MV, so no shift under §31 Abs.3 VwVfG is needed.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2562,
+      "cache_read_tokens": 12812,
+      "cache_creation_tokens": 3464,
+      "cost_usd": 0.0420464,
+      "duration_ms": 28827,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

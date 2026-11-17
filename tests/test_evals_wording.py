@@ -157,7 +157,8 @@ def test_the_kept_history_is_where_the_allow_list_says() -> None:
 def test_the_results_index_s_cells_need_no_plan_item() -> None:
     index = json.loads((ROOT / "evals" / "results" / "INDEX.json").read_text(encoding="utf-8"))
     needs = sorted(set(_needs(index)))
-    assert needs  # cells not recorded yet say what they need
+    # cells not recorded yet say what they need (once the final run is published, none may be left)
+    assert needs or not [cell for cell in index["cells"] if cell.get("status") == "not recorded yet"]
     found = [f"{need!r}: {kind} ({tag})" for need in needs for _, kind, tag in _tags(need)]
     assert not found, "\n".join(found)
 

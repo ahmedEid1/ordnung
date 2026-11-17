@@ -1,0 +1,536 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"99ef00b98b6fd5502888ae20ae978adbae84ea70eb1fc4ab660a1a4790b44772\",\"question\":\"From mid-December 2026 to mid-January 2027 (15th to 15th), on which days are my library fees due?\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_nba3k0ka85q0",
+      "doc_5c5axexztnw6",
+      "doc_pa2w9q3gxzqk",
+      "doc_xa0f5gvpe0w2"
+    ],
+    "prompt_head": "The person asks:\nFrom mid-December 2026 to mid-January 2027 (15th to 15th), on which days are my library fees due?\n",
+    "recorded_at": "2026-11-24T08:20:26+00:00",
+    "repeat": 1,
+    "commit": "25633808",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "No library fee payments fall in that window. The only library fee on record is the accrued library fee due Fri 27 Nov 2026, which repeats every 2 weeks with its next occurrence falling on Fri 11 Dec 2026 [item:itm_kgsfgwac9wzx] — both of these are before mid-December, so outside your 15 Dec 2026 – 15 Jan 2027 window. Ordnung has no further occurrences of this fee stored beyond that date.\n\nSo for mid-December 2026 to mid-January 2027, there are no library fees due in your records.\n\nFor comparison, the other payments and deadlines falling in that window are unrelated to the library:\n- Submit first progress report, due Tue 15 Dec 2026 [item:itm_zse7bv6ce3s1] (Global Talent Scholarship Foundation)\n- Dental checkup appointment, Fri 8 Jan 2027 [item:itm_sncxha9wbsxc]\n- Semester fee payment, due Fri 15 Jan 2027 [item:itm_85xesrap412m] (Hochschule Musterstadt)",
+    "data": null,
+    "usage": {
+      "input_tokens": 10,
+      "output_tokens": 1051,
+      "cache_read_tokens": 38489,
+      "cache_creation_tokens": 5835,
+      "cost_usd": 0.0415678,
+      "duration_ms": 19159,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "from_date": "2026-12-15",
+        "to_date": "2027-01-15",
+        "kind": "payment"
+      },
+      "tool_use_id": "toolu_01RcHwZECJZ1oAggV2DfRunM"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-11-24\",\"items\":[{\"id\":\"itm_85xesrap412m\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2027-01-15\",\"send_by\":\"2027-01-14\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"study\",\"party_id\":\"pty_fhp8fzemmzvt\",\"doc_id\":\"doc_nba3k0ka85q0\",\"repeats\":\"every 6 months on the 15th\",\"following_due_date\":\"2027-07-15\",\"amount\":312.4,\"currency\":\"EUR\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_85xesrap412m\":{\"title\":\"Pay the semester fee (Semesterbeitrag) for summer semester 2027\",\"action\":\"Transfer the semester fee of €312.40 to the university's account, using the given reference, so it arrives by the deadline shown.\",\"consequence\":\"Late payment adds a €15.00 late fee (Säumnisgebühr), and if the fee is not received in time you risk being deregistered (Exmatrikulation).\"},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01RcHwZECJZ1oAggV2DfRunM"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "library Bibliothek fee"
+      },
+      "tool_use_id": "toolu_01CZCc6fpjintsdU7GT4kerY"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_5c5axexztnw6\",\"kind\":\"dunning\",\"date\":\"2026-09-22\",\"party_id\":\"pty_d2ymm5s3htd0\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_5c5axexztnw6\":{\"title\":\"First reminder: overdue library loan (1. Mahnung)\",\"snippet\":\"First reminder: overdue library loan (1. Mahnung) 20_stadtbibliothek_mahnung.pdf\"},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01CZCc6fpjintsdU7GT4kerY"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_document",
+      "input": {
+        "doc_id": "doc_5c5axexztnw6"
+      },
+      "tool_use_id": "toolu_01GYfMZuMWKu8TpfGg9aqRtm"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"id\":\"doc_5c5axexztnw6\",\"kind\":\"dunning\",\"date\":\"2026-09-22\",\"status\":\"processed\",\"direction\":\"incoming\",\"received_date\":\"2026-09-24\",\"language\":\"de\",\"party_id\":\"pty_d2ymm5s3htd0\",\"case_id\":\"cas_h84pnj14nk0s\",\"urgency\":\"critical\",\"pages\":1,\"payment\":{\"iban_valid\":true},\"items\":[{\"id\":\"itm_ghq58jjdz149\",\"kind\":\"deadline\",\"status\":\"open\",\"overdue\":true,\"due_date\":\"2026-10-02\",\"date_source\":\"fixed\",\"priority\":\"critical\",\"area\":\"other\",\"party_id\":\"pty_d2ymm5s3htd0\",\"doc_id\":\"doc_5c5axexztnw6\"},{\"id\":\"itm_kgsfgwac9wzx\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-11-27\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"other\",\"party_id\":\"pty_d2ymm5s3htd0\",\"doc_id\":\"doc_5c5axexztnw6\",\"repeats\":\"every 2 weeks\",\"following_due_date\":\"2026-12-11\",\"amount\":4.5,\"currency\":\"EUR\"}],\"contracts\":[]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_ghq58jjdz149\":{\"title\":\"Return the overdue library books\",\"action\":\"Return both overdue items to the library (e.g. via the return box) by the deadline shown.\",\"consequence\":\"The fee will keep increasing by €0.50 per item for each opening day, and once it reaches €10.00 your library account will be blocked for further loans.\"},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\"},\"itm_kgsfgwac9wzx\":{\"title\":\"Pay the accrued library fee\",\"action\":\"Pay the €4.50 fee at the service desk or the payment machine when returning the items.\",\"consequence\":\"Unpaid and growing fees can lead to your library account being blocked once the balance reaches €10.00.\"},\"doc_5c5axexztnw6\":{\"title\":\"First reminder: overdue library loan (1. Mahnung)\",\"summary\":\"Stadtbibliothek Musterstadt sent a first reminder (1. Mahnung) that two borrowed items are overdue, with accrued fees of €4.50, and asks Sam Rivera to return them by 2 October 2026.\",\"explanation\":\"The library is reminding you that two items you borrowed are past their due date, and fees of €4.50 have already built up. Return the items by the stated deadline and pay the fee at the service desk or the payment machine when you return them. If you keep the items longer, the fee grows by €0.50 per item for each day the library is open, and once your fee balance reaches €10.00 the library will block your account so you cannot borrow anything else until it is settled. If you have a hold-free item, you may also be able to extend the loan period online.\",\"key_facts\":[{\"label\":\"Total fees due (Summe der Gebühren)\",\"value\":\"4,50 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Return deadline\",\"value\":\"02.10.2026\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Late fee increase after deadline\",\"value\":\"0,50 € pro Medium und Öffnungstag\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Account block threshold\",\"value\":\"10,00 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Item 1 (Einführung in die Statistik mit R) due date\",\"value\":\"08.09.2026\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Item 2 (Deutsch im Alltag B2 – Übungsbuch) due date\",\"value\":\"15.09.2026\",\"page\":1,\"grounding\":\"verified\"}],\"references\":[{\"label\":\"Benutzer-Nr.\",\"value\":\"0481 1123 5\"}],\"payment\":{\"iban\":\"DE51123456000000100017\",\"payee\":\"Stadtkasse Musterstadt\"},\"text\":\"=== Page 1 ===\\nStadtbibliothek\\nMusterstadt\\n\\nBenutzer-Nr.   0481 1123 5\\nIhr Kontakt   Ausleihe / Service\\nStadtbibliothek Musterstadt · Bibliotheksplatz 2 · 12345 Musterstadt   0123 400-7700\\nTelefon\\nDatum   22.09.2026\\nHerrn\\nSam Rivera\\nBeispielweg 5\\n12345 Musterstadt\\n\\nErinnerung: Leihfrist überschritten (1. Mahnung)\\n\\nSehr geehrter Herr Rivera,\\n\\ndie Leihfrist für die folgenden Medien ist abgelaufen:\\n\\nTitel   Mediennummer   Leihfrist bis   Gebühr\\n\\nEinführung in die Statistik mit R   30031 004 812   08.09.2026   2,50 €\\n\\nDeutsch im Alltag B2 – Übungsbuch   30031 017 455   15.09.2026   2,00 €\\n\\nSumme der Gebühren   4,50 €\\n\\nBitte geben Sie die Medien bis zum 02.10.2026 zurück. Die bisher entstandenen Gebühren in\\nHöhe von 4,50 € können Sie bei der Rückgabe an der Servicetheke oder am Kassenautomaten\\nbezahlen.\\n\\nNach Ablauf dieser Frist erhöhen sich die Gebühren um 0,50 € pro Medium und Öffnungstag; ab einem\\nGebührenstand von 10,00 € wird Ihr Benutzerkonto für weitere Ausleihen gesperrt.\\n\\nDie Rückgabe ist rund um die Uhr über die Rückgabebox am Eingang Bibliotheksplatz möglich. Sofern\\nkeine Vormerkung vorliegt, können Sie die Leihfrist auch online in Ihrem Bibliothekskonto verlängern.\\n\\nMit freundlichen Grüßen\\nIhre Stadtbibliothek Musterstadt\\n\\nDieses Schreiben wurde maschinell erstellt und ist ohne Unterschrift gültig.\\n\\nStadtbibliothek Musterstadt   Öffnungszeiten:   Stadtkasse Musterstadt\\nBibliotheksplatz 2 · 12345 Musterstadt   Di–Fr 10–19 Uhr, Sa 10–14 Uhr   IBAN DE51 1234 5600 0000 1000 17\\nTelefon 0123 400-7700   Rückgabebox rund um die Uhr   BIC MUSKDEM1XXX\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01GYfMZuMWKu8TpfGg9aqRtm"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "from_date": "2026-12-15",
+        "to_date": "2027-01-15",
+        "status": "all"
+      },
+      "tool_use_id": "toolu_01K5hqWbEynUYttteUbcUTNg"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-11-24\",\"items\":[{\"id\":\"itm_zse7bv6ce3s1\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-12-15\",\"send_by\":\"2026-12-09\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\",\"repeats\":\"every month on the 15th\",\"following_due_date\":\"2027-01-15\"},{\"id\":\"itm_sncxha9wbsxc\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2027-01-08\",\"due_time\":\"09:15\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_m3rttkfq94qn\",\"doc_id\":\"doc_xa0f5gvpe0w2\",\"repeats\":\"every 3 months\",\"following_due_date\":\"2027-04-08\"},{\"id\":\"itm_85xesrap412m\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2027-01-15\",\"send_by\":\"2027-01-14\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"study\",\"party_id\":\"pty_fhp8fzemmzvt\",\"doc_id\":\"doc_nba3k0ka85q0\",\"repeats\":\"every 6 months on the 15th\",\"following_due_date\":\"2027-07-15\",\"amount\":312.4,\"currency\":\"EUR\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_zse7bv6ce3s1\":{\"title\":\"Submit first progress report\",\"action\":\"Submit your first progress report (max. two pages, countersigned by your academic supervisor) via the scholarship portal using the provided template.\"},\"pty_efmwq4xym8cm\":{\"name\":\"Global Talent Scholarship Foundation\"},\"itm_sncxha9wbsxc\":{\"title\":\"Dental checkup and cleaning (PZR)\",\"action\":\"Arrive 10 minutes early and bring your health insurance card (Gesundheitskarte)\",\"consequence\":\"Cancel at least 24 hours in advance if you cannot attend\",\"location\":\"Lindenallee 8, 12345 Musterstadt\"},\"pty_m3rttkfq94qn\":{\"name\":\"Zahnarztpraxis Dr. Anna Beispiel\"},\"itm_85xesrap412m\":{\"title\":\"Pay the semester fee (Semesterbeitrag) for summer semester 2027\",\"action\":\"Transfer the semester fee of €312.40 to the university's account, using the given reference, so it arrives by the deadline shown.\",\"consequence\":\"Late payment adds a €15.00 late fee (Säumnisgebühr), and if the fee is not received in time you risk being deregistered (Exmatrikulation).\"},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01K5hqWbEynUYttteUbcUTNg"
+    },
+    {
+      "type": "text",
+      "text": "No"
+    },
+    {
+      "type": "text",
+      "text": " library"
+    },
+    {
+      "type": "text",
+      "text": " f"
+    },
+    {
+      "type": "text",
+      "text": "ee pay"
+    },
+    {
+      "type": "text",
+      "text": "ments fall in"
+    },
+    {
+      "type": "text",
+      "text": " that window"
+    },
+    {
+      "type": "text",
+      "text": "."
+    },
+    {
+      "type": "text",
+      "text": " The"
+    },
+    {
+      "type": "text",
+      "text": " only library fee on"
+    },
+    {
+      "type": "text",
+      "text": " record"
+    },
+    {
+      "type": "text",
+      "text": " is the acc"
+    },
+    {
+      "type": "text",
+      "text": "rued library"
+    },
+    {
+      "type": "text",
+      "text": " fee due"
+    },
+    {
+      "type": "text",
+      "text": " Fri 27 "
+    },
+    {
+      "type": "text",
+      "text": "Nov 2026"
+    },
+    {
+      "type": "text",
+      "text": ","
+    },
+    {
+      "type": "text",
+      "text": " which"
+    },
+    {
+      "type": "text",
+      "text": " repeats every 2 we"
+    },
+    {
+      "type": "text",
+      "text": "eks with its"
+    },
+    {
+      "type": "text",
+      "text": " next occurrence fal"
+    },
+    {
+      "type": "text",
+      "text": "ling on F"
+    },
+    {
+      "type": "text",
+      "text": "ri 11"
+    },
+    {
+      "type": "text",
+      "text": " Dec 2026 "
+    },
+    {
+      "type": "text",
+      "text": "[item"
+    },
+    {
+      "type": "text",
+      "text": ":it"
+    },
+    {
+      "type": "text",
+      "text": "m"
+    },
+    {
+      "type": "text",
+      "text": "_kg"
+    },
+    {
+      "type": "text",
+      "text": "sf"
+    },
+    {
+      "type": "text",
+      "text": "g"
+    },
+    {
+      "type": "text",
+      "text": "w"
+    },
+    {
+      "type": "text",
+      "text": "ac"
+    },
+    {
+      "type": "text",
+      "text": "9"
+    },
+    {
+      "type": "text",
+      "text": "w"
+    },
+    {
+      "type": "text",
+      "text": "z"
+    },
+    {
+      "type": "text",
+      "text": "x"
+    },
+    {
+      "type": "text",
+      "text": "] — both of these"
+    },
+    {
+      "type": "text",
+      "text": " are before m"
+    },
+    {
+      "type": "text",
+      "text": "id-December, so out"
+    },
+    {
+      "type": "text",
+      "text": "side your"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "15 Dec "
+    },
+    {
+      "type": "text",
+      "text": "2026 – 15 "
+    },
+    {
+      "type": "text",
+      "text": "Jan 2027 window."
+    },
+    {
+      "type": "text",
+      "text": " Ord"
+    },
+    {
+      "type": "text",
+      "text": "nung has no further occ"
+    },
+    {
+      "type": "text",
+      "text": "urrences of this"
+    },
+    {
+      "type": "text",
+      "text": " fee st"
+    },
+    {
+      "type": "text",
+      "text": "ored beyond that"
+    },
+    {
+      "type": "text",
+      "text": " date"
+    },
+    {
+      "type": "text",
+      "text": ".\n\nSo for"
+    },
+    {
+      "type": "text",
+      "text": " mid-December 2026 "
+    },
+    {
+      "type": "text",
+      "text": "to mid-January 2027"
+    },
+    {
+      "type": "text",
+      "text": ", there are no library fees due"
+    },
+    {
+      "type": "text",
+      "text": " in"
+    },
+    {
+      "type": "text",
+      "text": " your"
+    },
+    {
+      "type": "text",
+      "text": " records.\n\nFor"
+    },
+    {
+      "type": "text",
+      "text": " com"
+    },
+    {
+      "type": "text",
+      "text": "parison, the other pay"
+    },
+    {
+      "type": "text",
+      "text": "ments and"
+    },
+    {
+      "type": "text",
+      "text": " deadlines fal"
+    },
+    {
+      "type": "text",
+      "text": "ling in that window are un"
+    },
+    {
+      "type": "text",
+      "text": "related to the library:"
+    },
+    {
+      "type": "text",
+      "text": "\n-"
+    },
+    {
+      "type": "text",
+      "text": " Subm"
+    },
+    {
+      "type": "text",
+      "text": "it first"
+    },
+    {
+      "type": "text",
+      "text": " prog"
+    },
+    {
+      "type": "text",
+      "text": "ress report, due T"
+    },
+    {
+      "type": "text",
+      "text": "ue 15 Dec "
+    },
+    {
+      "type": "text",
+      "text": "2026 [item:itm"
+    },
+    {
+      "type": "text",
+      "text": "_zse"
+    },
+    {
+      "type": "text",
+      "text": "7"
+    },
+    {
+      "type": "text",
+      "text": "b"
+    },
+    {
+      "type": "text",
+      "text": "v"
+    },
+    {
+      "type": "text",
+      "text": "6"
+    },
+    {
+      "type": "text",
+      "text": "ce"
+    },
+    {
+      "type": "text",
+      "text": "3"
+    },
+    {
+      "type": "text",
+      "text": "s"
+    },
+    {
+      "type": "text",
+      "text": "1] ("
+    },
+    {
+      "type": "text",
+      "text": "Global"
+    },
+    {
+      "type": "text",
+      "text": " Tal"
+    },
+    {
+      "type": "text",
+      "text": "ent Scholarship Fo"
+    },
+    {
+      "type": "text",
+      "text": "undation)\n- Dental"
+    },
+    {
+      "type": "text",
+      "text": " chec"
+    },
+    {
+      "type": "text",
+      "text": "kup appointment,"
+    },
+    {
+      "type": "text",
+      "text": " Fri 8"
+    },
+    {
+      "type": "text",
+      "text": " Jan 2027 "
+    },
+    {
+      "type": "text",
+      "text": "[item:itm_s"
+    },
+    {
+      "type": "text",
+      "text": "ncxha"
+    },
+    {
+      "type": "text",
+      "text": "9"
+    },
+    {
+      "type": "text",
+      "text": "w"
+    },
+    {
+      "type": "text",
+      "text": "b"
+    },
+    {
+      "type": "text",
+      "text": "s"
+    },
+    {
+      "type": "text",
+      "text": "x"
+    },
+    {
+      "type": "text",
+      "text": "c]\n- Semester f"
+    },
+    {
+      "type": "text",
+      "text": "ee pay"
+    },
+    {
+      "type": "text",
+      "text": "ment, due F"
+    },
+    {
+      "type": "text",
+      "text": "ri 15 Jan "
+    },
+    {
+      "type": "text",
+      "text": "2027 [item:itm"
+    },
+    {
+      "type": "text",
+      "text": "_85x"
+    },
+    {
+      "type": "text",
+      "text": "es"
+    },
+    {
+      "type": "text",
+      "text": "r"
+    },
+    {
+      "type": "text",
+      "text": "ap"
+    },
+    {
+      "type": "text",
+      "text": "412"
+    },
+    {
+      "type": "text",
+      "text": "m] (Hochschule"
+    },
+    {
+      "type": "text",
+      "text": " Musterstadt)"
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "No library fee payments fall in that window. The only library fee on record is the accrued library fee due Fri 27 Nov 2026, which repeats every 2 weeks with its next occurrence falling on Fri 11 Dec 2026 [item:itm_kgsfgwac9wzx] — both of these are before mid-December, so outside your 15 Dec 2026 – 15 Jan 2027 window. Ordnung has no further occurrences of this fee stored beyond that date.\n\nSo for mid-December 2026 to mid-January 2027, there are no library fees due in your records.\n\nFor comparison, the other payments and deadlines falling in that window are unrelated to the library:\n- Submit first progress report, due Tue 15 Dec 2026 [item:itm_zse7bv6ce3s1] (Global Talent Scholarship Foundation)\n- Dental checkup appointment, Fri 8 Jan 2027 [item:itm_sncxha9wbsxc]\n- Semester fee payment, due Fri 15 Jan 2027 [item:itm_85xesrap412m] (Hochschule Musterstadt)",
+        "usage": {
+          "input_tokens": 10,
+          "output_tokens": 1051,
+          "cache_read_tokens": 38489,
+          "cache_creation_tokens": 5835,
+          "cost_usd": 0.0415678,
+          "duration_ms": 19159,
+          "turns": 5
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

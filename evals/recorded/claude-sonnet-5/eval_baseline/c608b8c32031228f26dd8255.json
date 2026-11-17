@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"a099ae68be29ae15e3b4f1aea16a82654ebde75a1da8153647b0cf3445d93049\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-relative_business_days-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:32:53+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Musterhausen Bausachverständige GbR\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Anfrage\",\"value\":\"SV-26-311\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Confirm whether to commission the Gutachten\",\"quote\":\"Bitte geben Sie uns innerhalb von 15 Werktagen nach dem Briefdatum Bescheid, ob wir das Gutachten erstellen sollen; als Werktage zählen Montag bis Samstag, nicht aber Sonn- und Feiertage.\",\"computation\":\"Letter date (Briefdatum) is Friday 20.11.2026; the period runs 'nach dem Briefdatum' (after the letter date), so the letter date itself is not counted and counting starts on 21.11.2026 (§187 Abs. 1 BGB analogy). The letter itself defines 'Werktage' as Monday to Saturday, excluding Sunday and public holidays, so each Saturday counts but each Sunday and holiday is skipped. Counting working days from 21.11.2026: 21.11 Sat=1, 23.11 Mon=2, 24.11 Tue=3, 25.11 Wed=4, 26.11 Thu=5, 27.11 Fri=6, 28.11 Sat=7, 30.11 Mon=8, 01.12 Tue=9, 02.12 Wed=10, 03.12 Thu=11, 04.12 Fri=12, 05.12 Sat=13, 07.12 Mon=14, 08.12 Tue=15 (Sundays 22.11, 29.11 and 06.12 skipped; no NRW public holidays fall in this window). The 15th working day is Tuesday 08.12.2026, which is itself a working day, so no further shift is needed.\",\"due_date\":\"2026-12-08\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Musterhausen Bausachverständige GbR",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Anfrage",
+          "value": "SV-26-311"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Confirm whether to commission the Gutachten",
+          "quote": "Bitte geben Sie uns innerhalb von 15 Werktagen nach dem Briefdatum Bescheid, ob wir das Gutachten erstellen sollen; als Werktage zählen Montag bis Samstag, nicht aber Sonn- und Feiertage.",
+          "computation": "Letter date (Briefdatum) is Friday 20.11.2026; the period runs 'nach dem Briefdatum' (after the letter date), so the letter date itself is not counted and counting starts on 21.11.2026 (§187 Abs. 1 BGB analogy). The letter itself defines 'Werktage' as Monday to Saturday, excluding Sunday and public holidays, so each Saturday counts but each Sunday and holiday is skipped. Counting working days from 21.11.2026: 21.11 Sat=1, 23.11 Mon=2, 24.11 Tue=3, 25.11 Wed=4, 26.11 Thu=5, 27.11 Fri=6, 28.11 Sat=7, 30.11 Mon=8, 01.12 Tue=9, 02.12 Wed=10, 03.12 Thu=11, 04.12 Fri=12, 05.12 Sat=13, 07.12 Mon=14, 08.12 Tue=15 (Sundays 22.11, 29.11 and 06.12 skipped; no NRW public holidays fall in this window). The 15th working day is Tuesday 08.12.2026, which is itself a working day, so no further shift is needed.",
+          "due_date": "2026-12-08",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3193,
+      "cache_read_tokens": 12550,
+      "cache_creation_tokens": 3907,
+      "cost_usd": 0.050076,
+      "duration_ms": 31623,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

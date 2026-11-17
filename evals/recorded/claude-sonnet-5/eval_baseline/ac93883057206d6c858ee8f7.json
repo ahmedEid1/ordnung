@@ -1,0 +1,82 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"8b0ec16bebe775dc7b295294805fbc8396fc9d9f2c045e7efb05757f306d54fc\",\"mode\":\"text\",\"region\":\"TH\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-kuendigung_arbeit-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Thüringen (TH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> ",
+    "recorded_at": "2026-11-24T12:41:47+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"employment\",\"sender_name\":\"Beispieloptik Saaletal GmbH\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Personal-Nr.\",\"value\":\"BO-1173\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Kündigungsschutzklage (wrongful dismissal lawsuit) at the Labour Court\",\"quote\":\"Möchten Sie die Wirksamkeit der Kündigung gerichtlich überprüfen lassen, müssen Sie spätestens drei Wochen nach ihrem Zugang Klage beim Arbeitsgericht erheben.\",\"computation\":\"The letter states it was handed to the employee personally at the workplace on 18.11.2026 ('Dieses Schreiben wurde Ihnen am 18.11.2026 am Arbeitsplatz persönlich ausgehändigt'), so Zugang (delivery) = 18.11.2026 (Wednesday) - no postal delivery fiction needed since it was handed over directly. Under § 4 KSchG / § 187 Abs. 1 BGB the day of delivery itself is not counted; a 3-week period ends on the same weekday 3 weeks later (§ 188 Abs. 2 BGB week-counting rule): 18.11.2026 + 1 week = 25.11, +2 weeks = 02.12, +3 weeks = 09.12.2026 (Wednesday). 09.12.2026 is a normal working day in Thüringen (no holiday), so under § 193 BGB no further shift is needed.\",\"due_date\":\"2026-12-09\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Last day of employment (termination effective date)\",\"quote\":\"Hiermit kündigen wir Ihr seit dem 01.03.2017 bestehendes Arbeitsverhältnis fristgerecht zum 28.02.2027.\",\"computation\":\"The letter states the termination date explicitly as 28.02.2027; this is the calendar date as written, not subject to recomputation.\",\"due_date\":\"2027-02-28\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Register as 'arbeitsuchend' (job-seeking) with the Agentur für Arbeit\",\"quote\":\"Bitte denken Sie daran, sich umgehend bei der Agentur für Arbeit arbeitsuchend zu melden.\",\"computation\":\"The letter only says 'immediately' without a calendar date; the applicable statutory deadline is § 38 Abs. 1 SGB III: if, at the time one learns of the end date, more than 3 months remain until termination, the employee must register no later than 3 months before that termination date (otherwise, within 3 days of learning of it). Here notice was received 18.11.2026 and termination is 28.02.2027 - about 3 months and 10 days later, i.e. more than 3 months remain at time of knowledge - so the 'no later than 3 months before termination' branch applies. Counting back 3 months from 28.02.2027 (same day-of-month rule, § 188 Abs. 2 BGB) gives 28.11.2026, which falls on a Saturday; however this registration obligation is not one of the deadline-types whose end is shifted by § 193 BGB (it is a social-law duty to register, best fulfilled by the preceding working day to be safe), so the practical last safe day is Friday 27.11.2026, with 28.11.2026 (Sat) as the strict statutory date.\",\"due_date\":\"2026-11-28\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The 'register as arbeitsuchend' deadline (28.11.2026) is not stated explicitly in the letter but derived from § 38 SGB III based on the notice date and termination date; double-check with the Agentur für Arbeit if in doubt.\",\"The employer states the Betriebsrat (works council) did not object to the dismissal and that its statement is enclosed ('seine Stellungnahme liegt bei') - verify this enclosure was actually received, as it may be relevant if a Kündigungsschutzklage is considered.\"]}",
+    "data": {
+      "kind": "employment",
+      "sender_name": "Beispieloptik Saaletal GmbH",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Personal-Nr.",
+          "value": "BO-1173"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Kündigungsschutzklage (wrongful dismissal lawsuit) at the Labour Court",
+          "quote": "Möchten Sie die Wirksamkeit der Kündigung gerichtlich überprüfen lassen, müssen Sie spätestens drei Wochen nach ihrem Zugang Klage beim Arbeitsgericht erheben.",
+          "computation": "The letter states it was handed to the employee personally at the workplace on 18.11.2026 ('Dieses Schreiben wurde Ihnen am 18.11.2026 am Arbeitsplatz persönlich ausgehändigt'), so Zugang (delivery) = 18.11.2026 (Wednesday) - no postal delivery fiction needed since it was handed over directly. Under § 4 KSchG / § 187 Abs. 1 BGB the day of delivery itself is not counted; a 3-week period ends on the same weekday 3 weeks later (§ 188 Abs. 2 BGB week-counting rule): 18.11.2026 + 1 week = 25.11, +2 weeks = 02.12, +3 weeks = 09.12.2026 (Wednesday). 09.12.2026 is a normal working day in Thüringen (no holiday), so under § 193 BGB no further shift is needed.",
+          "due_date": "2026-12-09",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Last day of employment (termination effective date)",
+          "quote": "Hiermit kündigen wir Ihr seit dem 01.03.2017 bestehendes Arbeitsverhältnis fristgerecht zum 28.02.2027.",
+          "computation": "The letter states the termination date explicitly as 28.02.2027; this is the calendar date as written, not subject to recomputation.",
+          "due_date": "2027-02-28",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Register as 'arbeitsuchend' (job-seeking) with the Agentur für Arbeit",
+          "quote": "Bitte denken Sie daran, sich umgehend bei der Agentur für Arbeit arbeitsuchend zu melden.",
+          "computation": "The letter only says 'immediately' without a calendar date; the applicable statutory deadline is § 38 Abs. 1 SGB III: if, at the time one learns of the end date, more than 3 months remain until termination, the employee must register no later than 3 months before that termination date (otherwise, within 3 days of learning of it). Here notice was received 18.11.2026 and termination is 28.02.2027 - about 3 months and 10 days later, i.e. more than 3 months remain at time of knowledge - so the 'no later than 3 months before termination' branch applies. Counting back 3 months from 28.02.2027 (same day-of-month rule, § 188 Abs. 2 BGB) gives 28.11.2026, which falls on a Saturday; however this registration obligation is not one of the deadline-types whose end is shifted by § 193 BGB (it is a social-law duty to register, best fulfilled by the preceding working day to be safe), so the practical last safe day is Friday 27.11.2026, with 28.11.2026 (Sat) as the strict statutory date.",
+          "due_date": "2026-11-28",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The 'register as arbeitsuchend' deadline (28.11.2026) is not stated explicitly in the letter but derived from § 38 SGB III based on the notice date and termination date; double-check with the Agentur für Arbeit if in doubt.",
+        "The employer states the Betriebsrat (works council) did not object to the dismissal and that its statement is enclosed ('seine Stellungnahme liegt bei') - verify this enclosure was actually received, as it may be relevant if a Kündigungsschutzklage is considered."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4960,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1682,
+      "cost_usd": 0.057437999999999996,
+      "duration_ms": 47728,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

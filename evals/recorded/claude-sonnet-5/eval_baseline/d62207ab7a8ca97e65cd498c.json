@@ -1,0 +1,80 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"fb67b7d076a9654ee4eb17da2a898796d2f273c04b95281302673ec24264d740\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-price_increase-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:49:33+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Beispielfunk Mobile GmbH\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"BF-7 220 418\"},{\"label\":\"Rufnummer\",\"value\":\"0160 555 41 27\"}],\"amounts\":[14.99,16.99],\"items\":[{\"kind\":\"deadline\",\"title\":\"Special right to cancel contract due to price increase\",\"quote\":\"Für diese Kündigung haben Sie drei Monate Zeit, gerechnet ab dem Zugang dieser\\nMitteilung; wirksam wird sie frühestens an dem Tag, an dem der neue Preis gilt.\",\"computation\":\"The letter is dated Saturday 21.11.2026 but does not state an explicit delivery (Zugang) date. Since today (24.11.2026) is when the person has it in hand, and in the absence of a stated delivery clause the customary assumption for domestic post is used: Zugang ≈ 3 days after the printed date, i.e. 24.11.2026 (Tuesday). The 3-month period runs 'ab dem Zugang', an event-triggered period, so under §187(1) BGB the day of Zugang (24.11.2026) itself is not counted and the period begins the next day. Under §188(2) BGB a month-period triggered by an event ends on expiry of the day in the final month bearing the same calendar number as the triggering event day (24), i.e. three months after 24.11.2026 = 24.02.2027. 24.02.2027 is a Wednesday and not a public holiday in Nordrhein-Westfalen, so no shift under §193 BGB applies. Final day to cancel: 24.02.2027.\",\"due_date\":\"2027-02-24\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"New tariff price takes effect\",\"quote\":\"ab dem 01.01.2027 kostet Ihr Tarif monatlich 16,99 € statt bisher 14,99 €.\",\"computation\":\"The letter states the new price applies starting on the fixed calendar date 01.01.2027; no period calculation is needed.\",\"due_date\":\"2027-01-01\",\"confidence\":\"high\",\"amount\":16.99}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter contains obviously placeholder/fictitious sender details (company 'Beispielfunk Mobile GmbH', town 'Mustergießen', email domain 'example.com', bank 'Musterbank AG') rather than a real, verifiable company — treat this as a template and confirm with the actual provider before acting on it.\",\"The exact delivery (Zugang) date of the letter is not stated; the 3-month cancellation deadline was computed using a customary 3-day postal delivery assumption and should be verified against the actual date the letter was received.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Beispielfunk Mobile GmbH",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "BF-7 220 418"
+        },
+        {
+          "label": "Rufnummer",
+          "value": "0160 555 41 27"
+        }
+      ],
+      "amounts": [
+        14.99,
+        16.99
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Special right to cancel contract due to price increase",
+          "quote": "Für diese Kündigung haben Sie drei Monate Zeit, gerechnet ab dem Zugang dieser\nMitteilung; wirksam wird sie frühestens an dem Tag, an dem der neue Preis gilt.",
+          "computation": "The letter is dated Saturday 21.11.2026 but does not state an explicit delivery (Zugang) date. Since today (24.11.2026) is when the person has it in hand, and in the absence of a stated delivery clause the customary assumption for domestic post is used: Zugang ≈ 3 days after the printed date, i.e. 24.11.2026 (Tuesday). The 3-month period runs 'ab dem Zugang', an event-triggered period, so under §187(1) BGB the day of Zugang (24.11.2026) itself is not counted and the period begins the next day. Under §188(2) BGB a month-period triggered by an event ends on expiry of the day in the final month bearing the same calendar number as the triggering event day (24), i.e. three months after 24.11.2026 = 24.02.2027. 24.02.2027 is a Wednesday and not a public holiday in Nordrhein-Westfalen, so no shift under §193 BGB applies. Final day to cancel: 24.02.2027.",
+          "due_date": "2027-02-24",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "New tariff price takes effect",
+          "quote": "ab dem 01.01.2027 kostet Ihr Tarif monatlich 16,99 € statt bisher 14,99 €.",
+          "computation": "The letter states the new price applies starting on the fixed calendar date 01.01.2027; no period calculation is needed.",
+          "due_date": "2027-01-01",
+          "confidence": "high",
+          "amount": 16.99
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter contains obviously placeholder/fictitious sender details (company 'Beispielfunk Mobile GmbH', town 'Mustergießen', email domain 'example.com', bank 'Musterbank AG') rather than a real, verifiable company — treat this as a template and confirm with the actual provider before acting on it.",
+        "The exact delivery (Zugang) date of the letter is not stated; the 3-month cancellation deadline was computed using a customary 3-day postal delivery assumption and should be verified against the actual date the letter was received."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 5531,
+      "cache_read_tokens": 7719,
+      "cache_creation_tokens": 5907,
+      "cost_usd": 0.0804898,
+      "duration_ms": 57626,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

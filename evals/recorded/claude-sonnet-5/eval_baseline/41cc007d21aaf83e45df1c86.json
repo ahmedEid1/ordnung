@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"07a9ccbd2258f4dc052bae9a2033cbbbe73f4e2fdb560e000bd8ff0587e1f25b\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-missing_date-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:56:37+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Beispielkey Lettings GmbH\",\"document_date\":null,\"references\":[{\"label\":\"Tenancy\",\"value\":\"BKL-0418\"}],\"amounts\":[240],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay professional cleaning cost\",\"quote\":\"Please pay this amount within 14 days of receiving this letter.\",\"computation\":\"The letter carries no printed date and does not state a separate posting date (\\\"zur Post gegeben am\\\"), so the actual day of receipt by Mr Asante is unknown. This is a private company (landlord), not a public authority, so none of the statutory deemed-delivery fictions (§ 122 AO, § 41 VwVfG, § 37 SGB X) apply; only the real receipt date would start the 14-day period under §§ 187, 188 BGB. Without a known starting day, the 14-day deadline cannot be computed reliably.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":240}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter has no printed document date and no stated posting date, so the 14-day payment period (which runs from receipt) cannot be reliably calculated; the user should check the envelope postmark or the actual date they received the letter and count 14 days from that day, moving to the next working day if the 14th day falls on a weekend or holiday.\",\"The letter states the deposit will only be returned once this cleaning payment arrives; the tenant may want to verify the €240.00 cleaning charge and the underlying cleaning company invoice, and double-check the IBAN (DE95 3705 0198 0005 5505 00) against the landlord's known bank details before transferring money.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Beispielkey Lettings GmbH",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Tenancy",
+          "value": "BKL-0418"
+        }
+      ],
+      "amounts": [
+        240
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay professional cleaning cost",
+          "quote": "Please pay this amount within 14 days of receiving this letter.",
+          "computation": "The letter carries no printed date and does not state a separate posting date (\"zur Post gegeben am\"), so the actual day of receipt by Mr Asante is unknown. This is a private company (landlord), not a public authority, so none of the statutory deemed-delivery fictions (§ 122 AO, § 41 VwVfG, § 37 SGB X) apply; only the real receipt date would start the 14-day period under §§ 187, 188 BGB. Without a known starting day, the 14-day deadline cannot be computed reliably.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 240
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter has no printed document date and no stated posting date, so the 14-day payment period (which runs from receipt) cannot be reliably calculated; the user should check the envelope postmark or the actual date they received the letter and count 14 days from that day, moving to the next working day if the 14th day falls on a weekend or holiday.",
+        "The letter states the deposit will only be returned once this cleaning payment arrives; the tenant may want to verify the €240.00 cleaning charge and the underlying cleaning company invoice, and double-check the IBAN (DE95 3705 0198 0005 5505 00) against the landlord's known bank details before transferring money."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2479,
+      "cache_read_tokens": 12405,
+      "cache_creation_tokens": 3036,
+      "cost_usd": 0.039423,
+      "duration_ms": 28485,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

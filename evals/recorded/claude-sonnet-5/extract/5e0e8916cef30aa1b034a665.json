@@ -1,0 +1,128 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"e535885a85994cbf9ec91d70232c1deee2c855edf6228965649d97bff553b671\",\"language\":\"en\",\"pages\":[[1,\"transcript\"]],\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-dunning_fixed-M1-photo"
+    ],
+    "prompt_head": "Today is 2026-11-24. The person lives in region NW (DE). Their name is (not given).\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n(none yet)\n\nThe document's text follows, page by page: a line `=== Page N ===` starts page N. Everything\nbetween the <untrusted_document> tags is data from the document, never in",
+    "recorded_at": "2026-11-24T06:50:54+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"area\":\"leisure\",\"case_title\":\"Reminder: Outstanding 2026 membership fee – Sportverein Beispielau\",\"kind\":\"dunning\",\"language\":\"de\",\"document_date\":\"2026-11-19\",\"recipient_name\":\"Johanna Beispielacker\",\"sender\":{\"name\":\"Sportverein Beispielau 1911 e.V.\",\"kind\":\"other\",\"address\":\"Am Sportpark 1, 48145 Beispielau\",\"email\":\"kasse@sv-beispielau.example\",\"phone\":\"0251 555 19 11\",\"website\":null,\"identifiers\":[]},\"title\":\"Reminder about the 2026 membership fee (Mitgliedsbeitrag 2026 – Erinnerung)\",\"summary\":\"Sportverein Beispielau 1911 e.V. informs Johanna Beispielacker that the direct debit for the 2026 family membership fee was returned by her bank and asks her to transfer the outstanding €172.50 (fee plus a return-debit fee) by 3 December 2026.\",\"explanation\":\"Your sports club tried to collect the 2026 family membership fee by direct debit (Lastschrift), but your bank returned the payment, so the club now wants you to pay the fee plus a return-debit fee yourself by bank transfer. Pay the total amount shown to the club's account by the stated due date to settle the account and avoid further reminders. If your bank details have changed, send the club a new SEPA mandate so this doesn't happen again. This is a private club letter, not a government notice, so no statutory appeal deadlines apply here.\",\"items\":[{\"kind\":\"payment\",\"title\":\"Pay the outstanding 2026 membership fee\",\"action\":\"Transfer the outstanding amount to the club's account by the due date, or send a new SEPA mandate if your bank details have changed.\",\"consequence\":null,\"amount\":172.5,\"currency\":\"EUR\",\"direction\":\"out\",\"location\":null,\"priority\":\"high\",\"date\":{\"type\":\"fixed\",\"date\":\"2026-12-03\",\"text\":\"bis zum 03.12.2026\",\"nature\":\"payment\",\"anchor\":\"explicit_date\",\"anchor_date\":null,\"shift_rule\":\"auto\",\"delivery_rule\":\"none\",\"legal_basis\":null,\"amount\":null,\"unit\":null,\"time\":null},\"recurrence\":null,\"quote\":\"Bitte überweisen Sie den Betrag bis zum 03.12.2026 auf das Vereinskonto.\"}],\"key_facts\":[{\"label\":\"Membership number (Mitgliedsnummer)\",\"value\":\"SV-2207\",\"quote\":\"SV-2207\"},{\"label\":\"Total amount due (Summe offen)\",\"value\":\"172,50\",\"quote\":\"Summe offen | 4,50\"},{\"label\":\"Payment due date\",\"value\":\"03.12.2026\",\"quote\":\"Bitte überweisen Sie den Betrag bis zum 03.12.2026 auf das Vereinskonto.\"}],\"references\":[{\"label\":\"Mitgliedsnummer\",\"value\":\"SV-2207\"}],\"payment\":{\"iban\":\"DE39370501980005519110\",\"iban_valid\":true,\"payee\":\"Sportverein Beispielau 1911 e.V.\",\"reference\":null},\"remedy\":{\"type\":\"none\",\"addressee\":null,\"period_text\":null,\"form_text\":null,\"quote\":null},\"contract\":null,\"change\":null,\"high_stakes_kind\":null,\"urgency\":\"high\",\"tax_relevant\":false,\"tax_note\":null,\"warnings\":[],\"transcript\":null}",
+    "data": {
+      "area": "leisure",
+      "case_title": "Reminder: Outstanding 2026 membership fee – Sportverein Beispielau",
+      "kind": "dunning",
+      "language": "de",
+      "document_date": "2026-11-19",
+      "recipient_name": "Johanna Beispielacker",
+      "sender": {
+        "name": "Sportverein Beispielau 1911 e.V.",
+        "kind": "other",
+        "address": "Am Sportpark 1, 48145 Beispielau",
+        "email": "kasse@sv-beispielau.example",
+        "phone": "0251 555 19 11",
+        "website": null,
+        "identifiers": []
+      },
+      "title": "Reminder about the 2026 membership fee (Mitgliedsbeitrag 2026 – Erinnerung)",
+      "summary": "Sportverein Beispielau 1911 e.V. informs Johanna Beispielacker that the direct debit for the 2026 family membership fee was returned by her bank and asks her to transfer the outstanding €172.50 (fee plus a return-debit fee) by 3 December 2026.",
+      "explanation": "Your sports club tried to collect the 2026 family membership fee by direct debit (Lastschrift), but your bank returned the payment, so the club now wants you to pay the fee plus a return-debit fee yourself by bank transfer. Pay the total amount shown to the club's account by the stated due date to settle the account and avoid further reminders. If your bank details have changed, send the club a new SEPA mandate so this doesn't happen again. This is a private club letter, not a government notice, so no statutory appeal deadlines apply here.",
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay the outstanding 2026 membership fee",
+          "action": "Transfer the outstanding amount to the club's account by the due date, or send a new SEPA mandate if your bank details have changed.",
+          "consequence": null,
+          "amount": 172.5,
+          "currency": "EUR",
+          "direction": "out",
+          "location": null,
+          "priority": "high",
+          "date": {
+            "type": "fixed",
+            "date": "2026-12-03",
+            "text": "bis zum 03.12.2026",
+            "nature": "payment",
+            "anchor": "explicit_date",
+            "anchor_date": null,
+            "shift_rule": "auto",
+            "delivery_rule": "none",
+            "legal_basis": null,
+            "amount": null,
+            "unit": null,
+            "time": null
+          },
+          "recurrence": null,
+          "quote": "Bitte überweisen Sie den Betrag bis zum 03.12.2026 auf das Vereinskonto."
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Membership number (Mitgliedsnummer)",
+          "value": "SV-2207",
+          "quote": "SV-2207"
+        },
+        {
+          "label": "Total amount due (Summe offen)",
+          "value": "172,50",
+          "quote": "Summe offen | 4,50"
+        },
+        {
+          "label": "Payment due date",
+          "value": "03.12.2026",
+          "quote": "Bitte überweisen Sie den Betrag bis zum 03.12.2026 auf das Vereinskonto."
+        }
+      ],
+      "references": [
+        {
+          "label": "Mitgliedsnummer",
+          "value": "SV-2207"
+        }
+      ],
+      "payment": {
+        "iban": "DE39370501980005519110",
+        "iban_valid": true,
+        "payee": "Sportverein Beispielau 1911 e.V.",
+        "reference": null
+      },
+      "remedy": {
+        "type": "none",
+        "addressee": null,
+        "period_text": null,
+        "form_text": null,
+        "quote": null
+      },
+      "contract": null,
+      "change": null,
+      "high_stakes_kind": null,
+      "urgency": "high",
+      "tax_relevant": false,
+      "tax_note": null,
+      "warnings": [],
+      "transcript": null
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 9304,
+      "cache_read_tokens": 8953,
+      "cache_creation_tokens": 1373,
+      "cost_usd": 0.1003266,
+      "duration_ms": 91194,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"3bad1f55ef7d8ef26a3221a53328de2f73027ece848c2f87c2f7e31683e5c663\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:51:58+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"university\",\"sender_name\":\"Beispielwetzlar Graduate School of Engineering\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Application ID\",\"value\":\"GSE-26-7713\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Upload certified bachelor's certificate and final transcript\",\"quote\":\"Please upload a certified copy of your bachelor's certificate and your final transcript to the applicant portal no later than 14 December 2026.\",\"computation\":\"The letter states an explicit calendar date for the deadline: 14 December 2026. No period calculation is needed since the date is given directly. Checking the weekday: 2026-11-24 is a Tuesday; 14 December 2026 is 20 days later (20 mod 7 = 6), so Tuesday + 6 = Monday. 14 December 2026 falls on a Monday, a normal business day, so no weekend/holiday shift applies. Due date: 2026-12-14.\",\"due_date\":\"2026-12-14\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter states the offer automatically lapses if the documents are not uploaded by the stated date, so the applicant should ensure timely upload and keep proof of submission.\"]}",
+    "data": {
+      "kind": "university",
+      "sender_name": "Beispielwetzlar Graduate School of Engineering",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Application ID",
+          "value": "GSE-26-7713"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Upload certified bachelor's certificate and final transcript",
+          "quote": "Please upload a certified copy of your bachelor's certificate and your final transcript to the applicant portal no later than 14 December 2026.",
+          "computation": "The letter states an explicit calendar date for the deadline: 14 December 2026. No period calculation is needed since the date is given directly. Checking the weekday: 2026-11-24 is a Tuesday; 14 December 2026 is 20 days later (20 mod 7 = 6), so Tuesday + 6 = Monday. 14 December 2026 falls on a Monday, a normal business day, so no weekend/holiday shift applies. Due date: 2026-12-14.",
+          "due_date": "2026-12-14",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter states the offer automatically lapses if the documents are not uploaded by the stated date, so the applicant should ensure timely upload and keep proof of submission."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1618,
+      "cache_read_tokens": 7553,
+      "cache_creation_tokens": 2330,
+      "cost_usd": 0.0270186,
+      "duration_ms": 16543,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

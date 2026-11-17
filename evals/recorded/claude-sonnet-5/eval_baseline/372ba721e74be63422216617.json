@@ -1,0 +1,113 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"75147bdd41cae64e181d24488940e23a91fc27ac06610c82f75f8603e9b8dfca\",\"mode\":\"text\",\"region\":\"BY\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-mahnbescheid-2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bayern (BY), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag",
+    "recorded_at": "2026-11-24T12:52:15+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Amtsgericht Beispielcoburg – Mahngericht für Bayern\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Geschäftsnummer\",\"value\":\"26-2208415-1-2\"}],\"amounts\":[249.5,9,36,70.2,364.7],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay the claimed amount (if the debt is accepted)\",\"quote\":\"begleichen Sie die Summe samt laufender Zinsen binnen zwei Wochen seit Zustellung dieses Bescheids direkt bei der Antragstellerin.\",\"computation\":\"The Zustellungsvermerk states personal delivery on Friday 2026-11-20 ('übergeben am 20.11.2026 an den Empfänger persönlich'). This is actual formal service by the court (§ 180 ZPO), so no statutory deemed-delivery fiction applies; the anchor is the stated receipt date itself. Under § 187(1) BGB the day of the event (20.11.) is not counted, so counting starts 21.11.2026. Under § 188(2) BGB a two-week period ends on the day of the second week bearing the same name as the day of the triggering event, i.e. a Friday: 2026-11-20 + 2 weeks = 2026-12-04 (Friday). 2026-12-04 is not a Saturday, Sunday or Bavarian public holiday, so no shift under § 222 ZPO applies. Final day: 2026-12-04.\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":364.7},{\"kind\":\"deadline\",\"title\":\"File Widerspruch with the Mahngericht (if the claim is disputed)\",\"quote\":\"Bestreiten Sie sie ganz oder zum Teil, teilen Sie dem Mahngericht innerhalb derselben Frist mit, dass Sie Widerspruch erheben; verwenden Sie dafür möglichst den beigelegten Vordruck.\",\"computation\":\"The letter sets the same two-week period ('innerhalb derselben Frist') for lodging Widerspruch as for payment, running from the personal delivery on Friday 2026-11-20. Applying § 187(1) BGB (day of delivery excluded, counting starts 2026-11-21) and § 188(2) BGB (period of weeks ends on the matching weekday two weeks later), the period ends Friday 2026-12-04. Not a weekend/holiday in Bayern, so § 222 ZPO causes no shift. The Widerspruch must reach the Mahngericht by this date.\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"This is a Mahnbescheid: the court has not examined the claim ('Das Gericht hat ihren Anspruch nicht geprüft') — it is based solely on the claimant's own statements, so the debt is not yet legally confirmed.\",\"The payment demand includes 'laufende Zinsen' (ongoing interest) in addition to the stated 364,70 EUR total, so the exact amount owed by the deadline may be slightly higher than the printed total.\",\"If neither payment nor Widerspruch is filed in time, the claimant can obtain a Vollstreckungsbescheid (enforcement order) allowing account seizure — verify the underlying gym membership debt before paying or ignoring this.\",\"Double-check the claimant's identity and address (Exempel Fitnesswelt GmbH & Co. KG, represented by Rechtsanwältin Dr. Muster) and that you actually had or still have this gym membership before acting.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Amtsgericht Beispielcoburg – Mahngericht für Bayern",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Geschäftsnummer",
+          "value": "26-2208415-1-2"
+        }
+      ],
+      "amounts": [
+        249.5,
+        9,
+        36,
+        70.2,
+        364.7
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay the claimed amount (if the debt is accepted)",
+          "quote": "begleichen Sie die Summe samt laufender Zinsen binnen zwei Wochen seit Zustellung dieses Bescheids direkt bei der Antragstellerin.",
+          "computation": "The Zustellungsvermerk states personal delivery on Friday 2026-11-20 ('übergeben am 20.11.2026 an den Empfänger persönlich'). This is actual formal service by the court (§ 180 ZPO), so no statutory deemed-delivery fiction applies; the anchor is the stated receipt date itself. Under § 187(1) BGB the day of the event (20.11.) is not counted, so counting starts 21.11.2026. Under § 188(2) BGB a two-week period ends on the day of the second week bearing the same name as the day of the triggering event, i.e. a Friday: 2026-11-20 + 2 weeks = 2026-12-04 (Friday). 2026-12-04 is not a Saturday, Sunday or Bavarian public holiday, so no shift under § 222 ZPO applies. Final day: 2026-12-04.",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": 364.7
+        },
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch with the Mahngericht (if the claim is disputed)",
+          "quote": "Bestreiten Sie sie ganz oder zum Teil, teilen Sie dem Mahngericht innerhalb derselben Frist mit, dass Sie Widerspruch erheben; verwenden Sie dafür möglichst den beigelegten Vordruck.",
+          "computation": "The letter sets the same two-week period ('innerhalb derselben Frist') for lodging Widerspruch as for payment, running from the personal delivery on Friday 2026-11-20. Applying § 187(1) BGB (day of delivery excluded, counting starts 2026-11-21) and § 188(2) BGB (period of weeks ends on the matching weekday two weeks later), the period ends Friday 2026-12-04. Not a weekend/holiday in Bayern, so § 222 ZPO causes no shift. The Widerspruch must reach the Mahngericht by this date.",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "This is a Mahnbescheid: the court has not examined the claim ('Das Gericht hat ihren Anspruch nicht geprüft') — it is based solely on the claimant's own statements, so the debt is not yet legally confirmed.",
+        "The payment demand includes 'laufende Zinsen' (ongoing interest) in addition to the stated 364,70 EUR total, so the exact amount owed by the deadline may be slightly higher than the printed total.",
+        "If neither payment nor Widerspruch is filed in time, the claimant can obtain a Vollstreckungsbescheid (enforcement order) allowing account seizure — verify the underlying gym membership debt before paying or ignoring this.",
+        "Double-check the claimant's identity and address (Exempel Fitnesswelt GmbH & Co. KG, represented by Rechtsanwältin Dr. Muster) and that you actually had or still have this gym membership before acting."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 4915,
+      "cache_read_tokens": 27011,
+      "cache_creation_tokens": 7885,
+      "cost_usd": 0.08610419999999999,
+      "duration_ms": 47751,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "receipt",
+            "anchor_date": "2026-11-20",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§§ 187, 188 BGB; Mahnbescheid Widerspruchsfrist",
+            "text": "begleichen Sie die Summe samt laufender Zinsen binnen zwei Wochen seit Zustellung dieses Bescheids"
+          },
+          "sender_name": "Amtsgericht Beispielcoburg - Mahngericht für Bayern",
+          "sender_kind": "authority",
+          "region": "BY",
+          "recipient_region": "BY",
+          "document_date": "2026-11-18",
+          "remedy_type": "widerspruch"
+        },
+        "result": "{\"due_date\":\"2026-12-04\",\"weekday\":\"Friday\",\"send_by\":\"2026-11-30\",\"summary\":\"Two weeks after delivery on Fri 20 Nov 2026 (as stated on the letter) is Fri 4 Dec 2026.\",\"confidence\":\"medium\",\"warnings\":[\"This is a court deadline. Ordnung's date is information, not legal advice — if you don't owe the money, object in time and get advice (see the card on this letter).\",\"A late objection still counts until the enforcement order is issued (§ 694 ZPO) — but don't rely on that.\"],\"steps\":[{\"label\":\"Counting starts the day after Fri 20 Nov 2026\",\"date\":\"2026-11-20\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 222 Abs. 1 ZPO; § 187 Abs. 1 BGB\"},{\"label\":\"Two weeks later: Fri 4 Dec 2026\",\"date\":\"2026-12-04\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 222 Abs. 1 ZPO; § 188 Abs. 1, 2 BGB\"},{\"label\":\"Fri 4 Dec 2026 is a working day, so it stays\",\"date\":\"2026-12-04\",\"rule_id\":\"zpo_222\",\"citation\":\"§ 222 Abs. 1, 2 ZPO\"},{\"label\":\"Send by Mon 30 Nov 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-11-30\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"zpo_692\",\"title\":\"Court payment order (Mahnbescheid): two weeks to pay or object\",\"citation\":\"§ 692 Abs. 1 Nr. 3 ZPO; § 694 ZPO; § 699 Abs. 1 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/zpo/__692.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"zpo_180\",\"title\":\"Court letters count from delivery (Zustellung)\",\"citation\":\"§ 180 ZPO; § 166 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/zpo/__180.html\"},{\"id\":\"zpo_222\",\"title\":\"Court deadlines: weekend and holiday shift\",\"citation\":\"§ 222 Abs. 1, 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/zpo/__222.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-18\",\"received_date\":\"2026-11-20\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"delivery_law\":\"a court's letter: formal service (§ 180 ZPO), no deemed delivery\",\"holiday_calendar\":\"Bayern\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__german_holidays",
+        "input": {
+          "year": 2026,
+          "region": "BY"
+        },
+        "result": "{\"year\":2026,\"region\":\"BY\",\"calendar\":\"Bayern\",\"holidays\":[{\"date\":\"2026-01-01\",\"weekday\":\"Thursday\",\"name\":\"Neujahr\",\"nationwide\":true},{\"date\":\"2026-01-06\",\"weekday\":\"Tuesday\",\"name\":\"Heilige Drei Könige\",\"nationwide\":false},{\"date\":\"2026-04-03\",\"weekday\":\"Friday\",\"name\":\"Karfreitag\",\"nationwide\":true},{\"date\":\"2026-04-06\",\"weekday\":\"Monday\",\"name\":\"Ostermontag\",\"nationwide\":true},{\"date\":\"2026-05-01\",\"weekday\":\"Friday\",\"name\":\"Erster Mai\",\"nationwide\":true},{\"date\":\"2026-05-14\",\"weekday\":\"Thursday\",\"name\":\"Christi Himmelfahrt\",\"nationwide\":true},{\"date\":\"2026-05-25\",\"weekday\":\"Monday\",\"name\":\"Pfingstmontag\",\"nationwide\":true},{\"date\":\"2026-06-04\",\"weekday\":\"Thursday\",\"name\":\"Fronleichnam\",\"nationwide\":false},{\"date\":\"2026-10-03\",\"weekday\":\"Saturday\",\"name\":\"Tag der Deutschen Einheit\",\"nationwide\":true},{\"date\":\"2026-11-01\",\"weekday\":\"Sunday\",\"name\":\"Allerheiligen\",\"nationwide\":false},{\"date\":\"2026-12-25\",\"weekday\":\"Friday\",\"name\":\"Erster Weihnachtstag\",\"nationwide\":true},{\"date\":\"2026-12-26\",\"weekday\":\"Saturday\",\"name\":\"Zweiter Weihnachtstag\",\"nationwide\":true}],\"note\":\"Only holidays of the whole Land are counted. Left out because they hold only in parts of it: Assumption Day (15 August) in communities with more Catholic than Protestant residents (as the Landesamt für Statistik lists them; Munich among them) and the Augsburg Peace Festival (8 August) in Augsburg. Where one of them applies, a date counted forward can only come out earlier than the real one, but a date counted backwards (a send-by date, negative working days) can come out a day late.\",\"disclaimer\":\"Information, not legal advice: the public holidays in Ordnung's calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer.\"}"
+      }
+    ]
+  }
+}

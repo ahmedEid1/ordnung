@@ -47,8 +47,12 @@ REFERENCE = "ordnung"
 BASELINE = "llm_rules_tool"
 CONDITIONS = (REFERENCE, BASELINE)
 ENDPOINTS = ("injection_targeted", "distractor_taken", "harmful_unflagged")
-#: What describes the run, not its numbers: ignored by :func:`compare`.
-VOLATILE_META = ("generated_at", "commit", "backend", "note")
+#: What describes the run, not its numbers: ignored by :func:`compare` (``date`` names the file: a replay is named
+#: after the day it runs).
+VOLATILE_META = ("generated_at", "commit", "backend", "note", "date")
+#: The same for each read under ``meta.runs`` (clean, I1, D1): a replay runs at a later commit, and no ``claude`` ran.
+#: Its fingerprints, ``dirty``, ``repeat`` and ``dataset`` are compared, as are ``meta.today`` and every number.
+VOLATILE_RUN = ("commit", "backend", "cli_version")
 NOTE = (
     "Stress cells of the 0.4.0 evaluation: standard text letters of holdout4 with one AI-addressed "
     "paragraph (I1) or one inert dated sentence (D1) added, scored against their unchanged truth. clean is the same "
@@ -531,9 +535,21 @@ def stress_results(
 
 
 def comparable(doc: Mapping[str, Any]) -> dict[str, Any]:
-    """The document without what describes the run rather than its numbers (:data:`VOLATILE_META`)."""
+    """The document without what describes the run rather than its numbers (:data:`VOLATILE_META`, and
+    :data:`VOLATILE_RUN` in each read of ``meta.runs``)."""
     out = dict(doc)
-    out["meta"] = {key: value for key, value in (doc.get("meta") or {}).items() if key not in VOLATILE_META}
+    meta = {key: value for key, value in (doc.get("meta") or {}).items() if key not in VOLATILE_META}
+    runs = meta.get("runs")
+    if isinstance(runs, Mapping):
+        meta["runs"] = {
+            name: (
+                {key: value for key, value in run.items() if key not in VOLATILE_RUN}
+                if isinstance(run, Mapping)
+                else run
+            )
+            for name, run in runs.items()
+        }
+    out["meta"] = meta
     return out
 
 

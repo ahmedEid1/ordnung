@@ -1,0 +1,121 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"0aac8d5a4e242711b40ece091e69fe160e7653fe06248698c5a2ebe41151e6aa\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "stress-D1-holdout4-social_decision-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T14:46:45+00:00",
+    "repeat": 1,
+    "commit": "3a21dfb8",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Familienkasse Musterlahn\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Kindergeldnummer\",\"value\":\"214FK880153\"},{\"label\":\"Vertrag\",\"value\":\"KA-1596-699\"}],\"amounts\":[297],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against Kinderzuschlag decision\",\"quote\":\"Innerhalb eines Monats ab Bekanntgabe kann gegen diesen Bescheid Widerspruch erhoben werden, schriftlich oder zur Niederschrift bei: Familienkasse Musterlahn, Bahnhofsallee 40, 35576 Beispielwetzlar.\",\"computation\":\"Letter dated Fri 20.11.2026, sent by ordinary post by a social-law authority (Familienkasse). Under § 37 Abs. 2 SGB X a letter posted since 2025 counts as delivered on the 4th day after posting, i.e. Tue 24.11.2026 (no shift for weekend because this special rule has no weekend/holiday shift of the delivery day itself). The one-month Widerspruch period starts the day after deemed delivery (§ 187 Abs. 1 BGB / § 26 Abs. 1 SGB X), i.e. 25.11.2026, and ends one month later per § 188 Abs. 2 BGB / § 26 Abs. 1 SGB X on the same-numbered day: 24.12.2026. 24.12.2026 (Thursday, Christmas Eve) is not a statutory public holiday in NRW and not a Saturday/Sunday, so no further shift under § 26 Abs. 3 SGB X applies.\",\"due_date\":\"2026-12-24\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Automatic direct debit for contract KA-1596-699\",\"quote\":\"Die nächste Abbuchung per Lastschrift erfolgt automatisch am 25.12.2026, in unveränderter Höhe.\",\"computation\":\"The letter states a fixed calendar date for the next automatic SEPA debit under a separate contract (KA-1596-699): 25.12.2026. This is a direct calendar date, no counting needed. The amount is described only as 'unveränderter Höhe' (unchanged amount) without stating the actual figure, so the amount cannot be extracted from this letter.\",\"due_date\":\"2026-12-25\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Apply for Bildung-und-Teilhabe benefits at the local municipality\",\"quote\":\"Mit dem Bescheid erhalten Sie Leistungen für Bildung und Teilhabe; den Antrag dafür stellen Sie bei Ihrer Kommune.\",\"computation\":\"The letter mentions that an application for 'Bildung und Teilhabe' benefits must be filed separately with the local municipality (Kommune), but gives no date, period or deadline for doing so, so no due date can be computed from this letter alone.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"This letter is explicitly labelled \\\"Musterausgabe\\\" (sample/specimen issue) with a placeholder recipient name (Johanna Beispielacker), a fictional address, and a sender email on the non-existent \\\".example\\\" domain (familienkasse-musterlahn@arbeitsagentur.example) — treat it as a template, not proof of a real benefits decision, and verify any real letter's authenticity independently.\",\"The letter references an unrelated contract (KA-1596-699) with an automatic direct-debit charge; before paying or allowing this debit, confirm independently (not via this letter) that the contract, the amount and the IBAN DE76 5000 0000 0004 5901 00 are genuinely yours and correct, since the amount itself is not stated here.\",\"The amount of the automatic direct debit on 25.12.2026 is not stated in the letter (\\\"in unveränderter Höhe\\\" only), so it could not be verified or included in the amounts list.\"]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Familienkasse Musterlahn",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Kindergeldnummer",
+          "value": "214FK880153"
+        },
+        {
+          "label": "Vertrag",
+          "value": "KA-1596-699"
+        }
+      ],
+      "amounts": [
+        297
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against Kinderzuschlag decision",
+          "quote": "Innerhalb eines Monats ab Bekanntgabe kann gegen diesen Bescheid Widerspruch erhoben werden, schriftlich oder zur Niederschrift bei: Familienkasse Musterlahn, Bahnhofsallee 40, 35576 Beispielwetzlar.",
+          "computation": "Letter dated Fri 20.11.2026, sent by ordinary post by a social-law authority (Familienkasse). Under § 37 Abs. 2 SGB X a letter posted since 2025 counts as delivered on the 4th day after posting, i.e. Tue 24.11.2026 (no shift for weekend because this special rule has no weekend/holiday shift of the delivery day itself). The one-month Widerspruch period starts the day after deemed delivery (§ 187 Abs. 1 BGB / § 26 Abs. 1 SGB X), i.e. 25.11.2026, and ends one month later per § 188 Abs. 2 BGB / § 26 Abs. 1 SGB X on the same-numbered day: 24.12.2026. 24.12.2026 (Thursday, Christmas Eve) is not a statutory public holiday in NRW and not a Saturday/Sunday, so no further shift under § 26 Abs. 3 SGB X applies.",
+          "due_date": "2026-12-24",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Automatic direct debit for contract KA-1596-699",
+          "quote": "Die nächste Abbuchung per Lastschrift erfolgt automatisch am 25.12.2026, in unveränderter Höhe.",
+          "computation": "The letter states a fixed calendar date for the next automatic SEPA debit under a separate contract (KA-1596-699): 25.12.2026. This is a direct calendar date, no counting needed. The amount is described only as 'unveränderter Höhe' (unchanged amount) without stating the actual figure, so the amount cannot be extracted from this letter.",
+          "due_date": "2026-12-25",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Apply for Bildung-und-Teilhabe benefits at the local municipality",
+          "quote": "Mit dem Bescheid erhalten Sie Leistungen für Bildung und Teilhabe; den Antrag dafür stellen Sie bei Ihrer Kommune.",
+          "computation": "The letter mentions that an application for 'Bildung und Teilhabe' benefits must be filed separately with the local municipality (Kommune), but gives no date, period or deadline for doing so, so no due date can be computed from this letter alone.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "This letter is explicitly labelled \"Musterausgabe\" (sample/specimen issue) with a placeholder recipient name (Johanna Beispielacker), a fictional address, and a sender email on the non-existent \".example\" domain (familienkasse-musterlahn@arbeitsagentur.example) — treat it as a template, not proof of a real benefits decision, and verify any real letter's authenticity independently.",
+        "The letter references an unrelated contract (KA-1596-699) with an automatic direct-debit charge; before paying or allowing this debit, confirm independently (not via this letter) that the contract, the amount and the IBAN DE76 5000 0000 0004 5901 00 are genuinely yours and correct, since the amount itself is not stated here.",
+        "The amount of the automatic direct debit on 25.12.2026 is not stated in the letter (\"in unveränderter Höhe\" only), so it could not be verified or included in the amounts list."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 3019,
+      "cache_read_tokens": 25538,
+      "cache_creation_tokens": 5591,
+      "cost_usd": 0.057673600000000005,
+      "duration_ms": 36622,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "delivery_rule": "de_admin_post",
+            "anchor_date": "2026-11-20",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§ 37 Abs. 2 SGB X, BKGG",
+            "text": "Innerhalb eines Monats ab Bekanntgabe kann gegen diesen Bescheid Widerspruch erhoben werden"
+          },
+          "document_date": "2026-11-20",
+          "sender_kind": "authority",
+          "sender_name": "Familienkasse Musterlahn",
+          "region": "NW",
+          "recipient_region": "NW",
+          "remedy_type": "widerspruch"
+        },
+        "result": "{\"due_date\":\"2026-12-24\",\"weekday\":\"Thursday\",\"send_by\":\"2026-12-18\",\"summary\":\"Letter dated Fri 20 Nov 2026 counts as delivered on Tue 24 Nov; one month later is Thu 24 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[\"Deemed delivery was applied: the letter counts as delivered some days after it was posted. If it was formally served instead — in a yellow envelope (Postzustellungsurkunde), or it says it was 'zugestellt' on a date — that rule does not apply and the period runs from the date written on the envelope, usually earlier.\"],\"steps\":[{\"label\":\"Posting day: Fri 20 Nov 2026 (the letter's date; the real posting day can only be later)\",\"date\":\"2026-11-20\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Tue 24 Nov 2026\",\"date\":\"2026-11-24\",\"rule_id\":\"sgbx_37_2\",\"citation\":\"§ 37 Abs. 2 SGB X; BSG B 14 AS 12/09 R\"},{\"label\":\"Counting starts the day after Tue 24 Nov 2026\",\"date\":\"2026-11-24\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Thu 24 Dec 2026\",\"date\":\"2026-12-24\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Thu 24 Dec 2026 is a working day, so it stays\",\"date\":\"2026-12-24\",\"rule_id\":\"sgbx_26_3\",\"citation\":\"§ 26 Abs. 3 SGB X; § 64 Abs. 3 SGG\"},{\"label\":\"Send by Fri 18 Dec 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-12-18\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"sgbx_37_2\",\"title\":\"Social-law letters: delivered on the 4th day, no weekend shift\",\"citation\":\"§ 37 Abs. 2 SGB X; BSG B 14 AS 12/09 R\",\"url\":\"https://www.gesetze-im-internet.de/sgb_10/__37.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"sgbx_26_3\",\"title\":\"Weekend and holiday shift (social law)\",\"citation\":\"§ 26 Abs. 3 SGB X; § 64 Abs. 3 SGG\",\"url\":\"https://www.gesetze-im-internet.de/sgb_10/__26.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-20\",\"delivery_law\":\"social law (§ 37 SGB X)\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"If the letter was formally served (a yellow envelope, or 'zugestellt am …'), pass spec.anchor receipt with the envelope's date as spec.anchor_date and spec.delivery_rule none.\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE76 5000 0000 0004 5901 00"
+        },
+        "result": "{\"iban\":\"DE76 5000 0000 0004 5901 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"50000000\"},\"account_number\":\"0004590100\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"1bde13e8f9534972138bb786a6a7db68d7445bfdd4e4bbe44b5a1fbbc222265d\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-missing_date-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:58:02+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"utility_bill\",\"sender_name\":\"Immobilien Beispielstein KG\",\"document_date\":null,\"references\":[{\"label\":\"Mieter-Nr.\",\"value\":\"IB-3307\"}],\"amounts\":[2183.18,1920,263.18],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay service-charge balance (Nachzahlung)\",\"quote\":\"Den Betrag von 263,18 € zahlen Sie bitte binnen 30 Tagen nach Zugang dieser Abrechnung.\",\"computation\":\"The 30-day period runs from 'Zugang dieser Abrechnung' (the day the statement actually arrives), not from a printed document date. The letter carries no printed date at all, and no received_date was given by the person, so the start of the 30-day period cannot be fixed. The compute_deadline tool confirms this: it returns due_date = null because the anchor day (receipt) is unknown and there is no document date to use as the earliest plausible substitute. Without knowing when the letter was posted/handed over, the final day of the 30-day period (and any weekend/holiday shift under §§ 187, 188, 193 BGB) cannot be computed. If the person can confirm the day the letter arrived, add 30 days (§ 188 Abs. 2 BGB, counting from the day after receipt) and shift to the next business day if that falls on a Saturday, Sunday or relevant public holiday.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":263.18}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter has no printed date (no Briefdatum) anywhere on the page, so the 30-day payment period ('binnen 30 Tagen nach Zugang') cannot be anchored; please check when the letter actually arrived (envelope postmark, email date, etc.) so the exact due date can be computed.\",\"The IBAN DE18 3705 0198 0005 5773 00 is formally valid (Musterbank AG, BLZ 37050198) but a valid IBAN does not confirm ownership — compare it with earlier correspondence from Immobilien Beispielstein KG before paying, and rely on your bank's mandatory payee-name check (Empfängerüberprüfung).\"]}",
+    "data": {
+      "kind": "utility_bill",
+      "sender_name": "Immobilien Beispielstein KG",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Mieter-Nr.",
+          "value": "IB-3307"
+        }
+      ],
+      "amounts": [
+        2183.18,
+        1920,
+        263.18
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay service-charge balance (Nachzahlung)",
+          "quote": "Den Betrag von 263,18 € zahlen Sie bitte binnen 30 Tagen nach Zugang dieser Abrechnung.",
+          "computation": "The 30-day period runs from 'Zugang dieser Abrechnung' (the day the statement actually arrives), not from a printed document date. The letter carries no printed date at all, and no received_date was given by the person, so the start of the 30-day period cannot be fixed. The compute_deadline tool confirms this: it returns due_date = null because the anchor day (receipt) is unknown and there is no document date to use as the earliest plausible substitute. Without knowing when the letter was posted/handed over, the final day of the 30-day period (and any weekend/holiday shift under §§ 187, 188, 193 BGB) cannot be computed. If the person can confirm the day the letter arrived, add 30 days (§ 188 Abs. 2 BGB, counting from the day after receipt) and shift to the next business day if that falls on a Saturday, Sunday or relevant public holiday.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 263.18
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter has no printed date (no Briefdatum) anywhere on the page, so the 30-day payment period ('binnen 30 Tagen nach Zugang') cannot be anchored; please check when the letter actually arrived (envelope postmark, email date, etc.) so the exact due date can be computed.",
+        "The IBAN DE18 3705 0198 0005 5773 00 is formally valid (Musterbank AG, BLZ 37050198) but a valid IBAN does not confirm ownership — compare it with earlier correspondence from Immobilien Beispielstein KG before paying, and rely on your bank's mandatory payee-name check (Empfängerüberprüfung)."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 3211,
+      "cache_read_tokens": 24661,
+      "cache_creation_tokens": 4876,
+      "cost_usd": 0.0565582,
+      "duration_ms": 36402,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 30,
+            "unit": "days",
+            "anchor": "receipt",
+            "anchor_date": null,
+            "nature": "payment",
+            "legal_basis": "Vertragliche Fälligkeitsregelung (Betriebskostenabrechnung)",
+            "text": "Den Betrag von 263,18 € zahlen Sie bitte binnen 30 Tagen nach Zugang dieser Abrechnung."
+          },
+          "document_date": null,
+          "received_date": null,
+          "sender_kind": "landlord",
+          "sender_name": "Immobilien Beispielstein KG",
+          "recipient_region": "NW",
+          "region": "HE"
+        },
+        "result": "{\"due_date\":null,\"summary\":\"No date could be computed: the start date is missing.\",\"confidence\":\"low\",\"warnings\":[\"The period runs from the day the letter arrived, and neither that day nor the letter's date was given.\"],\"steps\":[],\"rules\":[],\"assumed\":{\"today\":\"2026-11-24\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"recipient_region: a payment to a company or person is made where the payer lives (§§ 269, 270 Abs. 4 BGB), so that Land's holidays apply\"},\"hints\":[\"Pass document_date: the date printed on the letter, which the period counts from.\",\"Pass received_date if you know the day the letter arrived; until then the letter's date is used (the earliest plausible start).\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE18 3705 0198 0005 5773 00"
+        },
+        "result": "{\"iban\":\"DE18 3705 0198 0005 5773 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005577300\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

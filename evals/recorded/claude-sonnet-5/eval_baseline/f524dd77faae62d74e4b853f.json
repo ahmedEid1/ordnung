@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"c5b7546dc4169ef933bc8da745f7752df908754f2c264892affe10f5e305b072\",\"mode\":\"text\",\"region\":\"RP\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-social_decision-N2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Rheinland-Pfalz (RP), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docu",
+    "recorded_at": "2026-11-24T12:06:45+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Kreisverwaltung Beispiel-Westerwald – Sozialamt – Grundsicherung im Alter\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"50.2-GS-3318\"}],\"amounts\":[412.64,768.36],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the Grundsicherung decision\",\"quote\":\"Die Frist dafür beträgt einen Monat ab Bekanntgabe; der Widerspruch ist schriftlich oder zur Niederschrift bei Kreisverwaltung Beispiel-Westerwald, Peter-Altmeier-Platz 2, 56410 Musterbaur einzulegen.\",\"computation\":\"Letter is dated 20.11.2026 (Friday) and sent as 'einfacher Brief'. The letter itself states the deemed-delivery (Bekanntgabe) rule: 'Bekannt gegeben ist ein Bescheid, den wir mit einfachem Brief schicken, am vierten Tag nach dem Versand (§ 37 Abs. 2 SGB X).' Counting the 4th day after dispatch (20.11.): 21.11.=1, 22.11.=2, 23.11.=3, 24.11.=4 -> Bekanntgabe = 24.11.2026 (Tuesday, a normal working day in RP, so no shift needed). The one-month Widerspruchsfrist runs per §187 Abs.1, §188 Abs.2 BGB: the event day (24.11.2026) is not counted (§187 Abs.1 BGB), the period starts 25.11.2026, and a month-long period ends on the day of the following month that numerically matches the event day, i.e. 24.12.2026. 24.12.2026 is a Thursday and not a statutory public holiday in Rheinland-Pfalz (Heiligabend is not a legal holiday), so the deadline is not shifted.\",\"due_date\":\"2026-12-24\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Kreisverwaltung Beispiel-Westerwald – Sozialamt – Grundsicherung im Alter",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "50.2-GS-3318"
+        }
+      ],
+      "amounts": [
+        412.64,
+        768.36
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the Grundsicherung decision",
+          "quote": "Die Frist dafür beträgt einen Monat ab Bekanntgabe; der Widerspruch ist schriftlich oder zur Niederschrift bei Kreisverwaltung Beispiel-Westerwald, Peter-Altmeier-Platz 2, 56410 Musterbaur einzulegen.",
+          "computation": "Letter is dated 20.11.2026 (Friday) and sent as 'einfacher Brief'. The letter itself states the deemed-delivery (Bekanntgabe) rule: 'Bekannt gegeben ist ein Bescheid, den wir mit einfachem Brief schicken, am vierten Tag nach dem Versand (§ 37 Abs. 2 SGB X).' Counting the 4th day after dispatch (20.11.): 21.11.=1, 22.11.=2, 23.11.=3, 24.11.=4 -> Bekanntgabe = 24.11.2026 (Tuesday, a normal working day in RP, so no shift needed). The one-month Widerspruchsfrist runs per §187 Abs.1, §188 Abs.2 BGB: the event day (24.11.2026) is not counted (§187 Abs.1 BGB), the period starts 25.11.2026, and a month-long period ends on the day of the following month that numerically matches the event day, i.e. 24.12.2026. 24.12.2026 is a Thursday and not a statutory public holiday in Rheinland-Pfalz (Heiligabend is not a legal holiday), so the deadline is not shifted.",
+          "due_date": "2026-12-24",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2550,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1920,
+      "cost_usd": 0.0338084,
+      "duration_ms": 27259,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

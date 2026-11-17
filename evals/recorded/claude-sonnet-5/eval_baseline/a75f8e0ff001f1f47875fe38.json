@@ -1,0 +1,83 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"f49007b8bf05333ed06f2714ab06d680f7d7b2a8014fa0c747156f25419b9359\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-fine_bussgeld-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:22:46+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Stadt Musterquellen – Bußgeldstelle\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"OA-VÜ 26.501234\"},{\"label\":\"Kennzeichen\",\"value\":\"MQ-BQ 207\"}],\"amounts\":[55,28.5,3.5,87],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the Bußgeldbescheid\",\"quote\":\"Gegen diesen Bescheid können Sie innerhalb von zwei Wochen ab seiner Zustellung Einspruch einlegen, schriftlich oder zur Niederschrift bei der Stadt Musterquellen – Bußgeldstelle.\",\"computation\":\"This is a formally served notice (Postzustellungsurkunde, § 182 ZPO); the handwritten note on the returned envelope copy states the delivery date as 21.11.2026 (a Saturday) – that date counts as delivery, with no days added. The two-week objection period (§ 67 OWiG, counted like § 43 StPO/§§ 187,188 BGB): the delivery day itself is not counted; a period of weeks ends on the same weekday n weeks later, so two weeks after Sat 21.11.2026 is Sat 05.12.2026. Since the last day is a Saturday, the deadline moves to the next working day (§ 43 Abs. 2 StPO/§ 193 BGB analogue): Sun 06.12.2026 is also non-working, so the deadline falls on Mon 07.12.2026. No regional public holiday falls in this window in NW (person's Land, used as no other Land is proven for the office).\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine once the notice becomes final\",\"quote\":\"Zahlen Sie erst, wenn dieser Bescheid rechtskräftig geworden ist, und dann binnen zwei Wochen auf das Konto DE29 5135 0025 0002 1403 00.\",\"computation\":\"Payment is explicitly conditional: it is only due once the Bescheid becomes rechtskräftig (final), i.e. only if no Einspruch is filed by the 07.12.2026 deadline computed above. Assuming no objection is lodged, the notice becomes final the day after that deadline expires, Tue 08.12.2026. From there 'binnen zwei Wochen': the start day is not counted, and the two-week period ends on the same weekday two weeks later, i.e. Tue 22.12.2026, which is a regular working day (no NW/HE holiday on that date), so no further shift is needed.\",\"due_date\":\"2026-12-22\",\"confidence\":\"medium\",\"amount\":87}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment deadline is conditional on the fine notice actually becoming final (no successful/filed Einspruch); if an Einspruch is filed by 2026-12-07, the payment obligation and its 2-week clock do not start on the assumed date, so treat 2026-12-22 as provisional.\",\"The sender's contact email domain ('stadt-musterquellen-bußgelds.example') looks irregular for an official authority mailbox — the recipient should verify the sender's genuine contact details before paying or corresponding, rather than relying solely on this letter.\",\"The office's postal code (35573) and the recipient's postal code (35576) correspond to the real Wetzlar area in Hesse, not Nordrhein-Westfalen; this did not change any computed date in this case, but it should be checked if other NW-specific holidays were relevant.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Stadt Musterquellen – Bußgeldstelle",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "OA-VÜ 26.501234"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "MQ-BQ 207"
+        }
+      ],
+      "amounts": [
+        55,
+        28.5,
+        3.5,
+        87
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the Bußgeldbescheid",
+          "quote": "Gegen diesen Bescheid können Sie innerhalb von zwei Wochen ab seiner Zustellung Einspruch einlegen, schriftlich oder zur Niederschrift bei der Stadt Musterquellen – Bußgeldstelle.",
+          "computation": "This is a formally served notice (Postzustellungsurkunde, § 182 ZPO); the handwritten note on the returned envelope copy states the delivery date as 21.11.2026 (a Saturday) – that date counts as delivery, with no days added. The two-week objection period (§ 67 OWiG, counted like § 43 StPO/§§ 187,188 BGB): the delivery day itself is not counted; a period of weeks ends on the same weekday n weeks later, so two weeks after Sat 21.11.2026 is Sat 05.12.2026. Since the last day is a Saturday, the deadline moves to the next working day (§ 43 Abs. 2 StPO/§ 193 BGB analogue): Sun 06.12.2026 is also non-working, so the deadline falls on Mon 07.12.2026. No regional public holiday falls in this window in NW (person's Land, used as no other Land is proven for the office).",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine once the notice becomes final",
+          "quote": "Zahlen Sie erst, wenn dieser Bescheid rechtskräftig geworden ist, und dann binnen zwei Wochen auf das Konto DE29 5135 0025 0002 1403 00.",
+          "computation": "Payment is explicitly conditional: it is only due once the Bescheid becomes rechtskräftig (final), i.e. only if no Einspruch is filed by the 07.12.2026 deadline computed above. Assuming no objection is lodged, the notice becomes final the day after that deadline expires, Tue 08.12.2026. From there 'binnen zwei Wochen': the start day is not counted, and the two-week period ends on the same weekday two weeks later, i.e. Tue 22.12.2026, which is a regular working day (no NW/HE holiday on that date), so no further shift is needed.",
+          "due_date": "2026-12-22",
+          "confidence": "medium",
+          "amount": 87
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment deadline is conditional on the fine notice actually becoming final (no successful/filed Einspruch); if an Einspruch is filed by 2026-12-07, the payment obligation and its 2-week clock do not start on the assumed date, so treat 2026-12-22 as provisional.",
+        "The sender's contact email domain ('stadt-musterquellen-bußgelds.example') looks irregular for an official authority mailbox — the recipient should verify the sender's genuine contact details before paying or corresponding, rather than relying solely on this letter.",
+        "The office's postal code (35573) and the recipient's postal code (35576) correspond to the real Wetzlar area in Hesse, not Nordrhein-Westfalen; this did not change any computed date in this case, but it should be checked if other NW-specific holidays were relevant."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 5361,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2177,
+      "cost_usd": 0.06342800000000001,
+      "duration_ms": 54362,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

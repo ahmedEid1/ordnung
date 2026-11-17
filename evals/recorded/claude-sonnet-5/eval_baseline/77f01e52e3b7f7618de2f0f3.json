@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"e35449a2a61667a257d81a8eb999b97e883f7a340b3ab12c8d148af6e2046b22\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-contract_confirmation-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:14:33+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract\",\"sender_name\":\"Glasfaser Beispielland GmbH\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"GL-5 501 873\"}],\"amounts\":[39.9],\"items\":[{\"kind\":\"milestone\",\"title\":\"Fiber connection activation / contract start\",\"quote\":\"Ihr Anschluss im Quellenweg 7 wird am 03.12.2026 freigeschaltet; ab diesem Tag läuft Ihr Vertrag.\",\"computation\":\"The letter states a fixed calendar date for activation (Bereitstellung) of the connection, which is also the day the contract term begins: 03.12.2026. No weekend/holiday adjustment applies since this is a provider-set service date, not a statutory deadline.\",\"due_date\":\"2026-12-03\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":{\"current_term_end\":\"2027-12-02\",\"cancel_by\":\"2027-11-02\"},\"warnings\":[\"This is an order confirmation starting a new 12-month minimum-term contract (Mindestlaufzeit 12 Monate ab Bereitstellung 03.12.2026), so the current term runs to 02.12.2027 and, with the stated 1-month notice period 'zum Ende der Mindestlaufzeit', a cancellation must reach the provider by 02.11.2027 to avoid automatic monthly renewal.\"]}",
+    "data": {
+      "kind": "contract",
+      "sender_name": "Glasfaser Beispielland GmbH",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "GL-5 501 873"
+        }
+      ],
+      "amounts": [
+        39.9
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "Fiber connection activation / contract start",
+          "quote": "Ihr Anschluss im Quellenweg 7 wird am 03.12.2026 freigeschaltet; ab diesem Tag läuft Ihr Vertrag.",
+          "computation": "The letter states a fixed calendar date for activation (Bereitstellung) of the connection, which is also the day the contract term begins: 03.12.2026. No weekend/holiday adjustment applies since this is a provider-set service date, not a statutory deadline.",
+          "due_date": "2026-12-03",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": {
+        "current_term_end": "2027-12-02",
+        "cancel_by": "2027-11-02"
+      },
+      "warnings": [
+        "This is an order confirmation starting a new 12-month minimum-term contract (Mindestlaufzeit 12 Monate ab Bereitstellung 03.12.2026), so the current term runs to 02.12.2027 and, with the stated 1-month notice period 'zum Ende der Mindestlaufzeit', a cancellation must reach the provider by 02.11.2027 to avoid automatic monthly renewal."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3409,
+      "cache_read_tokens": 14673,
+      "cache_creation_tokens": 4518,
+      "cost_usd": 0.055104600000000004,
+      "duration_ms": 35124,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

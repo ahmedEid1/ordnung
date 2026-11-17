@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"943e82b648fa69277110414b1b760c4c886d89b2c73e945c96d2dfd9ee9cc7c1\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-invoice_relative-L2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:40:58+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Klavierbau Muster & Söhne\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Rechnung Nr.\",\"value\":\"KB 26-517\"}],\"amounts\":[346.29],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay piano service invoice\",\"quote\":\"Wir bitten Sie, die Rechnung binnen 20 Tagen ab Rechnungsdatum zu bezahlen.\",\"computation\":\"Period 'binnen 20 Tagen ab Rechnungsdatum' runs from the invoice date 19.11.2026. Under § 187(1) BGB, since the period starts from an event (the invoice date), that day itself is not counted; counting begins on 20.11.2026. Adding 20 days from 19.11.2026: Nov has 30 days, so 11 days remain in November (20.11.–30.11.) and the remaining 9 days fall in December, landing on 09.12.2026. Checked weekday: 09.12.2026 is a Wednesday (24.11.2026 is Tuesday, so 24.11 Tue → 09.12 is 15 days later → Wed), so no weekend/holiday shift under § 193 BGB is needed.\",\"due_date\":\"2026-12-09\",\"confidence\":\"high\",\"amount\":346.29}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The customer address block shows an unexplained stray number '4471' between the street line and the postal code/city line ('Ackerstraße 26   4471' / '48143 Mustermünster'); this looks like a formatting artifact and should be checked but does not appear to be a scam indicator.\",\"This is a private craftsman's invoice with no legal-remedy instructions (Rechtsbehelfsbelehrung), which is normal for such invoices; it is not a tax or administrative decision.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Klavierbau Muster & Söhne",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Rechnung Nr.",
+          "value": "KB 26-517"
+        }
+      ],
+      "amounts": [
+        346.29
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay piano service invoice",
+          "quote": "Wir bitten Sie, die Rechnung binnen 20 Tagen ab Rechnungsdatum zu bezahlen.",
+          "computation": "Period 'binnen 20 Tagen ab Rechnungsdatum' runs from the invoice date 19.11.2026. Under § 187(1) BGB, since the period starts from an event (the invoice date), that day itself is not counted; counting begins on 20.11.2026. Adding 20 days from 19.11.2026: Nov has 30 days, so 11 days remain in November (20.11.–30.11.) and the remaining 9 days fall in December, landing on 09.12.2026. Checked weekday: 09.12.2026 is a Wednesday (24.11.2026 is Tuesday, so 24.11 Tue → 09.12 is 15 days later → Wed), so no weekend/holiday shift under § 193 BGB is needed.",
+          "due_date": "2026-12-09",
+          "confidence": "high",
+          "amount": 346.29
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The customer address block shows an unexplained stray number '4471' between the street line and the postal code/city line ('Ackerstraße 26   4471' / '48143 Mustermünster'); this looks like a formatting artifact and should be checked but does not appear to be a scam indicator.",
+        "This is a private craftsman's invoice with no legal-remedy instructions (Rechtsbehelfsbelehrung), which is normal for such invoices; it is not a tax or administrative decision."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1910,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1475,
+      "cost_usd": 0.0256284,
+      "duration_ms": 20013,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

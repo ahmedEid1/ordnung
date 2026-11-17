@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"07a9ccbd2258f4dc052bae9a2033cbbbe73f4e2fdb560e000bd8ff0587e1f25b\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-missing_date-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:32:42+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[240],\"contract\":null,\"document_date\":null,\"kind\":\"rent_lease\",\"sender_name\":\"Beispielkey Lettings GmbH\",\"remedy_type\":\"none\",\"references\":[{\"label\":\"Tenancy\",\"value\":\"BKL-0418\"}],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay for professional cleaning of kitchen and bathroom\",\"quote\":\"Please pay this amount within 14 days of receiving this letter.\",\"computation\":\"This is a private letter from a letting company, not an administrative act, so the statutory 3-day delivery fiction of § 122 AO / VwZG does not apply; instead ordinary § 130 BGB rules apply, under which the period starts on the actual day of receipt. The letter itself carries no printed date and no postmark/delivery date is given anywhere in the text, so the start of the 14-day period cannot be established. Without a start date, the 14-day deadline (which, once a start date is known, would run under §§ 187 Abs. 1, 188 Abs. 2 BGB as a period in days and be pushed to the next business day under § 193 BGB if it fell on a Saturday, Sunday or NW public holiday) cannot be computed.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":240}],\"warnings\":[\"The letter has no document date and does not state when it was sent or delivered, so the 14-day payment deadline (\\\"within 14 days of receiving this letter\\\") cannot be computed exactly; the actual receipt date should be checked (e.g. via envelope postmark) to fix the real due date.\",\"Double-check that the IBAN given (DE95 3705 0198 0005 5505 00, Musterbank AG) matches the landlord's/agency's known bank details before paying, as a general precaution against fraudulent payment instructions.\",\"The letter links the return of the deposit to this payment ('Your deposit will be returned in full once the payment has arrived.'); under German tenancy law the landlord's deposit settlement/return obligation is independent of this cleaning claim and withholding it entirely pending payment may not be fully justified — the tenant may want to clarify or seek advice if the amount or the cleaning charge itself is disputed.\"]}",
+    "data": {
+      "amounts": [
+        240
+      ],
+      "contract": null,
+      "document_date": null,
+      "kind": "rent_lease",
+      "sender_name": "Beispielkey Lettings GmbH",
+      "remedy_type": "none",
+      "references": [
+        {
+          "label": "Tenancy",
+          "value": "BKL-0418"
+        }
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay for professional cleaning of kitchen and bathroom",
+          "quote": "Please pay this amount within 14 days of receiving this letter.",
+          "computation": "This is a private letter from a letting company, not an administrative act, so the statutory 3-day delivery fiction of § 122 AO / VwZG does not apply; instead ordinary § 130 BGB rules apply, under which the period starts on the actual day of receipt. The letter itself carries no printed date and no postmark/delivery date is given anywhere in the text, so the start of the 14-day period cannot be established. Without a start date, the 14-day deadline (which, once a start date is known, would run under §§ 187 Abs. 1, 188 Abs. 2 BGB as a period in days and be pushed to the next business day under § 193 BGB if it fell on a Saturday, Sunday or NW public holiday) cannot be computed.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 240
+        }
+      ],
+      "warnings": [
+        "The letter has no document date and does not state when it was sent or delivered, so the 14-day payment deadline (\"within 14 days of receiving this letter\") cannot be computed exactly; the actual receipt date should be checked (e.g. via envelope postmark) to fix the real due date.",
+        "Double-check that the IBAN given (DE95 3705 0198 0005 5505 00, Musterbank AG) matches the landlord's/agency's known bank details before paying, as a general precaution against fraudulent payment instructions.",
+        "The letter links the return of the deposit to this payment ('Your deposit will be returned in full once the payment has arrived.'); under German tenancy law the landlord's deposit settlement/return obligation is independent of this cleaning claim and withholding it entirely pending payment may not be fully justified — the tenant may want to clarify or seek advice if the amount or the cleaning charge itself is disputed."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1808,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1346,
+      "cost_usd": 0.0240924,
+      "duration_ms": 22787,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"fb67b7d076a9654ee4eb17da2a898796d2f273c04b95281302673ec24264d740\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-price_increase-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:56:13+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Beispielfunk Mobile GmbH\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"BF-7 220 418\"},{\"label\":\"Rufnummer\",\"value\":\"0160 555 41 27\"}],\"amounts\":[14.99,16.99],\"items\":[{\"kind\":\"deadline\",\"title\":\"Special right to cancel contract due to unfavourable price increase\",\"quote\":\"Für diese Kündigung haben Sie drei Monate Zeit, gerechnet ab dem Zugang dieser Mitteilung; wirksam wird sie frühestens an dem Tag, an dem der neue Preis gilt.\",\"computation\":\"The letter is from a private company (Beispielfunk Mobile GmbH), so the statutory deemed-delivery rules for authorities (4/3 days) do not apply; access ('Zugang') depends on when the letter actually arrived, which is not stated. Taking the earliest plausible reading, i.e. that access occurred on the document date itself (21.11.2026, a Saturday), the 3-month period starts the next day under § 187 Abs. 1 BGB (22.11.2026) and ends under § 188 Abs. 2 BGB on the day in the third following month that numerically corresponds to the start day: 21.02.2027. That day is a Sunday; under the case law on notice/termination periods (BGH III ZR 172/04) such deadlines do NOT shift to the next business day the way § 193 BGB shifts other deadlines, so the cancellation letter must physically reach the provider by Sunday 21.02.2027 at the latest. Since no post is delivered on a Sunday, the cancellation should in practice be sent so it arrives by Friday 19.02.2027. If the letter actually reached the customer later than 21.11.2026, the real 3-month deadline would fall correspondingly later, giving more time, not less.\",\"due_date\":\"2027-02-21\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The exact date this letter was received by the customer is not stated; the 3-month cancellation deadline was calculated from the document date (21.11.2026) as the earliest plausible access date — if the letter actually arrived later, the real deadline is correspondingly later.\",\"The calculated deadline (21.02.2027) falls on a Sunday; because notice/termination periods are not shifted to the next business day under current case law, the cancellation should be sent early enough to arrive by Friday 19.02.2027 to be safe.\",\"No payment is due immediately from this letter itself; it only announces that the monthly tariff price rises from 14,99 € to 16,99 € starting 01.01.2027 — the person should check this appears correctly on future invoices.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Beispielfunk Mobile GmbH",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "BF-7 220 418"
+        },
+        {
+          "label": "Rufnummer",
+          "value": "0160 555 41 27"
+        }
+      ],
+      "amounts": [
+        14.99,
+        16.99
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Special right to cancel contract due to unfavourable price increase",
+          "quote": "Für diese Kündigung haben Sie drei Monate Zeit, gerechnet ab dem Zugang dieser Mitteilung; wirksam wird sie frühestens an dem Tag, an dem der neue Preis gilt.",
+          "computation": "The letter is from a private company (Beispielfunk Mobile GmbH), so the statutory deemed-delivery rules for authorities (4/3 days) do not apply; access ('Zugang') depends on when the letter actually arrived, which is not stated. Taking the earliest plausible reading, i.e. that access occurred on the document date itself (21.11.2026, a Saturday), the 3-month period starts the next day under § 187 Abs. 1 BGB (22.11.2026) and ends under § 188 Abs. 2 BGB on the day in the third following month that numerically corresponds to the start day: 21.02.2027. That day is a Sunday; under the case law on notice/termination periods (BGH III ZR 172/04) such deadlines do NOT shift to the next business day the way § 193 BGB shifts other deadlines, so the cancellation letter must physically reach the provider by Sunday 21.02.2027 at the latest. Since no post is delivered on a Sunday, the cancellation should in practice be sent so it arrives by Friday 19.02.2027. If the letter actually reached the customer later than 21.11.2026, the real 3-month deadline would fall correspondingly later, giving more time, not less.",
+          "due_date": "2027-02-21",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The exact date this letter was received by the customer is not stated; the 3-month cancellation deadline was calculated from the document date (21.11.2026) as the earliest plausible access date — if the letter actually arrived later, the real deadline is correspondingly later.",
+        "The calculated deadline (21.02.2027) falls on a Sunday; because notice/termination periods are not shifted to the next business day under current case law, the cancellation should be sent early enough to arrive by Friday 19.02.2027 to be safe.",
+        "No payment is due immediately from this letter itself; it only announces that the monthly tariff price rises from 14,99 € to 16,99 € starting 01.01.2027 — the person should check this appears correctly on future invoices."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 5505,
+      "cache_read_tokens": 14592,
+      "cache_creation_tokens": 6067,
+      "cost_usd": 0.08224440000000001,
+      "duration_ms": 63041,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 3,
+            "unit": "months",
+            "anchor": "explicit_date",
+            "anchor_date": "2026-11-21",
+            "nature": "notice",
+            "shift_rule": "auto",
+            "legal_basis": "§ 57 TKG / Sonderkündigungsrecht wegen Preiserhöhung",
+            "text": "Für diese Kündigung haben Sie drei Monate Zeit, gerechnet ab dem Zugang dieser Mitteilung"
+          },
+          "sender_kind": "company",
+          "sender_name": "Beispielfunk Mobile GmbH",
+          "document_date": "2026-11-21",
+          "region": "NW",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":\"2027-02-21\",\"weekday\":\"Sunday\",\"send_by\":\"2027-02-15\",\"safe_date\":\"2027-02-19\",\"summary\":\"Three months after Sat 21 Nov 2026 is Sun 21 Feb 2027, a Sunday; notice deadlines don't move, so aim for Fri 19 Feb 2027.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Sat 21 Nov 2026\",\"date\":\"2026-11-21\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Three months later: Sun 21 Feb 2027\",\"date\":\"2027-02-21\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Sun 21 Feb 2027 is a Sunday, but notice deadlines never move to the next working day\",\"date\":\"2027-02-21\",\"rule_id\":\"notice_no_shift\",\"citation\":\"BGH III ZR 172/04 (NJW 2005, 1354)\"},{\"label\":\"Safe date: make sure it arrives by Fri 19 Feb 2027\",\"date\":\"2027-02-19\",\"rule_id\":\"safe_date\",\"citation\":\"Ordnung safety policy\"},{\"label\":\"Send by Mon 15 Feb 2027 to allow 4 business days for a letter to arrive\",\"date\":\"2027-02-15\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"notice_no_shift\",\"title\":\"Notice periods never move to Monday\",\"citation\":\"BGH III ZR 172/04 (NJW 2005, 1354)\",\"url\":\"https://dejure.org/dienste/vernetzung/rechtsprechung?Gericht=BGH&Datum=17.02.2005&Aktenzeichen=III+ZR+172/04\"},{\"id\":\"safe_date\",\"title\":\"Safe date\",\"citation\":\"Ordnung safety policy\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-21\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

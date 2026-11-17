@@ -1,0 +1,130 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"2beb0b0f9655a44361fb439c6415375e7e1a20efce5ec98edba7a5da57e399ec\",\"mode\":\"text\",\"region\":\"RP\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-kuendigung_arbeit-2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Rheinland-Pfalz (RP), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docu",
+    "recorded_at": "2026-11-24T12:39:36+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"employment\",\"sender_name\":\"Weingut Musterreben KG\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Arbeitsvertrag-Nr.\",\"value\":\"AV-2020-07\"}],\"amounts\":[],\"items\":[{\"kind\":\"milestone\",\"title\":\"Employment ends\",\"quote\":\"Wir kündigen deshalb das Arbeitsverhältnis ordentlich unter Einhaltung der gesetzlichen Frist zum 31.01.2027.\",\"computation\":\"The letter states the termination date explicitly as 31.01.2027; no calculation needed.\",\"due_date\":\"2027-01-31\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Register as job-seeking (arbeitsuchend) with the Agentur für Arbeit\",\"quote\":\"Um Nachteile beim Arbeitslosengeld zu vermeiden, müssen Sie sich sofort bei der Agentur für Arbeit arbeitsuchend melden.\",\"computation\":\"The notice was handed over and thus received on 18.11.2026, for a termination effective 31.01.2027 — about 10 weeks' notice, less than the 3-month advance notice required by §38 Abs. 1 Satz 1 SGB III. Where less than 3 months' notice is given, §38 Abs. 1 Satz 2 SGB III requires registering as arbeitsuchend within 3 days of learning the end date. Under §187 Abs. 1 BGB the day of receipt (18.11.2026) is not counted, so the 3-day period runs 19.11.→21.11.2026 (Saturday). Because the act is owed to an authority, §193 BGB shifts a deadline falling on a Saturday to the next business day: Monday 23.11.2026 (skipping Sunday 22.11.2026).\",\"due_date\":\"2026-11-23\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"File Kündigungsschutzklage (unfair-dismissal claim) with the Arbeitsgericht\",\"quote\":\"Zu Ihrer Information: Eine Klage gegen diese Kündigung wäre innerhalb von drei Wochen nach Erhalt des Schreibens beim Arbeitsgericht einzureichen.\",\"computation\":\"Per §4 KSchG the 3-week period to file a Kündigungsschutzklage runs from receipt of the written notice. The letter was handed over in person on 18.11.2026 in the presence of a witness, so that is the day of receipt. Under §187 Abs. 1 BGB the day of receipt is not counted; counting starts 19.11.2026. Under §188 Abs. 2 BGB a period stated in weeks ends on the day bearing the same name as the starting day: 3 weeks after Wednesday 18.11.2026 is Wednesday 09.12.2026, which is not a Saturday, Sunday or public holiday, so no shift applies.\",\"due_date\":\"2026-12-09\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The 3-day deadline to register as arbeitsuchend with the Agentur für Arbeit (around 23.11.2026) has likely already passed as of today (24.11.2026, three days after receipt on 18.11.2026); register immediately in any case, since the obligation continues and delay can reduce unemployment benefit (§159 SGB III).\",\"The 3-week deadline to file a Kündigungsschutzklage is short and already running (ends 09.12.2026); if the dismissal is to be contested, legal advice should be sought without delay.\"]}",
+    "data": {
+      "kind": "employment",
+      "sender_name": "Weingut Musterreben KG",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Arbeitsvertrag-Nr.",
+          "value": "AV-2020-07"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "Employment ends",
+          "quote": "Wir kündigen deshalb das Arbeitsverhältnis ordentlich unter Einhaltung der gesetzlichen Frist zum 31.01.2027.",
+          "computation": "The letter states the termination date explicitly as 31.01.2027; no calculation needed.",
+          "due_date": "2027-01-31",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Register as job-seeking (arbeitsuchend) with the Agentur für Arbeit",
+          "quote": "Um Nachteile beim Arbeitslosengeld zu vermeiden, müssen Sie sich sofort bei der Agentur für Arbeit arbeitsuchend melden.",
+          "computation": "The notice was handed over and thus received on 18.11.2026, for a termination effective 31.01.2027 — about 10 weeks' notice, less than the 3-month advance notice required by §38 Abs. 1 Satz 1 SGB III. Where less than 3 months' notice is given, §38 Abs. 1 Satz 2 SGB III requires registering as arbeitsuchend within 3 days of learning the end date. Under §187 Abs. 1 BGB the day of receipt (18.11.2026) is not counted, so the 3-day period runs 19.11.→21.11.2026 (Saturday). Because the act is owed to an authority, §193 BGB shifts a deadline falling on a Saturday to the next business day: Monday 23.11.2026 (skipping Sunday 22.11.2026).",
+          "due_date": "2026-11-23",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "File Kündigungsschutzklage (unfair-dismissal claim) with the Arbeitsgericht",
+          "quote": "Zu Ihrer Information: Eine Klage gegen diese Kündigung wäre innerhalb von drei Wochen nach Erhalt des Schreibens beim Arbeitsgericht einzureichen.",
+          "computation": "Per §4 KSchG the 3-week period to file a Kündigungsschutzklage runs from receipt of the written notice. The letter was handed over in person on 18.11.2026 in the presence of a witness, so that is the day of receipt. Under §187 Abs. 1 BGB the day of receipt is not counted; counting starts 19.11.2026. Under §188 Abs. 2 BGB a period stated in weeks ends on the day bearing the same name as the starting day: 3 weeks after Wednesday 18.11.2026 is Wednesday 09.12.2026, which is not a Saturday, Sunday or public holiday, so no shift applies.",
+          "due_date": "2026-12-09",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The 3-day deadline to register as arbeitsuchend with the Agentur für Arbeit (around 23.11.2026) has likely already passed as of today (24.11.2026, three days after receipt on 18.11.2026); register immediately in any case, since the obligation continues and delay can reduce unemployment benefit (§159 SGB III).",
+        "The 3-week deadline to file a Kündigungsschutzklage is short and already running (ends 09.12.2026); if the dismissal is to be contested, legal advice should be sought without delay."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 9594,
+      "cache_read_tokens": 28240,
+      "cache_creation_tokens": 11876,
+      "cost_usd": 0.149104,
+      "duration_ms": 90833,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 3,
+            "unit": "weeks",
+            "anchor": "receipt",
+            "anchor_date": "2026-11-18",
+            "nature": "other",
+            "shift_rule": "auto",
+            "legal_basis": "§4 KSchG",
+            "text": "Eine Klage gegen diese Kündigung wäre innerhalb von drei Wochen nach Erhalt des Schreibens beim Arbeitsgericht einzureichen."
+          },
+          "document_date": "2026-11-18",
+          "received_date": "2026-11-18",
+          "sender_kind": "employer",
+          "sender_name": "Weingut Musterreben KG",
+          "region": "RP",
+          "recipient_region": "RP",
+          "remedy_type": "klage"
+        },
+        "result": "{\"due_date\":\"2026-12-09\",\"weekday\":\"Wednesday\",\"summary\":\"Three weeks after delivery on Wed 18 Nov 2026 (as stated on the letter) is Wed 9 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Wed 18 Nov 2026\",\"date\":\"2026-11-18\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Three weeks later: Wed 9 Dec 2026\",\"date\":\"2026-12-09\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-18\",\"received_date\":\"2026-11-18\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"holiday_calendar\":\"Rheinland-Pfalz\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 3,
+            "unit": "days",
+            "anchor": "receipt",
+            "anchor_date": "2026-11-18",
+            "nature": "declaration",
+            "shift_rule": "auto",
+            "legal_basis": "§38 Abs. 1 Satz 2 SGB III",
+            "text": "Um Nachteile beim Arbeitslosengeld zu vermeiden, müssen Sie sich sofort bei der Agentur für Arbeit arbeitsuchend melden."
+          },
+          "document_date": "2026-11-18",
+          "received_date": "2026-11-18",
+          "sender_kind": "employer",
+          "sender_name": "Weingut Musterreben KG",
+          "region": "RP",
+          "recipient_region": "RP"
+        },
+        "result": "{\"due_date\":\"2026-11-21\",\"weekday\":\"Saturday\",\"summary\":\"Register as job-seeking by Sat 21 Nov 2026: three days after you learned the end date (Wed 18 Nov 2026).\",\"confidence\":\"medium\",\"warnings\":[\"We don't know when the job ends. If it ends more than three months after you learned of it, you have until three months before the end — we show the earlier date.\",\"Sat 21 Nov 2026 is not a working day. The deadline may run to the next working day (§ 26 Abs. 3 SGB X), but registering online works on any day — do it in time.\"],\"steps\":[{\"label\":\"You learned when the job ends on Wed 18 Nov 2026\",\"date\":\"2026-11-18\",\"rule_id\":\"sgb3_38\",\"citation\":\"§ 38 Abs. 1 SGB III; § 159 Abs. 1 S. 2 Nr. 9, Abs. 6 SGB III\"},{\"label\":\"As we don't know when the job ends, register within three days: by Sat 21 Nov 2026\",\"date\":\"2026-11-21\",\"rule_id\":\"sgb3_38\",\"citation\":\"§ 38 Abs. 1 SGB III; § 159 Abs. 1 S. 2 Nr. 9, Abs. 6 SGB III\"},{\"label\":\"Register online, by phone or in person — it counts the day you do it\",\"date\":\"2026-11-21\",\"rule_id\":\"sgb3_38\",\"citation\":\"§ 38 Abs. 1 SGB III; § 159 Abs. 1 S. 2 Nr. 9, Abs. 6 SGB III\"}],\"rules\":[{\"id\":\"sgb3_38\",\"title\":\"Register as job-seeking (arbeitsuchend)\",\"citation\":\"§ 38 Abs. 1 SGB III; § 159 Abs. 1 S. 2 Nr. 9, Abs. 6 SGB III\",\"url\":\"https://www.gesetze-im-internet.de/sgb_3/__38.html\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-18\",\"received_date\":\"2026-11-18\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"holiday_calendar\":\"Germany (nationwide holidays only)\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

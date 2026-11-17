@@ -1,0 +1,103 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"3f3050cd85ef7dcd6aca4daea7102d5a5e2bcaca76a805634b3a4680c0010cea\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-price_increase-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:48:46+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Beispielstrom Mittelhessen GmbH\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Vertragsnummer\",\"value\":\"BM-31 774 208\"}],\"amounts\":[32.1,34.45,13.2,14.1,86,92],\"items\":[{\"kind\":\"deadline\",\"title\":\"Special termination to avoid price increase\",\"quote\":\"Ihre Kündigung muss uns vor diesem Tag in Textform erreichen; Kosten entstehen Ihnen dadurch nicht.\",\"computation\":\"The letter grants a special right to terminate without cost if the customer rejects the price change, effective the day the new prices start (01.01.2027). The cancellation must reach the provider 'vor diesem Tag' (before that day), i.e. before 2027-01-01. Counting back one day under § 188 BGB: the day before Friday 1 Jan 2027 is Thursday 31 Dec 2026, which is not a weekend day or a public holiday in Hesse (the provider's seat), so no further shift applies. To be safe, the letter/notice should be sent a few business days earlier so it arrives in time (recommended send-by around 24.12.2026).\",\"due_date\":\"2026-12-31\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"New electricity prices take effect\",\"quote\":\"zum 01.01.2027 passen wir die Preise in Ihrem Tarif „Region Basis“ an.\",\"computation\":\"The letter states the new prices (Arbeitspreis, Grundpreis, Abschlag) apply starting 01.01.2027; this is the effective date stated directly in the letter, no counting needed.\",\"due_date\":\"2027-01-01\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The new monthly Abschlag (advance payment) of €92.00 and new unit prices are set unilaterally by the supplier; verify the stated cost reasons (network and procurement costs) if you want to challenge the increase before deciding whether to use the special termination right.\",\"If you want to end the contract to avoid the price increase, make sure your cancellation in Textform (letter, fax or e-mail is typically accepted) actually arrives at Beispielstrom Mittelhessen GmbH by 31.12.2026 — mailing it on the deadline day itself may be too late; sending a few business days earlier is safer.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Beispielstrom Mittelhessen GmbH",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Vertragsnummer",
+          "value": "BM-31 774 208"
+        }
+      ],
+      "amounts": [
+        32.1,
+        34.45,
+        13.2,
+        14.1,
+        86,
+        92
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Special termination to avoid price increase",
+          "quote": "Ihre Kündigung muss uns vor diesem Tag in Textform erreichen; Kosten entstehen Ihnen dadurch nicht.",
+          "computation": "The letter grants a special right to terminate without cost if the customer rejects the price change, effective the day the new prices start (01.01.2027). The cancellation must reach the provider 'vor diesem Tag' (before that day), i.e. before 2027-01-01. Counting back one day under § 188 BGB: the day before Friday 1 Jan 2027 is Thursday 31 Dec 2026, which is not a weekend day or a public holiday in Hesse (the provider's seat), so no further shift applies. To be safe, the letter/notice should be sent a few business days earlier so it arrives in time (recommended send-by around 24.12.2026).",
+          "due_date": "2026-12-31",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "New electricity prices take effect",
+          "quote": "zum 01.01.2027 passen wir die Preise in Ihrem Tarif „Region Basis“ an.",
+          "computation": "The letter states the new prices (Arbeitspreis, Grundpreis, Abschlag) apply starting 01.01.2027; this is the effective date stated directly in the letter, no counting needed.",
+          "due_date": "2027-01-01",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The new monthly Abschlag (advance payment) of €92.00 and new unit prices are set unilaterally by the supplier; verify the stated cost reasons (network and procurement costs) if you want to challenge the increase before deciding whether to use the special termination right.",
+        "If you want to end the contract to avoid the price increase, make sure your cancellation in Textform (letter, fax or e-mail is typically accepted) actually arrives at Beispielstrom Mittelhessen GmbH by 31.12.2026 — mailing it on the deadline day itself may be too late; sending a few business days earlier is safer."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2568,
+      "cache_read_tokens": 14665,
+      "cache_creation_tokens": 4042,
+      "cost_usd": 0.044789,
+      "duration_ms": 28300,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": -1,
+            "unit": "days",
+            "anchor": "explicit_date",
+            "anchor_date": "2027-01-01",
+            "nature": "notice",
+            "shift_rule": "none",
+            "legal_basis": "§ 41 EnWG / Sonderkündigungsrecht bei Preiserhöhung",
+            "text": "Ihre Kündigung muss uns vor diesem Tag in Textform erreichen"
+          },
+          "sender_kind": "company",
+          "sender_name": "Beispielstrom Mittelhessen GmbH",
+          "document_date": "2026-11-19",
+          "region": "HE",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":\"2026-12-31\",\"weekday\":\"Thursday\",\"send_by\":\"2026-12-24\",\"safe_date\":\"2026-12-31\",\"summary\":\"1 day before Fri 1 Jan 2027 is Thu 31 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"1 day before Fri 1 Jan 2027: it must arrive by Thu 31 Dec 2026\",\"date\":\"2026-12-31\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Send by Thu 24 Dec 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-12-24\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-19\",\"holiday_calendar\":\"Hessen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

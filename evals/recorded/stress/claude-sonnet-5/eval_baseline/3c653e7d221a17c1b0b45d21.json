@@ -1,0 +1,102 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"11a8504e9239be98a75b0789862ffdd66cdf3da0d3387369339b417939869ef6\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "stress-D1-holdout4-relative_business_days-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T14:43:51+00:00",
+    "repeat": 1,
+    "commit": "3a21dfb8",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"insurance\",\"sender_name\":\"Kfz-Versicherung Beispielsicher AG\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Schadennummer\",\"value\":\"KS-26-1109-218\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Return completed wildlife-damage claim form and certificate\",\"quote\":\"Senden Sie uns das ausgefüllte Formular bitte binnen 13 Werktagen nach dem Datum dieses Schreibens zurück (Werktage: Montag bis Samstag ohne gesetzliche Feiertage).\",\"computation\":\"The period runs from the letter's own date (document_date anchor), 21.11.2026 (Saturday), as stated in the letter itself — not from deemed delivery, since the letter expressly ties the period to 'dem Datum dieses Schreibens'. Under § 187 Abs. 1 BGB the day of the event (21.11.2026) is not counted; counting starts 22.11.2026. The letter defines 'Werktage' as Monday to Saturday excluding statutory public holidays. Counting 13 such working days from 22.11.2026 (skipping Sundays 22.11, 29.11 and 06.12, and checking NW public holidays, none fall in this window) lands on Monday 07.12.2026. That day is itself a working day, so under § 193 BGB no further shift is needed. Final due date: 07.12.2026.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter also mentions a voluntary information evening on 08.12.2026 about the insurer's online services; the letter itself says no registration or action is required, so it is not listed as an obligation.\"]}",
+    "data": {
+      "kind": "insurance",
+      "sender_name": "Kfz-Versicherung Beispielsicher AG",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Schadennummer",
+          "value": "KS-26-1109-218"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Return completed wildlife-damage claim form and certificate",
+          "quote": "Senden Sie uns das ausgefüllte Formular bitte binnen 13 Werktagen nach dem Datum dieses Schreibens zurück (Werktage: Montag bis Samstag ohne gesetzliche Feiertage).",
+          "computation": "The period runs from the letter's own date (document_date anchor), 21.11.2026 (Saturday), as stated in the letter itself — not from deemed delivery, since the letter expressly ties the period to 'dem Datum dieses Schreibens'. Under § 187 Abs. 1 BGB the day of the event (21.11.2026) is not counted; counting starts 22.11.2026. The letter defines 'Werktage' as Monday to Saturday excluding statutory public holidays. Counting 13 such working days from 22.11.2026 (skipping Sundays 22.11, 29.11 and 06.12, and checking NW public holidays, none fall in this window) lands on Monday 07.12.2026. That day is itself a working day, so under § 193 BGB no further shift is needed. Final due date: 07.12.2026.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter also mentions a voluntary information evening on 08.12.2026 about the insurer's online services; the letter itself says no registration or action is required, so it is not listed as an obligation."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 1953,
+      "cache_read_tokens": 25101,
+      "cache_creation_tokens": 4824,
+      "cost_usd": 0.0438582,
+      "duration_ms": 23758,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 13,
+            "unit": "werktage",
+            "anchor": "document_date",
+            "nature": "declaration",
+            "shift_rule": "auto",
+            "legal_basis": "§§ 187, 193 BGB",
+            "text": "Senden Sie uns das ausgefüllte Formular bitte binnen 13 Werktagen nach dem Datum dieses Schreibens zurück (Werktage: Montag bis Samstag ohne gesetzliche Feiertage)."
+          },
+          "document_date": "2026-11-21",
+          "sender_kind": "insurer",
+          "sender_name": "Kfz-Versicherung Beispielsicher AG",
+          "region": "NW",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":\"2026-12-07\",\"weekday\":\"Monday\",\"send_by\":\"2026-12-01\",\"summary\":\"13 working days (Mon–Sat) after the letter's date (Sat 21 Nov 2026) is Mon 7 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Sat 21 Nov 2026\",\"date\":\"2026-11-21\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"13 working days (Mon–Sat) later: Mon 7 Dec 2026\",\"date\":\"2026-12-07\",\"rule_id\":\"unit_werktage\",\"citation\":\"BGH VIII ZR 206/04\"},{\"label\":\"Mon 7 Dec 2026 is a working day, so it stays\",\"date\":\"2026-12-07\",\"rule_id\":\"bgb_193\",\"citation\":\"§ 193 BGB\"},{\"label\":\"Send by Tue 1 Dec 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-12-01\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"unit_werktage\",\"title\":\"Counting working days (Werktage)\",\"citation\":\"BGH VIII ZR 206/04\",\"url\":\"https://dejure.org/dienste/vernetzung/rechtsprechung?Gericht=BGH&Datum=27.04.2005&Aktenzeichen=VIII+ZR+206/04\"},{\"id\":\"bgb_193\",\"title\":\"Weekend and holiday shift (private law)\",\"citation\":\"§ 193 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__193.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-21\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__add_working_days",
+        "input": {
+          "start": "2026-11-21",
+          "days": 13,
+          "day_type": "werktage",
+          "region": "NW"
+        },
+        "result": "{\"start\":\"2026-11-21\",\"days\":13,\"day_type\":\"werktage\",\"date\":\"2026-12-07\",\"weekday\":\"Monday\",\"skipped\":[{\"date\":\"2026-11-22\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"},{\"date\":\"2026-11-29\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"},{\"date\":\"2026-12-06\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"}],\"counting\":\"Werktage: Monday to Saturday, public holidays excluded; the start day itself is not counted.\",\"calendar\":\"Nordrhein-Westfalen\",\"disclaimer\":\"Information, not legal advice: working days counted on Ordnung's holiday calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer. A legal period may count differently — compute_deadline applies the deadline rules.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE37370501980005547470"
+        },
+        "result": "{\"iban\":\"DE37 3705 0198 0005 5474 70\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005547470\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

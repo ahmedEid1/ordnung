@@ -1,0 +1,141 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"b84f8b5f77a1db0d4ce63455d4d4c366090d9a808d5666204c522dd7a3153c44\",\"question\":\"How much do I owe the library in late fees?\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nHow much do I owe the library in late fees?\n",
+    "recorded_at": "2026-11-24T08:25:24+00:00",
+    "repeat": 1,
+    "commit": "25633808",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "I found nothing on this in your records — no letters, to-dos, or payments related to a library or late fees [none found].",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 170,
+      "cache_read_tokens": 12774,
+      "cache_creation_tokens": 1225,
+      "cost_usd": 0.0091628,
+      "duration_ms": 9565,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "library late fee"
+      },
+      "tool_use_id": "toolu_01EpqeMLpb7tCxWSVyizhaqa"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Bibliothek Mahngebühr"
+      },
+      "tool_use_id": "toolu_01AzSnorCWsNPm1GYncoXK96"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01EpqeMLpb7tCxWSVyizhaqa"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01AzSnorCWsNPm1GYncoXK96"
+    },
+    {
+      "type": "text",
+      "text": "I"
+    },
+    {
+      "type": "text",
+      "text": " found"
+    },
+    {
+      "type": "text",
+      "text": " n"
+    },
+    {
+      "type": "text",
+      "text": "othing on"
+    },
+    {
+      "type": "text",
+      "text": " this"
+    },
+    {
+      "type": "text",
+      "text": " in your"
+    },
+    {
+      "type": "text",
+      "text": " records —"
+    },
+    {
+      "type": "text",
+      "text": " no letters"
+    },
+    {
+      "type": "text",
+      "text": ", to"
+    },
+    {
+      "type": "text",
+      "text": "-dos, or pay"
+    },
+    {
+      "type": "text",
+      "text": "ments related to a library or late"
+    },
+    {
+      "type": "text",
+      "text": " fees ["
+    },
+    {
+      "type": "text",
+      "text": "none"
+    },
+    {
+      "type": "text",
+      "text": " found"
+    },
+    {
+      "type": "text",
+      "text": "]."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "I found nothing on this in your records — no letters, to-dos, or payments related to a library or late fees [none found].",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 170,
+          "cache_read_tokens": 12774,
+          "cache_creation_tokens": 1225,
+          "cost_usd": 0.0091628,
+          "duration_ms": 9565,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

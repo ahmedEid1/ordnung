@@ -1,0 +1,65 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"af7ef729098efbd2bc2b5f5f0ca22af13822137d54a17fd787ffa4a9332b1f20\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-conflicting_dates-1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T08:51:28+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Musikakademie Beispielton\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Teilnehmer-Nr.\",\"value\":\"MB-2290\"}],\"amounts\":[216],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay guitar course fee\",\"quote\":\"Bitte überweisen Sie sie bis 09.12.2026, damit wir Ihren Platz verbindlich einplanen.\",\"computation\":\"The letter gives two different deadlines for the same 216,00 € course fee: the main text says 'bis 09.12.2026' and the payment-information box says 'fällig am 18.12.2026'. This is a private company, so the statutory delivery-fiction rules for authorities do not apply; both are simply printed calendar dates that contradict each other. Per the rule for contradictory dates, the earliest plausible date is used: 2026-12-09 (a Wednesday, not a weekend or public holiday in NRW, so no shift is needed in any case). Confidence lowered to medium and a warning added about the discrepancy.\",\"due_date\":\"2026-12-09\",\"confidence\":\"medium\",\"amount\":216}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter states two conflicting payment deadlines for the same 216,00 € fee: 'bis 09.12.2026' in the main text versus 'fällig am 18.12.2026' in the payment-information box; the earlier date (2026-12-09) was used as the due date and confidence was lowered accordingly — please double-check with the academy which date actually applies and pay by the earlier one to be safe.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Musikakademie Beispielton",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Teilnehmer-Nr.",
+          "value": "MB-2290"
+        }
+      ],
+      "amounts": [
+        216
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay guitar course fee",
+          "quote": "Bitte überweisen Sie sie bis 09.12.2026, damit wir Ihren Platz verbindlich einplanen.",
+          "computation": "The letter gives two different deadlines for the same 216,00 € course fee: the main text says 'bis 09.12.2026' and the payment-information box says 'fällig am 18.12.2026'. This is a private company, so the statutory delivery-fiction rules for authorities do not apply; both are simply printed calendar dates that contradict each other. Per the rule for contradictory dates, the earliest plausible date is used: 2026-12-09 (a Wednesday, not a weekend or public holiday in NRW, so no shift is needed in any case). Confidence lowered to medium and a warning added about the discrepancy.",
+          "due_date": "2026-12-09",
+          "confidence": "medium",
+          "amount": 216
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter states two conflicting payment deadlines for the same 216,00 € fee: 'bis 09.12.2026' in the main text versus 'fällig am 18.12.2026' in the payment-information box; the earlier date (2026-12-09) was used as the due date and confidence was lowered accordingly — please double-check with the academy which date actually applies and pay by the earlier one to be safe."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2451,
+      "cache_read_tokens": 12483,
+      "cache_creation_tokens": 2996,
+      "cost_usd": 0.0389986,
+      "duration_ms": 27897,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

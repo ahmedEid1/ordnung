@@ -1,0 +1,74 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"b07708b5d90f328b37534fdbe75e2b36492582b1421fdc5550b9ee3f23ecedab\",\"mode\":\"text\",\"region\":\"RP\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-social_decision-L2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Rheinland-Pfalz (RP), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docu",
+    "recorded_at": "2026-11-24T12:02:08+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Kreisverwaltung Musterhunsrück – Jugendamt – Unterhaltsvorschusskasse\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"UV 51-2207/26\"}],\"amounts\":[293],\"items\":[{\"kind\":\"deadline\",\"title\":\"Deadline to file Widerspruch against the Unterhaltsvorschuss decision\",\"quote\":\"Er muss innerhalb eines Monats nach Bekanntgabe des Bescheids bei uns eingehen (Kreisverwaltung Musterhunsrück, Schlossplatz 7, 55469 Musterbach im Hunsrück); Sie können ihn schriftlich einreichen oder bei uns zur Niederschrift erklären.\",\"computation\":\"Letter dated Thu 19.11.2026; letter itself states the Bekanntgabefiktion: 'gilt am vierten Tag nach seiner Aufgabe zur Post als bekannt gegeben'. Posting day = 19.11.2026 (no separate 'Tag der Aufgabe zur Post' given, so letter date used). Counting 4 calendar days: 20.11 (Fri)=1, 21.11 (Sat)=2, 22.11 (Sun)=3, 23.11 (Mon)=4 → deemed delivery = Mon 23.11.2026. This is a non-tax authority (Jugendamt/Kreisverwaltung, Widerspruch under § 84 SGG / § 37 SGB X regime); the 4th day already falls on a weekday (Monday), so no weekend-shift issue arises for the delivery day. One-month Widerspruch period under § 187 Abs.1, § 188 Abs.2 BGB: delivery day (23.11.) not counted, period ends on the day with the same number one month later = 23.12.2026. Check if 23.12.2026 (a Wednesday) is a Sunday/Saturday/public holiday in RP: it is not (Christmas Day 25.12. is a Friday, so 23.12. is unaffected). No adjustment needed.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Immediately report if the father pays maintenance or if you move\",\"quote\":\"Teilen Sie uns bitte sofort mit, wenn er Unterhalt an Sie zahlt oder Sie umziehen.\",\"computation\":\"The letter requires immediate ('sofort') notification whenever either triggering event occurs (payment by the father, or a change of address). No calendar date or counted period is given, and the trigger events themselves are of unknown future date, so no fixed due_date can be computed; this is an ongoing/conditional reporting duty rather than a one-time deadline.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The reporting obligation to notify the authority 'sofort' (immediately) about maintenance payments received or a change of address has no fixed calendar date; it is a standing duty triggered by future events and was left without a due_date.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Kreisverwaltung Musterhunsrück – Jugendamt – Unterhaltsvorschusskasse",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "UV 51-2207/26"
+        }
+      ],
+      "amounts": [
+        293
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Deadline to file Widerspruch against the Unterhaltsvorschuss decision",
+          "quote": "Er muss innerhalb eines Monats nach Bekanntgabe des Bescheids bei uns eingehen (Kreisverwaltung Musterhunsrück, Schlossplatz 7, 55469 Musterbach im Hunsrück); Sie können ihn schriftlich einreichen oder bei uns zur Niederschrift erklären.",
+          "computation": "Letter dated Thu 19.11.2026; letter itself states the Bekanntgabefiktion: 'gilt am vierten Tag nach seiner Aufgabe zur Post als bekannt gegeben'. Posting day = 19.11.2026 (no separate 'Tag der Aufgabe zur Post' given, so letter date used). Counting 4 calendar days: 20.11 (Fri)=1, 21.11 (Sat)=2, 22.11 (Sun)=3, 23.11 (Mon)=4 → deemed delivery = Mon 23.11.2026. This is a non-tax authority (Jugendamt/Kreisverwaltung, Widerspruch under § 84 SGG / § 37 SGB X regime); the 4th day already falls on a weekday (Monday), so no weekend-shift issue arises for the delivery day. One-month Widerspruch period under § 187 Abs.1, § 188 Abs.2 BGB: delivery day (23.11.) not counted, period ends on the day with the same number one month later = 23.12.2026. Check if 23.12.2026 (a Wednesday) is a Sunday/Saturday/public holiday in RP: it is not (Christmas Day 25.12. is a Friday, so 23.12. is unaffected). No adjustment needed.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Immediately report if the father pays maintenance or if you move",
+          "quote": "Teilen Sie uns bitte sofort mit, wenn er Unterhalt an Sie zahlt oder Sie umziehen.",
+          "computation": "The letter requires immediate ('sofort') notification whenever either triggering event occurs (payment by the father, or a change of address). No calendar date or counted period is given, and the trigger events themselves are of unknown future date, so no fixed due_date can be computed; this is an ongoing/conditional reporting duty rather than a one-time deadline.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The reporting obligation to notify the authority 'sofort' (immediately) about maintenance payments received or a change of address has no fixed calendar date; it is a standing duty triggered by future events and was left without a due_date."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3881,
+      "cache_read_tokens": 13039,
+      "cache_creation_tokens": 4430,
+      "cost_usd": 0.059145800000000005,
+      "duration_ms": 39153,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

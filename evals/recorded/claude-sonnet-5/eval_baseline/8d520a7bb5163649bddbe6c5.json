@@ -1,0 +1,69 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"710cfe9acaab96ed759f89ca261cf84e8b536c0f0b676ed67dd2c9b8d3d9eb9e\",\"mode\":\"text\",\"region\":\"HE\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-mieterhoehung-2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hessen (HE), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag",
+    "recorded_at": "2026-11-24T12:58:35+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[480,545,65],\"contract\":null,\"kind\":\"price_increase\",\"sender_name\":\"Roswitha Musterrhön\",\"document_date\":\"2026-11-18\",\"remedy_type\":\"none\",\"references\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Give consent to the rent increase (§ 558b BGB)\",\"quote\":\"Bitte senden Sie mir die beigefügte Zustimmungserklärung unterschrieben zurück.\",\"computation\":\"The letter itself confirms delivery: 'Diesen Brief hat mein Sohn am 18. November 2026 um 10:30 Uhr bei Ihnen eingeworfen.' Hand-delivery during normal daytime hours means receipt (Zugang) on the same day: 18.11.2026 (a Tuesday, in the month of November 2026). Under § 558b Abs. 2 BGB, the tenant must consent 'bis zum Ablauf des zweiten Kalendermonats nach Empfang des Erhöhungsverlangens.' Counting calendar months after the month of receipt (November): 1st = December 2026, 2nd = January 2027. The period therefore ends at the close of January 2027, i.e. 31.01.2027. That day is a Sunday; under § 193 BGB a deadline for a declaration that falls on a Sunday, Saturday or public holiday moves to the next business day, which is Monday 01.02.2027 (not a Hessen public holiday). If the tenant does not consent by then, the landlord may sue for consent (Zustimmungsklage) within a further three months.\",\"due_date\":\"2027-02-01\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Increased net cold rent (545,00 €) takes effect\",\"quote\":\"Ich bitte Sie, der Erhöhung Ihrer Nettokaltmiete von 480,00 € auf 545,00 € (7,90 € je m² bei 69 m²)\\nab dem 01.02.2027 zuzustimmen.\",\"computation\":\"The letter fixes the requested effective date of the higher rent explicitly as 01.02.2027. This matches § 558b Abs. 1 BGB, under which the increased rent is owed 'von Beginn des dritten Kalendermonats nach Zugang des Erhöhungsverlangens an': receipt on 18.11.2026 (November) → 1st following month December, 2nd January, 3rd February 2027, so the earliest the increase could legally start is 01.02.2027, consistent with the date stated in the letter.\",\"due_date\":\"2027-02-01\",\"confidence\":\"high\",\"amount\":545}],\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        480,
+        545,
+        65
+      ],
+      "contract": null,
+      "kind": "price_increase",
+      "sender_name": "Roswitha Musterrhön",
+      "document_date": "2026-11-18",
+      "remedy_type": "none",
+      "references": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Give consent to the rent increase (§ 558b BGB)",
+          "quote": "Bitte senden Sie mir die beigefügte Zustimmungserklärung unterschrieben zurück.",
+          "computation": "The letter itself confirms delivery: 'Diesen Brief hat mein Sohn am 18. November 2026 um 10:30 Uhr bei Ihnen eingeworfen.' Hand-delivery during normal daytime hours means receipt (Zugang) on the same day: 18.11.2026 (a Tuesday, in the month of November 2026). Under § 558b Abs. 2 BGB, the tenant must consent 'bis zum Ablauf des zweiten Kalendermonats nach Empfang des Erhöhungsverlangens.' Counting calendar months after the month of receipt (November): 1st = December 2026, 2nd = January 2027. The period therefore ends at the close of January 2027, i.e. 31.01.2027. That day is a Sunday; under § 193 BGB a deadline for a declaration that falls on a Sunday, Saturday or public holiday moves to the next business day, which is Monday 01.02.2027 (not a Hessen public holiday). If the tenant does not consent by then, the landlord may sue for consent (Zustimmungsklage) within a further three months.",
+          "due_date": "2027-02-01",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Increased net cold rent (545,00 €) takes effect",
+          "quote": "Ich bitte Sie, der Erhöhung Ihrer Nettokaltmiete von 480,00 € auf 545,00 € (7,90 € je m² bei 69 m²)\nab dem 01.02.2027 zuzustimmen.",
+          "computation": "The letter fixes the requested effective date of the higher rent explicitly as 01.02.2027. This matches § 558b Abs. 1 BGB, under which the increased rent is owed 'von Beginn des dritten Kalendermonats nach Zugang des Erhöhungsverlangens an': receipt on 18.11.2026 (November) → 1st following month December, 2nd January, 3rd February 2027, so the earliest the increase could legally start is 01.02.2027, consistent with the date stated in the letter.",
+          "due_date": "2027-02-01",
+          "confidence": "high",
+          "amount": 545
+        }
+      ],
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 5135,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1692,
+      "cost_usd": 0.05874639999999999,
+      "duration_ms": 49904,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

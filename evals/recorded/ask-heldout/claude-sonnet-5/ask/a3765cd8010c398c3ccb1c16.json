@@ -1,0 +1,210 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"c5bf343951f16ee695937237b2efb8ab43009e2379a11801cbd01cc9d384dcf9\",\"question\":\"What ID does the scholarship foundation use for me?\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "doc_pa2w9q3gxzqk"
+    ],
+    "prompt_head": "The person asks:\nWhat ID does the scholarship foundation use for me?\n",
+    "recorded_at": "2026-11-24T13:22:27+00:00",
+    "repeat": 2,
+    "commit": "0b5e2d7a",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "The Global Talent Scholarship Foundation uses **\"GTSF-2026-0317\"** as your Scholarship ID, as shown in their letter dated 2026-09-05 [party:pty_efmwq4xym8cm].",
+    "data": null,
+    "usage": {
+      "input_tokens": 8,
+      "output_tokens": 400,
+      "cache_read_tokens": 28055,
+      "cache_creation_tokens": 2538,
+      "cost_usd": 0.019778999999999998,
+      "duration_ms": 12238,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "scholarship foundation"
+      },
+      "tool_use_id": "toolu_01HmavoitKFdPbp4dti5V6dt"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_pa2w9q3gxzqk\",\"kind\":\"other\",\"date\":\"2026-09-05\",\"party_id\":\"pty_efmwq4xym8cm\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_pa2w9q3gxzqk\":{\"title\":\"Award of the Global Talent Scholarship 2026/27\",\"snippet\":\"The Global Talent Scholarship Foundation has awarded Sam Rivera a scholarship for the 2026/27 academic…\"},\"pty_efmwq4xym8cm\":{\"name\":\"Global Talent Scholarship Foundation\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01HmavoitKFdPbp4dti5V6dt"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_my_numbers",
+      "input": {
+        "organisation": "pty_efmwq4xym8cm"
+      },
+      "tool_use_id": "toolu_01EV6tD5qfr6nQXbff56QzAT"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-11-24\",\"open_cases\":[],\"organisations\":[{\"party_id\":\"pty_efmwq4xym8cm\",\"kind\":\"other\",\"numbers\":[\"n1\"],\"their_numbers\":[\"n2\"],\"last_letter\":{\"doc_id\":\"doc_pa2w9q3gxzqk\",\"date\":\"2026-09-05\"},\"open_items\":6}],\"numbers\":[{\"ref\":\"n1\",\"kind\":\"other\",\"group\":\"organisation\",\"check\":\"none\",\"doc_id\":\"doc_pa2w9q3gxzqk\",\"party_id\":\"pty_efmwq4xym8cm\",\"letters\":1},{\"ref\":\"n2\",\"kind\":\"register\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_pa2w9q3gxzqk\",\"party_id\":\"pty_efmwq4xym8cm\",\"letters\":1}],\"note\":\"Each number's label and value are in the letter text of the letter it comes from (under numbers, by ref). check is Ordnung's check-digit test: ok (passes the published check, so almost certainly no digit was misread — it does not prove the number is the person's), fails (compare it with the letter) or none (no public check for this kind of number).\"}\n</ordnung_record>\n<untrusted_document>\n{\"pty_efmwq4xym8cm\":{\"name\":\"Global Talent Scholarship Foundation\",\"phone\":\"+49 123 555 0317\"},\"doc_pa2w9q3gxzqk\":{\"title\":\"Award of the Global Talent Scholarship 2026/27\",\"numbers\":{\"n1\":{\"label\":\"Scholarship ID\",\"value\":\"GTSF-2026-0317\"},\"n2\":{\"label\":\"Foundation register\",\"value\":\"Berlin 3/GT-2011\"}}}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01EV6tD5qfr6nQXbff56QzAT"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_profile",
+      "input": {},
+      "tool_use_id": "toolu_01XHy1gGnZ7s646d6JjdsNM5"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"name\":\"Sam Rivera\",\"language\":\"en\",\"region\":\"NW\",\"household\":[{\"id\":\"hhm_6mtw39wxdbzq\",\"name\":\"Alex Rivera\",\"letters\":[\"doc_9t9tmrv1ypba\",\"doc_1dgp8tp2ga0c\"]}],\"household_note\":\"household lists the other people whose letters come to the person (a partner, their children), with the names the person typed and the letters the person filed for each, newest first. Those letters and what they show are about that person, not the person's own; every other letter whose contents are shared is the person's own. A letter the person keeps private is never listed here, so whose it is, and whose its to-dos are, is not known — say so.\"}\n</ordnung_record>",
+      "tool_use_id": "toolu_01XHy1gGnZ7s646d6JjdsNM5"
+    },
+    {
+      "type": "text",
+      "text": "The"
+    },
+    {
+      "type": "text",
+      "text": " Global"
+    },
+    {
+      "type": "text",
+      "text": " Tal"
+    },
+    {
+      "type": "text",
+      "text": "ent Sc"
+    },
+    {
+      "type": "text",
+      "text": "holarship"
+    },
+    {
+      "type": "text",
+      "text": " Foundation u"
+    },
+    {
+      "type": "text",
+      "text": "ses **\""
+    },
+    {
+      "type": "text",
+      "text": "GTS"
+    },
+    {
+      "type": "text",
+      "text": "F"
+    },
+    {
+      "type": "text",
+      "text": "-"
+    },
+    {
+      "type": "text",
+      "text": "2026-0317"
+    },
+    {
+      "type": "text",
+      "text": "\"** as your"
+    },
+    {
+      "type": "text",
+      "text": " Scholarship ID,"
+    },
+    {
+      "type": "text",
+      "text": " as sh"
+    },
+    {
+      "type": "text",
+      "text": "own in"
+    },
+    {
+      "type": "text",
+      "text": " their letter d"
+    },
+    {
+      "type": "text",
+      "text": "ated 2026"
+    },
+    {
+      "type": "text",
+      "text": "-09-05 [party"
+    },
+    {
+      "type": "text",
+      "text": ":"
+    },
+    {
+      "type": "text",
+      "text": "pty"
+    },
+    {
+      "type": "text",
+      "text": "_efm"
+    },
+    {
+      "type": "text",
+      "text": "w"
+    },
+    {
+      "type": "text",
+      "text": "q"
+    },
+    {
+      "type": "text",
+      "text": "4"
+    },
+    {
+      "type": "text",
+      "text": "x"
+    },
+    {
+      "type": "text",
+      "text": "ym"
+    },
+    {
+      "type": "text",
+      "text": "8"
+    },
+    {
+      "type": "text",
+      "text": "cm"
+    },
+    {
+      "type": "text",
+      "text": "]."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "The Global Talent Scholarship Foundation uses **\"GTSF-2026-0317\"** as your Scholarship ID, as shown in their letter dated 2026-09-05 [party:pty_efmwq4xym8cm].",
+        "usage": {
+          "input_tokens": 8,
+          "output_tokens": 400,
+          "cache_read_tokens": 28055,
+          "cache_creation_tokens": 2538,
+          "cost_usd": 0.019778999999999998,
+          "duration_ms": 12238,
+          "turns": 4
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

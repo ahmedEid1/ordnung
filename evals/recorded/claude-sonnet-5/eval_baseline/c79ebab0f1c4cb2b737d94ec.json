@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"4a141c23d25561fb82b23219b4977c717da275fa5eac5f6ca340f34314d43dcd\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-conflicting_dates-2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:21:13+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Stadt Beispielhagen – Der Oberbürgermeister, Fachbereich Bauordnung\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"63-BO-2026-1147\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Klage against Nutzungsuntersagung at Verwaltungsgericht Musterarnsberg\",\"quote\":\"Gegen diesen Bescheid kann innerhalb eines Monats nach seiner Bekanntgabe Klage beim Verwaltungsgericht Musterarnsberg, Jägerstraße 1, 59821 Musterarnsberg, erhoben werden; ein Widerspruchsverfahren findet nicht statt.\",\"computation\":\"The letter is dated 20.11.2026 (Friday), which is taken as the date of Aufgabe zur Post (handover to the postal service), since no other mailing date is given. Under § 41 Abs. 2 VwVfG NRW, a written administrative act sent by ordinary mail within Germany is deemed delivered (Bekanntgabe) on the third day after posting, unless it demonstrably arrived later. Counting from Fri 20.11.2026: day 1 = Sat 21.11, day 2 = Sun 22.11, day 3 = Mon 23.11.2026 → deemed Bekanntgabe = 23.11.2026 (a weekday, so no further shift needed). The one-month Klagefrist (§ 74 VwGO) runs from this Bekanntgabe. Per § 187 Abs. 1 BGB the day of the triggering event itself is not counted, so the period starts on 24.11.2026; per § 188 Abs. 2 BGB a monthly period ends on the day of the following month that numerically corresponds to the day of the triggering event (23.) i.e. 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in NRW, so no extension under § 222 ZPO/§ 193 BGB applies. Final day to file Klage: 23.12.2026. Note: the decision text states it is a 'Bescheid vom 18.11.2026' while the cover letter itself is dated 20.11.2026; the later (cover-letter) date was used as the mailing date, which is the more conservative (earlier-deadline) assumption.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The decision text refers to a 'Bescheid vom 18.11.2026' while the cover letter carries the date 20.11.2026 — this internal date discrepancy should be double-checked, e.g. by confirming the actual date the letter was handed to the post office (Aufgabe zur Post), as it determines the exact deadline.\",\"No Widerspruch is possible for this decision ('ein Widerspruchsverfahren findet nicht statt'); only Klage (lawsuit) at the Verwaltungsgericht Musterarnsberg is available, so the one-month deadline must be met precisely.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Stadt Beispielhagen – Der Oberbürgermeister, Fachbereich Bauordnung",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "63-BO-2026-1147"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Klage against Nutzungsuntersagung at Verwaltungsgericht Musterarnsberg",
+          "quote": "Gegen diesen Bescheid kann innerhalb eines Monats nach seiner Bekanntgabe Klage beim Verwaltungsgericht Musterarnsberg, Jägerstraße 1, 59821 Musterarnsberg, erhoben werden; ein Widerspruchsverfahren findet nicht statt.",
+          "computation": "The letter is dated 20.11.2026 (Friday), which is taken as the date of Aufgabe zur Post (handover to the postal service), since no other mailing date is given. Under § 41 Abs. 2 VwVfG NRW, a written administrative act sent by ordinary mail within Germany is deemed delivered (Bekanntgabe) on the third day after posting, unless it demonstrably arrived later. Counting from Fri 20.11.2026: day 1 = Sat 21.11, day 2 = Sun 22.11, day 3 = Mon 23.11.2026 → deemed Bekanntgabe = 23.11.2026 (a weekday, so no further shift needed). The one-month Klagefrist (§ 74 VwGO) runs from this Bekanntgabe. Per § 187 Abs. 1 BGB the day of the triggering event itself is not counted, so the period starts on 24.11.2026; per § 188 Abs. 2 BGB a monthly period ends on the day of the following month that numerically corresponds to the day of the triggering event (23.) i.e. 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in NRW, so no extension under § 222 ZPO/§ 193 BGB applies. Final day to file Klage: 23.12.2026. Note: the decision text states it is a 'Bescheid vom 18.11.2026' while the cover letter itself is dated 20.11.2026; the later (cover-letter) date was used as the mailing date, which is the more conservative (earlier-deadline) assumption.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The decision text refers to a 'Bescheid vom 18.11.2026' while the cover letter carries the date 20.11.2026 — this internal date discrepancy should be double-checked, e.g. by confirming the actual date the letter was handed to the post office (Aufgabe zur Post), as it determines the exact deadline.",
+        "No Widerspruch is possible for this decision ('ein Widerspruchsverfahren findet nicht statt'); only Klage (lawsuit) at the Verwaltungsgericht Musterarnsberg is available, so the one-month deadline must be met precisely."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3926,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1544,
+      "cost_usd": 0.04606439999999999,
+      "duration_ms": 41071,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

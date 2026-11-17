@@ -1,0 +1,103 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"987c0eb68d6c91da313b135cd99021bbf0eeb9d8ac1ed3ca284388c19abf4611\",\"mode\":\"text\",\"region\":\"SL\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-mieterhoehung-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Saarland (SL), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> t",
+    "recorded_at": "2026-11-24T13:01:03+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"sender_name\":\"Beispielsaar Wohnungsgenossenschaft eG\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Mitgliedsnummer\",\"value\":\"4471-B\"},{\"label\":\"Nutzungsvertrag\",\"value\":\"NV 12-0087\"}],\"amounts\":[395,434.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"Give (or refuse) consent to the rent increase\",\"quote\":\"Wir bitten Sie um Ihre Zustimmung, das Nutzungsentgelt ab dem 01.02.2027 um 10 % auf 434,50 € zu erhöhen. Ihre Antwort benötigen wir bis Ende Januar 2027.\",\"computation\":\"This is a rent-increase request (Mieterhöhungsverlangen) under § 558 BGB, delivered by hand to the letterbox on Wed 18.11.2026, 8:50 Uhr (stated receipt date; no authority deemed-delivery rule applies since it was handed over directly). Under § 558b Abs. 1, 2 BGB the tenant may consent until the end of the second calendar month after receipt. Receipt falls in November 2026; the first calendar month after is December, the second is January 2027, so the period ends 31.01.2027. 31.01.2027 is a Sunday, so under § 193 BGB the deadline shifts to the next business day, Monday 01.02.2027. (The landlord's own wording 'bis Ende Januar 2027' is one day earlier than the statutory deadline but does not disadvantage the tenant.)\",\"due_date\":\"2027-02-01\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"New rent (434,50 €) takes effect, if consent is given\",\"quote\":\"das Nutzungsentgelt ab dem 01.02.2027 um 10 % auf 434,50 € zu erhöhen\",\"computation\":\"The letter states the increased rent is to apply from 01.02.2027, the calendar date printed in the letter, conditional on the tenant's consent.\",\"due_date\":\"2027-02-01\",\"confidence\":\"high\",\"amount\":434.5}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The landlord's stated reply deadline ('bis Ende Januar 2027') falls on a Sunday; the statutory deadline under § 558b BGB and § 193 BGB is actually Monday 01.02.2027 — one day later, so this does not disadvantage the tenant, but the written wording should not be relied on as the exact legal cut-off.\",\"No formal signed consent form (Zustimmungserklärung) is included in the text provided; the letter asks for it to be returned, but its content could not be checked here.\",\"This is a civil-law request between the cooperative and its member, not an administrative decision, so there is no Rechtsbehelfsbelehrung and no appeal deadline — if the tenant does not consent, the cooperative would have to sue for consent within a further three months (§ 558b Abs. 2 BGB), which is the landlord's own deadline, not the tenant's.\"]}",
+    "data": {
+      "kind": "rent_lease",
+      "sender_name": "Beispielsaar Wohnungsgenossenschaft eG",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Mitgliedsnummer",
+          "value": "4471-B"
+        },
+        {
+          "label": "Nutzungsvertrag",
+          "value": "NV 12-0087"
+        }
+      ],
+      "amounts": [
+        395,
+        434.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Give (or refuse) consent to the rent increase",
+          "quote": "Wir bitten Sie um Ihre Zustimmung, das Nutzungsentgelt ab dem 01.02.2027 um 10 % auf 434,50 € zu erhöhen. Ihre Antwort benötigen wir bis Ende Januar 2027.",
+          "computation": "This is a rent-increase request (Mieterhöhungsverlangen) under § 558 BGB, delivered by hand to the letterbox on Wed 18.11.2026, 8:50 Uhr (stated receipt date; no authority deemed-delivery rule applies since it was handed over directly). Under § 558b Abs. 1, 2 BGB the tenant may consent until the end of the second calendar month after receipt. Receipt falls in November 2026; the first calendar month after is December, the second is January 2027, so the period ends 31.01.2027. 31.01.2027 is a Sunday, so under § 193 BGB the deadline shifts to the next business day, Monday 01.02.2027. (The landlord's own wording 'bis Ende Januar 2027' is one day earlier than the statutory deadline but does not disadvantage the tenant.)",
+          "due_date": "2027-02-01",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "New rent (434,50 €) takes effect, if consent is given",
+          "quote": "das Nutzungsentgelt ab dem 01.02.2027 um 10 % auf 434,50 € zu erhöhen",
+          "computation": "The letter states the increased rent is to apply from 01.02.2027, the calendar date printed in the letter, conditional on the tenant's consent.",
+          "due_date": "2027-02-01",
+          "confidence": "high",
+          "amount": 434.5
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The landlord's stated reply deadline ('bis Ende Januar 2027') falls on a Sunday; the statutory deadline under § 558b BGB and § 193 BGB is actually Monday 01.02.2027 — one day later, so this does not disadvantage the tenant, but the written wording should not be relied on as the exact legal cut-off.",
+        "No formal signed consent form (Zustimmungserklärung) is included in the text provided; the letter asks for it to be returned, but its content could not be checked here.",
+        "This is a civil-law request between the cooperative and its member, not an administrative decision, so there is no Rechtsbehelfsbelehrung and no appeal deadline — if the tenant does not consent, the cooperative would have to sue for consent within a further three months (§ 558b Abs. 2 BGB), which is the landlord's own deadline, not the tenant's."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 5852,
+      "cache_read_tokens": 26437,
+      "cache_creation_tokens": 7745,
+      "cost_usd": 0.0947994,
+      "duration_ms": 60049,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "months",
+            "anchor": "receipt",
+            "anchor_date": "2026-11-18",
+            "nature": "declaration",
+            "shift_rule": "none",
+            "legal_basis": "§ 558b Abs. 1 BGB",
+            "text": "Der Mieter kann bis zum Ablauf des zweiten Kalendermonats nach Empfang des Erhöhungsverlangens zustimmen."
+          },
+          "received_date": "2026-11-18",
+          "sender_kind": "landlord",
+          "sender_name": "Beispielsaar Wohnungsgenossenschaft eG",
+          "region": "SL"
+        },
+        "result": "{\"due_date\":\"2027-02-01\",\"weekday\":\"Monday\",\"send_by\":\"2027-01-26\",\"summary\":\"You have until Mon 1 Feb 2027 to decide whether to agree; if you agree, the higher rent is owed from Mon 1 Feb 2027.\",\"confidence\":\"medium\",\"warnings\":[\"The letter's date was not given, so the delivery day stated (Wed 18 Nov 2026) could not be checked against it: a stated day that is wrong or later than the letter's date moves the deadline later.\"],\"steps\":[{\"label\":\"The request arrived on Wed 18 Nov 2026\",\"date\":\"2026-11-18\",\"rule_id\":\"bgb_558b\",\"citation\":\"§ 558b Abs. 1, 2 BGB\"},{\"label\":\"The end of the second calendar month after November: Sun 31 Jan 2027\",\"date\":\"2027-01-31\",\"rule_id\":\"bgb_558b\",\"citation\":\"§ 558b Abs. 1, 2 BGB\"},{\"label\":\"Sun 31 Jan 2027 is a Sunday, so the deadline moves to Mon 1 Feb 2027\",\"date\":\"2027-02-01\",\"rule_id\":\"bgb_193\",\"citation\":\"§ 193 BGB\"},{\"label\":\"Only if you agree, the higher rent is owed from Mon 1 Feb 2027\",\"date\":\"2027-02-01\",\"rule_id\":\"bgb_558b\",\"citation\":\"§ 558b Abs. 1, 2 BGB\"},{\"label\":\"Send by Tue 26 Jan 2027 to allow 4 business days for a letter to arrive\",\"date\":\"2027-01-26\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_558b\",\"title\":\"Rent increase request: decide by the end of the second month\",\"citation\":\"§ 558b Abs. 1, 2 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__558b.html\"},{\"id\":\"bgb_193\",\"title\":\"Weekend and holiday shift (private law)\",\"citation\":\"§ 193 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__193.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"received_date\":\"2026-11-18\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"holiday_calendar\":\"Saarland\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"Pass document_date: the engine checks a stated posting or delivery day against the letter's date (it counts from the letter's date when a stated posting day is later).\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

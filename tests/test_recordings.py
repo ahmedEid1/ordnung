@@ -23,11 +23,13 @@ LOCKS = ("prompts.lock.json", "requests.lock.json", "final-days.json")
 KEPT_UNANSWERED = re.compile(r"unanswered-r\d+\.json")
 
 
-def _recordings() -> Iterator[tuple[Path, str, dict[str, Any]]]:
-    """Each recording (not a recorded model failure, not a prompts lock or the harness's request lock), the model its
-    folder is for, and its content: ``evals/recorded/<model>/…``, ``evals/recorded/ask/<model>/…``; the demo's are the
-    app's pinned model's."""
-    for root in (BENCHMARK, DEMO):
+def _recordings(benchmark: Path = BENCHMARK, demo: Path = DEMO) -> Iterator[tuple[Path, str, dict[str, Any]]]:
+    """Each recording (not a recorded model failure, not a lock, the day index or the turns kept unanswered), the model
+    its folder is for, and its content. A recording is ``<model>/<purpose>/<key>.json`` in its set's folder:
+    ``evals/recorded/`` for the reading benchmark, ``evals/recorded/<set>/`` for every other set (``ask``, and at the
+    final run ``ask-heldout`` and ``stress``), so its model is the folder two above it, whatever the set; the demo's
+    are the app's pinned model's."""
+    for root in (benchmark, demo):
         for path in sorted(root.rglob("*.json")):
             if (
                 path.name in LOCKS
@@ -35,8 +37,14 @@ def _recordings() -> Iterator[tuple[Path, str, dict[str, Any]]]:
                 or path.name.endswith(".failure.json")
             ):
                 continue
-            parts = path.relative_to(root).parts
-            model = DEFAULT_MODEL if root == DEMO else parts[1] if parts[0] == "ask" else parts[0]
+            if root == demo:
+                model = DEFAULT_MODEL
+            else:
+                parts = path.relative_to(root).parts
+                assert len(parts) >= 3, (
+                    f"{path}: a recording is <model>/<purpose>/<key>.json in its set's folder"
+                )
+                model = parts[-3]
             yield path, model, json.loads(path.read_text(encoding="utf-8"))
 
 
@@ -55,6 +63,32 @@ def test_every_committed_recording_was_answered_by_the_pinned_model_with_usage()
         if not (data["response"]["usage"]["output_tokens"] > 0 and data["response"]["usage"]["cost_usd"] > 0)
     ]
     assert unused == []
+
+
+def test_every_set_s_recordings_are_read_as_their_model_s(tmp_path: Path) -> None:
+    """Each set records into a folder of its own beside the reading benchmark's (``evals/recorded/<model>/…``):
+    Ask's (``ask/<model>/…``), and at the final run the held-out Ask set's (``ask-heldout/<model>/…``) and the stress
+    runs' (``stress/<model>/…``). Every one of them is read as its model's recordings, so the check above holds them
+    to the model that answered; the locks, the day index and the turns kept unanswered beside them are no
+    recording."""
+    cassette = {
+        "request": {},
+        "response": {"model": DEFAULT_MODEL, "usage": {"output_tokens": 1, "cost_usd": 0.01}},
+    }
+    expected = []
+    for folder in ("", "ask", "ask-heldout", "stress"):
+        root = tmp_path / folder / DEFAULT_MODEL
+        path = root / "extract" / "0123456789abcdef01234567.json"
+        path.parent.mkdir(parents=True)
+        path.write_text(json.dumps(cassette), encoding="utf-8")
+        expected.append((path.relative_to(tmp_path).as_posix(), DEFAULT_MODEL))
+        for name in (*LOCKS, "unanswered-r2.json", "0123456789abcdef01234567.failure.json"):
+            (root / name).write_text("{}", encoding="utf-8")
+    found = [
+        (path.relative_to(tmp_path).as_posix(), model)
+        for path, model, _ in _recordings(tmp_path, tmp_path / "demo")
+    ]
+    assert sorted(found) == sorted(expected)
 
 
 #: A tool's own answer to a call the model got wrong ("Error executing tool explain_date: explain_date takes an

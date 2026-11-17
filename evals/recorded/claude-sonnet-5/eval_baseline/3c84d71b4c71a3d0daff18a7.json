@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"0b334dfeca8f74743e3bf468cb6e3fb44d864f9fc3be8ac54d4ff410c7fe5662\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-relative_business_days-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:29:59+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"sender_name\":\"Wohnbau Beispielgrund eG\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Mitgliedsnummer\",\"value\":\"WB-4402\"},{\"label\":\"Wohnung\",\"value\":\"SW18-EG-R\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Return signed Nutzungsvertrag\",\"quote\":\"Den unterschriebenen Vertrag benötigen wir innerhalb von 14 Werktagen ab dem Briefdatum zurück.\",\"computation\":\"Letter is dated Wednesday 18.11.2026 (Briefdatum). The letter defines its own 'Werktage' as Monday–Saturday, excluding Sundays and public holidays. Since the period runs 'ab dem Briefdatum' (from the start of that calendar day), under the logic of §187(2) BGB the day itself is included as day 1. Counting 14 such working days from 18.11.2026: 18.11 Wed(1), 19.11 Thu(2), 20.11 Fri(3), 21.11 Sat(4), 22.11 Sun(excluded), 23.11 Mon(5), 24.11 Tue(6), 25.11 Wed(7), 26.11 Thu(8), 27.11 Fri(9), 28.11 Sat(10), 29.11 Sun(excluded), 30.11 Mon(11), 01.12 Tue(12), 02.12 Wed(13), 03.12 Thu(14). No NW public holidays fall in this window (All Saints' Day on 01.11 already passed; next holiday is Christmas). The 14th working day, 03.12.2026, is a Thursday, so no weekend/holiday roll-over under §193 BGB is needed. Note: the phrase 'ab dem Briefdatum' is slightly ambiguous as to whether the letter date itself counts as day 1 or whether counting starts the next day (which would shift the deadline to 04.12.2026); the inclusive reading is used here as the more natural reading of 'ab dem [Datum]'.\",\"due_date\":\"2026-12-03\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The deadline wording 'innerhalb von 14 Werktagen ab dem Briefdatum' is ambiguous about whether the letter's own date (18.11.2026) counts as day 1 of the period or not; if the day after the letter is day 1 instead, the true deadline would be 2026-12-04 rather than 2026-12-03 — the cooperative should be asked to confirm if timing is tight.\"]}",
+    "data": {
+      "kind": "rent_lease",
+      "sender_name": "Wohnbau Beispielgrund eG",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Mitgliedsnummer",
+          "value": "WB-4402"
+        },
+        {
+          "label": "Wohnung",
+          "value": "SW18-EG-R"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Return signed Nutzungsvertrag",
+          "quote": "Den unterschriebenen Vertrag benötigen wir innerhalb von 14 Werktagen ab dem Briefdatum zurück.",
+          "computation": "Letter is dated Wednesday 18.11.2026 (Briefdatum). The letter defines its own 'Werktage' as Monday–Saturday, excluding Sundays and public holidays. Since the period runs 'ab dem Briefdatum' (from the start of that calendar day), under the logic of §187(2) BGB the day itself is included as day 1. Counting 14 such working days from 18.11.2026: 18.11 Wed(1), 19.11 Thu(2), 20.11 Fri(3), 21.11 Sat(4), 22.11 Sun(excluded), 23.11 Mon(5), 24.11 Tue(6), 25.11 Wed(7), 26.11 Thu(8), 27.11 Fri(9), 28.11 Sat(10), 29.11 Sun(excluded), 30.11 Mon(11), 01.12 Tue(12), 02.12 Wed(13), 03.12 Thu(14). No NW public holidays fall in this window (All Saints' Day on 01.11 already passed; next holiday is Christmas). The 14th working day, 03.12.2026, is a Thursday, so no weekend/holiday roll-over under §193 BGB is needed. Note: the phrase 'ab dem Briefdatum' is slightly ambiguous as to whether the letter date itself counts as day 1 or whether counting starts the next day (which would shift the deadline to 04.12.2026); the inclusive reading is used here as the more natural reading of 'ab dem [Datum]'.",
+          "due_date": "2026-12-03",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The deadline wording 'innerhalb von 14 Werktagen ab dem Briefdatum' is ambiguous about whether the letter's own date (18.11.2026) counts as day 1 of the period or not; if the day after the letter is day 1 instead, the true deadline would be 2026-12-04 rather than 2026-12-03 — the cooperative should be asked to confirm if timing is tight."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3349,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1477,
+      "cost_usd": 0.04002639999999999,
+      "duration_ms": 32380,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

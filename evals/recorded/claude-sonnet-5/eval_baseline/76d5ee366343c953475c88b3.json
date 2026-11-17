@@ -1,0 +1,83 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"e4d5ac76ba75f48a93a5c92f670ae740408a21c255d1bfd1aea0a6a69a83b003\",\"mode\":\"text\",\"region\":\"BB\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-fine_bussgeld-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Brandenburg (BB), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document",
+    "recorded_at": "2026-11-24T11:23:47+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[150,28.5,3.5,182],\"contract\":null,\"document_date\":\"2026-11-19\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"Die Frist von zwei Wochen beginnt mit dem Tag der Zustellung.\",\"computation\":\"Formal delivery (Zustellungsurkunde, §182 ZPO) occurred on 21.11.2026 (a Saturday, per the delivery certificate copy). Per §110 OWiG in conjunction with §43 StPO/§§187,188 BGB, the day of delivery itself is not counted; the period begins the following day, 22.11.2026. The statutory period is two weeks (Wochenfrist); under §188 Abs. 2 BGB such a period ends with the day in the last week bearing the same name as the day of the triggering event, i.e. a Saturday, giving 05.12.2026. Since 05.12.2026 is a Saturday, §193 BGB shifts the deadline to the next working day. No Brandenburg public holiday falls in between, so the deadline moves to Monday, 07.12.2026.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine (Gesamtbetrag) once the decision becomes final\",\"quote\":\"Der Gesamtbetrag ist zwei Wochen nach Eintritt der Rechtskraft zu zahlen.\",\"computation\":\"Payment is due two weeks after the decision becomes legally final (Rechtskraft), which happens only if no Einspruch is filed. Assuming no Einspruch is lodged, Rechtskraft enters on the day after the (weekend-extended) Einspruch deadline of 07.12.2026, i.e. 08.12.2026 (Tuesday). Treating 08.12.2026 as the triggering event, the day itself is not counted (§187 Abs. 1 BGB), so the two-week period starts 09.12.2026 and ends, per §188 Abs. 2 BGB, on the day in the last week with the same weekday as the event (Tuesday), i.e. 22.12.2026. This date is a Tuesday, so no weekend/holiday shift under §193 BGB is needed. This date is contingent on no Einspruch being filed; if an Einspruch is filed by 07.12.2026, this payment deadline does not apply and a new timeline would follow the outcome of the objection proceedings.\",\"due_date\":\"2026-12-22\",\"confidence\":\"low\",\"amount\":182}],\"kind\":\"fine\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"BS-2026-772415.3\"},{\"label\":\"Kennzeichen\",\"value\":\"LOS-RM 66\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Zentraldienst der Polizei Muster-Brandenburg\",\"warnings\":[\"The sender's e-mail address domain ('zentraldienst-der-polizei-mu.example') uses the reserved '.example' top-level domain, which is not a real, deliverable address — verify this is a genuine authority contact before relying on it.\",\"The Zustellungsurkunde states the letter was delivered on 21.11.2026, a Saturday, which is unusual for formal postal service (Zustellung) in Germany; double-check the actual delivery date on your own copy of the envelope/certificate, since the Einspruch deadline is calculated from that date.\",\"The payment due date given here assumes no Einspruch is filed and that legal force (Rechtskraft) enters the day after the objection period expires; if you file an Einspruch, no payment is due under this timeline and the case proceeds differently.\"]}",
+    "data": {
+      "amounts": [
+        150,
+        28.5,
+        3.5,
+        182
+      ],
+      "contract": null,
+      "document_date": "2026-11-19",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "Die Frist von zwei Wochen beginnt mit dem Tag der Zustellung.",
+          "computation": "Formal delivery (Zustellungsurkunde, §182 ZPO) occurred on 21.11.2026 (a Saturday, per the delivery certificate copy). Per §110 OWiG in conjunction with §43 StPO/§§187,188 BGB, the day of delivery itself is not counted; the period begins the following day, 22.11.2026. The statutory period is two weeks (Wochenfrist); under §188 Abs. 2 BGB such a period ends with the day in the last week bearing the same name as the day of the triggering event, i.e. a Saturday, giving 05.12.2026. Since 05.12.2026 is a Saturday, §193 BGB shifts the deadline to the next working day. No Brandenburg public holiday falls in between, so the deadline moves to Monday, 07.12.2026.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine (Gesamtbetrag) once the decision becomes final",
+          "quote": "Der Gesamtbetrag ist zwei Wochen nach Eintritt der Rechtskraft zu zahlen.",
+          "computation": "Payment is due two weeks after the decision becomes legally final (Rechtskraft), which happens only if no Einspruch is filed. Assuming no Einspruch is lodged, Rechtskraft enters on the day after the (weekend-extended) Einspruch deadline of 07.12.2026, i.e. 08.12.2026 (Tuesday). Treating 08.12.2026 as the triggering event, the day itself is not counted (§187 Abs. 1 BGB), so the two-week period starts 09.12.2026 and ends, per §188 Abs. 2 BGB, on the day in the last week with the same weekday as the event (Tuesday), i.e. 22.12.2026. This date is a Tuesday, so no weekend/holiday shift under §193 BGB is needed. This date is contingent on no Einspruch being filed; if an Einspruch is filed by 07.12.2026, this payment deadline does not apply and a new timeline would follow the outcome of the objection proceedings.",
+          "due_date": "2026-12-22",
+          "confidence": "low",
+          "amount": 182
+        }
+      ],
+      "kind": "fine",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "BS-2026-772415.3"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "LOS-RM 66"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Zentraldienst der Polizei Muster-Brandenburg",
+      "warnings": [
+        "The sender's e-mail address domain ('zentraldienst-der-polizei-mu.example') uses the reserved '.example' top-level domain, which is not a real, deliverable address — verify this is a genuine authority contact before relying on it.",
+        "The Zustellungsurkunde states the letter was delivered on 21.11.2026, a Saturday, which is unusual for formal postal service (Zustellung) in Germany; double-check the actual delivery date on your own copy of the envelope/certificate, since the Einspruch deadline is calculated from that date.",
+        "The payment due date given here assumes no Einspruch is filed and that legal force (Rechtskraft) enters the day after the objection period expires; if you file an Einspruch, no payment is due under this timeline and the case proceeds differently."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6305,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2163,
+      "cost_usd": 0.07233039999999999,
+      "duration_ms": 60691,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

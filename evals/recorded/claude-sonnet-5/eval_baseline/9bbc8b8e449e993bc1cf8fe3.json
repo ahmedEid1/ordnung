@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"76a626154f61329abde365cff4c3ff686d8f832745067ae2e4368a8e14a33afe\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-dunning_fixed-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:50:51+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[112,112,2,226],\"contract\":null,\"document_date\":\"2026-11-19\",\"items\":[{\"kind\":\"payment\",\"title\":\"Pay overdue electricity and water installments plus dunning fee\",\"quote\":\"Wir fordern Sie auf, den offenen Betrag bis spätestens 10.12.2026 zu zahlen.\",\"computation\":\"The letter states an explicit calendar due date of 10.12.2026 for the outstanding amount of EUR 226.00 (Abschlag Oktober 112,00 + Abschlag November 112,00 + Mahnkosten 2,00). This is a private-law payment deadline stated as a fixed calendar date, so it is used as written (no §187/188 BGB counting needed). 10.12.2026 falls on a Thursday, a regular working day, so no weekend/holiday adjustment under §193 BGB is required.\",\"due_date\":\"2026-12-10\",\"confidence\":\"high\",\"amount\":226}],\"kind\":\"dunning\",\"references\":[{\"label\":\"Vertragskonto\",\"value\":\"4007 3318 52\"}],\"remedy_type\":\"none\",\"sender_name\":\"Stadtwerke Beispielsoest GmbH\",\"warnings\":[\"The letter warns it may interrupt supply if payment is not received, which is a standard but firm pressure tactic from a utility dunning letter; verify the amounts and IBAN against your own records and prior bills before paying, as the IBAN domestic (DE) and company details appear consistent with a genuine German Stadtwerke, but always double-check payee details independently rather than trusting the letter alone.\"]}",
+    "data": {
+      "amounts": [
+        112,
+        112,
+        2,
+        226
+      ],
+      "contract": null,
+      "document_date": "2026-11-19",
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay overdue electricity and water installments plus dunning fee",
+          "quote": "Wir fordern Sie auf, den offenen Betrag bis spätestens 10.12.2026 zu zahlen.",
+          "computation": "The letter states an explicit calendar due date of 10.12.2026 for the outstanding amount of EUR 226.00 (Abschlag Oktober 112,00 + Abschlag November 112,00 + Mahnkosten 2,00). This is a private-law payment deadline stated as a fixed calendar date, so it is used as written (no §187/188 BGB counting needed). 10.12.2026 falls on a Thursday, a regular working day, so no weekend/holiday adjustment under §193 BGB is required.",
+          "due_date": "2026-12-10",
+          "confidence": "high",
+          "amount": 226
+        }
+      ],
+      "kind": "dunning",
+      "references": [
+        {
+          "label": "Vertragskonto",
+          "value": "4007 3318 52"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Stadtwerke Beispielsoest GmbH",
+      "warnings": [
+        "The letter warns it may interrupt supply if payment is not received, which is a standard but firm pressure tactic from a utility dunning letter; verify the amounts and IBAN against your own records and prior bills before paying, as the IBAN domestic (DE) and company details appear consistent with a genuine German Stadtwerke, but always double-check payee details independently rather than trusting the letter alone."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1103,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1493,
+      "cost_usd": 0.018112,
+      "duration_ms": 12362,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

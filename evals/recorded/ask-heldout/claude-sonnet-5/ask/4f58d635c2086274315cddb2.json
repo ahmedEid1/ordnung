@@ -1,0 +1,278 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"c5bf343951f16ee695937237b2efb8ab43009e2379a11801cbd01cc9d384dcf9\",\"question\":\"Wie lautet meine Steuernummer beim Finanzamt?\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "doc_hynqaw58f550"
+    ],
+    "prompt_head": "The person asks:\nWie lautet meine Steuernummer beim Finanzamt?\n",
+    "recorded_at": "2026-11-24T13:42:36+00:00",
+    "repeat": 3,
+    "commit": "84270dc0",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "Ihre Steuernummer beim Finanzamt Musterstadt lautet \"123/4567/8901\" [party:pty_mcq97yavgqjy] – entnommen aus dem Einkommensteuerbescheid 2025 [doc:doc_hynqaw58f550]. Für diese Nummer gibt es keine öffentliche Prüfziffer, daher kann Ordnung sie nicht automatisch verifizieren; am besten mit dem Originalschreiben abgleichen.\n\nZusätzlich liegt dort auch Ihre Steuer-Identifikationsnummer (IdNr.) \"57 216 480 354\" vor, deren Prüfziffer bestanden hat [doc:doc_hynqaw58f550].",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 360,
+      "cache_read_tokens": 12783,
+      "cache_creation_tokens": 1726,
+      "cost_usd": 0.0130686,
+      "duration_ms": 7733,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_my_numbers",
+      "input": {
+        "organisation": "Finanzamt"
+      },
+      "tool_use_id": "toolu_01GK5XBcWRCotjmSPSRyLPZp"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-11-24\",\"open_cases\":[],\"organisations\":[{\"party_id\":\"pty_mcq97yavgqjy\",\"kind\":\"tax_office\",\"numbers\":[\"n1\",\"n2\"],\"last_letter\":{\"doc_id\":\"doc_hynqaw58f550\",\"date\":\"2026-09-15\"},\"open_items\":2}],\"numbers\":[{\"ref\":\"n1\",\"kind\":\"tax_id\",\"group\":\"about_you\",\"check\":\"ok\",\"check_note\":\"Passes the Steuer-ID check (§ 139b AO, the BZSt's specification). A misread digit would almost always fail it; it doesn't prove the number is yours.\",\"doc_id\":\"doc_hynqaw58f550\",\"party_id\":\"pty_mcq97yavgqjy\",\"letters\":1},{\"ref\":\"n2\",\"kind\":\"tax_number\",\"group\":\"about_you\",\"check\":\"none\",\"doc_id\":\"doc_hynqaw58f550\",\"party_id\":\"pty_mcq97yavgqjy\",\"letters\":1}],\"note\":\"Each number's label and value are in the letter text of the letter it comes from (under numbers, by ref). check is Ordnung's check-digit test: ok (passes the published check, so almost certainly no digit was misread — it does not prove the number is the person's), fails (compare it with the letter) or none (no public check for this kind of number).\"}\n</ordnung_record>\n<untrusted_document>\n{\"pty_mcq97yavgqjy\":{\"name\":\"Finanzamt Musterstadt\",\"phone\":\"0123 887-2204\"},\"doc_hynqaw58f550\":{\"title\":\"Income Tax Assessment 2025 – Finanzamt Musterstadt\",\"numbers\":{\"n1\":{\"label\":\"IdNr.\",\"value\":\"57 216 480 354\"},\"n2\":{\"label\":\"Steuernummer\",\"value\":\"123/4567/8901\"}}}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01GK5XBcWRCotjmSPSRyLPZp"
+    },
+    {
+      "type": "text",
+      "text": "Ihre Steuernummer"
+    },
+    {
+      "type": "text",
+      "text": " beim Finanzamt"
+    },
+    {
+      "type": "text",
+      "text": " Musterstadt laut"
+    },
+    {
+      "type": "text",
+      "text": "et \""
+    },
+    {
+      "type": "text",
+      "text": "123/4567/8901\""
+    },
+    {
+      "type": "text",
+      "text": " ["
+    },
+    {
+      "type": "text",
+      "text": "party"
+    },
+    {
+      "type": "text",
+      "text": ":p"
+    },
+    {
+      "type": "text",
+      "text": "ty_mcq97yav"
+    },
+    {
+      "type": "text",
+      "text": "gqjy]"
+    },
+    {
+      "type": "text",
+      "text": " –"
+    },
+    {
+      "type": "text",
+      "text": " entnommen aus dem"
+    },
+    {
+      "type": "text",
+      "text": " Ein"
+    },
+    {
+      "type": "text",
+      "text": "kommensteuerbesc"
+    },
+    {
+      "type": "text",
+      "text": "heid "
+    },
+    {
+      "type": "text",
+      "text": "2025 [doc:do"
+    },
+    {
+      "type": "text",
+      "text": "c_hynqaw58"
+    },
+    {
+      "type": "text",
+      "text": "f550]"
+    },
+    {
+      "type": "text",
+      "text": ". Für di"
+    },
+    {
+      "type": "text",
+      "text": "ese Nummer g"
+    },
+    {
+      "type": "text",
+      "text": "ibt es keine ö"
+    },
+    {
+      "type": "text",
+      "text": "ffentliche Prüf"
+    },
+    {
+      "type": "text",
+      "text": "ziffer, daher k"
+    },
+    {
+      "type": "text",
+      "text": "ann"
+    },
+    {
+      "type": "text",
+      "text": " Ordn"
+    },
+    {
+      "type": "text",
+      "text": "ung s"
+    },
+    {
+      "type": "text",
+      "text": "ie nicht autom"
+    },
+    {
+      "type": "text",
+      "text": "atisch verifizieren"
+    },
+    {
+      "type": "text",
+      "text": "; am"
+    },
+    {
+      "type": "text",
+      "text": " besten m"
+    },
+    {
+      "type": "text",
+      "text": "it dem Origin"
+    },
+    {
+      "type": "text",
+      "text": "alsch"
+    },
+    {
+      "type": "text",
+      "text": "reiben ab"
+    },
+    {
+      "type": "text",
+      "text": "g"
+    },
+    {
+      "type": "text",
+      "text": "leichen."
+    },
+    {
+      "type": "text",
+      "text": "\n\nZusätzlich li"
+    },
+    {
+      "type": "text",
+      "text": "egt d"
+    },
+    {
+      "type": "text",
+      "text": "ort"
+    },
+    {
+      "type": "text",
+      "text": " auch Ihre Ste"
+    },
+    {
+      "type": "text",
+      "text": "uer-Identifikation"
+    },
+    {
+      "type": "text",
+      "text": "snummer (IdN"
+    },
+    {
+      "type": "text",
+      "text": "r.) \"57 216 "
+    },
+    {
+      "type": "text",
+      "text": "480 354\" v"
+    },
+    {
+      "type": "text",
+      "text": "or,"
+    },
+    {
+      "type": "text",
+      "text": " de"
+    },
+    {
+      "type": "text",
+      "text": "ren Prüfzi"
+    },
+    {
+      "type": "text",
+      "text": "ffer b"
+    },
+    {
+      "type": "text",
+      "text": "estan"
+    },
+    {
+      "type": "text",
+      "text": "den h"
+    },
+    {
+      "type": "text",
+      "text": "at [doc:doc_"
+    },
+    {
+      "type": "text",
+      "text": "hynqaw58f550"
+    },
+    {
+      "type": "text",
+      "text": "]."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Ihre Steuernummer beim Finanzamt Musterstadt lautet \"123/4567/8901\" [party:pty_mcq97yavgqjy] – entnommen aus dem Einkommensteuerbescheid 2025 [doc:doc_hynqaw58f550]. Für diese Nummer gibt es keine öffentliche Prüfziffer, daher kann Ordnung sie nicht automatisch verifizieren; am besten mit dem Originalschreiben abgleichen.\n\nZusätzlich liegt dort auch Ihre Steuer-Identifikationsnummer (IdNr.) \"57 216 480 354\" vor, deren Prüfziffer bestanden hat [doc:doc_hynqaw58f550].",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 360,
+          "cache_read_tokens": 12783,
+          "cache_creation_tokens": 1726,
+          "cost_usd": 0.0130686,
+          "duration_ms": 7733,
+          "turns": 2
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

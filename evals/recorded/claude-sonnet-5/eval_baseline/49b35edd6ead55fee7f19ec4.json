@@ -1,0 +1,73 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"b379c518888e50003d40040d2965b748e74ddb57c036d7289e39a78d0d521c46\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-L2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:17:31+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"sender_name\":\"Beispielhof Serviced Living GmbH\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Apartment\",\"value\":\"B 3.07\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Reply about lease extension\",\"quote\":\"Please tell us in writing by 16 December 2026 whether you would like to extend.\",\"computation\":\"The letter prints a fixed calendar date for the reply: 16 December 2026. No counting or delivery-fiction rules apply because this is a private company's letter, not an authority's, and the date is already given explicitly (no period to compute). The recipient must reply in writing by this date.\",\"due_date\":\"2026-12-16\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"expiry\",\"title\":\"Fixed-term lease ends\",\"quote\":\"Your fixed-term lease for apartment B 3.07 ends on 31 January 2027.\",\"computation\":\"The letter states the fixed end date of the current lease term directly: 31 January 2027. If no extension is agreed by 16 December 2026, the apartment handover is planned for the end of January, i.e. the lease simply expires on this date without any notice of termination being required.\",\"due_date\":\"2027-01-31\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is an offer to extend a fixed-term lease, not a notice of automatic renewal; the letter does not require a cancellation to let the lease end on 31 January 2027 — it will end automatically unless the tenant actively requests an extension in writing by 16 December 2026.\",\"No payment is requested in this particular letter; double-check the sender's IBAN (DE31 3705 0198 0005 5404 00) and contact details against previous correspondence from this landlord before paying anything based on it.\"]}",
+    "data": {
+      "kind": "rent_lease",
+      "sender_name": "Beispielhof Serviced Living GmbH",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Apartment",
+          "value": "B 3.07"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Reply about lease extension",
+          "quote": "Please tell us in writing by 16 December 2026 whether you would like to extend.",
+          "computation": "The letter prints a fixed calendar date for the reply: 16 December 2026. No counting or delivery-fiction rules apply because this is a private company's letter, not an authority's, and the date is already given explicitly (no period to compute). The recipient must reply in writing by this date.",
+          "due_date": "2026-12-16",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "expiry",
+          "title": "Fixed-term lease ends",
+          "quote": "Your fixed-term lease for apartment B 3.07 ends on 31 January 2027.",
+          "computation": "The letter states the fixed end date of the current lease term directly: 31 January 2027. If no extension is agreed by 16 December 2026, the apartment handover is planned for the end of January, i.e. the lease simply expires on this date without any notice of termination being required.",
+          "due_date": "2027-01-31",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is an offer to extend a fixed-term lease, not a notice of automatic renewal; the letter does not require a cancellation to let the lease end on 31 January 2027 — it will end automatically unless the tenant actively requests an extension in writing by 16 December 2026.",
+        "No payment is requested in this particular letter; double-check the sender's IBAN (DE31 3705 0198 0005 5404 00) and contact details against previous correspondence from this landlord before paying anything based on it."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2416,
+      "cache_read_tokens": 14445,
+      "cache_creation_tokens": 3271,
+      "cost_usd": 0.040141,
+      "duration_ms": 24825,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"181886bbc9faa25b4544c4952981ff900cf4bc4a17772ae0cda0df457ae5a762\",\"mode\":\"text\",\"region\":\"HH\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-N2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hamburg (HH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> ta",
+    "recorded_at": "2026-11-24T09:54:04+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2026-11-19\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against refusal of extended opening hours\",\"quote\":\"Er muss innerhalb eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift beim Bezirksamt Beispielbek, Marktplatz am Bach 1, 22081 Hamburg erhoben werden.\",\"computation\":\"Letter is dated Thursday 19.11.2026 and no separate 'Tag der Aufgabe zur Post' is given, so posting day = 19.11.2026. Letter states the 4-day fiction itself ('gilt am vierten Tag nach der Aufgabe zur Post als bekannt gegeben'). Counting calendar days from the day after posting (19.11 not counted): 20.11=1, 21.11=2, 22.11=3, 23.11=4 -> Bekanntgabe (deemed delivery) = Monday 23.11.2026. This is a general municipal authority (Bezirksamt), not a tax office, so the delivery day is NOT shifted even if it fell on a weekend/holiday (here it is a Monday anyway, no issue). The one-month Widerspruch period (§ 70 VwGO analogue, counted per §§187 Abs.1, 188 Abs.2 BGB) starts the day after Bekanntgabe and ends on the day in the following month bearing the same number as the day of Bekanntgabe: 23.12.2026. Checked against Hamburg public holidays: 23 Dec is not a holiday and is a Wednesday, so no further shift under §31 Abs.3 HmbVwVfG/§222 Abs.2 ZPO is needed.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"authority_letter\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"VS 22/0619-26\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Bezirksamt Beispielbek (Freie und Hansestadt Hamburg, Fachamt Verbraucherschutz, Gewerbe und Umwelt)\",\"warnings\":[]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2026-11-19",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against refusal of extended opening hours",
+          "quote": "Er muss innerhalb eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift beim Bezirksamt Beispielbek, Marktplatz am Bach 1, 22081 Hamburg erhoben werden.",
+          "computation": "Letter is dated Thursday 19.11.2026 and no separate 'Tag der Aufgabe zur Post' is given, so posting day = 19.11.2026. Letter states the 4-day fiction itself ('gilt am vierten Tag nach der Aufgabe zur Post als bekannt gegeben'). Counting calendar days from the day after posting (19.11 not counted): 20.11=1, 21.11=2, 22.11=3, 23.11=4 -> Bekanntgabe (deemed delivery) = Monday 23.11.2026. This is a general municipal authority (Bezirksamt), not a tax office, so the delivery day is NOT shifted even if it fell on a weekend/holiday (here it is a Monday anyway, no issue). The one-month Widerspruch period (§ 70 VwGO analogue, counted per §§187 Abs.1, 188 Abs.2 BGB) starts the day after Bekanntgabe and ends on the day in the following month bearing the same number as the day of Bekanntgabe: 23.12.2026. Checked against Hamburg public holidays: 23 Dec is not a holiday and is a Wednesday, so no further shift under §31 Abs.3 HmbVwVfG/§222 Abs.2 ZPO is needed.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "authority_letter",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "VS 22/0619-26"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Bezirksamt Beispielbek (Freie und Hansestadt Hamburg, Fachamt Verbraucherschutz, Gewerbe und Umwelt)",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1900,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1904,
+      "cost_usd": 0.027726,
+      "duration_ms": 20903,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

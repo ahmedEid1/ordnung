@@ -1,0 +1,72 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"5bcc899dac1db4d6de9d121ce52323f3552ea99d778d5a6c68ac0d22fa46e218\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d",
+    "recorded_at": "2026-11-24T07:21:56+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2026-11-19\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against rejection of hunting licence\",\"quote\":\"Binnen eines Monats ab der Bekanntgabe dieses Bescheids ist der Widerspruch zulässig; er wird schriftlich oder zur Niederschrift bei folgender Stelle erhoben: Kreis Musterdithmarschen, Stiftstraße 8, 25746 Musterheide in Holstein.\",\"computation\":\"Bescheid dated Thursday 19.11.2026, sent by simple letter. Per the letter's own clause (§ 110 Abs. 2 LVwG), deemed delivered (Bekanntgabe) on the 4th day after posting: 19.11. + 4 days = 23.11.2026 (Monday) – a normal business day, so no weekend/holiday shift applies to the fiction itself. The one-month Widerspruch period starts the day after Bekanntgabe (§ 187 Abs. 1 BGB, since the triggering event is the Bekanntgabe on 23.11.2026) and ends, per § 188 Abs. 2 BGB, on the day of the following month bearing the same number as the Bekanntgabe day: 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in Schleswig-Holstein, so no further shift under § 193 BGB is needed.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Submit valid hunting liability insurance confirmation to get licence issued\",\"quote\":\"Sobald Sie eine gültige Versicherungsbestätigung nachreichen, stelle ich den Jagdschein ohne neuen Antrag aus.\",\"computation\":\"The letter gives no calendar date or period for submitting the renewed insurance confirmation; it only states the licence will be issued once it is received ('sobald'). No deadline can be computed from this wording, though doing so is a precondition for obtaining the licence at all.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"kind\":\"authority_letter\",\"references\":[{\"label\":\"Az.\",\"value\":\"WJ-32.4-0912/26\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Kreis Musterdithmarschen · Fachdienst Waffen und Jagd\",\"warnings\":[\"The letter rejects the three-year hunting licence application because the submitted hunting-liability insurance proof expired on 30.06.2026; no payment is demanded and the IBAN shown in the letterhead is only the authority's general contact information, not a payment request, so there is nothing to verify there, but double-check that the Widerspruch deadline of 2026-12-23 is correct against the actual postmark/delivery date if it differs from the Bescheiddatum.\"]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2026-11-19",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against rejection of hunting licence",
+          "quote": "Binnen eines Monats ab der Bekanntgabe dieses Bescheids ist der Widerspruch zulässig; er wird schriftlich oder zur Niederschrift bei folgender Stelle erhoben: Kreis Musterdithmarschen, Stiftstraße 8, 25746 Musterheide in Holstein.",
+          "computation": "Bescheid dated Thursday 19.11.2026, sent by simple letter. Per the letter's own clause (§ 110 Abs. 2 LVwG), deemed delivered (Bekanntgabe) on the 4th day after posting: 19.11. + 4 days = 23.11.2026 (Monday) – a normal business day, so no weekend/holiday shift applies to the fiction itself. The one-month Widerspruch period starts the day after Bekanntgabe (§ 187 Abs. 1 BGB, since the triggering event is the Bekanntgabe on 23.11.2026) and ends, per § 188 Abs. 2 BGB, on the day of the following month bearing the same number as the Bekanntgabe day: 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in Schleswig-Holstein, so no further shift under § 193 BGB is needed.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Submit valid hunting liability insurance confirmation to get licence issued",
+          "quote": "Sobald Sie eine gültige Versicherungsbestätigung nachreichen, stelle ich den Jagdschein ohne neuen Antrag aus.",
+          "computation": "The letter gives no calendar date or period for submitting the renewed insurance confirmation; it only states the licence will be issued once it is received ('sobald'). No deadline can be computed from this wording, though doing so is a precondition for obtaining the licence at all.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "kind": "authority_letter",
+      "references": [
+        {
+          "label": "Az.",
+          "value": "WJ-32.4-0912/26"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Kreis Musterdithmarschen · Fachdienst Waffen und Jagd",
+      "warnings": [
+        "The letter rejects the three-year hunting licence application because the submitted hunting-liability insurance proof expired on 30.06.2026; no payment is demanded and the IBAN shown in the letterhead is only the authority's general contact information, not a payment request, so there is nothing to verify there, but double-check that the Widerspruch deadline of 2026-12-23 is correct against the actual postmark/delivery date if it differs from the Bescheiddatum."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2749,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1687,
+      "cost_usd": 0.0348664,
+      "duration_ms": 30284,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

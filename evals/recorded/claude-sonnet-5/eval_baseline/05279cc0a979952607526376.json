@@ -1,0 +1,71 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"65230cbd6473a72f1da82fe0d11177ac1c2bfe207ba71b6aeae546b1fb0f3e5c\",\"mode\":\"text\",\"region\":\"NI\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-mieterhoehung-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Niedersachsen (NI), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docume",
+    "recorded_at": "2026-11-24T13:02:01+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"sender_name\":\"Immobilienverwaltung Musterheide OHG\",\"document_date\":\"2026-11-20\",\"references\":[],\"amounts\":[560,616],\"items\":[{\"kind\":\"deadline\",\"title\":\"Consent to rent increase (§ 558b BGB)\",\"quote\":\"Sie können Ihre Zustimmung bis zum Ende des übernächsten Monats nach Erhalt dieses Schreibens erklären.\",\"computation\":\"The letter was personally delivered into the tenant's house mailbox on 20.11.2026 ('Persönlich durch unsere Mitarbeiterin am 20.11.2026 in den Hausbriefkasten eingelegt'), so receipt (Zugang) is 20.11.2026 — no postal-delivery fiction needed since delivery was by hand. Under § 558b Abs. 2 BGB the tenant must declare consent by the end of the second calendar month following the month of receipt. November 2026 is the month of receipt; the 'next' month is December 2026 ('nächster Monat'), and the 'month after next' ('übernächster Monat') is January 2027, matching the letter's own wording. So the period ends on the last day of January 2027 = 31.01.2027. That date is a Sunday; under § 193 BGB the deadline for a declaration falling on a Sunday/holiday moves to the next working day, i.e. Monday 01.02.2027.\",\"due_date\":\"2027-02-01\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"New rent (Nettokaltmiete 616,00 €) takes effect if consent is given\",\"quote\":\"bitten wir Sie, einer Anhebung Ihrer Nettokaltmiete von 560,00 € auf 616,00 € ab dem 01.02.2027 zuzustimmen.\",\"computation\":\"The letter states the increased rent is to apply 'ab dem 01.02.2027' — this calendar date is given explicitly in the letter and is taken as written; it is also the first day after the consent deadline computed above, consistent with § 558b BGB.\",\"due_date\":\"2027-02-01\",\"confidence\":\"high\",\"amount\":616}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a civil-law rent-increase request (§ 558 BGB) from the landlord's managing agent, not an administrative decision; it carries no formal legal-remedy instructions (Rechtsbehelfsbelehrung) — the tenant's options are to consent, partially consent, or refuse/let the landlord sue for consent (Zustimmungsklage) within three months after the consent deadline expires.\",\"The requested rate of 7,70 €/m² lies at the lower end of the cited comparison range (7,70–8,30 €/m²) according to the 2026 Mietspiegel of Beispielsoltau, as stated in the letter; the tenant may wish to verify this against the actual Mietspiegel themselves.\"]}",
+    "data": {
+      "kind": "rent_lease",
+      "sender_name": "Immobilienverwaltung Musterheide OHG",
+      "document_date": "2026-11-20",
+      "references": [],
+      "amounts": [
+        560,
+        616
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Consent to rent increase (§ 558b BGB)",
+          "quote": "Sie können Ihre Zustimmung bis zum Ende des übernächsten Monats nach Erhalt dieses Schreibens erklären.",
+          "computation": "The letter was personally delivered into the tenant's house mailbox on 20.11.2026 ('Persönlich durch unsere Mitarbeiterin am 20.11.2026 in den Hausbriefkasten eingelegt'), so receipt (Zugang) is 20.11.2026 — no postal-delivery fiction needed since delivery was by hand. Under § 558b Abs. 2 BGB the tenant must declare consent by the end of the second calendar month following the month of receipt. November 2026 is the month of receipt; the 'next' month is December 2026 ('nächster Monat'), and the 'month after next' ('übernächster Monat') is January 2027, matching the letter's own wording. So the period ends on the last day of January 2027 = 31.01.2027. That date is a Sunday; under § 193 BGB the deadline for a declaration falling on a Sunday/holiday moves to the next working day, i.e. Monday 01.02.2027.",
+          "due_date": "2027-02-01",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "New rent (Nettokaltmiete 616,00 €) takes effect if consent is given",
+          "quote": "bitten wir Sie, einer Anhebung Ihrer Nettokaltmiete von 560,00 € auf 616,00 € ab dem 01.02.2027 zuzustimmen.",
+          "computation": "The letter states the increased rent is to apply 'ab dem 01.02.2027' — this calendar date is given explicitly in the letter and is taken as written; it is also the first day after the consent deadline computed above, consistent with § 558b BGB.",
+          "due_date": "2027-02-01",
+          "confidence": "high",
+          "amount": 616
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a civil-law rent-increase request (§ 558 BGB) from the landlord's managing agent, not an administrative decision; it carries no formal legal-remedy instructions (Rechtsbehelfsbelehrung) — the tenant's options are to consent, partially consent, or refuse/let the landlord sue for consent (Zustimmungsklage) within three months after the consent deadline expires.",
+        "The requested rate of 7,70 €/m² lies at the lower end of the cited comparison range (7,70–8,30 €/m²) according to the 2026 Mietspiegel of Beispielsoltau, as stated in the letter; the tenant may wish to verify this against the actual Mietspiegel themselves."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 5598,
+      "cache_read_tokens": 12739,
+      "cache_creation_tokens": 6146,
+      "cost_usd": 0.0831198,
+      "duration_ms": 56580,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

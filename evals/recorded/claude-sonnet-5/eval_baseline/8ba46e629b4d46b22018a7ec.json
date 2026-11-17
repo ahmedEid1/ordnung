@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"1289c7ccb9aaea01895fcef42b9faf8cd398d3b6bc61dc95b249dd613edb4ca7\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-relative_business_days-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:54:36+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"insurance\",\"sender_name\":\"Kfz-Versicherung Beispielsicher AG\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Schadennummer\",\"value\":\"KS-26-1109-218\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Return game-damage certificate and completed claim questionnaire\",\"quote\":\"Senden Sie uns das ausgefüllte Formular bitte binnen 13 Werktagen nach dem Datum dieses Schreibens zurück (Werktage: Montag bis Samstag ohne gesetzliche Feiertage).\",\"computation\":\"Start event is the letter's own date, 21.11.2026 (a Saturday); per section 187 Abs.1 BGB this triggering day is not counted, so the period starts the next calendar day, 22.11.2026. 'Werktage' are defined by the letter as Monday-Saturday excluding statutory holidays, so Sundays are skipped when counting. Counting forward: 23.11 (Mon, day1), 24.11 (Tue, day2), 25.11 (Wed, day3), 26.11 (Thu, day4), 27.11 (Fri, day5), 28.11 (Sat, day6), 29.11 (Sun, skipped), 30.11 (Mon, day7), 01.12 (Tue, day8), 02.12 (Wed, day9), 03.12 (Thu, day10), 04.12 (Fri, day11), 05.12 (Sat, day12), 06.12 (Sun, skipped), 07.12 (Mon, day13). No public holidays fall in this NW period. Day 13 = Monday 07.12.2026, already a working day, so no further adjustment needed; this is the last day the documents must reach the insurer.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter itself is dated Saturday 21.11.2026, an unusual posting day for a company letter; if the actual sending date differs, the 13-working-day deadline should be recalculated from the true sending date.\"]}",
+    "data": {
+      "kind": "insurance",
+      "sender_name": "Kfz-Versicherung Beispielsicher AG",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Schadennummer",
+          "value": "KS-26-1109-218"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Return game-damage certificate and completed claim questionnaire",
+          "quote": "Senden Sie uns das ausgefüllte Formular bitte binnen 13 Werktagen nach dem Datum dieses Schreibens zurück (Werktage: Montag bis Samstag ohne gesetzliche Feiertage).",
+          "computation": "Start event is the letter's own date, 21.11.2026 (a Saturday); per section 187 Abs.1 BGB this triggering day is not counted, so the period starts the next calendar day, 22.11.2026. 'Werktage' are defined by the letter as Monday-Saturday excluding statutory holidays, so Sundays are skipped when counting. Counting forward: 23.11 (Mon, day1), 24.11 (Tue, day2), 25.11 (Wed, day3), 26.11 (Thu, day4), 27.11 (Fri, day5), 28.11 (Sat, day6), 29.11 (Sun, skipped), 30.11 (Mon, day7), 01.12 (Tue, day8), 02.12 (Wed, day9), 03.12 (Thu, day10), 04.12 (Fri, day11), 05.12 (Sat, day12), 06.12 (Sun, skipped), 07.12 (Mon, day13). No public holidays fall in this NW period. Day 13 = Monday 07.12.2026, already a working day, so no further adjustment needed; this is the last day the documents must reach the insurer.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter itself is dated Saturday 21.11.2026, an unusual posting day for a company letter; if the actual sending date differs, the 13-working-day deadline should be recalculated from the true sending date."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 4843,
+      "cache_read_tokens": 22201,
+      "cache_creation_tokens": 5393,
+      "cost_usd": 0.0744542,
+      "duration_ms": 46559,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

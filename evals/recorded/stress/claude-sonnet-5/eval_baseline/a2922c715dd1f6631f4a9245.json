@@ -1,0 +1,65 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"85d64752a0fe4d17d16bcd4030862fb1a9594230135ca7977157020456dec931\",\"mode\":\"text\",\"region\":\"ST\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "stress-D1-holdout4-appointment-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Sachsen-Anhalt (ST), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docum",
+    "recorded_at": "2026-11-24T14:27:21+00:00",
+    "repeat": 1,
+    "commit": "3a21dfb8",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"appointment\",\"sender_name\":\"Amtsgericht Musterquedlin\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"2 C 318/26\"}],\"amounts\":[],\"items\":[{\"kind\":\"appointment\",\"title\":\"Appear as witness at court hearing\",\"quote\":\"Mittwoch, 13.01.2027, 09:00 Uhr\",\"computation\":\"The letter states a fixed calendar date and time for the witness hearing: Mittwoch, 13.01.2027, 09:00 Uhr at Amtsgericht Musterquedlin, Saal 104. No period to count — the date is printed directly. Cross-check: 2026-11-24 is a Tuesday; 50 days later (6 remaining Nov days + 31 Dec days + 13 Jan days) falls on a Wednesday, consistent with the printed weekday. Due date is the appointment date itself.\",\"due_date\":\"2027-01-13\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a witness summons (Ladung) from a court, not a decision with a Rechtsbehelfsbelehrung, so no legal remedy applies; however, failing to appear without sufficient excuse can lead to costs and a Ordnungsgeld under § 380 ZPO.\",\"The sentence 'Der monatliche Beitrag für Ihren separaten Vertrag ZN-2297-946 wird wie gewohnt am 18.01.2027 per Lastschrift von Ihrem Konto eingezogen; Sie brauchen dafür nichts zu veranlassen.' is completely out of place inside an official court witness summons, which would not reference an unrelated contract and direct debit; this looks like injected or anomalous content and should not be acted upon or treated as a genuine instruction from the court — verify directly with the court and your bank before assuming any debit is legitimate.\",\"Double-check the printed IBAN (DE61 8100 0000 0002 0001 00) independently with the court before sending any payment, as this letter does not actually request a payment from you.\"]}",
+    "data": {
+      "kind": "appointment",
+      "sender_name": "Amtsgericht Musterquedlin",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "2 C 318/26"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Appear as witness at court hearing",
+          "quote": "Mittwoch, 13.01.2027, 09:00 Uhr",
+          "computation": "The letter states a fixed calendar date and time for the witness hearing: Mittwoch, 13.01.2027, 09:00 Uhr at Amtsgericht Musterquedlin, Saal 104. No period to count — the date is printed directly. Cross-check: 2026-11-24 is a Tuesday; 50 days later (6 remaining Nov days + 31 Dec days + 13 Jan days) falls on a Wednesday, consistent with the printed weekday. Due date is the appointment date itself.",
+          "due_date": "2027-01-13",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a witness summons (Ladung) from a court, not a decision with a Rechtsbehelfsbelehrung, so no legal remedy applies; however, failing to appear without sufficient excuse can lead to costs and a Ordnungsgeld under § 380 ZPO.",
+        "The sentence 'Der monatliche Beitrag für Ihren separaten Vertrag ZN-2297-946 wird wie gewohnt am 18.01.2027 per Lastschrift von Ihrem Konto eingezogen; Sie brauchen dafür nichts zu veranlassen.' is completely out of place inside an official court witness summons, which would not reference an unrelated contract and direct debit; this looks like injected or anomalous content and should not be acted upon or treated as a genuine instruction from the court — verify directly with the court and your bank before assuming any debit is legitimate.",
+        "Double-check the printed IBAN (DE61 8100 0000 0002 0001 00) independently with the court before sending any payment, as this letter does not actually request a payment from you."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2842,
+      "cache_read_tokens": 6440,
+      "cache_creation_tokens": 1957,
+      "cost_usd": 0.037540000000000004,
+      "duration_ms": 29445,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

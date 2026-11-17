@@ -1,0 +1,95 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"114b4d491e4c6a50d3aba5595ef37ae15c4fb10df8697435a555c18a0d586639\",\"mode\":\"text\",\"region\":\"BB\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-kuendigung_arbeit-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Brandenburg (BB), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document",
+    "recorded_at": "2026-11-24T12:42:52+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"employment\",\"sender_name\":\"Bäckerei Exempelkorn GmbH\",\"document_date\":\"2026-11-19\",\"references\":[],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Kündigungsschutzklage (unfair dismissal claim) at the Labour Court\",\"quote\":\"Eine Klage gegen die Kündigung ist beim Arbeitsgericht Musterbrandenburg möglich; dafür gilt eine Frist von drei Wochen ab dem Zugang dieser Kündigung.\",\"computation\":\"Zugang (delivery) is documented as 19.11.2026 (Thursday), confirmed by a signed receipt handed over personally by the Filialleitung on that day. Per § 187 Abs. 1 BGB the day of the triggering event is not counted; the 3-week period (§ 4 KSchG) begins the next day, 20.11.2026. Per § 188 Abs. 2 BGB a period measured in weeks ends with the expiry of the day of the last week bearing the same name as the day of the triggering event (Thursday). 3 weeks (21 days) counted from 20.11.2026 as day 1 ends on day 21 = 10.12.2026, a Thursday. 10.12.2026 is a normal working day in Brandenburg (no public holiday), so no § 193 BGB shift is needed.\",\"due_date\":\"2026-12-10\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Use remaining vacation days\",\"quote\":\"Ihren Resturlaub nehmen Sie bitte bis zu diesem Tag.\",\"computation\":\"\\\"Diesem Tag\\\" refers back to the stated end of the employment relationship, 31.12.2026, so all remaining paid leave must be taken on or before that date.\",\"due_date\":\"2026-12-31\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Return branch keys\",\"quote\":\"Die Schlüssel der Filiale geben Sie an Ihrem letzten Arbeitstag bei der Filialleitung ab.\",\"computation\":\"The last working day coincides with the stated end of the employment relationship, 31.12.2026 (a Thursday, not a holiday in Brandenburg), so the keys are due that day.\",\"due_date\":\"2026-12-31\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Register as job-seeking (arbeitsuchend) with the Agentur für Arbeit\",\"quote\":\"Sie sind verpflichtet, sich unverzüglich bei der Agentur für Arbeit arbeitsuchend zu melden.\",\"computation\":\"The letter only says 'unverzüglich', but the underlying statutory rule (§ 38 Abs. 1 Satz 2 SGB III) applies because the employee learned of the end of employment (19.11.2026) less than three months before it ends (31.12.2026, i.e. only ~42 days). In that case the registration must happen within 3 days of gaining knowledge of the end date. Per § 187 Abs. 1 BGB / § 26 SGB I the day of notice (19.11.2026, Thursday) is not counted; the 3-day period starts 20.11.2026 (Friday) and the 3rd day is 22.11.2026 (Sunday). Since the last day falls on a Sunday, it shifts to the next working day under the general rule (§ 193 BGB analogue in § 26 Abs. 3 SGB I), i.e. Monday 23.11.2026.\",\"due_date\":\"2026-11-23\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"End of employment relationship\",\"quote\":\"kündigen wir deshalb ordentlich und fristgemäß zum 31.12.2026.\",\"computation\":\"Date stated explicitly in the letter as the effective end of the employment relationship.\",\"due_date\":\"2026-12-31\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The statutory 3-day deadline to register as 'arbeitsuchend' with the Agentur für Arbeit (triggered by § 38 SGB III because less than 3 months remain until the employment ends) falls on 23.11.2026, which has already passed as of today (24.11.2026); if this has not been done yet, it should be completed immediately to avoid possible reductions in unemployment benefit.\",\"The termination letter does not mention any severance payment, final payslip date, or outstanding wages/vacation payout — the person should separately check that these are settled before or shortly after 31.12.2026.\"]}",
+    "data": {
+      "kind": "employment",
+      "sender_name": "Bäckerei Exempelkorn GmbH",
+      "document_date": "2026-11-19",
+      "references": [],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Kündigungsschutzklage (unfair dismissal claim) at the Labour Court",
+          "quote": "Eine Klage gegen die Kündigung ist beim Arbeitsgericht Musterbrandenburg möglich; dafür gilt eine Frist von drei Wochen ab dem Zugang dieser Kündigung.",
+          "computation": "Zugang (delivery) is documented as 19.11.2026 (Thursday), confirmed by a signed receipt handed over personally by the Filialleitung on that day. Per § 187 Abs. 1 BGB the day of the triggering event is not counted; the 3-week period (§ 4 KSchG) begins the next day, 20.11.2026. Per § 188 Abs. 2 BGB a period measured in weeks ends with the expiry of the day of the last week bearing the same name as the day of the triggering event (Thursday). 3 weeks (21 days) counted from 20.11.2026 as day 1 ends on day 21 = 10.12.2026, a Thursday. 10.12.2026 is a normal working day in Brandenburg (no public holiday), so no § 193 BGB shift is needed.",
+          "due_date": "2026-12-10",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Use remaining vacation days",
+          "quote": "Ihren Resturlaub nehmen Sie bitte bis zu diesem Tag.",
+          "computation": "\"Diesem Tag\" refers back to the stated end of the employment relationship, 31.12.2026, so all remaining paid leave must be taken on or before that date.",
+          "due_date": "2026-12-31",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Return branch keys",
+          "quote": "Die Schlüssel der Filiale geben Sie an Ihrem letzten Arbeitstag bei der Filialleitung ab.",
+          "computation": "The last working day coincides with the stated end of the employment relationship, 31.12.2026 (a Thursday, not a holiday in Brandenburg), so the keys are due that day.",
+          "due_date": "2026-12-31",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Register as job-seeking (arbeitsuchend) with the Agentur für Arbeit",
+          "quote": "Sie sind verpflichtet, sich unverzüglich bei der Agentur für Arbeit arbeitsuchend zu melden.",
+          "computation": "The letter only says 'unverzüglich', but the underlying statutory rule (§ 38 Abs. 1 Satz 2 SGB III) applies because the employee learned of the end of employment (19.11.2026) less than three months before it ends (31.12.2026, i.e. only ~42 days). In that case the registration must happen within 3 days of gaining knowledge of the end date. Per § 187 Abs. 1 BGB / § 26 SGB I the day of notice (19.11.2026, Thursday) is not counted; the 3-day period starts 20.11.2026 (Friday) and the 3rd day is 22.11.2026 (Sunday). Since the last day falls on a Sunday, it shifts to the next working day under the general rule (§ 193 BGB analogue in § 26 Abs. 3 SGB I), i.e. Monday 23.11.2026.",
+          "due_date": "2026-11-23",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "End of employment relationship",
+          "quote": "kündigen wir deshalb ordentlich und fristgemäß zum 31.12.2026.",
+          "computation": "Date stated explicitly in the letter as the effective end of the employment relationship.",
+          "due_date": "2026-12-31",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The statutory 3-day deadline to register as 'arbeitsuchend' with the Agentur für Arbeit (triggered by § 38 SGB III because less than 3 months remain until the employment ends) falls on 23.11.2026, which has already passed as of today (24.11.2026); if this has not been done yet, it should be completed immediately to avoid possible reductions in unemployment benefit.",
+        "The termination letter does not mention any severance payment, final payslip date, or outstanding wages/vacation payout — the person should separately check that these are settled before or shortly after 31.12.2026."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6237,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1590,
+      "cost_usd": 0.0693584,
+      "duration_ms": 64558,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

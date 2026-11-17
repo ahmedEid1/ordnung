@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"e6a608fa0fe40c7cb5afe652a457c6f1c03e07d21ed30758bdb4c69deb35bd69\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d",
+    "recorded_at": "2026-11-24T07:17:04+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Amt Musterschlei – Der Amtsvorsteher, Ordnungsamt\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"OA 32-118/26\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against refusal of beach-fire permit\",\"quote\":\"Gegen diesen Bescheid können Sie innerhalb eines Monats nach seiner Bekanntgabe Widerspruch einlegen, schriftlich oder zur Niederschrift bei der Behörde: Amt Musterschlei, Am Markt 6, 24376 Musterkappeln.\",\"computation\":\"Letter dated Wed 18.11.2026, sent by simple post (einfacher Brief). Per the letter's cited rule (§ 110 Abs. 2 LVwG SH), a letter sent by simple post is deemed delivered (Bekanntgabe) on the 4th day after posting; posting is presumed on the document date 18.11.2026, so the 4th day is 22.11.2026 (Sunday). Since this falls on a Sunday, the deemed-delivery fiction shifts to the next working day, Monday 23.11.2026, which is the Bekanntgabe date. The Widerspruchsfrist is one month 'nach Bekanntgabe'. Under § 187 Abs. 1 BGB the day of the triggering event (23.11.2026) is not counted, and under § 188 Abs. 2 BGB a one-month period ends on the day of the following month bearing the same number as the triggering day, i.e. 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in Schleswig-Holstein, so no further shift under § 193 BGB applies. Final deadline for the Widerspruch to reach the authority: 23.12.2026.\",\"due_date\":\"2026-12-23\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter cites a 4-day (not the more common 3-day) deemed-delivery rule for simple post under § 110 Abs. 2 LVwG; the exact wording of that provision was not independently verified, and the computed deadline (23.12.2026) assumes the stated 4-day rule and the usual weekend/holiday extension for the deemed-delivery date are correctly applied — confirm the actual posting date if known, as it may differ from the document date.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Amt Musterschlei – Der Amtsvorsteher, Ordnungsamt",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "OA 32-118/26"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against refusal of beach-fire permit",
+          "quote": "Gegen diesen Bescheid können Sie innerhalb eines Monats nach seiner Bekanntgabe Widerspruch einlegen, schriftlich oder zur Niederschrift bei der Behörde: Amt Musterschlei, Am Markt 6, 24376 Musterkappeln.",
+          "computation": "Letter dated Wed 18.11.2026, sent by simple post (einfacher Brief). Per the letter's cited rule (§ 110 Abs. 2 LVwG SH), a letter sent by simple post is deemed delivered (Bekanntgabe) on the 4th day after posting; posting is presumed on the document date 18.11.2026, so the 4th day is 22.11.2026 (Sunday). Since this falls on a Sunday, the deemed-delivery fiction shifts to the next working day, Monday 23.11.2026, which is the Bekanntgabe date. The Widerspruchsfrist is one month 'nach Bekanntgabe'. Under § 187 Abs. 1 BGB the day of the triggering event (23.11.2026) is not counted, and under § 188 Abs. 2 BGB a one-month period ends on the day of the following month bearing the same number as the triggering day, i.e. 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in Schleswig-Holstein, so no further shift under § 193 BGB applies. Final deadline for the Widerspruch to reach the authority: 23.12.2026.",
+          "due_date": "2026-12-23",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter cites a 4-day (not the more common 3-day) deemed-delivery rule for simple post under § 110 Abs. 2 LVwG; the exact wording of that provision was not independently verified, and the computed deadline (23.12.2026) assumes the stated 4-day rule and the usual weekend/holiday extension for the deemed-delivery date are correctly applied — confirm the actual posting date if known, as it may differ from the document date."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3448,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1649,
+      "cost_usd": 0.041704399999999996,
+      "duration_ms": 39544,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

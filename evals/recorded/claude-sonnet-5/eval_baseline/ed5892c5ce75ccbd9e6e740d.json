@@ -1,0 +1,84 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"eb810700344c7be7f17ae4586ff243f74d0f909461c0e33d0e60f699859edf1b\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-N1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:32:46+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"health_insurance\",\"sender_name\":\"Musterquell Krankenkasse\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"Q550274119\"}],\"amounts\":[318.46],\"items\":[{\"kind\":\"deadline\",\"title\":\"Widerspruch against contribution increase\",\"quote\":\"Den Widerspruch können Sie binnen eines Monats ab Bekanntgabe einlegen, schriftlich oder zur Niederschrift bei der Musterquell Krankenkasse, Am Brunnenhof 2, 35390 Mustergießen.\",\"computation\":\"Bescheid dated 18.11.2026; letter states deemed delivery (Bekanntgabe) is the 4th day after posting (Aufgabe zur Post), assumed to be the document date 18.11.2026. Counting: 19.11 (day1), 20.11 (day2), 21.11 (day3), 22.11.2026 (day4) = Sunday. Since the deemed-delivery day falls on a Sunday, under the general rule applied analogously (as for § 193 BGB) it shifts to the next working day, Monday 23.11.2026, which is the date of Bekanntgabe. Per § 187 Abs. 1 BGB the day of the triggering event is not counted, so the one-month Widerspruchsfrist (§ 84 SGG) begins 24.11.2026. Per § 188 Abs. 2 BGB a one-month period ends on the day of the following month bearing the same number as the day of the triggering event (23.11 -> 23.12). 23.12.2026 is a Wednesday and not a public holiday in NRW, so no further shift is needed.\",\"due_date\":\"2026-12-23\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Increased monthly contribution takes effect\",\"quote\":\"ab dem 01.01.2027 betragen Ihre monatlichen Beiträge 318,46 €.\",\"computation\":\"The letter states the new contribution amount applies from 01.01.2027; this is a fixed calendar date given directly in the letter, no further calculation needed.\",\"due_date\":\"2027-01-01\",\"confidence\":\"high\",\"amount\":318.46},{\"kind\":\"payment\",\"title\":\"First direct debit of increased contribution (for January 2027)\",\"quote\":\"Wir buchen den Beitrag weiter zum 15. des Folgemonats ab.\",\"computation\":\"The Krankenkasse collects the contribution for a given month on the 15th of the following month via direct debit (Lastschrift). The first month affected by the increase is January 2027, so the corresponding debit falls on the 15th of February 2027. 15.02.2027 is a Monday, a normal business day, so no shift applies. This is an automatic debit; no action is required from the person other than ensuring sufficient funds.\",\"due_date\":\"2027-02-15\",\"confidence\":\"medium\",\"amount\":318.46}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The document date (18.11.2026) is assumed to be the day the letter was handed to the post (Aufgabe zur Post); if actual posting occurred on a different day, the Widerspruchsfrist end date of 2026-12-23 would shift accordingly.\",\"The letter does not state the previous (old) contribution amount, only the new one, so no comparison amount could be extracted.\"]}",
+    "data": {
+      "kind": "health_insurance",
+      "sender_name": "Musterquell Krankenkasse",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "Q550274119"
+        }
+      ],
+      "amounts": [
+        318.46
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Widerspruch against contribution increase",
+          "quote": "Den Widerspruch können Sie binnen eines Monats ab Bekanntgabe einlegen, schriftlich oder zur Niederschrift bei der Musterquell Krankenkasse, Am Brunnenhof 2, 35390 Mustergießen.",
+          "computation": "Bescheid dated 18.11.2026; letter states deemed delivery (Bekanntgabe) is the 4th day after posting (Aufgabe zur Post), assumed to be the document date 18.11.2026. Counting: 19.11 (day1), 20.11 (day2), 21.11 (day3), 22.11.2026 (day4) = Sunday. Since the deemed-delivery day falls on a Sunday, under the general rule applied analogously (as for § 193 BGB) it shifts to the next working day, Monday 23.11.2026, which is the date of Bekanntgabe. Per § 187 Abs. 1 BGB the day of the triggering event is not counted, so the one-month Widerspruchsfrist (§ 84 SGG) begins 24.11.2026. Per § 188 Abs. 2 BGB a one-month period ends on the day of the following month bearing the same number as the day of the triggering event (23.11 -> 23.12). 23.12.2026 is a Wednesday and not a public holiday in NRW, so no further shift is needed.",
+          "due_date": "2026-12-23",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Increased monthly contribution takes effect",
+          "quote": "ab dem 01.01.2027 betragen Ihre monatlichen Beiträge 318,46 €.",
+          "computation": "The letter states the new contribution amount applies from 01.01.2027; this is a fixed calendar date given directly in the letter, no further calculation needed.",
+          "due_date": "2027-01-01",
+          "confidence": "high",
+          "amount": 318.46
+        },
+        {
+          "kind": "payment",
+          "title": "First direct debit of increased contribution (for January 2027)",
+          "quote": "Wir buchen den Beitrag weiter zum 15. des Folgemonats ab.",
+          "computation": "The Krankenkasse collects the contribution for a given month on the 15th of the following month via direct debit (Lastschrift). The first month affected by the increase is January 2027, so the corresponding debit falls on the 15th of February 2027. 15.02.2027 is a Monday, a normal business day, so no shift applies. This is an automatic debit; no action is required from the person other than ensuring sufficient funds.",
+          "due_date": "2027-02-15",
+          "confidence": "medium",
+          "amount": 318.46
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The document date (18.11.2026) is assumed to be the day the letter was handed to the post (Aufgabe zur Post); if actual posting occurred on a different day, the Widerspruchsfrist end date of 2026-12-23 would shift accordingly.",
+        "The letter does not state the previous (old) contribution amount, only the new one, so no comparison amount could be extracted."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 5109,
+      "cache_read_tokens": 7824,
+      "cache_creation_tokens": 5099,
+      "cost_usd": 0.0730588,
+      "duration_ms": 71107,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

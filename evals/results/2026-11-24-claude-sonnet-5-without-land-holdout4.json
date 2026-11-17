@@ -1,0 +1,302 @@
+{
+ "schema": "ordnung-eval-without-land/2",
+ "meta": {
+  "date": "2026-11-24",
+  "model": "claude-sonnet-5",
+  "condition": "ordnung",
+  "backend": "replay",
+  "repeat": 1,
+  "commit": "0700ad70",
+  "dirty": [],
+  "fingerprint": "1b4fe7c855fc0eee",
+  "script": "scripts/eval_without_land.py",
+  "note": "The Ordnung condition's recorded outputs replayed with the checked-out code three times: as the benchmark runs it (the Land the letterhead names is the sender's holiday region); with the sender's Land unknown, as in the app until the person sets it for that sender: nationwide holidays and, for a Land authority, the 3-day delivery rule; and with the state the postcode on the sender's letter suggests confirmed, as if the person said Yes to every suggestion (ordnung.rules.postcodes.suggest_land_why on the reading's sender address and the letter's visible text; no own-Land check, as the benchmark has no profile address). The person's own Land is kept. No model was called."
+ },
+ "splits": {
+  "holdout4": {
+   "entries": 126,
+   "letterhead_land": 32,
+   "with_land": {
+    "due_date_accuracy": {
+     "value": 0.9285714285714286,
+     "ci": [
+      0.8706816730523628,
+      0.9741434571175951
+     ],
+     "k": 104.0,
+     "n": 112.0,
+     "docs": 108
+    },
+    "dangerous_late_rate": {
+     "value": 0.008928571428571428,
+     "ci": [
+      0.0,
+      0.02857142857142857
+     ],
+     "k": 1.0,
+     "n": 112.0,
+     "docs": 108
+    },
+    "early_rate": {
+     "value": 0.0625,
+     "ci": [
+      0.017857142857142856,
+      0.11628875968992251
+     ],
+     "k": 7.0,
+     "n": 112.0,
+     "docs": 108
+    }
+   },
+   "without_land": {
+    "due_date_accuracy": {
+     "value": 0.8214285714285714,
+     "ci": [
+      0.7410714285714286,
+      0.8991806722689076
+     ],
+     "k": 92.0,
+     "n": 112.0,
+     "docs": 108
+    },
+    "dangerous_late_rate": {
+     "value": 0.0,
+     "ci": [
+      0.0,
+      0.04182706666489219
+     ],
+     "k": 0.0,
+     "n": 112.0,
+     "docs": 108
+    },
+    "early_rate": {
+     "value": 0.17857142857142858,
+     "ci": [
+      0.10081932773109248,
+      0.25892857142857145
+     ],
+     "k": 20.0,
+     "n": 112.0,
+     "docs": 108
+    }
+   },
+   "with_suggestion": {
+    "due_date_accuracy": {
+     "value": 0.9285714285714286,
+     "ci": [
+      0.8706816730523628,
+      0.9741434571175951
+     ],
+     "k": 104.0,
+     "n": 112.0,
+     "docs": 108
+    },
+    "dangerous_late_rate": {
+     "value": 0.008928571428571428,
+     "ci": [
+      0.0,
+      0.02857142857142857
+     ],
+     "k": 1.0,
+     "n": 112.0,
+     "docs": 108
+    },
+    "early_rate": {
+     "value": 0.0625,
+     "ci": [
+      0.017857142857142856,
+      0.11628875968992251
+     ],
+     "k": 7.0,
+     "n": 112.0,
+     "docs": 108
+    }
+   },
+   "suggestion": {
+    "letterhead_land": 32,
+    "right": 32,
+    "wrong": 0,
+    "none": {
+     "no_address": 0,
+     "foreign": 0,
+     "no_postcode": 0,
+     "not_listed": 0,
+     "several_lands": 0,
+     "no_land": 0,
+     "postcodes_disagree": 0,
+     "not_visible": 0,
+     "home_veto": 0
+    },
+    "suggested_without_letterhead_land": 91,
+    "not_suggested_without_letterhead_land": {
+     "no_address": 0,
+     "foreign": 3,
+     "no_postcode": 0,
+     "not_listed": 0,
+     "several_lands": 0,
+     "no_land": 0,
+     "postcodes_disagree": 0,
+     "not_visible": 0,
+     "home_veto": 0
+    }
+   },
+   "changed": [
+    {
+     "entry_id": "holdout4-adversarial-conflicting_dates-2",
+     "family": "adversarial",
+     "letterhead_land": "NW",
+     "expected": "2026-12-22",
+     "with_land": "2026-12-22",
+     "without_land": "2026-12-21",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout4-adversarial-conflicting_dates-4",
+     "family": "adversarial",
+     "letterhead_land": "NW",
+     "expected": "2026-12-22",
+     "with_land": "2026-12-23",
+     "without_land": "2026-12-22",
+     "outcome": "correct",
+     "direction": null,
+     "days_off": null
+    },
+    {
+     "entry_id": "holdout4-adversarial-injection_visible-3",
+     "family": "adversarial",
+     "letterhead_land": "BE",
+     "expected": "2026-12-24",
+     "with_land": "2026-12-24",
+     "without_land": "2026-12-23",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout4-municipal_decision-K1",
+     "family": "municipal_decision",
+     "letterhead_land": "MV",
+     "expected": "2026-12-23",
+     "with_land": "2026-12-23",
+     "without_land": "2026-12-22",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout4-municipal_decision-K2",
+     "family": "municipal_decision",
+     "letterhead_land": "SH",
+     "expected": "2026-12-22",
+     "with_land": "2026-12-22",
+     "without_land": "2026-12-21",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout4-municipal_decision-K2-photo",
+     "family": "municipal_decision",
+     "letterhead_land": "SH",
+     "expected": "2026-12-22",
+     "with_land": "2026-12-22",
+     "without_land": "2026-12-21",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout4-municipal_decision-L1",
+     "family": "municipal_decision",
+     "letterhead_land": "BY",
+     "expected": "2026-12-22",
+     "with_land": "2026-12-22",
+     "without_land": "2026-12-21",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout4-municipal_decision-L2",
+     "family": "municipal_decision",
+     "letterhead_land": "HH",
+     "expected": "2026-12-23",
+     "with_land": "2026-12-23",
+     "without_land": "2026-12-22",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout4-municipal_decision-M1",
+     "family": "municipal_decision",
+     "letterhead_land": "MV",
+     "expected": "2026-12-23",
+     "with_land": "2026-12-23",
+     "without_land": "2026-12-22",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout4-municipal_decision-M2",
+     "family": "municipal_decision",
+     "letterhead_land": "SH",
+     "expected": "2026-12-23",
+     "with_land": "2026-12-23",
+     "without_land": "2026-12-22",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout4-municipal_decision-M2-photo",
+     "family": "municipal_decision",
+     "letterhead_land": "SH",
+     "expected": "2026-12-23",
+     "with_land": "2026-12-23",
+     "without_land": "2026-12-22",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout4-municipal_decision-N1",
+     "family": "municipal_decision",
+     "letterhead_land": "BY",
+     "expected": "2026-12-22",
+     "with_land": "2026-12-22",
+     "without_land": "2026-12-21",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout4-municipal_decision-N2",
+     "family": "municipal_decision",
+     "letterhead_land": "HH",
+     "expected": "2026-12-23",
+     "with_land": "2026-12-23",
+     "without_land": "2026-12-22",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout4-social_decision-L2",
+     "family": "social_decision",
+     "letterhead_land": "RP",
+     "expected": "2026-12-23",
+     "with_land": "2026-12-23",
+     "without_land": "2026-12-22",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    }
+   ],
+   "changed_with_suggestion": []
+  }
+ }
+}

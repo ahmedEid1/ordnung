@@ -1,0 +1,79 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"9c864313613591c7157c2c4ea98055d884bd89eb4f5d5f3e2af7dbb9087cdb7c\",\"mode\":\"text\",\"region\":\"BW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-vollstreckungsbescheid-1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Baden-Württemberg (BW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_do",
+    "recorded_at": "2026-11-24T13:02:36+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Amtsgericht Musterstetten · Zentrales Mahngericht\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Geschäftsnummer\",\"value\":\"26-8812045-0-3\"}],\"amounts\":[486.19,12.07,36,5.2,539.46],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against Vollstreckungsbescheid\",\"quote\":\"Er muss binnen einer Notfrist von zwei Wochen ab der Zustellung bei diesem Gericht eingehen; eine Verlängerung ist ausgeschlossen.\",\"computation\":\"The letter itself states the actual delivery date: 'Zugestellt am 20.11.2026 durch Einlegen in den Briefkasten' (Friday). The Notfrist of two weeks runs from this delivery date per §339 Abs.1 ZPO i.V.m. §222 ZPO and §187 Abs.1 BGB: the day of delivery itself is not counted, so the period starts 21.11.2026. Under §188 Abs.2 BGB, a period of weeks ends with the expiry of the day of the last week that corresponds in name to the day of the triggering event (Friday). Two weeks after Friday 20.11.2026 is Friday 04.12.2026. 04.12.2026 is not a Saturday, Sunday or public holiday in Baden-Württemberg, so no shift under §193 BGB applies. The objection must therefore reach (not merely be sent to) the Amtsgericht Musterstetten by this date.\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the enforceable total amount (if no Einspruch is filed)\",\"quote\":\"Die Antragstellerin kann daraus sofort vollstrecken.\",\"computation\":\"The Vollstreckungsbescheid declares the total of EUR 539,46 immediately enforceable once issued; no specific calendar payment deadline is stated in the letter itself, only that enforcement can begin immediately. Absent a stated due date, the exact last day for voluntary payment cannot be determined from the text; the debtor should pay as soon as possible to avoid enforcement costs, ideally before or very shortly after the Einspruch deadline of 04.12.2026 if no objection is raised.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":539.46}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"No specific payment due-date is stated in the letter beyond immediate enforceability; the person should independently verify with the court or the creditor whether a concrete payment deadline or further notice applies before the enforcement proceeds.\",\"This is a court enforcement order based on an earlier Mahnbescheid the recipient did not contest (delivered 28.10.2026); if the underlying claim is disputed, the only remaining remedy is the strict two-week Einspruch deadline above — missing it makes the decision final and unchallengeable.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Amtsgericht Musterstetten · Zentrales Mahngericht",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Geschäftsnummer",
+          "value": "26-8812045-0-3"
+        }
+      ],
+      "amounts": [
+        486.19,
+        12.07,
+        36,
+        5.2,
+        539.46
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against Vollstreckungsbescheid",
+          "quote": "Er muss binnen einer Notfrist von zwei Wochen ab der Zustellung bei diesem Gericht eingehen; eine Verlängerung ist ausgeschlossen.",
+          "computation": "The letter itself states the actual delivery date: 'Zugestellt am 20.11.2026 durch Einlegen in den Briefkasten' (Friday). The Notfrist of two weeks runs from this delivery date per §339 Abs.1 ZPO i.V.m. §222 ZPO and §187 Abs.1 BGB: the day of delivery itself is not counted, so the period starts 21.11.2026. Under §188 Abs.2 BGB, a period of weeks ends with the expiry of the day of the last week that corresponds in name to the day of the triggering event (Friday). Two weeks after Friday 20.11.2026 is Friday 04.12.2026. 04.12.2026 is not a Saturday, Sunday or public holiday in Baden-Württemberg, so no shift under §193 BGB applies. The objection must therefore reach (not merely be sent to) the Amtsgericht Musterstetten by this date.",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the enforceable total amount (if no Einspruch is filed)",
+          "quote": "Die Antragstellerin kann daraus sofort vollstrecken.",
+          "computation": "The Vollstreckungsbescheid declares the total of EUR 539,46 immediately enforceable once issued; no specific calendar payment deadline is stated in the letter itself, only that enforcement can begin immediately. Absent a stated due date, the exact last day for voluntary payment cannot be determined from the text; the debtor should pay as soon as possible to avoid enforcement costs, ideally before or very shortly after the Einspruch deadline of 04.12.2026 if no objection is raised.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 539.46
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "No specific payment due-date is stated in the letter beyond immediate enforceability; the person should independently verify with the court or the creditor whether a concrete payment deadline or further notice applies before the enforcement proceeds.",
+        "This is a court enforcement order based on an earlier Mahnbescheid the recipient did not contest (delivered 28.10.2026); if the underlying claim is disputed, the only remaining remedy is the strict two-week Einspruch deadline above — missing it makes the decision final and unchallengeable."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3059,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1692,
+      "cost_usd": 0.037986400000000003,
+      "duration_ms": 33878,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

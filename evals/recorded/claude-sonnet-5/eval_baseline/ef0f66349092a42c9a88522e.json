@@ -1,0 +1,82 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"be8c1fa6867caaf82eda0e2dd4542edf0049fe06d1a867d599b866d8c38ba57b\",\"mode\":\"text\",\"region\":\"SL\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-fine_bussgeld-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Saarland (SL), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> t",
+    "recorded_at": "2026-11-24T09:32:56+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[100,28.5,3.5,132],\"contract\":null,\"document_date\":\"2026-11-20\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the fine notice\",\"quote\":\"Binnen zwei Wochen nach der Zustellung dieses Bescheids kann Einspruch eingelegt werden, schriftlich oder zur Niederschrift bei der Stadt Musterhomburg (Saar) – Ordnungsbehörde.\",\"computation\":\"This is a formal delivery (Postzustellungsurkunde, § 182 ZPO) with the delivery date handwritten on the attached envelope copy: 'zugestellt 24.11.2026'. For formal delivery the date on the envelope counts as the delivery day with no days added, so delivery = Tue 24.11.2026. The objection period for a Bußgeldbescheid is two weeks after delivery (§ 67 OWiG, § 43 StPO), counted per § 187 Abs. 1 BGB: the delivery day itself is not counted, and a period in weeks ends on the same weekday two weeks later. Two weeks after Tue 24.11.2026 falls on Tue 08.12.2026. That day is not a Saturday, Sunday or public holiday in Saarland, so no shift under § 43 Abs. 2 StPO is needed.\",\"due_date\":\"2026-12-08\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine amount (after the decision becomes final)\",\"quote\":\"Bitte überweisen Sie den Gesamtbetrag erst nach Rechtskraft, und zwar innerhalb von zwei Wochen.\",\"computation\":\"The letter instructs payment only after Rechtskraft (finality), within two weeks of that event. Rechtskraft occurs when the two-week Einspruch period lapses without an objection having been filed, i.e. the day after the objection deadline computed above (08.12.2026), so Rechtskraft = Wed 09.12.2026, assuming no Einspruch is lodged. Applying § 187 Abs. 1 BGB (the triggering day is not counted) and the weeks rule (same weekday two weeks later), two weeks after Wed 09.12.2026 falls on Wed 23.12.2026. That date is not a Saturday, Sunday or public holiday in Saarland (24, 25 and 26 December are the nearby holidays, but 23 December is a plain working Wednesday), so it stands as the payment deadline. This date is contingent on no Einspruch being filed; if one is filed, Rechtskraft and this payment deadline do not apply.\",\"due_date\":\"2026-12-23\",\"confidence\":\"medium\",\"amount\":132}],\"kind\":\"fine\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"OWi-26-118430\"},{\"label\":\"Kennzeichen\",\"value\":\"HOM-AM 732\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Stadt Musterhomburg (Saar) – Ordnungsbehörde, Bußgeldstelle\",\"warnings\":[\"The payment deadline (2026-12-23) depends on the fine actually becoming final, i.e. on no Einspruch being filed by 2026-12-08; if an Einspruch is submitted, this payment date is void and should be ignored.\",\"Double-check the IBAN given for payment (DE86 5945 0010 0004 2401 00, 'Landesmusterbank') against the official payment instructions of the Bußgeldstelle before transferring any money, as this letter appears to be a template/example document (placeholder sender address and domain).\"]}",
+    "data": {
+      "amounts": [
+        100,
+        28.5,
+        3.5,
+        132
+      ],
+      "contract": null,
+      "document_date": "2026-11-20",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the fine notice",
+          "quote": "Binnen zwei Wochen nach der Zustellung dieses Bescheids kann Einspruch eingelegt werden, schriftlich oder zur Niederschrift bei der Stadt Musterhomburg (Saar) – Ordnungsbehörde.",
+          "computation": "This is a formal delivery (Postzustellungsurkunde, § 182 ZPO) with the delivery date handwritten on the attached envelope copy: 'zugestellt 24.11.2026'. For formal delivery the date on the envelope counts as the delivery day with no days added, so delivery = Tue 24.11.2026. The objection period for a Bußgeldbescheid is two weeks after delivery (§ 67 OWiG, § 43 StPO), counted per § 187 Abs. 1 BGB: the delivery day itself is not counted, and a period in weeks ends on the same weekday two weeks later. Two weeks after Tue 24.11.2026 falls on Tue 08.12.2026. That day is not a Saturday, Sunday or public holiday in Saarland, so no shift under § 43 Abs. 2 StPO is needed.",
+          "due_date": "2026-12-08",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine amount (after the decision becomes final)",
+          "quote": "Bitte überweisen Sie den Gesamtbetrag erst nach Rechtskraft, und zwar innerhalb von zwei Wochen.",
+          "computation": "The letter instructs payment only after Rechtskraft (finality), within two weeks of that event. Rechtskraft occurs when the two-week Einspruch period lapses without an objection having been filed, i.e. the day after the objection deadline computed above (08.12.2026), so Rechtskraft = Wed 09.12.2026, assuming no Einspruch is lodged. Applying § 187 Abs. 1 BGB (the triggering day is not counted) and the weeks rule (same weekday two weeks later), two weeks after Wed 09.12.2026 falls on Wed 23.12.2026. That date is not a Saturday, Sunday or public holiday in Saarland (24, 25 and 26 December are the nearby holidays, but 23 December is a plain working Wednesday), so it stands as the payment deadline. This date is contingent on no Einspruch being filed; if one is filed, Rechtskraft and this payment deadline do not apply.",
+          "due_date": "2026-12-23",
+          "confidence": "medium",
+          "amount": 132
+        }
+      ],
+      "kind": "fine",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "OWi-26-118430"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "HOM-AM 732"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Stadt Musterhomburg (Saar) – Ordnungsbehörde, Bußgeldstelle",
+      "warnings": [
+        "The payment deadline (2026-12-23) depends on the fine actually becoming final, i.e. on no Einspruch being filed by 2026-12-08; if an Einspruch is submitted, this payment date is void and should be ignored.",
+        "Double-check the IBAN given for payment (DE86 5945 0010 0004 2401 00, 'Landesmusterbank') against the official payment instructions of the Bußgeldstelle before transferring any money, as this letter appears to be a template/example document (placeholder sender address and domain)."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3783,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2127,
+      "cost_usd": 0.047448000000000004,
+      "duration_ms": 36130,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

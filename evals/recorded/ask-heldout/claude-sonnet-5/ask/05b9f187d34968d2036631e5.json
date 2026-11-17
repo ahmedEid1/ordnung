@@ -1,0 +1,452 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"258c9eb533aae0c2414271a7fda8681ea1fb736426b2999a45141753d332ff7e\",\"question\":\"For the last quarter of 2026, what did the licence-fee service ask me to pay, and on which date?\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "doc_f9b3481wq2bf",
+      "doc_hjxvf5t7dqnw",
+      "doc_wc0nyn4ykedf",
+      "doc_vy5abr6ejqnb",
+      "doc_pa2w9q3gxzqk",
+      "doc_5c5axexztnw6",
+      "doc_qyh8m6fzk4w9",
+      "doc_drnw4v8g9856",
+      "doc_xa0f5gvpe0w2",
+      "doc_9mewc0kcj28v",
+      "doc_9t9tmrv1ypba",
+      "doc_d9hwr1mp3bsj",
+      "doc_245408s5e3ga",
+      "doc_hynqaw58f550",
+      "doc_asph8a6ddy4e",
+      "doc_0b2t88kqsf2n",
+      "doc_tszxajp80vd5"
+    ],
+    "prompt_head": "The person asks:\nFor the last quarter of 2026, what did the licence-fee service ask me to pay, and on which date?\n",
+    "recorded_at": "2026-11-24T13:19:09+00:00",
+    "repeat": 2,
+    "commit": "0b5e2d7a",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "Beitragsservice Musterstadt asked for the Rundfunkbeitrag (broadcasting licence fee) for Q4 2026:\n\n- **Amount:** €55.08, due with transfer by Thu 12 Nov 2026 [item:itm_xna048xewpad]\n\nThis is a quarterly payment (repeating every 3 months), with the next one following on 15 Feb 2027 [item:itm_xna048xewpad].\n\nNote: there's also a separate letter in your records claiming to be from a \"Rundfunk-Beitragsservice Zahlungszentrale\" demanding payment to a Lithuanian IBAN — Ordnung flags this as showing scam signs, since the genuine Beitragsservice has used a different (German) account before [doc:doc_hjxvf5t7dqnw]. Don't pay that one without first verifying with Beitragsservice Musterstadt directly, using contact details you already have.",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 513,
+      "cache_read_tokens": 12793,
+      "cache_creation_tokens": 6033,
+      "cost_usd": 0.0318286,
+      "duration_ms": 9043,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Rundfunkbeitrag"
+      },
+      "tool_use_id": "toolu_01LqoEb5dmGirU2YxbFPwyYD"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_f9b3481wq2bf\",\"kind\":\"broadcasting_fee\",\"date\":\"2026-09-15\",\"party_id\":\"pty_r9kabd06mafy\"},{\"id\":\"doc_hjxvf5t7dqnw\",\"kind\":\"dunning\",\"date\":\"2026-09-26\",\"party_id\":\"pty_dbn2zg2kxj4d\",\"scam_warning\":true}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_f9b3481wq2bf\":{\"title\":\"Rundfunkbeitrag payment request from Beitragsservice Musterstadt\",\"snippet\":\"Beitragsservice Musterstadt is billing Sam Rivera €55.08 for the broadcasting fee (Rundfunkbeitrag) covering October to…\"},\"pty_r9kabd06mafy\":{\"name\":\"Beitragsservice Musterstadt\"},\"doc_hjxvf5t7dqnw\":{\"title\":\"Letter claiming to be from a \\\"Zahlungszentrale\\\" demanding €254.35 within 48 hours for broadcasting fee arrears\",\"snippet\":\"…Herr Sam Rivera Beispielweg 5 12345 Musterstadt LETZTE MAHNUNG VOR PFÄNDUNG – Rückstand Rundfunkbeitrag Sehr geehrte Herr…\",\"scam_signs\":[\"The letter contains hidden text that you can't see on the page.\",\"The payee IBAN (LT08...) is Lithuanian, not German — a foreign account for a German public broadcasting fee is a strong scam indicator.\",\"This document should be verified as potentially fraudulent before taking any action or making any payment.\",\"Possible scam: “Rundfunk-Beitragsservice Zahlungszentrale” asks you to pay to LT08 3999 0000 0543 9871, but “Beitragsservice Musterstadt”, which has a similar name, used DE57 1234 8900 0055 0818 36 before. Check the sender using contact details you already have before paying.\"]},\"pty_dbn2zg2kxj4d\":{\"name\":\"Rundfunk-Beitragsservice Zahlungszentrale\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01LqoEb5dmGirU2YxbFPwyYD"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__timeline",
+      "input": {
+        "from_date": "2026-10-01",
+        "to_date": "2026-12-31"
+      },
+      "tool_use_id": "toolu_01WnhBEp86prKpTfnMxYeiEd"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-11-24\",\"entries\":[{\"date\":\"2026-10-01\",\"type\":\"payment\",\"status\":\"open\",\"ref_type\":\"item\",\"id\":\"itm_chhc59r0d16v\",\"past\":true,\"repeats\":\"every month on the 1st\",\"following_due_date\":\"2026-12-01\",\"amount\":29.9,\"currency\":\"EUR\"},{\"date\":\"2026-10-01\",\"type\":\"payment\",\"status\":\"open\",\"ref_type\":\"item\",\"id\":\"itm_wpght3d75cxs\",\"past\":true,\"repeats\":\"every month on the 1st\",\"following_due_date\":\"2026-12-01\",\"amount\":63.0,\"currency\":\"EUR\"},{\"date\":\"2026-10-01\",\"type\":\"payment\",\"status\":\"open\",\"ref_type\":\"item\",\"id\":\"itm_j2650a27bsty\",\"past\":true,\"repeats\":\"every month on the 1st working day\",\"following_due_date\":\"2026-12-01\",\"amount\":450.0,\"currency\":\"EUR\"},{\"date\":\"2026-10-02\",\"type\":\"deadline\",\"status\":\"overdue\",\"ref_type\":\"item\",\"id\":\"itm_ghq58jjdz149\",\"past\":true},{\"date\":\"2026-10-02\",\"type\":\"payment\",\"status\":\"overdue\",\"ref_type\":\"item\",\"id\":\"itm_kgsfgwac9wzx\",\"past\":true,\"amount\":4.5,\"currency\":\"EUR\"},{\"date\":\"2026-10-02\",\"type\":\"payment\",\"status\":\"overdue\",\"ref_type\":\"item\",\"id\":\"itm_31yxpwg03cdb\",\"past\":true,\"amount_unverified\":\"The amount was read by AI from a photo or scan, so it is only in the letter text: give it as what the letter says and suggest checking it against the paper letter.\"},{\"date\":\"2026-10-05\",\"type\":\"payment\",\"status\":\"open\",\"ref_type\":\"item\",\"id\":\"itm_b1b5643x7qy7\",\"past\":true,\"repeats\":\"every month on the 3rd working day\",\"replaced_by\":\"itm_9dvnqv1acvka\",\"replaced_from_month\":\"2026-11\",\"amount\":640.0,\"currency\":\"EUR\"},{\"date\":\"2026-10-08\",\"time\":\"09:15\",\"type\":\"appointment\",\"status\":\"open\",\"ref_type\":\"item\",\"id\":\"itm_sncxha9wbsxc\",\"past\":true},{\"date\":\"2026-10-09\",\"type\":\"payment\",\"status\":\"overdue\",\"ref_type\":\"item\",\"id\":\"itm_dmaw27qvv18n\",\"past\":true,\"amount\":184.3,\"currency\":\"EUR\"},{\"date\":\"2026-10-14\",\"type\":\"deadline\",\"status\":\"overdue\",\"ref_type\":\"item\",\"id\":\"itm_tj3z83ve4hfg\",\"past\":true},{\"date\":\"2026-10-14\",\"type\":\"payment\",\"status\":\"overdue\",\"ref_type\":\"item\",\"id\":\"itm_wj2v05avgk1m\",\"past\":true,\"amount\":100.0,\"currency\":\"EUR\"},{\"date\":\"2026-10-14\",\"time\":\"10:30\",\"type\":\"appointment\",\"status\":\"open\",\"ref_type\":\"item\",\"id\":\"itm_64wce6sh2rpp\",\"past\":true},{\"date\":\"2026-10-15\",\"type\":\"payment\",\"status\":\"open\",\"ref_type\":\"item\",\"id\":\"itm_3v56qs2n3q3v\",\"past\":true,\"repeats\":\"every month on the 15th\",\"following_due_date\":\"2026-12-15\",\"amount\":48.0,\"currency\":\"EUR\"},{\"date\":\"2026-10-15\",\"type\":\"payment\",\"status\":\"open\",\"ref_type\":\"item\",\"id\":\"itm_00sbt9f3e0pe\",\"past\":true,\"repeats\":\"every month on the 15th\",\"following_due_date\":\"2026-12-15\",\"amount\":156.55,\"currency\":\"EUR\"},{\"date\":\"2026-10-21\",\"type\":\"deadline\",\"status\":\"overdue\",\"ref_type\":\"item\",\"id\":\"itm_mtehckcf6q7a\",\"past\":true},{\"date\":\"2026-11-04\",\"type\":\"payment\",\"status\":\"open\",\"ref_type\":\"item\",\"id\":\"itm_9dvnqv1acvka\",\"past\":true,\"repeats\":\"every month on the 3rd working day\",\"following_due_date\":\"2026-12-03\",\"amount\":670.0,\"currency\":\"EUR\"},{\"date\":\"2026-11-07\",\"type\":\"appointment\",\"status\":\"open\",\"ref_type\":\"item\",\"id\":\"itm_espa58t15ncg\",\"past\":true},{\"date\":\"2026-11-15\",\"type\":\"payment\",\"status\":\"open\",\"ref_type\":\"item\",\"id\":\"itm_xna048xewpad\",\"past\":true,\"repeats\":\"every 3 months on the 15th\",\"following_due_date\":\"2027-02-15\",\"amount\":55.08,\"currency\":\"EUR\"},{\"date\":\"2026-11-15\",\"type\":\"payment\",\"status\":\"open\",\"ref_type\":\"item\",\"id\":\"itm_v3m35j0h5pwv\",\"past\":true,\"repeats\":\"every month on the 15th\",\"following_due_date\":\"2026-12-15\",\"amount\":54.0,\"currency\":\"EUR\"},{\"date\":\"2026-11-30\",\"type\":\"deadline\",\"status\":\"open\",\"ref_type\":\"item\",\"id\":\"itm_9qzfwbhh5m74\"},{\"date\":\"2026-11-30\",\"type\":\"expiry\",\"status\":\"open\",\"ref_type\":\"item\",\"id\":\"itm_p0k64jp7r8bf\"},{\"date\":\"2026-11-30\",\"type\":\"contract\",\"status\":\"active\",\"ref_type\":\"contract\",\"id\":\"ctr_w97tm6xhn7zw\"},{\"date\":\"2026-12-01\",\"type\":\"payment\",\"status\":\"open\",\"ref_type\":\"item\",\"id\":\"itm_93jvwb6nxzhe\",\"repeats\":\"every year on the 1st\",\"following_due_date\":\"2027-12-01\",\"amount\":59.9,\"currency\":\"EUR\"},{\"date\":\"2026-12-15\",\"type\":\"deadline\",\"status\":\"open\",\"ref_type\":\"item\",\"id\":\"itm_zse7bv6ce3s1\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_chhc59r0d16v\":{\"titles\":[\"Monthly gym membership fee\"],\"subtitles\":[\"Collected by direct debit\"],\"party\":\"FitWell Studios GmbH\"},\"itm_wpght3d75cxs\":{\"titles\":[\"Pay the monthly Deutschlandticket subscription fee\"],\"subtitles\":[\"Collected by direct debit\"],\"party\":\"Musterstadt Verkehrsbetriebe GmbH\"},\"itm_j2650a27bsty\":{\"titles\":[\"Receive monthly scholarship stipend\"],\"subtitles\":[\"No action needed; the stipend arrives automatically each month.\"],\"party\":\"Global Talent Scholarship Foundation\"},\"itm_ghq58jjdz149\":{\"titles\":[\"Return the overdue library books\"],\"subtitles\":[\"Return both overdue items to the library (e.g. via the return box) by the deadline shown.\"],\"party\":\"Stadtbibliothek Musterstadt\"},\"itm_kgsfgwac9wzx\":{\"titles\":[\"Pay the accrued library fee\"],\"subtitles\":[\"Pay the €4.50 fee at the service desk or the payment machine when returning the items.\"],\"party\":\"Stadtbibliothek Musterstadt\"},\"itm_31yxpwg03cdb\":{\"titles\":[\"Pay the traffic warning fine (Verwarnungsgeld)\"],\"subtitles\":[\"Transfer by Thu 1 Oct\"],\"party\":\"Stadt Musterstadt\",\"amount\":30.0,\"currency\":\"EUR\"},\"itm_b1b5643x7qy7\":{\"titles\":[\"Pay monthly rent (Miete)\"],\"subtitles\":[\"Transfer by Fri 2 Oct\"],\"party\":\"Wohnbau Musterstadt eG\"},\"itm_sncxha9wbsxc\":{\"titles\":[\"Dental checkup and cleaning (PZR)\"],\"subtitles\":[\"Arrive 10 minutes early and bring your health insurance card (Gesundheitskarte)\"],\"party\":\"Zahnarztpraxis Dr. Anna Beispiel\"},\"itm_dmaw27qvv18n\":{\"titles\":[\"Pay the operating and heating cost back payment (Nachzahlung)\"],\"subtitles\":[\"Transfer by Thu 8 Oct\"],\"party\":\"Wohnbau Musterstadt eG\"},\"itm_tj3z83ve4hfg\":{\"titles\":[\"Decide whether to object (Widerspruch) to the contribution notice\"],\"subtitles\":[\"Send by Thu 8 Oct\"],\"party\":\"Muster BKK\"},\"itm_wj2v05avgk1m\":{\"titles\":[\"Pay the application fee for the residence permit extension\"],\"subtitles\":[\"Bring your girocard to the appointment to pay the €100 fee on-site; cash is not accepted.\"],\"party\":\"Stadt Musterstadt\"},\"itm_64wce6sh2rpp\":{\"titles\":[\"Attend appointment at the immigration office (Ausländerbehörde)\"],\"subtitles\":[\"Go to the appointment with your original passport, current enrolment certificate for winter semester 2026/27, proof of financial means, proof of health insurance, a biometric photo, your rental agreement or landlord confirmation, and the €100 fee (girocard only, cash not accepted).\"],\"party\":\"Stadt Musterstadt\"},\"itm_3v56qs2n3q3v\":{\"titles\":[\"Monthly advance payment (Abschlag) for electricity\"],\"subtitles\":[\"Collected by direct debit\"],\"party\":\"Stadtwerke Musterstadt GmbH\"},\"itm_00sbt9f3e0pe\":{\"titles\":[\"Pay the health & long-term care insurance contribution (automatic direct debit)\"],\"subtitles\":[\"Collected by direct debit\"],\"party\":\"Muster BKK\"},\"itm_mtehckcf6q7a\":{\"titles\":[\"Decide whether to file an objection (Einspruch) against the assessment\"],\"subtitles\":[\"Send by Thu 15 Oct\"],\"party\":\"Finanzamt Musterstadt\"},\"itm_9dvnqv1acvka\":{\"titles\":[\"New monthly total rent €670\"],\"subtitles\":[\"Transfer by Tue 3 Nov\"],\"party\":\"Wohnbau Musterstadt eG\"},\"itm_espa58t15ncg\":{\"titles\":[\"Attend Autumn Meeting in Berlin\"],\"subtitles\":[\"Attend the Autumn Meeting for scholars in Berlin; wait for the separate invitation with the programme.\"],\"party\":\"Global Talent Scholarship Foundation\"},\"itm_xna048xewpad\":{\"titles\":[\"Pay the broadcasting fee (Rundfunkbeitrag)\"],\"subtitles\":[\"Transfer by Thu 12 Nov\"],\"party\":\"Beitragsservice Musterstadt\"},\"itm_v3m35j0h5pwv\":{\"titles\":[\"Updated monthly advance payment (Abschlag) for electricity\"],\"subtitles\":[\"Collected by direct debit\"],\"party\":\"Stadtwerke Musterstadt GmbH\"},\"itm_9qzfwbhh5m74\":{\"titles\":[\"Give consent to the fee increase (Zustimmung erteilen)\"],\"subtitles\":[\"Send by Tue 24 Nov\"],\"party\":\"Musterbank eG\"},\"itm_p0k64jp7r8bf\":{\"titles\":[\"Residence permit (Aufenthaltserlaubnis) expires\"],\"subtitles\":[\"Make sure the extension application is filed before this date; attending the scheduled appointment fulfills this.\"],\"party\":\"Stadt Musterstadt\"},\"ctr_w97tm6xhn7zw\":{\"titles\":[\"Privat-Haftpflichtversicherung: term ends\"],\"party\":\"Muster Versicherung AG\"},\"itm_93jvwb6nxzhe\":{\"titles\":[\"Annual liability insurance premium direct debit\"],\"subtitles\":[\"Collected by direct debit\"],\"party\":\"Muster Versicherung AG\"},\"itm_zse7bv6ce3s1\":{\"titles\":[\"Submit first progress report\"],\"subtitles\":[\"Send by Wed 9 Dec\"],\"party\":\"Global Talent Scholarship Foundation\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01WnhBEp86prKpTfnMxYeiEd"
+    },
+    {
+      "type": "text",
+      "text": "Be"
+    },
+    {
+      "type": "text",
+      "text": "it"
+    },
+    {
+      "type": "text",
+      "text": "rag"
+    },
+    {
+      "type": "text",
+      "text": "sservice Mus"
+    },
+    {
+      "type": "text",
+      "text": "terstadt as"
+    },
+    {
+      "type": "text",
+      "text": "ked for the R"
+    },
+    {
+      "type": "text",
+      "text": "und"
+    },
+    {
+      "type": "text",
+      "text": "funkb"
+    },
+    {
+      "type": "text",
+      "text": "eitrag (broadc"
+    },
+    {
+      "type": "text",
+      "text": "asting lic"
+    },
+    {
+      "type": "text",
+      "text": "ence f"
+    },
+    {
+      "type": "text",
+      "text": "ee) for"
+    },
+    {
+      "type": "text",
+      "text": " Q4 2026"
+    },
+    {
+      "type": "text",
+      "text": ":"
+    },
+    {
+      "type": "text",
+      "text": "\n\n- **Amount:**"
+    },
+    {
+      "type": "text",
+      "text": " €55"
+    },
+    {
+      "type": "text",
+      "text": ".08"
+    },
+    {
+      "type": "text",
+      "text": ","
+    },
+    {
+      "type": "text",
+      "text": " due with"
+    },
+    {
+      "type": "text",
+      "text": " trans"
+    },
+    {
+      "type": "text",
+      "text": "fer by"
+    },
+    {
+      "type": "text",
+      "text": " Th"
+    },
+    {
+      "type": "text",
+      "text": "u 12"
+    },
+    {
+      "type": "text",
+      "text": " N"
+    },
+    {
+      "type": "text",
+      "text": "ov 2026"
+    },
+    {
+      "type": "text",
+      "text": " [item"
+    },
+    {
+      "type": "text",
+      "text": ":it"
+    },
+    {
+      "type": "text",
+      "text": "m_xna"
+    },
+    {
+      "type": "text",
+      "text": "048"
+    },
+    {
+      "type": "text",
+      "text": "x"
+    },
+    {
+      "type": "text",
+      "text": "ew"
+    },
+    {
+      "type": "text",
+      "text": "p"
+    },
+    {
+      "type": "text",
+      "text": "ad"
+    },
+    {
+      "type": "text",
+      "text": "]\n\nThis"
+    },
+    {
+      "type": "text",
+      "text": " is a qu"
+    },
+    {
+      "type": "text",
+      "text": "arterly pay"
+    },
+    {
+      "type": "text",
+      "text": "ment (rep"
+    },
+    {
+      "type": "text",
+      "text": "eating every 3 months),"
+    },
+    {
+      "type": "text",
+      "text": " with"
+    },
+    {
+      "type": "text",
+      "text": " the next one"
+    },
+    {
+      "type": "text",
+      "text": " following on"
+    },
+    {
+      "type": "text",
+      "text": " 15 Fe"
+    },
+    {
+      "type": "text",
+      "text": "b 2027 [item:"
+    },
+    {
+      "type": "text",
+      "text": "itm_xna048xew"
+    },
+    {
+      "type": "text",
+      "text": "pad].\n\nNote: there"
+    },
+    {
+      "type": "text",
+      "text": "'s also a separate let"
+    },
+    {
+      "type": "text",
+      "text": "ter in"
+    },
+    {
+      "type": "text",
+      "text": " your"
+    },
+    {
+      "type": "text",
+      "text": " records claiming to be from a"
+    },
+    {
+      "type": "text",
+      "text": " \"Rundfunk"
+    },
+    {
+      "type": "text",
+      "text": "-Be"
+    },
+    {
+      "type": "text",
+      "text": "itrag"
+    },
+    {
+      "type": "text",
+      "text": "sservice Zah"
+    },
+    {
+      "type": "text",
+      "text": "lungsz"
+    },
+    {
+      "type": "text",
+      "text": "entrale\" demanding pay"
+    },
+    {
+      "type": "text",
+      "text": "ment to a"
+    },
+    {
+      "type": "text",
+      "text": " Lithuanian IB"
+    },
+    {
+      "type": "text",
+      "text": "AN —"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung"
+    },
+    {
+      "type": "text",
+      "text": " flags"
+    },
+    {
+      "type": "text",
+      "text": " this as show"
+    },
+    {
+      "type": "text",
+      "text": "ing scam sign"
+    },
+    {
+      "type": "text",
+      "text": "s,"
+    },
+    {
+      "type": "text",
+      "text": " since"
+    },
+    {
+      "type": "text",
+      "text": " the gen"
+    },
+    {
+      "type": "text",
+      "text": "uine Beitragsserv"
+    },
+    {
+      "type": "text",
+      "text": "ice has used"
+    },
+    {
+      "type": "text",
+      "text": " a different ("
+    },
+    {
+      "type": "text",
+      "text": "German) account"
+    },
+    {
+      "type": "text",
+      "text": " before ["
+    },
+    {
+      "type": "text",
+      "text": "doc:doc_h"
+    },
+    {
+      "type": "text",
+      "text": "jx"
+    },
+    {
+      "type": "text",
+      "text": "v"
+    },
+    {
+      "type": "text",
+      "text": "f"
+    },
+    {
+      "type": "text",
+      "text": "5"
+    },
+    {
+      "type": "text",
+      "text": "t"
+    },
+    {
+      "type": "text",
+      "text": "7d"
+    },
+    {
+      "type": "text",
+      "text": "q"
+    },
+    {
+      "type": "text",
+      "text": "n"
+    },
+    {
+      "type": "text",
+      "text": "w"
+    },
+    {
+      "type": "text",
+      "text": "]. Don't p"
+    },
+    {
+      "type": "text",
+      "text": "ay that"
+    },
+    {
+      "type": "text",
+      "text": " one without"
+    },
+    {
+      "type": "text",
+      "text": " first"
+    },
+    {
+      "type": "text",
+      "text": " verifying with"
+    },
+    {
+      "type": "text",
+      "text": " Beitragsservice"
+    },
+    {
+      "type": "text",
+      "text": " Musterstadt directly,"
+    },
+    {
+      "type": "text",
+      "text": " using contact details you already have."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Beitragsservice Musterstadt asked for the Rundfunkbeitrag (broadcasting licence fee) for Q4 2026:\n\n- **Amount:** €55.08, due with transfer by Thu 12 Nov 2026 [item:itm_xna048xewpad]\n\nThis is a quarterly payment (repeating every 3 months), with the next one following on 15 Feb 2027 [item:itm_xna048xewpad].\n\nNote: there's also a separate letter in your records claiming to be from a \"Rundfunk-Beitragsservice Zahlungszentrale\" demanding payment to a Lithuanian IBAN — Ordnung flags this as showing scam signs, since the genuine Beitragsservice has used a different (German) account before [doc:doc_hjxvf5t7dqnw]. Don't pay that one without first verifying with Beitragsservice Musterstadt directly, using contact details you already have.",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 513,
+          "cache_read_tokens": 12793,
+          "cache_creation_tokens": 6033,
+          "cost_usd": 0.0318286,
+          "duration_ms": 9043,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

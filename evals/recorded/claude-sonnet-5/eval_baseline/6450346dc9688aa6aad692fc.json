@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"563f27f1b2f3b5c51edb5d9674df1734d7f46e8f19ae4b0c9fbda3466e298e0e\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-missing_date-2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:32:35+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"health_insurance\",\"sender_name\":\"Beispielkasse Ersatzkrankenkasse\",\"document_date\":null,\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"B550127743\"},{\"label\":\"Vorgang\",\"value\":\"ZE-26-3307\"}],\"amounts\":[1104],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against denial of doubled subsidy\",\"quote\":\"Wenn Sie mit dieser Entscheidung nicht einverstanden sind, können Sie innerhalb eines Monats nach Bekanntgabe Widerspruch bei der Beispielkasse Ersatzkrankenkasse einlegen, schriftlich oder zur Niederschrift.\",\"computation\":\"The Widerspruch period is one month 'nach Bekanntgabe' (after notification). Under § 37 SGB X, a letter sent by regular post from a German social-insurance body is deemed delivered on the third day after it was handed to the postal service (unless the person can show it arrived later), and the one-month period would then run from that deemed delivery date under §§ 187 Abs. 1, 188 Abs. 2 BGB, extended to the next business day if it fell on a weekend or NW public holiday. However, the letter itself bears no printed date, so neither the day of posting nor the Bekanntgabe date can be established from the document provided. Without that anchor date, the one-month period cannot be computed exactly.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter carries no visible issue/sending date (Briefdatum); without it the one-month Widerspruch deadline from 'Bekanntgabe' cannot be calculated exactly — check the envelope/postmark or any dated cover sheet and recompute: deemed delivery is normally 3 days after posting (§ 37 SGB X), then one month from that day.\",\"The 1.104,00 € figure is the standard (einfacher) Festzuschuss the insurer has granted, not an amount the recipient must pay or will separately receive beyond what was already noted in the Heil- und Kostenplan.\"]}",
+    "data": {
+      "kind": "health_insurance",
+      "sender_name": "Beispielkasse Ersatzkrankenkasse",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "B550127743"
+        },
+        {
+          "label": "Vorgang",
+          "value": "ZE-26-3307"
+        }
+      ],
+      "amounts": [
+        1104
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against denial of doubled subsidy",
+          "quote": "Wenn Sie mit dieser Entscheidung nicht einverstanden sind, können Sie innerhalb eines Monats nach Bekanntgabe Widerspruch bei der Beispielkasse Ersatzkrankenkasse einlegen, schriftlich oder zur Niederschrift.",
+          "computation": "The Widerspruch period is one month 'nach Bekanntgabe' (after notification). Under § 37 SGB X, a letter sent by regular post from a German social-insurance body is deemed delivered on the third day after it was handed to the postal service (unless the person can show it arrived later), and the one-month period would then run from that deemed delivery date under §§ 187 Abs. 1, 188 Abs. 2 BGB, extended to the next business day if it fell on a weekend or NW public holiday. However, the letter itself bears no printed date, so neither the day of posting nor the Bekanntgabe date can be established from the document provided. Without that anchor date, the one-month period cannot be computed exactly.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter carries no visible issue/sending date (Briefdatum); without it the one-month Widerspruch deadline from 'Bekanntgabe' cannot be calculated exactly — check the envelope/postmark or any dated cover sheet and recompute: deemed delivery is normally 3 days after posting (§ 37 SGB X), then one month from that day.",
+        "The 1.104,00 € figure is the standard (einfacher) Festzuschuss the insurer has granted, not an amount the recipient must pay or will separately receive beyond what was already noted in the Heil- und Kostenplan."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 4043,
+      "cache_read_tokens": 14319,
+      "cache_creation_tokens": 4443,
+      "cost_usd": 0.0610778,
+      "duration_ms": 78451,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

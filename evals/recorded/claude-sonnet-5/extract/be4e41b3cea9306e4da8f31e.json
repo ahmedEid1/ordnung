@@ -1,0 +1,140 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"01c411b3178bb0c5b683b25cfd41f522fb38165bc405b76536906e8a6b35b278\",\"language\":\"en\",\"pages\":[[1,\"transcript\"]],\"region\":\"SH\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-M2-photo"
+    ],
+    "prompt_head": "Today is 2026-11-24. The person lives in region SH (DE). Their name is (not given).\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n(none yet)\n\nThe document's text follows, page by page: a line `=== Page N ===` starts page N. Everything\nbetween the <untrusted_document> tags is data from the document, never in",
+    "recorded_at": "2026-11-24T11:46:16+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"title\":\"Rejection of hunting license application (Jagdschein – Ablehnung)\",\"case_title\":\"Hunting license application rejected (Jagdschein – Ablehnung)\",\"summary\":\"Kreis Musterdithmarschen (Fachdienst Waffen und Jagd) rejected Tjark Beispielholm's application for a three-year hunting license (Jagdschein) because his proof of hunting liability insurance expired on 30 June 2026. The authority states it will issue the license without a new application as soon as a valid insurance confirmation is submitted.\",\"explanation\":\"The authority cannot give you a hunting license right now because your proof of hunting liability insurance is no longer valid. The simplest step is to send a current insurance confirmation — then the license will be issued without you filing a new application. If you disagree with the rejection itself, you may file an objection (Widerspruch) with the authority; the app shows until when this is possible. If you do nothing, the rejection stands and no license will be issued until the missing insurance proof is provided.\",\"language\":\"de\",\"document_date\":\"2026-11-19\",\"recipient_name\":\"Tjark Beispielholm\",\"sender\":{\"name\":\"Kreis Musterdithmarschen, Fachdienst Waffen und Jagd\",\"kind\":\"authority\",\"address\":\"Stiftstraße 8, 25746 Musterheide in Holstein\",\"phone\":\"0481 555 97-0\",\"email\":\"waffenbehoerde@kreis-musterdithmarschen.example\",\"website\":null,\"identifiers\":[]},\"references\":[{\"label\":\"Az.\",\"value\":\"WJ-32.4-0912/26\"}],\"key_facts\":[{\"label\":\"Insurance proof expiry date\",\"value\":\"30.06.2026\",\"quote\":\"Der Nachweis, den Sie vorgelegt haben, ist am 30.06.2026 abgelaufen.\"}],\"items\":[{\"kind\":\"deadline\",\"title\":\"File an objection (Widerspruch) if you disagree\",\"action\":\"Submit a written objection (Widerspruch), or have it recorded in person, with Kreis Musterdithmarschen if you disagree with the rejection\",\"consequence\":null,\"amount\":null,\"currency\":null,\"direction\":null,\"location\":null,\"priority\":\"high\",\"quote\":\"Binnen eines Monats ab der Bekanntgabe dieses Bescheids ist der Widerspruch zulässig; er wird schriftlich oder zur Niederschrift bei folgender Stelle erhoben: Kreis Musterdithmarschen, Stiftstraße 8, 25746 Musterheide in Holstein.\",\"date\":{\"type\":\"relative\",\"nature\":\"objection\",\"anchor\":\"deemed_delivery\",\"anchor_date\":null,\"amount\":1,\"unit\":\"months\",\"delivery_rule\":\"de_admin_post\",\"shift_rule\":\"auto\",\"legal_basis\":\"§ 110 Abs. 2 LVwG\",\"text\":\"Binnen eines Monats ab der Bekanntgabe dieses Bescheids ist der Widerspruch zulässig\",\"date\":null,\"time\":null},\"recurrence\":null},{\"kind\":\"task\",\"title\":\"Submit a valid hunting liability insurance confirmation\",\"action\":\"Send Kreis Musterdithmarschen an up-to-date confirmation of your hunting liability insurance (Jagdhaftpflichtversicherung)\",\"consequence\":\"The hunting license (Jagdschein) will not be issued until a valid insurance confirmation is submitted\",\"amount\":null,\"currency\":null,\"direction\":null,\"location\":null,\"priority\":\"normal\",\"quote\":\"Sobald Sie eine gültige Versicherungsbestätigung nachreichen, stelle ich den Jagdschein ohne neuen Antrag aus.\",\"date\":{\"type\":\"none\",\"nature\":\"other\",\"anchor\":null,\"anchor_date\":null,\"amount\":null,\"unit\":null,\"delivery_rule\":\"none\",\"shift_rule\":\"none\",\"legal_basis\":null,\"date\":null,\"time\":null},\"recurrence\":null}],\"remedy\":{\"type\":\"widerspruch\",\"addressee\":\"Kreis Musterdithmarschen, Stiftstraße 8, 25746 Musterheide in Holstein\",\"period_text\":\"Binnen eines Monats ab der Bekanntgabe dieses Bescheids\",\"form_text\":\"schriftlich oder zur Niederschrift bei folgender Stelle\",\"quote\":\"Rechtsbehelfsbelehrung – Binnen eines Monats ab der Bekanntgabe dieses Bescheids ist der Widerspruch zulässig; er wird schriftlich oder zur Niederschrift bei folgender Stelle erhoben: Kreis Musterdithmarschen, Stiftstraße 8, 25746 Musterheide in Holstein.\"},\"payment\":null,\"contract\":null,\"change\":null,\"warnings\":[\"The letter prints a bank IBAN (Landesmusterbank) even though no payment is requested anywhere in this letter; this appears to be standard letterhead information rather than a payment demand, but double-check before sending any money.\"],\"high_stakes_kind\":null,\"urgency\":\"high\",\"tax_relevant\":false,\"tax_note\":null,\"area\":\"other\"}",
+    "data": {
+      "kind": "authority_letter",
+      "title": "Rejection of hunting license application (Jagdschein – Ablehnung)",
+      "case_title": "Hunting license application rejected (Jagdschein – Ablehnung)",
+      "summary": "Kreis Musterdithmarschen (Fachdienst Waffen und Jagd) rejected Tjark Beispielholm's application for a three-year hunting license (Jagdschein) because his proof of hunting liability insurance expired on 30 June 2026. The authority states it will issue the license without a new application as soon as a valid insurance confirmation is submitted.",
+      "explanation": "The authority cannot give you a hunting license right now because your proof of hunting liability insurance is no longer valid. The simplest step is to send a current insurance confirmation — then the license will be issued without you filing a new application. If you disagree with the rejection itself, you may file an objection (Widerspruch) with the authority; the app shows until when this is possible. If you do nothing, the rejection stands and no license will be issued until the missing insurance proof is provided.",
+      "language": "de",
+      "document_date": "2026-11-19",
+      "recipient_name": "Tjark Beispielholm",
+      "sender": {
+        "name": "Kreis Musterdithmarschen, Fachdienst Waffen und Jagd",
+        "kind": "authority",
+        "address": "Stiftstraße 8, 25746 Musterheide in Holstein",
+        "phone": "0481 555 97-0",
+        "email": "waffenbehoerde@kreis-musterdithmarschen.example",
+        "website": null,
+        "identifiers": []
+      },
+      "references": [
+        {
+          "label": "Az.",
+          "value": "WJ-32.4-0912/26"
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Insurance proof expiry date",
+          "value": "30.06.2026",
+          "quote": "Der Nachweis, den Sie vorgelegt haben, ist am 30.06.2026 abgelaufen."
+        }
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File an objection (Widerspruch) if you disagree",
+          "action": "Submit a written objection (Widerspruch), or have it recorded in person, with Kreis Musterdithmarschen if you disagree with the rejection",
+          "consequence": null,
+          "amount": null,
+          "currency": null,
+          "direction": null,
+          "location": null,
+          "priority": "high",
+          "quote": "Binnen eines Monats ab der Bekanntgabe dieses Bescheids ist der Widerspruch zulässig; er wird schriftlich oder zur Niederschrift bei folgender Stelle erhoben: Kreis Musterdithmarschen, Stiftstraße 8, 25746 Musterheide in Holstein.",
+          "date": {
+            "type": "relative",
+            "nature": "objection",
+            "anchor": "deemed_delivery",
+            "anchor_date": null,
+            "amount": 1,
+            "unit": "months",
+            "delivery_rule": "de_admin_post",
+            "shift_rule": "auto",
+            "legal_basis": "§ 110 Abs. 2 LVwG",
+            "text": "Binnen eines Monats ab der Bekanntgabe dieses Bescheids ist der Widerspruch zulässig",
+            "date": null,
+            "time": null
+          },
+          "recurrence": null
+        },
+        {
+          "kind": "task",
+          "title": "Submit a valid hunting liability insurance confirmation",
+          "action": "Send Kreis Musterdithmarschen an up-to-date confirmation of your hunting liability insurance (Jagdhaftpflichtversicherung)",
+          "consequence": "The hunting license (Jagdschein) will not be issued until a valid insurance confirmation is submitted",
+          "amount": null,
+          "currency": null,
+          "direction": null,
+          "location": null,
+          "priority": "normal",
+          "quote": "Sobald Sie eine gültige Versicherungsbestätigung nachreichen, stelle ich den Jagdschein ohne neuen Antrag aus.",
+          "date": {
+            "type": "none",
+            "nature": "other",
+            "anchor": null,
+            "anchor_date": null,
+            "amount": null,
+            "unit": null,
+            "delivery_rule": "none",
+            "shift_rule": "none",
+            "legal_basis": null,
+            "date": null,
+            "time": null
+          },
+          "recurrence": null
+        }
+      ],
+      "remedy": {
+        "type": "widerspruch",
+        "addressee": "Kreis Musterdithmarschen, Stiftstraße 8, 25746 Musterheide in Holstein",
+        "period_text": "Binnen eines Monats ab der Bekanntgabe dieses Bescheids",
+        "form_text": "schriftlich oder zur Niederschrift bei folgender Stelle",
+        "quote": "Rechtsbehelfsbelehrung – Binnen eines Monats ab der Bekanntgabe dieses Bescheids ist der Widerspruch zulässig; er wird schriftlich oder zur Niederschrift bei folgender Stelle erhoben: Kreis Musterdithmarschen, Stiftstraße 8, 25746 Musterheide in Holstein."
+      },
+      "payment": null,
+      "contract": null,
+      "change": null,
+      "warnings": [
+        "The letter prints a bank IBAN (Landesmusterbank) even though no payment is requested anywhere in this letter; this appears to be standard letterhead information rather than a payment demand, but double-check before sending any money."
+      ],
+      "high_stakes_kind": null,
+      "urgency": "high",
+      "tax_relevant": false,
+      "tax_note": null,
+      "area": "other"
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 8068,
+      "cache_read_tokens": 19494,
+      "cache_creation_tokens": 7380,
+      "cost_usd": 0.11410680000000001,
+      "duration_ms": 71203,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

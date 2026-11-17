@@ -1,0 +1,79 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"50be03696f1d85a03aed53793c4a0e61b876039abf5c3b5fd8b351a1acf2fceb\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-fine_bussgeld-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:34:18+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Kreis Beispielborken – Bußgeldstelle\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"51.3-26/0779413\"},{\"label\":\"Kennzeichen\",\"value\":\"BOR-JB 315\"}],\"amounts\":[132],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the Bußgeldbescheid\",\"quote\":\"Binnen zwei Wochen nach der Zustellung dieses Bescheids kann Einspruch eingelegt werden, schriftlich oder zur Niederschrift beim Kreis Beispielborken – Bußgeldstelle.\",\"computation\":\"The letter was formally served via Postzustellungsurkunde (§182 ZPO); the attached delivery-certificate scan records the actual service (Zustellung) date as 24.11.2026 (Tuesday) — this actual date governs, not the 3-day fiction used for ordinary mail. The two-week Einspruchsfrist (§43 OWiG i.V.m. §187 Abs.1 BGB) starts on the day after the event, i.e. 25.11.2026, and ends two weeks later matching the weekday of the triggering event (§188 Abs.2 BGB): 24.11.2026 + 2 weeks = 08.12.2026 (Tuesday). 08.12.2026 is not a Saturday, Sunday or public holiday in NRW, so no shift is needed. Last day to lodge Einspruch: 08.12.2026.\",\"due_date\":\"2026-12-08\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine (Gesamtbetrag) after the decision becomes final\",\"quote\":\"Bitte überweisen Sie den Gesamtbetrag erst nach Rechtskraft, und zwar innerhalb von zwei Wochen.\",\"computation\":\"Assuming no Einspruch is filed, the Einspruchsfrist ends 08.12.2026; the Bescheid becomes rechtskräftig (final) with the start of the following day, 09.12.2026 (00:00). Since this trigger is the beginning of a day, §187 Abs.2 BGB applies: that day (09.12.2026) counts as day 1 of the two-week (14-day) payment period. Day 14 is 22.12.2026 (Wednesday, same weekday as the start). 22.12.2026 is not a Saturday, Sunday or NRW public holiday, so the deadline is not shifted. This date is contingent on no Einspruch being lodged by 08.12.2026 — if one is filed, Rechtskraft (and this payment deadline) does not occur on this schedule.\",\"due_date\":\"2026-12-22\",\"confidence\":\"medium\",\"amount\":132}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment deadline (22.12.2026) is only valid if no Einspruch is filed by 08.12.2026; filing an Einspruch stops the Bescheid becoming final and this payment obligation does not arise on that schedule.\",\"All names, places and reference numbers in this letter (Beispielborken, Mustermünster, Beispielacker, 'Landesmusterbank', the .example e-mail domain) are placeholder/example data — verify that this matches a real case before acting, as a genuine authority letter would not use such generic test names.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Kreis Beispielborken – Bußgeldstelle",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "51.3-26/0779413"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "BOR-JB 315"
+        }
+      ],
+      "amounts": [
+        132
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the Bußgeldbescheid",
+          "quote": "Binnen zwei Wochen nach der Zustellung dieses Bescheids kann Einspruch eingelegt werden, schriftlich oder zur Niederschrift beim Kreis Beispielborken – Bußgeldstelle.",
+          "computation": "The letter was formally served via Postzustellungsurkunde (§182 ZPO); the attached delivery-certificate scan records the actual service (Zustellung) date as 24.11.2026 (Tuesday) — this actual date governs, not the 3-day fiction used for ordinary mail. The two-week Einspruchsfrist (§43 OWiG i.V.m. §187 Abs.1 BGB) starts on the day after the event, i.e. 25.11.2026, and ends two weeks later matching the weekday of the triggering event (§188 Abs.2 BGB): 24.11.2026 + 2 weeks = 08.12.2026 (Tuesday). 08.12.2026 is not a Saturday, Sunday or public holiday in NRW, so no shift is needed. Last day to lodge Einspruch: 08.12.2026.",
+          "due_date": "2026-12-08",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine (Gesamtbetrag) after the decision becomes final",
+          "quote": "Bitte überweisen Sie den Gesamtbetrag erst nach Rechtskraft, und zwar innerhalb von zwei Wochen.",
+          "computation": "Assuming no Einspruch is filed, the Einspruchsfrist ends 08.12.2026; the Bescheid becomes rechtskräftig (final) with the start of the following day, 09.12.2026 (00:00). Since this trigger is the beginning of a day, §187 Abs.2 BGB applies: that day (09.12.2026) counts as day 1 of the two-week (14-day) payment period. Day 14 is 22.12.2026 (Wednesday, same weekday as the start). 22.12.2026 is not a Saturday, Sunday or NRW public holiday, so the deadline is not shifted. This date is contingent on no Einspruch being lodged by 08.12.2026 — if one is filed, Rechtskraft (and this payment deadline) does not occur on this schedule.",
+          "due_date": "2026-12-22",
+          "confidence": "medium",
+          "amount": 132
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment deadline (22.12.2026) is only valid if no Einspruch is filed by 08.12.2026; filing an Einspruch stops the Bescheid becoming final and this payment obligation does not arise on that schedule.",
+        "All names, places and reference numbers in this letter (Beispielborken, Mustermünster, Beispielacker, 'Landesmusterbank', the .example e-mail domain) are placeholder/example data — verify that this matches a real case before acting, as a genuine authority letter would not use such generic test names."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6702,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2105,
+      "cost_usd": 0.0760684,
+      "duration_ms": 66384,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

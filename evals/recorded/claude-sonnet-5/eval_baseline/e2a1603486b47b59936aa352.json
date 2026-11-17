@@ -1,0 +1,112 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"fb67b7d076a9654ee4eb17da2a898796d2f273c04b95281302673ec24264d740\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-price_increase-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:26:56+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Beispielfunk Mobile GmbH\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"BF-7 220 418\"},{\"label\":\"Rufnummer\",\"value\":\"0160 555 41 27\"}],\"amounts\":[14.99,16.99],\"items\":[{\"kind\":\"milestone\",\"title\":\"New higher price takes effect\",\"quote\":\"ab dem 01.01.2027 kostet Ihr Tarif monatlich 16,99 € statt bisher 14,99 €.\",\"computation\":\"The letter states the new price starts on 01.01.2027; this is a fixed calendar date printed in the letter, no counting required.\",\"due_date\":\"2027-01-01\",\"confidence\":\"high\",\"amount\":16.99},{\"kind\":\"deadline\",\"title\":\"Special cancellation right due to price increase\",\"quote\":\"Für diese Kündigung haben Sie drei Monate Zeit, gerechnet ab dem Zugang dieser Mitteilung; wirksam wird sie frühestens an dem Tag, an dem der neue Preis gilt.\",\"computation\":\"The letter gives a 3-month period starting from receipt (Zugang), not from the printed document date. Beispielfunk Mobile GmbH is a private company, so no statutory deemed-delivery rule (as for authorities) applies; the actual arrival date is unknown. Using the earliest plausible start - the letter's own date, Sat 21.11.2026 - as the day of receipt: under § 187 Abs. 1 BGB the day of receipt is not counted, so counting starts 22.11.2026. Three months later (§ 188 Abs. 2 BGB) lands on Sun 21.02.2027. This is a notice/termination period, which under settled case law (BGH III ZR 172/04) does NOT shift to the next business day when it falls on a weekend or holiday - the notice must still arrive by that calendar day. So the absolute earliest-plausible last day the cancellation can still validly reach the provider is 21.02.2027, but because the actual delivery date of the letter is unknown and could be later than 21.11.2026, the true deadline could fall a few days later; to be safe the cancellation should be sent well before this date (ideally by around 19.02.2027, allowing postal transit time).\",\"due_date\":\"2027-02-21\",\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The exact day this letter actually arrived (Zugang) is not stated; the 3-month special cancellation period runs from that day, not from the printed letter date, so the computed due date of 2027-02-21 is only the earliest plausible estimate - confirm the real arrival date and send the cancellation well before this date to be safe.\",\"This is an ordinary price-increase notice from a private company, not an authority, so no statutory deemed-delivery fiction (e.g. the 3/4-day rule for authority letters) applies here.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Beispielfunk Mobile GmbH",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "BF-7 220 418"
+        },
+        {
+          "label": "Rufnummer",
+          "value": "0160 555 41 27"
+        }
+      ],
+      "amounts": [
+        14.99,
+        16.99
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "New higher price takes effect",
+          "quote": "ab dem 01.01.2027 kostet Ihr Tarif monatlich 16,99 € statt bisher 14,99 €.",
+          "computation": "The letter states the new price starts on 01.01.2027; this is a fixed calendar date printed in the letter, no counting required.",
+          "due_date": "2027-01-01",
+          "confidence": "high",
+          "amount": 16.99
+        },
+        {
+          "kind": "deadline",
+          "title": "Special cancellation right due to price increase",
+          "quote": "Für diese Kündigung haben Sie drei Monate Zeit, gerechnet ab dem Zugang dieser Mitteilung; wirksam wird sie frühestens an dem Tag, an dem der neue Preis gilt.",
+          "computation": "The letter gives a 3-month period starting from receipt (Zugang), not from the printed document date. Beispielfunk Mobile GmbH is a private company, so no statutory deemed-delivery rule (as for authorities) applies; the actual arrival date is unknown. Using the earliest plausible start - the letter's own date, Sat 21.11.2026 - as the day of receipt: under § 187 Abs. 1 BGB the day of receipt is not counted, so counting starts 22.11.2026. Three months later (§ 188 Abs. 2 BGB) lands on Sun 21.02.2027. This is a notice/termination period, which under settled case law (BGH III ZR 172/04) does NOT shift to the next business day when it falls on a weekend or holiday - the notice must still arrive by that calendar day. So the absolute earliest-plausible last day the cancellation can still validly reach the provider is 21.02.2027, but because the actual delivery date of the letter is unknown and could be later than 21.11.2026, the true deadline could fall a few days later; to be safe the cancellation should be sent well before this date (ideally by around 19.02.2027, allowing postal transit time).",
+          "due_date": "2027-02-21",
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The exact day this letter actually arrived (Zugang) is not stated; the 3-month special cancellation period runs from that day, not from the printed letter date, so the computed due date of 2027-02-21 is only the earliest plausible estimate - confirm the real arrival date and send the cancellation well before this date to be safe.",
+        "This is an ordinary price-increase notice from a private company, not an authority, so no statutory deemed-delivery fiction (e.g. the 3/4-day rule for authority letters) applies here."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3736,
+      "cache_read_tokens": 14591,
+      "cache_creation_tokens": 5433,
+      "cost_usd": 0.0620182,
+      "duration_ms": 41492,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "document_date": "2026-11-21",
+          "sender_kind": "company",
+          "sender_name": "Beispielfunk Mobile GmbH",
+          "recipient_region": "NW",
+          "region": "NW",
+          "remedy_type": "none",
+          "spec": {
+            "type": "relative",
+            "amount": 3,
+            "unit": "months",
+            "anchor": "receipt",
+            "delivery_rule": "none",
+            "nature": "notice",
+            "shift_rule": "auto",
+            "legal_basis": "§ 130 BGB / Vertragsrecht (Sonderkündigungsrecht wegen Preiserhöhung)",
+            "text": "Für diese Kündigung haben Sie drei Monate Zeit, gerechnet ab dem Zugang dieser Mitteilung"
+          }
+        },
+        "result": "{\"due_date\":\"2027-02-21\",\"weekday\":\"Sunday\",\"send_by\":\"2027-02-15\",\"safe_date\":\"2027-02-19\",\"summary\":\"Three months after the letter's date (Sat 21 Nov 2026) is Sun 21 Feb 2027, a Sunday; notice deadlines don't move, so aim for Fri 19 Feb 2027.\",\"confidence\":\"low\",\"warnings\":[\"The day the letter arrived was not given, so the period was counted from the date printed on it — the earliest plausible start.\"],\"steps\":[{\"label\":\"Counting starts the day after Sat 21 Nov 2026\",\"date\":\"2026-11-21\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Three months later: Sun 21 Feb 2027\",\"date\":\"2027-02-21\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Sun 21 Feb 2027 is a Sunday, but notice deadlines never move to the next working day\",\"date\":\"2027-02-21\",\"rule_id\":\"notice_no_shift\",\"citation\":\"BGH III ZR 172/04 (NJW 2005, 1354)\"},{\"label\":\"Safe date: make sure it arrives by Fri 19 Feb 2027\",\"date\":\"2027-02-19\",\"rule_id\":\"safe_date\",\"citation\":\"Ordnung safety policy\"},{\"label\":\"Send by Mon 15 Feb 2027 to allow 4 business days for a letter to arrive\",\"date\":\"2027-02-15\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"notice_no_shift\",\"title\":\"Notice periods never move to Monday\",\"citation\":\"BGH III ZR 172/04 (NJW 2005, 1354)\",\"url\":\"https://dejure.org/dienste/vernetzung/rechtsprechung?Gericht=BGH&Datum=17.02.2005&Aktenzeichen=III+ZR+172/04\"},{\"id\":\"safe_date\",\"title\":\"Safe date\",\"citation\":\"Ordnung safety policy\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-21\",\"received_date\":\"2026-11-21\",\"received_date_from\":\"document_date: assumed, the earliest plausible arrival\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"Pass received_date if you know the day the letter arrived; until then the letter's date is used (the earliest plausible start).\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__german_holidays",
+        "input": {
+          "year": 2027,
+          "region": "NW"
+        },
+        "result": "{\"year\":2027,\"region\":\"NW\",\"calendar\":\"Nordrhein-Westfalen\",\"holidays\":[{\"date\":\"2027-01-01\",\"weekday\":\"Friday\",\"name\":\"Neujahr\",\"nationwide\":true},{\"date\":\"2027-03-26\",\"weekday\":\"Friday\",\"name\":\"Karfreitag\",\"nationwide\":true},{\"date\":\"2027-03-29\",\"weekday\":\"Monday\",\"name\":\"Ostermontag\",\"nationwide\":true},{\"date\":\"2027-05-01\",\"weekday\":\"Saturday\",\"name\":\"Erster Mai\",\"nationwide\":true},{\"date\":\"2027-05-06\",\"weekday\":\"Thursday\",\"name\":\"Christi Himmelfahrt\",\"nationwide\":true},{\"date\":\"2027-05-17\",\"weekday\":\"Monday\",\"name\":\"Pfingstmontag\",\"nationwide\":true},{\"date\":\"2027-05-27\",\"weekday\":\"Thursday\",\"name\":\"Fronleichnam\",\"nationwide\":false},{\"date\":\"2027-10-03\",\"weekday\":\"Sunday\",\"name\":\"Tag der Deutschen Einheit\",\"nationwide\":true},{\"date\":\"2027-11-01\",\"weekday\":\"Monday\",\"name\":\"Allerheiligen\",\"nationwide\":false},{\"date\":\"2027-12-25\",\"weekday\":\"Saturday\",\"name\":\"Erster Weihnachtstag\",\"nationwide\":true},{\"date\":\"2027-12-26\",\"weekday\":\"Sunday\",\"name\":\"Zweiter Weihnachtstag\",\"nationwide\":true}],\"disclaimer\":\"Information, not legal advice: the public holidays in Ordnung's calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer.\"}"
+      }
+    ]
+  }
+}

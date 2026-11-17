@@ -1,0 +1,65 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"af2e618e5f37069603539b8c909f9b4a4fec91492d689192a68b01e43c39b873\",\"mode\":\"text\",\"region\":\"HB\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-tax_assessment-N1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bremen (HB), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag",
+    "recorded_at": "2026-11-24T12:13:00+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[5820,6390,570],\"contract\":null,\"document_date\":\"2026-11-19\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Einspruch against income tax assessment 2025\",\"quote\":\"Die Einspruchsfrist beträgt einen Monat und rechnet ab der Bekanntgabe; ein Bescheid, der als Brief verschickt wird, ist am vierten Tag nach dem Absenden als bekannt gegeben anzusehen.\",\"computation\":\"Letter posted/dated Thu 19.11.2026. Posted on or after 1 Jan 2025 → delivery is deemed on the 4th day after posting, counting calendar days: day 1 = Fri 20.11., day 2 = Sat 21.11., day 3 = Sun 22.11., day 4 = Mon 23.11.2026. For tax offices, if that 4th day is a Sat/Sun/holiday it would move to the next working day, but 23.11.2026 is a normal Monday, so deemed delivery = Mon 23.11.2026. Einspruch period is one month after delivery (§ 355 Abs. 1 AO, counted per § 108 Abs. 1 AO / §§ 187, 188 BGB): the delivery day itself does not count as day 1; the one-month period ends on the day in the following month bearing the same number as the delivery day, i.e. 23.12.2026 (Wednesday). 23 December 2026 is not a Saturday, Sunday or public holiday in Bremen, so no further shift applies.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"tax_assessment\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"475/204/66190\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Finanzamt Musterhemelingen\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        5820,
+        6390,
+        570
+      ],
+      "contract": null,
+      "document_date": "2026-11-19",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Einspruch against income tax assessment 2025",
+          "quote": "Die Einspruchsfrist beträgt einen Monat und rechnet ab der Bekanntgabe; ein Bescheid, der als Brief verschickt wird, ist am vierten Tag nach dem Absenden als bekannt gegeben anzusehen.",
+          "computation": "Letter posted/dated Thu 19.11.2026. Posted on or after 1 Jan 2025 → delivery is deemed on the 4th day after posting, counting calendar days: day 1 = Fri 20.11., day 2 = Sat 21.11., day 3 = Sun 22.11., day 4 = Mon 23.11.2026. For tax offices, if that 4th day is a Sat/Sun/holiday it would move to the next working day, but 23.11.2026 is a normal Monday, so deemed delivery = Mon 23.11.2026. Einspruch period is one month after delivery (§ 355 Abs. 1 AO, counted per § 108 Abs. 1 AO / §§ 187, 188 BGB): the delivery day itself does not count as day 1; the one-month period ends on the day in the following month bearing the same number as the delivery day, i.e. 23.12.2026 (Wednesday). 23 December 2026 is not a Saturday, Sunday or public holiday in Bremen, so no further shift applies.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "tax_assessment",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "475/204/66190"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Finanzamt Musterhemelingen",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2110,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2078,
+      "cost_usd": 0.030522,
+      "duration_ms": 21543,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

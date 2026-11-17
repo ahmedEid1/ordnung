@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"0dad9fdeaf50cf47776a7959b22640c124d4366abb15e09850239e1028d76937\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-appointment-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:41:12+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"appointment\",\"sender_name\":\"Zahnarztpraxis Beispielweiß\",\"document_date\":\"2026-11-19\",\"references\":[],\"amounts\":[],\"items\":[{\"kind\":\"appointment\",\"title\":\"Professional dental cleaning appointment\",\"quote\":\"Ihr nächster Termin zur professionellen Zahnreinigung ist am Montag, 14.12.2026 um 16:15 Uhr.\",\"computation\":\"The letter states the appointment date and time explicitly: Monday, 14.12.2026, 16:15. No calculation needed, the date is given directly.\",\"due_date\":\"2026-12-14\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Deadline to cancel the appointment\",\"quote\":\"Wenn Sie verhindert sind, sagen Sie bitte mindestens zwei Werktage vorher ab, damit wir den Termin anderweitig vergeben können.\",\"computation\":\"Appointment is Monday, 14.12.2026. Counting backward, Werktage (working days) are usually Monday–Saturday in German usage (Sundays and public holidays excluded). The day before the appointment, Sunday 13.12.2026, is not a Werktag. The first Werktag before the appointment is therefore Saturday 12.12.2026 (1st Werktag), and the second Werktag before is Friday 11.12.2026 (2nd Werktag). 'Mindestens zwei Werktage vorher' therefore means the cancellation must reach the practice by Friday, 11.12.2026 at the latest. (If the practice instead counts Werktage as Mon–Fri only, excluding Saturday, the deadline would shift one day earlier to Thursday 10.12.2026 — this ambiguity is noted as the practice itself does not define the term.)\",\"due_date\":\"2026-12-11\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The practice's definition of 'Werktage' (working days) is not stated; if it excludes Saturdays, the cancellation deadline would be Thursday 10.12.2026 instead of Friday 11.12.2026 — confirm with the practice if timing is tight.\",\"No consequence (e.g. a cancellation fee) is stated in the letter for missing the two-working-day notice period, so none is assumed.\"]}",
+    "data": {
+      "kind": "appointment",
+      "sender_name": "Zahnarztpraxis Beispielweiß",
+      "document_date": "2026-11-19",
+      "references": [],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Professional dental cleaning appointment",
+          "quote": "Ihr nächster Termin zur professionellen Zahnreinigung ist am Montag, 14.12.2026 um 16:15 Uhr.",
+          "computation": "The letter states the appointment date and time explicitly: Monday, 14.12.2026, 16:15. No calculation needed, the date is given directly.",
+          "due_date": "2026-12-14",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Deadline to cancel the appointment",
+          "quote": "Wenn Sie verhindert sind, sagen Sie bitte mindestens zwei Werktage vorher ab, damit wir den Termin anderweitig vergeben können.",
+          "computation": "Appointment is Monday, 14.12.2026. Counting backward, Werktage (working days) are usually Monday–Saturday in German usage (Sundays and public holidays excluded). The day before the appointment, Sunday 13.12.2026, is not a Werktag. The first Werktag before the appointment is therefore Saturday 12.12.2026 (1st Werktag), and the second Werktag before is Friday 11.12.2026 (2nd Werktag). 'Mindestens zwei Werktage vorher' therefore means the cancellation must reach the practice by Friday, 11.12.2026 at the latest. (If the practice instead counts Werktage as Mon–Fri only, excluding Saturday, the deadline would shift one day earlier to Thursday 10.12.2026 — this ambiguity is noted as the practice itself does not define the term.)",
+          "due_date": "2026-12-11",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The practice's definition of 'Werktage' (working days) is not stated; if it excludes Saturdays, the cancellation deadline would be Thursday 10.12.2026 instead of Friday 11.12.2026 — confirm with the practice if timing is tight.",
+        "No consequence (e.g. a cancellation fee) is stated in the letter for missing the two-working-day notice period, so none is assumed."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1914,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1420,
+      "cost_usd": 0.0254484,
+      "duration_ms": 18760,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

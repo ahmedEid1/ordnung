@@ -1,0 +1,83 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"4645b34798a40da357d2e2a853d05742ba431ea75e92c5fe5da4846ed9927ffe\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-social_decision-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:09:59+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[297],\"contract\":null,\"document_date\":\"2026-11-20\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Widerspruch against Kinderzuschlag decision\",\"quote\":\"Innerhalb eines Monats ab Bekanntgabe kann gegen diesen Bescheid Widerspruch erhoben werden, schriftlich oder zur Niederschrift bei: Familienkasse Musterlahn, Bahnhofsallee 40, 35576 Beispielwetzlar.\",\"computation\":\"Letter is dated (Bescheid vom) 20.11.2026, a Friday; no separate 'zur Post gegeben am' date is stated, so the posting day is 20.11.2026. The letter itself states the 4-day rule ('Bei Versand mit der Post ist der Bescheid am vierten Tag nach der Aufgabe zur Post bekannt gegeben'), matching § 37 Abs. 2 SGB X for Familienkasse Kinderzuschlag decisions. 20.11.2026 + 4 calendar days = 24.11.2026 (Tuesday). For social-law bodies the delivery day itself is not shifted even if it fell on a weekend/holiday (it does not here, so no issue). Delivery (Bekanntgabe) = 24.11.2026. The one-month Widerspruch period starts the day after delivery (§ 187 Abs. 1 BGB) and ends, per § 188 Abs. 2 BGB / § 84 SGG, on the day in the following month bearing the same number as the delivery day: 24.12.2026. 24.12.2026 is a Thursday and not a public holiday in NRW (24 Dec is a normal working day), so the deadline does not shift further.\",\"due_date\":\"2026-12-24\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Apply with your municipality for Bildung und Teilhabe benefits\",\"quote\":\"Mit dem Bescheid erhalten Sie Leistungen für Bildung und Teilhabe; den Antrag dafür stellen Sie bei Ihrer Kommune.\",\"computation\":\"The letter only states that the application must be filed with the local municipality (Kommune) but gives no date, time limit, or period for doing so, so no exact due date can be computed.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null},{\"kind\":\"expiry\",\"title\":\"End of approved Kinderzuschlag benefit period\",\"quote\":\"für Ihre Kinder Ida und Jonas bewilligen wir Ihnen von Dezember 2026 bis Mai 2027 Kinderzuschlag von je 297,00 € im Monat.\",\"computation\":\"The decision grants Kinderzuschlag for the period December 2026 through May 2027. Only the month is given, not a specific day; the benefit period is taken to run through the last calendar day of the final granted month, i.e. 31 May 2027. After this date a new application/decision would be needed to continue payments.\",\"due_date\":\"2027-05-31\",\"confidence\":\"medium\",\"amount\":297}],\"kind\":\"social_insurance\",\"references\":[{\"label\":\"Kindergeldnummer\",\"value\":\"214FK880153\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Familienkasse Musterlahn\",\"warnings\":[\"The sender's address (Bahnhofsallee 40, 35576 Beispielwetzlar) and the recipient's city (Mustermünster) appear to be fictitious placeholder names, as do the Kindergeldnummer and IBAN formats, suggesting this may be a sample/template document rather than an authentic letter — verify the real sender details before relying on this record.\"]}",
+    "data": {
+      "amounts": [
+        297
+      ],
+      "contract": null,
+      "document_date": "2026-11-20",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Widerspruch against Kinderzuschlag decision",
+          "quote": "Innerhalb eines Monats ab Bekanntgabe kann gegen diesen Bescheid Widerspruch erhoben werden, schriftlich oder zur Niederschrift bei: Familienkasse Musterlahn, Bahnhofsallee 40, 35576 Beispielwetzlar.",
+          "computation": "Letter is dated (Bescheid vom) 20.11.2026, a Friday; no separate 'zur Post gegeben am' date is stated, so the posting day is 20.11.2026. The letter itself states the 4-day rule ('Bei Versand mit der Post ist der Bescheid am vierten Tag nach der Aufgabe zur Post bekannt gegeben'), matching § 37 Abs. 2 SGB X for Familienkasse Kinderzuschlag decisions. 20.11.2026 + 4 calendar days = 24.11.2026 (Tuesday). For social-law bodies the delivery day itself is not shifted even if it fell on a weekend/holiday (it does not here, so no issue). Delivery (Bekanntgabe) = 24.11.2026. The one-month Widerspruch period starts the day after delivery (§ 187 Abs. 1 BGB) and ends, per § 188 Abs. 2 BGB / § 84 SGG, on the day in the following month bearing the same number as the delivery day: 24.12.2026. 24.12.2026 is a Thursday and not a public holiday in NRW (24 Dec is a normal working day), so the deadline does not shift further.",
+          "due_date": "2026-12-24",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Apply with your municipality for Bildung und Teilhabe benefits",
+          "quote": "Mit dem Bescheid erhalten Sie Leistungen für Bildung und Teilhabe; den Antrag dafür stellen Sie bei Ihrer Kommune.",
+          "computation": "The letter only states that the application must be filed with the local municipality (Kommune) but gives no date, time limit, or period for doing so, so no exact due date can be computed.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        },
+        {
+          "kind": "expiry",
+          "title": "End of approved Kinderzuschlag benefit period",
+          "quote": "für Ihre Kinder Ida und Jonas bewilligen wir Ihnen von Dezember 2026 bis Mai 2027 Kinderzuschlag von je 297,00 € im Monat.",
+          "computation": "The decision grants Kinderzuschlag for the period December 2026 through May 2027. Only the month is given, not a specific day; the benefit period is taken to run through the last calendar day of the final granted month, i.e. 31 May 2027. After this date a new application/decision would be needed to continue payments.",
+          "due_date": "2027-05-31",
+          "confidence": "medium",
+          "amount": 297
+        }
+      ],
+      "kind": "social_insurance",
+      "references": [
+        {
+          "label": "Kindergeldnummer",
+          "value": "214FK880153"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Familienkasse Musterlahn",
+      "warnings": [
+        "The sender's address (Bahnhofsallee 40, 35576 Beispielwetzlar) and the recipient's city (Mustermünster) appear to be fictitious placeholder names, as do the Kindergeldnummer and IBAN formats, suggesting this may be a sample/template document rather than an authentic letter — verify the real sender details before relying on this record."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4387,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1609,
+      "cost_usd": 0.051416,
+      "duration_ms": 44991,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

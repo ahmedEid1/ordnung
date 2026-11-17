@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"4a141c23d25561fb82b23219b4977c717da275fa5eac5f6ca340f34314d43dcd\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-conflicting_dates-2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T08:52:24+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Stadt Beispielhagen – Fachbereich Bauordnung\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"63-BO-2026-1147\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Klage with the Verwaltungsgericht against the use-prohibition order\",\"quote\":\"Gegen diesen Bescheid kann innerhalb eines Monats nach seiner Bekanntgabe Klage beim Verwaltungsgericht Musterarnsberg, Jägerstraße 1, 59821 Musterarnsberg, erhoben werden; ein Widerspruchsverfahren findet nicht statt.\",\"computation\":\"Sender is a city building authority (general authority, not a tax office), so the 4-day delivery fiction applies and the delivery day is NOT moved even if it falls on a weekend/holiday (§41 Abs. 2 VwVfG NRW). No separate 'zur Post gegeben am' date is given, so the printed letter date (20.11.2026, Friday) is the posting day. Day 1 = Sat 21.11, day 2 = Sun 22.11, day 3 = Mon 23.11, day 4 = Tue 24.11.2026 → deemed delivery (Bekanntgabe) = 24.11.2026, a normal working day, so no adjustment needed. Klage period is one month after Bekanntgabe (§74 VwGO). Under §§187 Abs.1, 188 Abs.2 BGB the month is counted from the event day itself (24.11.) to the same calendar day one month later: 24.12.2026. 24 December is a working day (per the stated rule that 24 and 31 December count as working days), and it is not a Saturday, Sunday or public holiday in NRW, so no further shift applies.\",\"due_date\":\"2026-12-24\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The letter's printed date (Datum 20.11.2026) differs from the date of the underlying Bescheid mentioned in the body text ('mit diesem Bescheid vom 18.11.2026'); the delivery-fiction calculation uses the printed letter date (20.11.2026) as the posting day because no separate 'zur Post gegeben am' date is stated, but if the authority actually posted it on 18.11.2026 the deadline could fall two days earlier — please verify the envelope postmark or actual mailing date if possible.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Stadt Beispielhagen – Fachbereich Bauordnung",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "63-BO-2026-1147"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Klage with the Verwaltungsgericht against the use-prohibition order",
+          "quote": "Gegen diesen Bescheid kann innerhalb eines Monats nach seiner Bekanntgabe Klage beim Verwaltungsgericht Musterarnsberg, Jägerstraße 1, 59821 Musterarnsberg, erhoben werden; ein Widerspruchsverfahren findet nicht statt.",
+          "computation": "Sender is a city building authority (general authority, not a tax office), so the 4-day delivery fiction applies and the delivery day is NOT moved even if it falls on a weekend/holiday (§41 Abs. 2 VwVfG NRW). No separate 'zur Post gegeben am' date is given, so the printed letter date (20.11.2026, Friday) is the posting day. Day 1 = Sat 21.11, day 2 = Sun 22.11, day 3 = Mon 23.11, day 4 = Tue 24.11.2026 → deemed delivery (Bekanntgabe) = 24.11.2026, a normal working day, so no adjustment needed. Klage period is one month after Bekanntgabe (§74 VwGO). Under §§187 Abs.1, 188 Abs.2 BGB the month is counted from the event day itself (24.11.) to the same calendar day one month later: 24.12.2026. 24 December is a working day (per the stated rule that 24 and 31 December count as working days), and it is not a Saturday, Sunday or public holiday in NRW, so no further shift applies.",
+          "due_date": "2026-12-24",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The letter's printed date (Datum 20.11.2026) differs from the date of the underlying Bescheid mentioned in the body text ('mit diesem Bescheid vom 18.11.2026'); the delivery-fiction calculation uses the printed letter date (20.11.2026) as the posting day because no separate 'zur Post gegeben am' date is stated, but if the authority actually posted it on 18.11.2026 the deadline could fall two days earlier — please verify the envelope postmark or actual mailing date if possible."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3071,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1542,
+      "cost_usd": 0.037988,
+      "duration_ms": 31948,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

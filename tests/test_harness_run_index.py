@@ -12,6 +12,7 @@ import hashlib
 import json
 import sys
 from collections.abc import AsyncIterator, Mapping
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +27,7 @@ from evals import run as eval_run  # noqa: E402
 from evals.gen.common import SPLIT_VARIANTS  # noqa: E402
 from evals.records import load_manifest  # noqa: E402
 
+from helpers_publication import FINAL_SPLITS, final_published  # noqa: E402
 from ordnung.llm.base import Attachment, LLMRequest, LLMResponse, StreamEvent  # noqa: E402
 from ordnung.llm.claude_cli import ClaudeCLIBackend, build_user_message  # noqa: E402
 from ordnung.llm.fake import FakeBackend  # noqa: E402
@@ -247,11 +249,51 @@ def _answering_claude(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return log
 
 
+#: The smoke's UTC clock in these tests, pinned: a live run takes the UTC day it starts on as its recording day and
+#: starts no call on a later one (``harness.RecordingDayOver``), so on the wall clock a smoke whose recording ran
+#: across midnight UTC was cut (``recording_exit`` or ``ask_exit`` 1) and these tests failed, at that hour only. A
+#: second before midnight: pinned, the day cannot end mid-run, however near midnight the run is.
+SMOKE_NOW = datetime(2026, 11, 10, 23, 59, 59, tzinfo=UTC)
+
+#: Run as ``python -c`` in place of ``python -m MODULE ARGS``: the module runs as ``-m`` runs it, on the UTC clock
+#: given as the first argument.
+_ON_A_PINNED_CLOCK = """
+import runpy, sys
+from datetime import datetime
+from evals import harness
+moment = datetime.fromisoformat(sys.argv[1])
+harness._now = lambda: moment
+sys.argv = sys.argv[2:]
+runpy.run_module(sys.argv[0], run_name="__main__", alter_sys=True)
+"""
+
+
+def _pin_the_smoke_clock(monkeypatch: pytest.MonkeyPatch, moment: datetime = SMOKE_NOW) -> None:
+    """Pin the UTC clock of :func:`harness.run_smoke` and of every recording it starts (each a ``python -m`` child,
+    :func:`harness._python_args`) at ``moment``."""
+    monkeypatch.setattr(harness, "_now", lambda: moment)
+    monkeypatch.setattr(
+        harness,
+        "_python_args",
+        lambda module, *args: [sys.executable, "-c", _ON_A_PINNED_CLOCK, moment.isoformat(), module, *args],
+    )
+
+
+def _recorded_on(root: Path) -> set[str]:
+    """The days the cassettes under ``root`` say they were recorded on (their request's ``recorded_on``)."""
+    return {
+        json.loads(path.read_text(encoding="utf-8"))["request"].get("recorded_on", "none")
+        for path in root.rglob("*.json")
+        if path.parent != root
+    }
+
+
 @pytest.mark.slow  # replays or records a whole run: once, in backend-slow, without coverage
 def test_the_live_smoke_checks_a_repeat_against_run_one(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     log = _answering_claude(tmp_path, monkeypatch)
+    _pin_the_smoke_clock(monkeypatch)
     scratch = tmp_path / "smoke"
     report = harness.run_smoke(
         scratch, ids=REAL_IDS, conditions=["llm_only"], cap=0.5, recorder_lock=tmp_path / "recording.lock"
@@ -264,6 +306,8 @@ def test_the_live_smoke_checks_a_repeat_against_run_one(
     assert checks["one_ledger_line_per_call"] and checks["within_budget"] and checks["spent_usd"] == 0.002
     assert checks["answers_compared"] == checks["answers_that_differ_from_run_1"] == 2  # a fake is not run 1
     assert report["ask"] == "not asked"
+    # recorded on the pinned day (the children ran on the test's clock, not the wall clock)
+    assert _recorded_on(scratch / "recorded" / eval_run.DEFAULT_MODEL) == {SMOKE_NOW.date().isoformat()}
     assert len(log.read_text(encoding="utf-8").splitlines()) == 2  # the refusals asked nothing
     assert json.loads((scratch / "smoke.json").read_text(encoding="utf-8")) == report
     with pytest.raises(harness.HarnessError):  # always into a fresh folder
@@ -281,6 +325,7 @@ def test_the_live_smoke_asks_its_ask_turns_and_judges_them(
     """With Ask turns, the smoke records them at run 2 into its scratch folder (``--recorded-dir``) and is ok only
     when Ask ran: every turn asked once, under keys of its own, with run 1's request, one ledger line per call."""
     log = _answering_claude(tmp_path, monkeypatch)
+    _pin_the_smoke_clock(monkeypatch)
     scenario = json.loads(Path(tmp_path / "answer.json").read_text(encoding="utf-8"))
     benchmark = scenario["calls"][0]
     text = "I could not find that in your letters."  # an Ask answer that calls no tool
@@ -325,6 +370,7 @@ def test_the_live_smoke_asks_its_ask_turns_and_judges_them(
     assert ask["one_ledger_line_per_call"] and report["ok"], report
     assert len(log.read_text(encoding="utf-8").splitlines()) == 2 + len(ASK_IDS)
     assert (scratch / "ask" / eval_run.DEFAULT_MODEL).is_dir()  # recorded where the smoke said, nowhere else
+    assert _recorded_on(scratch / "ask" / eval_run.DEFAULT_MODEL) == {SMOKE_NOW.date().isoformat()}
     assert not (tmp_path / "recording.lock").exists()
 
 
@@ -618,7 +664,9 @@ def test_the_registry_declares_every_split_and_the_final_ones_before_their_lette
     assert eval_run.SPLITS == splits.recorded()
     split_option = next(a for a in eval_run.build_parser()._actions if a.dest == "split")
     assert tuple(split_option.choices or ()) == splits.names()
-    assert splits.recorded() == ("dev", "test", "holdout", "holdout2", "holdout3")
+    # the final splits once the final run is published (the publish PR adds their reads with its analysis)
+    earlier = ("dev", "test", "holdout", "holdout2", "holdout3")
+    assert splits.recorded() == earlier + (FINAL_SPLITS if final_published() else ())
     assert [s.name for s in splits.REGISTRY if s.role == "final"] == ["holdout4", "newkinds"]
     assert splits.get("holdout4").variants == ("K", "L", "M", "N")
     assert all(

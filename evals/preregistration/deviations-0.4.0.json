@@ -1,1 +1,309 @@
-[]
+[
+  {
+    "id": "D001",
+    "kind": "code_hash_changed",
+    "at": "2026-11-13T09:15:44Z",
+    "step": "runner-fix",
+    "what": "Runner defect found before any recording (synthetic, zero tokens): the stress check compared what describes a run (meta.date; each read's commit, backend, CLI version), so no committed stress file could pass it, and B's budget cut --cells I1 was refused by the build check. Fixed in its own PR; the frozen checks excuse exactly the paths below by sha256.",
+    "evidence": [
+      "evals/perturb/build.py sha256 8c8353380f0df5d2362e2fd2c22c712b6a006868fb14f1115633bde41ec8c3b7",
+      "evals/perturb/score.py sha256 c463b65de24bfd5769e99033bebf144f6838455160402e724972bd6c49cc3317",
+      "scripts/eval_perturb.py sha256 1bf1ddcbaf05ffdbd56bd76cef2346db743ea045335b024bade513c53e98f541",
+      "scripts/prereg_hashes.py sha256 f308c2fcdda067db814daea4913724aad00b7c6e1980ea1005a3cb1b6ffb9de2",
+      "tests/test_preregistration.py sha256 2ad95833cc5da2153dbc7f8144d55a5d4087594bbe45f5227dd146314e1f08fe",
+      "https://github.com/ahmedEid1/ordnung/pull/55"
+    ],
+    "consequence": "the runner-defect rule, or a presentation-only change listed per path",
+    "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6848948141",
+    "created_at": "2026-11-13T09:15:44Z",
+    "checkpoint_sha": "f23bff70781f5c744a8adebf1e36e0469e5af6f6"
+  },
+  {
+    "id": "D002",
+    "kind": "cli_version",
+    "at": "2026-11-17T06:18:40Z",
+    "step": "R2",
+    "what": "R2: the installed CLI reports 2.1.326 (Claude Code), not B's frozen.cli_versions[0] 2.1.322 (Claude Code); B's rule K10, recorded before the step's first unit",
+    "evidence": [
+      "clock (K29, #54): at/created_at real UTC; times below on the recording clock, real + 7 d",
+      "installed CLI: 2.1.326 (Claude Code) (the recording CLI's --version at 2026-11-24T06:18:39Z)",
+      "micro-smoke smoke-2026-11-24: ok true; 2 ledger lines, served_model claude-sonnet-5, cli_version 2.1.326 (Claude Code)",
+      "evals.harness diff-requests f2cacf64: no change"
+    ],
+    "consequence": "include; per-unit versions; same-CLI F3 sensitivity",
+    "applies_to": {
+      "split": "holdout4",
+      "repeat": 1
+    },
+    "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6940459606",
+    "created_at": "2026-11-17T06:18:40Z",
+    "checkpoint_sha": "294ad6dfb3e7635e6c4920b5aaedf023ce2027e4"
+  },
+  {
+    "id": "D003",
+    "kind": "cli_version",
+    "at": "2026-11-17T08:10:25Z",
+    "step": "R3",
+    "what": "R3: the installed CLI reports 2.1.326 (Claude Code), not B's frozen.cli_versions[0] 2.1.322 (Claude Code); B's rule K10, recorded before the step's first unit",
+    "evidence": [
+      "clock (K29, #54): at/created_at real UTC; times below on the recording clock, real + 7 d",
+      "installed CLI: 2.1.326 (Claude Code) (the recording CLI's --version at 2026-11-24T08:10:24Z)",
+      "micro-smoke smoke-2026-11-24: ok true; 2 ledger lines, served_model claude-sonnet-5, cli_version 2.1.326 (Claude Code)",
+      "evals.harness diff-requests f2cacf64: no change"
+    ],
+    "consequence": "include; per-unit versions; same-CLI F3 sensitivity",
+    "applies_to": {
+      "split": "ask-heldout",
+      "repeat": 1
+    },
+    "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6942459566",
+    "created_at": "2026-11-17T08:10:25Z",
+    "checkpoint_sha": "7db55f639d64f6635cc09b344081d7d06adcf789"
+  },
+  {
+    "id": "D004",
+    "kind": "retake",
+    "at": "2026-11-17T08:44:46Z",
+    "step": "R3",
+    "what": "R3: held-out Ask turn ho-atk-06 asked again the same recording day. In its first attempt the first two tool calls got the CLI's reply that the tool was not available yet (the Ordnung MCP server had not connected); the model called both again and answered. That recording does not replay and evals.ask writes no run with one, so it is set aside (published as first attempt) and the turn recorded again",
+    "evidence": [
+      "clock (K29, #54): at/created_at real UTC; times below on the recording clock, real + 7 d",
+      "first attempt set aside: evals/recorded/ask-heldout/claude-sonnet-5/ask/3ef628bb4af6f7169d826b53.json sha256 3fe73cf51f2e267588ba38dae3899946ddb34b7996bbaa8b761f02bb1d691ec4 ok $0.0658, moved to $R/retakes/2026-11-24/R3/; its request-lock entry removed",
+      "its tool results 1-2 (search, list_contracts) are exactly the CLI's '<tool_use_error>Error: No such tool available: <tool></tool_use_error>'; results 3-5 (search, list_contracts, get_document) equal what the tools answer for the recording day",
+      "zero-token replay of the run, 3 times: 160 of 160 turns answered, 0 misses, 0 request-lock drift, 1 recording that does not replay (this one); both live attempts (2026-11-24 08:11-08:27 and 08:30-08:31, recording clock) therefore wrote no results file (exit 1)",
+      "consequence as registered: the retaken turn is included; the first attempt is published"
+    ],
+    "consequence": "include the retaken unit; the first attempt is published; first-attempt sensitivity",
+    "applies_to": {
+      "split": "ask-heldout",
+      "repeat": 1,
+      "entries": [
+        "ho-atk-06"
+      ]
+    },
+    "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6943168083",
+    "created_at": "2026-11-17T08:44:46Z",
+    "checkpoint_sha": "c5f32381010107e7e4f3f000bf0b6918e87f49ce"
+  },
+  {
+    "id": "D005",
+    "kind": "cli_version",
+    "at": "2026-11-17T08:50:27Z",
+    "step": "R4",
+    "what": "R4: the installed CLI reports 2.1.326 (Claude Code), not B's frozen.cli_versions[0] 2.1.322 (Claude Code); B's rule K10, recorded before the step's first unit",
+    "evidence": [
+      "clock (K29, #54): at/created_at real UTC; times below on the recording clock, real + 7 d",
+      "installed CLI: 2.1.326 (Claude Code) (the recording CLI's --version at 2026-11-24T08:50:26Z)",
+      "micro-smoke smoke-2026-11-24: ok true; 2 ledger lines, served_model claude-sonnet-5, cli_version 2.1.326 (Claude Code)",
+      "evals.harness diff-requests f2cacf64: no change"
+    ],
+    "consequence": "include; per-unit versions; same-CLI F3 sensitivity",
+    "applies_to": {
+      "split": "holdout4",
+      "repeat": 2
+    },
+    "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6943283375",
+    "created_at": "2026-11-17T08:50:27Z",
+    "checkpoint_sha": "4a0f9b2a5a8f64a18b34804d8edb5907acb0c777"
+  },
+  {
+    "id": "D006",
+    "kind": "cli_version",
+    "at": "2026-11-17T10:42:39Z",
+    "step": "R5",
+    "what": "R5: the installed CLI reports 2.1.326 (Claude Code), not B's frozen.cli_versions[0] 2.1.322 (Claude Code); B's rule K10, recorded before the step's first unit",
+    "evidence": [
+      "clock (K29, #54): at/created_at real UTC; times below on the recording clock, real + 7 d",
+      "installed CLI: 2.1.326 (Claude Code) (the recording CLI's --version at 2026-11-24T10:41:21Z)",
+      "micro-smoke smoke-2026-11-24: ok true; 2 ledger lines, served_model claude-sonnet-5, cli_version 2.1.326 (Claude Code)",
+      "evals.harness diff-requests f2cacf64: no change"
+    ],
+    "consequence": "include; per-unit versions; same-CLI F3 sensitivity",
+    "applies_to": {
+      "split": "holdout4",
+      "repeat": 3
+    },
+    "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6945756288",
+    "created_at": "2026-11-17T10:42:39Z",
+    "checkpoint_sha": "6020686ff07ffcbf0e0288a3ac98ea2135ce027c"
+  },
+  {
+    "id": "D007",
+    "kind": "cli_version",
+    "at": "2026-11-17T12:30:59Z",
+    "step": "R1",
+    "what": "R1: the installed CLI reports 2.1.326 (Claude Code), not B's frozen.cli_versions[0] 2.1.322 (Claude Code); B's rule K10, recorded before the step's first unit",
+    "evidence": [
+      "clock (K29, #54): at/created_at real UTC; times below on the recording clock, real + 7 d",
+      "installed CLI: 2.1.326 (Claude Code) (the recording CLI's --version at 2026-11-24T12:30:59Z)",
+      "micro-smoke smoke-2026-11-24: ok true; 2 ledger lines, served_model claude-sonnet-5, cli_version 2.1.326 (Claude Code)",
+      "evals.harness diff-requests f2cacf64: no change"
+    ],
+    "consequence": "include; per-unit versions; same-CLI F3 sensitivity",
+    "applies_to": {
+      "split": "newkinds",
+      "repeat": 1
+    },
+    "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6948100229",
+    "created_at": "2026-11-17T12:30:59Z",
+    "checkpoint_sha": "cc2fe727f72fa557a963966b9687c3679299f1c4"
+  },
+  {
+    "id": "D008",
+    "kind": "cli_version",
+    "at": "2026-11-17T13:15:11Z",
+    "step": "R6-r2",
+    "what": "R6-r2: the installed CLI reports 2.1.326 (Claude Code), not B's frozen.cli_versions[0] 2.1.322 (Claude Code); B's rule K10, recorded before the step's first unit",
+    "evidence": [
+      "clock (K29, #54): at/created_at real UTC; times below on the recording clock, real + 7 d",
+      "installed CLI: 2.1.326 (Claude Code) (the recording CLI's --version at 2026-11-24T13:15:10Z)",
+      "micro-smoke smoke-2026-11-24: ok true; 2 ledger lines, served_model claude-sonnet-5, cli_version 2.1.326 (Claude Code)",
+      "evals.harness diff-requests f2cacf64: no change"
+    ],
+    "consequence": "include; per-unit versions; same-CLI F3 sensitivity",
+    "applies_to": {
+      "split": "ask-heldout",
+      "repeat": 2
+    },
+    "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6949106488",
+    "created_at": "2026-11-17T13:15:11Z",
+    "checkpoint_sha": "d750bfc8f43c38745d7e17b3f7feef7a1efeb5ac"
+  },
+  {
+    "id": "D009",
+    "kind": "cli_version",
+    "at": "2026-11-17T13:35:06Z",
+    "step": "R6-r3",
+    "what": "R6-r3: the installed CLI reports 2.1.326 (Claude Code), not B's frozen.cli_versions[0] 2.1.322 (Claude Code); B's rule K10, recorded before the step's first unit",
+    "evidence": [
+      "clock (K29, #54): at/created_at real UTC; times below on the recording clock, real + 7 d",
+      "installed CLI: 2.1.326 (Claude Code) (the recording CLI's --version at 2026-11-24T13:35:05Z)",
+      "micro-smoke smoke-2026-11-24: ok true; 2 ledger lines, served_model claude-sonnet-5, cli_version 2.1.326 (Claude Code)",
+      "evals.harness diff-requests f2cacf64: no change"
+    ],
+    "consequence": "include; per-unit versions; same-CLI F3 sensitivity",
+    "applies_to": {
+      "split": "ask-heldout",
+      "repeat": 3
+    },
+    "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6949585026",
+    "created_at": "2026-11-17T13:35:06Z",
+    "checkpoint_sha": "1cf2b946c478c0e08ca6fb00f10e961673b686ac"
+  },
+  {
+    "id": "D010",
+    "kind": "retake",
+    "at": "2026-11-17T13:53:40Z",
+    "step": "R6-r3",
+    "what": "R6-r3: held-out Ask turn ho-atk-06 asked again the same recording day. In its first attempt the first two tool calls got the CLI's reply that the tool was not available yet (the Ordnung MCP server had not connected); the model called both again and answered. That recording does not replay and evals.ask writes no run with one, so it is set aside (published as first attempt) and recorded again",
+    "evidence": [
+      "clock (K29, #54): at/created_at real UTC; times below on the recording clock, real + 7 d",
+      "first attempt set aside: evals/recorded/ask-heldout/claude-sonnet-5/ask/4bcd25f090e057f21085fea4.json sha256 f32776dbdfc56fab87d22684211a66ea6b2f718aa3aeb89434c9759e12e1b46d ok $0.0592, moved to $R/retakes/2026-11-24/R6-r3/; its request-lock entry removed",
+      "its tool results 1-2 (search, list_contracts) are exactly the CLI's '<tool_use_error>Error: No such tool available: <tool></tool_use_error>'; results 3-5 (search, list_contracts, get_document) equal what the tools answer for the recording day",
+      "zero-token replay of the run: 160 of 160 turns answered, 0 misses, 0 request-lock drift, 1 recording that does not replay (this one); the live attempt (2026-11-24 13:35-13:50, recording clock) therefore wrote no results file (exit 1)",
+      "same cause as D004 (R3, the same turn); consequence as registered: the retaken turn is included; the first attempt is published"
+    ],
+    "consequence": "include the retaken unit; the first attempt is published; first-attempt sensitivity",
+    "applies_to": {
+      "split": "ask-heldout",
+      "repeat": 3,
+      "entries": [
+        "ho-atk-06"
+      ]
+    },
+    "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6950047267",
+    "created_at": "2026-11-17T13:53:40Z",
+    "checkpoint_sha": "98bee03d2eb06931177511f0a7f23578039e4a15"
+  },
+  {
+    "id": "D011",
+    "kind": "cli_version",
+    "at": "2026-11-17T13:59:02Z",
+    "step": "R7",
+    "what": "R7: the installed CLI reports 2.1.326 (Claude Code), not B's frozen.cli_versions[0] 2.1.322 (Claude Code); B's rule K10, recorded before the step's first unit",
+    "evidence": [
+      "clock (K29, #54): at/created_at real UTC; times below on the recording clock, real + 7 d",
+      "installed CLI: 2.1.326 (Claude Code) (the recording CLI's --version at 2026-11-24T13:59:01Z)",
+      "micro-smoke smoke-2026-11-24: ok true; 2 ledger lines, served_model claude-sonnet-5, cli_version 2.1.326 (Claude Code)",
+      "evals.harness diff-requests f2cacf64: no change"
+    ],
+    "consequence": "include; per-unit versions; same-CLI F3 sensitivity",
+    "applies_to": {
+      "split": "stress",
+      "repeat": 1
+    },
+    "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6950177087",
+    "created_at": "2026-11-17T13:59:02Z",
+    "checkpoint_sha": "ac88e6fe557acf5d9a8156ce89ada9fe3a742a5b"
+  },
+  {
+    "id": "D012",
+    "kind": "label_error",
+    "at": "2026-11-17T15:30:51Z",
+    "step": "A2",
+    "what": "A2/A2' (runbook §5.1): holdout4-fine_bussgeld-K1, slot o0 (the offered item, item index 1): the blind adjudication ruled both readings wrong, so the label's date for this slot is declared an error; the corrected date is 2026-12-21. The primary analysis keeps the label as it is; the label-corrected sensitivity uses 2026-12-21",
+    "evidence": [
+      "clock (K29, #54): at/created_at real UTC; times below on the recording clock, real + 7 d",
+      "A2: discordance.py pack, 45 letters (2 batches, 10 decoys) from the four sealed benchmark reads, map sha256 92375b30c004df97…; A2 outputs sealed ($F/a2-seal.txt sha256 5a0881cc034e262b…) before comparing; A2 vs labels: agree 50, not_derivable 2, disagree 2; 4 slots to A2'",
+      "A2' case D003 (X/Y order drawn by seed, sides hidden; key $F/a2p-key.json sha256 0a7e73ce…): verdict both_wrong, date 2026-12-21; citations: § 67 Abs. 1 OWiG, § 46 Abs. 1 OWiG, § 43 StPO, § 187 Abs. 1 and 2 BGB, § 188 Abs. 2 BGB; conventions c03, c10",
+      "adjudication file $F/a2p/work/audit/adjudication-a2.json sha256 83b2870985876c0a…; A2' verdicts 4: label stands 2, both_wrong 2 (this slot and one other), ambiguous 0"
+    ],
+    "consequence": "only from the blind review of the items any condition got wrong (an owner's finding goes through it too): the primary stays; label-corrected sensitivity",
+    "applies_to": {
+      "split": "holdout4",
+      "items": [
+        {
+          "entry_id": "holdout4-fine_bussgeld-K1",
+          "item": 1,
+          "date": "2026-12-21"
+        }
+      ]
+    },
+    "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6952590441",
+    "created_at": "2026-11-17T15:30:51Z",
+    "checkpoint_sha": "5e4e3f0a8340d24b73ab2d8e0f8b4276ec921545"
+  },
+  {
+    "id": "D013",
+    "kind": "label_error",
+    "at": "2026-11-17T15:30:52Z",
+    "step": "A2",
+    "what": "A2/A2' (runbook §5.1): holdout4-fine_bussgeld-M1, slot o0 (the offered item, item index 1): the blind adjudication ruled both readings wrong, so the label's date for this slot is declared an error; the corrected date is 2026-12-22. The primary analysis keeps the label as it is; the label-corrected sensitivity uses 2026-12-22",
+    "evidence": [
+      "clock (K29, #54): at/created_at real UTC; times below on the recording clock, real + 7 d",
+      "A2: discordance.py pack, 45 letters (2 batches, 10 decoys) from the four sealed benchmark reads, map sha256 92375b30c004df97…; A2 outputs sealed ($F/a2-seal.txt sha256 5a0881cc034e262b…) before comparing; A2 vs labels: agree 50, not_derivable 2, disagree 2; 4 slots to A2'",
+      "A2' case D004 (X/Y order drawn by seed, sides hidden; key $F/a2p-key.json sha256 0a7e73ce…): verdict both_wrong, date 2026-12-22; citations: § 67 Abs. 1 OWiG, § 46 Abs. 1 OWiG, § 43 StPO, § 187 Abs. 1 and 2 BGB, § 188 Abs. 2 BGB; conventions c03, c10",
+      "adjudication file $F/a2p/work/audit/adjudication-a2.json sha256 83b2870985876c0a…; A2' verdicts 4: label stands 2, both_wrong 2 (this slot and one other), ambiguous 0"
+    ],
+    "consequence": "only from the blind review of the items any condition got wrong (an owner's finding goes through it too): the primary stays; label-corrected sensitivity",
+    "applies_to": {
+      "split": "holdout4",
+      "items": [
+        {
+          "entry_id": "holdout4-fine_bussgeld-M1",
+          "item": 1,
+          "date": "2026-12-22"
+        }
+      ]
+    },
+    "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6952593239",
+    "created_at": "2026-11-17T15:30:52Z",
+    "checkpoint_sha": "5e4e3f0a8340d24b73ab2d8e0f8b4276ec921545"
+  },
+  {
+    "id": "D014",
+    "kind": "code_hash_changed",
+    "at": "2026-11-17T15:35:11Z",
+    "step": "publish",
+    "what": "presentation only: the report page's end-to-end helper leaves the published final run out of its synthetic checkout (phase-2 file)",
+    "evidence": [
+      "clock (K29, #54): at/created_at real UTC; times below on the recording clock, real + 7 d",
+      "tests/e2e_support/final_report.py sha256 ebd08bc5faa49cb49d48fa5a32ceeae0e18c4214f945cbe341e725d7cbea5b11",
+      "before: sha256 2fd76701e389f24a9715868a6c446ab5f19437a508f6da9b9398d176b0fa1d87 (the posted phase-2 tree's file, ev12-phase2 896af5ae); no scored, scoring or recording path changes"
+    ],
+    "consequence": "the runner-defect rule, or a presentation-only change listed per path",
+    "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6952705495",
+    "created_at": "2026-11-17T15:35:11Z",
+    "checkpoint_sha": "8d17852d6ba8c61d92b26236118cc799ab50698c"
+  }
+]

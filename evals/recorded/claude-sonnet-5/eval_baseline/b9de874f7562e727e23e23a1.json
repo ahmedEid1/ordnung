@@ -1,0 +1,79 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"f40828419b544f80dc75905cac370a00c3bb2957bcaaf461bbee21c2e85e60fe\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-vollstreckungsbescheid-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d",
+    "recorded_at": "2026-11-24T13:07:48+00:00",
+    "repeat": 1,
+    "commit": "17c7ca3b",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Amtsgericht Exempelsund – Mahngericht\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Geschäftsnummer\",\"value\":\"26-6604318-0-0\"}],\"amounts\":[598,9.41,36,105.3,748.71],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Vollstreckungsbescheid\",\"quote\":\"Dafür steht ein Zeitraum von zwei Wochen ab Zustellung zur Verfügung, der sich nicht verlängern lässt.\",\"computation\":\"Service is stated explicitly in the letter: 'Durch die Post zugestellt am Montag, 23.11.2026.' Under §187(1) BGB the day of service itself is not counted, so the two-week period begins the next day, Tuesday 2026-11-24. Under §188(2) BGB a period stated in weeks ends with the expiry of the day in the last week that bears the same name as the day on which the period began (Tuesday). Two weeks after 2026-11-24 is 2026-12-08, which is itself a Tuesday and not a Saturday, Sunday or public holiday in Schleswig-Holstein, so §193 BGB does not shift the deadline. The objection must reach the Amtsgericht Exempelsund by this date.\",\"due_date\":\"2026-12-08\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the enforceable total debt (unless objection is filed)\",\"quote\":\"Gesamtbetrag 748,71\",\"computation\":\"A Vollstreckungsbescheid 'steht einem für vorläufig vollstreckbar erklärten Versäumnisurteil gleich' and is immediately enforceable from the date of service (2026-11-23). The letter states no separate payment deadline, so the total sum is treated as already due as of the service date unless a timely Einspruch is filed.\",\"due_date\":\"2026-11-23\",\"confidence\":\"low\",\"amount\":748.71}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter gives no explicit payment deadline for the Gesamtbetrag of 748,71 EUR; it is treated as immediately due from the date of service since the order is already enforceable, but the person should check with the court or a lawyer whether enforcement action will actually start before the objection period (2026-12-08) runs out.\",\"The underlying Mahnbescheid (dated 21.10.2026, served 26.10.2026) was apparently not objected to in time; the only remaining remedy now is Einspruch against this Vollstreckungsbescheid within the stated two-week period, which cannot be extended.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Amtsgericht Exempelsund – Mahngericht",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Geschäftsnummer",
+          "value": "26-6604318-0-0"
+        }
+      ],
+      "amounts": [
+        598,
+        9.41,
+        36,
+        105.3,
+        748.71
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Vollstreckungsbescheid",
+          "quote": "Dafür steht ein Zeitraum von zwei Wochen ab Zustellung zur Verfügung, der sich nicht verlängern lässt.",
+          "computation": "Service is stated explicitly in the letter: 'Durch die Post zugestellt am Montag, 23.11.2026.' Under §187(1) BGB the day of service itself is not counted, so the two-week period begins the next day, Tuesday 2026-11-24. Under §188(2) BGB a period stated in weeks ends with the expiry of the day in the last week that bears the same name as the day on which the period began (Tuesday). Two weeks after 2026-11-24 is 2026-12-08, which is itself a Tuesday and not a Saturday, Sunday or public holiday in Schleswig-Holstein, so §193 BGB does not shift the deadline. The objection must reach the Amtsgericht Exempelsund by this date.",
+          "due_date": "2026-12-08",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the enforceable total debt (unless objection is filed)",
+          "quote": "Gesamtbetrag 748,71",
+          "computation": "A Vollstreckungsbescheid 'steht einem für vorläufig vollstreckbar erklärten Versäumnisurteil gleich' and is immediately enforceable from the date of service (2026-11-23). The letter states no separate payment deadline, so the total sum is treated as already due as of the service date unless a timely Einspruch is filed.",
+          "due_date": "2026-11-23",
+          "confidence": "low",
+          "amount": 748.71
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter gives no explicit payment deadline for the Gesamtbetrag of 748,71 EUR; it is treated as immediately due from the date of service since the order is already enforceable, but the person should check with the court or a lawyer whether enforcement action will actually start before the objection period (2026-12-08) runs out.",
+        "The underlying Mahnbescheid (dated 21.10.2026, served 26.10.2026) was apparently not objected to in time; the only remaining remedy now is Einspruch against this Vollstreckungsbescheid within the stated two-week period, which cannot be extended."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3498,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1596,
+      "cost_usd": 0.04199239999999999,
+      "duration_ms": 35115,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

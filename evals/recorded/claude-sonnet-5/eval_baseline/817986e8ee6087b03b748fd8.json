@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"e6a608fa0fe40c7cb5afe652a457c6f1c03e07d21ed30758bdb4c69deb35bd69\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d",
+    "recorded_at": "2026-11-24T07:17:19+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Amt Musterschlei\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"OA 32-118/26\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against refusal of beach fire permit\",\"quote\":\"Gegen diesen Bescheid können Sie innerhalb eines Monats nach seiner Bekanntgabe Widerspruch einlegen, schriftlich oder zur Niederschrift bei der Behörde: Amt Musterschlei, Am Markt 6, 24376 Musterkappeln.\",\"computation\":\"Letter dated and presumably posted 18.11.2026 (Wed); no separate 'Tag der Aufgabe zur Post' given, so posting day = letter date. Delivery fiction per letter itself and § 110 Abs. 2 LVwG: 4th day after posting, counting 19,20,21,22 Nov → 22.11.2026 (Sunday). This is a general authority (Ordnungsamt), not a Finanzamt, so unlike tax law the delivery day is NOT shifted for falling on a Sunday (§ 41 Abs. 2 VwVfG/LVwG analogue – only period ends move, not the delivery day). So Bekanntgabe = 22.11.2026. One-month Widerspruch period (§ 70 VwGO / general administrative law, mirrored by the letter's own Rechtsbehelfsbelehrung): day of delivery not counted (§ 187 Abs. 1 BGB), period ends on the day in the following month with the same number (§ 188 Abs. 2 BGB) → 22.12.2026. That day is a Tuesday and not a public holiday in Schleswig-Holstein, so no further shift under § 193 BGB is needed. Final day to lodge Widerspruch: 22.12.2026.\",\"due_date\":\"2026-12-22\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Amt Musterschlei",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "OA 32-118/26"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against refusal of beach fire permit",
+          "quote": "Gegen diesen Bescheid können Sie innerhalb eines Monats nach seiner Bekanntgabe Widerspruch einlegen, schriftlich oder zur Niederschrift bei der Behörde: Amt Musterschlei, Am Markt 6, 24376 Musterkappeln.",
+          "computation": "Letter dated and presumably posted 18.11.2026 (Wed); no separate 'Tag der Aufgabe zur Post' given, so posting day = letter date. Delivery fiction per letter itself and § 110 Abs. 2 LVwG: 4th day after posting, counting 19,20,21,22 Nov → 22.11.2026 (Sunday). This is a general authority (Ordnungsamt), not a Finanzamt, so unlike tax law the delivery day is NOT shifted for falling on a Sunday (§ 41 Abs. 2 VwVfG/LVwG analogue – only period ends move, not the delivery day). So Bekanntgabe = 22.11.2026. One-month Widerspruch period (§ 70 VwGO / general administrative law, mirrored by the letter's own Rechtsbehelfsbelehrung): day of delivery not counted (§ 187 Abs. 1 BGB), period ends on the day in the following month with the same number (§ 188 Abs. 2 BGB) → 22.12.2026. That day is a Tuesday and not a public holiday in Schleswig-Holstein, so no further shift under § 193 BGB is needed. Final day to lodge Widerspruch: 22.12.2026.",
+          "due_date": "2026-12-22",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2484,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1648,
+      "cost_usd": 0.032542,
+      "duration_ms": 27505,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

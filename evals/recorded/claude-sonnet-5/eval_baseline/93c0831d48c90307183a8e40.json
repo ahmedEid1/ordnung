@@ -1,0 +1,95 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"114b4d491e4c6a50d3aba5595ef37ae15c4fb10df8697435a555c18a0d586639\",\"mode\":\"text\",\"region\":\"BB\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-kuendigung_arbeit-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Brandenburg (BB), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document",
+    "recorded_at": "2026-11-24T12:43:57+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"kind\":\"employment\",\"sender_name\":\"Bäckerei Exempelkorn GmbH\",\"document_date\":\"2026-11-19\",\"remedy_type\":\"klage\",\"references\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Kündigungsschutzklage with labour court\",\"quote\":\"Eine Klage gegen die Kündigung ist beim Arbeitsgericht Musterbrandenburg möglich; dafür gilt eine Frist von drei Wochen ab dem Zugang dieser Kündigung.\",\"computation\":\"Delivery (Zugang) of the termination letter was by personal handover from the branch manager on 19 November 2026 (Thursday), confirmed by a signed receipt ('Übergabe durch die Filialleitung am 19. November 2026; die Empfangsbestätigung ist unterschrieben.'), so Zugang = 19.11.2026. Under §§ 187 Abs. 1, 188 Abs. 2 BGB (applicable via § 4 KSchG for the 3-week Klage period), the day of delivery itself is not counted; a period of weeks ends on the same weekday n weeks later: +1 week = 26.11.2026, +2 weeks = 03.12.2026, +3 weeks = 10.12.2026 (Thursday). 10.12.2026 is not a Saturday, Sunday or public holiday in Brandenburg, so no extension under § 193 BGB is needed.\",\"due_date\":\"2026-12-10\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Register as jobseeking with the Agentur für Arbeit\",\"quote\":\"Sie sind verpflichtet, sich unverzüglich bei der Agentur für Arbeit arbeitsuchend zu melden.\",\"computation\":\"The letter only says 'unverzüglich' (without delay) but does not state a number of days; the applicable statutory rule is § 38 Abs. 1 SGB III: since the employment ends on 31.12.2026 and notice was given on 19.11.2026 (less than three months before the end of the employment), the employee must register as jobseeking within three days of being informed of the end date. The day notice was received (19.11.2026, Thursday) is not counted (§§ 187 Abs. 1 BGB via § 26 Abs. 1 SGB X); 3 days later falls on 22.11.2026 (Sunday). As this is a declaration owed to a public authority, the period is extended to the next working day under § 193 BGB (via § 26 Abs. 1 SGB X): Monday 23.11.2026. No Brandenburg public holiday intervenes.\",\"due_date\":\"2026-11-23\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Use up remaining paid vacation\",\"quote\":\"Ihren Resturlaub nehmen Sie bitte bis zu diesem Tag.\",\"computation\":\"'Diesem Tag' refers back to the stated end of the employment relationship, '...kündigen wir deshalb ordentlich und fristgemäß zum 31.12.2026', so the remaining vacation must be taken by 31 December 2026, the last day of employment.\",\"due_date\":\"2026-12-31\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Hand over branch keys to the branch management\",\"quote\":\"Die Schlüssel der Filiale geben Sie an Ihrem letzten Arbeitstag bei der Filialleitung ab.\",\"computation\":\"The 'letzter Arbeitstag' (last working day) coincides with the end of the employment relationship stated earlier in the letter as 31.12.2026, since no earlier release from duty is mentioned.\",\"due_date\":\"2026-12-31\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Employment relationship ends\",\"quote\":\"kündigen wir deshalb ordentlich und fristgemäß zum 31.12.2026.\",\"computation\":\"The letter states the ordinary, timely termination takes effect on this explicit calendar date, so no further counting is required.\",\"due_date\":\"2026-12-31\",\"confidence\":\"high\",\"amount\":null}],\"warnings\":[\"The letter states 'unverzüglich' for registering as jobseeking without giving an explicit date; the due date given here is derived from the statutory § 38 SGB III three-day rule (since notice was given less than three months before the employment ends) and, as computed, has already passed as of today (24.11.2026) — the recipient should register immediately if this has not yet been done.\",\"No reference numbers (e.g. Personalnummer) are printed anywhere on the letter.\"]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "kind": "employment",
+      "sender_name": "Bäckerei Exempelkorn GmbH",
+      "document_date": "2026-11-19",
+      "remedy_type": "klage",
+      "references": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Kündigungsschutzklage with labour court",
+          "quote": "Eine Klage gegen die Kündigung ist beim Arbeitsgericht Musterbrandenburg möglich; dafür gilt eine Frist von drei Wochen ab dem Zugang dieser Kündigung.",
+          "computation": "Delivery (Zugang) of the termination letter was by personal handover from the branch manager on 19 November 2026 (Thursday), confirmed by a signed receipt ('Übergabe durch die Filialleitung am 19. November 2026; die Empfangsbestätigung ist unterschrieben.'), so Zugang = 19.11.2026. Under §§ 187 Abs. 1, 188 Abs. 2 BGB (applicable via § 4 KSchG for the 3-week Klage period), the day of delivery itself is not counted; a period of weeks ends on the same weekday n weeks later: +1 week = 26.11.2026, +2 weeks = 03.12.2026, +3 weeks = 10.12.2026 (Thursday). 10.12.2026 is not a Saturday, Sunday or public holiday in Brandenburg, so no extension under § 193 BGB is needed.",
+          "due_date": "2026-12-10",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Register as jobseeking with the Agentur für Arbeit",
+          "quote": "Sie sind verpflichtet, sich unverzüglich bei der Agentur für Arbeit arbeitsuchend zu melden.",
+          "computation": "The letter only says 'unverzüglich' (without delay) but does not state a number of days; the applicable statutory rule is § 38 Abs. 1 SGB III: since the employment ends on 31.12.2026 and notice was given on 19.11.2026 (less than three months before the end of the employment), the employee must register as jobseeking within three days of being informed of the end date. The day notice was received (19.11.2026, Thursday) is not counted (§§ 187 Abs. 1 BGB via § 26 Abs. 1 SGB X); 3 days later falls on 22.11.2026 (Sunday). As this is a declaration owed to a public authority, the period is extended to the next working day under § 193 BGB (via § 26 Abs. 1 SGB X): Monday 23.11.2026. No Brandenburg public holiday intervenes.",
+          "due_date": "2026-11-23",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Use up remaining paid vacation",
+          "quote": "Ihren Resturlaub nehmen Sie bitte bis zu diesem Tag.",
+          "computation": "'Diesem Tag' refers back to the stated end of the employment relationship, '...kündigen wir deshalb ordentlich und fristgemäß zum 31.12.2026', so the remaining vacation must be taken by 31 December 2026, the last day of employment.",
+          "due_date": "2026-12-31",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Hand over branch keys to the branch management",
+          "quote": "Die Schlüssel der Filiale geben Sie an Ihrem letzten Arbeitstag bei der Filialleitung ab.",
+          "computation": "The 'letzter Arbeitstag' (last working day) coincides with the end of the employment relationship stated earlier in the letter as 31.12.2026, since no earlier release from duty is mentioned.",
+          "due_date": "2026-12-31",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Employment relationship ends",
+          "quote": "kündigen wir deshalb ordentlich und fristgemäß zum 31.12.2026.",
+          "computation": "The letter states the ordinary, timely termination takes effect on this explicit calendar date, so no further counting is required.",
+          "due_date": "2026-12-31",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "warnings": [
+        "The letter states 'unverzüglich' for registering as jobseeking without giving an explicit date; the due date given here is derived from the statutory § 38 SGB III three-day rule (since notice was given less than three months before the employment ends) and, as computed, has already passed as of today (24.11.2026) — the recipient should register immediately if this has not yet been done.",
+        "No reference numbers (e.g. Personalnummer) are printed anywhere on the letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6914,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1590,
+      "cost_usd": 0.07661000000000001,
+      "duration_ms": 68401,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

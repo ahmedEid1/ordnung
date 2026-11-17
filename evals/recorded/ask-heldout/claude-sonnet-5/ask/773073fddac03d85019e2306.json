@@ -1,0 +1,233 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"c5bf343951f16ee695937237b2efb8ab43009e2379a11801cbd01cc9d384dcf9\",\"question\":\"What is my user number at the city library?\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_5c5axexztnw6"
+    ],
+    "prompt_head": "The person asks:\nWhat is my user number at the city library?\n",
+    "recorded_at": "2026-11-24T08:19:08+00:00",
+    "repeat": 1,
+    "commit": "25633808",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "Your library user number at Stadtbibliothek Musterstadt is **0481 1123 5** [doc:doc_5c5axexztnw6], as listed in your first reminder letter from the library [party:pty_d2ymm5s3htd0].\n\nNote: there are 2 open to-dos related to this library matter — let me know if you'd like details on those.",
+    "data": null,
+    "usage": {
+      "input_tokens": 8,
+      "output_tokens": 635,
+      "cache_read_tokens": 27356,
+      "cache_creation_tokens": 2416,
+      "cost_usd": 0.021501199999999998,
+      "duration_ms": 14532,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_my_numbers",
+      "input": {
+        "organisation": "library"
+      },
+      "tool_use_id": "toolu_018bZ278xQo4NDPAC8BCghca"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"found\":false,\"message\":\"No organisation matches in the person's records.\"}\n</ordnung_record>",
+      "tool_use_id": "toolu_018bZ278xQo4NDPAC8BCghca"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Bibliothek"
+      },
+      "tool_use_id": "toolu_01MMvyqWunc2b8J3y2w5nvQP"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_5c5axexztnw6\",\"kind\":\"dunning\",\"date\":\"2026-09-22\",\"party_id\":\"pty_d2ymm5s3htd0\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_5c5axexztnw6\":{\"title\":\"First reminder: overdue library loan (1. Mahnung)\",\"snippet\":\"First reminder: overdue library loan (1. Mahnung) 20_stadtbibliothek_mahnung.pdf\"},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01MMvyqWunc2b8J3y2w5nvQP"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Stadtbücherei"
+      },
+      "tool_use_id": "toolu_01FQyebZF1E6j5u96fq88U4h"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01FQyebZF1E6j5u96fq88U4h"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_my_numbers",
+      "input": {
+        "organisation": "pty_d2ymm5s3htd0"
+      },
+      "tool_use_id": "toolu_01PgK8ZsvsCst2S1VvTAnXKE"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-11-24\",\"open_cases\":[],\"organisations\":[{\"party_id\":\"pty_d2ymm5s3htd0\",\"kind\":\"authority\",\"numbers\":[\"n1\"],\"their_numbers\":[\"n2\"],\"last_letter\":{\"doc_id\":\"doc_5c5axexztnw6\",\"date\":\"2026-09-22\"},\"open_items\":2}],\"numbers\":[{\"ref\":\"n1\",\"kind\":\"member\",\"group\":\"organisation\",\"check\":\"none\",\"doc_id\":\"doc_5c5axexztnw6\",\"party_id\":\"pty_d2ymm5s3htd0\",\"letters\":1},{\"ref\":\"n2\",\"kind\":\"iban\",\"group\":\"theirs\",\"check\":\"ok\",\"check_note\":\"The IBAN's check digits are valid — that only rules out typos, not fraud.\",\"doc_id\":\"doc_5c5axexztnw6\",\"party_id\":\"pty_d2ymm5s3htd0\",\"letters\":1}],\"note\":\"Each number's label and value are in the letter text of the letter it comes from (under numbers, by ref). check is Ordnung's check-digit test: ok (passes the published check, so almost certainly no digit was misread — it does not prove the number is the person's), fails (compare it with the letter) or none (no public check for this kind of number).\"}\n</ordnung_record>\n<untrusted_document>\n{\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\",\"phone\":\"0123 400-7700\"},\"doc_5c5axexztnw6\":{\"title\":\"First reminder: overdue library loan (1. Mahnung)\",\"numbers\":{\"n1\":{\"label\":\"Benutzer-Nr.\",\"value\":\"0481 1123 5\"},\"n2\":{\"label\":\"IBAN for payments to Stadtkasse Musterstadt\",\"value\":\"DE51123456000000100017\"}}}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01PgK8ZsvsCst2S1VvTAnXKE"
+    },
+    {
+      "type": "text",
+      "text": "Your library"
+    },
+    {
+      "type": "text",
+      "text": " user number at Stadtb"
+    },
+    {
+      "type": "text",
+      "text": "ibliothek Musterst"
+    },
+    {
+      "type": "text",
+      "text": "adt is **0481 1"
+    },
+    {
+      "type": "text",
+      "text": "123 5** ["
+    },
+    {
+      "type": "text",
+      "text": "doc:"
+    },
+    {
+      "type": "text",
+      "text": "doc_5c5axex"
+    },
+    {
+      "type": "text",
+      "text": "ztnw6], as listed"
+    },
+    {
+      "type": "text",
+      "text": " in your first reminder let"
+    },
+    {
+      "type": "text",
+      "text": "ter from the"
+    },
+    {
+      "type": "text",
+      "text": " library [party:p"
+    },
+    {
+      "type": "text",
+      "text": "ty"
+    },
+    {
+      "type": "text",
+      "text": "_d"
+    },
+    {
+      "type": "text",
+      "text": "2"
+    },
+    {
+      "type": "text",
+      "text": "ym"
+    },
+    {
+      "type": "text",
+      "text": "m"
+    },
+    {
+      "type": "text",
+      "text": "5"
+    },
+    {
+      "type": "text",
+      "text": "s"
+    },
+    {
+      "type": "text",
+      "text": "3"
+    },
+    {
+      "type": "text",
+      "text": "ht"
+    },
+    {
+      "type": "text",
+      "text": "d"
+    },
+    {
+      "type": "text",
+      "text": "0"
+    },
+    {
+      "type": "text",
+      "text": "].\n\nNote:"
+    },
+    {
+      "type": "text",
+      "text": " there are"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "2 open to"
+    },
+    {
+      "type": "text",
+      "text": "-dos related"
+    },
+    {
+      "type": "text",
+      "text": " to this library mat"
+    },
+    {
+      "type": "text",
+      "text": "ter — let me know if you'"
+    },
+    {
+      "type": "text",
+      "text": "d like details"
+    },
+    {
+      "type": "text",
+      "text": " on those."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Your library user number at Stadtbibliothek Musterstadt is **0481 1123 5** [doc:doc_5c5axexztnw6], as listed in your first reminder letter from the library [party:pty_d2ymm5s3htd0].\n\nNote: there are 2 open to-dos related to this library matter — let me know if you'd like details on those.",
+        "usage": {
+          "input_tokens": 8,
+          "output_tokens": 635,
+          "cache_read_tokens": 27356,
+          "cache_creation_tokens": 2416,
+          "cost_usd": 0.021501199999999998,
+          "duration_ms": 14532,
+          "turns": 5
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

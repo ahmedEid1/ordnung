@@ -17,7 +17,8 @@ import tomllib
 from pathlib import Path
 
 import pytest
-from evals.present.charts import COMMITTED
+from evals.present import PRESENTATION_PATH
+from evals.present.charts import COMMITTED, committed
 
 from helpers_media import gif_info, mp4_info, png_info
 
@@ -68,9 +69,19 @@ PICTURES: dict[str, tuple[int, int] | None] = {
 WHY_WIDTH_MAX = 600
 #: dark on purpose: README shows the dark theme once on a computer and once on a phone
 DARK_PICTURES = frozenset({"today-dark.png", "mobile-dark.png"})
+
+
+def eval_charts(presentation: Path = PRESENTATION_PATH) -> frozenset[str]:
+    """The evaluation's charts ``presentation.json`` commits to ``docs/assets``, light and dark (``charts.committed``):
+    today's, and the final run's beside them once it is published."""
+    doc = json.loads(presentation.read_text(encoding="utf-8"))
+    return frozenset(f"eval-{name}-{theme}.svg" for name in committed(doc) for theme in ("light", "dark"))
+
+
 #: the evaluation's charts (``python -m evals.present`` writes them, not ``make capture``; tests/test_present.py
-#: checks they are what the results files render): hand-written SVG, light and dark, each within its budget
-EVAL_CHARTS = frozenset(f"eval-{name}-{theme}.svg" for name in COMMITTED for theme in ("light", "dark"))
+#: checks they are what the results files render): hand-written SVG, light and dark, each within its budget; the
+#: ones ``presentation.json`` commits, so the final run's join them once it is published
+EVAL_CHARTS = eval_charts()
 EVAL_CHART_BYTES = 40_000
 #: what a path of the capturing computer starts with, in any file's bytes
 PATH_MARKS = (b"/home/", b"/Users/", b"/root/", b"/tmp/", b"\\Users\\")
@@ -577,3 +588,34 @@ def test_the_tour_video_starts_at_once_and_fits_its_budget() -> None:
 def test_the_readme_media_fit_their_budget() -> None:
     total = sum(path.stat().st_size for path in ASSETS.rglob("*") if path.is_file())
     assert total <= ASSETS_BYTES, total
+
+
+def test_the_evaluation_charts_are_the_ones_presentation_json_commits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The evaluation's charts in ``docs/assets`` are the ones ``presentation.json`` commits: today's while there is
+    no final run, and the final run's beside them once it is published (the published one in this checkout once the
+    publish PR is merged, and a synthetic one, in a temporary folder, over the results with no final run)."""
+    from evals.present import final as final_sentences
+    from evals.present import model
+
+    import helpers_final
+    from helpers_publication import final_published, results_before_publication
+
+    def charts(*names: str) -> set[str]:
+        return {f"eval-{name}-{theme}.svg" for name in names for theme in ("light", "dark")}
+
+    today = charts(*COMMITTED)
+    published: set[str] = set()
+    if final_published():
+        # the published final run's: its headline and differences, and the stability over its reads (two or more)
+        found = final_sentences.published(ROOT)
+        assert found is not None
+        stability = ("final-stability",) if found[0]["primary"]["reads"] >= 2 else ()
+        published = charts("final", "final-differences", *stability)
+        monkeypatch.setattr(helpers_final, "RESULTS", results_before_publication(tmp_path / "results-before"))
+    assert eval_charts() == EVAL_CHARTS == today | published
+    root = helpers_final.scenario_root(tmp_path, "one_read")
+    presentation = tmp_path / "presentation.json"
+    presentation.write_text(model.dumps(model.build(root / "evals" / "results")), encoding="utf-8")
+    assert eval_charts(presentation) == today | charts("final", "final-differences")

@@ -1,0 +1,92 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"5b13989c4ba012e031b99f20ee99b553d5430598474c031b89103d1dca0cb818\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-scam-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:01:56+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Grundstücksregister Online Service GmbH\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Rechnungs-Nr.\",\"value\":\"GRO-26-77021\"}],\"amounts\":[498],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay for private register entry (offer only, no obligation)\",\"quote\":\"Zahlbar bis 01.12.2026 ohne Abzug.\",\"computation\":\"The letter prints a fixed calendar date, 01.12.2026, as the payment deadline. 1 Dec 2026 is a Tuesday, not a weekend or public holiday in NW, so no shift applies. However, the letter itself states it is only an 'Angebot' (offer) and that a contract is formed only if and when the recipient pays ('Mit Ihrer Zahlung nehmen Sie es an; ein Vertrag kommt erst durch die Zahlung zustande'). There is therefore no existing legal obligation to pay by this date — it is merely the date the sender proposes for accepting the offer, should the recipient choose to do so.\",\"due_date\":\"2026-12-01\",\"confidence\":\"high\",\"amount\":498}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is not an invoice for an obligation already owed: the sender itself states it is an 'Angebot' (offer) and that 'ein Vertrag kommt erst durch die Zahlung zustande' (a contract is only formed once you pay) — paying would voluntarily create a paid contract for a private, non-official listing.\",\"The sender's name and format ('Grundstücksregister', 'Eintragungen für Grundeigentümer') are designed to look like an official German land registry (Grundbuch) notice; the letter itself admits 'Die Eintragung erfolgt im privaten Verzeichnis des Absenders und steht in keinem Zusammenhang mit dem amtlichen Grundbuch' (the entry is in the sender's private directory and has no connection to the official land register). This matches a well-known German scam/aggressive-marketing pattern (similar to fake 'Gewerbeauskunft-Zentrale' mailings) targeting property owners shortly after a purchase or registration.\",\"Recommend not paying this invoice; there is no legal requirement to be listed in this private register, and genuine land-registry (Grundbuch) matters are handled only by the local Amtsgericht/Grundbuchamt, which does not bill like this.\",\"The IBAN printed (DE59 5007 0010 0005 5707 00) is well-formed and German, but a valid IBAN does not confirm who controls the account; given the offer's dubious nature, do not transfer money based on this letter.\"]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Grundstücksregister Online Service GmbH",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Rechnungs-Nr.",
+          "value": "GRO-26-77021"
+        }
+      ],
+      "amounts": [
+        498
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay for private register entry (offer only, no obligation)",
+          "quote": "Zahlbar bis 01.12.2026 ohne Abzug.",
+          "computation": "The letter prints a fixed calendar date, 01.12.2026, as the payment deadline. 1 Dec 2026 is a Tuesday, not a weekend or public holiday in NW, so no shift applies. However, the letter itself states it is only an 'Angebot' (offer) and that a contract is formed only if and when the recipient pays ('Mit Ihrer Zahlung nehmen Sie es an; ein Vertrag kommt erst durch die Zahlung zustande'). There is therefore no existing legal obligation to pay by this date — it is merely the date the sender proposes for accepting the offer, should the recipient choose to do so.",
+          "due_date": "2026-12-01",
+          "confidence": "high",
+          "amount": 498
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is not an invoice for an obligation already owed: the sender itself states it is an 'Angebot' (offer) and that 'ein Vertrag kommt erst durch die Zahlung zustande' (a contract is only formed once you pay) — paying would voluntarily create a paid contract for a private, non-official listing.",
+        "The sender's name and format ('Grundstücksregister', 'Eintragungen für Grundeigentümer') are designed to look like an official German land registry (Grundbuch) notice; the letter itself admits 'Die Eintragung erfolgt im privaten Verzeichnis des Absenders und steht in keinem Zusammenhang mit dem amtlichen Grundbuch' (the entry is in the sender's private directory and has no connection to the official land register). This matches a well-known German scam/aggressive-marketing pattern (similar to fake 'Gewerbeauskunft-Zentrale' mailings) targeting property owners shortly after a purchase or registration.",
+        "Recommend not paying this invoice; there is no legal requirement to be listed in this private register, and genuine land-registry (Grundbuch) matters are handled only by the local Amtsgericht/Grundbuchamt, which does not bill like this.",
+        "The IBAN printed (DE59 5007 0010 0005 5707 00) is well-formed and German, but a valid IBAN does not confirm who controls the account; given the offer's dubious nature, do not transfer money based on this letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2013,
+      "cache_read_tokens": 14591,
+      "cache_creation_tokens": 3544,
+      "cost_usd": 0.0372322,
+      "duration_ms": 25218,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "fixed",
+            "date": "2026-12-01",
+            "nature": "payment",
+            "text": "Zahlbar bis 01.12.2026 ohne Abzug."
+          },
+          "document_date": "2026-11-19",
+          "sender_kind": "company",
+          "sender_name": "Grundstücksregister Online Service GmbH",
+          "region": "HE"
+        },
+        "result": "{\"due_date\":\"2026-12-01\",\"weekday\":\"Tuesday\",\"send_by\":\"2026-11-30\",\"summary\":\"The date given is Tue 1 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"The date given is Tue 1 Dec 2026\",\"date\":\"2026-12-01\",\"rule_id\":\"date_as_written\",\"citation\":\"The document's own wording\"},{\"label\":\"Send by Mon 30 Nov 2026 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2026-11-30\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"date_as_written\",\"title\":\"Dates stated in the letter\",\"citation\":\"The document's own wording\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-19\",\"holiday_calendar\":\"Germany (nationwide holidays only)\",\"holidays_from\":\"recipient_region: a payment to a company or person is made where the payer lives (§§ 269, 270 Abs. 4 BGB), so that Land's holidays apply\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE59500700100005570700"
+        },
+        "result": "{\"iban\":\"DE59 5007 0010 0005 5707 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"50070010\"},\"account_number\":\"0005570700\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"49daa526209ff6e3cf0b88b176d8017d4e0a3eb1ee1ad15bcbe7f966772b77ac\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:16:36+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"bank_letter\",\"sender_name\":\"Example Prairie Savings Bank\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Account ending\",\"value\":\"…4471\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Return address certification form\",\"quote\":\"Please complete the enclosed address certification and mail or upload it by January 15,\\n2027.\",\"computation\":\"The letter states an explicit calendar deadline of January 15, 2027, for returning the completed address certification form. No statutory delivery-fiction or period-counting rules apply here since this is a US bank's own stated deadline, not a German authority notice governed by §§ 187, 188, 193 BGB. January 15, 2027 is a Friday, so no weekend/holiday adjustment is needed. Due date: 2027-01-15.\",\"due_date\":\"2027-01-15\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This letter contains several placeholder-style details (sender name 'Example Prairie Savings Bank', address on 'Example Boulevard', email domain 'exampleprairie.example') that look like template/sample data rather than a genuine bank communication; verify its authenticity with the actual bank before acting on it.\",\"No account or customer reference number is given beyond the last four digits of the account, which makes it hard to verify this request matches a real account; do not upload personal documents or click any links without independently confirming the bank's legitimate contact channel.\"]}",
+    "data": {
+      "kind": "bank_letter",
+      "sender_name": "Example Prairie Savings Bank",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Account ending",
+          "value": "…4471"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Return address certification form",
+          "quote": "Please complete the enclosed address certification and mail or upload it by January 15,\n2027.",
+          "computation": "The letter states an explicit calendar deadline of January 15, 2027, for returning the completed address certification form. No statutory delivery-fiction or period-counting rules apply here since this is a US bank's own stated deadline, not a German authority notice governed by §§ 187, 188, 193 BGB. January 15, 2027 is a Friday, so no weekend/holiday adjustment is needed. Due date: 2027-01-15.",
+          "due_date": "2027-01-15",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This letter contains several placeholder-style details (sender name 'Example Prairie Savings Bank', address on 'Example Boulevard', email domain 'exampleprairie.example') that look like template/sample data rather than a genuine bank communication; verify its authenticity with the actual bank before acting on it.",
+        "No account or customer reference number is given beyond the last four digits of the account, which makes it hard to verify this request matches a real account; do not upload personal documents or click any links without independently confirming the bank's legitimate contact channel."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1761,
+      "cache_read_tokens": 7535,
+      "cache_creation_tokens": 2462,
+      "cost_usd": 0.028973000000000002,
+      "duration_ms": 20595,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

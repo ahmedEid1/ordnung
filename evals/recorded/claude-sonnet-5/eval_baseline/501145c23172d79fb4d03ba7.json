@@ -1,0 +1,113 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"76d1699b8d7cc7dcb1f7fe5e6da052d037befef726d3ab53c3aec1e9fecc2033\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-relative_business_days-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:52:33+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract_change\",\"sender_name\":\"Bauspar Beispielheim AG\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Vertragsnummer\",\"value\":\"BH 6 330 418-02\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit proof of use of Bauspardarlehen funds\",\"quote\":\"Bitte reichen Sie den Nachweis binnen 10 Arbeitstagen nach dem Briefdatum ein.\",\"computation\":\"Letter date (Briefdatum) is Sat 21.11.2026. This is a company letter, so no statutory deemed-delivery rule applies; the letter itself fixes the start as the 'Briefdatum'. Under § 187 Abs. 1 BGB the day of the event (21.11.) is not counted, so counting starts 22.11.2026. Counting 10 Arbeitstage (Mon-Fri, excluding public holidays, per the letter's own definition and § 193 BGB): skip Sun 22.11, Sat 28.11 and Sun 29.11 as non-business days; no public holiday falls in the window. The 10th business day after 21.11.2026 is Fri 04.12.2026. That day is itself a business day, so no further shift is needed.\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Loan payout delayed to start of next month if proof is late\",\"quote\":\"Geht der Nachweis nicht rechtzeitig ein, verschiebt sich die Auszahlung auf den nächsten Monatsersten.\",\"computation\":\"This is a consequence, not a separate deadline for the recipient to act on: if the proof deadline of 04.12.2026 is missed, payout moves to the first of the following calendar month. Given relative to the 04.12.2026 deadline, the next month's first day would be 01.01.2027, but the exact date depends on how late the proof actually arrives, so this is only the earliest/illustrative consequence date, not a fixed due date.\",\"due_date\":\"2027-01-01\",\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a private company (Bausparkasse) letter, not an authority letter, so the statutory 'deemed delivery' rules for administrative post do not apply; the deadline was computed from the printed 'Briefdatum' itself, as the letter instructs ('binnen 10 Arbeitstagen nach dem Briefdatum'), so please confirm the envelope's actual postmark/receipt date if it differs from 21.11.2026.\",\"The consequence clause ('Auszahlung verschiebt sich auf den nächsten Monatsersten') is vague about which month-first applies if the proof arrives a few days late versus very late; treat the 2027-01-01 date given as illustrative only, not a guaranteed date.\",\"The IBAN printed (DE69 3705 0198 0005 5525 20) is well-formed and matches a German bank code, but this letter does not ask for a payment to this account — it is only the sender's general contact IBAN; no action needed unless asked to pay.\"]}",
+    "data": {
+      "kind": "contract_change",
+      "sender_name": "Bauspar Beispielheim AG",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Vertragsnummer",
+          "value": "BH 6 330 418-02"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit proof of use of Bauspardarlehen funds",
+          "quote": "Bitte reichen Sie den Nachweis binnen 10 Arbeitstagen nach dem Briefdatum ein.",
+          "computation": "Letter date (Briefdatum) is Sat 21.11.2026. This is a company letter, so no statutory deemed-delivery rule applies; the letter itself fixes the start as the 'Briefdatum'. Under § 187 Abs. 1 BGB the day of the event (21.11.) is not counted, so counting starts 22.11.2026. Counting 10 Arbeitstage (Mon-Fri, excluding public holidays, per the letter's own definition and § 193 BGB): skip Sun 22.11, Sat 28.11 and Sun 29.11 as non-business days; no public holiday falls in the window. The 10th business day after 21.11.2026 is Fri 04.12.2026. That day is itself a business day, so no further shift is needed.",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Loan payout delayed to start of next month if proof is late",
+          "quote": "Geht der Nachweis nicht rechtzeitig ein, verschiebt sich die Auszahlung auf den nächsten Monatsersten.",
+          "computation": "This is a consequence, not a separate deadline for the recipient to act on: if the proof deadline of 04.12.2026 is missed, payout moves to the first of the following calendar month. Given relative to the 04.12.2026 deadline, the next month's first day would be 01.01.2027, but the exact date depends on how late the proof actually arrives, so this is only the earliest/illustrative consequence date, not a fixed due date.",
+          "due_date": "2027-01-01",
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a private company (Bausparkasse) letter, not an authority letter, so the statutory 'deemed delivery' rules for administrative post do not apply; the deadline was computed from the printed 'Briefdatum' itself, as the letter instructs ('binnen 10 Arbeitstagen nach dem Briefdatum'), so please confirm the envelope's actual postmark/receipt date if it differs from 21.11.2026.",
+        "The consequence clause ('Auszahlung verschiebt sich auf den nächsten Monatsersten') is vague about which month-first applies if the proof arrives a few days late versus very late; treat the 2027-01-01 date given as illustrative only, not a guaranteed date.",
+        "The IBAN printed (DE69 3705 0198 0005 5525 20) is well-formed and matches a German bank code, but this letter does not ask for a payment to this account — it is only the sender's general contact IBAN; no action needed unless asked to pay."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2042,
+      "cache_read_tokens": 14619,
+      "cache_creation_tokens": 4046,
+      "cost_usd": 0.039535799999999996,
+      "duration_ms": 22018,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 10,
+            "unit": "business_days",
+            "anchor": "document_date",
+            "anchor_date": "2026-11-21",
+            "nature": "other",
+            "shift_rule": "auto",
+            "legal_basis": "Vertragliche Frist",
+            "text": "Bitte reichen Sie den Nachweis binnen 10 Arbeitstagen nach dem Briefdatum ein."
+          },
+          "document_date": "2026-11-21",
+          "sender_kind": "company",
+          "sender_name": "Bauspar Beispielheim AG",
+          "region": "NW",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":\"2026-12-04\",\"weekday\":\"Friday\",\"summary\":\"10 business days after the letter's date (Sat 21 Nov 2026) is Fri 4 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Sat 21 Nov 2026\",\"date\":\"2026-11-21\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"10 business days later: Fri 4 Dec 2026\",\"date\":\"2026-12-04\",\"rule_id\":\"unit_business_days\",\"citation\":\"§ 193 BGB (Saturday, Sunday and public holidays are not working days)\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"unit_business_days\",\"title\":\"Counting business days\",\"citation\":\"§ 193 BGB (Saturday, Sunday and public holidays are not working days)\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__193.html\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-21\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__add_working_days",
+        "input": {
+          "start": "2026-11-21",
+          "days": 10,
+          "region": "NW"
+        },
+        "result": "{\"start\":\"2026-11-21\",\"days\":10,\"day_type\":\"business_days\",\"date\":\"2026-12-04\",\"weekday\":\"Friday\",\"skipped\":[{\"date\":\"2026-11-22\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"},{\"date\":\"2026-11-28\",\"weekday\":\"Saturday\",\"reason\":\"Saturday\"},{\"date\":\"2026-11-29\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"}],\"counting\":\"Business days: Monday to Friday, public holidays excluded; the start day itself is not counted.\",\"calendar\":\"Nordrhein-Westfalen\",\"disclaimer\":\"Information, not legal advice: working days counted on Ordnung's holiday calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer. A legal period may count differently — compute_deadline applies the deadline rules.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE69 3705 0198 0005 5525 20"
+        },
+        "result": "{\"iban\":\"DE69 3705 0198 0005 5525 20\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005552520\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

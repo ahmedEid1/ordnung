@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"209b99c126d9dbeaac54ef104e6bc013f0e7533e1ffa42654e9ff87dd8ee2c8c\",\"mode\":\"text\",\"region\":\"BY\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-kuendigung_miete-2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bayern (BY), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag",
+    "recorded_at": "2026-11-24T12:46:22+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"sender_name\":\"Kanzlei Exempelrain & Kollegen\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Unser Zeichen\",\"value\":\"ER-M-26/0418\"}],\"amounts\":[],\"items\":[{\"kind\":\"milestone\",\"title\":\"End of tenancy (ordinary termination)\",\"quote\":\"kündigen wir das Mietverhältnis über die Wohnung Innstraße 21, Erdgeschoss, ordentlich zum 31.05.2027.\",\"computation\":\"The landlords, through their lawyer, terminate the lease effective 31.05.2027 as stated explicitly in the letter. This is a fixed calendar date, no counting rule needed.\",\"due_date\":\"2027-05-31\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Deadline to object (Widerspruch) to the termination and demand continuation of the tenancy\",\"quote\":\"Der Widerspruch bedarf der Textform und muss mir spätestens zwei Monate vor dem Ende des Mietverhältnisses zugehen.\",\"computation\":\"The tenancy ends on 31.05.2027 (as stated earlier in the letter). The objection must reach the lawyer 'at least two months before the end of the tenancy'. Subtracting two calendar months from 31.05.2027 gives 31.03.2027. This is a fixed calendar back-calculation from a stated end date, not a period running from service of the letter, so §188 BGB period-counting from delivery does not apply; §193 BGB's weekend/holiday extension is also not triggered because 31.03.2027 falls on a Wednesday (a business day in Bayern), so no shift is needed.\",\"due_date\":\"2027-03-31\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "rent_lease",
+      "sender_name": "Kanzlei Exempelrain & Kollegen",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Unser Zeichen",
+          "value": "ER-M-26/0418"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "End of tenancy (ordinary termination)",
+          "quote": "kündigen wir das Mietverhältnis über die Wohnung Innstraße 21, Erdgeschoss, ordentlich zum 31.05.2027.",
+          "computation": "The landlords, through their lawyer, terminate the lease effective 31.05.2027 as stated explicitly in the letter. This is a fixed calendar date, no counting rule needed.",
+          "due_date": "2027-05-31",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Deadline to object (Widerspruch) to the termination and demand continuation of the tenancy",
+          "quote": "Der Widerspruch bedarf der Textform und muss mir spätestens zwei Monate vor dem Ende des Mietverhältnisses zugehen.",
+          "computation": "The tenancy ends on 31.05.2027 (as stated earlier in the letter). The objection must reach the lawyer 'at least two months before the end of the tenancy'. Subtracting two calendar months from 31.05.2027 gives 31.03.2027. This is a fixed calendar back-calculation from a stated end date, not a period running from service of the letter, so §188 BGB period-counting from delivery does not apply; §193 BGB's weekend/holiday extension is also not triggered because 31.03.2027 falls on a Wednesday (a business day in Bayern), so no shift is needed.",
+          "due_date": "2027-03-31",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4149,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1739,
+      "cost_usd": 0.04907439999999999,
+      "duration_ms": 42211,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"b837d5b969de7d51f7009a4afb650356e1b048383379c0826795ec7da8e2e693\",\"mode\":\"text\",\"region\":\"BE\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-vollstreckungsbescheid-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Berlin (BE), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag",
+    "recorded_at": "2026-11-24T13:09:13+00:00",
+    "repeat": 1,
+    "commit": "17c7ca3b",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Amtsgericht Musterwedding – Zentrales Mahngericht Berlin-Brandenburg\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Geschäftsnummer\",\"value\":\"26-1129650-1-4\"}],\"amounts\":[720,17.95,39,12.5,789.45],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the Vollstreckungsbescheid\",\"quote\":\"Dafür haben Sie ab der Zustellung zwei Wochen Zeit (Notfrist).\",\"computation\":\"The letter states the Vollstreckungsbescheid was formally served (Zustellung) on 23.11.2026 (Monday), as recorded by the server ('Zugestellt am 23.11.2026 (Datum laut Vermerk des Zustellers)'). This is a formal court service, so the period runs from that stated delivery date, not from a deemed-delivery rule. Under § 339 Abs. 1 ZPO (via § 700 Abs. 1 ZPO) the Einspruchsfrist is a Notfrist of two weeks from service. Per § 187 Abs. 1 BGB the day of service (Mon 23 Nov 2026) is not counted; the period starts the next day, 24 Nov 2026. Per § 188 Abs. 2 BGB a two-week period ends on the day of the second week that corresponds by name to the day of service, i.e. the following-but-one Monday: Mon 7 Dec 2026. This falls on a working day (no shift needed under § 222 Abs. 1, 2 ZPO). The objection must reach the Amtsgericht Musterwedding by this date.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"This is a Notfrist (statutory, non-extendable court deadline); the underlying claim is already enforceable in the meantime, so if an objection is intended it should be sent well before 07.12.2026 and ideally by a method that proves timely receipt.\",\"The letter's own date (18.11.2026) is five days before the stated Zustellung date (23.11.2026); this gap is plausible for postal delivery but worth double-checking against the actual envelope/postal marking if the person disputes the delivery date.\",\"The names in the letterhead (e.g. 'Musterwedding', 'Kowalbeispiel', 'Exempel Online-Akademie UG') look like placeholder/sample names rather than a specific real court and creditor — verify the court's actual name, address and phone number independently before relying on or responding to this letter.\",\"No payment deadline or bank account for the Gesamtbetrag (789,45 EUR) is given in the letter; if a payment demand with bank details arrives separately, verify the payee name and IBAN before paying.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Amtsgericht Musterwedding – Zentrales Mahngericht Berlin-Brandenburg",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Geschäftsnummer",
+          "value": "26-1129650-1-4"
+        }
+      ],
+      "amounts": [
+        720,
+        17.95,
+        39,
+        12.5,
+        789.45
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the Vollstreckungsbescheid",
+          "quote": "Dafür haben Sie ab der Zustellung zwei Wochen Zeit (Notfrist).",
+          "computation": "The letter states the Vollstreckungsbescheid was formally served (Zustellung) on 23.11.2026 (Monday), as recorded by the server ('Zugestellt am 23.11.2026 (Datum laut Vermerk des Zustellers)'). This is a formal court service, so the period runs from that stated delivery date, not from a deemed-delivery rule. Under § 339 Abs. 1 ZPO (via § 700 Abs. 1 ZPO) the Einspruchsfrist is a Notfrist of two weeks from service. Per § 187 Abs. 1 BGB the day of service (Mon 23 Nov 2026) is not counted; the period starts the next day, 24 Nov 2026. Per § 188 Abs. 2 BGB a two-week period ends on the day of the second week that corresponds by name to the day of service, i.e. the following-but-one Monday: Mon 7 Dec 2026. This falls on a working day (no shift needed under § 222 Abs. 1, 2 ZPO). The objection must reach the Amtsgericht Musterwedding by this date.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "This is a Notfrist (statutory, non-extendable court deadline); the underlying claim is already enforceable in the meantime, so if an objection is intended it should be sent well before 07.12.2026 and ideally by a method that proves timely receipt.",
+        "The letter's own date (18.11.2026) is five days before the stated Zustellung date (23.11.2026); this gap is plausible for postal delivery but worth double-checking against the actual envelope/postal marking if the person disputes the delivery date.",
+        "The names in the letterhead (e.g. 'Musterwedding', 'Kowalbeispiel', 'Exempel Online-Akademie UG') look like placeholder/sample names rather than a specific real court and creditor — verify the court's actual name, address and phone number independently before relying on or responding to this letter.",
+        "No payment deadline or bank account for the Gesamtbetrag (789,45 EUR) is given in the letter; if a payment demand with bank details arrives separately, verify the payee name and IBAN before paying."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 4206,
+      "cache_read_tokens": 14703,
+      "cache_creation_tokens": 4670,
+      "cost_usd": 0.06368860000000001,
+      "duration_ms": 45419,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "receipt",
+            "anchor_date": "2026-11-23",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "delivery_rule": "none",
+            "legal_basis": "§ 700 Abs. 1, § 339 ZPO - Einspruch gegen Vollstreckungsbescheid (Notfrist)",
+            "text": "Dafür haben Sie ab der Zustellung zwei Wochen Zeit (Notfrist)."
+          }
+        },
+        "result": "{\"due_date\":\"2026-12-07\",\"weekday\":\"Monday\",\"send_by\":\"2026-12-01\",\"summary\":\"Two weeks after delivery on Mon 23 Nov 2026 (as stated on the letter) is Mon 7 Dec 2026.\",\"confidence\":\"low\",\"warnings\":[\"This is a court deadline that can't be extended (Notfrist), and the order can be enforced meanwhile. Get advice now (see the card on this letter).\",\"The letter's date was not given, so the delivery day stated (Mon 23 Nov 2026) could not be checked against it: a stated day that is wrong or later than the letter's date moves the deadline later.\"],\"steps\":[{\"label\":\"Counting starts the day after Mon 23 Nov 2026\",\"date\":\"2026-11-23\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 222 Abs. 1 ZPO; § 187 Abs. 1 BGB\"},{\"label\":\"Two weeks later: Mon 7 Dec 2026\",\"date\":\"2026-12-07\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 222 Abs. 1 ZPO; § 188 Abs. 1, 2 BGB\"},{\"label\":\"Mon 7 Dec 2026 is a working day, so it stays\",\"date\":\"2026-12-07\",\"rule_id\":\"zpo_222\",\"citation\":\"§ 222 Abs. 1, 2 ZPO\"},{\"label\":\"Send by Tue 1 Dec 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-12-01\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"zpo_339\",\"title\":\"Enforcement order (Vollstreckungsbescheid): two weeks to object\",\"citation\":\"§ 700 Abs. 1 ZPO; § 339 Abs. 1 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/zpo/__339.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"zpo_180\",\"title\":\"Court letters count from delivery (Zustellung)\",\"citation\":\"§ 180 ZPO; § 166 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/zpo/__180.html\"},{\"id\":\"zpo_222\",\"title\":\"Court deadlines: weekend and holiday shift\",\"citation\":\"§ 222 Abs. 1, 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/zpo/__222.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"received_date\":\"2026-11-23\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"holiday_calendar\":\"Germany (nationwide holidays only)\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"Pass document_date: the engine checks a stated posting or delivery day against the letter's date (it counts from the letter's date when a stated posting day is later).\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE00000000000000000000"
+        },
+        "result": "{\"iban\":\"DE00 0000 0000 0000 0000 00\",\"valid\":false,\"problems\":[\"The check digits do not match: a character is wrong, missing or swapped.\"],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":false,\"note\":\"It may be misprinted, misread or fake — compare it with the letter and ask the sender before paying.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

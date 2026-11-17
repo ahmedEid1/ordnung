@@ -1,0 +1,324 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"99ef00b98b6fd5502888ae20ae978adbae84ea70eb1fc4ab660a1a4790b44772\",\"question\":\"Which semester fee payments fall due within the next 365 days?\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "doc_nba3k0ka85q0",
+      "doc_5c5axexztnw6",
+      "doc_tszxajp80vd5"
+    ],
+    "prompt_head": "The person asks:\nWhich semester fee payments fall due within the next 365 days?\n",
+    "recorded_at": "2026-11-24T13:43:49+00:00",
+    "repeat": 3,
+    "commit": "84270dc0",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "Within the next 365 days, there is **one semester fee payment** on record:\n\n- **Semester fee (Semesterbeitrag) for summer semester 2027** – due **Fri 15 Jan 2027** (post by Thu 14 Jan 2027), amount **312.40 €**, to Hochschule Musterstadt [item:itm_85xesrap412m]. Late payment adds a late fee and risks deregistration, per the item's consequence [item:itm_85xesrap412m].\n\nThis payment repeats every 6 months, with the following one expected around **15 Jul 2027** [item:itm_85xesrap412m] — but no to-do has been created for that occurrence yet, so there's no confirmed due date for it in Ordnung yet.",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 684,
+      "cache_read_tokens": 12779,
+      "cache_creation_tokens": 2519,
+      "cost_usd": 0.0194798,
+      "duration_ms": 11514,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Semesterbeitrag"
+      },
+      "tool_use_id": "toolu_01JamaFw3aCjbKVGY8FojnAo"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "from_date": "2026-11-24",
+        "to_date": "2027-11-24",
+        "kind": "payment",
+        "status": "open"
+      },
+      "tool_use_id": "toolu_01X9vtmB8GdbeFAxVC5ebP3n"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_nba3k0ka85q0\",\"kind\":\"university\",\"date\":\"2026-09-01\",\"party_id\":\"pty_fhp8fzemmzvt\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_nba3k0ka85q0\":{\"title\":\"Semester documents for winter semester 2026/27 and re-registration for summer semester 2027\",\"snippet\":\"…Der Semesterbeitrag in Höhe von 312,40 € muss bis spätestens zum 15.01.2027 auf dem…\"},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01JamaFw3aCjbKVGY8FojnAo"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-11-24\",\"items\":[{\"id\":\"itm_kgsfgwac9wzx\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-11-27\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"other\",\"party_id\":\"pty_d2ymm5s3htd0\",\"doc_id\":\"doc_5c5axexztnw6\",\"repeats\":\"every 2 weeks\",\"following_due_date\":\"2026-12-11\",\"amount\":4.5,\"currency\":\"EUR\"},{\"id\":\"itm_93jvwb6nxzhe\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-12-01\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"low\",\"area\":\"insurance\",\"party_id\":\"pty_re9nde1xqtfn\",\"doc_id\":\"doc_tszxajp80vd5\",\"contract_id\":\"ctr_w97tm6xhn7zw\",\"repeats\":\"every year on the 1st\",\"following_due_date\":\"2027-12-01\",\"amount\":59.9,\"currency\":\"EUR\"},{\"id\":\"itm_85xesrap412m\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2027-01-15\",\"send_by\":\"2027-01-14\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"study\",\"party_id\":\"pty_fhp8fzemmzvt\",\"doc_id\":\"doc_nba3k0ka85q0\",\"repeats\":\"every 6 months on the 15th\",\"following_due_date\":\"2027-07-15\",\"amount\":312.4,\"currency\":\"EUR\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_kgsfgwac9wzx\":{\"title\":\"Pay the accrued library fee\",\"action\":\"Pay the €4.50 fee at the service desk or the payment machine when returning the items.\",\"consequence\":\"Unpaid and growing fees can lead to your library account being blocked once the balance reaches €10.00.\"},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\"},\"itm_93jvwb6nxzhe\":{\"title\":\"Annual liability insurance premium direct debit\",\"action\":\"Make sure the linked bank account has enough funds for the automatic direct debit.\"},\"pty_re9nde1xqtfn\":{\"name\":\"Muster Versicherung AG\"},\"itm_85xesrap412m\":{\"title\":\"Pay the semester fee (Semesterbeitrag) for summer semester 2027\",\"action\":\"Transfer the semester fee of €312.40 to the university's account, using the given reference, so it arrives by the deadline shown.\",\"consequence\":\"Late payment adds a €15.00 late fee (Säumnisgebühr), and if the fee is not received in time you risk being deregistered (Exmatrikulation).\"},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01X9vtmB8GdbeFAxVC5ebP3n"
+    },
+    {
+      "type": "text",
+      "text": "Within"
+    },
+    {
+      "type": "text",
+      "text": " the next 365 days, there"
+    },
+    {
+      "type": "text",
+      "text": " is"
+    },
+    {
+      "type": "text",
+      "text": " **one semester fee payment"
+    },
+    {
+      "type": "text",
+      "text": "** on"
+    },
+    {
+      "type": "text",
+      "text": " record:\n\n- **"
+    },
+    {
+      "type": "text",
+      "text": "Semester fee (Sem"
+    },
+    {
+      "type": "text",
+      "text": "esterb"
+    },
+    {
+      "type": "text",
+      "text": "e"
+    },
+    {
+      "type": "text",
+      "text": "it"
+    },
+    {
+      "type": "text",
+      "text": "r"
+    },
+    {
+      "type": "text",
+      "text": "ag"
+    },
+    {
+      "type": "text",
+      "text": ") for summer semester 2"
+    },
+    {
+      "type": "text",
+      "text": "027** –"
+    },
+    {
+      "type": "text",
+      "text": " due **"
+    },
+    {
+      "type": "text",
+      "text": "Fri 15 Jan"
+    },
+    {
+      "type": "text",
+      "text": " 2027** (post"
+    },
+    {
+      "type": "text",
+      "text": " by"
+    },
+    {
+      "type": "text",
+      "text": " Thu 14"
+    },
+    {
+      "type": "text",
+      "text": " Jan 2027),"
+    },
+    {
+      "type": "text",
+      "text": " amount **312"
+    },
+    {
+      "type": "text",
+      "text": ".40 €**, to"
+    },
+    {
+      "type": "text",
+      "text": " Hochschule Musterst"
+    },
+    {
+      "type": "text",
+      "text": "adt [item:it"
+    },
+    {
+      "type": "text",
+      "text": "m_85x"
+    },
+    {
+      "type": "text",
+      "text": "es"
+    },
+    {
+      "type": "text",
+      "text": "r"
+    },
+    {
+      "type": "text",
+      "text": "ap"
+    },
+    {
+      "type": "text",
+      "text": "412"
+    },
+    {
+      "type": "text",
+      "text": "m"
+    },
+    {
+      "type": "text",
+      "text": "]. Late payment adds"
+    },
+    {
+      "type": "text",
+      "text": " a late"
+    },
+    {
+      "type": "text",
+      "text": " fee and"
+    },
+    {
+      "type": "text",
+      "text": " risks deregistration,"
+    },
+    {
+      "type": "text",
+      "text": " per"
+    },
+    {
+      "type": "text",
+      "text": " the item"
+    },
+    {
+      "type": "text",
+      "text": "'s cons"
+    },
+    {
+      "type": "text",
+      "text": "equence ["
+    },
+    {
+      "type": "text",
+      "text": "item:itm_85xes"
+    },
+    {
+      "type": "text",
+      "text": "rap412m].\n\nThis pay"
+    },
+    {
+      "type": "text",
+      "text": "ment repeats every 6 "
+    },
+    {
+      "type": "text",
+      "text": "months,"
+    },
+    {
+      "type": "text",
+      "text": " with the following"
+    },
+    {
+      "type": "text",
+      "text": " one exp"
+    },
+    {
+      "type": "text",
+      "text": "ected around **15"
+    },
+    {
+      "type": "text",
+      "text": " Jul 2027**"
+    },
+    {
+      "type": "text",
+      "text": " [item:itm_85x"
+    },
+    {
+      "type": "text",
+      "text": "esrap412m] — but"
+    },
+    {
+      "type": "text",
+      "text": " no"
+    },
+    {
+      "type": "text",
+      "text": " to"
+    },
+    {
+      "type": "text",
+      "text": "-do has"
+    },
+    {
+      "type": "text",
+      "text": " been created for that occurrence"
+    },
+    {
+      "type": "text",
+      "text": " yet, so there"
+    },
+    {
+      "type": "text",
+      "text": "'s no conf"
+    },
+    {
+      "type": "text",
+      "text": "irmed due"
+    },
+    {
+      "type": "text",
+      "text": " date for"
+    },
+    {
+      "type": "text",
+      "text": " it in Ordnung"
+    },
+    {
+      "type": "text",
+      "text": " y"
+    },
+    {
+      "type": "text",
+      "text": "et."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Within the next 365 days, there is **one semester fee payment** on record:\n\n- **Semester fee (Semesterbeitrag) for summer semester 2027** – due **Fri 15 Jan 2027** (post by Thu 14 Jan 2027), amount **312.40 €**, to Hochschule Musterstadt [item:itm_85xesrap412m]. Late payment adds a late fee and risks deregistration, per the item's consequence [item:itm_85xesrap412m].\n\nThis payment repeats every 6 months, with the following one expected around **15 Jul 2027** [item:itm_85xesrap412m] — but no to-do has been created for that occurrence yet, so there's no confirmed due date for it in Ordnung yet.",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 684,
+          "cache_read_tokens": 12779,
+          "cache_creation_tokens": 2519,
+          "cost_usd": 0.0194798,
+          "duration_ms": 11514,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"8b0ec16bebe775dc7b295294805fbc8396fc9d9f2c045e7efb05757f306d54fc\",\"mode\":\"text\",\"region\":\"TH\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-kuendigung_arbeit-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Thüringen (TH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> ",
+    "recorded_at": "2026-11-24T12:41:20+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2026-11-18\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Klage (lawsuit) at the Labour Court against the termination\",\"quote\":\"Möchten Sie die Wirksamkeit der Kündigung gerichtlich überprüfen lassen, müssen Sie spätestens drei Wochen nach ihrem Zugang Klage beim Arbeitsgericht erheben.\",\"computation\":\"The letter states it was personally handed to the employee at the workplace on 18.11.2026 (Wednesday) – this is the Zugang. The 3-week period to file Klage is governed by §4 KSchG together with §§187, 188 BGB. Per §188 Abs. 2 BGB, for a period specified in weeks following an event, the period ends with the day of the last week whose name corresponds to the day of the event (here Wednesday). Counting 3 weeks from Wednesday 18.11.2026 (18.11 + 21 days: Nov has 30 days, 30-18=12 days remain in Nov, 21-12=9 days into Dec) gives Wednesday 09.12.2026. 09.12.2026 is not a Saturday, Sunday or public holiday in Thüringen, so no shift under §193 BGB applies.\",\"due_date\":\"2026-12-09\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Register as job-seeking (arbeitsuchend) with the Agentur für Arbeit\",\"quote\":\"Bitte denken Sie daran, sich umgehend bei der Agentur für Arbeit arbeitsuchend zu melden.\",\"computation\":\"The letter only says 'umgehend' without a concrete date; the statutory deadline follows §38 Abs. 1 SGB III. Knowledge of the termination date (28.02.2027) was obtained on 18.11.2026, i.e. more than 3 months before the end of the employment relationship. In that case the law requires registration no later than 3 months before the end of the employment relationship (the 3-day rule only applies if less than 3 months remain between knowledge and end of employment, which is not the case here). 3 calendar months before 28.02.2027 is 28.11.2026. 28.11.2026 is a Saturday, but this is a statutory registration deadline with the Agentur für Arbeit, not a BGB-style period ending with a submission 'by' a date to an authority; to be safe and because §193 BGB generally extends such deadlines falling on a weekend to the next business day, the practical last day to register without risk is Monday 30.11.2026. Given the ambiguity of how strictly the agency enforces the exact calendar date versus the next business day, confidence is medium.\",\"due_date\":\"2026-11-30\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Employment relationship ends\",\"quote\":\"Hiermit kündigen wir Ihr seit dem 01.03.2017 bestehendes Arbeitsverhältnis fristgerecht zum 28.02.2027.\",\"computation\":\"The letter explicitly states the termination date as 28.02.2027; no further counting is needed.\",\"due_date\":\"2027-02-28\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"employment\",\"references\":[{\"label\":\"Personal-Nr.\",\"value\":\"BO-1173\"}],\"remedy_type\":\"klage\",\"sender_name\":\"Beispieloptik Saaletal GmbH\",\"warnings\":[\"The job-seeking registration deadline (28.11.2026, a Saturday, extended here to 30.11.2026) is derived from §38 SGB III and is not explicitly stated in the letter, which only says 'umgehend' (immediately) – the person should register as soon as possible and ideally not wait until this computed last-possible date.\"]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2026-11-18",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Klage (lawsuit) at the Labour Court against the termination",
+          "quote": "Möchten Sie die Wirksamkeit der Kündigung gerichtlich überprüfen lassen, müssen Sie spätestens drei Wochen nach ihrem Zugang Klage beim Arbeitsgericht erheben.",
+          "computation": "The letter states it was personally handed to the employee at the workplace on 18.11.2026 (Wednesday) – this is the Zugang. The 3-week period to file Klage is governed by §4 KSchG together with §§187, 188 BGB. Per §188 Abs. 2 BGB, for a period specified in weeks following an event, the period ends with the day of the last week whose name corresponds to the day of the event (here Wednesday). Counting 3 weeks from Wednesday 18.11.2026 (18.11 + 21 days: Nov has 30 days, 30-18=12 days remain in Nov, 21-12=9 days into Dec) gives Wednesday 09.12.2026. 09.12.2026 is not a Saturday, Sunday or public holiday in Thüringen, so no shift under §193 BGB applies.",
+          "due_date": "2026-12-09",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Register as job-seeking (arbeitsuchend) with the Agentur für Arbeit",
+          "quote": "Bitte denken Sie daran, sich umgehend bei der Agentur für Arbeit arbeitsuchend zu melden.",
+          "computation": "The letter only says 'umgehend' without a concrete date; the statutory deadline follows §38 Abs. 1 SGB III. Knowledge of the termination date (28.02.2027) was obtained on 18.11.2026, i.e. more than 3 months before the end of the employment relationship. In that case the law requires registration no later than 3 months before the end of the employment relationship (the 3-day rule only applies if less than 3 months remain between knowledge and end of employment, which is not the case here). 3 calendar months before 28.02.2027 is 28.11.2026. 28.11.2026 is a Saturday, but this is a statutory registration deadline with the Agentur für Arbeit, not a BGB-style period ending with a submission 'by' a date to an authority; to be safe and because §193 BGB generally extends such deadlines falling on a weekend to the next business day, the practical last day to register without risk is Monday 30.11.2026. Given the ambiguity of how strictly the agency enforces the exact calendar date versus the next business day, confidence is medium.",
+          "due_date": "2026-11-30",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Employment relationship ends",
+          "quote": "Hiermit kündigen wir Ihr seit dem 01.03.2017 bestehendes Arbeitsverhältnis fristgerecht zum 28.02.2027.",
+          "computation": "The letter explicitly states the termination date as 28.02.2027; no further counting is needed.",
+          "due_date": "2027-02-28",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "employment",
+      "references": [
+        {
+          "label": "Personal-Nr.",
+          "value": "BO-1173"
+        }
+      ],
+      "remedy_type": "klage",
+      "sender_name": "Beispieloptik Saaletal GmbH",
+      "warnings": [
+        "The job-seeking registration deadline (28.11.2026, a Saturday, extended here to 30.11.2026) is derived from §38 SGB III and is not explicitly stated in the letter, which only says 'umgehend' (immediately) – the person should register as soon as possible and ideally not wait until this computed last-possible date."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4549,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1681,
+      "cost_usd": 0.0528424,
+      "duration_ms": 48124,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

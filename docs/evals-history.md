@@ -52,6 +52,23 @@ Each file's role says what it may support:
 | 2026-10-30 | `2026-10-30-claude-sonnet-5-ask-rescored.json` | Ask benchmark |  | iterated |  |  |
 | 2026-10-31 | `2026-10-31-claude-sonnet-5-ask-rescored.json` | Ask benchmark |  | iterated |  |  |
 | 2026-11-04 | `2026-11-04-claude-sonnet-5-checks-ablated.json` | check ablation |  | replay |  |  |
+| 2026-11-24 | `2026-11-24-claude-sonnet-5-ask-heldout-final.json` | Ask held-out set, its runs together |  | final |  |  |
+| 2026-11-24 | `2026-11-24-claude-sonnet-5-ask-heldout-r2.json` | Ask benchmark |  | final |  |  |
+| 2026-11-24 | `2026-11-24-claude-sonnet-5-ask-heldout-r3.json` | Ask benchmark |  | final |  |  |
+| 2026-11-24 | `2026-11-24-claude-sonnet-5-ask-heldout.json` | Ask benchmark |  | final |  |  |
+| 2026-11-24 | `2026-11-24-claude-sonnet-5-checks-ablated-holdout4-r2.json` | check ablation |  | replay |  |  |
+| 2026-11-24 | `2026-11-24-claude-sonnet-5-checks-ablated-holdout4-r3.json` | check ablation |  | replay |  |  |
+| 2026-11-24 | `2026-11-24-claude-sonnet-5-checks-ablated-holdout4.json` | check ablation |  | replay |  |  |
+| 2026-11-24 | `2026-11-24-claude-sonnet-5-e2e-holdout4-newkinds.json` | end to end |  | replay |  |  |
+| 2026-11-24 | `2026-11-24-claude-sonnet-5-final.json` | analysis |  | final |  |  |
+| 2026-11-24 | `2026-11-24-claude-sonnet-5-holdout4-r1.json` | reading benchmark | holdout4 | final | Ordnung, LLM only, LLM + rules text, LLM + rules tool | 104/112 |
+| 2026-11-24 | `2026-11-24-claude-sonnet-5-holdout4-r2.json` | reading benchmark | holdout4 | final | Ordnung, LLM only, LLM + rules text, LLM + rules tool | 104/112 |
+| 2026-11-24 | `2026-11-24-claude-sonnet-5-holdout4-r3.json` | reading benchmark | holdout4 | final | Ordnung, LLM only, LLM + rules text, LLM + rules tool | 104/112 |
+| 2026-11-24 | `2026-11-24-claude-sonnet-5-newkinds.json` | reading benchmark | newkinds | final | Ordnung, LLM only, LLM + rules text, LLM + rules tool | 21/28 |
+| 2026-11-24 | `2026-11-24-claude-sonnet-5-stress.json` | stress test |  | final |  |  |
+| 2026-11-24 | `2026-11-24-claude-sonnet-5-without-land-holdout4-r2.json` | replay without the sender's Land |  | replay |  |  |
+| 2026-11-24 | `2026-11-24-claude-sonnet-5-without-land-holdout4-r3.json` | replay without the sender's Land |  | replay |  |  |
+| 2026-11-24 | `2026-11-24-claude-sonnet-5-without-land-holdout4.json` | replay without the sender's Land |  | replay |  |  |
 
 `2026-10-06-claude-sonnet-5-without-land.json` is superseded by `2026-10-08-claude-sonnet-5-without-land.json`, the
 same replay written again: this time also with the state the postcode on the sender's letter suggests confirmed (a

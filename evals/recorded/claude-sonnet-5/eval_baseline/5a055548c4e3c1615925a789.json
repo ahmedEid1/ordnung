@@ -1,0 +1,65 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"49daa526209ff6e3cf0b88b176d8017d4e0a3eb1ee1ad15bcbe7f966772b77ac\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:16:31+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2026-11-21\",\"items\":[{\"kind\":\"task\",\"title\":\"Submit address certification form\",\"quote\":\"Please complete the enclosed address certification and mail or upload it by January 15, 2027.\",\"computation\":\"The letter states an explicit calendar date by which the completed form must be mailed or uploaded: January 15, 2027. This is a private US bank (not a German authority), so no German Bekanntgabefiktion or BGB period-counting rules apply; the date is used exactly as printed. January 15, 2027 is a Friday, so no weekend/holiday adjustment is needed in any case.\",\"due_date\":\"2027-01-15\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"bank_letter\",\"references\":[{\"label\":\"Account ending\",\"value\":\"…4471\"}],\"remedy_type\":\"none\",\"sender_name\":\"Example Prairie Savings Bank\",\"warnings\":[\"This is a letter from a US bank (not a German authority), so the German delivery-fiction and period-counting rules do not apply; the printed date of January 15, 2027 is used as the deadline.\",\"No street address, phone, or email was given for returning the form other than the bank's own US contact details printed on the letter; before mailing or uploading any personal documents, verify this request through a known, independently looked-up contact channel for the bank (e.g. the number on the back of your card) rather than the number/email printed in the letter, since unsolicited requests for address certification can be used in phishing schemes.\",\"The letter mentions restricting online account access as a consequence of non-compliance, which is a mild pressure tactic; confirm legitimacy before acting.\"]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2026-11-21",
+      "items": [
+        {
+          "kind": "task",
+          "title": "Submit address certification form",
+          "quote": "Please complete the enclosed address certification and mail or upload it by January 15, 2027.",
+          "computation": "The letter states an explicit calendar date by which the completed form must be mailed or uploaded: January 15, 2027. This is a private US bank (not a German authority), so no German Bekanntgabefiktion or BGB period-counting rules apply; the date is used exactly as printed. January 15, 2027 is a Friday, so no weekend/holiday adjustment is needed in any case.",
+          "due_date": "2027-01-15",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "bank_letter",
+      "references": [
+        {
+          "label": "Account ending",
+          "value": "…4471"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Example Prairie Savings Bank",
+      "warnings": [
+        "This is a letter from a US bank (not a German authority), so the German delivery-fiction and period-counting rules do not apply; the printed date of January 15, 2027 is used as the deadline.",
+        "No street address, phone, or email was given for returning the form other than the bank's own US contact details printed on the letter; before mailing or uploading any personal documents, verify this request through a known, independently looked-up contact channel for the bank (e.g. the number on the back of your card) rather than the number/email printed in the letter, since unsolicited requests for address certification can be used in phishing schemes.",
+        "The letter mentions restricting online account access as a consequence of non-compliance, which is a mild pressure tactic; confirm legitimacy before acting."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1133,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1289,
+      "cost_usd": 0.017596,
+      "duration_ms": 12858,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

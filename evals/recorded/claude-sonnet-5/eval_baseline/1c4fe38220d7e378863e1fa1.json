@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"e6a608fa0fe40c7cb5afe652a457c6f1c03e07d21ed30758bdb4c69deb35bd69\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d",
+    "recorded_at": "2026-11-24T11:40:26+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2026-11-18\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against rejection of bonfire permit\",\"quote\":\"Gegen diesen Bescheid können Sie innerhalb eines Monats nach seiner Bekanntgabe Widerspruch einlegen, schriftlich oder zur Niederschrift bei der Behörde: Amt Musterschlei, Am Markt 6, 24376 Musterkappeln.\",\"computation\":\"Letter dated and presumably posted 2026-11-18 (Wed) as simple mail. Per the quoted § 110 Abs. 2 LVwG, a letter sent by simple post is deemed delivered (bekannt gegeben) on the 4th day after posting. Counting from 18.11 (day 1 = 19.11 Thu, day 2 = 20.11 Fri, day 3 = 21.11 Sat, day 4 = 22.11 Sun). The 4th day falls on a Sunday; under the standard rule attached to this fiction (mirroring § 41 Abs. 2 VwVfG), if that day is a Saturday, Sunday or public holiday, the next working day counts as the day of Bekanntgabe. The next working day is Monday 2026-11-23, which is not a holiday in Schleswig-Holstein, so Bekanntgabe = 2026-11-23. The one-month Widerspruch period runs from this event; per §187 Abs.1 BGB the day of the event (23.11) is not counted, and per §188 Abs.2 BGB the period ends on the day of the following month bearing the same number, i.e. 2026-12-23. 23 December 2026 is a Wednesday and not a public holiday in Schleswig-Holstein, so no further shift is needed.\",\"due_date\":\"2026-12-23\",\"confidence\":\"medium\",\"amount\":null}],\"kind\":\"authority_letter\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"OA 32-118/26\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Amt Musterschlei – Land Schleswig-Holstein · Der Amtsvorsteher · Ordnungsamt\",\"warnings\":[\"The exact posting date of the letter is assumed to equal the printed document date (18.11.2026); if the actual mailing date differed, the Bekanntgabe date and therefore the Widerspruch deadline (2026-12-23) would shift accordingly — verify the envelope postmark if available.\",\"The letter's quoted § 110 Abs. 2 LVwG text does not itself state the weekend/holiday-shift rule for the delivery fiction; this was applied by analogy to the standard rule used in § 41 Abs. 2 VwVfG, so the Bekanntgabe date (and hence the final Widerspruch deadline) carries medium rather than high confidence.\"]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2026-11-18",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against rejection of bonfire permit",
+          "quote": "Gegen diesen Bescheid können Sie innerhalb eines Monats nach seiner Bekanntgabe Widerspruch einlegen, schriftlich oder zur Niederschrift bei der Behörde: Amt Musterschlei, Am Markt 6, 24376 Musterkappeln.",
+          "computation": "Letter dated and presumably posted 2026-11-18 (Wed) as simple mail. Per the quoted § 110 Abs. 2 LVwG, a letter sent by simple post is deemed delivered (bekannt gegeben) on the 4th day after posting. Counting from 18.11 (day 1 = 19.11 Thu, day 2 = 20.11 Fri, day 3 = 21.11 Sat, day 4 = 22.11 Sun). The 4th day falls on a Sunday; under the standard rule attached to this fiction (mirroring § 41 Abs. 2 VwVfG), if that day is a Saturday, Sunday or public holiday, the next working day counts as the day of Bekanntgabe. The next working day is Monday 2026-11-23, which is not a holiday in Schleswig-Holstein, so Bekanntgabe = 2026-11-23. The one-month Widerspruch period runs from this event; per §187 Abs.1 BGB the day of the event (23.11) is not counted, and per §188 Abs.2 BGB the period ends on the day of the following month bearing the same number, i.e. 2026-12-23. 23 December 2026 is a Wednesday and not a public holiday in Schleswig-Holstein, so no further shift is needed.",
+          "due_date": "2026-12-23",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "kind": "authority_letter",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "OA 32-118/26"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Amt Musterschlei – Land Schleswig-Holstein · Der Amtsvorsteher · Ordnungsamt",
+      "warnings": [
+        "The exact posting date of the letter is assumed to equal the printed document date (18.11.2026); if the actual mailing date differed, the Bekanntgabe date and therefore the Widerspruch deadline (2026-12-23) would shift accordingly — verify the envelope postmark if available.",
+        "The letter's quoted § 110 Abs. 2 LVwG text does not itself state the weekend/holiday-shift rule for the delivery fiction; this was applied by analogy to the standard rule used in § 41 Abs. 2 VwVfG, so the Bekanntgabe date (and hence the final Widerspruch deadline) carries medium rather than high confidence."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4037,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1649,
+      "cost_usd": 0.04759439999999999,
+      "duration_ms": 42091,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"9d2e7520688be26abfc5dd25f42bad95ca6530859746ae0c11bc5b9cf4c218b7\",\"mode\":\"text\",\"region\":\"ST\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-appointment-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Sachsen-Anhalt (ST), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docum",
+    "recorded_at": "2026-11-24T09:12:56+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"appointment\",\"sender_name\":\"Amtsgericht Musterwernigerode – Betreuungsgericht\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"6 XVII 412/26\"}],\"amounts\":[],\"items\":[{\"kind\":\"appointment\",\"title\":\"Hearing as the son in the guardianship proceedings for the mother\",\"quote\":\"Der Termin findet am Donnerstag, 21.01.2027, 13:30 Uhr, im\\nPflegeheim „Am Brockenblick“, Zimmer 12, statt.\",\"computation\":\"The letter states the hearing date and time explicitly as Thursday, 21.01.2027, 13:30. Cross-check: counting 58 days forward from today (Tuesday, 2026-11-24) lands on a Thursday, confirming the stated weekday matches the calendar date. No calculation of a period is needed; the fixed appointment date/time is simply adopted.\",\"due_date\":\"2027-01-21\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"Attendance at the hearing is explicitly described as voluntary (\\\"erwünscht, aber nicht erzwingbar\\\"); there is no enforceable deadline attached to this letter beyond the appointment itself.\",\"If the recipient cannot attend, the letter allows a written statement of his view instead, but gives no specific deadline for submitting it before the hearing date (2027-01-21) — this should be clarified with the court if needed.\"]}",
+    "data": {
+      "kind": "appointment",
+      "sender_name": "Amtsgericht Musterwernigerode – Betreuungsgericht",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "6 XVII 412/26"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Hearing as the son in the guardianship proceedings for the mother",
+          "quote": "Der Termin findet am Donnerstag, 21.01.2027, 13:30 Uhr, im\nPflegeheim „Am Brockenblick“, Zimmer 12, statt.",
+          "computation": "The letter states the hearing date and time explicitly as Thursday, 21.01.2027, 13:30. Cross-check: counting 58 days forward from today (Tuesday, 2026-11-24) lands on a Thursday, confirming the stated weekday matches the calendar date. No calculation of a period is needed; the fixed appointment date/time is simply adopted.",
+          "due_date": "2027-01-21",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "Attendance at the hearing is explicitly described as voluntary (\"erwünscht, aber nicht erzwingbar\"); there is no enforceable deadline attached to this letter beyond the appointment itself.",
+        "If the recipient cannot attend, the letter allows a written statement of his view instead, but gives no specific deadline for submitting it before the hearing date (2027-01-21) — this should be clarified with the court if needed."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2052,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1495,
+      "cost_usd": 0.0271284,
+      "duration_ms": 21521,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

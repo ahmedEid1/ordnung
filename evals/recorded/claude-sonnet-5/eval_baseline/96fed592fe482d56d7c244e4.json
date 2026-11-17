@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"cc2bb582e8051f707cffb5cf22ad13a3a5410f2aea3515671b13553641d00097\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:55:30+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Beispielwort Translations\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Invoice number\",\"value\":\"BT-26-4407\"}],\"amounts\":[142.8],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay translation invoice\",\"quote\":\"Kindly transfer the total within 21 days of the date of this invoice, quoting the invoice number.\",\"computation\":\"This is a private commercial payment term, governed by §§ 187, 188, 193 BGB. The invoice is dated 21 November 2026 and the period is '21 days of the date of this invoice', i.e. a period triggered by an event (the invoice date). Under § 187(1) BGB the day of the event (21 Nov) is excluded, so counting starts 22 November 2026 (day 1). Day 21 of the period falls on 12 December 2026. Checking the weekday: 24 Nov 2026 is a Tuesday (given), so 12 Dec 2026 is 18 days later; 18 mod 7 = 4, Tuesday+4 = Saturday. Since 12 Dec 2026 is a Saturday, § 193 BGB shifts the due date to the next working day: 13 Dec 2026 is a Sunday, so the next working day is Monday 14 December 2026. No NW public holiday falls in this window.\",\"due_date\":\"2026-12-14\",\"confidence\":\"high\",\"amount\":142.8}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Beispielwort Translations",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Invoice number",
+          "value": "BT-26-4407"
+        }
+      ],
+      "amounts": [
+        142.8
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay translation invoice",
+          "quote": "Kindly transfer the total within 21 days of the date of this invoice, quoting the invoice number.",
+          "computation": "This is a private commercial payment term, governed by §§ 187, 188, 193 BGB. The invoice is dated 21 November 2026 and the period is '21 days of the date of this invoice', i.e. a period triggered by an event (the invoice date). Under § 187(1) BGB the day of the event (21 Nov) is excluded, so counting starts 22 November 2026 (day 1). Day 21 of the period falls on 12 December 2026. Checking the weekday: 24 Nov 2026 is a Tuesday (given), so 12 Dec 2026 is 18 days later; 18 mod 7 = 4, Tuesday+4 = Saturday. Since 12 Dec 2026 is a Saturday, § 193 BGB shifts the due date to the next working day: 13 Dec 2026 is a Sunday, so the next working day is Monday 14 December 2026. No NW public holiday falls in this window.",
+          "due_date": "2026-12-14",
+          "confidence": "high",
+          "amount": 142.8
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2749,
+      "cache_read_tokens": 7561,
+      "cache_creation_tokens": 3032,
+      "cost_usd": 0.0411382,
+      "duration_ms": 28029,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

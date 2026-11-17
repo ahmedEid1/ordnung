@@ -1,0 +1,72 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"65230cbd6473a72f1da82fe0d11177ac1c2bfe207ba71b6aeae546b1fb0f3e5c\",\"mode\":\"text\",\"region\":\"NI\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-mieterhoehung-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Niedersachsen (NI), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docume",
+    "recorded_at": "2026-11-24T13:01:52+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[560,616],\"contract\":null,\"document_date\":\"2026-11-20\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Consent to rent increase (§ 558b BGB)\",\"quote\":\"Sie können Ihre Zustimmung bis zum Ende des übernächsten Monats nach Erhalt dieses Schreibens erklären.\",\"computation\":\"The letter states it was personally placed in the tenant's house letterbox on 20.11.2026, so receipt (Zugang) under §130 BGB is 20.11.2026, i.e. in November 2026. Under §558b(2) BGB the tenant has until the end of the second calendar month following the month of receipt to declare consent to a § 558 rent-increase demand. Counting from November (month of receipt): December = first following month, January = second following month, so the statutory period ends 31.01.2027. 31.01.2027 is a Sunday; by §193 BGB the deadline moves to the next business day, Monday 01.02.2027 (no NI public holiday intervenes). Final deadline for the tenant's consent declaration to reach the landlord/management: 01.02.2027.\",\"due_date\":\"2027-02-01\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"New higher rent (616,00 €) takes effect\",\"quote\":\"bitten wir Sie, einer Anhebung Ihrer Nettokaltmiete von 560,00 € auf 616,00 € ab dem 01.02.2027 zuzustimmen\",\"computation\":\"Date taken directly as stated in the letter: the proposed new net cold rent of 616,00 € is to apply from 01.02.2027, conditional on the tenant's (or a court's) consent to the increase.\",\"due_date\":\"2027-02-01\",\"confidence\":\"high\",\"amount\":616}],\"kind\":\"price_increase\",\"references\":[],\"remedy_type\":\"none\",\"sender_name\":\"Immobilienverwaltung Musterheide OHG\",\"warnings\":[\"This is a private landlord's rent-increase demand, not an authority's decision, so there is no legal remedy instruction (Rechtsbehelfsbelehrung); if the tenant disagrees, they simply withhold consent and the landlord would have to sue for it.\",\"The letter mentions an enclosed power of attorney ('Die Vollmacht fügen wir bei') for the management company acting on behalf of the landlord (Erbengemeinschaft Beispielmoor); verify that this document is actually enclosed and valid before relying on the demand.\",\"The tenant should independently check the cited Mietspiegel 2026 comparison rent range (7,70–8,30 €/m²) and the claimed 80 m² / 1994 construction-year classification, since the lawfulness of the increase depends on these figures being correct for the actual apartment.\"]}",
+    "data": {
+      "amounts": [
+        560,
+        616
+      ],
+      "contract": null,
+      "document_date": "2026-11-20",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Consent to rent increase (§ 558b BGB)",
+          "quote": "Sie können Ihre Zustimmung bis zum Ende des übernächsten Monats nach Erhalt dieses Schreibens erklären.",
+          "computation": "The letter states it was personally placed in the tenant's house letterbox on 20.11.2026, so receipt (Zugang) under §130 BGB is 20.11.2026, i.e. in November 2026. Under §558b(2) BGB the tenant has until the end of the second calendar month following the month of receipt to declare consent to a § 558 rent-increase demand. Counting from November (month of receipt): December = first following month, January = second following month, so the statutory period ends 31.01.2027. 31.01.2027 is a Sunday; by §193 BGB the deadline moves to the next business day, Monday 01.02.2027 (no NI public holiday intervenes). Final deadline for the tenant's consent declaration to reach the landlord/management: 01.02.2027.",
+          "due_date": "2027-02-01",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "New higher rent (616,00 €) takes effect",
+          "quote": "bitten wir Sie, einer Anhebung Ihrer Nettokaltmiete von 560,00 € auf 616,00 € ab dem 01.02.2027 zuzustimmen",
+          "computation": "Date taken directly as stated in the letter: the proposed new net cold rent of 616,00 € is to apply from 01.02.2027, conditional on the tenant's (or a court's) consent to the increase.",
+          "due_date": "2027-02-01",
+          "confidence": "high",
+          "amount": 616
+        }
+      ],
+      "kind": "price_increase",
+      "references": [],
+      "remedy_type": "none",
+      "sender_name": "Immobilienverwaltung Musterheide OHG",
+      "warnings": [
+        "This is a private landlord's rent-increase demand, not an authority's decision, so there is no legal remedy instruction (Rechtsbehelfsbelehrung); if the tenant disagrees, they simply withhold consent and the landlord would have to sue for it.",
+        "The letter mentions an enclosed power of attorney ('Die Vollmacht fügen wir bei') for the management company acting on behalf of the landlord (Erbengemeinschaft Beispielmoor); verify that this document is actually enclosed and valid before relying on the demand.",
+        "The tenant should independently check the cited Mietspiegel 2026 comparison rent range (7,70–8,30 €/m²) and the claimed 80 m² / 1994 construction-year classification, since the lawfulness of the increase depends on these figures being correct for the actual apartment."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6274,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1680,
+      "cost_usd": 0.07008840000000001,
+      "duration_ms": 64529,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

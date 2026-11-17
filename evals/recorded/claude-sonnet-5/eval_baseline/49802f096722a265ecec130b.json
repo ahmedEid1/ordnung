@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"fb67b7d076a9654ee4eb17da2a898796d2f273c04b95281302673ec24264d740\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-price_increase-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:26:29+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Beispielfunk Mobile GmbH\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"BF-7 220 418\"},{\"label\":\"Rufnummer\",\"value\":\"0160 555 41 27\"}],\"amounts\":[14.99,16.99],\"items\":[{\"kind\":\"deadline\",\"title\":\"Special termination right due to unfavorable price increase\",\"quote\":\"Für diese Kündigung haben Sie drei Monate Zeit, gerechnet ab dem Zugang dieser Mitteilung; wirksam wird sie frühestens an dem Tag, an dem der neue Preis gilt.\",\"computation\":\"The letter is dated Saturday 21.11.2026. German private-sector letters sent by ordinary post are commonly presumed (by analogy to the 3-day rule of §122 Abs.2 AO, applied by courts also to private correspondence absent proof of an earlier/later actual receipt) to have reached the recipient 3 days after the date on the letter, adjusted to the next business day if that falls on a weekend/holiday. 21.11.2026 + 3 days = 24.11.2026 (Tuesday), a normal business day in NW, so Zugang (receipt) is taken as 24.11.2026. The three-month period runs 'ab dem Zugang', i.e. from an event during the day, so under §187 Abs.1 BGB the day of receipt itself (24.11.) is not counted and the period starts on 25.11.2026. Under §188 Abs.2 BGB (2nd alternative), a period of months that begins with an event under §187 Abs.1 ends on the day of the last month whose number corresponds to the day on which the triggering event fell (i.e. the 24th, not the 25th). Three months after November gives February, so the period ends on 24.02.2027. Checking the weekday: 24.11.2026 is a Tuesday; 92 days later (6 remaining days in Nov + 31 Dec + 31 Jan + 24 Feb = 92 days) is 92 mod 7 = 1 day later in the week, i.e. Wednesday. 24.02.2027 is a Wednesday and not a public holiday in NW, so no further shift under §193 BGB is needed. The special cancellation (effective no earlier than 01.01.2027, when the new price starts) must therefore reach Beispielfunk Mobile GmbH by 24.02.2027.\",\"due_date\":\"2027-02-24\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The exact day the customer actually received this letter (Zugang) is not stated; the 24.11.2026 receipt date, and therefore the 24.02.2027 cancellation deadline, is an estimate based on the common 3-day postal-delivery assumption and should be confirmed against the envelope postmark or actual receipt date if available.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Beispielfunk Mobile GmbH",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "BF-7 220 418"
+        },
+        {
+          "label": "Rufnummer",
+          "value": "0160 555 41 27"
+        }
+      ],
+      "amounts": [
+        14.99,
+        16.99
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Special termination right due to unfavorable price increase",
+          "quote": "Für diese Kündigung haben Sie drei Monate Zeit, gerechnet ab dem Zugang dieser Mitteilung; wirksam wird sie frühestens an dem Tag, an dem der neue Preis gilt.",
+          "computation": "The letter is dated Saturday 21.11.2026. German private-sector letters sent by ordinary post are commonly presumed (by analogy to the 3-day rule of §122 Abs.2 AO, applied by courts also to private correspondence absent proof of an earlier/later actual receipt) to have reached the recipient 3 days after the date on the letter, adjusted to the next business day if that falls on a weekend/holiday. 21.11.2026 + 3 days = 24.11.2026 (Tuesday), a normal business day in NW, so Zugang (receipt) is taken as 24.11.2026. The three-month period runs 'ab dem Zugang', i.e. from an event during the day, so under §187 Abs.1 BGB the day of receipt itself (24.11.) is not counted and the period starts on 25.11.2026. Under §188 Abs.2 BGB (2nd alternative), a period of months that begins with an event under §187 Abs.1 ends on the day of the last month whose number corresponds to the day on which the triggering event fell (i.e. the 24th, not the 25th). Three months after November gives February, so the period ends on 24.02.2027. Checking the weekday: 24.11.2026 is a Tuesday; 92 days later (6 remaining days in Nov + 31 Dec + 31 Jan + 24 Feb = 92 days) is 92 mod 7 = 1 day later in the week, i.e. Wednesday. 24.02.2027 is a Wednesday and not a public holiday in NW, so no further shift under §193 BGB is needed. The special cancellation (effective no earlier than 01.01.2027, when the new price starts) must therefore reach Beispielfunk Mobile GmbH by 24.02.2027.",
+          "due_date": "2027-02-24",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The exact day the customer actually received this letter (Zugang) is not stated; the 24.11.2026 receipt date, and therefore the 24.02.2027 cancellation deadline, is an estimate based on the common 3-day postal-delivery assumption and should be confirmed against the envelope postmark or actual receipt date if available."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3855,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1476,
+      "cost_usd": 0.045082399999999995,
+      "duration_ms": 39251,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

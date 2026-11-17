@@ -1,0 +1,94 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"0b334dfeca8f74743e3bf468cb6e3fb44d864f9fc3be8ac54d4ff410c7fe5662\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-relative_business_days-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:59:24+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"sender_name\":\"Wohnbau Beispielgrund eG\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Mitgliedsnummer\",\"value\":\"WB-4402\"},{\"label\":\"Wohnung\",\"value\":\"SW18-EG-R\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Return signed usage agreement (Nutzungsvertrag)\",\"quote\":\"Den unterschriebenen Vertrag benötigen wir innerhalb von 14 Werktagen ab dem Briefdatum zurück.\",\"computation\":\"Letter is dated Wed 18.11.2026 (Briefdatum = anchor, no deemed-delivery rule since sender is a company). Period starts the day after the anchor. Counting 14 Werktage (Mon–Sat, Sundays and public holidays excluded, as stated in the letter): 19.11.(Thu,1), 20.11.(Fri,2), 21.11.(Sat,3), 23.11.(Mon,4), 24.11.(Tue,5), 25.11.(Wed,6), 26.11.(Thu,7), 27.11.(Fri,8), 28.11.(Sat,9), 30.11.(Mon,10), 01.12.(Tue,11), 02.12.(Wed,12), 03.12.(Thu,13), 04.12.(Fri,14). The 14th Werktag is Friday 04.12.2026, which is not a Sunday or holiday, so no further shift is needed.\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "rent_lease",
+      "sender_name": "Wohnbau Beispielgrund eG",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Mitgliedsnummer",
+          "value": "WB-4402"
+        },
+        {
+          "label": "Wohnung",
+          "value": "SW18-EG-R"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Return signed usage agreement (Nutzungsvertrag)",
+          "quote": "Den unterschriebenen Vertrag benötigen wir innerhalb von 14 Werktagen ab dem Briefdatum zurück.",
+          "computation": "Letter is dated Wed 18.11.2026 (Briefdatum = anchor, no deemed-delivery rule since sender is a company). Period starts the day after the anchor. Counting 14 Werktage (Mon–Sat, Sundays and public holidays excluded, as stated in the letter): 19.11.(Thu,1), 20.11.(Fri,2), 21.11.(Sat,3), 23.11.(Mon,4), 24.11.(Tue,5), 25.11.(Wed,6), 26.11.(Thu,7), 27.11.(Fri,8), 28.11.(Sat,9), 30.11.(Mon,10), 01.12.(Tue,11), 02.12.(Wed,12), 03.12.(Thu,13), 04.12.(Fri,14). The 14th Werktag is Friday 04.12.2026, which is not a Sunday or holiday, so no further shift is needed.",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 2438,
+      "cache_read_tokens": 24534,
+      "cache_creation_tokens": 4748,
+      "cost_usd": 0.0482908,
+      "duration_ms": 23992,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 14,
+            "unit": "werktage",
+            "anchor": "document_date",
+            "nature": "other",
+            "shift_rule": "auto",
+            "legal_basis": "Nutzungsvertrag Rückgabe",
+            "text": "Den unterschriebenen Vertrag benötigen wir innerhalb von 14 Werktagen ab dem Briefdatum zurück."
+          },
+          "document_date": "2026-11-18",
+          "sender_kind": "company",
+          "sender_name": "Wohnbau Beispielgrund eG",
+          "region": "NW",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":\"2026-12-04\",\"weekday\":\"Friday\",\"summary\":\"14 working days (Mon–Sat) after the letter's date (Wed 18 Nov 2026) is Fri 4 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Wed 18 Nov 2026\",\"date\":\"2026-11-18\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"14 working days (Mon–Sat) later: Fri 4 Dec 2026\",\"date\":\"2026-12-04\",\"rule_id\":\"unit_werktage\",\"citation\":\"BGH VIII ZR 206/04\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"unit_werktage\",\"title\":\"Counting working days (Werktage)\",\"citation\":\"BGH VIII ZR 206/04\",\"url\":\"https://dejure.org/dienste/vernetzung/rechtsprechung?Gericht=BGH&Datum=27.04.2005&Aktenzeichen=VIII+ZR+206/04\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-18\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE83 3705 0198 0005 5363 60"
+        },
+        "result": "{\"iban\":\"DE83 3705 0198 0005 5363 60\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005536360\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

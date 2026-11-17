@@ -1,0 +1,440 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"258c9eb533aae0c2414271a7fda8681ea1fb736426b2999a45141753d332ff7e\",\"question\":\"How much was the broadcasting fee for October to December 2026, and when was it due?\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "doc_f9b3481wq2bf",
+      "doc_hjxvf5t7dqnw"
+    ],
+    "prompt_head": "The person asks:\nHow much was the broadcasting fee for October to December 2026, and when was it due?\n",
+    "recorded_at": "2026-11-24T13:39:10+00:00",
+    "repeat": 3,
+    "commit": "84270dc0",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "The broadcasting fee (Rundfunkbeitrag) for October–December 2026 was **€55.08**, due **Sun 15 Nov 2026** [item:itm_xna048xewpad].\n\n- Payment: 55.08 € [item:itm_xna048xewpad]\n- Due date: 15 Nov 2026 [item:itm_xna048xewpad]\n- It was to be sent by 12 Nov 2026 to allow for transfer time [item:itm_xna048xewpad]\n- It's a quarterly bill that repeats every 3 months, with the next due date 15 Feb 2027 [item:itm_xna048xewpad]\n\nNote: Separately, there's also a letter claiming to be a \"Zahlungszentrale\" demanding €254.35 in broadcasting fee arrears — that letter shows scam signs (foreign IBAN, hidden text) and should **not** be paid; verify with Beitragsservice Musterstadt directly using contact details you already have [doc:doc_hjxvf5t7dqnw].",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 522,
+      "cache_read_tokens": 20510,
+      "cache_creation_tokens": 4157,
+      "cost_usd": 0.025962,
+      "duration_ms": 10757,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Rundfunkbeitrag broadcasting fee"
+      },
+      "tool_use_id": "toolu_01WhMTQcosvNiSu3sqkiooFx"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_f9b3481wq2bf\",\"kind\":\"broadcasting_fee\",\"date\":\"2026-09-15\",\"party_id\":\"pty_r9kabd06mafy\"},{\"id\":\"doc_hjxvf5t7dqnw\",\"kind\":\"dunning\",\"date\":\"2026-09-26\",\"party_id\":\"pty_dbn2zg2kxj4d\",\"scam_warning\":true}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_f9b3481wq2bf\":{\"title\":\"Rundfunkbeitrag payment request from Beitragsservice Musterstadt\",\"snippet\":\"Beitragsservice Musterstadt is billing Sam Rivera €55.08 for the broadcasting fee (Rundfunkbeitrag) covering October to…\"},\"pty_r9kabd06mafy\":{\"name\":\"Beitragsservice Musterstadt\"},\"doc_hjxvf5t7dqnw\":{\"title\":\"Letter claiming to be from a \\\"Zahlungszentrale\\\" demanding €254.35 within 48 hours for broadcasting fee arrears\",\"snippet\":\"…Sam Rivera owes €254.35 in broadcasting fee (Rundfunkbeitrag) arrears, surcharges and processing fees, and demands…\",\"scam_signs\":[\"The letter contains hidden text that you can't see on the page.\",\"The payee IBAN (LT08...) is Lithuanian, not German — a foreign account for a German public broadcasting fee is a strong scam indicator.\",\"This document should be verified as potentially fraudulent before taking any action or making any payment.\",\"Possible scam: “Rundfunk-Beitragsservice Zahlungszentrale” asks you to pay to LT08 3999 0000 0543 9871, but “Beitragsservice Musterstadt”, which has a similar name, used DE57 1234 8900 0055 0818 36 before. Check the sender using contact details you already have before paying.\"]},\"pty_dbn2zg2kxj4d\":{\"name\":\"Rundfunk-Beitragsservice Zahlungszentrale\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01WhMTQcosvNiSu3sqkiooFx"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_document",
+      "input": {
+        "doc_id": "doc_f9b3481wq2bf"
+      },
+      "tool_use_id": "toolu_01Jaud8psyXv6L5JqZZ146zN"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"id\":\"doc_f9b3481wq2bf\",\"kind\":\"broadcasting_fee\",\"date\":\"2026-09-15\",\"status\":\"processed\",\"direction\":\"incoming\",\"received_date\":\"2026-09-17\",\"language\":\"de\",\"party_id\":\"pty_r9kabd06mafy\",\"case_id\":\"cas_sqktxa39qbv5\",\"urgency\":\"normal\",\"pages\":1,\"payment\":{\"iban_valid\":true},\"items\":[{\"id\":\"itm_xna048xewpad\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-11-15\",\"send_by\":\"2026-11-12\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"home\",\"party_id\":\"pty_r9kabd06mafy\",\"doc_id\":\"doc_f9b3481wq2bf\",\"repeats\":\"every 3 months on the 15th\",\"following_due_date\":\"2027-02-15\",\"amount\":55.08,\"currency\":\"EUR\"}],\"contracts\":[]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_xna048xewpad\":{\"title\":\"Pay the broadcasting fee (Rundfunkbeitrag)\",\"action\":\"Transfer €55.08 to the Beitragsservice Musterstadt account by the due date, using your Beitragsnummer as the payment reference.\"},\"pty_r9kabd06mafy\":{\"name\":\"Beitragsservice Musterstadt\"},\"doc_f9b3481wq2bf\":{\"title\":\"Rundfunkbeitrag payment request from Beitragsservice Musterstadt\",\"summary\":\"Beitragsservice Musterstadt is billing Sam Rivera €55.08 for the broadcasting fee (Rundfunkbeitrag) covering October to December 2026, due on 15 November 2026, under Beitragsnummer 512 345 678.\",\"explanation\":\"This is a routine quarterly bill for the German broadcasting fee (Rundfunkbeitrag), which is owed for every household. The monthly rate of €18.36 is billed every three months in advance, so pay the €55.08 by the due date shown to avoid a reminder or enforcement action. You can pay by bank transfer using the IBAN given, or set up a direct debit mandate to avoid future manual payments. If you receive certain social benefits (e.g. BAföG), you may apply for an exemption from the fee.\",\"key_facts\":[{\"label\":\"Monthly fee (Monatsbeitrag)\",\"value\":\"18,36 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Billing period (Zeitraum)\",\"value\":\"10.2026 – 12.2026\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Amount due (Betrag)\",\"value\":\"55,08 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Due date (fällig am)\",\"value\":\"15.11.2026\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Beitragsnummer\",\"value\":\"512 345 678\",\"page\":1,\"grounding\":\"verified\"}],\"references\":[{\"label\":\"Beitragsnummer\",\"value\":\"512 345 678\"}],\"payment\":{\"iban\":\"DE57123489000055081836\",\"payee\":\"Beitragsservice Musterstadt\",\"reference\":\"512345678\"},\"text\":\"=== Page 1 ===\\nBeitragsservice Musterstadt\\nRundfunkbeitrag\\n\\nBeitragsnummer 512 345 678\\nService   0123 9900-500\\nBeitragsservice Musterstadt · 12399 Musterstadt   15.09.2026\\nDatum\\n\\nHerrn\\nSam Rivera\\nBeispielweg 5\\n12345 Musterstadt\\n\\nZahlungsaufforderung Rundfunkbeitrag\\nBeitragsnummer 512 345 678\\n\\nSehr geehrter Herr Rivera,\\n\\nfür Ihre Wohnung Beispielweg 5, 12345 Musterstadt, sind Sie unter der oben genannten\\nBeitragsnummer angemeldet. Der Rundfunkbeitrag ist monatlich geschuldet und jeweils in der Mitte\\neines Dreimonatszeitraums für drei Monate zu zahlen (§ 7 Abs. 3 Rundfunkbeitragsstaatsvertrag).\\n\\nZeitraum   Monatsbeitrag   Betrag   fällig am\\n\\n10.2026 – 12.2026   18,36 €   55,08 €   15.11.2026\\n\\nDer Betrag von 55,08 € für den Zeitraum 10.2026 bis 12.2026 ist fällig am 15.11.2026.\\n\\nSo zahlen Sie per Überweisung\\n\\nEmpfänger: Beitragsservice Musterstadt\\nIBAN: DE57 1234 8900 0055 0818 36 · BIC: BLBADEM1XXX\\nVerwendungszweck: 512345678 (bitte nur die Beitragsnummer angeben)\\n\\nBequemer geht es mit dem SEPA-Lastschriftverfahren: Erteilen Sie uns ein Mandat unter\\nrundfunkbeitrag-musterstadt.example – dann müssen Sie an keine Zahlung mehr denken. Wer\\nbestimmte Sozialleistungen erhält, z. B. BAföG, kann sich auf Antrag von der Beitragspflicht befreien\\nlassen.\\n\\nVorsicht vor betrügerischen Schreiben\\n\\nWir fordern Sie niemals auf, Beiträge auf ein ausländisches Konto zu überweisen, und wir drohen nicht mit\\neiner Pfändung innerhalb weniger Stunden. Unsere einzige Bankverbindung finden Sie in diesem\\nSchreiben.\\n\\nMit freundlichen Grüßen\\nIhr Beitragsservice Musterstadt\\n\\nDieses Schreiben wurde maschinell erstellt und ist ohne Unterschrift gültig.\\n\\nBeitragsservice Musterstadt   Service: 0123 9900-500   Beispiel Landesbank\\nEinrichtung der Rundfunkanstalten   Mo–Fr 7–19 Uhr   IBAN DE57 1234 8900 0055 0818 36\\n12399 Musterstadt   www.rundfunkbeitrag-musterstadt.example   BIC BLBADEM1XXX\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01Jaud8psyXv6L5JqZZ146zN"
+    },
+    {
+      "type": "text",
+      "text": "The"
+    },
+    {
+      "type": "text",
+      "text": " bro"
+    },
+    {
+      "type": "text",
+      "text": "adcas"
+    },
+    {
+      "type": "text",
+      "text": "ting f"
+    },
+    {
+      "type": "text",
+      "text": "ee (R"
+    },
+    {
+      "type": "text",
+      "text": "undfunkb"
+    },
+    {
+      "type": "text",
+      "text": "eitrag) for October–"
+    },
+    {
+      "type": "text",
+      "text": "December 2026"
+    },
+    {
+      "type": "text",
+      "text": " was **€55"
+    },
+    {
+      "type": "text",
+      "text": ".08"
+    },
+    {
+      "type": "text",
+      "text": "**, due **"
+    },
+    {
+      "type": "text",
+      "text": "Sun"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "15 Nov 2026"
+    },
+    {
+      "type": "text",
+      "text": "** [item"
+    },
+    {
+      "type": "text",
+      "text": ":it"
+    },
+    {
+      "type": "text",
+      "text": "m_xna048"
+    },
+    {
+      "type": "text",
+      "text": "x"
+    },
+    {
+      "type": "text",
+      "text": "ew"
+    },
+    {
+      "type": "text",
+      "text": "p"
+    },
+    {
+      "type": "text",
+      "text": "ad"
+    },
+    {
+      "type": "text",
+      "text": "].\n\n-"
+    },
+    {
+      "type": "text",
+      "text": " Payment"
+    },
+    {
+      "type": "text",
+      "text": ": "
+    },
+    {
+      "type": "text",
+      "text": "55"
+    },
+    {
+      "type": "text",
+      "text": ".08 €"
+    },
+    {
+      "type": "text",
+      "text": " ["
+    },
+    {
+      "type": "text",
+      "text": "item:itm_xna048"
+    },
+    {
+      "type": "text",
+      "text": "xewpad]"
+    },
+    {
+      "type": "text",
+      "text": "\n- Due"
+    },
+    {
+      "type": "text",
+      "text": " date: 15 Nov"
+    },
+    {
+      "type": "text",
+      "text": " 2026 [item:it"
+    },
+    {
+      "type": "text",
+      "text": "m_xna048xewp"
+    },
+    {
+      "type": "text",
+      "text": "ad]\n- It was to"
+    },
+    {
+      "type": "text",
+      "text": " be s"
+    },
+    {
+      "type": "text",
+      "text": "ent by 12"
+    },
+    {
+      "type": "text",
+      "text": " Nov 2026"
+    },
+    {
+      "type": "text",
+      "text": " to"
+    },
+    {
+      "type": "text",
+      "text": " all"
+    },
+    {
+      "type": "text",
+      "text": "ow for"
+    },
+    {
+      "type": "text",
+      "text": " transfer time"
+    },
+    {
+      "type": "text",
+      "text": " [item:itm_xna"
+    },
+    {
+      "type": "text",
+      "text": "048xewpad]"
+    },
+    {
+      "type": "text",
+      "text": "\n- It's"
+    },
+    {
+      "type": "text",
+      "text": " a qu"
+    },
+    {
+      "type": "text",
+      "text": "arterly b"
+    },
+    {
+      "type": "text",
+      "text": "ill that repeats every 3"
+    },
+    {
+      "type": "text",
+      "text": " months, with the next due date"
+    },
+    {
+      "type": "text",
+      "text": " 15 Fe"
+    },
+    {
+      "type": "text",
+      "text": "b 2027 [item:"
+    },
+    {
+      "type": "text",
+      "text": "itm_xna048xew"
+    },
+    {
+      "type": "text",
+      "text": "pad]\n\nNote:"
+    },
+    {
+      "type": "text",
+      "text": " Separately, there's also"
+    },
+    {
+      "type": "text",
+      "text": " a let"
+    },
+    {
+      "type": "text",
+      "text": "ter cla"
+    },
+    {
+      "type": "text",
+      "text": "iming to be a"
+    },
+    {
+      "type": "text",
+      "text": " \"Z"
+    },
+    {
+      "type": "text",
+      "text": "ahlungsz"
+    },
+    {
+      "type": "text",
+      "text": "ent"
+    },
+    {
+      "type": "text",
+      "text": "r"
+    },
+    {
+      "type": "text",
+      "text": "ale\" demanding €254"
+    },
+    {
+      "type": "text",
+      "text": ".35"
+    },
+    {
+      "type": "text",
+      "text": " in broadcasting f"
+    },
+    {
+      "type": "text",
+      "text": "ee arrears — that"
+    },
+    {
+      "type": "text",
+      "text": " letter shows sc"
+    },
+    {
+      "type": "text",
+      "text": "am sign"
+    },
+    {
+      "type": "text",
+      "text": "s (fo"
+    },
+    {
+      "type": "text",
+      "text": "reign I"
+    },
+    {
+      "type": "text",
+      "text": "BAN, hidden text"
+    },
+    {
+      "type": "text",
+      "text": ") and should **"
+    },
+    {
+      "type": "text",
+      "text": "not** be paid;"
+    },
+    {
+      "type": "text",
+      "text": " ver"
+    },
+    {
+      "type": "text",
+      "text": "ify with Beit"
+    },
+    {
+      "type": "text",
+      "text": "ragsservice Musterst"
+    },
+    {
+      "type": "text",
+      "text": "adt direct"
+    },
+    {
+      "type": "text",
+      "text": "ly using contact details you"
+    },
+    {
+      "type": "text",
+      "text": " already have [doc:do"
+    },
+    {
+      "type": "text",
+      "text": "c_hj"
+    },
+    {
+      "type": "text",
+      "text": "x"
+    },
+    {
+      "type": "text",
+      "text": "v"
+    },
+    {
+      "type": "text",
+      "text": "f"
+    },
+    {
+      "type": "text",
+      "text": "5"
+    },
+    {
+      "type": "text",
+      "text": "t"
+    },
+    {
+      "type": "text",
+      "text": "7"
+    },
+    {
+      "type": "text",
+      "text": "d"
+    },
+    {
+      "type": "text",
+      "text": "q"
+    },
+    {
+      "type": "text",
+      "text": "n"
+    },
+    {
+      "type": "text",
+      "text": "w"
+    },
+    {
+      "type": "text",
+      "text": "]."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "The broadcasting fee (Rundfunkbeitrag) for October–December 2026 was **€55.08**, due **Sun 15 Nov 2026** [item:itm_xna048xewpad].\n\n- Payment: 55.08 € [item:itm_xna048xewpad]\n- Due date: 15 Nov 2026 [item:itm_xna048xewpad]\n- It was to be sent by 12 Nov 2026 to allow for transfer time [item:itm_xna048xewpad]\n- It's a quarterly bill that repeats every 3 months, with the next due date 15 Feb 2027 [item:itm_xna048xewpad]\n\nNote: Separately, there's also a letter claiming to be a \"Zahlungszentrale\" demanding €254.35 in broadcasting fee arrears — that letter shows scam signs (foreign IBAN, hidden text) and should **not** be paid; verify with Beitragsservice Musterstadt directly using contact details you already have [doc:doc_hjxvf5t7dqnw].",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 522,
+          "cache_read_tokens": 20510,
+          "cache_creation_tokens": 4157,
+          "cost_usd": 0.025962,
+          "duration_ms": 10757,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

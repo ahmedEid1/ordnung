@@ -1,0 +1,80 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"987c0eb68d6c91da313b135cd99021bbf0eeb9d8ac1ed3ca284388c19abf4611\",\"mode\":\"text\",\"region\":\"SL\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-mieterhoehung-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Saarland (SL), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> t",
+    "recorded_at": "2026-11-24T13:00:46+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[395,434.5],\"contract\":null,\"document_date\":\"2026-11-18\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Send back signed consent to the rent increase\",\"quote\":\"Ihre Antwort benötigen wir bis Ende Januar 2027.\",\"computation\":\"The letter was personally delivered by the cooperative's messenger (Einwurf in den Briefkasten) on 18.11.2026 at 8:50, so Zugang (actual receipt) is 18.11.2026 itself - no 3/4-day fiction needed since actual delivery day is stated. Under § 558b Abs. 2 BGB, consent to a § 558 rent increase demand must be declared by the end of the second calendar month following receipt. First calendar month after receipt = December 2026; second calendar month = January 2027 → period ends 31.01.2027 (Ablauf des zweiten Kalendermonats). 31.01.2027 is a Sunday. Since this is a declaration that must reach the landlord, § 193 BGB shifts the end of the period to the next working day: Monday 01.02.2027. This matches the letter's own wording 'bis Ende Januar 2027' read as the statutory deadline, extended by one day for the weekend.\",\"due_date\":\"2027-02-01\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"New rent (434,50 €) takes effect, if consent is given\",\"quote\":\"das Nutzungsentgelt ab dem 01.02.2027 um 10 % auf 434,50 € zu erhöhen\",\"computation\":\"The letter states the increase is to take effect from a fixed calendar date given explicitly as 01.02.2027; this date is used as written and does not depend on any period calculation.\",\"due_date\":\"2027-02-01\",\"confidence\":\"high\",\"amount\":434.5}],\"kind\":\"rent_lease\",\"references\":[{\"label\":\"Mitgliedsnummer\",\"value\":\"4471-B\"},{\"label\":\"Nutzungsvertrag\",\"value\":\"NV 12-0087\"}],\"remedy_type\":\"none\",\"sender_name\":\"Beispielsaar Wohnungsgenossenschaft eG\",\"warnings\":[\"The letter itself says the reply is needed 'bis Ende Januar 2027' (31.01.2027), but that day is a Sunday; the statutory consent period under § 558b BGB combined with § 193 BGB actually runs through Monday 01.02.2027 - sending the signed consent on 01.02.2027 should still be timely, but replying by 31.01.2027 as literally stated is the safer course.\",\"This is a request for the tenant's voluntary consent to a rent increase under § 558 BGB, not an administrative decision; if consent is withheld or not given by the deadline, the cooperative would need to sue for consent (Zustimmungsklage) rather than the tenant having to object - the person is not obliged to agree, only to respond.\"]}",
+    "data": {
+      "amounts": [
+        395,
+        434.5
+      ],
+      "contract": null,
+      "document_date": "2026-11-18",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Send back signed consent to the rent increase",
+          "quote": "Ihre Antwort benötigen wir bis Ende Januar 2027.",
+          "computation": "The letter was personally delivered by the cooperative's messenger (Einwurf in den Briefkasten) on 18.11.2026 at 8:50, so Zugang (actual receipt) is 18.11.2026 itself - no 3/4-day fiction needed since actual delivery day is stated. Under § 558b Abs. 2 BGB, consent to a § 558 rent increase demand must be declared by the end of the second calendar month following receipt. First calendar month after receipt = December 2026; second calendar month = January 2027 → period ends 31.01.2027 (Ablauf des zweiten Kalendermonats). 31.01.2027 is a Sunday. Since this is a declaration that must reach the landlord, § 193 BGB shifts the end of the period to the next working day: Monday 01.02.2027. This matches the letter's own wording 'bis Ende Januar 2027' read as the statutory deadline, extended by one day for the weekend.",
+          "due_date": "2027-02-01",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "New rent (434,50 €) takes effect, if consent is given",
+          "quote": "das Nutzungsentgelt ab dem 01.02.2027 um 10 % auf 434,50 € zu erhöhen",
+          "computation": "The letter states the increase is to take effect from a fixed calendar date given explicitly as 01.02.2027; this date is used as written and does not depend on any period calculation.",
+          "due_date": "2027-02-01",
+          "confidence": "high",
+          "amount": 434.5
+        }
+      ],
+      "kind": "rent_lease",
+      "references": [
+        {
+          "label": "Mitgliedsnummer",
+          "value": "4471-B"
+        },
+        {
+          "label": "Nutzungsvertrag",
+          "value": "NV 12-0087"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Beispielsaar Wohnungsgenossenschaft eG",
+      "warnings": [
+        "The letter itself says the reply is needed 'bis Ende Januar 2027' (31.01.2027), but that day is a Sunday; the statutory consent period under § 558b BGB combined with § 193 BGB actually runs through Monday 01.02.2027 - sending the signed consent on 01.02.2027 should still be timely, but replying by 31.01.2027 as literally stated is the safer course.",
+        "This is a request for the tenant's voluntary consent to a rent increase under § 558 BGB, not an administrative decision; if consent is withheld or not given by the deadline, the cooperative would need to sue for consent (Zustimmungsklage) rather than the tenant having to object - the person is not obliged to agree, only to respond."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 5295,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1721,
+      "cost_usd": 0.060944000000000005,
+      "duration_ms": 53144,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

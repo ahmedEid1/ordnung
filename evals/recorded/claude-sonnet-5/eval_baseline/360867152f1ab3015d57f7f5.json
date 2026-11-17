@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"07a9ccbd2258f4dc052bae9a2033cbbbe73f4e2fdb560e000bd8ff0587e1f25b\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-missing_date-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:03:52+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[240],\"contract\":null,\"document_date\":null,\"items\":[{\"kind\":\"payment\",\"title\":\"Pay for professional cleaning after move-out\",\"quote\":\"Please pay this amount within 14 days of receiving this letter.\",\"computation\":\"The letter sets a 14-day payment period starting from the day the tenant receives the letter (§§ 187, 188 BGB: the day of receipt itself is not counted; the period then runs 14 calendar days and would be extended to the next working day under § 193 BGB if it fell on a weekend/holiday). However, the letter carries no printed date and does not state a separate posting date (\\\"zur Post gegeben am\\\"), so the date of receipt cannot be determined. Without a known start day, the exact calendar due date cannot be computed; today (2026-11-24) is only the date the task is being processed, not necessarily the date of receipt, so it cannot safely be used as the start of the period.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":240}],\"kind\":\"invoice\",\"references\":[{\"label\":\"Tenancy\",\"value\":\"BKL-0418\"}],\"remedy_type\":\"none\",\"sender_name\":\"Beispielkey Lettings GmbH\",\"warnings\":[\"The letter has no printed date anywhere (no document date, no \\\"zur Post gegeben am\\\" statement), so the start of the 14-day payment period cannot be determined and the exact due date could not be computed; the person should check the envelope postmark or ask the landlord for the letter's date to establish the correct deadline.\",\"The letter links the deposit refund to this payment ('Your deposit will be returned in full once the payment has arrived.'); the person may want to verify the cleaning cost and the clause in the tenancy agreement justifying this charge before paying, as deductions for ordinary end-of-tenancy cleaning are often disputed under German tenancy law.\"]}",
+    "data": {
+      "amounts": [
+        240
+      ],
+      "contract": null,
+      "document_date": null,
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay for professional cleaning after move-out",
+          "quote": "Please pay this amount within 14 days of receiving this letter.",
+          "computation": "The letter sets a 14-day payment period starting from the day the tenant receives the letter (§§ 187, 188 BGB: the day of receipt itself is not counted; the period then runs 14 calendar days and would be extended to the next working day under § 193 BGB if it fell on a weekend/holiday). However, the letter carries no printed date and does not state a separate posting date (\"zur Post gegeben am\"), so the date of receipt cannot be determined. Without a known start day, the exact calendar due date cannot be computed; today (2026-11-24) is only the date the task is being processed, not necessarily the date of receipt, so it cannot safely be used as the start of the period.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 240
+        }
+      ],
+      "kind": "invoice",
+      "references": [
+        {
+          "label": "Tenancy",
+          "value": "BKL-0418"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Beispielkey Lettings GmbH",
+      "warnings": [
+        "The letter has no printed date anywhere (no document date, no \"zur Post gegeben am\" statement), so the start of the 14-day payment period cannot be determined and the exact due date could not be computed; the person should check the envelope postmark or ask the landlord for the letter's date to establish the correct deadline.",
+        "The letter links the deposit refund to this payment ('Your deposit will be returned in full once the payment has arrived.'); the person may want to verify the cleaning cost and the clause in the tenancy agreement justifying this charge before paying, as deductions for ordinary end-of-tenancy cleaning are often disputed under German tenancy law."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1606,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1344,
+      "cost_usd": 0.022546,
+      "duration_ms": 18221,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

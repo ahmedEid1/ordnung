@@ -1,0 +1,85 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"943e82b648fa69277110414b1b760c4c886d89b2c73e945c96d2dfd9ee9cc7c1\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-invoice_relative-L2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:41:41+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Klavierbau Muster & Söhne\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Rechnung Nr.\",\"value\":\"KB 26-517\"}],\"amounts\":[346.29],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay piano service invoice\",\"quote\":\"Wir bitten Sie, die Rechnung binnen 20 Tagen ab Rechnungsdatum zu bezahlen.\",\"computation\":\"This is an invoice from a private company (not a public authority), so no deemed-delivery rule applies; the period runs from the printed invoice date itself. Anchor: document date 2026-11-19 (Thursday). Under § 187 Abs. 1 BGB the day of the event (19.11.) is not counted, so counting starts 2026-11-20. Adding 20 days (§ 188 Abs. 1 BGB) lands on 2026-12-09 (Wednesday). That day is not a Saturday, Sunday or public holiday in NW, so no shift under § 193 BGB is needed. Final due date: 2026-12-09.\",\"due_date\":\"2026-12-09\",\"confidence\":\"high\",\"amount\":346.29}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Klavierbau Muster & Söhne",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Rechnung Nr.",
+          "value": "KB 26-517"
+        }
+      ],
+      "amounts": [
+        346.29
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay piano service invoice",
+          "quote": "Wir bitten Sie, die Rechnung binnen 20 Tagen ab Rechnungsdatum zu bezahlen.",
+          "computation": "This is an invoice from a private company (not a public authority), so no deemed-delivery rule applies; the period runs from the printed invoice date itself. Anchor: document date 2026-11-19 (Thursday). Under § 187 Abs. 1 BGB the day of the event (19.11.) is not counted, so counting starts 2026-11-20. Adding 20 days (§ 188 Abs. 1 BGB) lands on 2026-12-09 (Wednesday). That day is not a Saturday, Sunday or public holiday in NW, so no shift under § 193 BGB is needed. Final due date: 2026-12-09.",
+          "due_date": "2026-12-09",
+          "confidence": "high",
+          "amount": 346.29
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 2179,
+      "cache_read_tokens": 24430,
+      "cache_creation_tokens": 4581,
+      "cost_usd": 0.045011999999999996,
+      "duration_ms": 38446,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 20,
+            "unit": "days",
+            "anchor": "document_date",
+            "nature": "payment",
+            "shift_rule": "auto",
+            "legal_basis": "§§ 187, 193 BGB",
+            "text": "Wir bitten Sie, die Rechnung binnen 20 Tagen ab Rechnungsdatum zu bezahlen."
+          },
+          "document_date": "2026-11-19",
+          "sender_kind": "company",
+          "sender_name": "Klavierbau Muster & Söhne",
+          "region": "NW",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":\"2026-12-09\",\"weekday\":\"Wednesday\",\"send_by\":\"2026-12-08\",\"summary\":\"20 days after the letter's date (Thu 19 Nov 2026) is Wed 9 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Thu 19 Nov 2026\",\"date\":\"2026-11-19\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"20 days later: Wed 9 Dec 2026\",\"date\":\"2026-12-09\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Wed 9 Dec 2026 is a working day, so it stays\",\"date\":\"2026-12-09\",\"rule_id\":\"bgb_193\",\"citation\":\"§ 193 BGB\"},{\"label\":\"Send by Tue 8 Dec 2026 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2026-12-08\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"bgb_193\",\"title\":\"Weekend and holiday shift (private law)\",\"citation\":\"§ 193 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__193.html\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-19\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"recipient_region: a payment to a company or person is made where the payer lives (§§ 269, 270 Abs. 4 BGB), so that Land's holidays apply\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

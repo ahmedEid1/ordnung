@@ -1,0 +1,72 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"ff561927ce70e45fbcc1624830269a36720d609b35dc6455d146be3442675792\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-dunning_fixed-N1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:21:08+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Möbelhaus Beispielwohnen KG\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Auftrag\",\"value\":\"BW-26-30871\"},{\"label\":\"Kundennummer\",\"value\":\"K-881 204\"}],\"amounts\":[690,5,695],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding balance for dining furniture (2nd reminder)\",\"quote\":\"Wir bitten Sie dringend, den Gesamtbetrag bis Freitag, 11.12.2026 zu begleichen.\",\"computation\":\"The letter explicitly states the payment deadline as Friday, 11.12.2026. Checked: 11 December 2026 does fall on a Friday, so no weekend/holiday adjustment is needed. The due date is taken directly as printed.\",\"due_date\":\"2026-12-11\",\"confidence\":\"high\",\"amount\":695}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is the second reminder (2. Mahnung) from a private furniture retailer, not a public authority; if the original invoice or delivery (15.10.2026) is disputed, double-check the goods were actually received as billed before paying.\",\"The letter threatens to hand the claim to a debt collection agency (Inkassounternehmen) with costs at the recipient's expense if payment is not received by the deadline — this is a standard but pressuring dunning tactic; verify the amount and bank details independently before transferring money.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Möbelhaus Beispielwohnen KG",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Auftrag",
+          "value": "BW-26-30871"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "K-881 204"
+        }
+      ],
+      "amounts": [
+        690,
+        5,
+        695
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding balance for dining furniture (2nd reminder)",
+          "quote": "Wir bitten Sie dringend, den Gesamtbetrag bis Freitag, 11.12.2026 zu begleichen.",
+          "computation": "The letter explicitly states the payment deadline as Friday, 11.12.2026. Checked: 11 December 2026 does fall on a Friday, so no weekend/holiday adjustment is needed. The due date is taken directly as printed.",
+          "due_date": "2026-12-11",
+          "confidence": "high",
+          "amount": 695
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is the second reminder (2. Mahnung) from a private furniture retailer, not a public authority; if the original invoice or delivery (15.10.2026) is disputed, double-check the goods were actually received as billed before paying.",
+        "The letter threatens to hand the claim to a debt collection agency (Inkassounternehmen) with costs at the recipient's expense if payment is not received by the deadline — this is a standard but pressuring dunning tactic; verify the amount and bank details independently before transferring money."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2324,
+      "cache_read_tokens": 7784,
+      "cache_creation_tokens": 3221,
+      "cost_usd": 0.037688799999999995,
+      "duration_ms": 22834,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

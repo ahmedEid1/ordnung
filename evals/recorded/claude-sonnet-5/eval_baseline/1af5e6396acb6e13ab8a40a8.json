@@ -1,0 +1,75 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"ee1bfb982144e4f8566c21907b98814a1fafecc336872963440e67d4cde468b8\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-L2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T12:21:57+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Agentur für Arbeit Musterlimburg (Bundesagentur für Arbeit)\",\"document_date\":\"2026-11-20\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Deadline to file Widerspruch against the benefit decision\",\"quote\":\"Gegen den Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden, schriftlich oder zur Niederschrift bei der Agentur für Arbeit Musterlimburg, Agenturring 6, 65549 Musterlimburg. Der Bescheid gilt mit dem vierten Tag nach dem angegebenen Versandtag als bekannt gegeben.\",\"computation\":\"Letter was 'Versandt am Samstag, 21.11.2026'. The letter itself defines deemed notification ('Bekanntgabe') as the 4th day after the stated dispatch day (deviating from the usual 3rd-day rule of §37 Abs.2 SGB X, so the letter's own stated rule is applied): 21.11.2026 + 4 days = 25.11.2026 (a Wednesday, so no weekend/holiday shift is needed for this step). For the one-month Widerspruchsfrist, §187 Abs.1 BGB applies: the day of the triggering event (Bekanntgabe, 25.11.2026) is not counted itself, and per §188 Abs.2 BGB the one-month period ends on the day of the following month bearing the same calendar number as the day the event fell on, i.e. 25.12.2026. However 25.12.2026 is 1. Weihnachtstag (public holiday in NRW), 26.12.2026 (2. Weihnachtstag) is also a holiday and additionally falls on a Saturday, and 27.12.2026 is a Sunday. Under §193 BGB, when the last day of a period falls on a Saturday, Sunday or public holiday, it is extended to the next working day, which is Monday, 28.12.2026.\",\"due_date\":\"2026-12-28\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Register as unemployed (Arbeitslosmeldung) on the first day of unemployment\",\"quote\":\"Melden Sie sich bitte am ersten Tag der Arbeitslosigkeit persönlich oder online arbeitslos, falls noch nicht geschehen.\",\"computation\":\"The letter approves Arbeitslosengeld 'ab dem 01.01.2027', implying the first day of unemployment is 01.01.2027. The letter instructs registration (in person or online) on that first day, 'falls noch nicht geschehen' (if not already done). 01.01.2027 is Neujahr (a public holiday, and also a Friday), so in-person registration at the office would not be possible that day, but online registration remains available regardless of office hours; the due date is therefore kept at the stated first day of unemployment.\",\"due_date\":\"2027-01-01\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"references\":[{\"label\":\"Kundennummer\",\"value\":\"418D552907\"}],\"amounts\":[48.71],\"warnings\":[\"The letter's stated rule that the decision is deemed notified on the 4th day after dispatch deviates from the usual statutory 3rd-day rule (§37 Abs.2 SGB X); this printed rule was applied as given since it is the agency's own explicit statement, but it is worth double-checking against the actual envelope postmark/delivery date if precision matters.\",\"The exact start date of unemployment (used to determine the registration task's due date) is inferred from the benefit start date (01.01.2027) rather than stated explicitly as 'first day of unemployment' in the letter, so this should be confirmed against the person's actual last working day.\"]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Agentur für Arbeit Musterlimburg (Bundesagentur für Arbeit)",
+      "document_date": "2026-11-20",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Deadline to file Widerspruch against the benefit decision",
+          "quote": "Gegen den Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden, schriftlich oder zur Niederschrift bei der Agentur für Arbeit Musterlimburg, Agenturring 6, 65549 Musterlimburg. Der Bescheid gilt mit dem vierten Tag nach dem angegebenen Versandtag als bekannt gegeben.",
+          "computation": "Letter was 'Versandt am Samstag, 21.11.2026'. The letter itself defines deemed notification ('Bekanntgabe') as the 4th day after the stated dispatch day (deviating from the usual 3rd-day rule of §37 Abs.2 SGB X, so the letter's own stated rule is applied): 21.11.2026 + 4 days = 25.11.2026 (a Wednesday, so no weekend/holiday shift is needed for this step). For the one-month Widerspruchsfrist, §187 Abs.1 BGB applies: the day of the triggering event (Bekanntgabe, 25.11.2026) is not counted itself, and per §188 Abs.2 BGB the one-month period ends on the day of the following month bearing the same calendar number as the day the event fell on, i.e. 25.12.2026. However 25.12.2026 is 1. Weihnachtstag (public holiday in NRW), 26.12.2026 (2. Weihnachtstag) is also a holiday and additionally falls on a Saturday, and 27.12.2026 is a Sunday. Under §193 BGB, when the last day of a period falls on a Saturday, Sunday or public holiday, it is extended to the next working day, which is Monday, 28.12.2026.",
+          "due_date": "2026-12-28",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Register as unemployed (Arbeitslosmeldung) on the first day of unemployment",
+          "quote": "Melden Sie sich bitte am ersten Tag der Arbeitslosigkeit persönlich oder online arbeitslos, falls noch nicht geschehen.",
+          "computation": "The letter approves Arbeitslosengeld 'ab dem 01.01.2027', implying the first day of unemployment is 01.01.2027. The letter instructs registration (in person or online) on that first day, 'falls noch nicht geschehen' (if not already done). 01.01.2027 is Neujahr (a public holiday, and also a Friday), so in-person registration at the office would not be possible that day, but online registration remains available regardless of office hours; the due date is therefore kept at the stated first day of unemployment.",
+          "due_date": "2027-01-01",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "418D552907"
+        }
+      ],
+      "amounts": [
+        48.71
+      ],
+      "warnings": [
+        "The letter's stated rule that the decision is deemed notified on the 4th day after dispatch deviates from the usual statutory 3rd-day rule (§37 Abs.2 SGB X); this printed rule was applied as given since it is the agency's own explicit statement, but it is worth double-checking against the actual envelope postmark/delivery date if precision matters.",
+        "The exact start date of unemployment (used to determine the registration task's due date) is inferred from the benefit start date (01.01.2027) rather than stated explicitly as 'first day of unemployment' in the letter, so this should be confirmed against the person's actual last working day."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 9701,
+      "cache_read_tokens": 7875,
+      "cache_creation_tokens": 10084,
+      "cost_usd": 0.13892900000000002,
+      "duration_ms": 99201,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

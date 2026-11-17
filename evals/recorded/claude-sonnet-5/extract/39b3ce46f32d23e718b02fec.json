@@ -1,0 +1,132 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"e77264f58e6ef85dfc811decfb506112277d23e8baa46b06ed1819851546b03c\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-N2"
+    ],
+    "prompt_head": "Today is 2026-11-24. The person lives in region NW (DE). Their name is (not given).\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n(none yet)\n\nThe document's text follows, page by page: a line `=== Page N ===` starts page N. Everything\nbetween the <untrusted_document> tags is data from the document, never in",
+    "recorded_at": "2026-11-24T10:34:39+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"area\":\"work\",\"case_title\":\"Berufsgenossenschaft: Hazard class assessment for 2027\",\"kind\":\"authority_letter\",\"language\":\"de\",\"document_date\":\"2026-11-19\",\"recipient_name\":\"Bastian Musterquell\",\"sender\":{\"name\":\"Musterbau-Berufsgenossenschaft\",\"kind\":\"authority\",\"address\":\"Gerüstweg 7, 30159 Musterhannover\",\"email\":\"beitrag@musterbau-bg.example\",\"phone\":\"0511 555 98-0\",\"website\":null,\"identifiers\":[{\"label\":\"Mitgliedsnummer\",\"value\":\"BG 4471 0938 2\"}]},\"references\":[{\"label\":\"Mitgliedsnummer\",\"value\":\"BG 4471 0938 2\"}],\"key_facts\":[{\"label\":\"Hazard class for painters (Gefahrklasse Maler und Lackierer)\",\"value\":\"7,4\",\"quote\":\"Für den Gewerbezweig „Maler und Lackierer“ gilt die Gefahrklasse 7,4; für Ihre Bürokraft bleibt es bei der Gefahrklasse 0,6.\"},{\"label\":\"Hazard class for office staff (Gefahrklasse Bürokraft)\",\"value\":\"0,6\",\"quote\":\"Für den Gewerbezweig „Maler und Lackierer“ gilt die Gefahrklasse 7,4; für Ihre Bürokraft bleibt es bei der Gefahrklasse 0,6.\"},{\"label\":\"Effective date of new assessment\",\"value\":\"01.01.2027\",\"quote\":\"Ihr Malerbetrieb wird ab dem 01.01.2027 nach unserem neuen Gefahrtarif veranlagt.\"},{\"label\":\"Membership number (Mitgliedsnummer)\",\"value\":\"BG 4471 0938 2\",\"quote\":\"Mitgliedsnummer\\nBG 4471 0938 2\"}],\"items\":[{\"kind\":\"deadline\",\"title\":\"Decide whether to object (Widerspruch) to the hazard class assessment\",\"action\":\"Decide if you want to object (Widerspruch) to the new hazard classes for your painting business, and file it in writing or in person with the Berufsgenossenschaft by the deadline shown if so.\",\"consequence\":\"If you miss the deadline shown, the assessment becomes final and binding.\",\"direction\":\"out\",\"amount\":null,\"currency\":null,\"location\":null,\"priority\":\"high\",\"quote\":\"Den Widerspruch können Sie binnen eines Monats ab Bekanntgabe einlegen, schriftlich oder zur Niederschrift bei der Musterbau-Berufsgenossenschaft, Gerüstweg 7, 30159 Musterhannover.\",\"date\":{\"type\":\"relative\",\"nature\":\"objection\",\"anchor\":\"deemed_delivery\",\"amount\":1,\"unit\":\"months\",\"delivery_rule\":\"de_admin_post\",\"shift_rule\":\"auto\",\"text\":\"binnen eines Monats ab Bekanntgabe\",\"legal_basis\":null,\"date\":null,\"time\":null,\"anchor_date\":null},\"recurrence\":null}],\"remedy\":{\"type\":\"widerspruch\",\"addressee\":\"Musterbau-Berufsgenossenschaft, Gerüstweg 7, 30159 Musterhannover\",\"period_text\":\"binnen eines Monats ab Bekanntgabe\",\"form_text\":\"schriftlich oder zur Niederschrift bei der Musterbau-Berufsgenossenschaft, Gerüstweg 7, 30159 Musterhannover\",\"quote\":\"Den Widerspruch können Sie binnen eines Monats ab Bekanntgabe einlegen, schriftlich oder zur Niederschrift bei der Musterbau-Berufsgenossenschaft, Gerüstweg 7, 30159 Musterhannover.\"},\"contract\":null,\"change\":null,\"payment\":null,\"high_stakes_kind\":null,\"urgency\":\"high\",\"tax_relevant\":true,\"tax_note\":\"Contributions to the statutory accident insurance (Berufsgenossenschaft) are deductible business expenses (Betriebsausgaben) for your painting business.\",\"warnings\":[],\"title\":\"Berufsgenossenschaft: New hazard class assessment from 2027\",\"summary\":\"Musterbau-Berufsgenossenschaft informs Bastian Musterquell that his painting business will be assessed from 1 January 2027 under its new hazard tariff: hazard class 7.4 (Gefahrklasse) for the painting trade and unchanged 0.6 for office staff. The contribution itself will still be calculated after year-end from reported wages, and an objection (Widerspruch) can be filed within the deadline shown.\",\"explanation\":\"This letter from your statutory accident insurer (Berufsgenossenschaft) sets the risk categories (Gefahrklassen) used to calculate your 2027 contributions for your painting business; no payment is due yet, as the actual contribution is calculated after the year ends based on wages you report. If you disagree with the assigned hazard classes, you may file an objection (Widerspruch) in writing or in person; the app shows the deadline for this. If you do nothing, the assessment becomes final. Keep this letter for your business tax records, as these contributions are deductible expenses.\"}",
+    "data": {
+      "area": "work",
+      "case_title": "Berufsgenossenschaft: Hazard class assessment for 2027",
+      "kind": "authority_letter",
+      "language": "de",
+      "document_date": "2026-11-19",
+      "recipient_name": "Bastian Musterquell",
+      "sender": {
+        "name": "Musterbau-Berufsgenossenschaft",
+        "kind": "authority",
+        "address": "Gerüstweg 7, 30159 Musterhannover",
+        "email": "beitrag@musterbau-bg.example",
+        "phone": "0511 555 98-0",
+        "website": null,
+        "identifiers": [
+          {
+            "label": "Mitgliedsnummer",
+            "value": "BG 4471 0938 2"
+          }
+        ]
+      },
+      "references": [
+        {
+          "label": "Mitgliedsnummer",
+          "value": "BG 4471 0938 2"
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Hazard class for painters (Gefahrklasse Maler und Lackierer)",
+          "value": "7,4",
+          "quote": "Für den Gewerbezweig „Maler und Lackierer“ gilt die Gefahrklasse 7,4; für Ihre Bürokraft bleibt es bei der Gefahrklasse 0,6."
+        },
+        {
+          "label": "Hazard class for office staff (Gefahrklasse Bürokraft)",
+          "value": "0,6",
+          "quote": "Für den Gewerbezweig „Maler und Lackierer“ gilt die Gefahrklasse 7,4; für Ihre Bürokraft bleibt es bei der Gefahrklasse 0,6."
+        },
+        {
+          "label": "Effective date of new assessment",
+          "value": "01.01.2027",
+          "quote": "Ihr Malerbetrieb wird ab dem 01.01.2027 nach unserem neuen Gefahrtarif veranlagt."
+        },
+        {
+          "label": "Membership number (Mitgliedsnummer)",
+          "value": "BG 4471 0938 2",
+          "quote": "Mitgliedsnummer\nBG 4471 0938 2"
+        }
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Decide whether to object (Widerspruch) to the hazard class assessment",
+          "action": "Decide if you want to object (Widerspruch) to the new hazard classes for your painting business, and file it in writing or in person with the Berufsgenossenschaft by the deadline shown if so.",
+          "consequence": "If you miss the deadline shown, the assessment becomes final and binding.",
+          "direction": "out",
+          "amount": null,
+          "currency": null,
+          "location": null,
+          "priority": "high",
+          "quote": "Den Widerspruch können Sie binnen eines Monats ab Bekanntgabe einlegen, schriftlich oder zur Niederschrift bei der Musterbau-Berufsgenossenschaft, Gerüstweg 7, 30159 Musterhannover.",
+          "date": {
+            "type": "relative",
+            "nature": "objection",
+            "anchor": "deemed_delivery",
+            "amount": 1,
+            "unit": "months",
+            "delivery_rule": "de_admin_post",
+            "shift_rule": "auto",
+            "text": "binnen eines Monats ab Bekanntgabe",
+            "legal_basis": null,
+            "date": null,
+            "time": null,
+            "anchor_date": null
+          },
+          "recurrence": null
+        }
+      ],
+      "remedy": {
+        "type": "widerspruch",
+        "addressee": "Musterbau-Berufsgenossenschaft, Gerüstweg 7, 30159 Musterhannover",
+        "period_text": "binnen eines Monats ab Bekanntgabe",
+        "form_text": "schriftlich oder zur Niederschrift bei der Musterbau-Berufsgenossenschaft, Gerüstweg 7, 30159 Musterhannover",
+        "quote": "Den Widerspruch können Sie binnen eines Monats ab Bekanntgabe einlegen, schriftlich oder zur Niederschrift bei der Musterbau-Berufsgenossenschaft, Gerüstweg 7, 30159 Musterhannover."
+      },
+      "contract": null,
+      "change": null,
+      "payment": null,
+      "high_stakes_kind": null,
+      "urgency": "high",
+      "tax_relevant": true,
+      "tax_note": "Contributions to the statutory accident insurance (Berufsgenossenschaft) are deductible business expenses (Betriebsausgaben) for your painting business.",
+      "warnings": [],
+      "title": "Berufsgenossenschaft: New hazard class assessment from 2027",
+      "summary": "Musterbau-Berufsgenossenschaft informs Bastian Musterquell that his painting business will be assessed from 1 January 2027 under its new hazard tariff: hazard class 7.4 (Gefahrklasse) for the painting trade and unchanged 0.6 for office staff. The contribution itself will still be calculated after year-end from reported wages, and an objection (Widerspruch) can be filed within the deadline shown.",
+      "explanation": "This letter from your statutory accident insurer (Berufsgenossenschaft) sets the risk categories (Gefahrklassen) used to calculate your 2027 contributions for your painting business; no payment is due yet, as the actual contribution is calculated after the year ends based on wages you report. If you disagree with the assigned hazard classes, you may file an objection (Widerspruch) in writing or in person; the app shows the deadline for this. If you do nothing, the assessment becomes final. Keep this letter for your business tax records, as these contributions are deductible expenses."
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4413,
+      "cache_read_tokens": 8953,
+      "cache_creation_tokens": 1522,
+      "cost_usd": 0.05201259999999999,
+      "duration_ms": 40128,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

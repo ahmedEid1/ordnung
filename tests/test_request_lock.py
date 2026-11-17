@@ -395,4 +395,4 @@ def test_a_page_layout_change_is_caught_on_every_letter_read_as_text(monkeypatch
 
 def harness_expected_drift() -> dict[str, int]:
     """Every extraction (photos too: the transcript is laid out as pages), and every baseline but the photos'."""
-    return {"extract": 281, "eval_baseline": 696}
+    return {"extract": 439, "eval_baseline": 1092}

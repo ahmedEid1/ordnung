@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"9e1b8556e96c54e7eca2d785257d337cd30101daae804eacddb446216cb7eeac\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-invoice_relative-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:31:37+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Schornsteintechnik Beispielruß GmbH\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Rechnungs-Nr.\",\"value\":\"SR-26-0914\"}],\"amounts\":[1785.6],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay invoice for chimney renovation\",\"quote\":\"Bitte begleichen Sie den Betrag binnen 14 Tagen ab dem Rechnungsdatum ohne Abzug.\",\"computation\":\"The invoice date is 19.11.2026. The period is expressed as 'binnen 14 Tagen ab dem Rechnungsdatum' (within 14 days from the invoice date), which is an event-triggered period under § 187 Abs. 1 BGB: the day of the triggering event (19.11.2026) is excluded, so counting starts on 20.11.2026 (day 1). Day 14 falls on 03.12.2026 (20 Nov = day1 ... 30 Nov = day11, 1 Dec = day12, 2 Dec = day13, 3 Dec = day14). 03.12.2026 is a Thursday and not a public holiday in NRW, so no shift under § 193 BGB is needed. Due date: 03.12.2026.\",\"due_date\":\"2026-12-03\",\"confidence\":\"high\",\"amount\":1785.6}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Schornsteintechnik Beispielruß GmbH",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Rechnungs-Nr.",
+          "value": "SR-26-0914"
+        }
+      ],
+      "amounts": [
+        1785.6
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay invoice for chimney renovation",
+          "quote": "Bitte begleichen Sie den Betrag binnen 14 Tagen ab dem Rechnungsdatum ohne Abzug.",
+          "computation": "The invoice date is 19.11.2026. The period is expressed as 'binnen 14 Tagen ab dem Rechnungsdatum' (within 14 days from the invoice date), which is an event-triggered period under § 187 Abs. 1 BGB: the day of the triggering event (19.11.2026) is excluded, so counting starts on 20.11.2026 (day 1). Day 14 falls on 03.12.2026 (20 Nov = day1 ... 30 Nov = day11, 1 Dec = day12, 2 Dec = day13, 3 Dec = day14). 03.12.2026 is a Thursday and not a public holiday in NRW, so no shift under § 193 BGB is needed. Due date: 03.12.2026.",
+          "due_date": "2026-12-03",
+          "confidence": "high",
+          "amount": 1785.6
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1322,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1560,
+      "cost_usd": 0.020088400000000003,
+      "duration_ms": 18216,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

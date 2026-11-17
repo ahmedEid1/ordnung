@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"76d1699b8d7cc7dcb1f7fe5e6da052d037befef726d3ab53c3aec1e9fecc2033\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-relative_business_days-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:29:12+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"bank_letter\",\"sender_name\":\"Bauspar Beispielheim AG\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Vertragsnummer\",\"value\":\"BH 6 330 418-02\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Submit proof of use for Bauspardarlehen (invoice or signed order from heating company)\",\"quote\":\"Bitte reichen Sie den Nachweis binnen 10 Arbeitstagen nach dem Briefdatum ein.\",\"computation\":\"Letter date (Briefdatum) = Saturday 2026-11-21. The period runs 'nach dem Briefdatum' (after the letter date), so under the usual German counting rule the day of the triggering event itself is excluded and counting starts on the next calendar day, 2026-11-22 (a Sunday). The letter explicitly defines 'Arbeitstage' as Monday-Friday, excluding statutory holidays, so only weekdays are counted toward the 10 days (weekends/holidays do not count at all, they are simply skipped, not just shifted at the end). Counting forward: Mon 2026-11-23 = day1, Tue 11-24 = day2, Wed 11-25 = day3, Thu 11-26 = day4, Fri 11-27 = day5, (Sat 11-28/Sun 11-29 skipped), Mon 11-30 = day6, Tue 12-01 = day7, Wed 12-02 = day8, Thu 12-03 = day9, Fri 12-04 = day10. No NRW public holidays fall in this window (23 Nov - 4 Dec 2026), so none need to be excluded. The 10th working day is Friday 2026-12-04, which is the last day the proof must be submitted.\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Loan payout delayed to next month's first day if proof is late\",\"quote\":\"Geht der Nachweis nicht rechtzeitig ein, verschiebt sich die Auszahlung auf den nächsten Monatsersten.\",\"computation\":\"This is a consequence, not an obligation with its own deadline to compute; it states that if the proof (due 2026-12-04) is not received in time, payout shifts to the first day of the following calendar month. No independent date to calculate beyond the proof deadline already computed; listed for information, not a separate action date.\",\"due_date\":null,\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "bank_letter",
+      "sender_name": "Bauspar Beispielheim AG",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Vertragsnummer",
+          "value": "BH 6 330 418-02"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Submit proof of use for Bauspardarlehen (invoice or signed order from heating company)",
+          "quote": "Bitte reichen Sie den Nachweis binnen 10 Arbeitstagen nach dem Briefdatum ein.",
+          "computation": "Letter date (Briefdatum) = Saturday 2026-11-21. The period runs 'nach dem Briefdatum' (after the letter date), so under the usual German counting rule the day of the triggering event itself is excluded and counting starts on the next calendar day, 2026-11-22 (a Sunday). The letter explicitly defines 'Arbeitstage' as Monday-Friday, excluding statutory holidays, so only weekdays are counted toward the 10 days (weekends/holidays do not count at all, they are simply skipped, not just shifted at the end). Counting forward: Mon 2026-11-23 = day1, Tue 11-24 = day2, Wed 11-25 = day3, Thu 11-26 = day4, Fri 11-27 = day5, (Sat 11-28/Sun 11-29 skipped), Mon 11-30 = day6, Tue 12-01 = day7, Wed 12-02 = day8, Thu 12-03 = day9, Fri 12-04 = day10. No NRW public holidays fall in this window (23 Nov - 4 Dec 2026), so none need to be excluded. The 10th working day is Friday 2026-12-04, which is the last day the proof must be submitted.",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Loan payout delayed to next month's first day if proof is late",
+          "quote": "Geht der Nachweis nicht rechtzeitig ein, verschiebt sich die Auszahlung auf den nächsten Monatsersten.",
+          "computation": "This is a consequence, not an obligation with its own deadline to compute; it states that if the proof (due 2026-12-04) is not received in time, payout shifts to the first day of the following calendar month. No independent date to calculate beyond the proof deadline already computed; listed for information, not a separate action date.",
+          "due_date": null,
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2286,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1504,
+      "cost_usd": 0.0295044,
+      "duration_ms": 22845,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

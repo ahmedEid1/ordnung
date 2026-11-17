@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"563f27f1b2f3b5c51edb5d9674df1734d7f46e8f19ae4b0c9fbda3466e298e0e\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-missing_date-2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:55:57+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"health_insurance\",\"sender_name\":\"Beispielkasse Ersatzkrankenkasse\",\"document_date\":null,\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"B550127743\"},{\"label\":\"Vorgang\",\"value\":\"ZE-26-3307\"}],\"amounts\":[1104],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against reduced dental subsidy\",\"quote\":\"Wenn Sie mit dieser Entscheidung nicht einverstanden sind, können Sie innerhalb eines Monats nach Bekanntgabe Widerspruch bei der Beispielkasse Ersatzkrankenkasse einlegen, schriftlich oder zur Niederschrift.\",\"computation\":\"The Widerspruchsfrist is one month (§ 84 SGG) starting from Bekanntgabe (notification) of the decision. Under § 37 Abs. 2 SGB X, a letter sent by ordinary post within Germany is deemed delivered (bekanntgegeben) on the third day after it was put in the mail (dispatch date), unless a weekend/holiday pushes it forward to the next business day, or unless actual delivery was proven to be later/earlier. This letter carries no printed document date anywhere, so neither the dispatch date nor the start of the Bekanntgabe period can be established. Without a start date, the one-month deadline (which would otherwise run per §§ 187 Abs. 1, 188 Abs. 2 BGB to the corresponding day of the following month, shifted to the next business day under § 193 BGB if it fell on a Saturday, Sunday or NRW public holiday) cannot be computed. The person must check the actual letter/envelope for a postmark or issue date and count one month from (postmark date + 3 days), adjusted for weekends/holidays.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter has no visible document date (Ausstellungsdatum) anywhere in the letterhead or body, so the start of the one-month Widerspruchsfrist (Bekanntgabe, § 37 SGB X) cannot be computed; check the envelope's postmark or any dated cover note and count one month from three days after that date, adjusted for weekends/NRW holidays under § 193 BGB.\",\"No amount is stated for the rejected doubled Festzuschuss (only the approved single Festzuschuss of 1.104,00 € is given), so it is unclear how much more the person would have received if the Widerspruch succeeded.\"]}",
+    "data": {
+      "kind": "health_insurance",
+      "sender_name": "Beispielkasse Ersatzkrankenkasse",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "B550127743"
+        },
+        {
+          "label": "Vorgang",
+          "value": "ZE-26-3307"
+        }
+      ],
+      "amounts": [
+        1104
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against reduced dental subsidy",
+          "quote": "Wenn Sie mit dieser Entscheidung nicht einverstanden sind, können Sie innerhalb eines Monats nach Bekanntgabe Widerspruch bei der Beispielkasse Ersatzkrankenkasse einlegen, schriftlich oder zur Niederschrift.",
+          "computation": "The Widerspruchsfrist is one month (§ 84 SGG) starting from Bekanntgabe (notification) of the decision. Under § 37 Abs. 2 SGB X, a letter sent by ordinary post within Germany is deemed delivered (bekanntgegeben) on the third day after it was put in the mail (dispatch date), unless a weekend/holiday pushes it forward to the next business day, or unless actual delivery was proven to be later/earlier. This letter carries no printed document date anywhere, so neither the dispatch date nor the start of the Bekanntgabe period can be established. Without a start date, the one-month deadline (which would otherwise run per §§ 187 Abs. 1, 188 Abs. 2 BGB to the corresponding day of the following month, shifted to the next business day under § 193 BGB if it fell on a Saturday, Sunday or NRW public holiday) cannot be computed. The person must check the actual letter/envelope for a postmark or issue date and count one month from (postmark date + 3 days), adjusted for weekends/holidays.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter has no visible document date (Ausstellungsdatum) anywhere in the letterhead or body, so the start of the one-month Widerspruchsfrist (Bekanntgabe, § 37 SGB X) cannot be computed; check the envelope's postmark or any dated cover note and count one month from three days after that date, adjusted for weekends/NRW holidays under § 193 BGB.",
+        "No amount is stated for the rejected doubled Festzuschuss (only the approved single Festzuschuss of 1.104,00 € is given), so it is unclear how much more the person would have received if the Widerspruch succeeded."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3253,
+      "cache_read_tokens": 7783,
+      "cache_creation_tokens": 3506,
+      "cost_usd": 0.048118600000000004,
+      "duration_ms": 34373,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

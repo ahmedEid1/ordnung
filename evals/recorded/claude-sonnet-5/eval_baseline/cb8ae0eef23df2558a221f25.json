@@ -1,0 +1,76 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"3ca8cb4133171b2f44c1dbf6e68f87c8c9886c6d13c2d15969482f663fd60779\",\"mode\":\"text\",\"region\":\"NI\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-mahnbescheid-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Niedersachsen (NI), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docume",
+    "recorded_at": "2026-11-24T12:54:31+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[445.04],\"contract\":null,\"document_date\":\"2026-11-19\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the Mahnbescheid\",\"quote\":\"Für das eine wie das andere bleiben Ihnen vierzehn Tage, beginnend mit dem Tag, an dem Ihnen dieser Bescheid zugestellt wurde.\",\"computation\":\"The postal carrier noted the actual delivery (Zustellung) date as Friday, 20.11.2026. Under § 187 Abs. 1 BGB, when a period is triggered by an event occurring during a day (here: Zustellung), the day of that event is not counted; counting begins the following day (21.11.2026). The statutory 14-day Widerspruchsfrist under § 692 Abs. 1 Nr. 3 ZPO / § 329 Abs. 3 ZPO then runs for 14 full days, i.e. 21.11.2026 (day 1) through 04.12.2026 (day 14), per § 188 Abs. 1 BGB. 04.12.2026 is a Friday and not a public holiday in Niedersachsen, so no extension under § 193 BGB is needed. (Note: the letter's own phrasing 'beginnend mit dem Tag, an dem ... zugestellt wurde' could be literally read as including the delivery day itself, which would move the deadline one day earlier to 03.12.2026; the statutory computation rule is applied here as the legally correct one.)\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the claimed amount if the debt is acknowledged\",\"quote\":\"Begleichen Sie die Schuld, soweit Sie sie anerkennen, oder erheben Sie Widerspruch, soweit Sie sie bestreiten.\",\"computation\":\"The same 14-day period described above applies equally to payment of the claimed total (if the debt is acknowledged) as to filing a Widerspruch (if it is contested). Zustellung = 20.11.2026 (Friday, as noted by the postal carrier); per §§ 187, 188 BGB the day of delivery is not counted, so the 14-day period runs from 21.11.2026 to 04.12.2026 (Friday), which is not a weekend day or Niedersachsen public holiday.\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":445.04}],\"kind\":\"authority_letter\",\"references\":[{\"label\":\"Geschäftsnummer\",\"value\":\"26-7710623-0-5\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Amtsgericht Musteruelzen · Zentrales Mahngericht\",\"warnings\":[\"This is a court-issued Mahnbescheid (payment order), not a ruling on the merits: the court explicitly states it has not checked whether the claimant's claim is actually justified, so the recipient should verify the underlying claim (order of 14.04.2026) before paying.\",\"If the 14-day deadline is missed without a Widerspruch being filed, the creditor can apply for a Vollstreckungsbescheid (enforcement order), which can lead to enforcement measures (garnishment, bailiff) — so the deadline should be treated as firm.\",\"The letter's wording 'beginnend mit dem Tag, an dem Ihnen dieser Bescheid zugestellt wurde' is ambiguous as to whether the delivery day itself counts; the statutory rule (§187 BGB, delivery day excluded) was applied, giving 04.12.2026, but a stricter literal reading could imply 03.12.2026 — when in doubt, act by the earlier date (03.12.2026).\"]}",
+    "data": {
+      "amounts": [
+        445.04
+      ],
+      "contract": null,
+      "document_date": "2026-11-19",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the Mahnbescheid",
+          "quote": "Für das eine wie das andere bleiben Ihnen vierzehn Tage, beginnend mit dem Tag, an dem Ihnen dieser Bescheid zugestellt wurde.",
+          "computation": "The postal carrier noted the actual delivery (Zustellung) date as Friday, 20.11.2026. Under § 187 Abs. 1 BGB, when a period is triggered by an event occurring during a day (here: Zustellung), the day of that event is not counted; counting begins the following day (21.11.2026). The statutory 14-day Widerspruchsfrist under § 692 Abs. 1 Nr. 3 ZPO / § 329 Abs. 3 ZPO then runs for 14 full days, i.e. 21.11.2026 (day 1) through 04.12.2026 (day 14), per § 188 Abs. 1 BGB. 04.12.2026 is a Friday and not a public holiday in Niedersachsen, so no extension under § 193 BGB is needed. (Note: the letter's own phrasing 'beginnend mit dem Tag, an dem ... zugestellt wurde' could be literally read as including the delivery day itself, which would move the deadline one day earlier to 03.12.2026; the statutory computation rule is applied here as the legally correct one.)",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the claimed amount if the debt is acknowledged",
+          "quote": "Begleichen Sie die Schuld, soweit Sie sie anerkennen, oder erheben Sie Widerspruch, soweit Sie sie bestreiten.",
+          "computation": "The same 14-day period described above applies equally to payment of the claimed total (if the debt is acknowledged) as to filing a Widerspruch (if it is contested). Zustellung = 20.11.2026 (Friday, as noted by the postal carrier); per §§ 187, 188 BGB the day of delivery is not counted, so the 14-day period runs from 21.11.2026 to 04.12.2026 (Friday), which is not a weekend day or Niedersachsen public holiday.",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": 445.04
+        }
+      ],
+      "kind": "authority_letter",
+      "references": [
+        {
+          "label": "Geschäftsnummer",
+          "value": "26-7710623-0-5"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Amtsgericht Musteruelzen · Zentrales Mahngericht",
+      "warnings": [
+        "This is a court-issued Mahnbescheid (payment order), not a ruling on the merits: the court explicitly states it has not checked whether the claimant's claim is actually justified, so the recipient should verify the underlying claim (order of 14.04.2026) before paying.",
+        "If the 14-day deadline is missed without a Widerspruch being filed, the creditor can apply for a Vollstreckungsbescheid (enforcement order), which can lead to enforcement measures (garnishment, bailiff) — so the deadline should be treated as firm.",
+        "The letter's wording 'beginnend mit dem Tag, an dem Ihnen dieser Bescheid zugestellt wurde' is ambiguous as to whether the delivery day itself counts; the statutory rule (§187 BGB, delivery day excluded) was applied, giving 04.12.2026, but a stricter literal reading could imply 03.12.2026 — when in doubt, act by the earlier date (03.12.2026)."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 5639,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1750,
+      "cost_usd": 0.06401839999999999,
+      "duration_ms": 56439,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

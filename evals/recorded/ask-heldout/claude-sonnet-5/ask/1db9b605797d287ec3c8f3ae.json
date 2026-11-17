@@ -1,0 +1,261 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"99ef00b98b6fd5502888ae20ae978adbae84ea70eb1fc4ab660a1a4790b44772\",\"question\":\"Looking about four months ahead (120 days from now), on what dates am I due at the dentist?\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_xa0f5gvpe0w2"
+    ],
+    "prompt_head": "The person asks:\nLooking about four months ahead (120 days from now), on what dates am I due at the dentist?\n",
+    "recorded_at": "2026-11-24T08:19:40+00:00",
+    "repeat": 1,
+    "commit": "25633808",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "You have one dentist appointment in that window: **Fri 8 Jan 2027 at 09:15** – Dental checkup and cleaning (PZR) at Zahnarztpraxis Dr. Anna Beispiel [item:itm_sncxha9wbsxc].\n\n- This appointment repeats every 3 months, so the following one would fall around **8 Apr 2027** [item:itm_sncxha9wbsxc] — just outside your 120-day window.\n- Remember to bring your Gesundheitskarte and cancel at least 24 hours ahead if you can't make it [item:itm_sncxha9wbsxc].",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 457,
+      "cache_read_tokens": 12789,
+      "cache_creation_tokens": 1919,
+      "cost_usd": 0.0148118,
+      "duration_ms": 6899,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Zahnarzt"
+      },
+      "tool_use_id": "toolu_01FouU1M8q11pwDrwEbs9Fb5"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "kind": "appointment",
+        "from_date": "2026-11-24",
+        "to_date": "2027-03-24"
+      },
+      "tool_use_id": "toolu_01GBkgyJdF5tm6mAC3outWeA"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_xa0f5gvpe0w2\",\"kind\":\"appointment\",\"party_id\":\"pty_m3rttkfq94qn\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_xa0f5gvpe0w2\":{\"title\":\"Dental checkup and cleaning appointment\",\"snippet\":\"…0123 334455 zahnarzt-beispiel.example Ihre nächsten Termine Tag | Datum | Uhrzeit | Behandlung Do 08.10.2026…\"},\"pty_m3rttkfq94qn\":{\"name\":\"Zahnarztpraxis Dr. Anna Beispiel\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01FouU1M8q11pwDrwEbs9Fb5"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-11-24\",\"items\":[{\"id\":\"itm_sncxha9wbsxc\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2027-01-08\",\"due_time\":\"09:15\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_m3rttkfq94qn\",\"doc_id\":\"doc_xa0f5gvpe0w2\",\"repeats\":\"every 3 months\",\"following_due_date\":\"2027-04-08\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_sncxha9wbsxc\":{\"title\":\"Dental checkup and cleaning (PZR)\",\"action\":\"Arrive 10 minutes early and bring your health insurance card (Gesundheitskarte)\",\"consequence\":\"Cancel at least 24 hours in advance if you cannot attend\",\"location\":\"Lindenallee 8, 12345 Musterstadt\"},\"pty_m3rttkfq94qn\":{\"name\":\"Zahnarztpraxis Dr. Anna Beispiel\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01GBkgyJdF5tm6mAC3outWeA"
+    },
+    {
+      "type": "text",
+      "text": "You"
+    },
+    {
+      "type": "text",
+      "text": " have"
+    },
+    {
+      "type": "text",
+      "text": " one d"
+    },
+    {
+      "type": "text",
+      "text": "entist appointment in"
+    },
+    {
+      "type": "text",
+      "text": " that window"
+    },
+    {
+      "type": "text",
+      "text": ": **F"
+    },
+    {
+      "type": "text",
+      "text": "ri "
+    },
+    {
+      "type": "text",
+      "text": "8 Jan 2027"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "at 09:15**"
+    },
+    {
+      "type": "text",
+      "text": " – Dental checkup and"
+    },
+    {
+      "type": "text",
+      "text": " cleaning (PZR"
+    },
+    {
+      "type": "text",
+      "text": ") at Zahnarzt"
+    },
+    {
+      "type": "text",
+      "text": "praxis Dr."
+    },
+    {
+      "type": "text",
+      "text": " Anna Beispiel"
+    },
+    {
+      "type": "text",
+      "text": " [item:it"
+    },
+    {
+      "type": "text",
+      "text": "m_sncx"
+    },
+    {
+      "type": "text",
+      "text": "ha"
+    },
+    {
+      "type": "text",
+      "text": "9"
+    },
+    {
+      "type": "text",
+      "text": "wb"
+    },
+    {
+      "type": "text",
+      "text": "s"
+    },
+    {
+      "type": "text",
+      "text": "x"
+    },
+    {
+      "type": "text",
+      "text": "c"
+    },
+    {
+      "type": "text",
+      "text": "].\n\n-"
+    },
+    {
+      "type": "text",
+      "text": " This app"
+    },
+    {
+      "type": "text",
+      "text": "ointment repeats every 3"
+    },
+    {
+      "type": "text",
+      "text": " months, so the following one would"
+    },
+    {
+      "type": "text",
+      "text": " f"
+    },
+    {
+      "type": "text",
+      "text": "all around **8"
+    },
+    {
+      "type": "text",
+      "text": " Apr 2027**"
+    },
+    {
+      "type": "text",
+      "text": " [item:itm_snc"
+    },
+    {
+      "type": "text",
+      "text": "xha9wbsxc"
+    },
+    {
+      "type": "text",
+      "text": "] — just"
+    },
+    {
+      "type": "text",
+      "text": " outside your 120-day window"
+    },
+    {
+      "type": "text",
+      "text": ".\n- Rem"
+    },
+    {
+      "type": "text",
+      "text": "ember to b"
+    },
+    {
+      "type": "text",
+      "text": "ring your"
+    },
+    {
+      "type": "text",
+      "text": " Gesundheitskarte"
+    },
+    {
+      "type": "text",
+      "text": " and cancel at"
+    },
+    {
+      "type": "text",
+      "text": " least 24 hours "
+    },
+    {
+      "type": "text",
+      "text": "ahead if you can't make"
+    },
+    {
+      "type": "text",
+      "text": " it [item:itm_s"
+    },
+    {
+      "type": "text",
+      "text": "ncxha9wbsx"
+    },
+    {
+      "type": "text",
+      "text": "c]."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "You have one dentist appointment in that window: **Fri 8 Jan 2027 at 09:15** – Dental checkup and cleaning (PZR) at Zahnarztpraxis Dr. Anna Beispiel [item:itm_sncxha9wbsxc].\n\n- This appointment repeats every 3 months, so the following one would fall around **8 Apr 2027** [item:itm_sncxha9wbsxc] — just outside your 120-day window.\n- Remember to bring your Gesundheitskarte and cancel at least 24 hours ahead if you can't make it [item:itm_sncxha9wbsxc].",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 457,
+          "cache_read_tokens": 12789,
+          "cache_creation_tokens": 1919,
+          "cost_usd": 0.0148118,
+          "duration_ms": 6899,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

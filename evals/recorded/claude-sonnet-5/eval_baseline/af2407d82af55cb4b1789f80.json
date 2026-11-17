@@ -1,0 +1,77 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"af2e618e5f37069603539b8c909f9b4a4fec91492d689192a68b01e43c39b873\",\"mode\":\"text\",\"region\":\"HB\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-tax_assessment-N1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bremen (HB), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag",
+    "recorded_at": "2026-11-24T07:50:04+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterhemelingen\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"475/204/66190\"}],\"amounts\":[5820,6390,570],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the 2025 income tax assessment\",\"quote\":\"Die Einspruchsfrist beträgt einen Monat und rechnet ab der Bekanntgabe; ein Bescheid, der als Brief verschickt wird, ist am vierten Tag nach dem Absenden als bekannt gegeben anzusehen.\",\"computation\":\"The letter is dated (and presumed posted) Thursday 19.11.2026. Under § 122 Abs. 2 Nr. 1 AO (as amended, now 4 days instead of the former 3) and as restated in this letter, a letter is deemed delivered (bekannt gegeben) on the 4th day after posting: 19.11.2026 + 4 days = 23.11.2026 (Monday) — not a Saturday, Sunday or Bremen public holiday, so no shift applies. Bekanntgabe = 23.11.2026. The one-month Einspruchsfrist (§ 355 AO) is a period reckoned by months starting with the Bekanntgabe day; per § 108 AO i.V.m. § 188 Abs. 2 BGB it ends on the day of the following month bearing the same number as the Bekanntgabe day: 23.12.2026 (Wednesday). 23.12.2026 is a regular business day in Bremen (not a Sunday/holiday; Christmas Eve 24.12. is not a statutory holiday in Bremen either, but is irrelevant here since the 23rd itself is unaffected), so the deadline stands at 23.12.2026.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Refund (Guthaben) to be transferred by the tax office\",\"quote\":\"Das Guthaben von 570,00 € überweisen wir auf Ihr Konto DE14 5139 0000 0074 4022 18.\",\"computation\":\"The letter states the tax office will transfer the credit balance of 570,00 € to the taxpayer's account, but gives no specific transfer date or deadline, so no exact due date can be determined.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":570}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"No specific date is given for the actual bank transfer of the 570,00 € refund, only that it will be made to the account on file.\",\"The account number for the refund (IBAN DE14 5139 0000 0074 4022 18) is quoted as given in the letter — verify this matches your own bank account before relying on an automatic transfer; do not send money to any account suggested by anyone else referencing this letter.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterhemelingen",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "475/204/66190"
+        }
+      ],
+      "amounts": [
+        5820,
+        6390,
+        570
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the 2025 income tax assessment",
+          "quote": "Die Einspruchsfrist beträgt einen Monat und rechnet ab der Bekanntgabe; ein Bescheid, der als Brief verschickt wird, ist am vierten Tag nach dem Absenden als bekannt gegeben anzusehen.",
+          "computation": "The letter is dated (and presumed posted) Thursday 19.11.2026. Under § 122 Abs. 2 Nr. 1 AO (as amended, now 4 days instead of the former 3) and as restated in this letter, a letter is deemed delivered (bekannt gegeben) on the 4th day after posting: 19.11.2026 + 4 days = 23.11.2026 (Monday) — not a Saturday, Sunday or Bremen public holiday, so no shift applies. Bekanntgabe = 23.11.2026. The one-month Einspruchsfrist (§ 355 AO) is a period reckoned by months starting with the Bekanntgabe day; per § 108 AO i.V.m. § 188 Abs. 2 BGB it ends on the day of the following month bearing the same number as the Bekanntgabe day: 23.12.2026 (Wednesday). 23.12.2026 is a regular business day in Bremen (not a Sunday/holiday; Christmas Eve 24.12. is not a statutory holiday in Bremen either, but is irrelevant here since the 23rd itself is unaffected), so the deadline stands at 23.12.2026.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Refund (Guthaben) to be transferred by the tax office",
+          "quote": "Das Guthaben von 570,00 € überweisen wir auf Ihr Konto DE14 5139 0000 0074 4022 18.",
+          "computation": "The letter states the tax office will transfer the credit balance of 570,00 € to the taxpayer's account, but gives no specific transfer date or deadline, so no exact due date can be determined.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 570
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "No specific date is given for the actual bank transfer of the 570,00 € refund, only that it will be made to the account on file.",
+        "The account number for the refund (IBAN DE14 5139 0000 0074 4022 18) is quoted as given in the letter — verify this matches your own bank account before relying on an automatic transfer; do not send money to any account suggested by anyone else referencing this letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3864,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2076,
+      "cost_usd": 0.047572399999999994,
+      "duration_ms": 40006,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

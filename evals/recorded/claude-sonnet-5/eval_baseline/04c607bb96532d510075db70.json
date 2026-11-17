@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"d4a8ea5452839d0249eaf735cc37f00fff6dc7398abe7a25456b163f6ac741b9\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-price_increase-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:56:20+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[9.84,11.12,104,118],\"contract\":null,\"document_date\":\"2026-11-20\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Special cancellation right due to price increase\",\"quote\":\"Damit die Kündigung wirkt, muss sie bei uns vor dem Inkrafttreten der neuen Preise eingehen.\",\"computation\":\"The letter is dated 20.11.2026 and announces a price increase effective 01.01.2027. The letter grants an unconditional special right of termination effective 01.01.2027, but states the cancellation must reach the provider before the new prices take effect, i.e. before 01.01.2027. The last day the cancellation can still arrive is therefore the day before, 31.12.2026 (a Thursday; 31 December is not a public holiday in NRW, so no weekend/holiday shift applies).\",\"due_date\":\"2026-12-31\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"price_increase\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"EB-552 0814\"},{\"label\":\"Zählpunkt\",\"value\":\"DE000555 0018 77 41\"}],\"remedy_type\":\"none\",\"sender_name\":\"Erdgas Beispieltal GmbH\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        9.84,
+        11.12,
+        104,
+        118
+      ],
+      "contract": null,
+      "document_date": "2026-11-20",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Special cancellation right due to price increase",
+          "quote": "Damit die Kündigung wirkt, muss sie bei uns vor dem Inkrafttreten der neuen Preise eingehen.",
+          "computation": "The letter is dated 20.11.2026 and announces a price increase effective 01.01.2027. The letter grants an unconditional special right of termination effective 01.01.2027, but states the cancellation must reach the provider before the new prices take effect, i.e. before 01.01.2027. The last day the cancellation can still arrive is therefore the day before, 31.12.2026 (a Thursday; 31 December is not a public holiday in NRW, so no weekend/holiday shift applies).",
+          "due_date": "2026-12-31",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "price_increase",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "EB-552 0814"
+        },
+        {
+          "label": "Zählpunkt",
+          "value": "DE000555 0018 77 41"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Erdgas Beispieltal GmbH",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1731,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1515,
+      "cost_usd": 0.0239984,
+      "duration_ms": 25608,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

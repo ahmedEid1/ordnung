@@ -1,0 +1,76 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"031acc7a3ca5b323e86da9dd41840f336ed67b2f4d9ccbffaef26c89f8e4ccf1\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-price_increase-N1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:28:54+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Kabelnetz Beispielstadt GmbH\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"KB-1 093 377\"}],\"amounts\":[34.99,37.99],\"items\":[{\"kind\":\"milestone\",\"title\":\"Price increase for internet tariff takes effect\",\"quote\":\"zum 01.02.2027 erhöhen wir den Preis Ihres Tarifs „Kabel 250“ um 3,00 € auf 37,99 € im Monat (bisher 34,99 €).\",\"computation\":\"The letter states the new price applies from 01.02.2027 as a fixed calendar date, so no further calculation is needed.\",\"due_date\":\"2027-02-01\",\"confidence\":\"high\",\"amount\":37.99},{\"kind\":\"deadline\",\"title\":\"Deadline to use the special termination right because of the price increase\",\"quote\":\"Sie dürfen den Vertrag deshalb innerhalb von drei Monaten nach Erhalt dieses Schreibens kostenlos und ohne Kündigungsfrist beenden, frühestens zum Wirksamwerden der Preisänderung.\",\"computation\":\"This is a letter from a private company, not an authority, so the statutory postal delivery fiction (§122 AO / Länder VwVfG, 3-/4-day rule) does not apply - German law has no fixed delivery fiction for ordinary business mail; actual receipt (Zugang, §130 BGB) governs. The letter is dated Wednesday 18.11.2026 and the actual date it reached the recipient's mailbox is not stated. In the absence of better information, I assume - as a cautious analogy to usual postal transit time and without legal certainty - receipt around 4 calendar days after the letter date, i.e. Sunday 22.11.2026 (18.11.+4 days); for private mail this day is not shifted even if it falls on a weekend. Per §§187 Abs.1, 188 Abs.2 BGB the day of receipt (22.11.2026) is not counted, and the 3-month period ends on the day with the same number three months later: 22.02.2027 (Monday), which is not a weekend or public holiday in NRW, so no further shift under §193 BGB is needed. The termination itself, even if declared earlier, can only take effect at the earliest on 01.02.2027 (when the price change becomes effective). Because the true receipt date is unknown, this due date is an assumption and should be verified against the actual delivery/receipt date of the letter.\",\"due_date\":\"2027-02-22\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The due date for the special termination right assumes a receipt (Zugang) date of about 4 days after the letter's date (22.11.2026), because German law sets no fixed delivery fiction for ordinary business mail from a private company (unlike letters from authorities); the actual date the letter reached the recipient's mailbox should be checked and the three-month deadline recalculated from that date if it differs.\",\"The letter only grants a special termination right running from 'Erhalt dieses Schreibens' (receipt of this letter) without stating the receipt date itself, so the exact deadline cannot be fixed with full certainty from the text alone.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Kabelnetz Beispielstadt GmbH",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "KB-1 093 377"
+        }
+      ],
+      "amounts": [
+        34.99,
+        37.99
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "Price increase for internet tariff takes effect",
+          "quote": "zum 01.02.2027 erhöhen wir den Preis Ihres Tarifs „Kabel 250“ um 3,00 € auf 37,99 € im Monat (bisher 34,99 €).",
+          "computation": "The letter states the new price applies from 01.02.2027 as a fixed calendar date, so no further calculation is needed.",
+          "due_date": "2027-02-01",
+          "confidence": "high",
+          "amount": 37.99
+        },
+        {
+          "kind": "deadline",
+          "title": "Deadline to use the special termination right because of the price increase",
+          "quote": "Sie dürfen den Vertrag deshalb innerhalb von drei Monaten nach Erhalt dieses Schreibens kostenlos und ohne Kündigungsfrist beenden, frühestens zum Wirksamwerden der Preisänderung.",
+          "computation": "This is a letter from a private company, not an authority, so the statutory postal delivery fiction (§122 AO / Länder VwVfG, 3-/4-day rule) does not apply - German law has no fixed delivery fiction for ordinary business mail; actual receipt (Zugang, §130 BGB) governs. The letter is dated Wednesday 18.11.2026 and the actual date it reached the recipient's mailbox is not stated. In the absence of better information, I assume - as a cautious analogy to usual postal transit time and without legal certainty - receipt around 4 calendar days after the letter date, i.e. Sunday 22.11.2026 (18.11.+4 days); for private mail this day is not shifted even if it falls on a weekend. Per §§187 Abs.1, 188 Abs.2 BGB the day of receipt (22.11.2026) is not counted, and the 3-month period ends on the day with the same number three months later: 22.02.2027 (Monday), which is not a weekend or public holiday in NRW, so no further shift under §193 BGB is needed. The termination itself, even if declared earlier, can only take effect at the earliest on 01.02.2027 (when the price change becomes effective). Because the true receipt date is unknown, this due date is an assumption and should be verified against the actual delivery/receipt date of the letter.",
+          "due_date": "2027-02-22",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The due date for the special termination right assumes a receipt (Zugang) date of about 4 days after the letter's date (22.11.2026), because German law sets no fixed delivery fiction for ordinary business mail from a private company (unlike letters from authorities); the actual date the letter reached the recipient's mailbox should be checked and the three-month deadline recalculated from that date if it differs.",
+        "The letter only grants a special termination right running from 'Erhalt dieses Schreibens' (receipt of this letter) without stating the receipt date itself, so the exact deadline cannot be fixed with full certainty from the text alone."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 5593,
+      "cache_read_tokens": 12525,
+      "cache_creation_tokens": 5761,
+      "cost_usd": 0.081487,
+      "duration_ms": 58871,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

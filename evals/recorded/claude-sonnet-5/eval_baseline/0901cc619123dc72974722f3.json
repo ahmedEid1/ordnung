@@ -1,0 +1,82 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"50be03696f1d85a03aed53793c4a0e61b876039abf5c3b5fd8b351a1acf2fceb\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-fine_bussgeld-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:28:10+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Kreis Beispielborken – Bußgeldstelle\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"51.3-26/0779413\"},{\"label\":\"Kennzeichen\",\"value\":\"BOR-JB 315\"}],\"amounts\":[100,28.5,3.5,132],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"Binnen zwei Wochen nach der Zustellung dieses Bescheids kann Einspruch eingelegt werden, schriftlich oder zur Niederschrift beim Kreis Beispielborken – Bußgeldstelle.\",\"computation\":\"The attached Zustellungsurkunde (postal delivery certificate, § 182 ZPO) shows the notice was formally delivered ('Zugestellt') on Tuesday 24.11.2026 - this is the proven delivery date, overriding any fictional-service presumption. The Einspruchsfrist is two weeks starting from this delivery. Per § 187 Abs. 1 BGB the day of the event itself is not counted when computing the start, but per § 188 Abs. 2 BGB a period stated in weeks ends on the day of the last week that corresponds by name to the day on which the triggering event (delivery) occurred. Delivery fell on a Tuesday (24.11.2026); two weeks later the corresponding day is Tuesday 08.12.2026. 08.12.2026 is not a Saturday, Sunday or NRW public holiday, so no extension under § 193 BGB is needed.\",\"due_date\":\"2026-12-08\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine (Geldbuße, Gebühr, Auslagen) after the decision becomes final\",\"quote\":\"Bitte überweisen Sie den Gesamtbetrag erst nach Rechtskraft, und zwar innerhalb von zwei Wochen.\",\"computation\":\"The notice instructs payment only after Rechtskraft (legal force) is reached, within two weeks of that. Rechtskraft occurs the day after the Einspruch period lapses without an objection being filed, i.e. on Wednesday 09.12.2026 (the day after the 08.12.2026 deadline computed above). Applying the same weeks-period rule (§ 187 Abs. 1 and § 188 Abs. 2 BGB) to this triggering event: two weeks after a Wednesday ends on the next matching Wednesday, 23.12.2026. 23.12.2026 is not a Saturday, Sunday or NRW public holiday, so § 193 BGB does not shift it. This date is contingent on no Einspruch being lodged by 08.12.2026; if an objection is filed, this payment obligation and date no longer apply.\",\"due_date\":\"2026-12-23\",\"confidence\":\"medium\",\"amount\":132}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The sender's email address ('bussgeld@kreis-beispielborken-bußgeld.example') uses the reserved placeholder top-level domain '.example' (RFC 2606), which is never used by a real German authority - this strongly suggests the letter is a template/test document or, if received as a real letter, a forgery; verify authenticity directly with the Kreis Beispielborken Bußgeldstelle via an independently looked-up phone number before paying or responding.\",\"The listed bank, 'Landesmusterbank', is a generic placeholder name rather than a real German bank, which is another indicator that the payment details may not be genuine - double-check the IBAN and payee name against official Kreis Beispielborken sources before transferring any money.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Kreis Beispielborken – Bußgeldstelle",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "51.3-26/0779413"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "BOR-JB 315"
+        }
+      ],
+      "amounts": [
+        100,
+        28.5,
+        3.5,
+        132
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "Binnen zwei Wochen nach der Zustellung dieses Bescheids kann Einspruch eingelegt werden, schriftlich oder zur Niederschrift beim Kreis Beispielborken – Bußgeldstelle.",
+          "computation": "The attached Zustellungsurkunde (postal delivery certificate, § 182 ZPO) shows the notice was formally delivered ('Zugestellt') on Tuesday 24.11.2026 - this is the proven delivery date, overriding any fictional-service presumption. The Einspruchsfrist is two weeks starting from this delivery. Per § 187 Abs. 1 BGB the day of the event itself is not counted when computing the start, but per § 188 Abs. 2 BGB a period stated in weeks ends on the day of the last week that corresponds by name to the day on which the triggering event (delivery) occurred. Delivery fell on a Tuesday (24.11.2026); two weeks later the corresponding day is Tuesday 08.12.2026. 08.12.2026 is not a Saturday, Sunday or NRW public holiday, so no extension under § 193 BGB is needed.",
+          "due_date": "2026-12-08",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine (Geldbuße, Gebühr, Auslagen) after the decision becomes final",
+          "quote": "Bitte überweisen Sie den Gesamtbetrag erst nach Rechtskraft, und zwar innerhalb von zwei Wochen.",
+          "computation": "The notice instructs payment only after Rechtskraft (legal force) is reached, within two weeks of that. Rechtskraft occurs the day after the Einspruch period lapses without an objection being filed, i.e. on Wednesday 09.12.2026 (the day after the 08.12.2026 deadline computed above). Applying the same weeks-period rule (§ 187 Abs. 1 and § 188 Abs. 2 BGB) to this triggering event: two weeks after a Wednesday ends on the next matching Wednesday, 23.12.2026. 23.12.2026 is not a Saturday, Sunday or NRW public holiday, so § 193 BGB does not shift it. This date is contingent on no Einspruch being lodged by 08.12.2026; if an objection is filed, this payment obligation and date no longer apply.",
+          "due_date": "2026-12-23",
+          "confidence": "medium",
+          "amount": 132
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The sender's email address ('bussgeld@kreis-beispielborken-bußgeld.example') uses the reserved placeholder top-level domain '.example' (RFC 2606), which is never used by a real German authority - this strongly suggests the letter is a template/test document or, if received as a real letter, a forgery; verify authenticity directly with the Kreis Beispielborken Bußgeldstelle via an independently looked-up phone number before paying or responding.",
+        "The listed bank, 'Landesmusterbank', is a generic placeholder name rather than a real German bank, which is another indicator that the payment details may not be genuine - double-check the IBAN and payee name against official Kreis Beispielborken sources before transferring any money."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 5331,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2105,
+      "cost_usd": 0.062358399999999994,
+      "duration_ms": 53888,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

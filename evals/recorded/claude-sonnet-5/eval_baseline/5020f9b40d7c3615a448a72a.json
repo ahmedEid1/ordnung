@@ -1,0 +1,78 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"5dbb8cef7b441e9e9e69fd7dbc39415bfad4c705a2744528ed7f368399fb0620\",\"mode\":\"text\",\"region\":\"SN\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-vollstreckungsbescheid-2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Sachsen (SN), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> ta",
+    "recorded_at": "2026-11-24T13:04:02+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Amtsgericht Beispielaue – Zentrales Mahngericht Sachsen\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Geschäftsnummer\",\"value\":\"26-3301772-1-9\"}],\"amounts\":[270,6.3,41.2,317.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the Vollstreckungsbescheid\",\"quote\":\"Er ist schriftlich beim Amtsgericht Beispielaue einzulegen, und zwar innerhalb von zwei Wochen; die Frist beginnt mit der Zustellung und ist eine Notfrist.\",\"computation\":\"Formal delivery note states: 'Zustellvermerk: am 23.11.2026 in den Briefkasten eingelegt.' This is a formal delivery (Zustellung) with an explicitly stated delivery day, so that date (Mon 23.11.2026) itself counts as the delivery day and starts the period; per § 187 Abs. 1 BGB the day of the event (23.11.2026) is not counted. The period is 2 weeks (Notfrist nach § 339 ZPO). Per § 188 Abs. 2 BGB, a period stated in weeks ends on the day of the last week bearing the same name as the day the event (delivery) occurred, i.e. the next Monday two weeks later: 23.11.2026 + 2 weeks = 07.12.2026 (Monday). 07.12.2026 is not a Saturday, Sunday or public holiday in Sachsen, so no shift under § 222 Abs. 2 ZPO is needed. As a Notfrist, this deadline is strict and not extendable.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total amount tituliert in the Vollstreckungsbescheid\",\"quote\":\"Gesamtbetrag   317,50\",\"computation\":\"The letter lists the principal (270,00 EUR, Nutzungsentgelt Garage Mai–Oktober 2026), interest (6,30 EUR) and costs (41,20 EUR), totalling 317,50 EUR, as amounts 'tituliert' by the enforcement order. It states enforcement (Zwangsvollstreckung) can already be pursued, but no specific calendar payment deadline is given anywhere in the text, so no exact due date can be computed; practically, immediate payment is expected to avoid enforcement measures.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":317.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"No explicit payment due date is stated in the letter for the 317,50 EUR total; only the Einspruch deadline has a defined date. Double-check with the court or the creditor (Musterwohnen Elbtal eG) whether a specific payment date was communicated separately.\",\"After an Einspruch is filed, the case is stated to be transferred to the Amtsgericht Mustermeißen, not Amtsgericht Beispielaue which issued this order — this is a normal procedural step (Streitiges Verfahren), not something to act on separately.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Amtsgericht Beispielaue – Zentrales Mahngericht Sachsen",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Geschäftsnummer",
+          "value": "26-3301772-1-9"
+        }
+      ],
+      "amounts": [
+        270,
+        6.3,
+        41.2,
+        317.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the Vollstreckungsbescheid",
+          "quote": "Er ist schriftlich beim Amtsgericht Beispielaue einzulegen, und zwar innerhalb von zwei Wochen; die Frist beginnt mit der Zustellung und ist eine Notfrist.",
+          "computation": "Formal delivery note states: 'Zustellvermerk: am 23.11.2026 in den Briefkasten eingelegt.' This is a formal delivery (Zustellung) with an explicitly stated delivery day, so that date (Mon 23.11.2026) itself counts as the delivery day and starts the period; per § 187 Abs. 1 BGB the day of the event (23.11.2026) is not counted. The period is 2 weeks (Notfrist nach § 339 ZPO). Per § 188 Abs. 2 BGB, a period stated in weeks ends on the day of the last week bearing the same name as the day the event (delivery) occurred, i.e. the next Monday two weeks later: 23.11.2026 + 2 weeks = 07.12.2026 (Monday). 07.12.2026 is not a Saturday, Sunday or public holiday in Sachsen, so no shift under § 222 Abs. 2 ZPO is needed. As a Notfrist, this deadline is strict and not extendable.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total amount tituliert in the Vollstreckungsbescheid",
+          "quote": "Gesamtbetrag   317,50",
+          "computation": "The letter lists the principal (270,00 EUR, Nutzungsentgelt Garage Mai–Oktober 2026), interest (6,30 EUR) and costs (41,20 EUR), totalling 317,50 EUR, as amounts 'tituliert' by the enforcement order. It states enforcement (Zwangsvollstreckung) can already be pursued, but no specific calendar payment deadline is given anywhere in the text, so no exact due date can be computed; practically, immediate payment is expected to avoid enforcement measures.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 317.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "No explicit payment due date is stated in the letter for the 317,50 EUR total; only the Einspruch deadline has a defined date. Double-check with the court or the creditor (Musterwohnen Elbtal eG) whether a specific payment date was communicated separately.",
+        "After an Einspruch is filed, the case is stated to be transferred to the Amtsgericht Mustermeißen, not Amtsgericht Beispielaue which issued this order — this is a normal procedural step (Streitiges Verfahren), not something to act on separately."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2789,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1655,
+      "cost_usd": 0.03562,
+      "duration_ms": 28808,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

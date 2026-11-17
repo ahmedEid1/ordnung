@@ -1,0 +1,81 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"e4d5ac76ba75f48a93a5c92f670ae740408a21c255d1bfd1aea0a6a69a83b003\",\"mode\":\"text\",\"region\":\"BB\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-fine_bussgeld-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Brandenburg (BB), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document",
+    "recorded_at": "2026-11-24T07:00:50+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Zentraldienst der Polizei Muster-Brandenburg – Zentrale Bußgeldstelle\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"BS-2026-772415.3\"},{\"label\":\"Kennzeichen\",\"value\":\"LOS-RM 66\"}],\"amounts\":[150,182],\"items\":[{\"kind\":\"deadline\",\"title\":\"File objection (Einspruch) against the fine notice\",\"quote\":\"Die Frist von zwei Wochen beginnt mit dem Tag der Zustellung.\",\"computation\":\"The letter was formally delivered (Postzustellungsurkunde, Zustellungsauftrag page 2) with the carrier noting 'zugestellt am 21.11.2026' (Saturday). For formal delivery the stated date is the delivery day itself; no days are added. The day of delivery is not counted (§ 187 Abs. 1 BGB, applied via § 43 StPO/§ 67 OWiG). The 2-week period ends on the day bearing the same weekday name as the event day, two weeks later: 21.11.2026 + 14 days = 05.12.2026, a Saturday. Since the last day of the period falls on a Saturday, it moves to the next working day (§ 193 BGB, § 43 Abs. 2 StPO) — Sunday 06.12. is skipped, giving Monday 07.12.2026 (no Brandenburg public holiday intervenes).\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay total fine amount (Gesamtbetrag)\",\"quote\":\"Der Gesamtbetrag ist zwei Wochen nach Eintritt der Rechtskraft zu zahlen.\",\"computation\":\"Rechtskraft (finality) of the Bußgeldbescheid enters once the Einspruch period lapses without an objection being filed, i.e. the day after the extended Einspruch deadline of 07.12.2026 — so Rechtskraft would occur on 08.12.2026, assuming no Einspruch is lodged. Counting two weeks from that event day (not counted itself), the period ends on the day with the same weekday two weeks later: 08.12.2026 + 14 days = 22.12.2026, a Tuesday, which is not a weekend or Brandenburg public holiday, so it stands.\",\"due_date\":\"2026-12-22\",\"confidence\":\"low\",\"amount\":182}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment deadline (two weeks after Rechtskraft) is only calculable by assuming no Einspruch is filed by 07.12.2026; if an objection is lodged, Rechtskraft does not occur and no payment is due on the computed date — double-check this with the authority before paying.\",\"The sender's email address domain ('zentraldienst-der-polizei-mu.example') uses a non-standard/placeholder-looking domain rather than an official .de government address; verify the authenticity of contact details before relying on them or sending payment confirmations there.\",\"The IBAN given for payment (Landesmusterbank, DE70 1600 0000 0005 8312 00) should be double-checked against official Brandenburg Bußgeldstelle payment instructions before transferring money.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Zentraldienst der Polizei Muster-Brandenburg – Zentrale Bußgeldstelle",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "BS-2026-772415.3"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "LOS-RM 66"
+        }
+      ],
+      "amounts": [
+        150,
+        182
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File objection (Einspruch) against the fine notice",
+          "quote": "Die Frist von zwei Wochen beginnt mit dem Tag der Zustellung.",
+          "computation": "The letter was formally delivered (Postzustellungsurkunde, Zustellungsauftrag page 2) with the carrier noting 'zugestellt am 21.11.2026' (Saturday). For formal delivery the stated date is the delivery day itself; no days are added. The day of delivery is not counted (§ 187 Abs. 1 BGB, applied via § 43 StPO/§ 67 OWiG). The 2-week period ends on the day bearing the same weekday name as the event day, two weeks later: 21.11.2026 + 14 days = 05.12.2026, a Saturday. Since the last day of the period falls on a Saturday, it moves to the next working day (§ 193 BGB, § 43 Abs. 2 StPO) — Sunday 06.12. is skipped, giving Monday 07.12.2026 (no Brandenburg public holiday intervenes).",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay total fine amount (Gesamtbetrag)",
+          "quote": "Der Gesamtbetrag ist zwei Wochen nach Eintritt der Rechtskraft zu zahlen.",
+          "computation": "Rechtskraft (finality) of the Bußgeldbescheid enters once the Einspruch period lapses without an objection being filed, i.e. the day after the extended Einspruch deadline of 07.12.2026 — so Rechtskraft would occur on 08.12.2026, assuming no Einspruch is lodged. Counting two weeks from that event day (not counted itself), the period ends on the day with the same weekday two weeks later: 08.12.2026 + 14 days = 22.12.2026, a Tuesday, which is not a weekend or Brandenburg public holiday, so it stands.",
+          "due_date": "2026-12-22",
+          "confidence": "low",
+          "amount": 182
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment deadline (two weeks after Rechtskraft) is only calculable by assuming no Einspruch is filed by 07.12.2026; if an objection is lodged, Rechtskraft does not occur and no payment is due on the computed date — double-check this with the authority before paying.",
+        "The sender's email address domain ('zentraldienst-der-polizei-mu.example') uses a non-standard/placeholder-looking domain rather than an official .de government address; verify the authenticity of contact details before relying on them or sending payment confirmations there.",
+        "The IBAN given for payment (Landesmusterbank, DE70 1600 0000 0005 8312 00) should be double-checked against official Brandenburg Bußgeldstelle payment instructions before transferring money."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6328,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2163,
+      "cost_usd": 0.073042,
+      "duration_ms": 61313,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

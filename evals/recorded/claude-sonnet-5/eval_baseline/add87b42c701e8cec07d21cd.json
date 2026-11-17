@@ -1,0 +1,85 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"b379c518888e50003d40040d2965b748e74ddb57c036d7289e39a78d0d521c46\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-L2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:24:12+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"sender_name\":\"Beispielhof Serviced Living GmbH\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Apartment\",\"value\":\"B 3.07\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Reply whether you want to extend the lease\",\"quote\":\"Please tell us in writing by 16 December 2026 whether you would like to extend.\",\"computation\":\"The letter states a fixed calendar date for this declaration: 16 December 2026. This date is printed as-is (no period to count from a delivery date), so no deemed-delivery or BGB counting rules apply. 16 Dec 2026 falls on a Wednesday, a normal business day in NW (no shift needed).\",\"due_date\":\"2026-12-16\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":{\"current_term_end\":\"2027-01-31\",\"cancel_by\":null},\"warnings\":[\"This is a fixed-term lease that ends automatically on 31 January 2027; no cancellation is required to end it — the 16 December 2026 date is only the landlord's requested deadline to opt IN to an extension, not a cancel-by date.\",\"The letter does not state the rent for the extension period beyond 'the current rent', so no amount could be extracted.\"]}",
+    "data": {
+      "kind": "rent_lease",
+      "sender_name": "Beispielhof Serviced Living GmbH",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Apartment",
+          "value": "B 3.07"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Reply whether you want to extend the lease",
+          "quote": "Please tell us in writing by 16 December 2026 whether you would like to extend.",
+          "computation": "The letter states a fixed calendar date for this declaration: 16 December 2026. This date is printed as-is (no period to count from a delivery date), so no deemed-delivery or BGB counting rules apply. 16 Dec 2026 falls on a Wednesday, a normal business day in NW (no shift needed).",
+          "due_date": "2026-12-16",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": {
+        "current_term_end": "2027-01-31",
+        "cancel_by": null
+      },
+      "warnings": [
+        "This is a fixed-term lease that ends automatically on 31 January 2027; no cancellation is required to end it — the 16 December 2026 date is only the landlord's requested deadline to opt IN to an extension, not a cancel-by date.",
+        "The letter does not state the rent for the extension period beyond 'the current rent', so no amount could be extracted."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1598,
+      "cache_read_tokens": 14446,
+      "cache_creation_tokens": 2810,
+      "cost_usd": 0.0301172,
+      "duration_ms": 28830,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "fixed",
+            "date": "2026-12-16",
+            "nature": "declaration",
+            "text": "Please tell us in writing by 16 December 2026 whether you would like to extend.",
+            "shift_rule": "none"
+          },
+          "document_date": "2026-11-18",
+          "sender_kind": "landlord",
+          "sender_name": "Beispielhof Serviced Living GmbH",
+          "region": "NW"
+        },
+        "result": "{\"due_date\":\"2026-12-16\",\"weekday\":\"Wednesday\",\"send_by\":\"2026-12-10\",\"summary\":\"The date given is Wed 16 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"The date given is Wed 16 Dec 2026\",\"date\":\"2026-12-16\",\"rule_id\":\"date_as_written\",\"citation\":\"The document's own wording\"},{\"label\":\"Send by Thu 10 Dec 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-12-10\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"date_as_written\",\"title\":\"Dates stated in the letter\",\"citation\":\"The document's own wording\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-18\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

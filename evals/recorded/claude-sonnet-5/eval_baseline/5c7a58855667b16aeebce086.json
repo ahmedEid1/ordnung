@@ -1,0 +1,78 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"375ffa8dc4ce4481f758e33b17127bb1b13c0aa47809de0c330af2e688300b62\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-scam-2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:06:37+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Verbraucher-Rückerstattungsstelle Energie\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Erstattungsnummer\",\"value\":\"VRE-4471-2026\"}],\"amounts\":[612,49.9],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay 'processing fee' to release claimed refund\",\"quote\":\"überweisen Sie bitte die einmalige Bearbeitungsgebühr von 49,90 € bis zum 27.11.2026 auf das Konto IBAN CY17 0020 0128 0000 0012 0052 7600.\",\"computation\":\"The letter prints a fixed calendar date for the fee payment: 'bis zum 27.11.2026'. No statutory delivery-fiction or BGB period applies because this is a self-set date by a private (non-authority) sender, not a legal deadline. 27.11.2026 is a Friday, a normal business day in NW, so no weekend/holiday shift is needed. Due date = 27.11.2026 as printed. Note: this whole scheme (pay a fee up front to receive a larger 'refund') is a classic advance-fee scam and the payment should NOT actually be made.\",\"due_date\":\"2026-11-27\",\"confidence\":\"high\",\"amount\":49.9}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This letter shows the classic pattern of an advance-fee ('Vorschussbetrug') scam: it promises a large refund (612,00 €) but first demands a smaller upfront 'Bearbeitungsgebühr' (49,90 €) — genuine German refunds (e.g. from an energy supplier, Ombudsmann or tax office) are never conditional on paying a fee first.\",\"The payee IBAN (CY17 ...) is a Cypriot account, and the sender's own address is in Nicosia, Cyprus — not a plausible registered location for a German 'Verbraucher-Rückerstattungsstelle Energie'; no such official German consumer body is known under this name.\",\"The IBAN is well-formed (valid checksum, Cyprus, length 28) but a valid IBAN only confirms its format, not who owns the account or that it is legitimate — do not transfer money to it.\",\"The letter uses pressure/urgency language ('Verstreicht die Frist, verfällt Ihr Anspruch endgültig') to rush payment, a typical scam tactic.\",\"Recommendation: do not pay the fee, do not reply with personal/bank details, and report the letter/email address as a suspected scam (e.g. to the Verbraucherzentrale or police).\"]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Verbraucher-Rückerstattungsstelle Energie",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Erstattungsnummer",
+          "value": "VRE-4471-2026"
+        }
+      ],
+      "amounts": [
+        612,
+        49.9
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay 'processing fee' to release claimed refund",
+          "quote": "überweisen Sie bitte die einmalige Bearbeitungsgebühr von 49,90 € bis zum 27.11.2026 auf das Konto IBAN CY17 0020 0128 0000 0012 0052 7600.",
+          "computation": "The letter prints a fixed calendar date for the fee payment: 'bis zum 27.11.2026'. No statutory delivery-fiction or BGB period applies because this is a self-set date by a private (non-authority) sender, not a legal deadline. 27.11.2026 is a Friday, a normal business day in NW, so no weekend/holiday shift is needed. Due date = 27.11.2026 as printed. Note: this whole scheme (pay a fee up front to receive a larger 'refund') is a classic advance-fee scam and the payment should NOT actually be made.",
+          "due_date": "2026-11-27",
+          "confidence": "high",
+          "amount": 49.9
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This letter shows the classic pattern of an advance-fee ('Vorschussbetrug') scam: it promises a large refund (612,00 €) but first demands a smaller upfront 'Bearbeitungsgebühr' (49,90 €) — genuine German refunds (e.g. from an energy supplier, Ombudsmann or tax office) are never conditional on paying a fee first.",
+        "The payee IBAN (CY17 ...) is a Cypriot account, and the sender's own address is in Nicosia, Cyprus — not a plausible registered location for a German 'Verbraucher-Rückerstattungsstelle Energie'; no such official German consumer body is known under this name.",
+        "The IBAN is well-formed (valid checksum, Cyprus, length 28) but a valid IBAN only confirms its format, not who owns the account or that it is legitimate — do not transfer money to it.",
+        "The letter uses pressure/urgency language ('Verstreicht die Frist, verfällt Ihr Anspruch endgültig') to rush payment, a typical scam tactic.",
+        "Recommendation: do not pay the fee, do not reply with personal/bank details, and report the letter/email address as a suspected scam (e.g. to the Verbraucherzentrale or police)."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 3075,
+      "cache_read_tokens": 23513,
+      "cache_creation_tokens": 4241,
+      "cost_usd": 0.0524286,
+      "duration_ms": 41904,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "CY17 0020 0128 0000 0012 0052 7600"
+        },
+        "result": "{\"iban\":\"CY17 0020 0128 0000 0012 0052 7600\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"CY\",\"name\":\"Cyprus\"},\"length\":{\"expected\":28,\"actual\":28},\"checksum_ok\":true,\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

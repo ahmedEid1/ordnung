@@ -1,0 +1,73 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"c942db669d34071740d473c163146e350cfee2ffd4ec1544605180490a67fef8\",\"mode\":\"text\",\"region\":\"BB\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-social_decision-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Brandenburg (BB), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document",
+    "recorded_at": "2026-11-24T07:37:09+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Landkreis Musterspree-Neiße – Wohngeldstelle\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Wohngeldnummer\",\"value\":\"WG-2026-07415\"}],\"amounts\":[226,690],\"items\":[{\"kind\":\"task\",\"title\":\"Submit November/December 2026 payslips\",\"quote\":\"Legen Sie uns bitte bis zum 11.01.2027 die Lohnabrechnungen für November und Dezember 2026 vor, damit wir prüfen können, ob sich das Wohngeld ändert.\",\"computation\":\"The letter states an explicit calendar deadline: payslips for November and December 2026 must be submitted by 11.01.2027. No period calculation is required; this is a fixed date given by the authority.\",\"due_date\":\"2027-01-11\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"File Widerspruch (objection) against the Wohngeld decision\",\"quote\":\"Er muss innerhalb eines Monats nach Bekanntgabe des Bescheids bei uns eingehen (Landkreis Musterspree-Neiße, Amtsplatz 3, 15848 Beispielkow); Sie können ihn schriftlich einreichen oder bei uns zur Niederschrift erklären.\",\"computation\":\"Document dated Friday 20.11.2026; assumed handed to the post on the same day. Per the letter's own rule (matching the amended § 41 Abs. 2 VwVfG in force since the Postrechtsmodernisierungsgesetz) and the sentence 'Ein Bescheid, den wir per Post versenden, gilt am vierten Tag nach seiner Aufgabe zur Post als bekannt gegeben': counting from 20.11. (day of posting not counted), the 4th day is 21.11.(Sat)->22.11.(Sun)->23.11.(Mon)->24.11.(Tue). 24.11.2026 is a Tuesday, not a Saturday/Sunday/public holiday, so Bekanntgabe (deemed notification) = 24.11.2026. The one-month Widerspruchsfrist then runs under §187 Abs.1 / §188 Abs.2 BGB: the period ends on the day of the following month bearing the same calendar number as the day of the triggering event (24.11.), i.e. 24.12.2026 (Thursday). 24 December is not a statutory public holiday in Brandenburg (only Heiligabend, not legally a Feiertag), so no shift applies. The objection must reach the Landkreis by 24.12.2026.\",\"due_date\":\"2026-12-24\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Landkreis Musterspree-Neiße – Wohngeldstelle",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Wohngeldnummer",
+          "value": "WG-2026-07415"
+        }
+      ],
+      "amounts": [
+        226,
+        690
+      ],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Submit November/December 2026 payslips",
+          "quote": "Legen Sie uns bitte bis zum 11.01.2027 die Lohnabrechnungen für November und Dezember 2026 vor, damit wir prüfen können, ob sich das Wohngeld ändert.",
+          "computation": "The letter states an explicit calendar deadline: payslips for November and December 2026 must be submitted by 11.01.2027. No period calculation is required; this is a fixed date given by the authority.",
+          "due_date": "2027-01-11",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch (objection) against the Wohngeld decision",
+          "quote": "Er muss innerhalb eines Monats nach Bekanntgabe des Bescheids bei uns eingehen (Landkreis Musterspree-Neiße, Amtsplatz 3, 15848 Beispielkow); Sie können ihn schriftlich einreichen oder bei uns zur Niederschrift erklären.",
+          "computation": "Document dated Friday 20.11.2026; assumed handed to the post on the same day. Per the letter's own rule (matching the amended § 41 Abs. 2 VwVfG in force since the Postrechtsmodernisierungsgesetz) and the sentence 'Ein Bescheid, den wir per Post versenden, gilt am vierten Tag nach seiner Aufgabe zur Post als bekannt gegeben': counting from 20.11. (day of posting not counted), the 4th day is 21.11.(Sat)->22.11.(Sun)->23.11.(Mon)->24.11.(Tue). 24.11.2026 is a Tuesday, not a Saturday/Sunday/public holiday, so Bekanntgabe (deemed notification) = 24.11.2026. The one-month Widerspruchsfrist then runs under §187 Abs.1 / §188 Abs.2 BGB: the period ends on the day of the following month bearing the same calendar number as the day of the triggering event (24.11.), i.e. 24.12.2026 (Thursday). 24 December is not a statutory public holiday in Brandenburg (only Heiligabend, not legally a Feiertag), so no shift applies. The objection must reach the Landkreis by 24.12.2026.",
+          "due_date": "2026-12-24",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4664,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1954,
+      "cost_usd": 0.05508439999999999,
+      "duration_ms": 48930,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"9db49c05bbff15d52a5e4c900606010ed6e50e8c7bff80d8cbb76fd22ac091a7\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-social_decision-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:58:11+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Musterquell Krankenkasse\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"Q803116452\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against rejection of Haushaltshilfe\",\"quote\":\"Gegen diesen Bescheid können Sie innerhalb eines Monats, nachdem er Ihnen bekannt gegeben wurde, Widerspruch erheben.\",\"computation\":\"Letter is dated 19.11.2026 and, absent other information, is assumed posted that same day. The letter itself states the statutory delivery fiction: 'Schicken wir Ihnen den Bescheid mit der Post, ist er am vierten Tag nach dem Absenden bekannt gegeben (§ 37 Abs. 2 SGB X).' Counting 4 days from 19.11.2026 gives Bekanntgabe (deemed delivery) on 23.11.2026 (a Monday, no weekend/holiday adjustment needed as the delivery-fiction date itself is not subject to the weekend-extension rule, only the end of a period is). The one-month objection period then runs under §§ 187 Abs. 1, 188 Abs. 2 BGB: it starts the day after the event (24.11.2026) and ends on the day of the following month that numerically corresponds to the day of the triggering event (23.11.2026), i.e. 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in Nordrhein-Westfalen, so no further extension applies. Final day to file Widerspruch: 23.12.2026.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Musterquell Krankenkasse",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "Q803116452"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against rejection of Haushaltshilfe",
+          "quote": "Gegen diesen Bescheid können Sie innerhalb eines Monats, nachdem er Ihnen bekannt gegeben wurde, Widerspruch erheben.",
+          "computation": "Letter is dated 19.11.2026 and, absent other information, is assumed posted that same day. The letter itself states the statutory delivery fiction: 'Schicken wir Ihnen den Bescheid mit der Post, ist er am vierten Tag nach dem Absenden bekannt gegeben (§ 37 Abs. 2 SGB X).' Counting 4 days from 19.11.2026 gives Bekanntgabe (deemed delivery) on 23.11.2026 (a Monday, no weekend/holiday adjustment needed as the delivery-fiction date itself is not subject to the weekend-extension rule, only the end of a period is). The one-month objection period then runs under §§ 187 Abs. 1, 188 Abs. 2 BGB: it starts the day after the event (24.11.2026) and ends on the day of the following month that numerically corresponds to the day of the triggering event (23.11.2026), i.e. 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in Nordrhein-Westfalen, so no further extension applies. Final day to file Widerspruch: 23.12.2026.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2121,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1743,
+      "cost_usd": 0.0288104,
+      "duration_ms": 22842,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"99c103e37ffc3a5b47598ce89166c39a89ea1061e965ca26cbd149a1ba4e7641\",\"mode\":\"text\",\"region\":\"MV\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Mecklenburg-Vorpommern (MV), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrust",
+    "recorded_at": "2026-11-24T09:50:26+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Hansestadt Beispielwismar – Untere Denkmalschutzbehörde\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"DS 63-4471/26\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against partial refusal of window permit\",\"quote\":\"Binnen eines Monats ab der Bekanntgabe dieses Bescheids ist der Widerspruch zulässig; er wird schriftlich oder zur Niederschrift bei folgender Stelle erhoben: Hansestadt Beispielwismar, Am Markt 1, 23966 Beispielwismar.\",\"computation\":\"Letter dated (Bescheiddatum) 19.11.2026 (Thursday), sent by ordinary letter. Per the clause cited in the letter itself (§ 41 Abs. 2 VwVfG M-V), such a letter 'gilt am vierten Tag nach der Aufgabe zur Post als bekannt gegeben'. Assuming the date of posting equals the Bescheiddatum (no separate posting date given), the 4th day after 19.11.2026 is 23.11.2026 (Mon) [20.,21.,22.,23. Nov = days 1-4]; 23.11.2026 is a normal business day so no further shift is needed → deemed delivery (Bekanntgabe) = 23.11.2026. The one-month Widerspruchsfrist runs from the day after Bekanntgabe (§ 187 Abs. 1 BGB) and ends, per § 188 Abs. 2 BGB, on the day of the following month that corresponds by designation to 23.11.2026, i.e. 23.12.2026 (Wednesday). 23.12.2026 is a normal weekday in MV (not a Saturday, Sunday or public holiday), so no shift under § 193 BGB is required.\",\"due_date\":\"2026-12-23\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Apply for subsidy (Zuschuss) for wooden windows, if desired\",\"quote\":\"Für Holzfenster gewähren wir auf Antrag einen Zuschuss.\",\"computation\":\"The letter mentions a subsidy is available 'auf Antrag' (on application) for the wooden windows but states no deadline, application form or time limit for making this request, so no exact due date can be determined.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The exact date the letter was physically posted ('Aufgabe zur Post') is not stated separately; the computation assumes it matches the printed Bescheiddatum (19.11.2026), which may shift the Widerspruch deadline by a day or two if posting actually occurred later.\",\"No deadline or procedure is given for the subsidy ('Zuschuss') application for the wooden windows; the person should contact the Denkmalschutzbehörde to clarify before proceeding.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Hansestadt Beispielwismar – Untere Denkmalschutzbehörde",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "DS 63-4471/26"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against partial refusal of window permit",
+          "quote": "Binnen eines Monats ab der Bekanntgabe dieses Bescheids ist der Widerspruch zulässig; er wird schriftlich oder zur Niederschrift bei folgender Stelle erhoben: Hansestadt Beispielwismar, Am Markt 1, 23966 Beispielwismar.",
+          "computation": "Letter dated (Bescheiddatum) 19.11.2026 (Thursday), sent by ordinary letter. Per the clause cited in the letter itself (§ 41 Abs. 2 VwVfG M-V), such a letter 'gilt am vierten Tag nach der Aufgabe zur Post als bekannt gegeben'. Assuming the date of posting equals the Bescheiddatum (no separate posting date given), the 4th day after 19.11.2026 is 23.11.2026 (Mon) [20.,21.,22.,23. Nov = days 1-4]; 23.11.2026 is a normal business day so no further shift is needed → deemed delivery (Bekanntgabe) = 23.11.2026. The one-month Widerspruchsfrist runs from the day after Bekanntgabe (§ 187 Abs. 1 BGB) and ends, per § 188 Abs. 2 BGB, on the day of the following month that corresponds by designation to 23.11.2026, i.e. 23.12.2026 (Wednesday). 23.12.2026 is a normal weekday in MV (not a Saturday, Sunday or public holiday), so no shift under § 193 BGB is required.",
+          "due_date": "2026-12-23",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Apply for subsidy (Zuschuss) for wooden windows, if desired",
+          "quote": "Für Holzfenster gewähren wir auf Antrag einen Zuschuss.",
+          "computation": "The letter mentions a subsidy is available 'auf Antrag' (on application) for the wooden windows but states no deadline, application form or time limit for making this request, so no exact due date can be determined.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The exact date the letter was physically posted ('Aufgabe zur Post') is not stated separately; the computation assumes it matches the printed Bescheiddatum (19.11.2026), which may shift the Widerspruch deadline by a day or two if posting actually occurred later.",
+        "No deadline or procedure is given for the subsidy ('Zuschuss') application for the wooden windows; the person should contact the Denkmalschutzbehörde to clarify before proceeding."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 4254,
+      "cache_read_tokens": 7984,
+      "cache_creation_tokens": 4827,
+      "cost_usd": 0.0634528,
+      "duration_ms": 52768,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

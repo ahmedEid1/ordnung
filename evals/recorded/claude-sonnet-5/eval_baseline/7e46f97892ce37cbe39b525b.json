@@ -1,0 +1,65 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"49eefb94fb43668ca444af0275d16202e272a023ac949524043a48ffd31bc399\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:54:03+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterweilburg\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"35 112 0447 8810\"}],\"amounts\":[184300],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against Grundsteuerwert assessment\",\"quote\":\"Gegen diesen Bescheid kann binnen eines Monats nach Bekanntgabe Einspruch beim Finanzamt Musterweilburg eingelegt werden, schriftlich, elektronisch oder zur Niederschrift.\",\"computation\":\"The letter names a separate 'Tag der Aufgabe zur Post' (posting day) of Saturday, 21.11.2026, which overrides the Bescheid date for delivery purposes. Under the Bekanntgabefiktion for letters posted on/after 1 Jan 2025, delivery is deemed on the 4th day after posting, counting calendar days and not counting the posting day itself: 22.11. (Sun) = +1, 23.11. (Mon) = +2, 24.11. (Tue) = +3, 25.11. (Wed) = +4. For tax offices, if that 4th day is a Saturday, Sunday or holiday it moves to the next working day (§108 Abs.3 AO); 25.11.2026 is a Wednesday and not a holiday, so Bekanntgabe (deemed delivery) = 25.11.2026. The one-month Einspruch period (§355 Abs.1 AO, counted per §§187 Abs.1, 188 Abs.2 BGB) runs from the day after delivery and ends on the day in the following month bearing the same number as the delivery day: 25.12.2026. That day is a public holiday (1. Weihnachtstag) nationwide; the following day 26.12.2026 (2. Weihnachtstag) is also a nationwide holiday and additionally a Saturday; 27.12.2026 is a Sunday. The period therefore ends on the next working day, Monday 28.12.2026 (§108 Abs.3 AO / §193 BGB).\",\"due_date\":\"2026-12-28\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter states that it was given to the post ('Aufgabe zur Post') on a Saturday (21.11.2026), which is an unusual day for an authority's mail dispatch; if the actual postmark differs, the delivery and deadline dates would shift accordingly and should be checked against the envelope.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterweilburg",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "35 112 0447 8810"
+        }
+      ],
+      "amounts": [
+        184300
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against Grundsteuerwert assessment",
+          "quote": "Gegen diesen Bescheid kann binnen eines Monats nach Bekanntgabe Einspruch beim Finanzamt Musterweilburg eingelegt werden, schriftlich, elektronisch oder zur Niederschrift.",
+          "computation": "The letter names a separate 'Tag der Aufgabe zur Post' (posting day) of Saturday, 21.11.2026, which overrides the Bescheid date for delivery purposes. Under the Bekanntgabefiktion for letters posted on/after 1 Jan 2025, delivery is deemed on the 4th day after posting, counting calendar days and not counting the posting day itself: 22.11. (Sun) = +1, 23.11. (Mon) = +2, 24.11. (Tue) = +3, 25.11. (Wed) = +4. For tax offices, if that 4th day is a Saturday, Sunday or holiday it moves to the next working day (§108 Abs.3 AO); 25.11.2026 is a Wednesday and not a holiday, so Bekanntgabe (deemed delivery) = 25.11.2026. The one-month Einspruch period (§355 Abs.1 AO, counted per §§187 Abs.1, 188 Abs.2 BGB) runs from the day after delivery and ends on the day in the following month bearing the same number as the delivery day: 25.12.2026. That day is a public holiday (1. Weihnachtstag) nationwide; the following day 26.12.2026 (2. Weihnachtstag) is also a nationwide holiday and additionally a Saturday; 27.12.2026 is a Sunday. The period therefore ends on the next working day, Monday 28.12.2026 (§108 Abs.3 AO / §193 BGB).",
+          "due_date": "2026-12-28",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter states that it was given to the post ('Aufgabe zur Post') on a Saturday (21.11.2026), which is an unusual day for an authority's mail dispatch; if the actual postmark differs, the delivery and deadline dates would shift accordingly and should be checked against the envelope."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 5276,
+      "cache_read_tokens": 12700,
+      "cache_creation_tokens": 5894,
+      "cost_usd": 0.078884,
+      "duration_ms": 49677,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

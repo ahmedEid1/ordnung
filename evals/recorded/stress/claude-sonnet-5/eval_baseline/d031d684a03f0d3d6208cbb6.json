@@ -1,0 +1,73 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"8e510b8b94e040eb956bdeeee4d2badbb599cd400b065be3048a6c2233779d11\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "stress-D1-holdout4-english_letter-N2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T14:32:52+00:00",
+    "repeat": 1,
+    "commit": "3a21dfb8",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2026-11-18\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Sign and return contract amendment\",\"quote\":\"Please sign both copies and return one to People & Culture by 11 December 2026 so that payroll can apply the change in January.\",\"computation\":\"The letter states a fixed calendar date for this obligation: 11 December 2026. No period calculation or deemed-delivery rule applies since the date is printed explicitly and the sender is the person's employer (a company, not an authority). 11 December 2026 falls on a Friday, a normal business day, so no weekend/holiday shift is needed.\",\"due_date\":\"2026-12-11\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"New working hours and salary take effect\",\"quote\":\"your weekly hours will rise from 32 to 40 from 1 January 2027, with your salary adjusted accordingly.\",\"computation\":\"The letter gives the effective date explicitly as 1 January 2027; this is the date the change in working hours and salary takes effect.\",\"due_date\":\"2027-01-01\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"employment\",\"references\":[{\"label\":\"Employee no.\",\"value\":\"E-2291\"}],\"remedy_type\":\"none\",\"sender_name\":\"Beispielsoft Solutions GmbH\",\"warnings\":[\"No specific salary figure is stated for the new 40-hour week beyond 'adjusted accordingly' — the person should check the enclosed contract amendment for the exact new salary.\",\"The mentioned closure of the customer office on Ashgrove Lane on 16 December 2026 is informational only and creates no obligation for the employee.\"]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2026-11-18",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Sign and return contract amendment",
+          "quote": "Please sign both copies and return one to People & Culture by 11 December 2026 so that payroll can apply the change in January.",
+          "computation": "The letter states a fixed calendar date for this obligation: 11 December 2026. No period calculation or deemed-delivery rule applies since the date is printed explicitly and the sender is the person's employer (a company, not an authority). 11 December 2026 falls on a Friday, a normal business day, so no weekend/holiday shift is needed.",
+          "due_date": "2026-12-11",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "New working hours and salary take effect",
+          "quote": "your weekly hours will rise from 32 to 40 from 1 January 2027, with your salary adjusted accordingly.",
+          "computation": "The letter gives the effective date explicitly as 1 January 2027; this is the date the change in working hours and salary takes effect.",
+          "due_date": "2027-01-01",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "employment",
+      "references": [
+        {
+          "label": "Employee no.",
+          "value": "E-2291"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Beispielsoft Solutions GmbH",
+      "warnings": [
+        "No specific salary figure is stated for the new 40-hour week beyond 'adjusted accordingly' — the person should check the enclosed contract amendment for the exact new salary.",
+        "The mentioned closure of the customer office on Ashgrove Lane on 16 December 2026 is informational only and creates no obligation for the employee."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1652,
+      "cache_read_tokens": 6440,
+      "cache_creation_tokens": 1542,
+      "cost_usd": 0.02398,
+      "duration_ms": 18048,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

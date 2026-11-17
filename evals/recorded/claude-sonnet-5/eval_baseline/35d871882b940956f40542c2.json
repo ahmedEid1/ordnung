@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"e6a608fa0fe40c7cb5afe652a457c6f1c03e07d21ed30758bdb4c69deb35bd69\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d",
+    "recorded_at": "2026-11-24T09:46:41+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Amt Musterschlei – Der Amtsvorsteher, Ordnungsamt\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"OA 32-118/26\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against refusal of beach fire permit\",\"quote\":\"Gegen diesen Bescheid können Sie innerhalb eines Monats nach seiner Bekanntgabe Widerspruch einlegen, schriftlich oder zur Niederschrift bei der Behörde: Amt Musterschlei, Am Markt 6, 24376 Musterkappeln.\",\"computation\":\"Letter dated Wed 18.11.2026, sent as simple letter (einfacher Brief). Per § 110 Abs. 2 LVwG SH, it is deemed notified (Bekanntgabe) on the 4th day after it was handed to the post (Aufgabe zur Post), assumed to be the document date. Counting 4 days from 18.11.: 19., 20., 21., 22.11.2026 -> the 4th day is Sunday 22.11.2026. Because postal delivery does not occur on a Sunday, the fictitious delivery date shifts to the next business day (established practice analogous to § 41 Abs. 2 VwVfG / § 122 Abs. 2 AO case law), i.e. Monday 23.11.2026, which is the Bekanntgabe date. The one-month objection period runs under § 187 Abs. 1 BGB (event-triggered period, day of event not counted) and ends under § 188 Abs. 2 BGB on the day of the following month that numerically corresponds to the day of the triggering event (23) -> 23.12.2026. That date is a Wednesday and not a public holiday in Schleswig-Holstein, so no further shift under § 193 BGB is needed. Final deadline: 23.12.2026 (must reach the authority by this date, in writing or recorded orally at the office).\",\"due_date\":\"2026-12-23\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The exact date the letter was actually handed to the postal service (Aufgabe zur Post) is not stated separately from the letter's date; I assumed they are the same, which is the normal case but could shift the deadline by a day or two if mailing was delayed.\",\"The shift of the fictitious delivery date from a Sunday to the next business day is based on established administrative-law practice rather than explicit statutory wording in the letter; double-check with the authority if the exact deadline is critical.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Amt Musterschlei – Der Amtsvorsteher, Ordnungsamt",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "OA 32-118/26"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against refusal of beach fire permit",
+          "quote": "Gegen diesen Bescheid können Sie innerhalb eines Monats nach seiner Bekanntgabe Widerspruch einlegen, schriftlich oder zur Niederschrift bei der Behörde: Amt Musterschlei, Am Markt 6, 24376 Musterkappeln.",
+          "computation": "Letter dated Wed 18.11.2026, sent as simple letter (einfacher Brief). Per § 110 Abs. 2 LVwG SH, it is deemed notified (Bekanntgabe) on the 4th day after it was handed to the post (Aufgabe zur Post), assumed to be the document date. Counting 4 days from 18.11.: 19., 20., 21., 22.11.2026 -> the 4th day is Sunday 22.11.2026. Because postal delivery does not occur on a Sunday, the fictitious delivery date shifts to the next business day (established practice analogous to § 41 Abs. 2 VwVfG / § 122 Abs. 2 AO case law), i.e. Monday 23.11.2026, which is the Bekanntgabe date. The one-month objection period runs under § 187 Abs. 1 BGB (event-triggered period, day of event not counted) and ends under § 188 Abs. 2 BGB on the day of the following month that numerically corresponds to the day of the triggering event (23) -> 23.12.2026. That date is a Wednesday and not a public holiday in Schleswig-Holstein, so no further shift under § 193 BGB is needed. Final deadline: 23.12.2026 (must reach the authority by this date, in writing or recorded orally at the office).",
+          "due_date": "2026-12-23",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The exact date the letter was actually handed to the postal service (Aufgabe zur Post) is not stated separately from the letter's date; I assumed they are the same, which is the normal case but could shift the deadline by a day or two if mailing was delayed.",
+        "The shift of the fictitious delivery date from a Sunday to the next business day is based on established administrative-law practice rather than explicit statutory wording in the letter; double-check with the authority if the exact deadline is critical."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 5374,
+      "cache_read_tokens": 7894,
+      "cache_creation_tokens": 5566,
+      "cost_usd": 0.07759079999999999,
+      "duration_ms": 61821,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"4b2f82233e0eaecd17f6c14ad74b2d69b4352c380eb7209cc0e90773c9c685c8\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-conflicting_dates-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:47:32+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Kreis Musterlenne-Sauerland – Untere Immissionsschutzbehörde\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"70.3-IS-0442/26\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Klage against the operating-hours order at the Verwaltungsgericht\",\"quote\":\"Innerhalb eines Monats nach Bekanntgabe kann gegen diesen Bescheid Klage beim Verwaltungsgericht Musterarnsberg, Jägerstraße 1, 59821 Musterarnsberg, erhoben werden.\",\"computation\":\"The letter is dated Thursday 19.11.2026; as a letter from an administrative authority sent by ordinary post, it counts as delivered (Bekanntgabe, § 41 Abs. 2 VwVfG) on the 4th day after posting, i.e. Monday 23.11.2026 (no weekend shift applies to this delivery rule). The one-month Klage period (§ 74 VwGO) then starts counting the next day under § 187 Abs. 1 BGB, i.e. from 23.11.2026, and ends one month later under § 188 Abs. 2 BGB on 23.12.2026, a Wednesday that is a normal working day in NRW, so no further shift is needed.\",\"due_date\":\"2026-12-23\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The letter refers to an underlying \\\"Bescheid vom 18.11.2026\\\" but the letter itself (which contains the Rechtsbehelfsbelehrung) is dated 19.11.2026; the Klage deadline above is calculated from the letter's own date (19.11.2026) as the posting day — if the Bescheid of 18.11.2026 was actually sent/received separately and earlier, the one-month period could run out one day sooner, so check the envelope or any separate cover letter for the real posting date.\",\"Deemed delivery (4 days after posting) was assumed because the letter does not state it was formally served (no yellow envelope / Postzustellungsurkunde mentioned); if it was served that way, the period runs from the date on the service document instead, which could be earlier.\",\"Filing a Klage is a formal court action that Ordnung cannot draft or submit — get advice from a lawyer or a Verbraucherzentrale well before the computed deadline.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Kreis Musterlenne-Sauerland – Untere Immissionsschutzbehörde",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "70.3-IS-0442/26"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Klage against the operating-hours order at the Verwaltungsgericht",
+          "quote": "Innerhalb eines Monats nach Bekanntgabe kann gegen diesen Bescheid Klage beim Verwaltungsgericht Musterarnsberg, Jägerstraße 1, 59821 Musterarnsberg, erhoben werden.",
+          "computation": "The letter is dated Thursday 19.11.2026; as a letter from an administrative authority sent by ordinary post, it counts as delivered (Bekanntgabe, § 41 Abs. 2 VwVfG) on the 4th day after posting, i.e. Monday 23.11.2026 (no weekend shift applies to this delivery rule). The one-month Klage period (§ 74 VwGO) then starts counting the next day under § 187 Abs. 1 BGB, i.e. from 23.11.2026, and ends one month later under § 188 Abs. 2 BGB on 23.12.2026, a Wednesday that is a normal working day in NRW, so no further shift is needed.",
+          "due_date": "2026-12-23",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The letter refers to an underlying \"Bescheid vom 18.11.2026\" but the letter itself (which contains the Rechtsbehelfsbelehrung) is dated 19.11.2026; the Klage deadline above is calculated from the letter's own date (19.11.2026) as the posting day — if the Bescheid of 18.11.2026 was actually sent/received separately and earlier, the one-month period could run out one day sooner, so check the envelope or any separate cover letter for the real posting date.",
+        "Deemed delivery (4 days after posting) was assumed because the letter does not state it was formally served (no yellow envelope / Postzustellungsurkunde mentioned); if it was served that way, the period runs from the date on the service document instead, which could be earlier.",
+        "Filing a Klage is a formal court action that Ordnung cannot draft or submit — get advice from a lawyer or a Verbraucherzentrale well before the computed deadline."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 3566,
+      "cache_read_tokens": 26068,
+      "cache_creation_tokens": 5854,
+      "cost_usd": 0.06430160000000001,
+      "duration_ms": 48579,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "document_date": "2026-11-19",
+          "sender_kind": "authority",
+          "sender_name": "Kreis Musterlenne-Sauerland - Untere Immissionsschutzbehörde",
+          "recipient_region": "NW",
+          "region": "NW",
+          "remedy_type": "klage",
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§74 VwGO",
+            "text": "Innerhalb eines Monats nach Bekanntgabe kann gegen diesen Bescheid Klage beim Verwaltungsgericht Musterarnsberg, Jägerstraße 1, 59821 Musterarnsberg, erhoben werden."
+          }
+        },
+        "result": "{\"due_date\":\"2026-12-23\",\"weekday\":\"Wednesday\",\"send_by\":\"2026-12-17\",\"summary\":\"Letter dated Thu 19 Nov 2026 counts as delivered on Mon 23 Nov; one month later is Wed 23 Dec 2026.\",\"confidence\":\"medium\",\"warnings\":[\"This is the deadline for a court action (Klage). Ordnung can't draft or file court actions — get advice (e.g. a Verbraucherzentrale or a lawyer) well before this date.\",\"Deemed delivery was applied: the letter counts as delivered some days after it was posted. If it was formally served instead — in a yellow envelope (Postzustellungsurkunde), or it says it was 'zugestellt' on a date — that rule does not apply and the period runs from the date written on the envelope, usually earlier.\"],\"steps\":[{\"label\":\"Posting day: Thu 19 Nov 2026 (the letter's date; the real posting day can only be later)\",\"date\":\"2026-11-19\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Mon 23 Nov 2026\",\"date\":\"2026-11-23\",\"rule_id\":\"vwvfg_41_2\",\"citation\":\"§ 41 Abs. 2 VwVfG (and the Länder VwVfGs); OVG NRW 19 A 4216/99\"},{\"label\":\"Counting starts the day after Mon 23 Nov 2026\",\"date\":\"2026-11-23\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Wed 23 Dec 2026\",\"date\":\"2026-12-23\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Wed 23 Dec 2026 is a working day, so it stays\",\"date\":\"2026-12-23\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Thu 17 Dec 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-12-17\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"vwvfg_41_2\",\"title\":\"Authority letters: delivered on the 4th day, no weekend shift\",\"citation\":\"§ 41 Abs. 2 VwVfG (and the Länder VwVfGs); OVG NRW 19 A 4216/99\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__41.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"klage_1_month\",\"title\":\"Court action (Klage): one month\",\"citation\":\"§ 74 VwGO; § 47 FGO; § 87 SGG\",\"url\":\"https://www.gesetze-im-internet.de/vwgo/__74.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-19\",\"delivery_law\":\"general administrative law (§ 41 VwVfG)\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"If the letter was formally served (a yellow envelope, or 'zugestellt am …'), pass spec.anchor receipt with the envelope's date as spec.anchor_date and spec.delivery_rule none.\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE96 4625 0049 0003 0007 00"
+        },
+        "result": "{\"iban\":\"DE96 4625 0049 0003 0007 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"46250049\"},\"account_number\":\"0003000700\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

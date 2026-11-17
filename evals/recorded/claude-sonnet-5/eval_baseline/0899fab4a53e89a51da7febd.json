@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"4a141c23d25561fb82b23219b4977c717da275fa5eac5f6ca340f34314d43dcd\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-conflicting_dates-2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:22:03+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2026-11-20\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Deadline to file lawsuit (Klage) against the use prohibition\",\"quote\":\"Gegen diesen Bescheid kann innerhalb eines Monats nach seiner Bekanntgabe Klage beim Verwaltungsgericht Musterarnsberg, Jägerstraße 1, 59821 Musterarnsberg, erhoben werden; ein Widerspruchsverfahren findet nicht statt.\",\"computation\":\"The letter carries two dates: the Bescheid itself is dated 18.11.2026, while the letterhead 'Datum' field (normally the posting date) shows 20.11.2026. This is a general municipal authority (Bauordnung of Stadt Beispielhagen, NRW), not a tax office, so the 4-day delivery fiction applies and the delivery day is NOT shifted even if it falls on a weekend (per the rule for general authorities). Using the earliest plausible posting date (18.11.2026, a Wednesday) per the rule to prefer the earliest plausible date when the letter is internally inconsistent about its date: day 1=19.11(Thu), day2=20.11(Fri), day3=21.11(Sat), day4=22.11(Sun) -> deemed delivered Sun 22.11.2026 (not moved, general authority). One month after delivery ends, per §188 Abs.2 BGB, on the day of the following month bearing the same number as the delivery day: 22.12.2026 (Tuesday), which is a normal working day in NRW (no holiday), so no further shift is needed. (If the later printed date 20.11.2026 were instead the posting date, delivery would be Tue 24.11.2026 and the deadline would be Thu 24.12.2026 instead — two days later.)\",\"due_date\":\"2026-12-22\",\"confidence\":\"medium\",\"amount\":null}],\"kind\":\"authority_letter\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"63-BO-2026-1147\"}],\"remedy_type\":\"klage\",\"sender_name\":\"Stadt Beispielhagen – Der Oberbürgermeister, Fachbereich Bauordnung\",\"warnings\":[\"The letter is internally inconsistent about its own date: the Bescheid is described as 'vom 18.11.2026' while the letterhead 'Datum' field shows 20.11.2026; this 2-day discrepancy affects when the one-month Klage deadline (§74 VwGO) ends, so the earliest plausible deadline (22.12.2026) was used and confidence was lowered — please check the envelope postmark or delivery date to confirm the exact deadline (it could be as late as 24.12.2026 if 20.11.2026 was the true posting date).\"]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2026-11-20",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Deadline to file lawsuit (Klage) against the use prohibition",
+          "quote": "Gegen diesen Bescheid kann innerhalb eines Monats nach seiner Bekanntgabe Klage beim Verwaltungsgericht Musterarnsberg, Jägerstraße 1, 59821 Musterarnsberg, erhoben werden; ein Widerspruchsverfahren findet nicht statt.",
+          "computation": "The letter carries two dates: the Bescheid itself is dated 18.11.2026, while the letterhead 'Datum' field (normally the posting date) shows 20.11.2026. This is a general municipal authority (Bauordnung of Stadt Beispielhagen, NRW), not a tax office, so the 4-day delivery fiction applies and the delivery day is NOT shifted even if it falls on a weekend (per the rule for general authorities). Using the earliest plausible posting date (18.11.2026, a Wednesday) per the rule to prefer the earliest plausible date when the letter is internally inconsistent about its date: day 1=19.11(Thu), day2=20.11(Fri), day3=21.11(Sat), day4=22.11(Sun) -> deemed delivered Sun 22.11.2026 (not moved, general authority). One month after delivery ends, per §188 Abs.2 BGB, on the day of the following month bearing the same number as the delivery day: 22.12.2026 (Tuesday), which is a normal working day in NRW (no holiday), so no further shift is needed. (If the later printed date 20.11.2026 were instead the posting date, delivery would be Tue 24.11.2026 and the deadline would be Thu 24.12.2026 instead — two days later.)",
+          "due_date": "2026-12-22",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "kind": "authority_letter",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "63-BO-2026-1147"
+        }
+      ],
+      "remedy_type": "klage",
+      "sender_name": "Stadt Beispielhagen – Der Oberbürgermeister, Fachbereich Bauordnung",
+      "warnings": [
+        "The letter is internally inconsistent about its own date: the Bescheid is described as 'vom 18.11.2026' while the letterhead 'Datum' field shows 20.11.2026; this 2-day discrepancy affects when the one-month Klage deadline (§74 VwGO) ends, so the earliest plausible deadline (22.12.2026) was used and confidence was lowered — please check the envelope postmark or delivery date to confirm the exact deadline (it could be as late as 24.12.2026 if 20.11.2026 was the true posting date)."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 5262,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1542,
+      "cost_usd": 0.059898,
+      "duration_ms": 52856,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"1bde13e8f9534972138bb786a6a7db68d7445bfdd4e4bbe44b5a1fbbc222265d\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-missing_date-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:57:31+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"sender_name\":\"Immobilien Beispielstein KG\",\"document_date\":null,\"references\":[{\"label\":\"Mieter-Nr.\",\"value\":\"IB-3307\"}],\"amounts\":[2183.18,1920,263.18],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay Betriebskosten-Nachzahlung 2025\",\"quote\":\"Den Betrag von 263,18 € zahlen Sie bitte binnen 30 Tagen nach Zugang dieser Abrechnung.\",\"computation\":\"The due date is 30 days after 'Zugang' (actual receipt) of the statement. The letter bears no printed date, so the dispatch date is unknown and the actual receipt date cannot be fixed. Without a known Zugang date, the 30-day period (counted under §187(1) BGB starting the day after receipt, ending per §188(2) BGB, with a Sunday/Saturday/holiday shift under §193 BGB) cannot be anchored to a calendar date. No reliable due date can therefore be computed from the information given.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":263.18}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter has no document date (no date of issue is printed anywhere on the page), so the start of the 30-day payment period ('binnen 30 Tagen nach Zugang') cannot be determined and the exact due date for the 263,18 € Nachzahlung is unknown; check the envelope postmark or the actual date you received this statement to calculate the deadline yourself (receipt day + 1, then +30 days, shifted to the next business day if it falls on a weekend or NW public holiday).\",\"This is a private landlord's utility-cost statement (Betriebskostenabrechnung), not an administrative decision, so it carries no legal Rechtsbehelfsbelehrung and the standard Einspruch/Widerspruch/Klage framework does not apply; objections to the accuracy of the statement would instead follow civil/tenancy law and contractual deadlines (e.g. §556(3) BGB objection periods), which are not stated in this letter.\"]}",
+    "data": {
+      "kind": "rent_lease",
+      "sender_name": "Immobilien Beispielstein KG",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Mieter-Nr.",
+          "value": "IB-3307"
+        }
+      ],
+      "amounts": [
+        2183.18,
+        1920,
+        263.18
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay Betriebskosten-Nachzahlung 2025",
+          "quote": "Den Betrag von 263,18 € zahlen Sie bitte binnen 30 Tagen nach Zugang dieser Abrechnung.",
+          "computation": "The due date is 30 days after 'Zugang' (actual receipt) of the statement. The letter bears no printed date, so the dispatch date is unknown and the actual receipt date cannot be fixed. Without a known Zugang date, the 30-day period (counted under §187(1) BGB starting the day after receipt, ending per §188(2) BGB, with a Sunday/Saturday/holiday shift under §193 BGB) cannot be anchored to a calendar date. No reliable due date can therefore be computed from the information given.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 263.18
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter has no document date (no date of issue is printed anywhere on the page), so the start of the 30-day payment period ('binnen 30 Tagen nach Zugang') cannot be determined and the exact due date for the 263,18 € Nachzahlung is unknown; check the envelope postmark or the actual date you received this statement to calculate the deadline yourself (receipt day + 1, then +30 days, shifted to the next business day if it falls on a weekend or NW public holiday).",
+        "This is a private landlord's utility-cost statement (Betriebskostenabrechnung), not an administrative decision, so it carries no legal Rechtsbehelfsbelehrung and the standard Einspruch/Widerspruch/Klage framework does not apply; objections to the accuracy of the statement would instead follow civil/tenancy law and contractual deadlines (e.g. §556(3) BGB objection periods), which are not stated in this letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3769,
+      "cache_read_tokens": 7647,
+      "cache_creation_tokens": 4210,
+      "cost_usd": 0.0560674,
+      "duration_ms": 39967,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

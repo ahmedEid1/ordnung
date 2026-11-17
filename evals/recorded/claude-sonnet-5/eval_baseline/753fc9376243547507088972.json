@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"392de68895f0efed6af19239fbd44498b6fb244083eb8f1b49138e246c2d36fc\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-tax_assessment-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:45:34+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterhöhe\",\"document_date\":\"2026-11-19\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the 2025 income tax assessment\",\"quote\":\"Der Einspruch muss binnen eines Monats nach der Bekanntgabe beim Finanzamt Musterhöhe eingehen, schriftlich, über das Portal ELSTER oder mündlich zur Niederschrift.\",\"computation\":\"Letter dated Thu 19.11.2026; no separate 'zur Post gegeben' date is stated, so the printed date is the posting day. Posted on/after 1 Jan 2025 → delivery fiction = 4th calendar day after posting: 20.11 (1), 21.11 (2), 22.11 (3), 23.11 (4) = Mon 23.11.2026. This is a Finanzamt (§108 Abs.3 AO applies), so if the 4th day were a weekend/holiday it would move to the next working day; 23.11.2026 is a Monday and not a holiday in Hesse (the Finanzamt's seat, postal code 35578 = Wetzlar/Hesse), so delivery stands on 23.11.2026. One-month Einspruch period (§355 Abs.1 AO, counted per §108 Abs.1 AO / §§187,188 BGB) runs from the delivery day to the same day-number in the following month: 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in Hesse or nationwide, so no weekend/holiday extension (§108 Abs.3 AO) is needed.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"references\":[{\"label\":\"Steuernummer\",\"value\":\"019/437/22605\"}],\"amounts\":[7402,713],\"warnings\":[]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterhöhe",
+      "document_date": "2026-11-19",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the 2025 income tax assessment",
+          "quote": "Der Einspruch muss binnen eines Monats nach der Bekanntgabe beim Finanzamt Musterhöhe eingehen, schriftlich, über das Portal ELSTER oder mündlich zur Niederschrift.",
+          "computation": "Letter dated Thu 19.11.2026; no separate 'zur Post gegeben' date is stated, so the printed date is the posting day. Posted on/after 1 Jan 2025 → delivery fiction = 4th calendar day after posting: 20.11 (1), 21.11 (2), 22.11 (3), 23.11 (4) = Mon 23.11.2026. This is a Finanzamt (§108 Abs.3 AO applies), so if the 4th day were a weekend/holiday it would move to the next working day; 23.11.2026 is a Monday and not a holiday in Hesse (the Finanzamt's seat, postal code 35578 = Wetzlar/Hesse), so delivery stands on 23.11.2026. One-month Einspruch period (§355 Abs.1 AO, counted per §108 Abs.1 AO / §§187,188 BGB) runs from the delivery day to the same day-number in the following month: 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in Hesse or nationwide, so no weekend/holiday extension (§108 Abs.3 AO) is needed.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "019/437/22605"
+        }
+      ],
+      "amounts": [
+        7402,
+        713
+      ],
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 4211,
+      "cache_read_tokens": 12911,
+      "cache_creation_tokens": 5399,
+      "cost_usd": 0.0662962,
+      "duration_ms": 44935,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

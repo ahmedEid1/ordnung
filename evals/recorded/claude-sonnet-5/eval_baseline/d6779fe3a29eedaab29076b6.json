@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"9db49c05bbff15d52a5e4c900606010ed6e50e8c7bff80d8cbb76fd22ac091a7\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-social_decision-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:58:18+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Musterquell Krankenkasse\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"Q803116452\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against rejection of Haushaltshilfe\",\"quote\":\"Gegen diesen Bescheid können Sie innerhalb eines Monats, nachdem er Ihnen bekannt gegeben wurde, Widerspruch erheben.\",\"computation\":\"Letter dated/posted Thursday 2026-11-19 by a statutory health insurer (Krankenkasse), a social-law body under § 37 Abs. 2 SGB X. Posted on/after 1 Jan 2025 → delivery deemed on the 4th day after posting: 19.11 + 4 days = 23.11.2026 (Monday). Krankenkassen are not tax offices, so even if this fell on a weekend/holiday the delivery day itself would not move — but Monday 23.11.2026 is a working day anyway, so delivery = 23.11.2026. One-month Widerspruch period runs under §§ 187, 188 BGB / § 26 SGB X: the day of delivery (23.11.) is not counted; the period ends one month later on the day with the same number, i.e. 23.12.2026 (Wednesday). 23.12.2026 is not a Saturday, Sunday or public holiday in NRW (nor nationwide), so no shift under § 26 Abs. 3 SGB X is needed. Deadline: 23.12.2026.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Musterquell Krankenkasse",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "Q803116452"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against rejection of Haushaltshilfe",
+          "quote": "Gegen diesen Bescheid können Sie innerhalb eines Monats, nachdem er Ihnen bekannt gegeben wurde, Widerspruch erheben.",
+          "computation": "Letter dated/posted Thursday 2026-11-19 by a statutory health insurer (Krankenkasse), a social-law body under § 37 Abs. 2 SGB X. Posted on/after 1 Jan 2025 → delivery deemed on the 4th day after posting: 19.11 + 4 days = 23.11.2026 (Monday). Krankenkassen are not tax offices, so even if this fell on a weekend/holiday the delivery day itself would not move — but Monday 23.11.2026 is a working day anyway, so delivery = 23.11.2026. One-month Widerspruch period runs under §§ 187, 188 BGB / § 26 SGB X: the day of delivery (23.11.) is not counted; the period ends one month later on the day with the same number, i.e. 23.12.2026 (Wednesday). 23.12.2026 is not a Saturday, Sunday or public holiday in NRW (nor nationwide), so no shift under § 26 Abs. 3 SGB X is needed. Deadline: 23.12.2026.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2371,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1743,
+      "cost_usd": 0.031792,
+      "duration_ms": 24038,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"2beb0b0f9655a44361fb439c6415375e7e1a20efce5ec98edba7a5da57e399ec\",\"mode\":\"text\",\"region\":\"RP\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-kuendigung_arbeit-2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Rheinland-Pfalz (RP), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docu",
+    "recorded_at": "2026-11-24T12:38:03+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2026-11-18\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File unfair dismissal claim (Kündigungsschutzklage) with the Labour Court\",\"quote\":\"Zu Ihrer Information: Eine Klage gegen diese Kündigung wäre innerhalb von drei Wochen nach Erhalt des Schreibens beim Arbeitsgericht einzureichen.\",\"computation\":\"The letter states it was personally handed over on 18.11.2026 in the presence of a witness, so receipt (Zugang) = Wednesday, 18.11.2026. §4 KSchG gives 3 weeks from receipt to file a Kündigungsschutzklage. Under §187(1) BGB the day of the triggering event (18.11.) is not counted, and under §188(2) BGB a period measured in weeks ends on the day of the last week whose name corresponds to the day on which the event occurred, i.e. again a Wednesday. 18.11. + 1 week = 25.11.; + 2 weeks = 02.12.; + 3 weeks = 09.12.2026 (Wednesday). 09.12.2026 is not a Saturday, Sunday or public holiday in Rheinland-Pfalz, so no shift under §193 BGB applies.\",\"due_date\":\"2026-12-09\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Register as jobseeking (arbeitsuchend melden) with the Agentur für Arbeit\",\"quote\":\"Um Nachteile beim Arbeitslosengeld zu vermeiden, müssen Sie sich sofort bei der Agentur für Arbeit arbeitsuchend melden.\",\"computation\":\"Under §38(1) SGB III, an employee must register as jobseeking 3 months before the end of employment if that lead time is known; if less than 3 months' notice is given (as here: notice on 18.11.2026 for an end date of 31.01.2027, i.e. only about 2.5 months), the employee must instead register within 3 days of learning the end date. Knowledge/receipt = 18.11.2026 (Wednesday). Under §187(1) BGB the day of the event is excluded, so the 3-day count runs 19., 20., 21.11.2026. 21.11.2026 is a Saturday, so under §193 BGB the deadline shifts to the next business day, Monday 23.11.2026. This date has already passed relative to today (24.11.2026).\",\"due_date\":\"2026-11-23\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Employment relationship ends\",\"quote\":\"Wir kündigen deshalb das Arbeitsverhältnis ordentlich unter Einhaltung der gesetzlichen Frist zum 31.01.2027.\",\"computation\":\"The letter states the explicit termination date; no calculation needed.\",\"due_date\":\"2027-01-31\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"employment\",\"references\":[{\"label\":\"Arbeitsvertrag-Nr.\",\"value\":\"AV-2020-07\"}],\"remedy_type\":\"klage\",\"sender_name\":\"Weingut Musterreben KG\",\"warnings\":[\"The statutory 3-day deadline to register as jobseeking with the Agentur für Arbeit (derived from §38 SGB III, since less than 3 months' notice was given) falls on 23.11.2026, which is already in the past as of today (24.11.2026) — act immediately if this has not yet been done, as it can reduce unemployment benefits.\",\"The letter does not use a Rechtsbehelfsbelehrung format but merely informs about the 3-week Kündigungsschutzklage deadline under §4 KSchG; this is a statutory deadline, not an extendable instruction from the employer, so it should be verified independently (e.g. with a lawyer or works council) rather than relied on solely from this letter.\"]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2026-11-18",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File unfair dismissal claim (Kündigungsschutzklage) with the Labour Court",
+          "quote": "Zu Ihrer Information: Eine Klage gegen diese Kündigung wäre innerhalb von drei Wochen nach Erhalt des Schreibens beim Arbeitsgericht einzureichen.",
+          "computation": "The letter states it was personally handed over on 18.11.2026 in the presence of a witness, so receipt (Zugang) = Wednesday, 18.11.2026. §4 KSchG gives 3 weeks from receipt to file a Kündigungsschutzklage. Under §187(1) BGB the day of the triggering event (18.11.) is not counted, and under §188(2) BGB a period measured in weeks ends on the day of the last week whose name corresponds to the day on which the event occurred, i.e. again a Wednesday. 18.11. + 1 week = 25.11.; + 2 weeks = 02.12.; + 3 weeks = 09.12.2026 (Wednesday). 09.12.2026 is not a Saturday, Sunday or public holiday in Rheinland-Pfalz, so no shift under §193 BGB applies.",
+          "due_date": "2026-12-09",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Register as jobseeking (arbeitsuchend melden) with the Agentur für Arbeit",
+          "quote": "Um Nachteile beim Arbeitslosengeld zu vermeiden, müssen Sie sich sofort bei der Agentur für Arbeit arbeitsuchend melden.",
+          "computation": "Under §38(1) SGB III, an employee must register as jobseeking 3 months before the end of employment if that lead time is known; if less than 3 months' notice is given (as here: notice on 18.11.2026 for an end date of 31.01.2027, i.e. only about 2.5 months), the employee must instead register within 3 days of learning the end date. Knowledge/receipt = 18.11.2026 (Wednesday). Under §187(1) BGB the day of the event is excluded, so the 3-day count runs 19., 20., 21.11.2026. 21.11.2026 is a Saturday, so under §193 BGB the deadline shifts to the next business day, Monday 23.11.2026. This date has already passed relative to today (24.11.2026).",
+          "due_date": "2026-11-23",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Employment relationship ends",
+          "quote": "Wir kündigen deshalb das Arbeitsverhältnis ordentlich unter Einhaltung der gesetzlichen Frist zum 31.01.2027.",
+          "computation": "The letter states the explicit termination date; no calculation needed.",
+          "due_date": "2027-01-31",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "employment",
+      "references": [
+        {
+          "label": "Arbeitsvertrag-Nr.",
+          "value": "AV-2020-07"
+        }
+      ],
+      "remedy_type": "klage",
+      "sender_name": "Weingut Musterreben KG",
+      "warnings": [
+        "The statutory 3-day deadline to register as jobseeking with the Agentur für Arbeit (derived from §38 SGB III, since less than 3 months' notice was given) falls on 23.11.2026, which is already in the past as of today (24.11.2026) — act immediately if this has not yet been done, as it can reduce unemployment benefits.",
+        "The letter does not use a Rechtsbehelfsbelehrung format but merely informs about the 3-week Kündigungsschutzklage deadline under §4 KSchG; this is a statutory deadline, not an extendable instruction from the employer, so it should be verified independently (e.g. with a lawyer or works council) rather than relied on solely from this letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6956,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1600,
+      "cost_usd": 0.07658840000000001,
+      "duration_ms": 69396,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

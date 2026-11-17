@@ -1,0 +1,80 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"50be03696f1d85a03aed53793c4a0e61b876039abf5c3b5fd8b351a1acf2fceb\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-fine_bussgeld-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:28:23+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[132],\"contract\":null,\"document_date\":\"2026-11-19\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Object to the fine notice (Einspruch)\",\"quote\":\"Binnen zwei Wochen nach der Zustellung dieses Bescheids kann Einspruch eingelegt werden, schriftlich oder zur Niederschrift beim Kreis Beispielborken – Bußgeldstelle.\",\"computation\":\"The letter is formally delivered (Postzustellungsurkunde / yellow envelope). The envelope scan on page 2 shows the handwritten delivery note 'Zugestellt 24.11.2026', so the delivery day is fixed as 24.11.2026 (Tuesday) regardless of the printed issue date (19.11.2026) – per the formal-delivery rule the date on the envelope counts exactly, with no days added. Under § 67 OWiG / § 43 StPO the objection period is two weeks from delivery. Per §§ 187 Abs. 1, 188 Abs. 2 BGB the day of delivery (24.11.) is not counted; the two-week period ends on the day in the second following week that corresponds by name to the delivery day, i.e. the next Tuesday two weeks on: 24.11.2026 + 14 days = 08.12.2026 (Tuesday). 08.12.2026 is not a Saturday, Sunday or NW public holiday, so no shift under § 43 Abs. 2 StPO is needed.\",\"due_date\":\"2026-12-08\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine amount (only after the notice becomes final)\",\"quote\":\"Bitte überweisen Sie den Gesamtbetrag erst nach Rechtskraft, und zwar innerhalb von zwei Wochen.\",\"computation\":\"The letter instructs payment only after Rechtskraft (finality), which occurs once the Einspruch period lapses unused, i.e. the day after the objection deadline computed above: 08.12.2026 + 1 day = 09.12.2026 (Wednesday) is the first day of Rechtskraft. Payment is due 'within two weeks' of that day; per §§ 187 Abs. 1, 188 Abs. 2 BGB the Rechtskraft day itself is not counted, so the two-week period runs to the corresponding weekday two weeks later: 09.12.2026 + 14 days = 23.12.2026 (Wednesday). This is not a Saturday/Sunday/NW holiday, so no shift is needed. This date assumes no Einspruch is filed; if one is filed, Rechtskraft (and this payment deadline) does not occur as computed.\",\"due_date\":\"2026-12-23\",\"confidence\":\"medium\",\"amount\":132}],\"kind\":\"fine\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"51.3-26/0779413\"},{\"label\":\"Kennzeichen\",\"value\":\"BOR-JB 315\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Kreis Beispielborken – Bußgeldstelle\",\"warnings\":[\"The sender's printed e-mail address 'bussgeld@kreis-beispielborken-bußgeld.example' contains the letter 'ß', which is not a technically valid character in an internet domain name – double-check the real e-mail/website of your Bußgeldstelle before relying on this contact.\",\"The payment IBAN and amount should be verified against the Bußgeldstelle's official channels before transferring money, as is good practice for any payment demand in an official-looking letter.\",\"The letter explicitly tells you not to pay until the notice is final (Rechtskraft) and to only pay then within two weeks; if you intend to file an Einspruch, do not pay the amount, as doing so could be seen as accepting the fine.\"]}",
+    "data": {
+      "amounts": [
+        132
+      ],
+      "contract": null,
+      "document_date": "2026-11-19",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Object to the fine notice (Einspruch)",
+          "quote": "Binnen zwei Wochen nach der Zustellung dieses Bescheids kann Einspruch eingelegt werden, schriftlich oder zur Niederschrift beim Kreis Beispielborken – Bußgeldstelle.",
+          "computation": "The letter is formally delivered (Postzustellungsurkunde / yellow envelope). The envelope scan on page 2 shows the handwritten delivery note 'Zugestellt 24.11.2026', so the delivery day is fixed as 24.11.2026 (Tuesday) regardless of the printed issue date (19.11.2026) – per the formal-delivery rule the date on the envelope counts exactly, with no days added. Under § 67 OWiG / § 43 StPO the objection period is two weeks from delivery. Per §§ 187 Abs. 1, 188 Abs. 2 BGB the day of delivery (24.11.) is not counted; the two-week period ends on the day in the second following week that corresponds by name to the delivery day, i.e. the next Tuesday two weeks on: 24.11.2026 + 14 days = 08.12.2026 (Tuesday). 08.12.2026 is not a Saturday, Sunday or NW public holiday, so no shift under § 43 Abs. 2 StPO is needed.",
+          "due_date": "2026-12-08",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine amount (only after the notice becomes final)",
+          "quote": "Bitte überweisen Sie den Gesamtbetrag erst nach Rechtskraft, und zwar innerhalb von zwei Wochen.",
+          "computation": "The letter instructs payment only after Rechtskraft (finality), which occurs once the Einspruch period lapses unused, i.e. the day after the objection deadline computed above: 08.12.2026 + 1 day = 09.12.2026 (Wednesday) is the first day of Rechtskraft. Payment is due 'within two weeks' of that day; per §§ 187 Abs. 1, 188 Abs. 2 BGB the Rechtskraft day itself is not counted, so the two-week period runs to the corresponding weekday two weeks later: 09.12.2026 + 14 days = 23.12.2026 (Wednesday). This is not a Saturday/Sunday/NW holiday, so no shift is needed. This date assumes no Einspruch is filed; if one is filed, Rechtskraft (and this payment deadline) does not occur as computed.",
+          "due_date": "2026-12-23",
+          "confidence": "medium",
+          "amount": 132
+        }
+      ],
+      "kind": "fine",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "51.3-26/0779413"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "BOR-JB 315"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Kreis Beispielborken – Bußgeldstelle",
+      "warnings": [
+        "The sender's printed e-mail address 'bussgeld@kreis-beispielborken-bußgeld.example' contains the letter 'ß', which is not a technically valid character in an internet domain name – double-check the real e-mail/website of your Bußgeldstelle before relying on this contact.",
+        "The payment IBAN and amount should be verified against the Bußgeldstelle's official channels before transferring money, as is good practice for any payment demand in an official-looking letter.",
+        "The letter explicitly tells you not to pay until the notice is final (Rechtskraft) and to only pay then within two weeks; if you intend to file an Einspruch, do not pay the amount, as doing so could be seen as accepting the fine."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3984,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2104,
+      "cost_usd": 0.049366,
+      "duration_ms": 38657,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

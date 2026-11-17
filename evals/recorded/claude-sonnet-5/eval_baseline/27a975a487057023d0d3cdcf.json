@@ -1,0 +1,75 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"d65d3047027b36286d8b31c1142f7b21601c2ded7c11c5551abc5987325d1964\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T12:22:47+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Hauptzollamt Beispielhafen\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"KFZ 4480/26/77310\"}],\"amounts\":[146],\"items\":[{\"kind\":\"deadline\",\"title\":\"Deadline to file Einspruch against the vehicle tax assessment\",\"quote\":\"Sie können gegen diese Festsetzung innerhalb eines Monats Einspruch beim Hauptzollamt Beispielhafen erheben.\",\"computation\":\"Letter is dated Friday 20.11.2026, sent by post. Statutory delivery rule under §122 Abs. 2 Nr. 1 AO (not the '4th day' claimed in the letter, see warning) deems a postally sent administrative act delivered on the third day after posting. Counting from 20.11.2026 (day 0, not counted): 21.11 (Sat), 22.11 (Sun), 23.11 (Mon) = 3rd day → Bekanntgabe (deemed delivery) on Monday 23.11.2026; this day is not a Saturday, Sunday or public holiday, so it stands. The one-month Einspruchsfrist under §355 Abs. 1 AO then runs per §108 Abs. 1 AO i.V.m. §§187 Abs. 1, 188 Abs. 2 BGB: it ends one month later on the day with the same number, i.e. 23.12.2026. 23.12.2026 is a Wednesday, not a Saturday, Sunday or statutory holiday in NRW (24.12. is not a statutory holiday), so the deadline stands at 23.12.2026.\",\"due_date\":\"2026-12-23\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Automatic debit of the annual vehicle tax\",\"quote\":\"Den Betrag buchen wir vom angegebenen Konto ab.\",\"computation\":\"The letter states the tax of 146,00 € will be debited automatically from the account on file ('vom angegebenen Konto'), but gives no specific calendar date for this debit, so no exact due date can be computed; the tax period itself starts on the registration date 02.11.2026 and runs for one year.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":146}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter's Rechtsbehelfsbelehrung states that a letter sent by post is deemed delivered on the 'vierten Tag' (4th day) after posting; the correct statutory rule under §122 Abs. 2 Nr. 1 AO for German tax authority mail is the third day after posting, not the fourth — this discrepancy was flagged and the legally correct 3-day rule was used to compute the deadline, which lowers confidence in the exact due date.\",\"No exact date is given for when the automatic account debit of 146,00 € will occur; only the bank name 'Landesmusterbank' and an IBAN are shown in the footer, not tied to a specific debit date — verify with the Hauptzollamt or your bank statement when the debit actually happens.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Hauptzollamt Beispielhafen",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "KFZ 4480/26/77310"
+        }
+      ],
+      "amounts": [
+        146
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Deadline to file Einspruch against the vehicle tax assessment",
+          "quote": "Sie können gegen diese Festsetzung innerhalb eines Monats Einspruch beim Hauptzollamt Beispielhafen erheben.",
+          "computation": "Letter is dated Friday 20.11.2026, sent by post. Statutory delivery rule under §122 Abs. 2 Nr. 1 AO (not the '4th day' claimed in the letter, see warning) deems a postally sent administrative act delivered on the third day after posting. Counting from 20.11.2026 (day 0, not counted): 21.11 (Sat), 22.11 (Sun), 23.11 (Mon) = 3rd day → Bekanntgabe (deemed delivery) on Monday 23.11.2026; this day is not a Saturday, Sunday or public holiday, so it stands. The one-month Einspruchsfrist under §355 Abs. 1 AO then runs per §108 Abs. 1 AO i.V.m. §§187 Abs. 1, 188 Abs. 2 BGB: it ends one month later on the day with the same number, i.e. 23.12.2026. 23.12.2026 is a Wednesday, not a Saturday, Sunday or statutory holiday in NRW (24.12. is not a statutory holiday), so the deadline stands at 23.12.2026.",
+          "due_date": "2026-12-23",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Automatic debit of the annual vehicle tax",
+          "quote": "Den Betrag buchen wir vom angegebenen Konto ab.",
+          "computation": "The letter states the tax of 146,00 € will be debited automatically from the account on file ('vom angegebenen Konto'), but gives no specific calendar date for this debit, so no exact due date can be computed; the tax period itself starts on the registration date 02.11.2026 and runs for one year.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 146
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter's Rechtsbehelfsbelehrung states that a letter sent by post is deemed delivered on the 'vierten Tag' (4th day) after posting; the correct statutory rule under §122 Abs. 2 Nr. 1 AO for German tax authority mail is the third day after posting, not the fourth — this discrepancy was flagged and the legally correct 3-day rule was used to compute the deadline, which lowers confidence in the exact due date.",
+        "No exact date is given for when the automatic account debit of 146,00 € will occur; only the bank name 'Landesmusterbank' and an IBAN are shown in the footer, not tied to a specific debit date — verify with the Hauptzollamt or your bank statement when the debit actually happens."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 4746,
+      "cache_read_tokens": 7827,
+      "cache_creation_tokens": 4876,
+      "cost_usd": 0.0685374,
+      "duration_ms": 49117,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

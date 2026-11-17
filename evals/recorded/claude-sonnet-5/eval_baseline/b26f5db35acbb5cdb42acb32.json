@@ -1,0 +1,93 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"519fe78cf30c0fec50e203f0879878fbe5ad32de93087d8267d7cb056e00920e\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-relative_business_days-N1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:57:02+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Kita-Verbund Beispielkinder gGmbH\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Vormerkung\",\"value\":\"KV-2026-0815\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Confirm or decline the daycare (Krippenplatz) offer\",\"quote\":\"Bitte sagen Sie uns binnen 12 Arbeitstagen ab dem Datum dieses Briefes zu oder ab.\",\"computation\":\"Private-sector letter (gGmbH), no statutory deemed-delivery rule applies; the period runs from the letter's own date, 19.11.2026 (Thursday). Per § 187 Abs. 1 BGB the day of the letter itself is not counted, so counting starts 20.11.2026. 'Arbeitstage' are defined by the letter as Monday-Friday, holidays excluded (confirmed by the tool: Sat 21.11, Sun 22.11, Sat 28.11, Sun 29.11, Sat 5.12, Sun 6.12 skipped, no holidays in that window). Counting 12 such business days from 19.11.2026 lands on Monday 07.12.2026, which is itself a working day, so no further shift is needed (§ 193 BGB).\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Kita-Verbund Beispielkinder gGmbH",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Vormerkung",
+          "value": "KV-2026-0815"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Confirm or decline the daycare (Krippenplatz) offer",
+          "quote": "Bitte sagen Sie uns binnen 12 Arbeitstagen ab dem Datum dieses Briefes zu oder ab.",
+          "computation": "Private-sector letter (gGmbH), no statutory deemed-delivery rule applies; the period runs from the letter's own date, 19.11.2026 (Thursday). Per § 187 Abs. 1 BGB the day of the letter itself is not counted, so counting starts 20.11.2026. 'Arbeitstage' are defined by the letter as Monday-Friday, holidays excluded (confirmed by the tool: Sat 21.11, Sun 22.11, Sat 28.11, Sun 29.11, Sat 5.12, Sun 6.12 skipped, no holidays in that window). Counting 12 such business days from 19.11.2026 lands on Monday 07.12.2026, which is itself a working day, so no further shift is needed (§ 193 BGB).",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1439,
+      "cache_read_tokens": 14620,
+      "cache_creation_tokens": 3980,
+      "cost_usd": 0.033242,
+      "duration_ms": 15167,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 12,
+            "unit": "business_days",
+            "anchor": "document_date",
+            "nature": "declaration",
+            "shift_rule": "auto",
+            "legal_basis": "§§ 187, 188, 193 BGB",
+            "text": "Bitte sagen Sie uns binnen 12 Arbeitstagen ab dem Datum dieses Briefes zu oder ab."
+          },
+          "document_date": "2026-11-19",
+          "sender_kind": "company",
+          "sender_name": "Kita-Verbund Beispielkinder gGmbH",
+          "region": "HE",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":\"2026-12-07\",\"weekday\":\"Monday\",\"send_by\":\"2026-12-01\",\"summary\":\"12 business days after the letter's date (Thu 19 Nov 2026) is Mon 7 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Thu 19 Nov 2026\",\"date\":\"2026-11-19\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"12 business days later: Mon 7 Dec 2026\",\"date\":\"2026-12-07\",\"rule_id\":\"unit_business_days\",\"citation\":\"§ 193 BGB (Saturday, Sunday and public holidays are not working days)\"},{\"label\":\"Mon 7 Dec 2026 is a working day, so it stays\",\"date\":\"2026-12-07\",\"rule_id\":\"bgb_193\",\"citation\":\"§ 193 BGB\"},{\"label\":\"Send by Tue 1 Dec 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-12-01\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"unit_business_days\",\"title\":\"Counting business days\",\"citation\":\"§ 193 BGB (Saturday, Sunday and public holidays are not working days)\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__193.html\"},{\"id\":\"bgb_193\",\"title\":\"Weekend and holiday shift (private law)\",\"citation\":\"§ 193 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__193.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-19\",\"holiday_calendar\":\"Hessen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__add_working_days",
+        "input": {
+          "start": "2026-11-19",
+          "days": 12,
+          "day_type": "business_days",
+          "region": "HE"
+        },
+        "result": "{\"start\":\"2026-11-19\",\"days\":12,\"day_type\":\"business_days\",\"date\":\"2026-12-07\",\"weekday\":\"Monday\",\"skipped\":[{\"date\":\"2026-11-21\",\"weekday\":\"Saturday\",\"reason\":\"Saturday\"},{\"date\":\"2026-11-22\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"},{\"date\":\"2026-11-28\",\"weekday\":\"Saturday\",\"reason\":\"Saturday\"},{\"date\":\"2026-11-29\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"},{\"date\":\"2026-12-05\",\"weekday\":\"Saturday\",\"reason\":\"Saturday\"},{\"date\":\"2026-12-06\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"}],\"counting\":\"Business days: Monday to Friday, public holidays excluded; the start day itself is not counted.\",\"calendar\":\"Hessen\",\"disclaimer\":\"Information, not legal advice: working days counted on Ordnung's holiday calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer. A legal period may count differently — compute_deadline applies the deadline rules.\"}"
+      }
+    ]
+  }
+}

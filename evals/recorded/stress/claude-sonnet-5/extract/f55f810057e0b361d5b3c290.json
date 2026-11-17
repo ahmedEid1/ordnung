@@ -1,0 +1,163 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"30e18fa15c570c7825675c5a595a2faf5ef07355c7b485394f47ca7cacf3ae07\",\"language\":\"en\",\"pages\":[[1,\"text\"],[2,\"text\"]],\"region\":\"SL\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "stress-D1-holdout4-tax_assessment-L2"
+    ],
+    "prompt_head": "Today is 2026-11-24. The person lives in region SL (DE). Their name is (not given).\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n(none yet)\n\nThe document's text follows, page by page: a line `=== Page N ===` starts page N. Everything\nbetween the <untrusted_document> tags is data from the document, never in",
+    "recorded_at": "2026-11-24T14:49:55+00:00",
+    "repeat": 1,
+    "commit": "3a21dfb8",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"area\":\"tax\",\"case_title\":\"Income Tax Assessment 2025 – Finanzamt Beispiel-Merzig\",\"title\":\"Income Tax Assessment 2025 – Finanzamt Beispiel-Merzig\",\"kind\":\"tax_assessment\",\"language\":\"de\",\"document_date\":\"2026-11-19\",\"recipient_name\":\"Mattis Musterwadern\",\"sender\":{\"name\":\"Finanzamt Beispiel-Merzig\",\"kind\":\"tax_office\",\"address\":\"Saargauer Straße 30, 66663 Beispiel-Merzig\",\"phone\":\"06861 555 40-0\",\"email\":\"poststelle@fa-beispiel-merzig.saarland.example\",\"website\":null,\"identifiers\":[]},\"summary\":\"The Finanzamt Beispiel-Merzig issued the income tax assessment (Einkommensteuerbescheid) for 2025, setting the income tax at €3,014.00 and resulting in a refund (Guthaben) of €654.00 to be transferred to the recipient's account.\",\"explanation\":\"This is your official income tax assessment for 2025. The tax office calculated your tax based on your employment income, work-related expenses (Werbungskosten) and special expenses (Sonderausgaben), resulting in a refund of €654.00 that will be transferred automatically — no action is needed for that. If you believe the assessment is incorrect, you may file an objection (Einspruch) in writing or electronically with the tax office; the app shows until when you can decide and act. If you do nothing, the assessment becomes final and binding.\",\"urgency\":\"high\",\"tax_relevant\":true,\"tax_note\":\"This document is itself the income tax assessment (Einkommensteuerbescheid) for 2025 and should be kept with your tax records.\",\"high_stakes_kind\":null,\"remedy\":{\"type\":\"einspruch\",\"addressee\":\"Finanzamt Beispiel-Merzig\",\"period_text\":\"innerhalb eines Monats\",\"form_text\":\"Richten Sie den Einspruch schriftlich oder elektronisch an das Finanzamt Beispiel-Merzig; Sie können ihn dort auch zu Protokoll geben.\",\"quote\":\"Wer diesen Bescheid für fehlerhaft hält, kann dagegen innerhalb eines Monats Einspruch erheben.\"},\"payment\":null,\"contract\":null,\"change\":null,\"items\":[{\"kind\":\"deadline\",\"title\":\"Decide whether to file an objection (Einspruch)\",\"action\":\"Review the assessment and, if you think it is incorrect, file an objection (Einspruch) in writing or electronically with the Finanzamt before the deadline shown\",\"consequence\":\"The tax assessment becomes final and binding if no objection is filed in time\",\"amount\":null,\"currency\":null,\"direction\":null,\"location\":null,\"priority\":\"high\",\"quote\":\"Wer diesen Bescheid für fehlerhaft hält, kann dagegen innerhalb eines Monats Einspruch erheben.\",\"date\":{\"type\":\"relative\",\"nature\":\"objection\",\"anchor\":\"deemed_delivery\",\"anchor_date\":null,\"amount\":1,\"unit\":\"months\",\"date\":null,\"time\":null,\"text\":\"innerhalb eines Monats Einspruch erheben\",\"delivery_rule\":\"de_admin_post\",\"shift_rule\":\"auto\",\"legal_basis\":null},\"recurrence\":null},{\"kind\":\"payment\",\"title\":\"Tax refund (Guthaben) transfer\",\"action\":\"No action is needed — the refund will be transferred automatically to your account\",\"consequence\":null,\"amount\":654,\"currency\":\"EUR\",\"direction\":\"in\",\"location\":null,\"priority\":\"low\",\"quote\":\"Das Guthaben von 654,00 € überweisen wir auf Ihr Konto DE14 5139 0000 0074 4022 18.\",\"date\":{\"type\":\"none\",\"nature\":\"payment\",\"anchor\":null,\"anchor_date\":null,\"amount\":null,\"unit\":null,\"date\":null,\"time\":null,\"text\":\"\",\"delivery_rule\":\"none\",\"shift_rule\":\"none\",\"legal_basis\":null},\"recurrence\":null}],\"key_facts\":[{\"label\":\"Tax refund (Guthaben zu Ihren Gunsten)\",\"value\":\"654,00\",\"quote\":\"Guthaben zu Ihren Gunsten   654,00\"},{\"label\":\"Taxable income (zu versteuerndes Einkommen)\",\"value\":\"23.749\",\"quote\":\"zu versteuerndes Einkommen (volle Euro)   23.749\"},{\"label\":\"Assessed income tax (festgesetzte Einkommensteuer)\",\"value\":\"3.014,00\",\"quote\":\"festgesetzte Einkommensteuer   3.014,00\"},{\"label\":\"Withheld wage tax (abzüglich einbehaltene Lohnsteuer)\",\"value\":\"– 3.668,00\",\"quote\":\"abzüglich einbehaltene Lohnsteuer   – 3.668,00\"},{\"label\":\"Reference to earlier letter (Aktenzeichen)\",\"value\":\"NH-7941-334\",\"quote\":\"Über den Vorgang hatten wir Sie bereits mit Schreiben vom 04.11.2026 informiert (Aktenzeichen NH-7941-334).\"}],\"references\":[{\"label\":\"Steuernummer\",\"value\":\"030/226/19083\"},{\"label\":\"Aktenzeichen (Schreiben vom 04.11.2026)\",\"value\":\"NH-7941-334\"}],\"warnings\":[]}",
+    "data": {
+      "area": "tax",
+      "case_title": "Income Tax Assessment 2025 – Finanzamt Beispiel-Merzig",
+      "title": "Income Tax Assessment 2025 – Finanzamt Beispiel-Merzig",
+      "kind": "tax_assessment",
+      "language": "de",
+      "document_date": "2026-11-19",
+      "recipient_name": "Mattis Musterwadern",
+      "sender": {
+        "name": "Finanzamt Beispiel-Merzig",
+        "kind": "tax_office",
+        "address": "Saargauer Straße 30, 66663 Beispiel-Merzig",
+        "phone": "06861 555 40-0",
+        "email": "poststelle@fa-beispiel-merzig.saarland.example",
+        "website": null,
+        "identifiers": []
+      },
+      "summary": "The Finanzamt Beispiel-Merzig issued the income tax assessment (Einkommensteuerbescheid) for 2025, setting the income tax at €3,014.00 and resulting in a refund (Guthaben) of €654.00 to be transferred to the recipient's account.",
+      "explanation": "This is your official income tax assessment for 2025. The tax office calculated your tax based on your employment income, work-related expenses (Werbungskosten) and special expenses (Sonderausgaben), resulting in a refund of €654.00 that will be transferred automatically — no action is needed for that. If you believe the assessment is incorrect, you may file an objection (Einspruch) in writing or electronically with the tax office; the app shows until when you can decide and act. If you do nothing, the assessment becomes final and binding.",
+      "urgency": "high",
+      "tax_relevant": true,
+      "tax_note": "This document is itself the income tax assessment (Einkommensteuerbescheid) for 2025 and should be kept with your tax records.",
+      "high_stakes_kind": null,
+      "remedy": {
+        "type": "einspruch",
+        "addressee": "Finanzamt Beispiel-Merzig",
+        "period_text": "innerhalb eines Monats",
+        "form_text": "Richten Sie den Einspruch schriftlich oder elektronisch an das Finanzamt Beispiel-Merzig; Sie können ihn dort auch zu Protokoll geben.",
+        "quote": "Wer diesen Bescheid für fehlerhaft hält, kann dagegen innerhalb eines Monats Einspruch erheben."
+      },
+      "payment": null,
+      "contract": null,
+      "change": null,
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Decide whether to file an objection (Einspruch)",
+          "action": "Review the assessment and, if you think it is incorrect, file an objection (Einspruch) in writing or electronically with the Finanzamt before the deadline shown",
+          "consequence": "The tax assessment becomes final and binding if no objection is filed in time",
+          "amount": null,
+          "currency": null,
+          "direction": null,
+          "location": null,
+          "priority": "high",
+          "quote": "Wer diesen Bescheid für fehlerhaft hält, kann dagegen innerhalb eines Monats Einspruch erheben.",
+          "date": {
+            "type": "relative",
+            "nature": "objection",
+            "anchor": "deemed_delivery",
+            "anchor_date": null,
+            "amount": 1,
+            "unit": "months",
+            "date": null,
+            "time": null,
+            "text": "innerhalb eines Monats Einspruch erheben",
+            "delivery_rule": "de_admin_post",
+            "shift_rule": "auto",
+            "legal_basis": null
+          },
+          "recurrence": null
+        },
+        {
+          "kind": "payment",
+          "title": "Tax refund (Guthaben) transfer",
+          "action": "No action is needed — the refund will be transferred automatically to your account",
+          "consequence": null,
+          "amount": 654,
+          "currency": "EUR",
+          "direction": "in",
+          "location": null,
+          "priority": "low",
+          "quote": "Das Guthaben von 654,00 € überweisen wir auf Ihr Konto DE14 5139 0000 0074 4022 18.",
+          "date": {
+            "type": "none",
+            "nature": "payment",
+            "anchor": null,
+            "anchor_date": null,
+            "amount": null,
+            "unit": null,
+            "date": null,
+            "time": null,
+            "text": "",
+            "delivery_rule": "none",
+            "shift_rule": "none",
+            "legal_basis": null
+          },
+          "recurrence": null
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Tax refund (Guthaben zu Ihren Gunsten)",
+          "value": "654,00",
+          "quote": "Guthaben zu Ihren Gunsten   654,00"
+        },
+        {
+          "label": "Taxable income (zu versteuerndes Einkommen)",
+          "value": "23.749",
+          "quote": "zu versteuerndes Einkommen (volle Euro)   23.749"
+        },
+        {
+          "label": "Assessed income tax (festgesetzte Einkommensteuer)",
+          "value": "3.014,00",
+          "quote": "festgesetzte Einkommensteuer   3.014,00"
+        },
+        {
+          "label": "Withheld wage tax (abzüglich einbehaltene Lohnsteuer)",
+          "value": "– 3.668,00",
+          "quote": "abzüglich einbehaltene Lohnsteuer   – 3.668,00"
+        },
+        {
+          "label": "Reference to earlier letter (Aktenzeichen)",
+          "value": "NH-7941-334",
+          "quote": "Über den Vorgang hatten wir Sie bereits mit Schreiben vom 04.11.2026 informiert (Aktenzeichen NH-7941-334)."
+        }
+      ],
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "030/226/19083"
+        },
+        {
+          "label": "Aktenzeichen (Schreiben vom 04.11.2026)",
+          "value": "NH-7941-334"
+        }
+      ],
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 7689,
+      "cache_read_tokens": 19954,
+      "cache_creation_tokens": 7453,
+      "cost_usd": 0.1107008,
+      "duration_ms": 67591,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

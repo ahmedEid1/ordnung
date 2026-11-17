@@ -17,6 +17,25 @@ byte that differs (CI). The headline is chosen by rule: the pre-registered final
 held-out splits as recorded once, re-analysed (``evals.analysis``) and labelled not pre-registered. Re-scored,
 iterated or replayed numbers never feed it.
 
+The final run exists once its analysis is published in ``evals/results`` (``evals.analysis --prereg``), beside the
+pre-registration and the files it names; checkpoints under ``evals/results/pending/`` are never read.
+:mod:`evals.present.finalrun` checks the analysis against them, refuses what does not fit (nothing is written then)
+and puts the final run into ``presentation.json``'s ``final``. From there:
+
+* the README's block is the registered README sentences, laid out as registered (:mod:`evals.present.final`), with
+  the final run's chart;
+* ``docs/evals.md`` names the final analysis as its headline, says every registered page sentence in order between
+  its markers under 6.1, opens with the final run's summary and verdict table, gives its statistics, failures and
+  limitations, and ends with sections 16 (every deviation as recorded) and 17 (where every number comes from);
+  every section that still shows the earlier held-out splits says they are as recorded, not pre-registered;
+* the final run's charts (``docs/assets/eval-final*-{light,dark}.svg``) join the others, each with its table;
+* the report page's tiles, lede and description are the final run's, and its footer names the hash of
+  ``presentation.json``.
+
+Every word the final run adds beside its registered sentences is a template of
+``evals/present/templates/views.json`` (:mod:`evals.present.views`), filled with values only. With no final run every
+output is what it was before the final path existed.
+
 No output holds a letter's text: ids, counts, classes and metric values only.
 """
 

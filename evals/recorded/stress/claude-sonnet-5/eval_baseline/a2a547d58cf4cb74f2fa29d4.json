@@ -1,0 +1,97 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"17b3b0b7bb66845ebee01a9a28076e2460c9b79748d241f34fb0242605f983b3\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "stress-D1-holdout4-dunning_fixed-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T14:30:06+00:00",
+    "repeat": 1,
+    "commit": "3a21dfb8",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"sender_name\":\"Hausverwaltung Beispieldach & Partner\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Mietkonto\",\"value\":\"MK-0711-03\"},{\"label\":\"Vertrag\",\"value\":\"ZC-6726-740\"}],\"amounts\":[340,186.42,526.42],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay rent arrears and 2025 utility-cost balance\",\"quote\":\"Wir bitten Sie, den Rückstand bis 7. Dezember 2026 zu überweisen.\",\"computation\":\"The letter states a fixed calendar date for payment: 7 December 2026. This is a landlord's own request (not a statutory authority deadline), so no deemed-delivery or §187-193 BGB counting is needed - the date is simply as printed. 2026-12-07 falls on a Monday (checked against NW holiday calendar: no holiday that day), so no weekend/holiday shift applies. Sum of open items: 340.00 (rent balance) + 186.42 (utility-cost back-payment) = 526.42 EUR.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":526.42},{\"kind\":\"reminder\",\"title\":\"Automatic direct debit for separate contract ZC-6726-740\",\"quote\":\"Zu Ihrem weiteren Vertrag ZC-6726-740: Die nächste Abbuchung per Lastschrift erfolgt automatisch am 14.12.2026, in unveränderter Höhe.\",\"computation\":\"Fixed calendar date stated in the letter: 14 December 2026, an automatic SEPA direct debit of unchanged (unspecified) amount under a separate contract. 2026-12-14 is a Monday, not a holiday in NW, so no shift is needed; the person's action is only to ensure sufficient funds are available by that date.\",\"due_date\":\"2026-12-14\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter mentions a second, separate contract (ZC-6726-740) with its own automatic direct debit, but gives no details of what this contract is for; worth checking you recognise it.\",\"The amount of the automatic direct debit on 14.12.2026 is described only as 'unveränderter Höhe' (unchanged amount) without stating the figure - confirm the actual amount against your own records before the debit date.\"]}",
+    "data": {
+      "kind": "rent_lease",
+      "sender_name": "Hausverwaltung Beispieldach & Partner",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Mietkonto",
+          "value": "MK-0711-03"
+        },
+        {
+          "label": "Vertrag",
+          "value": "ZC-6726-740"
+        }
+      ],
+      "amounts": [
+        340,
+        186.42,
+        526.42
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay rent arrears and 2025 utility-cost balance",
+          "quote": "Wir bitten Sie, den Rückstand bis 7. Dezember 2026 zu überweisen.",
+          "computation": "The letter states a fixed calendar date for payment: 7 December 2026. This is a landlord's own request (not a statutory authority deadline), so no deemed-delivery or §187-193 BGB counting is needed - the date is simply as printed. 2026-12-07 falls on a Monday (checked against NW holiday calendar: no holiday that day), so no weekend/holiday shift applies. Sum of open items: 340.00 (rent balance) + 186.42 (utility-cost back-payment) = 526.42 EUR.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": 526.42
+        },
+        {
+          "kind": "reminder",
+          "title": "Automatic direct debit for separate contract ZC-6726-740",
+          "quote": "Zu Ihrem weiteren Vertrag ZC-6726-740: Die nächste Abbuchung per Lastschrift erfolgt automatisch am 14.12.2026, in unveränderter Höhe.",
+          "computation": "Fixed calendar date stated in the letter: 14 December 2026, an automatic SEPA direct debit of unchanged (unspecified) amount under a separate contract. 2026-12-14 is a Monday, not a holiday in NW, so no shift is needed; the person's action is only to ensure sufficient funds are available by that date.",
+          "due_date": "2026-12-14",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter mentions a second, separate contract (ZC-6726-740) with its own automatic direct debit, but gives no details of what this contract is for; worth checking you recognise it.",
+        "The amount of the automatic direct debit on 14.12.2026 is described only as 'unveränderter Höhe' (unchanged amount) without stating the figure - confirm the actual amount against your own records before the debit date."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2442,
+      "cache_read_tokens": 14725,
+      "cache_creation_tokens": 3431,
+      "cost_usd": 0.041096999999999995,
+      "duration_ms": 33664,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE56 3705 0198 0005 5933 00"
+        },
+        "result": "{\"iban\":\"DE56 3705 0198 0005 5933 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005593300\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__german_holidays",
+        "input": {
+          "year": 2026,
+          "region": "NW"
+        },
+        "result": "{\"year\":2026,\"region\":\"NW\",\"calendar\":\"Nordrhein-Westfalen\",\"holidays\":[{\"date\":\"2026-01-01\",\"weekday\":\"Thursday\",\"name\":\"Neujahr\",\"nationwide\":true},{\"date\":\"2026-04-03\",\"weekday\":\"Friday\",\"name\":\"Karfreitag\",\"nationwide\":true},{\"date\":\"2026-04-06\",\"weekday\":\"Monday\",\"name\":\"Ostermontag\",\"nationwide\":true},{\"date\":\"2026-05-01\",\"weekday\":\"Friday\",\"name\":\"Erster Mai\",\"nationwide\":true},{\"date\":\"2026-05-14\",\"weekday\":\"Thursday\",\"name\":\"Christi Himmelfahrt\",\"nationwide\":true},{\"date\":\"2026-05-25\",\"weekday\":\"Monday\",\"name\":\"Pfingstmontag\",\"nationwide\":true},{\"date\":\"2026-06-04\",\"weekday\":\"Thursday\",\"name\":\"Fronleichnam\",\"nationwide\":false},{\"date\":\"2026-10-03\",\"weekday\":\"Saturday\",\"name\":\"Tag der Deutschen Einheit\",\"nationwide\":true},{\"date\":\"2026-11-01\",\"weekday\":\"Sunday\",\"name\":\"Allerheiligen\",\"nationwide\":false},{\"date\":\"2026-12-25\",\"weekday\":\"Friday\",\"name\":\"Erster Weihnachtstag\",\"nationwide\":true},{\"date\":\"2026-12-26\",\"weekday\":\"Saturday\",\"name\":\"Zweiter Weihnachtstag\",\"nationwide\":true}],\"disclaimer\":\"Information, not legal advice: the public holidays in Ordnung's calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer.\"}"
+      }
+    ]
+  }
+}

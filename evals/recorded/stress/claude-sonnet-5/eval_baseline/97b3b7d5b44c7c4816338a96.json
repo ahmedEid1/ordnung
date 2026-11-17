@@ -1,0 +1,144 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"5b65d8572679a83d6dd99aaba97d52f7ccf8cdbd515627347f2a759bba02ebc0\",\"mode\":\"text\",\"region\":\"NI\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "stress-D1-holdout4-fine_bussgeld-L2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Niedersachsen (NI), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docume",
+    "recorded_at": "2026-11-24T14:33:57+00:00",
+    "repeat": 1,
+    "commit": "3a21dfb8",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Landkreis Musterammerland – Bußgeldstelle\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"BG 32.2-26/40918\"},{\"label\":\"Kennzeichen\",\"value\":\"WST-FM 91\"},{\"label\":\"Zeichen (schriftliche Anfragen)\",\"value\":\"RK-8213-958\"}],\"amounts\":[115,28.5,3.5,147],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the Bußgeldbescheid\",\"quote\":\"Die Frist von zwei Wochen beginnt mit dem Tag der Zustellung.\",\"computation\":\"Formal service (förmliche Zustellung per Postzustellungsurkunde, § 182 ZPO) is documented on page 2 as having occurred on 23.11.2026 (Monday) — the deliverer entered this date on the Zustellungsurkunde. Since this is formal service, the statutory deemed-delivery rule for ordinary mail does not apply; the actual service date (23.11.2026) is the anchor. Under § 187 Abs. 1 BGB the day of delivery itself is not counted, so the 2-week objection period starts on 24.11.2026. Counting two weeks (§ 188 Abs. 2 BGB) ends on 07.12.2026 (Monday). This date is a normal business day in Niedersachsen (no weekend/holiday shift needed), so the Einspruch must reach the Bußgeldstelle by 07.12.2026.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine amount (Gesamtbetrag) after the decision becomes final\",\"quote\":\"Der Gesamtbetrag ist zwei Wochen nach Eintritt der Rechtskraft zu zahlen.\",\"computation\":\"The Bußgeldbescheid becomes final (Rechtskraft) only if no Einspruch is filed within the 2-week objection period, which ends 07.12.2026 (see the Einspruch item). Assuming no Einspruch is filed, Rechtskraft enters on 08.12.2026, the day after the objection period expires. The payment period of 'zwei Wochen nach Eintritt der Rechtskraft' then starts counting the next day under § 187 Abs. 1 BGB, i.e. from 08.12.2026, and two weeks later (§ 188 Abs. 2 BGB) falls on 22.12.2026 (Tuesday), a normal business day, so no shift is needed. This due date applies only if the person does not lodge an Einspruch; if they do, the Bescheid is not final and this payment obligation does not (yet) arise.\",\"due_date\":\"2026-12-22\",\"confidence\":\"medium\",\"amount\":147}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter states the Zustellung (formal service) date as 23.11.2026 on a separately attached Zustellungsurkunde copy on page 2, handwritten and only initialed ('Jan.') — if the actual envelope/original differs, the Einspruch and payment deadlines must be recalculated from the true service date.\",\"The payment deadline of 22.12.2026 only applies if no Einspruch is filed by 07.12.2026; filing an Einspruch suspends the Rechtskraft and this payment obligation.\",\"The paragraph about the telephone hotline being unreachable on 11.12.2026 introduces a different reference code ('RK-8213-958') for written enquiries that does not match the official Aktenzeichen (BG 32.2-26/40918) printed elsewhere on the letter — this mismatch is unusual and should be verified with the Bußgeldstelle directly before using that code in any correspondence.\",\"The IBAN given (DE17 2805 0100 0002 6655 00) is a valid, well-formed German IBAN, but a valid IBAN does not prove ownership; compare it against any earlier official correspondence before paying.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Landkreis Musterammerland – Bußgeldstelle",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "BG 32.2-26/40918"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "WST-FM 91"
+        },
+        {
+          "label": "Zeichen (schriftliche Anfragen)",
+          "value": "RK-8213-958"
+        }
+      ],
+      "amounts": [
+        115,
+        28.5,
+        3.5,
+        147
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the Bußgeldbescheid",
+          "quote": "Die Frist von zwei Wochen beginnt mit dem Tag der Zustellung.",
+          "computation": "Formal service (förmliche Zustellung per Postzustellungsurkunde, § 182 ZPO) is documented on page 2 as having occurred on 23.11.2026 (Monday) — the deliverer entered this date on the Zustellungsurkunde. Since this is formal service, the statutory deemed-delivery rule for ordinary mail does not apply; the actual service date (23.11.2026) is the anchor. Under § 187 Abs. 1 BGB the day of delivery itself is not counted, so the 2-week objection period starts on 24.11.2026. Counting two weeks (§ 188 Abs. 2 BGB) ends on 07.12.2026 (Monday). This date is a normal business day in Niedersachsen (no weekend/holiday shift needed), so the Einspruch must reach the Bußgeldstelle by 07.12.2026.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine amount (Gesamtbetrag) after the decision becomes final",
+          "quote": "Der Gesamtbetrag ist zwei Wochen nach Eintritt der Rechtskraft zu zahlen.",
+          "computation": "The Bußgeldbescheid becomes final (Rechtskraft) only if no Einspruch is filed within the 2-week objection period, which ends 07.12.2026 (see the Einspruch item). Assuming no Einspruch is filed, Rechtskraft enters on 08.12.2026, the day after the objection period expires. The payment period of 'zwei Wochen nach Eintritt der Rechtskraft' then starts counting the next day under § 187 Abs. 1 BGB, i.e. from 08.12.2026, and two weeks later (§ 188 Abs. 2 BGB) falls on 22.12.2026 (Tuesday), a normal business day, so no shift is needed. This due date applies only if the person does not lodge an Einspruch; if they do, the Bescheid is not final and this payment obligation does not (yet) arise.",
+          "due_date": "2026-12-22",
+          "confidence": "medium",
+          "amount": 147
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter states the Zustellung (formal service) date as 23.11.2026 on a separately attached Zustellungsurkunde copy on page 2, handwritten and only initialed ('Jan.') — if the actual envelope/original differs, the Einspruch and payment deadlines must be recalculated from the true service date.",
+        "The payment deadline of 22.12.2026 only applies if no Einspruch is filed by 07.12.2026; filing an Einspruch suspends the Rechtskraft and this payment obligation.",
+        "The paragraph about the telephone hotline being unreachable on 11.12.2026 introduces a different reference code ('RK-8213-958') for written enquiries that does not match the official Aktenzeichen (BG 32.2-26/40918) printed elsewhere on the letter — this mismatch is unusual and should be verified with the Bußgeldstelle directly before using that code in any correspondence.",
+        "The IBAN given (DE17 2805 0100 0002 6655 00) is a valid, well-formed German IBAN, but a valid IBAN does not prove ownership; compare it against any earlier official correspondence before paying."
+      ]
+    },
+    "usage": {
+      "input_tokens": 10,
+      "output_tokens": 6671,
+      "cache_read_tokens": 53059,
+      "cache_creation_tokens": 10557,
+      "cost_usd": 0.11956979999999999,
+      "duration_ms": 63022,
+      "turns": 6
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "receipt",
+            "anchor_date": "2026-11-23",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "delivery_rule": "none",
+            "legal_basis": "§ 65 OWiG, §§ 187, 188 BGB",
+            "text": "Die Frist von zwei Wochen beginnt mit dem Tag der Zustellung."
+          },
+          "document_date": "2026-11-20",
+          "received_date": "2026-11-23",
+          "sender_kind": "authority",
+          "sender_name": "Landkreis Musterammerland – Bußgeldstelle",
+          "region": "NI",
+          "recipient_region": "NI",
+          "remedy_type": "einspruch"
+        },
+        "result": "{\"due_date\":\"2026-12-07\",\"weekday\":\"Monday\",\"send_by\":\"2026-12-01\",\"summary\":\"Two weeks after delivery on Mon 23 Nov 2026 (as stated on the letter) is Mon 7 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Mon 23 Nov 2026\",\"date\":\"2026-11-23\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Mon 7 Dec 2026\",\"date\":\"2026-12-07\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Mon 7 Dec 2026 is a working day, so it stays\",\"date\":\"2026-12-07\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Tue 1 Dec 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-12-01\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-20\",\"received_date\":\"2026-11-23\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"holiday_calendar\":\"Niedersachsen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "explicit_date",
+            "anchor_date": "2026-12-08",
+            "nature": "payment",
+            "shift_rule": "auto",
+            "delivery_rule": "none",
+            "legal_basis": "§§ 187, 188 BGB",
+            "text": "Der Gesamtbetrag ist zwei Wochen nach Eintritt der Rechtskraft zu zahlen."
+          },
+          "document_date": "2026-11-20",
+          "sender_kind": "authority",
+          "sender_name": "Landkreis Musterammerland – Bußgeldstelle",
+          "region": "NI",
+          "recipient_region": "NI"
+        },
+        "result": "{\"due_date\":\"2026-12-22\",\"weekday\":\"Tuesday\",\"send_by\":\"2026-12-21\",\"summary\":\"Two weeks after Tue 8 Dec 2026 is Tue 22 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Tue 8 Dec 2026\",\"date\":\"2026-12-08\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Tue 22 Dec 2026\",\"date\":\"2026-12-22\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Tue 22 Dec 2026 is a working day, so it stays\",\"date\":\"2026-12-22\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Mon 21 Dec 2026 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2026-12-21\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-20\",\"holiday_calendar\":\"Niedersachsen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE17280501000002665500"
+        },
+        "result": "{\"iban\":\"DE17 2805 0100 0002 6655 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"28050100\"},\"account_number\":\"0002665500\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"6df359f377840df3ee720db8c4016a57f2430e8f47f7840fcba92a68a514698f\",\"mode\":\"text\",\"region\":\"HH\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-L2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hamburg (HH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> ta",
+    "recorded_at": "2026-11-24T11:43:02+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2026-11-19\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against refusal of Sondernutzungserlaubnis\",\"quote\":\"Er ist innerhalb eines Monats, nachdem Ihnen der Bescheid bekannt gegeben worden ist, an das Bezirksamt Musterwerder, Wasserturmweg 3, 22089 Hamburg zu richten, und zwar schriftlich oder zur Niederschrift.\",\"computation\":\"Letter dated 19.11.2026 (Thursday), sent by ordinary mail (einfacher Brief). The letter itself claims delivery is deemed on the 4th day after posting ('gilt am vierten Tag nach der Aufgabe zur Post'), but the correct statutory rule under § 41 Abs. 2 HmbVwVfG (mirroring the federal VwVfG) is the 3rd day after posting, not the 4th. Applying the legally correct 3-day rule: 19.11.2026 + 3 days = 22.11.2026 (Sunday) = deemed Bekanntgabe date (the deeming fiction itself is not shifted for weekends). The one-month Widerspruchsfrist begins the day after Bekanntgabe (§ 31 VwVfG / § 187 Abs. 1 BGB analog) and, per § 188 Abs. 2 BGB, ends on the day of the following month bearing the same calendar number as the Bekanntgabe day, i.e. 22.12.2026 (Tuesday). This day is not a Saturday, Sunday or Hamburg public holiday, so § 193 BGB does not shift it further. Because the letter's own (incorrect) 4-day rule would instead point to 23.12.2026, the earlier, legally correct date of 22.12.2026 is used to protect the recipient from relying on an erroneous later date.\",\"due_date\":\"2026-12-22\",\"confidence\":\"medium\",\"amount\":null}],\"kind\":\"authority_letter\",\"references\":[{\"label\":\"Vorgangsnummer\",\"value\":\"SN-W/2026/1184\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Bezirksamt Musterwerder, Freie und Hansestadt Hamburg – Fachamt Management des öffentlichen Raumes\",\"warnings\":[\"The letter states the postal delivery fiction as 'am vierten Tag nach der Aufgabe zur Post' (4th day), but § 41 Abs. 2 (Hmb)VwVfG actually provides for the 3rd day after posting; I used the legally correct (earlier) 3-day rule to compute the Widerspruch deadline, which is one day earlier (22.12.2026) than the letter's own wording would imply (23.12.2026) - do not rely on the letter's '4th day' statement, and consider confirming the actual posting date with the office if you want certainty.\",\"No fee or payment amount is associated with this letter; it is a refusal (Versagung) of a special-use permit, so no payment obligation exists here despite the office's bank details being printed in the footer.\"]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2026-11-19",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against refusal of Sondernutzungserlaubnis",
+          "quote": "Er ist innerhalb eines Monats, nachdem Ihnen der Bescheid bekannt gegeben worden ist, an das Bezirksamt Musterwerder, Wasserturmweg 3, 22089 Hamburg zu richten, und zwar schriftlich oder zur Niederschrift.",
+          "computation": "Letter dated 19.11.2026 (Thursday), sent by ordinary mail (einfacher Brief). The letter itself claims delivery is deemed on the 4th day after posting ('gilt am vierten Tag nach der Aufgabe zur Post'), but the correct statutory rule under § 41 Abs. 2 HmbVwVfG (mirroring the federal VwVfG) is the 3rd day after posting, not the 4th. Applying the legally correct 3-day rule: 19.11.2026 + 3 days = 22.11.2026 (Sunday) = deemed Bekanntgabe date (the deeming fiction itself is not shifted for weekends). The one-month Widerspruchsfrist begins the day after Bekanntgabe (§ 31 VwVfG / § 187 Abs. 1 BGB analog) and, per § 188 Abs. 2 BGB, ends on the day of the following month bearing the same calendar number as the Bekanntgabe day, i.e. 22.12.2026 (Tuesday). This day is not a Saturday, Sunday or Hamburg public holiday, so § 193 BGB does not shift it further. Because the letter's own (incorrect) 4-day rule would instead point to 23.12.2026, the earlier, legally correct date of 22.12.2026 is used to protect the recipient from relying on an erroneous later date.",
+          "due_date": "2026-12-22",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "kind": "authority_letter",
+      "references": [
+        {
+          "label": "Vorgangsnummer",
+          "value": "SN-W/2026/1184"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Bezirksamt Musterwerder, Freie und Hansestadt Hamburg – Fachamt Management des öffentlichen Raumes",
+      "warnings": [
+        "The letter states the postal delivery fiction as 'am vierten Tag nach der Aufgabe zur Post' (4th day), but § 41 Abs. 2 (Hmb)VwVfG actually provides for the 3rd day after posting; I used the legally correct (earlier) 3-day rule to compute the Widerspruch deadline, which is one day earlier (22.12.2026) than the letter's own wording would imply (23.12.2026) - do not rely on the letter's '4th day' statement, and consider confirming the actual posting date with the office if you want certainty.",
+        "No fee or payment amount is associated with this letter; it is a refusal (Versagung) of a special-use permit, so no payment obligation exists here despite the office's bank details being printed in the footer."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4742,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1996,
+      "cost_usd": 0.05603239999999999,
+      "duration_ms": 49042,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

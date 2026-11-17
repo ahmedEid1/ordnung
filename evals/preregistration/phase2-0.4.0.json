@@ -1,0 +1,36 @@
+{
+ "schema": "ordnung-prereg-phase2/1",
+ "head": "896af5ae2497490b39ae1b3c45bb3b3cb1321773",
+ "patterns": [
+  "evals/present/**",
+  "docs/templates/**",
+  "web/e2e/eval-report.spec.ts",
+  "tests/e2e_support/final_report.py",
+  "tests/helpers_final.py"
+ ],
+ "exclude": [
+  "evals/present/presentation.json"
+ ],
+ "files": {
+  "evals/present/__init__.py": "7f40bbc5e749384a4f0953476a67f38e964e26883cc31bf4219c9efaf30d1487",
+  "evals/present/__main__.py": "0e67415f2535cf0795e2a8fb9ffb0a0afc3ac4e5196cbccb5657036dfc9d81e0",
+  "evals/present/build.py": "af4d89dc4a05ac5a470cc539fd16247293ee14652220cfaae7b78e4375128de5",
+  "evals/present/charts.py": "2f72d0e8b63ab228bd7eaad6e4f090b7076dd03d95199bee1013ec636ef94ffe",
+  "evals/present/final.py": "c71a0566282944608b13d5c9a0b07f0c1a2c71eb17adfca3d8b5621d51747778",
+  "evals/present/final_templates.json": "cf51acc04e165acc534ccff0c9c97ecfe663ec6552e29f7412d5e9d9ac2105f1",
+  "evals/present/finalcharts.py": "3e9070b25cd695c41de78be425bc1184d4b17722a6219ed591c95a746cde3b57",
+  "evals/present/finalrun.py": "17401e8843023cd78b16932b9c0462183d3f3206aad490c890233cf0e151b2f2",
+  "evals/present/finaltext.py": "22221bf6432d2ad5e61eae2bbec523c504564ecd49f299764d5950e6069a3a7d",
+  "evals/present/fmt.py": "3c3dadee50230b14319ce60ae8cc31b18f33e37d1cd97cf89b4daa0578247636",
+  "evals/present/model.py": "fff161ee9e3b6d180a5730c0e7dfaf450470b630103ee2dfe7c1a5c09da8195e",
+  "evals/present/palette.py": "2c2394af052226475b629aa8f2671e8f078b4fc5b3b9b78964e704638eb02ad5",
+  "evals/present/site.py": "5eb04b42bfaccc4257baa4da5971b38bcc0afe44a1b76c7f560b7950060c16ef",
+  "evals/present/templates/views.json": "f8d6537f6259bb080504ed41121e5f8d671b8f2972703b6ca880954584855c3b",
+  "evals/present/text.py": "c4845861887cd43dc98ecdf80ed6813b49cb0e43601b96169928554191e40376",
+  "evals/present/views.py": "fb18644a7ebe075b48d492b97c24b0c343ef4c1df2e199b122909948dbd1fe95",
+  "tests/e2e_support/final_report.py": "2fd76701e389f24a9715868a6c446ab5f19437a508f6da9b9398d176b0fa1d87",
+  "tests/helpers_final.py": "f5b40833673a02f0a675b7e1114bedd79698f96cfdc9fd2870f281da25203f77",
+  "web/e2e/eval-report.spec.ts": "a6ca8506e8defcce9d7db2eb51778c157a0aef2899064340264fd5e7355f7261"
+ },
+ "tree_sha256": "62a54ea38f018cd861d770b511c503170f2f414145a66876038fc442bbe3c7d4"
+}

@@ -1,0 +1,79 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"d2c504983a0143530fc2d4f00be1443072f3252d913469b1e88e884ffba48bea\",\"mode\":\"text\",\"region\":\"SL\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-fine_bussgeld-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Saarland (SL), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> t",
+    "recorded_at": "2026-11-24T09:27:31+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Zentrale Bußgeldbehörde Beispielsaarland\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"VOW 4.1-26/308812\"},{\"label\":\"Kennzeichen\",\"value\":\"SB-MW 418\"}],\"amounts\":[182],\"items\":[{\"kind\":\"deadline\",\"title\":\"File objection (Einspruch) against the fine notice\",\"quote\":\"Gegen diesen Bescheid können Sie innerhalb von zwei Wochen ab seiner Zustellung Einspruch einlegen, schriftlich oder zur Niederschrift bei der Zentralen Bußgeldbehörde Beispielsaarland.\",\"computation\":\"This notice was formally served (Zustellungsurkunde, § 182 ZPO) and the attached envelope copy shows 'zugestellt am 21.11.2026'. For formal delivery the date on the envelope is the delivery day with no days added, so delivery = Sat 21.11.2026. Objection period is two weeks (§ 67 OWiG, § 43 StPO). Under §§ 187 Abs. 1, 188 Abs. 2 BGB the delivery day itself is not counted; the two-week period ends on the same weekday two weeks later: 21.11.2026 + 14 days = Sat 05.12.2026. Since the last day is a Saturday, per § 43 Abs. 2 StPO / § 193 BGB the period moves to the next working day: Sun 06.12 is also non-working, so it moves to Mon 07.12.2026. No Saarland public holiday falls in this window.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the fine (Geldbuße, fee and delivery costs) once the notice becomes final\",\"quote\":\"Zahlen Sie erst, wenn dieser Bescheid rechtskräftig geworden ist, und dann binnen zwei Wochen auf das Konto DE94 5901 0000 0006 6121 00.\",\"computation\":\"The letter conditions payment on the Bescheid becoming rechtskräftig (final), which happens at the expiry of the Einspruch period (computed above as Mon 07.12.2026) provided no objection is filed. Treating 07.12.2026 as the triggering event day (not counted per § 187 Abs. 1 BGB), the stated 'binnen zwei Wochen' period ends on the same weekday two weeks later: 07.12.2026 + 14 days = Mon 21.12.2026. This date is a working day in Saarland, so no further adjustment is needed. This date is only valid if no Einspruch is lodged; if an objection is filed, this payment obligation does not apply and a new timeline would follow instead.\",\"due_date\":\"2026-12-21\",\"confidence\":\"medium\",\"amount\":182}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment due date (2026-12-21) is conditional: it only applies if no Einspruch is filed by 2026-12-07 and the exact date the notice becomes 'rechtskräftig' is derived rather than stated explicitly in the letter.\",\"Double-check the IBAN DE94 5901 0000 0006 6121 00 against official Saarland Bußgeldbehörde payment details before transferring any money, as a precaution against look-alike scam letters.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Zentrale Bußgeldbehörde Beispielsaarland",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "VOW 4.1-26/308812"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "SB-MW 418"
+        }
+      ],
+      "amounts": [
+        182
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File objection (Einspruch) against the fine notice",
+          "quote": "Gegen diesen Bescheid können Sie innerhalb von zwei Wochen ab seiner Zustellung Einspruch einlegen, schriftlich oder zur Niederschrift bei der Zentralen Bußgeldbehörde Beispielsaarland.",
+          "computation": "This notice was formally served (Zustellungsurkunde, § 182 ZPO) and the attached envelope copy shows 'zugestellt am 21.11.2026'. For formal delivery the date on the envelope is the delivery day with no days added, so delivery = Sat 21.11.2026. Objection period is two weeks (§ 67 OWiG, § 43 StPO). Under §§ 187 Abs. 1, 188 Abs. 2 BGB the delivery day itself is not counted; the two-week period ends on the same weekday two weeks later: 21.11.2026 + 14 days = Sat 05.12.2026. Since the last day is a Saturday, per § 43 Abs. 2 StPO / § 193 BGB the period moves to the next working day: Sun 06.12 is also non-working, so it moves to Mon 07.12.2026. No Saarland public holiday falls in this window.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the fine (Geldbuße, fee and delivery costs) once the notice becomes final",
+          "quote": "Zahlen Sie erst, wenn dieser Bescheid rechtskräftig geworden ist, und dann binnen zwei Wochen auf das Konto DE94 5901 0000 0006 6121 00.",
+          "computation": "The letter conditions payment on the Bescheid becoming rechtskräftig (final), which happens at the expiry of the Einspruch period (computed above as Mon 07.12.2026) provided no objection is filed. Treating 07.12.2026 as the triggering event day (not counted per § 187 Abs. 1 BGB), the stated 'binnen zwei Wochen' period ends on the same weekday two weeks later: 07.12.2026 + 14 days = Mon 21.12.2026. This date is a working day in Saarland, so no further adjustment is needed. This date is only valid if no Einspruch is lodged; if an objection is filed, this payment obligation does not apply and a new timeline would follow instead.",
+          "due_date": "2026-12-21",
+          "confidence": "medium",
+          "amount": 182
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment due date (2026-12-21) is conditional: it only applies if no Einspruch is filed by 2026-12-07 and the exact date the notice becomes 'rechtskräftig' is derived rather than stated explicitly in the letter.",
+        "Double-check the IBAN DE94 5901 0000 0006 6121 00 against official Saarland Bußgeldbehörde payment details before transferring any money, as a precaution against look-alike scam letters."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 5912,
+      "cache_read_tokens": 13268,
+      "cache_creation_tokens": 6783,
+      "cost_usd": 0.08891360000000001,
+      "duration_ms": 56644,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

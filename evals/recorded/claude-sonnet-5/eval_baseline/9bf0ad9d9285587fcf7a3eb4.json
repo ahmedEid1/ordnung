@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"49daa526209ff6e3cf0b88b176d8017d4e0a3eb1ee1ad15bcbe7f966772b77ac\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:53:41+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"bank_letter\",\"sender_name\":\"Example Prairie Savings Bank\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Account ending\",\"value\":\"…4471\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Return foreign-address certification form\",\"quote\":\"Please complete the enclosed address certification and mail or upload it by January 15, 2027.\",\"computation\":\"The letter gives an explicit calendar date as the deadline ('by January 15, 2027'), not a period to be counted. This is a US bank, not a German authority or court, so the German delivery-fiction rules (§122 AO, §41 VwVfG, §37 SGB X) and the weekend/holiday-shift rules for legal periods do not apply; the stated date is used as written. January 15, 2027 falls on a Friday, so no adjustment would be needed in any case.\",\"due_date\":\"2027-01-15\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The sender is a US bank (Iowa) writing to a customer in Germany; verify this is genuinely from your bank (e.g. via the number on your card or bank statement) before mailing or uploading any personal address-certification form, since unsolicited requests for personal documents by mail/email are a common phishing pattern.\",\"The letter threatens restricted online access if the form is not received, which is a common pressure tactic used in scam letters, even though this could also be a legitimate federal (US) compliance requirement for customers residing abroad.\"]}",
+    "data": {
+      "kind": "bank_letter",
+      "sender_name": "Example Prairie Savings Bank",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Account ending",
+          "value": "…4471"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Return foreign-address certification form",
+          "quote": "Please complete the enclosed address certification and mail or upload it by January 15, 2027.",
+          "computation": "The letter gives an explicit calendar date as the deadline ('by January 15, 2027'), not a period to be counted. This is a US bank, not a German authority or court, so the German delivery-fiction rules (§122 AO, §41 VwVfG, §37 SGB X) and the weekend/holiday-shift rules for legal periods do not apply; the stated date is used as written. January 15, 2027 falls on a Friday, so no adjustment would be needed in any case.",
+          "due_date": "2027-01-15",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The sender is a US bank (Iowa) writing to a customer in Germany; verify this is genuinely from your bank (e.g. via the number on your card or bank statement) before mailing or uploading any personal address-certification form, since unsolicited requests for personal documents by mail/email are a common phishing pattern.",
+        "The letter threatens restricted online access if the form is not received, which is a common pressure tactic used in scam letters, even though this could also be a legitimate federal (US) compliance requirement for customers residing abroad."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 2725,
+      "cache_read_tokens": 20393,
+      "cache_creation_tokens": 3328,
+      "cost_usd": 0.0446526,
+      "duration_ms": 31629,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

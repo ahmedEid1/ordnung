@@ -1,0 +1,82 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"2beb0b0f9655a44361fb439c6415375e7e1a20efce5ec98edba7a5da57e399ec\",\"mode\":\"text\",\"region\":\"RP\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-kuendigung_arbeit-2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Rheinland-Pfalz (RP), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docu",
+    "recorded_at": "2026-11-24T12:38:55+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"employment\",\"sender_name\":\"Weingut Musterreben KG\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Arbeitsvertrag\",\"value\":\"AV-2020-07\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Register as job-seeking with the Agentur für Arbeit\",\"quote\":\"Um Nachteile beim Arbeitslosengeld zu vermeiden, müssen Sie sich sofort bei der Agentur für Arbeit arbeitsuchend melden.\",\"computation\":\"The letter was handed over in person on 18.11.2026 (witnessed), so that is the date Ute Beispielberger learned of the termination date (31.01.2027). Under § 38 Abs. 1 Satz 2 SGB III, if the end date is known less than three months before it occurs (18.11.2026 to 31.01.2027 is only about 2 months 13 days, i.e. less than 3 months), the job-seeking registration must be made within three days of gaining knowledge of the end date. Day of event (18.11.2026) is not counted (§ 187 Abs. 1 BGB analogy); counting 19.11 (day 1), 20.11 (day 2), 21.11 (day 3). 21.11.2026 is a Saturday, so under the weekend/holiday extension rule (§ 26 Abs. 3 SGB X analogy, § 193 BGB) the deadline moves to the next working day, Monday 23.11.2026.\",\"due_date\":\"2026-11-23\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"File Kündigungsschutzklage (unfair-dismissal action) at the Labour Court\",\"quote\":\"Eine Klage gegen diese Kündigung wäre innerhalb von drei Wochen nach Erhalt des Schreibens beim Arbeitsgericht einzureichen.\",\"computation\":\"Under § 4 KSchG, an unfair-dismissal action must be filed within three weeks of receipt (Zugang) of the written notice. Receipt occurred on the day of personal handover, 18.11.2026 (Wednesday), confirmed by a witness. The day of receipt is not counted (§ 187 Abs. 1 BGB); the three-week period ends on the day with the same weekday three weeks later (§ 188 Abs. 2 BGB): 18.11.2026 + 21 days = 09.12.2026 (Wednesday). 09.12.2026 is not a Saturday, Sunday or public holiday in Rheinland-Pfalz, so no extension applies.\",\"due_date\":\"2026-12-09\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Employment relationship ends\",\"quote\":\"Wir kündigen deshalb das Arbeitsverhältnis ordentlich unter Einhaltung der gesetzlichen Frist zum 31.01.2027.\",\"computation\":\"The letter states the termination date explicitly as 31.01.2027; this is a fixed calendar date and is used as written.\",\"due_date\":\"2027-01-31\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The statutory three-day deadline to register as job-seeking with the Agentur für Arbeit (to avoid reductions in Arbeitslosengeld) fell on 23.11.2026, which is already in the past relative to today (24.11.2026); if this has not yet been done, contact the Agentur für Arbeit immediately and explain the short delay, as late registration can still reduce benefits.\",\"The applicability of the weekend-extension rule to the SGB III three-day job-seeking deadline is not fully settled in case law for this exact scenario, so the 23.11.2026 date should be treated as the latest safe estimate rather than an absolute certainty.\"]}",
+    "data": {
+      "kind": "employment",
+      "sender_name": "Weingut Musterreben KG",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Arbeitsvertrag",
+          "value": "AV-2020-07"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Register as job-seeking with the Agentur für Arbeit",
+          "quote": "Um Nachteile beim Arbeitslosengeld zu vermeiden, müssen Sie sich sofort bei der Agentur für Arbeit arbeitsuchend melden.",
+          "computation": "The letter was handed over in person on 18.11.2026 (witnessed), so that is the date Ute Beispielberger learned of the termination date (31.01.2027). Under § 38 Abs. 1 Satz 2 SGB III, if the end date is known less than three months before it occurs (18.11.2026 to 31.01.2027 is only about 2 months 13 days, i.e. less than 3 months), the job-seeking registration must be made within three days of gaining knowledge of the end date. Day of event (18.11.2026) is not counted (§ 187 Abs. 1 BGB analogy); counting 19.11 (day 1), 20.11 (day 2), 21.11 (day 3). 21.11.2026 is a Saturday, so under the weekend/holiday extension rule (§ 26 Abs. 3 SGB X analogy, § 193 BGB) the deadline moves to the next working day, Monday 23.11.2026.",
+          "due_date": "2026-11-23",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "File Kündigungsschutzklage (unfair-dismissal action) at the Labour Court",
+          "quote": "Eine Klage gegen diese Kündigung wäre innerhalb von drei Wochen nach Erhalt des Schreibens beim Arbeitsgericht einzureichen.",
+          "computation": "Under § 4 KSchG, an unfair-dismissal action must be filed within three weeks of receipt (Zugang) of the written notice. Receipt occurred on the day of personal handover, 18.11.2026 (Wednesday), confirmed by a witness. The day of receipt is not counted (§ 187 Abs. 1 BGB); the three-week period ends on the day with the same weekday three weeks later (§ 188 Abs. 2 BGB): 18.11.2026 + 21 days = 09.12.2026 (Wednesday). 09.12.2026 is not a Saturday, Sunday or public holiday in Rheinland-Pfalz, so no extension applies.",
+          "due_date": "2026-12-09",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Employment relationship ends",
+          "quote": "Wir kündigen deshalb das Arbeitsverhältnis ordentlich unter Einhaltung der gesetzlichen Frist zum 31.01.2027.",
+          "computation": "The letter states the termination date explicitly as 31.01.2027; this is a fixed calendar date and is used as written.",
+          "due_date": "2027-01-31",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The statutory three-day deadline to register as job-seeking with the Agentur für Arbeit (to avoid reductions in Arbeitslosengeld) fell on 23.11.2026, which is already in the past relative to today (24.11.2026); if this has not yet been done, contact the Agentur für Arbeit immediately and explain the short delay, as late registration can still reduce benefits.",
+        "The applicability of the weekend-extension rule to the SGB III three-day job-seeking deadline is not fully settled in case law for this exact scenario, so the 23.11.2026 date should be treated as the latest safe estimate rather than an absolute certainty."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 7263,
+      "cache_read_tokens": 12659,
+      "cache_creation_tokens": 7348,
+      "cost_usd": 0.1045618,
+      "duration_ms": 70611,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

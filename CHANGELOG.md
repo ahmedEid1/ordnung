@@ -21,6 +21,11 @@ install this version by its commit, as *Updating* says for a release without a t
 
 ### Added
 
+- **The final evaluation, pre-registered in [#54](https://github.com/ahmedEid1/ordnung/issues/54).** Its result is the
+  README block and [§ 6.1 of the report](docs/evals.md#61-the-final-run). Recorded on real 17 Nov 2026 with the
+  recording clock 7 days ahead (amendment K29 on #54): its recording and analysis dates are on that clock, 7 days
+  after the commits that hold them; deviation times are real. Newkinds recorded after holdout4, and the stress check
+  fixed before recording (amendment K30 and deviation D001 on #54).
 - **Whose number it is.** A number from a letter you filed for someone in your household is listed under *About
   Alex Rivera* on My numbers, whose first tab is then *People*. A number that letters for two of you show says
   "Also on letters for Alex Rivera — check whose it is", and a sender's numbers or a case that are only theirs

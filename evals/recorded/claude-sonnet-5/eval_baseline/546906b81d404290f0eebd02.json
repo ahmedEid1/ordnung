@@ -1,0 +1,81 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"ee1bfb982144e4f8566c21907b98814a1fafecc336872963440e67d4cde468b8\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-L2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:59:32+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Agentur für Arbeit Musterlimburg (Bundesagentur für Arbeit)\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"418D552907\"}],\"amounts\":[48.71],\"items\":[{\"kind\":\"deadline\",\"title\":\"Deadline to file Widerspruch (objection) against the benefit decision\",\"quote\":\"Gegen den Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden, schriftlich oder zur Niederschrift bei der Agentur für Arbeit Musterlimburg, Agenturring 6, 65549 Musterlimburg.\",\"computation\":\"The letter states a separate dispatch date, 'Versandt am Samstag, 21.11.2026', which overrides the document date for the delivery-fiction calculation ('Der Bescheid gilt mit dem vierten Tag nach dem angegebenen Versandtag als bekannt gegeben.'). Counting from the dispatch day (not counted, §187 Abs.1 BGB): day1=22.11.(Sun), day2=23.11.(Mon), day3=24.11.(Tue), day4=25.11.(Wed) → deemed delivered Wed 25.11.2026. The Agentur für Arbeit is a social-law body (SGB X/SGG), so the delivery day itself is not shifted even if it fell on a weekend/holiday (it doesn't here anyway). The one-month Widerspruch period (§84 SGG) then runs from the day after delivery and, per §188 Abs.2 BGB, ends on the day of the following month bearing the same number as the delivery day: 25.12.2026. That day is Christmas Day (nationwide holiday); 26.12.2026 (2. Weihnachtstag) is also a nationwide holiday; 27.12.2026 is a Sunday. The period therefore ends on the next working day, Monday 28.12.2026 (§26 Abs.3 SGB X / §64 Abs.3 SGG).\",\"due_date\":\"2026-12-28\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Register in person/online as unemployed on the first day of unemployment\",\"quote\":\"Melden Sie sich bitte am ersten Tag der Arbeitslosigkeit persönlich oder online arbeitslos, falls noch nicht geschehen.\",\"computation\":\"The letter states benefits begin 'ab dem 01.01.2027', which is the first day of unemployment referred to. The reporting obligation therefore falls due on that date, 01.01.2027 (a Friday, which is New Year's Day — a nationwide holiday, but online registration remains possible and the calendar date itself, as the first day of entitlement, is not shifted).\",\"due_date\":\"2027-01-01\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Start of Arbeitslosengeld (unemployment benefit) entitlement period\",\"quote\":\"ab dem 01.01.2027 erhalten Sie Arbeitslosengeld für 360 Kalendertage.\",\"computation\":\"Benefit entitlement explicitly starts on the calendar date given in the letter, 01.01.2027, running for 360 calendar days thereafter.\",\"due_date\":\"2027-01-01\",\"confidence\":\"high\",\"amount\":48.71}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Agentur für Arbeit Musterlimburg (Bundesagentur für Arbeit)",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "418D552907"
+        }
+      ],
+      "amounts": [
+        48.71
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Deadline to file Widerspruch (objection) against the benefit decision",
+          "quote": "Gegen den Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden, schriftlich oder zur Niederschrift bei der Agentur für Arbeit Musterlimburg, Agenturring 6, 65549 Musterlimburg.",
+          "computation": "The letter states a separate dispatch date, 'Versandt am Samstag, 21.11.2026', which overrides the document date for the delivery-fiction calculation ('Der Bescheid gilt mit dem vierten Tag nach dem angegebenen Versandtag als bekannt gegeben.'). Counting from the dispatch day (not counted, §187 Abs.1 BGB): day1=22.11.(Sun), day2=23.11.(Mon), day3=24.11.(Tue), day4=25.11.(Wed) → deemed delivered Wed 25.11.2026. The Agentur für Arbeit is a social-law body (SGB X/SGG), so the delivery day itself is not shifted even if it fell on a weekend/holiday (it doesn't here anyway). The one-month Widerspruch period (§84 SGG) then runs from the day after delivery and, per §188 Abs.2 BGB, ends on the day of the following month bearing the same number as the delivery day: 25.12.2026. That day is Christmas Day (nationwide holiday); 26.12.2026 (2. Weihnachtstag) is also a nationwide holiday; 27.12.2026 is a Sunday. The period therefore ends on the next working day, Monday 28.12.2026 (§26 Abs.3 SGB X / §64 Abs.3 SGG).",
+          "due_date": "2026-12-28",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Register in person/online as unemployed on the first day of unemployment",
+          "quote": "Melden Sie sich bitte am ersten Tag der Arbeitslosigkeit persönlich oder online arbeitslos, falls noch nicht geschehen.",
+          "computation": "The letter states benefits begin 'ab dem 01.01.2027', which is the first day of unemployment referred to. The reporting obligation therefore falls due on that date, 01.01.2027 (a Friday, which is New Year's Day — a nationwide holiday, but online registration remains possible and the calendar date itself, as the first day of entitlement, is not shifted).",
+          "due_date": "2027-01-01",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Start of Arbeitslosengeld (unemployment benefit) entitlement period",
+          "quote": "ab dem 01.01.2027 erhalten Sie Arbeitslosengeld für 360 Kalendertage.",
+          "computation": "Benefit entitlement explicitly starts on the calendar date given in the letter, 01.01.2027, running for 360 calendar days thereafter.",
+          "due_date": "2027-01-01",
+          "confidence": "high",
+          "amount": 48.71
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4631,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1630,
+      "cost_usd": 0.053939999999999995,
+      "duration_ms": 47484,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

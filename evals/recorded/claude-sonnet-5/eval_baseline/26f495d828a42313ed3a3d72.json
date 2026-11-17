@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"c5b7546dc4169ef933bc8da745f7752df908754f2c264892affe10f5e305b072\",\"mode\":\"text\",\"region\":\"RP\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-social_decision-N2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Rheinland-Pfalz (RP), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docu",
+    "recorded_at": "2026-11-24T07:43:26+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[412.64,768.36],\"contract\":null,\"document_date\":\"2026-11-20\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Widerspruch against Grundsicherung decision\",\"quote\":\"Die Frist dafür beträgt einen Monat ab Bekanntgabe; der Widerspruch ist schriftlich oder zur Niederschrift bei Kreisverwaltung Beispiel-Westerwald, Peter-Altmeier-Platz 2, 56410 Musterbaur einzulegen.\",\"computation\":\"Letter dated Friday 20.11.2026, sent by simple post (einfacher Brief) by a social-law body (Sozialamt/Kreisverwaltung, § 37 Abs. 2 SGB X). Delivery fiction: the 4th day after posting counts as delivery. Day 1 = 21.11, Day 2 = 22.11, Day 3 = 23.11, Day 4 = 24.11.2026 (Tuesday). For social-law bodies the delivery day does not move even if it fell on a weekend/holiday, but 24.11.2026 is a regular Tuesday anyway, so delivery = 24.11.2026. The one-month Widerspruchsfrist (§ 84 SGG / § 37 Abs. 2 SGB X) is computed under § 188 Abs. 2 BGB: it ends on the day one month later that bears the same number as the delivery day, i.e. 24.12.2026. 24.12.2026 is a Thursday and not a public holiday in Rheinland-Pfalz (24 Dec counts as a working day), so no shift under § 26 Abs. 3 SGB X is needed.\",\"due_date\":\"2026-12-24\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"social_insurance\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"50.2-GS-3318\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Kreisverwaltung Beispiel-Westerwald – Sozialamt – Grundsicherung im Alter\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        412.64,
+        768.36
+      ],
+      "contract": null,
+      "document_date": "2026-11-20",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Widerspruch against Grundsicherung decision",
+          "quote": "Die Frist dafür beträgt einen Monat ab Bekanntgabe; der Widerspruch ist schriftlich oder zur Niederschrift bei Kreisverwaltung Beispiel-Westerwald, Peter-Altmeier-Platz 2, 56410 Musterbaur einzulegen.",
+          "computation": "Letter dated Friday 20.11.2026, sent by simple post (einfacher Brief) by a social-law body (Sozialamt/Kreisverwaltung, § 37 Abs. 2 SGB X). Delivery fiction: the 4th day after posting counts as delivery. Day 1 = 21.11, Day 2 = 22.11, Day 3 = 23.11, Day 4 = 24.11.2026 (Tuesday). For social-law bodies the delivery day does not move even if it fell on a weekend/holiday, but 24.11.2026 is a regular Tuesday anyway, so delivery = 24.11.2026. The one-month Widerspruchsfrist (§ 84 SGG / § 37 Abs. 2 SGB X) is computed under § 188 Abs. 2 BGB: it ends on the day one month later that bears the same number as the delivery day, i.e. 24.12.2026. 24.12.2026 is a Thursday and not a public holiday in Rheinland-Pfalz (24 Dec counts as a working day), so no shift under § 26 Abs. 3 SGB X is needed.",
+          "due_date": "2026-12-24",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "social_insurance",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "50.2-GS-3318"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Kreisverwaltung Beispiel-Westerwald – Sozialamt – Grundsicherung im Alter",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2009,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1923,
+      "cost_usd": 0.028892,
+      "duration_ms": 22324,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"469be851f4d885e00ac7104d56d2e0f2cabd71f3150352daf044a6b272f7a667\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-widerruf-2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T13:10:47+00:00",
+    "repeat": 1,
+    "commit": "17c7ca3b",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract\",\"sender_name\":\"Exempelenergie Rheinschiene AG\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"ER-77104528\"},{\"label\":\"Zählernummer\",\"value\":\"1EBZ0115508822\"}],\"amounts\":[12.5,74],\"items\":[{\"kind\":\"deadline\",\"title\":\"Deadline to withdraw from electricity contract (Widerruf)\",\"quote\":\"Sie haben das Recht, binnen vierzehn Tagen ab Vertragsschluss ohne Angabe von Gründen von diesem Vertrag zurückzutreten, indem Sie ihn widerrufen.\",\"computation\":\"Contract concluded (Vertragsschluss) on 20.11.2026, the day of signature at the doorstep. Under § 187 Abs. 1 BGB, since the period runs from an event (not from the start of a day), the day of the event itself is not counted; the 14-day period begins on 21.11.2026 (day 1). Counting 14 days: Nov 21-30 = 10 days, Dec 1-4 = 4 more days, reaching day 14 on 04.12.2026. This is a Friday, not a Saturday, Sunday or public holiday in NRW, so no shift under § 193 BGB is needed. The letter states that for the deadline it is enough that the withdrawal is sent off (abgesendet) by that day, not that it must arrive. The Widerrufsbelehrung and sample form appear to have been handed over together with this confirmation at contract conclusion, so the standard 14-day period (rather than an extended one under § 356 Abs. 3 BGB for missing information) applies.\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Expected start of electricity supply\",\"quote\":\"Lieferbeginn   voraussichtlich 01.02.2027\",\"computation\":\"The letter gives the expected (not guaranteed) supply start date directly as 01.02.2027 ('voraussichtlich' = expected). No calculation of a period is needed, but because the word 'voraussichtlich' shows this date is not firm, confidence is lowered.\",\"due_date\":\"2027-02-01\",\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This contract was concluded during an unsolicited doorstep sales visit ('Gespräch an Ihrer Haustür'); such door-to-door energy sales are a frequent source of pressure selling and mis-selling in Germany, so the person should double-check whether they really want this contract before the 14-day withdrawal period (ending 2026-12-04) expires.\",\"The letter does not state any minimum contract term, price-fixing period, or renewal/cancellation terms despite the tariff name 'Rhein Strom fix 24' suggesting a fixed-price period of 24 months; this should be clarified with the provider and was therefore not reported as a contract term in this record.\",\"If early delivery during the withdrawal period was requested, the person would owe a pro-rata amount for energy already supplied up to the withdrawal date; no such request or amount is quantified in this letter.\"]}",
+    "data": {
+      "kind": "contract",
+      "sender_name": "Exempelenergie Rheinschiene AG",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "ER-77104528"
+        },
+        {
+          "label": "Zählernummer",
+          "value": "1EBZ0115508822"
+        }
+      ],
+      "amounts": [
+        12.5,
+        74
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Deadline to withdraw from electricity contract (Widerruf)",
+          "quote": "Sie haben das Recht, binnen vierzehn Tagen ab Vertragsschluss ohne Angabe von Gründen von diesem Vertrag zurückzutreten, indem Sie ihn widerrufen.",
+          "computation": "Contract concluded (Vertragsschluss) on 20.11.2026, the day of signature at the doorstep. Under § 187 Abs. 1 BGB, since the period runs from an event (not from the start of a day), the day of the event itself is not counted; the 14-day period begins on 21.11.2026 (day 1). Counting 14 days: Nov 21-30 = 10 days, Dec 1-4 = 4 more days, reaching day 14 on 04.12.2026. This is a Friday, not a Saturday, Sunday or public holiday in NRW, so no shift under § 193 BGB is needed. The letter states that for the deadline it is enough that the withdrawal is sent off (abgesendet) by that day, not that it must arrive. The Widerrufsbelehrung and sample form appear to have been handed over together with this confirmation at contract conclusion, so the standard 14-day period (rather than an extended one under § 356 Abs. 3 BGB for missing information) applies.",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Expected start of electricity supply",
+          "quote": "Lieferbeginn   voraussichtlich 01.02.2027",
+          "computation": "The letter gives the expected (not guaranteed) supply start date directly as 01.02.2027 ('voraussichtlich' = expected). No calculation of a period is needed, but because the word 'voraussichtlich' shows this date is not firm, confidence is lowered.",
+          "due_date": "2027-02-01",
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This contract was concluded during an unsolicited doorstep sales visit ('Gespräch an Ihrer Haustür'); such door-to-door energy sales are a frequent source of pressure selling and mis-selling in Germany, so the person should double-check whether they really want this contract before the 14-day withdrawal period (ending 2026-12-04) expires.",
+        "The letter does not state any minimum contract term, price-fixing period, or renewal/cancellation terms despite the tariff name 'Rhein Strom fix 24' suggesting a fixed-price period of 24 months; this should be clarified with the provider and was therefore not reported as a contract term in this record.",
+        "If early delivery during the withdrawal period was requested, the person would owe a pro-rata amount for energy already supplied up to the withdrawal date; no such request or amount is quantified in this letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 5004,
+      "cache_read_tokens": 8013,
+      "cache_creation_tokens": 5457,
+      "cost_usd": 0.07347859999999999,
+      "duration_ms": 53003,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

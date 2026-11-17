@@ -1,0 +1,74 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"b07708b5d90f328b37534fdbe75e2b36492582b1421fdc5550b9ee3f23ecedab\",\"mode\":\"text\",\"region\":\"RP\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-social_decision-L2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Rheinland-Pfalz (RP), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docu",
+    "recorded_at": "2026-11-24T12:01:51+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[293],\"contract\":null,\"document_date\":\"2026-11-19\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against Unterhaltsvorschuss decision\",\"quote\":\"Er muss innerhalb eines Monats nach Bekanntgabe des Bescheids bei uns eingehen (Kreisverwaltung Musterhunsrück, Schlossplatz 7, 55469 Musterbach im Hunsrück); Sie können ihn schriftlich einreichen oder bei uns zur Niederschrift erklären.\",\"computation\":\"Letter dated 19.11.2026 (Thursday), sent by post. The letter itself states the deemed-delivery rule: 'Ein Bescheid, den wir per Post versenden, gilt am vierten Tag nach seiner Aufgabe zur Post als bekannt gegeben.' Assuming posting on the letter's date (19.11.2026), the 4th day after posting (day of posting not counted, per general counting convention) is: 20.11 (day 1), 21.11 (day 2), 22.11 (day 3), 23.11 (day 4) → deemed delivered Monday, 23.11.2026 (no weekend/holiday correction needed for delivery fiction itself). Under § 187 Abs. 1 BGB the day of the triggering event (23.11.2026) is excluded, so the one-month objection period (§ 83 VwGO / SGG analog, § 70 SGG for Widerspruch) starts 24.11.2026. Per § 188 Abs. 2 BGB a month-long period ending by date correspondence ends on the day of the following month bearing the same number as the day of the triggering event, i.e. 23.12.2026 (Wednesday). 23.12.2026 is a normal working day in Rheinland-Pfalz (not a Saturday, Sunday or public holiday), so no shift under § 193 BGB is required. Final day the Widerspruch must reach the authority: 23.12.2026.\",\"due_date\":\"2026-12-23\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Notify Jugendamt immediately of father's maintenance payments or a change of address\",\"quote\":\"Teilen Sie uns bitte sofort mit, wenn er Unterhalt an Sie zahlt oder Sie umziehen.\",\"computation\":\"This is an ongoing, event-triggered reporting duty ('sofort' = immediately whenever either event occurs) rather than a one-time deadline tied to a calculable calendar date. No specific due date can be computed from the letter.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"kind\":\"social_insurance\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"UV 51-2207/26\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Kreisverwaltung Musterhunsrück – Jugendamt – Unterhaltsvorschusskasse\",\"warnings\":[\"The exact posting date (Aufgabe zur Post) is assumed to equal the letter's printed date (19.11.2026); if the authority actually posted it on a later date, the deemed-delivery date and therefore the Widerspruch deadline shift accordingly.\"]}",
+    "data": {
+      "amounts": [
+        293
+      ],
+      "contract": null,
+      "document_date": "2026-11-19",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against Unterhaltsvorschuss decision",
+          "quote": "Er muss innerhalb eines Monats nach Bekanntgabe des Bescheids bei uns eingehen (Kreisverwaltung Musterhunsrück, Schlossplatz 7, 55469 Musterbach im Hunsrück); Sie können ihn schriftlich einreichen oder bei uns zur Niederschrift erklären.",
+          "computation": "Letter dated 19.11.2026 (Thursday), sent by post. The letter itself states the deemed-delivery rule: 'Ein Bescheid, den wir per Post versenden, gilt am vierten Tag nach seiner Aufgabe zur Post als bekannt gegeben.' Assuming posting on the letter's date (19.11.2026), the 4th day after posting (day of posting not counted, per general counting convention) is: 20.11 (day 1), 21.11 (day 2), 22.11 (day 3), 23.11 (day 4) → deemed delivered Monday, 23.11.2026 (no weekend/holiday correction needed for delivery fiction itself). Under § 187 Abs. 1 BGB the day of the triggering event (23.11.2026) is excluded, so the one-month objection period (§ 83 VwGO / SGG analog, § 70 SGG for Widerspruch) starts 24.11.2026. Per § 188 Abs. 2 BGB a month-long period ending by date correspondence ends on the day of the following month bearing the same number as the day of the triggering event, i.e. 23.12.2026 (Wednesday). 23.12.2026 is a normal working day in Rheinland-Pfalz (not a Saturday, Sunday or public holiday), so no shift under § 193 BGB is required. Final day the Widerspruch must reach the authority: 23.12.2026.",
+          "due_date": "2026-12-23",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Notify Jugendamt immediately of father's maintenance payments or a change of address",
+          "quote": "Teilen Sie uns bitte sofort mit, wenn er Unterhalt an Sie zahlt oder Sie umziehen.",
+          "computation": "This is an ongoing, event-triggered reporting duty ('sofort' = immediately whenever either event occurs) rather than a one-time deadline tied to a calculable calendar date. No specific due date can be computed from the letter.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "kind": "social_insurance",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "UV 51-2207/26"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Kreisverwaltung Musterhunsrück – Jugendamt – Unterhaltsvorschusskasse",
+      "warnings": [
+        "The exact posting date (Aufgabe zur Post) is assumed to equal the letter's printed date (19.11.2026); if the authority actually posted it on a later date, the deemed-delivery date and therefore the Widerspruch deadline shift accordingly."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2610,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1978,
+      "cost_usd": 0.0346404,
+      "duration_ms": 27134,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

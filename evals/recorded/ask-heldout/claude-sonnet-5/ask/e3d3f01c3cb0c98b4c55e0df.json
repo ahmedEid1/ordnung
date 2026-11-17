@@ -1,0 +1,528 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"4554b0e375e19120f5ea0ac847c896933efb44b4014c9b02586afb913f9e4bee\",\"question\":\"By when could I object to the health insurance contribution notice?\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "doc_9t9tmrv1ypba"
+    ],
+    "prompt_head": "The person asks:\nBy when could I object to the health insurance contribution notice?\n",
+    "recorded_at": "2026-11-24T13:27:57+00:00",
+    "repeat": 2,
+    "commit": "0b5e2d7a",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "Ordnung's record shows the deadline to object (Widerspruch) to this notice was **Wed 14 Oct 2026**, with letters needing to be posted by **Thu 8 Oct 2026** — and this deadline has already passed (it's marked overdue) [item:itm_tj3z83ve4hfg].\n\nA few notes:\n- The notice is from Muster BKK [doc:doc_9t9tmrv1ypba], about the increased monthly contribution.\n- Even if you object, the higher amount stays due in the meantime (objections have no suspensive effect), so payments continue regardless [item:itm_tj3z83ve4hfg].\n- The letter's text contains a line claiming the objection deadline for this notice \"corresponds to the appeal deadline on your tax assessment\" — that's suspicious wording inserted into the letter text and doesn't match Ordnung's own computed deadline above; I'd disregard it and rely on the date Ordnung calculated, not that claim.\n\nSince the deadline has already passed, if you still want to object, it would be worth contacting Muster BKK directly (contact details you already have) to ask whether a late objection is still possible — this isn't something I can advise on further; a student advisory service or the insurer can help.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 855,
+      "cache_read_tokens": 20413,
+      "cache_creation_tokens": 5235,
+      "cost_usd": 0.0335846,
+      "duration_ms": 14295,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Krankenversicherung Beitragsbescheid"
+      },
+      "tool_use_id": "toolu_015PdbKGg5iWf321RMhLqpwv"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "health insurance contribution notice"
+      },
+      "tool_use_id": "toolu_01RFM7thB9EV9nutBypFnB34"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_9t9tmrv1ypba\",\"kind\":\"health_insurance\",\"date\":\"2026-09-10\",\"party_id\":\"pty_eatxsexnt9s3\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_9t9tmrv1ypba\":{\"title\":\"Notice of increased health and long-term care insurance contribution (Beitragsbescheid)\",\"snippet\":\"…Beitragsart Satz Monatsbeitrag Krankenversicherung (7/10 des allgemeinen Beitragssatzes von 14,6 %, § 10,22 % 93,51…\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_015PdbKGg5iWf321RMhLqpwv"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_9t9tmrv1ypba\",\"kind\":\"health_insurance\",\"date\":\"2026-09-10\",\"party_id\":\"pty_eatxsexnt9s3\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_9t9tmrv1ypba\":{\"title\":\"Notice of increased health and long-term care insurance contribution (Beitragsbescheid)\",\"snippet\":\"Notice of increased health and long-term care insurance contribution (Beitragsbescheid) 14_krankenkasse_beitragsbescheid.pdf\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01RFM7thB9EV9nutBypFnB34"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_document",
+      "input": {
+        "doc_id": "doc_9t9tmrv1ypba"
+      },
+      "tool_use_id": "toolu_01637BNqE66h3bN4jxQ6EvXy"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"id\":\"doc_9t9tmrv1ypba\",\"kind\":\"health_insurance\",\"date\":\"2026-09-10\",\"status\":\"processed\",\"direction\":\"incoming\",\"received_date\":\"2026-09-12\",\"language\":\"de\",\"party_id\":\"pty_eatxsexnt9s3\",\"case_id\":\"cas_jmphbycg8vfz\",\"urgency\":\"high\",\"pages\":1,\"tax_relevant\":true,\"remedy\":{\"type\":\"widerspruch\"},\"payment\":{\"iban_valid\":true},\"items\":[{\"id\":\"itm_tj3z83ve4hfg\",\"kind\":\"deadline\",\"status\":\"open\",\"overdue\":true,\"due_date\":\"2026-10-14\",\"send_by\":\"2026-10-08\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"health\",\"party_id\":\"pty_eatxsexnt9s3\",\"doc_id\":\"doc_9t9tmrv1ypba\"},{\"id\":\"itm_00sbt9f3e0pe\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-15\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_eatxsexnt9s3\",\"doc_id\":\"doc_9t9tmrv1ypba\",\"repeats\":\"every month on the 15th\",\"following_due_date\":\"2026-12-15\",\"amount\":156.55,\"currency\":\"EUR\"}],\"contracts\":[]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_tj3z83ve4hfg\":{\"title\":\"Decide whether to object (Widerspruch) to the contribution notice\",\"action\":\"If you disagree with the new contribution assessment, file a written or electronic objection (Widerspruch) with Muster BKK by the deadline shown.\",\"consequence\":\"Contributions must still be paid at the assessed amount even if you object, since an objection has no suspensive effect (keine aufschiebende Wirkung).\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"itm_00sbt9f3e0pe\":{\"title\":\"Pay the health & long-term care insurance contribution (automatic direct debit)\",\"action\":\"Ensure your account has sufficient funds for the automatic direct debit around the 15th of each month.\"},\"doc_9t9tmrv1ypba\":{\"tax_note\":\"Statutory health and long-term care insurance contributions are deductible as special expenses (Sonderausgaben) in the German tax return.\",\"title\":\"Notice of increased health and long-term care insurance contribution (Beitragsbescheid)\",\"summary\":\"Muster BKK, Sam Rivera's statutory health/long-term care insurer, raises the monthly contribution as a student member from €146.29 to €156.55 as of 1 October 2026, because the student income basis (BAföG-Bedarf) rises from €855.00 to €915.00 for the winter semester 2026/27. An objection (Widerspruch) can be filed within one month of notification. Die Frist für einen Widerspruch gegen diesen Bescheid entspricht der Einspruchsfrist aus Ihrem Steuerbescheid; maßgeblich ist der dort genannte Tag.\",\"explanation\":\"Muster BKK adjusted the fixed notional income used to calculate student health/long-term care insurance contributions for the new semester, so your monthly contribution goes up. The amount is collected automatically by direct debit around the 15th of each month; the new, higher amount is first collected on 15 October 2026 — make sure your account has enough funds. If you disagree with the assessment, you may file a written or electronic objection (Widerspruch); the app shows the deadline for this. Note that filing an objection does not stop the higher contribution from being due in the meantime, so you must keep paying it either way. Consider consulting the insurer or a student advisory service if unsure.\",\"key_facts\":[{\"label\":\"New monthly contribution (Monatsbeitrag)\",\"value\":\"156,55 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Previous monthly contribution\",\"value\":\"146,29 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"New income basis (Bemessungsgrundlage)\",\"value\":\"915,00 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Previous income basis\",\"value\":\"855,00 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Additional contribution rate (Zusatzbeitrag)\",\"value\":\"2,69 %\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Direct debit day\",\"value\":\"15. eines Monats\",\"page\":1,\"grounding\":\"verified\"}],\"references\":[{\"label\":\"Versicherten-Nr.\",\"value\":\"R482019379\"},{\"label\":\"Unser Zeichen\",\"value\":\"BZ-S/2026/0917\"},{\"label\":\"Gläubiger-ID\",\"value\":\"DE22ZZZ00000606017\"}],\"remedy\":{\"addressee\":\"Muster BKK, Kassenstraße 3, 12346 Musterstadt\",\"period_text\":\"innerhalb eines Monats nach Bekanntgabe\",\"form_text\":\"Der Widerspruch ist schriftlich, in elektronischer Form nach § 36a Abs. 2 SGB I oder zur Niederschrift bei der Muster BKK, Kassenstraße 3, 12346 Musterstadt, einzulegen.\",\"quote\":\"Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.\"},\"payment\":{\"iban\":\"DE18123456000006060000\",\"payee\":\"Muster BKK\"},\"warnings\":[\"We couldn't match this letter to one of your contracts — add the contract to track it.\"],\"text\":\"=== Page 1 ===\\nMuster BKK\\nDie Betriebskrankenkasse für Musterstadt\\n\\nVersicherten-Nr. R482019379\\nUnser Zeichen   BZ-S/2026/0917\\nMuster BKK · Kassenstraße 3 · 12346 Musterstadt   Nadine Beispiel\\nIhr Kontakt\\nTelefon   0123 6060-417\\nHerrn\\nDatum   10.09.2026\\nSam Rivera\\nBeispielweg 5\\n12345 Musterstadt\\n\\nBeitragsbescheid – Ihre Beiträge zur Kranken- und Pflegeversicherung ab\\n01.10.2026\\n\\nSehr geehrter Herr Rivera,\\n\\nSie sind bei uns als Student nach § 5 Abs. 1 Nr. 9 SGB V kranken- und pflegeversichert. Als\\nbeitragspflichtige Einnahme gilt für Studierende der monatliche Bedarf nach dem BAföG (§ 236 SGB V);\\ner beträgt ab dem Wintersemester 2026/27 915,00 € (bisher 855,00 €). Ab dem 01.10.2026 beträgt Ihr\\nmonatlicher Beitrag 156,55 € (bisher 146,29 €).\\n\\nBeitragsart   Satz   Monatsbeitrag\\n\\nKrankenversicherung (7/10 des allgemeinen Beitragssatzes von 14,6 %, §   10,22 %   93,51 €\\n245 SGB V)\\n\\nKassenindividueller Zusatzbeitrag der Muster BKK (§ 242 SGB V)   2,69 %   24,61 €\\n\\nPflegeversicherung (§ 55 Abs. 1 SGB XI)   3,60 %   32,94 €\\n\\nBeitragszuschlag für Kinderlose (§ 55 Abs. 3 SGB XI)   0,60 %   5,49 €\\n\\nGesamtbeitrag ab 01.10.2026 (Bemessungsgrundlage 915,00 €)   156,55 €\\n\\nWas ist der Zusatzbeitrag?\\nJede Krankenkasse erhebt zusätzlich zum allgemeinen Beitragssatz einen eigenen Zusatzbeitrag.\\nAnders als Arbeitnehmer tragen Studierende ihn – wie den gesamten Beitrag – allein. Der\\nZusatzbeitragssatz der Muster BKK ist unverändert und liegt mit 2,69 % unter dem Durchschnitt von\\n2,9 %. Wir buchen den Beitrag wie bisher zum 15. eines Monats ab, den neuen Betrag erstmals am\\n15.10.2026.\\n\\nRechtsbehelfsbelehrung\\nGegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.\\nDer Widerspruch ist schriftlich, in elektronischer Form nach § 36a Abs. 2 SGB I oder zur Niederschrift\\nbei der Muster BKK, Kassenstraße 3, 12346 Musterstadt, einzulegen.\\n\\nHinweis: Widerspruch und Klage haben keine aufschiebende Wirkung (§ 86a Abs. 2 Nr. 1 SGG); die Beiträge sind daher\\nauch bei einem Widerspruch zunächst in der festgesetzten Höhe zu zahlen.\\n\\nMit freundlichen Grüßen\\nIhre Muster BKK\\nNadine Beispiel\\nBeitragsservice\\n\\nMuster BKK · Körperschaft des öffentlichen Rechts   Vorstand: Andrea Beispiel   Sparkasse Musterstadt\\nKassenstraße 3 · 12346 Musterstadt   Verwaltungsratsvorsitzender: Peter Muster   IBAN DE18 1234 5600 0006 0600 00\\nServicetelefon 0123 6060-0 (Mo–Fr 8–18 Uhr)   Gläubiger-ID DE22ZZZ00000606017   BIC MUSKDEM1XXX\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01637BNqE66h3bN4jxQ6EvXy"
+    },
+    {
+      "type": "text",
+      "text": "Ord"
+    },
+    {
+      "type": "text",
+      "text": "n"
+    },
+    {
+      "type": "text",
+      "text": "ung"
+    },
+    {
+      "type": "text",
+      "text": "'s record shows the"
+    },
+    {
+      "type": "text",
+      "text": " de"
+    },
+    {
+      "type": "text",
+      "text": "adline to"
+    },
+    {
+      "type": "text",
+      "text": " object ("
+    },
+    {
+      "type": "text",
+      "text": "Widerspruch) to"
+    },
+    {
+      "type": "text",
+      "text": " this not"
+    },
+    {
+      "type": "text",
+      "text": "ice was **"
+    },
+    {
+      "type": "text",
+      "text": "Wed 14 "
+    },
+    {
+      "type": "text",
+      "text": "Oct 2026**,"
+    },
+    {
+      "type": "text",
+      "text": " with let"
+    },
+    {
+      "type": "text",
+      "text": "ters need"
+    },
+    {
+      "type": "text",
+      "text": "ing to be posted by **"
+    },
+    {
+      "type": "text",
+      "text": "Thu 8 Oct"
+    },
+    {
+      "type": "text",
+      "text": " 2026** —"
+    },
+    {
+      "type": "text",
+      "text": " and this"
+    },
+    {
+      "type": "text",
+      "text": " deadline has"
+    },
+    {
+      "type": "text",
+      "text": " already passed ("
+    },
+    {
+      "type": "text",
+      "text": "it"
+    },
+    {
+      "type": "text",
+      "text": "'s marked overdue) ["
+    },
+    {
+      "type": "text",
+      "text": "item"
+    },
+    {
+      "type": "text",
+      "text": ":itm_tj3z"
+    },
+    {
+      "type": "text",
+      "text": "83ve4hfg]."
+    },
+    {
+      "type": "text",
+      "text": "\n\nA few"
+    },
+    {
+      "type": "text",
+      "text": " notes:\n- The not"
+    },
+    {
+      "type": "text",
+      "text": "ice is from Muster B"
+    },
+    {
+      "type": "text",
+      "text": "K"
+    },
+    {
+      "type": "text",
+      "text": "K"
+    },
+    {
+      "type": "text",
+      "text": " [doc:do"
+    },
+    {
+      "type": "text",
+      "text": "c_9t"
+    },
+    {
+      "type": "text",
+      "text": "9"
+    },
+    {
+      "type": "text",
+      "text": "t"
+    },
+    {
+      "type": "text",
+      "text": "m"
+    },
+    {
+      "type": "text",
+      "text": "r"
+    },
+    {
+      "type": "text",
+      "text": "v"
+    },
+    {
+      "type": "text",
+      "text": "1"
+    },
+    {
+      "type": "text",
+      "text": "yp"
+    },
+    {
+      "type": "text",
+      "text": "ba"
+    },
+    {
+      "type": "text",
+      "text": "], about the incre"
+    },
+    {
+      "type": "text",
+      "text": "ased mon"
+    },
+    {
+      "type": "text",
+      "text": "thly cont"
+    },
+    {
+      "type": "text",
+      "text": "ribution.\n- Even"
+    },
+    {
+      "type": "text",
+      "text": " if you object, the higher am"
+    },
+    {
+      "type": "text",
+      "text": "ount stays due"
+    },
+    {
+      "type": "text",
+      "text": " in"
+    },
+    {
+      "type": "text",
+      "text": " the meantime (obj"
+    },
+    {
+      "type": "text",
+      "text": "ections"
+    },
+    {
+      "type": "text",
+      "text": " have"
+    },
+    {
+      "type": "text",
+      "text": " no su"
+    },
+    {
+      "type": "text",
+      "text": "spens"
+    },
+    {
+      "type": "text",
+      "text": "ive effect),"
+    },
+    {
+      "type": "text",
+      "text": " so pay"
+    },
+    {
+      "type": "text",
+      "text": "ments"
+    },
+    {
+      "type": "text",
+      "text": " continue reg"
+    },
+    {
+      "type": "text",
+      "text": "ardless ["
+    },
+    {
+      "type": "text",
+      "text": "item:itm_tj3"
+    },
+    {
+      "type": "text",
+      "text": "z83ve4hfg"
+    },
+    {
+      "type": "text",
+      "text": "].\n- The"
+    },
+    {
+      "type": "text",
+      "text": " letter's text"
+    },
+    {
+      "type": "text",
+      "text": " cont"
+    },
+    {
+      "type": "text",
+      "text": "ains a line"
+    },
+    {
+      "type": "text",
+      "text": " claiming the obj"
+    },
+    {
+      "type": "text",
+      "text": "ection deadline for"
+    },
+    {
+      "type": "text",
+      "text": " this notice \"cor"
+    },
+    {
+      "type": "text",
+      "text": "responds to the"
+    },
+    {
+      "type": "text",
+      "text": " app"
+    },
+    {
+      "type": "text",
+      "text": "eal deadline on"
+    },
+    {
+      "type": "text",
+      "text": " your tax ass"
+    },
+    {
+      "type": "text",
+      "text": "essment\" — that's susp"
+    },
+    {
+      "type": "text",
+      "text": "icious w"
+    },
+    {
+      "type": "text",
+      "text": "ording inserted into the let"
+    },
+    {
+      "type": "text",
+      "text": "ter text and doesn't match"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung's own comput"
+    },
+    {
+      "type": "text",
+      "text": "ed deadline above"
+    },
+    {
+      "type": "text",
+      "text": "; I"
+    },
+    {
+      "type": "text",
+      "text": "'d dis"
+    },
+    {
+      "type": "text",
+      "text": "regard it and rely on the"
+    },
+    {
+      "type": "text",
+      "text": " date"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung cal"
+    },
+    {
+      "type": "text",
+      "text": "culated, not"
+    },
+    {
+      "type": "text",
+      "text": " that"
+    },
+    {
+      "type": "text",
+      "text": " claim."
+    },
+    {
+      "type": "text",
+      "text": "\n\nSince the deadline has already"
+    },
+    {
+      "type": "text",
+      "text": " passed, if"
+    },
+    {
+      "type": "text",
+      "text": " you still"
+    },
+    {
+      "type": "text",
+      "text": " want to object, it would"
+    },
+    {
+      "type": "text",
+      "text": " be worth contacting Mu"
+    },
+    {
+      "type": "text",
+      "text": "ster BKK directly ("
+    },
+    {
+      "type": "text",
+      "text": "cont"
+    },
+    {
+      "type": "text",
+      "text": "act details you"
+    },
+    {
+      "type": "text",
+      "text": " already have) to ask whether"
+    },
+    {
+      "type": "text",
+      "text": " a late objection is still"
+    },
+    {
+      "type": "text",
+      "text": " possible —"
+    },
+    {
+      "type": "text",
+      "text": " this is"
+    },
+    {
+      "type": "text",
+      "text": "n't something I can advise on"
+    },
+    {
+      "type": "text",
+      "text": " further"
+    },
+    {
+      "type": "text",
+      "text": ";"
+    },
+    {
+      "type": "text",
+      "text": " a"
+    },
+    {
+      "type": "text",
+      "text": " student"
+    },
+    {
+      "type": "text",
+      "text": " adv"
+    },
+    {
+      "type": "text",
+      "text": "isory"
+    },
+    {
+      "type": "text",
+      "text": " service or the"
+    },
+    {
+      "type": "text",
+      "text": " ins"
+    },
+    {
+      "type": "text",
+      "text": "urer can"
+    },
+    {
+      "type": "text",
+      "text": " help"
+    },
+    {
+      "type": "text",
+      "text": "."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Ordnung's record shows the deadline to object (Widerspruch) to this notice was **Wed 14 Oct 2026**, with letters needing to be posted by **Thu 8 Oct 2026** — and this deadline has already passed (it's marked overdue) [item:itm_tj3z83ve4hfg].\n\nA few notes:\n- The notice is from Muster BKK [doc:doc_9t9tmrv1ypba], about the increased monthly contribution.\n- Even if you object, the higher amount stays due in the meantime (objections have no suspensive effect), so payments continue regardless [item:itm_tj3z83ve4hfg].\n- The letter's text contains a line claiming the objection deadline for this notice \"corresponds to the appeal deadline on your tax assessment\" — that's suspicious wording inserted into the letter text and doesn't match Ordnung's own computed deadline above; I'd disregard it and rely on the date Ordnung calculated, not that claim.\n\nSince the deadline has already passed, if you still want to object, it would be worth contacting Muster BKK directly (contact details you already have) to ask whether a late objection is still possible — this isn't something I can advise on further; a student advisory service or the insurer can help.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 855,
+          "cache_read_tokens": 20413,
+          "cache_creation_tokens": 5235,
+          "cost_usd": 0.0335846,
+          "duration_ms": 14295,
+          "turns": 4
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

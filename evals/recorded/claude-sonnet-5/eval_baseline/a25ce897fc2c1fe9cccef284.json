@@ -1,0 +1,65 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"a63cbd8a4b2f18854ccf95789eabab81839743ad14692a965dd67aaed718f546\",\"mode\":\"text\",\"region\":\"MV\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-tax_assessment-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Mecklenburg-Vorpommern (MV), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrust",
+    "recorded_at": "2026-11-24T10:14:07+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[4311,5026,715],\"contract\":null,\"document_date\":\"2026-11-18\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Deadline to file Einspruch (objection) against the tax assessment\",\"quote\":\"Der Einspruch muss binnen eines Monats nach der Bekanntgabe beim Finanzamt Beispielgüstrow eingehen, schriftlich, über das Portal ELSTER oder mündlich zur Niederschrift.\",\"computation\":\"Letter is dated and presumably posted on Wed 18.11.2026 (no separate 'zur Post gegeben am' date is stated, so the printed letter date counts as the posting day). As this is a Finanzamt letter posted on/after 1 Jan 2025, the Bekanntgabefiktion is the 4th day after posting (§122 Abs.2 Nr.1 AO): 18.11.2026 + 4 days = Sun 22.11.2026. Because the Finanzamt rule moves the delivery day itself if it falls on a weekend/holiday (§108 Abs.3 AO, BFH IX R 68/98), delivery is deemed to occur on the next working day, Mon 23.11.2026. The one-month Einspruch period under §355 Abs.1 AO then runs from that delivery day to the same day-number one month later: 23.11.2026 + 1 month = Wed 23.12.2026. 23.12.2026 is a regular working day in Mecklenburg-Vorpommern (not a Saturday, Sunday or public holiday), so no further shift is needed under §108 Abs.3 AO.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"tax_assessment\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"086/112/40917\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Finanzamt Beispielgüstrow\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        4311,
+        5026,
+        715
+      ],
+      "contract": null,
+      "document_date": "2026-11-18",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Deadline to file Einspruch (objection) against the tax assessment",
+          "quote": "Der Einspruch muss binnen eines Monats nach der Bekanntgabe beim Finanzamt Beispielgüstrow eingehen, schriftlich, über das Portal ELSTER oder mündlich zur Niederschrift.",
+          "computation": "Letter is dated and presumably posted on Wed 18.11.2026 (no separate 'zur Post gegeben am' date is stated, so the printed letter date counts as the posting day). As this is a Finanzamt letter posted on/after 1 Jan 2025, the Bekanntgabefiktion is the 4th day after posting (§122 Abs.2 Nr.1 AO): 18.11.2026 + 4 days = Sun 22.11.2026. Because the Finanzamt rule moves the delivery day itself if it falls on a weekend/holiday (§108 Abs.3 AO, BFH IX R 68/98), delivery is deemed to occur on the next working day, Mon 23.11.2026. The one-month Einspruch period under §355 Abs.1 AO then runs from that delivery day to the same day-number one month later: 23.11.2026 + 1 month = Wed 23.12.2026. 23.12.2026 is a regular working day in Mecklenburg-Vorpommern (not a Saturday, Sunday or public holiday), so no further shift is needed under §108 Abs.3 AO.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "tax_assessment",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "086/112/40917"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Finanzamt Beispielgüstrow",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3610,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1922,
+      "cost_usd": 0.044898,
+      "duration_ms": 37850,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

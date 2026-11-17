@@ -1,0 +1,78 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"4991b9c66e8cbf4730052ed98d45b1a1eefe6e2e2c30e0b1e4737854057e2d89\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-mahnbescheid-1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T12:50:18+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[214.37,4.12,36,18,272.49],\"contract\":null,\"document_date\":\"2026-11-20\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the Mahnbescheid\",\"quote\":\"Ihnen bleiben zwei Wochen ab der Zustellung.\",\"computation\":\"Delivery (Zustellung) occurred by mailbox insertion with the postal worker's noted date of 23.11.2026 (Monday) — this documented actual delivery date overrides the statutory 3-day-after-posting fiction. Under § 187 Abs. 1 BGB the day of the triggering event (23.11.2026) is not counted, so the two-week period begins 24.11.2026. Under § 188 Abs. 2 BGB a period stated in weeks ends with the day of the last week that corresponds by name to the day the event occurred, i.e. a Monday, two weeks after 23.11.2026 = 07.12.2026. That Monday (07.12.2026) is not a Saturday, Sunday or NRW public holiday, so no shift under § 193 BGB applies. The Widerspruch (on the enclosed form) must reach the Amtsgericht Exempelbrück by this day.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total claimed amount to the creditor (Beispielfunk Mobilnetz GmbH) if the claim is accepted\",\"quote\":\"In dieser Zeit sollen Sie den Gesamtbetrag nebst weiteren Zinsen an die Antragstellerin zahlen, wenn Sie die Forderung für berechtigt halten, oder dem Gericht auf dem beigefügten Vordruck mitteilen, ob und wie weit Sie Widerspruch erheben.\",\"computation\":\"Same two-week period as the Widerspruch deadline: starts the day after the documented delivery on 23.11.2026 (§ 187 Abs. 1 BGB), i.e. 24.11.2026, and ends on the corresponding weekday (Monday) two weeks later per § 188 Abs. 2 BGB, which is 07.12.2026 (no weekend/holiday shift needed under § 193 BGB). If neither payment nor Widerspruch arrives by then, the creditor may request a Vollstreckungsbescheid.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":272.49}],\"kind\":\"authority_letter\",\"references\":[{\"label\":\"Geschäftsnummer\",\"value\":\"26-5531904-0-7\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Amtsgericht Exempelbrück – Zentrales Mahngericht\",\"warnings\":[\"This Mahnbescheid records an unproven claim by the creditor (Beispielfunk Mobilnetz GmbH) — the court explicitly states it has not checked whether the claim is justified ('Ob das zutrifft, hat das Gericht nicht untersucht.'), so verify the underlying mobile-phone charges before paying or before letting the deadline pass without a Widerspruch.\"]}",
+    "data": {
+      "amounts": [
+        214.37,
+        4.12,
+        36,
+        18,
+        272.49
+      ],
+      "contract": null,
+      "document_date": "2026-11-20",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the Mahnbescheid",
+          "quote": "Ihnen bleiben zwei Wochen ab der Zustellung.",
+          "computation": "Delivery (Zustellung) occurred by mailbox insertion with the postal worker's noted date of 23.11.2026 (Monday) — this documented actual delivery date overrides the statutory 3-day-after-posting fiction. Under § 187 Abs. 1 BGB the day of the triggering event (23.11.2026) is not counted, so the two-week period begins 24.11.2026. Under § 188 Abs. 2 BGB a period stated in weeks ends with the day of the last week that corresponds by name to the day the event occurred, i.e. a Monday, two weeks after 23.11.2026 = 07.12.2026. That Monday (07.12.2026) is not a Saturday, Sunday or NRW public holiday, so no shift under § 193 BGB applies. The Widerspruch (on the enclosed form) must reach the Amtsgericht Exempelbrück by this day.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total claimed amount to the creditor (Beispielfunk Mobilnetz GmbH) if the claim is accepted",
+          "quote": "In dieser Zeit sollen Sie den Gesamtbetrag nebst weiteren Zinsen an die Antragstellerin zahlen, wenn Sie die Forderung für berechtigt halten, oder dem Gericht auf dem beigefügten Vordruck mitteilen, ob und wie weit Sie Widerspruch erheben.",
+          "computation": "Same two-week period as the Widerspruch deadline: starts the day after the documented delivery on 23.11.2026 (§ 187 Abs. 1 BGB), i.e. 24.11.2026, and ends on the corresponding weekday (Monday) two weeks later per § 188 Abs. 2 BGB, which is 07.12.2026 (no weekend/holiday shift needed under § 193 BGB). If neither payment nor Widerspruch arrives by then, the creditor may request a Vollstreckungsbescheid.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": 272.49
+        }
+      ],
+      "kind": "authority_letter",
+      "references": [
+        {
+          "label": "Geschäftsnummer",
+          "value": "26-5531904-0-7"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Amtsgericht Exempelbrück – Zentrales Mahngericht",
+      "warnings": [
+        "This Mahnbescheid records an unproven claim by the creditor (Beispielfunk Mobilnetz GmbH) — the court explicitly states it has not checked whether the claim is justified ('Ob das zutrifft, hat das Gericht nicht untersucht.'), so verify the underlying mobile-phone charges before paying or before letting the deadline pass without a Widerspruch."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3965,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1808,
+      "cost_usd": 0.047510399999999994,
+      "duration_ms": 39000,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

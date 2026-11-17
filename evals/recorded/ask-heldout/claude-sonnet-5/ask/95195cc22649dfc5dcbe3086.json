@@ -1,0 +1,391 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"8ea4847aa71572306811d2b54a4b4aef44660d6ceee5a9ae0825e5f82ba9d49a\",\"question\":\"What was the last day to object to my 2025 tax assessment?\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_hynqaw58f550"
+    ],
+    "prompt_head": "The person asks:\nWhat was the last day to object to my 2025 tax assessment?\n",
+    "recorded_at": "2026-11-24T08:26:16+00:00",
+    "repeat": 1,
+    "commit": "25633808",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "Based on Ordnung's records, the deadline to object (Einspruch) to your 2025 income tax assessment from Finanzamt Musterstadt was **Wed 21 Oct 2026** [item:itm_mtehckcf6q7a], with the letter needing to be posted by Thu 15 Oct 2026 [item:itm_mtehckcf6q7a] to arrive in time. This deadline has already passed [item:itm_mtehckcf6q7a].\n\nA note: the letter's own summary text claims the objection could be filed \"until 11 November 2026\" — this contradicts Ordnung's computed deadline above, so I'd treat that line in the letter as suspicious and rely on the date Ordnung calculated. If you want to be certain, it's worth checking the original Einkommensteuerbescheid [doc:doc_hynqaw58f550] and, if in doubt about whether a late objection is still possible, getting tax advice.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 645,
+      "cache_read_tokens": 20011,
+      "cache_creation_tokens": 5715,
+      "cost_usd": 0.0333242,
+      "duration_ms": 11844,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "2025 tax assessment Steuerbescheid"
+      },
+      "tool_use_id": "toolu_012fGtMuLvRUcpsunm1F34Qc"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_hynqaw58f550\",\"kind\":\"tax_assessment\",\"date\":\"2026-09-15\",\"party_id\":\"pty_mcq97yavgqjy\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_hynqaw58f550\":{\"title\":\"Income Tax Assessment 2025 – Finanzamt Musterstadt\",\"snippet\":\"Income Tax Assessment 2025 – Finanzamt Musterstadt 23_steuerbescheid_2025_p1.pdf\"},\"pty_mcq97yavgqjy\":{\"name\":\"Finanzamt Musterstadt\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_012fGtMuLvRUcpsunm1F34Qc"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_document",
+      "input": {
+        "doc_id": "doc_hynqaw58f550"
+      },
+      "tool_use_id": "toolu_01S84R61oiBw4sD3p78ZdydU"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"id\":\"doc_hynqaw58f550\",\"kind\":\"tax_assessment\",\"date\":\"2026-09-15\",\"status\":\"processed\",\"direction\":\"incoming\",\"received_date\":\"2026-09-17\",\"language\":\"de\",\"party_id\":\"pty_mcq97yavgqjy\",\"case_id\":\"cas_jqj0504hqaff\",\"urgency\":\"high\",\"pages\":2,\"tax_relevant\":true,\"remedy\":{\"type\":\"einspruch\"},\"items\":[{\"id\":\"itm_mtehckcf6q7a\",\"kind\":\"deadline\",\"status\":\"open\",\"overdue\":true,\"due_date\":\"2026-10-21\",\"send_by\":\"2026-10-15\",\"date_source\":\"computed\",\"priority\":\"high\",\"area\":\"tax\",\"party_id\":\"pty_mcq97yavgqjy\",\"doc_id\":\"doc_hynqaw58f550\"},{\"id\":\"itm_case966t6f2p\",\"kind\":\"payment\",\"status\":\"open\",\"direction\":\"in\",\"priority\":\"normal\",\"area\":\"tax\",\"party_id\":\"pty_mcq97yavgqjy\",\"doc_id\":\"doc_hynqaw58f550\",\"amount_unverified\":\"The amount was read by AI from a photo or scan, so it is only in the letter text: give it as what the letter says and suggest checking it against the paper letter.\"}],\"contracts\":[]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_mtehckcf6q7a\":{\"title\":\"Decide whether to file an objection (Einspruch) against the assessment\",\"action\":\"Review the assessment and, if you disagree with it, file an objection (Einspruch) with Finanzamt Musterstadt in writing, electronically, or to record, by the deadline shown.\",\"consequence\":\"If no objection is filed in time, the assessment becomes final (bestandskräftig) and can no longer be challenged.\"},\"pty_mcq97yavgqjy\":{\"name\":\"Finanzamt Musterstadt\"},\"itm_case966t6f2p\":{\"title\":\"Receive income tax refund\",\"action\":\"No action needed; the refund will be paid automatically into your account at Musterbank eG.\",\"amount\":312.45,\"currency\":\"EUR\"},\"doc_hynqaw58f550\":{\"tax_note\":\"This is the official annual income tax assessment (Einkommensteuerbescheid) for 2025; keep it for your records as it documents your taxable income, deductions applied, and the resulting refund.\",\"title\":\"Income Tax Assessment 2025 – Finanzamt Musterstadt\",\"summary\":\"Finanzamt Musterstadt issued the income tax assessment (Einkommensteuerbescheid) for 2025, setting income tax at €1,234.00 (no solidarity surcharge), and confirming a refund of €312.45 to be paid into your Musterbank eG account. Summary: an objection against this assessment can be filed until 11 November 2026.\",\"explanation\":\"Finanzamt Musterstadt (the tax office) has assessed your income tax for 2025 at €1,234.00, with no solidarity surcharge due. Because more tax was already withheld from your salary than owed, you are entitled to a refund of €312.45, which will be paid into your bank account automatically — no action is needed for the refund itself. If you disagree with the assessment (e.g. with how expenses were calculated), you may file an objection (Einspruch) with the Finanzamt in writing or electronically (e.g. via ELSTER); the app shows the deadline. If you take no action, the assessment becomes final and cannot be challenged later.\",\"key_facts\":[{\"label\":\"Income tax assessed (Einkommensteuer festgesetzt)\",\"value\":\"1.234,00 €\",\"page\":1,\"grounding\":\"model_read\"},{\"label\":\"Solidarity surcharge assessed (Solidaritätszuschlag)\",\"value\":\"0,00 €\",\"page\":2,\"grounding\":\"model_read\"},{\"label\":\"Refund amount (verbleibende Beträge)\",\"value\":\"- 312,45 €\",\"page\":1,\"grounding\":\"model_read\"},{\"label\":\"Refund account (Konto)\",\"value\":\"DE41 1234 6700 0071 2345 00\",\"page\":1,\"grounding\":\"model_read\"},{\"label\":\"Gross salary (Bruttoarbeitslohn)\",\"value\":\"23.298 €\",\"page\":1,\"grounding\":\"model_read\"},{\"label\":\"Taxable income (zu versteuerndes Einkommen)\",\"value\":\"18.354 €\",\"page\":1,\"grounding\":\"model_read\"},{\"label\":\"Objection deadline (Einspruchsfrist)\",\"value\":\"one month after notification\",\"page\":2,\"grounding\":\"model_read\"}],\"references\":[{\"label\":\"Steuernummer\",\"value\":\"123/4567/8901\"},{\"label\":\"IdNr.\",\"value\":\"57 216 480 354\"}],\"remedy\":{\"addressee\":\"Finanzamt Musterstadt, Steuerplatz 1, 12345 Musterstadt\",\"period_text\":\"Die Frist für die Einlegung des Einspruchs beträgt einen Monat. Sie beginnt mit Ablauf des Tages, an dem Ihnen dieser Bescheid bekannt gegeben worden ist.\",\"form_text\":\"schriftlich einzureichen, diesem elektronisch zu übermitteln oder dort zur Niederschrift zu erklären\",\"quote\":\"Der Bescheid kann mit dem Einspruch angefochten werden. Der Einspruch ist bei dem Finanzamt Musterstadt, Steuerplatz 1, 12345 Musterstadt, schriftlich einzureichen, diesem elektronisch zu übermitteln oder dort zur Niederschrift zu erklären.\"},\"text\":\"=== Page 1 ===\\nFinanzamt Musterstadt\\nSteuerplatz 1 · 12345 Musterstadt\\n\\n\\nFinanzamt Musterstadt · Steuerplatz 1 · 12345 Musterstadt\\nHerrn\\nSam Rivera\\nBeispielweg 5\\n12345 Musterstadt\\n\\nBitte bei Rückfragen angeben\\nSteuernummer   123/4567/8901\\nIdNr.          57 216 480 354\\nTelefon        0123 887-2204\\nZimmer         3.07\\nDatum          15.09.2026\\n\\n\\nBescheid für 2025 über Einkommensteuer und Solidaritätszuschlag\\n\\nFestsetzung | Einkommensteuer | Solidaritätszuschlag\\nfestgesetzt werden | 1.234,00 € | 0,00 €\\nDie Einkommensteuer wird auf 1.234,00 € festgesetzt.\\n\\nAbrechnung (Stand: 15.09.2026) | Einkommensteuer | Solidaritätszuschlag\\nFestgesetzt | 1.234,00 € | 0,00 €\\nabzüglich Steuerabzug vom Lohn | 1.546,45 € | 0,00 €\\nverbleibende Beträge | - 312,45 € | 0,00 €\\n\\nDer Betrag von 312,45 € wird Ihnen auf das Konto DE41 1234 6700 0071 2345 00 bei der Musterbank eG erstattet.\\n\\nBerechnungsgrundlagen\\n\\nEinkünfte aus nichtselbständiger Arbeit\\nBruttoarbeitslohn | 23.298 €\\nabzüglich Werbungskosten (Arbeitnehmer-Pauschbetrag) | 1.230 €\\nSumme der Einkünfte / Gesamtbetrag der Einkünfte | 22.068 €\\nabzüglich Vorsorgeaufwendungen | 3.678 €\\nabzüglich Sonderausgaben-Pauschbetrag | 36 €\\nzu versteuerndes Einkommen | 18.354 €\\ntarifliche Einkommensteuer (Grundtabelle) | 1.234 €\\n\\nDie Erläuterungen und die Rechtsbehelfsbelehrung auf Seite 2 sind Bestandteil dieses Bescheids.\\n\\n\\nSeite 1 von 2\\n\\nFinanzamt Musterstadt\\nSteuerplatz 1 · 12345 Musterstadt\\nTelefon 0123 887-0\\n\\nÖffnungszeiten Servicezentrum:\\nMo-Fr 8:30-12 Uhr, Do 13:30-17 Uhr\\nund nach Vereinbarung\\n\\nBankverbindung: Finanzkasse\\nBeispiel Landesbank\\nIBAN DE88 1234 8900 0012 3000 10\\n\\n=== Page 2 ===\\nFinanzamt Musterstadt                                                    Steuernummer 123/4567/8901\\n\\nErläuterungen\\n• Bei der Festsetzung wurden die elektronisch übermittelten Daten Ihrer Arbeitgeber\\n  (Lohnsteuerbescheinigungen) sowie Ihrer Kranken- und Pflegeversicherung berücksichtigt.\\n• Die geltend gemachten Aufwendungen für Arbeitsmittel (412 €) übersteigen zusammen mit den\\n  übrigen Werbungskosten den Arbeitnehmer-Pauschbetrag von 1.230 € nicht; der Pauschbetrag\\n  wurde angesetzt.\\n• Der Solidaritätszuschlag wird nicht erhoben, da die Einkommensteuer die Freigrenze nicht\\n  übersteigt.\\n\\nRechtsbehelfsbelehrung\\nDer Bescheid kann mit dem Einspruch angefochten werden. Der Einspruch ist bei dem Finanzamt\\nMusterstadt, Steuerplatz 1, 12345 Musterstadt, schriftlich einzureichen, diesem elektronisch zu\\nübermitteln oder dort zur Niederschrift zu erklären. Ein Einspruch ist jedoch ausgeschlossen, soweit\\ndieser Bescheid einen Verwaltungsakt ändert oder ersetzt, gegen den ein zulässiger Einspruch oder\\n(nach einem zulässigen Einspruch) eine zulässige Klage, Revision oder Nichtzulassungsbeschwerde\\nanhängig ist. In diesem Fall wird der neue Verwaltungsakt Gegenstand des Rechtsbehelfsverfahrens.\\n\\nDie Frist für die Einlegung des Einspruchs beträgt einen Monat. Sie beginnt mit Ablauf des Tages, an dem\\nIhnen dieser Bescheid bekannt gegeben worden ist. Bei Zusendung durch einfachen Brief oder\\nZustellung mittels Einschreiben durch Übergabe gilt die Bekanntgabe mit dem vierten Tag nach Aufgabe\\nzur Post als bewirkt, es sei denn, dass der Bescheid zu einem späteren Zeitpunkt zugegangen ist. Bei\\nZustellung mit Postzustellungsurkunde oder mittels Einschreiben mit Rückschein oder gegen\\nEmpfangsbekenntnis ist Tag der Bekanntgabe der Tag der Zustellung. Bei Bereitstellung zum Datenabruf\\ngilt der Bescheid am vierten Tag nach Absendung der elektronischen Benachrichtigung über die\\nBereitstellung der Daten als bekannt gegeben, es sei denn, dass die Benachrichtigung zu einem späteren\\nZeitpunkt zugegangen ist.\\n\\nHinweise\\nEinen Einspruch können Sie auch bequem über ELSTER (www.elster.de) einlegen. Bitte bewahren Sie\\ndiesen Bescheid auf. Informationen zum Datenschutz erhalten Sie unter\\nfinanzamt-musterstadt.example/datenschutz.\\n\\nDieser Bescheid wurde maschinell erstellt und wird nicht unterschrieben.\\n\\nSeite 2 von 2\\n\\nFinanzamt Musterstadt                    Öffnungszeiten Servicezentrum:              Bankverbindung: Finanzkasse\\nSteuerplatz 1 · 12345 Musterstadt         Mo-Fr 8:30–12 Uhr, Do 13:30–17 Uhr          Beispiel Landesbank\\nTelefon 0123 887-0                        und nach Vereinbarung                       IBAN DE88 1234 8900 0012 3000 10\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01S84R61oiBw4sD3p78ZdydU"
+    },
+    {
+      "type": "text",
+      "text": "Based on"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung's records"
+    },
+    {
+      "type": "text",
+      "text": ", the de"
+    },
+    {
+      "type": "text",
+      "text": "adline to"
+    },
+    {
+      "type": "text",
+      "text": " object"
+    },
+    {
+      "type": "text",
+      "text": " ("
+    },
+    {
+      "type": "text",
+      "text": "Einsp"
+    },
+    {
+      "type": "text",
+      "text": "ruch) to your"
+    },
+    {
+      "type": "text",
+      "text": " 2025"
+    },
+    {
+      "type": "text",
+      "text": " income"
+    },
+    {
+      "type": "text",
+      "text": " tax assessment from"
+    },
+    {
+      "type": "text",
+      "text": " Fin"
+    },
+    {
+      "type": "text",
+      "text": "anzam"
+    },
+    {
+      "type": "text",
+      "text": "t Mus"
+    },
+    {
+      "type": "text",
+      "text": "terstadt was **W"
+    },
+    {
+      "type": "text",
+      "text": "ed "
+    },
+    {
+      "type": "text",
+      "text": "21 "
+    },
+    {
+      "type": "text",
+      "text": "Oct 2026**"
+    },
+    {
+      "type": "text",
+      "text": " [item"
+    },
+    {
+      "type": "text",
+      "text": ":itm_mtehck"
+    },
+    {
+      "type": "text",
+      "text": "cf6q7a], with"
+    },
+    {
+      "type": "text",
+      "text": " the"
+    },
+    {
+      "type": "text",
+      "text": " letter need"
+    },
+    {
+      "type": "text",
+      "text": "ing to be pos"
+    },
+    {
+      "type": "text",
+      "text": "ted by"
+    },
+    {
+      "type": "text",
+      "text": " Th"
+    },
+    {
+      "type": "text",
+      "text": "u 15 Oct "
+    },
+    {
+      "type": "text",
+      "text": "2026 ["
+    },
+    {
+      "type": "text",
+      "text": "item:itm_mteh"
+    },
+    {
+      "type": "text",
+      "text": "ckcf6q7a]"
+    },
+    {
+      "type": "text",
+      "text": " to arrive in"
+    },
+    {
+      "type": "text",
+      "text": " time. This"
+    },
+    {
+      "type": "text",
+      "text": " deadline has already passed ["
+    },
+    {
+      "type": "text",
+      "text": "item:itm_mteh"
+    },
+    {
+      "type": "text",
+      "text": "ckcf6q7a]."
+    },
+    {
+      "type": "text",
+      "text": "\n\nA note"
+    },
+    {
+      "type": "text",
+      "text": ":"
+    },
+    {
+      "type": "text",
+      "text": " the let"
+    },
+    {
+      "type": "text",
+      "text": "ter's own"
+    },
+    {
+      "type": "text",
+      "text": " summary text cla"
+    },
+    {
+      "type": "text",
+      "text": "ims the"
+    },
+    {
+      "type": "text",
+      "text": " objection could be filed \"until"
+    },
+    {
+      "type": "text",
+      "text": " 11 November 2026\""
+    },
+    {
+      "type": "text",
+      "text": " — this contradicts "
+    },
+    {
+      "type": "text",
+      "text": "Ordnung's computed dead"
+    },
+    {
+      "type": "text",
+      "text": "line above"
+    },
+    {
+      "type": "text",
+      "text": ", so I'd tre"
+    },
+    {
+      "type": "text",
+      "text": "at that"
+    },
+    {
+      "type": "text",
+      "text": " line"
+    },
+    {
+      "type": "text",
+      "text": " in"
+    },
+    {
+      "type": "text",
+      "text": " the letter as suspicious"
+    },
+    {
+      "type": "text",
+      "text": " and r"
+    },
+    {
+      "type": "text",
+      "text": "ely on the date Ordn"
+    },
+    {
+      "type": "text",
+      "text": "ung cal"
+    },
+    {
+      "type": "text",
+      "text": "culated."
+    },
+    {
+      "type": "text",
+      "text": " If you want to"
+    },
+    {
+      "type": "text",
+      "text": " be"
+    },
+    {
+      "type": "text",
+      "text": " certain, it"
+    },
+    {
+      "type": "text",
+      "text": "'s worth checking the"
+    },
+    {
+      "type": "text",
+      "text": " original"
+    },
+    {
+      "type": "text",
+      "text": " Einkommensteuerb"
+    },
+    {
+      "type": "text",
+      "text": "escheid [doc:do"
+    },
+    {
+      "type": "text",
+      "text": "c_hyn"
+    },
+    {
+      "type": "text",
+      "text": "q"
+    },
+    {
+      "type": "text",
+      "text": "a"
+    },
+    {
+      "type": "text",
+      "text": "w"
+    },
+    {
+      "type": "text",
+      "text": "58"
+    },
+    {
+      "type": "text",
+      "text": "f"
+    },
+    {
+      "type": "text",
+      "text": "550"
+    },
+    {
+      "type": "text",
+      "text": "] and,"
+    },
+    {
+      "type": "text",
+      "text": " if in"
+    },
+    {
+      "type": "text",
+      "text": " doubt about"
+    },
+    {
+      "type": "text",
+      "text": " wh"
+    },
+    {
+      "type": "text",
+      "text": "ether a late objection is still poss"
+    },
+    {
+      "type": "text",
+      "text": "ible, get"
+    },
+    {
+      "type": "text",
+      "text": "ting t"
+    },
+    {
+      "type": "text",
+      "text": "ax advice."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Based on Ordnung's records, the deadline to object (Einspruch) to your 2025 income tax assessment from Finanzamt Musterstadt was **Wed 21 Oct 2026** [item:itm_mtehckcf6q7a], with the letter needing to be posted by Thu 15 Oct 2026 [item:itm_mtehckcf6q7a] to arrive in time. This deadline has already passed [item:itm_mtehckcf6q7a].\n\nA note: the letter's own summary text claims the objection could be filed \"until 11 November 2026\" — this contradicts Ordnung's computed deadline above, so I'd treat that line in the letter as suspicious and rely on the date Ordnung calculated. If you want to be certain, it's worth checking the original Einkommensteuerbescheid [doc:doc_hynqaw58f550] and, if in doubt about whether a late objection is still possible, getting tax advice.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 645,
+          "cache_read_tokens": 20011,
+          "cache_creation_tokens": 5715,
+          "cost_usd": 0.0333242,
+          "duration_ms": 11844,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

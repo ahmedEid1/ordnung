@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"6df359f377840df3ee720db8c4016a57f2430e8f47f7840fcba92a68a514698f\",\"mode\":\"text\",\"region\":\"HH\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-L2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hamburg (HH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> ta",
+    "recorded_at": "2026-11-24T09:49:24+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Bezirksamt Musterwerder, Freie und Hansestadt Hamburg – Fachamt Management des öffentlichen Raumes\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Vorgangsnummer\",\"value\":\"SN-W/2026/1184\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against refusal of Sondernutzungserlaubnis\",\"quote\":\"Er ist innerhalb eines Monats, nachdem Ihnen der Bescheid bekannt gegeben worden ist, an das Bezirksamt Musterwerder, Wasserturmweg 3, 22089 Hamburg zu richten, und zwar schriftlich oder zur Niederschrift.\",\"computation\":\"Letter dated 19.11.2026 (Thursday), sent by ordinary mail. Per § 41 Abs. 2 HmbVwVfG (quoted on page 2) it is deemed delivered (bekannt gegeben) on the 4th day after posting: 19.11. + 4 days = 23.11.2026 (Monday) - not a weekend/holiday, so no shift. Under § 187 Abs. 1 BGB the day of notification (23.11.2026) itself is not counted; the one-month Widerspruchsfrist begins 24.11.2026. Under § 188 Abs. 2 BGB a one-month period ends on the day of the following month bearing the same number as the triggering (notification) day, i.e. 23.12.2026 (Wednesday) - a regular business day in Hamburg (the Christmas public holidays are 25./26.12, not relevant), so no further shift under § 193 BGB. The Widerspruch must reach the Bezirksamt by this date.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The deadline calculation assumes the letter was actually posted on its printed date (19.11.2026); if postal dispatch happened later, the four-day delivery fiction and the one-month deadline shift accordingly.\",\"The letter mentions a possible informal new application for a single table against the house wall, but gives no date or deadline for this - it is not a dated obligation and was not added as an item.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Bezirksamt Musterwerder, Freie und Hansestadt Hamburg – Fachamt Management des öffentlichen Raumes",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Vorgangsnummer",
+          "value": "SN-W/2026/1184"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against refusal of Sondernutzungserlaubnis",
+          "quote": "Er ist innerhalb eines Monats, nachdem Ihnen der Bescheid bekannt gegeben worden ist, an das Bezirksamt Musterwerder, Wasserturmweg 3, 22089 Hamburg zu richten, und zwar schriftlich oder zur Niederschrift.",
+          "computation": "Letter dated 19.11.2026 (Thursday), sent by ordinary mail. Per § 41 Abs. 2 HmbVwVfG (quoted on page 2) it is deemed delivered (bekannt gegeben) on the 4th day after posting: 19.11. + 4 days = 23.11.2026 (Monday) - not a weekend/holiday, so no shift. Under § 187 Abs. 1 BGB the day of notification (23.11.2026) itself is not counted; the one-month Widerspruchsfrist begins 24.11.2026. Under § 188 Abs. 2 BGB a one-month period ends on the day of the following month bearing the same number as the triggering (notification) day, i.e. 23.12.2026 (Wednesday) - a regular business day in Hamburg (the Christmas public holidays are 25./26.12, not relevant), so no further shift under § 193 BGB. The Widerspruch must reach the Bezirksamt by this date.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The deadline calculation assumes the letter was actually posted on its printed date (19.11.2026); if postal dispatch happened later, the four-day delivery fiction and the one-month deadline shift accordingly.",
+        "The letter mentions a possible informal new application for a single table against the house wall, but gives no date or deadline for this - it is not a dated obligation and was not added as an item."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 4548,
+      "cache_read_tokens": 8241,
+      "cache_creation_tokens": 5638,
+      "cost_usd": 0.06968819999999999,
+      "duration_ms": 52096,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

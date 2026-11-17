@@ -6,7 +6,7 @@ This module needs the project's environment (:mod:`evals.report` renders the his
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -17,7 +17,8 @@ REPORT = "docs/evals.md"
 HISTORY = "docs/evals-history.md"
 PRESENTATION = "evals/present/presentation.json"
 ASSETS = "docs/assets"
-#: Every file ``--write`` writes and ``--check`` compares, relative to the repository's root.
+#: Every file ``--write`` writes and ``--check`` compares, relative to the repository's root, while there is no final
+#: run (:func:`output_paths` adds the final run's charts once there is).
 OUTPUT_PATHS = (
     PRESENTATION,
     README,
@@ -38,6 +39,22 @@ HISTORY_INPUTS: dict[str, str | list[str]] = {
     "holdout3_run": "2026-10-06-claude-sonnet-5-holdout3.json",
     "without_land": "2026-10-08-claude-sonnet-5-without-land.json",
 }
+
+
+def output_paths(doc: Mapping[str, Any]) -> tuple[str, ...]:
+    """Every file ``--write`` writes for ``doc`` and ``--check`` compares: :data:`OUTPUT_PATHS`, and the final run's
+    charts once ``presentation.json`` holds it."""
+    return (
+        PRESENTATION,
+        README,
+        REPORT,
+        HISTORY,
+        *(
+            f"{ASSETS}/eval-{name}-{theme}.svg"
+            for name in charts.committed(doc)
+            for theme in ("light", "dark")
+        ),
+    )
 
 
 def legacy_page(results_dir: Path) -> str:
@@ -76,10 +93,27 @@ def render(doc: Mapping[str, Any], readme: str, legacy: str) -> dict[str, str]:
         REPORT: text.report(doc),
         HISTORY: text.history(doc, legacy),
     }
-    for name in charts.COMMITTED:
+    for name in charts.committed(doc):
         for theme in ("light", "dark"):
             outputs[f"{ASSETS}/eval-{name}-{theme}.svg"] = charts.svg(name, doc, theme)
+    if doc.get("final") is not None:
+        _final_problems(doc, outputs)
     return outputs
+
+
+def _final_problems(doc: Mapping[str, Any], outputs: Mapping[str, str]) -> None:
+    """The README's block and docs/evals.md's final section say the registered sentences exactly as registered
+    (:func:`evals.present.final.readme_problems`, :func:`~evals.present.final.page_problems`), or nothing is
+    written."""
+    from evals.present import final
+
+    shown = doc["final"]
+    said = [final.Sentence(**sentence) for sentence in shown["sentences"]["readme"]]
+    problems = final.readme_problems(outputs[README], said, shown["layout"]) + final.page_problems(
+        outputs[REPORT], [sentence["text"] for sentence in shown["sentences"]["page"]]
+    )
+    if problems:
+        raise PresentError(f"the final run's pages are not its registered sentences: {'; '.join(problems)}")
 
 
 def outputs(root: Path = ROOT, results_dir: Path | None = None) -> dict[str, str]:
@@ -111,20 +145,21 @@ def _same(path: Path, content: str) -> bool:
         return False
 
 
-def _stale(root: Path) -> list[str]:
-    """Evaluation charts in ``docs/assets`` that nothing renders any more."""
+def _stale(root: Path, rendered: Iterable[str]) -> list[str]:
+    """Evaluation charts in ``docs/assets`` that nothing renders any more (``rendered``: what this render writes)."""
     assets = root / ASSETS
     if not assets.is_dir():
         return []
-    expected = {Path(path).name for path in OUTPUT_PATHS if path.startswith(ASSETS)}
+    expected = {Path(path).name for path in rendered if path.startswith(ASSETS)}
     return sorted(f"{ASSETS}/{path.name}" for path in assets.glob("eval-*") if path.name not in expected)
 
 
 def check(root: Path = ROOT, results_dir: Path | None = None) -> list[str]:
     """The outputs under ``root`` that differ from a fresh render, are missing, or are left over."""
     differ = []
-    for relative, content in outputs(root, results_dir).items():
+    rendered = outputs(root, results_dir)
+    for relative, content in rendered.items():
         path = root / relative
         if not _same(path, content):
             differ.append(relative)
-    return differ + _stale(root)
+    return differ + _stale(root, rendered)

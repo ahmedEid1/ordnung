@@ -1,0 +1,346 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"258c9eb533aae0c2414271a7fda8681ea1fb736426b2999a45141753d332ff7e\",\"question\":\"Wann habe ich meinen nächsten Termin beim Augenarzt?\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_xa0f5gvpe0w2",
+      "doc_d9hwr1mp3bsj",
+      "doc_pa2w9q3gxzqk"
+    ],
+    "prompt_head": "The person asks:\nWann habe ich meinen nächsten Termin beim Augenarzt?\n",
+    "recorded_at": "2026-11-24T08:17:31+00:00",
+    "repeat": 1,
+    "commit": "25633808",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "In Ihren Unterlagen finde ich keinen Termin bei einem Augenarzt — weder in den Briefen noch unter den offenen Terminen.\n\nIhre offenen Termine sind:\n- Zahnärztliche Kontrolle (PZR) am 08.10.2026 bei Zahnarztpraxis Dr. Anna Beispiel [item:itm_sncxha9wbsxc]\n- Termin bei der Ausländerbehörde am 14.10.2026 [item:itm_64wce6sh2rpp]\n- Autumn Meeting in Berlin am 07.11.2026 [item:itm_espa58t15ncg]\n\nEin Augenarzt-Termin ist darunter nicht.",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 398,
+      "cache_read_tokens": 12786,
+      "cache_creation_tokens": 2134,
+      "cost_usd": 0.0150812,
+      "duration_ms": 6891,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Augenarzt"
+      },
+      "tool_use_id": "toolu_013cW1vytdDqCJyQnN3sNrtM"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "kind": "appointment",
+        "status": "open"
+      },
+      "tool_use_id": "toolu_01VKoq3WjsSudGmVBq8h25NR"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_013cW1vytdDqCJyQnN3sNrtM"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-11-24\",\"items\":[{\"id\":\"itm_sncxha9wbsxc\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-10-08\",\"due_time\":\"09:15\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_m3rttkfq94qn\",\"doc_id\":\"doc_xa0f5gvpe0w2\"},{\"id\":\"itm_64wce6sh2rpp\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"due_time\":\"10:30\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_w9e8zww4fzse\",\"doc_id\":\"doc_d9hwr1mp3bsj\"},{\"id\":\"itm_espa58t15ncg\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-11-07\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_sncxha9wbsxc\":{\"title\":\"Dental checkup and cleaning (PZR)\",\"action\":\"Arrive 10 minutes early and bring your health insurance card (Gesundheitskarte)\",\"consequence\":\"Cancel at least 24 hours in advance if you cannot attend\",\"location\":\"Lindenallee 8, 12345 Musterstadt\"},\"pty_m3rttkfq94qn\":{\"name\":\"Zahnarztpraxis Dr. Anna Beispiel\"},\"itm_64wce6sh2rpp\":{\"title\":\"Attend appointment at the immigration office (Ausländerbehörde)\",\"action\":\"Go to the appointment with your original passport, current enrolment certificate for winter semester 2026/27, proof of financial means, proof of health insurance, a biometric photo, your rental agreement or landlord confirmation, and the €100 fee (girocard only, cash not accepted).\",\"location\":\"Stadt Musterstadt, Ausländerbehörde, Musterplatz 1, 2. Obergeschoss, Raum 2.14\"},\"pty_w9e8zww4fzse\":{\"name\":\"Stadt Musterstadt\"},\"itm_espa58t15ncg\":{\"title\":\"Attend Autumn Meeting in Berlin\",\"action\":\"Attend the Autumn Meeting for scholars in Berlin; wait for the separate invitation with the programme.\",\"location\":\"Berlin\"},\"pty_efmwq4xym8cm\":{\"name\":\"Global Talent Scholarship Foundation\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01VKoq3WjsSudGmVBq8h25NR"
+    },
+    {
+      "type": "text",
+      "text": "In"
+    },
+    {
+      "type": "text",
+      "text": " Ihren Un"
+    },
+    {
+      "type": "text",
+      "text": "terlagen"
+    },
+    {
+      "type": "text",
+      "text": " finde"
+    },
+    {
+      "type": "text",
+      "text": " ich ke"
+    },
+    {
+      "type": "text",
+      "text": "inen Termin b"
+    },
+    {
+      "type": "text",
+      "text": "ei einem Augenarz"
+    },
+    {
+      "type": "text",
+      "text": "t —"
+    },
+    {
+      "type": "text",
+      "text": " we"
+    },
+    {
+      "type": "text",
+      "text": "der in"
+    },
+    {
+      "type": "text",
+      "text": " den Bri"
+    },
+    {
+      "type": "text",
+      "text": "efen noch un"
+    },
+    {
+      "type": "text",
+      "text": "ter den off"
+    },
+    {
+      "type": "text",
+      "text": "enen Terminen."
+    },
+    {
+      "type": "text",
+      "text": "\n\nIh"
+    },
+    {
+      "type": "text",
+      "text": "re offenen Term"
+    },
+    {
+      "type": "text",
+      "text": "ine sind:\n- Z"
+    },
+    {
+      "type": "text",
+      "text": "ahnär"
+    },
+    {
+      "type": "text",
+      "text": "ztli"
+    },
+    {
+      "type": "text",
+      "text": "che Kontrolle"
+    },
+    {
+      "type": "text",
+      "text": " ("
+    },
+    {
+      "type": "text",
+      "text": "P"
+    },
+    {
+      "type": "text",
+      "text": "Z"
+    },
+    {
+      "type": "text",
+      "text": "R"
+    },
+    {
+      "type": "text",
+      "text": ") am"
+    },
+    {
+      "type": "text",
+      "text": " 08"
+    },
+    {
+      "type": "text",
+      "text": ".10.2026"
+    },
+    {
+      "type": "text",
+      "text": " bei Z"
+    },
+    {
+      "type": "text",
+      "text": "ahnarzt"
+    },
+    {
+      "type": "text",
+      "text": "p"
+    },
+    {
+      "type": "text",
+      "text": "raxis Dr."
+    },
+    {
+      "type": "text",
+      "text": " Anna Beispiel ["
+    },
+    {
+      "type": "text",
+      "text": "item"
+    },
+    {
+      "type": "text",
+      "text": ":it"
+    },
+    {
+      "type": "text",
+      "text": "m_snc"
+    },
+    {
+      "type": "text",
+      "text": "xha"
+    },
+    {
+      "type": "text",
+      "text": "9w"
+    },
+    {
+      "type": "text",
+      "text": "b"
+    },
+    {
+      "type": "text",
+      "text": "s"
+    },
+    {
+      "type": "text",
+      "text": "x"
+    },
+    {
+      "type": "text",
+      "text": "c"
+    },
+    {
+      "type": "text",
+      "text": "]"
+    },
+    {
+      "type": "text",
+      "text": "\n- Termin bei der"
+    },
+    {
+      "type": "text",
+      "text": " Ausländerbehör"
+    },
+    {
+      "type": "text",
+      "text": "de am 14"
+    },
+    {
+      "type": "text",
+      "text": ".10.2026 [item"
+    },
+    {
+      "type": "text",
+      "text": ":itm_64"
+    },
+    {
+      "type": "text",
+      "text": "w"
+    },
+    {
+      "type": "text",
+      "text": "ce"
+    },
+    {
+      "type": "text",
+      "text": "6s"
+    },
+    {
+      "type": "text",
+      "text": "h"
+    },
+    {
+      "type": "text",
+      "text": "2"
+    },
+    {
+      "type": "text",
+      "text": "r"
+    },
+    {
+      "type": "text",
+      "text": "p"
+    },
+    {
+      "type": "text",
+      "text": "p"
+    },
+    {
+      "type": "text",
+      "text": "]\n- Aut"
+    },
+    {
+      "type": "text",
+      "text": "umn Meeting in"
+    },
+    {
+      "type": "text",
+      "text": " Berlin am 07."
+    },
+    {
+      "type": "text",
+      "text": "11.2026 [item:"
+    },
+    {
+      "type": "text",
+      "text": "itm_espa58t15"
+    },
+    {
+      "type": "text",
+      "text": "ncg]"
+    },
+    {
+      "type": "text",
+      "text": "\n\nEin Augenarzt-"
+    },
+    {
+      "type": "text",
+      "text": "Termin ist dar"
+    },
+    {
+      "type": "text",
+      "text": "un"
+    },
+    {
+      "type": "text",
+      "text": "ter nicht."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "In Ihren Unterlagen finde ich keinen Termin bei einem Augenarzt — weder in den Briefen noch unter den offenen Terminen.\n\nIhre offenen Termine sind:\n- Zahnärztliche Kontrolle (PZR) am 08.10.2026 bei Zahnarztpraxis Dr. Anna Beispiel [item:itm_sncxha9wbsxc]\n- Termin bei der Ausländerbehörde am 14.10.2026 [item:itm_64wce6sh2rpp]\n- Autumn Meeting in Berlin am 07.11.2026 [item:itm_espa58t15ncg]\n\nEin Augenarzt-Termin ist darunter nicht.",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 398,
+          "cache_read_tokens": 12786,
+          "cache_creation_tokens": 2134,
+          "cost_usd": 0.0150812,
+          "duration_ms": 6891,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

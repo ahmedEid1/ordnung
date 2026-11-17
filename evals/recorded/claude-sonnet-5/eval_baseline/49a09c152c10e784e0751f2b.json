@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"b4e033bfd74ccb500c119cce4c2128da2c44ca34a4de0d31e38165ee7347cd1e\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-invoice_relative-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:42:50+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[396.27],\"contract\":null,\"document_date\":\"2026-11-20\",\"items\":[{\"kind\":\"payment\",\"title\":\"Pay glass repair invoice\",\"quote\":\"Der Betrag ist innerhalb von 14 Tagen ab Rechnungsdatum ohne Abzug fällig.\",\"computation\":\"Start of period: Rechnungsdatum 20.11.2026, the day of the event itself is not counted (§ 187 Abs. 1 BGB). 14 days later: 21.11 (day1) ... counting 14 days forward from 20.11.2026 lands on 04.12.2026. Checking the weekday: 2026-11-24 is given as Tuesday; counting forward, 2026-12-04 falls on a Friday, which is a normal working day in NW (no public holiday). Since the last day of the period is not a Saturday, Sunday or public holiday, no shift under § 193 BGB is needed. Due date: 2026-12-04.\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":396.27}],\"kind\":\"invoice\",\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"GS-26-1185\"}],\"remedy_type\":\"none\",\"sender_name\":\"Glaserei Beispielscheibe\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        396.27
+      ],
+      "contract": null,
+      "document_date": "2026-11-20",
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay glass repair invoice",
+          "quote": "Der Betrag ist innerhalb von 14 Tagen ab Rechnungsdatum ohne Abzug fällig.",
+          "computation": "Start of period: Rechnungsdatum 20.11.2026, the day of the event itself is not counted (§ 187 Abs. 1 BGB). 14 days later: 21.11 (day1) ... counting 14 days forward from 20.11.2026 lands on 04.12.2026. Checking the weekday: 2026-11-24 is given as Tuesday; counting forward, 2026-12-04 falls on a Friday, which is a normal working day in NW (no public holiday). Since the last day of the period is not a Saturday, Sunday or public holiday, no shift under § 193 BGB is needed. Due date: 2026-12-04.",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": 396.27
+        }
+      ],
+      "kind": "invoice",
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "GS-26-1185"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Glaserei Beispielscheibe",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1227,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1480,
+      "cost_usd": 0.019299999999999998,
+      "duration_ms": 12636,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

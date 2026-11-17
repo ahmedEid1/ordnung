@@ -1,0 +1,77 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"e9f4cabff0ddc7ff8f85d6149ff1d61e33e460fa85667d2a793f0d6809c58267\",\"mode\":\"text\",\"region\":\"MV\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-kuendigung_miete-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Mecklenburg-Vorpommern (MV), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrust",
+    "recorded_at": "2026-11-24T12:49:17+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"sender_name\":\"Hausverwaltung Beispielbodden GmbH\",\"document_date\":\"2026-11-18\",\"references\":[],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"End of tenancy / move-out date\",\"quote\":\"kündigen wir das Mietverhältnis über die Wohnung Nr. 4 in der Strandstraße 3 fristgerecht zum 28.02.2027.\",\"computation\":\"The letter gives the termination effective date directly as a calendar date: zum 28.02.2027. No further calculation needed; this is the day the tenancy ends and the apartment must be vacated/returned.\",\"due_date\":\"2027-02-28\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Deadline to object (Widerspruch) to the termination under §§574–574b BGB\",\"quote\":\"Der Widerspruch bedarf der Textform und muss mir spätestens zwei Monate vor dem Ende des Mietverhältnisses zugehen.\",\"computation\":\"End of tenancy is stated as 28.02.2027. 'Zwei Monate vor dem Ende' means the deadline is calculated backward exactly two calendar months from that date: 28.02.2027 minus 2 months = 28.12.2026 (check: 28.12.2026 + 2 months = 28.02.2027, confirming the backward count). 28.12.2026 falls on a Monday (not a Saturday, Sunday, or public holiday in Mecklenburg-Vorpommern — there is no statutory holiday between Christmas and New Year's Eve), so no shift under §193 BGB is required. The tenant's written-form (Textform) objection must physically reach the landlord's representative by this date at the latest.\",\"due_date\":\"2026-12-28\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"appointment\",\"title\":\"Apartment handover/inspection (Wohnungsabnahme) — date still to be proposed\",\"quote\":\"Einen Termin zur Wohnungsabnahme schlagen wir Ihnen im Februar vor.\",\"computation\":\"The letter only states that a handover appointment will be proposed sometime in February (presumably February 2027, shortly before the tenancy ends on 28.02.2027), without giving a specific date. The exact day cannot be determined from this letter.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The termination is described as 'fristgerecht' (within the statutory notice period) to 28.02.2027; since the statutory notice period for a landlord's termination depends on how long the tenant has lived in the apartment (three months if under five years, longer for longer tenancies), you may want to verify this date actually complies with your applicable notice period, counted from the hand-delivery on 18.11.2026.\",\"The letter was reportedly hand-delivered into the mailbox on 18.11.2026 at 11:00 by an employee rather than sent by post; if you want to contest the termination it may be worth confirming when you actually found/read it, though it does not change the calculated objection deadline here since that deadline is fixed by calendar subtraction from the stated end date, not from the delivery date.\"]}",
+    "data": {
+      "kind": "rent_lease",
+      "sender_name": "Hausverwaltung Beispielbodden GmbH",
+      "document_date": "2026-11-18",
+      "references": [],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "End of tenancy / move-out date",
+          "quote": "kündigen wir das Mietverhältnis über die Wohnung Nr. 4 in der Strandstraße 3 fristgerecht zum 28.02.2027.",
+          "computation": "The letter gives the termination effective date directly as a calendar date: zum 28.02.2027. No further calculation needed; this is the day the tenancy ends and the apartment must be vacated/returned.",
+          "due_date": "2027-02-28",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Deadline to object (Widerspruch) to the termination under §§574–574b BGB",
+          "quote": "Der Widerspruch bedarf der Textform und muss mir spätestens zwei Monate vor dem Ende des Mietverhältnisses zugehen.",
+          "computation": "End of tenancy is stated as 28.02.2027. 'Zwei Monate vor dem Ende' means the deadline is calculated backward exactly two calendar months from that date: 28.02.2027 minus 2 months = 28.12.2026 (check: 28.12.2026 + 2 months = 28.02.2027, confirming the backward count). 28.12.2026 falls on a Monday (not a Saturday, Sunday, or public holiday in Mecklenburg-Vorpommern — there is no statutory holiday between Christmas and New Year's Eve), so no shift under §193 BGB is required. The tenant's written-form (Textform) objection must physically reach the landlord's representative by this date at the latest.",
+          "due_date": "2026-12-28",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "appointment",
+          "title": "Apartment handover/inspection (Wohnungsabnahme) — date still to be proposed",
+          "quote": "Einen Termin zur Wohnungsabnahme schlagen wir Ihnen im Februar vor.",
+          "computation": "The letter only states that a handover appointment will be proposed sometime in February (presumably February 2027, shortly before the tenancy ends on 28.02.2027), without giving a specific date. The exact day cannot be determined from this letter.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The termination is described as 'fristgerecht' (within the statutory notice period) to 28.02.2027; since the statutory notice period for a landlord's termination depends on how long the tenant has lived in the apartment (three months if under five years, longer for longer tenancies), you may want to verify this date actually complies with your applicable notice period, counted from the hand-delivery on 18.11.2026.",
+        "The letter was reportedly hand-delivered into the mailbox on 18.11.2026 at 11:00 by an employee rather than sent by post; if you want to contest the termination it may be worth confirming when you actually found/read it, though it does not change the calculated objection deadline here since that deadline is fixed by calendar subtraction from the stated end date, not from the delivery date."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 7932,
+      "cache_read_tokens": 7981,
+      "cache_creation_tokens": 8429,
+      "cost_usd": 0.1146402,
+      "duration_ms": 75166,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

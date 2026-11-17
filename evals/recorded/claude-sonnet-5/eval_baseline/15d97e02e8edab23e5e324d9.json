@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"49daa526209ff6e3cf0b88b176d8017d4e0a3eb1ee1ad15bcbe7f966772b77ac\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:23:31+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"bank_letter\",\"sender_name\":\"Example Prairie Savings Bank\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Account\",\"value\":\"…4471\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Submit address certification form\",\"quote\":\"Please complete the enclosed address certification and mail or upload it by January 15,\\n2027.\",\"computation\":\"The letter states an explicit calendar date by which the completed address certification must be mailed or uploaded: January 15, 2027. This is a fixed deadline given in writing, not a period to be calculated from delivery, so no further counting is required.\",\"due_date\":\"2027-01-15\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letterhead, address, phone number and email domain ('exampleprairie.example') all use placeholder/example branding ('Example Prairie Savings Bank', 'Example Boulevard'), which suggests this document may be a template or sample rather than a genuine letter from a real bank; the recipient should verify directly with their actual bank before acting on it.\",\"No account number, IBAN or payment details were given and no money is requested, so there is no indication of a payment scam, but the recipient should still confirm the request through their bank's official app or verified phone number rather than any contact details printed on this letter.\"]}",
+    "data": {
+      "kind": "bank_letter",
+      "sender_name": "Example Prairie Savings Bank",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Account",
+          "value": "…4471"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Submit address certification form",
+          "quote": "Please complete the enclosed address certification and mail or upload it by January 15,\n2027.",
+          "computation": "The letter states an explicit calendar date by which the completed address certification must be mailed or uploaded: January 15, 2027. This is a fixed deadline given in writing, not a period to be calculated from delivery, so no further counting is required.",
+          "due_date": "2027-01-15",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letterhead, address, phone number and email domain ('exampleprairie.example') all use placeholder/example branding ('Example Prairie Savings Bank', 'Example Boulevard'), which suggests this document may be a template or sample rather than a genuine letter from a real bank; the recipient should verify directly with their actual bank before acting on it.",
+        "No account number, IBAN or payment details were given and no money is requested, so there is no indication of a payment scam, but the recipient should still confirm the request through their bank's official app or verified phone number rather than any contact details printed on this letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1782,
+      "cache_read_tokens": 12350,
+      "cache_creation_tokens": 2487,
+      "cost_usd": 0.030246,
+      "duration_ms": 26025,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"a0242deba88b6d40bffe710da2ce83e160e8d72275b918ad5c67bb6a9ca6cca8\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-conflicting_dates-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:22:26+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Autowerkstatt Beispielkolben\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Auftrag\",\"value\":\"AK-26-3318\"},{\"label\":\"Kennzeichen\",\"value\":\"MS-JB 2604\"}],\"amounts\":[642.3],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay invoice for inspection and brakes\",\"quote\":\"Bitte holen Sie es ab und bezahlen Sie die Rechnung bis 07.12.2026.\",\"computation\":\"The letter gives two different final payment dates: the body text says 'bezahlen Sie die Rechnung bis 07.12.2026' (pay by 07.12.2026), while the payment block separately states 'Zahlungsziel 10.12.2026' (payment target 10.12.2026). These are both explicit calendar dates, not periods requiring calculation, but they contradict each other. Following the rule to use the earliest plausible date when a letter contradicts itself about a date, the due date is 2026-12-07 (a Monday, no weekend/holiday adjustment needed).\",\"due_date\":\"2026-12-07\",\"confidence\":\"medium\",\"amount\":642.3}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter gives two conflicting payment deadlines for the same invoice — '...bezahlen Sie die Rechnung bis 07.12.2026' in the body text versus 'Zahlungsziel 10.12.2026' near the bank details; the earlier date (07.12.2026) was used to be safe, but you should check with the garage which date actually applies.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Autowerkstatt Beispielkolben",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Auftrag",
+          "value": "AK-26-3318"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "MS-JB 2604"
+        }
+      ],
+      "amounts": [
+        642.3
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay invoice for inspection and brakes",
+          "quote": "Bitte holen Sie es ab und bezahlen Sie die Rechnung bis 07.12.2026.",
+          "computation": "The letter gives two different final payment dates: the body text says 'bezahlen Sie die Rechnung bis 07.12.2026' (pay by 07.12.2026), while the payment block separately states 'Zahlungsziel 10.12.2026' (payment target 10.12.2026). These are both explicit calendar dates, not periods requiring calculation, but they contradict each other. Following the rule to use the earliest plausible date when a letter contradicts itself about a date, the due date is 2026-12-07 (a Monday, no weekend/holiday adjustment needed).",
+          "due_date": "2026-12-07",
+          "confidence": "medium",
+          "amount": 642.3
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter gives two conflicting payment deadlines for the same invoice — '...bezahlen Sie die Rechnung bis 07.12.2026' in the body text versus 'Zahlungsziel 10.12.2026' near the bank details; the earlier date (07.12.2026) was used to be safe, but you should check with the garage which date actually applies."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1041,
+      "cache_read_tokens": 14556,
+      "cache_creation_tokens": 2331,
+      "cost_usd": 0.0226532,
+      "duration_ms": 13783,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE35 3705 0198 0005 5884 40"
+        },
+        "result": "{\"iban\":\"DE35 3705 0198 0005 5884 40\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005588440\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"07ee1aa7b05c5bd2c5240e10d4147695b02dee925c6212e8f17dd58faded1ea5\",\"mode\":\"text\",\"region\":\"BY\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-N1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bayern (BY), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag",
+    "recorded_at": "2026-11-24T07:23:59+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Landratsamt Musterinn – Bauamt – Untere Bauaufsichtsbehörde\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Az.\",\"value\":\"B-2026-1406\"}],\"amounts\":[120],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Klage (lawsuit) against the rejection at the Verwaltungsgericht\",\"quote\":\"Gegen diesen Bescheid können Sie binnen eines Monats nach seiner Bekanntgabe Klage beim Bayerischen Verwaltungsgericht Musterregensburg, Haidplatz 4, 93047 Musterregensburg erheben, schriftlich oder zur Niederschrift bei der Geschäftsstelle des Gerichts.\",\"computation\":\"Letter is dated 18.11.2026 (Wed); assumed posted same day (Tag der Aufgabe zur Post, not stated separately). The applicable rule (Art. 41 Abs. 2 BayVwVfG, as actually in force) deems a letter sent by ordinary mail delivered on the THIRD day after posting (the letter itself mis-states 'vierter Tag', which does not match the statute's wording; the statutory third-day rule is applied here). 18.11.2026 + 3 days = 21.11.2026, a Saturday. Established case law on this notification fiction (by analogy to the weekend/holiday extension rules, as applied e.g. under §122 Abs.2 AO/§41 VwVfG) moves the deemed-delivery day to the next business day, i.e. Monday 23.11.2026 = date of Bekanntgabe. The one-month Klage period under §57 Abs. 2 VwGO i.V.m. §222 ZPO i.V.m. §§187 Abs.1, 188 Abs.2 BGB does not count the day of the triggering event (23.11.2026); the period starts 24.11.2026 and ends one month later on the day numerically corresponding to the Bekanntgabe day, i.e. 23.12.2026 (a Wednesday, not a Bavarian public holiday, so no further shift is needed).\",\"due_date\":\"2026-12-23\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"reminder\",\"title\":\"Separate fee notice (Kostenbescheid) of 120 € to follow\",\"quote\":\"Für die Ablehnung wird eine Gebühr von 120 € erhoben; hierüber erhalten Sie einen eigenen Kostenbescheid.\",\"computation\":\"The letter states the 120 € processing fee will be charged via a separate Kostenbescheid that has not yet been issued; no payment due date can be determined from this letter.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":120}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The letter states the deemed-delivery (Bekanntgabe) fiction applies on the 'vierten Tag' (fourth day) after posting and cites Art. 41 Abs. 2 BayVwVfG for this, but that provision actually specifies the THIRD day after posting; I applied the correct statutory third-day rule for the Klage deadline calculation, which the person should double-check with the court or a lawyer given the discrepancy in the letter.\",\"No separate 'Tag der Aufgabe zur Post' (date the letter was actually handed to the postal service) is given in the letter; I assumed it equals the printed document date (18.11.2026), which may not be exact and could shift the deadline by a day or two.\",\"The 120 € fee mentioned is not yet due — a separate Kostenbescheid will follow; do not pay anything based on this letter alone.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Landratsamt Musterinn – Bauamt – Untere Bauaufsichtsbehörde",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Az.",
+          "value": "B-2026-1406"
+        }
+      ],
+      "amounts": [
+        120
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Klage (lawsuit) against the rejection at the Verwaltungsgericht",
+          "quote": "Gegen diesen Bescheid können Sie binnen eines Monats nach seiner Bekanntgabe Klage beim Bayerischen Verwaltungsgericht Musterregensburg, Haidplatz 4, 93047 Musterregensburg erheben, schriftlich oder zur Niederschrift bei der Geschäftsstelle des Gerichts.",
+          "computation": "Letter is dated 18.11.2026 (Wed); assumed posted same day (Tag der Aufgabe zur Post, not stated separately). The applicable rule (Art. 41 Abs. 2 BayVwVfG, as actually in force) deems a letter sent by ordinary mail delivered on the THIRD day after posting (the letter itself mis-states 'vierter Tag', which does not match the statute's wording; the statutory third-day rule is applied here). 18.11.2026 + 3 days = 21.11.2026, a Saturday. Established case law on this notification fiction (by analogy to the weekend/holiday extension rules, as applied e.g. under §122 Abs.2 AO/§41 VwVfG) moves the deemed-delivery day to the next business day, i.e. Monday 23.11.2026 = date of Bekanntgabe. The one-month Klage period under §57 Abs. 2 VwGO i.V.m. §222 ZPO i.V.m. §§187 Abs.1, 188 Abs.2 BGB does not count the day of the triggering event (23.11.2026); the period starts 24.11.2026 and ends one month later on the day numerically corresponding to the Bekanntgabe day, i.e. 23.12.2026 (a Wednesday, not a Bavarian public holiday, so no further shift is needed).",
+          "due_date": "2026-12-23",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "reminder",
+          "title": "Separate fee notice (Kostenbescheid) of 120 € to follow",
+          "quote": "Für die Ablehnung wird eine Gebühr von 120 € erhoben; hierüber erhalten Sie einen eigenen Kostenbescheid.",
+          "computation": "The letter states the 120 € processing fee will be charged via a separate Kostenbescheid that has not yet been issued; no payment due date can be determined from this letter.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 120
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The letter states the deemed-delivery (Bekanntgabe) fiction applies on the 'vierten Tag' (fourth day) after posting and cites Art. 41 Abs. 2 BayVwVfG for this, but that provision actually specifies the THIRD day after posting; I applied the correct statutory third-day rule for the Klage deadline calculation, which the person should double-check with the court or a lawyer given the discrepancy in the letter.",
+        "No separate 'Tag der Aufgabe zur Post' (date the letter was actually handed to the postal service) is given in the letter; I assumed it equals the printed document date (18.11.2026), which may not be exact and could shift the deadline by a day or two.",
+        "The 120 € fee mentioned is not yet due — a separate Kostenbescheid will follow; do not pay anything based on this letter alone."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4821,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2093,
+      "cost_usd": 0.05721039999999999,
+      "duration_ms": 49457,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

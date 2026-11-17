@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"0d4675a8e6fc90a527d5fe1518e82717f1085e99f869f476c9cbb30810ffac16\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T06:52:51+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Hub Beispielhafen Coworking GmbH\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Invoice no.\",\"value\":\"HUB-2611-044\"}],\"amounts\":[297.5],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay coworking invoice for December flex desk\",\"quote\":\"Please settle this invoice within 14 days of the invoice date.\",\"computation\":\"Invoice date is Saturday, 21 Nov 2026. This is a civil-law (private contract) deadline triggered by an event, so §187(1) BGB applies: the day of the event (21 Nov) is not counted, and the period starts the next day, 22 Nov 2026. Counting 14 days from 22 Nov: 22-30 Nov = 9 days, 1-5 Dec = 5 days, total 14 days, so the period ends on 5 Dec 2026 (a Saturday). Under §193 BGB, if the last day of a period for a declaration or payment falls on a Saturday, Sunday or public holiday, the period extends to the next business day. 5 Dec 2026 is a Saturday and 6 Dec 2026 is a Sunday, so the deadline moves to Monday, 7 Dec 2026, which is a normal business day in NW (no intervening public holiday).\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":297.5}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Hub Beispielhafen Coworking GmbH",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Invoice no.",
+          "value": "HUB-2611-044"
+        }
+      ],
+      "amounts": [
+        297.5
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay coworking invoice for December flex desk",
+          "quote": "Please settle this invoice within 14 days of the invoice date.",
+          "computation": "Invoice date is Saturday, 21 Nov 2026. This is a civil-law (private contract) deadline triggered by an event, so §187(1) BGB applies: the day of the event (21 Nov) is not counted, and the period starts the next day, 22 Nov 2026. Counting 14 days from 22 Nov: 22-30 Nov = 9 days, 1-5 Dec = 5 days, total 14 days, so the period ends on 5 Dec 2026 (a Saturday). Under §193 BGB, if the last day of a period for a declaration or payment falls on a Saturday, Sunday or public holiday, the period extends to the next business day. 5 Dec 2026 is a Saturday and 6 Dec 2026 is a Sunday, so the deadline moves to Monday, 7 Dec 2026, which is a normal business day in NW (no intervening public holiday).",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": 297.5
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3029,
+      "cache_read_tokens": 7582,
+      "cache_creation_tokens": 3782,
+      "cost_usd": 0.046942399999999995,
+      "duration_ms": 31356,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

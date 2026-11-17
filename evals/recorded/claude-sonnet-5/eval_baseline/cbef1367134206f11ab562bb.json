@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"4c04eda3c5ad3bf4601a80997bbc77b7aeee1e86aa8341fcaa532e11d8cbde57\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-invoice_relative-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:12:14+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[255.85],\"contract\":null,\"items\":[{\"kind\":\"payment\",\"title\":\"Pay invoice for puppy course and private lesson\",\"quote\":\"Zahlbar 14 Tage nach Rechnungsdatum per Überweisung.\",\"computation\":\"Invoice date (start of period) is 21.11.2026 (Saturday). Under § 187 Abs. 1 BGB the day of the event is not counted, so the 14-day period starts on 22.11.2026. Counting 14 days (§ 188 Abs. 1 BGB) the period ends on 05.12.2026. 21.11.2026 is a Saturday, so 14 days later (two full weeks) 05.12.2026 is also a Saturday. This is a private payment owed to a company; under § 193 BGB, since the last day falls on a Saturday, the deadline moves to the next working day. 06.12.2026 is a Sunday, so the next working day is Monday 07.12.2026.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":255.85}],\"kind\":\"invoice\",\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"HP-1121\"}],\"remedy_type\":\"none\",\"sender_name\":\"Hundeschule Beispielpfote\",\"document_date\":\"2026-11-21\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        255.85
+      ],
+      "contract": null,
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay invoice for puppy course and private lesson",
+          "quote": "Zahlbar 14 Tage nach Rechnungsdatum per Überweisung.",
+          "computation": "Invoice date (start of period) is 21.11.2026 (Saturday). Under § 187 Abs. 1 BGB the day of the event is not counted, so the 14-day period starts on 22.11.2026. Counting 14 days (§ 188 Abs. 1 BGB) the period ends on 05.12.2026. 21.11.2026 is a Saturday, so 14 days later (two full weeks) 05.12.2026 is also a Saturday. This is a private payment owed to a company; under § 193 BGB, since the last day falls on a Saturday, the deadline moves to the next working day. 06.12.2026 is a Sunday, so the next working day is Monday 07.12.2026.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": 255.85
+        }
+      ],
+      "kind": "invoice",
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "HP-1121"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Hundeschule Beispielpfote",
+      "document_date": "2026-11-21",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2085,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1434,
+      "cost_usd": 0.027696,
+      "duration_ms": 23420,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

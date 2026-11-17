@@ -1,0 +1,79 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"d65d3047027b36286d8b31c1142f7b21601c2ded7c11c5551abc5987325d1964\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:29:50+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Hauptzollamt Beispielhafen\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"KFZ 4480/26/77310\"},{\"label\":\"Kennzeichen\",\"value\":\"MS-JB 2604\"}],\"amounts\":[146],\"items\":[{\"kind\":\"deadline\",\"title\":\"Einspruch against vehicle tax assessment\",\"quote\":\"Sie können gegen diese Festsetzung innerhalb eines Monats Einspruch beim Hauptzollamt Beispielhafen erheben. Die Frist beginnt mit der Bekanntgabe, die bei Versand durch die Post am vierten Tag nach der Aufgabe zur Post eintritt.\",\"computation\":\"This is a Kraftfahrzeugsteuer assessment by a Hauptzollamt, so the AO delivery-fiction rules apply (tax authority). No separate 'Tag der Aufgabe zur Post' is stated, so the posting day is the printed letter date: Fri 20.11.2026. Delivery occurs on the 4th calendar day after posting: 20.11. +4 days = Tue 24.11.2026. Under §108 Abs.3 AO this delivery day would move only if it fell on a Sat/Sun/holiday - 24.11.2026 is a normal Tuesday, so delivery stands at 24.11.2026. The one-month Einspruch period (§355 Abs.1 AO) starts the day after delivery (§108 Abs.1 AO / §187 Abs.1 BGB) and ends, per §188 Abs.2 BGB, on the day in the following month bearing the same number as the delivery day: 24.12.2026. 24.12.2026 (Thursday) is a normal working day in NW (not a public holiday), so no further shift under §108 Abs.3 AO is needed.\",\"due_date\":\"2026-12-24\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Annual vehicle tax of 146.00 € collected by direct debit\",\"quote\":\"Den Betrag buchen wir vom angegebenen Konto ab.\",\"computation\":\"The letter states the annual amount of 146,00 € will be debited directly from the account on file, but gives no specific debit date or deadline. Without a stated date or a known debit cycle, no exact due date can be computed.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":146}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter gives no specific date for the automatic debit of the 146,00 € tax amount, only that it will be taken from 'the account on file' - the user should verify with the Hauptzollamt or their bank statements when this debit will occur.\",\"The IBAN printed in the footer belongs to the Hauptzollamt's own contact block and is not something the user needs to pay into, since the tax is collected via direct debit from an account already on file; this should not be used to make a manual transfer.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Hauptzollamt Beispielhafen",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "KFZ 4480/26/77310"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "MS-JB 2604"
+        }
+      ],
+      "amounts": [
+        146
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Einspruch against vehicle tax assessment",
+          "quote": "Sie können gegen diese Festsetzung innerhalb eines Monats Einspruch beim Hauptzollamt Beispielhafen erheben. Die Frist beginnt mit der Bekanntgabe, die bei Versand durch die Post am vierten Tag nach der Aufgabe zur Post eintritt.",
+          "computation": "This is a Kraftfahrzeugsteuer assessment by a Hauptzollamt, so the AO delivery-fiction rules apply (tax authority). No separate 'Tag der Aufgabe zur Post' is stated, so the posting day is the printed letter date: Fri 20.11.2026. Delivery occurs on the 4th calendar day after posting: 20.11. +4 days = Tue 24.11.2026. Under §108 Abs.3 AO this delivery day would move only if it fell on a Sat/Sun/holiday - 24.11.2026 is a normal Tuesday, so delivery stands at 24.11.2026. The one-month Einspruch period (§355 Abs.1 AO) starts the day after delivery (§108 Abs.1 AO / §187 Abs.1 BGB) and ends, per §188 Abs.2 BGB, on the day in the following month bearing the same number as the delivery day: 24.12.2026. 24.12.2026 (Thursday) is a normal working day in NW (not a public holiday), so no further shift under §108 Abs.3 AO is needed.",
+          "due_date": "2026-12-24",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Annual vehicle tax of 146.00 € collected by direct debit",
+          "quote": "Den Betrag buchen wir vom angegebenen Konto ab.",
+          "computation": "The letter states the annual amount of 146,00 € will be debited directly from the account on file, but gives no specific debit date or deadline. Without a stated date or a known debit cycle, no exact due date can be computed.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 146
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter gives no specific date for the automatic debit of the 146,00 € tax amount, only that it will be taken from 'the account on file' - the user should verify with the Hauptzollamt or their bank statements when this debit will occur.",
+        "The IBAN printed in the footer belongs to the Hauptzollamt's own contact block and is not something the user needs to pay into, since the tax is collected via direct debit from an account already on file; this should not be used to make a manual transfer."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2694,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1585,
+      "cost_usd": 0.034390000000000004,
+      "duration_ms": 28838,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

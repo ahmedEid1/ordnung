@@ -1,0 +1,96 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"ca8a518f451729ce1176b37d23b4fd7557b0161319e66a5b195fd7bfc2f808f4\",\"mode\":\"text\",\"region\":\"MV\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Mecklenburg-Vorpommern (MV), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrust",
+    "recorded_at": "2026-11-24T09:45:45+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Landkreis Musterpeene · Der Landrat · Untere Naturschutzbehörde\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"UNB-67.1-2611/26\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against refusal to fell the two linden trees\",\"quote\":\"Gegen diesen Bescheid können Sie innerhalb eines Monats nach seiner Bekanntgabe Widerspruch einlegen, schriftlich oder zur Niederschrift bei der Behörde: Landkreis Musterpeene, Kreishausweg 1, 17109 Musterdemmin.\",\"computation\":\"Letter dated Thu 19.11.2026, sent by ordinary post. The letter itself states the deemed-delivery rule: 'gilt am vierten Tag nach der Aufgabe zur Post als bekannt gegeben (§ 41 Abs. 2 VwVfG M-V)' — so it counts as delivered on day 4 after posting: Mon 23.11.2026 (no weekend/holiday shift applies to this deemed-delivery step itself). The one-month Widerspruch period then starts the following day (§187 Abs.1 BGB) and ends on the day in the following month bearing the same number as the delivery day (§188 Abs.2 BGB): 23.12.2026. 23.12.2026 is a Wednesday, a normal working day in MV (not a holiday, Christmas Eve 24.12 is not a statutory public holiday), so no further shift is needed. Note: an alternative 3-day deemed-delivery rule (§120a VwVfG M-V) could apply if this matter (the Ausnahmegenehmigung application) was opened before 1 January 2025, which would move delivery to Sun 22.11.2026 and the deadline to Tue 22.12.2026; nothing in the letter indicates the application predates 2025, so the 4-day rule the letter itself cites is used.\",\"due_date\":\"2026-12-23\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"If the application for the Ausnahmegenehmigung was first filed or the matter otherwise began before 1 January 2025, Mecklenburg-Vorpommern's transitional rule (§ 120a VwVfG M-V) may still apply the old 3-day deemed-delivery period, moving the Widerspruch deadline one day earlier to 2026-12-22; check the original application date if this matters.\",\"The IBAN printed in the letter footer (DE02 1505 0400 0004 3001 00) is a valid German IBAN at the Landesmusterbank, but no payment is requested in this letter — there is no reason to transfer money in connection with this decision; treat any unsolicited request to pay this account as suspicious.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Landkreis Musterpeene · Der Landrat · Untere Naturschutzbehörde",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "UNB-67.1-2611/26"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against refusal to fell the two linden trees",
+          "quote": "Gegen diesen Bescheid können Sie innerhalb eines Monats nach seiner Bekanntgabe Widerspruch einlegen, schriftlich oder zur Niederschrift bei der Behörde: Landkreis Musterpeene, Kreishausweg 1, 17109 Musterdemmin.",
+          "computation": "Letter dated Thu 19.11.2026, sent by ordinary post. The letter itself states the deemed-delivery rule: 'gilt am vierten Tag nach der Aufgabe zur Post als bekannt gegeben (§ 41 Abs. 2 VwVfG M-V)' — so it counts as delivered on day 4 after posting: Mon 23.11.2026 (no weekend/holiday shift applies to this deemed-delivery step itself). The one-month Widerspruch period then starts the following day (§187 Abs.1 BGB) and ends on the day in the following month bearing the same number as the delivery day (§188 Abs.2 BGB): 23.12.2026. 23.12.2026 is a Wednesday, a normal working day in MV (not a holiday, Christmas Eve 24.12 is not a statutory public holiday), so no further shift is needed. Note: an alternative 3-day deemed-delivery rule (§120a VwVfG M-V) could apply if this matter (the Ausnahmegenehmigung application) was opened before 1 January 2025, which would move delivery to Sun 22.11.2026 and the deadline to Tue 22.12.2026; nothing in the letter indicates the application predates 2025, so the 4-day rule the letter itself cites is used.",
+          "due_date": "2026-12-23",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "If the application for the Ausnahmegenehmigung was first filed or the matter otherwise began before 1 January 2025, Mecklenburg-Vorpommern's transitional rule (§ 120a VwVfG M-V) may still apply the old 3-day deemed-delivery period, moving the Widerspruch deadline one day earlier to 2026-12-22; check the original application date if this matters.",
+        "The IBAN printed in the letter footer (DE02 1505 0400 0004 3001 00) is a valid German IBAN at the Landesmusterbank, but no payment is requested in this letter — there is no reason to transfer money in connection with this decision; treat any unsolicited request to pay this account as suspicious."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1952,
+      "cache_read_tokens": 14869,
+      "cache_creation_tokens": 5245,
+      "cost_usd": 0.0434818,
+      "duration_ms": 21318,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "anchor_date": "2026-11-19",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§ 41 Abs. 2 VwVfG M-V, § 70 VwGO",
+            "text": "Gegen diesen Bescheid können Sie innerhalb eines Monats nach seiner Bekanntgabe Widerspruch einlegen"
+          },
+          "document_date": "2026-11-19",
+          "sender_kind": "authority",
+          "sender_name": "Landkreis Musterpeene - Untere Naturschutzbehörde",
+          "recipient_region": "MV",
+          "region": "MV",
+          "remedy_type": "widerspruch"
+        },
+        "result": "{\"due_date\":\"2026-12-23\",\"weekday\":\"Wednesday\",\"send_by\":\"2026-12-17\",\"summary\":\"Letter dated Thu 19 Nov 2026 counts as delivered on Mon 23 Nov; one month later is Wed 23 Dec 2026.\",\"confidence\":\"medium\",\"warnings\":[\"In Mecklenburg-Vorpommern a matter begun before 1 January 2025 keeps the old 3-day rule (§ 120a VwVfG M-V) when an authority of the Land or a municipality there decides it under the Land's own procedure law. If so, and this matter began earlier (you applied or were heard before that day), the letter counts as delivered on Sun 22 Nov 2026 and the deadline is Tue 22 Dec 2026: it must arrive by then, so send it by Wed 16 Dec 2026.\",\"Deemed delivery was applied: the letter counts as delivered some days after it was posted. If it was formally served instead — in a yellow envelope (Postzustellungsurkunde), or it says it was 'zugestellt' on a date — that rule does not apply and the period runs from the date written on the envelope, usually earlier.\"],\"steps\":[{\"label\":\"Posting day: Thu 19 Nov 2026 (the letter's date; the real posting day can only be later)\",\"date\":\"2026-11-19\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Mon 23 Nov 2026\",\"date\":\"2026-11-23\",\"rule_id\":\"vwvfg_41_2\",\"citation\":\"§ 41 Abs. 2 VwVfG (and the Länder VwVfGs); OVG NRW 19 A 4216/99\"},{\"label\":\"Counting starts the day after Mon 23 Nov 2026\",\"date\":\"2026-11-23\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Wed 23 Dec 2026\",\"date\":\"2026-12-23\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Wed 23 Dec 2026 is a working day, so it stays\",\"date\":\"2026-12-23\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Thu 17 Dec 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-12-17\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"vwvfg_41_2\",\"title\":\"Authority letters: delivered on the 4th day, no weekend shift\",\"citation\":\"§ 41 Abs. 2 VwVfG (and the Länder VwVfGs); OVG NRW 19 A 4216/99\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__41.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwgo_70\",\"title\":\"Objection to an authority (Widerspruch): one month\",\"citation\":\"§ 70 Abs. 1 VwGO\",\"url\":\"https://www.gesetze-im-internet.de/vwgo/__70.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"vwvfg_land_old_procedures\",\"title\":\"Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern: the 3rd day for older matters\",\"citation\":\"§ 102b LVwVfG; Art. 98 BayVwVfG; § 120a VwVfG M-V\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-19\",\"delivery_law\":\"general administrative law (§ 41 VwVfG)\",\"holiday_calendar\":\"Mecklenburg-Vorpommern\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"If the letter was formally served (a yellow envelope, or 'zugestellt am …'), pass spec.anchor receipt with the envelope's date as spec.anchor_date and spec.delivery_rule none.\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE02 1505 0400 0004 3001 00"
+        },
+        "result": "{\"iban\":\"DE02 1505 0400 0004 3001 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"15050400\"},\"account_number\":\"0004300100\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

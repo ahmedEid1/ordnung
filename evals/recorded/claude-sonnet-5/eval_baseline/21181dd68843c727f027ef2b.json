@@ -1,0 +1,135 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"114b4d491e4c6a50d3aba5595ef37ae15c4fb10df8697435a555c18a0d586639\",\"mode\":\"text\",\"region\":\"BB\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-kuendigung_arbeit-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Brandenburg (BB), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document",
+    "recorded_at": "2026-11-24T12:44:04+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"employment\",\"sender_name\":\"Bäckerei Exempelkorn GmbH\",\"document_date\":\"2026-11-19\",\"references\":[],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Kündigungsschutzklage at the labour court\",\"quote\":\"Eine Klage gegen die Kündigung ist beim Arbeitsgericht Musterbrandenburg möglich; dafür gilt eine Frist von drei Wochen ab dem Zugang dieser Kündigung.\",\"computation\":\"The letter was handed over in person on Thu 19.11.2026 with a signed Empfangsbestätigung, so Zugang (actual receipt) = 19.11.2026. Under § 4 KSchG the 3-week period to bring a Kündigungsschutzklage starts the day after Zugang (§ 187 Abs. 1 BGB): counting begins 20.11.2026. Three weeks later (§ 188 Abs. 2 BGB) is Thu 10.12.2026, a normal working day in Brandenburg, so no weekend/holiday shift (§ 193 BGB) is needed. Due date: 10.12.2026 (the claim must reach the Arbeitsgericht by that day).\",\"due_date\":\"2026-12-10\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Register as arbeitsuchend with the Agentur für Arbeit\",\"quote\":\"Sie sind verpflichtet, sich unverzüglich bei der Agentur für Arbeit arbeitsuchend zu melden.\",\"computation\":\"Under § 38 Abs. 1 SGB III, if less than three months lie between the notice and the end of employment, the employee must register as arbeitsuchend within 3 days of being informed of the end date. Notice/knowledge of the end date: Thu 19.11.2026; end of employment 31.12.2026 (less than 3 months away), so the 3-day rule applies. Day of notice not counted (§ 187 Abs. 1 BGB analogously, § 26 Abs. 1 SGB X): counting starts 20.11.2026, three days later = Sun 22.11.2026. As the last day falls on a Sunday, it shifts to the next working day under § 26 Abs. 3 SGB X / § 193 BGB: Mon 23.11.2026. This date has already passed as of today (24.11.2026) — registration should be done immediately if not already done.\",\"due_date\":\"2026-11-23\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Take remaining paid leave (Resturlaub)\",\"quote\":\"Ihren Resturlaub nehmen Sie bitte bis zu diesem Tag.\",\"computation\":\"\\\"Diesem Tag\\\" refers back to the stated end of the employment relationship, 31.12.2026 (\\\"kündigen wir deshalb ordentlich und fristgemäß zum 31.12.2026\\\"). Remaining leave must therefore be taken by 31.12.2026.\",\"due_date\":\"2026-12-31\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Return the branch keys\",\"quote\":\"Die Schlüssel der Filiale geben Sie an Ihrem letzten Arbeitstag bei der Filialleitung ab.\",\"computation\":\"The last working day coincides with the end of the employment relationship on 31.12.2026, as no earlier release from work duties is mentioned. Keys are due back on that day.\",\"due_date\":\"2026-12-31\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The statutory deadline to register as arbeitsuchend with the Agentur für Arbeit (around 22.-23.11.2026, three days after the notice) has already passed as of today, 24.11.2026 — register without further delay to avoid a waiting-period penalty (Sperrzeit) on unemployment benefit.\",\"The three-week deadline to file a Kündigungsschutzklage (by 10.12.2026) is a hard court deadline; this is information, not legal advice — contact a union, an employment lawyer, or the Rechtsantragstelle of the Arbeitsgericht promptly if you want to challenge the dismissal.\",\"No reference numbers (e.g. Personalnummer) are printed anywhere on this letter.\"]}",
+    "data": {
+      "kind": "employment",
+      "sender_name": "Bäckerei Exempelkorn GmbH",
+      "document_date": "2026-11-19",
+      "references": [],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Kündigungsschutzklage at the labour court",
+          "quote": "Eine Klage gegen die Kündigung ist beim Arbeitsgericht Musterbrandenburg möglich; dafür gilt eine Frist von drei Wochen ab dem Zugang dieser Kündigung.",
+          "computation": "The letter was handed over in person on Thu 19.11.2026 with a signed Empfangsbestätigung, so Zugang (actual receipt) = 19.11.2026. Under § 4 KSchG the 3-week period to bring a Kündigungsschutzklage starts the day after Zugang (§ 187 Abs. 1 BGB): counting begins 20.11.2026. Three weeks later (§ 188 Abs. 2 BGB) is Thu 10.12.2026, a normal working day in Brandenburg, so no weekend/holiday shift (§ 193 BGB) is needed. Due date: 10.12.2026 (the claim must reach the Arbeitsgericht by that day).",
+          "due_date": "2026-12-10",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Register as arbeitsuchend with the Agentur für Arbeit",
+          "quote": "Sie sind verpflichtet, sich unverzüglich bei der Agentur für Arbeit arbeitsuchend zu melden.",
+          "computation": "Under § 38 Abs. 1 SGB III, if less than three months lie between the notice and the end of employment, the employee must register as arbeitsuchend within 3 days of being informed of the end date. Notice/knowledge of the end date: Thu 19.11.2026; end of employment 31.12.2026 (less than 3 months away), so the 3-day rule applies. Day of notice not counted (§ 187 Abs. 1 BGB analogously, § 26 Abs. 1 SGB X): counting starts 20.11.2026, three days later = Sun 22.11.2026. As the last day falls on a Sunday, it shifts to the next working day under § 26 Abs. 3 SGB X / § 193 BGB: Mon 23.11.2026. This date has already passed as of today (24.11.2026) — registration should be done immediately if not already done.",
+          "due_date": "2026-11-23",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Take remaining paid leave (Resturlaub)",
+          "quote": "Ihren Resturlaub nehmen Sie bitte bis zu diesem Tag.",
+          "computation": "\"Diesem Tag\" refers back to the stated end of the employment relationship, 31.12.2026 (\"kündigen wir deshalb ordentlich und fristgemäß zum 31.12.2026\"). Remaining leave must therefore be taken by 31.12.2026.",
+          "due_date": "2026-12-31",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Return the branch keys",
+          "quote": "Die Schlüssel der Filiale geben Sie an Ihrem letzten Arbeitstag bei der Filialleitung ab.",
+          "computation": "The last working day coincides with the end of the employment relationship on 31.12.2026, as no earlier release from work duties is mentioned. Keys are due back on that day.",
+          "due_date": "2026-12-31",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The statutory deadline to register as arbeitsuchend with the Agentur für Arbeit (around 22.-23.11.2026, three days after the notice) has already passed as of today, 24.11.2026 — register without further delay to avoid a waiting-period penalty (Sperrzeit) on unemployment benefit.",
+        "The three-week deadline to file a Kündigungsschutzklage (by 10.12.2026) is a hard court deadline; this is information, not legal advice — contact a union, an employment lawyer, or the Rechtsantragstelle of the Arbeitsgericht promptly if you want to challenge the dismissal.",
+        "No reference numbers (e.g. Personalnummer) are printed anywhere on this letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 7466,
+      "cache_read_tokens": 27853,
+      "cache_creation_tokens": 9906,
+      "cost_usd": 0.1198666,
+      "duration_ms": 69970,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 3,
+            "unit": "weeks",
+            "anchor": "receipt",
+            "anchor_date": "2026-11-19",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§4 KSchG",
+            "text": "Eine Klage gegen die Kündigung ist beim Arbeitsgericht Musterbrandenburg möglich; dafür gilt eine Frist von drei Wochen ab dem Zugang dieser Kündigung."
+          },
+          "document_date": "2026-11-19",
+          "received_date": "2026-11-19",
+          "recipient_region": "BB",
+          "region": "BB",
+          "remedy_type": "klage",
+          "sender_kind": "employer",
+          "sender_name": "Bäckerei Exempelkorn GmbH"
+        },
+        "result": "{\"due_date\":\"2026-12-10\",\"weekday\":\"Thursday\",\"send_by\":\"2026-12-04\",\"summary\":\"Three weeks after delivery on Thu 19 Nov 2026 (as stated on the letter) is Thu 10 Dec 2026.\",\"confidence\":\"medium\",\"warnings\":[\"This is the deadline for a court action at the labour court (Kündigungsschutzklage). Ordnung can't draft or file it — get advice now from a union, an employment lawyer or the court's Rechtsantragstelle.\"],\"steps\":[{\"label\":\"Counting starts the day after Thu 19 Nov 2026\",\"date\":\"2026-11-19\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB\"},{\"label\":\"Three weeks later: Thu 10 Dec 2026\",\"date\":\"2026-12-10\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB\"},{\"label\":\"Thu 10 Dec 2026 is a working day, so it stays\",\"date\":\"2026-12-10\",\"rule_id\":\"bgb_193\",\"citation\":\"§ 193 BGB\"},{\"label\":\"Send by Fri 4 Dec 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-12-04\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"kschg_4\",\"title\":\"Dismissal: three weeks to go to the labour court\",\"citation\":\"§ 4 S. 1 KSchG; § 7 KSchG\",\"url\":\"https://www.gesetze-im-internet.de/kschg/__4.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"bgb_193\",\"title\":\"Weekend and holiday shift (private law)\",\"citation\":\"§ 193 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__193.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-19\",\"received_date\":\"2026-11-19\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"holiday_calendar\":\"Brandenburg\",\"holidays_from\":\"region and recipient_region: the action may be filed at the labour court of the employer's seat or of the place of work (§ 48 Abs. 1a ArbGG), so only a holiday both Länder have counts (with either unknown, nationwide holidays only)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 3,
+            "unit": "days",
+            "anchor": "explicit_date",
+            "anchor_date": "2026-11-19",
+            "nature": "declaration",
+            "shift_rule": "auto",
+            "legal_basis": "§38 Abs. 1 SGB III",
+            "text": "Sie sind verpflichtet, sich unverzüglich bei der Agentur für Arbeit arbeitsuchend zu melden."
+          },
+          "document_date": "2026-11-19",
+          "received_date": "2026-11-19",
+          "recipient_region": "BB",
+          "region": "BB",
+          "sender_kind": "employer",
+          "sender_name": "Bäckerei Exempelkorn GmbH"
+        },
+        "result": "{\"due_date\":\"2026-11-22\",\"weekday\":\"Sunday\",\"summary\":\"Register as job-seeking by Sun 22 Nov 2026: three days after you learned the end date (Thu 19 Nov 2026).\",\"confidence\":\"high\",\"warnings\":[\"Sun 22 Nov 2026 is not a working day. The deadline may run to the next working day (§ 26 Abs. 3 SGB X), but registering online works on any day — do it in time.\"],\"steps\":[{\"label\":\"You learned when the job ends on Thu 19 Nov 2026\",\"date\":\"2026-11-19\",\"rule_id\":\"sgb3_38\",\"citation\":\"§ 38 Abs. 1 SGB III; § 159 Abs. 1 S. 2 Nr. 9, Abs. 6 SGB III\"},{\"label\":\"As less than three months are left, register within three days: by Sun 22 Nov 2026\",\"date\":\"2026-11-22\",\"rule_id\":\"sgb3_38\",\"citation\":\"§ 38 Abs. 1 SGB III; § 159 Abs. 1 S. 2 Nr. 9, Abs. 6 SGB III\"},{\"label\":\"Register online, by phone or in person — it counts the day you do it\",\"date\":\"2026-11-22\",\"rule_id\":\"sgb3_38\",\"citation\":\"§ 38 Abs. 1 SGB III; § 159 Abs. 1 S. 2 Nr. 9, Abs. 6 SGB III\"}],\"rules\":[{\"id\":\"sgb3_38\",\"title\":\"Register as job-seeking (arbeitsuchend)\",\"citation\":\"§ 38 Abs. 1 SGB III; § 159 Abs. 1 S. 2 Nr. 9, Abs. 6 SGB III\",\"url\":\"https://www.gesetze-im-internet.de/sgb_3/__38.html\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-19\",\"received_date\":\"2026-11-19\",\"received_date_from\":\"received_date\",\"holiday_calendar\":\"Germany (nationwide holidays only)\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

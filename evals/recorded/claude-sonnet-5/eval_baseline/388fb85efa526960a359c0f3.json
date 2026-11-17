@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"e77264f58e6ef85dfc811decfb506112277d23e8baa46b06ed1819851546b03c\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-N2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:34:23+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Musterbau-Berufsgenossenschaft\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Mitgliedsnummer\",\"value\":\"BG 4471 0938 2\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against Gefahrklassen-Veranlagung\",\"quote\":\"Den Widerspruch können Sie binnen eines Monats ab Bekanntgabe einlegen, schriftlich oder zur Niederschrift bei der Musterbau-Berufsgenossenschaft, Gerüstweg 7, 30159 Musterhannover.\",\"computation\":\"Letter is dated 19.11.2026 (Thursday), presumed date of posting (Aufgabe zur Post). Letter's own rule: 'Als bekannt gegeben gilt der Bescheid am vierten Tag nach seiner Aufgabe zur Post.' Counting 4 calendar days from 19.11.2026: 19.11.(Thu, day of posting) +4 days = 23.11.2026 (Monday) = date of Bekanntgabe (no weekend/holiday fell within that 4-day count that would shift it further, and the fictitious-delivery rule itself has no separate extension for weekends under this clause). Widerspruch period is one month 'ab Bekanntgabe'. Under §187 Abs.1 BGB the day of the triggering event (23.11.2026) is not counted; under §188 Abs.2 BGB a month-long period ends on the day of the following month bearing the same number, i.e. 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in Nordrhein-Westfalen, so no shift under §193 BGB applies. Deadline for receipt of the Widerspruch: 23.12.2026.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Musterbau-Berufsgenossenschaft",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Mitgliedsnummer",
+          "value": "BG 4471 0938 2"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against Gefahrklassen-Veranlagung",
+          "quote": "Den Widerspruch können Sie binnen eines Monats ab Bekanntgabe einlegen, schriftlich oder zur Niederschrift bei der Musterbau-Berufsgenossenschaft, Gerüstweg 7, 30159 Musterhannover.",
+          "computation": "Letter is dated 19.11.2026 (Thursday), presumed date of posting (Aufgabe zur Post). Letter's own rule: 'Als bekannt gegeben gilt der Bescheid am vierten Tag nach seiner Aufgabe zur Post.' Counting 4 calendar days from 19.11.2026: 19.11.(Thu, day of posting) +4 days = 23.11.2026 (Monday) = date of Bekanntgabe (no weekend/holiday fell within that 4-day count that would shift it further, and the fictitious-delivery rule itself has no separate extension for weekends under this clause). Widerspruch period is one month 'ab Bekanntgabe'. Under §187 Abs.1 BGB the day of the triggering event (23.11.2026) is not counted; under §188 Abs.2 BGB a month-long period ends on the day of the following month bearing the same number, i.e. 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in Nordrhein-Westfalen, so no shift under §193 BGB applies. Deadline for receipt of the Widerspruch: 23.12.2026.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2087,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1621,
+      "cost_usd": 0.0279824,
+      "duration_ms": 22773,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

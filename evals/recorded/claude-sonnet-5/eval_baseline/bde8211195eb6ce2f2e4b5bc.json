@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"e8f487bc846f1ec442604669323718a140ad2867bd5e16284e96b3941893967e\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-betriebskosten-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d",
+    "recorded_at": "2026-11-24T12:34:34+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"utility_bill\",\"sender_name\":\"Klaus-Dieter Beispielmürwik\",\"document_date\":\"2026-11-20\",\"references\":[],\"amounts\":[1074,1140,66],\"items\":[{\"kind\":\"payment\",\"title\":\"Refund of operating-cost credit (Guthaben) to tenant\",\"quote\":\"Das Guthaben überweise ich Ihnen in den nächsten Tagen auf Ihr bekanntes Konto.\",\"computation\":\"The letter was hand-delivered into the tenant's mailbox on 20.11.2026 (stated explicitly: 'Am 20.11.2026 um 9:30 Uhr persönlich in Ihren Briefkasten gesteckt.'), so that is the day of delivery/start. The landlord promises to transfer the credit 'in den nächsten Tagen' (in the next few days) - this is a colloquial, non-binding timeframe, not a legally defined period, so no statutory counting rule (§§187, 188, 193 BGB) applies to turn it into an exact date. As a rough, non-binding estimate, 'the next few days' is read as roughly one week from the delivery date, i.e. by 27.11.2026 (a Friday, no public holiday in SH involved). No exact due date can be reliably determined from the wording.\",\"due_date\":\"2026-11-27\",\"confidence\":\"low\",\"amount\":66}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The refund date is only described as 'in den nächsten Tagen' (in the next few days) without a fixed date; if the €66,00 credit is not received within a reasonable time (e.g. 1-2 weeks), the tenant should follow up with the landlord in writing.\",\"The 2024 operating-cost statement (for the period 01.01.2024-31.12.2024) was only issued on 20.11.2026, well after the statutory 12-month deadline under §556 Abs. 3 BGB (which would have required sending it by 31.12.2025). This does not harm the tenant here since the result is a credit rather than an additional demand, but it is worth noting in case of disputes about the accounting.\",\"No formal legal-remedy instructions (Rechtsbehelfsbelehrung) are given because this is a private statement between landlord and tenant, not an administrative decision; if the tenant disputes the cost allocation or figures, this would be a private-law matter (e.g. objection directly to the landlord, or civil court if unresolved), not an Einspruch/Widerspruch/Klage against an authority.\"]}",
+    "data": {
+      "kind": "utility_bill",
+      "sender_name": "Klaus-Dieter Beispielmürwik",
+      "document_date": "2026-11-20",
+      "references": [],
+      "amounts": [
+        1074,
+        1140,
+        66
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Refund of operating-cost credit (Guthaben) to tenant",
+          "quote": "Das Guthaben überweise ich Ihnen in den nächsten Tagen auf Ihr bekanntes Konto.",
+          "computation": "The letter was hand-delivered into the tenant's mailbox on 20.11.2026 (stated explicitly: 'Am 20.11.2026 um 9:30 Uhr persönlich in Ihren Briefkasten gesteckt.'), so that is the day of delivery/start. The landlord promises to transfer the credit 'in den nächsten Tagen' (in the next few days) - this is a colloquial, non-binding timeframe, not a legally defined period, so no statutory counting rule (§§187, 188, 193 BGB) applies to turn it into an exact date. As a rough, non-binding estimate, 'the next few days' is read as roughly one week from the delivery date, i.e. by 27.11.2026 (a Friday, no public holiday in SH involved). No exact due date can be reliably determined from the wording.",
+          "due_date": "2026-11-27",
+          "confidence": "low",
+          "amount": 66
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The refund date is only described as 'in den nächsten Tagen' (in the next few days) without a fixed date; if the €66,00 credit is not received within a reasonable time (e.g. 1-2 weeks), the tenant should follow up with the landlord in writing.",
+        "The 2024 operating-cost statement (for the period 01.01.2024-31.12.2024) was only issued on 20.11.2026, well after the statutory 12-month deadline under §556 Abs. 3 BGB (which would have required sending it by 31.12.2025). This does not harm the tenant here since the result is a credit rather than an additional demand, but it is worth noting in case of disputes about the accounting.",
+        "No formal legal-remedy instructions (Rechtsbehelfsbelehrung) are given because this is a private statement between landlord and tenant, not an administrative decision; if the tenant disputes the cost allocation or figures, this would be a private-law matter (e.g. objection directly to the landlord, or civil court if unresolved), not an Einspruch/Widerspruch/Klage against an authority."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2697,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1584,
+      "cost_usd": 0.0339344,
+      "duration_ms": 29972,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

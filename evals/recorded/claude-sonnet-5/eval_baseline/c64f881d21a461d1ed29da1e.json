@@ -1,0 +1,75 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"5f1d61ed472cc8a3b067e1bf8dc8c0fc08f132cb12508760acfeb49cf99e7840\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T12:23:58+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Familienkasse Musterfulda\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Kindergeldnummer\",\"value\":\"355FK662019\"}],\"amounts\":[259],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against Kindergeld-Festsetzung\",\"quote\":\"Sie können gegen diese Festsetzung innerhalb eines Monats Einspruch bei der Familienkasse Musterfulda erheben. Die Frist beginnt mit der Bekanntgabe, die bei Versand durch die Post am vierten Tag nach der Aufgabe zur Post eintritt.\",\"computation\":\"Letter dated Thu 19.11.2026, assumed posted same day. Current §122(2) AO fiction (4-day rule): Bekanntgabe = 19.11.2026 + 4 days = 23.11.2026 (Monday; not weekend/holiday in NW). One-month Einspruchsfrist per §108 AO i.V.m. §§187(1), 188(2) BGB: the Bekanntgabe day itself is not counted, period ends one month later on the matching day number: 23.12.2026. That date is a Wednesday, not a NW public holiday, so it stands.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Submit new Studienbescheinigung for Clara\",\"quote\":\"Bitte reichen Sie uns zum Ende des Sommersemesters eine neue Studienbescheinigung ein.\",\"computation\":\"Clara started studying in Wintersemester 2026/27 (Oct 2026-Mar 2027). The letter requests a new Studienbescheinigung at the end of the following Sommersemester (Sommersemester 2027, roughly April-September 2027). German academic semesters conventionally end 30 September, so this date is used as an estimate; the letter gives no exact calendar date.\",\"due_date\":\"2027-09-30\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letterhead/footer lists a bank IBAN (DE81 5300 0000 0004 5130 00) alongside the authority's contact details; this is unusual for a German authority notice that requests no payment, so the recipient should verify the sender's authenticity independently before relying on any payment details from this letter.\",\"The exact end date of 'Sommersemester' depends on Hochschule Beispielfulda's specific academic calendar and was not stated in the letter; 30 September 2027 is used as a standard estimate and should be confirmed with the university.\"]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Familienkasse Musterfulda",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Kindergeldnummer",
+          "value": "355FK662019"
+        }
+      ],
+      "amounts": [
+        259
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against Kindergeld-Festsetzung",
+          "quote": "Sie können gegen diese Festsetzung innerhalb eines Monats Einspruch bei der Familienkasse Musterfulda erheben. Die Frist beginnt mit der Bekanntgabe, die bei Versand durch die Post am vierten Tag nach der Aufgabe zur Post eintritt.",
+          "computation": "Letter dated Thu 19.11.2026, assumed posted same day. Current §122(2) AO fiction (4-day rule): Bekanntgabe = 19.11.2026 + 4 days = 23.11.2026 (Monday; not weekend/holiday in NW). One-month Einspruchsfrist per §108 AO i.V.m. §§187(1), 188(2) BGB: the Bekanntgabe day itself is not counted, period ends one month later on the matching day number: 23.12.2026. That date is a Wednesday, not a NW public holiday, so it stands.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Submit new Studienbescheinigung for Clara",
+          "quote": "Bitte reichen Sie uns zum Ende des Sommersemesters eine neue Studienbescheinigung ein.",
+          "computation": "Clara started studying in Wintersemester 2026/27 (Oct 2026-Mar 2027). The letter requests a new Studienbescheinigung at the end of the following Sommersemester (Sommersemester 2027, roughly April-September 2027). German academic semesters conventionally end 30 September, so this date is used as an estimate; the letter gives no exact calendar date.",
+          "due_date": "2027-09-30",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letterhead/footer lists a bank IBAN (DE81 5300 0000 0004 5130 00) alongside the authority's contact details; this is unusual for a German authority notice that requests no payment, so the recipient should verify the sender's authenticity independently before relying on any payment details from this letter.",
+        "The exact end date of 'Sommersemester' depends on Hochschule Beispielfulda's specific academic calendar and was not stated in the letter; 30 September 2027 is used as a standard estimate and should be confirmed with the university."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 5485,
+      "cache_read_tokens": 15765,
+      "cache_creation_tokens": 6069,
+      "cost_usd": 0.082291,
+      "duration_ms": 57616,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

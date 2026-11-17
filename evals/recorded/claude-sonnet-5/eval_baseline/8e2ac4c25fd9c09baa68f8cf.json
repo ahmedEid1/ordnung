@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"9db49c05bbff15d52a5e4c900606010ed6e50e8c7bff80d8cbb76fd22ac091a7\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-social_decision-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T07:34:48+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Musterquell Krankenkasse\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"Q803116452\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Widerspruch gegen die Ablehnung der Haushaltshilfe\",\"quote\":\"Gegen diesen Bescheid können Sie innerhalb eines Monats, nachdem er Ihnen bekannt gegeben wurde, Widerspruch erheben.\",\"computation\":\"Letter dated Thu 19.11.2026, no separate 'Tag der Aufgabe zur Post' stated, so posting day = document date 19.11.2026. The letter itself states delivery occurs on the 4th day after posting (§ 37 Abs. 2 SGB X), matching the statutory rule for a social-law body (Krankenkasse). Counting calendar days from 19.11 (not counted): +1=20.11 (Fri), +2=21.11 (Sat), +3=22.11 (Sun), +4=23.11 (Mon) → deemed delivered Mon 23.11.2026. This falls on a working day, so no adjustment is needed (and for a non-tax authority the delivery day would not move even on a weekend/holiday). The one-month Widerspruch period (§ 84 SGG) starts the day after delivery and ends on the day in the following month bearing the same number as the delivery day: 23.11.2026 + 1 month = 23.12.2026 (Wednesday), a normal working day in NW, so the deadline stands.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Musterquell Krankenkasse",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "Q803116452"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Widerspruch gegen die Ablehnung der Haushaltshilfe",
+          "quote": "Gegen diesen Bescheid können Sie innerhalb eines Monats, nachdem er Ihnen bekannt gegeben wurde, Widerspruch erheben.",
+          "computation": "Letter dated Thu 19.11.2026, no separate 'Tag der Aufgabe zur Post' stated, so posting day = document date 19.11.2026. The letter itself states delivery occurs on the 4th day after posting (§ 37 Abs. 2 SGB X), matching the statutory rule for a social-law body (Krankenkasse). Counting calendar days from 19.11 (not counted): +1=20.11 (Fri), +2=21.11 (Sat), +3=22.11 (Sun), +4=23.11 (Mon) → deemed delivered Mon 23.11.2026. This falls on a working day, so no adjustment is needed (and for a non-tax authority the delivery day would not move even on a weekend/holiday). The one-month Widerspruch period (§ 84 SGG) starts the day after delivery and ends on the day in the following month bearing the same number as the delivery day: 23.11.2026 + 1 month = 23.12.2026 (Wednesday), a normal working day in NW, so the deadline stands.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2125,
+      "cache_read_tokens": 12804,
+      "cache_creation_tokens": 3053,
+      "cost_usd": 0.0360308,
+      "duration_ms": 22807,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

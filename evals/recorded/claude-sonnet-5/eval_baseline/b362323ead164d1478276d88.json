@@ -1,0 +1,75 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"ef50ddf252e0db797e0c4ba49c42f54f496057b7a9cd103401d82db819fd48d4\",\"mode\":\"text\",\"region\":\"SL\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-tax_assessment-N2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Saarland (SL), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> t",
+    "recorded_at": "2026-11-24T07:51:04+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterlouis\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"040/882/51347\"}],\"amounts\":[2906,665],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the tax assessment\",\"quote\":\"Dieser Bescheid kann mit dem Einspruch angefochten werden. Die Einspruchsfrist beträgt einen Monat und rechnet ab der Bekanntgabe; ein Bescheid, der als Brief verschickt wird, ist am vierten Tag nach dem Absenden als bekannt gegeben anzusehen.\",\"computation\":\"Letter is dated/posted Wed 18.11.2026. Bekanntgabe = 4th day after posting: 18+4 calendar days = Sun 22.11.2026. For Finanzamt letters, if the 4th day falls on a Saturday, Sunday or public holiday, delivery moves to the next working day (§108 Abs.3 AO). 22.11.2026 is a Sunday → delivery moves to Mon 23.11.2026. One-month Einspruch period (§355 Abs.1 AO, §188 Abs.2 BGB): the day of delivery is not counted; the period ends on the day of the following month bearing the same number as the delivery day → 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in Saarland, so no further adjustment under §108 Abs.3 AO is needed.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Tax refund (Guthaben) transfer to taxpayer's account\",\"quote\":\"Das Guthaben von 665,00 € überweisen wir auf Ihr Konto DE14 5139 0000 0074 4022 18.\",\"computation\":\"The letter states the refund will be transferred but gives no specific transfer date or deadline, so the exact execution date cannot be determined from the text.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":665}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter gives no specific date for the actual transfer of the 665,00 € refund, only that it will be made to the account ending ...4022 18; this date could not be determined from the letter.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterlouis",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "040/882/51347"
+        }
+      ],
+      "amounts": [
+        2906,
+        665
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the tax assessment",
+          "quote": "Dieser Bescheid kann mit dem Einspruch angefochten werden. Die Einspruchsfrist beträgt einen Monat und rechnet ab der Bekanntgabe; ein Bescheid, der als Brief verschickt wird, ist am vierten Tag nach dem Absenden als bekannt gegeben anzusehen.",
+          "computation": "Letter is dated/posted Wed 18.11.2026. Bekanntgabe = 4th day after posting: 18+4 calendar days = Sun 22.11.2026. For Finanzamt letters, if the 4th day falls on a Saturday, Sunday or public holiday, delivery moves to the next working day (§108 Abs.3 AO). 22.11.2026 is a Sunday → delivery moves to Mon 23.11.2026. One-month Einspruch period (§355 Abs.1 AO, §188 Abs.2 BGB): the day of delivery is not counted; the period ends on the day of the following month bearing the same number as the delivery day → 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in Saarland, so no further adjustment under §108 Abs.3 AO is needed.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Tax refund (Guthaben) transfer to taxpayer's account",
+          "quote": "Das Guthaben von 665,00 € überweisen wir auf Ihr Konto DE14 5139 0000 0074 4022 18.",
+          "computation": "The letter states the refund will be transferred but gives no specific transfer date or deadline, so the exact execution date cannot be determined from the text.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 665
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter gives no specific date for the actual transfer of the 665,00 € refund, only that it will be made to the account ending ...4022 18; this date could not be determined from the letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2457,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2047,
+      "cost_usd": 0.033868,
+      "duration_ms": 25370,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

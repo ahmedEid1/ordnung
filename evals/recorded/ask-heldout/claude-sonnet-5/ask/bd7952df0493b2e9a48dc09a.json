@@ -1,0 +1,240 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"258c9eb533aae0c2414271a7fda8681ea1fb736426b2999a45141753d332ff7e\",\"question\":\"By when do I need to apply for child benefit?\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "doc_245408s5e3ga",
+      "doc_5c5axexztnw6",
+      "doc_9t9tmrv1ypba",
+      "doc_hynqaw58f550",
+      "doc_0b2t88kqsf2n",
+      "doc_pa2w9q3gxzqk",
+      "doc_nba3k0ka85q0",
+      "doc_9mewc0kcj28v"
+    ],
+    "prompt_head": "The person asks:\nBy when do I need to apply for child benefit?\n",
+    "recorded_at": "2026-11-24T13:21:17+00:00",
+    "repeat": 2,
+    "commit": "0b5e2d7a",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "No child benefit (Kindergeld) application or deadline appears in your records. There is no document, to-do, or deadline related to child benefit or the Familienkasse stored in Ordnung.\n\nIf you recently had a child or there's a related letter, you may want to add it to Ordnung manually — I found nothing to search from.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 345,
+      "cache_read_tokens": 19799,
+      "cache_creation_tokens": 3690,
+      "cost_usd": 0.0221818,
+      "duration_ms": 8303,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Kindergeld child benefit"
+      },
+      "tool_use_id": "toolu_019kRMZXg6Pv9Rsn2YUx8bo3"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_019kRMZXg6Pv9Rsn2YUx8bo3"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Familienkasse"
+      },
+      "tool_use_id": "toolu_015TUhVxzoy3DpwcFgWTtky4"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_015TUhVxzoy3DpwcFgWTtky4"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "kind": "deadline",
+        "status": "all"
+      },
+      "tool_use_id": "toolu_01NXMdsPue25rLY1hLxdPqY6"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-11-24\",\"items\":[{\"id\":\"itm_ccq7933hsa2p\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2025-10-05\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"home\",\"party_id\":\"pty_fh8cf155ffm3\",\"doc_id\":\"doc_245408s5e3ga\",\"contract_id\":\"ctr_bbzemyapzvm5\"},{\"id\":\"itm_ghq58jjdz149\",\"kind\":\"deadline\",\"status\":\"open\",\"overdue\":true,\"due_date\":\"2026-10-02\",\"date_source\":\"fixed\",\"priority\":\"critical\",\"area\":\"other\",\"party_id\":\"pty_d2ymm5s3htd0\",\"doc_id\":\"doc_5c5axexztnw6\"},{\"id\":\"itm_tj3z83ve4hfg\",\"kind\":\"deadline\",\"status\":\"open\",\"overdue\":true,\"due_date\":\"2026-10-14\",\"send_by\":\"2026-10-08\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"health\",\"party_id\":\"pty_eatxsexnt9s3\",\"doc_id\":\"doc_9t9tmrv1ypba\"},{\"id\":\"itm_mtehckcf6q7a\",\"kind\":\"deadline\",\"status\":\"open\",\"overdue\":true,\"due_date\":\"2026-10-21\",\"send_by\":\"2026-10-15\",\"date_source\":\"computed\",\"priority\":\"high\",\"area\":\"tax\",\"party_id\":\"pty_mcq97yavgqjy\",\"doc_id\":\"doc_hynqaw58f550\"},{\"id\":\"itm_9qzfwbhh5m74\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-11-30\",\"send_by\":\"2026-11-24\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"money\",\"party_id\":\"pty_ejzv2rmp31km\",\"doc_id\":\"doc_0b2t88kqsf2n\",\"contract_id\":\"ctr_611d1sk7v1cr\"},{\"id\":\"itm_zse7bv6ce3s1\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-12-15\",\"send_by\":\"2026-12-09\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\"},{\"id\":\"itm_kn5zf3bdwew8\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2027-02-28\",\"send_by\":\"2027-02-22\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_fhp8fzemmzvt\",\"doc_id\":\"doc_nba3k0ka85q0\"},{\"id\":\"itm_rc1nagh2qjnc\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2027-09-10\",\"send_by\":\"2027-09-06\",\"date_source\":\"computed\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_4by2mq3ac4sk\",\"doc_id\":\"doc_9mewc0kcj28v\",\"contract_id\":\"ctr_y2hc77av3ps4\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_ccq7933hsa2p\":{\"title\":\"Submit the electricity meter reading (Zählerstand)\",\"action\":\"Report the electricity meter reading at the start of supply online at stadtwerke-musterstadt.example/zaehlerstand or with the enclosed card\"},\"pty_fh8cf155ffm3\":{\"name\":\"Stadtwerke Musterstadt GmbH\"},\"itm_ghq58jjdz149\":{\"title\":\"Return the overdue library books\",\"action\":\"Return both overdue items to the library (e.g. via the return box) by the deadline shown.\",\"consequence\":\"The fee will keep increasing by €0.50 per item for each opening day, and once it reaches €10.00 your library account will be blocked for further loans.\"},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\"},\"itm_tj3z83ve4hfg\":{\"title\":\"Decide whether to object (Widerspruch) to the contribution notice\",\"action\":\"If you disagree with the new contribution assessment, file a written or electronic objection (Widerspruch) with Muster BKK by the deadline shown.\",\"consequence\":\"Contributions must still be paid at the assessed amount even if you object, since an objection has no suspensive effect (keine aufschiebende Wirkung).\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"itm_mtehckcf6q7a\":{\"title\":\"Decide whether to file an objection (Einspruch) against the assessment\",\"action\":\"Review the assessment and, if you disagree with it, file an objection (Einspruch) with Finanzamt Musterstadt in writing, electronically, or to record, by the deadline shown.\",\"consequence\":\"If no objection is filed in time, the assessment becomes final (bestandskräftig) and can no longer be challenged.\"},\"pty_mcq97yavgqjy\":{\"name\":\"Finanzamt Musterstadt\"},\"itm_9qzfwbhh5m74\":{\"title\":\"Give consent to the fee increase (Zustimmung erteilen)\",\"action\":\"Confirm your consent to the new account fee online under 'Postfach › Zustimmungen' or by returning the signed reply form\",\"consequence\":\"Without your consent, the bank may terminate this account with two months' notice\"},\"pty_ejzv2rmp31km\":{\"name\":\"Musterbank eG\"},\"itm_zse7bv6ce3s1\":{\"title\":\"Submit first progress report\",\"action\":\"Submit your first progress report (max. two pages, countersigned by your academic supervisor) via the scholarship portal using the provided template.\"},\"pty_efmwq4xym8cm\":{\"name\":\"Global Talent Scholarship Foundation\"},\"itm_kn5zf3bdwew8\":{\"title\":\"Cancel any separate Deutschlandticket subscription\",\"action\":\"If you hold a separate Deutschlandticket subscription, cancel it in time, since the ticket will be included in your semester fee from summer semester 2027.\",\"consequence\":\"You may otherwise end up paying for two tickets at the same time.\"},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"},\"itm_rc1nagh2qjnc\":{\"title\":\"Raise objections to the 2025 cost statement, if any\",\"action\":\"Check the itemised statement and tell the landlord in writing about any errors you find, if you disagree with the calculation.\",\"consequence\":\"If you miss the deadline shown, you may lose the right to dispute this statement.\"},\"pty_4by2mq3ac4sk\":{\"name\":\"Wohnbau Musterstadt eG\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01NXMdsPue25rLY1hLxdPqY6"
+    },
+    {
+      "type": "text",
+      "text": "No"
+    },
+    {
+      "type": "text",
+      "text": " child"
+    },
+    {
+      "type": "text",
+      "text": " ben"
+    },
+    {
+      "type": "text",
+      "text": "efit ("
+    },
+    {
+      "type": "text",
+      "text": "Kindergeld) application"
+    },
+    {
+      "type": "text",
+      "text": " or"
+    },
+    {
+      "type": "text",
+      "text": " deadline appears in your"
+    },
+    {
+      "type": "text",
+      "text": " records. There"
+    },
+    {
+      "type": "text",
+      "text": " is"
+    },
+    {
+      "type": "text",
+      "text": " no document"
+    },
+    {
+      "type": "text",
+      "text": ", to"
+    },
+    {
+      "type": "text",
+      "text": "-do, or deadline related"
+    },
+    {
+      "type": "text",
+      "text": " to child benefit or"
+    },
+    {
+      "type": "text",
+      "text": " the"
+    },
+    {
+      "type": "text",
+      "text": " Familien"
+    },
+    {
+      "type": "text",
+      "text": "kasse st"
+    },
+    {
+      "type": "text",
+      "text": "ored in"
+    },
+    {
+      "type": "text",
+      "text": " Ord"
+    },
+    {
+      "type": "text",
+      "text": "n"
+    },
+    {
+      "type": "text",
+      "text": "ung"
+    },
+    {
+      "type": "text",
+      "text": ".\n\nIf you rec"
+    },
+    {
+      "type": "text",
+      "text": "ently had"
+    },
+    {
+      "type": "text",
+      "text": " a child"
+    },
+    {
+      "type": "text",
+      "text": " or there"
+    },
+    {
+      "type": "text",
+      "text": "'s a related"
+    },
+    {
+      "type": "text",
+      "text": " letter, you may want to add"
+    },
+    {
+      "type": "text",
+      "text": " it to"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung manually — I"
+    },
+    {
+      "type": "text",
+      "text": " found"
+    },
+    {
+      "type": "text",
+      "text": " n"
+    },
+    {
+      "type": "text",
+      "text": "othing to"
+    },
+    {
+      "type": "text",
+      "text": " search"
+    },
+    {
+      "type": "text",
+      "text": " from"
+    },
+    {
+      "type": "text",
+      "text": "."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "No child benefit (Kindergeld) application or deadline appears in your records. There is no document, to-do, or deadline related to child benefit or the Familienkasse stored in Ordnung.\n\nIf you recently had a child or there's a related letter, you may want to add it to Ordnung manually — I found nothing to search from.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 345,
+          "cache_read_tokens": 19799,
+          "cache_creation_tokens": 3690,
+          "cost_usd": 0.0221818,
+          "duration_ms": 8303,
+          "turns": 4
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

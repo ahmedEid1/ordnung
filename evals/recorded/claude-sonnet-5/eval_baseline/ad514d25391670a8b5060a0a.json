@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"ef50ddf252e0db797e0c4ba49c42f54f496057b7a9cd103401d82db819fd48d4\",\"mode\":\"text\",\"region\":\"SL\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-tax_assessment-N2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Saarland (SL), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> t",
+    "recorded_at": "2026-11-24T07:51:23+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[2906,665],\"contract\":null,\"document_date\":\"2026-11-18\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Einkommensteuerbescheid 2025\",\"quote\":\"Dieser Bescheid kann mit dem Einspruch angefochten werden. Die Einspruchsfrist beträgt einen Monat und rechnet ab der Bekanntgabe; ein Bescheid, der als Brief verschickt wird, ist am vierten Tag nach dem Absenden als bekannt gegeben anzusehen.\",\"computation\":\"Letter is dated Wed 18.11.2026 and is presumed posted that day. Under the statutory three-day delivery fiction of § 122 Abs. 2 Nr. 1 AO (the letter's own text wrongly says 'vierten Tag' - fourth day - but the law in force provides for the third day), day 3 after posting is Sat 21.11.2026; since that falls on a Saturday, the (post-2017) rule shifts deemed delivery to the next business day, Mon 23.11.2026 (not a public holiday in Saarland). Per § 355 AO the one-month Einspruchsfrist runs from this Bekanntgabe. Under § 108 Abs. 1 AO i.V.m. §§ 187 Abs. 1, 188 Abs. 2 BGB, the day of Bekanntgabe (23.11.) is excluded and the period runs to the day in the next month bearing the same number, i.e. 23.12.2026. That date is a Wednesday, not a weekend or Saarland public holiday, so no further shift applies.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"tax_assessment\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"040/882/51347\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Finanzamt Musterlouis\",\"warnings\":[\"The letter states the postal-delivery fiction as the 'vierten Tag' (fourth day) after posting, but the statutory rule currently in force under § 122 Abs. 2 Nr. 1 AO is the third day (with a shift to the next business day if that day is a weekend/holiday); I used the legally correct three-day rule to compute the Einspruch deadline (23.12.2026) rather than the letter's stated fourth-day rule, which would otherwise suggest 22.11.2026 (a Sunday, shifting to 23.11.2026) as the Bekanntgabe date - the practical outcome for the deadline is the same end date either way in this case, but the discrepancy in the letter's wording should be noted.\"]}",
+    "data": {
+      "amounts": [
+        2906,
+        665
+      ],
+      "contract": null,
+      "document_date": "2026-11-18",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Einkommensteuerbescheid 2025",
+          "quote": "Dieser Bescheid kann mit dem Einspruch angefochten werden. Die Einspruchsfrist beträgt einen Monat und rechnet ab der Bekanntgabe; ein Bescheid, der als Brief verschickt wird, ist am vierten Tag nach dem Absenden als bekannt gegeben anzusehen.",
+          "computation": "Letter is dated Wed 18.11.2026 and is presumed posted that day. Under the statutory three-day delivery fiction of § 122 Abs. 2 Nr. 1 AO (the letter's own text wrongly says 'vierten Tag' - fourth day - but the law in force provides for the third day), day 3 after posting is Sat 21.11.2026; since that falls on a Saturday, the (post-2017) rule shifts deemed delivery to the next business day, Mon 23.11.2026 (not a public holiday in Saarland). Per § 355 AO the one-month Einspruchsfrist runs from this Bekanntgabe. Under § 108 Abs. 1 AO i.V.m. §§ 187 Abs. 1, 188 Abs. 2 BGB, the day of Bekanntgabe (23.11.) is excluded and the period runs to the day in the next month bearing the same number, i.e. 23.12.2026. That date is a Wednesday, not a weekend or Saarland public holiday, so no further shift applies.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "tax_assessment",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "040/882/51347"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Finanzamt Musterlouis",
+      "warnings": [
+        "The letter states the postal-delivery fiction as the 'vierten Tag' (fourth day) after posting, but the statutory rule currently in force under § 122 Abs. 2 Nr. 1 AO is the third day (with a shift to the next business day if that day is a weekend/holiday); I used the legally correct three-day rule to compute the Einspruch deadline (23.12.2026) rather than the letter's stated fourth-day rule, which would otherwise suggest 22.11.2026 (a Sunday, shifting to 23.11.2026) as the Bekanntgabe date - the practical outcome for the deadline is the same end date either way in this case, but the discrepancy in the letter's wording should be noted."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 5489,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2047,
+      "cost_usd": 0.0637064,
+      "duration_ms": 57953,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

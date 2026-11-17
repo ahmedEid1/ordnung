@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"4b2f82233e0eaecd17f6c14ad74b2d69b4352c380eb7209cc0e90773c9c685c8\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-conflicting_dates-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:46:44+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Kreis Musterlenne-Sauerland – Untere Immissionsschutzbehörde\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"70.3-IS-0442/26\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Klage against the operating-hours order at the Verwaltungsgericht\",\"quote\":\"Innerhalb eines Monats nach Bekanntgabe kann gegen diesen Bescheid Klage beim Verwaltungsgericht Musterarnsberg, Jägerstraße 1, 59821 Musterarnsberg, erhoben werden.\",\"computation\":\"The letter carries no separate 'zur Post gegeben am' date, so the printed document date, 19.11.2026 (Thursday), is treated as the posting day. The Kreis is a general public authority (not a Finanzamt), so the statutory 4-day delivery fiction (PostModG, confirmed in force for NRW since 1 Jan 2025) applies without any weekend/holiday shift of the delivery day itself: 19.11.2026 + 4 calendar days = 23.11.2026 (Monday), which is already a working day, so Bekanntgabe = 23.11.2026. The Rechtsbehelfsbelehrung grants one month to file Klage 'nach Bekanntgabe' (§ 74 VwGO / §§ 187, 188 BGB): the day of delivery itself is not counted and the one-month period ends on the day with the same calendar number one month later: 23.11.2026 + 1 month = 23.12.2026 (Wednesday). 23.12.2026 is a normal working day in NRW (not a Sunday/holiday), so no further shift under § 57 Abs. 2 VwGO/§ 222 Abs. 2 ZPO is needed.\",\"due_date\":\"2026-12-23\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The exact posting date was assumed to equal the printed letter date (19.11.2026) because the letter states no separate 'zur Post gegeben am' date; if the envelope was actually posted later, the Klage deadline shifts accordingly.\",\"The underlying Bescheid is dated 18.11.2026, one day before the cover letter (19.11.2026); this is a minor internal inconsistency worth double-checking against the actual Bescheid document, though it does not change the one-month period calculated from Bekanntgabe of this letter.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Kreis Musterlenne-Sauerland – Untere Immissionsschutzbehörde",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "70.3-IS-0442/26"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Klage against the operating-hours order at the Verwaltungsgericht",
+          "quote": "Innerhalb eines Monats nach Bekanntgabe kann gegen diesen Bescheid Klage beim Verwaltungsgericht Musterarnsberg, Jägerstraße 1, 59821 Musterarnsberg, erhoben werden.",
+          "computation": "The letter carries no separate 'zur Post gegeben am' date, so the printed document date, 19.11.2026 (Thursday), is treated as the posting day. The Kreis is a general public authority (not a Finanzamt), so the statutory 4-day delivery fiction (PostModG, confirmed in force for NRW since 1 Jan 2025) applies without any weekend/holiday shift of the delivery day itself: 19.11.2026 + 4 calendar days = 23.11.2026 (Monday), which is already a working day, so Bekanntgabe = 23.11.2026. The Rechtsbehelfsbelehrung grants one month to file Klage 'nach Bekanntgabe' (§ 74 VwGO / §§ 187, 188 BGB): the day of delivery itself is not counted and the one-month period ends on the day with the same calendar number one month later: 23.11.2026 + 1 month = 23.12.2026 (Wednesday). 23.12.2026 is a normal working day in NRW (not a Sunday/holiday), so no further shift under § 57 Abs. 2 VwGO/§ 222 Abs. 2 ZPO is needed.",
+          "due_date": "2026-12-23",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The exact posting date was assumed to equal the printed letter date (19.11.2026) because the letter states no separate 'zur Post gegeben am' date; if the envelope was actually posted later, the Klage deadline shifts accordingly.",
+        "The underlying Bescheid is dated 18.11.2026, one day before the cover letter (19.11.2026); this is a minor internal inconsistency worth double-checking against the actual Bescheid document, though it does not change the one-month period calculated from Bekanntgabe of this letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 4305,
+      "cache_read_tokens": 12641,
+      "cache_creation_tokens": 4970,
+      "cost_usd": 0.0654662,
+      "duration_ms": 43589,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

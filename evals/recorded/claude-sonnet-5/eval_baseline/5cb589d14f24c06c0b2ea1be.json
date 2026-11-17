@@ -1,0 +1,74 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"af7ef729098efbd2bc2b5f5f0ca22af13822137d54a17fd787ffa4a9332b1f20\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-conflicting_dates-1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:43:27+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[216],\"contract\":null,\"document_date\":\"2026-11-20\",\"items\":[{\"kind\":\"payment\",\"title\":\"Pay guitar course fee\",\"quote\":\"Bitte überweisen Sie sie bis 09.12.2026, damit wir Ihren Platz verbindlich einplanen.\",\"computation\":\"The letter gives two different dates for the same payment: the body text says pay 'bis 09.12.2026' to secure the spot, while the payment info box separately states 'fällig am 18.12.2026'. These are contradictory. Following the rule to use the earliest plausible date when a letter contradicts itself, the due date is set to 09.12.2026 (a Wednesday, no weekend/holiday adjustment needed). Confidence lowered and a warning added because of the contradiction.\",\"due_date\":\"2026-12-09\",\"confidence\":\"low\",\"amount\":216},{\"kind\":\"milestone\",\"title\":\"Guitar course starts\",\"quote\":\"vielen Dank für Ihre Anmeldung zum Gitarrenkurs für Erwachsene (zwölf Abende ab 14.01.2027).\",\"computation\":\"The letter states the course consists of twelve evenings starting on 14.01.2027. This is a fixed calendar date printed in the letter and is used as written; it is not moved for weekends/holidays as it is simply the start date of a recurring course.\",\"due_date\":\"2027-01-14\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"invoice\",\"references\":[{\"label\":\"Teilnehmer-Nr.\",\"value\":\"MB-2290\"}],\"remedy_type\":\"none\",\"sender_name\":\"Musikakademie Beispielton\",\"warnings\":[\"The letter gives two conflicting payment deadlines for the same 216,00 € fee: the main text says to transfer the money 'bis 09.12.2026' to secure the course place, while the separate payment info box states it is 'fällig am 18.12.2026'; the earlier date (09.12.2026) was used to be safe, but the sender should be asked to clarify which date actually applies.\"]}",
+    "data": {
+      "amounts": [
+        216
+      ],
+      "contract": null,
+      "document_date": "2026-11-20",
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay guitar course fee",
+          "quote": "Bitte überweisen Sie sie bis 09.12.2026, damit wir Ihren Platz verbindlich einplanen.",
+          "computation": "The letter gives two different dates for the same payment: the body text says pay 'bis 09.12.2026' to secure the spot, while the payment info box separately states 'fällig am 18.12.2026'. These are contradictory. Following the rule to use the earliest plausible date when a letter contradicts itself, the due date is set to 09.12.2026 (a Wednesday, no weekend/holiday adjustment needed). Confidence lowered and a warning added because of the contradiction.",
+          "due_date": "2026-12-09",
+          "confidence": "low",
+          "amount": 216
+        },
+        {
+          "kind": "milestone",
+          "title": "Guitar course starts",
+          "quote": "vielen Dank für Ihre Anmeldung zum Gitarrenkurs für Erwachsene (zwölf Abende ab 14.01.2027).",
+          "computation": "The letter states the course consists of twelve evenings starting on 14.01.2027. This is a fixed calendar date printed in the letter and is used as written; it is not moved for weekends/holidays as it is simply the start date of a recurring course.",
+          "due_date": "2027-01-14",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "invoice",
+      "references": [
+        {
+          "label": "Teilnehmer-Nr.",
+          "value": "MB-2290"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Musikakademie Beispielton",
+      "warnings": [
+        "The letter gives two conflicting payment deadlines for the same 216,00 € fee: the main text says to transfer the money 'bis 09.12.2026' to secure the course place, while the separate payment info box states it is 'fällig am 18.12.2026'; the earlier date (09.12.2026) was used to be safe, but the sender should be asked to clarify which date actually applies."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1422,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1421,
+      "cost_usd": 0.021013999999999998,
+      "duration_ms": 14902,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -23,7 +23,8 @@ Run it from the repository root::
     .venv/bin/python -m scripts.eval_perturb --list-base                 # the base set and what each letter gets
     .venv/bin/python -m scripts.eval_perturb --clean-only --out DIR      # the clean reference alone (no templates)
     .venv/bin/python -m scripts.eval_perturb --build-only [--write-manifest]   # the files (needs the templates)
-    .venv/bin/python -m scripts.eval_perturb --out DIR [--check PUBLISHED]     # replay both cells and score them
+    .venv/bin/python -m scripts.eval_perturb --out DIR [--check PUBLISHED]     # replay both cells (with --check:
+                                                                         # the file's cells) and score them
     ORDNUNG_CLAUDE_BIN=<wrapper> .venv/bin/python -m scripts.eval_perturb --cells I1,D1 --live --today <day> \\
         --max-cost-usd <cap> --noise-floor-from-runs <holdout4 r1> <r2> <r3>   # record
 
@@ -429,7 +430,10 @@ def build_parser() -> argparse.ArgumentParser:
         prog="python -m scripts.eval_perturb", description=__doc__.split("\n\n")[0]
     )
     parser.add_argument(
-        "--cells", type=parse_cells, default=list(build.CELLS), help="I1, D1 or I1,D1 (default)"
+        "--cells",
+        type=parse_cells,
+        default=None,
+        help="I1, D1 or I1,D1 (default; with --check: the cells the published file holds)",
     )
     parser.add_argument(
         "--list-base", action="store_true", help="print the base set and the assignment (counts)"
@@ -638,9 +642,23 @@ async def _run(args: argparse.Namespace) -> int:
     return 0
 
 
+def published_cells(path: Path) -> list[str] | None:
+    """The cells a published stress file holds (``meta.cells``, in :data:`build.CELLS` order), ``None`` when it names
+    none or cannot be read: a budget cut's file holds I1 alone, and its check replays I1 alone."""
+    try:
+        cells = (json.loads(path.read_text(encoding="utf-8")).get("meta") or {}).get("cells")
+    except (OSError, ValueError, AttributeError):
+        return None
+    if not isinstance(cells, list):
+        return None
+    return [cell for cell in build.CELLS if cell in cells] or None
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.cells is None:  # a check replays the cells the published file holds; anything else builds both
+        args.cells = (published_cells(args.check) if args.check is not None else None) or list(build.CELLS)
     if args.live and args.max_cost_usd is None:
         parser.error("--live needs --max-cost-usd (the run's stop)")
     if args.live and (args.clean_only or args.build_only or args.check is not None):

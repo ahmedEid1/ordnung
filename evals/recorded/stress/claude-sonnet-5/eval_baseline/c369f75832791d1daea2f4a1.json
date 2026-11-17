@@ -1,0 +1,88 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"239534aa41de50c3ef821d7d9ce3799daf0efe650f416a105737adc7449e3bb9\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "stress-D1-holdout4-english_letter-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T14:32:54+00:00",
+    "repeat": 1,
+    "commit": "3a21dfb8",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"bank_letter\",\"sender_name\":\"Example Prairie Savings Bank\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Account ending\",\"value\":\"…4471\"},{\"label\":\"Written enquiry reference\",\"value\":\"LC-2937-442\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Return address certification form\",\"quote\":\"Please complete the enclosed address certification and mail or upload it by January 15, 2027.\",\"computation\":\"The letter prints an explicit calendar date ('by January 15, 2027') rather than a period to count. The sender is a private US bank, not a German authority, so the statutory deemed-delivery rules for administrative letters (§§ 122/41 VwVfG, §§ 187-193 BGB counting of periods after a notional delivery day) do not apply here; the date as written governs. 15 January 2027 falls on a Friday, a normal business day in Germany (no Saturday/Sunday/public-holiday shift needed under §193 BGB). Therefore the due date is the date as printed.\",\"due_date\":\"2027-01-15\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter instructs the recipient to mail or upload a personal address-certification form and threatens restricting online account access if it is not returned — before acting, verify this request through the bank's official, independently-looked-up contact channels (not only the phone/email printed on this letter) to rule out phishing, since 'confirm your details or lose access' is a common scam pattern.\",\"The notice about the telephone switchboard being unavailable on 20 January 2027 is purely informational and creates no obligation or deadline for the recipient; it is not included as an item.\",\"No IBAN or payment details are given in this letter, so none could be checked.\"]}",
+    "data": {
+      "kind": "bank_letter",
+      "sender_name": "Example Prairie Savings Bank",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Account ending",
+          "value": "…4471"
+        },
+        {
+          "label": "Written enquiry reference",
+          "value": "LC-2937-442"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Return address certification form",
+          "quote": "Please complete the enclosed address certification and mail or upload it by January 15, 2027.",
+          "computation": "The letter prints an explicit calendar date ('by January 15, 2027') rather than a period to count. The sender is a private US bank, not a German authority, so the statutory deemed-delivery rules for administrative letters (§§ 122/41 VwVfG, §§ 187-193 BGB counting of periods after a notional delivery day) do not apply here; the date as written governs. 15 January 2027 falls on a Friday, a normal business day in Germany (no Saturday/Sunday/public-holiday shift needed under §193 BGB). Therefore the due date is the date as printed.",
+          "due_date": "2027-01-15",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter instructs the recipient to mail or upload a personal address-certification form and threatens restricting online account access if it is not returned — before acting, verify this request through the bank's official, independently-looked-up contact channels (not only the phone/email printed on this letter) to rule out phishing, since 'confirm your details or lose access' is a common scam pattern.",
+        "The notice about the telephone switchboard being unavailable on 20 January 2027 is purely informational and creates no obligation or deadline for the recipient; it is not included as an item.",
+        "No IBAN or payment details are given in this letter, so none could be checked."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2858,
+      "cache_read_tokens": 14473,
+      "cache_creation_tokens": 3569,
+      "cost_usd": 0.045758599999999996,
+      "duration_ms": 32687,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "fixed",
+            "date": "2027-01-15",
+            "nature": "declaration",
+            "shift_rule": "auto",
+            "legal_basis": "Vertragliche Frist (Bank, USA)",
+            "text": "Please complete the enclosed address certification and mail or upload it by January 15, 2027."
+          },
+          "document_date": "2026-11-21",
+          "sender_kind": "bank",
+          "sender_name": "Example Prairie Savings Bank",
+          "region": "NW"
+        },
+        "result": "{\"due_date\":\"2027-01-15\",\"weekday\":\"Friday\",\"send_by\":\"2027-01-11\",\"summary\":\"The date given is Fri 15 Jan 2027.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"The date given is Fri 15 Jan 2027\",\"date\":\"2027-01-15\",\"rule_id\":\"date_as_written\",\"citation\":\"The document's own wording\"},{\"label\":\"Send by Mon 11 Jan 2027 to allow 4 business days for a letter to arrive\",\"date\":\"2027-01-11\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"date_as_written\",\"title\":\"Dates stated in the letter\",\"citation\":\"The document's own wording\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-21\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

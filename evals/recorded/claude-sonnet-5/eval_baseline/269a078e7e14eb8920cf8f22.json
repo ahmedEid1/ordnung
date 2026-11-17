@@ -1,0 +1,104 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"81f5ee9a5987cb8e3fa7f1871e75b70b28193ed31e147c5c99ae6de4cd651323\",\"mode\":\"text\",\"region\":\"HE\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-mahnbescheid-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hessen (HE), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag",
+    "recorded_at": "2026-11-24T12:55:58+00:00",
+    "repeat": 1,
+    "commit": "3a34ac80",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Amtsgericht Beispielhünfeld – Zentrales Mahngericht Hessen\",\"document_date\":\"2026-11-19\",\"items\":[{\"kind\":\"payment\",\"title\":\"Pay total claimed amount to avoid enforcement order\",\"quote\":\"Sie werden aufgefordert, innerhalb von zwei Wochen nach der Zustellung entweder den Gesamtbetrag samt weiterer Zinsen an die Antragstellerin zu überweisen oder dem Gericht zu erklären, ob und in welcher Höhe Sie widersprechen.\",\"computation\":\"The letter itself states the service date: 'Zugestellt am 20.11.2026 – Einwurf in den Hausbriefkasten'. Under § 180 ZPO a court's formally served letter counts from the stated delivery day, so no deemed-delivery rule applies and the day of service (20.11.2026) is not counted (§ 222 Abs. 1 ZPO, § 187 Abs. 1 BGB). The two-week period starts 21.11.2026 and ends, per § 188 Abs. 2 BGB, two weeks later on the day with the same name as the starting day: Friday 04.12.2026. That day is a normal working day in Hessen (no shift needed under § 222 Abs. 2 ZPO).\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":666.68},{\"kind\":\"deadline\",\"title\":\"File Widerspruch (objection) with the court instead of paying\",\"quote\":\"Sie werden aufgefordert, innerhalb von zwei Wochen nach der Zustellung entweder den Gesamtbetrag samt weiterer Zinsen an die Antragstellerin zu überweisen oder dem Gericht zu erklären, ob und in welcher Höhe Sie widersprechen.\",\"computation\":\"Same two-week period as the payment option: starts the day after the stated service date (20.11.2026), so counting begins 21.11.2026 and the period ends Friday 04.12.2026 (§§ 187, 188 BGB, § 222 ZPO). The Widerspruch must reach the Amtsgericht Beispielhünfeld by this date; filing late still counts under § 694 ZPO as long as no Vollstreckungsbescheid has been issued yet, but this cannot be relied on.\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"references\":[{\"label\":\"Geschäftsnummer\",\"value\":\"26-0934877-0-1\"}],\"amounts\":[612.4,15.28,39,666.68],\"warnings\":[\"This Mahnbescheid is an unproven claim: the court explicitly states it has not checked whether the claimant's (Zahnarztpraxis Dr. Exempelzahn) claim actually exists ('Das Gericht weist darauf hin, dass es nicht untersucht hat, ob der Anspruch der Antragstellerin besteht') — only file a Widerspruch, do not simply pay, if you dispute owing this money.\",\"If no Widerspruch is filed by the deadline, the claimant can obtain a Vollstreckungsbescheid (enforcement order) and start compulsory enforcement against you, so missing 2026-12-04 has serious consequences.\",\"The letter gives no IBAN for payment — confirm the correct payment details directly with the creditor (Zahnarztpraxis Dr. Exempelzahn) before transferring any money, and do not use any payment details that might be sent separately without verification.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Amtsgericht Beispielhünfeld – Zentrales Mahngericht Hessen",
+      "document_date": "2026-11-19",
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay total claimed amount to avoid enforcement order",
+          "quote": "Sie werden aufgefordert, innerhalb von zwei Wochen nach der Zustellung entweder den Gesamtbetrag samt weiterer Zinsen an die Antragstellerin zu überweisen oder dem Gericht zu erklären, ob und in welcher Höhe Sie widersprechen.",
+          "computation": "The letter itself states the service date: 'Zugestellt am 20.11.2026 – Einwurf in den Hausbriefkasten'. Under § 180 ZPO a court's formally served letter counts from the stated delivery day, so no deemed-delivery rule applies and the day of service (20.11.2026) is not counted (§ 222 Abs. 1 ZPO, § 187 Abs. 1 BGB). The two-week period starts 21.11.2026 and ends, per § 188 Abs. 2 BGB, two weeks later on the day with the same name as the starting day: Friday 04.12.2026. That day is a normal working day in Hessen (no shift needed under § 222 Abs. 2 ZPO).",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": 666.68
+        },
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch (objection) with the court instead of paying",
+          "quote": "Sie werden aufgefordert, innerhalb von zwei Wochen nach der Zustellung entweder den Gesamtbetrag samt weiterer Zinsen an die Antragstellerin zu überweisen oder dem Gericht zu erklären, ob und in welcher Höhe Sie widersprechen.",
+          "computation": "Same two-week period as the payment option: starts the day after the stated service date (20.11.2026), so counting begins 21.11.2026 and the period ends Friday 04.12.2026 (§§ 187, 188 BGB, § 222 ZPO). The Widerspruch must reach the Amtsgericht Beispielhünfeld by this date; filing late still counts under § 694 ZPO as long as no Vollstreckungsbescheid has been issued yet, but this cannot be relied on.",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "references": [
+        {
+          "label": "Geschäftsnummer",
+          "value": "26-0934877-0-1"
+        }
+      ],
+      "amounts": [
+        612.4,
+        15.28,
+        39,
+        666.68
+      ],
+      "warnings": [
+        "This Mahnbescheid is an unproven claim: the court explicitly states it has not checked whether the claimant's (Zahnarztpraxis Dr. Exempelzahn) claim actually exists ('Das Gericht weist darauf hin, dass es nicht untersucht hat, ob der Anspruch der Antragstellerin besteht') — only file a Widerspruch, do not simply pay, if you dispute owing this money.",
+        "If no Widerspruch is filed by the deadline, the claimant can obtain a Vollstreckungsbescheid (enforcement order) and start compulsory enforcement against you, so missing 2026-12-04 has serious consequences.",
+        "The letter gives no IBAN for payment — confirm the correct payment details directly with the creditor (Zahnarztpraxis Dr. Exempelzahn) before transferring any money, and do not use any payment details that might be sent separately without verification."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2655,
+      "cache_read_tokens": 14855,
+      "cache_creation_tokens": 4187,
+      "cost_usd": 0.046277000000000006,
+      "duration_ms": 29034,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "receipt",
+            "anchor_date": "2026-11-20",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§§ 692, 694 ZPO",
+            "text": "Sie werden aufgefordert, innerhalb von zwei Wochen nach der Zustellung entweder den Gesamtbetrag samt weiterer Zinsen an die Antragstellerin zu überweisen oder dem Gericht zu erklären, ob und in welcher Höhe Sie widersprechen."
+          },
+          "document_date": "2026-11-19",
+          "received_date": "2026-11-20",
+          "recipient_region": "HE",
+          "region": "HE",
+          "remedy_type": "widerspruch",
+          "sender_kind": "authority",
+          "sender_name": "Amtsgericht Beispielhünfeld - Zentrales Mahngericht Hessen"
+        },
+        "result": "{\"due_date\":\"2026-12-04\",\"weekday\":\"Friday\",\"send_by\":\"2026-11-30\",\"summary\":\"Two weeks after delivery on Fri 20 Nov 2026 (as stated on the letter) is Fri 4 Dec 2026.\",\"confidence\":\"medium\",\"warnings\":[\"This is a court deadline. Ordnung's date is information, not legal advice — if you don't owe the money, object in time and get advice (see the card on this letter).\",\"A late objection still counts until the enforcement order is issued (§ 694 ZPO) — but don't rely on that.\"],\"steps\":[{\"label\":\"Counting starts the day after Fri 20 Nov 2026\",\"date\":\"2026-11-20\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 222 Abs. 1 ZPO; § 187 Abs. 1 BGB\"},{\"label\":\"Two weeks later: Fri 4 Dec 2026\",\"date\":\"2026-12-04\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 222 Abs. 1 ZPO; § 188 Abs. 1, 2 BGB\"},{\"label\":\"Fri 4 Dec 2026 is a working day, so it stays\",\"date\":\"2026-12-04\",\"rule_id\":\"zpo_222\",\"citation\":\"§ 222 Abs. 1, 2 ZPO\"},{\"label\":\"Send by Mon 30 Nov 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-11-30\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"zpo_692\",\"title\":\"Court payment order (Mahnbescheid): two weeks to pay or object\",\"citation\":\"§ 692 Abs. 1 Nr. 3 ZPO; § 694 ZPO; § 699 Abs. 1 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/zpo/__692.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"zpo_180\",\"title\":\"Court letters count from delivery (Zustellung)\",\"citation\":\"§ 180 ZPO; § 166 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/zpo/__180.html\"},{\"id\":\"zpo_222\",\"title\":\"Court deadlines: weekend and holiday shift\",\"citation\":\"§ 222 Abs. 1, 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/zpo/__222.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-19\",\"received_date\":\"2026-11-20\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"delivery_law\":\"a court's letter: formal service (§ 180 ZPO), no deemed delivery\",\"holiday_calendar\":\"Hessen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

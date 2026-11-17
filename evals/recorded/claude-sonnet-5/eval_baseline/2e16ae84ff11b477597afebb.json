@@ -1,0 +1,101 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"396924bbcdef1b27bf48a0384b08ed02e5b62a134434aac04ef4a72321073366\",\"mode\":\"text\",\"region\":\"HH\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-widerruf-1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hamburg (HH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> ta",
+    "recorded_at": "2026-11-24T13:09:58+00:00",
+    "repeat": 1,
+    "commit": "17c7ca3b",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract\",\"sender_name\":\"Wärmepumpenservice Beispielelbe GmbH\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Vertragsnummer\",\"value\":\"WB-WV-26-3318\"}],\"amounts\":[19.9],\"items\":[{\"kind\":\"deadline\",\"title\":\"Withdraw from maintenance contract (Widerruf)\",\"quote\":\"Sie können diesen Vertrag innerhalb von vierzehn Tagen ohne Begründung widerrufen.\",\"computation\":\"The contract was concluded on 20.11.2026 (date the letter was signed and handed over by the technician). The letter states the 14-day withdrawal period begins on the day the contract was concluded, but under § 187 Abs. 1 BGB the day of the event itself is not counted, so counting starts on 21.11.2026. 14 days later is 04.12.2026 (Friday), which is a normal working day in Hamburg, so no shift under § 193 BGB is needed. Sending the withdrawal declaration by this date is sufficient (it need not arrive by then).\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Refund of payments after withdrawal\",\"quote\":\"Widerrufen Sie, erstatten wir alle Zahlungen spätestens vierzehn Tage nach Eingang Ihres Widerrufs.\",\"computation\":\"This obligation only starts once the customer actually sends a withdrawal declaration; the 14-day refund period then runs from the day the withdrawal is received by the company. Since no withdrawal has been declared yet (and no receipt date is known), the final date cannot be fixed now — it would be 14 days after whichever day the company receives the withdrawal, counted under § 187 Abs. 1 BGB with a § 193 BGB weekend/holiday shift if needed.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":{\"current_term_end\":\"2027-12-31\",\"cancel_by\":null},\"warnings\":[\"The letter itself only gives a contract term (12 months from 01.01.2027) but states no notice period or deadline for ordinary cancellation at the end of that term, so `cancel_by` could not be determined — check the general terms (AGB) for this.\",\"The refund deadline ('spätestens vierzehn Tage nach Eingang Ihres Widerrufs') is conditional on the customer first sending a withdrawal and cannot be dated until that happens.\"]}",
+    "data": {
+      "kind": "contract",
+      "sender_name": "Wärmepumpenservice Beispielelbe GmbH",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Vertragsnummer",
+          "value": "WB-WV-26-3318"
+        }
+      ],
+      "amounts": [
+        19.9
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Withdraw from maintenance contract (Widerruf)",
+          "quote": "Sie können diesen Vertrag innerhalb von vierzehn Tagen ohne Begründung widerrufen.",
+          "computation": "The contract was concluded on 20.11.2026 (date the letter was signed and handed over by the technician). The letter states the 14-day withdrawal period begins on the day the contract was concluded, but under § 187 Abs. 1 BGB the day of the event itself is not counted, so counting starts on 21.11.2026. 14 days later is 04.12.2026 (Friday), which is a normal working day in Hamburg, so no shift under § 193 BGB is needed. Sending the withdrawal declaration by this date is sufficient (it need not arrive by then).",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Refund of payments after withdrawal",
+          "quote": "Widerrufen Sie, erstatten wir alle Zahlungen spätestens vierzehn Tage nach Eingang Ihres Widerrufs.",
+          "computation": "This obligation only starts once the customer actually sends a withdrawal declaration; the 14-day refund period then runs from the day the withdrawal is received by the company. Since no withdrawal has been declared yet (and no receipt date is known), the final date cannot be fixed now — it would be 14 days after whichever day the company receives the withdrawal, counted under § 187 Abs. 1 BGB with a § 193 BGB weekend/holiday shift if needed.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": {
+        "current_term_end": "2027-12-31",
+        "cancel_by": null
+      },
+      "warnings": [
+        "The letter itself only gives a contract term (12 months from 01.01.2027) but states no notice period or deadline for ordinary cancellation at the end of that term, so `cancel_by` could not be determined — check the general terms (AGB) for this.",
+        "The refund deadline ('spätestens vierzehn Tage nach Eingang Ihres Widerrufs') is conditional on the customer first sending a withdrawal and cannot be dated until that happens."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2592,
+      "cache_read_tokens": 14877,
+      "cache_creation_tokens": 4089,
+      "cost_usd": 0.0452594,
+      "duration_ms": 27769,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 14,
+            "unit": "days",
+            "anchor": "explicit_date",
+            "anchor_date": "2026-11-20",
+            "nature": "declaration",
+            "shift_rule": "auto",
+            "legal_basis": "§355 BGB Widerrufsrecht",
+            "text": "Sie können diesen Vertrag innerhalb von vierzehn Tagen ohne Begründung widerrufen. Die Frist beginnt mit dem Tag, an dem der Vertrag geschlossen wurde."
+          },
+          "document_date": "2026-11-20",
+          "sender_kind": "company",
+          "sender_name": "Wärmepumpenservice Beispielelbe GmbH",
+          "region": "HH",
+          "recipient_region": "HH"
+        },
+        "result": "{\"due_date\":\"2026-12-04\",\"weekday\":\"Friday\",\"send_by\":\"2026-12-04\",\"summary\":\"You can withdraw until Fri 4 Dec 2026 (counted from Fri 20 Nov 2026, sending it in time is enough).\",\"confidence\":\"high\",\"warnings\":[\"For goods the 14 days only start when they arrive (the last item of a split delivery) — if they came later, you have longer.\"],\"steps\":[{\"label\":\"Counting starts the day after Fri 20 Nov 2026\",\"date\":\"2026-11-20\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB\"},{\"label\":\"14 days later: Fri 4 Dec 2026\",\"date\":\"2026-12-04\",\"rule_id\":\"bgb_355\",\"citation\":\"§ 355 Abs. 1, 2 BGB; § 356 Abs. 2 BGB; § 193 BGB\"},{\"label\":\"Fri 4 Dec 2026 is a working day, so it stays\",\"date\":\"2026-12-04\",\"rule_id\":\"bgb_193\",\"citation\":\"§ 193 BGB\"},{\"label\":\"Sending the withdrawal by Fri 4 Dec 2026 is enough — it doesn't have to arrive by then\",\"date\":\"2026-12-04\",\"rule_id\":\"bgb_355\",\"citation\":\"§ 355 Abs. 1, 2 BGB; § 356 Abs. 2 BGB; § 193 BGB\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_355\",\"title\":\"Withdrawal (Widerruf): 14 days\",\"citation\":\"§ 355 Abs. 1, 2 BGB; § 356 Abs. 2 BGB; § 193 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__355.html\"},{\"id\":\"bgb_193\",\"title\":\"Weekend and holiday shift (private law)\",\"citation\":\"§ 193 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__193.html\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-20\",\"holiday_calendar\":\"Hamburg\",\"holidays_from\":\"recipient_region: a withdrawal is declared where the consumer lives (§ 193 BGB), so that Land's holidays apply\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

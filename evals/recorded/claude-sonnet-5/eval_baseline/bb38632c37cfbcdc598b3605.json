@@ -1,0 +1,74 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"4b2f82233e0eaecd17f6c14ad74b2d69b4352c380eb7209cc0e90773c9c685c8\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-conflicting_dates-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:47:02+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Kreis Musterlenne-Sauerland – Untere Immissionsschutzbehörde\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"70.3-IS-0442/26\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File action (Klage) against the order with the Verwaltungsgericht Musterarnsberg\",\"quote\":\"Innerhalb eines Monats nach Bekanntgabe kann gegen diesen Bescheid Klage beim Verwaltungsgericht Musterarnsberg, Jägerstraße 1, 59821 Musterarnsberg, erhoben werden.\",\"computation\":\"The underlying Bescheid is dated 18.11.2026 but the cover letter (and presumably the posting of the Bescheid) is dated Thursday 19.11.2026. For a notice sent by ordinary mail from a German authority, § 41 Abs. 2 VwVfG NRW provides that it is deemed delivered (Bekanntgabe) on the third day after posting, unless it demonstrably arrived later; if that third day falls on a Saturday, Sunday or public holiday, the next business day applies. Day of posting = 19.11.2026 (Thu) -> +3 days = 22.11.2026 (Sunday) -> next business day = 23.11.2026 (Monday) = Bekanntgabe. The Klagefrist is one month 'nach Bekanntgabe' (cf. §74 Abs.1 VwGO). Per §187 Abs.1 BGB the day of Bekanntgabe itself is not counted; per §188 Abs.2 BGB a monthly period ends on the day of the following month bearing the same number as the triggering day. Triggering day number = 23 -> one month later = 23.12.2026 (Wednesday), which is not a Saturday, Sunday or NRW public holiday, so the deadline stands.\",\"due_date\":\"2026-12-23\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Comply with the ordered operating-hours restriction for the wood splitter\",\"quote\":\"ordne ich an, dass Sie die Holzspaltmaschine auf Ihrem Grundstück werktags nur zwischen 9 und 12 Uhr sowie zwischen 15 und 18 Uhr betreiben dürfen. An Sonn- und Feiertagen ist der Betrieb untersagt.\",\"computation\":\"Administrative orders of this kind generally take legal effect upon Bekanntgabe (notification) and are immediately enforceable unless suspended by a timely remedy with suspensive effect. Using the same Bekanntgabe calculation as above (posting 19.11.2026 -> third day 22.11.2026 is a Sunday -> next business day 23.11.2026), the restriction on operating hours is binding from 23.11.2026 onward (an ongoing duty, not a one-off deadline).\",\"due_date\":\"2026-11-23\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The letter goes directly to Klage without mentioning a prior Widerspruch; this is only correct if the Widerspruchsverfahren has been abolished for this type of matter in NRW (as is generally the case there) — double-check this is still the correct path before relying on it.\",\"The exact Bekanntgabe (delivery) date was assumed using the statutory 3-day mailing rule based on the letter's printed date (19.11.2026); if the letter was actually delivered earlier or later (e.g. by hand or registered mail), the one-month Klage deadline of 23.12.2026 shifts accordingly — verify the actual date of receipt.\",\"No embedded instructions directed at an AI or automated system were found in the letter, and no suspicious payment requests or mismatched sender details were detected.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Kreis Musterlenne-Sauerland – Untere Immissionsschutzbehörde",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "70.3-IS-0442/26"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File action (Klage) against the order with the Verwaltungsgericht Musterarnsberg",
+          "quote": "Innerhalb eines Monats nach Bekanntgabe kann gegen diesen Bescheid Klage beim Verwaltungsgericht Musterarnsberg, Jägerstraße 1, 59821 Musterarnsberg, erhoben werden.",
+          "computation": "The underlying Bescheid is dated 18.11.2026 but the cover letter (and presumably the posting of the Bescheid) is dated Thursday 19.11.2026. For a notice sent by ordinary mail from a German authority, § 41 Abs. 2 VwVfG NRW provides that it is deemed delivered (Bekanntgabe) on the third day after posting, unless it demonstrably arrived later; if that third day falls on a Saturday, Sunday or public holiday, the next business day applies. Day of posting = 19.11.2026 (Thu) -> +3 days = 22.11.2026 (Sunday) -> next business day = 23.11.2026 (Monday) = Bekanntgabe. The Klagefrist is one month 'nach Bekanntgabe' (cf. §74 Abs.1 VwGO). Per §187 Abs.1 BGB the day of Bekanntgabe itself is not counted; per §188 Abs.2 BGB a monthly period ends on the day of the following month bearing the same number as the triggering day. Triggering day number = 23 -> one month later = 23.12.2026 (Wednesday), which is not a Saturday, Sunday or NRW public holiday, so the deadline stands.",
+          "due_date": "2026-12-23",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Comply with the ordered operating-hours restriction for the wood splitter",
+          "quote": "ordne ich an, dass Sie die Holzspaltmaschine auf Ihrem Grundstück werktags nur zwischen 9 und 12 Uhr sowie zwischen 15 und 18 Uhr betreiben dürfen. An Sonn- und Feiertagen ist der Betrieb untersagt.",
+          "computation": "Administrative orders of this kind generally take legal effect upon Bekanntgabe (notification) and are immediately enforceable unless suspended by a timely remedy with suspensive effect. Using the same Bekanntgabe calculation as above (posting 19.11.2026 -> third day 22.11.2026 is a Sunday -> next business day 23.11.2026), the restriction on operating hours is binding from 23.11.2026 onward (an ongoing duty, not a one-off deadline).",
+          "due_date": "2026-11-23",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The letter goes directly to Klage without mentioning a prior Widerspruch; this is only correct if the Widerspruchsverfahren has been abolished for this type of matter in NRW (as is generally the case there) — double-check this is still the correct path before relying on it.",
+        "The exact Bekanntgabe (delivery) date was assumed using the statutory 3-day mailing rule based on the letter's printed date (19.11.2026); if the letter was actually delivered earlier or later (e.g. by hand or registered mail), the one-month Klage deadline of 23.12.2026 shifts accordingly — verify the actual date of receipt.",
+        "No embedded instructions directed at an AI or automated system were found in the letter, and no suspicious payment requests or mismatched sender details were detected."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 7427,
+      "cache_read_tokens": 7824,
+      "cache_creation_tokens": 7539,
+      "cost_usd": 0.10599879999999999,
+      "duration_ms": 72394,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

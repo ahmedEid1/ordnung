@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"5b13989c4ba012e031b99f20ee99b553d5430598474c031b89103d1dca0cb818\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-scam-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:01:52+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Grundstücksregister Online Service GmbH\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Rechnungs-Nr.\",\"value\":\"GRO-26-77021\"}],\"amounts\":[498],\"items\":[{\"kind\":\"payment\",\"title\":\"Payment requested for private \\\"Grundstücksregister\\\" entry\",\"quote\":\"Zahlbar bis 01.12.2026 ohne Abzug.\",\"computation\":\"The letter prints a fixed calendar date for payment ('Zahlbar bis 01.12.2026'), so no period calculation is needed; this date is used as written. Note, however, that the letter itself states it is only an offer and that a contract (and thus any payment duty) only arises once the recipient pays — so legally there is no existing obligation to pay this amount at all.\",\"due_date\":\"2026-12-01\",\"confidence\":\"medium\",\"amount\":498}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This letter shows strong hallmarks of a well-known German scam pattern (similar to fake 'Gewerbeauskunft-Zentrale' mailings): it is styled like an official invoice/notice about property/land register ('Grundstücksregister') entries, but the small print admits it is merely a commercial offer from a private company ('Dieses Schreiben ist ein Angebot... Die Eintragung erfolgt im privaten Verzeichnis des Absenders und steht in keinem Zusammenhang mit dem amtlichen Grundbuch'), i.e. it has nothing to do with the official, government-run Grundbuch (land registry).\",\"No contract or payment obligation currently exists: the letter explicitly states a contract is formed only once the recipient pays ('ein Vertrag kommt erst durch die Zahlung zustande'). The recipient should NOT pay this 'invoice' and should disregard or report it; it is not a real bill from any authority.\",\"The sender uses an invoice-like layout and a 'Rechnungs-Nr.' to create the impression of a legitimate, mandatory government fee, which is a deceptive practice; always verify unsolicited demands relating to property/land registry matters directly with the local Grundbuchamt before paying anything.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Grundstücksregister Online Service GmbH",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Rechnungs-Nr.",
+          "value": "GRO-26-77021"
+        }
+      ],
+      "amounts": [
+        498
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Payment requested for private \"Grundstücksregister\" entry",
+          "quote": "Zahlbar bis 01.12.2026 ohne Abzug.",
+          "computation": "The letter prints a fixed calendar date for payment ('Zahlbar bis 01.12.2026'), so no period calculation is needed; this date is used as written. Note, however, that the letter itself states it is only an offer and that a contract (and thus any payment duty) only arises once the recipient pays — so legally there is no existing obligation to pay this amount at all.",
+          "due_date": "2026-12-01",
+          "confidence": "medium",
+          "amount": 498
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This letter shows strong hallmarks of a well-known German scam pattern (similar to fake 'Gewerbeauskunft-Zentrale' mailings): it is styled like an official invoice/notice about property/land register ('Grundstücksregister') entries, but the small print admits it is merely a commercial offer from a private company ('Dieses Schreiben ist ein Angebot... Die Eintragung erfolgt im privaten Verzeichnis des Absenders und steht in keinem Zusammenhang mit dem amtlichen Grundbuch'), i.e. it has nothing to do with the official, government-run Grundbuch (land registry).",
+        "No contract or payment obligation currently exists: the letter explicitly states a contract is formed only once the recipient pays ('ein Vertrag kommt erst durch die Zahlung zustande'). The recipient should NOT pay this 'invoice' and should disregard or report it; it is not a real bill from any authority.",
+        "The sender uses an invoice-like layout and a 'Rechnungs-Nr.' to create the impression of a legitimate, mandatory government fee, which is a deceptive practice; always verify unsolicited demands relating to property/land registry matters directly with the local Grundbuchamt before paying anything."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3148,
+      "cache_read_tokens": 12536,
+      "cache_creation_tokens": 3671,
+      "cost_usd": 0.0486792,
+      "duration_ms": 33580,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

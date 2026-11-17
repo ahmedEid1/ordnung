@@ -1,0 +1,73 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"5bcc899dac1db4d6de9d121ce52323f3552ea99d778d5a6c68ac0d22fa46e218\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d",
+    "recorded_at": "2026-11-24T07:22:22+00:00",
+    "repeat": 1,
+    "commit": "16d92de3",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Kreis Musterdithmarschen – Fachdienst Waffen und Jagd (Der Landrat)\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Az.\",\"value\":\"WJ-32.4-0912/26\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against rejection of hunting licence application\",\"quote\":\"Binnen eines Monats ab der Bekanntgabe dieses Bescheids ist der Widerspruch zulässig; er wird schriftlich oder zur Niederschrift bei folgender Stelle erhoben: Kreis Musterdithmarschen, Stiftstraße 8, 25746 Musterheide in Holstein.\",\"computation\":\"Letter is dated (Bescheiddatum) 19.11.2026 (Thursday); no separate 'zur Post gegeben am' date is stated, so the printed letter date counts as the posting day. The letter itself states the 4-day fiction (§ 110 Abs. 2 LVwG): day 1 = 20.11 (Fri), day 2 = 21.11 (Sat), day 3 = 22.11 (Sun), day 4 = 23.11.2026 (Mon) = deemed delivery/Bekanntgabe. For a general (non-tax) authority the delivery day itself is not shifted even onto a weekend, but here it already falls on a working Monday, so delivery = 23.11.2026. The one-month Widerspruch period runs under §§ 187 Abs. 1, 188 Abs. 2 BGB: the day of Bekanntgabe (23.11.2026) is not counted; the period ends on the day of the following month bearing the same number, i.e. 23.12.2026 (a Wednesday, not a holiday in SH), so no further shift is needed.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Submit valid proof of hunting liability insurance to receive the licence without a new application\",\"quote\":\"Sobald Sie eine gültige Versicherungsbestätigung nachreichen, stelle ich den Jagdschein ohne neuen Antrag aus.\",\"computation\":\"The letter states the hunting licence will be issued as soon as a valid insurance confirmation is submitted, but gives no calendar date or period for doing so (the previously submitted proof expired on 30.06.2026). Without a stated start or length of a period, no exact final date can be computed; this is an open-ended task rather than a fixed deadline.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter relies on the Bescheiddatum (19.11.2026) as the posting date since no separate 'zur Post gegeben am' date is given; if actual postage occurred later, the one-month Widerspruch deadline would shift accordingly.\",\"No firm deadline is given for resubmitting the expired insurance proof; the licence will simply not be issued until this is done, and delay could affect any later Widerspruch or practical use of a hunting licence.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Kreis Musterdithmarschen – Fachdienst Waffen und Jagd (Der Landrat)",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Az.",
+          "value": "WJ-32.4-0912/26"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against rejection of hunting licence application",
+          "quote": "Binnen eines Monats ab der Bekanntgabe dieses Bescheids ist der Widerspruch zulässig; er wird schriftlich oder zur Niederschrift bei folgender Stelle erhoben: Kreis Musterdithmarschen, Stiftstraße 8, 25746 Musterheide in Holstein.",
+          "computation": "Letter is dated (Bescheiddatum) 19.11.2026 (Thursday); no separate 'zur Post gegeben am' date is stated, so the printed letter date counts as the posting day. The letter itself states the 4-day fiction (§ 110 Abs. 2 LVwG): day 1 = 20.11 (Fri), day 2 = 21.11 (Sat), day 3 = 22.11 (Sun), day 4 = 23.11.2026 (Mon) = deemed delivery/Bekanntgabe. For a general (non-tax) authority the delivery day itself is not shifted even onto a weekend, but here it already falls on a working Monday, so delivery = 23.11.2026. The one-month Widerspruch period runs under §§ 187 Abs. 1, 188 Abs. 2 BGB: the day of Bekanntgabe (23.11.2026) is not counted; the period ends on the day of the following month bearing the same number, i.e. 23.12.2026 (a Wednesday, not a holiday in SH), so no further shift is needed.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Submit valid proof of hunting liability insurance to receive the licence without a new application",
+          "quote": "Sobald Sie eine gültige Versicherungsbestätigung nachreichen, stelle ich den Jagdschein ohne neuen Antrag aus.",
+          "computation": "The letter states the hunting licence will be issued as soon as a valid insurance confirmation is submitted, but gives no calendar date or period for doing so (the previously submitted proof expired on 30.06.2026). Without a stated start or length of a period, no exact final date can be computed; this is an open-ended task rather than a fixed deadline.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter relies on the Bescheiddatum (19.11.2026) as the posting date since no separate 'zur Post gegeben am' date is given; if actual postage occurred later, the one-month Widerspruch deadline would shift accordingly.",
+        "No firm deadline is given for resubmitting the expired insurance proof; the licence will simply not be issued until this is done, and delay could affect any later Widerspruch or practical use of a hunting licence."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3998,
+      "cache_read_tokens": 12744,
+      "cache_creation_tokens": 4401,
+      "cost_usd": 0.060140799999999994,
+      "duration_ms": 39788,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}
