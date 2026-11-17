@@ -508,6 +508,21 @@ def test_the_gates_are_the_ci_workflows(index: dict[str, Any]) -> None:
     assert "--check-docs" in gates["ask/dev"]["args"] and "--known-attack" in gates["ask/dev"]["args"]
 
 
+def test_every_gate_names_the_one_cell_it_holds(index: dict[str, Any]) -> None:
+    """Each CI gate is named by exactly one cell, the one ``--check`` holds to it (a final split's later reads and
+    each held-out Ask run included), once that cell is recorded; no cell names a gate the index does not list."""
+    cells = {cell["cell"]: cell for cell in index["cells"]}
+    named = [cell["gate"] for cell in index["cells"] if "gate" in cell]
+    assert len(named) == len(set(named)) and set(named) <= set(index["gates"])
+    for gate in index["gates"]:
+        name = gate if re.search(r"/r\d+$", gate) or gate == "without-land" else f"{gate}/r1"
+        cell = cells[name]
+        if cell["status"] == "not recorded yet":
+            assert "gate" not in cell, gate
+        else:
+            assert cell.get("gate") == gate, (gate, name)
+
+
 # --------------------------------------------------------------------------------------------------
 # Comparing a published run with its replay
 # --------------------------------------------------------------------------------------------------

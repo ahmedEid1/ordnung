@@ -490,8 +490,10 @@ def _cells(
                 cell.update(status="not recorded yet", needs="its letters and their recording")
             else:
                 cell.update(status="replayed", checks=sorted(files))
-                if repeat == 1 and f"benchmark/{split}" in gates:
-                    cell["gate"] = f"benchmark/{split}"
+                # read 1's gate is the split's; a final split's later reads have their own (gate_problems)
+                gate = f"benchmark/{split}" if repeat == 1 else f"benchmark/{split}/r{repeat}"
+                if gate in gates:
+                    cell["gate"] = gate
             cells.append(cell)
     checked = [row for row in rows if row["check"] not in ("hash", "replay")]
 
@@ -519,7 +521,7 @@ def _cells(
     for repeat in sorted(set(range(1, ASK_HELDOUT_READS + 1)) | {r for s, r in asks if s == "heldout"}):
         add(
             f"ask/heldout/r{repeat}",
-            "",
+            f"ask/heldout/r{repeat}",
             asks.get(("heldout", repeat), []),
             "replayed",
             "the held-out questions and attacks, written blind after the code freeze, and their recording",
