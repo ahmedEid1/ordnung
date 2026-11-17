@@ -32,6 +32,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     from evals.present import model
 
     import helpers_final
+    from helpers_publication import final_published, results_before_publication
 
     parser = argparse.ArgumentParser(
         prog="final_report.py", description=__doc__.split("\n\n")[0] if __doc__ else None
@@ -41,6 +42,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     out = args.out.resolve()
     checkout = out / "checkout"
+    if final_published():
+        # the published final run stays out of the checkout: the synthetic final stands in for it
+        helpers_final.RESULTS = results_before_publication(checkout / "results-before-publication")
     if args.scenario == "realistic":
         root = helpers_final.realistic_root(checkout)
     else:

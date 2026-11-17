@@ -289,5 +289,21 @@
     "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6952593239",
     "created_at": "2026-11-17T15:30:52Z",
     "checkpoint_sha": "5e4e3f0a8340d24b73ab2d8e0f8b4276ec921545"
+  },
+  {
+    "id": "D014",
+    "kind": "code_hash_changed",
+    "at": "2026-11-17T15:35:11Z",
+    "step": "publish",
+    "what": "presentation only: the report page's end-to-end helper leaves the published final run out of its synthetic checkout (phase-2 file)",
+    "evidence": [
+      "clock (K29, #54): at/created_at real UTC; times below on the recording clock, real + 7 d",
+      "tests/e2e_support/final_report.py sha256 ebd08bc5faa49cb49d48fa5a32ceeae0e18c4214f945cbe341e725d7cbea5b11",
+      "before: sha256 2fd76701e389f24a9715868a6c446ab5f19437a508f6da9b9398d176b0fa1d87 (the posted phase-2 tree's file, ev12-phase2 896af5ae); no scored, scoring or recording path changes"
+    ],
+    "consequence": "the runner-defect rule, or a presentation-only change listed per path",
+    "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6952705495",
+    "created_at": "2026-11-17T15:35:11Z",
+    "checkpoint_sha": null
   }
 ]
