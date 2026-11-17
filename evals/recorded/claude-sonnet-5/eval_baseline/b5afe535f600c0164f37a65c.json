@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"5bcc899dac1db4d6de9d121ce52323f3552ea99d778d5a6c68ac0d22fa46e218\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d",
+    "recorded_at": "2026-11-24T09:51:18+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Kreis Musterdithmarschen – Fachdienst Waffen und Jagd\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Az.\",\"value\":\"WJ-32.4-0912/26\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against refusal of 3-year hunting licence\",\"quote\":\"Binnen eines Monats ab der Bekanntgabe dieses Bescheids ist der Widerspruch zulässig; er wird schriftlich oder zur Niederschrift bei folgender Stelle erhoben: Kreis Musterdithmarschen, Stiftstraße 8, 25746 Musterheide in Holstein.\",\"computation\":\"The Bescheid is dated 19.11.2026 (Thursday) and no separate 'zur Post gegeben am' date is given, so the posting day is 19.11.2026. Letter states delivery is deemed on the 4th day after posting (§ 110 Abs. 2 LVwG, equivalent to § 41 Abs. 2 VwVfG/§ 108 Abs. 3 AO regime but for a general authority, not a tax office, so the weekend/holiday-shift rule for the delivery day does NOT apply): 19.11 +4 calendar days = 23.11.2026 (Monday), which is not itself a Saturday/Sunday/holiday so no issue arises. Deemed delivery (Bekanntgabe) = 23.11.2026. The one-month Widerspruch period (§ 70 VwGO/LVwG analog) starts the day after delivery (§ 187 Abs. 1 BGB) and ends, per § 188 Abs. 2 BGB, on the day of the following month bearing the same number: 23.12.2026 (Wednesday). 23.12.2026 is a normal working day in Schleswig-Holstein (not a Saturday, Sunday, or public holiday – the SH holidays near this date are 25./26.12), so no further shift under § 193 BGB is needed. Final deadline: 23.12.2026.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter itself notes the insurance proof expired on 30.06.2026 (not a legal deadline, just an explanation for the refusal); submitting a new, valid Jagdhaftpflichtversicherung confirmation is required before a licence can be issued, but no deadline is set for doing so – only the one-month Widerspruch period against the refusal has a fixed deadline.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Kreis Musterdithmarschen – Fachdienst Waffen und Jagd",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Az.",
+          "value": "WJ-32.4-0912/26"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against refusal of 3-year hunting licence",
+          "quote": "Binnen eines Monats ab der Bekanntgabe dieses Bescheids ist der Widerspruch zulässig; er wird schriftlich oder zur Niederschrift bei folgender Stelle erhoben: Kreis Musterdithmarschen, Stiftstraße 8, 25746 Musterheide in Holstein.",
+          "computation": "The Bescheid is dated 19.11.2026 (Thursday) and no separate 'zur Post gegeben am' date is given, so the posting day is 19.11.2026. Letter states delivery is deemed on the 4th day after posting (§ 110 Abs. 2 LVwG, equivalent to § 41 Abs. 2 VwVfG/§ 108 Abs. 3 AO regime but for a general authority, not a tax office, so the weekend/holiday-shift rule for the delivery day does NOT apply): 19.11 +4 calendar days = 23.11.2026 (Monday), which is not itself a Saturday/Sunday/holiday so no issue arises. Deemed delivery (Bekanntgabe) = 23.11.2026. The one-month Widerspruch period (§ 70 VwGO/LVwG analog) starts the day after delivery (§ 187 Abs. 1 BGB) and ends, per § 188 Abs. 2 BGB, on the day of the following month bearing the same number: 23.12.2026 (Wednesday). 23.12.2026 is a normal working day in Schleswig-Holstein (not a Saturday, Sunday, or public holiday – the SH holidays near this date are 25./26.12), so no further shift under § 193 BGB is needed. Final deadline: 23.12.2026.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter itself notes the insurance proof expired on 30.06.2026 (not a legal deadline, just an explanation for the refusal); submitting a new, valid Jagdhaftpflichtversicherung confirmation is required before a licence can be issued, but no deadline is set for doing so – only the one-month Widerspruch period against the refusal has a fixed deadline."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2194,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1687,
+      "cost_usd": 0.029798,
+      "duration_ms": 25871,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

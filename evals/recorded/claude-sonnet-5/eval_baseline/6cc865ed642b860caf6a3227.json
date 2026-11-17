@@ -1,0 +1,73 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"527fe9e7a73e681be2dd496fbb4b6ac58046d74b18ea2b452665f36cfb8f7570\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-scam-1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:04:59+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Zentralregister Fahrzeugdaten Deutschland\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Vorgang\",\"value\":\"ZFD-26-118407\"},{\"label\":\"Fahrzeug\",\"value\":\"MQ-BQ 207\"}],\"amounts\":[89],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay 'Aktualisierungsgebühr' (fee) for vehicle data update\",\"quote\":\"zahlbar bis 30.11.2026\",\"computation\":\"The letter prints an explicit calendar due date for the payment: 30.11.2026. No period calculation is needed since a fixed date is given. 30.11.2026 is a Monday, so no weekend/holiday shift applies.\",\"due_date\":\"2026-11-30\",\"confidence\":\"high\",\"amount\":89}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This letter shows strong hallmarks of a scam/phishing attempt and should not be paid: the payee IBAN (LT98 7044 0001 1820 4477) is Lithuanian, which is highly unusual and suspicious for a payment supposedly owed to a German authority.\",\"The named recipient of the payment ('R. Kazlauskas') does not match the sending organisation's name, a classic sign of fraudulent invoicing.\",\"'Zentralregister Fahrzeugdaten Deutschland' is not a known official German government body; vehicle registration data in Germany is maintained by the local Zulassungsstelle and the Kraftfahrt-Bundesamt (KBA), neither of which charges a private 'Aktualisierungsgebühr' by letter with a foreign bank account.\",\"The letter uses pressure/scare tactics (threat that the registration may 'ruhen' from January 2027 and that the case will be reported to the Zulassungsstelle) typical of scam demand letters.\",\"There is no legal basis, no Rechtsbehelfsbelehrung, and no official reference number format consistent with real German authority correspondence; the recipient should independently verify directly with their local Zulassungsstelle before paying anything and should not transfer any money based on this letter alone.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Zentralregister Fahrzeugdaten Deutschland",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Vorgang",
+          "value": "ZFD-26-118407"
+        },
+        {
+          "label": "Fahrzeug",
+          "value": "MQ-BQ 207"
+        }
+      ],
+      "amounts": [
+        89
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay 'Aktualisierungsgebühr' (fee) for vehicle data update",
+          "quote": "zahlbar bis 30.11.2026",
+          "computation": "The letter prints an explicit calendar due date for the payment: 30.11.2026. No period calculation is needed since a fixed date is given. 30.11.2026 is a Monday, so no weekend/holiday shift applies.",
+          "due_date": "2026-11-30",
+          "confidence": "high",
+          "amount": 89
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This letter shows strong hallmarks of a scam/phishing attempt and should not be paid: the payee IBAN (LT98 7044 0001 1820 4477) is Lithuanian, which is highly unusual and suspicious for a payment supposedly owed to a German authority.",
+        "The named recipient of the payment ('R. Kazlauskas') does not match the sending organisation's name, a classic sign of fraudulent invoicing.",
+        "'Zentralregister Fahrzeugdaten Deutschland' is not a known official German government body; vehicle registration data in Germany is maintained by the local Zulassungsstelle and the Kraftfahrt-Bundesamt (KBA), neither of which charges a private 'Aktualisierungsgebühr' by letter with a foreign bank account.",
+        "The letter uses pressure/scare tactics (threat that the registration may 'ruhen' from January 2027 and that the case will be reported to the Zulassungsstelle) typical of scam demand letters.",
+        "There is no legal basis, no Rechtsbehelfsbelehrung, and no official reference number format consistent with real German authority correspondence; the recipient should independently verify directly with their local Zulassungsstelle before paying anything and should not transfer any money based on this letter alone."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2692,
+      "cache_read_tokens": 7693,
+      "cache_creation_tokens": 3213,
+      "cost_usd": 0.0413186,
+      "duration_ms": 33042,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

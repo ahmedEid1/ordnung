@@ -1,0 +1,90 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"4a141c23d25561fb82b23219b4977c717da275fa5eac5f6ca340f34314d43dcd\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-conflicting_dates-2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T08:53:25+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Stadt Beispielhagen - Der Oberbürgermeister, Fachbereich Bauordnung\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"63-BO-2026-1147\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Klage against the Nutzungsuntersagung\",\"quote\":\"Gegen diesen Bescheid kann innerhalb eines Monats nach seiner Bekanntgabe Klage beim Verwaltungsgericht Musterarnsberg, Jägerstraße 1, 59821 Musterarnsberg, erhoben werden; ein Widerspruchsverfahren findet nicht statt.\",\"computation\":\"The letter is dated (posted) 20.11.2026, a Friday. Under §41 Abs. 2 VwVfG, a letter from a German authority sent by ordinary post counts as delivered (bekanntgegeben) on the 4th day after posting, i.e. 24.11.2026 (Tuesday). Under §187 Abs. 1 BGB the day of delivery itself is not counted; the one-month period to file Klage (§74 VwGO) runs from 25.11.2026 and ends, per §188 Abs. 2 BGB, on the day of the following month with the same number, i.e. 24.12.2026 (Thursday). That day is not a Sunday or a public holiday in NRW, so no further shift applies. Note: the decision text itself is dated 18.11.2026, two days before the letterhead date of 20.11.2026; if the authority actually posted it on or shortly before 18.11.2026, the real deadline could fall a day or two earlier than computed here.\",\"due_date\":\"2026-12-24\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The Bescheid is dated 18.11.2026 inside the text ('mit diesem Bescheid vom 18.11.2026') but the letterhead and posting date is given as 20.11.2026; if posted earlier than 20.11.2026, the one-month Klage deadline could fall a day or two before 24.12.2026, so check the envelope postmark and consider filing a few days early as a safety margin.\",\"No Widerspruch is possible here ('ein Widerspruchsverfahren findet nicht statt'); only a direct Klage before the Verwaltungsgericht Musterarnsberg is available, which has formal procedural requirements, so get advice (a lawyer or a Verbraucherzentrale/Mieterverein) well before the deadline.\",\"This tool computes the deadline only; it cannot draft or file the court action.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Stadt Beispielhagen - Der Oberbürgermeister, Fachbereich Bauordnung",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "63-BO-2026-1147"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Klage against the Nutzungsuntersagung",
+          "quote": "Gegen diesen Bescheid kann innerhalb eines Monats nach seiner Bekanntgabe Klage beim Verwaltungsgericht Musterarnsberg, Jägerstraße 1, 59821 Musterarnsberg, erhoben werden; ein Widerspruchsverfahren findet nicht statt.",
+          "computation": "The letter is dated (posted) 20.11.2026, a Friday. Under §41 Abs. 2 VwVfG, a letter from a German authority sent by ordinary post counts as delivered (bekanntgegeben) on the 4th day after posting, i.e. 24.11.2026 (Tuesday). Under §187 Abs. 1 BGB the day of delivery itself is not counted; the one-month period to file Klage (§74 VwGO) runs from 25.11.2026 and ends, per §188 Abs. 2 BGB, on the day of the following month with the same number, i.e. 24.12.2026 (Thursday). That day is not a Sunday or a public holiday in NRW, so no further shift applies. Note: the decision text itself is dated 18.11.2026, two days before the letterhead date of 20.11.2026; if the authority actually posted it on or shortly before 18.11.2026, the real deadline could fall a day or two earlier than computed here.",
+          "due_date": "2026-12-24",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The Bescheid is dated 18.11.2026 inside the text ('mit diesem Bescheid vom 18.11.2026') but the letterhead and posting date is given as 20.11.2026; if posted earlier than 20.11.2026, the one-month Klage deadline could fall a day or two before 24.12.2026, so check the envelope postmark and consider filing a few days early as a safety margin.",
+        "No Widerspruch is possible here ('ein Widerspruchsverfahren findet nicht statt'); only a direct Klage before the Verwaltungsgericht Musterarnsberg is available, which has formal procedural requirements, so get advice (a lawyer or a Verbraucherzentrale/Mieterverein) well before the deadline.",
+        "This tool computes the deadline only; it cannot draft or file the court action."
+      ]
+    },
+    "usage": {
+      "input_tokens": 8,
+      "output_tokens": 6223,
+      "cache_read_tokens": 38646,
+      "cache_creation_tokens": 8748,
+      "cost_usd": 0.10496720000000001,
+      "duration_ms": 68995,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "anchor_date": "2026-11-20",
+            "delivery_rule": "de_admin_post",
+            "nature": "other",
+            "shift_rule": "auto",
+            "legal_basis": "§41 VwVfG NRW; Klagefrist §74 VwGO",
+            "text": "Gegen diesen Bescheid kann innerhalb eines Monats nach seiner Bekanntgabe Klage beim Verwaltungsgericht Musterarnsberg, Jägerstraße 1, 59821 Musterarnsberg, erhoben werden; ein Widerspruchsverfahren findet nicht statt."
+          },
+          "document_date": "2026-11-20",
+          "recipient_region": "NW",
+          "region": "NW",
+          "remedy_type": "klage",
+          "sender_kind": "authority",
+          "sender_name": "Stadt Beispielhagen – Fachbereich Bauordnung"
+        },
+        "result": "{\"due_date\":\"2026-12-24\",\"weekday\":\"Thursday\",\"summary\":\"Letter dated Fri 20 Nov 2026 counts as delivered on Tue 24 Nov; one month later is Thu 24 Dec 2026.\",\"confidence\":\"medium\",\"warnings\":[\"This is the deadline for a court action (Klage). Ordnung can't draft or file court actions — get advice (e.g. a Verbraucherzentrale or a lawyer) well before this date.\",\"Deemed delivery was applied: the letter counts as delivered some days after it was posted. If it was formally served instead — in a yellow envelope (Postzustellungsurkunde), or it says it was 'zugestellt' on a date — that rule does not apply and the period runs from the date written on the envelope, usually earlier.\"],\"steps\":[{\"label\":\"Posting day: Fri 20 Nov 2026 (the letter's date; the real posting day can only be later)\",\"date\":\"2026-11-20\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Tue 24 Nov 2026\",\"date\":\"2026-11-24\",\"rule_id\":\"vwvfg_41_2\",\"citation\":\"§ 41 Abs. 2 VwVfG (and the Länder VwVfGs); OVG NRW 19 A 4216/99\"},{\"label\":\"Counting starts the day after Tue 24 Nov 2026\",\"date\":\"2026-11-24\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Thu 24 Dec 2026\",\"date\":\"2026-12-24\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"vwvfg_41_2\",\"title\":\"Authority letters: delivered on the 4th day, no weekend shift\",\"citation\":\"§ 41 Abs. 2 VwVfG (and the Länder VwVfGs); OVG NRW 19 A 4216/99\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__41.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"klage_1_month\",\"title\":\"Court action (Klage): one month\",\"citation\":\"§ 74 VwGO; § 47 FGO; § 87 SGG\",\"url\":\"https://www.gesetze-im-internet.de/vwgo/__74.html\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-20\",\"delivery_law\":\"general administrative law (§ 41 VwVfG)\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"If the letter was formally served (a yellow envelope, or 'zugestellt am …'), pass spec.anchor receipt with the envelope's date as spec.anchor_date and spec.delivery_rule none.\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

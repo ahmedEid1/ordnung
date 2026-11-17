@@ -1,0 +1,79 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"3a83897eec7ee0f91f3ab2ac5a7a02d1fa711324c8ab1ff43a2d58a1a77ef5fe\",\"mode\":\"text\",\"region\":\"NI\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-fine_bussgeld-N2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Niedersachsen (NI), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docume",
+    "recorded_at": "2026-11-24T09:37:30+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Stadt Musterwilhelmshaven – Bußgeldstelle\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"32.12-26/61107\"},{\"label\":\"Kennzeichen\",\"value\":\"WHV-FM 88\"}],\"amounts\":[92],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"Er muss zwei Wochen nach der Zustellung bei der Stadt Musterwilhelmshaven – Bußgeldstelle vorliegen, schriftlich oder zur Niederschrift.\",\"computation\":\"This is a formally delivered Bußgeldbescheid (Postzustellungsurkunde copied on page 2), so the delivery day is the date written on the envelope, not the 4-day fiction: 'zugest. am 23.11.2026' (Monday) = delivery day, no adjustment for weekend/holiday. The objection period is two weeks (§ 67 OWiG, § 43 StPO), counted per §§ 187 Abs. 1, 188 Abs. 2 BGB: the delivery day itself is not counted, the period runs from 24.11.2026 and ends two weeks later on the day bearing the same name as the delivery day (Monday): 23.11.2026 + 1 week = 30.11.2026, + 2 weeks = 07.12.2026 (Monday). 07.12.2026 is not a Saturday, Sunday or public holiday in Niedersachsen, so no further shift under § 43 Abs. 2 StPO is needed.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay total fine amount (Geldbuße, fee and delivery costs)\",\"quote\":\"Fällig wird der Betrag zwei Wochen, nachdem der Bescheid rechtskräftig geworden ist.\",\"computation\":\"Payment falls due two weeks after the notice becomes final (rechtskräftig). It becomes final if no Einspruch is filed by the deadline computed above (07.12.2026), i.e. on 08.12.2026 (Tuesday), the day after the objection period expires. Counting two weeks from that triggering event under §§ 187 Abs. 1, 188 Abs. 2 BGB: the event day (08.12.2026) is not counted, the period runs from 09.12.2026 and ends two weeks later on the day with the same name (Tuesday): 08.12.2026 + 1 week = 15.12.2026, + 2 weeks = 22.12.2026 (Tuesday). 22.12.2026 is not a Saturday, Sunday or public holiday in Niedersachsen, so no shift applies. This date is only valid if no Einspruch is filed; filing an objection suspends finality and resets this calculation.\",\"due_date\":\"2026-12-22\",\"confidence\":\"medium\",\"amount\":92}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment due date (22.12.2026) is contingent on no Einspruch being filed by 07.12.2026; if an objection is lodged, the notice is not final and this payment deadline does not apply.\",\"The sender's email address 'bussgeld@stadt-musterwilhelmshaven-bu.example' uses an unusual domain for a city authority (ending in '-bu.example'); verify this address and the IBAN (Landesmusterbank, DE68 2825 0110 0002 6382 00) against the city's official contact details before paying, as fake Bußgeldbescheide are a known scam pattern.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Stadt Musterwilhelmshaven – Bußgeldstelle",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "32.12-26/61107"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "WHV-FM 88"
+        }
+      ],
+      "amounts": [
+        92
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "Er muss zwei Wochen nach der Zustellung bei der Stadt Musterwilhelmshaven – Bußgeldstelle vorliegen, schriftlich oder zur Niederschrift.",
+          "computation": "This is a formally delivered Bußgeldbescheid (Postzustellungsurkunde copied on page 2), so the delivery day is the date written on the envelope, not the 4-day fiction: 'zugest. am 23.11.2026' (Monday) = delivery day, no adjustment for weekend/holiday. The objection period is two weeks (§ 67 OWiG, § 43 StPO), counted per §§ 187 Abs. 1, 188 Abs. 2 BGB: the delivery day itself is not counted, the period runs from 24.11.2026 and ends two weeks later on the day bearing the same name as the delivery day (Monday): 23.11.2026 + 1 week = 30.11.2026, + 2 weeks = 07.12.2026 (Monday). 07.12.2026 is not a Saturday, Sunday or public holiday in Niedersachsen, so no further shift under § 43 Abs. 2 StPO is needed.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay total fine amount (Geldbuße, fee and delivery costs)",
+          "quote": "Fällig wird der Betrag zwei Wochen, nachdem der Bescheid rechtskräftig geworden ist.",
+          "computation": "Payment falls due two weeks after the notice becomes final (rechtskräftig). It becomes final if no Einspruch is filed by the deadline computed above (07.12.2026), i.e. on 08.12.2026 (Tuesday), the day after the objection period expires. Counting two weeks from that triggering event under §§ 187 Abs. 1, 188 Abs. 2 BGB: the event day (08.12.2026) is not counted, the period runs from 09.12.2026 and ends two weeks later on the day with the same name (Tuesday): 08.12.2026 + 1 week = 15.12.2026, + 2 weeks = 22.12.2026 (Tuesday). 22.12.2026 is not a Saturday, Sunday or public holiday in Niedersachsen, so no shift applies. This date is only valid if no Einspruch is filed; filing an objection suspends finality and resets this calculation.",
+          "due_date": "2026-12-22",
+          "confidence": "medium",
+          "amount": 92
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment due date (22.12.2026) is contingent on no Einspruch being filed by 07.12.2026; if an objection is lodged, the notice is not final and this payment deadline does not apply.",
+        "The sender's email address 'bussgeld@stadt-musterwilhelmshaven-bu.example' uses an unusual domain for a city authority (ending in '-bu.example'); verify this address and the IBAN (Landesmusterbank, DE68 2825 0110 0002 6382 00) against the city's official contact details before paying, as fake Bußgeldbescheide are a known scam pattern."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 5231,
+      "cache_read_tokens": 13274,
+      "cache_creation_tokens": 6104,
+      "cost_usd": 0.0793888,
+      "duration_ms": 49204,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"031acc7a3ca5b323e86da9dd41840f336ed67b2f4d9ccbffaef26c89f8e4ccf1\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-price_increase-N1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:57:56+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Kabelnetz Beispielstadt GmbH\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"KB-1 093 377\"}],\"amounts\":[34.99,37.99],\"items\":[{\"kind\":\"milestone\",\"title\":\"Price increase takes effect\",\"quote\":\"zum 01.02.2027 erhöhen wir den Preis Ihres Tarifs „Kabel 250“ um 3,00 € auf 37,99 € im Monat (bisher 34,99 €).\",\"computation\":\"The letter states the new price applies starting on the calendar date printed: 01.02.2027. This is a stated calendar date, used as written.\",\"due_date\":\"2027-02-01\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Special termination right due to price increase\",\"quote\":\"Sie dürfen den Vertrag deshalb innerhalb von drei Monaten nach Erhalt dieses Schreibens kostenlos und ohne Kündigungsfrist beenden, frühestens zum Wirksamwerden der Preisänderung.\",\"computation\":\"Kabelnetz Beispielstadt GmbH is a private company, not a public authority, so the statutory Bekanntgabefiktion (4-day delivery rule) does not apply; the period runs from actual receipt (Erhalt), whose exact date is not stated in the letter. As a conservative lower bound, the letter's own date (18.11.2026, the day it was written/dispatched) is used as the earliest plausible day of receipt. Under §§ 187 Abs. 1, 188 Abs. 2 BGB the day of receipt is not counted, and a 3-month period ends on the day bearing the same number three months later: 18.02.2027. That day is a Thursday and not a public holiday in NRW, so no shift under §193 BGB is needed. If actual receipt occurred later than 18.11.2026 (likely, given postal transit time), the true deadline would be correspondingly later; 18.02.2027 should therefore be treated as the earliest possible last day to send the termination.\",\"due_date\":\"2027-02-18\",\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter does not state the actual date Mr. Musterquell received it; the 3-month special-termination deadline was computed conservatively from the letter's own date (18.11.2026) as the earliest plausible receipt day. If the letter actually arrived a few days later (normal for postal mail), the true deadline (18.11.2026 + 3 months counted from the real receipt date) would be correspondingly later than 18.02.2027 — confirm the envelope/postmark date if available.\",\"The letter only announces a price increase and a special termination right; it does not state the original contract's start date or minimum term, so the contract's current term end and ordinary cancellation deadline could not be determined and are left blank.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Kabelnetz Beispielstadt GmbH",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "KB-1 093 377"
+        }
+      ],
+      "amounts": [
+        34.99,
+        37.99
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "Price increase takes effect",
+          "quote": "zum 01.02.2027 erhöhen wir den Preis Ihres Tarifs „Kabel 250“ um 3,00 € auf 37,99 € im Monat (bisher 34,99 €).",
+          "computation": "The letter states the new price applies starting on the calendar date printed: 01.02.2027. This is a stated calendar date, used as written.",
+          "due_date": "2027-02-01",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Special termination right due to price increase",
+          "quote": "Sie dürfen den Vertrag deshalb innerhalb von drei Monaten nach Erhalt dieses Schreibens kostenlos und ohne Kündigungsfrist beenden, frühestens zum Wirksamwerden der Preisänderung.",
+          "computation": "Kabelnetz Beispielstadt GmbH is a private company, not a public authority, so the statutory Bekanntgabefiktion (4-day delivery rule) does not apply; the period runs from actual receipt (Erhalt), whose exact date is not stated in the letter. As a conservative lower bound, the letter's own date (18.11.2026, the day it was written/dispatched) is used as the earliest plausible day of receipt. Under §§ 187 Abs. 1, 188 Abs. 2 BGB the day of receipt is not counted, and a 3-month period ends on the day bearing the same number three months later: 18.02.2027. That day is a Thursday and not a public holiday in NRW, so no shift under §193 BGB is needed. If actual receipt occurred later than 18.11.2026 (likely, given postal transit time), the true deadline would be correspondingly later; 18.02.2027 should therefore be treated as the earliest possible last day to send the termination.",
+          "due_date": "2027-02-18",
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter does not state the actual date Mr. Musterquell received it; the 3-month special-termination deadline was computed conservatively from the letter's own date (18.11.2026) as the earliest plausible receipt day. If the letter actually arrived a few days later (normal for postal mail), the true deadline (18.11.2026 + 3 months counted from the real receipt date) would be correspondingly later than 18.02.2027 — confirm the envelope/postmark date if available.",
+        "The letter only announces a price increase and a special termination right; it does not state the original contract's start date or minimum term, so the contract's current term end and ordinary cancellation deadline could not be determined and are left blank."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6600,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1464,
+      "cost_usd": 0.072966,
+      "duration_ms": 67467,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

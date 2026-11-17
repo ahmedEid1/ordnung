@@ -1,0 +1,89 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"1bde13e8f9534972138bb786a6a7db68d7445bfdd4e4bbe44b5a1fbbc222265d\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-missing_date-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:05:00+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"sender_name\":\"Immobilien Beispielstein KG\",\"document_date\":null,\"references\":[{\"label\":\"Mieter-Nr.\",\"value\":\"IB-3307\"}],\"amounts\":[2183.18,1920,263.18],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay service-charge balance (Nachzahlung) for 2025\",\"quote\":\"Den Betrag von 263,18 € zahlen Sie bitte binnen 30 Tagen nach Zugang dieser Abrechnung.\",\"computation\":\"The letter sets a 30-day period running 'nach Zugang dieser Abrechnung' (from the day the statement is received), not from a fixed calendar date and not from the document's own date. No document date is printed anywhere on the letter, and no information about the actual day of receipt (Zugang) is available. Because this is a letter from a private landlord/Hausverwaltung, not a German authority, the statutory deemed-delivery rules for administrative letters (§122 AO, §41 VwVfG etc.) do not apply; receipt must be established factually (typically date of postmark + a few days, or the date the tenant can show they received it). Without either the document date or the receipt date, the start of the 30-day period - and therefore its end under §§187, 188 BGB - cannot be fixed. The tenant should check the envelope postmark or their own record of when the letter arrived and count 30 days from that day (with the last day shifting to the next business day if it falls on a Saturday, Sunday or NW public holiday).\",\"due_date\":null,\"confidence\":\"low\",\"amount\":263.18}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter carries no printed date at all (no 'Datum' field), so the 30-day payment period ('binnen 30 Tagen nach Zugang dieser Abrechnung') cannot be computed exactly - please check the postmark on the envelope or note the day the letter actually arrived and count 30 days from that day.\",\"This is a private landlord's cost statement, not an authority's letter, so the statutory deemed-delivery rules for administrative post do not apply; only the actual day of receipt (Zugang) matters here.\"]}",
+    "data": {
+      "kind": "rent_lease",
+      "sender_name": "Immobilien Beispielstein KG",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Mieter-Nr.",
+          "value": "IB-3307"
+        }
+      ],
+      "amounts": [
+        2183.18,
+        1920,
+        263.18
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay service-charge balance (Nachzahlung) for 2025",
+          "quote": "Den Betrag von 263,18 € zahlen Sie bitte binnen 30 Tagen nach Zugang dieser Abrechnung.",
+          "computation": "The letter sets a 30-day period running 'nach Zugang dieser Abrechnung' (from the day the statement is received), not from a fixed calendar date and not from the document's own date. No document date is printed anywhere on the letter, and no information about the actual day of receipt (Zugang) is available. Because this is a letter from a private landlord/Hausverwaltung, not a German authority, the statutory deemed-delivery rules for administrative letters (§122 AO, §41 VwVfG etc.) do not apply; receipt must be established factually (typically date of postmark + a few days, or the date the tenant can show they received it). Without either the document date or the receipt date, the start of the 30-day period - and therefore its end under §§187, 188 BGB - cannot be fixed. The tenant should check the envelope postmark or their own record of when the letter arrived and count 30 days from that day (with the last day shifting to the next business day if it falls on a Saturday, Sunday or NW public holiday).",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 263.18
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter carries no printed date at all (no 'Datum' field), so the 30-day payment period ('binnen 30 Tagen nach Zugang dieser Abrechnung') cannot be computed exactly - please check the postmark on the envelope or note the day the letter actually arrived and count 30 days from that day.",
+        "This is a private landlord's cost statement, not an authority's letter, so the statutory deemed-delivery rules for administrative post do not apply; only the actual day of receipt (Zugang) matters here."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 2996,
+      "cache_read_tokens": 23574,
+      "cache_creation_tokens": 4273,
+      "cost_usd": 0.0517788,
+      "duration_ms": 40720,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 30,
+            "unit": "days",
+            "anchor": "receipt",
+            "anchor_date": null,
+            "nature": "payment",
+            "shift_rule": "auto",
+            "legal_basis": "Betriebskostenabrechnung - vertragliche Frist",
+            "text": "Den Betrag von 263,18 € zahlen Sie bitte binnen 30 Tagen nach Zugang dieser Abrechnung."
+          },
+          "sender_kind": "landlord",
+          "sender_name": "Immobilien Beispielstein KG",
+          "region": "NW"
+        },
+        "result": "{\"due_date\":null,\"summary\":\"No date could be computed: the start date is missing.\",\"confidence\":\"low\",\"warnings\":[\"The period runs from the day the letter arrived, and neither that day nor the letter's date was given.\"],\"steps\":[],\"rules\":[],\"assumed\":{\"today\":\"2026-11-24\",\"holiday_calendar\":\"Germany (nationwide holidays only)\",\"holidays_from\":\"recipient_region: a payment to a company or person is made where the payer lives (§§ 269, 270 Abs. 4 BGB), so that Land's holidays apply\"},\"hints\":[\"Pass document_date: the date printed on the letter, which the period counts from.\",\"Pass received_date if you know the day the letter arrived; until then the letter's date is used (the earliest plausible start).\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

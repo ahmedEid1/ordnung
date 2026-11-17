@@ -1,0 +1,74 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"ee1bfb982144e4f8566c21907b98814a1fafecc336872963440e67d4cde468b8\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-L2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:28:11+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[48.71],\"contract\":null,\"document_date\":\"2026-11-20\",\"kind\":\"social_insurance\",\"remedy_type\":\"widerspruch\",\"sender_name\":\"Agentur für Arbeit Musterlimburg\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"418D552907\"}],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the Arbeitslosengeld decision\",\"quote\":\"Gegen den Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden, schriftlich oder zur Niederschrift bei der Agentur für Arbeit Musterlimburg, Agenturring 6, 65549 Musterlimburg.\",\"computation\":\"Letter states the specific rule 'Der Bescheid gilt mit dem vierten Tag nach dem angegebenen Versandtag als bekannt gegeben.' Versandtag = Samstag, 21.11.2026. Bekanntgabe (deemed delivery) = Versandtag + 4 days = 25.11.2026 (Wednesday). The one-month Widerspruchsfrist (§ 84 Abs.1 SGG) runs from Bekanntgabe as the triggering event: per § 187 Abs.1 BGB the day of the event (25.11.2026) is not counted, so the period starts 26.11.2026. Per § 188 Abs.2 BGB a month-period triggered by an event ends on the day of the following month whose number corresponds to the day of the event, i.e. 25.12.2026. 25.12.2026 is 1. Weihnachtstag (public holiday in NRW, also a Friday), 26.12.2026 is 2. Weihnachtstag (Saturday, also holiday), 27.12.2026 is a Sunday. Per § 193 BGB the deadline moves to the next working day, which is Monday 28.12.2026.\",\"due_date\":\"2026-12-28\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Register in person or online as unemployed on the first day of unemployment (if not already done)\",\"quote\":\"Melden Sie sich bitte am ersten Tag der Arbeitslosigkeit persönlich oder online arbeitslos, falls noch nicht geschehen.\",\"computation\":\"The decision grants Arbeitslosengeld starting 01.01.2027, so the 'first day of unemployment' referenced is 01.01.2027. The letter requires registration (in person or online) on that day if not already done; 01.01.2027 is a Thursday-turned-Friday public holiday (Neujahr), but the letter explicitly allows online registration, which is possible on a holiday, so the due date remains 01.01.2027.\",\"due_date\":\"2027-01-01\",\"confidence\":\"medium\",\"amount\":null}],\"warnings\":[\"The letter states that the Bescheid is deemed delivered on the fourth day after dispatch, whereas the standard statutory rule under § 37 Abs. 2 SGB X is normally the third day after dispatch; this deviation was used as stated in the letter for the Widerspruchsfrist calculation, but the recipient may want to verify this with the Agentur für Arbeit if in doubt, since using the standard third-day rule would instead make the deadline fall on 2026-12-24/28 depending on calculation path.\"]}",
+    "data": {
+      "amounts": [
+        48.71
+      ],
+      "contract": null,
+      "document_date": "2026-11-20",
+      "kind": "social_insurance",
+      "remedy_type": "widerspruch",
+      "sender_name": "Agentur für Arbeit Musterlimburg",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "418D552907"
+        }
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the Arbeitslosengeld decision",
+          "quote": "Gegen den Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden, schriftlich oder zur Niederschrift bei der Agentur für Arbeit Musterlimburg, Agenturring 6, 65549 Musterlimburg.",
+          "computation": "Letter states the specific rule 'Der Bescheid gilt mit dem vierten Tag nach dem angegebenen Versandtag als bekannt gegeben.' Versandtag = Samstag, 21.11.2026. Bekanntgabe (deemed delivery) = Versandtag + 4 days = 25.11.2026 (Wednesday). The one-month Widerspruchsfrist (§ 84 Abs.1 SGG) runs from Bekanntgabe as the triggering event: per § 187 Abs.1 BGB the day of the event (25.11.2026) is not counted, so the period starts 26.11.2026. Per § 188 Abs.2 BGB a month-period triggered by an event ends on the day of the following month whose number corresponds to the day of the event, i.e. 25.12.2026. 25.12.2026 is 1. Weihnachtstag (public holiday in NRW, also a Friday), 26.12.2026 is 2. Weihnachtstag (Saturday, also holiday), 27.12.2026 is a Sunday. Per § 193 BGB the deadline moves to the next working day, which is Monday 28.12.2026.",
+          "due_date": "2026-12-28",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Register in person or online as unemployed on the first day of unemployment (if not already done)",
+          "quote": "Melden Sie sich bitte am ersten Tag der Arbeitslosigkeit persönlich oder online arbeitslos, falls noch nicht geschehen.",
+          "computation": "The decision grants Arbeitslosengeld starting 01.01.2027, so the 'first day of unemployment' referenced is 01.01.2027. The letter requires registration (in person or online) on that day if not already done; 01.01.2027 is a Thursday-turned-Friday public holiday (Neujahr), but the letter explicitly allows online registration, which is possible on a holiday, so the due date remains 01.01.2027.",
+          "due_date": "2027-01-01",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "warnings": [
+        "The letter states that the Bescheid is deemed delivered on the fourth day after dispatch, whereas the standard statutory rule under § 37 Abs. 2 SGB X is normally the third day after dispatch; this deviation was used as stated in the letter for the Widerspruchsfrist calculation, but the recipient may want to verify this with the Agentur für Arbeit if in doubt, since using the standard third-day rule would instead make the deadline fall on 2026-12-24/28 depending on calculation path."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4614,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1629,
+      "cost_usd": 0.053284399999999996,
+      "duration_ms": 45669,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

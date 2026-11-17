@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"b7d5c5302044f26e529ebe9352be1d9ad70c552f0832c40aa9084d2b65e8939a\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-scam-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:07:31+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Kanzlei Dr. Beispielmann & Coll. Medienrecht\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Unser Zeichen\",\"value\":\"BM-UR 26/90812\"}],\"amounts\":[900,280,1180],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay settlement amount to avoid lawsuit\",\"quote\":\"Überweisen Sie den Vergleichsbetrag bis zum 01.12.2026 auf das Konto IBAN DE88 3704 0044 0532 0881 00, Kontoinhaber M. Beispielmann.\",\"computation\":\"The letter states an explicit calendar deadline 'bis zum 01.12.2026' for the payment, so no period calculation is needed. 01.12.2026 is a Tuesday, not a weekend or public holiday, so the date is used as written and does not shift.\",\"due_date\":\"2026-12-01\",\"confidence\":\"high\",\"amount\":1180}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a copyright-infringement warning letter (Abmahnung) from a private law firm demanding a settlement payment; such letters are a well-known pattern in Germany and the underlying claim (alleged file-sharing via your internet connection) should be independently verified before paying - consider getting advice from a lawyer specializing in Abmahnungen (e.g. via a consumer protection association) rather than paying immediately under time pressure.\",\"The letter frames this as the 'letzte außergerichtliche Gelegenheit' (last out-of-court chance) to create urgency; this pressure tactic is typical of such letters and is not by itself proof that the claim is valid or that a lawsuit would follow or succeed.\",\"Double-check that the IBAN given (DE88 3704 0044 0532 0881 00) and the account holder name (M. Beispielmann) genuinely belong to this law firm before transferring any money, since paying does not require any written acknowledgment of wrongdoing (Unterlassungserklärung) from you and once paid may be hard to reverse.\",\"The names used in the letter (Dr. Beispielmann, Bastian Musterquell, Beispielwetzlar) read like German placeholder/example names ('Beispiel' = example, 'Muster' = template), so this document may itself be a template or test letter rather than a genuine one - verify the actual letter you received matches this content exactly.\"]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Kanzlei Dr. Beispielmann & Coll. Medienrecht",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Unser Zeichen",
+          "value": "BM-UR 26/90812"
+        }
+      ],
+      "amounts": [
+        900,
+        280,
+        1180
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay settlement amount to avoid lawsuit",
+          "quote": "Überweisen Sie den Vergleichsbetrag bis zum 01.12.2026 auf das Konto IBAN DE88 3704 0044 0532 0881 00, Kontoinhaber M. Beispielmann.",
+          "computation": "The letter states an explicit calendar deadline 'bis zum 01.12.2026' for the payment, so no period calculation is needed. 01.12.2026 is a Tuesday, not a weekend or public holiday, so the date is used as written and does not shift.",
+          "due_date": "2026-12-01",
+          "confidence": "high",
+          "amount": 1180
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a copyright-infringement warning letter (Abmahnung) from a private law firm demanding a settlement payment; such letters are a well-known pattern in Germany and the underlying claim (alleged file-sharing via your internet connection) should be independently verified before paying - consider getting advice from a lawyer specializing in Abmahnungen (e.g. via a consumer protection association) rather than paying immediately under time pressure.",
+        "The letter frames this as the 'letzte außergerichtliche Gelegenheit' (last out-of-court chance) to create urgency; this pressure tactic is typical of such letters and is not by itself proof that the claim is valid or that a lawsuit would follow or succeed.",
+        "Double-check that the IBAN given (DE88 3704 0044 0532 0881 00) and the account holder name (M. Beispielmann) genuinely belong to this law firm before transferring any money, since paying does not require any written acknowledgment of wrongdoing (Unterlassungserklärung) from you and once paid may be hard to reverse.",
+        "The names used in the letter (Dr. Beispielmann, Bastian Musterquell, Beispielwetzlar) read like German placeholder/example names ('Beispiel' = example, 'Muster' = template), so this document may itself be a template or test letter rather than a genuine one - verify the actual letter you received matches this content exactly."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2617,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1564,
+      "cost_usd": 0.033535999999999996,
+      "duration_ms": 27367,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"f6018908c0b7a44667e24fecaaa1042571643f9bdd3f7a57f1bee0c2716396fe\",\"mode\":\"text\",\"region\":\"BY\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bayern (BY), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag",
+    "recorded_at": "2026-11-24T09:48:25+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Landratsamt Beispielrott – Untere Bauaufsichtsbehörde\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Az.\",\"value\":\"BV-61-2026-0773\"}],\"amounts\":[2000],\"items\":[{\"kind\":\"task\",\"title\":\"Remove caravan and wooden extension from the property\",\"quote\":\"Sie haben den auf dem Grundstück Fl.-Nr. 412/3 abgestellten Wohnwagen samt dem angebauten Holzvorbau bis spätestens 26.02.2027 zu entfernen.\",\"computation\":\"The letter states an explicit calendar deadline, 26.02.2027 (a Friday, not a public holiday in Bavaria), so the due date is used as written without further calculation.\",\"due_date\":\"2027-02-26\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"File Klage against the Bescheid at the Bayerisches Verwaltungsgericht Musterregensburg\",\"quote\":\"Gegen diesen Bescheid können Sie binnen eines Monats nach seiner Bekanntgabe Klage beim Bayerischen Verwaltungsgericht Musterregensburg, Haidplatz 4, 93047 Musterregensburg erheben, schriftlich oder zur Niederschrift bei der Geschäftsstelle des Gerichts.\",\"computation\":\"Posting date = document date 18.11.2026 (Wed), sent by simple letter. The letter states Bekanntgabe fiction of the 4th day after posting (Art. 41 Abs. 2 BayVwVfG as quoted in the letter), i.e. 19.11 (day1, Thu), 20.11 (day2, Fri), 21.11 (day3, Sat), 22.11 (day4, Sun). Because that day falls on a Sunday, the fiction shifts to the next business day, Monday 23.11.2026, which is the Bekanntgabe date. (Note: applying instead the general statutory third-day rule gives 21.11, a Saturday, which likewise shifts to Monday 23.11.2026 - same result.) Per §57 VwGO i.V.m. §222 ZPO i.V.m. §187 Abs. 1, §188 Abs. 2 BGB, the one-month Klage period starts the day after Bekanntgabe and ends on the day of the following month bearing the same number as the Bekanntgabe day: 23.12.2026 (Wednesday), which is neither a weekend day nor a Bavarian public holiday, so it remains the final day.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"A Zwangsgeld (coercive fine) of €2,000 is threatened only if the removal deadline of 26.02.2027 is missed; it is not a payment currently due.\",\"The letter quotes Art. 41 Abs. 2 BayVwVfG as providing a 'fourth day after posting' delivery fiction, whereas the statute generally specifies the third day; in this case both readings coincide on 23.11.2026 after weekend adjustment, so the computed Klage deadline is unaffected, but the discrepancy in the quoted legal text should be noted.\",\"No Widerspruch is possible in this matter per the letter ('Ein Widerspruchsverfahren ist in dieser Sache nicht vorgesehen.'); only Klage directly to the Verwaltungsgericht is available.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Landratsamt Beispielrott – Untere Bauaufsichtsbehörde",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Az.",
+          "value": "BV-61-2026-0773"
+        }
+      ],
+      "amounts": [
+        2000
+      ],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Remove caravan and wooden extension from the property",
+          "quote": "Sie haben den auf dem Grundstück Fl.-Nr. 412/3 abgestellten Wohnwagen samt dem angebauten Holzvorbau bis spätestens 26.02.2027 zu entfernen.",
+          "computation": "The letter states an explicit calendar deadline, 26.02.2027 (a Friday, not a public holiday in Bavaria), so the due date is used as written without further calculation.",
+          "due_date": "2027-02-26",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "File Klage against the Bescheid at the Bayerisches Verwaltungsgericht Musterregensburg",
+          "quote": "Gegen diesen Bescheid können Sie binnen eines Monats nach seiner Bekanntgabe Klage beim Bayerischen Verwaltungsgericht Musterregensburg, Haidplatz 4, 93047 Musterregensburg erheben, schriftlich oder zur Niederschrift bei der Geschäftsstelle des Gerichts.",
+          "computation": "Posting date = document date 18.11.2026 (Wed), sent by simple letter. The letter states Bekanntgabe fiction of the 4th day after posting (Art. 41 Abs. 2 BayVwVfG as quoted in the letter), i.e. 19.11 (day1, Thu), 20.11 (day2, Fri), 21.11 (day3, Sat), 22.11 (day4, Sun). Because that day falls on a Sunday, the fiction shifts to the next business day, Monday 23.11.2026, which is the Bekanntgabe date. (Note: applying instead the general statutory third-day rule gives 21.11, a Saturday, which likewise shifts to Monday 23.11.2026 - same result.) Per §57 VwGO i.V.m. §222 ZPO i.V.m. §187 Abs. 1, §188 Abs. 2 BGB, the one-month Klage period starts the day after Bekanntgabe and ends on the day of the following month bearing the same number as the Bekanntgabe day: 23.12.2026 (Wednesday), which is neither a weekend day nor a Bavarian public holiday, so it remains the final day.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "A Zwangsgeld (coercive fine) of €2,000 is threatened only if the removal deadline of 26.02.2027 is missed; it is not a payment currently due.",
+        "The letter quotes Art. 41 Abs. 2 BayVwVfG as providing a 'fourth day after posting' delivery fiction, whereas the statute generally specifies the third day; in this case both readings coincide on 23.11.2026 after weekend adjustment, so the computed Klage deadline is unaffected, but the discrepancy in the quoted legal text should be noted.",
+        "No Widerspruch is possible in this matter per the letter ('Ein Widerspruchsverfahren ist in dieser Sache nicht vorgesehen.'); only Klage directly to the Verwaltungsgericht is available."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4088,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2135,
+      "cost_usd": 0.05004839999999999,
+      "duration_ms": 41754,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

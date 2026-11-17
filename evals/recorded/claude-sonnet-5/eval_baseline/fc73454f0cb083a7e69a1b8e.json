@@ -1,0 +1,78 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"3a83897eec7ee0f91f3ab2ac5a7a02d1fa711324c8ab1ff43a2d58a1a77ef5fe\",\"mode\":\"text\",\"region\":\"NI\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-fine_bussgeld-N2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Niedersachsen (NI), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docume",
+    "recorded_at": "2026-11-24T09:37:26+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[92],\"contract\":null,\"document_date\":\"2026-11-20\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the Bußgeldbescheid\",\"quote\":\"Er muss zwei Wochen nach der Zustellung bei der Stadt Musterwilhelmshaven – Bußgeldstelle vorliegen, schriftlich oder zur Niederschrift.\",\"computation\":\"The envelope's Zustellungsurkunde (page 2) shows formal postal delivery (§182 ZPO) on 23.11.2026 (a Monday). This is the actual delivery date documented by the carrier, so it governs the start of the period, not the letter's issue date of 20.11.2026. Per §187 Abs. 1 BGB, the day of the triggering event (23.11.2026) is not counted; the period begins the next day, 24.11.2026. Per §188 Abs. 2 BGB, a period given in weeks ends with the expiry of the day in the last week that bears the same name as the day of the triggering event (Monday). Two weeks after Monday 23.11.2026 is Monday 07.12.2026. The Einspruch (objection) must reach the Bußgeldstelle by this date. 07.12.2026 is not a Saturday, Sunday or public holiday in Niedersachsen, so no extension applies.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay fine, fee and delivery costs (total)\",\"quote\":\"Fällig wird der Betrag zwei Wochen, nachdem der Bescheid rechtskräftig geworden ist.\",\"computation\":\"The total of EUR 92.00 (Geldbuße 60.00 + Gebühr 28.50 + Auslagen 3.50) becomes due two weeks after the Bescheid becomes rechtskräftig (legally final). Absent an Einspruch, the decision becomes rechtskräftig upon expiry of the Einspruchsfrist, i.e. at the end of 07.12.2026 (Monday, see the Einspruch deadline computation above). Applying §187 Abs. 1 BGB, that day (07.12.2026) is not counted; the two-week payment period begins 08.12.2026. Applying §188 Abs. 2 BGB, the period ends on the day in the last week bearing the same name as the triggering day (Monday), i.e. 21.12.2026, which is not a weekend day or Niedersachsen public holiday. This date is only correct if no Einspruch is filed; filing an Einspruch would reset or suspend finality and thus this due date.\",\"due_date\":\"2026-12-21\",\"confidence\":\"medium\",\"amount\":92}],\"kind\":\"fine\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"32.12-26/61107\"},{\"label\":\"Kennzeichen\",\"value\":\"WHV-FM 88\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Stadt Musterwilhelmshaven – Bußgeldstelle\",\"warnings\":[\"The payment due date (2026-12-21) assumes the decision becomes final without an Einspruch; if Fenja Musterwolde files an Einspruch by 2026-12-07, this payment date no longer applies and the matter proceeds to a court decision instead.\"]}",
+    "data": {
+      "amounts": [
+        92
+      ],
+      "contract": null,
+      "document_date": "2026-11-20",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the Bußgeldbescheid",
+          "quote": "Er muss zwei Wochen nach der Zustellung bei der Stadt Musterwilhelmshaven – Bußgeldstelle vorliegen, schriftlich oder zur Niederschrift.",
+          "computation": "The envelope's Zustellungsurkunde (page 2) shows formal postal delivery (§182 ZPO) on 23.11.2026 (a Monday). This is the actual delivery date documented by the carrier, so it governs the start of the period, not the letter's issue date of 20.11.2026. Per §187 Abs. 1 BGB, the day of the triggering event (23.11.2026) is not counted; the period begins the next day, 24.11.2026. Per §188 Abs. 2 BGB, a period given in weeks ends with the expiry of the day in the last week that bears the same name as the day of the triggering event (Monday). Two weeks after Monday 23.11.2026 is Monday 07.12.2026. The Einspruch (objection) must reach the Bußgeldstelle by this date. 07.12.2026 is not a Saturday, Sunday or public holiday in Niedersachsen, so no extension applies.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay fine, fee and delivery costs (total)",
+          "quote": "Fällig wird der Betrag zwei Wochen, nachdem der Bescheid rechtskräftig geworden ist.",
+          "computation": "The total of EUR 92.00 (Geldbuße 60.00 + Gebühr 28.50 + Auslagen 3.50) becomes due two weeks after the Bescheid becomes rechtskräftig (legally final). Absent an Einspruch, the decision becomes rechtskräftig upon expiry of the Einspruchsfrist, i.e. at the end of 07.12.2026 (Monday, see the Einspruch deadline computation above). Applying §187 Abs. 1 BGB, that day (07.12.2026) is not counted; the two-week payment period begins 08.12.2026. Applying §188 Abs. 2 BGB, the period ends on the day in the last week bearing the same name as the triggering day (Monday), i.e. 21.12.2026, which is not a weekend day or Niedersachsen public holiday. This date is only correct if no Einspruch is filed; filing an Einspruch would reset or suspend finality and thus this due date.",
+          "due_date": "2026-12-21",
+          "confidence": "medium",
+          "amount": 92
+        }
+      ],
+      "kind": "fine",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "32.12-26/61107"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "WHV-FM 88"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Stadt Musterwilhelmshaven – Bußgeldstelle",
+      "warnings": [
+        "The payment due date (2026-12-21) assumes the decision becomes final without an Einspruch; if Fenja Musterwolde files an Einspruch by 2026-12-07, this payment date no longer applies and the matter proceeds to a court decision instead."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 5498,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2214,
+      "cost_usd": 0.06446439999999999,
+      "duration_ms": 51678,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

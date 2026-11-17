@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"5d379afc06333a4784378c2102335f5f0ecaa29190cd7a6e15eaeb8c12ccd82c\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:24:43+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2026-11-18\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Register for B1 placement test slot\",\"quote\":\"Please register for one of the test slots by 10 December 2026, using the link in our e-mail.\",\"computation\":\"The letter states a fixed calendar date ('by 10 December 2026') for registering for the placement test. This is a private organisational deadline set by the course provider, not a statutory period subject to BGB counting rules, so the date printed is the due date as written. 10 December 2026 is a Thursday, a normal business day in NRW, so no weekend/holiday shift applies.\",\"due_date\":\"2026-12-10\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"German B1 evening course start\",\"quote\":\"Thank you for your interest in our evening course German B1, which starts on 12 January 2027.\",\"computation\":\"Date explicitly stated in the letter as the course start; no counting required.\",\"due_date\":\"2027-01-12\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"other\",\"references\":[{\"label\":\"Student no.\",\"value\":\"SF-26-1190\"}],\"remedy_type\":\"none\",\"sender_name\":\"Sprachforum Beispiellahn e.V.\",\"warnings\":[]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2026-11-18",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Register for B1 placement test slot",
+          "quote": "Please register for one of the test slots by 10 December 2026, using the link in our e-mail.",
+          "computation": "The letter states a fixed calendar date ('by 10 December 2026') for registering for the placement test. This is a private organisational deadline set by the course provider, not a statutory period subject to BGB counting rules, so the date printed is the due date as written. 10 December 2026 is a Thursday, a normal business day in NRW, so no weekend/holiday shift applies.",
+          "due_date": "2026-12-10",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "German B1 evening course start",
+          "quote": "Thank you for your interest in our evening course German B1, which starts on 12 January 2027.",
+          "computation": "Date explicitly stated in the letter as the course start; no counting required.",
+          "due_date": "2027-01-12",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "other",
+      "references": [
+        {
+          "label": "Student no.",
+          "value": "SF-26-1190"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Sprachforum Beispiellahn e.V.",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1223,
+      "cache_read_tokens": 6440,
+      "cache_creation_tokens": 1508,
+      "cost_usd": 0.019554,
+      "duration_ms": 13721,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

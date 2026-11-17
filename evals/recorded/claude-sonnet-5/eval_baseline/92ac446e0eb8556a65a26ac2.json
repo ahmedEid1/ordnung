@@ -1,0 +1,96 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"031acc7a3ca5b323e86da9dd41840f336ed67b2f4d9ccbffaef26c89f8e4ccf1\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-price_increase-N1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:58:13+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Kabelnetz Beispielstadt GmbH\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"KB-1 093 377\"}],\"amounts\":[34.99,37.99],\"items\":[{\"kind\":\"milestone\",\"title\":\"Price increase takes effect\",\"quote\":\"zum 01.02.2027 erhöhen wir den Preis Ihres Tarifs „Kabel 250“ um 3,00 € auf 37,99 € im Monat (bisher 34,99 €).\",\"computation\":\"Date is printed explicitly in the letter: 01.02.2027. No counting needed.\",\"due_date\":\"2027-02-01\",\"confidence\":\"high\",\"amount\":37.99},{\"kind\":\"deadline\",\"title\":\"Exercise special right to terminate the internet contract (triggered by the non-wholly-favourable price increase)\",\"quote\":\"Sie dürfen den Vertrag deshalb innerhalb von drei Monaten nach Erhalt dieses Schreibens kostenlos und ohne Kündigungsfrist beenden, frühestens zum Wirksamwerden der Preisänderung.\",\"computation\":\"The letter gives a period, not a fixed date: three months 'nach Erhalt' (after receipt), not after the printed date. The actual day of receipt is not stated, so the earliest plausible start is used: the letter's own date, Wed 18.11.2026 (a company letter has no statutory deemed-delivery rule, unlike an authority's). Under § 187 Abs. 1 BGB the day of receipt itself is not counted, so counting starts 19.11.2026. Under § 188 Abs. 2 BGB a period of months ends on the day of the last month that bears the same number as the start day: three months from 18.11.2026 is 18.02.2027, a Thursday — no weekend/holiday shift needed. If the letter actually arrived later than 18.11.2026 (which is likely for ordinary post), the three-month period — and therefore the final day to cancel — would run correspondingly later than 18.02.2027.\",\"due_date\":\"2027-02-18\",\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The exact day the letter arrived at the recipient is not stated; the three-month special termination deadline (18.02.2027) was calculated from the letter's printed date (18.11.2026) as the earliest plausible start — if the letter actually arrived later by post, the true deadline is correspondingly later, so it is safer to send any cancellation well before 18.02.2027.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Kabelnetz Beispielstadt GmbH",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "KB-1 093 377"
+        }
+      ],
+      "amounts": [
+        34.99,
+        37.99
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "Price increase takes effect",
+          "quote": "zum 01.02.2027 erhöhen wir den Preis Ihres Tarifs „Kabel 250“ um 3,00 € auf 37,99 € im Monat (bisher 34,99 €).",
+          "computation": "Date is printed explicitly in the letter: 01.02.2027. No counting needed.",
+          "due_date": "2027-02-01",
+          "confidence": "high",
+          "amount": 37.99
+        },
+        {
+          "kind": "deadline",
+          "title": "Exercise special right to terminate the internet contract (triggered by the non-wholly-favourable price increase)",
+          "quote": "Sie dürfen den Vertrag deshalb innerhalb von drei Monaten nach Erhalt dieses Schreibens kostenlos und ohne Kündigungsfrist beenden, frühestens zum Wirksamwerden der Preisänderung.",
+          "computation": "The letter gives a period, not a fixed date: three months 'nach Erhalt' (after receipt), not after the printed date. The actual day of receipt is not stated, so the earliest plausible start is used: the letter's own date, Wed 18.11.2026 (a company letter has no statutory deemed-delivery rule, unlike an authority's). Under § 187 Abs. 1 BGB the day of receipt itself is not counted, so counting starts 19.11.2026. Under § 188 Abs. 2 BGB a period of months ends on the day of the last month that bears the same number as the start day: three months from 18.11.2026 is 18.02.2027, a Thursday — no weekend/holiday shift needed. If the letter actually arrived later than 18.11.2026 (which is likely for ordinary post), the three-month period — and therefore the final day to cancel — would run correspondingly later than 18.02.2027.",
+          "due_date": "2027-02-18",
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The exact day the letter arrived at the recipient is not stated; the three-month special termination deadline (18.02.2027) was calculated from the letter's printed date (18.11.2026) as the earliest plausible start — if the letter actually arrived later by post, the true deadline is correspondingly later, so it is safer to send any cancellation well before 18.02.2027."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3186,
+      "cache_read_tokens": 14579,
+      "cache_creation_tokens": 4049,
+      "cost_usd": 0.0509798,
+      "duration_ms": 36052,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "document_date": "2026-11-18",
+          "received_date": null,
+          "sender_kind": "company",
+          "region": "NW",
+          "recipient_region": "NW",
+          "spec": {
+            "type": "relative",
+            "amount": 3,
+            "unit": "months",
+            "anchor": "receipt",
+            "nature": "notice",
+            "legal_basis": "§ 57 Abs. 4 TKG / § 327r BGB (Sonderkündigungsrecht bei Preiserhöhung)",
+            "text": "Sie dürfen den Vertrag deshalb innerhalb von drei Monaten nach Erhalt dieses Schreibens kostenlos und ohne Kündigungsfrist beenden, frühestens zum Wirksamwerden der Preisänderung."
+          }
+        },
+        "result": "{\"due_date\":\"2027-02-18\",\"weekday\":\"Thursday\",\"send_by\":\"2027-02-12\",\"safe_date\":\"2027-02-18\",\"summary\":\"Three months after the letter's date (Wed 18 Nov 2026) is Thu 18 Feb 2027.\",\"confidence\":\"low\",\"warnings\":[\"The day the letter arrived was not given, so the period was counted from the date printed on it — the earliest plausible start.\"],\"steps\":[{\"label\":\"Counting starts the day after Wed 18 Nov 2026\",\"date\":\"2026-11-18\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Three months later: Thu 18 Feb 2027\",\"date\":\"2027-02-18\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Send by Fri 12 Feb 2027 to allow 4 business days for a letter to arrive\",\"date\":\"2027-02-12\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-18\",\"received_date\":\"2026-11-18\",\"received_date_from\":\"document_date: assumed, the earliest plausible arrival\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"Pass received_date if you know the day the letter arrived; until then the letter's date is used (the earliest plausible start).\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

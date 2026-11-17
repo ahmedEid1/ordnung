@@ -1,0 +1,73 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"ef50ddf252e0db797e0c4ba49c42f54f496057b7a9cd103401d82db819fd48d4\",\"mode\":\"text\",\"region\":\"SL\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-tax_assessment-N2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Saarland (SL), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> t",
+    "recorded_at": "2026-11-24T10:20:13+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[2906,665],\"contract\":null,\"document_date\":\"2026-11-18\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Objection deadline (Einspruch) against the 2025 income tax assessment\",\"quote\":\"Die Einspruchsfrist beträgt einen Monat und rechnet ab der Bekanntgabe; ein Bescheid, der als Brief verschickt wird, ist am vierten Tag nach dem Absenden als bekannt gegeben anzusehen.\",\"computation\":\"Letter dated (posted) Wed 18.11.2026. Deemed delivery (Bekanntgabefiktion, posted on/after 1 Jan 2025): 4th calendar day after posting = 18.11 + 4 = Sun 22.11.2026. This is a Finanzamt, so if the 4th day is a Saturday, Sunday or public holiday, delivery moves to the next working day (§108 Abs.3 AO): next working day after Sun 22.11 is Mon 23.11.2026 → deemed delivered 23.11.2026. One-month Einspruchsfrist runs from delivery (§355 Abs.1 AO, §§187,188 BGB): one month after 23.11.2026 (same day-of-month next month) = 23.12.2026. 23 December 2026 is a Wednesday and not a public holiday in Saarland, so no further shift is needed.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Tax refund (Guthaben) transfer to taxpayer's account\",\"quote\":\"Das Guthaben von 665,00 € überweisen wir auf Ihr Konto DE14 5139 0000 0074 4022 18.\",\"computation\":\"The letter states the refund will be transferred but gives no specific calendar date or deadline for the transfer, so no exact due date can be computed from the text.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":665}],\"kind\":\"tax_assessment\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"040/882/51347\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Finanzamt Musterlouis\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        2906,
+        665
+      ],
+      "contract": null,
+      "document_date": "2026-11-18",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Objection deadline (Einspruch) against the 2025 income tax assessment",
+          "quote": "Die Einspruchsfrist beträgt einen Monat und rechnet ab der Bekanntgabe; ein Bescheid, der als Brief verschickt wird, ist am vierten Tag nach dem Absenden als bekannt gegeben anzusehen.",
+          "computation": "Letter dated (posted) Wed 18.11.2026. Deemed delivery (Bekanntgabefiktion, posted on/after 1 Jan 2025): 4th calendar day after posting = 18.11 + 4 = Sun 22.11.2026. This is a Finanzamt, so if the 4th day is a Saturday, Sunday or public holiday, delivery moves to the next working day (§108 Abs.3 AO): next working day after Sun 22.11 is Mon 23.11.2026 → deemed delivered 23.11.2026. One-month Einspruchsfrist runs from delivery (§355 Abs.1 AO, §§187,188 BGB): one month after 23.11.2026 (same day-of-month next month) = 23.12.2026. 23 December 2026 is a Wednesday and not a public holiday in Saarland, so no further shift is needed.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Tax refund (Guthaben) transfer to taxpayer's account",
+          "quote": "Das Guthaben von 665,00 € überweisen wir auf Ihr Konto DE14 5139 0000 0074 4022 18.",
+          "computation": "The letter states the refund will be transferred but gives no specific calendar date or deadline for the transfer, so no exact due date can be computed from the text.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 665
+        }
+      ],
+      "kind": "tax_assessment",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "040/882/51347"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Finanzamt Musterlouis",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3147,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2047,
+      "cost_usd": 0.040768,
+      "duration_ms": 31220,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

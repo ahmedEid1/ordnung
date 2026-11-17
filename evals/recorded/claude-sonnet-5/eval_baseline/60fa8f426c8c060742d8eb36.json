@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"07ee1aa7b05c5bd2c5240e10d4147695b02dee925c6212e8f17dd58faded1ea5\",\"mode\":\"text\",\"region\":\"BY\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-N1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bayern (BY), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag",
+    "recorded_at": "2026-11-24T09:53:14+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[120],\"contract\":null,\"document_date\":\"2026-11-18\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Klage (lawsuit) against building permit rejection\",\"quote\":\"Gegen diesen Bescheid können Sie binnen eines Monats nach seiner Bekanntgabe Klage beim Bayerischen Verwaltungsgericht Musterregensburg, Haidplatz 4, 93047 Musterregensburg erheben, schriftlich oder zur Niederschrift bei der Geschäftsstelle des Gerichts.\",\"computation\":\"Letter dated 18.11.2026 (Wednesday); no separate 'zur Post gegeben am' date is stated, so the posting day is taken as the letter date, 18.11.2026. Per Art. 41 Abs. 2 BayVwVfG (as restated on page 2) a letter sent by simple post counts as delivered on the 4th day after posting: 18.11.+4 calendar days = 22.11.2026 (Sunday). This is a general administrative authority (Landratsamt Bauamt), not a Finanzamt, so the delivery day does NOT shift even though it falls on a Sunday. The one-month Klage period under § 74 VwGO starts the day after delivery (§ 187 Abs. 1 BGB) and ends, per § 188 Abs. 2 BGB, on the day of the following month bearing the same number as the delivery day: 22.12.2026 (Tuesday). 22.12.2026 is a normal working day in Bayern (not Sat/Sun/holiday), so no further shift under § 57 Abs. 2 VwGO / § 222 Abs. 2 ZPO is needed. Final deadline: 22.12.2026.\",\"due_date\":\"2026-12-22\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"authority_letter\",\"references\":[{\"label\":\"Az.\",\"value\":\"B-2026-1406\"}],\"remedy_type\":\"klage\",\"sender_name\":\"Landratsamt Musterinn – Bauamt – Untere Bauaufsichtsbehörde\",\"warnings\":[\"The 4-day delivery assumption relies on the posting date being the same as the letterhead date (18.11.2026); the letter contains no explicit 'zur Post gegeben am' statement confirming this, so if actual mailing was later the Klage deadline would shift accordingly.\",\"The letter states a separate Kostenbescheid (fee notice) for the 120 € rejection fee will follow; no payment is due yet from this letter and no bank details in it should be used to pay anything without receiving that separate notice.\",\"The letter explicitly states no Widerspruch (opposition) procedure is available in this matter, only direct Klage (lawsuit) to the administrative court.\"]}",
+    "data": {
+      "amounts": [
+        120
+      ],
+      "contract": null,
+      "document_date": "2026-11-18",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Klage (lawsuit) against building permit rejection",
+          "quote": "Gegen diesen Bescheid können Sie binnen eines Monats nach seiner Bekanntgabe Klage beim Bayerischen Verwaltungsgericht Musterregensburg, Haidplatz 4, 93047 Musterregensburg erheben, schriftlich oder zur Niederschrift bei der Geschäftsstelle des Gerichts.",
+          "computation": "Letter dated 18.11.2026 (Wednesday); no separate 'zur Post gegeben am' date is stated, so the posting day is taken as the letter date, 18.11.2026. Per Art. 41 Abs. 2 BayVwVfG (as restated on page 2) a letter sent by simple post counts as delivered on the 4th day after posting: 18.11.+4 calendar days = 22.11.2026 (Sunday). This is a general administrative authority (Landratsamt Bauamt), not a Finanzamt, so the delivery day does NOT shift even though it falls on a Sunday. The one-month Klage period under § 74 VwGO starts the day after delivery (§ 187 Abs. 1 BGB) and ends, per § 188 Abs. 2 BGB, on the day of the following month bearing the same number as the delivery day: 22.12.2026 (Tuesday). 22.12.2026 is a normal working day in Bayern (not Sat/Sun/holiday), so no further shift under § 57 Abs. 2 VwGO / § 222 Abs. 2 ZPO is needed. Final deadline: 22.12.2026.",
+          "due_date": "2026-12-22",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "authority_letter",
+      "references": [
+        {
+          "label": "Az.",
+          "value": "B-2026-1406"
+        }
+      ],
+      "remedy_type": "klage",
+      "sender_name": "Landratsamt Musterinn – Bauamt – Untere Bauaufsichtsbehörde",
+      "warnings": [
+        "The 4-day delivery assumption relies on the posting date being the same as the letterhead date (18.11.2026); the letter contains no explicit 'zur Post gegeben am' statement confirming this, so if actual mailing was later the Klage deadline would shift accordingly.",
+        "The letter states a separate Kostenbescheid (fee notice) for the 120 € rejection fee will follow; no payment is due yet from this letter and no bank details in it should be used to pay anything without receiving that separate notice.",
+        "The letter explicitly states no Widerspruch (opposition) procedure is available in this matter, only direct Klage (lawsuit) to the administrative court."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2850,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2093,
+      "cost_usd": 0.037982,
+      "duration_ms": 29852,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

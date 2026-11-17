@@ -1,0 +1,65 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"930f6ce193f613a936856ae1ea8bc2a4a10abbff94995e2b33aa8b258da59a6c\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:25:44+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2026-11-18\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against rehab rejection\",\"quote\":\"Gegen den Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden, schriftlich oder zur Niederschrift bei der Rentenversicherung Musterhessen-Lahn, Rentenweg 8, 35394 Mustergießen.\",\"computation\":\"Letter states its own Bekanntgabefiktion: 'Der Bescheid gilt mit dem vierten Tag nach dem angegebenen Versandtag als bekannt gegeben.' Versandtag (Versandt am) = Samstag, 21.11.2026. Counting the fourth day after that: 22.11 (day1), 23.11 (day2), 24.11 (day3), 25.11 (day4, Wednesday) -> deemed Bekanntgabe (notice) = 25.11.2026; this is a normal business day so no further shift is needed for this step. The one-month Widerspruchsfrist is an event-based period (§187 Abs.1, §188 Abs.2 BGB): the day of notice itself (25.11.) is not counted, and the period ends one month later on the day bearing the same number, i.e. 25.12.2026. 25.12.2026 (Friday) is 1. Weihnachtstag, a statutory public holiday in NW; the following day 26.12.2026 (Saturday) is 2. Weihnachtstag, also a holiday and additionally a Saturday; 27.12.2026 is a Sunday. Under §193 BGB the period is extended to the next business day, which is Montag, 28.12.2026.\",\"due_date\":\"2026-12-28\",\"confidence\":\"medium\",\"amount\":null}],\"kind\":\"social_insurance\",\"references\":[{\"label\":\"Versicherungsnummer\",\"value\":\"53 120681 B 517\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Rentenversicherung Musterhessen-Lahn\",\"warnings\":[\"The letter's own Bekanntgabefiktion ('gilt mit dem vierten Tag nach dem angegebenen Versandtag als bekannt gegeben') differs from the standard statutory rule of §37 Abs. 2 SGB X, which normally sets the deemed-delivery day as the THIRD day after posting, not the fourth; please verify the actual date you received the letter, since that may set an earlier Widerspruchsfrist end date than calculated here.\",\"The letterhead itself labels the sender 'Gesetzliche Rentenversicherung (fiktiv)' and both the insurer's name ('Musterhessen-Lahn') and address ('Mustergießen') appear to be placeholder/fictional names, so this may be a sample/test document rather than a genuine authority letter — confirm the sender's real identity before acting on it.\",\"No amounts or payment demands appear in this letter; it is purely a rejection of a rehabilitation application with information on how to object.\"]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2026-11-18",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against rehab rejection",
+          "quote": "Gegen den Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden, schriftlich oder zur Niederschrift bei der Rentenversicherung Musterhessen-Lahn, Rentenweg 8, 35394 Mustergießen.",
+          "computation": "Letter states its own Bekanntgabefiktion: 'Der Bescheid gilt mit dem vierten Tag nach dem angegebenen Versandtag als bekannt gegeben.' Versandtag (Versandt am) = Samstag, 21.11.2026. Counting the fourth day after that: 22.11 (day1), 23.11 (day2), 24.11 (day3), 25.11 (day4, Wednesday) -> deemed Bekanntgabe (notice) = 25.11.2026; this is a normal business day so no further shift is needed for this step. The one-month Widerspruchsfrist is an event-based period (§187 Abs.1, §188 Abs.2 BGB): the day of notice itself (25.11.) is not counted, and the period ends one month later on the day bearing the same number, i.e. 25.12.2026. 25.12.2026 (Friday) is 1. Weihnachtstag, a statutory public holiday in NW; the following day 26.12.2026 (Saturday) is 2. Weihnachtstag, also a holiday and additionally a Saturday; 27.12.2026 is a Sunday. Under §193 BGB the period is extended to the next business day, which is Montag, 28.12.2026.",
+          "due_date": "2026-12-28",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "kind": "social_insurance",
+      "references": [
+        {
+          "label": "Versicherungsnummer",
+          "value": "53 120681 B 517"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Rentenversicherung Musterhessen-Lahn",
+      "warnings": [
+        "The letter's own Bekanntgabefiktion ('gilt mit dem vierten Tag nach dem angegebenen Versandtag als bekannt gegeben') differs from the standard statutory rule of §37 Abs. 2 SGB X, which normally sets the deemed-delivery day as the THIRD day after posting, not the fourth; please verify the actual date you received the letter, since that may set an earlier Widerspruchsfrist end date than calculated here.",
+        "The letterhead itself labels the sender 'Gesetzliche Rentenversicherung (fiktiv)' and both the insurer's name ('Musterhessen-Lahn') and address ('Mustergießen') appear to be placeholder/fictional names, so this may be a sample/test document rather than a genuine authority letter — confirm the sender's real identity before acting on it.",
+        "No amounts or payment demands appear in this letter; it is purely a rejection of a rehabilitation application with information on how to object."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6018,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1681,
+      "cost_usd": 0.06753239999999999,
+      "duration_ms": 62618,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

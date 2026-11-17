@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"4b2f82233e0eaecd17f6c14ad74b2d69b4352c380eb7209cc0e90773c9c685c8\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-conflicting_dates-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T08:54:13+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Kreis Musterlenne-Sauerland – Untere Immissionsschutzbehörde\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"70.3-IS-0442/26\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File lawsuit (Klage) against the order\",\"quote\":\"Innerhalb eines Monats nach Bekanntgabe kann gegen diesen Bescheid Klage beim Verwaltungsgericht Musterarnsberg, Jägerstraße 1, 59821 Musterarnsberg, erhoben werden.\",\"computation\":\"The Bescheid is dated 18.11.2026 and the covering letter is dated 19.11.2026 (Thursday); the letter gives no separate postmark date, so 19.11.2026 is taken as the day the notice was given to the postal service. Under § 41 Abs. 2 VwVfG NRW, a notice sent by ordinary mail is deemed delivered (Bekanntgabe) on the third day after posting: 19.11.2026 + 3 days = 22.11.2026, which is a Sunday. Since the third day falls on a Sunday, the deemed delivery shifts to the next business day (§ 31 Abs. 1 VwVfG i.V.m. § 193 BGB), i.e. Monday, 23.11.2026, which becomes the date of Bekanntgabe. The one-month Klagefrist is an Ereignisfrist (§ 187 Abs. 1 BGB): the day of Bekanntgabe itself is not counted, and per § 188 Abs. 2 BGB the one-month period ends on the day in the following month bearing the same calendar number as the day of Bekanntgabe, i.e. 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in NRW, so no further shift is needed.\",\"due_date\":\"2026-12-23\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The deemed delivery (Bekanntgabe) date was calculated assuming the postal dispatch date equals the letter's printed date (19.11.2026), as no separate postmark date is given; if the actual posting date differs, the Klagefrist end date would shift accordingly.\",\"The order itself (operating-hours restriction on the wood splitter) takes effect immediately upon notification and has no further calendar deadline beyond the lawsuit deadline, so it was not listed as a separate dated item.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Kreis Musterlenne-Sauerland – Untere Immissionsschutzbehörde",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "70.3-IS-0442/26"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File lawsuit (Klage) against the order",
+          "quote": "Innerhalb eines Monats nach Bekanntgabe kann gegen diesen Bescheid Klage beim Verwaltungsgericht Musterarnsberg, Jägerstraße 1, 59821 Musterarnsberg, erhoben werden.",
+          "computation": "The Bescheid is dated 18.11.2026 and the covering letter is dated 19.11.2026 (Thursday); the letter gives no separate postmark date, so 19.11.2026 is taken as the day the notice was given to the postal service. Under § 41 Abs. 2 VwVfG NRW, a notice sent by ordinary mail is deemed delivered (Bekanntgabe) on the third day after posting: 19.11.2026 + 3 days = 22.11.2026, which is a Sunday. Since the third day falls on a Sunday, the deemed delivery shifts to the next business day (§ 31 Abs. 1 VwVfG i.V.m. § 193 BGB), i.e. Monday, 23.11.2026, which becomes the date of Bekanntgabe. The one-month Klagefrist is an Ereignisfrist (§ 187 Abs. 1 BGB): the day of Bekanntgabe itself is not counted, and per § 188 Abs. 2 BGB the one-month period ends on the day in the following month bearing the same calendar number as the day of Bekanntgabe, i.e. 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in NRW, so no further shift is needed.",
+          "due_date": "2026-12-23",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The deemed delivery (Bekanntgabe) date was calculated assuming the postal dispatch date equals the letter's printed date (19.11.2026), as no separate postmark date is given; if the actual posting date differs, the Klagefrist end date would shift accordingly.",
+        "The order itself (operating-hours restriction on the wood splitter) takes effect immediately upon notification and has no further calendar deadline beyond the lawsuit deadline, so it was not listed as a separate dated item."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4897,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1582,
+      "cost_usd": 0.055926399999999994,
+      "duration_ms": 49369,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

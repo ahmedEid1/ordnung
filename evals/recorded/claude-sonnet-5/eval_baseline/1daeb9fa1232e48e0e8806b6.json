@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"a3ad77112795e52a4bd21aee3668d8701e0da567e7c0ecf42f0f27becb610266\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:21:18+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Familienkasse Beispielweser\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Kindergeldnummer\",\"value\":\"377FK104258\"}],\"amounts\":[259],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against cancellation of Kindergeld\",\"quote\":\"Gegen diesen Bescheid kann binnen eines Monats nach Bekanntgabe Einspruch bei der Familienkasse Beispielweser eingelegt werden, schriftlich, elektronisch oder zur Niederschrift.\",\"computation\":\"Letter states a separate posting date (Aufgabe zur Post) of Saturday 21.11.2026, so that date is the start of the delivery-fiction count. Kindergeld decisions of the Familienkasse follow the tax-office delivery rule (4th day after posting; if that day is a weekend/holiday it moves to the next working day). Counting from Sat 21.11.2026: +1=Sun 22.11, +2=Mon 23.11, +3=Tue 24.11, +4=Wed 25.11.2026 — a working day, so Bekanntgabe (deemed delivery) = Wed 25.11.2026. The one-month Einspruch period under §355 AO-style counting (§187 Abs.1 BGB: the delivery day itself is not counted) runs to the same day number one month later: 25.12.2026. That day is Christmas Day (nationwide holiday) and a Friday; the following day 26.12.2026 (2nd Christmas Day, also nationwide holiday) is a Saturday; 27.12.2026 is a Sunday; the period therefore ends on the next working day, Monday 28.12.2026.\",\"due_date\":\"2026-12-28\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Familienkasse Beispielweser",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Kindergeldnummer",
+          "value": "377FK104258"
+        }
+      ],
+      "amounts": [
+        259
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against cancellation of Kindergeld",
+          "quote": "Gegen diesen Bescheid kann binnen eines Monats nach Bekanntgabe Einspruch bei der Familienkasse Beispielweser eingelegt werden, schriftlich, elektronisch oder zur Niederschrift.",
+          "computation": "Letter states a separate posting date (Aufgabe zur Post) of Saturday 21.11.2026, so that date is the start of the delivery-fiction count. Kindergeld decisions of the Familienkasse follow the tax-office delivery rule (4th day after posting; if that day is a weekend/holiday it moves to the next working day). Counting from Sat 21.11.2026: +1=Sun 22.11, +2=Mon 23.11, +3=Tue 24.11, +4=Wed 25.11.2026 — a working day, so Bekanntgabe (deemed delivery) = Wed 25.11.2026. The one-month Einspruch period under §355 AO-style counting (§187 Abs.1 BGB: the delivery day itself is not counted) runs to the same day number one month later: 25.12.2026. That day is Christmas Day (nationwide holiday) and a Friday; the following day 26.12.2026 (2nd Christmas Day, also nationwide holiday) is a Saturday; 27.12.2026 is a Sunday; the period therefore ends on the next working day, Monday 28.12.2026.",
+          "due_date": "2026-12-28",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4134,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1672,
+      "cost_usd": 0.049137999999999994,
+      "duration_ms": 39625,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

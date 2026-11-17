@@ -1,0 +1,135 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"031acc7a3ca5b323e86da9dd41840f336ed67b2f4d9ccbffaef26c89f8e4ccf1\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-price_increase-N1"
+    ],
+    "prompt_head": "Today is 2026-11-24. The person lives in region NW (DE). Their name is (not given).\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n(none yet)\n\nThe document's text follows, page by page: a line `=== Page N ===` starts page N. Everything\nbetween the <untrusted_document> tags is data from the document, never in",
+    "recorded_at": "2026-11-24T09:57:34+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"area\":\"home\",\"case_title\":\"Price increase – Kabelnetz Beispielstadt (Internet \\\"Kabel 250\\\")\",\"kind\":\"price_increase\",\"language\":\"de\",\"document_date\":\"2026-11-18\",\"recipient_name\":\"Bastian Musterquell\",\"sender\":{\"name\":\"Kabelnetz Beispielstadt GmbH\",\"kind\":\"telecom\",\"address\":\"Verteilerstraße 3, 48151 Mustermünster\",\"phone\":\"0800 555 12 21\",\"email\":\"service@kabelnetz-beispielstadt.example\",\"website\":null,\"identifiers\":[]},\"summary\":\"Kabelnetz Beispielstadt GmbH informs Bastian Musterquell that the monthly price of his \\\"Kabel 250\\\" internet tariff rises from €34.99 to €37.99, effective 1 February 2027. Because the change is not only beneficial to him, he has a special right to cancel the contract free of charge within three months of receiving this letter.\",\"explanation\":\"Your internet provider is raising your monthly fee by €3.00. Because a price increase is not purely in your favour, German law gives you a special right to end the contract early, free of charge and without the usual notice period, if you do so within the stated period after receiving this letter — the app will show you until when. You don't have to do anything if you're happy to keep the contract at the new price; it will simply continue and the higher amount will be charged from the effective date shown. If you'd rather switch provider, you can use this window to cancel instead of waiting for the normal notice period.\",\"urgency\":\"normal\",\"tax_relevant\":false,\"tax_note\":null,\"high_stakes_kind\":null,\"title\":\"Price increase – internet tariff \\\"Kabel 250\\\"\",\"items\":[],\"key_facts\":[{\"label\":\"Price increase\",\"value\":\"3,00 €\",\"quote\":\"zum 01.02.2027 erhöhen wir den Preis Ihres Tarifs „Kabel 250“ um 3,00 € auf 37,99 € im Monat (bisher 34,99 €).\"},{\"label\":\"New monthly price\",\"value\":\"37,99 €\",\"quote\":\"zum 01.02.2027 erhöhen wir den Preis Ihres Tarifs „Kabel 250“ um 3,00 € auf 37,99 € im Monat (bisher 34,99 €).\"},{\"label\":\"Previous monthly price (bisher)\",\"value\":\"34,99 €\",\"quote\":\"zum 01.02.2027 erhöhen wir den Preis Ihres Tarifs „Kabel 250“ um 3,00 € auf 37,99 € im Monat (bisher 34,99 €).\"},{\"label\":\"Effective date\",\"value\":\"01.02.2027\",\"quote\":\"zum 01.02.2027 erhöhen wir den Preis Ihres Tarifs „Kabel 250“ um 3,00 € auf 37,99 € im Monat (bisher 34,99 €).\"},{\"label\":\"Special cancellation period\",\"value\":\"drei Monate nach Erhalt dieses Schreibens\",\"quote\":\"Sie dürfen den Vertrag deshalb innerhalb von drei Monaten nach Erhalt dieses Schreibens kostenlos und ohne Kündigungsfrist beenden, frühestens zum Wirksamwerden der Preisänderung.\"}],\"references\":[{\"label\":\"Kundennummer\",\"value\":\"KB-1 093 377\"}],\"payment\":null,\"remedy\":{\"type\":\"none\",\"addressee\":null,\"period_text\":null,\"form_text\":null,\"quote\":null},\"contract\":{\"name\":\"Kabel 250\",\"category\":\"internet\",\"customer_number\":\"KB-1 093 377\",\"cost_amount\":37.99,\"cost_interval\":\"monthly\",\"concluded_date\":null,\"start_date\":null,\"end_date\":null,\"initial_term_months\":null,\"renewal_term_months\":null,\"notice_statutory\":false,\"notice_basis\":null,\"notice_value\":null,\"notice_unit\":null,\"notice_day\":null,\"notice_before_end\":false,\"is_consumer\":true,\"is_basic_supply\":false,\"quotes\":[\"zum 01.02.2027 erhöhen wir den Preis Ihres Tarifs „Kabel 250“ um 3,00 € auf 37,99 € im Monat (bisher 34,99 €).\"]},\"change\":{\"type\":\"price_increase\",\"quote\":\"zum 01.02.2027 erhöhen wir den Preis Ihres Tarifs „Kabel 250“ um 3,00 € auf 37,99 € im Monat (bisher 34,99 €).\",\"effective_date\":\"2027-02-01\",\"old_amount\":34.99,\"new_amount\":37.99,\"cost_interval\":\"monthly\",\"unit_price_old\":null,\"unit_price_new\":null},\"warnings\":[]}",
+    "data": {
+      "area": "home",
+      "case_title": "Price increase – Kabelnetz Beispielstadt (Internet \"Kabel 250\")",
+      "kind": "price_increase",
+      "language": "de",
+      "document_date": "2026-11-18",
+      "recipient_name": "Bastian Musterquell",
+      "sender": {
+        "name": "Kabelnetz Beispielstadt GmbH",
+        "kind": "telecom",
+        "address": "Verteilerstraße 3, 48151 Mustermünster",
+        "phone": "0800 555 12 21",
+        "email": "service@kabelnetz-beispielstadt.example",
+        "website": null,
+        "identifiers": []
+      },
+      "summary": "Kabelnetz Beispielstadt GmbH informs Bastian Musterquell that the monthly price of his \"Kabel 250\" internet tariff rises from €34.99 to €37.99, effective 1 February 2027. Because the change is not only beneficial to him, he has a special right to cancel the contract free of charge within three months of receiving this letter.",
+      "explanation": "Your internet provider is raising your monthly fee by €3.00. Because a price increase is not purely in your favour, German law gives you a special right to end the contract early, free of charge and without the usual notice period, if you do so within the stated period after receiving this letter — the app will show you until when. You don't have to do anything if you're happy to keep the contract at the new price; it will simply continue and the higher amount will be charged from the effective date shown. If you'd rather switch provider, you can use this window to cancel instead of waiting for the normal notice period.",
+      "urgency": "normal",
+      "tax_relevant": false,
+      "tax_note": null,
+      "high_stakes_kind": null,
+      "title": "Price increase – internet tariff \"Kabel 250\"",
+      "items": [],
+      "key_facts": [
+        {
+          "label": "Price increase",
+          "value": "3,00 €",
+          "quote": "zum 01.02.2027 erhöhen wir den Preis Ihres Tarifs „Kabel 250“ um 3,00 € auf 37,99 € im Monat (bisher 34,99 €)."
+        },
+        {
+          "label": "New monthly price",
+          "value": "37,99 €",
+          "quote": "zum 01.02.2027 erhöhen wir den Preis Ihres Tarifs „Kabel 250“ um 3,00 € auf 37,99 € im Monat (bisher 34,99 €)."
+        },
+        {
+          "label": "Previous monthly price (bisher)",
+          "value": "34,99 €",
+          "quote": "zum 01.02.2027 erhöhen wir den Preis Ihres Tarifs „Kabel 250“ um 3,00 € auf 37,99 € im Monat (bisher 34,99 €)."
+        },
+        {
+          "label": "Effective date",
+          "value": "01.02.2027",
+          "quote": "zum 01.02.2027 erhöhen wir den Preis Ihres Tarifs „Kabel 250“ um 3,00 € auf 37,99 € im Monat (bisher 34,99 €)."
+        },
+        {
+          "label": "Special cancellation period",
+          "value": "drei Monate nach Erhalt dieses Schreibens",
+          "quote": "Sie dürfen den Vertrag deshalb innerhalb von drei Monaten nach Erhalt dieses Schreibens kostenlos und ohne Kündigungsfrist beenden, frühestens zum Wirksamwerden der Preisänderung."
+        }
+      ],
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "KB-1 093 377"
+        }
+      ],
+      "payment": null,
+      "remedy": {
+        "type": "none",
+        "addressee": null,
+        "period_text": null,
+        "form_text": null,
+        "quote": null
+      },
+      "contract": {
+        "name": "Kabel 250",
+        "category": "internet",
+        "customer_number": "KB-1 093 377",
+        "cost_amount": 37.99,
+        "cost_interval": "monthly",
+        "concluded_date": null,
+        "start_date": null,
+        "end_date": null,
+        "initial_term_months": null,
+        "renewal_term_months": null,
+        "notice_statutory": false,
+        "notice_basis": null,
+        "notice_value": null,
+        "notice_unit": null,
+        "notice_day": null,
+        "notice_before_end": false,
+        "is_consumer": true,
+        "is_basic_supply": false,
+        "quotes": [
+          "zum 01.02.2027 erhöhen wir den Preis Ihres Tarifs „Kabel 250“ um 3,00 € auf 37,99 € im Monat (bisher 34,99 €)."
+        ]
+      },
+      "change": {
+        "type": "price_increase",
+        "quote": "zum 01.02.2027 erhöhen wir den Preis Ihres Tarifs „Kabel 250“ um 3,00 € auf 37,99 € im Monat (bisher 34,99 €).",
+        "effective_date": "2027-02-01",
+        "old_amount": 34.99,
+        "new_amount": 37.99,
+        "cost_interval": "monthly",
+        "unit_price_old": null,
+        "unit_price_new": null
+      },
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 6708,
+      "cache_read_tokens": 19271,
+      "cache_creation_tokens": 6157,
+      "cost_usd": 0.0955702,
+      "duration_ms": 63277,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

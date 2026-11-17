@@ -1,0 +1,98 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"ff561927ce70e45fbcc1624830269a36720d609b35dc6455d146be3442675792\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-dunning_fixed-N1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:21:27+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Möbelhaus Beispielwohnen KG\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Auftrag\",\"value\":\"BW-26-30871\"},{\"label\":\"Kundennummer\",\"value\":\"K-881 204\"}],\"amounts\":[690,5,695],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding balance for dining furniture\",\"quote\":\"Wir bitten Sie dringend, den Gesamtbetrag bis Freitag, 11.12.2026 zu begleichen.\",\"computation\":\"The letter states a fixed calendar date for payment: Friday, 11.12.2026. This is a company (not an authority) letter, so no statutory deemed-delivery period applies; the date printed is taken as written. 2026-12-11 falls on a Friday as stated, confirmed not a public holiday in NW. Due date = 2026-12-11. To arrive by then via bank transfer, send by ca. 2026-12-10 allowing for processing time.\",\"due_date\":\"2026-12-11\",\"confidence\":\"high\",\"amount\":695}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is the second reminder (2. Mahnung); an earlier reminder from 04.11.2026 is referenced but not provided — check that the underlying invoice and delivery (15.10.2026) match your own records before paying.\",\"The letter threatens to hand the claim to a debt-collection agency (Inkassounternehmen) at the payer's additional cost if payment is not received by the deadline; this is a standard but pressuring tactic in dunning letters.\",\"The IBAN (DE67 3705 0198 0005 5770 00) is a validly formatted German IBAN for Musterbank AG, but a valid IBAN does not confirm the account belongs to the stated seller — compare it against the original order confirmation or invoice before paying, especially since this is a reminder letter.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Möbelhaus Beispielwohnen KG",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Auftrag",
+          "value": "BW-26-30871"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "K-881 204"
+        }
+      ],
+      "amounts": [
+        690,
+        5,
+        695
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding balance for dining furniture",
+          "quote": "Wir bitten Sie dringend, den Gesamtbetrag bis Freitag, 11.12.2026 zu begleichen.",
+          "computation": "The letter states a fixed calendar date for payment: Friday, 11.12.2026. This is a company (not an authority) letter, so no statutory deemed-delivery period applies; the date printed is taken as written. 2026-12-11 falls on a Friday as stated, confirmed not a public holiday in NW. Due date = 2026-12-11. To arrive by then via bank transfer, send by ca. 2026-12-10 allowing for processing time.",
+          "due_date": "2026-12-11",
+          "confidence": "high",
+          "amount": 695
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is the second reminder (2. Mahnung); an earlier reminder from 04.11.2026 is referenced but not provided — check that the underlying invoice and delivery (15.10.2026) match your own records before paying.",
+        "The letter threatens to hand the claim to a debt-collection agency (Inkassounternehmen) at the payer's additional cost if payment is not received by the deadline; this is a standard but pressuring tactic in dunning letters.",
+        "The IBAN (DE67 3705 0198 0005 5770 00) is a validly formatted German IBAN for Musterbank AG, but a valid IBAN does not confirm the account belongs to the stated seller — compare it against the original order confirmation or invoice before paying, especially since this is a reminder letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1493,
+      "cache_read_tokens": 14656,
+      "cache_creation_tokens": 3444,
+      "cost_usd": 0.0316452,
+      "duration_ms": 17034,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE67 3705 0198 0005 5770 00"
+        },
+        "result": "{\"iban\":\"DE67 3705 0198 0005 5770 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005577000\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "fixed",
+            "date": "2026-12-11",
+            "nature": "payment",
+            "shift_rule": "none",
+            "text": "Wir bitten Sie dringend, den Gesamtbetrag bis Freitag, 11.12.2026 zu begleichen."
+          },
+          "document_date": "2026-11-20",
+          "sender_kind": "company",
+          "sender_name": "Möbelhaus Beispielwohnen KG",
+          "region": "NW"
+        },
+        "result": "{\"due_date\":\"2026-12-11\",\"weekday\":\"Friday\",\"send_by\":\"2026-12-10\",\"summary\":\"The date given is Fri 11 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"The date given is Fri 11 Dec 2026\",\"date\":\"2026-12-11\",\"rule_id\":\"date_as_written\",\"citation\":\"The document's own wording\"},{\"label\":\"Send by Thu 10 Dec 2026 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2026-12-10\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"date_as_written\",\"title\":\"Dates stated in the letter\",\"citation\":\"The document's own wording\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-20\",\"holiday_calendar\":\"Germany (nationwide holidays only)\",\"holidays_from\":\"recipient_region: a payment to a company or person is made where the payer lives (§§ 269, 270 Abs. 4 BGB), so that Land's holidays apply\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

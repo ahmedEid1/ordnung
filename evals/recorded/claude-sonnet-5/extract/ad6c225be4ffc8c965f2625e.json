@@ -1,0 +1,174 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"af2e618e5f37069603539b8c909f9b4a4fec91492d689192a68b01e43c39b873\",\"language\":\"en\",\"pages\":[[1,\"text\"],[2,\"text\"]],\"region\":\"HB\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-tax_assessment-N1"
+    ],
+    "prompt_head": "Today is 2026-11-24. The person lives in region HB (DE). Their name is (not given).\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n(none yet)\n\nThe document's text follows, page by page: a line `=== Page N ===` starts page N. Everything\nbetween the <untrusted_document> tags is data from the document, never in",
+    "recorded_at": "2026-11-24T10:19:40+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"area\":\"tax\",\"case_title\":\"Income Tax Assessment 2025 – Finanzamt Musterhemelingen\",\"kind\":\"tax_assessment\",\"title\":\"Income Tax Assessment 2025\",\"language\":\"de\",\"document_date\":\"2026-11-19\",\"recipient_name\":\"Bente Beispielhusen\",\"sender\":{\"name\":\"Finanzamt Musterhemelingen\",\"kind\":\"tax_office\",\"address\":\"Weserwehr 18, 28309 Bremen\",\"email\":\"office@fa-musterhemelingen.bremen.example\",\"phone\":\"0421 555 77-10\",\"website\":null,\"identifiers\":[]},\"summary\":\"The Finanzamt Musterhemelingen assessed Bente Beispielhusen's income tax (Einkommensteuer) for 2025, setting it at €5,820.00 against €6,390.00 already withheld as wage tax, resulting in a credit (Guthaben) of €570.00 to be refunded to her account. The letter also explains the one-month objection (Einspruch) period.\",\"explanation\":\"This is your official tax assessment for 2025. The Finanzamt calculated that you overpaid tax, so you will receive a €570.00 refund to the account on file — no action is needed for that. If you disagree with any figure (e.g. the income, deductions or the note that your disability insurance (Berufsunfähigkeitsversicherung) contributions had no effect), you may file an objection (Einspruch) with the same tax office, in writing or electronically. The app will show the deadline for this. If you do nothing, the assessment becomes final and binding. For complex disagreements, consider consulting a tax advisor (Steuerberater).\",\"urgency\":\"high\",\"tax_relevant\":true,\"tax_note\":\"This is the final income tax assessment (Steuerbescheid) for 2025 itself; keep it for your records as proof of the tax year's outcome and in case you need to reference the figures (income, Werbungskosten, Sonderausgaben) later.\",\"high_stakes_kind\":null,\"remedy\":{\"type\":\"einspruch\",\"addressee\":\"Finanzamt Musterhemelingen\",\"period_text\":\"Die Einspruchsfrist beträgt einen Monat und rechnet ab der Bekanntgabe; ein Bescheid, der als Brief verschickt wird, ist am vierten Tag nach dem Absenden als bekannt gegeben anzusehen.\",\"form_text\":\"Er bedarf der Schriftform oder der elektronischen Übermittlung; Sie können ihn aber auch an Amtsstelle zur Niederschrift erklären.\",\"quote\":\"Dieser Bescheid kann mit dem Einspruch angefochten werden. Die Einspruchsfrist beträgt einen Monat und rechnet ab der Bekanntgabe; ein Bescheid, der als Brief verschickt wird, ist am vierten Tag nach dem Absenden als bekannt gegeben anzusehen.\"},\"payment\":null,\"contract\":null,\"change\":null,\"items\":[{\"kind\":\"payment\",\"title\":\"Receive income tax refund\",\"action\":\"No action needed; the Finanzamt will transfer the credit to the account on file automatically.\",\"consequence\":null,\"direction\":\"in\",\"amount\":570,\"currency\":\"EUR\",\"priority\":\"normal\",\"location\":null,\"date\":{\"type\":\"none\",\"nature\":\"payment\",\"text\":\"Das Guthaben von 570,00 € überweisen wir auf Ihr Konto\",\"delivery_rule\":\"none\",\"shift_rule\":\"none\"},\"quote\":\"Das Guthaben von 570,00 € überweisen wir auf Ihr Konto DE14 5139 0000 0074 4022 18.\",\"recurrence\":null},{\"kind\":\"deadline\",\"title\":\"Decide whether to file an objection (Einspruch)\",\"action\":\"Review the assessment and, if you disagree, file an objection (Einspruch) with Finanzamt Musterhemelingen in writing, electronically, or in person for the record, by the deadline the app shows.\",\"consequence\":\"If you miss the deadline, the assessment becomes final (bestandskräftig) and can generally no longer be challenged.\",\"priority\":\"high\",\"direction\":null,\"amount\":null,\"currency\":null,\"location\":null,\"date\":{\"type\":\"relative\",\"nature\":\"objection\",\"anchor\":\"deemed_delivery\",\"amount\":1,\"unit\":\"months\",\"delivery_rule\":\"de_admin_post\",\"shift_rule\":\"auto\",\"text\":\"Die Einspruchsfrist beträgt einen Monat und rechnet ab der Bekanntgabe\",\"legal_basis\":null},\"quote\":\"Die Einspruchsfrist beträgt einen Monat und rechnet ab der Bekanntgabe; ein Bescheid, der als Brief verschickt wird, ist am vierten Tag nach dem Absenden als bekannt gegeben anzusehen.\",\"recurrence\":null}],\"key_facts\":[{\"label\":\"Tax number (Steuernummer)\",\"value\":\"475/204/66190\",\"quote\":\"Steuernummer\\n475/204/66190\"},{\"label\":\"Income from employment (Einkünfte aus nichtselbständiger Arbeit)\",\"value\":\"46.315 Euro\",\"quote\":\"Einkünfte aus nichtselbständiger Arbeit   46.315\"},{\"label\":\"Work-related expenses (Werbungskosten)\",\"value\":\"– 2.074 Euro\",\"quote\":\"Werbungskosten   – 2.074\"},{\"label\":\"Special expenses (Sonderausgaben)\",\"value\":\"– 7.960 Euro\",\"quote\":\"Sonderausgaben   – 7.960\"},{\"label\":\"Taxable income (zu versteuerndes Einkommen)\",\"value\":\"36.281 Euro\",\"quote\":\"zu versteuerndes Einkommen (volle Euro)   36.281\"},{\"label\":\"Assessed income tax (festgesetzte Einkommensteuer)\",\"value\":\"5.820,00 Euro\",\"quote\":\"festgesetzte Einkommensteuer   5.820,00\"},{\"label\":\"Wage tax withheld (einbehaltene Lohnsteuer)\",\"value\":\"– 6.390,00 Euro\",\"quote\":\"abzüglich einbehaltene Lohnsteuer   – 6.390,00\"},{\"label\":\"Credit in your favour (Guthaben zu Ihren Gunsten)\",\"value\":\"570,00 Euro\",\"quote\":\"Guthaben zu Ihren Gunsten   570,00\"},{\"label\":\"Refund account IBAN\",\"value\":\"DE14 5139 0000 0074 4022 18\",\"quote\":\"Das Guthaben von 570,00 € überweisen wir auf Ihr Konto DE14 5139 0000 0074 4022 18.\"},{\"label\":\"Note on disability insurance contributions\",\"value\":\"No effect, as the ceiling for pension/insurance expenses is already used up by health and long-term care insurance\",\"quote\":\"Die Beiträge zu Ihrer Berufsunfähigkeitsversicherung wirken sich nicht aus, weil der Höchstbetrag für Vorsorgeaufwendungen bereits durch die Kranken- und Pflegeversicherung ausgeschöpft ist.\"}],\"references\":[{\"label\":\"Steuernummer\",\"value\":\"475/204/66190\"}],\"warnings\":[]}",
+    "data": {
+      "area": "tax",
+      "case_title": "Income Tax Assessment 2025 – Finanzamt Musterhemelingen",
+      "kind": "tax_assessment",
+      "title": "Income Tax Assessment 2025",
+      "language": "de",
+      "document_date": "2026-11-19",
+      "recipient_name": "Bente Beispielhusen",
+      "sender": {
+        "name": "Finanzamt Musterhemelingen",
+        "kind": "tax_office",
+        "address": "Weserwehr 18, 28309 Bremen",
+        "email": "office@fa-musterhemelingen.bremen.example",
+        "phone": "0421 555 77-10",
+        "website": null,
+        "identifiers": []
+      },
+      "summary": "The Finanzamt Musterhemelingen assessed Bente Beispielhusen's income tax (Einkommensteuer) for 2025, setting it at €5,820.00 against €6,390.00 already withheld as wage tax, resulting in a credit (Guthaben) of €570.00 to be refunded to her account. The letter also explains the one-month objection (Einspruch) period.",
+      "explanation": "This is your official tax assessment for 2025. The Finanzamt calculated that you overpaid tax, so you will receive a €570.00 refund to the account on file — no action is needed for that. If you disagree with any figure (e.g. the income, deductions or the note that your disability insurance (Berufsunfähigkeitsversicherung) contributions had no effect), you may file an objection (Einspruch) with the same tax office, in writing or electronically. The app will show the deadline for this. If you do nothing, the assessment becomes final and binding. For complex disagreements, consider consulting a tax advisor (Steuerberater).",
+      "urgency": "high",
+      "tax_relevant": true,
+      "tax_note": "This is the final income tax assessment (Steuerbescheid) for 2025 itself; keep it for your records as proof of the tax year's outcome and in case you need to reference the figures (income, Werbungskosten, Sonderausgaben) later.",
+      "high_stakes_kind": null,
+      "remedy": {
+        "type": "einspruch",
+        "addressee": "Finanzamt Musterhemelingen",
+        "period_text": "Die Einspruchsfrist beträgt einen Monat und rechnet ab der Bekanntgabe; ein Bescheid, der als Brief verschickt wird, ist am vierten Tag nach dem Absenden als bekannt gegeben anzusehen.",
+        "form_text": "Er bedarf der Schriftform oder der elektronischen Übermittlung; Sie können ihn aber auch an Amtsstelle zur Niederschrift erklären.",
+        "quote": "Dieser Bescheid kann mit dem Einspruch angefochten werden. Die Einspruchsfrist beträgt einen Monat und rechnet ab der Bekanntgabe; ein Bescheid, der als Brief verschickt wird, ist am vierten Tag nach dem Absenden als bekannt gegeben anzusehen."
+      },
+      "payment": null,
+      "contract": null,
+      "change": null,
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Receive income tax refund",
+          "action": "No action needed; the Finanzamt will transfer the credit to the account on file automatically.",
+          "consequence": null,
+          "direction": "in",
+          "amount": 570,
+          "currency": "EUR",
+          "priority": "normal",
+          "location": null,
+          "date": {
+            "type": "none",
+            "nature": "payment",
+            "text": "Das Guthaben von 570,00 € überweisen wir auf Ihr Konto",
+            "delivery_rule": "none",
+            "shift_rule": "none"
+          },
+          "quote": "Das Guthaben von 570,00 € überweisen wir auf Ihr Konto DE14 5139 0000 0074 4022 18.",
+          "recurrence": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Decide whether to file an objection (Einspruch)",
+          "action": "Review the assessment and, if you disagree, file an objection (Einspruch) with Finanzamt Musterhemelingen in writing, electronically, or in person for the record, by the deadline the app shows.",
+          "consequence": "If you miss the deadline, the assessment becomes final (bestandskräftig) and can generally no longer be challenged.",
+          "priority": "high",
+          "direction": null,
+          "amount": null,
+          "currency": null,
+          "location": null,
+          "date": {
+            "type": "relative",
+            "nature": "objection",
+            "anchor": "deemed_delivery",
+            "amount": 1,
+            "unit": "months",
+            "delivery_rule": "de_admin_post",
+            "shift_rule": "auto",
+            "text": "Die Einspruchsfrist beträgt einen Monat und rechnet ab der Bekanntgabe",
+            "legal_basis": null
+          },
+          "quote": "Die Einspruchsfrist beträgt einen Monat und rechnet ab der Bekanntgabe; ein Bescheid, der als Brief verschickt wird, ist am vierten Tag nach dem Absenden als bekannt gegeben anzusehen.",
+          "recurrence": null
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Tax number (Steuernummer)",
+          "value": "475/204/66190",
+          "quote": "Steuernummer\n475/204/66190"
+        },
+        {
+          "label": "Income from employment (Einkünfte aus nichtselbständiger Arbeit)",
+          "value": "46.315 Euro",
+          "quote": "Einkünfte aus nichtselbständiger Arbeit   46.315"
+        },
+        {
+          "label": "Work-related expenses (Werbungskosten)",
+          "value": "– 2.074 Euro",
+          "quote": "Werbungskosten   – 2.074"
+        },
+        {
+          "label": "Special expenses (Sonderausgaben)",
+          "value": "– 7.960 Euro",
+          "quote": "Sonderausgaben   – 7.960"
+        },
+        {
+          "label": "Taxable income (zu versteuerndes Einkommen)",
+          "value": "36.281 Euro",
+          "quote": "zu versteuerndes Einkommen (volle Euro)   36.281"
+        },
+        {
+          "label": "Assessed income tax (festgesetzte Einkommensteuer)",
+          "value": "5.820,00 Euro",
+          "quote": "festgesetzte Einkommensteuer   5.820,00"
+        },
+        {
+          "label": "Wage tax withheld (einbehaltene Lohnsteuer)",
+          "value": "– 6.390,00 Euro",
+          "quote": "abzüglich einbehaltene Lohnsteuer   – 6.390,00"
+        },
+        {
+          "label": "Credit in your favour (Guthaben zu Ihren Gunsten)",
+          "value": "570,00 Euro",
+          "quote": "Guthaben zu Ihren Gunsten   570,00"
+        },
+        {
+          "label": "Refund account IBAN",
+          "value": "DE14 5139 0000 0074 4022 18",
+          "quote": "Das Guthaben von 570,00 € überweisen wir auf Ihr Konto DE14 5139 0000 0074 4022 18."
+        },
+        {
+          "label": "Note on disability insurance contributions",
+          "value": "No effect, as the ceiling for pension/insurance expenses is already used up by health and long-term care insurance",
+          "quote": "Die Beiträge zu Ihrer Berufsunfähigkeitsversicherung wirken sich nicht aus, weil der Höchstbetrag für Vorsorgeaufwendungen bereits durch die Kranken- und Pflegeversicherung ausgeschöpft ist."
+        }
+      ],
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "475/204/66190"
+        }
+      ],
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 8331,
+      "cache_read_tokens": 19893,
+      "cache_creation_tokens": 7591,
+      "cost_usd": 0.11766059999999999,
+      "duration_ms": 71670,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

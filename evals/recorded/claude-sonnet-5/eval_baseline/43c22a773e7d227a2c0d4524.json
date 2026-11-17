@@ -1,0 +1,76 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"e86a870f0ec65f4c1e166f477509ae5ee5ba40d82337b2aca2633f35c8979315\",\"mode\":\"text\",\"region\":\"HB\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-tax_assessment-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bremen (HB), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag",
+    "recorded_at": "2026-11-24T10:15:25+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Beispiel-Vegesack\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"460/318/72214\"}],\"amounts\":[8036,1624],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the 2025 income tax assessment\",\"quote\":\"Wer diesen Bescheid für fehlerhaft hält, kann dagegen innerhalb eines Monats Einspruch erheben.\",\"computation\":\"Letter was posted ('Abgesandt am') on Friday 20.11.2026. Under §122 Abs. 2 Nr. 1 AO (current law), a letter sent by ordinary mail is deemed delivered on the third day after it was handed to the post, i.e. 20.11. + 3 days = 23.11.2026 (Monday, a working day, so no shift needed). Note: the letter itself claims the fiction is the 'vierte Tag' (fourth day), which is incorrect under current §122 AO and would wrongly extend the deadline; the legally correct third-day rule is applied here. The one-month Einspruchsfrist (§355 AO) then starts the day after deemed delivery (§108 AO / §187 Abs.1 BGB: 24.11.2026) and ends, per §188 Abs.2 BGB, on the day of the following month bearing the same number as the day of deemed delivery, i.e. 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in Bremen, so the deadline is not shifted.\",\"due_date\":\"2026-12-23\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay remaining income tax liability for 2025\",\"quote\":\"Die verbleibende Zahlung von 1.624,00 € ist am 28.12.2026 fällig.\",\"computation\":\"The letter states an explicit due date for the remaining payment: 28.12.2026 (a Monday, not a weekend day or public holiday in Bremen), so this calendar date is taken as given without further adjustment.\",\"due_date\":\"2026-12-28\",\"confidence\":\"high\",\"amount\":1624}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter claims the postal delivery fiction is the 'fourth day' after posting ('der vierte Tag nach dem Tag, an dem er zur Post gegeben wurde'), but current §122 Abs. 2 Nr. 1 AO specifies the THIRD day after posting; the Einspruch deadline above was computed using the legally correct third-day rule, which is one day earlier than the letter's own (incorrect) statement would suggest — double-check this with the Finanzamt or a tax advisor before relying on the later date.\",\"Late payment surcharges ('Säumniszuschläge') accrue for each month of delay past the due date per the letter's own warning ('Für jeden angefangenen Monat der Säumnis fallen Zuschläge an.'), so the 28.12.2026 payment date should not be missed.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Beispiel-Vegesack",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "460/318/72214"
+        }
+      ],
+      "amounts": [
+        8036,
+        1624
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the 2025 income tax assessment",
+          "quote": "Wer diesen Bescheid für fehlerhaft hält, kann dagegen innerhalb eines Monats Einspruch erheben.",
+          "computation": "Letter was posted ('Abgesandt am') on Friday 20.11.2026. Under §122 Abs. 2 Nr. 1 AO (current law), a letter sent by ordinary mail is deemed delivered on the third day after it was handed to the post, i.e. 20.11. + 3 days = 23.11.2026 (Monday, a working day, so no shift needed). Note: the letter itself claims the fiction is the 'vierte Tag' (fourth day), which is incorrect under current §122 AO and would wrongly extend the deadline; the legally correct third-day rule is applied here. The one-month Einspruchsfrist (§355 AO) then starts the day after deemed delivery (§108 AO / §187 Abs.1 BGB: 24.11.2026) and ends, per §188 Abs.2 BGB, on the day of the following month bearing the same number as the day of deemed delivery, i.e. 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in Bremen, so the deadline is not shifted.",
+          "due_date": "2026-12-23",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay remaining income tax liability for 2025",
+          "quote": "Die verbleibende Zahlung von 1.624,00 € ist am 28.12.2026 fällig.",
+          "computation": "The letter states an explicit due date for the remaining payment: 28.12.2026 (a Monday, not a weekend day or public holiday in Bremen), so this calendar date is taken as given without further adjustment.",
+          "due_date": "2026-12-28",
+          "confidence": "high",
+          "amount": 1624
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter claims the postal delivery fiction is the 'fourth day' after posting ('der vierte Tag nach dem Tag, an dem er zur Post gegeben wurde'), but current §122 Abs. 2 Nr. 1 AO specifies the THIRD day after posting; the Einspruch deadline above was computed using the legally correct third-day rule, which is one day earlier than the letter's own (incorrect) statement would suggest — double-check this with the Finanzamt or a tax advisor before relying on the later date.",
+        "Late payment surcharges ('Säumniszuschläge') accrue for each month of delay past the due date per the letter's own warning ('Für jeden angefangenen Monat der Säumnis fallen Zuschläge an.'), so the 28.12.2026 payment date should not be missed."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3589,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2285,
+      "cost_usd": 0.0456584,
+      "duration_ms": 36624,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"b7d5c5302044f26e529ebe9352be1d9ad70c552f0832c40aa9084d2b65e8939a\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-scam-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:07:27+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Kanzlei Dr. Beispielmann & Coll. Medienrecht\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Unser Zeichen\",\"value\":\"BM-UR 26/90812\"}],\"amounts\":[900,280,1180],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay settlement amount to avoid lawsuit\",\"quote\":\"Überweisen Sie den Vergleichsbetrag bis zum 01.12.2026 auf das Konto IBAN DE88 3704 0044 0532 0881 00, Kontoinhaber M. Beispielmann.\",\"computation\":\"The letter states a fixed calendar date for the transfer: 'bis zum 01.12.2026'. This is a specific calendar date, not a period to be counted from delivery, so no delivery-fiction or BGB §187/188 counting rules apply. 2026-12-01 is a Tuesday and not a public holiday in NRW, so the date stands as printed and is the last day the payment must be made (received).\",\"due_date\":\"2026-12-01\",\"confidence\":\"high\",\"amount\":1180}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a private law-firm settlement demand (Abmahnung), not an administrative or court decision, so there is no statutory Rechtsbehelfsbelehrung and no court has confirmed any wrongdoing; the underlying claim of copyright infringement is not legally established just because this letter says so.\",\"The payment account holder is named as the individual lawyer 'M. Beispielmann' rather than the law firm itself, which is unusual for a firm settlement payment and should be verified directly with the firm by phone before transferring money.\",\"The letter states that no Unterlassungserklärung (cease-and-desist declaration) is required if payment is made, which is atypical for a genuine copyright Abmahnung (normally both an injunction declaration and payment are demanded); this, combined with the strong time pressure ('letzte außergerichtliche Gelegenheit'), is worth independently checking with a lawyer or a consumer advice centre (Verbraucherzentrale) before paying anything.\",\"Do not rely solely on the letter's own account details or instructions; independently verify the law firm's identity, the case reference, and the claim's legitimacy before making any payment.\"]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Kanzlei Dr. Beispielmann & Coll. Medienrecht",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Unser Zeichen",
+          "value": "BM-UR 26/90812"
+        }
+      ],
+      "amounts": [
+        900,
+        280,
+        1180
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay settlement amount to avoid lawsuit",
+          "quote": "Überweisen Sie den Vergleichsbetrag bis zum 01.12.2026 auf das Konto IBAN DE88 3704 0044 0532 0881 00, Kontoinhaber M. Beispielmann.",
+          "computation": "The letter states a fixed calendar date for the transfer: 'bis zum 01.12.2026'. This is a specific calendar date, not a period to be counted from delivery, so no delivery-fiction or BGB §187/188 counting rules apply. 2026-12-01 is a Tuesday and not a public holiday in NRW, so the date stands as printed and is the last day the payment must be made (received).",
+          "due_date": "2026-12-01",
+          "confidence": "high",
+          "amount": 1180
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a private law-firm settlement demand (Abmahnung), not an administrative or court decision, so there is no statutory Rechtsbehelfsbelehrung and no court has confirmed any wrongdoing; the underlying claim of copyright infringement is not legally established just because this letter says so.",
+        "The payment account holder is named as the individual lawyer 'M. Beispielmann' rather than the law firm itself, which is unusual for a firm settlement payment and should be verified directly with the firm by phone before transferring money.",
+        "The letter states that no Unterlassungserklärung (cease-and-desist declaration) is required if payment is made, which is atypical for a genuine copyright Abmahnung (normally both an injunction declaration and payment are demanded); this, combined with the strong time pressure ('letzte außergerichtliche Gelegenheit'), is worth independently checking with a lawyer or a consumer advice centre (Verbraucherzentrale) before paying anything.",
+        "Do not rely solely on the letter's own account details or instructions; independently verify the law firm's identity, the case reference, and the claim's legitimacy before making any payment."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2611,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1565,
+      "cost_usd": 0.032998400000000004,
+      "duration_ms": 27763,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

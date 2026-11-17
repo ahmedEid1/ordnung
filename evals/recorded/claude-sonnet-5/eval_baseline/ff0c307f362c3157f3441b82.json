@@ -1,0 +1,82 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"e4d5ac76ba75f48a93a5c92f670ae740408a21c255d1bfd1aea0a6a69a83b003\",\"mode\":\"text\",\"region\":\"BB\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-fine_bussgeld-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Brandenburg (BB), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document",
+    "recorded_at": "2026-11-24T09:30:14+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[150,28.5,3.5,182],\"contract\":null,\"document_date\":\"2026-11-19\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the fine notice\",\"quote\":\"Die Frist von zwei Wochen beginnt mit dem Tag der Zustellung.\",\"computation\":\"The copy of the Zustellungsurkunde (formal delivery envelope) on page 2 shows 'zugestellt am 21.11.2026' (a Saturday). For a formally delivered fine notice the date written on the delivery certificate is the delivery day itself - no days are added for postal transit. Under §187 Abs.1 BGB the day of delivery (21.11.2026) is not counted; the two-week Einspruch period of §67 OWiG/§43 StPO then ends two weeks later on the same weekday, i.e. Saturday 05.12.2026. Since that would fall on a Saturday, §43 Abs.2 StPO/§222 Abs.2 ZPO moves the end of the period to the next working day, Monday 07.12.2026 (no Brandenburg public holiday intervenes).\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine amount (Gesamtbetrag)\",\"quote\":\"Der Gesamtbetrag ist zwei Wochen nach Eintritt der Rechtskraft zu zahlen.\",\"computation\":\"The fine becomes final (Rechtskraft) if no Einspruch is filed within the objection period, which ends 07.12.2026 (see Einspruch item). Rechtskraft therefore enters on the following day, 08.12.2026. The letter states payment is due 'zwei Wochen nach Eintritt der Rechtskraft'; counting under §187 Abs.1 BGB the starting day (08.12.2026) is not counted, so the two-week period ends on the same weekday two weeks later, Tuesday 22.12.2026, which is a normal working day in Brandenburg (no adjustment needed).\",\"due_date\":\"2026-12-22\",\"confidence\":\"medium\",\"amount\":182}],\"kind\":\"fine\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"BS-2026-772415.3\"},{\"label\":\"Kennzeichen\",\"value\":\"LOS-RM 66\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Zentraldienst der Polizei Muster-Brandenburg\",\"warnings\":[\"The Einspruch deadline and the resulting Rechtskraft/payment deadline both depend on the exact formal-delivery date shown on the envelope copy (21.11.2026); if the actual delivery date differs, both computed dates shift accordingly.\",\"The payment deadline assumes no Einspruch is filed within the two-week period; if an Einspruch is lodged, the payment obligation is suspended pending the outcome of the proceedings.\"]}",
+    "data": {
+      "amounts": [
+        150,
+        28.5,
+        3.5,
+        182
+      ],
+      "contract": null,
+      "document_date": "2026-11-19",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the fine notice",
+          "quote": "Die Frist von zwei Wochen beginnt mit dem Tag der Zustellung.",
+          "computation": "The copy of the Zustellungsurkunde (formal delivery envelope) on page 2 shows 'zugestellt am 21.11.2026' (a Saturday). For a formally delivered fine notice the date written on the delivery certificate is the delivery day itself - no days are added for postal transit. Under §187 Abs.1 BGB the day of delivery (21.11.2026) is not counted; the two-week Einspruch period of §67 OWiG/§43 StPO then ends two weeks later on the same weekday, i.e. Saturday 05.12.2026. Since that would fall on a Saturday, §43 Abs.2 StPO/§222 Abs.2 ZPO moves the end of the period to the next working day, Monday 07.12.2026 (no Brandenburg public holiday intervenes).",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine amount (Gesamtbetrag)",
+          "quote": "Der Gesamtbetrag ist zwei Wochen nach Eintritt der Rechtskraft zu zahlen.",
+          "computation": "The fine becomes final (Rechtskraft) if no Einspruch is filed within the objection period, which ends 07.12.2026 (see Einspruch item). Rechtskraft therefore enters on the following day, 08.12.2026. The letter states payment is due 'zwei Wochen nach Eintritt der Rechtskraft'; counting under §187 Abs.1 BGB the starting day (08.12.2026) is not counted, so the two-week period ends on the same weekday two weeks later, Tuesday 22.12.2026, which is a normal working day in Brandenburg (no adjustment needed).",
+          "due_date": "2026-12-22",
+          "confidence": "medium",
+          "amount": 182
+        }
+      ],
+      "kind": "fine",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "BS-2026-772415.3"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "LOS-RM 66"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Zentraldienst der Polizei Muster-Brandenburg",
+      "warnings": [
+        "The Einspruch deadline and the resulting Rechtskraft/payment deadline both depend on the exact formal-delivery date shown on the envelope copy (21.11.2026); if the actual delivery date differs, both computed dates shift accordingly.",
+        "The payment deadline assumes no Einspruch is filed within the two-week period; if an Einspruch is lodged, the payment obligation is suspended pending the outcome of the proceedings."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3856,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2165,
+      "cost_usd": 0.04833,
+      "duration_ms": 36342,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"a0242deba88b6d40bffe710da2ce83e160e8d72275b918ad5c67bb6a9ca6cca8\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-conflicting_dates-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T08:52:51+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Autowerkstatt Beispielkolben\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Auftrag\",\"value\":\"AK-26-3318\"},{\"label\":\"Kennzeichen\",\"value\":\"MS-JB 2604\"}],\"amounts\":[642.3],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay invoice for inspection and brakes\",\"quote\":\"Bitte holen Sie es ab und bezahlen Sie die Rechnung bis 07.12.2026.\",\"computation\":\"The letter gives two different payment deadlines: 'bezahlen Sie die Rechnung bis 07.12.2026' in the body text, and a separate 'Zahlungsziel 10.12.2026' near the bank details. These dates contradict each other. Per the rule to use the earliest plausible date when a letter contradicts itself, I take 07.12.2026 as the due date, and lower confidence accordingly. 07.12.2026 is a Monday, so no weekend/holiday adjustment is needed.\",\"due_date\":\"2026-12-07\",\"confidence\":\"medium\",\"amount\":642.3}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter states two different payment deadlines for the same invoice ('bis 07.12.2026' in the main text vs. 'Zahlungsziel 10.12.2026' near the bank details); the earlier date was used to be safe, but the sender should be asked to clarify which deadline applies.\",\"Please double-check the IBAN and bank details (Musterbank AG, DE35 3705 0198 0005 5884 40) against previous invoices or by calling the garage directly before paying, as a precaution against invoice/payment fraud.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Autowerkstatt Beispielkolben",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Auftrag",
+          "value": "AK-26-3318"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "MS-JB 2604"
+        }
+      ],
+      "amounts": [
+        642.3
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay invoice for inspection and brakes",
+          "quote": "Bitte holen Sie es ab und bezahlen Sie die Rechnung bis 07.12.2026.",
+          "computation": "The letter gives two different payment deadlines: 'bezahlen Sie die Rechnung bis 07.12.2026' in the body text, and a separate 'Zahlungsziel 10.12.2026' near the bank details. These dates contradict each other. Per the rule to use the earliest plausible date when a letter contradicts itself, I take 07.12.2026 as the due date, and lower confidence accordingly. 07.12.2026 is a Monday, so no weekend/holiday adjustment is needed.",
+          "due_date": "2026-12-07",
+          "confidence": "medium",
+          "amount": 642.3
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter states two different payment deadlines for the same invoice ('bis 07.12.2026' in the main text vs. 'Zahlungsziel 10.12.2026' near the bank details); the earlier date was used to be safe, but the sender should be asked to clarify which deadline applies.",
+        "Please double-check the IBAN and bank details (Musterbank AG, DE35 3705 0198 0005 5884 40) against previous invoices or by calling the garage directly before paying, as a precaution against invoice/payment fraud."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1842,
+      "cache_read_tokens": 7685,
+      "cache_creation_tokens": 2603,
+      "cost_usd": 0.030376999999999998,
+      "duration_ms": 19653,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

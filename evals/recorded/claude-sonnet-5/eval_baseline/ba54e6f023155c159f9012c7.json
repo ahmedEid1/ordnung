@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"0d4675a8e6fc90a527d5fe1518e82717f1085e99f869f476c9cbb30810ffac16\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:22:49+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Hub Beispielhafen Coworking GmbH\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Invoice no.\",\"value\":\"HUB-2611-044\"}],\"amounts\":[297.5],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay flex desk invoice for December 2026\",\"quote\":\"Please settle this invoice within 14 days of the invoice date.\",\"computation\":\"Start of period: invoice date 21 Nov 2026 (a Saturday). Under §187 Abs. 1 BGB the day of the triggering event is not counted, so the 14-day period begins 22 Nov 2026 and runs 14 days, ending 5 Dec 2026 (21 Nov + 14 days = 5 Dec, same weekday as 21 Nov, i.e. Saturday). This is a payment owed to a company, so the payer's own Land (NW) governs the §193 BGB weekend/holiday extension. 5 Dec 2026 is a Saturday, which is covered by §193 BGB (Sonnabend), so the deadline moves to the next working day. 6 Dec 2026 is a Sunday, so the next working day is Monday 7 Dec 2026. No NW public holiday falls in this window.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":297.5}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Hub Beispielhafen Coworking GmbH",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Invoice no.",
+          "value": "HUB-2611-044"
+        }
+      ],
+      "amounts": [
+        297.5
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay flex desk invoice for December 2026",
+          "quote": "Please settle this invoice within 14 days of the invoice date.",
+          "computation": "Start of period: invoice date 21 Nov 2026 (a Saturday). Under §187 Abs. 1 BGB the day of the triggering event is not counted, so the 14-day period begins 22 Nov 2026 and runs 14 days, ending 5 Dec 2026 (21 Nov + 14 days = 5 Dec, same weekday as 21 Nov, i.e. Saturday). This is a payment owed to a company, so the payer's own Land (NW) governs the §193 BGB weekend/holiday extension. 5 Dec 2026 is a Saturday, which is covered by §193 BGB (Sonnabend), so the deadline moves to the next working day. 6 Dec 2026 is a Sunday, so the next working day is Monday 7 Dec 2026. No NW public holiday falls in this window.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": 297.5
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 2638,
+      "cache_read_tokens": 20574,
+      "cache_creation_tokens": 3424,
+      "cost_usd": 0.0442028,
+      "duration_ms": 27860,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

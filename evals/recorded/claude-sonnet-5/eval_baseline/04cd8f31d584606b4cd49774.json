@@ -1,0 +1,75 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"ef50ddf252e0db797e0c4ba49c42f54f496057b7a9cd103401d82db819fd48d4\",\"mode\":\"text\",\"region\":\"SL\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-tax_assessment-N2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Saarland (SL), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> t",
+    "recorded_at": "2026-11-24T10:20:29+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterlouis\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"040/882/51347\"}],\"amounts\":[2906,665],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the 2025 income tax assessment\",\"quote\":\"Die Einspruchsfrist beträgt einen Monat und rechnet ab der Bekanntgabe; ein Bescheid, der als Brief verschickt wird, ist am vierten Tag nach dem Absenden als bekannt gegeben anzusehen.\",\"computation\":\"Letter dated and presumably posted on 18.11.2026 (Wednesday). Under the current §122 Abs. 2 AO rule (four-day postal delivery fiction), notional delivery (Bekanntgabe) falls on the 4th day after posting = 22.11.2026 (Sunday). Since that day is a Sunday, the fiction moves to the next business day: 23.11.2026 (Monday) is the deemed date of Bekanntgabe. The one-month Einspruchsfrist is an Ereignisfrist (§108 Abs.1 AO i.V.m. §187 Abs.1 BGB): the day of the event (23.11.2026) is not counted, and per §188 Abs.2 BGB the period ends on the day of the following month that numerically corresponds to the day of the triggering event, i.e. 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in Saarland, so no further shift is needed.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Receive tax refund (Guthaben) by bank transfer\",\"quote\":\"Das Guthaben von 665,00 € überweisen wir auf Ihr Konto DE14 5139 0000 0074 4022 18.\",\"computation\":\"The letter states the refund will be transferred to the taxpayer's account but gives no specific calendar date or deadline for the transfer, so an exact due date cannot be determined from the text.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":665}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"No specific date is given for the actual bank transfer of the 665,00 € refund; only the account it will be sent to is stated.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterlouis",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "040/882/51347"
+        }
+      ],
+      "amounts": [
+        2906,
+        665
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the 2025 income tax assessment",
+          "quote": "Die Einspruchsfrist beträgt einen Monat und rechnet ab der Bekanntgabe; ein Bescheid, der als Brief verschickt wird, ist am vierten Tag nach dem Absenden als bekannt gegeben anzusehen.",
+          "computation": "Letter dated and presumably posted on 18.11.2026 (Wednesday). Under the current §122 Abs. 2 AO rule (four-day postal delivery fiction), notional delivery (Bekanntgabe) falls on the 4th day after posting = 22.11.2026 (Sunday). Since that day is a Sunday, the fiction moves to the next business day: 23.11.2026 (Monday) is the deemed date of Bekanntgabe. The one-month Einspruchsfrist is an Ereignisfrist (§108 Abs.1 AO i.V.m. §187 Abs.1 BGB): the day of the event (23.11.2026) is not counted, and per §188 Abs.2 BGB the period ends on the day of the following month that numerically corresponds to the day of the triggering event, i.e. 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in Saarland, so no further shift is needed.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Receive tax refund (Guthaben) by bank transfer",
+          "quote": "Das Guthaben von 665,00 € überweisen wir auf Ihr Konto DE14 5139 0000 0074 4022 18.",
+          "computation": "The letter states the refund will be transferred to the taxpayer's account but gives no specific calendar date or deadline for the transfer, so an exact due date cannot be determined from the text.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 665
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "No specific date is given for the actual bank transfer of the 665,00 € refund; only the account it will be sent to is stated."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 5218,
+      "cache_read_tokens": 8290,
+      "cache_creation_tokens": 6142,
+      "cost_usd": 0.078414,
+      "duration_ms": 52834,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

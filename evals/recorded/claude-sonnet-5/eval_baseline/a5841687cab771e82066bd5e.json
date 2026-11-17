@@ -1,0 +1,79 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"d4a8ea5452839d0249eaf735cc37f00fff6dc7398abe7a25456b163f6ac741b9\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-price_increase-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:56:47+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Erdgas Beispieltal GmbH\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"EB-552 0814\"},{\"label\":\"Zählpunkt\",\"value\":\"DE000555 0018 77 41\"}],\"amounts\":[9.84,11.12,104,118],\"items\":[{\"kind\":\"deadline\",\"title\":\"Special right to cancel gas contract before price increase\",\"quote\":\"Damit die Kündigung wirkt, muss sie bei uns vor dem Inkrafttreten der neuen Preise eingehen.\",\"computation\":\"The new prices take effect on 01.01.2027 (as stated: 'Ihre Gaspreise ab 01.01.2027' and 'Sie haben das Recht, den Vertrag ohne Einhaltung einer Frist zum 01.01.2027 zu kündigen'). The cancellation must reach the supplier before that date takes effect, i.e. by the last day before 2027-01-01, which is 2026-12-31. Checked 2026-12-31: a Thursday, not a Sunday or a NW public holiday (holiday list for NW 2026 confirms no holiday on that date), so no weekend/holiday shift applies.\",\"due_date\":\"2026-12-31\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Erdgas Beispieltal GmbH",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "EB-552 0814"
+        },
+        {
+          "label": "Zählpunkt",
+          "value": "DE000555 0018 77 41"
+        }
+      ],
+      "amounts": [
+        9.84,
+        11.12,
+        104,
+        118
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Special right to cancel gas contract before price increase",
+          "quote": "Damit die Kündigung wirkt, muss sie bei uns vor dem Inkrafttreten der neuen Preise eingehen.",
+          "computation": "The new prices take effect on 01.01.2027 (as stated: 'Ihre Gaspreise ab 01.01.2027' and 'Sie haben das Recht, den Vertrag ohne Einhaltung einer Frist zum 01.01.2027 zu kündigen'). The cancellation must reach the supplier before that date takes effect, i.e. by the last day before 2027-01-01, which is 2026-12-31. Checked 2026-12-31: a Thursday, not a Sunday or a NW public holiday (holiday list for NW 2026 confirms no holiday on that date), so no weekend/holiday shift applies.",
+          "due_date": "2026-12-31",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1581,
+      "cache_read_tokens": 14631,
+      "cache_creation_tokens": 2952,
+      "cost_usd": 0.030552199999999998,
+      "duration_ms": 25264,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__german_holidays",
+        "input": {
+          "year": 2026,
+          "region": "NW"
+        },
+        "result": "{\"year\":2026,\"region\":\"NW\",\"calendar\":\"Nordrhein-Westfalen\",\"holidays\":[{\"date\":\"2026-01-01\",\"weekday\":\"Thursday\",\"name\":\"Neujahr\",\"nationwide\":true},{\"date\":\"2026-04-03\",\"weekday\":\"Friday\",\"name\":\"Karfreitag\",\"nationwide\":true},{\"date\":\"2026-04-06\",\"weekday\":\"Monday\",\"name\":\"Ostermontag\",\"nationwide\":true},{\"date\":\"2026-05-01\",\"weekday\":\"Friday\",\"name\":\"Erster Mai\",\"nationwide\":true},{\"date\":\"2026-05-14\",\"weekday\":\"Thursday\",\"name\":\"Christi Himmelfahrt\",\"nationwide\":true},{\"date\":\"2026-05-25\",\"weekday\":\"Monday\",\"name\":\"Pfingstmontag\",\"nationwide\":true},{\"date\":\"2026-06-04\",\"weekday\":\"Thursday\",\"name\":\"Fronleichnam\",\"nationwide\":false},{\"date\":\"2026-10-03\",\"weekday\":\"Saturday\",\"name\":\"Tag der Deutschen Einheit\",\"nationwide\":true},{\"date\":\"2026-11-01\",\"weekday\":\"Sunday\",\"name\":\"Allerheiligen\",\"nationwide\":false},{\"date\":\"2026-12-25\",\"weekday\":\"Friday\",\"name\":\"Erster Weihnachtstag\",\"nationwide\":true},{\"date\":\"2026-12-26\",\"weekday\":\"Saturday\",\"name\":\"Zweiter Weihnachtstag\",\"nationwide\":true}],\"disclaimer\":\"Information, not legal advice: the public holidays in Ordnung's calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer.\"}"
+      }
+    ]
+  }
+}

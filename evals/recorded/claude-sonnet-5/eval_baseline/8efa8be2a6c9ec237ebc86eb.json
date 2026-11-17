@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"cc2bb582e8051f707cffb5cf22ad13a3a5410f2aea3515671b13553641d00097\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:25:21+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[142.8],\"contract\":null,\"kind\":\"invoice\",\"sender_name\":\"Beispielwort Translations\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Invoice number\",\"value\":\"BT-26-4407\"}],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay translation invoice\",\"quote\":\"Kindly transfer the total within 21 days of the date of this invoice, quoting the invoice\\nnumber.\",\"computation\":\"Invoice date is 21 November 2026. This is a private commercial invoice, so §§ 187, 193 BGB apply. Under §187(1) BGB, since the period runs 'within 21 days of' the stated date, that day itself is not counted; the period starts the next day, 22 November 2026. Counting 21 days from 22 November 2026: 22-30 Nov = 9 days, leaving 12 more days in December, landing on 12 December 2026 as day 21. 12 December 2026 is a Saturday. Under §193 BGB, when the last day of a period is a Saturday, Sunday or public holiday, the period ends on the next business day. The next day, 13 December 2026, is a Sunday, so the deadline moves to Monday, 14 December 2026 (no NW public holiday falls in between).\",\"due_date\":\"2026-12-14\",\"confidence\":\"high\",\"amount\":142.8}],\"remedy_type\":\"none\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        142.8
+      ],
+      "contract": null,
+      "kind": "invoice",
+      "sender_name": "Beispielwort Translations",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Invoice number",
+          "value": "BT-26-4407"
+        }
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay translation invoice",
+          "quote": "Kindly transfer the total within 21 days of the date of this invoice, quoting the invoice\nnumber.",
+          "computation": "Invoice date is 21 November 2026. This is a private commercial invoice, so §§ 187, 193 BGB apply. Under §187(1) BGB, since the period runs 'within 21 days of' the stated date, that day itself is not counted; the period starts the next day, 22 November 2026. Counting 21 days from 22 November 2026: 22-30 Nov = 9 days, leaving 12 more days in December, landing on 12 December 2026 as day 21. 12 December 2026 is a Saturday. Under §193 BGB, when the last day of a period is a Saturday, Sunday or public holiday, the period ends on the next business day. The next day, 13 December 2026, is a Sunday, so the deadline moves to Monday, 14 December 2026 (no NW public holiday falls in between).",
+          "due_date": "2026-12-14",
+          "confidence": "high",
+          "amount": 142.8
+        }
+      ],
+      "remedy_type": "none",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1793,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1316,
+      "cost_usd": 0.0238224,
+      "duration_ms": 17404,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

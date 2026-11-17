@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"c5b7546dc4169ef933bc8da745f7752df908754f2c264892affe10f5e305b072\",\"mode\":\"text\",\"region\":\"RP\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-social_decision-N2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Rheinland-Pfalz (RP), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docu",
+    "recorded_at": "2026-11-24T10:13:00+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[412.64,768.36],\"contract\":null,\"document_date\":\"2026-11-20\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against Grundsicherung decision\",\"quote\":\"Die Frist dafür beträgt einen Monat ab Bekanntgabe; der Widerspruch ist schriftlich oder zur Niederschrift bei Kreisverwaltung Beispiel-Westerwald, Peter-Altmeier-Platz 2, 56410 Musterbaur einzulegen.\",\"computation\":\"The actual statutory rule under §37 Abs.2 SGB X is that a letter sent by ordinary mail is deemed notified ('bekanntgegeben') on the THIRD day after posting (the letter itself misstates this as the fourth day, see warnings). Letter is dated/posted 20.11.2026 (Friday). Counting the third day after posting: day 1 = 21.11.2026 (Sat), day 2 = 22.11.2026 (Sun), day 3 = 23.11.2026 (Mon). So deemed Bekanntgabe date = 23.11.2026. The one-month Widerspruchsfrist runs per §§187 Abs.1, 188 Abs.2 BGB: the day of the triggering event (23.11.2026) is not counted, the period starts the next day (24.11.2026) and ends one month later on the day bearing the same number as the triggering day, i.e. 23.12.2026 (Wednesday). 23.12.2026 is not a Saturday, Sunday or public holiday in Rheinland-Pfalz, so no shift is needed. Final deadline: 23.12.2026.\",\"due_date\":\"2026-12-23\",\"confidence\":\"medium\",\"amount\":null}],\"kind\":\"authority_letter\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"50.2-GS-3318\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Kreisverwaltung Beispiel-Westerwald – Sozialamt – Grundsicherung im Alter\",\"warnings\":[\"The letter states that an ordinary-mail decision is deemed delivered 'am vierten Tag nach dem Versand (§ 37 Abs. 2 SGB X)', but the actual wording of § 37 Abs. 2 SGB X provides for the THIRD day after posting, not the fourth; the Widerspruch deadline above was computed using the correct statutory third-day rule, which is two days earlier than what the letter implies — please double-check this with the authority if in doubt.\",\"The posting date is assumed to be the same as the letter's date (20.11.2026, a Friday); if the letter was actually mailed on a later date, the Bekanntgabe date and therefore the Widerspruch deadline would shift accordingly.\"]}",
+    "data": {
+      "amounts": [
+        412.64,
+        768.36
+      ],
+      "contract": null,
+      "document_date": "2026-11-20",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against Grundsicherung decision",
+          "quote": "Die Frist dafür beträgt einen Monat ab Bekanntgabe; der Widerspruch ist schriftlich oder zur Niederschrift bei Kreisverwaltung Beispiel-Westerwald, Peter-Altmeier-Platz 2, 56410 Musterbaur einzulegen.",
+          "computation": "The actual statutory rule under §37 Abs.2 SGB X is that a letter sent by ordinary mail is deemed notified ('bekanntgegeben') on the THIRD day after posting (the letter itself misstates this as the fourth day, see warnings). Letter is dated/posted 20.11.2026 (Friday). Counting the third day after posting: day 1 = 21.11.2026 (Sat), day 2 = 22.11.2026 (Sun), day 3 = 23.11.2026 (Mon). So deemed Bekanntgabe date = 23.11.2026. The one-month Widerspruchsfrist runs per §§187 Abs.1, 188 Abs.2 BGB: the day of the triggering event (23.11.2026) is not counted, the period starts the next day (24.11.2026) and ends one month later on the day bearing the same number as the triggering day, i.e. 23.12.2026 (Wednesday). 23.12.2026 is not a Saturday, Sunday or public holiday in Rheinland-Pfalz, so no shift is needed. Final deadline: 23.12.2026.",
+          "due_date": "2026-12-23",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "kind": "authority_letter",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "50.2-GS-3318"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Kreisverwaltung Beispiel-Westerwald – Sozialamt – Grundsicherung im Alter",
+      "warnings": [
+        "The letter states that an ordinary-mail decision is deemed delivered 'am vierten Tag nach dem Versand (§ 37 Abs. 2 SGB X)', but the actual wording of § 37 Abs. 2 SGB X provides for the THIRD day after posting, not the fourth; the Widerspruch deadline above was computed using the correct statutory third-day rule, which is two days earlier than what the letter implies — please double-check this with the authority if in doubt.",
+        "The posting date is assumed to be the same as the letter's date (20.11.2026, a Friday); if the letter was actually mailed on a later date, the Bekanntgabe date and therefore the Widerspruch deadline would shift accordingly."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3307,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1922,
+      "cost_usd": 0.0413864,
+      "duration_ms": 34326,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"545933eee4a1b5b0baff8057d765e821a95c327b2b997f9dca66bb312455e38d\",\"mode\":\"text\",\"region\":\"MV\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-tax_assessment-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Mecklenburg-Vorpommern (MV), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrust",
+    "recorded_at": "2026-11-24T10:17:25+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[3998,4431,433],\"contract\":null,\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterwolgast\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"081/509/11736\"}],\"items\":[{\"kind\":\"deadline\",\"title\":\"Objection deadline (Einspruch) against the 2024 income tax assessment\",\"quote\":\"Legen Sie ihn innerhalb eines Monats ab Bekanntgabe beim Finanzamt Musterwolgast ein, schriftlich, elektronisch oder zur Niederschrift.\",\"computation\":\"The notice is dated 20.11.2026 and states no separate 'Aufgabe zur Post' date, so the posting day is 20.11.2026. Under the post-2025 rule for letters posted on/after 1 Jan 2025, delivery (Bekanntgabe) is deemed to occur on the 4th day after posting: counting 20.11. as day 0, day 1 = 21.11., day 2 = 22.11., day 3 = 23.11., day 4 = 24.11.2026 (Tuesday). Since this is a tax office (§122 Abs.2 Nr.1, §108 Abs.3 AO), if the 4th day fell on a weekend/holiday it would move to the next working day, but 24.11.2026 is an ordinary Tuesday, so Bekanntgabe = 24.11.2026. The one-month Einspruch period (§355 Abs.1 AO) runs from the day after Bekanntgabe (§187 Abs.1 BGB) to the day with the same number in the following month (§188 Abs.2 BGB): 24.11.2026 + 1 month = 24.12.2026 (Thursday). 24 December is a normal working day in Germany (per statutory rule) and not a public holiday in Mecklenburg-Vorpommern, so no shift under §108 Abs.3 AO/§193 BGB is needed. Final deadline: 24.12.2026.\",\"due_date\":\"2026-12-24\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Refund (Guthaben) of 433.00 € to be transferred by the tax office\",\"quote\":\"Das Guthaben von 433,00 € überweisen wir auf Ihr Konto DE14 5139 0000 0074 4022 18.\",\"computation\":\"The letter states that the credit balance will be transferred to the taxpayer's account but gives no specific transfer date, no 'within X days' clause, and no reference date from which to count. There is therefore no basis to compute an exact due date for the transfer; it is an obligation of the Finanzamt rather than a deadline for the recipient.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":433}],\"remedy_type\":\"einspruch\",\"warnings\":[\"The letter gives no exact date for when the 433,00 € refund will actually be transferred, so no due date could be computed for that item; only the Einspruch deadline is certain.\",\"The account number given for the refund (DE14 5139 0000 0074 4022 18) should be double-checked by the recipient against their own bank details, as letters of this kind are sometimes targeted by fraud; nothing in this particular letter itself appears suspicious.\"]}",
+    "data": {
+      "amounts": [
+        3998,
+        4431,
+        433
+      ],
+      "contract": null,
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterwolgast",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "081/509/11736"
+        }
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Objection deadline (Einspruch) against the 2024 income tax assessment",
+          "quote": "Legen Sie ihn innerhalb eines Monats ab Bekanntgabe beim Finanzamt Musterwolgast ein, schriftlich, elektronisch oder zur Niederschrift.",
+          "computation": "The notice is dated 20.11.2026 and states no separate 'Aufgabe zur Post' date, so the posting day is 20.11.2026. Under the post-2025 rule for letters posted on/after 1 Jan 2025, delivery (Bekanntgabe) is deemed to occur on the 4th day after posting: counting 20.11. as day 0, day 1 = 21.11., day 2 = 22.11., day 3 = 23.11., day 4 = 24.11.2026 (Tuesday). Since this is a tax office (§122 Abs.2 Nr.1, §108 Abs.3 AO), if the 4th day fell on a weekend/holiday it would move to the next working day, but 24.11.2026 is an ordinary Tuesday, so Bekanntgabe = 24.11.2026. The one-month Einspruch period (§355 Abs.1 AO) runs from the day after Bekanntgabe (§187 Abs.1 BGB) to the day with the same number in the following month (§188 Abs.2 BGB): 24.11.2026 + 1 month = 24.12.2026 (Thursday). 24 December is a normal working day in Germany (per statutory rule) and not a public holiday in Mecklenburg-Vorpommern, so no shift under §108 Abs.3 AO/§193 BGB is needed. Final deadline: 24.12.2026.",
+          "due_date": "2026-12-24",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Refund (Guthaben) of 433.00 € to be transferred by the tax office",
+          "quote": "Das Guthaben von 433,00 € überweisen wir auf Ihr Konto DE14 5139 0000 0074 4022 18.",
+          "computation": "The letter states that the credit balance will be transferred to the taxpayer's account but gives no specific transfer date, no 'within X days' clause, and no reference date from which to count. There is therefore no basis to compute an exact due date for the transfer; it is an obligation of the Finanzamt rather than a deadline for the recipient.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 433
+        }
+      ],
+      "remedy_type": "einspruch",
+      "warnings": [
+        "The letter gives no exact date for when the 433,00 € refund will actually be transferred, so no due date could be computed for that item; only the Einspruch deadline is certain.",
+        "The account number given for the refund (DE14 5139 0000 0074 4022 18) should be double-checked by the recipient against their own bank details, as letters of this kind are sometimes targeted by fraud; nothing in this particular letter itself appears suspicious."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2568,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1741,
+      "cost_usd": 0.033754,
+      "duration_ms": 25870,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

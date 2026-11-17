@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"1bde13e8f9534972138bb786a6a7db68d7445bfdd4e4bbe44b5a1fbbc222265d\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-missing_date-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:04:17+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"sender_name\":\"Immobilien Beispielstein KG\",\"document_date\":null,\"references\":[{\"label\":\"Mieter-Nr.\",\"value\":\"IB-3307\"}],\"amounts\":[2183.18,1920,263.18],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay Nebenkosten-Nachzahlung (service-charge balance)\",\"quote\":\"Den Betrag von 263,18 € zahlen Sie bitte binnen 30 Tagen nach Zugang dieser Abrechnung.\",\"computation\":\"The payment period is 30 days starting from 'Zugang' (actual receipt) of this statement by the tenant - a civil-law (BGB) notion of receipt, not a statutory fiction such as the 3-day postal-delivery rule that applies to administrative acts under § 122 AO / § 41 VwVfG. The letter itself carries no issue date and no postmark or dispatch date is given anywhere in the text, so the actual day of receipt (and therefore the start of the 30-day period under §§ 187, 188 BGB) cannot be established from the document alone. Without a known start date no reliable end date can be computed; the tenant should use the date they personally received the letter (e.g. from an envelope postmark or a dated cover note, if any) plus 30 days, adjusting to the next business day under § 193 BGB if that falls on a Saturday, Sunday or NW public holiday.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":263.18}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter has no document date (Ausstellungsdatum) and no visible dispatch or postmark date, so the 30-day payment period ('binnen 30 Tagen nach Zugang dieser Abrechnung') cannot be computed exactly; the tenant must determine the actual receipt date themselves (e.g. from the envelope) to know the true due date.\",\"This is a private landlord's cost settlement, not an administrative decision, so no formal legal-remedy instructions (Rechtsbehelfsbelehrung) are expected or present; any objection to the Betriebskostenabrechnung would follow general civil-law timelines (e.g. raising objections before the landlord's right to demand payment becomes time-barred), which are not stated in this letter.\"]}",
+    "data": {
+      "kind": "rent_lease",
+      "sender_name": "Immobilien Beispielstein KG",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Mieter-Nr.",
+          "value": "IB-3307"
+        }
+      ],
+      "amounts": [
+        2183.18,
+        1920,
+        263.18
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay Nebenkosten-Nachzahlung (service-charge balance)",
+          "quote": "Den Betrag von 263,18 € zahlen Sie bitte binnen 30 Tagen nach Zugang dieser Abrechnung.",
+          "computation": "The payment period is 30 days starting from 'Zugang' (actual receipt) of this statement by the tenant - a civil-law (BGB) notion of receipt, not a statutory fiction such as the 3-day postal-delivery rule that applies to administrative acts under § 122 AO / § 41 VwVfG. The letter itself carries no issue date and no postmark or dispatch date is given anywhere in the text, so the actual day of receipt (and therefore the start of the 30-day period under §§ 187, 188 BGB) cannot be established from the document alone. Without a known start date no reliable end date can be computed; the tenant should use the date they personally received the letter (e.g. from an envelope postmark or a dated cover note, if any) plus 30 days, adjusting to the next business day under § 193 BGB if that falls on a Saturday, Sunday or NW public holiday.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 263.18
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter has no document date (Ausstellungsdatum) and no visible dispatch or postmark date, so the 30-day payment period ('binnen 30 Tagen nach Zugang dieser Abrechnung') cannot be computed exactly; the tenant must determine the actual receipt date themselves (e.g. from the envelope) to know the true due date.",
+        "This is a private landlord's cost settlement, not an administrative decision, so no formal legal-remedy instructions (Rechtsbehelfsbelehrung) are expected or present; any objection to the Betriebskostenabrechnung would follow general civil-law timelines (e.g. raising objections before the landlord's right to demand payment becomes time-barred), which are not stated in this letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2160,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1402,
+      "cost_usd": 0.027836400000000004,
+      "duration_ms": 24074,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

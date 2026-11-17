@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"02764d44e9bcc0fe1f1f383024a13b89738f4964c968df23d7abb6da99d5e568\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-missing_date-1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:02:26+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Hausmeisterservice Beispielhand\",\"document_date\":null,\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"HS-0917\"}],\"amounts\":[321.3],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay invoice for leaf removal and gutter cleaning\",\"quote\":\"Bitte zahlen Sie innerhalb von 10 Tagen nach Erhalt dieser Rechnung.\",\"computation\":\"The payment term is '10 days after receipt of this invoice' (innerhalb von 10 Tagen nach Erhalt dieser Rechnung). The letter carries no printed issue date anywhere on the page, and the actual date the invoice was received by Mr. Musterquell is also not stated. Without a known start date, the 10-day period (counted under §187 Abs. 1, §188 Abs. 1 BGB, starting the day after receipt, running through all calendar days including weekends since this is a private/commercial invoice not an authority notice, with a shift to the next business day only if the 10th day itself fell on a weekend/holiday) cannot be anchored to a concrete end date. No due date can be reliably computed.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":321.3}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The invoice has no printed issue/sending date anywhere on the page, and the date it was actually received is not stated, so the '10 days after receipt' payment deadline cannot be converted into an exact calendar date — please check the envelope postmark or email timestamp to determine the actual receipt date and count 10 days from there.\",\"This is a private invoice from a handyman/caretaker service, not an authority; there is no legal-remedy instruction (Rechtsbehelfsbelehrung), which is normal for this type of document.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Hausmeisterservice Beispielhand",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "HS-0917"
+        }
+      ],
+      "amounts": [
+        321.3
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay invoice for leaf removal and gutter cleaning",
+          "quote": "Bitte zahlen Sie innerhalb von 10 Tagen nach Erhalt dieser Rechnung.",
+          "computation": "The payment term is '10 days after receipt of this invoice' (innerhalb von 10 Tagen nach Erhalt dieser Rechnung). The letter carries no printed issue date anywhere on the page, and the actual date the invoice was received by Mr. Musterquell is also not stated. Without a known start date, the 10-day period (counted under §187 Abs. 1, §188 Abs. 1 BGB, starting the day after receipt, running through all calendar days including weekends since this is a private/commercial invoice not an authority notice, with a shift to the next business day only if the 10th day itself fell on a weekend/holiday) cannot be anchored to a concrete end date. No due date can be reliably computed.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 321.3
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The invoice has no printed issue/sending date anywhere on the page, and the date it was actually received is not stated, so the '10 days after receipt' payment deadline cannot be converted into an exact calendar date — please check the envelope postmark or email timestamp to determine the actual receipt date and count 10 days from there.",
+        "This is a private invoice from a handyman/caretaker service, not an authority; there is no legal-remedy instruction (Rechtsbehelfsbelehrung), which is normal for this type of document."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1586,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1410,
+      "cost_usd": 0.0221284,
+      "duration_ms": 18972,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

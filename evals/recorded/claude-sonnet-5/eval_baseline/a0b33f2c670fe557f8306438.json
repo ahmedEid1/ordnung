@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"375ffa8dc4ce4481f758e33b17127bb1b13c0aa47809de0c330af2e688300b62\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-scam-2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:05:53+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[612,49.9],\"contract\":null,\"document_date\":\"2026-11-20\",\"items\":[{\"kind\":\"payment\",\"title\":\"Pay 'processing fee' to release refund\",\"quote\":\"überweisen Sie bitte die einmalige Bearbeitungsgebühr von 49,90 € bis zum 27.11.2026 auf das Konto IBAN CY17 0020 0128 0000 0012 0052 7600.\",\"computation\":\"The letter states an explicit calendar date ('bis zum 27.11.2026') rather than a period to be calculated. As this is a private sender (not a German authority), no statutory delivery-fiction or §187/188 BGB counting applies; the date is used as printed. 27 Nov 2026 is a Friday, a normal working day in NW, so no weekend/holiday shift is needed even if it did apply.\",\"due_date\":\"2026-11-27\",\"confidence\":\"high\",\"amount\":49.9}],\"kind\":\"other\",\"references\":[{\"label\":\"Erstattungsnummer\",\"value\":\"VRE-4471-2026\"}],\"remedy_type\":\"none\",\"sender_name\":\"Verbraucher-Rückerstattungsstelle Energie\",\"warnings\":[\"This has the classic hallmarks of an advance-fee scam: you are asked to pay a 'processing fee' before receiving a promised refund — legitimate energy refunds never require the recipient to pay money first.\",\"The payment IBAN (CY17...) is at a bank in Cyprus, not in Germany, which is highly unusual and suspicious for a supposed German consumer refund body.\",\"The sender's address is in Nikosia, Cyprus, with no verifiable German corporate registration, yet it addresses a German consumer about German energy bills — sender identity does not match the claimed service.\",\"The letter uses pressure tactics ('Verstreicht die Frist, verfällt Ihr Anspruch endgültig') to rush payment, a common scam technique.\",\"There is no real company or authority named 'Verbraucher-Rückerstattungsstelle Energie' known to administer German energy cost refunds; do not send any money or personal/bank data, and do not click the email link — consider reporting this letter to the Verbraucherzentrale or police as suspected fraud instead of paying.\"]}",
+    "data": {
+      "amounts": [
+        612,
+        49.9
+      ],
+      "contract": null,
+      "document_date": "2026-11-20",
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay 'processing fee' to release refund",
+          "quote": "überweisen Sie bitte die einmalige Bearbeitungsgebühr von 49,90 € bis zum 27.11.2026 auf das Konto IBAN CY17 0020 0128 0000 0012 0052 7600.",
+          "computation": "The letter states an explicit calendar date ('bis zum 27.11.2026') rather than a period to be calculated. As this is a private sender (not a German authority), no statutory delivery-fiction or §187/188 BGB counting applies; the date is used as printed. 27 Nov 2026 is a Friday, a normal working day in NW, so no weekend/holiday shift is needed even if it did apply.",
+          "due_date": "2026-11-27",
+          "confidence": "high",
+          "amount": 49.9
+        }
+      ],
+      "kind": "other",
+      "references": [
+        {
+          "label": "Erstattungsnummer",
+          "value": "VRE-4471-2026"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Verbraucher-Rückerstattungsstelle Energie",
+      "warnings": [
+        "This has the classic hallmarks of an advance-fee scam: you are asked to pay a 'processing fee' before receiving a promised refund — legitimate energy refunds never require the recipient to pay money first.",
+        "The payment IBAN (CY17...) is at a bank in Cyprus, not in Germany, which is highly unusual and suspicious for a supposed German consumer refund body.",
+        "The sender's address is in Nikosia, Cyprus, with no verifiable German corporate registration, yet it addresses a German consumer about German energy bills — sender identity does not match the claimed service.",
+        "The letter uses pressure tactics ('Verstreicht die Frist, verfällt Ihr Anspruch endgültig') to rush payment, a common scam technique.",
+        "There is no real company or authority named 'Verbraucher-Rückerstattungsstelle Energie' known to administer German energy cost refunds; do not send any money or personal/bank data, and do not click the email link — consider reporting this letter to the Verbraucherzentrale or police as suspected fraud instead of paying."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1689,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1479,
+      "cost_usd": 0.023916,
+      "duration_ms": 19577,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

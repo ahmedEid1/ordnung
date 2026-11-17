@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"5b13989c4ba012e031b99f20ee99b553d5430598474c031b89103d1dca0cb818\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-scam-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:08:28+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Grundstücksregister Online Service GmbH\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Rechnungs-Nr.\",\"value\":\"GRO-26-77021\"}],\"amounts\":[498],\"items\":[{\"kind\":\"payment\",\"title\":\"Payment requested for private 'land register' entry offer\",\"quote\":\"Zahlbar bis 01.12.2026 ohne Abzug.\",\"computation\":\"The letter prints a fixed calendar date for payment ('Zahlbar bis 01.12.2026'), so no period calculation is needed; the date is used as written. However, the letter itself states that it is merely an offer ('Dieses Schreiben ist ein Angebot') and that a contract only comes into existence if and when payment is made ('Mit Ihrer Zahlung nehmen Sie es an; ein Vertrag kommt erst durch die Zahlung zustande'). This means there is no pre-existing obligation to pay by this date unless the recipient deliberately chooses to accept the offer.\",\"due_date\":\"2026-12-01\",\"confidence\":\"high\",\"amount\":498}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This letter matches a well-known scam/deceptive-advertising pattern in Germany: a private company sends an invoice-style letter for a so-called 'Grundstücksregister' (land register) entry that has no connection to the official Grundbuch, as the letter itself admits ('steht in keinem Zusammenhang mit dem amtlichen Grundbuch').\",\"The document explicitly states it is only an offer, not an invoice, and that no contract exists unless the recipient pays ('Dieses Schreiben ist ein Angebot... ein Vertrag kommt erst durch die Zahlung zustande') — this is a common tactic to trick recipients into paying for a worthless, non-official private directory entry believing it is a mandatory official fee. We recommend NOT paying and reporting/discarding the letter unless the person deliberately wants this commercial service.\",\"There is no legal obligation, deadline, or remedy procedure (Rechtsbehelfsbelehrung) attached to this document because it is a commercial solicitation, not a decision or a genuine debt.\"]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Grundstücksregister Online Service GmbH",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Rechnungs-Nr.",
+          "value": "GRO-26-77021"
+        }
+      ],
+      "amounts": [
+        498
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Payment requested for private 'land register' entry offer",
+          "quote": "Zahlbar bis 01.12.2026 ohne Abzug.",
+          "computation": "The letter prints a fixed calendar date for payment ('Zahlbar bis 01.12.2026'), so no period calculation is needed; the date is used as written. However, the letter itself states that it is merely an offer ('Dieses Schreiben ist ein Angebot') and that a contract only comes into existence if and when payment is made ('Mit Ihrer Zahlung nehmen Sie es an; ein Vertrag kommt erst durch die Zahlung zustande'). This means there is no pre-existing obligation to pay by this date unless the recipient deliberately chooses to accept the offer.",
+          "due_date": "2026-12-01",
+          "confidence": "high",
+          "amount": 498
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This letter matches a well-known scam/deceptive-advertising pattern in Germany: a private company sends an invoice-style letter for a so-called 'Grundstücksregister' (land register) entry that has no connection to the official Grundbuch, as the letter itself admits ('steht in keinem Zusammenhang mit dem amtlichen Grundbuch').",
+        "The document explicitly states it is only an offer, not an invoice, and that no contract exists unless the recipient pays ('Dieses Schreiben ist ein Angebot... ein Vertrag kommt erst durch die Zahlung zustande') — this is a common tactic to trick recipients into paying for a worthless, non-official private directory entry believing it is a mandatory official fee. We recommend NOT paying and reporting/discarding the letter unless the person deliberately wants this commercial service.",
+        "There is no legal obligation, deadline, or remedy procedure (Rechtsbehelfsbelehrung) attached to this document because it is a commercial solicitation, not a decision or a genuine debt."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2087,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1474,
+      "cost_usd": 0.027875999999999998,
+      "duration_ms": 22482,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

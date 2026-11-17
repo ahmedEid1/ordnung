@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"07a9ccbd2258f4dc052bae9a2033cbbbe73f4e2fdb560e000bd8ff0587e1f25b\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-missing_date-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:03:50+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Beispielkey Lettings GmbH\",\"document_date\":null,\"references\":[{\"label\":\"Tenancy\",\"value\":\"BKL-0418\"}],\"amounts\":[240],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay for professional cleaning (kitchen and bathroom)\",\"quote\":\"Please pay this amount within 14 days of receiving this letter.\",\"computation\":\"The letter sets a 14-day payment period starting on the day the letter is received (not the day of sending), per the general rule of §187(1) BGB that the day of the triggering event is not counted, with the period ending 14 days later (§188(1) BGB). This letter carries no printed date, so the dispatch/receipt date cannot be established. Since this is a private company (not a German authority), the statutory delivery-fiction rules used for administrative letters do not apply here either; actual receipt would have to be evidenced by postmark or delivery record, which is not available in the text. Therefore the exact due date cannot be computed from the letter alone.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":240}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter has no printed date, so the 14-day payment deadline (\\\"within 14 days of receiving this letter\\\") cannot be calculated exactly; check the postmark or delivery date (e.g. email timestamp) to determine when the 14 days actually start.\",\"The letter conditions return of the full deposit on this payment arriving first; the tenant should check the original tenancy agreement/German deposit law (whether the landlord may insist on separate payment rather than simply deducting the cost from the deposit).\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Beispielkey Lettings GmbH",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Tenancy",
+          "value": "BKL-0418"
+        }
+      ],
+      "amounts": [
+        240
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay for professional cleaning (kitchen and bathroom)",
+          "quote": "Please pay this amount within 14 days of receiving this letter.",
+          "computation": "The letter sets a 14-day payment period starting on the day the letter is received (not the day of sending), per the general rule of §187(1) BGB that the day of the triggering event is not counted, with the period ending 14 days later (§188(1) BGB). This letter carries no printed date, so the dispatch/receipt date cannot be established. Since this is a private company (not a German authority), the statutory delivery-fiction rules used for administrative letters do not apply here either; actual receipt would have to be evidenced by postmark or delivery record, which is not available in the text. Therefore the exact due date cannot be computed from the letter alone.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 240
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter has no printed date, so the 14-day payment deadline (\"within 14 days of receiving this letter\") cannot be calculated exactly; check the postmark or delivery date (e.g. email timestamp) to determine when the 14 days actually start.",
+        "The letter conditions return of the full deposit on this payment arriving first; the tenant should check the original tenancy agreement/German deposit law (whether the landlord may insist on separate payment rather than simply deducting the cost from the deposit)."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2555,
+      "cache_read_tokens": 7587,
+      "cache_creation_tokens": 3266,
+      "cost_usd": 0.040139400000000006,
+      "duration_ms": 27598,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

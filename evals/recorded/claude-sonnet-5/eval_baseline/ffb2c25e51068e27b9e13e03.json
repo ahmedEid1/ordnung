@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"6b675fd417c1c0918b14cd0a215f4014627b222ea85406efb7765b663969774c\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-relative_business_days-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:01:15+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"employment\",\"sender_name\":\"Druckerei Beispiellahn GmbH\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Personalnummer\",\"value\":\"DL-0718\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Submit vacation preferences for Jan–June 2027\",\"quote\":\"Ihre Wünsche für den Urlaub im ersten Halbjahr tragen Sie bitte binnen 10 Arbeitstagen\\nab dem Briefdatum in die Liste ein; Arbeitstage sind Montag bis Freitag ohne Feiertage.\",\"computation\":\"Letter date (Briefdatum) is Wednesday 2026-11-18. The period is '10 Arbeitstage ab dem Briefdatum' (Arbeitstage = Mon–Fri, excluding public holidays). Applying the standard German counting convention for periods defined by reference to an event-day (analogous to §187(1) BGB), the day of the letter itself is not counted; counting of working days starts the following day, Thursday 2026-11-19. Counting only Monday–Friday and skipping weekends (no public holidays fall in this window in NRW): day1=Thu 19.11, day2=Fri 20.11, (Sat 21.11/Sun 22.11 skipped), day3=Mon 23.11, day4=Tue 24.11, day5=Wed 25.11, day6=Thu 26.11, day7=Fri 27.11, (Sat 28.11/Sun 29.11 skipped), day8=Mon 30.11, day9=Tue 01.12, day10=Wed 02.12.2026. No NRW public holiday falls in this span. Thus the 10th working day, and the deadline to enter vacation wishes, is Wednesday 2026-12-02.\",\"due_date\":\"2026-12-02\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is an internal HR request with no statutory legal-remedy clause; the deadline is based on company-internal counting of 'Arbeitstage' rather than a formal legal period, so the exact start-day convention is not fully certain (confidence set to medium).\"]}",
+    "data": {
+      "kind": "employment",
+      "sender_name": "Druckerei Beispiellahn GmbH",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Personalnummer",
+          "value": "DL-0718"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Submit vacation preferences for Jan–June 2027",
+          "quote": "Ihre Wünsche für den Urlaub im ersten Halbjahr tragen Sie bitte binnen 10 Arbeitstagen\nab dem Briefdatum in die Liste ein; Arbeitstage sind Montag bis Freitag ohne Feiertage.",
+          "computation": "Letter date (Briefdatum) is Wednesday 2026-11-18. The period is '10 Arbeitstage ab dem Briefdatum' (Arbeitstage = Mon–Fri, excluding public holidays). Applying the standard German counting convention for periods defined by reference to an event-day (analogous to §187(1) BGB), the day of the letter itself is not counted; counting of working days starts the following day, Thursday 2026-11-19. Counting only Monday–Friday and skipping weekends (no public holidays fall in this window in NRW): day1=Thu 19.11, day2=Fri 20.11, (Sat 21.11/Sun 22.11 skipped), day3=Mon 23.11, day4=Tue 24.11, day5=Wed 25.11, day6=Thu 26.11, day7=Fri 27.11, (Sat 28.11/Sun 29.11 skipped), day8=Mon 30.11, day9=Tue 01.12, day10=Wed 02.12.2026. No NRW public holiday falls in this span. Thus the 10th working day, and the deadline to enter vacation wishes, is Wednesday 2026-12-02.",
+          "due_date": "2026-12-02",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is an internal HR request with no statutory legal-remedy clause; the deadline is based on company-internal counting of 'Arbeitstage' rather than a formal legal period, so the exact start-day convention is not fully certain (confidence set to medium)."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3279,
+      "cache_read_tokens": 7700,
+      "cache_creation_tokens": 3633,
+      "cost_usd": 0.04887,
+      "duration_ms": 32421,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

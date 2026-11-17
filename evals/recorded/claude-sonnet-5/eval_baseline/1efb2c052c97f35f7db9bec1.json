@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"9db49c05bbff15d52a5e4c900606010ed6e50e8c7bff80d8cbb76fd22ac091a7\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-social_decision-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:03:58+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2026-11-19\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Widerspruch gegen Ablehnung der Haushaltshilfe\",\"quote\":\"Gegen diesen Bescheid können Sie innerhalb eines Monats, nachdem er Ihnen bekannt gegeben wurde, Widerspruch erheben.\",\"computation\":\"Letter dated Thursday 19.11.2026; no separate 'Tag der Aufgabe zur Post' stated, so posting day = letter date, 19.11.2026. Krankenkasse is a social-law body, governed by § 37 Abs. 2 SGB X: deemed delivered on the 4th day after posting, counting calendar days and not counting the posting day itself: day1=20.11 (Fri), day2=21.11 (Sat), day3=22.11 (Sun), day4=23.11 (Mon). Since this is a social-law body (not a tax office), the deemed-delivery day does NOT move even if it fell on a weekend/holiday; here it falls on a Monday anyway, so delivery = 23.11.2026. One-month Widerspruch period under § 84 SGG runs from delivery (day of delivery not counted, §§ 187, 188 BGB): one month after 23.11.2026, same day-number next month = 23.12.2026 (Wednesday). No NW public holiday on that date, so no shift under § 26 Abs. 3 SGB X / § 193 BGB is needed. Deadline: 23.12.2026.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"health_insurance\",\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"Q803116452\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Musterquell Krankenkasse\",\"warnings\":[]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2026-11-19",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Widerspruch gegen Ablehnung der Haushaltshilfe",
+          "quote": "Gegen diesen Bescheid können Sie innerhalb eines Monats, nachdem er Ihnen bekannt gegeben wurde, Widerspruch erheben.",
+          "computation": "Letter dated Thursday 19.11.2026; no separate 'Tag der Aufgabe zur Post' stated, so posting day = letter date, 19.11.2026. Krankenkasse is a social-law body, governed by § 37 Abs. 2 SGB X: deemed delivered on the 4th day after posting, counting calendar days and not counting the posting day itself: day1=20.11 (Fri), day2=21.11 (Sat), day3=22.11 (Sun), day4=23.11 (Mon). Since this is a social-law body (not a tax office), the deemed-delivery day does NOT move even if it fell on a weekend/holiday; here it falls on a Monday anyway, so delivery = 23.11.2026. One-month Widerspruch period under § 84 SGG runs from delivery (day of delivery not counted, §§ 187, 188 BGB): one month after 23.11.2026, same day-number next month = 23.12.2026 (Wednesday). No NW public holiday on that date, so no shift under § 26 Abs. 3 SGB X / § 193 BGB is needed. Deadline: 23.12.2026.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "health_insurance",
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "Q803116452"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Musterquell Krankenkasse",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1747,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1744,
+      "cost_usd": 0.025556,
+      "duration_ms": 17778,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

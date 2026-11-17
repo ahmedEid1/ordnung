@@ -1,0 +1,71 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"3f3050cd85ef7dcd6aca4daea7102d5a5e2bcaca76a805634b3a4680c0010cea\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-price_increase-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:54:55+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Beispielstrom Mittelhessen GmbH\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Vertragsnummer\",\"value\":\"BM-31 774 208\"}],\"amounts\":[32.1,34.45,13.2,14.1,86,92],\"items\":[{\"kind\":\"deadline\",\"title\":\"Special termination right due to price increase (must arrive before new price starts)\",\"quote\":\"Ihre Kündigung muss uns vor diesem Tag in Textform erreichen; Kosten entstehen Ihnen dadurch nicht.\",\"computation\":\"The letter announces new prices effective 01.01.2027 and grants a special fristlos (extraordinary) right of termination tied to this increase, also effective 01.01.2027. It explicitly states the cancellation (in Textform) must reach the provider 'vor diesem Tag', i.e. before 01.01.2027. The last calendar day on which it can still arrive is therefore the day before, 31.12.2026. 31.12.2026 is a Thursday, not a weekend or public holiday in NW, so no shift is needed.\",\"due_date\":\"2026-12-31\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter is a private company's price-increase notice, not an authority's decision, so no statutory deemed-delivery rule or Rechtsbehelfsbelehrung applies; the stated special cancellation deadline (must arrive before 01.01.2027, i.e. by 31.12.2026) is the only firm date to act on.\",\"Only the old and new unit prices/base charge/monthly instalment are listed under 'amounts'; these are tariff rates, not a single payable sum.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Beispielstrom Mittelhessen GmbH",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Vertragsnummer",
+          "value": "BM-31 774 208"
+        }
+      ],
+      "amounts": [
+        32.1,
+        34.45,
+        13.2,
+        14.1,
+        86,
+        92
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Special termination right due to price increase (must arrive before new price starts)",
+          "quote": "Ihre Kündigung muss uns vor diesem Tag in Textform erreichen; Kosten entstehen Ihnen dadurch nicht.",
+          "computation": "The letter announces new prices effective 01.01.2027 and grants a special fristlos (extraordinary) right of termination tied to this increase, also effective 01.01.2027. It explicitly states the cancellation (in Textform) must reach the provider 'vor diesem Tag', i.e. before 01.01.2027. The last calendar day on which it can still arrive is therefore the day before, 31.12.2026. 31.12.2026 is a Thursday, not a weekend or public holiday in NW, so no shift is needed.",
+          "due_date": "2026-12-31",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter is a private company's price-increase notice, not an authority's decision, so no statutory deemed-delivery rule or Rechtsbehelfsbelehrung applies; the stated special cancellation deadline (must arrive before 01.01.2027, i.e. by 31.12.2026) is the only firm date to act on.",
+        "Only the old and new unit prices/base charge/monthly instalment are listed under 'amounts'; these are tariff rates, not a single payable sum."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2875,
+      "cache_read_tokens": 14665,
+      "cache_creation_tokens": 3952,
+      "cost_usd": 0.047499,
+      "duration_ms": 30312,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

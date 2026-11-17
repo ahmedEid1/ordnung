@@ -1,0 +1,84 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"eb810700344c7be7f17ae4586ff243f74d0f909461c0e33d0e60f699859edf1b\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-N1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:32:22+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[318.46],\"contract\":null,\"document_date\":\"2026-11-18\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against contribution increase\",\"quote\":\"Den Widerspruch können Sie binnen eines Monats ab Bekanntgabe einlegen, schriftlich oder zur Niederschrift bei der Musterquell Krankenkasse, Am Brunnenhof 2, 35390 Mustergießen.\",\"computation\":\"Letter is dated (Datum des Bescheids) 18.11.2026 (Wednesday); no separate 'zur Post gegeben am' date is stated, so the printed date is used as the posting day. The letter itself states: 'Als bekannt gegeben gilt der Bescheid am vierten Tag nach seiner Aufgabe zur Post.' 4th day after 18.11.2026 = 22.11.2026 (a Sunday). A statutory Krankenkasse is a social-law body, not a tax office, so under § 37 Abs. 2 SGB X the deemed-delivery day does NOT move to the next working day even though it falls on a Sunday; delivery is deemed to occur on 22.11.2026. The Widerspruch period is one month after delivery (§ 84 SGG). Counting per §§ 187 Abs. 1, 188 Abs. 2 BGB (applied via § 26 SGB X): the delivery day itself is not counted, and the one-month period ends on the day with the same calendar number one month later, i.e. 22.12.2026 (a Tuesday). 22.12.2026 is not a Saturday, Sunday or public holiday in NRW, so no further shift under § 26 Abs. 3 SGB X is needed.\",\"due_date\":\"2026-12-22\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"New monthly contribution rate takes effect\",\"quote\":\"ab dem 01.01.2027 betragen Ihre monatlichen Beiträge 318,46 €.\",\"computation\":\"The letter states the new rate explicitly applies 'ab dem 01.01.2027' (from 1 January 2027), so this calendar date is used as written.\",\"due_date\":\"2027-01-01\",\"confidence\":\"high\",\"amount\":318.46},{\"kind\":\"payment\",\"title\":\"First direct debit of new contribution (for January 2027)\",\"quote\":\"Wir buchen den Beitrag weiter zum 15. des Folgemonats ab.\",\"computation\":\"The letter states the contribution is debited on the 15th of the month following the contribution month ('zum 15. des Folgemonats'). The first month affected by the new rate is January 2027, so the corresponding debit falls on 15 February 2027 (a Monday). This is a recurring automatic direct debit, not a one-off act required of the person; the person should ensure sufficient account funds by this date and on the 15th of every following month.\",\"due_date\":\"2027-02-15\",\"confidence\":\"medium\",\"amount\":318.46}],\"kind\":\"social_insurance\",\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"Q550274119\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Musterquell Krankenkasse\",\"warnings\":[\"This letter contains obvious template/placeholder markers (it is explicitly labelled 'Gesetzliche Krankenversicherung (Musterausgabe)', and uses fictitious-sounding place names such as 'Mustergießen' and 'Mustermünster' and sender 'Musterquell Krankenkasse'); verify this is genuinely your real health insurer's letter and not a sample/template before acting on it or paying anything.\",\"No previous contribution amount is given for comparison, only the new amount (318,46 €); the stated increase cannot be independently verified from this letter alone.\"]}",
+    "data": {
+      "amounts": [
+        318.46
+      ],
+      "contract": null,
+      "document_date": "2026-11-18",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against contribution increase",
+          "quote": "Den Widerspruch können Sie binnen eines Monats ab Bekanntgabe einlegen, schriftlich oder zur Niederschrift bei der Musterquell Krankenkasse, Am Brunnenhof 2, 35390 Mustergießen.",
+          "computation": "Letter is dated (Datum des Bescheids) 18.11.2026 (Wednesday); no separate 'zur Post gegeben am' date is stated, so the printed date is used as the posting day. The letter itself states: 'Als bekannt gegeben gilt der Bescheid am vierten Tag nach seiner Aufgabe zur Post.' 4th day after 18.11.2026 = 22.11.2026 (a Sunday). A statutory Krankenkasse is a social-law body, not a tax office, so under § 37 Abs. 2 SGB X the deemed-delivery day does NOT move to the next working day even though it falls on a Sunday; delivery is deemed to occur on 22.11.2026. The Widerspruch period is one month after delivery (§ 84 SGG). Counting per §§ 187 Abs. 1, 188 Abs. 2 BGB (applied via § 26 SGB X): the delivery day itself is not counted, and the one-month period ends on the day with the same calendar number one month later, i.e. 22.12.2026 (a Tuesday). 22.12.2026 is not a Saturday, Sunday or public holiday in NRW, so no further shift under § 26 Abs. 3 SGB X is needed.",
+          "due_date": "2026-12-22",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "New monthly contribution rate takes effect",
+          "quote": "ab dem 01.01.2027 betragen Ihre monatlichen Beiträge 318,46 €.",
+          "computation": "The letter states the new rate explicitly applies 'ab dem 01.01.2027' (from 1 January 2027), so this calendar date is used as written.",
+          "due_date": "2027-01-01",
+          "confidence": "high",
+          "amount": 318.46
+        },
+        {
+          "kind": "payment",
+          "title": "First direct debit of new contribution (for January 2027)",
+          "quote": "Wir buchen den Beitrag weiter zum 15. des Folgemonats ab.",
+          "computation": "The letter states the contribution is debited on the 15th of the month following the contribution month ('zum 15. des Folgemonats'). The first month affected by the new rate is January 2027, so the corresponding debit falls on 15 February 2027 (a Monday). This is a recurring automatic direct debit, not a one-off act required of the person; the person should ensure sufficient account funds by this date and on the 15th of every following month.",
+          "due_date": "2027-02-15",
+          "confidence": "medium",
+          "amount": 318.46
+        }
+      ],
+      "kind": "social_insurance",
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "Q550274119"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Musterquell Krankenkasse",
+      "warnings": [
+        "This letter contains obvious template/placeholder markers (it is explicitly labelled 'Gesetzliche Krankenversicherung (Musterausgabe)', and uses fictitious-sounding place names such as 'Mustergießen' and 'Mustermünster' and sender 'Musterquell Krankenkasse'); verify this is genuinely your real health insurer's letter and not a sample/template before acting on it or paying anything.",
+        "No previous contribution amount is given for comparison, only the new amount (318,46 €); the stated increase cannot be independently verified from this letter alone."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4553,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1578,
+      "cost_usd": 0.052952,
+      "duration_ms": 44606,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

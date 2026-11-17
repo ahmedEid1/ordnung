@@ -1,0 +1,82 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"49daa526209ff6e3cf0b88b176d8017d4e0a3eb1ee1ad15bcbe7f966772b77ac\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:23:39+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"bank_letter\",\"sender_name\":\"Example Prairie Savings Bank\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Account ending\",\"value\":\"…4471\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Return address certification form\",\"quote\":\"Please complete the enclosed address certification and mail or upload it by January 15,\\n2027.\",\"computation\":\"The letter states a fixed calendar deadline: January 15, 2027. This is a US bank, not a German authority, so no deemed-delivery or §187/188 BGB counting rules apply — the date is taken as printed. 2027-01-15 falls on a Friday, so no weekend/holiday shift is needed.\",\"due_date\":\"2027-01-15\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The sender is a US bank (not a German authority), so statutory German deadline-counting rules do not apply; the January 15, 2027 date is simply the date printed in the letter.\",\"The letter threatens restricted online access if the form is not returned and asks the recipient to mail or upload a personal address certification; before acting, verify this request through the bank's official, previously-known contact channels rather than any link or address given only in this letter, as unsolicited requests for personal/address verification are a common phishing pattern.\"]}",
+    "data": {
+      "kind": "bank_letter",
+      "sender_name": "Example Prairie Savings Bank",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Account ending",
+          "value": "…4471"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Return address certification form",
+          "quote": "Please complete the enclosed address certification and mail or upload it by January 15,\n2027.",
+          "computation": "The letter states a fixed calendar deadline: January 15, 2027. This is a US bank, not a German authority, so no deemed-delivery or §187/188 BGB counting rules apply — the date is taken as printed. 2027-01-15 falls on a Friday, so no weekend/holiday shift is needed.",
+          "due_date": "2027-01-15",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The sender is a US bank (not a German authority), so statutory German deadline-counting rules do not apply; the January 15, 2027 date is simply the date printed in the letter.",
+        "The letter threatens restricted online access if the form is not returned and asks the recipient to mail or upload a personal address certification; before acting, verify this request through the bank's official, previously-known contact channels rather than any link or address given only in this letter, as unsolicited requests for personal/address verification are a common phishing pattern."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 2201,
+      "cache_read_tokens": 23392,
+      "cache_creation_tokens": 3546,
+      "cost_usd": 0.0408844,
+      "duration_ms": 25012,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "fixed",
+            "date": "2027-01-15",
+            "nature": "other",
+            "shift_rule": "none",
+            "text": "Please complete the enclosed address certification and mail or upload it by January 15, 2027."
+          },
+          "document_date": "2026-11-21",
+          "sender_kind": "bank",
+          "sender_name": "Example Prairie Savings Bank",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":\"2027-01-15\",\"weekday\":\"Friday\",\"summary\":\"The date given is Fri 15 Jan 2027.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"The date given is Fri 15 Jan 2027\",\"date\":\"2027-01-15\",\"rule_id\":\"date_as_written\",\"citation\":\"The document's own wording\"}],\"rules\":[{\"id\":\"date_as_written\",\"title\":\"Dates stated in the letter\",\"citation\":\"The document's own wording\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-21\",\"holiday_calendar\":\"Germany (nationwide holidays only)\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"ca8a518f451729ce1176b37d23b4fd7557b0161319e66a5b195fd7bfc2f808f4\",\"mode\":\"text\",\"region\":\"MV\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Mecklenburg-Vorpommern (MV), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrust",
+    "recorded_at": "2026-11-24T09:45:22+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Landkreis Musterpeene · Untere Naturschutzbehörde\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"UNB-67.1-2611/26\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against refusal of tree-felling permit\",\"quote\":\"Gegen diesen Bescheid können Sie innerhalb eines Monats nach seiner Bekanntgabe Widerspruch einlegen, schriftlich oder zur Niederschrift bei der Behörde: Landkreis Musterpeene, Kreishausweg 1, 17109 Musterdemmin.\",\"computation\":\"Letter dated Thursday 19.11.2026, sent by ordinary mail (einfacher Brief). Per the rule stated in the letter (§ 41 Abs. 2 VwVfG M-V), it is deemed delivered on the 4th day after posting: 19.11 is day 0, so day 1=20.11 (Fri), day 2=21.11 (Sat), day 3=22.11 (Sun), day 4=23.11 (Mon) => Bekanntgabe (deemed notification) = 23.11.2026, a working day (no holiday adjustment needed since it's just the notification fiction, not a deadline end). The one-month objection period then starts the following day (§ 187 Abs. 1 BGB): 24.11.2026. Per § 188 Abs. 2 BGB, a one-month period ends on the day of the last month bearing the same number as the day of the triggering event (23), i.e. 23.12.2026 (Wednesday). This is not a Saturday, Sunday or public holiday in MV, so no shift under § 193 BGB applies. Final deadline: 23.12.2026.\",\"due_date\":\"2026-12-23\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter states that an ordinary-mail decision 'gilt am vierten Tag nach der Aufgabe zur Post als bekannt gegeben' (deemed delivered on the 4th day); the standard wording in most German VwVfG statutes (including the federal § 41 Abs. 2 VwVfG) is the third day, not the fourth — worth double-checking the exact current wording of § 41 Abs. 2 VwVfG M-V, though the computed deadline here used the letter's stated rule.\",\"No explicit posting date (Aufgabe zur Post) is given separately from the letter's date of 19.11.2026; the delivery-fiction calculation assumes posting occurred on that same day, which is the usual but not certain assumption.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Landkreis Musterpeene · Untere Naturschutzbehörde",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "UNB-67.1-2611/26"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against refusal of tree-felling permit",
+          "quote": "Gegen diesen Bescheid können Sie innerhalb eines Monats nach seiner Bekanntgabe Widerspruch einlegen, schriftlich oder zur Niederschrift bei der Behörde: Landkreis Musterpeene, Kreishausweg 1, 17109 Musterdemmin.",
+          "computation": "Letter dated Thursday 19.11.2026, sent by ordinary mail (einfacher Brief). Per the rule stated in the letter (§ 41 Abs. 2 VwVfG M-V), it is deemed delivered on the 4th day after posting: 19.11 is day 0, so day 1=20.11 (Fri), day 2=21.11 (Sat), day 3=22.11 (Sun), day 4=23.11 (Mon) => Bekanntgabe (deemed notification) = 23.11.2026, a working day (no holiday adjustment needed since it's just the notification fiction, not a deadline end). The one-month objection period then starts the following day (§ 187 Abs. 1 BGB): 24.11.2026. Per § 188 Abs. 2 BGB, a one-month period ends on the day of the last month bearing the same number as the day of the triggering event (23), i.e. 23.12.2026 (Wednesday). This is not a Saturday, Sunday or public holiday in MV, so no shift under § 193 BGB applies. Final deadline: 23.12.2026.",
+          "due_date": "2026-12-23",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter states that an ordinary-mail decision 'gilt am vierten Tag nach der Aufgabe zur Post als bekannt gegeben' (deemed delivered on the 4th day); the standard wording in most German VwVfG statutes (including the federal § 41 Abs. 2 VwVfG) is the third day, not the fourth — worth double-checking the exact current wording of § 41 Abs. 2 VwVfG M-V, though the computed deadline here used the letter's stated rule.",
+        "No explicit posting date (Aufgabe zur Post) is given separately from the letter's date of 19.11.2026; the delivery-fiction calculation assumes posting occurred on that same day, which is the usual but not certain assumption."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2358,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1753,
+      "cost_usd": 0.0312204,
+      "duration_ms": 35870,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

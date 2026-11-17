@@ -1,0 +1,72 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"d69eeb2dcb623ef2ad0e1fca17598e0f4bd8a8d0546075708fb7b587486c5759\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-M3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:31:34+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Beispielsoest\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"345/2051/1187\"}],\"amounts\":[42],\"items\":[{\"kind\":\"deadline\",\"title\":\"Deadline to file Einspruch against interest assessment\",\"quote\":\"Sie können gegen diese Festsetzung innerhalb eines Monats Einspruch beim Finanzamt Beispielsoest erheben.\",\"computation\":\"Letter dated 19.11.2026 (Thursday); this is presumed the day of posting (Aufgabe zur Post). The letter states Bekanntgabe occurs on the 4th day after posting (current §122 Abs. 2 AO rule, extended to 4 days since the 2025 postal law reform). Counting: 19.11. +1=Fri 20.11, +2=Sat 21.11, +3=Sun 22.11, +4=Mon 23.11.2026 -> Bekanntgabe = 23.11.2026 (a weekday, no weekend/holiday shift needed). The one-month Einspruch period begins the following day (§108 AO i.V.m. §187 Abs. 1 BGB), i.e. 24.11.2026, and ends one month later on the day with the same number per §188 Abs. 2 BGB: 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in NRW, so no extension under §108 Abs. 3 AO applies.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Interest refund paid together with the tax refund\",\"quote\":\"Der Betrag wird mit der Erstattung überwiesen.\",\"computation\":\"The letter states only that the €42,00 interest amount will be transferred together with the underlying income-tax refund; no specific calendar date or payment deadline is given, so no exact due date can be computed.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":42}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Beispielsoest",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "345/2051/1187"
+        }
+      ],
+      "amounts": [
+        42
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Deadline to file Einspruch against interest assessment",
+          "quote": "Sie können gegen diese Festsetzung innerhalb eines Monats Einspruch beim Finanzamt Beispielsoest erheben.",
+          "computation": "Letter dated 19.11.2026 (Thursday); this is presumed the day of posting (Aufgabe zur Post). The letter states Bekanntgabe occurs on the 4th day after posting (current §122 Abs. 2 AO rule, extended to 4 days since the 2025 postal law reform). Counting: 19.11. +1=Fri 20.11, +2=Sat 21.11, +3=Sun 22.11, +4=Mon 23.11.2026 -> Bekanntgabe = 23.11.2026 (a weekday, no weekend/holiday shift needed). The one-month Einspruch period begins the following day (§108 AO i.V.m. §187 Abs. 1 BGB), i.e. 24.11.2026, and ends one month later on the day with the same number per §188 Abs. 2 BGB: 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in NRW, so no extension under §108 Abs. 3 AO applies.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Interest refund paid together with the tax refund",
+          "quote": "Der Betrag wird mit der Erstattung überwiesen.",
+          "computation": "The letter states only that the €42,00 interest amount will be transferred together with the underlying income-tax refund; no specific calendar date or payment deadline is given, so no exact due date can be computed.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 42
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3900,
+      "cache_read_tokens": 7785,
+      "cache_creation_tokens": 4566,
+      "cost_usd": 0.058829000000000006,
+      "duration_ms": 39469,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

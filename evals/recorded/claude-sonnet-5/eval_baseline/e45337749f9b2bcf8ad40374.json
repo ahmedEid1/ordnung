@@ -1,0 +1,72 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"aab34e0651d2e6e044087573ccc7f7a6623c6ef98e91fb5476ba22a718e370e0\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-N1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:26:11+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"insurance\",\"sender_name\":\"Beispielvita Expat Health AG\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Policy no.\",\"value\":\"BV-EXP-40917\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Submit certificate of enrolment for winter semester 2026/27\",\"quote\":\"Please send us the certificate for the winter semester 2026/27 by 11 January 2027.\",\"computation\":\"The letter states a fixed calendar date by which the certificate must reach the insurer: 11 January 2027. Checking the weekday: 2027-01-01 falls on a Friday, so 2027-01-11 (ten days later) falls on a Monday - a normal business day in NW, so no weekend/holiday shift applies. The due date is simply the date printed.\",\"due_date\":\"2027-01-11\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Policy switches from student rate to standard rate if certificate not received\",\"quote\":\"If it does not reach us by then, we will switch your policy to the standard rate from February 2027.\",\"computation\":\"Consequence tied to the task deadline above: if the certificate does not arrive by 2027-01-11, the standard (presumably higher) rate applies starting with the February 2027 premium period, i.e. from 1 February 2027.\",\"due_date\":\"2027-02-01\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"No amounts, Rechtsbehelfsbelehrung or unusual payment/IBAN requests appear in this letter; it is a routine administrative request to supply proof of enrolment, with no signs of phishing or scam patterns detected.\"]}",
+    "data": {
+      "kind": "insurance",
+      "sender_name": "Beispielvita Expat Health AG",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Policy no.",
+          "value": "BV-EXP-40917"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Submit certificate of enrolment for winter semester 2026/27",
+          "quote": "Please send us the certificate for the winter semester 2026/27 by 11 January 2027.",
+          "computation": "The letter states a fixed calendar date by which the certificate must reach the insurer: 11 January 2027. Checking the weekday: 2027-01-01 falls on a Friday, so 2027-01-11 (ten days later) falls on a Monday - a normal business day in NW, so no weekend/holiday shift applies. The due date is simply the date printed.",
+          "due_date": "2027-01-11",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Policy switches from student rate to standard rate if certificate not received",
+          "quote": "If it does not reach us by then, we will switch your policy to the standard rate from February 2027.",
+          "computation": "Consequence tied to the task deadline above: if the certificate does not arrive by 2027-01-11, the standard (presumably higher) rate applies starting with the February 2027 premium period, i.e. from 1 February 2027.",
+          "due_date": "2027-02-01",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "No amounts, Rechtsbehelfsbelehrung or unusual payment/IBAN requests appear in this letter; it is a routine administrative request to supply proof of enrolment, with no signs of phishing or scam patterns detected."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1440,
+      "cache_read_tokens": 6440,
+      "cache_creation_tokens": 1501,
+      "cost_usd": 0.021696,
+      "duration_ms": 14382,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

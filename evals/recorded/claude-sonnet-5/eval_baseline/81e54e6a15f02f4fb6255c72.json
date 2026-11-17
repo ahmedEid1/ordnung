@@ -1,0 +1,65 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"0d4675a8e6fc90a527d5fe1518e82717f1085e99f869f476c9cbb30810ffac16\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:22:50+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Hub Beispielhafen Coworking GmbH\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Invoice no.\",\"value\":\"HUB-2611-044\"}],\"amounts\":[297.5],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay invoice for December 2026 flex desk and meeting room\",\"quote\":\"Please settle this invoice within 14 days of the invoice date.\",\"computation\":\"Invoice date is 21 November 2026. The 14-day period is triggered by an event (issuance of the invoice), so under § 187(1) BGB the day of the event itself is not counted; the period starts on 22 November 2026. Counting 14 days from there (22 Nov = day 1 ... 5 Dec = day 14) gives a nominal last day of 5 December 2026. That day is a Saturday; under § 193 BGB, when the last day of a period is a Saturday, Sunday or public holiday, the period ends on the next business day. Monday 7 December 2026 is not a public holiday in NRW, so the payment is due on 7 December 2026.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":297.5}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter mentions that late payment 'may pause your access card', which is a service consequence rather than a legal deadline; no formal dunning or legal remedy procedure is indicated in this invoice.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Hub Beispielhafen Coworking GmbH",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Invoice no.",
+          "value": "HUB-2611-044"
+        }
+      ],
+      "amounts": [
+        297.5
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay invoice for December 2026 flex desk and meeting room",
+          "quote": "Please settle this invoice within 14 days of the invoice date.",
+          "computation": "Invoice date is 21 November 2026. The 14-day period is triggered by an event (issuance of the invoice), so under § 187(1) BGB the day of the event itself is not counted; the period starts on 22 November 2026. Counting 14 days from there (22 Nov = day 1 ... 5 Dec = day 14) gives a nominal last day of 5 December 2026. That day is a Saturday; under § 193 BGB, when the last day of a period is a Saturday, Sunday or public holiday, the period ends on the next business day. Monday 7 December 2026 is not a public holiday in NRW, so the payment is due on 7 December 2026.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": 297.5
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter mentions that late payment 'may pause your access card', which is a service consequence rather than a legal deadline; no formal dunning or legal remedy procedure is indicated in this invoice."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2209,
+      "cache_read_tokens": 7580,
+      "cache_creation_tokens": 2893,
+      "cost_usd": 0.035185999999999995,
+      "duration_ms": 28512,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

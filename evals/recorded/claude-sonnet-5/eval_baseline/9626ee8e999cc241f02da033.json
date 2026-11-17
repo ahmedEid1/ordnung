@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"6b675fd417c1c0918b14cd0a215f4014627b222ea85406efb7765b663969774c\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-relative_business_days-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:01:19+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"employment\",\"sender_name\":\"Druckerei Beispiellahn GmbH\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Personalnummer\",\"value\":\"DL-0718\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Enter vacation preferences for Jan–Jun 2027\",\"quote\":\"Ihre Wünsche für den Urlaub im ersten Halbjahr tragen Sie bitte binnen 10 Arbeitstagen ab dem Briefdatum in die Liste ein; Arbeitstage sind Montag bis Freitag ohne Feiertage.\",\"computation\":\"Letter is dated (Briefdatum) 18.11.2026 (Wednesday); this is a private/internal company deadline, period starts the day after the triggering event (§187 Abs.1 BGB), so counting begins 19.11.2026. The letter itself defines 'Arbeitstage' as Monday–Friday excluding public holidays, so weekends are skipped and no NRW public holiday falls in this window. Counting 10 such business days from 19.11.2026: 1) Thu 19.11, 2) Fri 20.11, (Sat 21.11/Sun 22.11 skipped), 3) Mon 23.11, 4) Tue 24.11, 5) Wed 25.11, 6) Thu 26.11, 7) Fri 27.11, (Sat 28.11/Sun 29.11 skipped), 8) Mon 30.11, 9) Tue 01.12, 10) Wed 02.12.2026. The 10th business day is itself a Monday-Friday non-holiday day, so no further weekend/holiday shift under §193 BGB is needed.\",\"due_date\":\"2026-12-02\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "employment",
+      "sender_name": "Druckerei Beispiellahn GmbH",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Personalnummer",
+          "value": "DL-0718"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Enter vacation preferences for Jan–Jun 2027",
+          "quote": "Ihre Wünsche für den Urlaub im ersten Halbjahr tragen Sie bitte binnen 10 Arbeitstagen ab dem Briefdatum in die Liste ein; Arbeitstage sind Montag bis Freitag ohne Feiertage.",
+          "computation": "Letter is dated (Briefdatum) 18.11.2026 (Wednesday); this is a private/internal company deadline, period starts the day after the triggering event (§187 Abs.1 BGB), so counting begins 19.11.2026. The letter itself defines 'Arbeitstage' as Monday–Friday excluding public holidays, so weekends are skipped and no NRW public holiday falls in this window. Counting 10 such business days from 19.11.2026: 1) Thu 19.11, 2) Fri 20.11, (Sat 21.11/Sun 22.11 skipped), 3) Mon 23.11, 4) Tue 24.11, 5) Wed 25.11, 6) Thu 26.11, 7) Fri 27.11, (Sat 28.11/Sun 29.11 skipped), 8) Mon 30.11, 9) Tue 01.12, 10) Wed 02.12.2026. The 10th business day is itself a Monday-Friday non-holiday day, so no further weekend/holiday shift under §193 BGB is needed.",
+          "due_date": "2026-12-02",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1796,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1454,
+      "cost_usd": 0.024886,
+      "duration_ms": 25000,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

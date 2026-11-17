@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"392de68895f0efed6af19239fbd44498b6fb244083eb8f1b49138e246c2d36fc\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-tax_assessment-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:14:47+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterhöhe\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"019/437/22605\"}],\"amounts\":[7402,713],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the 2025 Einkommensteuerbescheid\",\"quote\":\"Der Einspruch muss binnen eines Monats nach der Bekanntgabe beim Finanzamt Musterhöhe eingehen, schriftlich, über das Portal ELSTER oder mündlich zur Niederschrift.\",\"computation\":\"Letter is dated 19.11.2026 (Thursday); no separate 'Tag der Aufgabe zur Post' is stated, so the posting day equals the letter date, 19.11.2026. Per the current PostModG rule (letter posted on/after 1 Jan 2025), delivery is deemed on the 4th calendar day after posting: 19.11 + 4 days = 23.11.2026 (Monday). As this is a Finanzamt, if that 4th day were a Saturday, Sunday or public holiday it would move to the next working day (§108 Abs.3 AO); 23.11.2026 is a normal Monday in NW, so delivery is deemed on 23.11.2026. The one-month Einspruch period under §355 Abs.1 AO starts the day after deemed delivery (§187 Abs.1 BGB / §108 Abs.1 AO) and ends on the day in the following month bearing the same number as the delivery day: 23.12.2026 (Wednesday). That day is a normal working day in NW (not a holiday), so no further shift under §108 Abs.3 AO is needed. Final deadline: 23.12.2026.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterhöhe",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "019/437/22605"
+        }
+      ],
+      "amounts": [
+        7402,
+        713
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the 2025 Einkommensteuerbescheid",
+          "quote": "Der Einspruch muss binnen eines Monats nach der Bekanntgabe beim Finanzamt Musterhöhe eingehen, schriftlich, über das Portal ELSTER oder mündlich zur Niederschrift.",
+          "computation": "Letter is dated 19.11.2026 (Thursday); no separate 'Tag der Aufgabe zur Post' is stated, so the posting day equals the letter date, 19.11.2026. Per the current PostModG rule (letter posted on/after 1 Jan 2025), delivery is deemed on the 4th calendar day after posting: 19.11 + 4 days = 23.11.2026 (Monday). As this is a Finanzamt, if that 4th day were a Saturday, Sunday or public holiday it would move to the next working day (§108 Abs.3 AO); 23.11.2026 is a normal Monday in NW, so delivery is deemed on 23.11.2026. The one-month Einspruch period under §355 Abs.1 AO starts the day after deemed delivery (§187 Abs.1 BGB / §108 Abs.1 AO) and ends on the day in the following month bearing the same number as the delivery day: 23.12.2026 (Wednesday). That day is a normal working day in NW (not a holiday), so no further shift under §108 Abs.3 AO is needed. Final deadline: 23.12.2026.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3064,
+      "cache_read_tokens": 12910,
+      "cache_creation_tokens": 4165,
+      "cost_usd": 0.04989,
+      "duration_ms": 30803,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

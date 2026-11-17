@@ -1,0 +1,81 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"0d88b96d8b5c96f8a4f19ea278634594fba04a607379d5767b00ceee38d97c25\",\"mode\":\"text\",\"region\":\"NI\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-fine_bussgeld-L2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Niedersachsen (NI), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docume",
+    "recorded_at": "2026-11-24T09:31:22+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Landkreis Musterammerland – Bußgeldstelle\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"BG 32.2-26/40918\"},{\"label\":\"Kennzeichen\",\"value\":\"WST-FM 91\"}],\"amounts\":[115,28.5,3.5,147],\"items\":[{\"kind\":\"deadline\",\"title\":\"File objection (Einspruch) against the fine notice\",\"quote\":\"Die Frist von zwei Wochen beginnt mit dem Tag der Zustellung.\",\"computation\":\"The Zustellungsurkunde on page 2 records the formal delivery (§182 ZPO) as 23.11.2026 (Monday). For an event-triggered period (Zustellung) the day of the event itself is not counted (§187 Abs. 1 BGB, applied via §110 OWiG). The two-week period is therefore calculated from the delivery day under §188 Abs. 2 BGB: it ends with the day of the second following week that bears the same name as the day of the triggering event (Monday). 23.11.2026 + 7 days = 30.11.2026 (Monday); +14 days = 07.12.2026 (Monday). 07.12.2026 is a Monday and not a public holiday in Niedersachsen, so no shift under §193 BGB is needed. Deadline: 07.12.2026.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine amount (Gesamtbetrag)\",\"quote\":\"Der Gesamtbetrag ist zwei Wochen nach Eintritt der Rechtskraft zu zahlen.\",\"computation\":\"The decision becomes final (Rechtskraft) only if no Einspruch is filed within the objection period, which expires at the end of 07.12.2026 (see objection item). Rechtskraft therefore enters on 08.12.2026 (Tuesday). Treating this as the triggering event for the subsequent two-week payment period, the day of the event (08.12.2026) is excluded (§187 Abs. 1 BGB) and the period ends, per §188 Abs. 2 BGB, on the day of the second following week bearing the same name as the event day (Tuesday): 08.12.2026 + 14 days = 22.12.2026 (Tuesday). 22.12.2026 is a Tuesday and not a public holiday in Niedersachsen, so no shift applies. Payment deadline: 22.12.2026. This calculation assumes no objection is lodged; if an Einspruch is filed, this payment obligation does not arise on this schedule.\",\"due_date\":\"2026-12-22\",\"confidence\":\"medium\",\"amount\":147}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment due date depends on the fine notice becoming final (no Einspruch filed); if an objection is lodged by 2026-12-07, this payment schedule no longer applies and a new timeline would follow any subsequent decision.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Landkreis Musterammerland – Bußgeldstelle",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "BG 32.2-26/40918"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "WST-FM 91"
+        }
+      ],
+      "amounts": [
+        115,
+        28.5,
+        3.5,
+        147
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File objection (Einspruch) against the fine notice",
+          "quote": "Die Frist von zwei Wochen beginnt mit dem Tag der Zustellung.",
+          "computation": "The Zustellungsurkunde on page 2 records the formal delivery (§182 ZPO) as 23.11.2026 (Monday). For an event-triggered period (Zustellung) the day of the event itself is not counted (§187 Abs. 1 BGB, applied via §110 OWiG). The two-week period is therefore calculated from the delivery day under §188 Abs. 2 BGB: it ends with the day of the second following week that bears the same name as the day of the triggering event (Monday). 23.11.2026 + 7 days = 30.11.2026 (Monday); +14 days = 07.12.2026 (Monday). 07.12.2026 is a Monday and not a public holiday in Niedersachsen, so no shift under §193 BGB is needed. Deadline: 07.12.2026.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine amount (Gesamtbetrag)",
+          "quote": "Der Gesamtbetrag ist zwei Wochen nach Eintritt der Rechtskraft zu zahlen.",
+          "computation": "The decision becomes final (Rechtskraft) only if no Einspruch is filed within the objection period, which expires at the end of 07.12.2026 (see objection item). Rechtskraft therefore enters on 08.12.2026 (Tuesday). Treating this as the triggering event for the subsequent two-week payment period, the day of the event (08.12.2026) is excluded (§187 Abs. 1 BGB) and the period ends, per §188 Abs. 2 BGB, on the day of the second following week bearing the same name as the event day (Tuesday): 08.12.2026 + 14 days = 22.12.2026 (Tuesday). 22.12.2026 is a Tuesday and not a public holiday in Niedersachsen, so no shift applies. Payment deadline: 22.12.2026. This calculation assumes no objection is lodged; if an Einspruch is filed, this payment obligation does not arise on this schedule.",
+          "due_date": "2026-12-22",
+          "confidence": "medium",
+          "amount": 147
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment due date depends on the fine notice becoming final (no Einspruch filed); if an objection is lodged by 2026-12-07, this payment schedule no longer applies and a new timeline would follow any subsequent decision."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 5695,
+      "cache_read_tokens": 8359,
+      "cache_creation_tokens": 6320,
+      "cost_usd": 0.0839098,
+      "duration_ms": 55629,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

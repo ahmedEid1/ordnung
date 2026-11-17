@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"63a156c80ea39790e22c1ff4a270e55f09d7106f32045e42f31e9c25793202eb\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-social_decision-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:04:58+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Unfallkasse Beispiel-Mitte\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"UK 26/41187-S\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the accident recognition decision\",\"quote\":\"Gegen diesen Bescheid können Sie innerhalb eines Monats, nachdem er Ihnen bekannt gegeben wurde, Widerspruch erheben.\",\"computation\":\"Letter is dated and posted on Friday 20.11.2026 (no separate 'zur Post gegeben am' date is given, so the printed letter date is the posting day). This is a decision by a social-insurance body (Unfallkasse / gesetzliche Unfallversicherung), governed by § 37 Abs. 2 SGB X: deemed delivered on the 4th day after posting, and for non-tax authorities this delivery day is NOT shifted even if it falls on a weekend/holiday. Counting calendar days from 20.11.2026 (day 0, not counted): 21.11 (Sat, day1), 22.11 (Sun, day2), 23.11 (Mon, day3), 24.11 (Tue, day4) -> deemed delivery (Bekanntgabe) = Tuesday 24.11.2026. The one-month Widerspruch period (§ 26 Abs. 1 SGB X i.V.m. §§ 187 Abs. 1, 188 Abs. 2 BGB) starts the day after delivery and ends on the day in the following month bearing the same number as the delivery day: 24.12.2026. Checking weekday: 24.11.2026 is a Tuesday (today), so 24.12.2026 falls on a Thursday - not a Saturday, Sunday, or public holiday (24 December is a normal working day), so the end date does not shift (§ 26 Abs. 3 SGB X / § 193 BGB not triggered).\",\"due_date\":\"2026-12-24\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Unfallkasse Beispiel-Mitte",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "UK 26/41187-S"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the accident recognition decision",
+          "quote": "Gegen diesen Bescheid können Sie innerhalb eines Monats, nachdem er Ihnen bekannt gegeben wurde, Widerspruch erheben.",
+          "computation": "Letter is dated and posted on Friday 20.11.2026 (no separate 'zur Post gegeben am' date is given, so the printed letter date is the posting day). This is a decision by a social-insurance body (Unfallkasse / gesetzliche Unfallversicherung), governed by § 37 Abs. 2 SGB X: deemed delivered on the 4th day after posting, and for non-tax authorities this delivery day is NOT shifted even if it falls on a weekend/holiday. Counting calendar days from 20.11.2026 (day 0, not counted): 21.11 (Sat, day1), 22.11 (Sun, day2), 23.11 (Mon, day3), 24.11 (Tue, day4) -> deemed delivery (Bekanntgabe) = Tuesday 24.11.2026. The one-month Widerspruch period (§ 26 Abs. 1 SGB X i.V.m. §§ 187 Abs. 1, 188 Abs. 2 BGB) starts the day after delivery and ends on the day in the following month bearing the same number as the delivery day: 24.12.2026. Checking weekday: 24.11.2026 is a Tuesday (today), so 24.12.2026 falls on a Thursday - not a Saturday, Sunday, or public holiday (24 December is a normal working day), so the end date does not shift (§ 26 Abs. 3 SGB X / § 193 BGB not triggered).",
+          "due_date": "2026-12-24",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3789,
+      "cache_read_tokens": 12801,
+      "cache_creation_tokens": 4186,
+      "cost_usd": 0.057202199999999995,
+      "duration_ms": 38363,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

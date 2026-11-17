@@ -1,0 +1,74 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"02764d44e9bcc0fe1f1f383024a13b89738f4964c968df23d7abb6da99d5e568\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-missing_date-1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:02:38+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Hausmeisterservice Beispielhand\",\"document_date\":null,\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"HS-0917\"}],\"amounts\":[321.3],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay invoice for leaf removal and gutter cleaning\",\"quote\":\"Bitte zahlen Sie innerhalb von 10 Tagen nach Erhalt dieser Rechnung.\",\"computation\":\"The invoice sets a 10-day payment period running from 'Erhalt dieser Rechnung' (receipt of this invoice), not from a printed invoice date. The letter itself carries no document date, and no date of actual receipt was given by the recipient, so the start of the 10-day period cannot be fixed. Under §§ 187, 188 BGB the period would start the day after receipt and end 10 days later (shifted to the next business day if it fell on a weekend or public holiday in NW), but without a known receipt date no end date can be computed.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":321.3}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The invoice has no printed invoice date and the letter does not state when it was received, so the 10-day payment deadline ('innerhalb von 10 Tagen nach Erhalt dieser Rechnung') cannot be computed exactly — the person should note the date they actually received the letter and count 10 days from the following day.\",\"Before paying, double-check that the IBAN (DE78 3705 0198 0005 5141 40) and account holder name match 'Hausmeisterservice Beispielhand' as known from earlier contact, since a well-formed IBAN alone does not prove who owns the account.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Hausmeisterservice Beispielhand",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "HS-0917"
+        }
+      ],
+      "amounts": [
+        321.3
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay invoice for leaf removal and gutter cleaning",
+          "quote": "Bitte zahlen Sie innerhalb von 10 Tagen nach Erhalt dieser Rechnung.",
+          "computation": "The invoice sets a 10-day payment period running from 'Erhalt dieser Rechnung' (receipt of this invoice), not from a printed invoice date. The letter itself carries no document date, and no date of actual receipt was given by the recipient, so the start of the 10-day period cannot be fixed. Under §§ 187, 188 BGB the period would start the day after receipt and end 10 days later (shifted to the next business day if it fell on a weekend or public holiday in NW), but without a known receipt date no end date can be computed.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 321.3
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The invoice has no printed invoice date and the letter does not state when it was received, so the 10-day payment deadline ('innerhalb von 10 Tagen nach Erhalt dieser Rechnung') cannot be computed exactly — the person should note the date they actually received the letter and count 10 days from the following day.",
+        "Before paying, double-check that the IBAN (DE78 3705 0198 0005 5141 40) and account holder name match 'Hausmeisterservice Beispielhand' as known from earlier contact, since a well-formed IBAN alone does not prove who owns the account."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1612,
+      "cache_read_tokens": 14527,
+      "cache_creation_tokens": 2532,
+      "cost_usd": 0.0291614,
+      "duration_ms": 19090,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE78 3705 0198 0005 5141 40"
+        },
+        "result": "{\"iban\":\"DE78 3705 0198 0005 5141 40\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005514140\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

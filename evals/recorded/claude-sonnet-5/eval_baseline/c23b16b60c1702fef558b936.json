@@ -1,0 +1,81 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"f49007b8bf05333ed06f2714ab06d680f7d7b2a8014fa0c747156f25419b9359\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-fine_bussgeld-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T09:29:25+00:00",
+    "repeat": 2,
+    "commit": "5cff05f2",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Stadt Musterquellen – Bußgeldstelle\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"OA-VÜ 26.501234\"},{\"label\":\"Kennzeichen\",\"value\":\"MQ-BQ 207\"}],\"amounts\":[87],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"Gegen diesen Bescheid können Sie innerhalb von zwei Wochen ab seiner Zustellung Einspruch einlegen, schriftlich oder zur Niederschrift bei der Stadt Musterquellen – Bußgeldstelle.\",\"computation\":\"The attached Zustellungsurkunde (official proof of service, §182 ZPO) shows the handwritten delivery date '21.11.2026' (a Saturday). Under §187 Abs. 1 BGB the day of the triggering event (delivery) itself is not counted. Under §188 Abs. 2 BGB, a period given in weeks ends with the day in the last week that corresponds by name to the day of the event, i.e. two weeks later on the same weekday: 21.11.2026 (Sat) + 14 days = 05.12.2026, also a Saturday. Since the last day of the period (05.12.2026) falls on a Saturday, §193 BGB shifts the deadline to the next business day. 06.12.2026 is a Sunday, so the deadline moves to Monday 07.12.2026, which is not a public holiday in NRW. Final deadline for the objection to reach the Bußgeldstelle: 07.12.2026.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine (55€ Geldbuße + 28,50€ fee + 3,50€ delivery costs) once the notice is final\",\"quote\":\"Zahlen Sie erst, wenn dieser Bescheid rechtskräftig geworden ist, und dann binnen zwei Wochen auf das Konto DE29 5135 0025 0002 1403 00.\",\"computation\":\"Payment is explicitly conditional on the notice becoming rechtskräftig (final), which — assuming no Einspruch is filed — occurs upon expiry of the Einspruchsfrist calculated above, i.e. at the end of 07.12.2026 (a Monday). Treating that expiry as the triggering event, §187 Abs. 1 BGB excludes that day itself from the count, and §188 Abs. 2 BGB makes the two-week payment period end on the corresponding weekday two weeks later: 07.12.2026 (Mon) + 14 days = 21.12.2026, also a Monday, which is not a weekend day or NRW public holiday, so no shift under §193 BGB applies. This date is only valid if no Einspruch is lodged; if an Einspruch is filed, Rechtskraft (and thus this payment deadline) is postponed until that proceeding is concluded.\",\"due_date\":\"2026-12-21\",\"confidence\":\"low\",\"amount\":87}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment deadline (87,00 €) is only certain if no Einspruch is filed by 07.12.2026; if an objection is lodged, the notice does not become rechtskräftig and this payment date does not apply — it will depend on the outcome of the objection proceeding.\",\"Several names in the letter (Musterquellen, Beispielwetzlar, Landesmusterbank) are generic German placeholder words meaning 'sample town/bank', which strongly suggests this is a template/example document rather than a genuine fine notice; the recipient should verify authenticity with the real local Bußgeldstelle before paying or filing anything.\",\"The sender's email address (bussgeld@stadt-musterquellen-bußgelds.example) uses the reserved .example top-level domain, which is never used for real organizations; do not trust this contact address or any instructions derived from it without independent verification.\",\"Verify the printed IBAN (DE29 5135 0025 0002 1403 00) independently with the official municipal Bußgeldstelle before transferring any money, since bank details in letters can be manipulated by scammers.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Stadt Musterquellen – Bußgeldstelle",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "OA-VÜ 26.501234"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "MQ-BQ 207"
+        }
+      ],
+      "amounts": [
+        87
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "Gegen diesen Bescheid können Sie innerhalb von zwei Wochen ab seiner Zustellung Einspruch einlegen, schriftlich oder zur Niederschrift bei der Stadt Musterquellen – Bußgeldstelle.",
+          "computation": "The attached Zustellungsurkunde (official proof of service, §182 ZPO) shows the handwritten delivery date '21.11.2026' (a Saturday). Under §187 Abs. 1 BGB the day of the triggering event (delivery) itself is not counted. Under §188 Abs. 2 BGB, a period given in weeks ends with the day in the last week that corresponds by name to the day of the event, i.e. two weeks later on the same weekday: 21.11.2026 (Sat) + 14 days = 05.12.2026, also a Saturday. Since the last day of the period (05.12.2026) falls on a Saturday, §193 BGB shifts the deadline to the next business day. 06.12.2026 is a Sunday, so the deadline moves to Monday 07.12.2026, which is not a public holiday in NRW. Final deadline for the objection to reach the Bußgeldstelle: 07.12.2026.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine (55€ Geldbuße + 28,50€ fee + 3,50€ delivery costs) once the notice is final",
+          "quote": "Zahlen Sie erst, wenn dieser Bescheid rechtskräftig geworden ist, und dann binnen zwei Wochen auf das Konto DE29 5135 0025 0002 1403 00.",
+          "computation": "Payment is explicitly conditional on the notice becoming rechtskräftig (final), which — assuming no Einspruch is filed — occurs upon expiry of the Einspruchsfrist calculated above, i.e. at the end of 07.12.2026 (a Monday). Treating that expiry as the triggering event, §187 Abs. 1 BGB excludes that day itself from the count, and §188 Abs. 2 BGB makes the two-week payment period end on the corresponding weekday two weeks later: 07.12.2026 (Mon) + 14 days = 21.12.2026, also a Monday, which is not a weekend day or NRW public holiday, so no shift under §193 BGB applies. This date is only valid if no Einspruch is lodged; if an Einspruch is filed, Rechtskraft (and thus this payment deadline) is postponed until that proceeding is concluded.",
+          "due_date": "2026-12-21",
+          "confidence": "low",
+          "amount": 87
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment deadline (87,00 €) is only certain if no Einspruch is filed by 07.12.2026; if an objection is lodged, the notice does not become rechtskräftig and this payment date does not apply — it will depend on the outcome of the objection proceeding.",
+        "Several names in the letter (Musterquellen, Beispielwetzlar, Landesmusterbank) are generic German placeholder words meaning 'sample town/bank', which strongly suggests this is a template/example document rather than a genuine fine notice; the recipient should verify authenticity with the real local Bußgeldstelle before paying or filing anything.",
+        "The sender's email address (bussgeld@stadt-musterquellen-bußgelds.example) uses the reserved .example top-level domain, which is never used for real organizations; do not trust this contact address or any instructions derived from it without independent verification.",
+        "Verify the printed IBAN (DE29 5135 0025 0002 1403 00) independently with the official municipal Bußgeldstelle before transferring any money, since bank details in letters can be manipulated by scammers."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 8494,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2178,
+      "cost_usd": 0.0942804,
+      "duration_ms": 83971,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}
