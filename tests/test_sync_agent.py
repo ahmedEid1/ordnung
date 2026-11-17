@@ -419,7 +419,17 @@ async def test_a_write_that_never_finishes_lifts_the_fence_and_nothing_is_replac
         assert agent.mode == "standing_by" and (await status(a))["take_over_waiting"] is True
 
 
-async def test_background_threads_drain_before_the_data_is_replaced(tmp_path: Path, folder: Path) -> None:
+#: Limits long enough for a loaded machine: the fake engine's 1 s limit on a folder call (the join's scan) and the
+#: 1 s the drain waits were each missed once under load. Neither is what the test below checks.
+LOADED_MACHINE = {"FOLDER_OP_TIMEOUT_S": 10.0, "FENCE_WAIT_S": 10.0}
+
+
+async def test_background_threads_drain_before_the_data_is_replaced(
+    tmp_path: Path, folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The data is replaced only once a background thread still running has finished: the apply waits behind the
+    fence for it, however long the machine takes to get there."""
+    fast_sync(monkeypatch, **LOADED_MACHINE)
     engine = FakeEngine()
     desk, lap = _dirs(tmp_path)
     async with computer(desk, engine=engine) as a, computer(lap, engine=engine) as b:
@@ -429,13 +439,15 @@ async def test_background_threads_drain_before_the_data_is_replaced(tmp_path: Pa
         engine.on_apply = lambda: order.append("apply")
 
         def lingering() -> None:  # a cancelled reading's thread, still running
-            release.wait(5)
+            release.wait(30)
             order.append("thread done")
 
         lingering_future = asyncio.get_running_loop().run_in_executor(a.ctx.executor, lingering)
         taking = asyncio.create_task(agent_of(a).use_here())
+        await eventually(lambda: agent_of(a)._fenced)  # the replace has begun: it fences, then drains
         await asyncio.sleep(0.2)
         assert order == []
+        assert not taking.done()
         release.set()
         await taking
         await lingering_future
