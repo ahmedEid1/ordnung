@@ -261,7 +261,7 @@
     },
     "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6952590441",
     "created_at": "2026-11-17T15:30:51Z",
-    "checkpoint_sha": null
+    "checkpoint_sha": "5e4e3f0a8340d24b73ab2d8e0f8b4276ec921545"
   },
   {
     "id": "D013",
@@ -288,6 +288,6 @@
     },
     "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6952593239",
     "created_at": "2026-11-17T15:30:52Z",
-    "checkpoint_sha": null
+    "checkpoint_sha": "5e4e3f0a8340d24b73ab2d8e0f8b4276ec921545"
   }
 ]
