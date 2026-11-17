@@ -189,5 +189,30 @@
     "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6949585026",
     "created_at": "2026-11-17T13:35:06Z",
     "checkpoint_sha": "1cf2b946c478c0e08ca6fb00f10e961673b686ac"
+  },
+  {
+    "id": "D010",
+    "kind": "retake",
+    "at": "2026-11-17T13:53:40Z",
+    "step": "R6-r3",
+    "what": "R6-r3: held-out Ask turn ho-atk-06 asked again the same recording day. In its first attempt the first two tool calls got the CLI's reply that the tool was not available yet (the Ordnung MCP server had not connected); the model called both again and answered. That recording does not replay and evals.ask writes no run with one, so it is set aside (published as first attempt) and recorded again",
+    "evidence": [
+      "clock (K29, #54): at/created_at real UTC; times below on the recording clock, real + 7 d",
+      "first attempt set aside: evals/recorded/ask-heldout/claude-sonnet-5/ask/4bcd25f090e057f21085fea4.json sha256 f32776dbdfc56fab87d22684211a66ea6b2f718aa3aeb89434c9759e12e1b46d ok $0.0592, moved to $R/retakes/2026-11-24/R6-r3/; its request-lock entry removed",
+      "its tool results 1-2 (search, list_contracts) are exactly the CLI's '<tool_use_error>Error: No such tool available: <tool></tool_use_error>'; results 3-5 (search, list_contracts, get_document) equal what the tools answer for the recording day",
+      "zero-token replay of the run: 160 of 160 turns answered, 0 misses, 0 request-lock drift, 1 recording that does not replay (this one); the live attempt (2026-11-24 13:35-13:50, recording clock) therefore wrote no results file (exit 1)",
+      "same cause as D004 (R3, the same turn); consequence as registered: the retaken turn is included; the first attempt is published"
+    ],
+    "consequence": "include the retaken unit; the first attempt is published; first-attempt sensitivity",
+    "applies_to": {
+      "split": "ask-heldout",
+      "repeat": 3,
+      "entries": [
+        "ho-atk-06"
+      ]
+    },
+    "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6950047267",
+    "created_at": "2026-11-17T13:53:40Z",
+    "checkpoint_sha": null
   }
 ]
