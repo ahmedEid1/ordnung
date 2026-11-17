@@ -57,6 +57,9 @@ CARD = (
     "sources",
     "newest",
 )
+#: A condition's latency per letter as section 12 shows it, the analysis's ``latency_ms`` keys
+#: (``finalrun.LATENCY_FIELDS``; the page imports nothing of the analysis side, so they are named here too).
+LATENCY_FIELDS = ("p50", "p95", "mean")
 #: The anchors the final run's parts link to (the report's sections 3, 6, 7 and 16) and the final run's subsection.
 DATA_ANCHOR, RESULTS_ANCHOR, STATISTICS_ANCHOR = "#3-data-and-labels", "#6-results", "#7-statistics"
 DEVIATIONS_ANCHOR = "#16-deviations"
@@ -105,7 +108,11 @@ def card_rows(doc: Mapping[str, Any], common: Mapping[str, Sequence[str]]) -> li
     reads = [row for row in shown["inputs"] if row["role"] in FINAL_INPUTS]
     registered = shown["prereg"]["registered"]
     if reads:
-        newest = max(reads, key=lambda row: str(row["date"]))
+        # the newest by its day, then by when its file was written (reads of one day), then the later input
+        newest = max(
+            enumerate(reads),
+            key=lambda pair: (str(pair[1]["date"]), str(pair[1].get("generated_at") or ""), pair[0]),
+        )[1]
         sources = view(
             doc,
             "card.sources",
@@ -422,7 +429,23 @@ def _sensitivities(doc: Mapping[str, Any]) -> list[Block]:
     return [
         Paragraph(view(doc, "results.final.sens.lead")),
         Table(header, rows, view(doc, "results.final.sens.caption")),
+        *_offered_only(doc),
     ]
+
+
+def _offered_only(doc: Mapping[str, Any]) -> list[Block]:
+    """When every label the blind review corrected is an offered date, which is not scored, the sentence that says so:
+    the label-corrected analysis then equals the primary by construction, and no scored deadline changed."""
+    shown_ = _final(doc)
+    block = shown_["sensitivities"].get("label_corrected")
+    ids = list((block or {}).get("deviations") or [])
+    corrected = [entry for entry in shown_["deviations"] if entry["id"] in ids]
+    if not ids or len(corrected) != len(ids):
+        return []
+    if any(entry["items"] or not entry.get("offered") for entry in corrected):
+        return []
+    corrected_ids = fmt.join([f"`{value}`" for value in ids])
+    return [Paragraph(view(doc, "results.final.sens.label_corrected.offered", deviations=corrected_ids))]
 
 
 def _newkinds(doc: Mapping[str, Any]) -> list[Block]:
@@ -484,7 +507,63 @@ def statistics(doc: Mapping[str, Any]) -> list[Block]:
         seed=settings["seed"],
         margin=_margin(doc),
     )
-    return [Paragraph(lead), *_chart(doc, "final-differences"), _noninferiority(doc), *_stability(doc)]
+    return [
+        Paragraph(lead),
+        *_chart(doc, "final-differences"),
+        *_power(doc),
+        _noninferiority(doc),
+        *_stability(doc),
+    ]
+
+
+def _power(doc: Mapping[str, Any]) -> list[Block]:
+    """Where each pre-registered power was simulated, beside the power the forest shows: the gap the earlier held-out
+    splits showed, the power at half that gap and the smallest gap most simulated runs decide; then the
+    pre-registration's own caveat on these figures, as registered."""
+    shown_ = _final(doc)
+    at = shown_.get("power_at")
+    blocks: list[Block] = []
+    if at:
+        rows = []
+        for family, part in finalcharts.FAMILIES:
+            for baseline in finalcharts.baselines(doc):
+                tested = (family, baseline) in finalcharts.DECISIONS or (
+                    family,
+                    baseline,
+                ) == finalcharts.BOUNDED
+                row = (at.get(family) or {}).get(pair_key(baseline))
+                if not tested or not row:
+                    continue
+                rows.append(
+                    [
+                        palette.LABELS[baseline],
+                        view(doc, f"chart.final-differences.measure.{part}"),
+                        _points_or_none(row.get("gap")),
+                        finalcharts.power(doc, family, baseline),
+                        _pct_or_none(row.get("power_half_gap")),
+                        _points_or_none(row.get("mdd")),
+                    ]
+                )
+        if rows:
+            header = [
+                view(doc, f"stats.power.col.{column}")
+                for column in ("pair", "measure", "gap", "power", "half", "mdd")
+            ]
+            blocks.append(Table(header, rows, view(doc, "stats.power.caption")))
+    caveat = shown_.get("power_caveat")
+    if caveat:
+        blocks.append(
+            Paragraph(view(doc, "stats.power.caveat", file=shown_["prereg"]["file"], caveat=caveat))
+        )
+    return blocks
+
+
+def _points_or_none(value: Any) -> str:
+    return NONE if value is None else points(float(value))
+
+
+def _pct_or_none(value: Any) -> str:
+    return NONE if value is None else final._formatted(value, "pct_whole", WHERE)
 
 
 def _noninferiority(doc: Mapping[str, Any]) -> Table:
@@ -554,8 +633,11 @@ def pooled_heading(doc: Mapping[str, Any], key: str) -> Subheading:
     return Subheading(view(doc, key))
 
 
-def pooled_note(doc: Mapping[str, Any]) -> Paragraph:
-    """The note that a section's numbers are the earlier held-out splits', as recorded and not pre-registered."""
+def pooled_note(doc: Mapping[str, Any], *, above: bool = False) -> Paragraph:
+    """The note that a section's numbers are the earlier held-out splits', as recorded and not pre-registered: it says
+    the final run's numbers are above when the section shows them before it (``above``), else where they are."""
+    if above:
+        return Paragraph(view(doc, "pooled.note.above"))
     return Paragraph(view(doc, "pooled.note", results=RESULTS_ANCHOR, statistics=STATISTICS_ANCHOR))
 
 
@@ -665,8 +747,10 @@ def _applies(doc: Mapping[str, Any], entry: Mapping[str, Any]) -> str:
         parts.append(view(doc, "deviations.applies.read", repeat=entry["repeat"]))
     if entry["entries"] is not None:
         parts.append(view(doc, "deviations.applies.entries", count=entry["entries"]))
-    if entry["items"] is not None:
+    if entry["items"]:
         parts.append(view(doc, "deviations.applies.items", count=entry["items"]))
+    if entry.get("offered"):
+        parts.append(view(doc, "deviations.applies.offered", count=entry["offered"]))
     parts += [f"`{path}`" for path in entry["paths"]]
     return "; ".join(parts) or view(doc, "deviations.not_recorded")
 
@@ -701,7 +785,31 @@ def deviations(doc: Mapping[str, Any]) -> list[Block]:
     return [
         Paragraph(view(doc, "deviations.lead", file=file, count=len(entries))),
         Table(header, rows, view(doc, "deviations.caption")),
+        *_retakes(doc),
     ]
+
+
+#: The split of the held-out Ask set's runs, as a deviation names it.
+ASK_SPLIT = "ask-heldout"
+
+
+def _retakes(doc: Mapping[str, Any]) -> list[Block]:
+    """For a retake of a held-out Ask turn, what its registered first-attempt sensitivity is: the analysis computes it
+    for the benchmark's reads only, so none is shown for Ask; and where the first attempts are published."""
+    shown_ = _final(doc)
+    ids = [
+        entry["id"]
+        for entry in shown_["deviations"]
+        if entry["kind"] == "retake" and entry["split"] == ASK_SPLIT
+    ]
+    if not ids:
+        return []
+    where = shown_.get("retakes")
+    key = "deviations.retake.ask" if where else "deviations.retake.ask.unpublished"
+    values: dict[str, object] = {"ids": fmt.join([f"`{value}`" for value in ids])}
+    if where:
+        values["path"] = where
+    return [Paragraph(view(doc, key, **values))]
 
 
 def provenance(doc: Mapping[str, Any]) -> list[Block]:
@@ -826,6 +934,176 @@ def data_note(doc: Mapping[str, Any]) -> Paragraph:
     held-out splits' are as recorded, not pre-registered."""
     final_splits = [row["split"] for row in doc["splits"] if row["split"] in finalcharts.SPLITS]
     return Paragraph(view(doc, "data.note", splits=fmt.join(final_splits), results=RESULTS_ANCHOR))
+
+
+def not_real(doc: Mapping[str, Any]) -> Paragraph | None:
+    """Section 3's words on what the letters are not, with a final run whose new kinds were read: the rarer
+    high-stakes kinds are in them, a small set (``None`` while they were not read: the words of before stay true)."""
+    if "not_recorded" in _final(doc)["newkinds"]:
+        return None
+    return Paragraph(view(doc, "data.not_real", anchor=RESULTS_ANCHOR))
+
+
+def _read_rows(doc: Mapping[str, Any], kind: str) -> list[Mapping[str, Any]]:
+    rows: list[Mapping[str, Any]] = (_final(doc).get("replays") or {}).get(kind) or []
+    return rows
+
+
+def without_land(doc: Mapping[str, Any]) -> list[Block]:
+    """Section 6.4's final run: each read of the final split replayed as the app counts before the person sets the
+    sender's Land (``scripts/eval_without_land.py``, one file per read)."""
+    reads = _read_rows(doc, "without_land")
+    if not reads:
+        return []
+    rows = [
+        [
+            str(row["read"]),
+            fmt.kn(row["with_land"]),
+            f"{fmt.kn(row['without_land'])} ({fmt.pct(row['without_land']['value'])})",
+            fmt.kn(row["with_suggestion"]),
+            str(row["late"]),
+            str(row["changed"]),
+        ]
+        for row in reads
+    ]
+    header = [
+        view(doc, f"replays.without_land.col.{column}")
+        for column in ("read", "with", "without", "suggested", "late", "changed")
+    ]
+    files = fmt.join([f"`{row['file']}`" for row in reads])
+    return [
+        Paragraph(view(doc, "replays.without_land.lead", split=_final(doc)["split"], files=files)),
+        Table(header, rows, view(doc, "replays.without_land.caption")),
+    ]
+
+
+def ablation(doc: Mapping[str, Any]) -> list[Block]:
+    """Section 8's final run: each read of the final split replayed with each of Ordnung's code checks switched off
+    (``scripts/eval_ablate_checks.py``, one file per read)."""
+    reads = _read_rows(doc, "ablation")
+    if not reads:
+        return []
+    names = [row["name"] for row in reads[0]["rows"]]
+    labels = {row["name"]: row["label"] for row in reads[0]["rows"]}
+    by_read = [{row["name"]: row for row in read["rows"]} for read in reads]
+    rows = []
+    for name in names:
+        cells = [labels[name]]
+        for counts in by_read:
+            row = counts.get(name)
+            cells += [f"{row['right']}/{row['scored']}", str(row["late"])] if row else [NONE, NONE]
+        rows.append(cells)
+    header = [view(doc, "replays.ablation.col.configuration")]
+    for read in reads:
+        header += [
+            view(doc, "replays.ablation.col.right", read=read["read"]),
+            view(doc, "replays.ablation.col.late", read=read["read"]),
+        ]
+    files = fmt.join([f"`{read['file']}`" for read in reads])
+    return [
+        Paragraph(view(doc, "replays.ablation.lead", split=_final(doc)["split"], files=files)),
+        Table(header, rows, view(doc, "replays.ablation.caption")),
+    ]
+
+
+def selective(doc: Mapping[str, Any]) -> list[Block]:
+    """Section 10's final run: each condition's flags as a selective prediction, as the final analysis records them:
+    on read 1's deadlines, and in the last column over the reads (each date wrong in any read counted once)."""
+    flags = _final(doc).get("selective")
+    if not flags:
+        return []
+    rows = [
+        [
+            palette.LABELS[condition],
+            fmt.of(flags[condition]["please_check"]),
+            fmt.of(flags[condition]["any_flag"]),
+            fmt.kn(flags[condition]["unflagged_right"]),
+            fmt.kn(flags[condition]["unflagged_harmful"]),
+            f"{float(flags[condition]['aurc']):.4f} ({float(flags[condition]['excess']):.4f})",
+            NONE if flags[condition]["auroc"] is None else f"{float(flags[condition]['auroc']):.2f}",
+            NONE if flags[condition].get("over_reads") is None else fmt.of(flags[condition]["over_reads"]),
+        ]
+        for condition in doc["order"]
+    ]
+    header = [
+        view(doc, f"selective.col.{column}")
+        for column in (
+            "condition",
+            "please_check",
+            "any_flag",
+            "right",
+            "harmful",
+            "aurc",
+            "auroc",
+            "over_reads",
+        )
+    ]
+    return [
+        Paragraph(
+            view(
+                doc,
+                "selective.lead",
+                source=_final(doc)["source"]["file"],
+                first=_final(doc)["reads_used"][0],
+            )
+        ),
+        Table(header, rows, view(doc, "selective.caption")),
+    ]
+
+
+def cost(doc: Mapping[str, Any]) -> list[Block]:
+    """Section 12's final run: each condition's cost per letter and per right date and its latency per letter (p50,
+    p95 and mean) over the reads, as the final analysis records them."""
+    costs = _final(doc).get("cost")
+    if not costs:
+        return []
+    rows = [
+        [
+            palette.LABELS[condition],
+            fmt.usd(costs[condition]["usd_per_letter"]),
+            fmt.usd(costs[condition]["usd_per_right_date"]),
+            *(fmt.seconds((costs[condition].get("latency_ms") or {}).get(key)) for key in LATENCY_FIELDS),
+            str(costs[condition]["letters"]),
+        ]
+        for condition in doc["order"]
+    ]
+    header = [
+        *(view(doc, f"cost.col.{column}") for column in ("condition", "letter", "right")),
+        *(view(doc, "cost.col.latency", stat=stat) for stat in LATENCY_FIELDS),
+        view(doc, "cost.col.letters"),
+    ]
+    return [
+        Paragraph(view(doc, "cost.lead", source=_final(doc)["source"]["file"])),
+        Table(header, rows, view(doc, "cost.caption")),
+    ]
+
+
+def _cause(doc: Mapping[str, Any], cause: str, count: int) -> str:
+    """One cause of a missed reminder and its count: in a view template's words when it has one, else its code."""
+    key = "e2e.cause." + cause.replace(":", "_").replace("-", "_")
+    words = view(doc, key) if key in _final(doc)["views"]["templates"] else f"`{cause}`"
+    return view(doc, "e2e.cause", cause=words, count=count)
+
+
+def e2e(doc: Mapping[str, Any]) -> list[Block]:
+    """Section 13's final run: from the letter file to the reminder on the final letters read once, by split, with
+    why each obligation without a reminder in time got none (the end-to-end file's ``not_reminded``)."""
+    shown_ = _final(doc).get("e2e")
+    if not shown_ or not shown_.get("by_split"):
+        return []
+    rows = [
+        [
+            f"`{split}`",
+            fmt.kn(block["reminded_in_time"]),
+            "; ".join(_cause(doc, cause, count) for cause, count in block["not_reminded"].items()) or NONE,
+        ]
+        for split, block in shown_["by_split"].items()
+    ]
+    header = [view(doc, f"e2e.col.{column}") for column in ("split", "in_time", "causes")]
+    return [
+        Paragraph(view(doc, "e2e.lead", file=shown_["file"])),
+        Table(header, rows, view(doc, "e2e.caption")),
+    ]
 
 
 def kind(doc: Mapping[str, Any], name: str) -> str:

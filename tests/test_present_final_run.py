@@ -328,11 +328,52 @@ def test_every_number_in_presentation_json_final_is_the_analysis_value_at_its_pa
         family: {pair: row["power"] for pair, row in rows.items()}
         for family, rows in named["power"]["comparisons"].items()
     }
+    # where each power was simulated, the power file's; the caveat, the pre-registration's as registered
+    for family, rows in shown["power_at"].items():
+        for pair, row in rows.items():
+            source_row = named["power"]["comparisons"][family][pair]
+            assert row["gap"] == (source_row.get("observed") or {}).get("gap")
+            assert row["power_half_gap"] == source_row.get("power_half_gap")
+            assert row["mdd"] == (source_row.get("mdd") or {}).get("gap")
+    assert shown["power_caveat"] == (prereg.get("power") or {}).get("caveats")
+    # the cost and latency, read 1's flags and the flags over the reads, the analysis's own (a hand-built
+    # final has none of them)
+    for condition in final.CONDITIONS:
+        theirs = primary["conditions"][condition]
+        if shown["cost"] is None:
+            assert "cost" not in theirs
+        else:
+            assert shown["cost"][condition] == {
+                **{key: theirs["cost"][key] for key in finalrun.COST_FIELDS},
+                "latency_ms": {key: theirs["latency_ms"][key] for key in finalrun.LATENCY_FIELDS},
+            }
+            assert finaltext.LATENCY_FIELDS == finalrun.LATENCY_FIELDS
+        if shown["selective"] is None:
+            assert "selective" not in theirs
+        else:
+            ours = shown["selective"][condition]
+            assert (ours["aurc"], ours["excess"], ours["auroc"]) == (
+                theirs["selective"]["aurc"]["aurc"],
+                theirs["selective"]["aurc"]["excess"],
+                theirs["selective"]["auroc"],
+            )
+            assert ours["please_check"]["k"] == int(theirs["selective"]["please_check"]["recall_wrong"]["k"])
+            over = theirs["flags_over_reads"]["caught"]
+            assert ours["over_reads"] == {"k": int(over["k"]), "n": int(over["n"])}
 
     def strings(value: Any, path: str = "") -> Iterator[tuple[str, str]]:
         if isinstance(value, dict):
             for key, inner in value.items():
-                if key not in ("sentences", "views", "layout", "methods", "consequence", "not_run"):
+                # the registered words: the sentences, the view templates, the pre-registration's own texts
+                if key not in (
+                    "sentences",
+                    "views",
+                    "layout",
+                    "methods",
+                    "consequence",
+                    "not_run",
+                    "power_caveat",
+                ):
                     yield from strings(inner, f"{path}.{key}")
         elif isinstance(value, list):
             for inner in value:
@@ -2327,7 +2368,9 @@ def test_every_synthetic_final_renders_through_the_whole_presenter(name: str, tm
     begin, end = lines.index(BEGIN), lines.index(END)
     outside = len(lines) - (end - begin - 1)
     assert len(lines) < README_MAX_LINES
-    assert outside + final.README_BLOCK_MAX_LINES + PUBLISH_ROOM < README_MAX_LINES
+    # the publish PR's room is kept only until it has rewritten its bullets, as tests/test_readme.py keeps it
+    spare = 0 if final_published() else PUBLISH_ROOM
+    assert outside + final.README_BLOCK_MAX_LINES + spare < README_MAX_LINES
     for relative in build.output_paths(doc):
         content = (root / relative).read_text(encoding="utf-8")
         assert str(tmp_path) not in content and str(hf.ROOT) not in content, relative

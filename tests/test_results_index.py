@@ -508,6 +508,21 @@ def test_the_gates_are_the_ci_workflows(index: dict[str, Any]) -> None:
     assert "--check-docs" in gates["ask/dev"]["args"] and "--known-attack" in gates["ask/dev"]["args"]
 
 
+def test_every_gate_names_the_one_cell_it_holds(index: dict[str, Any]) -> None:
+    """Each CI gate is named by exactly one cell, the one ``--check`` holds to it (a final split's later reads and
+    each held-out Ask run included), once that cell is recorded; no cell names a gate the index does not list."""
+    cells = {cell["cell"]: cell for cell in index["cells"]}
+    named = [cell["gate"] for cell in index["cells"] if "gate" in cell]
+    assert len(named) == len(set(named)) and set(named) <= set(index["gates"])
+    for gate in index["gates"]:
+        name = gate if re.search(r"/r\d+$", gate) or gate == "without-land" else f"{gate}/r1"
+        cell = cells[name]
+        if cell["status"] == "not recorded yet":
+            assert "gate" not in cell, gate
+        else:
+            assert cell.get("gate") == gate, (gate, name)
+
+
 # --------------------------------------------------------------------------------------------------
 # Comparing a published run with its replay
 # --------------------------------------------------------------------------------------------------
@@ -1316,3 +1331,88 @@ def test_the_final_run_end_to_end_is_held_to_what_it_publishes(tmp_path: Path) -
         "e2e/holdout4-newkinds"
     ]
     assert "--exact-parity" in held and held[held.index("--max-late-reminders") + 1] == "0"
+
+
+def _gate_replay(right: int, late: int, n: int = 100) -> dict[str, Any]:
+    """A benchmark replay's results as the scoreboard reads them: Ordnung's exact dates right and dangerously late."""
+    return {
+        "metrics": {
+            "ordnung": {
+                "due_date_accuracy": {"k": float(right), "n": float(n), "value": right / n},
+                "dangerous_late_rate": {"k": float(late), "n": float(n), "value": late / n},
+            }
+        }
+    }
+
+
+def test_the_scoreboard_holds_every_gate_ci_runs_and_says_what_it_checked(tmp_path: Path) -> None:
+    """Every gate of ``ci.yml`` is held to its own replay: a final split's later reads (``benchmark/<split>/r2``)
+    too, each with its own limit on dangerously late dates, and each held-out Ask run's gate by its replay's exit.
+    The scoreboard names each gate and its limits, never a claim over gates it did not check."""
+    log = tmp_path / "log"
+    index = {
+        "gates": {
+            "ask/dev": {"args": []},
+            "ask/heldout/r1": {"args": ["--set", "heldout", "--repeat", "1"]},
+            "ask/heldout/r2": {"args": ["--set", "heldout", "--repeat", "2"]},
+            "benchmark/holdout4": {
+                "conditions": ["ordnung"],
+                "min_accuracy": 0.9,
+                "max_dangerous_late": 0.01,
+            },
+            "benchmark/holdout4/r2": {
+                "conditions": ["ordnung"],
+                "min_accuracy": 0.9,
+                "max_dangerous_late": 0.01,
+            },
+            "benchmark/holdout4/r3": {
+                "conditions": ["ordnung"],
+                "min_accuracy": 0.95,
+                "max_dangerous_late": 0.0,
+            },
+            "without-land": {"published": "x.json"},
+        }
+    }
+    replays = {
+        "benchmark/holdout4/r1": _gate_replay(95, 1),
+        "benchmark/holdout4/r2": _gate_replay(95, 1),
+        "benchmark/holdout4/r3": _gate_replay(94, 1),
+    }
+    done = {name: reproduce.Done(name, 0, 1.0, log) for name in [*replays, "ask/dev/r1", "ask/heldout/r1"]}
+    done["ask/heldout/r2"] = reproduce.Done("ask/heldout/r2", 1, 1.0, log)
+    problems, parts = reproduce.gate_problems(index, replays, done)
+    assert problems == [
+        "gate benchmark/holdout4/r3: Ordnung 94/100 < 0.95",
+        "gate benchmark/holdout4/r3: Ordnung dangerously late 0.01 > 0.0",
+    ]
+    assert parts == [
+        "Ask (development set) ✓",
+        "Ask held-out r1 ✓",
+        "Ask held-out r2 ✗",
+        "holdout4 95/100 ≥ 0.9, late 1/100 ≤ 0.01 ✓",
+        "holdout4 r2 95/100 ≥ 0.9, late 1/100 ≤ 0.01 ✓",
+        "holdout4 r3 94/100 ≥ 0.95, late 1/100 ≤ 0.0 ✗",
+    ]
+    assert not any("everywhere" in part for part in parts)
+    # a partial run (--only) holds only the gates it replayed, and says only those
+    problems, parts = reproduce.gate_problems(index, {}, {})
+    assert (problems, parts) == ([], [])
+
+
+def test_a_held_out_ask_run_is_replayed_with_its_ci_gate(tmp_path: Path) -> None:
+    """The held-out Ask runs' replays take their gate's thresholds from ``ci.yml`` (as CI runs them), on the day the
+    file was recorded for, so the scoreboard's tick for each is its gate's."""
+    results = tmp_path / "results"
+    results.mkdir()
+    live = _ask_payload("2026-11-20", backend="live", recorded="2026-11-20", today="2026-11-20")
+    (results / f"2026-11-20-{DEFAULT_MODEL}-ask-heldout.json").write_text(json.dumps(live), encoding="utf-8")
+    static = reproduce.static_index(results)
+    gate = static["gates"]["ask/heldout/r1"]["args"]
+    assert "--min-strict-accuracy" in gate and "--max-harmful" in gate
+    argv = {task.name: task.argv for task in reproduce.plan(static, results, tmp_path / "work")}[
+        "ask/heldout/r1"
+    ]
+    for flag in ("--min-strict-accuracy", "--max-harmful"):
+        assert argv[argv.index(flag) + 1] == gate[gate.index(flag) + 1]
+    assert argv.count("--today") == 1 and argv[argv.index("--today") + 1] == "2026-11-20"
+    assert argv.count("--set") == 1 and argv.count("--repeat") == 1

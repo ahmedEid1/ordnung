@@ -78,6 +78,16 @@ _SENSITIVITY_FIELDS = (
 )
 STRESS_ENDPOINTS = ("injection_targeted", "distractor_taken", "harmful_unflagged")
 _HASH = re.compile(r"[0-9a-f]{64}")
+#: An evidence line's first word that names a file of the repository (``dir/name.ext``), not a note, a key or a URL.
+_REPO_PATH = re.compile(r"[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+")
+#: The replays of the final run's reads (one file per read), by the kind :func:`evals.present.model.kind_of` gives them.
+REPLAY_KINDS = ("without-land", "checks-ablated")
+#: A condition's cost, as the final analysis records it.
+COST_FIELDS = ("usd_per_letter", "usd_per_right_date", "letters")
+#: A condition's latency per letter over the reads, in ms, as the final analysis records it (``latency_ms``).
+LATENCY_FIELDS = ("p50", "p95", "mean")
+#: Where the first attempts of retaken units are published, under the checkout's root.
+RETAKES = "evals/retakes"
 
 
 def _sha256(path: Path) -> str:
@@ -194,7 +204,7 @@ def section(results_dir: Path, found: Found) -> dict[str, Any] | None:
         },
         "phase2": _phase2(root),
         "files": _files(root, found, files, named, split),
-        "inputs": [{key: row.get(key) for key in INPUT_FIELDS} for row in inputs],
+        "inputs": [_input(row, found) for row in inputs],
         "date": _at(meta, "date", source),
         "model": _at(meta, "model", source),
         "settings": {key: _at(meta, f"settings.{key}", source) for key in SETTINGS},
@@ -230,12 +240,21 @@ def section(results_dir: Path, found: Found) -> dict[str, Any] | None:
             {key: _at(row, key, f"{source} errors") for key in ERROR_FIELDS}
             for row in _list(primary, "errors", source)
         ],
-        "deviations": [_deviation(entry, files["deviations"]) for entry in named.get("deviations") or []],
+        "deviations": [
+            _deviation(entry, files["deviations"], _required(found, read))
+            for entry in named.get("deviations") or []
+        ],
         "owner": {"labels": _status(named.get("owner_labels")), "kappa": _status(named.get("owner_kappa"))},
         "ask": _ask(named.get("ask"), ask_file or files["ask"]),
         "stress": _stress(named.get("stress"), stress_file or files["stress"]),
         "e2e": _e2e(named.get("e2e"), _named(found, files["e2e"], "e2e", split) or files["e2e"]),
         "power": _power(named.get("power"), files["power"]),
+        "power_at": _power_at(named.get("power")),
+        "power_caveat": _caveat(prereg),
+        "cost": _costs(primary),
+        "selective": _selectives(primary),
+        "replays": _replays(found, split),
+        "retakes": _retakes(root),
         "sentences": {
             "page": [sentence._asdict() for sentence in page],
             "readme": [sentence._asdict() for sentence in readme],
@@ -468,12 +487,68 @@ def _newkinds(block: Any, source: str) -> dict[str, Any]:
     }
 
 
-def _deviation(entry: Any, where: str) -> dict[str, Any]:
-    """One entry of the deviations file as the page lists it: what it is, what it applies to and its registered
-    consequence, where and when it was recorded; never its ``what``."""
+def _input(row: Mapping[str, Any], found: Found) -> dict[str, Any]:
+    """An input of the final analysis as the provenance shows it, and when its file was written (its
+    ``meta.generated_at``, ``None`` without one): reads of one day are told apart by it."""
+    shown = {key: row.get(key) for key in INPUT_FIELDS}
+    data = found.get(str(row.get("file")), ("", "", {}))[2]
+    meta = data.get("meta")
+    generated = meta.get("generated_at") if isinstance(meta, Mapping) else None
+    shown["generated_at"] = str(generated) if generated else None
+    return shown
+
+
+def _required(found: Found, read: set[str]) -> dict[tuple[str, str], list[bool]]:
+    """``{(split, entry id): [whether each slot is scored]}`` from the first read of each split the final analysis
+    reads (every read of a split holds the same letters and labels): a deviation's items are told apart by it, a
+    deadline from an offered date that is not scored."""
+    slots: dict[tuple[str, str], list[bool]] = {}
+    for name in sorted(read):
+        data = found[name][2]
+        split = str((data.get("meta") or {}).get("split"))
+        for entry in data.get("entries") or []:
+            key = (split, str(entry.get("id")))
+            if key not in slots:
+                slots[key] = [bool(item.get("required", True)) for item in entry.get("expected") or []]
+    return slots
+
+
+def _items(
+    applies: Mapping[str, Any], required: Mapping[tuple[str, str], list[bool]]
+) -> tuple[int | None, int]:
+    """``(deadlines, offered)``: how many of a deviation's items are scored deadlines and how many offered dates,
+    which are not scored (an item whose slot the reads do not show counts as a deadline)."""
+    items = applies.get("items")
+    if not isinstance(items, list):
+        return None, 0
+    offered = 0
+    for item in items:
+        if not isinstance(item, Mapping):
+            continue
+        slots = required.get((str(applies.get("split")), str(item.get("entry_id"))))
+        index = item.get("item")
+        if slots is not None and isinstance(index, int) and 0 <= index < len(slots) and not slots[index]:
+            offered += 1
+    return len(items) - offered, offered
+
+
+def _paths(evidence: Sequence[Any]) -> list[str]:
+    """The repository files a ``code_hash_changed`` deviation's evidence names: each line's first word when it is a
+    path (``dir/name.ext``), never a note's first word, a key or a URL."""
+    words = [str(item).split(" ", 1)[0] for item in evidence]
+    return [word for word in words if _REPO_PATH.fullmatch(word)]
+
+
+def _deviation(
+    entry: Any, where: str, required: Mapping[tuple[str, str], list[bool]] | None = None
+) -> dict[str, Any]:
+    """One entry of the deviations file as the page lists it: what it is, what it applies to (its items told apart:
+    a scored deadline, or an offered date that is not scored) and its registered consequence, where and when it was
+    recorded; never its ``what``."""
     applies = entry.get("applies_to") if isinstance(entry.get("applies_to"), Mapping) else {}
     evidence = entry.get("evidence") if isinstance(entry.get("evidence"), list) else []
     kind = str(_at(entry, "kind", where))
+    deadlines, offered = _items(applies, required or {})
     return {
         "id": str(_at(entry, "id", where)),
         "kind": kind,
@@ -482,9 +557,10 @@ def _deviation(entry: Any, where: str) -> dict[str, Any]:
         "split": applies.get("split"),
         "repeat": applies.get("repeat"),
         "entries": len(applies["entries"]) if isinstance(applies.get("entries"), list) else None,
-        "items": len(applies["items"]) if isinstance(applies.get("items"), list) else None,
-        # a code_hash_changed deviation names the changed path, alone or before a note
-        "paths": [str(item).split(" ", 1)[0] for item in evidence] if kind == "code_hash_changed" else [],
+        "items": deadlines,
+        "offered": offered,
+        # a code_hash_changed deviation names each changed path at the start of an evidence line
+        "paths": _paths(evidence) if kind == "code_hash_changed" else [],
         "consequence": entry.get("consequence"),
         "created_at": entry.get("created_at"),
         "issue_comment_url": entry.get("issue_comment_url"),
@@ -536,8 +612,18 @@ def _e2e(doc: Any, name: str) -> dict[str, Any] | None:
     if doc is None:
         return None
     scam = _at(doc, "metrics.all.scam", name)
+    by_split = (doc.get("metrics") or {}).get("by_split") or {}
     return {
         "file": name,
+        "not_reminded": _causes((doc.get("metrics") or {}).get("all")),
+        "by_split": {
+            split: {
+                "reminded_in_time": _counted(block["reminded_in_time"], name),
+                "not_reminded": _causes(block),
+            }
+            for split, block in by_split.items()
+            if isinstance(block, Mapping) and isinstance(block.get("reminded_in_time"), Mapping)
+        },
         "obligations": _at(doc, "metrics.all.obligations", name),
         "reminded_in_time": _rate(_at(doc, "metrics.all.reminded_in_time", name), name),
         "set_aside": _at(scam, "set_aside_obligations", name),
@@ -549,6 +635,14 @@ def _e2e(doc: Any, name: str) -> dict[str, Any] | None:
     }
 
 
+def _causes(block: Any) -> dict[str, int]:
+    """Why obligations got no reminder in time, by cause and count (the end-to-end file's ``not_reminded``)."""
+    causes = block.get("not_reminded") if isinstance(block, Mapping) else None
+    if not isinstance(causes, Mapping):
+        return {}
+    return {str(cause): int(count) for cause, count in sorted(causes.items())}
+
+
 def _power(doc: Any, where: str) -> dict[str, Any] | None:
     if doc is None:
         return None
@@ -558,6 +652,147 @@ def _power(doc: Any, where: str) -> dict[str, Any] | None:
         }
         for family in ("F1_accuracy", "F2_harm")
     }
+
+
+def _power_at(doc: Any) -> dict[str, Any] | None:
+    """Where each pre-registered power was simulated (the power file's): the gap the earlier held-out splits showed,
+    the power at half that gap and the smallest gap decided in most simulated runs (``None`` where the file has none)."""
+    if not isinstance(doc, Mapping) or not isinstance(doc.get("comparisons"), Mapping):
+        return None
+    shown: dict[str, Any] = {}
+    for family in ("F1_accuracy", "F2_harm"):
+        rows = doc["comparisons"].get(family)
+        if not isinstance(rows, Mapping):
+            continue
+        shown[family] = {
+            pair: {
+                "gap": (row.get("observed") or {}).get("gap"),
+                "power_half_gap": row.get("power_half_gap"),
+                "mdd": (row.get("mdd") or {}).get("gap"),
+                "mdd_power": (row.get("mdd") or {}).get("power"),
+            }
+            for pair, row in rows.items()
+            if isinstance(row, Mapping)
+        }
+    return shown
+
+
+def _caveat(prereg: Mapping[str, Any]) -> str | None:
+    """The pre-registration's caveat on its power, as registered (``power.caveats``), or ``None``."""
+    power = prereg.get("power")
+    caveat = power.get("caveats") if isinstance(power, Mapping) else None
+    return caveat if isinstance(caveat, str) and caveat.strip() else None
+
+
+def _costs(primary: Mapping[str, Any]) -> dict[str, Any] | None:
+    """Each condition's cost and latency over the final run's reads, as the final analysis records them (``None``
+    without a cost; a latency the analysis lacks is ``None``)."""
+    costs = {}
+    for condition in final.CONDITIONS:
+        block = (primary.get("conditions") or {}).get(condition) or {}
+        cost, latency = block.get("cost"), block.get("latency_ms")
+        if not isinstance(cost, Mapping):
+            return None
+        costs[condition] = {
+            **{key: cost.get(key) for key in COST_FIELDS},
+            "latency_ms": (
+                {key: latency.get(key) for key in LATENCY_FIELDS} if isinstance(latency, Mapping) else None
+            ),
+        }
+    return costs
+
+
+def _selectives(primary: Mapping[str, Any]) -> dict[str, Any] | None:
+    """Each condition's flags as a selective prediction, as the final analysis records them (``None`` without them):
+    on read 1's deadlines (``selective``), the wrong dates a flag caught, the dates shown without a flag and the
+    risk-coverage areas; and over the reads (``flags_over_reads``), the dates wrong in any read and of them those
+    flagged "Please check" in every read in which they were wrong (``None`` when the analysis lacks it)."""
+    shown = {}
+    for condition in final.CONDITIONS:
+        block = (primary.get("conditions") or {}).get(condition) or {}
+        selective, over = block.get("selective"), block.get("flags_over_reads")
+        if not isinstance(selective, Mapping):
+            return None
+        where = f"selective {condition}"
+        shown[condition] = {
+            "please_check": _counted(_at(selective, "please_check.recall_wrong", where), where),
+            "any_flag": _counted(_at(selective, "any_flag.recall_wrong", where), where),
+            "unflagged_right": _counted(_at(selective, "unflagged.accuracy", where), where),
+            "unflagged_harmful": _counted(_at(selective, "unflagged.harmful", where), where),
+            "aurc": _at(selective, "aurc.aurc", where),
+            "excess": _at(selective, "aurc.excess", where),
+            "auroc": selective.get("auroc"),
+            "over_reads": (
+                _counted(_at(over, "caught", where), where) if isinstance(over, Mapping) else None
+            ),
+        }
+    return shown
+
+
+def _replays(found: Found, split: str) -> dict[str, list[dict[str, Any]]]:
+    """The replays of the final split's reads, one file per read and kind, in the order of the reads: the app
+    without the sender's Land, and Ordnung's code checks switched off one at a time."""
+    shown: dict[str, list[dict[str, Any]]] = {"without_land": [], "ablation": []}
+    for name in sorted(found):
+        kind, _, data = found[name]
+        if kind not in REPLAY_KINDS or split not in (data.get("splits") or {}):
+            continue
+        meta = data.get("meta") or {}
+        read = int(meta.get("repeat") or 1)
+        if kind == "without-land":
+            numbers = data["splits"][split]
+            if not all(
+                isinstance(numbers.get(key), Mapping)
+                for key in ("with_land", "without_land", "with_suggestion")
+            ):
+                continue  # not a replay of the final split's own reads
+            shown["without_land"].append(
+                {
+                    "file": name,
+                    "read": read,
+                    "with_land": _counted(numbers["with_land"]["due_date_accuracy"], name),
+                    "without_land": {
+                        **_counted(numbers["without_land"]["due_date_accuracy"], name),
+                        "value": numbers["without_land"]["due_date_accuracy"]["value"],
+                    },
+                    "with_suggestion": _counted(numbers["with_suggestion"]["due_date_accuracy"], name),
+                    "late": int(numbers["without_land"]["dangerous_late_rate"]["k"]),
+                    "changed": len(numbers.get("changed") or []),
+                }
+            )
+        else:
+            totals = data.get("totals") or {}
+            counts = (totals.get("all") or totals.get("held_out") or {}).get("ablations")
+            if not isinstance(counts, Mapping):
+                continue  # not a replay of the final split's own reads
+            shown["ablation"].append(
+                {
+                    "file": name,
+                    "read": read,
+                    "rows": [
+                        {
+                            "name": ablation,
+                            "label": str(info.get("label") or ablation),
+                            **{
+                                key: int(counts[ablation]["counts"][key])
+                                for key in ("scored", "right", "late", "missed", "early")
+                            },
+                        }
+                        for ablation, info in (meta.get("ablations") or {}).items()
+                        if ablation in counts
+                    ],
+                }
+            )
+    for rows in shown.values():
+        rows.sort(key=lambda row: (row["read"], row["file"]))
+    return shown
+
+
+def _retakes(root: Path) -> str | None:
+    """Where the first attempts of retaken units are published (``evals/retakes/<version>/``), when the checkout
+    has one such folder."""
+    folders = sorted(path.name for path in (root / RETAKES).glob("*") if path.is_dir())
+    return f"{RETAKES}/{folders[-1]}/" if folders else None
 
 
 def _hashes(value: Any, path: str = "") -> dict[str, str]:

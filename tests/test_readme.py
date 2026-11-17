@@ -211,6 +211,13 @@ def test_the_readme_names_the_paired_tests_the_pre_registration_uses() -> None:
     assert "sign-flip test over letter clusters" in lead
     assert "mcnemar" in rules["f3_test"]
     assert "McNemar" in lead
+    # the decision rule the final run used: Holm within each family (never across the three comparisons, the
+    # earlier re-analysis's), a bootstrap interval, the agent by a non-inferiority bound, steadiness by mid-p
+    assert rules["multiplicity"] == "holm_within_each_family" and "Holm within each family" in lead
+    assert "Holm across" not in lead
+    assert rules["interval"].startswith("paired_cluster_bootstrap") and "bootstrap interval" in lead
+    assert rules["noninferiority"] == "signflip_test_inversion" and "non-inferiority" in lead
+    assert "midp" in rules["f3_test"] and "mid-p" in lead
 
 
 def test_the_readme_s_privacy_says_spec_s_statement_and_what_stays_off() -> None:

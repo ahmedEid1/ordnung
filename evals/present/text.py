@@ -354,14 +354,26 @@ def _final_readme_block(doc: Mapping[str, Any]) -> str:
 # --------------------------------------------------------------------------------------------------
 
 
-def _pooled(doc: Mapping[str, Any]) -> list[Block]:
-    """With a final run, the note that a section shows the earlier held-out splits as recorded, not pre-registered;
-    nothing without one."""
+def _final_part(doc: Mapping[str, Any], name: str) -> list[Block]:
+    """The final run's own part of a section that shows the earlier held-out splits (``finaltext.<name>``), put before
+    them; nothing without a final run."""
     if doc.get("final") is None:
         return []
     from evals.present import finaltext
 
-    return [finaltext.pooled_note(doc)]
+    blocks: list[Block] = getattr(finaltext, name)(doc)
+    return blocks
+
+
+def _pooled(doc: Mapping[str, Any], final_part: Sequence[Block] = ()) -> list[Block]:
+    """With a final run, the note that a section shows the earlier held-out splits as recorded, not pre-registered;
+    nothing without one. After the section's own part for the final run (``final_part``), it says the final run's
+    numbers are above, not elsewhere."""
+    if doc.get("final") is None:
+        return []
+    from evals.present import finaltext
+
+    return [finaltext.pooled_note(doc, above=bool(final_part))]
 
 
 def _card(doc: Mapping[str, Any]) -> Section:
@@ -530,11 +542,18 @@ def _task(doc: Mapping[str, Any]) -> Section:
 def _data(doc: Mapping[str, Any]) -> Section:
     header, rows = charts.table("timeline", doc)
     note: list[Block] = []
+    not_real: Block = Paragraph(
+        "What the letters are not: real post. They are one or two clean pages in a fixed set of letter "
+        "families, and the rarer high-stakes kinds the engine covers (court orders, dismissals, a landlord's "
+        "notice) are not among them yet."
+    )
     if doc.get("final") is not None:
         from evals.present import finaltext
 
         # which rows are the final run's, and that the earlier held-out splits' are as recorded
         note = [finaltext.data_note(doc)]
+        # the final run's new kinds hold the rarer high-stakes kinds, once they were read
+        not_real = finaltext.not_real(doc) or not_real
     return Section(
         "3. Data and labels",
         [
@@ -555,11 +574,7 @@ def _data(doc: Mapping[str, Any]) -> Section:
                 "with them are re-scored rows on the [history page](repo:docs/evals-history.md), never held-out "
                 "numbers."
             ),
-            Paragraph(
-                "What the letters are not: real post. They are one or two clean pages in a fixed set of letter "
-                "families, and the rarer high-stakes kinds the engine covers (court orders, dismissals, a landlord's "
-                "notice) are not among them yet."
-            ),
+            not_real,
         ],
     )
 
@@ -700,8 +715,10 @@ def _results(doc: Mapping[str, Any]) -> Section:
         split_rows.append(cells)
     blocks.append(Table(["Split", *(_label(c) for c in doc["order"])], split_rows, "Each held-out split"))
     without = doc.get("without_land")
-    if without:
+    final_without = _final_part(doc, "without_land")
+    if without or final_without:
         blocks.append(Subheading("6.4 The app as it ships: without the sender's Land"))
+    if without:
         rows = []
         days: list[int] = []
         late = 0
@@ -745,6 +762,7 @@ def _results(doc: Mapping[str, Any]) -> Section:
                 "Ordnung without the sender's Land",
             ),
         ]
+    blocks += final_without  # the final run's reads, replayed the same way
     return Section("6. Results", blocks)
 
 
@@ -869,15 +887,18 @@ def _since_0_3_0(doc: Mapping[str, Any]) -> list[list[str]]:
 
 
 def _ablations(doc: Mapping[str, Any]) -> Section:
-    blocks: list[Block] = [
-        *_pooled(doc),
-        Paragraph(
-            "The four conditions are the first ablation: the engine as the one that computes (Ordnung), as a tool "
-            "the model may call (the agent), as text (rules text) and not at all (the model alone) "
-            "([Summary](#1-summary))."
-        ),
-        Subheading("Ordnung's code checks, switched off one at a time"),
-    ]
+    intro = Paragraph(
+        "The four conditions are the first ablation: the engine as the one that computes (Ordnung), as a tool "
+        "the model may call (the agent), as text (rules text) and not at all (the model alone) "
+        "([Summary](#1-summary))."
+    )
+    heading = Subheading("Ordnung's code checks, switched off one at a time")
+    final_run = _final_part(doc, "ablation")
+    blocks: list[Block] = (
+        [intro, heading, *final_run, *_pooled(doc, final_run)]
+        if final_run
+        else [*_pooled(doc), intro, heading]
+    )
     ablation = doc.get("ablation")
     if ablation:
         rows = [
@@ -998,8 +1019,10 @@ def _safety(doc: Mapping[str, Any]) -> Section:
         if flags["caught"] == 0
         else f"Ordnung's “Please check” caught {flags['caught']} of its {flags['wrong']} wrong dates."
     )
+    final_part = _final_part(doc, "selective")
     blocks: list[Block] = [
-        *_pooled(doc),
+        *final_part,
+        *_pooled(doc, final_part),
         Table(
             ["Condition", "Late or missed [95 % CI]", "Late", "Missed", "Days late, each"],
             harm_rows,
@@ -1108,6 +1131,7 @@ def _cost(doc: Mapping[str, Any]) -> Section:
     costs = {c: _c(doc, c)["cost"] for c in doc["order"]}
     dearest = max(costs, key=lambda c: costs[c]["usd_per_letter"])
     cheapest = min(costs, key=lambda c: costs[c]["usd_per_right_date"])
+    final_part = _final_part(doc, "cost")
     said = (
         f"{_label(dearest)} is the dearest condition per letter ({fmt.usd(costs[dearest]['usd_per_letter'])})"
         + (
@@ -1120,7 +1144,8 @@ def _cost(doc: Mapping[str, Any]) -> Section:
     return Section(
         "12. Cost and latency",
         [
-            *_pooled(doc),
+            *final_part,
+            *_pooled(doc, final_part),
             Chart("cost"),
             Table(header, rows, "Cost and latency"),
             Paragraph(
@@ -1134,10 +1159,15 @@ def _cost(doc: Mapping[str, Any]) -> Section:
 
 def _e2e(doc: Mapping[str, Any]) -> Section:
     e2e = doc.get("e2e")
+    final_part = _final_part(doc, "e2e")
     if not e2e:
         return Section(
             "13. From a letter to a reminder",
-            [*_pooled(doc), Paragraph("No results file of the end-to-end run yet (`python -m evals.e2e`).")],
+            [
+                *final_part,
+                *_pooled(doc, final_part),
+                Paragraph("No results file of the end-to-end run yet (`python -m evals.e2e`)."),
+            ],
         )
     causes = (
         "; ".join(
@@ -1147,7 +1177,8 @@ def _e2e(doc: Mapping[str, Any]) -> Section:
     )
     reminded = e2e["reminded_in_time"]
     blocks: list[Block] = [
-        *_pooled(doc),
+        *final_part,
+        *_pooled(doc, final_part),
         Paragraph(
             f"Every letter of {fmt.join(e2e['splits'])} read by the real app in a fresh data folder, from the "
             f"recorded readings, through to the calendar and the morning note (`python -m evals.e2e`, "

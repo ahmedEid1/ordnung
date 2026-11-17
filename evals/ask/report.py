@@ -982,6 +982,7 @@ def render(payload: Mapping[str, Any]) -> str:
         "regenerate.",
         "",
         *_label(payload),
+        *_held_out(payload),
         "*Ask* answers questions about the person's letters with an agent: the `claude` CLI with only "
         "Ordnung's read-only tools. Every tool result has two parts — Ordnung's **record** (what code "
         "computed, the person confirmed, or the pipeline filed with verified evidence) and the "
@@ -1259,6 +1260,23 @@ def _citations(payload: Mapping[str, Any]) -> tuple[Mapping[str, Any], Mapping[s
     if _v2(payload):
         return s["citation_precision"], s["citation_right_letter"]
     return s["citation_support"], s["citation_precision"]
+
+
+#: Where the development set's page sends a reader for the held-out set: the final run's section of the evaluation
+#: report, which says its registered sentences (its first run, its harm over the runs and the attacks in the worst
+#: run) and its scope.
+HELD_OUT = (
+    "**Held out:** the held-out set, new questions on the same household recorded three times, is reported in the "
+    "evaluation report's [final run](evals.md#61-the-final-run). It holds out only its questions: its documents, "
+    "prompt and scorer were tuned on the same household's development questions, the ones on this page."
+)
+
+
+def _held_out(payload: Mapping[str, Any]) -> list[str]:
+    """The pointer from the development set's page to the held-out set's result (the page is the development set's)."""
+    if not _v2(payload) or payload.get("set", "dev") != "dev":
+        return []
+    return [HELD_OUT, ""]
 
 
 def _label(payload: Mapping[str, Any]) -> list[str]:

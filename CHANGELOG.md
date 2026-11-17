@@ -5,6 +5,17 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ## Unreleased
 
+### Changed
+
+- **The report of the final evaluation says more of what was registered.** Its statistics give the gap each power
+  figure was computed at, with the registered caveat; each secondary endpoint (the replay without the sender's
+  Land, the checks ablated, selective prediction, cost and latency) shows the final run first and the earlier
+  splits after it; a label fix that touched only offered, unscored slots says so; the newest recording names its
+  own commit; and the deadlines that got no reminder end to end are broken down by cause. No published number
+  changes. The README's lead into its evaluation block names the decision rule the final run used.
+- `make eval-reproduce` holds every CI gate to its own replay, each read of holdout4 and of Ask's new questions
+  on the demo household included, and `evals/results/INDEX.json` names the gate of each such cell.
+
 ## 0.4.0 — 2026-11-17
 
 The third numbered release. [Updating](docs/guide.md#updating) says how to install it; *Upgrading* below says

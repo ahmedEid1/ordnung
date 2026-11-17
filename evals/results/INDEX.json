@@ -293,7 +293,8 @@
    "status": "replayed",
    "checks": [
     "2026-11-24-claude-sonnet-5-holdout4-r2.json"
-   ]
+   ],
+   "gate": "benchmark/holdout4/r2"
   },
   {
    "cell": "benchmark/holdout4/r3",
@@ -306,7 +307,8 @@
    "status": "replayed",
    "checks": [
     "2026-11-24-claude-sonnet-5-holdout4-r3.json"
-   ]
+   ],
+   "gate": "benchmark/holdout4/r3"
   },
   {
    "cell": "benchmark/newkinds/r1",
@@ -344,21 +346,24 @@
    "status": "replayed",
    "checks": [
     "2026-11-24-claude-sonnet-5-ask-heldout.json"
-   ]
+   ],
+   "gate": "ask/heldout/r1"
   },
   {
    "cell": "ask/heldout/r2",
    "status": "replayed",
    "checks": [
     "2026-11-24-claude-sonnet-5-ask-heldout-r2.json"
-   ]
+   ],
+   "gate": "ask/heldout/r2"
   },
   {
    "cell": "ask/heldout/r3",
    "status": "replayed",
    "checks": [
     "2026-11-24-claude-sonnet-5-ask-heldout-r3.json"
-   ]
+   ],
+   "gate": "ask/heldout/r3"
   },
   {
    "cell": "ask/heldout/final",
