@@ -829,7 +829,7 @@ def _ask_file(folder: Path, name: str, **fields: Any) -> Path:
 def test_a_same_day_re_scoring_sits_beside_the_live_run_it_re_scores(tmp_path: Path, schema: int) -> None:
     """E2 recorded the development set on 2026-10-30 and the window re-scored it the same day: the re-scoring
     carries the real day and its own name, comes after the live run in the order of the set's files, and names it.
-    Every live run writes schema 2 now (EV10's held-out recording among them): a re-scoring never replaces one."""
+    Every live run writes schema 2 now (the held-out set's runs among them): a re-scoring never replaces one."""
     from evals.ask.report import replaces_a_recording
 
     fields = {"date": "2026-10-30"} | (

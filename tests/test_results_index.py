@@ -389,8 +389,8 @@ def _ask_payload(
 
 
 def test_an_ask_row_says_live_or_re_scoring_from_the_file_whatever_its_schema(tmp_path: Path) -> None:
-    """Every live run writes schema 2 now, its "recorded" its own date (EV10's held-out recording among them): the
-    index calls it live, never a re-scoring of itself; a re-scoring of the same day is the replay."""
+    """Every live run writes schema 2 now, its "recorded" its own date (the final run's too): the index calls
+    it live, never a re-scoring of itself; a re-scoring of the same day is the replay."""
     live = _ask_payload("2026-11-20", backend="live", recorded="2026-11-20", today="2026-11-20")
     path = tmp_path / f"2026-11-20-{DEFAULT_MODEL}-ask-heldout.json"
     path.write_text(json.dumps(live), encoding="utf-8")

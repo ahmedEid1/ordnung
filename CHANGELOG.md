@@ -5,7 +5,7 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ## Unreleased
 
-## 0.4.0 — 2026-11-11
+## 0.4.0 — 2026-11-17
 
 The third numbered release. [Updating](docs/guide.md#updating) says how to install it; *Upgrading* below says
 what a computer still on 0.3.0 does with what this version adds, if you use hand-off sync between the two.
@@ -15,9 +15,6 @@ In short: whose it is, on My numbers and in Ask, the Ideas, your reminders and t
 wherever it could be read (not yet the Saarland's), and why an e-mailed decision's date waits until you say which
 state its sender is in; an evaluation report anyone can reproduce, and the tooling for a pre-registered final run;
 macOS and Windows required in CI; and a short README with a guide for the rest.
-
-The `v0.4.0` tag and its GitHub release follow once the pre-registered evaluation is published; until then,
-install this version by its commit, as *Updating* says for a release without a tag.
 
 ### Added
 
@@ -120,6 +117,17 @@ install this version by its commit, as *Updating* says for a release without a t
 - The web app is built with newer minor and patch versions of its packages (React Query 5.105, lucide-react
   1.64, motion 14.8, React Router 8.5.1), and a test checks that the committed build bundles exactly the
   versions `web/package-lock.json` pins.
+- **The pre-registration is checked at the commit that published the final run.** Until the publication
+  `tests/test_preregistration.py` held each pull request and each push to `main` to the code freeze, and it passes whole
+  at the publish commit. A record committed after publication now names that commit on `main`, the amendment on
+  [issue #54](https://github.com/ahmedEid1/ordnung/issues/54) and the sha256 of the files that check the
+  pre-registration from then on: the checks of the frozen code and paths run that commit's own copy of the test there,
+  in a temporary worktree, and later commits keep what stays for good: the pre-registration, the phase-2 record, the
+  power and calibration files and the run's results files byte for byte (the final analysis is rendered again only when
+  a label error or a scorer bug is recorded, and its results stay), the stress run's registered fingerprints, a
+  deviations file that only grows, and the README's generated block for every 0.4.x release. The code can change again
+  without failing CI: the stress replay of `make eval-reproduce` compares the numbers, not the fingerprints of the code
+  that replays.
 
 ### Fixed
 
@@ -248,6 +256,8 @@ install this version by its commit, as *Updating* says for a release without a t
   of the photo is run 1's request byte for byte. Every other request made under the key of one of run 1's must
   still be run 1's byte for byte, run 1's transcriptions of each letter Ordnung read must all be asked again (a
   transcription's key is its page image's hash), and a smoke that judges none fails. No published number changes.
+- **The dependency audit passes again.** `constraints.txt` pins opentelemetry-api 1.45.2, which the MCP SDK pulls
+  in; 1.45.1 has CVE-2026-126360, and CI's `pip-audit` step failed on it.
 
 ### Upgrading
 

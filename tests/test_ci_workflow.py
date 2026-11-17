@@ -12,7 +12,6 @@ import shlex
 import subprocess
 import sys
 import tomllib
-import zlib
 from fnmatch import fnmatch
 from pathlib import Path
 from typing import Any
@@ -54,8 +53,8 @@ def _weekly(job: dict[str, Any]) -> bool:
 def test_the_slow_checks_run_in_a_job_of_their_own_and_every_check_still_runs() -> None:
     """The 3.12 leg ran the suite with coverage, then the slow tests, the replays and ``demo --check``, in 36 of
     its 45 minutes: a slow runner could time it out. Each check that ran there still runs on pull requests. The
-    job itself has 60 minutes: with the final run's replays it reached the Python 3.11 install in 32 minutes on
-    a slow runner, and the replay under 3.11 comes after it."""
+    job itself has 60 minutes: with the final run's replays it reached ``make eval-reproduce`` in 32 minutes
+    on a slow runner, and the replay of every published number comes after it."""
     jobs = _jobs()
     backend, slow = jobs["backend"], jobs["backend-slow"]
     assert _on_pull_requests(slow) and slow["runs-on"] == backend["runs-on"] == "ubuntu-24.04"
@@ -150,13 +149,16 @@ def test_a_hung_test_is_named_and_no_unread_coverage_report_is_written() -> None
 def test_the_type_check_covers_the_scripts_each_under_one_name() -> None:
     """CI's type check (``mypy`` with pyproject.toml's list) covers scripts/ too: they write data the tests and the
     static demo pin (the sample life, the postcode table, the mock data). scripts/eval_without_land.py is left off
-    the list and checked as ``scripts.eval_without_land``, the name evals/ imports it by: listed as a file as well,
-    mypy would find it under two names and stop before checking anything."""
+    the list and checked as ``scripts.eval_without_land``, the name evals/ imports it by, and scripts/prereg_hashes.py
+    as ``scripts.prereg_hashes``, the name scripts/prereg_published.py imports it by: listed as a file as well, mypy
+    would find it under two names and stop before checking anything."""
     mypy = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["mypy"]
     assert mypy["files"] == ["src/ordnung", "evals", "scripts"]
-    assert mypy["exclude"] == [r"^scripts/eval_without_land\.py$"]
+    assert mypy["exclude"] == [r"^scripts/eval_without_land\.py$", r"^scripts/prereg_hashes\.py$"]
     harness = (ROOT / "evals" / "e2e" / "harness.py").read_text(encoding="utf-8")
     assert re.search(r"^\s*from scripts\.eval_without_land import ", harness, re.M)
+    published = (ROOT / "scripts" / "prereg_published.py").read_text(encoding="utf-8")
+    assert re.search(r"^from scripts\.prereg_hashes import ", published, re.M)
     assert [step["run"] for step in _jobs()["backend"]["steps"] if "mypy" in step.get("run", "")] == [
         ".venv/bin/mypy"
     ]
@@ -436,8 +438,7 @@ def test_the_ask_benchmark_gates_strict_correctness_and_harm_at_their_recorded_n
 
 
 def _comparison(script: str) -> str:
-    """The Python a step runs from its ``<<'EOF'`` block: the without-Land step's comparison of its replay with the
-    published file, or the reproduce step's check of its Python and zlib."""
+    """The Python the without-Land step runs to compare its replay with the published file."""
     return script.split("<<'EOF'\n", 1)[1].split("\nEOF", 1)[0]
 
 
@@ -468,48 +469,10 @@ def test_make_eval_reproduce_replays_every_published_number_in_the_slow_job() ->
     """One command reproduces every published number: every split, condition, Ask set, end-to-end,
     ablation and stress cell that exists replayed with no model call, the analysis and the presenter checked, all
     compared with ``evals/results/INDEX.json``. It runs in backend-slow beside the gates, which stay; like them it
-    gets no ``claude`` and no secret (``evals/reproduce.py`` points any stray call at a path that doesn't exist).
-    It runs under the Python the pre-registration records for the evaluation code, in a venv of its own outside
-    the checkout (the job's ``.venv`` stays on 3.12): the final run was recorded under it, and a stress read's
-    fingerprints, which the publish commit's stress check compares, take in the Python version. That Python is
-    the deadsnakes PPA's, built on Ubuntu's zlib, as the recording's was: the 3.11 uv downloads brings zlib 1.3.2,
-    and the stress files' build check wants the zlib the dataset was rendered with. The step checks both before
-    the replay."""
+    gets no ``claude`` and no secret (``evals/reproduce.py`` points any stray call at a path that doesn't exist)."""
     slow = _jobs()["backend-slow"]
     at, step = _step(slow, "make eval-reproduce")
-    registered = json.loads((ROOT / "evals/preregistration/final-0.4.0.json").read_text(encoding="utf-8"))
-    environment = registered["frozen"]["environment"]
-    python, zlib_version = environment["evals"]["python"], environment["generator"]["zlib"]
-    assert (python, zlib_version) == ("3.11", "1.3")
-    stress = json.loads((ROOT / "evals/perturb/manifest.json").read_text(encoding="utf-8"))
-    assert stress["environment"]["zlib"] == zlib_version  # what the stress build check compares with
-    install = slow["steps"][at - 1]
-    # the PPA's host has answered 503: a failed fetch fails the try (apt-get update only warns without
-    # --error-on=any), and the whole install is tried again, up to 5 times
-    assert install["run"].strip().splitlines() == [
-        "for try in 1 2 3 4 5; do",
-        "  if sudo add-apt-repository -y -n ppa:deadsnakes/ppa && sudo apt-get update -q --error-on=any \\",
-        f"    && sudo apt-get install -y -q --no-install-recommends python{python}; then exit 0; fi",
-        '  echo "::warning::the deadsnakes PPA did not answer (try $try of 5)"',
-        '  [ "$try" = 5 ] || sleep $((try * 20))',
-        "done",
-        "exit 1",
-    ]
-    lines = step["run"].strip().splitlines()
-    assert lines[:2] == [
-        f'uv venv --python /usr/bin/python{python} "$RUNNER_TEMP/py311"',
-        'uv pip install --python "$RUNNER_TEMP/py311" -e ".[dev]" -c constraints.txt',
-    ]
-    assert lines[2] == "\"$RUNNER_TEMP/py311/bin/python\" - <<'EOF'" and lines[-2] == "EOF"
-    assert lines[-1] == 'make eval-reproduce PY="$RUNNER_TEMP/py311/bin/python"'
-    assert "env" not in step and step["name"].endswith(f"under the pre-registration's Python {python}")
-    # the check passes only on the registered Python with the registered zlib (whatever runs this test)
-    done = subprocess.run(
-        [sys.executable, "-c", _comparison(step["run"])], cwd=ROOT, capture_output=True, text=True
-    )
-    here = (f"{sys.version_info.major}.{sys.version_info.minor}", zlib.ZLIB_RUNTIME_VERSION)
-    assert done.returncode == (0 if here == (python, zlib_version) else 1), done.stderr
-    assert f"zlib {zlib.ZLIB_RUNTIME_VERSION}" in done.stdout
+    assert step["run"].strip() == "make eval-reproduce" and "env" not in step
     gates_at, _ = _step(slow, "--split holdout2")
     assert gates_at < at  # the gates say first what failed, then reproduce says everything that differs
     assert set(_gates(_script(slow))) == set(GATED_SPLITS)  # the gates stay

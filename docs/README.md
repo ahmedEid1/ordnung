@@ -17,6 +17,9 @@ measured; start there.
   and the cost; [how to reproduce it](evals.md#15-reproduce) with no API key
 - [evals-ask.md](evals-ask.md): the Ask benchmark: are Ask's answers right, and do they cite what they rest on
 - [evals-history.md](evals-history.md): every earlier run, in the order it happened
+- [The pre-registration of the final run](../evals/preregistration/final-0.4.0.md): what 0.4.0's final run
+  measures and how it is analysed, registered with its sha256 on
+  [issue #54](https://github.com/ahmedEid1/ordnung/issues/54) before any final recording
 - [evals/README.md](../evals/README.md): the benchmark code: what is measured, where each part lives, how to run it
 - [evals/results/INDEX.json](../evals/results/INDEX.json): every results file with its hash, and how
   `make eval-reproduce` checks it

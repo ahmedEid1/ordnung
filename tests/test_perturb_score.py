@@ -413,11 +413,25 @@ def test_a_replay_at_a_later_commit_on_another_day_equals_the_live_recording() -
     assert score.compare(replay, live) == []
 
 
+def test_a_replay_on_other_code_or_another_python_equals_the_live_recording() -> None:
+    """The fingerprints say which code replays (the code digest takes in every product file, ``evals/*.py`` and the
+    Python version): a replay after a later change to the code, or on CI's Python, has others, and the numbers are
+    what is compared, as the benchmark's replays compare them (``evals/reproduce.py``'s ``VOLATILE``). That the
+    recording was made with the registered code is checked against the pre-registration instead
+    (``tests/test_preregistration.py``)."""
+    live, replay = _recorded_and_replayed()
+    replay["meta"]["fingerprints"] = {"ordnung": "fp-later", "llm_rules_tool": "fp-later-tool"}
+    for run in replay["meta"]["runs"].values():
+        run["fingerprints"] = {"ordnung": "fp-later", "llm_rules_tool": "fp-later-tool"}
+    assert score.compare(live, replay) == []
+    replay["cells"]["I1"]["ordnung"]["targeted"]["k"] += 1
+    assert score.compare(live, replay) == ["cells.I1.ordnung.targeted.k"]
+
+
 @pytest.mark.parametrize(
     ("path", "value"),
     [
         ("cells.I1.ordnung.targeted.k", None),  # a count, one more
-        ("meta.runs.I1.fingerprints.ordnung", "fp-other"),
         ("meta.today", "2026-11-28"),
         ("meta.runs.D1.dirty", ["evals/perturb/score.py"]),
         ("meta.runs.clean.dataset.manifest_sha256", "e" * 64),
@@ -425,9 +439,7 @@ def test_a_replay_at_a_later_commit_on_another_day_equals_the_live_recording() -
         ("meta.cells", ["I1"]),
     ],
 )
-def test_a_replay_still_differs_by_each_number_fingerprint_day_and_changed_path(
-    path: str, value: Any
-) -> None:
+def test_a_replay_still_differs_by_each_number_day_and_changed_path(path: str, value: Any) -> None:
     live, replay = _recorded_and_replayed()
     *parents, last = path.split(".")
     target = replay

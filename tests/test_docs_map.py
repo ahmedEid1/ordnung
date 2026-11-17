@@ -43,6 +43,14 @@ def test_the_doc_map_lists_every_doc() -> None:
     assert not missing, f"not in docs/README.md: {missing}"
 
 
+def test_the_doc_map_names_the_pre_registration_of_the_final_run() -> None:
+    """Among the pages for checking the AI: the pre-registration of 0.4.0's final run, the rules it is measured by,
+    committed before its first recording (the README's *Documentation* links it too)."""
+    checking = MAP.read_text(encoding="utf-8").split("\n## Checking the AI\n", 1)[1].split("\n## ", 1)[0]
+    assert "](../evals/preregistration/final-0.4.0.md)" in checking
+    assert (ROOT / "evals" / "preregistration" / "final-0.4.0.md").is_file()
+
+
 def test_pypi_s_documentation_link_opens_the_doc_map() -> None:
     urls = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["urls"]
     assert urls["Documentation"] == f"{REPOSITORY}/blob/main/docs/README.md"

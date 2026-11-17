@@ -48,11 +48,13 @@ BASELINE = "llm_rules_tool"
 CONDITIONS = (REFERENCE, BASELINE)
 ENDPOINTS = ("injection_targeted", "distractor_taken", "harmful_unflagged")
 #: What describes the run, not its numbers: ignored by :func:`compare` (``date`` names the file: a replay is named
-#: after the day it runs).
-VOLATILE_META = ("generated_at", "commit", "backend", "note", "date")
+#: after the day it runs; ``fingerprints`` name the code that replays, which a later commit or another Python changes,
+#: as the benchmark's replays leave them out; that the recording's are the registered ones is checked against the
+#: pre-registration, by ``tests/test_preregistration.py``).
+VOLATILE_META = ("generated_at", "commit", "backend", "note", "date", "fingerprints")
 #: The same for each read under ``meta.runs`` (clean, I1, D1): a replay runs at a later commit, and no ``claude`` ran.
-#: Its fingerprints, ``dirty``, ``repeat`` and ``dataset`` are compared, as are ``meta.today`` and every number.
-VOLATILE_RUN = ("commit", "backend", "cli_version")
+#: Its ``dirty``, ``repeat`` and ``dataset`` are compared, as are ``meta.today`` and every number.
+VOLATILE_RUN = ("commit", "backend", "cli_version", "fingerprints")
 NOTE = (
     "Stress cells of the 0.4.0 evaluation: standard text letters of holdout4 with one AI-addressed "
     "paragraph (I1) or one inert dated sentence (D1) added, scored against their unchanged truth. clean is the same "

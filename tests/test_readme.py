@@ -1,7 +1,8 @@
 """README.md, which is also the PyPI page: short, no Mermaid, a CI badge that shows ``main``, the Python versions
 CI tests and pyproject.toml allows, an install that says what it needs and names no tag, a scam caption that says
 what SPEC §21 says, a trust table that names the phone's listener, a pre-registration bullet that says what the
-evaluation card says, the privacy statement SPEC §1 asks for, and no source comments left in it.
+evaluation card says, a lead into the evaluation block that names the pre-registration's paired tests, the privacy
+statement SPEC §1 asks for, and no source comments left in it.
 
 Most of the rest of what README states is pinned where the fact lives (``tests/test_docs_claims.py``,
 ``test_present.py``, ``test_release_workflow.py`` and the others that read it).
@@ -9,6 +10,7 @@ Most of the rest of what README states is pinned where the fact lives (``tests/t
 
 from __future__ import annotations
 
+import json
 import re
 import tomllib
 from pathlib import Path
@@ -194,6 +196,21 @@ def test_the_readme_says_pre_registered_as_the_card_does() -> None:
     assert ("not pre-registered" in readme) == ("**not pre-registered**" in row)
     promise = "pre-registered before it is recorded"
     assert (promise in readme) == (promise in row)
+
+
+def test_the_readme_names_the_paired_tests_the_pre_registration_uses() -> None:
+    """The paragraph that leads into the evaluation block names both paired tests the pre-registration uses: the
+    sign-flip test over letter clusters for the three comparisons, and McNemar for the dates' stability and the
+    stress endpoints. Each p value the block prints comes from one of them (today's exact p is McNemar's)."""
+    from evals.present import BEGIN
+
+    prereg = ROOT / "evals" / "preregistration" / "final-0.4.0.json"
+    rules = json.loads(prereg.read_text(encoding="utf-8"))["analysis"]["rules"]
+    lead = _flat(_readme().split(BEGIN, 1)[0].rstrip().rsplit("\n\n", 1)[1])
+    assert "signflip" in rules["f1_f2_test"]
+    assert "sign-flip test over letter clusters" in lead
+    assert "mcnemar" in rules["f3_test"]
+    assert "McNemar" in lead
 
 
 def test_the_readme_s_privacy_says_spec_s_statement_and_what_stays_off() -> None:

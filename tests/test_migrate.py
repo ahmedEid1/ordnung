@@ -1,3 +1,6 @@
+"""The schema migrations (:mod:`ordnung.db.migrate`): discovery and numbering, the ledger, the order they run
+in, rollback, refusals, and what each shipped migration adds."""
+
 from __future__ import annotations
 
 import sqlite3

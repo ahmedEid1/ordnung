@@ -70,11 +70,22 @@ change to the README also changes what that page links to.
 The next change goes under a new `## Unreleased` heading again (CONTRIBUTING.md).
 
 **A version named before its tag.** A version can be named a while before it is tagged, as 0.4.0 was at the
-freeze of the pre-registered evaluation, whose publication its tag waits for. Its section then says so ("The
+freeze of the pre-registered evaluation, whose publication its tag waited for. Its section then says so ("The
 `vX.Y.Z` tag and its GitHub release follow once …; until then, install this version by its commit"), and until
 the tag every change goes under `## X.Y.Z`, not under `## Unreleased`, which stays empty: step 1 refuses a tag
 with anything listed above the version. The pull request whose merge is tagged sets the section's date to the day
 of the release and drops that sentence: `scripts/release_notes.py --tag` refuses a section that still has it.
+For 0.4.0 that is not the pull request that publishes the evaluation but the one after it, which adds
+`evals/preregistration/published-0.4.0.json`: its merge gets the `v0.4.0` tag. The publishing pull request is
+merged with a merge commit, never squashed or rebased (the deviations name its checkpoint commits), and the record
+names that merge commit on `main`. Once the amendment is posted on the pre-registration issue,
+`python -m scripts.prereg_published --write-record <merge commit> <the amendment's URL>` writes it, with the
+sha256 of the files that check the pre-registration from then on, on a branch made from `main` after that merge; it
+runs the record's checks first and writes nothing if one fails (`--check-record` runs them on the committed record).
+From that merge on, `main` moves only through pull requests merged on GitHub, never by a direct push: the record's
+checks need the publish commit on `main`'s first-parent line. If a push ever moves `main` so that it leaves that line
+(a `git pull` merge pushed from an old branch), a merge with the last good `main` as first parent puts it back,
+pushed as a fast-forward; the record and the amendment stay as they are.
 
 A pre-release works the same way, with a version such as `X.Y.Zrc1`, its own changelog section and the tag
 `vX.Y.Zrc1`. `pipx install ordnung` skips it; `pipx install "ordnung==X.Y.Zrc1"` installs it.
@@ -95,18 +106,23 @@ GitHub Pages has to be turned on once. Under *Settings → Pages → Build and d
 What only the owner can set on GitHub, written down so that it can be checked or set again:
 
 - *About* (the gear beside it on the repository's page):
-  - *Description*: "Local-first AI paperwork secretary for life in Germany — Claude reads the letters, a tested
-    rules engine computes the deadlines."
+  - *Description*: "Local-first AI secretary for paperwork in Germany: Claude reads your letters, tested code
+    computes each deadline with the law behind it, and a held-out benchmark against LLM baselines replays with
+    zero tokens." (209 characters; GitHub allows 350.)
   - *Website*: `https://ahmedeid1.github.io/ordnung/`, the online demo.
-  - *Topics*: `python`, `fastapi`, `react`, `typescript`, `sqlite`, `local-first`, `privacy`, `claude`, `llm`,
-    `mcp`, `llm-evaluation`, `germany`, `paperwork`; no rag topic, since Ordnung has no vector database
-    ([ADR 0005](decisions/0005-sqlite-fts-local-first.md)).
+  - *Topics*: `claude`, `llm`, `llm-evaluation`, `ai-agents`, `mcp`, `local-first`, `privacy`, `germany`,
+    `paperwork`, `fastapi`, `react`, `sqlite`; no rag topic, since Ordnung has no vector database
+    ([ADR 0005](decisions/0005-sqlite-fts-local-first.md)), and none for Python or TypeScript, which GitHub's
+    language bar shows.
   - *Include in the home page*: *Releases* on, *Packages* off while there are none.
 - *Social preview* (*Settings → General*): a picture of 1280 × 640 px that shows the app, so a link shared in a
   chat or a post shows it instead of GitHub's own card.
 - *Pull Requests* (*Settings → General*): merge commits take the default message *Pull request title and
   description*, so `main`'s history reads as the pull requests' titles; and *Automatically delete head
   branches* is on (pushing to a deleted branch again creates it anew).
+- *Branch protection* for `main` (*Settings → Branches*): require a pull request before merging, and allow
+  neither direct pushes nor force pushes, so `main`'s first-parent line keeps the commit that published the final
+  run (see *Making a release* above).
 - *Private vulnerability reporting*, in the repository's security settings: on. SECURITY.md sends reporters to
   it, and to the *Security contact* issue form only while it is off.
 

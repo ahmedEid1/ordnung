@@ -51,9 +51,9 @@ postcodes:          ## rebuild the postcode table from GeoNames' DE.zip (downloa
 	$(PY) -I scripts/make_postcode_table.py $(DE_ZIP) $(if $(CHECK),--check)
 
 constraints:        ## re-pin what CI and `make install` install (CONSTRAINTS_ARGS=--upgrade for the newest); the samples' libraries keep their manifest's versions
-	$(PY) -c 'import json; env = json.load(open("$(SAMPLES_MANIFEST)"))["generator"]["environment"]; print(*(f"{name}=={env[name]}" for name in ("fpdf2", "fonttools", "pillow", "pypdfium2")), sep="\n")' > .sample-pins.txt
-	$(UV) pip compile pyproject.toml --extra dev --extra eval --universal --python-version 3.11 -c .sample-pins.txt --custom-compile-command "make constraints" --no-annotate -o constraints.txt $(CONSTRAINTS_ARGS)
-	rm -f .sample-pins.txt
+	pins=$$(mktemp) && trap 'rm -f "$$pins"' EXIT && \
+	$(PY) -c 'import json; env = json.load(open("$(SAMPLES_MANIFEST)"))["generator"]["environment"]; print(*(f"{name}=={env[name]}" for name in ("fpdf2", "fonttools", "pillow", "pypdfium2")), sep="\n")' > "$$pins" && \
+	$(UV) pip compile pyproject.toml --extra dev --extra eval --universal --python-version 3.11 -c "$$pins" --custom-compile-command "make constraints" --no-annotate -o constraints.txt $(CONSTRAINTS_ARGS)
 
 demo:               ## explore the sample life (replayed model outputs, zero tokens)
 	.venv/bin/ordnung demo --serve

@@ -1,0 +1,11 @@
+{
+  "schema": "ordnung-prereg-published/1",
+  "commit": "7d125e6e381c711aa98111d034b1ef988f9fe1cf",
+  "amendment": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6960919685",
+  "checked_by": {
+    "tests/test_preregistration.py": "500ecce4035a1cdff400da84faf9cfde86524064664e2e65716e903c765557f0",
+    "scripts/prereg_published.py": "809eb95acd9edb08b20842d26449f983a32534aa25cb1a0c754dca9fc0e02c24",
+    "scripts/prereg_hashes.py": "f308c2fcdda067db814daea4913724aad00b7c6e1980ea1005a3cb1b6ffb9de2"
+  },
+  "about": "The commit on main that published the final run of 0.4.0, the amendment on the pre-registration issue that moves the freeze checks of tests/test_preregistration.py to it, and the sha256 of the files that check the pre-registration after publication."
+}

@@ -1,3 +1,6 @@
+"""The store (:mod:`ordnung.db.store`): ids, transactions, meta and settings, letters and their pages, search,
+parties, cases, items, suggestions, chat, the job queue, the activity log and the cache."""
+
 from __future__ import annotations
 
 import hashlib
