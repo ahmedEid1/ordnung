@@ -131,9 +131,9 @@ below; the recording commands, with each step's budget and stop, are pre-registe
   from the deviations file). A complete unit is retaken only that way; a retaken unit leaves the day index.
 
 ```bash
-.venv/bin/python -m evals.run --split holdout4 --repeat 2 --check evals/results/pending/2026-12-08-claude-sonnet-5-holdout4-r2.json   # read 2 against its live file
-.venv/bin/python -m evals.ask --set heldout --today 2026-12-08 --check evals/results/pending/2026-12-08-claude-sonnet-5-ask-heldout.json   # an Ask run, on its day
-.venv/bin/python -m scripts.eval_perturb --today 2026-12-08 --out /tmp/stress-replay --check evals/results/pending/2026-12-08-claude-sonnet-5-stress.json   # the stress cells
+.venv/bin/python -m evals.run --split holdout4 --repeat 2 --check evals/results/2026-11-24-claude-sonnet-5-holdout4-r2.json   # read 2 against its live file
+.venv/bin/python -m evals.ask --set heldout --today 2026-11-24 --check evals/results/2026-11-24-claude-sonnet-5-ask-heldout.json   # an Ask run, on its day
+.venv/bin/python -m scripts.eval_perturb --today 2026-11-24 --out /tmp/stress-replay --check evals/results/2026-11-24-claude-sonnet-5-stress.json   # the stress cells
 .venv/bin/python -m evals.harness retake --split holdout4 --repeat 2 --ids holdout4-tax_assessment-K1 --to /tmp/retakes   # an incomplete unit
 .venv/bin/python -m evals.harness retake --whole-run --recorded-dir evals/recorded/ask-heldout --repeat 2 --to /tmp/retakes   # a stopped Ask run
 .venv/bin/python -m evals.harness retake --invalid D003 --to /tmp/retakes   # a read a recorded deviation made invalid
