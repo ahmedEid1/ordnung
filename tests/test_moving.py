@@ -445,8 +445,8 @@ def counting_reads(monkeypatch: pytest.MonkeyPatch) -> Iterator[dict[str, int]]:
 def test_the_rule_reads_parties_contracts_and_drafts_once(
     store: Store, ids: dict[str, str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Batch A made the Ideas refresh grow with the ledger, not its square: the rule reads the parties, the
-    contracts and the sent letters once per run, never once per organisation."""
+    """The Ideas refresh grows with the ledger, not its square: the rule reads the parties, the contracts and
+    the sent letters once per run, never once per organisation."""
     for n in range(40):
         party = store.add_party(name=f"Versicherung {n:02d}", kind="insurer")
         store.add_contract(name=f"Policy {n:02d}", category="insurance", party_id=party.id)

@@ -4,7 +4,7 @@ name = "ordnung"
 # changes the web app's and the demo's copies too (tests/test_regressions_install.py). The readme is
 # README.md with its links pointing to GitHub ([tool.hatch.metadata.hooks.fancy-pypi-readme])
 dynamic = ["version", "readme"]
-description = "Your private AI secretary for life admin in Germany — reads your letters, bills and contracts, tracks every deadline with verifiable evidence, and reminds you before it matters. Runs locally with your own Claude subscription."
+description = "Your private AI secretary for life admin in Germany. Claude reads your letters; tested code works out each deadline and shows the law behind it. Runs on your own computer with your own Claude Code."
 # Ordnung's own code is MIT; the wheel also ships the web app's bundled code and fonts (ISC, OFL-1.1: the
 # notices below), the DejaVu fonts of drafted letters (Bitstream Vera) and GeoNames' postcodes (CC BY 4.0)
 license = "MIT AND ISC AND OFL-1.1 AND Bitstream-Vera AND CC-BY-4.0"
@@ -20,7 +20,9 @@ authors = [{ name = "Ahmed Hobeishy" }]
 keywords = ["ai", "agent", "claude", "personal-assistant", "paperwork", "deadlines", "germany", "local-first", "mcp"]
 classifiers = [
   "Development Status :: 4 - Beta",
+  "Environment :: Console",
   "Environment :: Web Environment",
+  "Framework :: FastAPI",
   "Intended Audience :: End Users/Desktop",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
@@ -29,6 +31,7 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
   "Topic :: Office/Business",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
   # Floors of what parses untrusted files and requests (Starlette, h11, multipart, PDF, images)
@@ -96,6 +99,8 @@ Documentation = "https://github.com/ahmedEid1/ordnung/blob/main/docs/README.md"
 Repository = "https://github.com/ahmedEid1/ordnung"
 Issues = "https://github.com/ahmedEid1/ordnung/issues"
 Changelog = "https://github.com/ahmedEid1/ordnung/blob/main/CHANGELOG.md"
+Demo = "https://ahmedeid1.github.io/ordnung/"
+"Evaluation report" = "https://github.com/ahmedEid1/ordnung/blob/main/docs/evals.md"
 
 [build-system]
 # one version of each: the backend builds the files PyPI gets (.github/workflows/release.yml), and the plugin
@@ -166,12 +171,13 @@ ignore = ["RUF001", "RUF002", "RUF003", "E501", "B008", "RUF012"]
 
 # The whole package, the benchmark code (evals/) and the scripts get every check of `mypy --strict` (the tests
 # aren't type-checked). CI installs only the dev extras, so evals/ has to pass without matplotlib too.
-# scripts/eval_without_land.py is checked as scripts.eval_without_land, the name evals/e2e imports it by: listed
-# as a file as well, mypy would find it under two names.
+# scripts/eval_without_land.py is checked as scripts.eval_without_land, the name evals/e2e imports it by, and
+# scripts/prereg_hashes.py as scripts.prereg_hashes, the name scripts/prereg_published.py imports it by: listed as
+# files as well, mypy would find them under two names.
 [tool.mypy]
 python_version = "3.11"
 files = ["src/ordnung", "evals", "scripts"]
-exclude = ['^scripts/eval_without_land\.py$']
+exclude = ['^scripts/eval_without_land\.py$', '^scripts/prereg_hashes\.py$']
 strict = true
 ignore_missing_imports = true
 plugins = ["pydantic.mypy"]

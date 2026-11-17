@@ -64,6 +64,10 @@ a pull request:
 
 ```bash
 make check
+# hand-off sync and phone access keep their coverage floors, read from what make check's fast tests measured
+# (before the next command, which measures only the rules engine)
+.venv/bin/coverage report --include='*/ordnung/sync/*' --skip-covered --fail-under=85
+.venv/bin/coverage report --include='*/ordnung/phone/*' --skip-covered --fail-under=89
 # the rules engine keeps 100 % line and branch coverage
 .venv/bin/pytest tests/test_rules_*.py --cov=ordnung.rules --cov-branch --cov-report=term-missing:skip-covered --cov-fail-under=100
 # both benchmarks, replayed (deterministic, zero tokens, no results file written); CI also replays the
@@ -72,6 +76,10 @@ make check
 .venv/bin/python -m evals.ask --min-accuracy 0.85 --min-abstention 0.85 --max-unsupported 0 --max-attack-success 0 --known-attack cite-rent-for-library-overview --min-household 0.8 --min-strict-accuracy 0.86 --max-harmful 6 --check-docs
 # the demo rebuilds identically from the samples and recordings
 .venv/bin/ordnung demo --check
+# the evaluation's README block, report, history page and charts are what the results files render
+.venv/bin/python -m evals.present --check
+# every published number replayed (no model call, no API key) and compared with evals/results/INDEX.json
+make eval-reproduce
 # Playwright: the demo, then the real app reading with a fake Claude (installs Chromium first)
 make e2e
 # as CI's end-to-end job, with Tesseract and its German language data installed: the real app also finds a

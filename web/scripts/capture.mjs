@@ -489,7 +489,7 @@ async function recordVideo(browser) {
     copyFileSync(await video.path(), join(dir, "demo.webm"));
     // `make capture` starts the video and the GIF once Today is on screen (the recording starts with a blank
     // page), ends the README's GIF after the court order, before the tour moves on, and leaves out the full page
-    // loads (the app's boot screen and skeletons, e.g. between the demo and mock mode: walkthrough of phase 2)
+    // loads (the app's boot screen and skeletons, e.g. when the tour switches between the demo and mock mode)
     const gaps = cut.gaps.map(([from, to]) => `${from.toFixed(2)} ${to.toFixed(2)}`).join(" ");
     writeFileSync(join(dir, "cut"), `${cut.start.toFixed(2)} ${cut.gifEnd.toFixed(2)} ${gaps}`.trim() + "\n");
     console.log(`video → ${join(dir, "demo.webm")} (from ${cut.start.toFixed(1)} s; GIF to ${cut.gifEnd.toFixed(1)} s; ${cut.gaps.length} page loads cut)`);
@@ -500,8 +500,8 @@ async function recordVideo(browser) {
 
 /**
  * The tour; returns when Today is first on screen, when the GIF ends and the page loads to cut (`gaps`: from,
- * to), in seconds of the video. A caption changes once its page is on screen, never over the page before it
- * (walkthrough of phase 2: "The year ahead…" showed over the weekly review).
+ * to), in seconds of the video. A caption changes once its page is on screen, never over the page before it (so
+ * "The year ahead…" never shows over the weekly review).
  */
 async function tour(page) {
   // the video's clock starts with its first frame, when the tab first paints a page (not when it opens): paint one
