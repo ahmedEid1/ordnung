@@ -7180,22 +7180,42 @@
    "ordnung": {
     "usd_per_letter": 0.07831016402,
     "usd_per_right_date": 0.09487577564,
-    "letters": 378
+    "letters": 378,
+    "latency_ms": {
+     "p50": 47794.0,
+     "p95": 94298.9,
+     "mean": 52754.58995
+    }
    },
    "llm_only": {
     "usd_per_letter": 0.0466068709,
     "usd_per_right_date": 0.05971999051,
-    "letters": 378
+    "letters": 378,
+    "latency_ms": {
+     "p50": 30805.5,
+     "p95": 71300.05,
+     "mean": 34330.02381
+    }
    },
    "llm_rules_text": {
     "usd_per_letter": 0.04081530053,
     "usd_per_right_date": 0.04689417508,
-    "letters": 378
+    "letters": 378,
+    "latency_ms": {
+     "p50": 25842.5,
+     "p95": 53037.95,
+     "mean": 28086.37831
+    }
    },
    "llm_rules_tool": {
     "usd_per_letter": 0.05058864339,
     "usd_per_right_date": 0.05759791325,
-    "letters": 378
+    "letters": 378,
+    "latency_ms": {
+     "p50": 23982.0,
+     "p95": 60684.65,
+     "mean": 28817.96032
+    }
    }
   },
   "selective": {
@@ -7218,7 +7238,11 @@
     },
     "aurc": 0.08173786057,
     "excess": 0.07880594268,
-    "auroc": 0.4314903846
+    "auroc": 0.4314903846,
+    "over_reads": {
+     "k": 0,
+     "n": 8
+    }
    },
    "llm_only": {
     "please_check": {
@@ -7239,7 +7263,11 @@
     },
     "aurc": 0.05357450761,
     "excess": 0.04814826445,
-    "auroc": 0.7209720972
+    "auroc": 0.7209720972,
+    "over_reads": {
+     "k": 0,
+     "n": 23
+    }
    },
    "llm_rules_text": {
     "please_check": {
@@ -7260,7 +7288,11 @@
     },
     "aurc": 0.01833979446,
     "excess": 0.0180999181,
-    "auroc": 0.4863636364
+    "auroc": 0.4863636364,
+    "over_reads": {
+     "k": 0,
+     "n": 4
+    }
    },
    "llm_rules_tool": {
     "please_check": {
@@ -7281,7 +7313,11 @@
     },
     "aurc": 0.0002832847599,
     "excess": 0.0002035653722,
-    "auroc": 0.9774774775
+    "auroc": 0.9774774775,
+    "over_reads": {
+     "k": 0,
+     "n": 2
+    }
    }
   },
   "replays": {
@@ -8677,6 +8713,10 @@
       "statistics"
      ]
     },
+    "pooled.note.above": {
+     "text": "As recorded, not pre-registered: these are the earlier held-out splits, re-analysed after their results were known. The final run's own numbers for this section are above.",
+     "fields": []
+    },
     "robustness.stress": {
      "text": "The final run's stress test, targeted injections and distractor dates against the agent, is said by its pre-registered sentence in [Results]({anchor}).",
      "fields": [
@@ -9248,9 +9288,10 @@
      ]
     },
     "selective.lead": {
-     "text": "The final run's flags as a selective prediction, from `{source}`: over the reads, the first read's deadlines, each wrong date counted once and caught when it was flagged in every read in which it was wrong.",
+     "text": "The final run's flags as a selective prediction, from `{source}`. Every column but the last counts read {first}'s deadlines: a date wrong in read {first}, caught when read {first} flagged it. The last column counts over the reads: each date wrong in any read, once, caught when “Please check” flagged it in every read in which it was wrong.",
      "fields": [
-      "source"
+      "source",
+      "first"
      ]
     },
     "selective.caption": {
@@ -9285,8 +9326,12 @@
      "text": "AUROC",
      "fields": []
     },
+    "selective.col.over_reads": {
+     "text": "Over the reads: wrong dates “Please check” caught",
+     "fields": []
+    },
     "cost.lead": {
-     "text": "The final run's cost over its reads, from `{source}`: the API-equivalent price the Claude CLI reports, per letter read and per date exactly right.",
+     "text": "The final run's cost and latency over its reads, from `{source}`: the API-equivalent price the Claude CLI reports, per letter read and per date exactly right, and the model's time per letter.",
      "fields": [
       "source"
      ]
@@ -9306,6 +9351,12 @@
     "cost.col.right": {
      "text": "$ per right date",
      "fields": []
+    },
+    "cost.col.latency": {
+     "text": "Latency {stat}",
+     "fields": [
+      "stat"
+     ]
     },
     "cost.col.letters": {
      "text": "Letters read",

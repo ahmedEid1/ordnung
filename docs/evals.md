@@ -428,7 +428,7 @@ The final run's reads of holdout4, replayed with each check switched off, one fi
 | All code checks off | 103/112 | 2 | 102/112 | 3 | 103/112 | 3 |
 
 As recorded, not pre-registered: these are the earlier held-out splits, re-analysed after their results were known.
-The final run's numbers are in [Results](#6-results) and [Statistics](#7-statistics).
+The final run's own numbers for this section are above.
 
 The recorded readings of holdout, holdout2 and holdout3 replayed with each check switched off
 (`scripts/eval_ablate_checks.py`, `2026-11-04-claude-sonnet-5-checks-ablated.json`): what each layer prevents.
@@ -481,19 +481,20 @@ pre-registered sentence in [Results](#6-results).
 
 ## 10. Safety and selective prediction
 
-The final run's flags as a selective prediction, from `2026-11-24-claude-sonnet-5-final.json`: over the reads, the
-first read's deadlines, each wrong date counted once and caught when it was flagged in every read in which it was
+The final run's flags as a selective prediction, from `2026-11-24-claude-sonnet-5-final.json`. Every column but the
+last counts read 1's deadlines: a date wrong in read 1, caught when read 1 flagged it. The last column counts over
+the reads: each date wrong in any read, once, caught when “Please check” flagged it in every read in which it was
 wrong.
 
-| Condition | Wrong dates “Please check” caught | Wrong dates any flag caught | Without a flag: right | Without a flag: late or missed | AURC (excess over a perfect flag) | AUROC |
-|---|---|---|---|---|---|---|
-| LLM + rules tool | 0 of 1 | 1 of 1 | 106/106 | 0/106 | 0.0003 (0.0002) | 0.98 |
-| LLM + rules text | 0 of 2 | 0 of 2 | 107/109 | 1/109 | 0.0183 (0.0181) | 0.49 |
-| Ordnung | 0 of 8 | 1 of 8 | 77/84 | 1/84 | 0.0817 (0.0788) | 0.43 |
-| LLM only | 0 of 11 | 7 of 11 | 82/86 | 3/86 | 0.0536 (0.0481) | 0.72 |
+| Condition | Wrong dates “Please check” caught | Wrong dates any flag caught | Without a flag: right | Without a flag: late or missed | AURC (excess over a perfect flag) | AUROC | Over the reads: wrong dates “Please check” caught |
+|---|---|---|---|---|---|---|---|
+| LLM + rules tool | 0 of 1 | 1 of 1 | 106/106 | 0/106 | 0.0003 (0.0002) | 0.98 | 0 of 2 |
+| LLM + rules text | 0 of 2 | 0 of 2 | 107/109 | 1/109 | 0.0183 (0.0181) | 0.49 | 0 of 4 |
+| Ordnung | 0 of 8 | 1 of 8 | 77/84 | 1/84 | 0.0817 (0.0788) | 0.43 | 0 of 8 |
+| LLM only | 0 of 11 | 7 of 11 | 82/86 | 3/86 | 0.0536 (0.0481) | 0.72 | 0 of 23 |
 
 As recorded, not pre-registered: these are the earlier held-out splits, re-analysed after their results were known.
-The final run's numbers are in [Results](#6-results) and [Statistics](#7-statistics).
+The final run's own numbers for this section are above.
 
 | Condition | Late or missed [95 % CI] | Late | Missed | Days late, each |
 |---|---|---|---|---|
@@ -624,18 +625,18 @@ Of Ordnung's 5 errors, 2 came from the reading, 2 from computing and 1 was a dea
 
 ## 12. Cost and latency
 
-The final run's cost over its reads, from `2026-11-24-claude-sonnet-5-final.json`: the API-equivalent price the
-Claude CLI reports, per letter read and per date exactly right.
+The final run's cost and latency over its reads, from `2026-11-24-claude-sonnet-5-final.json`: the API-equivalent
+price the Claude CLI reports, per letter read and per date exactly right, and the model's time per letter.
 
-| Condition | $ per letter | $ per right date | Letters read |
-|---|---|---|---|
-| LLM + rules tool | $0.0506 | $0.0576 | 378 |
-| LLM + rules text | $0.0408 | $0.0469 | 378 |
-| Ordnung | $0.0783 | $0.0949 | 378 |
-| LLM only | $0.0466 | $0.0597 | 378 |
+| Condition | $ per letter | $ per right date | Latency p50 | Latency p95 | Latency mean | Letters read |
+|---|---|---|---|---|---|---|
+| LLM + rules tool | $0.0506 | $0.0576 | 24.0 s | 60.7 s | 28.8 s | 378 |
+| LLM + rules text | $0.0408 | $0.0469 | 25.8 s | 53.0 s | 28.1 s | 378 |
+| Ordnung | $0.0783 | $0.0949 | 47.8 s | 94.3 s | 52.8 s | 378 |
+| LLM only | $0.0466 | $0.0597 | 30.8 s | 71.3 s | 34.3 s | 378 |
 
 As recorded, not pre-registered: these are the earlier held-out splits, re-analysed after their results were known.
-The final run's numbers are in [Results](#6-results) and [Statistics](#7-statistics).
+The final run's own numbers for this section are above.
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/eval-cost-dark.svg"><img src="assets/eval-cost-light.svg" width="740" alt="Dot plot of the API-equivalent cost per letter and per right date over 189 held-out letters. LLM + rules tool: $0.0573 per letter, $0.0649 per right date, latency p50 25.5 s, p95 54.6 s, 99.4 % exactly right; LLM + rules text: $0.0472 per letter, $0.0579 per right date, latency p50 29.1 s, p95 58.6 s, 91.7 % exactly right; Ordnung: $0.0845 per letter, $0.0980 per right date, latency p50 50.3 s, p95 119.4 s, 97.0 % exactly right; LLM only: $0.0500 per letter, $0.0695 per right date, latency p50 32.1 s, p95 71.6 s, 81.0 % exactly right."></picture>
 
@@ -662,7 +663,7 @@ time, by split, and why the others got none.
 | `newkinds` | 23/28 | no to-do stored for it: 5 |
 
 As recorded, not pre-registered: these are the earlier held-out splits, re-analysed after their results were known.
-The final run's numbers are in [Results](#6-results) and [Statistics](#7-statistics).
+The final run's own numbers for this section are above.
 
 Every letter of test, holdout, holdout2 and holdout3 read by the real app in a fresh data folder, from the recorded
 readings, through to the calendar and the morning note (`python -m evals.e2e`,
@@ -907,4 +908,4 @@ analysis or the files they name, and the hash of this report's presentation.json
 | A file its sentences read, `evals/preregistration/deviations-0.4.0.json` | `2d48e12c2717cd3e42cb7d6c8d7d6ba55252fadf34a4ca4ee4e0f55eeb71bb98` |
 | The presenter's posted head | `896af5ae2497490b39ae1b3c45bb3b3cb1321773` |
 | The hash of the presenter's posted tree | `62a54ea38f018cd861d770b511c503170f2f414145a66876038fc442bbe3c7d4` |
-| `evals/present/presentation.json` as rendered for this report | `941f157a310ff999b085e6f83b9969f1e541b86eda63eb056ec79ff0e9f5d659` |
+| `evals/present/presentation.json` as rendered for this report | `e7fc1760176a11b8fd419624bc0da3aa5c3f2b0b1fccf051a4c9c679127035f7` |

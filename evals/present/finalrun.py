@@ -84,6 +84,8 @@ _REPO_PATH = re.compile(r"[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+")
 REPLAY_KINDS = ("without-land", "checks-ablated")
 #: A condition's cost, as the final analysis records it.
 COST_FIELDS = ("usd_per_letter", "usd_per_right_date", "letters")
+#: A condition's latency per letter over the reads, in ms, as the final analysis records it (``latency_ms``).
+LATENCY_FIELDS = ("p50", "p95", "mean")
 #: Where the first attempts of retaken units are published, under the checkout's root.
 RETAKES = "evals/retakes"
 
@@ -683,22 +685,32 @@ def _caveat(prereg: Mapping[str, Any]) -> str | None:
 
 
 def _costs(primary: Mapping[str, Any]) -> dict[str, Any] | None:
-    """Each condition's cost over the final run's reads, as the final analysis records it (``None`` without one)."""
+    """Each condition's cost and latency over the final run's reads, as the final analysis records them (``None``
+    without a cost; a latency the analysis lacks is ``None``)."""
     costs = {}
     for condition in final.CONDITIONS:
-        cost = ((primary.get("conditions") or {}).get(condition) or {}).get("cost")
+        block = (primary.get("conditions") or {}).get(condition) or {}
+        cost, latency = block.get("cost"), block.get("latency_ms")
         if not isinstance(cost, Mapping):
             return None
-        costs[condition] = {key: cost.get(key) for key in COST_FIELDS}
+        costs[condition] = {
+            **{key: cost.get(key) for key in COST_FIELDS},
+            "latency_ms": (
+                {key: latency.get(key) for key in LATENCY_FIELDS} if isinstance(latency, Mapping) else None
+            ),
+        }
     return costs
 
 
 def _selectives(primary: Mapping[str, Any]) -> dict[str, Any] | None:
-    """Each condition's flags as a selective prediction, as the final analysis records them: the wrong dates a flag
-    caught, the dates shown without a flag and the risk-coverage areas (``None`` without them)."""
+    """Each condition's flags as a selective prediction, as the final analysis records them (``None`` without them):
+    on read 1's deadlines (``selective``), the wrong dates a flag caught, the dates shown without a flag and the
+    risk-coverage areas; and over the reads (``flags_over_reads``), the dates wrong in any read and of them those
+    flagged "Please check" in every read in which they were wrong (``None`` when the analysis lacks it)."""
     shown = {}
     for condition in final.CONDITIONS:
-        selective = ((primary.get("conditions") or {}).get(condition) or {}).get("selective")
+        block = (primary.get("conditions") or {}).get(condition) or {}
+        selective, over = block.get("selective"), block.get("flags_over_reads")
         if not isinstance(selective, Mapping):
             return None
         where = f"selective {condition}"
@@ -710,6 +722,9 @@ def _selectives(primary: Mapping[str, Any]) -> dict[str, Any] | None:
             "aurc": _at(selective, "aurc.aurc", where),
             "excess": _at(selective, "aurc.excess", where),
             "auroc": selective.get("auroc"),
+            "over_reads": (
+                _counted(_at(over, "caught", where), where) if isinstance(over, Mapping) else None
+            ),
         }
     return shown
 

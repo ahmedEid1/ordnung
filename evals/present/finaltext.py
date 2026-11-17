@@ -57,6 +57,9 @@ CARD = (
     "sources",
     "newest",
 )
+#: A condition's latency per letter as section 12 shows it, the analysis's ``latency_ms`` keys
+#: (``finalrun.LATENCY_FIELDS``; the page imports nothing of the analysis side, so they are named here too).
+LATENCY_FIELDS = ("p50", "p95", "mean")
 #: The anchors the final run's parts link to (the report's sections 3, 6, 7 and 16) and the final run's subsection.
 DATA_ANCHOR, RESULTS_ANCHOR, STATISTICS_ANCHOR = "#3-data-and-labels", "#6-results", "#7-statistics"
 DEVIATIONS_ANCHOR = "#16-deviations"
@@ -630,8 +633,11 @@ def pooled_heading(doc: Mapping[str, Any], key: str) -> Subheading:
     return Subheading(view(doc, key))
 
 
-def pooled_note(doc: Mapping[str, Any]) -> Paragraph:
-    """The note that a section's numbers are the earlier held-out splits', as recorded and not pre-registered."""
+def pooled_note(doc: Mapping[str, Any], *, above: bool = False) -> Paragraph:
+    """The note that a section's numbers are the earlier held-out splits', as recorded and not pre-registered: it says
+    the final run's numbers are above when the section shows them before it (``above``), else where they are."""
+    if above:
+        return Paragraph(view(doc, "pooled.note.above"))
     return Paragraph(view(doc, "pooled.note", results=RESULTS_ANCHOR, statistics=STATISTICS_ANCHOR))
 
 
@@ -1001,8 +1007,8 @@ def ablation(doc: Mapping[str, Any]) -> list[Block]:
 
 
 def selective(doc: Mapping[str, Any]) -> list[Block]:
-    """Section 10's final run: each condition's flags as a selective prediction, as the final analysis records them
-    (over the reads: read 1's deadlines, each wrong date counted once)."""
+    """Section 10's final run: each condition's flags as a selective prediction, as the final analysis records them:
+    on read 1's deadlines, and in the last column over the reads (each date wrong in any read counted once)."""
     flags = _final(doc).get("selective")
     if not flags:
         return []
@@ -1015,22 +1021,39 @@ def selective(doc: Mapping[str, Any]) -> list[Block]:
             fmt.kn(flags[condition]["unflagged_harmful"]),
             f"{float(flags[condition]['aurc']):.4f} ({float(flags[condition]['excess']):.4f})",
             NONE if flags[condition]["auroc"] is None else f"{float(flags[condition]['auroc']):.2f}",
+            NONE if flags[condition].get("over_reads") is None else fmt.of(flags[condition]["over_reads"]),
         ]
         for condition in doc["order"]
     ]
     header = [
         view(doc, f"selective.col.{column}")
-        for column in ("condition", "please_check", "any_flag", "right", "harmful", "aurc", "auroc")
+        for column in (
+            "condition",
+            "please_check",
+            "any_flag",
+            "right",
+            "harmful",
+            "aurc",
+            "auroc",
+            "over_reads",
+        )
     ]
     return [
-        Paragraph(view(doc, "selective.lead", source=_final(doc)["source"]["file"])),
+        Paragraph(
+            view(
+                doc,
+                "selective.lead",
+                source=_final(doc)["source"]["file"],
+                first=_final(doc)["reads_used"][0],
+            )
+        ),
         Table(header, rows, view(doc, "selective.caption")),
     ]
 
 
 def cost(doc: Mapping[str, Any]) -> list[Block]:
-    """Section 12's final run: each condition's cost per letter and per right date over the reads, as the final
-    analysis records it."""
+    """Section 12's final run: each condition's cost per letter and per right date and its latency per letter (p50,
+    p95 and mean) over the reads, as the final analysis records them."""
     costs = _final(doc).get("cost")
     if not costs:
         return []
@@ -1039,11 +1062,16 @@ def cost(doc: Mapping[str, Any]) -> list[Block]:
             palette.LABELS[condition],
             fmt.usd(costs[condition]["usd_per_letter"]),
             fmt.usd(costs[condition]["usd_per_right_date"]),
+            *(fmt.seconds((costs[condition].get("latency_ms") or {}).get(key)) for key in LATENCY_FIELDS),
             str(costs[condition]["letters"]),
         ]
         for condition in doc["order"]
     ]
-    header = [view(doc, f"cost.col.{column}") for column in ("condition", "letter", "right", "letters")]
+    header = [
+        *(view(doc, f"cost.col.{column}") for column in ("condition", "letter", "right")),
+        *(view(doc, "cost.col.latency", stat=stat) for stat in LATENCY_FIELDS),
+        view(doc, "cost.col.letters"),
+    ]
     return [
         Paragraph(view(doc, "cost.lead", source=_final(doc)["source"]["file"])),
         Table(header, rows, view(doc, "cost.caption")),

@@ -365,14 +365,15 @@ def _final_part(doc: Mapping[str, Any], name: str) -> list[Block]:
     return blocks
 
 
-def _pooled(doc: Mapping[str, Any]) -> list[Block]:
+def _pooled(doc: Mapping[str, Any], final_part: Sequence[Block] = ()) -> list[Block]:
     """With a final run, the note that a section shows the earlier held-out splits as recorded, not pre-registered;
-    nothing without one."""
+    nothing without one. After the section's own part for the final run (``final_part``), it says the final run's
+    numbers are above, not elsewhere."""
     if doc.get("final") is None:
         return []
     from evals.present import finaltext
 
-    return [finaltext.pooled_note(doc)]
+    return [finaltext.pooled_note(doc, above=bool(final_part))]
 
 
 def _card(doc: Mapping[str, Any]) -> Section:
@@ -894,7 +895,9 @@ def _ablations(doc: Mapping[str, Any]) -> Section:
     heading = Subheading("Ordnung's code checks, switched off one at a time")
     final_run = _final_part(doc, "ablation")
     blocks: list[Block] = (
-        [intro, heading, *final_run, *_pooled(doc)] if final_run else [*_pooled(doc), intro, heading]
+        [intro, heading, *final_run, *_pooled(doc, final_run)]
+        if final_run
+        else [*_pooled(doc), intro, heading]
     )
     ablation = doc.get("ablation")
     if ablation:
@@ -1016,9 +1019,10 @@ def _safety(doc: Mapping[str, Any]) -> Section:
         if flags["caught"] == 0
         else f"Ordnung's “Please check” caught {flags['caught']} of its {flags['wrong']} wrong dates."
     )
+    final_part = _final_part(doc, "selective")
     blocks: list[Block] = [
-        *_final_part(doc, "selective"),
-        *_pooled(doc),
+        *final_part,
+        *_pooled(doc, final_part),
         Table(
             ["Condition", "Late or missed [95 % CI]", "Late", "Missed", "Days late, each"],
             harm_rows,
@@ -1127,6 +1131,7 @@ def _cost(doc: Mapping[str, Any]) -> Section:
     costs = {c: _c(doc, c)["cost"] for c in doc["order"]}
     dearest = max(costs, key=lambda c: costs[c]["usd_per_letter"])
     cheapest = min(costs, key=lambda c: costs[c]["usd_per_right_date"])
+    final_part = _final_part(doc, "cost")
     said = (
         f"{_label(dearest)} is the dearest condition per letter ({fmt.usd(costs[dearest]['usd_per_letter'])})"
         + (
@@ -1139,8 +1144,8 @@ def _cost(doc: Mapping[str, Any]) -> Section:
     return Section(
         "12. Cost and latency",
         [
-            *_final_part(doc, "cost"),
-            *_pooled(doc),
+            *final_part,
+            *_pooled(doc, final_part),
             Chart("cost"),
             Table(header, rows, "Cost and latency"),
             Paragraph(
@@ -1154,12 +1159,13 @@ def _cost(doc: Mapping[str, Any]) -> Section:
 
 def _e2e(doc: Mapping[str, Any]) -> Section:
     e2e = doc.get("e2e")
+    final_part = _final_part(doc, "e2e")
     if not e2e:
         return Section(
             "13. From a letter to a reminder",
             [
-                *_final_part(doc, "e2e"),
-                *_pooled(doc),
+                *final_part,
+                *_pooled(doc, final_part),
                 Paragraph("No results file of the end-to-end run yet (`python -m evals.e2e`)."),
             ],
         )
@@ -1171,8 +1177,8 @@ def _e2e(doc: Mapping[str, Any]) -> Section:
     )
     reminded = e2e["reminded_in_time"]
     blocks: list[Block] = [
-        *_final_part(doc, "e2e"),
-        *_pooled(doc),
+        *final_part,
+        *_pooled(doc, final_part),
         Paragraph(
             f"Every letter of {fmt.join(e2e['splits'])} read by the real app in a fresh data folder, from the "
             f"recorded readings, through to the calendar and the morning note (`python -m evals.e2e`, "

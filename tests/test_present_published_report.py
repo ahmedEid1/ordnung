@@ -240,15 +240,35 @@ def test_the_final_run_s_replays_without_the_land_and_with_the_checks_off_are_sh
 
 @published
 def test_the_final_run_s_cost_and_flags_are_shown_from_its_analysis() -> None:
+    """Section 12 shows each condition's registered cost and latency (p50, p95 and mean); section 10 its flags on
+    read 1's deadlines and, apart, over the reads, each column the field it names."""
     _, analysis = _final_json()
     conditions = analysis["primary"]["conditions"]
     cost = _section("12. Cost and latency")
     safety = _section("10. Safety and selective prediction")
-    for condition, label in (("ordnung", "Ordnung"), ("llm_only", "LLM only")):
-        spent = conditions[condition]["cost"]
-        cells = _row(_table(cost, "Condition | $ per letter | $ per right date | Letters read"), label)
-        assert cells[1:3] == [fmt.usd(spent["usd_per_letter"]), fmt.usd(spent["usd_per_right_date"])]
-        flags = conditions[condition]["selective"]
+    for condition, label in (
+        ("ordnung", "Ordnung"),
+        ("llm_only", "LLM only"),
+        ("llm_rules_text", "LLM + rules text"),
+        ("llm_rules_tool", "LLM + rules tool"),
+    ):
+        spent, latency = conditions[condition]["cost"], conditions[condition]["latency_ms"]
+        cells = _row(
+            _table(
+                cost,
+                "Condition | $ per letter | $ per right date | Latency p50 | Latency p95 | Latency mean | Letters read",
+            ),
+            label,
+        )
+        assert cells[1:] == [
+            fmt.usd(spent["usd_per_letter"]),
+            fmt.usd(spent["usd_per_right_date"]),
+            fmt.seconds(latency["p50"]),
+            fmt.seconds(latency["p95"]),
+            fmt.seconds(latency["mean"]),
+            str(spent["letters"]),
+        ]
+        flags, over = conditions[condition]["selective"], conditions[condition]["flags_over_reads"]
         cells = _row(
             _table(
                 safety,
@@ -257,7 +277,78 @@ def test_the_final_run_s_cost_and_flags_are_shown_from_its_analysis() -> None:
             label,
         )
         assert cells[1] == fmt.of(flags["please_check"]["recall_wrong"])
+        assert cells[2] == fmt.of(flags["any_flag"]["recall_wrong"])
         assert cells[3] == fmt.kn(flags["unflagged"]["accuracy"])
+        # over the reads: each date wrong in any read once, caught when flagged in every read in which it was wrong
+        assert cells[-1] == fmt.of(over["caught"]) and int(over["caught"]["n"]) == over["wrong_dates"]
+
+
+@published
+def test_the_selective_lead_says_which_reads_each_column_counts() -> None:
+    """Section 10's lead says what the table counts: read 1's deadlines, caught when read 1 flagged them, as the
+    analysis's ``selective`` block counts them; and, for the last column only, every date wrong in any read, caught
+    when it was flagged in every read in which it was wrong (``flags_over_reads``)."""
+    safety = _flat(_section("10. Safety and selective prediction"))
+    name, analysis = _final_json()
+    template = _json(PRESENTATION)["final"]["views"]["templates"]["selective.lead"]["text"]
+    lead = _flat(template.format(source=name, first=analysis["primary"]["reads_used"][0]))
+    assert lead in safety and analysis["primary"]["reads_used"][0] == 1
+    first, _, last = lead.partition("The last column")
+    assert "read 1" in first and "caught when read 1 flagged it" in first
+    assert "over the reads" not in first and "every read" not in first
+    assert "in every read in which it was wrong" in last
+    # the table the lead describes follows it
+    assert safety.index(lead) < safety.index("| Condition | Wrong dates “Please check” caught")
+    # the read-1 columns' wrong dates are read 1's, not the dates wrong over the reads
+    for condition in ("llm_only", "llm_rules_tool"):
+        block = analysis["primary"]["conditions"][condition]
+        assert (
+            int(block["selective"]["any_flag"]["recall_wrong"]["n"])
+            <= block["flags_over_reads"]["wrong_dates"]
+        )
+
+
+#: The earlier splits' note, and the sentence it ends with where the section shows nothing of the final run.
+POOLED_NOTE = "As recorded, not pre-registered: these are the earlier held-out splits, re-analysed after their results were known."
+ELSEWHERE = "The final run's numbers are in [Results](#6-results) and [Statistics](#7-statistics)."
+ABOVE = "The final run's own numbers for this section are above."
+
+
+@published
+def test_the_earlier_splits_note_points_above_where_the_section_shows_the_final_run() -> None:
+    """Where a section shows the final run's own table before the earlier splits, the note says the final run's
+    numbers are above, never that they are in Results and Statistics; elsewhere it keeps pointing there."""
+    for title, header in (
+        ("8. Ablations", "| Configuration | Read 1"),
+        ("10. Safety and selective prediction", "| Condition | Wrong dates “Please check” caught"),
+        ("12. Cost and latency", "| Condition | $ per letter | $ per right date | Latency p50"),
+        ("13. From a letter to a reminder", "| Split | Reminded in time |"),
+    ):
+        section = _flat(_section(title))
+        assert ELSEWHERE not in section, title
+        assert section.index(header) < section.index(f"{POOLED_NOTE} {ABOVE}"), title
+    for title in ("6. Results", "9. Robustness"):
+        section = _flat(_section(title))
+        assert f"{POOLED_NOTE} {ELSEWHERE}" in section and ABOVE not in section, title
+
+
+@published
+def test_the_readme_says_the_block_counts_the_new_kinds_end_to_end() -> None:
+    """The block's end-to-end count includes the letters of new kinds and names the scam cause; outside it, the
+    README says so and points to what the block does not give: their benchmark result and the other causes."""
+    (path,) = _named("*-e2e-holdout4-newkinds.json")
+    metrics = _json(path)["metrics"]
+    assert "newkinds" in metrics["by_split"] and set(metrics["all"]["not_reminded"]) - {
+        "set_aside:scam_signs"
+    }
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    outside = _flat(readme[readme.index("<!-- evals:end -->") :])
+    assert "leaves out the letters of new kinds" not in outside
+    assert (
+        "The block counts the letters of new kinds end to end but does not give their benchmark result "
+        "([§ 6.1](docs/evals.md#61-the-final-run)), nor why the deadlines it does not put down to a scam got no "
+        "reminder ([§ 13](docs/evals.md#13-from-a-letter-to-a-reminder))."
+    ) in outside
 
 
 @published
@@ -309,3 +400,12 @@ def test_presentation_json_carries_what_the_page_shows_and_the_page_builds_from_
         shown["cost"]["ordnung"]["usd_per_letter"]
         == analysis["primary"]["conditions"]["ordnung"]["cost"]["usd_per_letter"]
     )
+    for condition in final.CONDITIONS:
+        theirs = analysis["primary"]["conditions"][condition]
+        assert shown["cost"][condition]["latency_ms"] == {
+            key: theirs["latency_ms"][key] for key in ("p50", "p95", "mean")
+        }
+        assert shown["selective"][condition]["over_reads"] == {
+            "k": int(theirs["flags_over_reads"]["caught"]["k"]),
+            "n": int(theirs["flags_over_reads"]["caught"]["n"]),
+        }

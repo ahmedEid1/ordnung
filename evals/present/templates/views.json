@@ -308,6 +308,10 @@
    "text": "As recorded, not pre-registered: these are the earlier held-out splits, re-analysed after their results were known. The final run's numbers are in [Results]({results}) and [Statistics]({statistics}).",
    "fields": ["results", "statistics"]
   },
+  "pooled.note.above": {
+   "text": "As recorded, not pre-registered: these are the earlier held-out splits, re-analysed after their results were known. The final run's own numbers for this section are above.",
+   "fields": []
+  },
   "robustness.stress": {
    "text": "The final run's stress test, targeted injections and distractor dates against the agent, is said by its pre-registered sentence in [Results]({anchor}).",
    "fields": ["anchor"]
@@ -501,7 +505,7 @@
   "replays.ablation.col.configuration": {"text": "Configuration", "fields": []},
   "replays.ablation.col.right": {"text": "Read {read}: exactly right", "fields": ["read"]},
   "replays.ablation.col.late": {"text": "Read {read}: late", "fields": ["read"]},
-  "selective.lead": {"text": "The final run's flags as a selective prediction, from `{source}`: over the reads, the first read's deadlines, each wrong date counted once and caught when it was flagged in every read in which it was wrong.", "fields": ["source"]},
+  "selective.lead": {"text": "The final run's flags as a selective prediction, from `{source}`. Every column but the last counts read {first}'s deadlines: a date wrong in read {first}, caught when read {first} flagged it. The last column counts over the reads: each date wrong in any read, once, caught when “Please check” flagged it in every read in which it was wrong.", "fields": ["source", "first"]},
   "selective.caption": {"text": "Flags and selective prediction, the final run", "fields": []},
   "selective.col.condition": {"text": "Condition", "fields": []},
   "selective.col.please_check": {"text": "Wrong dates “Please check” caught", "fields": []},
@@ -510,11 +514,13 @@
   "selective.col.harmful": {"text": "Without a flag: late or missed", "fields": []},
   "selective.col.aurc": {"text": "AURC (excess over a perfect flag)", "fields": []},
   "selective.col.auroc": {"text": "AUROC", "fields": []},
-  "cost.lead": {"text": "The final run's cost over its reads, from `{source}`: the API-equivalent price the Claude CLI reports, per letter read and per date exactly right.", "fields": ["source"]},
+  "selective.col.over_reads": {"text": "Over the reads: wrong dates “Please check” caught", "fields": []},
+  "cost.lead": {"text": "The final run's cost and latency over its reads, from `{source}`: the API-equivalent price the Claude CLI reports, per letter read and per date exactly right, and the model's time per letter.", "fields": ["source"]},
   "cost.caption": {"text": "Cost, the final run", "fields": []},
   "cost.col.condition": {"text": "Condition", "fields": []},
   "cost.col.letter": {"text": "$ per letter", "fields": []},
   "cost.col.right": {"text": "$ per right date", "fields": []},
+  "cost.col.latency": {"text": "Latency {stat}", "fields": ["stat"]},
   "cost.col.letters": {"text": "Letters read", "fields": []},
   "e2e.lead": {"text": "The final run's letters read once, through to the calendar (`{file}`): the genuine dated obligations that got a reminder in time, by split, and why the others got none.", "fields": ["file"]},
   "e2e.caption": {"text": "From a letter to a reminder, the final run", "fields": []},
