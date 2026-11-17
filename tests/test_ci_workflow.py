@@ -53,12 +53,14 @@ def _weekly(job: dict[str, Any]) -> bool:
 
 def test_the_slow_checks_run_in_a_job_of_their_own_and_every_check_still_runs() -> None:
     """The 3.12 leg ran the suite with coverage, then the slow tests, the replays and ``demo --check``, in 36 of
-    its 45 minutes: a slow runner could time it out. Each check that ran there still runs on pull requests."""
+    its 45 minutes: a slow runner could time it out. Each check that ran there still runs on pull requests. The
+    job itself has 60 minutes: with the final run's replays it reached the Python 3.11 install in 32 minutes on
+    a slow runner, and the replay under 3.11 comes after it."""
     jobs = _jobs()
     backend, slow = jobs["backend"], jobs["backend-slow"]
     assert _on_pull_requests(slow) and slow["runs-on"] == backend["runs-on"] == "ubuntu-24.04"
     # (the backend legs' own limit: test_the_backend_legs_have_room_for_a_slow_runner)
-    assert slow["timeout-minutes"] <= 45
+    assert slow["timeout-minutes"] <= 60
     assert any(step.get("with", {}).get("python-version") == "3.12" for step in slow["steps"])
     for moved in (
         "pytest -m slow",
@@ -482,9 +484,16 @@ def test_make_eval_reproduce_replays_every_published_number_in_the_slow_job() ->
     stress = json.loads((ROOT / "evals/perturb/manifest.json").read_text(encoding="utf-8"))
     assert stress["environment"]["zlib"] == zlib_version  # what the stress build check compares with
     install = slow["steps"][at - 1]
+    # the PPA's host has answered 503: a failed fetch fails the try (apt-get update only warns without
+    # --error-on=any), and the whole install is tried again, up to 5 times
     assert install["run"].strip().splitlines() == [
-        "sudo add-apt-repository -y -n ppa:deadsnakes/ppa",
-        f"sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends python{python}",
+        "for try in 1 2 3 4 5; do",
+        "  if sudo add-apt-repository -y -n ppa:deadsnakes/ppa && sudo apt-get update -q --error-on=any \\",
+        f"    && sudo apt-get install -y -q --no-install-recommends python{python}; then exit 0; fi",
+        '  echo "::warning::the deadsnakes PPA did not answer (try $try of 5)"',
+        '  [ "$try" = 5 ] || sleep $((try * 20))',
+        "done",
+        "exit 1",
     ]
     lines = step["run"].strip().splitlines()
     assert lines[:2] == [

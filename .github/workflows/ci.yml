@@ -67,10 +67,11 @@ jobs:
   backend-slow:
     name: Backend, slow checks (Python 3.12)
     # the slow tests, the replayed benchmarks and demo --check: in the 3.12 leg of "backend" they took the job
-    # to 36 of its then 45 minutes, so a slow runner could time it out
+    # to 36 of its then 45 minutes, so a slow runner could time it out. With the final run's replays it reached
+    # the Python 3.11 install in 32 minutes on 17 Nov 2026, and the replay under 3.11 comes after it
     if: github.event_name != 'schedule'
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
         with:
@@ -137,10 +138,17 @@ jobs:
         run: .venv/bin/python -m evals.present --check
       - name: Install Python 3.11 from the deadsnakes PPA for the next step (it uses Ubuntu's zlib 1.3, as the recording did)
         # Ubuntu 24.04 has no Python 3.11, and the 3.11 that uv downloads brings its own zlib 1.3.2: the stress
-        # files' build check (evals/perturb/build.py) wants the zlib the dataset was rendered with
+        # files' build check (evals/perturb/build.py) wants the zlib the dataset was rendered with. The PPA's host
+        # answered 503 to this step twice on 17 Nov 2026, once for two packages and once for its index, which
+        # apt-get update only warned about: any failed fetch now fails the try, and the install gets 5 tries
         run: |
-          sudo add-apt-repository -y -n ppa:deadsnakes/ppa
-          sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends python3.11
+          for try in 1 2 3 4 5; do
+            if sudo add-apt-repository -y -n ppa:deadsnakes/ppa && sudo apt-get update -q --error-on=any \
+              && sudo apt-get install -y -q --no-install-recommends python3.11; then exit 0; fi
+            echo "::warning::the deadsnakes PPA did not answer (try $try of 5)"
+            [ "$try" = 5 ] || sleep $((try * 20))
+          done
+          exit 1
       - name: Every published number is replayed with no model call and checked against evals/results/INDEX.json, under the pre-registration's Python 3.11
         # every split, condition, Ask set, end-to-end run and ablation with a recording replayed, the analysis, the
         # pages and items.csv checked, all compared with the results index (evals/reproduce.py): a changed date or
