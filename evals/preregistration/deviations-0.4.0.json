@@ -235,5 +235,59 @@
     "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6950177087",
     "created_at": "2026-11-17T13:59:02Z",
     "checkpoint_sha": "ac88e6fe557acf5d9a8156ce89ada9fe3a742a5b"
+  },
+  {
+    "id": "D012",
+    "kind": "label_error",
+    "at": "2026-11-17T15:30:51Z",
+    "step": "A2",
+    "what": "A2/A2' (runbook §5.1): holdout4-fine_bussgeld-K1, slot o0 (the offered item, item index 1): the blind adjudication ruled both readings wrong, so the label's date for this slot is declared an error; the corrected date is 2026-12-21. The primary analysis keeps the label as it is; the label-corrected sensitivity uses 2026-12-21",
+    "evidence": [
+      "clock (K29, #54): at/created_at real UTC; times below on the recording clock, real + 7 d",
+      "A2: discordance.py pack, 45 letters (2 batches, 10 decoys) from the four sealed benchmark reads, map sha256 92375b30c004df97…; A2 outputs sealed ($F/a2-seal.txt sha256 5a0881cc034e262b…) before comparing; A2 vs labels: agree 50, not_derivable 2, disagree 2; 4 slots to A2'",
+      "A2' case D003 (X/Y order drawn by seed, sides hidden; key $F/a2p-key.json sha256 0a7e73ce…): verdict both_wrong, date 2026-12-21; citations: § 67 Abs. 1 OWiG, § 46 Abs. 1 OWiG, § 43 StPO, § 187 Abs. 1 and 2 BGB, § 188 Abs. 2 BGB; conventions c03, c10",
+      "adjudication file $F/a2p/work/audit/adjudication-a2.json sha256 83b2870985876c0a…; A2' verdicts 4: label stands 2, both_wrong 2 (this slot and one other), ambiguous 0"
+    ],
+    "consequence": "only from the blind review of the items any condition got wrong (an owner's finding goes through it too): the primary stays; label-corrected sensitivity",
+    "applies_to": {
+      "split": "holdout4",
+      "items": [
+        {
+          "entry_id": "holdout4-fine_bussgeld-K1",
+          "item": 1,
+          "date": "2026-12-21"
+        }
+      ]
+    },
+    "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6952590441",
+    "created_at": "2026-11-17T15:30:51Z",
+    "checkpoint_sha": null
+  },
+  {
+    "id": "D013",
+    "kind": "label_error",
+    "at": "2026-11-17T15:30:52Z",
+    "step": "A2",
+    "what": "A2/A2' (runbook §5.1): holdout4-fine_bussgeld-M1, slot o0 (the offered item, item index 1): the blind adjudication ruled both readings wrong, so the label's date for this slot is declared an error; the corrected date is 2026-12-22. The primary analysis keeps the label as it is; the label-corrected sensitivity uses 2026-12-22",
+    "evidence": [
+      "clock (K29, #54): at/created_at real UTC; times below on the recording clock, real + 7 d",
+      "A2: discordance.py pack, 45 letters (2 batches, 10 decoys) from the four sealed benchmark reads, map sha256 92375b30c004df97…; A2 outputs sealed ($F/a2-seal.txt sha256 5a0881cc034e262b…) before comparing; A2 vs labels: agree 50, not_derivable 2, disagree 2; 4 slots to A2'",
+      "A2' case D004 (X/Y order drawn by seed, sides hidden; key $F/a2p-key.json sha256 0a7e73ce…): verdict both_wrong, date 2026-12-22; citations: § 67 Abs. 1 OWiG, § 46 Abs. 1 OWiG, § 43 StPO, § 187 Abs. 1 and 2 BGB, § 188 Abs. 2 BGB; conventions c03, c10",
+      "adjudication file $F/a2p/work/audit/adjudication-a2.json sha256 83b2870985876c0a…; A2' verdicts 4: label stands 2, both_wrong 2 (this slot and one other), ambiguous 0"
+    ],
+    "consequence": "only from the blind review of the items any condition got wrong (an owner's finding goes through it too): the primary stays; label-corrected sensitivity",
+    "applies_to": {
+      "split": "holdout4",
+      "items": [
+        {
+          "entry_id": "holdout4-fine_bussgeld-M1",
+          "item": 1,
+          "date": "2026-12-22"
+        }
+      ]
+    },
+    "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6952593239",
+    "created_at": "2026-11-17T15:30:52Z",
+    "checkpoint_sha": null
   }
 ]
