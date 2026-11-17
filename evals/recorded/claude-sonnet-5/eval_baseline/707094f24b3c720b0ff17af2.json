@@ -1,0 +1,71 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"b7d5c5302044f26e529ebe9352be1d9ad70c552f0832c40aa9084d2b65e8939a\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-scam-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:00:41+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Kanzlei Dr. Beispielmann & Coll. Medienrecht\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Unser Zeichen\",\"value\":\"BM-UR 26/90812\"}],\"amounts\":[900,280,1180],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay settlement amount for alleged copyright infringement\",\"quote\":\"Überweisen Sie den Vergleichsbetrag bis zum 01.12.2026 auf das Konto IBAN DE88 3704 0044 0532 0881 00, Kontoinhaber M. Beispielmann.\",\"computation\":\"The letter states an explicit calendar date for payment: 01.12.2026. Checking the calendar, 2026-12-01 is a Tuesday, not a weekend day, and not a public holiday in Nordrhein-Westfalen, so no shift under §193 BGB is needed. The due date is therefore 2026-12-01 as printed.\",\"due_date\":\"2026-12-01\",\"confidence\":\"high\",\"amount\":1180}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a private 'Abmahnung' (cease-and-desist/settlement demand) from a law firm alleging copyright infringement via a file-sharing network; such letters can be legitimate but are also a well-known template for fraudulent or exaggerated demand letters, so the claim and the law firm's identity should be independently verified (e.g. check the bar register) before any payment is made.\",\"Genuine copyright Abmahnungen almost always require a signed 'Unterlassungserklärung' (cease-and-desist declaration) in addition to payment; this letter explicitly states none is needed if payment is made, which is unusual and should be treated with suspicion.\",\"The phrase 'letzte außergerichtliche Gelegenheit' (last out-of-court opportunity) and the urgent short deadline create time pressure typical of aggressive or fraudulent demand letters; the recipient should not pay without first seeking independent legal advice (e.g. from a consumer protection agency or an independent lawyer).\",\"The receiving account is held by 'M. Beispielmann' personally rather than by the law firm as a business entity; this mismatch between a personal account holder and a corporate sender should be verified before transferring any money.\",\"No Rechtsbehelfsbelehrung (legal remedy instructions) is present because this is a private letter, not an official administrative or court decision; the recipient is not legally obliged to pay without further proceedings and should consider ignoring or formally contesting the claim with legal advice rather than simply paying.\"]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Kanzlei Dr. Beispielmann & Coll. Medienrecht",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Unser Zeichen",
+          "value": "BM-UR 26/90812"
+        }
+      ],
+      "amounts": [
+        900,
+        280,
+        1180
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay settlement amount for alleged copyright infringement",
+          "quote": "Überweisen Sie den Vergleichsbetrag bis zum 01.12.2026 auf das Konto IBAN DE88 3704 0044 0532 0881 00, Kontoinhaber M. Beispielmann.",
+          "computation": "The letter states an explicit calendar date for payment: 01.12.2026. Checking the calendar, 2026-12-01 is a Tuesday, not a weekend day, and not a public holiday in Nordrhein-Westfalen, so no shift under §193 BGB is needed. The due date is therefore 2026-12-01 as printed.",
+          "due_date": "2026-12-01",
+          "confidence": "high",
+          "amount": 1180
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a private 'Abmahnung' (cease-and-desist/settlement demand) from a law firm alleging copyright infringement via a file-sharing network; such letters can be legitimate but are also a well-known template for fraudulent or exaggerated demand letters, so the claim and the law firm's identity should be independently verified (e.g. check the bar register) before any payment is made.",
+        "Genuine copyright Abmahnungen almost always require a signed 'Unterlassungserklärung' (cease-and-desist declaration) in addition to payment; this letter explicitly states none is needed if payment is made, which is unusual and should be treated with suspicion.",
+        "The phrase 'letzte außergerichtliche Gelegenheit' (last out-of-court opportunity) and the urgent short deadline create time pressure typical of aggressive or fraudulent demand letters; the recipient should not pay without first seeking independent legal advice (e.g. from a consumer protection agency or an independent lawyer).",
+        "The receiving account is held by 'M. Beispielmann' personally rather than by the law firm as a business entity; this mismatch between a personal account holder and a corporate sender should be verified before transferring any money.",
+        "No Rechtsbehelfsbelehrung (legal remedy instructions) is present because this is a private letter, not an official administrative or court decision; the recipient is not legally obliged to pay without further proceedings and should consider ignoring or formally contesting the claim with legal advice rather than simply paying."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3648,
+      "cache_read_tokens": 7810,
+      "cache_creation_tokens": 4091,
+      "cost_usd": 0.054414000000000004,
+      "duration_ms": 36408,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

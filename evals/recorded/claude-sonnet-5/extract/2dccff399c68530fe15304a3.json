@@ -1,0 +1,175 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"d2c504983a0143530fc2d4f00be1443072f3252d913469b1e88e884ffba48bea\",\"language\":\"en\",\"pages\":[[1,\"text\"],[2,\"text\"]],\"region\":\"SL\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-fine_bussgeld-K1"
+    ],
+    "prompt_head": "Today is 2026-11-24. The person lives in region SL (DE). Their name is (not given).\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n(none yet)\n\nThe document's text follows, page by page: a line `=== Page N ===` starts page N. Everything\nbetween the <untrusted_document> tags is data from the document, never in",
+    "recorded_at": "2026-11-24T11:20:56+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"title\":\"Speeding fine (Bußgeldbescheid) – Zentrale Bußgeldbehörde Beispielsaarland\",\"area\":\"mobility\",\"case_title\":\"Speeding fine (Bußgeldbescheid) – Zentrale Bußgeldbehörde Beispielsaarland\",\"kind\":\"fine\",\"language\":\"de\",\"document_date\":\"2026-11-20\",\"recipient_name\":\"Mattis Musterwadern\",\"sender\":{\"name\":\"Zentrale Bußgeldbehörde Beispielsaarland\",\"kind\":\"authority\",\"address\":\"Am Römerkastell 9, 66121 Beispielbrücken\",\"phone\":\"0800 555 0661\",\"email\":\"bussgeld@zentrale-bußgeldbehörde-beis.example\",\"website\":null,\"identifiers\":[]},\"summary\":\"The Zentrale Bußgeldbehörde Beispielsaarland issued a fine notice (Bußgeldbescheid) against Mattis Musterwadern for driving 27 km/h over the 70 km/h limit outside a built-up area on 29 September 2026. The total amount due is €182.00 and one point is recorded in the Fahreignungsregister; the notice was delivered on 21 November 2026 via official postal delivery (Zustellungsurkunde).\",\"explanation\":\"This is an official fine notice for a speeding offense. You may decide whether to accept it or file an objection (Einspruch) in writing or in person at the issuing authority; the app shows the deadline for that. If you do not object, the notice becomes legally final and only then must the total amount be paid within two weeks to the stated account — pay only after it is final, not immediately. If you let the objection period pass without acting and also without paying once final, the fine can be enforced. If you are unsure whether to object, a traffic lawyer (Verkehrsanwalt) can advise you before the deadline shown.\",\"urgency\":\"high\",\"tax_relevant\":false,\"high_stakes_kind\":null,\"remedy\":{\"type\":\"einspruch\",\"addressee\":\"Zentrale Bußgeldbehörde Beispielsaarland\",\"period_text\":\"innerhalb von zwei Wochen ab seiner Zustellung\",\"form_text\":\"schriftlich oder zur Niederschrift bei der Zentralen Bußgeldbehörde Beispielsaarland\",\"quote\":\"Gegen diesen Bescheid können Sie innerhalb von zwei Wochen ab seiner Zustellung Einspruch einlegen, schriftlich oder zur Niederschrift bei der Zentralen Bußgeldbehörde Beispielsaarland.\"},\"payment\":{\"iban\":\"DE94590100000006612100\",\"iban_valid\":null,\"payee\":\"Zentrale Bußgeldbehörde Beispielsaarland\",\"reference\":\"VOW 4.1-26/308812\"},\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"VOW 4.1-26/308812\"},{\"label\":\"Kennzeichen\",\"value\":\"SB-MW 418\"}],\"key_facts\":[{\"label\":\"Offense date and time (Tatzeit)\",\"value\":\"29.09.2026, 07:12 Uhr\",\"quote\":\"Ihnen wird vorgeworfen, am 29.09.2026, 07:12 Uhr in Beispielwadern, Landstraße L 152, Höhe Waldfriedhof mit dem Kraftfahrzeug SB-MW 418 folgende Ordnungswidrigkeit begangen zu haben: Sie fuhren außerhalb geschlossener Ortschaften 27 km/h schneller als die zulässigen 70 km/h.\"},{\"label\":\"Fine (Geldbuße)\",\"value\":\"150,00 Euro\",\"quote\":\"Geldbuße   150,00\"},{\"label\":\"Fee (Gebühr)\",\"value\":\"28,50 Euro\",\"quote\":\"Gebühr (§ 107 Abs. 1 OWiG)   28,50\"},{\"label\":\"Delivery costs (Auslagen für die Zustellung)\",\"value\":\"3,50 Euro\",\"quote\":\"Auslagen für die Zustellung   3,50\"},{\"label\":\"Total amount (Gesamtbetrag)\",\"value\":\"182,00 Euro\",\"quote\":\"Gesamtbetrag   182,00\"},{\"label\":\"Points in the driving register (Fahreignungsregister)\",\"value\":\"1 Punkt\",\"quote\":\"Im Fahreignungsregister wird der Verstoß mit 1 Punkt vermerkt.\"},{\"label\":\"Date of delivery (zugestellt am)\",\"value\":\"21.11.2026\",\"quote\":\"21.11.2026\"}],\"items\":[{\"kind\":\"deadline\",\"title\":\"Decide whether to file an objection (Einspruch) against the fine notice\",\"action\":\"File a written objection, or an objection recorded in person (zur Niederschrift) at the Zentrale Bußgeldbehörde Beispielsaarland, if you want to contest the fine, by the deadline shown.\",\"consequence\":\"If no objection is filed in time, the notice becomes legally final (rechtskräftig) and can be enforced.\",\"priority\":\"high\",\"location\":null,\"direction\":null,\"amount\":null,\"currency\":null,\"quote\":\"Gegen diesen Bescheid können Sie innerhalb von zwei Wochen ab seiner Zustellung Einspruch einlegen, schriftlich oder zur Niederschrift bei der Zentralen Bußgeldbehörde Beispielsaarland.\",\"date\":{\"type\":\"relative\",\"nature\":\"objection\",\"anchor\":\"receipt\",\"anchor_date\":\"2026-11-21\",\"amount\":2,\"unit\":\"weeks\",\"delivery_rule\":\"none\",\"shift_rule\":\"auto\",\"text\":\"innerhalb von zwei Wochen ab seiner Zustellung\",\"date\":null,\"time\":null,\"legal_basis\":null},\"recurrence\":null},{\"kind\":\"payment\",\"title\":\"Pay the fine once the notice becomes final\",\"action\":\"Wait until the notice becomes legally final (no objection filed within the appeal period), then transfer the total amount to the stated account within two weeks of that.\",\"consequence\":\"Unpaid fines after the notice becomes final can be enforced.\",\"priority\":\"normal\",\"location\":null,\"direction\":\"out\",\"amount\":182,\"currency\":\"EUR\",\"quote\":\"Zahlen Sie erst, wenn dieser Bescheid rechtskräftig geworden ist, und dann binnen zwei Wochen auf das Konto DE94 5901 0000 0006 6121 00.\",\"date\":{\"type\":\"none\",\"nature\":\"payment\",\"anchor\":null,\"anchor_date\":null,\"amount\":null,\"unit\":null,\"delivery_rule\":\"none\",\"shift_rule\":\"none\",\"text\":\"binnen zwei Wochen, nachdem der Bescheid rechtskräftig geworden ist\",\"date\":null,\"time\":null,\"legal_basis\":null},\"recurrence\":null}],\"warnings\":[]}",
+    "data": {
+      "title": "Speeding fine (Bußgeldbescheid) – Zentrale Bußgeldbehörde Beispielsaarland",
+      "area": "mobility",
+      "case_title": "Speeding fine (Bußgeldbescheid) – Zentrale Bußgeldbehörde Beispielsaarland",
+      "kind": "fine",
+      "language": "de",
+      "document_date": "2026-11-20",
+      "recipient_name": "Mattis Musterwadern",
+      "sender": {
+        "name": "Zentrale Bußgeldbehörde Beispielsaarland",
+        "kind": "authority",
+        "address": "Am Römerkastell 9, 66121 Beispielbrücken",
+        "phone": "0800 555 0661",
+        "email": "bussgeld@zentrale-bußgeldbehörde-beis.example",
+        "website": null,
+        "identifiers": []
+      },
+      "summary": "The Zentrale Bußgeldbehörde Beispielsaarland issued a fine notice (Bußgeldbescheid) against Mattis Musterwadern for driving 27 km/h over the 70 km/h limit outside a built-up area on 29 September 2026. The total amount due is €182.00 and one point is recorded in the Fahreignungsregister; the notice was delivered on 21 November 2026 via official postal delivery (Zustellungsurkunde).",
+      "explanation": "This is an official fine notice for a speeding offense. You may decide whether to accept it or file an objection (Einspruch) in writing or in person at the issuing authority; the app shows the deadline for that. If you do not object, the notice becomes legally final and only then must the total amount be paid within two weeks to the stated account — pay only after it is final, not immediately. If you let the objection period pass without acting and also without paying once final, the fine can be enforced. If you are unsure whether to object, a traffic lawyer (Verkehrsanwalt) can advise you before the deadline shown.",
+      "urgency": "high",
+      "tax_relevant": false,
+      "high_stakes_kind": null,
+      "remedy": {
+        "type": "einspruch",
+        "addressee": "Zentrale Bußgeldbehörde Beispielsaarland",
+        "period_text": "innerhalb von zwei Wochen ab seiner Zustellung",
+        "form_text": "schriftlich oder zur Niederschrift bei der Zentralen Bußgeldbehörde Beispielsaarland",
+        "quote": "Gegen diesen Bescheid können Sie innerhalb von zwei Wochen ab seiner Zustellung Einspruch einlegen, schriftlich oder zur Niederschrift bei der Zentralen Bußgeldbehörde Beispielsaarland."
+      },
+      "payment": {
+        "iban": "DE94590100000006612100",
+        "iban_valid": null,
+        "payee": "Zentrale Bußgeldbehörde Beispielsaarland",
+        "reference": "VOW 4.1-26/308812"
+      },
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "VOW 4.1-26/308812"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "SB-MW 418"
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Offense date and time (Tatzeit)",
+          "value": "29.09.2026, 07:12 Uhr",
+          "quote": "Ihnen wird vorgeworfen, am 29.09.2026, 07:12 Uhr in Beispielwadern, Landstraße L 152, Höhe Waldfriedhof mit dem Kraftfahrzeug SB-MW 418 folgende Ordnungswidrigkeit begangen zu haben: Sie fuhren außerhalb geschlossener Ortschaften 27 km/h schneller als die zulässigen 70 km/h."
+        },
+        {
+          "label": "Fine (Geldbuße)",
+          "value": "150,00 Euro",
+          "quote": "Geldbuße   150,00"
+        },
+        {
+          "label": "Fee (Gebühr)",
+          "value": "28,50 Euro",
+          "quote": "Gebühr (§ 107 Abs. 1 OWiG)   28,50"
+        },
+        {
+          "label": "Delivery costs (Auslagen für die Zustellung)",
+          "value": "3,50 Euro",
+          "quote": "Auslagen für die Zustellung   3,50"
+        },
+        {
+          "label": "Total amount (Gesamtbetrag)",
+          "value": "182,00 Euro",
+          "quote": "Gesamtbetrag   182,00"
+        },
+        {
+          "label": "Points in the driving register (Fahreignungsregister)",
+          "value": "1 Punkt",
+          "quote": "Im Fahreignungsregister wird der Verstoß mit 1 Punkt vermerkt."
+        },
+        {
+          "label": "Date of delivery (zugestellt am)",
+          "value": "21.11.2026",
+          "quote": "21.11.2026"
+        }
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Decide whether to file an objection (Einspruch) against the fine notice",
+          "action": "File a written objection, or an objection recorded in person (zur Niederschrift) at the Zentrale Bußgeldbehörde Beispielsaarland, if you want to contest the fine, by the deadline shown.",
+          "consequence": "If no objection is filed in time, the notice becomes legally final (rechtskräftig) and can be enforced.",
+          "priority": "high",
+          "location": null,
+          "direction": null,
+          "amount": null,
+          "currency": null,
+          "quote": "Gegen diesen Bescheid können Sie innerhalb von zwei Wochen ab seiner Zustellung Einspruch einlegen, schriftlich oder zur Niederschrift bei der Zentralen Bußgeldbehörde Beispielsaarland.",
+          "date": {
+            "type": "relative",
+            "nature": "objection",
+            "anchor": "receipt",
+            "anchor_date": "2026-11-21",
+            "amount": 2,
+            "unit": "weeks",
+            "delivery_rule": "none",
+            "shift_rule": "auto",
+            "text": "innerhalb von zwei Wochen ab seiner Zustellung",
+            "date": null,
+            "time": null,
+            "legal_basis": null
+          },
+          "recurrence": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the fine once the notice becomes final",
+          "action": "Wait until the notice becomes legally final (no objection filed within the appeal period), then transfer the total amount to the stated account within two weeks of that.",
+          "consequence": "Unpaid fines after the notice becomes final can be enforced.",
+          "priority": "normal",
+          "location": null,
+          "direction": "out",
+          "amount": 182,
+          "currency": "EUR",
+          "quote": "Zahlen Sie erst, wenn dieser Bescheid rechtskräftig geworden ist, und dann binnen zwei Wochen auf das Konto DE94 5901 0000 0006 6121 00.",
+          "date": {
+            "type": "none",
+            "nature": "payment",
+            "anchor": null,
+            "anchor_date": null,
+            "amount": null,
+            "unit": null,
+            "delivery_rule": "none",
+            "shift_rule": "none",
+            "text": "binnen zwei Wochen, nachdem der Bescheid rechtskräftig geworden ist",
+            "date": null,
+            "time": null,
+            "legal_basis": null
+          },
+          "recurrence": null
+        }
+      ],
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 8468,
+      "cache_read_tokens": 20021,
+      "cache_creation_tokens": 8023,
+      "cost_usd": 0.12078419999999998,
+      "duration_ms": 74198,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

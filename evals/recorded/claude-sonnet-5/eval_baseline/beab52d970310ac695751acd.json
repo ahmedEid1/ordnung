@@ -1,0 +1,65 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"0dad9fdeaf50cf47776a7959b22640c124d4366abb15e09850239e1028d76937\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-appointment-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:05:04+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"appointment\",\"sender_name\":\"Zahnarztpraxis Beispielweiß\",\"document_date\":\"2026-11-19\",\"references\":[],\"amounts\":[],\"items\":[{\"kind\":\"appointment\",\"title\":\"Professional dental cleaning appointment\",\"quote\":\"Ihr nächster Termin zur professionellen Zahnreinigung ist am Montag, 14.12.2026 um 16:15 Uhr.\",\"computation\":\"The letter states the appointment date and time directly: Monday, 14.12.2026 at 16:15. No calculation needed; the date is taken as printed.\",\"due_date\":\"2026-12-14\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Latest day to cancel the appointment without penalty\",\"quote\":\"Wenn Sie verhindert sind, sagen Sie bitte mindestens zwei Werktage vorher ab, damit wir den Termin anderweitig vergeben können.\",\"computation\":\"Appointment is Monday 14.12.2026. Cancellation must reach the practice at least two Werktage (business days) before the appointment. In German usage, Werktage include Monday–Saturday, excluding Sundays and public holidays. Counting backward from the appointment day: 1 Werktag before = Saturday 12.12.2026; 2 Werktage before = Friday 11.12.2026. Neither 11.12. nor 12.12.2026 is a public holiday in NW. Therefore the cancellation must reach the practice by Friday, 11.12.2026 at the latest.\",\"due_date\":\"2026-12-11\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "appointment",
+      "sender_name": "Zahnarztpraxis Beispielweiß",
+      "document_date": "2026-11-19",
+      "references": [],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Professional dental cleaning appointment",
+          "quote": "Ihr nächster Termin zur professionellen Zahnreinigung ist am Montag, 14.12.2026 um 16:15 Uhr.",
+          "computation": "The letter states the appointment date and time directly: Monday, 14.12.2026 at 16:15. No calculation needed; the date is taken as printed.",
+          "due_date": "2026-12-14",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Latest day to cancel the appointment without penalty",
+          "quote": "Wenn Sie verhindert sind, sagen Sie bitte mindestens zwei Werktage vorher ab, damit wir den Termin anderweitig vergeben können.",
+          "computation": "Appointment is Monday 14.12.2026. Cancellation must reach the practice at least two Werktage (business days) before the appointment. In German usage, Werktage include Monday–Saturday, excluding Sundays and public holidays. Counting backward from the appointment day: 1 Werktag before = Saturday 12.12.2026; 2 Werktage before = Friday 11.12.2026. Neither 11.12. nor 12.12.2026 is a public holiday in NW. Therefore the cancellation must reach the practice by Friday, 11.12.2026 at the latest.",
+          "due_date": "2026-12-11",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1993,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1418,
+      "cost_usd": 0.0262304,
+      "duration_ms": 19053,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

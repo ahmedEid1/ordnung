@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"b7d5c5302044f26e529ebe9352be1d9ad70c552f0832c40aa9084d2b65e8939a\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-scam-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:00:51+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[1180],\"contract\":null,\"document_date\":\"2026-11-18\",\"items\":[{\"kind\":\"payment\",\"title\":\"Pay settlement sum to avoid lawsuit\",\"quote\":\"Überweisen Sie den Vergleichsbetrag bis zum 01.12.2026 auf das Konto IBAN DE88 3704 0044 0532 0881 00, Kontoinhaber M. Beispielmann.\",\"computation\":\"The letter states an explicit calendar date for payment: 01.12.2026. No period calculation is needed; this date is used as written. 2026-12-01 is a Tuesday, not a weekend or public holiday in NRW, so no adjustment applies.\",\"due_date\":\"2026-12-01\",\"confidence\":\"high\",\"amount\":1180}],\"kind\":\"other\",\"references\":[{\"label\":\"Unser Zeichen\",\"value\":\"BM-UR 26/90812\"}],\"remedy_type\":\"none\",\"sender_name\":\"Kanzlei Dr. Beispielmann & Coll. Medienrecht\",\"warnings\":[\"This is a private settlement demand (Abmahnung) from a law firm over alleged file-sharing, not an official authority decision; there is no court judgment establishing the debt, so payment is not legally mandatory on its own and the claim can be disputed or checked by an independent lawyer before any money is sent.\",\"Unusually, the letter waives the normally required written cease-and-desist declaration (Unterlassungserklärung) if payment is made — real copyright Abmahnungen almost always require this in addition to payment; its absence plus the very short 13-day deadline are patterns seen in dubious or scam file-sharing settlement letters, so verify the firm's legitimacy (bar registration, actual mandate) before paying.\",\"The bank account holder given ('M. Beispielmann') matches only the lawyer's surname and not a clearly identified law-firm or client business account; confirm the IBAN and payee independently (e.g. by calling the firm via an independently verified phone number) before transferring any funds.\",\"The sender's name and address ('Dr. Beispielmann', 'Beispielwetzlar') read as generic placeholder/example names, which is worth double-checking against the original paper letter to make sure this is a genuine law firm and not a template or scam mail.\"]}",
+    "data": {
+      "amounts": [
+        1180
+      ],
+      "contract": null,
+      "document_date": "2026-11-18",
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay settlement sum to avoid lawsuit",
+          "quote": "Überweisen Sie den Vergleichsbetrag bis zum 01.12.2026 auf das Konto IBAN DE88 3704 0044 0532 0881 00, Kontoinhaber M. Beispielmann.",
+          "computation": "The letter states an explicit calendar date for payment: 01.12.2026. No period calculation is needed; this date is used as written. 2026-12-01 is a Tuesday, not a weekend or public holiday in NRW, so no adjustment applies.",
+          "due_date": "2026-12-01",
+          "confidence": "high",
+          "amount": 1180
+        }
+      ],
+      "kind": "other",
+      "references": [
+        {
+          "label": "Unser Zeichen",
+          "value": "BM-UR 26/90812"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Kanzlei Dr. Beispielmann & Coll. Medienrecht",
+      "warnings": [
+        "This is a private settlement demand (Abmahnung) from a law firm over alleged file-sharing, not an official authority decision; there is no court judgment establishing the debt, so payment is not legally mandatory on its own and the claim can be disputed or checked by an independent lawyer before any money is sent.",
+        "Unusually, the letter waives the normally required written cease-and-desist declaration (Unterlassungserklärung) if payment is made — real copyright Abmahnungen almost always require this in addition to payment; its absence plus the very short 13-day deadline are patterns seen in dubious or scam file-sharing settlement letters, so verify the firm's legitimacy (bar registration, actual mandate) before paying.",
+        "The bank account holder given ('M. Beispielmann') matches only the lawyer's surname and not a clearly identified law-firm or client business account; confirm the IBAN and payee independently (e.g. by calling the firm via an independently verified phone number) before transferring any funds.",
+        "The sender's name and address ('Dr. Beispielmann', 'Beispielwetzlar') read as generic placeholder/example names, which is worth double-checking against the original paper letter to make sure this is a genuine law firm and not a template or scam mail."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2829,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1567,
+      "cost_usd": 0.035668,
+      "duration_ms": 31986,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

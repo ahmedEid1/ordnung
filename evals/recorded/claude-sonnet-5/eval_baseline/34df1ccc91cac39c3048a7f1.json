@@ -1,0 +1,75 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"545933eee4a1b5b0baff8057d765e821a95c327b2b997f9dca66bb312455e38d\",\"mode\":\"text\",\"region\":\"MV\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-tax_assessment-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Mecklenburg-Vorpommern (MV), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrust",
+    "recorded_at": "2026-11-24T12:11:23+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterwolgast\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"081/509/11736\"}],\"amounts\":[3998,433],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the tax assessment\",\"quote\":\"Legen Sie ihn innerhalb eines Monats ab Bekanntgabe beim Finanzamt Musterwolgast ein, schriftlich, elektronisch oder zur Niederschrift.\",\"computation\":\"Bescheid dated Friday 20.11.2026, sent by post. Letter states the deemed delivery (Bekanntgabe) day is the 4th day after posting (current §122 Abs.2 AO rule): 20.11.2026 + 4 days = 24.11.2026 (Tuesday, not a weekend/holiday, so it stands as the Bekanntgabe day). The one-month objection period begins the day after Bekanntgabe (§108 Abs.1 AO, §187 Abs.1 BGB), i.e. 25.11.2026, and ends on the day of the following month that numerically corresponds to the Bekanntgabe day (§188 Abs.2 BGB): 24.12.2026. 24.12.2026 is a Thursday and not a statutory public holiday in Mecklenburg-Vorpommern (only 25./26.12 are holidays), so no further shift applies (§108 Abs.3 AO, §193 BGB).\",\"due_date\":\"2026-12-24\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Refund of overpaid income tax (Guthaben) to be transferred by the tax office\",\"quote\":\"Das Guthaben von 433,00 € überweisen wir auf Ihr Konto DE14 5139 0000 0074 4022 18.\",\"computation\":\"The letter states the refund will be transferred but gives no specific transfer date; the Bescheid is dated 20.11.2026 and transfers of this kind are typically executed within days to a few weeks after the assessment, but no exact date can be derived from the text.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":433}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"No specific transfer date is given for the 433,00 € refund; if it has not arrived within a few weeks of 20.11.2026, contact the Finanzamt to check on the transfer status.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterwolgast",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "081/509/11736"
+        }
+      ],
+      "amounts": [
+        3998,
+        433
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the tax assessment",
+          "quote": "Legen Sie ihn innerhalb eines Monats ab Bekanntgabe beim Finanzamt Musterwolgast ein, schriftlich, elektronisch oder zur Niederschrift.",
+          "computation": "Bescheid dated Friday 20.11.2026, sent by post. Letter states the deemed delivery (Bekanntgabe) day is the 4th day after posting (current §122 Abs.2 AO rule): 20.11.2026 + 4 days = 24.11.2026 (Tuesday, not a weekend/holiday, so it stands as the Bekanntgabe day). The one-month objection period begins the day after Bekanntgabe (§108 Abs.1 AO, §187 Abs.1 BGB), i.e. 25.11.2026, and ends on the day of the following month that numerically corresponds to the Bekanntgabe day (§188 Abs.2 BGB): 24.12.2026. 24.12.2026 is a Thursday and not a statutory public holiday in Mecklenburg-Vorpommern (only 25./26.12 are holidays), so no further shift applies (§108 Abs.3 AO, §193 BGB).",
+          "due_date": "2026-12-24",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Refund of overpaid income tax (Guthaben) to be transferred by the tax office",
+          "quote": "Das Guthaben von 433,00 € überweisen wir auf Ihr Konto DE14 5139 0000 0074 4022 18.",
+          "computation": "The letter states the refund will be transferred but gives no specific transfer date; the Bescheid is dated 20.11.2026 and transfers of this kind are typically executed within days to a few weeks after the assessment, but no exact date can be derived from the text.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 433
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "No specific transfer date is given for the 433,00 € refund; if it has not arrived within a few weeks of 20.11.2026, contact the Finanzamt to check on the transfer status."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3901,
+      "cache_read_tokens": 7986,
+      "cache_creation_tokens": 4405,
+      "cost_usd": 0.0582352,
+      "duration_ms": 39910,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

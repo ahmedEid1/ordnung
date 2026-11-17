@@ -1,0 +1,102 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"8f413409b65820e5a8aaee7a17996b50776a8aaa173344b208f56773ef645d75\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-K3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T12:17:57+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Beispielsoest\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"345/2051/1187\"}],\"amounts\":[1120],\"items\":[{\"kind\":\"deadline\",\"title\":\"Einspruch against the advance-payment assessment\",\"quote\":\"Gegen diesen Bescheid kann binnen eines Monats nach Bekanntgabe Einspruch beim Finanzamt Beispielsoest eingelegt werden, schriftlich, elektronisch oder zur Niederschrift.\",\"computation\":\"Posting (Aufgabe zur Post) stated as Saturday 21.11.2026. The letter claims the Bescheid is deemed bekanntgegeben 'am vierten Tag' after posting, but the statutory rule under § 122 Abs. 2 Nr. 1 AO is the THIRD day after posting (unless the third day is a Saturday/Sunday/holiday, in which case it shifts to the next business day). Counting the statutory 3 days from Sat 21.11.2026: day1=Sun 22.11., day2=Mon 23.11., day3=Tue 24.11.2026 (a normal weekday) -> Bekanntgabe = 24.11.2026. Since this is earlier than the letter's own (incorrect) 4-day statement (which would give 25.11.2026), the earlier/stricter date is used per the rule to take the earliest plausible deadline. The one-month Einspruchsfrist (§ 355 Abs. 1 AO) then runs per §§ 187 Abs. 1, 188 Abs. 2 BGB: the day of Bekanntgabe (24.11.2026) is not counted; the period ends one month later on the day bearing the same number, i.e. 24.12.2026. 24.12.2026 is a Thursday and not a statutory public holiday in NRW (Heiligabend is not a Feiertag), so no further shift is needed.\",\"due_date\":\"2026-12-24\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"1st quarterly advance income-tax payment 2027\",\"quote\":\"setzen wir die Vorauszahlungen zur Einkommensteuer ab 2027 auf 1.120,00 € je Quartal fest, fällig jeweils am 10.03., 10.06., 10.09. und 10.12.\",\"computation\":\"Calendar date fixed directly by the assessment: 10.03.2027. That date falls on a Wednesday (a normal business day in NRW), so no weekend/holiday adjustment applies.\",\"due_date\":\"2027-03-10\",\"confidence\":\"high\",\"amount\":1120},{\"kind\":\"payment\",\"title\":\"2nd quarterly advance income-tax payment 2027\",\"quote\":\"setzen wir die Vorauszahlungen zur Einkommensteuer ab 2027 auf 1.120,00 € je Quartal fest, fällig jeweils am 10.03., 10.06., 10.09. und 10.12.\",\"computation\":\"Calendar date fixed directly by the assessment: 10.06.2027. That date falls on a Thursday (a normal business day in NRW), so no weekend/holiday adjustment applies.\",\"due_date\":\"2027-06-10\",\"confidence\":\"high\",\"amount\":1120},{\"kind\":\"payment\",\"title\":\"3rd quarterly advance income-tax payment 2027\",\"quote\":\"setzen wir die Vorauszahlungen zur Einkommensteuer ab 2027 auf 1.120,00 € je Quartal fest, fällig jeweils am 10.03., 10.06., 10.09. und 10.12.\",\"computation\":\"Calendar date fixed directly by the assessment: 10.09.2027. That date falls on a Friday (a normal business day in NRW), so no weekend/holiday adjustment applies.\",\"due_date\":\"2027-09-10\",\"confidence\":\"high\",\"amount\":1120},{\"kind\":\"payment\",\"title\":\"4th quarterly advance income-tax payment 2027\",\"quote\":\"setzen wir die Vorauszahlungen zur Einkommensteuer ab 2027 auf 1.120,00 € je Quartal fest, fällig jeweils am 10.03., 10.06., 10.09. und 10.12.\",\"computation\":\"Calendar date fixed directly by the assessment: 10.12.2027. That date falls on a Friday (a normal business day in NRW), so no weekend/holiday adjustment applies.\",\"due_date\":\"2027-12-10\",\"confidence\":\"high\",\"amount\":1120}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter states the Bescheid is deemed delivered 'am vierten Tag nach der Aufgabe zur Post', but the governing rule under § 122 Abs. 2 Nr. 1 AO is the THIRD day after posting; this discrepancy shifts the calculated Einspruch deadline by several days depending on which rule is applied (24.12.2026 under the correct statutory 3-day rule vs. a later date in late December if the letter's literal 4-day wording is applied) — verify the actual date the letter arrived and, to be safe, aim to file any Einspruch no later than 24.12.2026.\",\"The advance-payment amount of 1.120,00 € per quarter is based on the 2025 profit from freelance translation work; if 2027 income will differ significantly, an adjustment ('Anpassung') can be requested by submitting a forecast ('Prognose'), but no deadline for this is given in the letter.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Beispielsoest",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "345/2051/1187"
+        }
+      ],
+      "amounts": [
+        1120
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Einspruch against the advance-payment assessment",
+          "quote": "Gegen diesen Bescheid kann binnen eines Monats nach Bekanntgabe Einspruch beim Finanzamt Beispielsoest eingelegt werden, schriftlich, elektronisch oder zur Niederschrift.",
+          "computation": "Posting (Aufgabe zur Post) stated as Saturday 21.11.2026. The letter claims the Bescheid is deemed bekanntgegeben 'am vierten Tag' after posting, but the statutory rule under § 122 Abs. 2 Nr. 1 AO is the THIRD day after posting (unless the third day is a Saturday/Sunday/holiday, in which case it shifts to the next business day). Counting the statutory 3 days from Sat 21.11.2026: day1=Sun 22.11., day2=Mon 23.11., day3=Tue 24.11.2026 (a normal weekday) -> Bekanntgabe = 24.11.2026. Since this is earlier than the letter's own (incorrect) 4-day statement (which would give 25.11.2026), the earlier/stricter date is used per the rule to take the earliest plausible deadline. The one-month Einspruchsfrist (§ 355 Abs. 1 AO) then runs per §§ 187 Abs. 1, 188 Abs. 2 BGB: the day of Bekanntgabe (24.11.2026) is not counted; the period ends one month later on the day bearing the same number, i.e. 24.12.2026. 24.12.2026 is a Thursday and not a statutory public holiday in NRW (Heiligabend is not a Feiertag), so no further shift is needed.",
+          "due_date": "2026-12-24",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "1st quarterly advance income-tax payment 2027",
+          "quote": "setzen wir die Vorauszahlungen zur Einkommensteuer ab 2027 auf 1.120,00 € je Quartal fest, fällig jeweils am 10.03., 10.06., 10.09. und 10.12.",
+          "computation": "Calendar date fixed directly by the assessment: 10.03.2027. That date falls on a Wednesday (a normal business day in NRW), so no weekend/holiday adjustment applies.",
+          "due_date": "2027-03-10",
+          "confidence": "high",
+          "amount": 1120
+        },
+        {
+          "kind": "payment",
+          "title": "2nd quarterly advance income-tax payment 2027",
+          "quote": "setzen wir die Vorauszahlungen zur Einkommensteuer ab 2027 auf 1.120,00 € je Quartal fest, fällig jeweils am 10.03., 10.06., 10.09. und 10.12.",
+          "computation": "Calendar date fixed directly by the assessment: 10.06.2027. That date falls on a Thursday (a normal business day in NRW), so no weekend/holiday adjustment applies.",
+          "due_date": "2027-06-10",
+          "confidence": "high",
+          "amount": 1120
+        },
+        {
+          "kind": "payment",
+          "title": "3rd quarterly advance income-tax payment 2027",
+          "quote": "setzen wir die Vorauszahlungen zur Einkommensteuer ab 2027 auf 1.120,00 € je Quartal fest, fällig jeweils am 10.03., 10.06., 10.09. und 10.12.",
+          "computation": "Calendar date fixed directly by the assessment: 10.09.2027. That date falls on a Friday (a normal business day in NRW), so no weekend/holiday adjustment applies.",
+          "due_date": "2027-09-10",
+          "confidence": "high",
+          "amount": 1120
+        },
+        {
+          "kind": "payment",
+          "title": "4th quarterly advance income-tax payment 2027",
+          "quote": "setzen wir die Vorauszahlungen zur Einkommensteuer ab 2027 auf 1.120,00 € je Quartal fest, fällig jeweils am 10.03., 10.06., 10.09. und 10.12.",
+          "computation": "Calendar date fixed directly by the assessment: 10.12.2027. That date falls on a Friday (a normal business day in NRW), so no weekend/holiday adjustment applies.",
+          "due_date": "2027-12-10",
+          "confidence": "high",
+          "amount": 1120
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter states the Bescheid is deemed delivered 'am vierten Tag nach der Aufgabe zur Post', but the governing rule under § 122 Abs. 2 Nr. 1 AO is the THIRD day after posting; this discrepancy shifts the calculated Einspruch deadline by several days depending on which rule is applied (24.12.2026 under the correct statutory 3-day rule vs. a later date in late December if the letter's literal 4-day wording is applied) — verify the actual date the letter arrived and, to be safe, aim to file any Einspruch no later than 24.12.2026.",
+        "The advance-payment amount of 1.120,00 € per quarter is based on the 2025 profit from freelance translation work; if 2027 income will differ significantly, an adjustment ('Anpassung') can be requested by submitting a forecast ('Prognose'), but no deadline for this is given in the letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 9278,
+      "cache_read_tokens": 7897,
+      "cache_creation_tokens": 8820,
+      "cost_usd": 0.12964740000000002,
+      "duration_ms": 81533,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

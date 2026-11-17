@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"ef50ddf252e0db797e0c4ba49c42f54f496057b7a9cd103401d82db819fd48d4\",\"mode\":\"text\",\"region\":\"SL\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-tax_assessment-N2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Saarland (SL), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> t",
+    "recorded_at": "2026-11-24T12:13:56+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterlouis\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"040/882/51347\"}],\"amounts\":[2906,665],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the 2025 income tax assessment\",\"quote\":\"Die Einspruchsfrist beträgt einen Monat und rechnet ab der Bekanntgabe; ein Bescheid, der als Brief verschickt wird, ist am vierten Tag nach dem Absenden als bekannt gegeben anzusehen.\",\"computation\":\"Posting day (date on letter) = 18.11.2026 (Wed). 4th day after posting = 18.11 + 4 days = 22.11.2026 (Sunday). For tax offices, if the 4th day falls on a Saturday, Sunday or public holiday, delivery (Bekanntgabe) moves to the next working day (§ 108 Abs. 3 AO) – 22.11.2026 is a Sunday, so delivery = Monday 23.11.2026. The one-month Einspruchsfrist (§ 355 Abs. 1 AO) then runs to the day in the following month with the same day-number as the delivery day: 23.12.2026 (Wednesday). 23.12.2026 is not a Saturday, Sunday or public holiday in Saarland, so no further shift applies (§ 108 Abs. 3 AO / § 193 BGB not needed).\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterlouis",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "040/882/51347"
+        }
+      ],
+      "amounts": [
+        2906,
+        665
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the 2025 income tax assessment",
+          "quote": "Die Einspruchsfrist beträgt einen Monat und rechnet ab der Bekanntgabe; ein Bescheid, der als Brief verschickt wird, ist am vierten Tag nach dem Absenden als bekannt gegeben anzusehen.",
+          "computation": "Posting day (date on letter) = 18.11.2026 (Wed). 4th day after posting = 18.11 + 4 days = 22.11.2026 (Sunday). For tax offices, if the 4th day falls on a Saturday, Sunday or public holiday, delivery (Bekanntgabe) moves to the next working day (§ 108 Abs. 3 AO) – 22.11.2026 is a Sunday, so delivery = Monday 23.11.2026. The one-month Einspruchsfrist (§ 355 Abs. 1 AO) then runs to the day in the following month with the same day-number as the delivery day: 23.12.2026 (Wednesday). 23.12.2026 is not a Saturday, Sunday or public holiday in Saarland, so no further shift applies (§ 108 Abs. 3 AO / § 193 BGB not needed).",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3264,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2047,
+      "cost_usd": 0.041938,
+      "duration_ms": 34519,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

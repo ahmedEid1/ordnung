@@ -1,0 +1,84 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"d4a8ea5452839d0249eaf735cc37f00fff6dc7398abe7a25456b163f6ac741b9\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-price_increase-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:50:35+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Erdgas Beispieltal GmbH\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"EB-552 0814\"},{\"label\":\"Zählpunkt\",\"value\":\"DE000555 0018 77 41\"}],\"amounts\":[9.84,11.12,104,118],\"items\":[{\"kind\":\"deadline\",\"title\":\"Special cancellation right due to price increase\",\"quote\":\"Damit die Kündigung wirkt, muss sie bei uns vor dem Inkrafttreten der neuen Preise eingehen.\",\"computation\":\"The letter grants a special right to cancel without notice, effective 01.01.2027 (the date the new, higher prices take effect). For the cancellation to be effective at the old price (i.e. to end the contract before the new prices apply), it must reach the supplier 'vor dem Inkrafttreten der neuen Preise' — before 01.01.2027. The last calendar day on which it can still arrive is therefore 31.12.2026. 2026-12-31 is a Thursday and not a public holiday in NW, so no weekend/holiday shift is needed; this is a hard arrival deadline set by the company, not a statutory period subject to §193 BGB extension.\",\"due_date\":\"2026-12-31\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":{\"current_term_end\":\"2026-12-31\",\"cancel_by\":\"2026-12-31\"},\"warnings\":[\"The letter only states that the cancellation must 'reach' the supplier before 01.01.2027 without giving a specific calendar deadline, so allow enough mailing/processing time well before 31.12.2026 rather than sending at the last moment.\",\"The quoted IBAN (DE80 3705 0198 0005 5818 10) is a formally valid German IBAN, but this letter does not request any payment to it — it is only the supplier's standard account information printed in the letterhead.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Erdgas Beispieltal GmbH",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "EB-552 0814"
+        },
+        {
+          "label": "Zählpunkt",
+          "value": "DE000555 0018 77 41"
+        }
+      ],
+      "amounts": [
+        9.84,
+        11.12,
+        104,
+        118
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Special cancellation right due to price increase",
+          "quote": "Damit die Kündigung wirkt, muss sie bei uns vor dem Inkrafttreten der neuen Preise eingehen.",
+          "computation": "The letter grants a special right to cancel without notice, effective 01.01.2027 (the date the new, higher prices take effect). For the cancellation to be effective at the old price (i.e. to end the contract before the new prices apply), it must reach the supplier 'vor dem Inkrafttreten der neuen Preise' — before 01.01.2027. The last calendar day on which it can still arrive is therefore 31.12.2026. 2026-12-31 is a Thursday and not a public holiday in NW, so no weekend/holiday shift is needed; this is a hard arrival deadline set by the company, not a statutory period subject to §193 BGB extension.",
+          "due_date": "2026-12-31",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": {
+        "current_term_end": "2026-12-31",
+        "cancel_by": "2026-12-31"
+      },
+      "warnings": [
+        "The letter only states that the cancellation must 'reach' the supplier before 01.01.2027 without giving a specific calendar deadline, so allow enough mailing/processing time well before 31.12.2026 rather than sending at the last moment.",
+        "The quoted IBAN (DE80 3705 0198 0005 5818 10) is a formally valid German IBAN, but this letter does not request any payment to it — it is only the supplier's standard account information printed in the letterhead."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2117,
+      "cache_read_tokens": 14630,
+      "cache_creation_tokens": 2955,
+      "cost_usd": 0.035924,
+      "duration_ms": 25886,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE80 3705 0198 0005 5818 10"
+        },
+        "result": "{\"iban\":\"DE80 3705 0198 0005 5818 10\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005581810\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

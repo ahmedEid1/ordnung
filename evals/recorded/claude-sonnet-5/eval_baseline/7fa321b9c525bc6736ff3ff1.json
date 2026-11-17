@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"d69eeb2dcb623ef2ad0e1fca17598e0f4bd8a8d0546075708fb7b587486c5759\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-M3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T12:24:38+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Beispielsoest\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"345/2051/1187\"}],\"amounts\":[42],\"items\":[{\"kind\":\"deadline\",\"title\":\"Deadline to file Einspruch against interest assessment\",\"quote\":\"Sie können gegen diese Festsetzung innerhalb eines Monats Einspruch beim Finanzamt Beispielsoest erheben.\",\"computation\":\"Letter dated Thursday 19.11.2026; no separate 'zur Post gegeben am' date is stated, so the posting day equals the letter date, 19.11.2026. Sender is a Finanzamt, so the 4-day delivery fiction applies (§ 122 Abs. 2 Nr. 1 AO): day 1 = 20.11. (Fri), day 2 = 21.11. (Sat), day 3 = 22.11. (Sun), day 4 = 23.11.2026 (Mon). Since 23.11.2026 is a working day (Monday, no holiday), the delivery (Bekanntgabe) date stays 23.11.2026 and is not shifted. Per § 355 Abs. 1 AO the one-month Einspruchsfrist runs from this Bekanntgabe; under §§ 108 Abs. 1 AO, 187 Abs. 1, 188 Abs. 2 BGB the day of Bekanntgabe itself is not counted and the period ends one month later on the numerically corresponding day: 23.11.2026 + 1 month = 23.12.2026. 23.12.2026 is a Wednesday, not a weekend or public holiday in NW, so no further shift under § 108 Abs. 3 AO is needed.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Beispielsoest",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "345/2051/1187"
+        }
+      ],
+      "amounts": [
+        42
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Deadline to file Einspruch against interest assessment",
+          "quote": "Sie können gegen diese Festsetzung innerhalb eines Monats Einspruch beim Finanzamt Beispielsoest erheben.",
+          "computation": "Letter dated Thursday 19.11.2026; no separate 'zur Post gegeben am' date is stated, so the posting day equals the letter date, 19.11.2026. Sender is a Finanzamt, so the 4-day delivery fiction applies (§ 122 Abs. 2 Nr. 1 AO): day 1 = 20.11. (Fri), day 2 = 21.11. (Sat), day 3 = 22.11. (Sun), day 4 = 23.11.2026 (Mon). Since 23.11.2026 is a working day (Monday, no holiday), the delivery (Bekanntgabe) date stays 23.11.2026 and is not shifted. Per § 355 Abs. 1 AO the one-month Einspruchsfrist runs from this Bekanntgabe; under §§ 108 Abs. 1 AO, 187 Abs. 1, 188 Abs. 2 BGB the day of Bekanntgabe itself is not counted and the period ends one month later on the numerically corresponding day: 23.11.2026 + 1 month = 23.12.2026. 23.12.2026 is a Wednesday, not a weekend or public holiday in NW, so no further shift under § 108 Abs. 3 AO is needed.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2762,
+      "cache_read_tokens": 12602,
+      "cache_creation_tokens": 3429,
+      "cost_usd": 0.0438644,
+      "duration_ms": 28438,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

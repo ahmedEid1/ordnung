@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"cc2bb582e8051f707cffb5cf22ad13a3a5410f2aea3515671b13553641d00097\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:18:40+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Beispielwort Translations\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Invoice number\",\"value\":\"BT-26-4407\"}],\"amounts\":[142.8],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay translation invoice\",\"quote\":\"Kindly transfer the total within 21 days of the date of this invoice, quoting the invoice number.\",\"computation\":\"This is a private commercial invoice, so general civil-law time-computation rules (§§187, 193 BGB) apply (no statutory Zugangsfiktion, since no public authority is involved). The period is defined as 'within 21 days of the date of this invoice' (21 November 2026), i.e. it begins with an event, so under §187(1) BGB the day of the event (21 Nov) is not counted; counting starts 22 November 2026. Counting 21 days forward (22-30 Nov = 9 days, 1-12 Dec = 12 days, total 21) lands on 12 December 2026. 12 December 2026 is a Saturday. Under §193 BGB, when the last day of a period for a declaration or performance falls on a Saturday, Sunday, or public holiday, the period ends on the next business day. 13 December 2026 is a Sunday, so the next business day is Monday 14 December 2026, which is not a public holiday in NRW. Hence payment is due by 14 December 2026.\",\"due_date\":\"2026-12-14\",\"confidence\":\"high\",\"amount\":142.8}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Beispielwort Translations",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Invoice number",
+          "value": "BT-26-4407"
+        }
+      ],
+      "amounts": [
+        142.8
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay translation invoice",
+          "quote": "Kindly transfer the total within 21 days of the date of this invoice, quoting the invoice number.",
+          "computation": "This is a private commercial invoice, so general civil-law time-computation rules (§§187, 193 BGB) apply (no statutory Zugangsfiktion, since no public authority is involved). The period is defined as 'within 21 days of the date of this invoice' (21 November 2026), i.e. it begins with an event, so under §187(1) BGB the day of the event (21 Nov) is not counted; counting starts 22 November 2026. Counting 21 days forward (22-30 Nov = 9 days, 1-12 Dec = 12 days, total 21) lands on 12 December 2026. 12 December 2026 is a Saturday. Under §193 BGB, when the last day of a period for a declaration or performance falls on a Saturday, Sunday, or public holiday, the period ends on the next business day. 13 December 2026 is a Sunday, so the next business day is Monday 14 December 2026, which is not a public holiday in NRW. Hence payment is due by 14 December 2026.",
+          "due_date": "2026-12-14",
+          "confidence": "high",
+          "amount": 142.8
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 3426,
+      "cache_read_tokens": 13880,
+      "cache_creation_tokens": 4141,
+      "cost_usd": 0.05361200000000001,
+      "duration_ms": 36637,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

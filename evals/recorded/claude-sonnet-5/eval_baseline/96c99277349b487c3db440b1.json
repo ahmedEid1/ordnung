@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"7421ca06bfaa067e369be12f4e7f9d4dd749ac6984a193267810973459614f4f\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-dunning_fixed-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:10:26+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Gartencenter Beispielblüte\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Kundenkonto\",\"value\":\"GB-30418\"},{\"label\":\"Lieferschein\",\"value\":\"LS-26-7712\"}],\"amounts\":[537],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay overdue balance for tree delivery and planting\",\"quote\":\"Bitte überweisen Sie die offene Summe bis zum 04.12.2026.\",\"computation\":\"The letter states an explicit calendar due date, 04.12.2026, rather than a period to be counted from delivery. This is a private payment deadline set by the sender. Checking the weekday: 2026-12-04 falls on a Friday, so no weekend/holiday adjustment under § 193 BGB is needed.\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":537}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Gartencenter Beispielblüte",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Kundenkonto",
+          "value": "GB-30418"
+        },
+        {
+          "label": "Lieferschein",
+          "value": "LS-26-7712"
+        }
+      ],
+      "amounts": [
+        537
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay overdue balance for tree delivery and planting",
+          "quote": "Bitte überweisen Sie die offene Summe bis zum 04.12.2026.",
+          "computation": "The letter states an explicit calendar due date, 04.12.2026, rather than a period to be counted from delivery. This is a private payment deadline set by the sender. Checking the weekday: 2026-12-04 falls on a Friday, so no weekend/holiday adjustment under § 193 BGB is needed.",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": 537
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1537,
+      "cache_read_tokens": 12586,
+      "cache_creation_tokens": 2636,
+      "cost_usd": 0.0284392,
+      "duration_ms": 16243,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"fb67b7d076a9654ee4eb17da2a898796d2f273c04b95281302673ec24264d740\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-price_increase-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:50:01+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Beispielfunk Mobile GmbH\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"BF-7 220 418\"},{\"label\":\"Rufnummer\",\"value\":\"0160 555 41 27\"}],\"amounts\":[14.99,16.99],\"items\":[{\"kind\":\"milestone\",\"title\":\"New monthly price takes effect\",\"quote\":\"ab dem 01.01.2027 kostet Ihr Tarif monatlich 16,99 € statt bisher 14,99 €.\",\"computation\":\"The letter states the new price applies from a fixed calendar date, so this date is used as written, no counting needed.\",\"due_date\":\"2027-01-01\",\"confidence\":\"high\",\"amount\":16.99},{\"kind\":\"deadline\",\"title\":\"Exercise special right to cancel the contract because of the price increase\",\"quote\":\"Für diese Kündigung haben Sie drei Monate Zeit, gerechnet ab dem Zugang dieser Mitteilung; wirksam wird sie frühestens an dem Tag, an dem der neue Preis gilt.\",\"computation\":\"This is a private company letter, not an authority, so the statutory 4-day Bekanntgabefiktion for authorities (§ 122 Abs. 2 Nr. 1 AO / § 37 Abs. 2 SGB X) does not apply, and the letter gives no separate 'zur Post gegeben am' posting date. The exact day of actual receipt (Zugang i.S.d. § 130 BGB) is therefore not stated. As the letter is dated Saturday 21.11.2026 and the customer already has it in hand on 24.11.2026 (today), I assume, as the earliest plausible and most conservative estimate, ordinary postal transit of about 3 calendar days, giving an assumed Zugang on Tuesday 24.11.2026. Counting the 3-month period from that day of receipt (day of event not separately added, per §§ 187/188 BGB month-counting: same day-number n months later), 3 months after 24.11.2026 is 24.02.2027 (Wednesday, not a weekend or NW public holiday, so no § 193 BGB shift is needed). The notice of cancellation itself must reach the provider by this date; it then takes effect at the earliest on 01.01.2027, the day the new price starts.\",\"due_date\":\"2027-02-24\",\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The exact date on which this letter was actually received (Zugang) by the customer is not stated anywhere in the letter; the three-month deadline to exercise the special termination right is counted from that unknown Zugang date, so the computed due date of 2027-02-24 rests on an assumed ~3-day postal transit from the printed letter date (21.11.2026) and should be verified against the customer's actual postmark/receipt date if available.\",\"The amounts 14.99 and 16.99 are the old and new monthly tariff prices set by this price-increase notice, not a payment currently due.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Beispielfunk Mobile GmbH",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "BF-7 220 418"
+        },
+        {
+          "label": "Rufnummer",
+          "value": "0160 555 41 27"
+        }
+      ],
+      "amounts": [
+        14.99,
+        16.99
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "New monthly price takes effect",
+          "quote": "ab dem 01.01.2027 kostet Ihr Tarif monatlich 16,99 € statt bisher 14,99 €.",
+          "computation": "The letter states the new price applies from a fixed calendar date, so this date is used as written, no counting needed.",
+          "due_date": "2027-01-01",
+          "confidence": "high",
+          "amount": 16.99
+        },
+        {
+          "kind": "deadline",
+          "title": "Exercise special right to cancel the contract because of the price increase",
+          "quote": "Für diese Kündigung haben Sie drei Monate Zeit, gerechnet ab dem Zugang dieser Mitteilung; wirksam wird sie frühestens an dem Tag, an dem der neue Preis gilt.",
+          "computation": "This is a private company letter, not an authority, so the statutory 4-day Bekanntgabefiktion for authorities (§ 122 Abs. 2 Nr. 1 AO / § 37 Abs. 2 SGB X) does not apply, and the letter gives no separate 'zur Post gegeben am' posting date. The exact day of actual receipt (Zugang i.S.d. § 130 BGB) is therefore not stated. As the letter is dated Saturday 21.11.2026 and the customer already has it in hand on 24.11.2026 (today), I assume, as the earliest plausible and most conservative estimate, ordinary postal transit of about 3 calendar days, giving an assumed Zugang on Tuesday 24.11.2026. Counting the 3-month period from that day of receipt (day of event not separately added, per §§ 187/188 BGB month-counting: same day-number n months later), 3 months after 24.11.2026 is 24.02.2027 (Wednesday, not a weekend or NW public holiday, so no § 193 BGB shift is needed). The notice of cancellation itself must reach the provider by this date; it then takes effect at the earliest on 01.01.2027, the day the new price starts.",
+          "due_date": "2027-02-24",
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The exact date on which this letter was actually received (Zugang) by the customer is not stated anywhere in the letter; the three-month deadline to exercise the special termination right is counted from that unknown Zugang date, so the computed due date of 2027-02-24 rests on an assumed ~3-day postal transit from the printed letter date (21.11.2026) and should be verified against the customer's actual postmark/receipt date if available.",
+        "The amounts 14.99 and 16.99 are the old and new monthly tariff prices set by this price-increase notice, not a payment currently due."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6803,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1476,
+      "cost_usd": 0.07504400000000001,
+      "duration_ms": 74175,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

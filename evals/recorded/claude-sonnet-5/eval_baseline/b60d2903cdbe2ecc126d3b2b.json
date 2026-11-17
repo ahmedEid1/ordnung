@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"6df359f377840df3ee720db8c4016a57f2430e8f47f7840fcba92a68a514698f\",\"mode\":\"text\",\"region\":\"HH\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-L2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hamburg (HH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> ta",
+    "recorded_at": "2026-11-24T11:43:09+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2026-11-19\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the permit denial\",\"quote\":\"Er ist innerhalb eines Monats, nachdem Ihnen der Bescheid bekannt gegeben worden ist, an das Bezirksamt Musterwerder, Wasserturmweg 3, 22089 Hamburg zu richten, und zwar schriftlich oder zur Niederschrift.\",\"computation\":\"Letter is dated 19.11.2026 (Thursday) and no separate 'Tag der Aufgabe zur Post' is stated, so the document date is the posting date. Per the letter's own clause (§41 Abs. 2 HmbVwVfG) and the verified rule, delivery is deemed on the 4th calendar day after posting: 20.11 (Fri, day1), 21.11 (Sat, day2), 22.11 (Sun, day3), 23.11 (Mon, day4) → deemed delivered Monday 23.11.2026. This is a district office (general authority, not a Finanzamt), so the deemed-delivery day is not shifted even though day4 would be a Saturday/Sunday/holiday - and here it falls on an ordinary Monday anyway. The one-month Widerspruch period (§70 VwGO) starts the day after delivery (§187 Abs. 1 BGB) and ends, per §188 Abs. 2 BGB, on the day in the following month bearing the same number as the delivery day: 23.12.2026. Checking that date: it is a Wednesday and not a public holiday in Hamburg (25/26 Dec are holidays, not 23 Dec), so §193 BGB does not shift it further.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"authority_letter\",\"references\":[{\"label\":\"Vorgangsnummer\",\"value\":\"SN-W/2026/1184\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Bezirksamt Musterwerder (Freie und Hansestadt Hamburg)\",\"warnings\":[]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2026-11-19",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the permit denial",
+          "quote": "Er ist innerhalb eines Monats, nachdem Ihnen der Bescheid bekannt gegeben worden ist, an das Bezirksamt Musterwerder, Wasserturmweg 3, 22089 Hamburg zu richten, und zwar schriftlich oder zur Niederschrift.",
+          "computation": "Letter is dated 19.11.2026 (Thursday) and no separate 'Tag der Aufgabe zur Post' is stated, so the document date is the posting date. Per the letter's own clause (§41 Abs. 2 HmbVwVfG) and the verified rule, delivery is deemed on the 4th calendar day after posting: 20.11 (Fri, day1), 21.11 (Sat, day2), 22.11 (Sun, day3), 23.11 (Mon, day4) → deemed delivered Monday 23.11.2026. This is a district office (general authority, not a Finanzamt), so the deemed-delivery day is not shifted even though day4 would be a Saturday/Sunday/holiday - and here it falls on an ordinary Monday anyway. The one-month Widerspruch period (§70 VwGO) starts the day after delivery (§187 Abs. 1 BGB) and ends, per §188 Abs. 2 BGB, on the day in the following month bearing the same number as the delivery day: 23.12.2026. Checking that date: it is a Wednesday and not a public holiday in Hamburg (25/26 Dec are holidays, not 23 Dec), so §193 BGB does not shift it further.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "authority_letter",
+      "references": [
+        {
+          "label": "Vorgangsnummer",
+          "value": "SN-W/2026/1184"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Bezirksamt Musterwerder (Freie und Hansestadt Hamburg)",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3386,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1996,
+      "cost_usd": 0.042954,
+      "duration_ms": 33092,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

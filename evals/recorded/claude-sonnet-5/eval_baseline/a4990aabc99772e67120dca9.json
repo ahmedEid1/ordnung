@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"76d1699b8d7cc7dcb1f7fe5e6da052d037befef726d3ab53c3aec1e9fecc2033\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-relative_business_days-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:52:13+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract\",\"sender_name\":\"Bauspar Beispielheim AG\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Vertragsnummer\",\"value\":\"BH 6 330 418-02\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Submit proof of use of Bauspardarlehen funds (invoice or signed order from heating company)\",\"quote\":\"Bitte reichen Sie den Nachweis binnen 10 Arbeitstagen nach dem Briefdatum ein.\",\"computation\":\"The letter is dated Saturday 21.11.2026 ('Briefdatum'). The letter explicitly states the 10-Arbeitstage period runs 'nach dem Briefdatum', i.e. starting the day after the letter date (analogous to §187 BGB), so counting begins 22.11.2026 (Sunday, not an Arbeitstag). Arbeitstage = Mon-Fri excluding statutory holidays. Counting forward: 23.11 Mon (1), 24.11 Tue (2), 25.11 Wed (3), 26.11 Thu (4), 27.11 Fri (5), 28-29.11 weekend skipped, 30.11 Mon (6), 01.12 Tue (7), 02.12 Wed (8), 03.12 Thu (9), 04.12 Fri (10). No NRW public holidays fall in this window (Buß- und Bettag is not an NRW statutory holiday; Nikolaus/Mariä Empfängnis are not NRW holidays either). The 10th Arbeitstag is Friday 04.12.2026, which is itself a working day, so no further adjustment is needed.\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter states that missing the deadline will simply postpone the disbursement to the next first-of-month ('verschiebt sich die Auszahlung auf den nächsten Monatsersten'); this is a stated consequence, not itself a fixed obligation date, so it was not listed as a separate item.\",\"This appears to be a routine request from a Bausparkasse for proof of use of loan funds; no unusual payment demand or suspicious third-party IBAN was found, but the recipient should verify the sender's contact details (phone/email/IBAN in the footer) match prior correspondence from Bauspar Beispielheim AG before replying or sending any documents.\"]}",
+    "data": {
+      "kind": "contract",
+      "sender_name": "Bauspar Beispielheim AG",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Vertragsnummer",
+          "value": "BH 6 330 418-02"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Submit proof of use of Bauspardarlehen funds (invoice or signed order from heating company)",
+          "quote": "Bitte reichen Sie den Nachweis binnen 10 Arbeitstagen nach dem Briefdatum ein.",
+          "computation": "The letter is dated Saturday 21.11.2026 ('Briefdatum'). The letter explicitly states the 10-Arbeitstage period runs 'nach dem Briefdatum', i.e. starting the day after the letter date (analogous to §187 BGB), so counting begins 22.11.2026 (Sunday, not an Arbeitstag). Arbeitstage = Mon-Fri excluding statutory holidays. Counting forward: 23.11 Mon (1), 24.11 Tue (2), 25.11 Wed (3), 26.11 Thu (4), 27.11 Fri (5), 28-29.11 weekend skipped, 30.11 Mon (6), 01.12 Tue (7), 02.12 Wed (8), 03.12 Thu (9), 04.12 Fri (10). No NRW public holidays fall in this window (Buß- und Bettag is not an NRW statutory holiday; Nikolaus/Mariä Empfängnis are not NRW holidays either). The 10th Arbeitstag is Friday 04.12.2026, which is itself a working day, so no further adjustment is needed.",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter states that missing the deadline will simply postpone the disbursement to the next first-of-month ('verschiebt sich die Auszahlung auf den nächsten Monatsersten'); this is a stated consequence, not itself a fixed obligation date, so it was not listed as a separate item.",
+        "This appears to be a routine request from a Bausparkasse for proof of use of loan funds; no unusual payment demand or suspicious third-party IBAN was found, but the recipient should verify the sender's contact details (phone/email/IBAN in the footer) match prior correspondence from Bauspar Beispielheim AG before replying or sending any documents."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3122,
+      "cache_read_tokens": 7749,
+      "cache_creation_tokens": 3642,
+      "cost_usd": 0.04734580000000001,
+      "duration_ms": 30667,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

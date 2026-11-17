@@ -1,0 +1,75 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"4645b34798a40da357d2e2a853d05742ba431ea75e92c5fe5da4846ed9927ffe\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-social_decision-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T12:03:39+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[297],\"contract\":null,\"document_date\":\"2026-11-20\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Widerspruch against Kinderzuschlag decision\",\"quote\":\"Innerhalb eines Monats ab Bekanntgabe kann gegen diesen Bescheid Widerspruch erhoben werden, schriftlich oder zur Niederschrift bei: Familienkasse Musterlahn, Bahnhofsallee 40, 35576 Beispielwetzlar.\",\"computation\":\"Letter dated Friday 2026-11-20 and sent by post. The letter itself states the delivery fiction rule: 'Bei Versand mit der Post ist der Bescheid am vierten Tag nach der Aufgabe zur Post bekannt gegeben.' Counting from 2026-11-20: +1=11-21 (Sat), +2=11-22 (Sun), +3=11-23 (Mon), +4=11-24 (Tue) -> deemed delivered (Bekanntgabe) on 2026-11-24, a normal weekday, so no weekend/holiday shift of the delivery date itself. The one-month Widerspruchsfrist then runs under §26 SGB X / §§187 Abs.1, 188 Abs.2 BGB: the day of Bekanntgabe (11-24) is not counted (Ereignisfristbeginn), the period runs one calendar month and ends on the day in the following month bearing the same number as the day of Bekanntgabe, i.e. 2026-12-24. 2026-12-24 is a Thursday and not a statutory public holiday in NRW (Christmas Eve is not an official Feiertag), so no further shift applies.\",\"due_date\":\"2026-12-24\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Apply to local municipality for Bildung und Teilhabe benefits\",\"quote\":\"Mit dem Bescheid erhalten Sie Leistungen für Bildung und Teilhabe; den Antrag dafür stellen Sie bei Ihrer Kommune.\",\"computation\":\"The letter instructs the recipient to apply separately at their local municipality (Kommune) for Bildung und Teilhabe benefits, but gives no specific deadline or date by which this application must be filed.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"kind\":\"authority_letter\",\"references\":[{\"label\":\"Kindergeldnummer\",\"value\":\"214FK880153\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Familienkasse Musterlahn\",\"warnings\":[\"The letterhead and addresses use obviously fictitious placeholder terms ('Musterausgabe', 'Beispielwetzlar', 'Mustermünster', 'Ackerstraße 26'), suggesting this may be a template/sample document rather than a genuine official notice; verify authenticity with the real Familienkasse before relying on any dates or payment details, especially the printed IBAN.\",\"The letter sets the postal delivery fiction at 4 days after posting ('am vierten Tag nach der Aufgabe zur Post'); the standard rule for German authorities under §37 Abs. 2 SGB X is normally 3 days, so this non-standard wording should be double-checked against the actual Familienkasse's official Rechtsbehelfsbelehrung.\"]}",
+    "data": {
+      "amounts": [
+        297
+      ],
+      "contract": null,
+      "document_date": "2026-11-20",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Widerspruch against Kinderzuschlag decision",
+          "quote": "Innerhalb eines Monats ab Bekanntgabe kann gegen diesen Bescheid Widerspruch erhoben werden, schriftlich oder zur Niederschrift bei: Familienkasse Musterlahn, Bahnhofsallee 40, 35576 Beispielwetzlar.",
+          "computation": "Letter dated Friday 2026-11-20 and sent by post. The letter itself states the delivery fiction rule: 'Bei Versand mit der Post ist der Bescheid am vierten Tag nach der Aufgabe zur Post bekannt gegeben.' Counting from 2026-11-20: +1=11-21 (Sat), +2=11-22 (Sun), +3=11-23 (Mon), +4=11-24 (Tue) -> deemed delivered (Bekanntgabe) on 2026-11-24, a normal weekday, so no weekend/holiday shift of the delivery date itself. The one-month Widerspruchsfrist then runs under §26 SGB X / §§187 Abs.1, 188 Abs.2 BGB: the day of Bekanntgabe (11-24) is not counted (Ereignisfristbeginn), the period runs one calendar month and ends on the day in the following month bearing the same number as the day of Bekanntgabe, i.e. 2026-12-24. 2026-12-24 is a Thursday and not a statutory public holiday in NRW (Christmas Eve is not an official Feiertag), so no further shift applies.",
+          "due_date": "2026-12-24",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Apply to local municipality for Bildung und Teilhabe benefits",
+          "quote": "Mit dem Bescheid erhalten Sie Leistungen für Bildung und Teilhabe; den Antrag dafür stellen Sie bei Ihrer Kommune.",
+          "computation": "The letter instructs the recipient to apply separately at their local municipality (Kommune) for Bildung und Teilhabe benefits, but gives no specific deadline or date by which this application must be filed.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "kind": "authority_letter",
+      "references": [
+        {
+          "label": "Kindergeldnummer",
+          "value": "214FK880153"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Familienkasse Musterlahn",
+      "warnings": [
+        "The letterhead and addresses use obviously fictitious placeholder terms ('Musterausgabe', 'Beispielwetzlar', 'Mustermünster', 'Ackerstraße 26'), suggesting this may be a template/sample document rather than a genuine official notice; verify authenticity with the real Familienkasse before relying on any dates or payment details, especially the printed IBAN.",
+        "The letter sets the postal delivery fiction at 4 days after posting ('am vierten Tag nach der Aufgabe zur Post'); the standard rule for German authorities under §37 Abs. 2 SGB X is normally 3 days, so this non-standard wording should be double-checked against the actual Familienkasse's official Rechtsbehelfsbelehrung."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3732,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1609,
+      "cost_usd": 0.04438439999999999,
+      "duration_ms": 40647,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

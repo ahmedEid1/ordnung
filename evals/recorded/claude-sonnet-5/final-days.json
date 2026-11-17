@@ -1011,6 +1011,512 @@
     "cli": "2.1.326 (Claude Code)",
     "day": "2026-11-24"
    }
+  },
+  "r3": {
+   "holdout4-adversarial-conflicting_dates-1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-adversarial-conflicting_dates-2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-adversarial-conflicting_dates-3": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-adversarial-conflicting_dates-4": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-adversarial-hidden_text-1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-adversarial-hidden_text-2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-adversarial-hidden_text-3": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-adversarial-hidden_text-4": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-adversarial-injection_visible-1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-adversarial-injection_visible-2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-adversarial-injection_visible-2-photo": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-adversarial-injection_visible-3": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-adversarial-injection_visible-4": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-adversarial-injection_visible-4-photo": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-adversarial-missing_date-1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-adversarial-missing_date-2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-adversarial-missing_date-3": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-adversarial-missing_date-4": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-adversarial-scam-1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-adversarial-scam-2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-adversarial-scam-2-photo": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-adversarial-scam-3": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-adversarial-scam-4": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-adversarial-scam-4-photo": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-appointment-K1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-appointment-K1-photo": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-appointment-K2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-appointment-L1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-appointment-M1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-appointment-M1-photo": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-appointment-M2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-appointment-N1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-contract_confirmation-K1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-contract_confirmation-L1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-contract_confirmation-M1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-contract_confirmation-N1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-dunning_fixed-K1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-dunning_fixed-K1-photo": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-dunning_fixed-K2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-dunning_fixed-L1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-dunning_fixed-M1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-dunning_fixed-M1-photo": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-dunning_fixed-M2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-dunning_fixed-N1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-english_letter-K1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-english_letter-K1-photo": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-english_letter-K2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-english_letter-L1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-english_letter-L2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-english_letter-M1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-english_letter-M1-photo": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-english_letter-M2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-english_letter-N1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-english_letter-N2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-fine_bussgeld-K1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-fine_bussgeld-K2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-fine_bussgeld-L1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-fine_bussgeld-L2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-fine_bussgeld-M1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-fine_bussgeld-M2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-fine_bussgeld-N1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-fine_bussgeld-N2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-invoice_relative-K1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-invoice_relative-K1-photo": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-invoice_relative-K2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-invoice_relative-L1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-invoice_relative-L1-photo": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-invoice_relative-L2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-invoice_relative-M1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-invoice_relative-M1-photo": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-invoice_relative-M2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-invoice_relative-N1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-invoice_relative-N1-photo": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-invoice_relative-N2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-municipal_decision-K1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-municipal_decision-K2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-municipal_decision-K2-photo": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-municipal_decision-L1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-municipal_decision-L2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-municipal_decision-M1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-municipal_decision-M2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-municipal_decision-M2-photo": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-municipal_decision-N1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-municipal_decision-N2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-price_increase-K1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-price_increase-L1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-price_increase-M1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-price_increase-N1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-relative_business_days-K1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-relative_business_days-K2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-relative_business_days-L1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-relative_business_days-L1-photo": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-relative_business_days-M1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-relative_business_days-M2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-relative_business_days-N1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-relative_business_days-N1-photo": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-social_decision-K1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-social_decision-K2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-social_decision-K2-photo": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-social_decision-L1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-social_decision-L2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-social_decision-M1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-social_decision-M2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-social_decision-M2-photo": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-social_decision-N1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-social_decision-N2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-tax_assessment-K1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-tax_assessment-K2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-tax_assessment-L1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-tax_assessment-L2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-tax_assessment-M1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-tax_assessment-M2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-tax_assessment-N1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-tax_assessment-N2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-year_boundary-K1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-year_boundary-K2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-year_boundary-K3": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-year_boundary-L1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-year_boundary-L1-photo": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-year_boundary-L2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-year_boundary-M1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-year_boundary-M2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-year_boundary-M3": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-year_boundary-N1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-year_boundary-N1-photo": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "holdout4-year_boundary-N2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   }
   }
  }
 }

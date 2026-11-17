@@ -1,0 +1,96 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"b7d5c5302044f26e529ebe9352be1d9ad70c552f0832c40aa9084d2b65e8939a\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-scam-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:01:29+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Kanzlei Dr. Beispielmann & Coll. Medienrecht\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Unser Zeichen\",\"value\":\"BM-UR 26/90812\"}],\"amounts\":[900,280,1180],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay settlement amount to avoid lawsuit\",\"quote\":\"Überweisen Sie den Vergleichsbetrag bis zum 01.12.2026 auf das Konto IBAN DE88 3704 0044 0532 0881 00, Kontoinhaber M. Beispielmann.\",\"computation\":\"The letter states a fixed calendar date for the payment: 01.12.2026 (a Tuesday). This is a private settlement demand from a law firm, not a German authority, so no statutory deemed-delivery or §187/188 BGB period-counting applies — the printed date is itself the deadline. 01.12.2026 is a Tuesday and not a public holiday in NW, so no weekend/holiday shift is needed. The due date is therefore 2026-12-01 as written; allow about one business day earlier for the bank transfer to arrive if paying by SEPA transfer.\",\"due_date\":\"2026-12-01\",\"confidence\":\"high\",\"amount\":1180}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The IBAN printed in the letter (DE88 3704 0044 0532 0881 00) fails the standard IBAN checksum check — do not pay to this account without first verifying the correct IBAN directly with the sender through an independently found contact (not a number/email from this letter).\",\"This is a private 'Abmahnung' (cease-and-desist/settlement demand) from a law firm, not a court judgment or an authority decision — there is no legal obligation to pay the demanded sum merely because the letter says so, and no Rechtsbehelfsbelehrung is given because none applies; get independent legal advice (e.g. a Verbraucherzentrale or a lawyer specialising in Abmahnungen) before paying or ignoring it.\",\"The letter uses pressure language ('letzte außergerichtliche Gelegenheit') and offers to waive a cease-and-desist declaration (Unterlassungserklärung) if paid quickly, which is unusual and a pattern seen in both legitimate and fraudulent mass file-sharing Abmahnungen — verify the firm's identity, the cited case reference, and the claim itself before transferring any money.\",\"The underlying claim (an alleged copyright infringement via a file-sharing network) is asserted only by the sender; no evidence, court order or detailed infringement log is included in the letter itself.\"]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Kanzlei Dr. Beispielmann & Coll. Medienrecht",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Unser Zeichen",
+          "value": "BM-UR 26/90812"
+        }
+      ],
+      "amounts": [
+        900,
+        280,
+        1180
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay settlement amount to avoid lawsuit",
+          "quote": "Überweisen Sie den Vergleichsbetrag bis zum 01.12.2026 auf das Konto IBAN DE88 3704 0044 0532 0881 00, Kontoinhaber M. Beispielmann.",
+          "computation": "The letter states a fixed calendar date for the payment: 01.12.2026 (a Tuesday). This is a private settlement demand from a law firm, not a German authority, so no statutory deemed-delivery or §187/188 BGB period-counting applies — the printed date is itself the deadline. 01.12.2026 is a Tuesday and not a public holiday in NW, so no weekend/holiday shift is needed. The due date is therefore 2026-12-01 as written; allow about one business day earlier for the bank transfer to arrive if paying by SEPA transfer.",
+          "due_date": "2026-12-01",
+          "confidence": "high",
+          "amount": 1180
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The IBAN printed in the letter (DE88 3704 0044 0532 0881 00) fails the standard IBAN checksum check — do not pay to this account without first verifying the correct IBAN directly with the sender through an independently found contact (not a number/email from this letter).",
+        "This is a private 'Abmahnung' (cease-and-desist/settlement demand) from a law firm, not a court judgment or an authority decision — there is no legal obligation to pay the demanded sum merely because the letter says so, and no Rechtsbehelfsbelehrung is given because none applies; get independent legal advice (e.g. a Verbraucherzentrale or a lawyer specialising in Abmahnungen) before paying or ignoring it.",
+        "The letter uses pressure language ('letzte außergerichtliche Gelegenheit') and offers to waive a cease-and-desist declaration (Unterlassungserklärung) if paid quickly, which is unusual and a pattern seen in both legitimate and fraudulent mass file-sharing Abmahnungen — verify the firm's identity, the cited case reference, and the claim itself before transferring any money.",
+        "The underlying claim (an alleged copyright infringement via a file-sharing network) is asserted only by the sender; no evidence, court order or detailed infringement log is included in the letter itself."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 4043,
+      "cache_read_tokens": 24603,
+      "cache_creation_tokens": 5704,
+      "cost_usd": 0.0681786,
+      "duration_ms": 45240,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE88 3704 0044 0532 0881 00"
+        },
+        "result": "{\"iban\":\"DE88 3704 0044 0532 0881 00\",\"valid\":false,\"problems\":[\"The check digits do not match: a character is wrong, missing or swapped.\"],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":false,\"note\":\"It may be misprinted, misread or fake — compare it with the letter and ask the sender before paying.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "fixed",
+            "date": "2026-12-01",
+            "nature": "payment",
+            "shift_rule": "none",
+            "legal_basis": "vertraglicher Vergleichsbetrag (außergerichtliche Abmahnung)",
+            "text": "Überweisen Sie den Vergleichsbetrag bis zum 01.12.2026"
+          },
+          "document_date": "2026-11-18",
+          "sender_kind": "company",
+          "sender_name": "Kanzlei Dr. Beispielmann & Coll. Medienrecht",
+          "region": "NW"
+        },
+        "result": "{\"due_date\":\"2026-12-01\",\"weekday\":\"Tuesday\",\"send_by\":\"2026-11-30\",\"summary\":\"The date given is Tue 1 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"The date given is Tue 1 Dec 2026\",\"date\":\"2026-12-01\",\"rule_id\":\"date_as_written\",\"citation\":\"The document's own wording\"},{\"label\":\"Send by Mon 30 Nov 2026 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2026-11-30\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"date_as_written\",\"title\":\"Dates stated in the letter\",\"citation\":\"The document's own wording\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-18\",\"holiday_calendar\":\"Germany (nationwide holidays only)\",\"holidays_from\":\"recipient_region: a payment to a company or person is made where the payer lives (§§ 269, 270 Abs. 4 BGB), so that Land's holidays apply\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

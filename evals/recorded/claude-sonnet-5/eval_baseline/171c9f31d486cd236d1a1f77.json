@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"4645b34798a40da357d2e2a853d05742ba431ea75e92c5fe5da4846ed9927ffe\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-social_decision-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T12:03:40+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Familienkasse Musterlahn\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Kindergeldnummer\",\"value\":\"214FK880153\"}],\"amounts\":[297],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against Kinderzuschlag decision\",\"quote\":\"Innerhalb eines Monats ab Bekanntgabe kann gegen diesen Bescheid Widerspruch erhoben werden, schriftlich oder zur Niederschrift bei: Familienkasse Musterlahn, Bahnhofsallee 40, 35576 Beispielwetzlar.\",\"computation\":\"Letter is dated 20.11.2026 (Friday); no separate 'Tag der Aufgabe zur Post' is given, so the posting day is the document date, 20.11.2026. The letter itself states the Bescheid is deemed delivered on the 4th day after posting: 20.11.2026 + 4 days = 24.11.2026 (Tuesday). This is a Familienkasse decision on Kinderzuschlag under the BKGG, which is governed by SGB X (social law), so (unlike tax-office Bekanntgabe) the deemed-delivery day would not move even if it fell on a weekend/holiday; here it falls on a normal Tuesday anyway, so delivery = 24.11.2026. Under §§ 187 Abs. 1, 188 Abs. 2 BGB (via § 26 Abs. 1 SGB X), the day of delivery is not counted; the one-month Widerspruch period (§ 84 SGG) ends one month later on the same day-of-month: 24.12.2026 (Thursday). 24 December is not a statutory public holiday (working day per rule), so the deadline does not shift under § 26 Abs. 3 SGB X.\",\"due_date\":\"2026-12-24\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"This letter has several hallmarks of a specimen/template document rather than a genuine official letter: the header is labelled '(Musterausgabe)', the town name 'Beispielwetzlar' and bank name 'Landesmusterbank' are obviously placeholders, and the sender email uses the reserved, non-functional domain '.example' (familienkasse-musterlahn@arbeitsagentur.example). Treat the IBAN, address and contact details as unverified and confirm the letter's authenticity directly with the real Familienkasse before relying on any payment or contact information in it.\",\"The letter mentions a separate application for 'Leistungen für Bildung und Teilhabe' to be filed with the Kommune, but gives no specific deadline for this, so no due date could be set for that task.\"]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Familienkasse Musterlahn",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Kindergeldnummer",
+          "value": "214FK880153"
+        }
+      ],
+      "amounts": [
+        297
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against Kinderzuschlag decision",
+          "quote": "Innerhalb eines Monats ab Bekanntgabe kann gegen diesen Bescheid Widerspruch erhoben werden, schriftlich oder zur Niederschrift bei: Familienkasse Musterlahn, Bahnhofsallee 40, 35576 Beispielwetzlar.",
+          "computation": "Letter is dated 20.11.2026 (Friday); no separate 'Tag der Aufgabe zur Post' is given, so the posting day is the document date, 20.11.2026. The letter itself states the Bescheid is deemed delivered on the 4th day after posting: 20.11.2026 + 4 days = 24.11.2026 (Tuesday). This is a Familienkasse decision on Kinderzuschlag under the BKGG, which is governed by SGB X (social law), so (unlike tax-office Bekanntgabe) the deemed-delivery day would not move even if it fell on a weekend/holiday; here it falls on a normal Tuesday anyway, so delivery = 24.11.2026. Under §§ 187 Abs. 1, 188 Abs. 2 BGB (via § 26 Abs. 1 SGB X), the day of delivery is not counted; the one-month Widerspruch period (§ 84 SGG) ends one month later on the same day-of-month: 24.12.2026 (Thursday). 24 December is not a statutory public holiday (working day per rule), so the deadline does not shift under § 26 Abs. 3 SGB X.",
+          "due_date": "2026-12-24",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "This letter has several hallmarks of a specimen/template document rather than a genuine official letter: the header is labelled '(Musterausgabe)', the town name 'Beispielwetzlar' and bank name 'Landesmusterbank' are obviously placeholders, and the sender email uses the reserved, non-functional domain '.example' (familienkasse-musterlahn@arbeitsagentur.example). Treat the IBAN, address and contact details as unverified and confirm the letter's authenticity directly with the real Familienkasse before relying on any payment or contact information in it.",
+        "The letter mentions a separate application for 'Leistungen für Bildung und Teilhabe' to be filed with the Kommune, but gives no specific deadline for this, so no due date could be set for that task."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3521,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1607,
+      "cost_usd": 0.042747999999999994,
+      "duration_ms": 36081,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

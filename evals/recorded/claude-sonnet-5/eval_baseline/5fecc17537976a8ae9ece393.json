@@ -1,0 +1,87 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"5bcc899dac1db4d6de9d121ce52323f3552ea99d778d5a6c68ac0d22fa46e218\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d",
+    "recorded_at": "2026-11-24T11:45:23+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Kreis Musterdithmarschen\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Az.\",\"value\":\"WJ-32.4-0912/26\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against refusal of 3-year hunting licence\",\"quote\":\"Binnen eines Monats ab der Bekanntgabe dieses Bescheids ist der Widerspruch zulässig; er wird schriftlich oder zur Niederschrift bei folgender Stelle erhoben: Kreis Musterdithmarschen, Stiftstraße 8, 25746 Musterheide in Holstein.\",\"computation\":\"Letter dated Thu 19.11.2026, sent by ordinary post. Under § 110 Abs. 2 LVwG (the Land's equivalent of § 41 Abs. 2 VwVfG), it counts as delivered on the 4th day after posting: Mon 23.11.2026 (no weekend shift for this deemed-delivery rule). Under § 31 Abs. 1 VwVfG / § 187 Abs. 1 BGB the day of delivery itself is not counted, so the one-month period starts on 24.11.2026. Under § 188 Abs. 2 BGB a one-month period ends on the day of the next month bearing the same number as the delivery day, i.e. 23.12.2026. Wed 23.12.2026 is a working day in Schleswig-Holstein (not a weekend or public holiday), so no further shift applies.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter also invites Mr Beispielholm to submit a new, valid hunting-liability-insurance confirmation (his previous one expired 30.06.2026) to have the licence issued without a new application, but it sets no deadline for this; treat it as an open opportunity, not a dated obligation.\",\"The letter itself prints the authority's § 110 Abs. 2 LVwG deemed-delivery rule (4 days after posting), which matches current law for mail posted in 2025 or later and was used directly in the computation above.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Kreis Musterdithmarschen",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Az.",
+          "value": "WJ-32.4-0912/26"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against refusal of 3-year hunting licence",
+          "quote": "Binnen eines Monats ab der Bekanntgabe dieses Bescheids ist der Widerspruch zulässig; er wird schriftlich oder zur Niederschrift bei folgender Stelle erhoben: Kreis Musterdithmarschen, Stiftstraße 8, 25746 Musterheide in Holstein.",
+          "computation": "Letter dated Thu 19.11.2026, sent by ordinary post. Under § 110 Abs. 2 LVwG (the Land's equivalent of § 41 Abs. 2 VwVfG), it counts as delivered on the 4th day after posting: Mon 23.11.2026 (no weekend shift for this deemed-delivery rule). Under § 31 Abs. 1 VwVfG / § 187 Abs. 1 BGB the day of delivery itself is not counted, so the one-month period starts on 24.11.2026. Under § 188 Abs. 2 BGB a one-month period ends on the day of the next month bearing the same number as the delivery day, i.e. 23.12.2026. Wed 23.12.2026 is a working day in Schleswig-Holstein (not a weekend or public holiday), so no further shift applies.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter also invites Mr Beispielholm to submit a new, valid hunting-liability-insurance confirmation (his previous one expired 30.06.2026) to have the licence issued without a new application, but it sets no deadline for this; treat it as an open opportunity, not a dated obligation.",
+        "The letter itself prints the authority's § 110 Abs. 2 LVwG deemed-delivery rule (4 days after posting), which matches current law for mail posted in 2025 or later and was used directly in the computation above."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 3109,
+      "cache_read_tokens": 25545,
+      "cache_creation_tokens": 6077,
+      "cost_usd": 0.060519,
+      "duration_ms": 33118,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "legal_basis": "§ 110 Abs. 2 LVwG, Widerspruch",
+            "text": "Binnen eines Monats ab der Bekanntgabe dieses Bescheids ist der Widerspruch zulässig"
+          },
+          "document_date": "2026-11-19",
+          "sender_kind": "authority",
+          "sender_name": "Kreis Musterdithmarschen",
+          "region": "SH",
+          "recipient_region": "SH",
+          "remedy_type": "widerspruch"
+        },
+        "result": "{\"due_date\":\"2026-12-23\",\"weekday\":\"Wednesday\",\"send_by\":\"2026-12-17\",\"summary\":\"Letter dated Thu 19 Nov 2026 counts as delivered on Mon 23 Nov; one month later is Wed 23 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[\"Deemed delivery was applied: the letter counts as delivered some days after it was posted. If it was formally served instead — in a yellow envelope (Postzustellungsurkunde), or it says it was 'zugestellt' on a date — that rule does not apply and the period runs from the date written on the envelope, usually earlier.\"],\"steps\":[{\"label\":\"Posting day: Thu 19 Nov 2026 (the letter's date; the real posting day can only be later)\",\"date\":\"2026-11-19\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Mon 23 Nov 2026\",\"date\":\"2026-11-23\",\"rule_id\":\"vwvfg_41_2\",\"citation\":\"§ 41 Abs. 2 VwVfG (and the Länder VwVfGs); OVG NRW 19 A 4216/99\"},{\"label\":\"Counting starts the day after Mon 23 Nov 2026\",\"date\":\"2026-11-23\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Wed 23 Dec 2026\",\"date\":\"2026-12-23\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Wed 23 Dec 2026 is a working day, so it stays\",\"date\":\"2026-12-23\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Thu 17 Dec 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-12-17\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"vwvfg_41_2\",\"title\":\"Authority letters: delivered on the 4th day, no weekend shift\",\"citation\":\"§ 41 Abs. 2 VwVfG (and the Länder VwVfGs); OVG NRW 19 A 4216/99\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__41.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-19\",\"delivery_law\":\"general administrative law (§ 41 VwVfG)\",\"holiday_calendar\":\"Schleswig-Holstein\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"If the letter was formally served (a yellow envelope, or 'zugestellt am …'), pass spec.anchor receipt with the envelope's date as spec.anchor_date and spec.delivery_rule none.\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

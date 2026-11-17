@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"0de1a9e137f2a482b9fc91874499da2a2aa1ec74f5432f7c3321492a75246980\",\"mode\":\"text\",\"region\":\"ST\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-appointment-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Sachsen-Anhalt (ST), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docum",
+    "recorded_at": "2026-11-24T11:03:46+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"appointment\",\"sender_name\":\"Amtsgericht Musterquedlin\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"2 C 318/26\"}],\"amounts\":[],\"items\":[{\"kind\":\"appointment\",\"title\":\"Appear as witness at Amtsgericht Musterquedlin\",\"quote\":\"Mittwoch, 13.01.2027, 09:00 Uhr\",\"computation\":\"The letter states the appointment date and time directly ('Mittwoch, 13.01.2027, 09:00 Uhr'), so no period calculation is needed; this is the fixed date the witness must appear in Saal 104 of the Amtsgericht Musterquedlin.\",\"due_date\":\"2027-01-13\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "appointment",
+      "sender_name": "Amtsgericht Musterquedlin",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "2 C 318/26"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Appear as witness at Amtsgericht Musterquedlin",
+          "quote": "Mittwoch, 13.01.2027, 09:00 Uhr",
+          "computation": "The letter states the appointment date and time directly ('Mittwoch, 13.01.2027, 09:00 Uhr'), so no period calculation is needed; this is the fixed date the witness must appear in Saal 104 of the Amtsgericht Musterquedlin.",
+          "due_date": "2027-01-13",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1097,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1625,
+      "cost_usd": 0.0180984,
+      "duration_ms": 11767,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

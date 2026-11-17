@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"4c04eda3c5ad3bf4601a80997bbc77b7aeee1e86aa8341fcaa532e11d8cbde57\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-invoice_relative-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:35:37+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Hundeschule Beispielpfote\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"HP-1121\"}],\"amounts\":[255.85],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay dog training invoice\",\"quote\":\"Zahlbar 14 Tage nach Rechnungsdatum per Überweisung.\",\"computation\":\"Invoice date is 21.11.2026 (Saturday... check: Nov 21 2026 is a Saturday, but that's irrelevant to the start of counting). Period is '14 Tage nach Rechnungsdatum'. Per §187 Abs.1 BGB, since the period runs 'after' an event (the invoice date), that day itself is not counted; counting starts the next day, 22.11.2026. Counting 14 days forward from 22.11.2026 (i.e., the 14th day after 21.11.2026) lands on 05.12.2026. Checking the weekday sequence from the given reference that 24.11.2026 is a Tuesday: 25.11 Wed, 26.11 Thu, 27.11 Fri, 28.11 Sat, 29.11 Sun, 30.11 Mon, 01.12 Tue, 02.12 Wed, 03.12 Thu, 04.12 Fri, 05.12 Sat. So the 14th day, 05.12.2026, falls on a Saturday. Under §193 BGB, when the last day of a period for an action or payment falls on a Saturday, Sunday or public holiday, the period extends to the next business day. December 6 is a Sunday, so the next business day is Monday, 07.12.2026 (not a public holiday in NW).\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":255.85}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Hundeschule Beispielpfote",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "HP-1121"
+        }
+      ],
+      "amounts": [
+        255.85
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay dog training invoice",
+          "quote": "Zahlbar 14 Tage nach Rechnungsdatum per Überweisung.",
+          "computation": "Invoice date is 21.11.2026 (Saturday... check: Nov 21 2026 is a Saturday, but that's irrelevant to the start of counting). Period is '14 Tage nach Rechnungsdatum'. Per §187 Abs.1 BGB, since the period runs 'after' an event (the invoice date), that day itself is not counted; counting starts the next day, 22.11.2026. Counting 14 days forward from 22.11.2026 (i.e., the 14th day after 21.11.2026) lands on 05.12.2026. Checking the weekday sequence from the given reference that 24.11.2026 is a Tuesday: 25.11 Wed, 26.11 Thu, 27.11 Fri, 28.11 Sat, 29.11 Sun, 30.11 Mon, 01.12 Tue, 02.12 Wed, 03.12 Thu, 04.12 Fri, 05.12 Sat. So the 14th day, 05.12.2026, falls on a Saturday. Under §193 BGB, when the last day of a period for an action or payment falls on a Saturday, Sunday or public holiday, the period extends to the next business day. December 6 is a Sunday, so the next business day is Monday, 07.12.2026 (not a public holiday in NW).",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": 255.85
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1463,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1433,
+      "cost_usd": 0.020990400000000003,
+      "duration_ms": 14798,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

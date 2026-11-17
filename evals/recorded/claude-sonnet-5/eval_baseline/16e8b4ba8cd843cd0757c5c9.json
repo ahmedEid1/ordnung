@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"0d4675a8e6fc90a527d5fe1518e82717f1085e99f869f476c9cbb30810ffac16\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:16:01+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Hub Beispielhafen Coworking GmbH\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Invoice no.\",\"value\":\"HUB-2611-044\"}],\"amounts\":[297.5],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay invoice for December 2026 flex desk membership and meeting room\",\"quote\":\"Please settle this invoice within 14 days of the invoice date.\",\"computation\":\"This is a private contractual payment period, not a statutory notice from an authority, so the general rule of §187(1) BGB (period triggered by an event) applies: the invoice date itself (21 Nov 2026, a Saturday) is not counted; counting starts the next day, 22 Nov 2026 = day 1. Day 14 is therefore 5 Dec 2026. Under §193 BGB, if the last day of a period for performing an obligation falls on a Sunday, Saturday or a public holiday, it is postponed to the next business day. 5 Dec 2026 is a Saturday (14 days after Saturday 21 Nov, i.e. same weekday), and 6 Dec (Sunday) is also non-business; 6 Dec is not a public holiday in NW. The next business day is Monday, 7 Dec 2026.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":297.5}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Hub Beispielhafen Coworking GmbH",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Invoice no.",
+          "value": "HUB-2611-044"
+        }
+      ],
+      "amounts": [
+        297.5
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay invoice for December 2026 flex desk membership and meeting room",
+          "quote": "Please settle this invoice within 14 days of the invoice date.",
+          "computation": "This is a private contractual payment period, not a statutory notice from an authority, so the general rule of §187(1) BGB (period triggered by an event) applies: the invoice date itself (21 Nov 2026, a Saturday) is not counted; counting starts the next day, 22 Nov 2026 = day 1. Day 14 is therefore 5 Dec 2026. Under §193 BGB, if the last day of a period for performing an obligation falls on a Sunday, Saturday or a public holiday, it is postponed to the next business day. 5 Dec 2026 is a Saturday (14 days after Saturday 21 Nov, i.e. same weekday), and 6 Dec (Sunday) is also non-business; 6 Dec is not a public holiday in NW. The next business day is Monday, 7 Dec 2026.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": 297.5
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1531,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1338,
+      "cost_usd": 0.0212904,
+      "duration_ms": 15931,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

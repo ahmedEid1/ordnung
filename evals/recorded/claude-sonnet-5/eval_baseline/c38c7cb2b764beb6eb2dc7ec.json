@@ -1,0 +1,74 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"d65d3047027b36286d8b31c1142f7b21601c2ded7c11c5551abc5987325d1964\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T12:23:02+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Hauptzollamt Beispielhafen\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"KFZ 4480/26/77310\"}],\"amounts\":[146],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the vehicle tax assessment\",\"quote\":\"Sie können gegen diese Festsetzung innerhalb eines Monats Einspruch beim Hauptzollamt Beispielhafen erheben.\",\"computation\":\"The letter is dated and posted 20.11.2026 (Friday). As a tax authority (Zoll administering Kraftfahrzeugsteuer under the AO), the Bekanntgabefiktion of § 122 Abs. 2 Nr. 1 AO applies: delivery is deemed on the 4th day after posting, i.e. 24.11.2026 (Tuesday). This 4th day is not a Saturday, Sunday or public holiday, so under § 108 Abs. 3 AO the delivery day does not move; delivery stands at 24.11.2026. The one-month Einspruch period of § 355 Abs. 1 AO starts the day after delivery (§ 187 Abs. 1 BGB, via § 108 Abs. 1 AO) and ends, per § 188 Abs. 2 BGB, on the day with the same number one month later: 24.12.2026 (Thursday). 24 December is a normal working day (not a public holiday in NW or nationwide), so no further shift under § 108 Abs. 3 AO is needed. Final deadline: 24.12.2026.\",\"due_date\":\"2026-12-24\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Automatic debit of annual vehicle tax\",\"quote\":\"Den Betrag buchen wir vom angegebenen Konto ab.\",\"computation\":\"The letter states the tax of 146,00 € will be collected by automatic direct debit ('Lastschrift') from the account on file, but gives no specific debit date (only that the tax runs from the registration date 02.11.2026 for one year). Without a stated debit date, no exact due date can be computed; the person should simply ensure the account has sufficient funds and watch bank statements for the debit.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":146}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"No specific date for the automatic account debit of the 146,00 € tax is stated in the letter, only that it will be collected by direct debit from the account on file; the person should verify which account this is and that it has sufficient funds.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Hauptzollamt Beispielhafen",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "KFZ 4480/26/77310"
+        }
+      ],
+      "amounts": [
+        146
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the vehicle tax assessment",
+          "quote": "Sie können gegen diese Festsetzung innerhalb eines Monats Einspruch beim Hauptzollamt Beispielhafen erheben.",
+          "computation": "The letter is dated and posted 20.11.2026 (Friday). As a tax authority (Zoll administering Kraftfahrzeugsteuer under the AO), the Bekanntgabefiktion of § 122 Abs. 2 Nr. 1 AO applies: delivery is deemed on the 4th day after posting, i.e. 24.11.2026 (Tuesday). This 4th day is not a Saturday, Sunday or public holiday, so under § 108 Abs. 3 AO the delivery day does not move; delivery stands at 24.11.2026. The one-month Einspruch period of § 355 Abs. 1 AO starts the day after delivery (§ 187 Abs. 1 BGB, via § 108 Abs. 1 AO) and ends, per § 188 Abs. 2 BGB, on the day with the same number one month later: 24.12.2026 (Thursday). 24 December is a normal working day (not a public holiday in NW or nationwide), so no further shift under § 108 Abs. 3 AO is needed. Final deadline: 24.12.2026.",
+          "due_date": "2026-12-24",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Automatic debit of annual vehicle tax",
+          "quote": "Den Betrag buchen wir vom angegebenen Konto ab.",
+          "computation": "The letter states the tax of 146,00 € will be collected by automatic direct debit ('Lastschrift') from the account on file, but gives no specific debit date (only that the tax runs from the registration date 02.11.2026 for one year). Without a stated debit date, no exact due date can be computed; the person should simply ensure the account has sufficient funds and watch bank statements for the debit.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 146
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "No specific date for the automatic account debit of the 146,00 € tax is stated in the letter, only that it will be collected by direct debit from the account on file; the person should verify which account this is and that it has sufficient funds."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3914,
+      "cache_read_tokens": 12645,
+      "cache_creation_tokens": 4344,
+      "cost_usd": 0.059052999999999994,
+      "duration_ms": 37330,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"76a626154f61329abde365cff4c3ff686d8f832745067ae2e4368a8e14a33afe\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-dunning_fixed-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:14:15+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[112,112,2,226],\"contract\":null,\"document_date\":\"2026-11-19\",\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding arrears (October/November advance payments + dunning fee)\",\"quote\":\"Wir fordern Sie auf, den offenen Betrag bis spätestens 10.12.2026 zu zahlen.\",\"computation\":\"The letter states an explicit calendar date for payment: 10.12.2026. This is a private payment obligation to a company, so the stated date is used as written. Checking the calendar: 10 December 2026 falls on a Thursday, which is neither a weekend day nor a public holiday in NRW (or nationwide), so no shift under §193 BGB is needed. Due date remains 10.12.2026.\",\"due_date\":\"2026-12-10\",\"confidence\":\"high\",\"amount\":226}],\"kind\":\"dunning\",\"references\":[{\"label\":\"Vertragskonto\",\"value\":\"4007 3318 52\"}],\"remedy_type\":\"none\",\"sender_name\":\"Stadtwerke Beispielsoest GmbH\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        112,
+        112,
+        2,
+        226
+      ],
+      "contract": null,
+      "document_date": "2026-11-19",
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding arrears (October/November advance payments + dunning fee)",
+          "quote": "Wir fordern Sie auf, den offenen Betrag bis spätestens 10.12.2026 zu zahlen.",
+          "computation": "The letter states an explicit calendar date for payment: 10.12.2026. This is a private payment obligation to a company, so the stated date is used as written. Checking the calendar: 10 December 2026 falls on a Thursday, which is neither a weekend day nor a public holiday in NRW (or nationwide), so no shift under §193 BGB is needed. Due date remains 10.12.2026.",
+          "due_date": "2026-12-10",
+          "confidence": "high",
+          "amount": 226
+        }
+      ],
+      "kind": "dunning",
+      "references": [
+        {
+          "label": "Vertragskonto",
+          "value": "4007 3318 52"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Stadtwerke Beispielsoest GmbH",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 970,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1490,
+      "cost_usd": 0.01677,
+      "duration_ms": 10590,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

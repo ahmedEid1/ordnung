@@ -1,0 +1,136 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"ee1bfb982144e4f8566c21907b98814a1fafecc336872963440e67d4cde468b8\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-L2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T12:22:24+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Agentur für Arbeit Musterlimburg (Bundesagentur für Arbeit)\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"418D552907\"}],\"amounts\":[48.71],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the Arbeitslosengeld-Bescheid\",\"quote\":\"Gegen den Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden, schriftlich oder zur Niederschrift bei der Agentur für Arbeit Musterlimburg, Agenturring 6, 65549 Musterlimburg. Der Bescheid gilt mit dem vierten Tag nach dem angegebenen Versandtag als bekannt gegeben.\",\"computation\":\"Versandtag as stated: Samstag, 21.11.2026. Deemed delivery (Bekanntgabe) per the letter's own rule and § 37 Abs. 2 SGB X: Versandtag + 4 days = 25.11.2026 (Wednesday) — this day is not a Sunday/holiday so no shift applies to it. The one-month Widerspruchsfrist (§ 84 Abs. 1 SGG) runs from the day after Bekanntgabe (§ 187 Abs. 1 BGB): starts 26.11.2026, ends one month later on 25.12.2026 (§ 188 Abs. 2 BGB) — but 25.12.2026 is Erster Weihnachtstag (public holiday, also a Friday) and 26.12.2026 (Zweiter Weihnachtstag) and 27.12.2026 (Sunday) are likewise non-business, so under § 26 Abs. 3 SGB X the deadline shifts to the next working day: Monday 28.12.2026.\",\"due_date\":\"2026-12-28\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Report in person/online as unemployed on the first day of unemployment\",\"quote\":\"Melden Sie sich bitte am ersten Tag der Arbeitslosigkeit persönlich oder online arbeitslos, falls noch nicht geschehen.\",\"computation\":\"The letter grants Arbeitslosengeld 'ab dem 01.01.2027', implying the first day of unemployment covered by the benefit is 01.01.2027. The letter ties the registration obligation to that first day of unemployment but does not give an explicit calendar date for it, so this is inferred rather than stated outright.\",\"due_date\":\"2027-01-01\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter's printed 'Datum des Bescheids' is 20.11.2026 (a Friday) but the stated 'Versandt am' is 21.11.2026, a Saturday — an authority does not normally post mail on a Saturday, so double-check the actual posting date on your copy; if the true posting day differs, the Widerspruch deadline of 2026-12-28 could shift.\",\"A bank IBAN (DE18 7600 0000 0004 5550 00) is printed in the footer; it is well-formed (valid German IBAN, BLZ 76000000) but this letter does not actually demand any payment to it — treat it only as the sender's own account/contact information, not as payment instructions, and never use it to pay anything unless a specific invoice from this agency says so.\"]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Agentur für Arbeit Musterlimburg (Bundesagentur für Arbeit)",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "418D552907"
+        }
+      ],
+      "amounts": [
+        48.71
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the Arbeitslosengeld-Bescheid",
+          "quote": "Gegen den Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden, schriftlich oder zur Niederschrift bei der Agentur für Arbeit Musterlimburg, Agenturring 6, 65549 Musterlimburg. Der Bescheid gilt mit dem vierten Tag nach dem angegebenen Versandtag als bekannt gegeben.",
+          "computation": "Versandtag as stated: Samstag, 21.11.2026. Deemed delivery (Bekanntgabe) per the letter's own rule and § 37 Abs. 2 SGB X: Versandtag + 4 days = 25.11.2026 (Wednesday) — this day is not a Sunday/holiday so no shift applies to it. The one-month Widerspruchsfrist (§ 84 Abs. 1 SGG) runs from the day after Bekanntgabe (§ 187 Abs. 1 BGB): starts 26.11.2026, ends one month later on 25.12.2026 (§ 188 Abs. 2 BGB) — but 25.12.2026 is Erster Weihnachtstag (public holiday, also a Friday) and 26.12.2026 (Zweiter Weihnachtstag) and 27.12.2026 (Sunday) are likewise non-business, so under § 26 Abs. 3 SGB X the deadline shifts to the next working day: Monday 28.12.2026.",
+          "due_date": "2026-12-28",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Report in person/online as unemployed on the first day of unemployment",
+          "quote": "Melden Sie sich bitte am ersten Tag der Arbeitslosigkeit persönlich oder online arbeitslos, falls noch nicht geschehen.",
+          "computation": "The letter grants Arbeitslosengeld 'ab dem 01.01.2027', implying the first day of unemployment covered by the benefit is 01.01.2027. The letter ties the registration obligation to that first day of unemployment but does not give an explicit calendar date for it, so this is inferred rather than stated outright.",
+          "due_date": "2027-01-01",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter's printed 'Datum des Bescheids' is 20.11.2026 (a Friday) but the stated 'Versandt am' is 21.11.2026, a Saturday — an authority does not normally post mail on a Saturday, so double-check the actual posting date on your copy; if the true posting day differs, the Widerspruch deadline of 2026-12-28 could shift.",
+        "A bank IBAN (DE18 7600 0000 0004 5550 00) is printed in the footer; it is well-formed (valid German IBAN, BLZ 76000000) but this letter does not actually demand any payment to it — treat it only as the sender's own account/contact information, not as payment instructions, and never use it to pay anything unless a specific invoice from this agency says so."
+      ]
+    },
+    "usage": {
+      "input_tokens": 10,
+      "output_tokens": 7566,
+      "cache_read_tokens": 55862,
+      "cache_creation_tokens": 11612,
+      "cost_usd": 0.13330039999999999,
+      "duration_ms": 78565,
+      "turns": 6
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "anchor_date": "2026-11-21",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "legal_basis": "§ 37 Abs. 2 SGB X; Widerspruchsfrist § 84 SGG",
+            "text": "Gegen den Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden... Der Bescheid gilt mit dem vierten Tag nach dem angegebenen Versandtag als bekannt gegeben."
+          },
+          "document_date": "2026-11-20",
+          "sender_kind": "authority",
+          "sender_name": "Agentur für Arbeit Musterlimburg",
+          "region": "NW",
+          "recipient_region": "NW",
+          "remedy_type": "widerspruch"
+        },
+        "result": "{\"due_date\":\"2026-12-24\",\"weekday\":\"Thursday\",\"send_by\":\"2026-12-18\",\"summary\":\"Letter dated Fri 20 Nov 2026 counts as delivered on Tue 24 Nov; one month later is Thu 24 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[\"The letter mentions Sat 21 Nov 2026 as the posting day, later than its date (Fri 20 Nov 2026). If that is when it was really posted, the deadline may be a few days later — we count from the letter's date to be safe.\",\"Deemed delivery was applied: the letter counts as delivered some days after it was posted. If it was formally served instead — in a yellow envelope (Postzustellungsurkunde), or it says it was 'zugestellt' on a date — that rule does not apply and the period runs from the date written on the envelope, usually earlier.\"],\"steps\":[{\"label\":\"Posting day: Fri 20 Nov 2026 (the letter's date; the real posting day can only be later)\",\"date\":\"2026-11-20\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Tue 24 Nov 2026\",\"date\":\"2026-11-24\",\"rule_id\":\"sgbx_37_2\",\"citation\":\"§ 37 Abs. 2 SGB X; BSG B 14 AS 12/09 R\"},{\"label\":\"Counting starts the day after Tue 24 Nov 2026\",\"date\":\"2026-11-24\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Thu 24 Dec 2026\",\"date\":\"2026-12-24\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Thu 24 Dec 2026 is a working day, so it stays\",\"date\":\"2026-12-24\",\"rule_id\":\"sgbx_26_3\",\"citation\":\"§ 26 Abs. 3 SGB X; § 64 Abs. 3 SGG\"},{\"label\":\"Send by Fri 18 Dec 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-12-18\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"sgbx_37_2\",\"title\":\"Social-law letters: delivered on the 4th day, no weekend shift\",\"citation\":\"§ 37 Abs. 2 SGB X; BSG B 14 AS 12/09 R\",\"url\":\"https://www.gesetze-im-internet.de/sgb_10/__37.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"sgg_84\",\"title\":\"Objection in social law (Widerspruch): one month\",\"citation\":\"§ 84 Abs. 1 SGG\",\"url\":\"https://www.gesetze-im-internet.de/sgg/__84.html\"},{\"id\":\"sgbx_26_3\",\"title\":\"Weekend and holiday shift (social law)\",\"citation\":\"§ 26 Abs. 3 SGB X; § 64 Abs. 3 SGG\",\"url\":\"https://www.gesetze-im-internet.de/sgb_10/__26.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-20\",\"delivery_law\":\"social law (§ 37 SGB X)\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"If the letter was formally served (a yellow envelope, or 'zugestellt am …'), pass spec.anchor receipt with the envelope's date as spec.anchor_date and spec.delivery_rule none.\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "explicit_date",
+            "anchor_date": "2026-11-25",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§ 84 SGG; § 26 Abs. 3 SGB X",
+            "text": "Gegen den Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden... Der Bescheid gilt mit dem vierten Tag nach dem angegebenen Versandtag als bekannt gegeben."
+          },
+          "document_date": "2026-11-20",
+          "sender_kind": "authority",
+          "sender_name": "Agentur für Arbeit Musterlimburg",
+          "region": "NW",
+          "recipient_region": "NW",
+          "remedy_type": "widerspruch"
+        },
+        "result": "{\"due_date\":\"2026-12-28\",\"weekday\":\"Monday\",\"send_by\":\"2026-12-21\",\"summary\":\"One month after Wed 25 Nov 2026 is Fri 25 Dec 2026, a public holiday, Erster Weihnachtstag, so the deadline moves to Mon 28 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Wed 25 Nov 2026\",\"date\":\"2026-11-25\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Fri 25 Dec 2026\",\"date\":\"2026-12-25\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Fri 25 Dec 2026 is a public holiday, Erster Weihnachtstag, so the deadline moves to Mon 28 Dec 2026\",\"date\":\"2026-12-28\",\"rule_id\":\"sgbx_26_3\",\"citation\":\"§ 26 Abs. 3 SGB X; § 64 Abs. 3 SGG\"},{\"label\":\"Send by Mon 21 Dec 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-12-21\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"sgg_84\",\"title\":\"Objection in social law (Widerspruch): one month\",\"citation\":\"§ 84 Abs. 1 SGG\",\"url\":\"https://www.gesetze-im-internet.de/sgg/__84.html\"},{\"id\":\"sgbx_26_3\",\"title\":\"Weekend and holiday shift (social law)\",\"citation\":\"§ 26 Abs. 3 SGB X; § 64 Abs. 3 SGG\",\"url\":\"https://www.gesetze-im-internet.de/sgb_10/__26.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-20\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE18760000000045550 00"
+        },
+        "result": "{\"iban\":\"DE18 7600 0000 0045 5500 0\",\"valid\":false,\"problems\":[\"Germany IBANs have 22 characters; this one has 21.\",\"The check digits do not match: a character is wrong, missing or swapped.\"],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":21},\"checksum_ok\":false,\"note\":\"It may be misprinted, misread or fake — compare it with the letter and ask the sender before paying.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE18760000000004555000"
+        },
+        "result": "{\"iban\":\"DE18 7600 0000 0004 5550 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"76000000\"},\"account_number\":\"0004555000\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

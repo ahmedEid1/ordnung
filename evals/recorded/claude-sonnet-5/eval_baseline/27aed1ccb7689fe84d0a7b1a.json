@@ -1,0 +1,76 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"527fe9e7a73e681be2dd496fbb4b6ac58046d74b18ea2b452665f36cfb8f7570\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-scam-1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:58:39+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Zentralregister Fahrzeugdaten Deutschland\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Vorgang\",\"value\":\"ZFD-26-118407\"}],\"amounts\":[89],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay 'Aktualisierungsgebühr' (vehicle data update fee)\",\"quote\":\"Aktualisierungsgebühr: 89,00 €\\nzahlbar bis 30.11.2026\",\"computation\":\"The letter prints a fixed calendar date for payment: 'zahlbar bis 30.11.2026'. 2026-11-30 is a Monday, not a weekend day or public holiday in NW, so no shift under §193 BGB applies. Due date as printed: 2026-11-30. However, this letter shows strong hallmarks of a scam (see warnings) and the obligation itself is almost certainly not legitimate.\",\"due_date\":\"2026-11-30\",\"confidence\":\"high\",\"amount\":89}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This letter shows strong signs of being a scam: there is no official German authority called 'Zentralregister Fahrzeugdaten Deutschland'; vehicle registration data is held by the local Kfz-Zulassungsstelle, not by a private postbox service in Berlin.\",\"The payment IBAN (LT98 7044 0001 1820 4477) is a personal account in Lithuania belonging to 'R. Kazlauskas', not an official German authority account — a major red flag for a fee supposedly owed to a German 'register'.\",\"The letter uses pressure tactics ('Ohne Aktualisierung kann die Zulassung ab Januar 2027 ruhen', threat to report to the Zulassungsstelle if unpaid) typical of fraudulent demand letters.\",\"Do not pay the requested 89,00 € or send any personal/vehicle data in response; instead verify directly with your local Kfz-Zulassungsstelle whether any update is actually required, and consider reporting this letter as fraud.\"]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Zentralregister Fahrzeugdaten Deutschland",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Vorgang",
+          "value": "ZFD-26-118407"
+        }
+      ],
+      "amounts": [
+        89
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay 'Aktualisierungsgebühr' (vehicle data update fee)",
+          "quote": "Aktualisierungsgebühr: 89,00 €\nzahlbar bis 30.11.2026",
+          "computation": "The letter prints a fixed calendar date for payment: 'zahlbar bis 30.11.2026'. 2026-11-30 is a Monday, not a weekend day or public holiday in NW, so no shift under §193 BGB applies. Due date as printed: 2026-11-30. However, this letter shows strong hallmarks of a scam (see warnings) and the obligation itself is almost certainly not legitimate.",
+          "due_date": "2026-11-30",
+          "confidence": "high",
+          "amount": 89
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This letter shows strong signs of being a scam: there is no official German authority called 'Zentralregister Fahrzeugdaten Deutschland'; vehicle registration data is held by the local Kfz-Zulassungsstelle, not by a private postbox service in Berlin.",
+        "The payment IBAN (LT98 7044 0001 1820 4477) is a personal account in Lithuania belonging to 'R. Kazlauskas', not an official German authority account — a major red flag for a fee supposedly owed to a German 'register'.",
+        "The letter uses pressure tactics ('Ohne Aktualisierung kann die Zulassung ab Januar 2027 ruhen', threat to report to the Zulassungsstelle if unpaid) typical of fraudulent demand letters.",
+        "Do not pay the requested 89,00 € or send any personal/vehicle data in response; instead verify directly with your local Kfz-Zulassungsstelle whether any update is actually required, and consider reporting this letter as fraud."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1980,
+      "cache_read_tokens": 14564,
+      "cache_creation_tokens": 2418,
+      "cost_usd": 0.0323928,
+      "duration_ms": 35125,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "LT987044000118204477"
+        },
+        "result": "{\"iban\":\"LT98 7044 0001 1820 4477\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"LT\",\"name\":\"Lithuania\"},\"length\":{\"expected\":20,\"actual\":20},\"checksum_ok\":true,\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

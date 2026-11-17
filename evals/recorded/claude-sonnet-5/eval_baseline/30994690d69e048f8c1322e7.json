@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"4a141c23d25561fb82b23219b4977c717da275fa5eac5f6ca340f34314d43dcd\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-conflicting_dates-2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:44:40+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Stadt Beispielhagen – Fachbereich Bauordnung\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"63-BO-2026-1147\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File lawsuit (Klage) against use-prohibition order\",\"quote\":\"Gegen diesen Bescheid kann innerhalb eines Monats nach seiner Bekanntgabe Klage beim Verwaltungsgericht Musterarnsberg, Jägerstraße 1, 59821 Musterarnsberg, erhoben werden; ein Widerspruchsverfahren findet nicht statt.\",\"computation\":\"Letter is from a general municipal authority (Stadt Beispielhagen, Bauordnung), not a tax office, so the 4-day postal delivery fiction applies without the weekend/holiday shift of § 108 Abs. 3 AO. Posting day = printed letter date 20.11.2026 (Friday), no separate 'zur Post gegeben am' date given. Counting 4 calendar days after the posting day (day not counted itself): 21.11 (Sat) = day1, 22.11 (Sun) = day2, 23.11 (Mon) = day3, 24.11 (Tue) = day4 -> deemed delivery (Bekanntgabe) = 24.11.2026. The Klage period is one month after delivery (§ 74 VwGO i.V.m. § 57 Abs. 2 VwGO, § 222 Abs. 1 ZPO, §§ 187 Abs. 1, 188 Abs. 2 BGB): delivery day itself not counted, period ends on the day in the following month bearing the same number, i.e. 24.12.2026 (Thursday). 24 December is a normal working day (not one of the statutory public holidays, and explicitly confirmed as a working day under the counting rules), so no further shift under § 57 Abs. 2 VwGO/§ 222 Abs. 2 ZPO/§193 BGB is needed. Final deadline: 24.12.2026.\",\"due_date\":\"2026-12-24\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The letter's printed header date (Datum 20.11.2026) differs from the date given for the underlying Bescheid itself ('mit diesem Bescheid vom 18.11.2026') – the person should check the envelope postmark or the actual receipt date to confirm which date the 4-day delivery fiction should run from, since using 18.11.2026 instead of 20.11.2026 as the posting day would shift the deemed delivery date and therefore the Klage deadline earlier.\",\"No Widerspruch is possible for this notice ('ein Widerspruchsverfahren findet nicht statt') – only a direct Klage to the Verwaltungsgericht Musterarnsberg within one month of delivery; missing this deadline makes the use-prohibition final and enforceable.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Stadt Beispielhagen – Fachbereich Bauordnung",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "63-BO-2026-1147"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File lawsuit (Klage) against use-prohibition order",
+          "quote": "Gegen diesen Bescheid kann innerhalb eines Monats nach seiner Bekanntgabe Klage beim Verwaltungsgericht Musterarnsberg, Jägerstraße 1, 59821 Musterarnsberg, erhoben werden; ein Widerspruchsverfahren findet nicht statt.",
+          "computation": "Letter is from a general municipal authority (Stadt Beispielhagen, Bauordnung), not a tax office, so the 4-day postal delivery fiction applies without the weekend/holiday shift of § 108 Abs. 3 AO. Posting day = printed letter date 20.11.2026 (Friday), no separate 'zur Post gegeben am' date given. Counting 4 calendar days after the posting day (day not counted itself): 21.11 (Sat) = day1, 22.11 (Sun) = day2, 23.11 (Mon) = day3, 24.11 (Tue) = day4 -> deemed delivery (Bekanntgabe) = 24.11.2026. The Klage period is one month after delivery (§ 74 VwGO i.V.m. § 57 Abs. 2 VwGO, § 222 Abs. 1 ZPO, §§ 187 Abs. 1, 188 Abs. 2 BGB): delivery day itself not counted, period ends on the day in the following month bearing the same number, i.e. 24.12.2026 (Thursday). 24 December is a normal working day (not one of the statutory public holidays, and explicitly confirmed as a working day under the counting rules), so no further shift under § 57 Abs. 2 VwGO/§ 222 Abs. 2 ZPO/§193 BGB is needed. Final deadline: 24.12.2026.",
+          "due_date": "2026-12-24",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The letter's printed header date (Datum 20.11.2026) differs from the date given for the underlying Bescheid itself ('mit diesem Bescheid vom 18.11.2026') – the person should check the envelope postmark or the actual receipt date to confirm which date the 4-day delivery fiction should run from, since using 18.11.2026 instead of 20.11.2026 as the posting day would shift the deemed delivery date and therefore the Klage deadline earlier.",
+        "No Widerspruch is possible for this notice ('ein Widerspruchsverfahren findet nicht statt') – only a direct Klage to the Verwaltungsgericht Musterarnsberg within one month of delivery; missing this deadline makes the use-prohibition final and enforceable."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 4151,
+      "cache_read_tokens": 12602,
+      "cache_creation_tokens": 4593,
+      "cost_usd": 0.062410400000000005,
+      "duration_ms": 41162,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

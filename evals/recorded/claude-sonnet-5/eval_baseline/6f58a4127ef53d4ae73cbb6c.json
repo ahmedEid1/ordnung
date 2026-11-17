@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"0b334dfeca8f74743e3bf468cb6e3fb44d864f9fc3be8ac54d4ff410c7fe5662\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-relative_business_days-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:52:49+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"sender_name\":\"Wohnbau Beispielgrund eG\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Mitgliedsnummer\",\"value\":\"WB-4402\"},{\"label\":\"Wohnung\",\"value\":\"SW18-EG-R\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Return signed usage contract (Nutzungsvertrag)\",\"quote\":\"Den unterschriebenen Vertrag benötigen wir innerhalb von 14 Werktagen ab dem Briefdatum zurück.\",\"computation\":\"Letter date (Briefdatum) is Wednesday, 18.11.2026. The letter defines 'Werktage' as Monday through Saturday, excluding Sundays and public holidays. As this is a privately set contractual deadline (not a statutory authority deadline under VwZG/AO), the period is treated as starting the day after the triggering event per the general German convention for 'ab' periods (§187 Abs. 1 BGB analogy), i.e. counting begins 19.11.2026. Counting 14 Werktage (Mon-Sat, skipping Sundays and NW public holidays): 19.11 (Thu, 1), 20.11 (Fri, 2), 21.11 (Sat, 3), 22.11 Sunday skipped, 23.11 (Mon, 4), 24.11 (Tue, 5), 25.11 (Wed, 6), 26.11 (Thu, 7), 27.11 (Fri, 8), 28.11 (Sat, 9), 29.11 Sunday skipped, 30.11 (Mon, 10), 01.12 (Tue, 11), 02.12 (Wed, 12), 03.12 (Thu, 13), 04.12 (Fri, 14). No NW public holidays fall in this window (Totensonntag 22.11 is a Sunday, already excluded; next holiday is 24.12). The 14th Werktag is Friday, 04.12.2026, which is itself a working day, so no further adjustment is needed.\",\"due_date\":\"2026-12-04\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter sets a privately defined 'Werktage' deadline (Mon-Sat) rather than a statutory period, and it is ambiguous whether the Briefdatum (18.11.2026) itself counts as the first day or only as the starting point for counting from the next day; the due date above assumes counting starts the day after the letter date, but if the letter date itself counts as day 1, the deadline would fall one working day earlier (03.12.2026).\"]}",
+    "data": {
+      "kind": "rent_lease",
+      "sender_name": "Wohnbau Beispielgrund eG",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Mitgliedsnummer",
+          "value": "WB-4402"
+        },
+        {
+          "label": "Wohnung",
+          "value": "SW18-EG-R"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Return signed usage contract (Nutzungsvertrag)",
+          "quote": "Den unterschriebenen Vertrag benötigen wir innerhalb von 14 Werktagen ab dem Briefdatum zurück.",
+          "computation": "Letter date (Briefdatum) is Wednesday, 18.11.2026. The letter defines 'Werktage' as Monday through Saturday, excluding Sundays and public holidays. As this is a privately set contractual deadline (not a statutory authority deadline under VwZG/AO), the period is treated as starting the day after the triggering event per the general German convention for 'ab' periods (§187 Abs. 1 BGB analogy), i.e. counting begins 19.11.2026. Counting 14 Werktage (Mon-Sat, skipping Sundays and NW public holidays): 19.11 (Thu, 1), 20.11 (Fri, 2), 21.11 (Sat, 3), 22.11 Sunday skipped, 23.11 (Mon, 4), 24.11 (Tue, 5), 25.11 (Wed, 6), 26.11 (Thu, 7), 27.11 (Fri, 8), 28.11 (Sat, 9), 29.11 Sunday skipped, 30.11 (Mon, 10), 01.12 (Tue, 11), 02.12 (Wed, 12), 03.12 (Thu, 13), 04.12 (Fri, 14). No NW public holidays fall in this window (Totensonntag 22.11 is a Sunday, already excluded; next holiday is 24.12). The 14th Werktag is Friday, 04.12.2026, which is itself a working day, so no further adjustment is needed.",
+          "due_date": "2026-12-04",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter sets a privately defined 'Werktage' deadline (Mon-Sat) rather than a statutory period, and it is ambiguous whether the Briefdatum (18.11.2026) itself counts as the first day or only as the starting point for counting from the next day; the due date above assumes counting starts the day after the letter date, but if the letter date itself counts as day 1, the deadline would fall one working day earlier (03.12.2026)."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2527,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1478,
+      "cost_usd": 0.0318104,
+      "duration_ms": 24746,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

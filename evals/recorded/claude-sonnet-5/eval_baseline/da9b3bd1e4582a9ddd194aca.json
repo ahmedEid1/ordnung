@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"527fe9e7a73e681be2dd496fbb4b6ac58046d74b18ea2b452665f36cfb8f7570\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-scam-1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:58:25+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Zentralregister Fahrzeugdaten Deutschland\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Vorgang\",\"value\":\"ZFD-26-118407\"}],\"amounts\":[89],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay 'Aktualisierungsgebühr' (fee demand)\",\"quote\":\"Aktualisierungsgebühr: 89,00 €\\nzahlbar bis 30.11.2026\",\"computation\":\"The letter states an explicit calendar date for payment: 'zahlbar bis 30.11.2026'. This is used as written (no period to count, no weekend/holiday adjustment needed since 30 Nov 2026 is a Monday, and in any case this is not a genuine authority demand).\",\"due_date\":\"2026-11-30\",\"confidence\":\"medium\",\"amount\":89}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This letter shows strong hallmarks of a scam/phishing fee demand: there is no real German authority named 'Zentralregister Fahrzeugdaten Deutschland' — vehicle registration (Zulassung) and holder data are administered by the local Zulassungsstelle and the Kraftfahrt-Bundesamt, not by any private 'central register' that mails fee invoices.\",\"The payment is requested to a foreign (Lithuanian) IBAN made out to a private individual ('R. Kazlauskas'), which is inconsistent with any genuine German public authority or official vehicle register — official German bodies do not collect fees via personal foreign bank accounts.\",\"The letter uses a pressure tactic ('Ohne Aktualisierung kann die Zulassung ab Januar 2027 ruhen' / threat to report the case to the Zulassungsstelle if unpaid) typical of fake official-looking collection letters (comparable to fake 'Gewerbeauskunft'-style registries).\",\"Recommendation: do not pay this invoice; verify any claimed issue with your actual local Zulassungsstelle directly and consider reporting this letter as potential fraud (e.g. to the Verbraucherzentrale or police).\"]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Zentralregister Fahrzeugdaten Deutschland",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Vorgang",
+          "value": "ZFD-26-118407"
+        }
+      ],
+      "amounts": [
+        89
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay 'Aktualisierungsgebühr' (fee demand)",
+          "quote": "Aktualisierungsgebühr: 89,00 €\nzahlbar bis 30.11.2026",
+          "computation": "The letter states an explicit calendar date for payment: 'zahlbar bis 30.11.2026'. This is used as written (no period to count, no weekend/holiday adjustment needed since 30 Nov 2026 is a Monday, and in any case this is not a genuine authority demand).",
+          "due_date": "2026-11-30",
+          "confidence": "medium",
+          "amount": 89
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This letter shows strong hallmarks of a scam/phishing fee demand: there is no real German authority named 'Zentralregister Fahrzeugdaten Deutschland' — vehicle registration (Zulassung) and holder data are administered by the local Zulassungsstelle and the Kraftfahrt-Bundesamt, not by any private 'central register' that mails fee invoices.",
+        "The payment is requested to a foreign (Lithuanian) IBAN made out to a private individual ('R. Kazlauskas'), which is inconsistent with any genuine German public authority or official vehicle register — official German bodies do not collect fees via personal foreign bank accounts.",
+        "The letter uses a pressure tactic ('Ohne Aktualisierung kann die Zulassung ab Januar 2027 ruhen' / threat to report the case to the Zulassungsstelle if unpaid) typical of fake official-looking collection letters (comparable to fake 'Gewerbeauskunft'-style registries).",
+        "Recommendation: do not pay this invoice; verify any claimed issue with your actual local Zulassungsstelle directly and consider reporting this letter as potential fraud (e.g. to the Verbraucherzentrale or police)."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2013,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1448,
+      "cost_usd": 0.027032,
+      "duration_ms": 22075,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

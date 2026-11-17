@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"0d4675a8e6fc90a527d5fe1518e82717f1085e99f869f476c9cbb30810ffac16\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:16:13+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Hub Beispielhafen Coworking GmbH\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Invoice no.\",\"value\":\"HUB-2611-044\"}],\"amounts\":[297.5],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay coworking invoice for December flex desk\",\"quote\":\"Please settle this invoice within 14 days of the invoice date.\",\"computation\":\"Invoice date (start of period) is 21 November 2026 (a Saturday, printed invoice date, no separate posting date stated). This is a private deadline between a company and a payer, counted under §§ 187, 188 BGB: the day of the event (21 Nov) is not counted, so day 1 of the 14-day period is 22 November 2026 (Sunday). Counting 14 days: day 14 falls on 5 December 2026 (Saturday). Since the payment is owed by the person (payer) to a company, the relevant Land for weekend/holiday adjustment is the payer's own Land, NW (§§ 269, 270 Abs. 4 BGB). 5 December 2026 is a Saturday, so under § 193 BGB the deadline moves to the next working day. 6 December is a Sunday, so the next working day is Monday, 7 December 2026 (no NW public holiday falls on that date).\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":297.5}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Hub Beispielhafen Coworking GmbH",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Invoice no.",
+          "value": "HUB-2611-044"
+        }
+      ],
+      "amounts": [
+        297.5
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay coworking invoice for December flex desk",
+          "quote": "Please settle this invoice within 14 days of the invoice date.",
+          "computation": "Invoice date (start of period) is 21 November 2026 (a Saturday, printed invoice date, no separate posting date stated). This is a private deadline between a company and a payer, counted under §§ 187, 188 BGB: the day of the event (21 Nov) is not counted, so day 1 of the 14-day period is 22 November 2026 (Sunday). Counting 14 days: day 14 falls on 5 December 2026 (Saturday). Since the payment is owed by the person (payer) to a company, the relevant Land for weekend/holiday adjustment is the payer's own Land, NW (§§ 269, 270 Abs. 4 BGB). 5 December 2026 is a Saturday, so under § 193 BGB the deadline moves to the next working day. 6 December is a Sunday, so the next working day is Monday, 7 December 2026 (no NW public holiday falls on that date).",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": 297.5
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2081,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1337,
+      "cost_usd": 0.027268,
+      "duration_ms": 20700,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

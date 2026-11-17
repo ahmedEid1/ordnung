@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"76d1699b8d7cc7dcb1f7fe5e6da052d037befef726d3ab53c3aec1e9fecc2033\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-relative_business_days-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:52:23+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract\",\"sender_name\":\"Bauspar Beispielheim AG\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Vertragsnummer\",\"value\":\"BH 6 330 418-02\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit proof of use of Bauspardarlehen funds\",\"quote\":\"Bitte reichen Sie den Nachweis binnen 10 Arbeitstagen nach dem Briefdatum ein.\",\"computation\":\"Start of period = Briefdatum 21.11.2026 (Saturday). Under §§187,188 BGB the event day itself is not counted, so counting of Arbeitstage (Mon–Fri, holidays excluded, as the letter itself states) begins with the next calendar day, 22.11.2026 (Sunday, not a workday). Workday count: Mon 23.11 (1), Tue 24.11 (2), Wed 25.11 (3), Thu 26.11 (4), Fri 27.11 (5); Sat 28.11/Sun 29.11 skipped; Mon 30.11 (6), Tue 01.12 (7), Wed 02.12 (8), Thu 03.12 (9), Fri 04.12 (10). No public holidays of NRW fall in this window. The 10th Arbeitstag is Friday 04.12.2026, so the proof must reach the sender by that day. Since this is a private contractual deadline (not a statutory objection period), §193 BGB extension to the next working day is not needed as the 10th day already falls on a working day.\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter only threatens a delayed payout ('Auszahlung auf den nächsten Monatsersten') if the proof is late; this is a consequence, not itself a separate deadline, and has not been listed as a due-dated item.\"]}",
+    "data": {
+      "kind": "contract",
+      "sender_name": "Bauspar Beispielheim AG",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Vertragsnummer",
+          "value": "BH 6 330 418-02"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit proof of use of Bauspardarlehen funds",
+          "quote": "Bitte reichen Sie den Nachweis binnen 10 Arbeitstagen nach dem Briefdatum ein.",
+          "computation": "Start of period = Briefdatum 21.11.2026 (Saturday). Under §§187,188 BGB the event day itself is not counted, so counting of Arbeitstage (Mon–Fri, holidays excluded, as the letter itself states) begins with the next calendar day, 22.11.2026 (Sunday, not a workday). Workday count: Mon 23.11 (1), Tue 24.11 (2), Wed 25.11 (3), Thu 26.11 (4), Fri 27.11 (5); Sat 28.11/Sun 29.11 skipped; Mon 30.11 (6), Tue 01.12 (7), Wed 02.12 (8), Thu 03.12 (9), Fri 04.12 (10). No public holidays of NRW fall in this window. The 10th Arbeitstag is Friday 04.12.2026, so the proof must reach the sender by that day. Since this is a private contractual deadline (not a statutory objection period), §193 BGB extension to the next working day is not needed as the 10th day already falls on a working day.",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter only threatens a delayed payout ('Auszahlung auf den nächsten Monatsersten') if the proof is late; this is a consequence, not itself a separate deadline, and has not been listed as a due-dated item."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3497,
+      "cache_read_tokens": 12565,
+      "cache_creation_tokens": 4201,
+      "cost_usd": 0.054294999999999996,
+      "duration_ms": 33397,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

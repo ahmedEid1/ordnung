@@ -1,0 +1,69 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"4e64ef6052e104f30e3ec307556f38d527f43d0e096019e7533144df52a1e0b5\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-dunning_fixed-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:11:45+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Inkassobüro Beispielrecht GmbH\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"IB-26-552019\"},{\"label\":\"Kundennummer Gläubiger\",\"value\":\"KD 7 118 205\"}],\"amounts\":[131.48],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding collection debt\",\"quote\":\"Zahlen Sie den Gesamtbetrag spätestens am Mittwoch, 02.12.2026 auf unser Treuhandkonto.\",\"computation\":\"The letter prints an explicit calendar date for payment: 'spätestens am Mittwoch, 02.12.2026'. A printed calendar date is used as written (no period calculation needed). Checked: 2026-12-02 falls on a Wednesday, consistent with the letter, and is not a weekend/holiday, so no shift applies.\",\"due_date\":\"2026-12-02\",\"confidence\":\"high\",\"amount\":131.48}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a private debt-collection letter (not an authority decision), so no formal legal-remedy instructions (Rechtsbehelfsbelehrung) apply; if the underlying claim is disputed, the letter only invites an informal written objection with reasons but sets no deadline for it, so no date could be computed for that.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Inkassobüro Beispielrecht GmbH",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "IB-26-552019"
+        },
+        {
+          "label": "Kundennummer Gläubiger",
+          "value": "KD 7 118 205"
+        }
+      ],
+      "amounts": [
+        131.48
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding collection debt",
+          "quote": "Zahlen Sie den Gesamtbetrag spätestens am Mittwoch, 02.12.2026 auf unser Treuhandkonto.",
+          "computation": "The letter prints an explicit calendar date for payment: 'spätestens am Mittwoch, 02.12.2026'. A printed calendar date is used as written (no period calculation needed). Checked: 2026-12-02 falls on a Wednesday, consistent with the letter, and is not a weekend/holiday, so no shift applies.",
+          "due_date": "2026-12-02",
+          "confidence": "high",
+          "amount": 131.48
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a private debt-collection letter (not an authority decision), so no formal legal-remedy instructions (Rechtsbehelfsbelehrung) apply; if the underlying claim is disputed, the letter only invites an informal written objection with reasons but sets no deadline for it, so no date could be computed for that."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1594,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1692,
+      "cost_usd": 0.023818,
+      "duration_ms": 17543,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

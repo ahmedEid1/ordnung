@@ -1,0 +1,77 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"1f9ca35935afa6f6750aeca4b8c0aaaf2bc422d81f9647d0f904bd87fb48351e\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-tax_assessment-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T12:12:12+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Beispielau\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"337/5140/8862\"}],\"amounts\":[2377,2916,539],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the 2025 income tax assessment\",\"quote\":\"Legen Sie ihn innerhalb eines Monats ab Bekanntgabe beim Finanzamt Beispielau ein, schriftlich, elektronisch oder zur Niederschrift.\",\"computation\":\"The Bescheid is dated Thursday, 19.11.2026. The letter states that for a postal notice the Bekanntgabetag (day of notification) is the 4th day after it was handed over to the post (Aufgabe zur Post), per §122 Abs.2 Nr.1 AO as amended. Counting from 19.11.2026 (day 0): day1=20.11 (Fri), day2=21.11 (Sat), day3=22.11 (Sun), day4=23.11.2026 (Mon) => Bekanntgabe = 23.11.2026, a business day so no further shift needed. The one-month Einspruch period runs under §108 Abs.1 AO i.V.m. §187 Abs.1, §188 Abs.2 BGB: the day of the triggering event (23.11.) is excluded, and the period ends on the day of the following month bearing the same calendar number as the Bekanntgabe day, i.e. 23.12.2026. 23.12.2026 (Wednesday) is not a Saturday, Sunday or statutory holiday in NRW, so the deadline stands.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Tax refund (Guthaben) to be transferred by the Finanzamt\",\"quote\":\"Das Guthaben von 539,00 € überweisen wir auf Ihr Konto DE14 5139 0000 0074 4022 18.\",\"computation\":\"The letter announces a refund of 539,00 € to the taxpayer's bank account but gives no specific transfer date; tax offices typically execute such transfers within a few weeks of the Bescheid date but no deadline is stated in the letter, so no exact due date can be derived.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":539}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter does not state the actual date the notice was handed to the post (Aufgabe zur Post); the Einspruch deadline was computed assuming this equals the printed Bescheid date of 19.11.2026 — if the envelope/postmark shows a later posting date, the one-month deadline shifts accordingly.\",\"The refund is announced to be sent to IBAN DE14 5139 0000 0074 4022 18 — please verify this is indeed your own bank account on file with the Finanzamt before assuming the money will arrive correctly.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Beispielau",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "337/5140/8862"
+        }
+      ],
+      "amounts": [
+        2377,
+        2916,
+        539
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the 2025 income tax assessment",
+          "quote": "Legen Sie ihn innerhalb eines Monats ab Bekanntgabe beim Finanzamt Beispielau ein, schriftlich, elektronisch oder zur Niederschrift.",
+          "computation": "The Bescheid is dated Thursday, 19.11.2026. The letter states that for a postal notice the Bekanntgabetag (day of notification) is the 4th day after it was handed over to the post (Aufgabe zur Post), per §122 Abs.2 Nr.1 AO as amended. Counting from 19.11.2026 (day 0): day1=20.11 (Fri), day2=21.11 (Sat), day3=22.11 (Sun), day4=23.11.2026 (Mon) => Bekanntgabe = 23.11.2026, a business day so no further shift needed. The one-month Einspruch period runs under §108 Abs.1 AO i.V.m. §187 Abs.1, §188 Abs.2 BGB: the day of the triggering event (23.11.) is excluded, and the period ends on the day of the following month bearing the same calendar number as the Bekanntgabe day, i.e. 23.12.2026. 23.12.2026 (Wednesday) is not a Saturday, Sunday or statutory holiday in NRW, so the deadline stands.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Tax refund (Guthaben) to be transferred by the Finanzamt",
+          "quote": "Das Guthaben von 539,00 € überweisen wir auf Ihr Konto DE14 5139 0000 0074 4022 18.",
+          "computation": "The letter announces a refund of 539,00 € to the taxpayer's bank account but gives no specific transfer date; tax offices typically execute such transfers within a few weeks of the Bescheid date but no deadline is stated in the letter, so no exact due date can be derived.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 539
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter does not state the actual date the notice was handed to the post (Aufgabe zur Post); the Einspruch deadline was computed assuming this equals the printed Bescheid date of 19.11.2026 — if the envelope/postmark shows a later posting date, the one-month deadline shifts accordingly.",
+        "The refund is announced to be sent to IBAN DE14 5139 0000 0074 4022 18 — please verify this is indeed your own bank account on file with the Finanzamt before assuming the money will arrive correctly."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 4531,
+      "cache_read_tokens": 7954,
+      "cache_creation_tokens": 4861,
+      "cost_usd": 0.06635279999999999,
+      "duration_ms": 46087,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

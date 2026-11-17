@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"07a9ccbd2258f4dc052bae9a2033cbbbe73f4e2fdb560e000bd8ff0587e1f25b\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-missing_date-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:56:38+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"sender_name\":\"Beispielkey Lettings GmbH\",\"document_date\":null,\"references\":[{\"label\":\"Tenancy\",\"value\":\"BKL-0418\"}],\"amounts\":[240],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay for professional cleaning of kitchen and bathroom\",\"quote\":\"Please pay this amount within 14 days of receiving this letter.\",\"computation\":\"The letter carries no printed date, so the actual receipt date is unknown. The payment period is 14 days 'of receiving this letter' (a private, non-authority sender, so the statutory 3-day delivery fiction for authorities does not apply; the period simply runs from actual receipt). As the earliest plausible assumption, I take receipt to occur on today's date, 2026-11-24 (the day the letter is being reviewed). Under § 187 Abs. 1 BGB the day of receipt is not counted; the 14-day period begins the next day, 2026-11-25, and under § 188 Abs. 1 BGB ends 14 days later: 2026-11-25 + 13 days = 2026-12-08. 2026-12-08 is a Tuesday and not a public holiday in NRW, so no weekend/holiday shift (§ 193 BGB) is needed. Because the true receipt date is unknown, this is only the earliest plausible due date.\",\"due_date\":\"2026-12-08\",\"confidence\":\"low\",\"amount\":240}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter itself bears no date, so the 14-day payment period (which runs 'from receiving this letter') cannot be computed exactly; the due date given (2026-12-08) assumes receipt on today's date (2026-11-24) and should be corrected once the actual postmark/receipt date is known.\",\"This is a private landlord/letting-agency demand, not an authority decision, so no legal-remedy instructions (Rechtsbehelfsbelehrung) apply; any dispute about the cleaning charge would need to be raised directly with the landlord or, if unresolved, pursued via civil means (e.g. Mahnverfahren/Klage) rather than Einspruch/Widerspruch.\",\"Verify that the IBAN and payee name in the footer match prior correspondence/the tenancy contract with Beispielkey Lettings GmbH before paying, as a basic anti-fraud check.\"]}",
+    "data": {
+      "kind": "rent_lease",
+      "sender_name": "Beispielkey Lettings GmbH",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Tenancy",
+          "value": "BKL-0418"
+        }
+      ],
+      "amounts": [
+        240
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay for professional cleaning of kitchen and bathroom",
+          "quote": "Please pay this amount within 14 days of receiving this letter.",
+          "computation": "The letter carries no printed date, so the actual receipt date is unknown. The payment period is 14 days 'of receiving this letter' (a private, non-authority sender, so the statutory 3-day delivery fiction for authorities does not apply; the period simply runs from actual receipt). As the earliest plausible assumption, I take receipt to occur on today's date, 2026-11-24 (the day the letter is being reviewed). Under § 187 Abs. 1 BGB the day of receipt is not counted; the 14-day period begins the next day, 2026-11-25, and under § 188 Abs. 1 BGB ends 14 days later: 2026-11-25 + 13 days = 2026-12-08. 2026-12-08 is a Tuesday and not a public holiday in NRW, so no weekend/holiday shift (§ 193 BGB) is needed. Because the true receipt date is unknown, this is only the earliest plausible due date.",
+          "due_date": "2026-12-08",
+          "confidence": "low",
+          "amount": 240
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter itself bears no date, so the 14-day payment period (which runs 'from receiving this letter') cannot be computed exactly; the due date given (2026-12-08) assumes receipt on today's date (2026-11-24) and should be corrected once the actual postmark/receipt date is known.",
+        "This is a private landlord/letting-agency demand, not an authority decision, so no legal-remedy instructions (Rechtsbehelfsbelehrung) apply; any dispute about the cleaning charge would need to be raised directly with the landlord or, if unresolved, pursued via civil means (e.g. Mahnverfahren/Klage) rather than Einspruch/Widerspruch.",
+        "Verify that the IBAN and payee name in the footer match prior correspondence/the tenancy contract with Beispielkey Lettings GmbH before paying, as a basic anti-fraud check."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3586,
+      "cache_read_tokens": 7590,
+      "cache_creation_tokens": 3919,
+      "cost_usd": 0.053062,
+      "duration_ms": 36206,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

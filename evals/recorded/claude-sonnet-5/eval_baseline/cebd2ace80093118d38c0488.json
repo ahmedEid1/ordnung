@@ -1,0 +1,79 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"0d88b96d8b5c96f8a4f19ea278634594fba04a607379d5767b00ceee38d97c25\",\"mode\":\"text\",\"region\":\"NI\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-fine_bussgeld-L2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Niedersachsen (NI), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docume",
+    "recorded_at": "2026-11-24T11:25:20+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[115,28.5,3.5,147],\"contract\":null,\"document_date\":\"2026-11-20\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the Bußgeldbescheid\",\"quote\":\"Die Frist von zwei Wochen beginnt mit dem Tag der Zustellung.\",\"computation\":\"The letter is served by formal delivery (Postzustellungsurkunde, § 182 ZPO); the scanned envelope copy shows the handwritten 'Zustellung' date 23.11.2026 (a Monday). For formal delivery, this stated date is the delivery day exactly, with no days added for postal transit. The Einspruch period against a Bußgeldbescheid is two weeks (§ 67 OWiG, § 43 StPO). Under § 187 Abs. 1 BGB the day of delivery itself (23.11.2026) is not counted; the period begins 24.11.2026 and a 'two weeks' period ends on the same weekday two weeks after the starting event, i.e. Monday 07.12.2026. 07.12.2026 is a Monday and not a public holiday in Niedersachsen, so no further shift is needed under § 43 Abs. 2 StPO.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine amount (Gesamtbetrag)\",\"quote\":\"Der Gesamtbetrag ist zwei Wochen nach Eintritt der Rechtskraft zu zahlen.\",\"computation\":\"Payment is due two weeks after the decision becomes final ('Eintritt der Rechtskraft'). Assuming no Einspruch is filed, Rechtskraft occurs upon expiry of the two-week objection period calculated above, i.e. at the end of 07.12.2026. Treating 07.12.2026 as the triggering event day (not counted, § 187 Abs. 1 BGB), the following two-week payment period runs from 08.12.2026 and ends on the same weekday two weeks later: Monday 21.12.2026. This day is not a Saturday, Sunday, or Niedersachsen public holiday, so it is the final payment date. Note: this calculation assumes the recipient does not file an Einspruch; if one is filed, this payment obligation and date do not apply until the case is otherwise resolved.\",\"due_date\":\"2026-12-21\",\"confidence\":\"medium\",\"amount\":147}],\"kind\":\"fine\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"BG 32.2-26/40918\"},{\"label\":\"Kennzeichen\",\"value\":\"WST-FM 91\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Landkreis Musterammerland – Bußgeldstelle\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        115,
+        28.5,
+        3.5,
+        147
+      ],
+      "contract": null,
+      "document_date": "2026-11-20",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the Bußgeldbescheid",
+          "quote": "Die Frist von zwei Wochen beginnt mit dem Tag der Zustellung.",
+          "computation": "The letter is served by formal delivery (Postzustellungsurkunde, § 182 ZPO); the scanned envelope copy shows the handwritten 'Zustellung' date 23.11.2026 (a Monday). For formal delivery, this stated date is the delivery day exactly, with no days added for postal transit. The Einspruch period against a Bußgeldbescheid is two weeks (§ 67 OWiG, § 43 StPO). Under § 187 Abs. 1 BGB the day of delivery itself (23.11.2026) is not counted; the period begins 24.11.2026 and a 'two weeks' period ends on the same weekday two weeks after the starting event, i.e. Monday 07.12.2026. 07.12.2026 is a Monday and not a public holiday in Niedersachsen, so no further shift is needed under § 43 Abs. 2 StPO.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine amount (Gesamtbetrag)",
+          "quote": "Der Gesamtbetrag ist zwei Wochen nach Eintritt der Rechtskraft zu zahlen.",
+          "computation": "Payment is due two weeks after the decision becomes final ('Eintritt der Rechtskraft'). Assuming no Einspruch is filed, Rechtskraft occurs upon expiry of the two-week objection period calculated above, i.e. at the end of 07.12.2026. Treating 07.12.2026 as the triggering event day (not counted, § 187 Abs. 1 BGB), the following two-week payment period runs from 08.12.2026 and ends on the same weekday two weeks later: Monday 21.12.2026. This day is not a Saturday, Sunday, or Niedersachsen public holiday, so it is the final payment date. Note: this calculation assumes the recipient does not file an Einspruch; if one is filed, this payment obligation and date do not apply until the case is otherwise resolved.",
+          "due_date": "2026-12-21",
+          "confidence": "medium",
+          "amount": 147
+        }
+      ],
+      "kind": "fine",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "BG 32.2-26/40918"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "WST-FM 91"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Landkreis Musterammerland – Bußgeldstelle",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4382,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2113,
+      "cost_usd": 0.053382,
+      "duration_ms": 40255,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

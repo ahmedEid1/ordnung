@@ -1,0 +1,72 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"5bcc899dac1db4d6de9d121ce52323f3552ea99d778d5a6c68ac0d22fa46e218\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d",
+    "recorded_at": "2026-11-24T11:44:48+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Kreis Musterdithmarschen – Der Landrat, Fachdienst Waffen und Jagd\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Az.\",\"value\":\"WJ-32.4-0912/26\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against refusal of hunting licence\",\"quote\":\"Binnen eines Monats ab der Bekanntgabe dieses Bescheids ist der Widerspruch zulässig; er wird schriftlich oder zur Niederschrift bei folgender Stelle erhoben: Kreis Musterdithmarschen, Stiftstraße 8, 25746 Musterheide in Holstein.\",\"computation\":\"Letter dated 19.11.2026 (Thursday), sent by ordinary mail. Per the clause quoted in the letter (§110 Abs.2 LVwG), a notice sent by simple letter is deemed delivered on the 4th day after posting. Counting from the day after posting (20.11.=day1, 21.11.=day2, 22.11.=day3, 23.11.=day4): deemed Bekanntgabe = Monday 23.11.2026. The one-month Widerspruchsfrist runs from this event; per §188 Abs.2 BGB the period ends with the day in the following month bearing the same number as the day of the event, i.e. 23.12.2026 (Wednesday). 23.12.2026 is a regular working day in Schleswig-Holstein (not a weekend or public holiday), so no further shift under §193 BGB is needed.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Submit valid hunting liability insurance confirmation to receive the hunting licence\",\"quote\":\"Sobald Sie eine gültige Versicherungsbestätigung nachreichen, stelle ich den Jagdschein ohne neuen Antrag aus.\",\"computation\":\"The letter states the licence will be issued once a valid insurance confirmation is submitted, but gives no calendar date or period for doing so, so no fixed due date can be computed; this is an open-ended precondition rather than a dated deadline.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter itself states the delivery-fiction rule (§110 Abs. 2 LVwG, deemed delivered on the 4th day after posting), which was used to compute the deemed Bekanntgabe date and hence the Widerspruch deadline; verify the actual posting date if it differs from the printed Bescheiddatum, as that would shift the deadline.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Kreis Musterdithmarschen – Der Landrat, Fachdienst Waffen und Jagd",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Az.",
+          "value": "WJ-32.4-0912/26"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against refusal of hunting licence",
+          "quote": "Binnen eines Monats ab der Bekanntgabe dieses Bescheids ist der Widerspruch zulässig; er wird schriftlich oder zur Niederschrift bei folgender Stelle erhoben: Kreis Musterdithmarschen, Stiftstraße 8, 25746 Musterheide in Holstein.",
+          "computation": "Letter dated 19.11.2026 (Thursday), sent by ordinary mail. Per the clause quoted in the letter (§110 Abs.2 LVwG), a notice sent by simple letter is deemed delivered on the 4th day after posting. Counting from the day after posting (20.11.=day1, 21.11.=day2, 22.11.=day3, 23.11.=day4): deemed Bekanntgabe = Monday 23.11.2026. The one-month Widerspruchsfrist runs from this event; per §188 Abs.2 BGB the period ends with the day in the following month bearing the same number as the day of the event, i.e. 23.12.2026 (Wednesday). 23.12.2026 is a regular working day in Schleswig-Holstein (not a weekend or public holiday), so no further shift under §193 BGB is needed.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Submit valid hunting liability insurance confirmation to receive the hunting licence",
+          "quote": "Sobald Sie eine gültige Versicherungsbestätigung nachreichen, stelle ich den Jagdschein ohne neuen Antrag aus.",
+          "computation": "The letter states the licence will be issued once a valid insurance confirmation is submitted, but gives no calendar date or period for doing so, so no fixed due date can be computed; this is an open-ended precondition rather than a dated deadline.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter itself states the delivery-fiction rule (§110 Abs. 2 LVwG, deemed delivered on the 4th day after posting), which was used to compute the deemed Bekanntgabe date and hence the Widerspruch deadline; verify the actual posting date if it differs from the printed Bescheiddatum, as that would shift the deadline."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 5154,
+      "cache_read_tokens": 7930,
+      "cache_creation_tokens": 5322,
+      "cost_usd": 0.07442199999999999,
+      "duration_ms": 54649,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

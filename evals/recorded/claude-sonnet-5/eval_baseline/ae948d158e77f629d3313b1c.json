@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"04428e23487c6625e24eb1f796ccd6cc188280ab91e6f9a70d6890296ea165d1\",\"mode\":\"text\",\"region\":\"SL\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-tax_assessment-L2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Saarland (SL), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> t",
+    "recorded_at": "2026-11-24T12:10:16+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[3014,654],\"contract\":null,\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Beispiel-Merzig\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"030/226/19083\"}],\"remedy_type\":\"einspruch\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Deadline to file Einspruch against the 2025 income tax assessment\",\"quote\":\"Wer diesen Bescheid für fehlerhaft hält, kann dagegen innerhalb eines Monats Einspruch erheben.\",\"computation\":\"Document is dated Thursday 19.11.2026, assumed to be the day it was handed to the post. The letter itself states the current legal rule (§122 Abs. 2 AO as amended in 2025): a letter sent by ordinary post counts as delivered (bekannt gegeben) on the 4th day after being posted. Counting from 19.11.2026: +1=20.11 (Fri), +2=21.11 (Sat), +3=22.11 (Sun), +4=23.11.2026 (Mon). 23.11.2026 is a Monday, not a Saturday/Sunday/holiday, so no shift under §122 Abs.2 Satz 3 AO is needed; Bekanntgabe = 23.11.2026. The one-month Einspruchsfrist (§355 AO) runs per §108 Abs.1 AO i.V.m. §188 Abs.2 BGB and ends on the day of the following month bearing the same number as the Bekanntgabe day: 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in Saarland (Heiligabend 24.12. is not itself a statutory holiday in SL), so the deadline stands.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        3014,
+        654
+      ],
+      "contract": null,
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Beispiel-Merzig",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "030/226/19083"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Deadline to file Einspruch against the 2025 income tax assessment",
+          "quote": "Wer diesen Bescheid für fehlerhaft hält, kann dagegen innerhalb eines Monats Einspruch erheben.",
+          "computation": "Document is dated Thursday 19.11.2026, assumed to be the day it was handed to the post. The letter itself states the current legal rule (§122 Abs. 2 AO as amended in 2025): a letter sent by ordinary post counts as delivered (bekannt gegeben) on the 4th day after being posted. Counting from 19.11.2026: +1=20.11 (Fri), +2=21.11 (Sat), +3=22.11 (Sun), +4=23.11.2026 (Mon). 23.11.2026 is a Monday, not a Saturday/Sunday/holiday, so no shift under §122 Abs.2 Satz 3 AO is needed; Bekanntgabe = 23.11.2026. The one-month Einspruchsfrist (§355 AO) runs per §108 Abs.1 AO i.V.m. §188 Abs.2 BGB and ends on the day of the following month bearing the same number as the Bekanntgabe day: 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in Saarland (Heiligabend 24.12. is not itself a statutory holiday in SL), so the deadline stands.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3066,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2072,
+      "cost_usd": 0.0395764,
+      "duration_ms": 35158,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

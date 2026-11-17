@@ -1,0 +1,57 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"5fce7c500f9d68a87b93dc380bba741928ef2b031e0089f62aab14a2dcf51bea\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-contract_confirmation-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:08:55+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[65000,96.6],\"contract\":{\"current_term_end\":\"2028-01-14\",\"cancel_by\":\"2027-10-14\"},\"document_date\":\"2026-11-18\",\"items\":[],\"kind\":\"insurance\",\"references\":[{\"label\":\"Versicherungsschein-Nr.\",\"value\":\"HR-27-0044186\"}],\"remedy_type\":\"none\",\"sender_name\":\"Beispielschutz Versicherung AG\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        65000,
+        96.6
+      ],
+      "contract": {
+        "current_term_end": "2028-01-14",
+        "cancel_by": "2027-10-14"
+      },
+      "document_date": "2026-11-18",
+      "items": [],
+      "kind": "insurance",
+      "references": [
+        {
+          "label": "Versicherungsschein-Nr.",
+          "value": "HR-27-0044186"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Beispielschutz Versicherung AG",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2815,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1528,
+      "cost_usd": 0.0348904,
+      "duration_ms": 27309,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

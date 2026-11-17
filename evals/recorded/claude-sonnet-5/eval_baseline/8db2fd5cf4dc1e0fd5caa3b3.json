@@ -1,0 +1,83 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"0d88b96d8b5c96f8a4f19ea278634594fba04a607379d5767b00ceee38d97c25\",\"mode\":\"text\",\"region\":\"NI\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-fine_bussgeld-L2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Niedersachsen (NI), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docume",
+    "recorded_at": "2026-11-24T11:25:47+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Landkreis Musterammerland – Bußgeldstelle\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"BG 32.2-26/40918\"},{\"label\":\"Kennzeichen\",\"value\":\"WST-FM 91\"}],\"amounts\":[115,28.5,3.5,147],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"Die Frist von zwei Wochen beginnt mit dem Tag der Zustellung.\",\"computation\":\"The attached Zustellungsurkunde (service certificate under §182 ZPO) shows the letter was delivered (Zustellung) on 23.11.2026, a Monday. Under §187 Abs. 1 BGB the day of the triggering event (the day of Zustellung) is not counted; the period begins the following day, 24.11.2026. Under §188 Abs. 2 BGB, a two-week (Wochen-) period ends with the expiry of the day in the second week that bears the same name (Monday) as the day of the triggering event, which is 07.12.2026. 07.12.2026 is a Monday, not a Saturday, Sunday or public holiday in Niedersachsen, so no shift under §193 BGB is required.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay total fine amount (Geldbuße, Gebühr, Auslagen)\",\"quote\":\"Der Gesamtbetrag ist zwei Wochen nach Eintritt der Rechtskraft zu zahlen.\",\"computation\":\"Assuming no Einspruch is filed, the Bußgeldbescheid becomes final (Rechtskraft) with the expiry of the Einspruch period, i.e. at the end of 07.12.2026 (Monday) as computed above. Treating 07.12.2026 as the triggering event, §187 Abs. 1 BGB excludes that day from the count, so the two-week payment period begins 08.12.2026. Under §188 Abs. 2 BGB it ends with the expiry of the day in the second week that bears the same name (Monday) as the triggering day, which is 21.12.2026. This date is a Monday and not a public holiday in Niedersachsen, so no §193 BGB shift is needed.\",\"due_date\":\"2026-12-21\",\"confidence\":\"medium\",\"amount\":147}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The official-looking contact email 'bussgeld@landkreis-musterammerland-bu.example' uses the reserved '.example' top-level domain, which cannot be a real working address — verify the genuine contact details and payment account on the official Landkreis Musterammerland website before replying or paying.\",\"Sender, payer, bank ('Landesmusterbank') and place names in this letter (Musterammerland, Musterwolde, Beispielstede) look like placeholder/sample names; double-check the IBAN and all identifying details against the authentic notice before transferring any money.\",\"The payment due date of 21.12.2026 is only valid if no Einspruch is filed by 07.12.2026; filing an Einspruch would prevent the fine from becoming final and reset this payment timeline.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Landkreis Musterammerland – Bußgeldstelle",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "BG 32.2-26/40918"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "WST-FM 91"
+        }
+      ],
+      "amounts": [
+        115,
+        28.5,
+        3.5,
+        147
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "Die Frist von zwei Wochen beginnt mit dem Tag der Zustellung.",
+          "computation": "The attached Zustellungsurkunde (service certificate under §182 ZPO) shows the letter was delivered (Zustellung) on 23.11.2026, a Monday. Under §187 Abs. 1 BGB the day of the triggering event (the day of Zustellung) is not counted; the period begins the following day, 24.11.2026. Under §188 Abs. 2 BGB, a two-week (Wochen-) period ends with the expiry of the day in the second week that bears the same name (Monday) as the day of the triggering event, which is 07.12.2026. 07.12.2026 is a Monday, not a Saturday, Sunday or public holiday in Niedersachsen, so no shift under §193 BGB is required.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay total fine amount (Geldbuße, Gebühr, Auslagen)",
+          "quote": "Der Gesamtbetrag ist zwei Wochen nach Eintritt der Rechtskraft zu zahlen.",
+          "computation": "Assuming no Einspruch is filed, the Bußgeldbescheid becomes final (Rechtskraft) with the expiry of the Einspruch period, i.e. at the end of 07.12.2026 (Monday) as computed above. Treating 07.12.2026 as the triggering event, §187 Abs. 1 BGB excludes that day from the count, so the two-week payment period begins 08.12.2026. Under §188 Abs. 2 BGB it ends with the expiry of the day in the second week that bears the same name (Monday) as the triggering day, which is 21.12.2026. This date is a Monday and not a public holiday in Niedersachsen, so no §193 BGB shift is needed.",
+          "due_date": "2026-12-21",
+          "confidence": "medium",
+          "amount": 147
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The official-looking contact email 'bussgeld@landkreis-musterammerland-bu.example' uses the reserved '.example' top-level domain, which cannot be a real working address — verify the genuine contact details and payment account on the official Landkreis Musterammerland website before replying or paying.",
+        "Sender, payer, bank ('Landesmusterbank') and place names in this letter (Musterammerland, Musterwolde, Beispielstede) look like placeholder/sample names; double-check the IBAN and all identifying details against the authentic notice before transferring any money.",
+        "The payment due date of 21.12.2026 is only valid if no Einspruch is filed by 07.12.2026; filing an Einspruch would prevent the fine from becoming final and reset this payment timeline."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 10110,
+      "cache_read_tokens": 8357,
+      "cache_creation_tokens": 11045,
+      "cost_usd": 0.14695940000000002,
+      "duration_ms": 100091,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

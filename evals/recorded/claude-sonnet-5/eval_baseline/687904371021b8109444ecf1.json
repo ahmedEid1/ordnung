@@ -1,0 +1,75 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"5f1d61ed472cc8a3b067e1bf8dc8c0fc08f132cb12508760acfeb49cf99e7840\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-M2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T12:23:33+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[259],\"contract\":null,\"document_date\":\"2026-11-19\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Objection (Einspruch) against Kindergeld decision\",\"quote\":\"Sie können gegen diese Festsetzung innerhalb eines Monats Einspruch bei der Familienkasse Musterfulda erheben.\",\"computation\":\"Letter dated Thu 19.11.2026, no separate 'zur Post gegeben' date, so posting day = 19.11.2026. Familienkasse Kindergeld decisions follow the tax-office delivery rule (§108 Abs.3 AO analogy): delivery is on the 4th day after posting, moved to next working day if that falls on a weekend/holiday. 19.11 +4 days = Mon 23.11.2026, which is a normal working day, so delivery (Bekanntgabe) = 23.11.2026. One-month Einspruch period (§355 Abs.1 AO) runs from the day after delivery and ends on the day in the following month bearing the same number as the delivery day: 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in NW, so no shift under §108 Abs.3 AO.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Submit new Studienbescheinigung for Clara\",\"quote\":\"Bitte reichen Sie uns zum Ende des Sommersemesters eine neue Studienbescheinigung ein.\",\"computation\":\"The letter only names a recurring academic-calendar event ('zum Ende des Sommersemesters') without a concrete calendar date, and does not state which semester is meant. Clara currently studies in Wintersemester 2026/27 (roughly Oct 2026–Mar 2027); the next 'Sommersemester' would be Sommersemester 2027, which German universities commonly define as running 1 April–30 September. Using that common convention, the latest plausible end date is 30.09.2027, but the exact date depends on Hochschule Beispielfulda's own academic calendar and is not stated in the letter.\",\"due_date\":\"2027-09-30\",\"confidence\":\"low\",\"amount\":null}],\"kind\":\"social_insurance\",\"references\":[{\"label\":\"Kindergeldnummer\",\"value\":\"355FK662019\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Familienkasse Musterfulda\",\"warnings\":[\"The deadline for submitting the new 'Studienbescheinigung' is only described as 'zum Ende des Sommersemesters' with no calendar date; I assumed the common German convention of Sommersemester ending 30 September 2027, but the actual date depends on the university's own academic calendar and should be confirmed with Hochschule Beispielfulda.\",\"The letter lists an IBAN (DE81 5300 0000 0004 5130 00) in the footer even though no payment is requested in this letter; this is likely just the Familienkasse's standing account info, but double-check it matches previous correspondence before using it for anything.\"]}",
+    "data": {
+      "amounts": [
+        259
+      ],
+      "contract": null,
+      "document_date": "2026-11-19",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Objection (Einspruch) against Kindergeld decision",
+          "quote": "Sie können gegen diese Festsetzung innerhalb eines Monats Einspruch bei der Familienkasse Musterfulda erheben.",
+          "computation": "Letter dated Thu 19.11.2026, no separate 'zur Post gegeben' date, so posting day = 19.11.2026. Familienkasse Kindergeld decisions follow the tax-office delivery rule (§108 Abs.3 AO analogy): delivery is on the 4th day after posting, moved to next working day if that falls on a weekend/holiday. 19.11 +4 days = Mon 23.11.2026, which is a normal working day, so delivery (Bekanntgabe) = 23.11.2026. One-month Einspruch period (§355 Abs.1 AO) runs from the day after delivery and ends on the day in the following month bearing the same number as the delivery day: 23.12.2026. 23.12.2026 is a Wednesday and not a public holiday in NW, so no shift under §108 Abs.3 AO.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Submit new Studienbescheinigung for Clara",
+          "quote": "Bitte reichen Sie uns zum Ende des Sommersemesters eine neue Studienbescheinigung ein.",
+          "computation": "The letter only names a recurring academic-calendar event ('zum Ende des Sommersemesters') without a concrete calendar date, and does not state which semester is meant. Clara currently studies in Wintersemester 2026/27 (roughly Oct 2026–Mar 2027); the next 'Sommersemester' would be Sommersemester 2027, which German universities commonly define as running 1 April–30 September. Using that common convention, the latest plausible end date is 30.09.2027, but the exact date depends on Hochschule Beispielfulda's own academic calendar and is not stated in the letter.",
+          "due_date": "2027-09-30",
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "kind": "social_insurance",
+      "references": [
+        {
+          "label": "Kindergeldnummer",
+          "value": "355FK662019"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Familienkasse Musterfulda",
+      "warnings": [
+        "The deadline for submitting the new 'Studienbescheinigung' is only described as 'zum Ende des Sommersemesters' with no calendar date; I assumed the common German convention of Sommersemester ending 30 September 2027, but the actual date depends on the university's own academic calendar and should be confirmed with Hochschule Beispielfulda.",
+        "The letter lists an IBAN (DE81 5300 0000 0004 5130 00) in the footer even though no payment is requested in this letter; this is likely just the Familienkasse's standing account info, but double-check it matches previous correspondence before using it for anything."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2839,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1521,
+      "cost_usd": 0.035584,
+      "duration_ms": 29679,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

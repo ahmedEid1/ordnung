@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"07ee1aa7b05c5bd2c5240e10d4147695b02dee925c6212e8f17dd58faded1ea5\",\"mode\":\"text\",\"region\":\"BY\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-N1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bayern (BY), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag",
+    "recorded_at": "2026-11-24T11:46:51+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[120],\"contract\":null,\"kind\":\"authority_letter\",\"sender_name\":\"Landratsamt Musterinn – Bauamt – Untere Bauaufsichtsbehörde\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Az.\",\"value\":\"B-2026-1406\"}],\"remedy_type\":\"klage\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File lawsuit (Klage) against rejection of building permit at Verwaltungsgericht Musterregensburg\",\"quote\":\"Gegen diesen Bescheid können Sie binnen eines Monats nach seiner Bekanntgabe Klage beim Bayerischen Verwaltungsgericht Musterregensburg, Haidplatz 4, 93047 Musterregensburg erheben, schriftlich oder zur Niederschrift bei der Geschäftsstelle des Gerichts.\",\"computation\":\"The letter is dated 18.11.2026 and no separate 'zur Post gegeben am' date is stated, so the posting day equals the printed letter date, 18.11.2026. Per the letter itself ('Ein Bescheid, den die Behörde mit einfachem Brief verschickt, gilt am vierten Tag nach der Aufgabe zur Post als bekannt gegeben', Art. 41 Abs. 2 BayVwVfG, applying the federal 4-day rule for letters posted from 1 Jan 2025), delivery is deemed to occur on the 4th day after posting: 18.11.2026 + 4 days = 22.11.2026, which is a Sunday. This is a general authority (a Landratsamt's building authority), not a Finanzamt, so unlike tax offices the deemed-delivery day does NOT move to the next working day even though it falls on a Sunday. Bekanntgabe (deemed delivery) therefore occurs on 22.11.2026. The one-month Klage period runs under §57 Abs. 2 VwGO in conjunction with §222 Abs. 2 ZPO and the counting rule of §188 Abs. 2 BGB: the day of the triggering event (22.11.2026) is not counted, and the period ends on the day of the following month bearing the same number, i.e. 22.12.2026 (a Tuesday). 22.12.2026 is not a Saturday, Sunday or public holiday in Bayern, so no further shift is needed. Final deadline: 22.12.2026.\",\"due_date\":\"2026-12-22\",\"confidence\":\"high\",\"amount\":null}],\"warnings\":[\"The letter mentions a separate administrative fee of 120 € ('eigenen Kostenbescheid') which will be billed in a future, separate notice; no payment deadline has been set yet by this letter, so no payment item was created for it — check the upcoming Kostenbescheid for its own due date.\",\"No Widerspruch procedure applies in this matter according to the letter ('Ein Widerspruchsverfahren ist in dieser Sache nicht vorgesehen'); the only remedy is filing suit (Klage) directly with the administrative court.\"]}",
+    "data": {
+      "amounts": [
+        120
+      ],
+      "contract": null,
+      "kind": "authority_letter",
+      "sender_name": "Landratsamt Musterinn – Bauamt – Untere Bauaufsichtsbehörde",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Az.",
+          "value": "B-2026-1406"
+        }
+      ],
+      "remedy_type": "klage",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File lawsuit (Klage) against rejection of building permit at Verwaltungsgericht Musterregensburg",
+          "quote": "Gegen diesen Bescheid können Sie binnen eines Monats nach seiner Bekanntgabe Klage beim Bayerischen Verwaltungsgericht Musterregensburg, Haidplatz 4, 93047 Musterregensburg erheben, schriftlich oder zur Niederschrift bei der Geschäftsstelle des Gerichts.",
+          "computation": "The letter is dated 18.11.2026 and no separate 'zur Post gegeben am' date is stated, so the posting day equals the printed letter date, 18.11.2026. Per the letter itself ('Ein Bescheid, den die Behörde mit einfachem Brief verschickt, gilt am vierten Tag nach der Aufgabe zur Post als bekannt gegeben', Art. 41 Abs. 2 BayVwVfG, applying the federal 4-day rule for letters posted from 1 Jan 2025), delivery is deemed to occur on the 4th day after posting: 18.11.2026 + 4 days = 22.11.2026, which is a Sunday. This is a general authority (a Landratsamt's building authority), not a Finanzamt, so unlike tax offices the deemed-delivery day does NOT move to the next working day even though it falls on a Sunday. Bekanntgabe (deemed delivery) therefore occurs on 22.11.2026. The one-month Klage period runs under §57 Abs. 2 VwGO in conjunction with §222 Abs. 2 ZPO and the counting rule of §188 Abs. 2 BGB: the day of the triggering event (22.11.2026) is not counted, and the period ends on the day of the following month bearing the same number, i.e. 22.12.2026 (a Tuesday). 22.12.2026 is not a Saturday, Sunday or public holiday in Bayern, so no further shift is needed. Final deadline: 22.12.2026.",
+          "due_date": "2026-12-22",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "warnings": [
+        "The letter mentions a separate administrative fee of 120 € ('eigenen Kostenbescheid') which will be billed in a future, separate notice; no payment deadline has been set yet by this letter, so no payment item was created for it — check the upcoming Kostenbescheid for its own due date.",
+        "No Widerspruch procedure applies in this matter according to the letter ('Ein Widerspruchsverfahren ist in dieser Sache nicht vorgesehen'); the only remedy is filing suit (Klage) directly with the administrative court."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3319,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2093,
+      "cost_usd": 0.042671999999999995,
+      "duration_ms": 34115,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

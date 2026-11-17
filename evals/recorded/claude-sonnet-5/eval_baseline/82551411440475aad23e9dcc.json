@@ -1,0 +1,74 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"e86a870f0ec65f4c1e166f477509ae5ee5ba40d82337b2aca2633f35c8979315\",\"mode\":\"text\",\"region\":\"HB\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-tax_assessment-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bremen (HB), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag",
+    "recorded_at": "2026-11-24T12:09:39+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Beispiel-Vegesack\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"460/318/72214\"}],\"amounts\":[8036,6412,1624],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay remaining income tax for 2025\",\"quote\":\"Die verbleibende Zahlung von 1.624,00 € ist am 28.12.2026 fällig.\",\"computation\":\"The letter states a fixed calendar due date: 28.12.2026 (a Monday). This date is not a Saturday, Sunday or public holiday in Bremen, so it stands as printed.\",\"due_date\":\"2026-12-28\",\"confidence\":\"high\",\"amount\":1624},{\"kind\":\"deadline\",\"title\":\"Einspruch (objection) against the 2025 Einkommensteuerbescheid\",\"quote\":\"Wer diesen Bescheid für fehlerhaft hält, kann dagegen innerhalb eines Monats Einspruch erheben.\",\"computation\":\"The letter states a separate posting date ('Abgesandt am 20.11.2026'), which governs delivery fiction instead of the printed letter date. Posting day = Friday 20.11.2026. Letters from a German authority posted on/after 1 Jan 2025 are deemed delivered on the 4th day after posting (§ 122 Abs. 2 Nr. 1 AO as amended by PostModG), counting calendar days from (but not including) the posting day: 21.11 (Sat) = day1, 22.11 (Sun) = day2, 23.11 (Mon) = day3, 24.11 (Tue) = day4. Since this is a tax office, if the 4th day were a Saturday, Sunday or holiday it would move to the next working day (§ 108 Abs. 3 AO) — but 24.11.2026 is a Tuesday, a normal working day, so delivery is deemed on 24.11.2026. The one-month Einspruch period under § 355 Abs. 1 AO then runs under §§ 187 Abs. 1, 188 Abs. 2 BGB: the delivery day itself is not counted, and the period ends one month later on the day with the same number, i.e. 24.12.2026 (a Thursday). 24 December is explicitly a working day under German deadline rules, and it is not a public holiday in Bremen, so the deadline does not shift. Final day to file the Einspruch: 24.12.2026.\",\"due_date\":\"2026-12-24\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Beispiel-Vegesack",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "460/318/72214"
+        }
+      ],
+      "amounts": [
+        8036,
+        6412,
+        1624
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay remaining income tax for 2025",
+          "quote": "Die verbleibende Zahlung von 1.624,00 € ist am 28.12.2026 fällig.",
+          "computation": "The letter states a fixed calendar due date: 28.12.2026 (a Monday). This date is not a Saturday, Sunday or public holiday in Bremen, so it stands as printed.",
+          "due_date": "2026-12-28",
+          "confidence": "high",
+          "amount": 1624
+        },
+        {
+          "kind": "deadline",
+          "title": "Einspruch (objection) against the 2025 Einkommensteuerbescheid",
+          "quote": "Wer diesen Bescheid für fehlerhaft hält, kann dagegen innerhalb eines Monats Einspruch erheben.",
+          "computation": "The letter states a separate posting date ('Abgesandt am 20.11.2026'), which governs delivery fiction instead of the printed letter date. Posting day = Friday 20.11.2026. Letters from a German authority posted on/after 1 Jan 2025 are deemed delivered on the 4th day after posting (§ 122 Abs. 2 Nr. 1 AO as amended by PostModG), counting calendar days from (but not including) the posting day: 21.11 (Sat) = day1, 22.11 (Sun) = day2, 23.11 (Mon) = day3, 24.11 (Tue) = day4. Since this is a tax office, if the 4th day were a Saturday, Sunday or holiday it would move to the next working day (§ 108 Abs. 3 AO) — but 24.11.2026 is a Tuesday, a normal working day, so delivery is deemed on 24.11.2026. The one-month Einspruch period under § 355 Abs. 1 AO then runs under §§ 187 Abs. 1, 188 Abs. 2 BGB: the delivery day itself is not counted, and the period ends one month later on the day with the same number, i.e. 24.12.2026 (a Thursday). 24 December is explicitly a working day under German deadline rules, and it is not a public holiday in Bremen, so the deadline does not shift. Final day to file the Einspruch: 24.12.2026.",
+          "due_date": "2026-12-24",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2356,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2286,
+      "cost_usd": 0.033814,
+      "duration_ms": 23901,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

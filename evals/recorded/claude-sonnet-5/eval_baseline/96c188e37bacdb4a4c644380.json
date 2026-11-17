@@ -1,0 +1,65 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"4a141c23d25561fb82b23219b4977c717da275fa5eac5f6ca340f34314d43dcd\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-conflicting_dates-2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:45:26+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Stadt Beispielhagen – Der Oberbürgermeister, Fachbereich Bauordnung\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"63-BO-2026-1147\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Klage with Verwaltungsgericht against the Nutzungsuntersagung\",\"quote\":\"Gegen diesen Bescheid kann innerhalb eines Monats nach seiner Bekanntgabe Klage beim Verwaltungsgericht Musterarnsberg, Jägerstraße 1, 59821 Musterarnsberg, erhoben werden; ein Widerspruchsverfahren findet nicht statt.\",\"computation\":\"The Bescheid is a written administrative act sent by ordinary mail; under Section 41(2) VwVfG NRW it is deemed notified (Bekanntgabe) on the third day after it was handed to the postal service (Aufgabe zur Post). The letter's own date, 20.11.2026 (a Friday), is taken as the dispatch date, since no other mailing date is given. Counting three days: 21.11.2026 (Sat), 22.11.2026 (Sun), 23.11.2026 (Mon) - the third day is 23.11.2026, a Monday, so no weekend/holiday shift of the notification fiction is needed; Bekanntgabe = 23.11.2026. The one-month period runs nach Bekanntgabe, so the day of Bekanntgabe itself is excluded (Section 187(1) BGB) and the period ends, per Section 188(2) BGB, on the day of the following month bearing the same number as the day of Bekanntgabe, i.e. 23.12.2026. 23.12.2026 is a Wednesday, not a Saturday, Sunday or statutory holiday in NRW, so no further shift under Section 193 BGB is required. Deadline for the Klage to reach the Verwaltungsgericht: 23.12.2026.\",\"due_date\":\"2026-12-23\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The exact date the Bekanntgabe fiction (Section 41(2) VwVfG NRW) starts from depends on when the letter was actually handed to the post office; this was assumed to be the printed letter date (20.11.2026), which the recipient should verify (e.g. from the envelope postmark) because this directly shifts the Klage deadline of 23.12.2026.\",\"The Bescheid text states it was issued mit diesem Bescheid vom 18.11.2026 while the letterhead date is 20.11.2026; this two-day discrepancy between the decision date and the apparent dispatch date should be checked against the envelope postmark if the deadline is contested.\",\"The letter prohibits renting out the basement room as residential space but does not state an explicit compliance date or whether immediate execution (sofortige Vollziehung) was ordered; if it was not ordered, a timely Klage would normally have suspensive effect under Section 80(1) VwGO, so the recipient should clarify enforceability with the authority or a lawyer rather than assume an immediate stop-date.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Stadt Beispielhagen – Der Oberbürgermeister, Fachbereich Bauordnung",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "63-BO-2026-1147"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Klage with Verwaltungsgericht against the Nutzungsuntersagung",
+          "quote": "Gegen diesen Bescheid kann innerhalb eines Monats nach seiner Bekanntgabe Klage beim Verwaltungsgericht Musterarnsberg, Jägerstraße 1, 59821 Musterarnsberg, erhoben werden; ein Widerspruchsverfahren findet nicht statt.",
+          "computation": "The Bescheid is a written administrative act sent by ordinary mail; under Section 41(2) VwVfG NRW it is deemed notified (Bekanntgabe) on the third day after it was handed to the postal service (Aufgabe zur Post). The letter's own date, 20.11.2026 (a Friday), is taken as the dispatch date, since no other mailing date is given. Counting three days: 21.11.2026 (Sat), 22.11.2026 (Sun), 23.11.2026 (Mon) - the third day is 23.11.2026, a Monday, so no weekend/holiday shift of the notification fiction is needed; Bekanntgabe = 23.11.2026. The one-month period runs nach Bekanntgabe, so the day of Bekanntgabe itself is excluded (Section 187(1) BGB) and the period ends, per Section 188(2) BGB, on the day of the following month bearing the same number as the day of Bekanntgabe, i.e. 23.12.2026. 23.12.2026 is a Wednesday, not a Saturday, Sunday or statutory holiday in NRW, so no further shift under Section 193 BGB is required. Deadline for the Klage to reach the Verwaltungsgericht: 23.12.2026.",
+          "due_date": "2026-12-23",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The exact date the Bekanntgabe fiction (Section 41(2) VwVfG NRW) starts from depends on when the letter was actually handed to the post office; this was assumed to be the printed letter date (20.11.2026), which the recipient should verify (e.g. from the envelope postmark) because this directly shifts the Klage deadline of 23.12.2026.",
+        "The Bescheid text states it was issued mit diesem Bescheid vom 18.11.2026 while the letterhead date is 20.11.2026; this two-day discrepancy between the decision date and the apparent dispatch date should be checked against the envelope postmark if the deadline is contested.",
+        "The letter prohibits renting out the basement room as residential space but does not state an explicit compliance date or whether immediate execution (sofortige Vollziehung) was ordered; if it was not ordered, a timely Klage would normally have suspensive effect under Section 80(1) VwGO, so the recipient should clarify enforceability with the authority or a lawyer rather than assume an immediate stop-date."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 9606,
+      "cache_read_tokens": 18027,
+      "cache_creation_tokens": 9766,
+      "cost_usd": 0.1387414,
+      "duration_ms": 97777,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

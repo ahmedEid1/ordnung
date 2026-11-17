@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"b5631bda176540b989036e3e24e68ce5a5bb5497f8505cd2f95133ac668ac64e\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-invoice_relative-N2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:38:40+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Dachdeckerei Beispielziegel GmbH\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"DZ-26-0419\"},{\"label\":\"Auftrag\",\"value\":\"A-0388\"}],\"amounts\":[1249.5],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay roof gutter invoice\",\"quote\":\"Zahlungsziel: 30 Tage ab Rechnungsdatum.\",\"computation\":\"Invoice date (Rechnungsdatum) is 20.11.2026. The period is triggered by an event (issuance of the invoice), so under §187 Abs. 1 BGB the day of the event itself is not counted; counting starts on 21.11.2026 as day 1. 30 days later (day 30) falls on 20.12.2026. Checking the weekday: counting forward from today (Tue 24.11.2026) shows 20.12.2026 is a Sunday. Since this is a payment deadline governed by civil law, §193 BGB applies: if the last day of a period falls on a Sunday, Saturday, or public holiday, it shifts to the next business day. 21.12.2026 is a Monday and not a public holiday in NW, so the due date shifts to 21.12.2026.\",\"due_date\":\"2026-12-21\",\"confidence\":\"high\",\"amount\":1249.5}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Dachdeckerei Beispielziegel GmbH",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "DZ-26-0419"
+        },
+        {
+          "label": "Auftrag",
+          "value": "A-0388"
+        }
+      ],
+      "amounts": [
+        1249.5
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay roof gutter invoice",
+          "quote": "Zahlungsziel: 30 Tage ab Rechnungsdatum.",
+          "computation": "Invoice date (Rechnungsdatum) is 20.11.2026. The period is triggered by an event (issuance of the invoice), so under §187 Abs. 1 BGB the day of the event itself is not counted; counting starts on 21.11.2026 as day 1. 30 days later (day 30) falls on 20.12.2026. Checking the weekday: counting forward from today (Tue 24.11.2026) shows 20.12.2026 is a Sunday. Since this is a payment deadline governed by civil law, §193 BGB applies: if the last day of a period falls on a Sunday, Saturday, or public holiday, it shifts to the next business day. 21.12.2026 is a Monday and not a public holiday in NW, so the due date shifts to 21.12.2026.",
+          "due_date": "2026-12-21",
+          "confidence": "high",
+          "amount": 1249.5
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2562,
+      "cache_read_tokens": 7774,
+      "cache_creation_tokens": 3331,
+      "cost_usd": 0.0405068,
+      "duration_ms": 25393,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

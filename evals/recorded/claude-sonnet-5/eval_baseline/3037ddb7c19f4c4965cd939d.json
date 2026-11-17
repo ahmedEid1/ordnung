@@ -1,0 +1,59 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"8d8dd86d6aee1be2709b23b167a6c1ec704b04c88dfef7dfe959e055fdce8b9f\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-contract_confirmation-L1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:08:24+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract\",\"sender_name\":\"Fitnesswerk Beispielstark\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Mitgliedsnummer\",\"value\":\"FW-20871\"}],\"amounts\":[34],\"items\":[],\"remedy_type\":\"none\",\"contract\":{\"current_term_end\":\"2027-12-31\",\"cancel_by\":\"2027-11-30\"},\"warnings\":[\"This is a membership confirmation with no action required now; the only future deadline is the cancellation date to avoid automatic renewal, which is captured in the contract field, not as an item.\",\"Free training before the membership start (01.01.2027) is mentioned but is not an obligation with a deadline.\"]}",
+    "data": {
+      "kind": "contract",
+      "sender_name": "Fitnesswerk Beispielstark",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Mitgliedsnummer",
+          "value": "FW-20871"
+        }
+      ],
+      "amounts": [
+        34
+      ],
+      "items": [],
+      "remedy_type": "none",
+      "contract": {
+        "current_term_end": "2027-12-31",
+        "cancel_by": "2027-11-30"
+      },
+      "warnings": [
+        "This is a membership confirmation with no action required now; the only future deadline is the cancellation date to avoid automatic renewal, which is captured in the contract field, not as an item.",
+        "Free training before the membership start (01.01.2027) is mentioned but is not an obligation with a deadline."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1548,
+      "cache_read_tokens": 6440,
+      "cache_creation_tokens": 1665,
+      "cost_usd": 0.023431999999999998,
+      "duration_ms": 16132,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

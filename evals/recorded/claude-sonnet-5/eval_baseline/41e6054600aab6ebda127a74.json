@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"a63cbd8a4b2f18854ccf95789eabab81839743ad14692a965dd67aaed718f546\",\"mode\":\"text\",\"region\":\"MV\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-tax_assessment-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Mecklenburg-Vorpommern (MV), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrust",
+    "recorded_at": "2026-11-24T12:07:38+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[4311,715],\"contract\":null,\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Beispielgüstrow\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"086/112/40917\"}],\"items\":[{\"kind\":\"deadline\",\"title\":\"Einspruch (objection) against the 2025 income tax assessment\",\"quote\":\"Der Einspruch muss binnen eines Monats nach der Bekanntgabe beim Finanzamt Beispielgüstrow eingehen, schriftlich, über das Portal ELSTER oder mündlich zur Niederschrift.\",\"computation\":\"Letter printed/posted 18.11.2026 (Wed); no separate 'zur Post gegeben' date is stated, so the posting day is 18.11.2026. For letters posted from 1 Jan 2025, delivery is deemed on the 4th day after posting (§ 122 Abs. 2 Nr. 1 AO): 18.11 +4 days = 22.11.2026, a Sunday. For tax offices, if that 4th day is a Saturday, Sunday or public holiday, the deemed delivery day moves to the next working day (§ 108 Abs. 3 AO): next working day is Monday 23.11.2026, so Bekanntgabe = 23.11.2026. The one-month Einspruch period (§ 355 Abs. 1 AO) is counted under § 188 Abs. 2 BGB: the delivery day itself is not counted; the period ends on the day in the following month bearing the same number, i.e. 23.12.2026 (Wednesday). That day is neither a weekend day nor a public holiday in MV, so no extension under § 108 Abs. 3 AO/§ 193 BGB is needed.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        4311,
+        715
+      ],
+      "contract": null,
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Beispielgüstrow",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "086/112/40917"
+        }
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Einspruch (objection) against the 2025 income tax assessment",
+          "quote": "Der Einspruch muss binnen eines Monats nach der Bekanntgabe beim Finanzamt Beispielgüstrow eingehen, schriftlich, über das Portal ELSTER oder mündlich zur Niederschrift.",
+          "computation": "Letter printed/posted 18.11.2026 (Wed); no separate 'zur Post gegeben' date is stated, so the posting day is 18.11.2026. For letters posted from 1 Jan 2025, delivery is deemed on the 4th day after posting (§ 122 Abs. 2 Nr. 1 AO): 18.11 +4 days = 22.11.2026, a Sunday. For tax offices, if that 4th day is a Saturday, Sunday or public holiday, the deemed delivery day moves to the next working day (§ 108 Abs. 3 AO): next working day is Monday 23.11.2026, so Bekanntgabe = 23.11.2026. The one-month Einspruch period (§ 355 Abs. 1 AO) is counted under § 188 Abs. 2 BGB: the delivery day itself is not counted; the period ends on the day in the following month bearing the same number, i.e. 23.12.2026 (Wednesday). That day is neither a weekend day nor a public holiday in MV, so no extension under § 108 Abs. 3 AO/§ 193 BGB is needed.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2537,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1922,
+      "cost_usd": 0.034168000000000004,
+      "duration_ms": 25746,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

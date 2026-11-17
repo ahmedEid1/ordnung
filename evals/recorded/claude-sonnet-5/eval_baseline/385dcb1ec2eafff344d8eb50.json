@@ -1,0 +1,76 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"031acc7a3ca5b323e86da9dd41840f336ed67b2f4d9ccbffaef26c89f8e4ccf1\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-price_increase-N1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:51:48+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Kabelnetz Beispielstadt GmbH\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"KB-1 093 377\"}],\"amounts\":[34.99,37.99],\"items\":[{\"kind\":\"milestone\",\"title\":\"New price takes effect\",\"quote\":\"zum 01.02.2027 erhöhen wir den Preis Ihres Tarifs „Kabel 250“ um 3,00 € auf 37,99 € im Monat (bisher 34,99 €).\",\"computation\":\"The letter states the price increase becomes effective on a fixed calendar date, 01.02.2027. This date is used as written, no counting needed.\",\"due_date\":\"2027-02-01\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Special right to terminate contract due to price increase\",\"quote\":\"Sie dürfen den Vertrag deshalb innerhalb von drei Monaten nach Erhalt dieses Schreibens kostenlos und ohne Kündigungsfrist beenden, frühestens zum Wirksamwerden der Preisänderung.\",\"computation\":\"This is a private company's letter, so the statutory 3/4-day delivery fiction that applies to German authorities does not apply; the period runs from the day the letter was actually received, which is not stated. As the earliest plausible day of receipt, I use the letter's own date, 18.11.2026 (a letter cannot be received before it is dated). Under §187 Abs.1 BGB the day of receipt itself is not counted; under §188 Abs.2 BGB a period of months ends on the day in the final month bearing the same number as the day of the triggering event (receipt), i.e. the 18th. 18.11.2026 + 3 months = 18.02.2027. Checking the calendar, 18.02.2027 is a Thursday and not a public holiday in NRW, so no weekend/holiday shift under §193 BGB is needed. The termination would in any case only take effect at the earliest on 01.02.2027 (the date the price increase becomes effective), but the deadline to send the termination notice itself is 18.02.2027 on this assumed start date.\",\"due_date\":\"2027-02-18\",\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The three-month special termination window runs from the day you actually received this letter, which the letter does not state; I assumed the earliest plausible receipt date (the letter's own date, 18.11.2026), giving a computed deadline of 18.02.2027 — if you actually received the letter a few days later, your real deadline is correspondingly later, so check your actual delivery/receipt date (e.g. on the envelope) to be safe.\",\"The recipient's address shown on the letter (35576 Beispielwetzlar) corresponds to a location in Hesse, not Nordrhein-Westfalen as stated for this task; this did not affect the computed dates since no relevant holiday fell near the deadline, but it is worth double-checking that the address on file is correct.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Kabelnetz Beispielstadt GmbH",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "KB-1 093 377"
+        }
+      ],
+      "amounts": [
+        34.99,
+        37.99
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "New price takes effect",
+          "quote": "zum 01.02.2027 erhöhen wir den Preis Ihres Tarifs „Kabel 250“ um 3,00 € auf 37,99 € im Monat (bisher 34,99 €).",
+          "computation": "The letter states the price increase becomes effective on a fixed calendar date, 01.02.2027. This date is used as written, no counting needed.",
+          "due_date": "2027-02-01",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Special right to terminate contract due to price increase",
+          "quote": "Sie dürfen den Vertrag deshalb innerhalb von drei Monaten nach Erhalt dieses Schreibens kostenlos und ohne Kündigungsfrist beenden, frühestens zum Wirksamwerden der Preisänderung.",
+          "computation": "This is a private company's letter, so the statutory 3/4-day delivery fiction that applies to German authorities does not apply; the period runs from the day the letter was actually received, which is not stated. As the earliest plausible day of receipt, I use the letter's own date, 18.11.2026 (a letter cannot be received before it is dated). Under §187 Abs.1 BGB the day of receipt itself is not counted; under §188 Abs.2 BGB a period of months ends on the day in the final month bearing the same number as the day of the triggering event (receipt), i.e. the 18th. 18.11.2026 + 3 months = 18.02.2027. Checking the calendar, 18.02.2027 is a Thursday and not a public holiday in NRW, so no weekend/holiday shift under §193 BGB is needed. The termination would in any case only take effect at the earliest on 01.02.2027 (the date the price increase becomes effective), but the deadline to send the termination notice itself is 18.02.2027 on this assumed start date.",
+          "due_date": "2027-02-18",
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The three-month special termination window runs from the day you actually received this letter, which the letter does not state; I assumed the earliest plausible receipt date (the letter's own date, 18.11.2026), giving a computed deadline of 18.02.2027 — if you actually received the letter a few days later, your real deadline is correspondingly later, so check your actual delivery/receipt date (e.g. on the envelope) to be safe.",
+        "The recipient's address shown on the letter (35576 Beispielwetzlar) corresponds to a location in Hesse, not Nordrhein-Westfalen as stated for this task; this did not affect the computed dates since no relevant holiday fell near the deadline, but it is worth double-checking that the address on file is correct."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6650,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1466,
+      "cost_usd": 0.073474,
+      "duration_ms": 72562,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

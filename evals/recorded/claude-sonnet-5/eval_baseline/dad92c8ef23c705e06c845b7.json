@@ -1,0 +1,82 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"5d379afc06333a4784378c2102335f5f0ecaa29190cd7a6e15eaeb8c12ccd82c\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-english_letter-M1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:17:53+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Sprachforum Beispiellahn e.V.\",\"document_date\":\"2026-11-18\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Register for B1 placement test slot\",\"quote\":\"Please register for one of the test slots by 10 December 2026, using the link in our e-mail.\",\"computation\":\"The letter states a fixed calendar date for this task: 'by 10 December 2026'. This is a company (a registered association, Verein), not a German authority, so no statutory deemed-delivery or §§187-193 BGB period counting applies; the date is simply the one printed. Checked: 10 December 2026 is a Thursday and not a public holiday in NRW, so no weekend/holiday shift is needed.\",\"due_date\":\"2026-12-10\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"references\":[{\"label\":\"Student no.\",\"value\":\"SF-26-1190\"}],\"amounts\":[],\"warnings\":[\"This is an informational letter from a language school about a placement test for a course starting 12 January 2027, not a legal or financial demand; there is no indication of a scam, but the registration must still be done via the link in the separate e-mail mentioned (not included in this letter), which could not be verified here.\"]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Sprachforum Beispiellahn e.V.",
+      "document_date": "2026-11-18",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Register for B1 placement test slot",
+          "quote": "Please register for one of the test slots by 10 December 2026, using the link in our e-mail.",
+          "computation": "The letter states a fixed calendar date for this task: 'by 10 December 2026'. This is a company (a registered association, Verein), not a German authority, so no statutory deemed-delivery or §§187-193 BGB period counting applies; the date is simply the one printed. Checked: 10 December 2026 is a Thursday and not a public holiday in NRW, so no weekend/holiday shift is needed.",
+          "due_date": "2026-12-10",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "references": [
+        {
+          "label": "Student no.",
+          "value": "SF-26-1190"
+        }
+      ],
+      "amounts": [],
+      "warnings": [
+        "This is an informational letter from a language school about a placement test for a course starting 12 January 2027, not a legal or financial demand; there is no indication of a scam, but the registration must still be done via the link in the separate e-mail mentioned (not included in this letter), which could not be verified here."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1248,
+      "cache_read_tokens": 14387,
+      "cache_creation_tokens": 2700,
+      "cost_usd": 0.0261654,
+      "duration_ms": 19992,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "fixed",
+            "date": "2026-12-10",
+            "nature": "declaration",
+            "shift_rule": "none",
+            "legal_basis": null,
+            "text": "Please register for one of the test slots by 10 December 2026, using the link in our e-mail."
+          },
+          "document_date": "2026-11-18",
+          "sender_kind": "other",
+          "sender_name": "Sprachforum Beispiellahn e.V.",
+          "region": "NW"
+        },
+        "result": "{\"due_date\":\"2026-12-10\",\"weekday\":\"Thursday\",\"send_by\":\"2026-12-04\",\"summary\":\"The date given is Thu 10 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"The date given is Thu 10 Dec 2026\",\"date\":\"2026-12-10\",\"rule_id\":\"date_as_written\",\"citation\":\"The document's own wording\"},{\"label\":\"Send by Fri 4 Dec 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-12-04\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"date_as_written\",\"title\":\"Dates stated in the letter\",\"citation\":\"The document's own wording\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-18\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

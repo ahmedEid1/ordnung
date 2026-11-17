@@ -1,0 +1,102 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"8f413409b65820e5a8aaee7a17996b50776a8aaa173344b208f56773ef645d75\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-K3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T12:18:05+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Beispielsoest\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"345/2051/1187\"}],\"amounts\":[1120],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the prepayment assessment\",\"quote\":\"Gegen diesen Bescheid kann binnen eines Monats nach Bekanntgabe Einspruch beim Finanzamt Beispielsoest eingelegt werden, schriftlich, elektronisch oder zur Niederschrift.\",\"computation\":\"The letter states a separate posting date, 'Aufgabe zur Post: Samstag, 21.11.2026', so that Saturday counts as the posting day (not the Bescheid date 20.11.2026). For tax offices, delivery is deemed on the 4th day after posting: 21.11 (+1)=22.11 Sun, (+2)=23.11 Mon, (+3)=24.11 Tue, (+4)=25.11 Wed. 25.11.2026 is a Wednesday, not a Saturday/Sunday/holiday, so the deemed delivery (Bekanntgabe) day stays 25.11.2026 (§108 Abs.3 AO only moves it if the 4th day itself falls on a weekend/holiday). The one-month Einspruch period under §355 Abs.1 AO starts the day after delivery and ends, per §188 Abs.2 BGB, on the day with the same number one month later: 25.12.2026. That day is 1. Weihnachtstag (nationwide holiday); the next day 26.12.2026 is 2. Weihnachtstag (also a holiday); 27.12.2026 is a Sunday; so under §108 Abs.3 AO the period ends on the next working day, Monday 28.12.2026.\",\"due_date\":\"2026-12-28\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"1st quarterly income-tax prepayment 2027\",\"quote\":\"setzen wir die Vorauszahlungen zur Einkommensteuer ab 2027 auf 1.120,00 € je Quartal fest, fällig jeweils am 10.03., 10.06., 10.09. und 10.12.\",\"computation\":\"Calendar date printed in the letter is used as written. 10.03.2027 falls on a Wednesday, not a weekend or holiday, so no shift applies.\",\"due_date\":\"2027-03-10\",\"confidence\":\"high\",\"amount\":1120},{\"kind\":\"payment\",\"title\":\"2nd quarterly income-tax prepayment 2027\",\"quote\":\"setzen wir die Vorauszahlungen zur Einkommensteuer ab 2027 auf 1.120,00 € je Quartal fest, fällig jeweils am 10.03., 10.06., 10.09. und 10.12.\",\"computation\":\"Calendar date printed in the letter is used as written. 10.06.2027 falls on a Thursday (Fronleichnam/Corpus Christi 2027 falls on 06.06.2027, not 10.06.), so no shift applies.\",\"due_date\":\"2027-06-10\",\"confidence\":\"high\",\"amount\":1120},{\"kind\":\"payment\",\"title\":\"3rd quarterly income-tax prepayment 2027\",\"quote\":\"setzen wir die Vorauszahlungen zur Einkommensteuer ab 2027 auf 1.120,00 € je Quartal fest, fällig jeweils am 10.03., 10.06., 10.09. und 10.12.\",\"computation\":\"Calendar date printed in the letter is used as written. 10.09.2027 falls on a Friday, not a weekend or holiday, so no shift applies.\",\"due_date\":\"2027-09-10\",\"confidence\":\"high\",\"amount\":1120},{\"kind\":\"payment\",\"title\":\"4th quarterly income-tax prepayment 2027\",\"quote\":\"setzen wir die Vorauszahlungen zur Einkommensteuer ab 2027 auf 1.120,00 € je Quartal fest, fällig jeweils am 10.03., 10.06., 10.09. und 10.12.\",\"computation\":\"Calendar date printed in the letter is used as written. 10.12.2027 falls on a Friday, not a weekend or holiday, so no shift applies.\",\"due_date\":\"2027-12-10\",\"confidence\":\"high\",\"amount\":1120}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"These quarterly prepayments (10.03./10.06./10.09./10.12.) are set 'ab dem Kalenderjahr 2027' and will recur every year at the same dates until the Finanzamt issues a new or revised assessment; only the four 2027 dates are listed here.\",\"The letter offers an optional procedure to request an adjustment if income has changed significantly ('können Sie unter Vorlage einer Prognose eine Anpassung beantragen'), but gives no deadline for this, so no item was created for it.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Beispielsoest",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "345/2051/1187"
+        }
+      ],
+      "amounts": [
+        1120
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the prepayment assessment",
+          "quote": "Gegen diesen Bescheid kann binnen eines Monats nach Bekanntgabe Einspruch beim Finanzamt Beispielsoest eingelegt werden, schriftlich, elektronisch oder zur Niederschrift.",
+          "computation": "The letter states a separate posting date, 'Aufgabe zur Post: Samstag, 21.11.2026', so that Saturday counts as the posting day (not the Bescheid date 20.11.2026). For tax offices, delivery is deemed on the 4th day after posting: 21.11 (+1)=22.11 Sun, (+2)=23.11 Mon, (+3)=24.11 Tue, (+4)=25.11 Wed. 25.11.2026 is a Wednesday, not a Saturday/Sunday/holiday, so the deemed delivery (Bekanntgabe) day stays 25.11.2026 (§108 Abs.3 AO only moves it if the 4th day itself falls on a weekend/holiday). The one-month Einspruch period under §355 Abs.1 AO starts the day after delivery and ends, per §188 Abs.2 BGB, on the day with the same number one month later: 25.12.2026. That day is 1. Weihnachtstag (nationwide holiday); the next day 26.12.2026 is 2. Weihnachtstag (also a holiday); 27.12.2026 is a Sunday; so under §108 Abs.3 AO the period ends on the next working day, Monday 28.12.2026.",
+          "due_date": "2026-12-28",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "1st quarterly income-tax prepayment 2027",
+          "quote": "setzen wir die Vorauszahlungen zur Einkommensteuer ab 2027 auf 1.120,00 € je Quartal fest, fällig jeweils am 10.03., 10.06., 10.09. und 10.12.",
+          "computation": "Calendar date printed in the letter is used as written. 10.03.2027 falls on a Wednesday, not a weekend or holiday, so no shift applies.",
+          "due_date": "2027-03-10",
+          "confidence": "high",
+          "amount": 1120
+        },
+        {
+          "kind": "payment",
+          "title": "2nd quarterly income-tax prepayment 2027",
+          "quote": "setzen wir die Vorauszahlungen zur Einkommensteuer ab 2027 auf 1.120,00 € je Quartal fest, fällig jeweils am 10.03., 10.06., 10.09. und 10.12.",
+          "computation": "Calendar date printed in the letter is used as written. 10.06.2027 falls on a Thursday (Fronleichnam/Corpus Christi 2027 falls on 06.06.2027, not 10.06.), so no shift applies.",
+          "due_date": "2027-06-10",
+          "confidence": "high",
+          "amount": 1120
+        },
+        {
+          "kind": "payment",
+          "title": "3rd quarterly income-tax prepayment 2027",
+          "quote": "setzen wir die Vorauszahlungen zur Einkommensteuer ab 2027 auf 1.120,00 € je Quartal fest, fällig jeweils am 10.03., 10.06., 10.09. und 10.12.",
+          "computation": "Calendar date printed in the letter is used as written. 10.09.2027 falls on a Friday, not a weekend or holiday, so no shift applies.",
+          "due_date": "2027-09-10",
+          "confidence": "high",
+          "amount": 1120
+        },
+        {
+          "kind": "payment",
+          "title": "4th quarterly income-tax prepayment 2027",
+          "quote": "setzen wir die Vorauszahlungen zur Einkommensteuer ab 2027 auf 1.120,00 € je Quartal fest, fällig jeweils am 10.03., 10.06., 10.09. und 10.12.",
+          "computation": "Calendar date printed in the letter is used as written. 10.12.2027 falls on a Friday, not a weekend or holiday, so no shift applies.",
+          "due_date": "2027-12-10",
+          "confidence": "high",
+          "amount": 1120
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "These quarterly prepayments (10.03./10.06./10.09./10.12.) are set 'ab dem Kalenderjahr 2027' and will recur every year at the same dates until the Finanzamt issues a new or revised assessment; only the four 2027 dates are listed here.",
+        "The letter offers an optional procedure to request an adjustment if income has changed significantly ('können Sie unter Vorlage einer Prognose eine Anpassung beantragen'), but gives no deadline for this, so no item was created for it."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 5175,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1655,
+      "cost_usd": 0.05948,
+      "duration_ms": 46930,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

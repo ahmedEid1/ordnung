@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"63a156c80ea39790e22c1ff4a270e55f09d7106f32045e42f31e9c25793202eb\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-social_decision-K2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:59:20+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Unfallkasse Beispiel-Mitte\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"UK 26/41187-S\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the Bescheid\",\"quote\":\"Gegen diesen Bescheid können Sie innerhalb eines Monats, nachdem er Ihnen bekannt gegeben wurde, Widerspruch erheben.\",\"computation\":\"Letter is dated 20.11.2026 (Friday); the letter states the Bescheid was sent by post. Per the delivery rule the letter itself cites ('ist er am vierten Tag nach dem Absenden bekannt gegeben', § 37 Abs. 2 SGB X), counting from the posting day 20.11.2026: day 1 = 21.11 (Sat), day 2 = 22.11 (Sun), day 3 = 23.11 (Mon), day 4 = 24.11.2026 (Tue) → Bekanntgabe on 24.11.2026. Note: the standard text of § 37 Abs. 2 SGB X actually provides for a THREE-day fiction, not four; the letter's wording diverges from the commonly known statutory text, so this date carries some uncertainty (see warnings). The one-month Widerspruchsfrist (§ 84 SGG) begins the day after Bekanntgabe (§ 187 Abs. 1 BGB), i.e. 25.11.2026, and ends, per § 188 Abs. 2 BGB, on the day of the following month bearing the same number as the day of the triggering event (24.11.) → 24.12.2026. 24.12.2026 is a Thursday and not a statutory public holiday in NRW (Heiligabend is not a legal holiday), so no extension applies.\",\"due_date\":\"2026-12-24\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter states the Bescheid is deemed delivered on the FOURTH day after posting ('am vierten Tag nach dem Absenden'); the standard wording of § 37 Abs. 2 SGB X provides a THREE-day delivery fiction, not four — please verify this against the original Bescheid, as it affects the exact start of the one-month Widerspruchsfrist.\",\"The exact posting (Absende-) date was assumed to equal the printed letter date (20.11.2026); if the letter was actually posted on a different day, the Bekanntgabe date and the Widerspruch deadline shift accordingly.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Unfallkasse Beispiel-Mitte",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "UK 26/41187-S"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the Bescheid",
+          "quote": "Gegen diesen Bescheid können Sie innerhalb eines Monats, nachdem er Ihnen bekannt gegeben wurde, Widerspruch erheben.",
+          "computation": "Letter is dated 20.11.2026 (Friday); the letter states the Bescheid was sent by post. Per the delivery rule the letter itself cites ('ist er am vierten Tag nach dem Absenden bekannt gegeben', § 37 Abs. 2 SGB X), counting from the posting day 20.11.2026: day 1 = 21.11 (Sat), day 2 = 22.11 (Sun), day 3 = 23.11 (Mon), day 4 = 24.11.2026 (Tue) → Bekanntgabe on 24.11.2026. Note: the standard text of § 37 Abs. 2 SGB X actually provides for a THREE-day fiction, not four; the letter's wording diverges from the commonly known statutory text, so this date carries some uncertainty (see warnings). The one-month Widerspruchsfrist (§ 84 SGG) begins the day after Bekanntgabe (§ 187 Abs. 1 BGB), i.e. 25.11.2026, and ends, per § 188 Abs. 2 BGB, on the day of the following month bearing the same number as the day of the triggering event (24.11.) → 24.12.2026. 24.12.2026 is a Thursday and not a statutory public holiday in NRW (Heiligabend is not a legal holiday), so no extension applies.",
+          "due_date": "2026-12-24",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter states the Bescheid is deemed delivered on the FOURTH day after posting ('am vierten Tag nach dem Absenden'); the standard wording of § 37 Abs. 2 SGB X provides a THREE-day delivery fiction, not four — please verify this against the original Bescheid, as it affects the exact start of the one-month Widerspruchsfrist.",
+        "The exact posting (Absende-) date was assumed to equal the printed letter date (20.11.2026); if the letter was actually posted on a different day, the Bekanntgabe date and the Widerspruch deadline shift accordingly."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 5091,
+      "cache_read_tokens": 7985,
+      "cache_creation_tokens": 5653,
+      "cost_usd": 0.07512699999999999,
+      "duration_ms": 55297,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,97 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"07a9ccbd2258f4dc052bae9a2033cbbbe73f4e2fdb560e000bd8ff0587e1f25b\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-adversarial-missing_date-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T10:57:01+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Beispielkey Lettings GmbH\",\"document_date\":null,\"items\":[{\"kind\":\"payment\",\"title\":\"Pay for professional cleaning (kitchen and bathroom)\",\"quote\":\"Please pay this amount within 14 days of receiving this letter.\",\"computation\":\"The period is 14 days starting from the day the letter is received (Zugang), not from a printed document date — the letter carries no date at all. No receipt date was given either, so under §§ 187, 188 BGB the day after receipt starts the count and the 14th day thereafter (shifted to the next business day in NW if it falls on a weekend or holiday) would be due, but without a document date or a stated/known receipt date the start of the period cannot be fixed. The due date is therefore left undetermined; once the actual receipt date is known, add 14 days (day of receipt not counted, §187 Abs.1 BGB) and shift to the next working day if needed.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":240}],\"remedy_type\":\"none\",\"contract\":null,\"references\":[{\"label\":\"Tenancy\",\"value\":\"BKL-0418\"}],\"amounts\":[240],\"warnings\":[\"The letter itself carries no printed date (no “Datum” field), and the actual day it was received is not stated, so the 14-day payment deadline cannot be computed exactly — confirm the date you actually received this letter and count 14 days from the day after that.\",\"This is a demand from the landlord (a private company), not from a German authority, so no statutory deemed-delivery rule applies; the countdown starts on actual receipt.\",\"The IBAN (DE95 3705 0198 0005 5505 00) is well-formed and matches a German bank, but a valid IBAN does not prove the account belongs to Beispielkey Lettings GmbH — verify it against a previous tenancy document or the company's official contact before paying, especially since this introduces a new payment obligation deducted-from/affecting your deposit.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Beispielkey Lettings GmbH",
+      "document_date": null,
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay for professional cleaning (kitchen and bathroom)",
+          "quote": "Please pay this amount within 14 days of receiving this letter.",
+          "computation": "The period is 14 days starting from the day the letter is received (Zugang), not from a printed document date — the letter carries no date at all. No receipt date was given either, so under §§ 187, 188 BGB the day after receipt starts the count and the 14th day thereafter (shifted to the next business day in NW if it falls on a weekend or holiday) would be due, but without a document date or a stated/known receipt date the start of the period cannot be fixed. The due date is therefore left undetermined; once the actual receipt date is known, add 14 days (day of receipt not counted, §187 Abs.1 BGB) and shift to the next working day if needed.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 240
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "references": [
+        {
+          "label": "Tenancy",
+          "value": "BKL-0418"
+        }
+      ],
+      "amounts": [
+        240
+      ],
+      "warnings": [
+        "The letter itself carries no printed date (no “Datum” field), and the actual day it was received is not stated, so the 14-day payment deadline cannot be computed exactly — confirm the date you actually received this letter and count 14 days from the day after that.",
+        "This is a demand from the landlord (a private company), not from a German authority, so no statutory deemed-delivery rule applies; the countdown starts on actual receipt.",
+        "The IBAN (DE95 3705 0198 0005 5505 00) is well-formed and matches a German bank, but a valid IBAN does not prove the account belongs to Beispielkey Lettings GmbH — verify it against a previous tenancy document or the company's official contact before paying, especially since this introduces a new payment obligation deducted-from/affecting your deposit."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1762,
+      "cache_read_tokens": 14462,
+      "cache_creation_tokens": 3304,
+      "cost_usd": 0.0337364,
+      "duration_ms": 21405,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 14,
+            "unit": "days",
+            "anchor": "receipt",
+            "nature": "payment",
+            "shift_rule": "auto",
+            "legal_basis": "§§ 187, 188 BGB (Zugang/Empfang)",
+            "text": "Please pay this amount within 14 days of receiving this letter."
+          },
+          "document_date": null,
+          "received_date": null,
+          "sender_kind": "company",
+          "sender_name": "Beispielkey Lettings GmbH",
+          "region": "NW",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":null,\"summary\":\"No date could be computed: the start date is missing.\",\"confidence\":\"low\",\"warnings\":[\"The period runs from the day the letter arrived, and neither that day nor the letter's date was given.\"],\"steps\":[],\"rules\":[],\"assumed\":{\"today\":\"2026-11-24\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"recipient_region: a payment to a company or person is made where the payer lives (§§ 269, 270 Abs. 4 BGB), so that Land's holidays apply\"},\"hints\":[\"Pass document_date: the date printed on the letter, which the period counts from.\",\"Pass received_date if you know the day the letter arrived; until then the letter's date is used (the earliest plausible start).\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE95 3705 0198 0005 5505 00"
+        },
+        "result": "{\"iban\":\"DE95 3705 0198 0005 5505 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005550500\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

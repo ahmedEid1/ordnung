@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"181886bbc9faa25b4544c4952981ff900cf4bc4a17772ae0cda0df457ae5a762\",\"mode\":\"text\",\"region\":\"HH\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-municipal_decision-N2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hamburg (HH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> ta",
+    "recorded_at": "2026-11-24T11:47:41+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2026-11-19\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against refusal\",\"quote\":\"Er muss innerhalb eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift beim Bezirksamt Beispielbek, Marktplatz am Bach 1, 22081 Hamburg erhoben werden.\",\"computation\":\"Letter dated Thu 19.11.2026, sent by a general Hamburg authority (Bezirksamt, not Finanzamt). Delivery fiction per § 41 Abs. 2 HmbVwVfG: 4th day after posting = 19.11 + 4 days = 23.11.2026 (Sunday). For non-tax authorities the delivery day does NOT move even if it falls on a weekend/holiday, so Bekanntgabe = 23.11.2026. One-month Widerspruch period starts the day after Bekanntgabe (§187 BGB analog) and ends on the day with the same calendar number one month later (§188 Abs.2 BGB): 23.11.2026 + 1 month = 23.12.2026 (Wednesday). 23.12 is not a Saturday, Sunday or public holiday in Hamburg, so no shift under §31 Abs.3 HmbVwVfG/§193 BGB applies. Final deadline: 23.12.2026.\",\"due_date\":\"2026-12-23\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"authority_letter\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"VS 22/0619-26\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Bezirksamt Beispielbek – Fachamt Verbraucherschutz, Gewerbe und Umwelt\",\"warnings\":[]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2026-11-19",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against refusal",
+          "quote": "Er muss innerhalb eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift beim Bezirksamt Beispielbek, Marktplatz am Bach 1, 22081 Hamburg erhoben werden.",
+          "computation": "Letter dated Thu 19.11.2026, sent by a general Hamburg authority (Bezirksamt, not Finanzamt). Delivery fiction per § 41 Abs. 2 HmbVwVfG: 4th day after posting = 19.11 + 4 days = 23.11.2026 (Sunday). For non-tax authorities the delivery day does NOT move even if it falls on a weekend/holiday, so Bekanntgabe = 23.11.2026. One-month Widerspruch period starts the day after Bekanntgabe (§187 BGB analog) and ends on the day with the same calendar number one month later (§188 Abs.2 BGB): 23.11.2026 + 1 month = 23.12.2026 (Wednesday). 23.12 is not a Saturday, Sunday or public holiday in Hamburg, so no shift under §31 Abs.3 HmbVwVfG/§193 BGB applies. Final deadline: 23.12.2026.",
+          "due_date": "2026-12-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "authority_letter",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "VS 22/0619-26"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Bezirksamt Beispielbek – Fachamt Verbraucherschutz, Gewerbe und Umwelt",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1441,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1903,
+      "cost_usd": 0.023132,
+      "duration_ms": 15606,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

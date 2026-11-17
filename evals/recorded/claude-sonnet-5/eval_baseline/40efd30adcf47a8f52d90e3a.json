@@ -1,0 +1,83 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"a3ad77112795e52a4bd21aee3668d8701e0da567e7c0ecf42f0f27becb610266\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-year_boundary-K1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T12:15:41+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Familienkasse Beispielweser\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Kindergeldnummer\",\"value\":\"377FK104258\"}],\"amounts\":[259],\"items\":[{\"kind\":\"deadline\",\"title\":\"Objection (Einspruch) against cessation of Kindergeld\",\"quote\":\"Gegen diesen Bescheid kann binnen eines Monats nach Bekanntgabe Einspruch bei der Familienkasse Beispielweser eingelegt werden, schriftlich, elektronisch oder zur Niederschrift.\",\"computation\":\"The letter states a separate posting date ('Aufgabe zur Post'): Saturday, 21.11.2026 - this stated day counts as the posting day, overriding the printed Bescheid date. Kindergeld decisions of a Familienkasse follow the tax-office delivery-fiction rule (deemed delivered on the 4th day after posting, moved to the next working day if that 4th day is a Saturday, Sunday or holiday; posting on/after 1 Jan 2025). Counting from Sat 21.11.2026: day1=Sun 22.11, day2=Mon 23.11, day3=Tue 24.11, day4=Wed 25.11.2026 - a normal working day, so delivery is deemed on Wed 25.11.2026. Under §§187 Abs.1, 188 Abs.2 BGB (via §108 Abs.1 AO) the day of delivery is not counted for starting the period, and the one-month period ends on the day with the same number in the following month: 25.12.2026. That day (25 Dec) is Christmas Day, a nationwide public holiday, and falls on a Friday; the next day (26 Dec, 2nd Christmas Day) is also a holiday and a Saturday; 27 Dec is a Sunday. Per §108 Abs.3 AO the period is extended to the next working day: Monday, 28.12.2026.\",\"due_date\":\"2026-12-28\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Last month Kindergeld is still paid\",\"quote\":\"Bis einschließlich Dezember 2026 zahlen wir das Kindergeld von 259,00 € im Monat weiter.\",\"computation\":\"The letter states Kindergeld of €259.00/month continues to be paid up to and including December 2026; the last covered month ends on its last calendar day.\",\"due_date\":\"2026-12-31\",\"confidence\":\"high\",\"amount\":259},{\"kind\":\"expiry\",\"title\":\"Kindergeld entitlement ends\",\"quote\":\"Nach Abschluss der Ausbildung besteht nach § 32 Abs. 4 EStG kein Anspruch mehr; die Festsetzung heben wir deshalb mit Wirkung ab 01.01.2027 auf.\",\"computation\":\"The Bescheid explicitly sets the effective date of the cessation (Aufhebung) as the stated calendar date.\",\"due_date\":\"2027-01-01\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The sender's address, the recipient's address and several names in this letter (e.g. 'Musterholzminden', 'Beispielwetzlar', 'Musterquell', 'Landesmusterbank') look like placeholder/template text rather than a real organisation or person; verify this is a genuine Familienkasse letter before relying on it.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Familienkasse Beispielweser",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Kindergeldnummer",
+          "value": "377FK104258"
+        }
+      ],
+      "amounts": [
+        259
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Objection (Einspruch) against cessation of Kindergeld",
+          "quote": "Gegen diesen Bescheid kann binnen eines Monats nach Bekanntgabe Einspruch bei der Familienkasse Beispielweser eingelegt werden, schriftlich, elektronisch oder zur Niederschrift.",
+          "computation": "The letter states a separate posting date ('Aufgabe zur Post'): Saturday, 21.11.2026 - this stated day counts as the posting day, overriding the printed Bescheid date. Kindergeld decisions of a Familienkasse follow the tax-office delivery-fiction rule (deemed delivered on the 4th day after posting, moved to the next working day if that 4th day is a Saturday, Sunday or holiday; posting on/after 1 Jan 2025). Counting from Sat 21.11.2026: day1=Sun 22.11, day2=Mon 23.11, day3=Tue 24.11, day4=Wed 25.11.2026 - a normal working day, so delivery is deemed on Wed 25.11.2026. Under §§187 Abs.1, 188 Abs.2 BGB (via §108 Abs.1 AO) the day of delivery is not counted for starting the period, and the one-month period ends on the day with the same number in the following month: 25.12.2026. That day (25 Dec) is Christmas Day, a nationwide public holiday, and falls on a Friday; the next day (26 Dec, 2nd Christmas Day) is also a holiday and a Saturday; 27 Dec is a Sunday. Per §108 Abs.3 AO the period is extended to the next working day: Monday, 28.12.2026.",
+          "due_date": "2026-12-28",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Last month Kindergeld is still paid",
+          "quote": "Bis einschließlich Dezember 2026 zahlen wir das Kindergeld von 259,00 € im Monat weiter.",
+          "computation": "The letter states Kindergeld of €259.00/month continues to be paid up to and including December 2026; the last covered month ends on its last calendar day.",
+          "due_date": "2026-12-31",
+          "confidence": "high",
+          "amount": 259
+        },
+        {
+          "kind": "expiry",
+          "title": "Kindergeld entitlement ends",
+          "quote": "Nach Abschluss der Ausbildung besteht nach § 32 Abs. 4 EStG kein Anspruch mehr; die Festsetzung heben wir deshalb mit Wirkung ab 01.01.2027 auf.",
+          "computation": "The Bescheid explicitly sets the effective date of the cessation (Aufhebung) as the stated calendar date.",
+          "due_date": "2027-01-01",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The sender's address, the recipient's address and several names in this letter (e.g. 'Musterholzminden', 'Beispielwetzlar', 'Musterquell', 'Landesmusterbank') look like placeholder/template text rather than a real organisation or person; verify this is a genuine Familienkasse letter before relying on it."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 5716,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1673,
+      "cost_usd": 0.06496199999999999,
+      "duration_ms": 56073,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

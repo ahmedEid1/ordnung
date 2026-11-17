@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"519fe78cf30c0fec50e203f0879878fbe5ad32de93087d8267d7cb056e00920e\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}|repeat=3",
+    "attachments": [],
+    "doc_ids": [
+      "holdout4-relative_business_days-N1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T11:57:09+00:00",
+    "repeat": 3,
+    "commit": "917dc7fa",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Kita-Verbund Beispielkinder gGmbH\",\"document_date\":\"2026-11-19\",\"references\":[{\"label\":\"Vormerkung\",\"value\":\"KV-2026-0815\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Accept or decline the offered daycare place\",\"quote\":\"Bitte sagen Sie uns binnen 12 Arbeitstagen ab dem Datum dieses Briefes zu oder ab.\",\"computation\":\"The letter is dated Thursday 19.11.2026 and explicitly states the 12-working-day period runs 'ab dem Datum dieses Briefes' (from the date of this letter itself), counting Monday-Friday only, holidays disregarded (none fall in this window in NW anyway). Because the period is tied to the beginning of a named calendar day rather than to an external event (such as receipt), §187 Abs. 2 BGB applies, so the day of the letter (19.11.2026, a Thursday) counts as working day 1. Counting forward, skipping Sat/Sun: 19.11.(Thu,1), 20.11.(Fri,2), 23.11.(Mon,3), 24.11.(Tue,4), 25.11.(Wed,5), 26.11.(Thu,6), 27.11.(Fri,7), 30.11.(Mon,8), 01.12.(Tue,9), 02.12.(Wed,10), 03.12.(Thu,11), 04.12.(Fri,12). That makes the 12th working day Friday 04.12.2026. (Alternative reading under §187 Abs. 1 BGB, treating the letter's issuance as an event and excluding 19.11. from the count, would instead give Monday 07.12.2026.) The earlier, safer date is used here.\",\"due_date\":\"2026-12-04\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The counting method for the '12 Arbeitstage ab dem Datum dieses Briefes' is ambiguous: depending on whether the letter's own date (19.11.2026) is counted as the first working day (§187 Abs. 2 BGB) or excluded (§187 Abs. 1 BGB), the deadline falls on either 04.12.2026 or 07.12.2026; the earlier date (04.12.2026) was used to be safe, and the user should reply as early as possible well before either date.\",\"This is a private company (a childcare provider), not a public authority, so the statutory 3-day postal delivery fiction for administrative letters does not apply; however the letter sidesteps the delivery question entirely by starting the period from the letter's printed date rather than from receipt.\"]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Kita-Verbund Beispielkinder gGmbH",
+      "document_date": "2026-11-19",
+      "references": [
+        {
+          "label": "Vormerkung",
+          "value": "KV-2026-0815"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Accept or decline the offered daycare place",
+          "quote": "Bitte sagen Sie uns binnen 12 Arbeitstagen ab dem Datum dieses Briefes zu oder ab.",
+          "computation": "The letter is dated Thursday 19.11.2026 and explicitly states the 12-working-day period runs 'ab dem Datum dieses Briefes' (from the date of this letter itself), counting Monday-Friday only, holidays disregarded (none fall in this window in NW anyway). Because the period is tied to the beginning of a named calendar day rather than to an external event (such as receipt), §187 Abs. 2 BGB applies, so the day of the letter (19.11.2026, a Thursday) counts as working day 1. Counting forward, skipping Sat/Sun: 19.11.(Thu,1), 20.11.(Fri,2), 23.11.(Mon,3), 24.11.(Tue,4), 25.11.(Wed,5), 26.11.(Thu,6), 27.11.(Fri,7), 30.11.(Mon,8), 01.12.(Tue,9), 02.12.(Wed,10), 03.12.(Thu,11), 04.12.(Fri,12). That makes the 12th working day Friday 04.12.2026. (Alternative reading under §187 Abs. 1 BGB, treating the letter's issuance as an event and excluding 19.11. from the count, would instead give Monday 07.12.2026.) The earlier, safer date is used here.",
+          "due_date": "2026-12-04",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The counting method for the '12 Arbeitstage ab dem Datum dieses Briefes' is ambiguous: depending on whether the letter's own date (19.11.2026) is counted as the first working day (§187 Abs. 2 BGB) or excluded (§187 Abs. 1 BGB), the deadline falls on either 04.12.2026 or 07.12.2026; the earlier date (04.12.2026) was used to be safe, and the user should reply as early as possible well before either date.",
+        "This is a private company (a childcare provider), not a public authority, so the statutory 3-day postal delivery fiction for administrative letters does not apply; however the letter sidesteps the delivery question entirely by starting the period from the letter's printed date rather than from receipt."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 5567,
+      "cache_read_tokens": 7748,
+      "cache_creation_tokens": 5932,
+      "cost_usd": 0.08095559999999999,
+      "duration_ms": 54369,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}
