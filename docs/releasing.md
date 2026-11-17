@@ -70,7 +70,7 @@ change to the README also changes what that page links to.
 The next change goes under a new `## Unreleased` heading again (CONTRIBUTING.md).
 
 **A version named before its tag.** A version can be named a while before it is tagged, as 0.4.0 was at the
-freeze of the pre-registered evaluation, whose publication its tag waits for. Its section then says so ("The
+freeze of the pre-registered evaluation, whose publication its tag waited for. Its section then says so ("The
 `vX.Y.Z` tag and its GitHub release follow once …; until then, install this version by its commit"), and until
 the tag every change goes under `## X.Y.Z`, not under `## Unreleased`, which stays empty: step 1 refuses a tag
 with anything listed above the version. The pull request whose merge is tagged sets the section's date to the day

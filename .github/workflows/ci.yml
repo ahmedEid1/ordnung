@@ -90,8 +90,8 @@ jobs:
         run: .venv/bin/pytest tests/test_rules_*.py --cov=ordnung.rules --cov-branch --cov-report=term-missing:skip-covered --cov-fail-under=100
       - name: Benchmark (replayed, deterministic)
         # the gates of this step and the next ask for as many right dates as the published replay of the
-        # current code gives on each split, and none dangerously late ("with_land" in the file the step after
-        # them compares with; tests/test_ci_workflow.py checks each gate against it)
+        # current code gives on each split, and none dangerously late ("with_land" in the file the without-Land
+        # step below compares with; tests/test_ci_workflow.py checks each gate against it)
         run: .venv/bin/ordnung eval --min-accuracy 0.98 --max-dangerous-late 0
       - name: Benchmark replayed on the holdout, holdout2 and dev splits (Ordnung alone, no model calls)
         run: |
