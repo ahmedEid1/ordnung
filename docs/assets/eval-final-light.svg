@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="740" height="299" viewBox="0 0 740 299" role="img" aria-labelledby="final-light-w-t final-light-w-d" font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+<title id="final-light-w-t">The final run: exact date and harm, over its reads</title>
+<desc id="final-light-w-d">Dot plot of the final run, 112 deadlines read 3 times: each condition's mean over the reads with its 95 % interval, and each read. LLM + rules tool: 98.8 % exactly right (96.6–100.0; reads 99.1 · 98.2 · 99.1), 1.2 % late or missed (0.0–3.4; reads 0.9 · 1.8 · 0.9). LLM + rules text: 97.9 % exactly right (95.4–99.7; reads 98.2 · 98.2 · 97.3), 1.8 % late or missed (0.0–4.3; reads 0.9 · 1.8 · 2.7). Ordnung: 92.9 % exactly right (87.0–97.4; reads 92.9 · 92.9 · 92.9), 1.2 % late or missed (0.0–3.5; reads 0.9 · 0.9 · 1.8). LLM only: 87.8 % exactly right (82.2–92.9; reads 90.2 · 86.6 · 86.6), 6.5 % late or missed (2.4–11.4; reads 5.4 · 7.1 · 7.1).</desc>
+<rect width="740" height="299" style="fill:#fcfcfb"/>
+<text x="16" y="26" style="fill:#0b0b0b" font-size="15" font-weight="600" text-anchor="start">The final run: exact date and harm, over its reads</text>
+<text x="16" y="46" style="fill:#52514e" font-size="12" font-weight="400" text-anchor="start">112 deadlines in 126 synthetic letters · 3 reads · holdout4 · claude-sonnet-5 · 95 % CI, letter-cluster</text>
+<text x="16" y="63" style="fill:#52514e" font-size="12" font-weight="400" text-anchor="start">bootstrap (percentile)</text>
+<polygon points="22,113.3 29.7,121 22,128.7 14.3,121" style="fill:#008300;stroke:#fcfcfb;stroke-width:2"><title>LLM + rules tool</title></polygon>
+<text x="34" y="125.5" style="fill:#0b0b0b" font-size="13" font-weight="400" text-anchor="start">LLM + rules tool</text>
+<rect x="17.2" y="150.2" width="9.6" height="9.6" rx="1" style="fill:#eda100;stroke:#fcfcfb;stroke-width:2"><title>LLM + rules text</title></rect>
+<text x="34" y="159.5" style="fill:#0b0b0b" font-size="13" font-weight="400" text-anchor="start">LLM + rules text</text>
+<circle cx="22" cy="189" r="5.5" style="fill:#2a78d6;stroke:#fcfcfb;stroke-width:2"><title>Ordnung</title></circle>
+<text x="34" y="193.5" style="fill:#0b0b0b" font-size="13" font-weight="600" text-anchor="start">Ordnung</text>
+<polygon points="22,215.6 29.4,228.9 14.6,228.9" style="fill:#e87ba4;stroke:#fcfcfb;stroke-width:2"><title>LLM only</title></polygon>
+<text x="34" y="227.5" style="fill:#0b0b0b" font-size="13" font-weight="400" text-anchor="start">LLM only</text>
+<text x="190" y="91" style="fill:#0b0b0b" font-size="12" font-weight="600" text-anchor="start">Exact date right</text>
+<line x1="190" y1="107" x2="190" y2="238" style="stroke:#e1e0d9;stroke-width:1"/>
+<text x="190" y="253" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">80 %</text>
+<line x1="252.5" y1="107" x2="252.5" y2="238" style="stroke:#e1e0d9;stroke-width:1"/>
+<text x="252.5" y="253" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">85 %</text>
+<line x1="315" y1="107" x2="315" y2="238" style="stroke:#e1e0d9;stroke-width:1"/>
+<text x="315" y="253" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">90 %</text>
+<line x1="377.5" y1="107" x2="377.5" y2="238" style="stroke:#e1e0d9;stroke-width:1"/>
+<text x="377.5" y="253" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">95 %</text>
+<line x1="440" y1="107" x2="440" y2="238" style="stroke:#e1e0d9;stroke-width:1"/>
+<text x="440" y="253" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">100 %</text>
+<circle cx="428.8" cy="121" r="3.5" style="fill:none;stroke:#52514e;stroke-width:1.5"><title>LLM + rules tool, read 1 alone: 99.1 %</title></circle>
+<circle cx="417.7" cy="121" r="3.5" style="fill:none;stroke:#52514e;stroke-width:1.5"><title>LLM + rules tool, read 2 alone: 98.2 %</title></circle>
+<circle cx="428.8" cy="121" r="3.5" style="fill:none;stroke:#52514e;stroke-width:1.5"><title>LLM + rules tool, read 3 alone: 99.1 %</title></circle>
+<line x1="397.3" y1="121" x2="440" y2="121" style="stroke:#008300;stroke-width:2;stroke-linecap:round"/>
+<polygon points="425.1,113.3 432.8,121 425.1,128.7 417.4,121" style="fill:#008300;stroke:#fcfcfb;stroke-width:2"><title>LLM + rules tool: 98.8 % exactly right, the mean over the reads, 95 % CI 96.6–100.0</title></polygon>
+<circle cx="417.7" cy="155" r="3.5" style="fill:none;stroke:#52514e;stroke-width:1.5"><title>LLM + rules text, read 1 alone: 98.2 %</title></circle>
+<circle cx="417.7" cy="155" r="3.5" style="fill:none;stroke:#52514e;stroke-width:1.5"><title>LLM + rules text, read 2 alone: 98.2 %</title></circle>
+<circle cx="406.5" cy="155" r="3.5" style="fill:none;stroke:#52514e;stroke-width:1.5"><title>LLM + rules text, read 3 alone: 97.3 %</title></circle>
+<line x1="382.1" y1="155" x2="436.4" y2="155" style="stroke:#eda100;stroke-width:2;stroke-linecap:round"/>
+<rect x="409.1" y="150.2" width="9.6" height="9.6" rx="1" style="fill:#eda100;stroke:#fcfcfb;stroke-width:2"><title>LLM + rules text: 97.9 % exactly right, the mean over the reads, 95 % CI 95.4–99.7</title></rect>
+<circle cx="350.7" cy="189" r="3.5" style="fill:none;stroke:#52514e;stroke-width:1.5"><title>Ordnung, read 1 alone: 92.9 %</title></circle>
+<circle cx="350.7" cy="189" r="3.5" style="fill:none;stroke:#52514e;stroke-width:1.5"><title>Ordnung, read 2 alone: 92.9 %</title></circle>
+<circle cx="350.7" cy="189" r="3.5" style="fill:none;stroke:#52514e;stroke-width:1.5"><title>Ordnung, read 3 alone: 92.9 %</title></circle>
+<line x1="277" y1="189" x2="407.7" y2="189" style="stroke:#2a78d6;stroke-width:2;stroke-linecap:round"/>
+<circle cx="350.7" cy="189" r="5.5" style="fill:#2a78d6;stroke:#fcfcfb;stroke-width:2"><title>Ordnung: 92.9 % exactly right, the mean over the reads, 95 % CI 87.0–97.4</title></circle>
+<circle cx="317.2" cy="223" r="3.5" style="fill:none;stroke:#52514e;stroke-width:1.5"><title>LLM only, read 1 alone: 90.2 %</title></circle>
+<circle cx="272.6" cy="223" r="3.5" style="fill:none;stroke:#52514e;stroke-width:1.5"><title>LLM only, read 2 alone: 86.6 %</title></circle>
+<circle cx="272.6" cy="223" r="3.5" style="fill:none;stroke:#52514e;stroke-width:1.5"><title>LLM only, read 3 alone: 86.6 %</title></circle>
+<line x1="217" y1="223" x2="351" y2="223" style="stroke:#e87ba4;stroke-width:2;stroke-linecap:round"/>
+<polygon points="287.5,215.6 294.9,228.9 280,228.9" style="fill:#e87ba4;stroke:#fcfcfb;stroke-width:2"><title>LLM only: 87.8 % exactly right, the mean over the reads, 95 % CI 82.2–92.9</title></polygon>
+<text x="508" y="125.5" style="fill:#0b0b0b" font-size="12" font-weight="400" text-anchor="end">98.8 %</text>
+<text x="508" y="159.5" style="fill:#0b0b0b" font-size="12" font-weight="400" text-anchor="end">97.9 %</text>
+<text x="508" y="193.5" style="fill:#0b0b0b" font-size="12" font-weight="400" text-anchor="end">92.9 %</text>
+<text x="508" y="227.5" style="fill:#0b0b0b" font-size="12" font-weight="400" text-anchor="end">87.8 %</text>
+<text x="560" y="91" style="fill:#0b0b0b" font-size="12" font-weight="600" text-anchor="start">Late or missed (harmful)</text>
+<line x1="560" y1="107" x2="560" y2="238" style="stroke:#e1e0d9;stroke-width:1"/>
+<text x="560" y="253" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">0 %</text>
+<line x1="626.7" y1="107" x2="626.7" y2="238" style="stroke:#e1e0d9;stroke-width:1"/>
+<text x="626.7" y="253" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">10 %</text>
+<circle cx="566" cy="121" r="3.5" style="fill:none;stroke:#52514e;stroke-width:1.5"><title>LLM + rules tool, read 1 alone: 0.9 %</title></circle>
+<circle cx="571.9" cy="121" r="3.5" style="fill:none;stroke:#52514e;stroke-width:1.5"><title>LLM + rules tool, read 2 alone: 1.8 %</title></circle>
+<circle cx="566" cy="121" r="3.5" style="fill:none;stroke:#52514e;stroke-width:1.5"><title>LLM + rules tool, read 3 alone: 0.9 %</title></circle>
+<line x1="560" y1="121" x2="582.8" y2="121" style="stroke:#008300;stroke-width:2;stroke-linecap:round"/>
+<polygon points="567.9,113.3 575.6,121 567.9,128.7 560.2,121" style="fill:#008300;stroke:#fcfcfb;stroke-width:2"><title>LLM + rules tool: 1.2 % late or missed, the mean over the reads, 95 % CI 0.0–3.4</title></polygon>
+<circle cx="566" cy="155" r="3.5" style="fill:none;stroke:#52514e;stroke-width:1.5"><title>LLM + rules text, read 1 alone: 0.9 %</title></circle>
+<circle cx="571.9" cy="155" r="3.5" style="fill:none;stroke:#52514e;stroke-width:1.5"><title>LLM + rules text, read 2 alone: 1.8 %</title></circle>
+<circle cx="577.9" cy="155" r="3.5" style="fill:none;stroke:#52514e;stroke-width:1.5"><title>LLM + rules text, read 3 alone: 2.7 %</title></circle>
+<line x1="560" y1="155" x2="588.5" y2="155" style="stroke:#eda100;stroke-width:2;stroke-linecap:round"/>
+<rect x="567.1" y="150.2" width="9.6" height="9.6" rx="1" style="fill:#eda100;stroke:#fcfcfb;stroke-width:2"><title>LLM + rules text: 1.8 % late or missed, the mean over the reads, 95 % CI 0.0–4.3</title></rect>
+<circle cx="566" cy="189" r="3.5" style="fill:none;stroke:#52514e;stroke-width:1.5"><title>Ordnung, read 1 alone: 0.9 %</title></circle>
+<circle cx="566" cy="189" r="3.5" style="fill:none;stroke:#52514e;stroke-width:1.5"><title>Ordnung, read 2 alone: 0.9 %</title></circle>
+<circle cx="571.9" cy="189" r="3.5" style="fill:none;stroke:#52514e;stroke-width:1.5"><title>Ordnung, read 3 alone: 1.8 %</title></circle>
+<line x1="560" y1="189" x2="583.3" y2="189" style="stroke:#2a78d6;stroke-width:2;stroke-linecap:round"/>
+<circle cx="567.9" cy="189" r="5.5" style="fill:#2a78d6;stroke:#fcfcfb;stroke-width:2"><title>Ordnung: 1.2 % late or missed, the mean over the reads, 95 % CI 0.0–3.5</title></circle>
+<circle cx="595.7" cy="223" r="3.5" style="fill:none;stroke:#52514e;stroke-width:1.5"><title>LLM only, read 1 alone: 5.4 %</title></circle>
+<circle cx="607.6" cy="223" r="3.5" style="fill:none;stroke:#52514e;stroke-width:1.5"><title>LLM only, read 2 alone: 7.1 %</title></circle>
+<circle cx="607.6" cy="223" r="3.5" style="fill:none;stroke:#52514e;stroke-width:1.5"><title>LLM only, read 3 alone: 7.1 %</title></circle>
+<line x1="576.3" y1="223" x2="636.2" y2="223" style="stroke:#e87ba4;stroke-width:2;stroke-linecap:round"/>
+<polygon points="603.7,215.6 611.1,228.9 596.2,228.9" style="fill:#e87ba4;stroke:#fcfcfb;stroke-width:2"><title>LLM only: 6.5 % late or missed, the mean over the reads, 95 % CI 2.4–11.4</title></polygon>
+<text x="728" y="125.5" style="fill:#0b0b0b" font-size="12" font-weight="400" text-anchor="end">1.2 %</text>
+<text x="728" y="159.5" style="fill:#0b0b0b" font-size="12" font-weight="400" text-anchor="end">1.8 %</text>
+<text x="728" y="193.5" style="fill:#0b0b0b" font-size="12" font-weight="400" text-anchor="end">1.2 %</text>
+<text x="728" y="227.5" style="fill:#0b0b0b" font-size="12" font-weight="400" text-anchor="end">6.5 %</text>
+<text x="16" y="287" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="start">Dots: the mean over the reads, with its interval. Hollow rings: each read alone. Harmful: the person would act too late, or never.</text>
+</svg>

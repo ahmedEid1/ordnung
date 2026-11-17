@@ -1,0 +1,887 @@
+{
+ "schema": "ordnung-eval-checks-ablated/1",
+ "meta": {
+  "date": "2026-11-24",
+  "model": "claude-sonnet-5",
+  "condition": "ordnung",
+  "backend": "replay",
+  "repeat": 1,
+  "commit": "0700ad70",
+  "dirty": [],
+  "fingerprint": "1b4fe7c855fc0eee",
+  "script": "scripts/eval_ablate_checks.py",
+  "note": "The Ordnung condition's recorded outputs replayed with the checked-out code, once as it ships (all_on) and once per ablation, each switching one function off for the length of the replay (scripts/eval_ablate_checks.py). Counts are of the scored items (a required to-do with a due date); 'flagged' is a date the person is told to check (low confidence or 'Please check'). 'changed' lists every scored item whose date, outcome, flag or confidence differs from all_on. Not every split is out of sample for every check: the two-dates check was written after two holdout letters were read late, so on holdout it acts on the letters that motivated it, while holdout2 and holdout3 were written after it; the reading check and the re-ask were written after a holdout2 letter's empty reading (ADR 0015, 0016), so only holdout3 was written after them; the test and dev splits were seen while the checks were made. No model was called.",
+  "ablations": {
+   "all_on": {
+    "label": "As it ships",
+    "switches_off": []
+   },
+   "no_two_dates_check": {
+    "label": "Two-dates check off",
+    "switches_off": [
+     "ordnung.ingest.plan.settle (the two-dates check and the letter's-own-notice guard)"
+    ]
+   },
+   "no_notice_guard": {
+    "label": "Notice guard off",
+    "switches_off": [
+     "ordnung.ingest.plan._notice_beside (the letter's-own-notice guard)"
+    ]
+   },
+   "no_reask": {
+    "label": "Re-ask off",
+    "switches_off": [
+     "ordnung.ingest.extract.reading_gap_of (the completeness re-ask)"
+    ]
+   },
+   "no_reading_check": {
+    "label": "Reading check off",
+    "switches_off": [
+     "verify_extraction(check_reading=False) (the reading check, the dropped-date check and the notice beside)"
+    ]
+   },
+   "no_reask_no_reading_check": {
+    "label": "Re-ask and reading check off",
+    "switches_off": [
+     "ordnung.ingest.extract.reading_gap_of (the completeness re-ask)",
+     "verify_extraction(check_reading=False) (the reading check, the dropped-date check and the notice beside)"
+    ]
+   },
+   "all_off": {
+    "label": "All code checks off",
+    "switches_off": [
+     "ordnung.ingest.plan.settle (the two-dates check and the letter's-own-notice guard)",
+     "ordnung.ingest.extract.reading_gap_of (the completeness re-ask)",
+     "verify_extraction(check_reading=False) (the reading check, the dropped-date check and the notice beside)"
+    ]
+   }
+  }
+ },
+ "splits": {
+  "holdout4": {
+   "entries": 126,
+   "ablations": {
+    "all_on": {
+     "headline": {
+      "due_date_accuracy": {
+       "value": 0.9285714285714286,
+       "ci": [
+        0.8706816730523628,
+        0.9741434571175951
+       ],
+       "k": 104.0,
+       "n": 112.0,
+       "docs": 108
+      },
+      "dangerous_late_rate": {
+       "value": 0.008928571428571428,
+       "ci": [
+        0.0,
+        0.02857142857142857
+       ],
+       "k": 1.0,
+       "n": 112.0,
+       "docs": 108
+      },
+      "early_rate": {
+       "value": 0.0625,
+       "ci": [
+        0.017857142857142856,
+        0.11628875968992251
+       ],
+       "k": 7.0,
+       "n": 112.0,
+       "docs": 108
+      },
+      "missed_rate": {
+       "value": 0.0,
+       "ci": [
+        0.0,
+        0.04182706666489219
+       ],
+       "k": 0.0,
+       "n": 112.0,
+       "docs": 108
+      }
+     },
+     "counts": {
+      "scored": 112,
+      "right": 104,
+      "early": 7,
+      "late": 1,
+      "missed": 0,
+      "declined": 0,
+      "flagged": 2,
+      "flagged_wrong": 0
+     },
+     "acted": {
+      "two_dates": 2,
+      "notice_guard": 0,
+      "reask": 0,
+      "reading_check": 0,
+      "deadline_check": 0
+     },
+     "changed": []
+    },
+    "no_two_dates_check": {
+     "headline": {
+      "due_date_accuracy": {
+       "value": 0.9196428571428571,
+       "ci": [
+        0.8611050724637682,
+        0.9719691069574248
+       ],
+       "k": 103.0,
+       "n": 112.0,
+       "docs": 108
+      },
+      "dangerous_late_rate": {
+       "value": 0.017857142857142856,
+       "ci": [
+        0.0,
+        0.046296296296296294
+       ],
+       "k": 2.0,
+       "n": 112.0,
+       "docs": 108
+      },
+      "early_rate": {
+       "value": 0.0625,
+       "ci": [
+        0.017857142857142856,
+        0.11628875968992251
+       ],
+       "k": 7.0,
+       "n": 112.0,
+       "docs": 108
+      },
+      "missed_rate": {
+       "value": 0.0,
+       "ci": [
+        0.0,
+        0.04182706666489219
+       ],
+       "k": 0.0,
+       "n": 112.0,
+       "docs": 108
+      }
+     },
+     "counts": {
+      "scored": 112,
+      "right": 103,
+      "early": 7,
+      "late": 2,
+      "missed": 0,
+      "declined": 0,
+      "flagged": 0,
+      "flagged_wrong": 0
+     },
+     "acted": {
+      "two_dates": 0,
+      "notice_guard": 0,
+      "reask": 0,
+      "reading_check": 0,
+      "deadline_check": 0
+     },
+     "changed": [
+      {
+       "entry_id": "holdout4-adversarial-conflicting_dates-1",
+       "family": "adversarial",
+       "item": 0,
+       "expected": "2026-12-09",
+       "all_on": {
+        "predicted": "2026-12-09",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "flagged": true,
+        "confidence": "low"
+       },
+       "ablated": {
+        "predicted": "2026-12-09",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "flagged": false,
+        "confidence": "high"
+       }
+      },
+      {
+       "entry_id": "holdout4-adversarial-conflicting_dates-2",
+       "family": "adversarial",
+       "item": 0,
+       "expected": "2026-12-22",
+       "all_on": {
+        "predicted": "2026-12-22",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "flagged": true,
+        "confidence": "low"
+       },
+       "ablated": {
+        "predicted": "2026-12-24",
+        "outcome": "wrong",
+        "direction": "late",
+        "days_off": 2,
+        "flagged": false,
+        "confidence": "high"
+       }
+      }
+     ]
+    },
+    "no_notice_guard": {
+     "headline": {
+      "due_date_accuracy": {
+       "value": 0.9285714285714286,
+       "ci": [
+        0.8706816730523628,
+        0.9741434571175951
+       ],
+       "k": 104.0,
+       "n": 112.0,
+       "docs": 108
+      },
+      "dangerous_late_rate": {
+       "value": 0.008928571428571428,
+       "ci": [
+        0.0,
+        0.02857142857142857
+       ],
+       "k": 1.0,
+       "n": 112.0,
+       "docs": 108
+      },
+      "early_rate": {
+       "value": 0.0625,
+       "ci": [
+        0.017857142857142856,
+        0.11628875968992251
+       ],
+       "k": 7.0,
+       "n": 112.0,
+       "docs": 108
+      },
+      "missed_rate": {
+       "value": 0.0,
+       "ci": [
+        0.0,
+        0.04182706666489219
+       ],
+       "k": 0.0,
+       "n": 112.0,
+       "docs": 108
+      }
+     },
+     "counts": {
+      "scored": 112,
+      "right": 104,
+      "early": 7,
+      "late": 1,
+      "missed": 0,
+      "declined": 0,
+      "flagged": 2,
+      "flagged_wrong": 0
+     },
+     "acted": {
+      "two_dates": 2,
+      "notice_guard": 0,
+      "reask": 0,
+      "reading_check": 0,
+      "deadline_check": 0
+     },
+     "changed": []
+    },
+    "no_reask": {
+     "headline": {
+      "due_date_accuracy": {
+       "value": 0.9285714285714286,
+       "ci": [
+        0.8706816730523628,
+        0.9741434571175951
+       ],
+       "k": 104.0,
+       "n": 112.0,
+       "docs": 108
+      },
+      "dangerous_late_rate": {
+       "value": 0.008928571428571428,
+       "ci": [
+        0.0,
+        0.02857142857142857
+       ],
+       "k": 1.0,
+       "n": 112.0,
+       "docs": 108
+      },
+      "early_rate": {
+       "value": 0.0625,
+       "ci": [
+        0.017857142857142856,
+        0.11628875968992251
+       ],
+       "k": 7.0,
+       "n": 112.0,
+       "docs": 108
+      },
+      "missed_rate": {
+       "value": 0.0,
+       "ci": [
+        0.0,
+        0.04182706666489219
+       ],
+       "k": 0.0,
+       "n": 112.0,
+       "docs": 108
+      }
+     },
+     "counts": {
+      "scored": 112,
+      "right": 104,
+      "early": 7,
+      "late": 1,
+      "missed": 0,
+      "declined": 0,
+      "flagged": 2,
+      "flagged_wrong": 0
+     },
+     "acted": {
+      "two_dates": 2,
+      "notice_guard": 0,
+      "reask": 0,
+      "reading_check": 0,
+      "deadline_check": 0
+     },
+     "changed": []
+    },
+    "no_reading_check": {
+     "headline": {
+      "due_date_accuracy": {
+       "value": 0.9285714285714286,
+       "ci": [
+        0.8706816730523628,
+        0.9741434571175951
+       ],
+       "k": 104.0,
+       "n": 112.0,
+       "docs": 108
+      },
+      "dangerous_late_rate": {
+       "value": 0.008928571428571428,
+       "ci": [
+        0.0,
+        0.02857142857142857
+       ],
+       "k": 1.0,
+       "n": 112.0,
+       "docs": 108
+      },
+      "early_rate": {
+       "value": 0.0625,
+       "ci": [
+        0.017857142857142856,
+        0.11628875968992251
+       ],
+       "k": 7.0,
+       "n": 112.0,
+       "docs": 108
+      },
+      "missed_rate": {
+       "value": 0.0,
+       "ci": [
+        0.0,
+        0.04182706666489219
+       ],
+       "k": 0.0,
+       "n": 112.0,
+       "docs": 108
+      }
+     },
+     "counts": {
+      "scored": 112,
+      "right": 104,
+      "early": 7,
+      "late": 1,
+      "missed": 0,
+      "declined": 0,
+      "flagged": 2,
+      "flagged_wrong": 0
+     },
+     "acted": {
+      "two_dates": 2,
+      "notice_guard": 0,
+      "reask": 0,
+      "reading_check": 0,
+      "deadline_check": 0
+     },
+     "changed": []
+    },
+    "no_reask_no_reading_check": {
+     "headline": {
+      "due_date_accuracy": {
+       "value": 0.9285714285714286,
+       "ci": [
+        0.8706816730523628,
+        0.9741434571175951
+       ],
+       "k": 104.0,
+       "n": 112.0,
+       "docs": 108
+      },
+      "dangerous_late_rate": {
+       "value": 0.008928571428571428,
+       "ci": [
+        0.0,
+        0.02857142857142857
+       ],
+       "k": 1.0,
+       "n": 112.0,
+       "docs": 108
+      },
+      "early_rate": {
+       "value": 0.0625,
+       "ci": [
+        0.017857142857142856,
+        0.11628875968992251
+       ],
+       "k": 7.0,
+       "n": 112.0,
+       "docs": 108
+      },
+      "missed_rate": {
+       "value": 0.0,
+       "ci": [
+        0.0,
+        0.04182706666489219
+       ],
+       "k": 0.0,
+       "n": 112.0,
+       "docs": 108
+      }
+     },
+     "counts": {
+      "scored": 112,
+      "right": 104,
+      "early": 7,
+      "late": 1,
+      "missed": 0,
+      "declined": 0,
+      "flagged": 2,
+      "flagged_wrong": 0
+     },
+     "acted": {
+      "two_dates": 2,
+      "notice_guard": 0,
+      "reask": 0,
+      "reading_check": 0,
+      "deadline_check": 0
+     },
+     "changed": []
+    },
+    "all_off": {
+     "headline": {
+      "due_date_accuracy": {
+       "value": 0.9196428571428571,
+       "ci": [
+        0.8611050724637682,
+        0.9719691069574248
+       ],
+       "k": 103.0,
+       "n": 112.0,
+       "docs": 108
+      },
+      "dangerous_late_rate": {
+       "value": 0.017857142857142856,
+       "ci": [
+        0.0,
+        0.046296296296296294
+       ],
+       "k": 2.0,
+       "n": 112.0,
+       "docs": 108
+      },
+      "early_rate": {
+       "value": 0.0625,
+       "ci": [
+        0.017857142857142856,
+        0.11628875968992251
+       ],
+       "k": 7.0,
+       "n": 112.0,
+       "docs": 108
+      },
+      "missed_rate": {
+       "value": 0.0,
+       "ci": [
+        0.0,
+        0.04182706666489219
+       ],
+       "k": 0.0,
+       "n": 112.0,
+       "docs": 108
+      }
+     },
+     "counts": {
+      "scored": 112,
+      "right": 103,
+      "early": 7,
+      "late": 2,
+      "missed": 0,
+      "declined": 0,
+      "flagged": 0,
+      "flagged_wrong": 0
+     },
+     "acted": {
+      "two_dates": 0,
+      "notice_guard": 0,
+      "reask": 0,
+      "reading_check": 0,
+      "deadline_check": 0
+     },
+     "changed": [
+      {
+       "entry_id": "holdout4-adversarial-conflicting_dates-1",
+       "family": "adversarial",
+       "item": 0,
+       "expected": "2026-12-09",
+       "all_on": {
+        "predicted": "2026-12-09",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "flagged": true,
+        "confidence": "low"
+       },
+       "ablated": {
+        "predicted": "2026-12-09",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "flagged": false,
+        "confidence": "high"
+       }
+      },
+      {
+       "entry_id": "holdout4-adversarial-conflicting_dates-2",
+       "family": "adversarial",
+       "item": 0,
+       "expected": "2026-12-22",
+       "all_on": {
+        "predicted": "2026-12-22",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "flagged": true,
+        "confidence": "low"
+       },
+       "ablated": {
+        "predicted": "2026-12-24",
+        "outcome": "wrong",
+        "direction": "late",
+        "days_off": 2,
+        "flagged": false,
+        "confidence": "high"
+       }
+      }
+     ]
+    }
+   }
+  }
+ },
+ "totals": {
+  "all": {
+   "splits": [
+    "holdout4"
+   ],
+   "ablations": {
+    "all_on": {
+     "counts": {
+      "scored": 112,
+      "right": 104,
+      "early": 7,
+      "late": 1,
+      "missed": 0,
+      "declined": 0,
+      "flagged": 2,
+      "flagged_wrong": 0
+     },
+     "acted": {
+      "two_dates": 2,
+      "notice_guard": 0,
+      "reask": 0,
+      "reading_check": 0,
+      "deadline_check": 0
+     },
+     "changed": 0
+    },
+    "no_two_dates_check": {
+     "counts": {
+      "scored": 112,
+      "right": 103,
+      "early": 7,
+      "late": 2,
+      "missed": 0,
+      "declined": 0,
+      "flagged": 0,
+      "flagged_wrong": 0
+     },
+     "acted": {
+      "two_dates": 0,
+      "notice_guard": 0,
+      "reask": 0,
+      "reading_check": 0,
+      "deadline_check": 0
+     },
+     "changed": 2
+    },
+    "no_notice_guard": {
+     "counts": {
+      "scored": 112,
+      "right": 104,
+      "early": 7,
+      "late": 1,
+      "missed": 0,
+      "declined": 0,
+      "flagged": 2,
+      "flagged_wrong": 0
+     },
+     "acted": {
+      "two_dates": 2,
+      "notice_guard": 0,
+      "reask": 0,
+      "reading_check": 0,
+      "deadline_check": 0
+     },
+     "changed": 0
+    },
+    "no_reask": {
+     "counts": {
+      "scored": 112,
+      "right": 104,
+      "early": 7,
+      "late": 1,
+      "missed": 0,
+      "declined": 0,
+      "flagged": 2,
+      "flagged_wrong": 0
+     },
+     "acted": {
+      "two_dates": 2,
+      "notice_guard": 0,
+      "reask": 0,
+      "reading_check": 0,
+      "deadline_check": 0
+     },
+     "changed": 0
+    },
+    "no_reading_check": {
+     "counts": {
+      "scored": 112,
+      "right": 104,
+      "early": 7,
+      "late": 1,
+      "missed": 0,
+      "declined": 0,
+      "flagged": 2,
+      "flagged_wrong": 0
+     },
+     "acted": {
+      "two_dates": 2,
+      "notice_guard": 0,
+      "reask": 0,
+      "reading_check": 0,
+      "deadline_check": 0
+     },
+     "changed": 0
+    },
+    "no_reask_no_reading_check": {
+     "counts": {
+      "scored": 112,
+      "right": 104,
+      "early": 7,
+      "late": 1,
+      "missed": 0,
+      "declined": 0,
+      "flagged": 2,
+      "flagged_wrong": 0
+     },
+     "acted": {
+      "two_dates": 2,
+      "notice_guard": 0,
+      "reask": 0,
+      "reading_check": 0,
+      "deadline_check": 0
+     },
+     "changed": 0
+    },
+    "all_off": {
+     "counts": {
+      "scored": 112,
+      "right": 103,
+      "early": 7,
+      "late": 2,
+      "missed": 0,
+      "declined": 0,
+      "flagged": 0,
+      "flagged_wrong": 0
+     },
+     "acted": {
+      "two_dates": 0,
+      "notice_guard": 0,
+      "reask": 0,
+      "reading_check": 0,
+      "deadline_check": 0
+     },
+     "changed": 2
+    }
+   }
+  },
+  "held_out": {
+   "splits": [
+    "holdout4"
+   ],
+   "ablations": {
+    "all_on": {
+     "counts": {
+      "scored": 112,
+      "right": 104,
+      "early": 7,
+      "late": 1,
+      "missed": 0,
+      "declined": 0,
+      "flagged": 2,
+      "flagged_wrong": 0
+     },
+     "acted": {
+      "two_dates": 2,
+      "notice_guard": 0,
+      "reask": 0,
+      "reading_check": 0,
+      "deadline_check": 0
+     },
+     "changed": 0
+    },
+    "no_two_dates_check": {
+     "counts": {
+      "scored": 112,
+      "right": 103,
+      "early": 7,
+      "late": 2,
+      "missed": 0,
+      "declined": 0,
+      "flagged": 0,
+      "flagged_wrong": 0
+     },
+     "acted": {
+      "two_dates": 0,
+      "notice_guard": 0,
+      "reask": 0,
+      "reading_check": 0,
+      "deadline_check": 0
+     },
+     "changed": 2
+    },
+    "no_notice_guard": {
+     "counts": {
+      "scored": 112,
+      "right": 104,
+      "early": 7,
+      "late": 1,
+      "missed": 0,
+      "declined": 0,
+      "flagged": 2,
+      "flagged_wrong": 0
+     },
+     "acted": {
+      "two_dates": 2,
+      "notice_guard": 0,
+      "reask": 0,
+      "reading_check": 0,
+      "deadline_check": 0
+     },
+     "changed": 0
+    },
+    "no_reask": {
+     "counts": {
+      "scored": 112,
+      "right": 104,
+      "early": 7,
+      "late": 1,
+      "missed": 0,
+      "declined": 0,
+      "flagged": 2,
+      "flagged_wrong": 0
+     },
+     "acted": {
+      "two_dates": 2,
+      "notice_guard": 0,
+      "reask": 0,
+      "reading_check": 0,
+      "deadline_check": 0
+     },
+     "changed": 0
+    },
+    "no_reading_check": {
+     "counts": {
+      "scored": 112,
+      "right": 104,
+      "early": 7,
+      "late": 1,
+      "missed": 0,
+      "declined": 0,
+      "flagged": 2,
+      "flagged_wrong": 0
+     },
+     "acted": {
+      "two_dates": 2,
+      "notice_guard": 0,
+      "reask": 0,
+      "reading_check": 0,
+      "deadline_check": 0
+     },
+     "changed": 0
+    },
+    "no_reask_no_reading_check": {
+     "counts": {
+      "scored": 112,
+      "right": 104,
+      "early": 7,
+      "late": 1,
+      "missed": 0,
+      "declined": 0,
+      "flagged": 2,
+      "flagged_wrong": 0
+     },
+     "acted": {
+      "two_dates": 2,
+      "notice_guard": 0,
+      "reask": 0,
+      "reading_check": 0,
+      "deadline_check": 0
+     },
+     "changed": 0
+    },
+    "all_off": {
+     "counts": {
+      "scored": 112,
+      "right": 103,
+      "early": 7,
+      "late": 2,
+      "missed": 0,
+      "declined": 0,
+      "flagged": 0,
+      "flagged_wrong": 0
+     },
+     "acted": {
+      "two_dates": 0,
+      "notice_guard": 0,
+      "reask": 0,
+      "reading_check": 0,
+      "deadline_check": 0
+     },
+     "changed": 2
+    }
+   }
+  }
+ }
+}

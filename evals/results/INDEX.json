@@ -9,20 +9,20 @@
  },
  "recordings": {
   "claude-sonnet-5": {
-   "cassettes": 1260,
+   "cassettes": 2971,
    "by_purpose": {
-    "eval_baseline": 840,
-    "extract": 372,
-    "transcribe": 48
+    "eval_baseline": 2070,
+    "extract": 783,
+    "transcribe": 118
    },
-   "locked": 1169,
+   "locked": 2880,
    "history_only": 91,
-   "served_by_pinned_model": 1260,
+   "served_by_pinned_model": 2971,
    "served_by_another_model": 0,
-   "tree_sha256": "a4663707efe5c820c06f6ad18cfafebacaf58c38f00b617403b27e233b095a0e",
-   "requests_lock_sha256": "cdcd3cccacaa79426fc26287aa24936cd40db5f8a149ae304575020b403832a7",
+   "tree_sha256": "9262d384365db560c2faed19f24b06202b6e94ca10cb1069f04592653d966c69",
+   "requests_lock_sha256": "46e1c10f2487ee145e62ff61461eebddd61e332b244873740a04a43c7f4ab0bc",
    "prompts_lock_sha256": "58abe975dc1ea1413d7c2bfaaf7db9ba494dd22dd3214727c69be405673a275d",
-   "ledger_lines": 0
+   "ledger_lines": 1712
   },
   "ask/claude-sonnet-5": {
    "cassettes": 78,
@@ -37,6 +37,35 @@
    "requests_lock_sha256": "fafa4b674ba07d3219c8c70f8f41ef6cd3c66b0141ffe9c7940337e5388024f2",
    "prompts_lock_sha256": "c888a223719bc0b7b0e4aa4fac01b5920b88406e8af092297963107d5e05f185",
    "ledger_lines": 0
+  },
+  "ask-heldout/claude-sonnet-5": {
+   "cassettes": 480,
+   "by_purpose": {
+    "ask": 480
+   },
+   "locked": 480,
+   "history_only": 0,
+   "served_by_pinned_model": 480,
+   "served_by_another_model": 0,
+   "tree_sha256": "91737ba4b60ba34603ab2368e9e7f1f516e6c51566661452793c22ba0813e6d9",
+   "requests_lock_sha256": "d250675474c83b2d69964af0bde2f0fc26fb6e52902e08cec6db910cc2a341f6",
+   "prompts_lock_sha256": "1fe57bf1834b855e7c676742f49e4a785ac5ce983f29ec40ac31df4a003ac4df",
+   "ledger_lines": 482
+  },
+  "stress/claude-sonnet-5": {
+   "cassettes": 192,
+   "by_purpose": {
+    "eval_baseline": 96,
+    "extract": 96
+   },
+   "locked": 192,
+   "history_only": 0,
+   "served_by_pinned_model": 192,
+   "served_by_another_model": 0,
+   "tree_sha256": "1bf12eca7600e65c8df95d1a7c93ca30bd549b0e8e752ca06ed57765cd66fb75",
+   "requests_lock_sha256": "dc09a75db3bb33883d81a8285e7f5b1b0885ee200d3f26013d5abb2ae4db1cfd",
+   "prompts_lock_sha256": "a4271533077dae0191613b9a6db342a303ec8b4625c23a72eb6957d4959b196b",
+   "ledger_lines": 192
   }
  },
  "gates": {
@@ -61,6 +90,48 @@
     "--check-docs"
    ]
   },
+  "ask/heldout/r1": {
+   "args": [
+    "--set",
+    "heldout",
+    "--repeat",
+    "1",
+    "--today",
+    "2026-11-24",
+    "--min-strict-accuracy",
+    "0.773",
+    "--max-harmful",
+    "7"
+   ]
+  },
+  "ask/heldout/r2": {
+   "args": [
+    "--set",
+    "heldout",
+    "--repeat",
+    "2",
+    "--today",
+    "2026-11-24",
+    "--min-strict-accuracy",
+    "0.702",
+    "--max-harmful",
+    "11"
+   ]
+  },
+  "ask/heldout/r3": {
+   "args": [
+    "--set",
+    "heldout",
+    "--repeat",
+    "3",
+    "--today",
+    "2026-11-24",
+    "--min-strict-accuracy",
+    "0.738",
+    "--max-harmful",
+    "8"
+   ]
+  },
   "benchmark/dev": {
    "conditions": [
     "ordnung"
@@ -80,6 +151,34 @@
     "ordnung"
    ],
    "min_accuracy": 0.98,
+   "max_dangerous_late": 0.0
+  },
+  "benchmark/holdout4": {
+   "conditions": [
+    "ordnung"
+   ],
+   "min_accuracy": 0.928,
+   "max_dangerous_late": 0.009
+  },
+  "benchmark/holdout4/r2": {
+   "conditions": [
+    "ordnung"
+   ],
+   "min_accuracy": 0.928,
+   "max_dangerous_late": 0.009
+  },
+  "benchmark/holdout4/r3": {
+   "conditions": [
+    "ordnung"
+   ],
+   "min_accuracy": 0.928,
+   "max_dangerous_late": 0.0179
+  },
+  "benchmark/newkinds": {
+   "conditions": [
+    "ordnung"
+   ],
+   "min_accuracy": 0.75,
    "max_dangerous_late": 0.0
   },
   "benchmark/test": {
@@ -177,8 +276,11 @@
     "llm_rules_text",
     "llm_rules_tool"
    ],
-   "status": "not recorded yet",
-   "needs": "its letters, written blind after the code freeze, and their recording"
+   "status": "replayed",
+   "checks": [
+    "2026-11-24-claude-sonnet-5-holdout4-r1.json"
+   ],
+   "gate": "benchmark/holdout4"
   },
   {
    "cell": "benchmark/holdout4/r2",
@@ -188,8 +290,10 @@
     "llm_rules_text",
     "llm_rules_tool"
    ],
-   "status": "not recorded yet",
-   "needs": "its letters, written blind after the code freeze, and their recording"
+   "status": "replayed",
+   "checks": [
+    "2026-11-24-claude-sonnet-5-holdout4-r2.json"
+   ]
   },
   {
    "cell": "benchmark/holdout4/r3",
@@ -199,8 +303,10 @@
     "llm_rules_text",
     "llm_rules_tool"
    ],
-   "status": "not recorded yet",
-   "needs": "its letters, written blind after the code freeze, and their recording"
+   "status": "replayed",
+   "checks": [
+    "2026-11-24-claude-sonnet-5-holdout4-r3.json"
+   ]
   },
   {
    "cell": "benchmark/newkinds/r1",
@@ -210,8 +316,11 @@
     "llm_rules_text",
     "llm_rules_tool"
    ],
-   "status": "not recorded yet",
-   "needs": "its letters, written blind after the code freeze, and their recording"
+   "status": "replayed",
+   "checks": [
+    "2026-11-24-claude-sonnet-5-newkinds.json"
+   ],
+   "gate": "benchmark/newkinds"
   },
   {
    "cell": "without-land",
@@ -232,23 +341,31 @@
   },
   {
    "cell": "ask/heldout/r1",
-   "status": "not recorded yet",
-   "needs": "the held-out questions and attacks, written blind after the code freeze, and their recording"
+   "status": "replayed",
+   "checks": [
+    "2026-11-24-claude-sonnet-5-ask-heldout.json"
+   ]
   },
   {
    "cell": "ask/heldout/r2",
-   "status": "not recorded yet",
-   "needs": "the held-out questions and attacks, written blind after the code freeze, and their recording"
+   "status": "replayed",
+   "checks": [
+    "2026-11-24-claude-sonnet-5-ask-heldout-r2.json"
+   ]
   },
   {
    "cell": "ask/heldout/r3",
-   "status": "not recorded yet",
-   "needs": "the held-out questions and attacks, written blind after the code freeze, and their recording"
+   "status": "replayed",
+   "checks": [
+    "2026-11-24-claude-sonnet-5-ask-heldout-r3.json"
+   ]
   },
   {
    "cell": "ask/heldout/final",
-   "status": "not recorded yet",
-   "needs": "the held-out Ask set's three runs"
+   "status": "re-rendered",
+   "checks": [
+    "2026-11-24-claude-sonnet-5-ask-heldout-final.json"
+   ]
   },
   {
    "cell": "e2e/dev-holdout-holdout2-holdout3-test",
@@ -259,23 +376,31 @@
   },
   {
    "cell": "e2e/holdout4-newkinds",
-   "status": "not recorded yet",
-   "needs": "holdout4's and newkinds' recorded readings"
+   "status": "replayed",
+   "checks": [
+    "2026-11-24-claude-sonnet-5-e2e-holdout4-newkinds.json"
+   ]
   },
   {
    "cell": "without-land/holdout4/r1",
-   "status": "not recorded yet",
-   "needs": "the recorded readings of holdout4's read 1 (the final run)"
+   "status": "replayed",
+   "checks": [
+    "2026-11-24-claude-sonnet-5-without-land-holdout4.json"
+   ]
   },
   {
    "cell": "without-land/holdout4/r2",
-   "status": "not recorded yet",
-   "needs": "the recorded readings of holdout4's read 2 (the final run)"
+   "status": "replayed",
+   "checks": [
+    "2026-11-24-claude-sonnet-5-without-land-holdout4-r2.json"
+   ]
   },
   {
    "cell": "without-land/holdout4/r3",
-   "status": "not recorded yet",
-   "needs": "the recorded readings of holdout4's read 3 (the final run)"
+   "status": "replayed",
+   "checks": [
+    "2026-11-24-claude-sonnet-5-without-land-holdout4-r3.json"
+   ]
   },
   {
    "cell": "ablation/dev-holdout-holdout2-holdout3-test",
@@ -286,28 +411,38 @@
   },
   {
    "cell": "ablation/holdout4/r1",
-   "status": "not recorded yet",
-   "needs": "the recorded readings of holdout4's read 1 (the final run)"
+   "status": "replayed",
+   "checks": [
+    "2026-11-24-claude-sonnet-5-checks-ablated-holdout4.json"
+   ]
   },
   {
    "cell": "ablation/holdout4/r2",
-   "status": "not recorded yet",
-   "needs": "the recorded readings of holdout4's read 2 (the final run)"
+   "status": "replayed",
+   "checks": [
+    "2026-11-24-claude-sonnet-5-checks-ablated-holdout4-r2.json"
+   ]
   },
   {
    "cell": "ablation/holdout4/r3",
-   "status": "not recorded yet",
-   "needs": "the recorded readings of holdout4's read 3 (the final run)"
+   "status": "replayed",
+   "checks": [
+    "2026-11-24-claude-sonnet-5-checks-ablated-holdout4-r3.json"
+   ]
   },
   {
    "cell": "stress/I1",
-   "status": "not recorded yet",
-   "needs": "the blind templates and the stress manifest, and the cells' recording"
+   "status": "replayed",
+   "checks": [
+    "2026-11-24-claude-sonnet-5-stress.json"
+   ]
   },
   {
    "cell": "stress/D1",
-   "status": "not recorded yet",
-   "needs": "the blind templates and the stress manifest, and the cells' recording"
+   "status": "replayed",
+   "checks": [
+    "2026-11-24-claude-sonnet-5-stress.json"
+   ]
   },
   {
    "cell": "analysis/heldout-reanalysis",
@@ -318,8 +453,10 @@
   },
   {
    "cell": "analysis/final",
-   "status": "not recorded yet",
-   "needs": "the final run and its pre-registration"
+   "status": "re-rendered",
+   "checks": [
+    "2026-11-24-claude-sonnet-5-final.json"
+   ]
   },
   {
    "cell": "presenter",
@@ -2352,6 +2489,590 @@
    },
    "gates": [],
    "check": "ablation --check",
+   "verdict": "checked"
+  },
+  {
+   "file": "2026-11-24-claude-sonnet-5-ask-heldout-final.json",
+   "sha256": "e97e2a7ba5abd9ae6f4d240ea99479aef9a35fdec3a604adfbdfb922f6debfae",
+   "kind": "ask-final",
+   "role": "final",
+   "recorded": {
+    "date": "2026-11-24",
+    "commit": null,
+    "backend": "analysis"
+   },
+   "gates": [],
+   "check": "ask-final --check",
+   "verdict": "checked"
+  },
+  {
+   "file": "2026-11-24-claude-sonnet-5-ask-heldout-r2.json",
+   "sha256": "146e8d6d361144958af914fa9aacd6ae7f1a2e8fc64872fa2417d2fdac27c960",
+   "kind": "ask",
+   "role": "final",
+   "set": "heldout",
+   "repeat": 2,
+   "schema": 2,
+   "recorded": {
+    "date": "2026-11-24",
+    "commit": null,
+    "backend": "live"
+   },
+   "gates": [],
+   "check": "ask --check-docs",
+   "verdict": "checked"
+  },
+  {
+   "file": "2026-11-24-claude-sonnet-5-ask-heldout-r3.json",
+   "sha256": "6bc0db98debb4aeba8abfa3f3bd5ba9f3887970019f66a78a5f0f7d1df3e67c6",
+   "kind": "ask",
+   "role": "final",
+   "set": "heldout",
+   "repeat": 3,
+   "schema": 2,
+   "recorded": {
+    "date": "2026-11-24",
+    "commit": null,
+    "backend": "live"
+   },
+   "gates": [],
+   "check": "ask --check-docs",
+   "verdict": "checked"
+  },
+  {
+   "file": "2026-11-24-claude-sonnet-5-ask-heldout.json",
+   "sha256": "3d36a5e4ceb29bb37ed3a92ecf22872c596a7a6b50854441dbd4a0f3454dd027",
+   "kind": "ask",
+   "role": "final",
+   "set": "heldout",
+   "repeat": 1,
+   "schema": 2,
+   "recorded": {
+    "date": "2026-11-24",
+    "commit": null,
+    "backend": "live"
+   },
+   "gates": [],
+   "check": "ask --check-docs",
+   "verdict": "checked"
+  },
+  {
+   "file": "2026-11-24-claude-sonnet-5-checks-ablated-holdout4-r2.json",
+   "sha256": "05f5decff484886523c2c08d94fecdcf9109d26df521b9279740cb3c8c03fb0f",
+   "kind": "checks-ablated",
+   "role": "replay",
+   "splits": [
+    "holdout4"
+   ],
+   "repeat": 2,
+   "recorded": {
+    "date": "2026-11-24",
+    "commit": "0700ad70",
+    "backend": "replay"
+   },
+   "gates": [],
+   "check": "ablation --check",
+   "verdict": "checked"
+  },
+  {
+   "file": "2026-11-24-claude-sonnet-5-checks-ablated-holdout4-r3.json",
+   "sha256": "188c1377f83309eb47eb0e1716a96e88d8586c446e904bc4222fb31af783be8e",
+   "kind": "checks-ablated",
+   "role": "replay",
+   "splits": [
+    "holdout4"
+   ],
+   "repeat": 3,
+   "recorded": {
+    "date": "2026-11-24",
+    "commit": "0700ad70",
+    "backend": "replay"
+   },
+   "gates": [],
+   "check": "ablation --check",
+   "verdict": "checked"
+  },
+  {
+   "file": "2026-11-24-claude-sonnet-5-checks-ablated-holdout4.json",
+   "sha256": "a99c0afb2ecbd24e9b7f86efecd1e8244c3eef11848b5cbbba7147cb8b545197",
+   "kind": "checks-ablated",
+   "role": "replay",
+   "splits": [
+    "holdout4"
+   ],
+   "repeat": 1,
+   "recorded": {
+    "date": "2026-11-24",
+    "commit": "0700ad70",
+    "backend": "replay"
+   },
+   "gates": [],
+   "check": "ablation --check",
+   "verdict": "checked"
+  },
+  {
+   "file": "2026-11-24-claude-sonnet-5-e2e-holdout4-newkinds.json",
+   "sha256": "9961573b0d5e4816099fd41ab24b5035f22a08b54f425c5771a1c6144d532fd7",
+   "kind": "e2e",
+   "role": "replay",
+   "splits": [
+    "holdout4",
+    "newkinds"
+   ],
+   "recorded": {
+    "date": "2026-11-24",
+    "commit": "0700ad70",
+    "backend": "replay"
+   },
+   "gates": [],
+   "check": "e2e --compare",
+   "verdict": "checked"
+  },
+  {
+   "file": "2026-11-24-claude-sonnet-5-final.json",
+   "sha256": "e2fe3e0895b3eaf781581fb9f8aef5e2e1e3f8d8089fdc158f824f2803d1269d",
+   "kind": "analysis",
+   "role": "final",
+   "analysis": "final",
+   "recorded": {
+    "date": "2026-11-24",
+    "commit": null,
+    "backend": "analysis"
+   },
+   "gates": [],
+   "check": "analysis --check",
+   "verdict": "checked"
+  },
+  {
+   "file": "2026-11-24-claude-sonnet-5-holdout4-r1.json",
+   "sha256": "08fb6984c33b3c60deb35130e66f7a116e1156b072630a53d9f145e789a1d21f",
+   "kind": "run",
+   "role": "final",
+   "split": "holdout4",
+   "repeat": 1,
+   "recorded": {
+    "date": "2026-11-24",
+    "commit": "16d92de3",
+    "backend": "live"
+   },
+   "gates": [],
+   "check": "replay",
+   "verdict": "exact",
+   "conditions": {
+    "ordnung": {
+     "verdict": "exact",
+     "right": [
+      104,
+      112
+     ],
+     "right_at_head": [
+      104,
+      112
+     ],
+     "drift": {
+      "added": [],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "ba8f82827fe3b34d"
+    },
+    "llm_only": {
+     "verdict": "exact",
+     "right": [
+      101,
+      112
+     ],
+     "right_at_head": [
+      101,
+      112
+     ],
+     "drift": {
+      "added": [],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "66e122741e2e039b"
+    },
+    "llm_rules_text": {
+     "verdict": "exact",
+     "right": [
+      110,
+      112
+     ],
+     "right_at_head": [
+      110,
+      112
+     ],
+     "drift": {
+      "added": [],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "e6bb7d837072cd1c"
+    },
+    "llm_rules_tool": {
+     "verdict": "exact",
+     "right": [
+      111,
+      112
+     ],
+     "right_at_head": [
+      111,
+      112
+     ],
+     "drift": {
+      "added": [],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "55109b342036d0a5"
+    }
+   }
+  },
+  {
+   "file": "2026-11-24-claude-sonnet-5-holdout4-r2.json",
+   "sha256": "56ba8ddbc11b85c11f8629bffe6f9e12edf3ea28f30f2846fc5fd8b49033f4ce",
+   "kind": "run",
+   "role": "final",
+   "split": "holdout4",
+   "repeat": 2,
+   "recorded": {
+    "date": "2026-11-24",
+    "commit": "f94a77d0",
+    "backend": "live"
+   },
+   "gates": [],
+   "check": "replay",
+   "verdict": "exact",
+   "conditions": {
+    "ordnung": {
+     "verdict": "exact",
+     "right": [
+      104,
+      112
+     ],
+     "right_at_head": [
+      104,
+      112
+     ],
+     "drift": {
+      "added": [],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "aa0c907c4fb281d2"
+    },
+    "llm_only": {
+     "verdict": "exact",
+     "right": [
+      97,
+      112
+     ],
+     "right_at_head": [
+      97,
+      112
+     ],
+     "drift": {
+      "added": [],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "5383c5e600333a9c"
+    },
+    "llm_rules_text": {
+     "verdict": "exact",
+     "right": [
+      110,
+      112
+     ],
+     "right_at_head": [
+      110,
+      112
+     ],
+     "drift": {
+      "added": [],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "e118aa4755aa7e12"
+    },
+    "llm_rules_tool": {
+     "verdict": "exact",
+     "right": [
+      110,
+      112
+     ],
+     "right_at_head": [
+      110,
+      112
+     ],
+     "drift": {
+      "added": [],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "28e39ba8e5811c32"
+    }
+   }
+  },
+  {
+   "file": "2026-11-24-claude-sonnet-5-holdout4-r3.json",
+   "sha256": "747719259413c278b592f75552a7a0c0f4eaaad1cc34a6c1229768ba29641f3d",
+   "kind": "run",
+   "role": "final",
+   "split": "holdout4",
+   "repeat": 3,
+   "recorded": {
+    "date": "2026-11-24",
+    "commit": "917dc7fa",
+    "backend": "live"
+   },
+   "gates": [],
+   "check": "replay",
+   "verdict": "exact",
+   "conditions": {
+    "ordnung": {
+     "verdict": "exact",
+     "right": [
+      104,
+      112
+     ],
+     "right_at_head": [
+      104,
+      112
+     ],
+     "drift": {
+      "added": [],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "f2d707fd962bf967"
+    },
+    "llm_only": {
+     "verdict": "exact",
+     "right": [
+      97,
+      112
+     ],
+     "right_at_head": [
+      97,
+      112
+     ],
+     "drift": {
+      "added": [],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "2820621281e500d9"
+    },
+    "llm_rules_text": {
+     "verdict": "exact",
+     "right": [
+      109,
+      112
+     ],
+     "right_at_head": [
+      109,
+      112
+     ],
+     "drift": {
+      "added": [],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "aee8de00893423d2"
+    },
+    "llm_rules_tool": {
+     "verdict": "exact",
+     "right": [
+      111,
+      112
+     ],
+     "right_at_head": [
+      111,
+      112
+     ],
+     "drift": {
+      "added": [],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "0548177d96365348"
+    }
+   }
+  },
+  {
+   "file": "2026-11-24-claude-sonnet-5-newkinds.json",
+   "sha256": "5c2387637a7c00382ab5ee0dd6391b7f3ae761c9adb8b01a1cfc4bec48f85e25",
+   "kind": "run",
+   "role": "final",
+   "split": "newkinds",
+   "repeat": 1,
+   "recorded": {
+    "date": "2026-11-24",
+    "commit": "17c7ca3b",
+    "backend": "live"
+   },
+   "gates": [],
+   "check": "replay",
+   "verdict": "exact",
+   "conditions": {
+    "ordnung": {
+     "verdict": "exact",
+     "right": [
+      21,
+      28
+     ],
+     "right_at_head": [
+      21,
+      28
+     ],
+     "drift": {
+      "added": [],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "e9f8db74d56a8e1c"
+    },
+    "llm_only": {
+     "verdict": "exact",
+     "right": [
+      21,
+      28
+     ],
+     "right_at_head": [
+      21,
+      28
+     ],
+     "drift": {
+      "added": [],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "0e0c89487c4058a6"
+    },
+    "llm_rules_text": {
+     "verdict": "exact",
+     "right": [
+      22,
+      28
+     ],
+     "right_at_head": [
+      22,
+      28
+     ],
+     "drift": {
+      "added": [],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "09e018984b1752a7"
+    },
+    "llm_rules_tool": {
+     "verdict": "exact",
+     "right": [
+      23,
+      28
+     ],
+     "right_at_head": [
+      23,
+      28
+     ],
+     "drift": {
+      "added": [],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "3aeac8022cd6ce5d"
+    }
+   }
+  },
+  {
+   "file": "2026-11-24-claude-sonnet-5-stress.json",
+   "sha256": "97a1398d33eaab62a687d2f251d2d134eef793655145ff8bd7db03f91628f0c9",
+   "kind": "stress",
+   "role": "final",
+   "recorded": {
+    "date": "2026-11-24",
+    "commit": "3a21dfb8",
+    "backend": {
+     "clean": "replay",
+     "I1": "live",
+     "D1": "live"
+    }
+   },
+   "gates": [],
+   "check": "stress --check",
+   "verdict": "checked"
+  },
+  {
+   "file": "2026-11-24-claude-sonnet-5-without-land-holdout4-r2.json",
+   "sha256": "41beea3a9e40413a402383a3d88211aa74c4e2091279003fdca12d4425e87028",
+   "kind": "without-land",
+   "role": "replay",
+   "splits": [
+    "holdout4"
+   ],
+   "repeat": 2,
+   "recorded": {
+    "date": "2026-11-24",
+    "commit": "0700ad70",
+    "backend": "replay"
+   },
+   "gates": [],
+   "check": "without-land replay",
+   "verdict": "checked"
+  },
+  {
+   "file": "2026-11-24-claude-sonnet-5-without-land-holdout4-r3.json",
+   "sha256": "6718938566014193436bc6b911da83f57828cc60f0bbb91c9f2bf31a8f03efa5",
+   "kind": "without-land",
+   "role": "replay",
+   "splits": [
+    "holdout4"
+   ],
+   "repeat": 3,
+   "recorded": {
+    "date": "2026-11-24",
+    "commit": "0700ad70",
+    "backend": "replay"
+   },
+   "gates": [],
+   "check": "without-land replay",
+   "verdict": "checked"
+  },
+  {
+   "file": "2026-11-24-claude-sonnet-5-without-land-holdout4.json",
+   "sha256": "858ee71f2fa74a16c3a450e6f686636dded3834537b9978ec2b4063920cc918b",
+   "kind": "without-land",
+   "role": "replay",
+   "splits": [
+    "holdout4"
+   ],
+   "repeat": 1,
+   "recorded": {
+    "date": "2026-11-24",
+    "commit": "0700ad70",
+    "backend": "replay"
+   },
+   "gates": [],
+   "check": "without-land replay",
    "verdict": "checked"
   }
  ]

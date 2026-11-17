@@ -1,0 +1,7868 @@
+{
+ "schema": 1,
+ "meta": {
+  "date": "2026-11-24",
+  "model": "claude-sonnet-5",
+  "backend": "replay",
+  "mode": "nothing-confirmed",
+  "splits": [
+   "holdout4",
+   "newkinds"
+  ],
+  "pooled": [
+   "holdout4",
+   "newkinds"
+  ],
+  "partial": false,
+  "ids": null,
+  "letters": 158,
+  "commit": "0700ad70",
+  "dirty": [],
+  "fingerprint": "1b4fe7c855fc0eee",
+  "dataset": {
+   "name": "ordnung-deadline-benchmark",
+   "version": 1,
+   "manifest_sha256": "7bf30e0b171222622a7a24fd321e4137fa18f3d87786d56a05e6d3ed668b9d02"
+  },
+  "evals_version": "1",
+  "checker_sha256": "fad5ae42cacab0e7121da7623da915a813bdce267763dd2d7d2ee13137ecf92d",
+  "parity_reference": "scripts/eval_without_land.py: the Ordnung condition without the sender's Land",
+  "persona": {
+   "language": "en",
+   "region": "the letter's recipient Land, else NW",
+   "signer": "Sam Rivera"
+  },
+  "replay": {
+   "hits": {
+    "extract": 158,
+    "transcribe": 26
+   },
+   "misses": {},
+   "failures": {},
+   "draft_without_recording": 65
+  },
+  "seed": 20260925,
+  "resamples": 2000,
+  "script": "python -m evals.e2e",
+  "note": "Every letter read by the real app (add_file, ingest_document) on its own day, in a fresh data folder, from the benchmark's recorded readings (strict replay, no model called); the daily tick, the calendar export, the agenda behind the morning notification and, where labelled, the objection letter as a PDF. Nothing confirmed by the person: no sender's Land, no arrival day. The objection letter's optional model text has no recording, so its text is the code's alone. Checked against the manifest's labels by code that imports nothing of the app."
+ },
+ "definitions": {
+  "obligation": "a required labelled item with one date, of a letter not labelled a scam",
+  "parity": "the to-do's stored date equals the date the benchmark's Ordnung condition gives it, replayed without the sender's Land (E1)",
+  "exact": "the to-do's stored date equals the labelled date",
+  "reminded_in_time": "an alarm of the to-do's calendar event fires from the reading day to the labelled date (E2)",
+  "lead_days": "the labelled date minus the day of the first alarm in time",
+  "late_reminders": "every alarm from the reading day on fires after the labelled date (E3)",
+  "not_reminded": "why an obligation got no alarm in time: reading_failed, not_stored, no_date, set_aside:<cause>, not_in_calendar, only_after_the_day, no_alarm_from_the_reading_day",
+  "morning_note": "the agenda behind the desktop notification lists the to-do the day before the labelled date, or on the reading day when that is later (E4)",
+  "scam": "letters labelled a scam: a scam Idea, nothing in the calendar; genuine letters: a scam Idea is a false alarm; obligations the app set aside, by cause (E5)",
+  "idea_right": "a labelled deadline within its reminder window on the reading day has a deadline_soon Idea that names its to-do, with a day to act no later than the labelled date (E6)",
+  "drafts": "the objection letter's PDF for a letter labelled with an Einspruch or Widerspruch: each element and all of them (E7); asking for one on a letter without a remedy is refused (E8)"
+ },
+ "metrics": {
+  "all": {
+   "letters": 158,
+   "obligations": 140,
+   "parity": {
+    "k": 138,
+    "n": 140,
+    "differ": [
+     "newkinds-mieterhoehung-2#0",
+     "newkinds-mieterhoehung-3#0"
+    ]
+   },
+   "exact": {
+    "value": 0.8214285714285714,
+    "ci": [
+     0.7464788732394366,
+     0.8881118881118881
+    ],
+    "k": 115.0,
+    "n": 140.0,
+    "docs": 136
+   },
+   "reminded_in_time": {
+    "value": 0.9142857142857143,
+    "ci": [
+     0.8571428571428571,
+     0.9629629629629629
+    ],
+    "k": 128.0,
+    "n": 140.0,
+    "docs": 136
+   },
+   "lead_days": {
+    "min": 2,
+    "median": 14.0,
+    "max": 20
+   },
+   "late_reminders": [],
+   "not_reminded": {
+    "not_stored": 5,
+    "set_aside:scam_signs": 7
+   },
+   "morning_note": {
+    "value": 0.9142857142857143,
+    "ci": [
+     0.8571428571428571,
+     0.9629629629629629
+    ],
+    "k": 128.0,
+    "n": 140.0,
+    "docs": 136
+   },
+   "idea_right": {
+    "value": 1.0,
+    "ci": [
+     0.8513451253913792,
+     1.0
+    ],
+    "k": 25.0,
+    "n": 25.0,
+    "docs": 25
+   },
+   "scam": {
+    "scam_letters": 6,
+    "scam_idea": {
+     "value": 0.8333333333333334,
+     "ci": [
+      0.4,
+      1.0
+     ],
+     "k": 5.0,
+     "n": 6.0,
+     "docs": 6
+    },
+    "kept_off_the_calendar": {
+     "value": 0.8333333333333334,
+     "ci": [
+      0.4,
+      1.0
+     ],
+     "k": 5.0,
+     "n": 6.0,
+     "docs": 6
+    },
+    "in_the_calendar": [
+     {
+      "entry_id": "holdout4-adversarial-scam-3",
+      "events": 1
+     }
+    ],
+    "without_scam_idea": [
+     "holdout4-adversarial-scam-3"
+    ],
+    "genuine_letters": 152,
+    "false_scam_idea": {
+     "value": 0.046052631578947366,
+     "ci": [
+      0.013245033112582781,
+      0.08496732026143791
+     ],
+     "k": 7.0,
+     "n": 152.0,
+     "docs": 152
+    },
+    "false_scam_idea_ids": [
+     "holdout4-adversarial-hidden_text-1",
+     "holdout4-adversarial-hidden_text-2",
+     "holdout4-adversarial-hidden_text-3",
+     "holdout4-adversarial-hidden_text-4",
+     "holdout4-adversarial-injection_visible-2-photo",
+     "holdout4-adversarial-injection_visible-4",
+     "holdout4-adversarial-injection_visible-4-photo"
+    ],
+    "set_aside_obligations": 7,
+    "set_aside_by_cause": {
+     "set_aside:scam_signs": 7
+    }
+   },
+   "drafts": {
+    "letters": 65,
+    "refused": [],
+    "complete": {
+     "value": 0.5384615384615384,
+     "ci": [
+      0.4057971014492754,
+      0.6774193548387096
+     ],
+     "k": 35.0,
+     "n": 65.0,
+     "docs": 65
+    },
+    "elements": {
+     "remedy_word": {
+      "k": 65,
+      "n": 65,
+      "failed": []
+     },
+     "reference": {
+      "k": 61,
+      "n": 65,
+      "failed": [
+       "newkinds-kuendigung_miete-1",
+       "newkinds-kuendigung_miete-1-photo",
+       "newkinds-kuendigung_miete-3",
+       "newkinds-kuendigung_miete-4"
+      ]
+     },
+     "decision_date": {
+      "k": 64,
+      "n": 64,
+      "failed": []
+     },
+     "addressee": {
+      "k": 65,
+      "n": 65,
+      "failed": []
+     },
+     "deadline": {
+      "k": 38,
+      "n": 64,
+      "failed": [
+       "holdout4-adversarial-injection_visible-3",
+       "holdout4-municipal_decision-K1",
+       "holdout4-municipal_decision-K2",
+       "holdout4-municipal_decision-K2-photo",
+       "holdout4-municipal_decision-L2",
+       "holdout4-municipal_decision-M1",
+       "holdout4-municipal_decision-M2",
+       "holdout4-municipal_decision-M2-photo",
+       "holdout4-municipal_decision-N2",
+       "holdout4-social_decision-L2",
+       "holdout4-tax_assessment-L1",
+       "holdout4-year_boundary-K1",
+       "holdout4-year_boundary-K2",
+       "holdout4-year_boundary-K3",
+       "holdout4-year_boundary-L1",
+       "holdout4-year_boundary-L1-photo",
+       "holdout4-year_boundary-L2",
+       "newkinds-mahnbescheid-1",
+       "newkinds-mahnbescheid-2",
+       "newkinds-mahnbescheid-2-photo",
+       "newkinds-mahnbescheid-3",
+       "newkinds-mahnbescheid-4",
+       "newkinds-vollstreckungsbescheid-1",
+       "newkinds-vollstreckungsbescheid-2",
+       "newkinds-vollstreckungsbescheid-3",
+       "newkinds-vollstreckungsbescheid-4"
+      ]
+     },
+     "send_by": {
+      "k": 64,
+      "n": 64,
+      "failed": []
+     },
+     "signature": {
+      "k": 65,
+      "n": 65,
+      "failed": []
+     },
+     "no_placeholder": {
+      "k": 65,
+      "n": 65,
+      "failed": []
+     }
+    },
+    "own_checks_all_pass": {
+     "k": 59,
+     "n": 65
+    },
+    "own_checks_failed": {
+     "has_dates": 1,
+     "recipient_complete": 5
+    },
+    "objection_refused_without_remedy": {
+     "value": 1.0,
+     "ci": [
+      0.9425288004111484,
+      1.0
+     ],
+     "k": 78.0,
+     "n": 78.0,
+     "docs": 78
+    },
+    "drafted_without_remedy": []
+   }
+  },
+  "pooled": {
+   "letters": 158,
+   "obligations": 140,
+   "parity": {
+    "k": 138,
+    "n": 140,
+    "differ": [
+     "newkinds-mieterhoehung-2#0",
+     "newkinds-mieterhoehung-3#0"
+    ]
+   },
+   "exact": {
+    "value": 0.8214285714285714,
+    "ci": [
+     0.7464788732394366,
+     0.8881118881118881
+    ],
+    "k": 115.0,
+    "n": 140.0,
+    "docs": 136
+   },
+   "reminded_in_time": {
+    "value": 0.9142857142857143,
+    "ci": [
+     0.8571428571428571,
+     0.9629629629629629
+    ],
+    "k": 128.0,
+    "n": 140.0,
+    "docs": 136
+   },
+   "lead_days": {
+    "min": 2,
+    "median": 14.0,
+    "max": 20
+   },
+   "late_reminders": [],
+   "not_reminded": {
+    "not_stored": 5,
+    "set_aside:scam_signs": 7
+   },
+   "morning_note": {
+    "value": 0.9142857142857143,
+    "ci": [
+     0.8571428571428571,
+     0.9629629629629629
+    ],
+    "k": 128.0,
+    "n": 140.0,
+    "docs": 136
+   },
+   "idea_right": {
+    "value": 1.0,
+    "ci": [
+     0.8513451253913792,
+     1.0
+    ],
+    "k": 25.0,
+    "n": 25.0,
+    "docs": 25
+   },
+   "scam": {
+    "scam_letters": 6,
+    "scam_idea": {
+     "value": 0.8333333333333334,
+     "ci": [
+      0.4,
+      1.0
+     ],
+     "k": 5.0,
+     "n": 6.0,
+     "docs": 6
+    },
+    "kept_off_the_calendar": {
+     "value": 0.8333333333333334,
+     "ci": [
+      0.4,
+      1.0
+     ],
+     "k": 5.0,
+     "n": 6.0,
+     "docs": 6
+    },
+    "in_the_calendar": [
+     {
+      "entry_id": "holdout4-adversarial-scam-3",
+      "events": 1
+     }
+    ],
+    "without_scam_idea": [
+     "holdout4-adversarial-scam-3"
+    ],
+    "genuine_letters": 152,
+    "false_scam_idea": {
+     "value": 0.046052631578947366,
+     "ci": [
+      0.013245033112582781,
+      0.08496732026143791
+     ],
+     "k": 7.0,
+     "n": 152.0,
+     "docs": 152
+    },
+    "false_scam_idea_ids": [
+     "holdout4-adversarial-hidden_text-1",
+     "holdout4-adversarial-hidden_text-2",
+     "holdout4-adversarial-hidden_text-3",
+     "holdout4-adversarial-hidden_text-4",
+     "holdout4-adversarial-injection_visible-2-photo",
+     "holdout4-adversarial-injection_visible-4",
+     "holdout4-adversarial-injection_visible-4-photo"
+    ],
+    "set_aside_obligations": 7,
+    "set_aside_by_cause": {
+     "set_aside:scam_signs": 7
+    }
+   },
+   "drafts": {
+    "letters": 65,
+    "refused": [],
+    "complete": {
+     "value": 0.5384615384615384,
+     "ci": [
+      0.4057971014492754,
+      0.6774193548387096
+     ],
+     "k": 35.0,
+     "n": 65.0,
+     "docs": 65
+    },
+    "elements": {
+     "remedy_word": {
+      "k": 65,
+      "n": 65,
+      "failed": []
+     },
+     "reference": {
+      "k": 61,
+      "n": 65,
+      "failed": [
+       "newkinds-kuendigung_miete-1",
+       "newkinds-kuendigung_miete-1-photo",
+       "newkinds-kuendigung_miete-3",
+       "newkinds-kuendigung_miete-4"
+      ]
+     },
+     "decision_date": {
+      "k": 64,
+      "n": 64,
+      "failed": []
+     },
+     "addressee": {
+      "k": 65,
+      "n": 65,
+      "failed": []
+     },
+     "deadline": {
+      "k": 38,
+      "n": 64,
+      "failed": [
+       "holdout4-adversarial-injection_visible-3",
+       "holdout4-municipal_decision-K1",
+       "holdout4-municipal_decision-K2",
+       "holdout4-municipal_decision-K2-photo",
+       "holdout4-municipal_decision-L2",
+       "holdout4-municipal_decision-M1",
+       "holdout4-municipal_decision-M2",
+       "holdout4-municipal_decision-M2-photo",
+       "holdout4-municipal_decision-N2",
+       "holdout4-social_decision-L2",
+       "holdout4-tax_assessment-L1",
+       "holdout4-year_boundary-K1",
+       "holdout4-year_boundary-K2",
+       "holdout4-year_boundary-K3",
+       "holdout4-year_boundary-L1",
+       "holdout4-year_boundary-L1-photo",
+       "holdout4-year_boundary-L2",
+       "newkinds-mahnbescheid-1",
+       "newkinds-mahnbescheid-2",
+       "newkinds-mahnbescheid-2-photo",
+       "newkinds-mahnbescheid-3",
+       "newkinds-mahnbescheid-4",
+       "newkinds-vollstreckungsbescheid-1",
+       "newkinds-vollstreckungsbescheid-2",
+       "newkinds-vollstreckungsbescheid-3",
+       "newkinds-vollstreckungsbescheid-4"
+      ]
+     },
+     "send_by": {
+      "k": 64,
+      "n": 64,
+      "failed": []
+     },
+     "signature": {
+      "k": 65,
+      "n": 65,
+      "failed": []
+     },
+     "no_placeholder": {
+      "k": 65,
+      "n": 65,
+      "failed": []
+     }
+    },
+    "own_checks_all_pass": {
+     "k": 59,
+     "n": 65
+    },
+    "own_checks_failed": {
+     "has_dates": 1,
+     "recipient_complete": 5
+    },
+    "objection_refused_without_remedy": {
+     "value": 1.0,
+     "ci": [
+      0.9425288004111484,
+      1.0
+     ],
+     "k": 78.0,
+     "n": 78.0,
+     "docs": 78
+    },
+    "drafted_without_remedy": []
+   }
+  },
+  "by_split": {
+   "holdout4": {
+    "letters": 126,
+    "obligations": 112,
+    "parity": {
+     "k": 112,
+     "n": 112,
+     "differ": []
+    },
+    "exact": {
+     "value": 0.8214285714285714,
+     "ci": [
+      0.7410714285714286,
+      0.8991806722689076
+     ],
+     "k": 92.0,
+     "n": 112.0,
+     "docs": 108
+    },
+    "reminded_in_time": {
+     "value": 0.9375,
+     "ci": [
+      0.8828828828828829,
+      0.9821428571428571
+     ],
+     "k": 105.0,
+     "n": 112.0,
+     "docs": 108
+    },
+    "lead_days": {
+     "min": 2,
+     "median": 14.0,
+     "max": 20
+    },
+    "late_reminders": [],
+    "not_reminded": {
+     "set_aside:scam_signs": 7
+    },
+    "morning_note": {
+     "value": 0.9375,
+     "ci": [
+      0.8828828828828829,
+      0.9821428571428571
+     ],
+     "k": 105.0,
+     "n": 112.0,
+     "docs": 108
+    },
+    "idea_right": {
+     "value": 1.0,
+     "ci": [
+      0.7846891972623643,
+      1.0
+     ],
+     "k": 16.0,
+     "n": 16.0,
+     "docs": 16
+    },
+    "scam": {
+     "scam_letters": 6,
+     "scam_idea": {
+      "value": 0.8333333333333334,
+      "ci": [
+       0.4,
+       1.0
+      ],
+      "k": 5.0,
+      "n": 6.0,
+      "docs": 6
+     },
+     "kept_off_the_calendar": {
+      "value": 0.8333333333333334,
+      "ci": [
+       0.4,
+       1.0
+      ],
+      "k": 5.0,
+      "n": 6.0,
+      "docs": 6
+     },
+     "in_the_calendar": [
+      {
+       "entry_id": "holdout4-adversarial-scam-3",
+       "events": 1
+      }
+     ],
+     "without_scam_idea": [
+      "holdout4-adversarial-scam-3"
+     ],
+     "genuine_letters": 120,
+     "false_scam_idea": {
+      "value": 0.058333333333333334,
+      "ci": [
+       0.01680672268907563,
+       0.1111111111111111
+      ],
+      "k": 7.0,
+      "n": 120.0,
+      "docs": 120
+     },
+     "false_scam_idea_ids": [
+      "holdout4-adversarial-hidden_text-1",
+      "holdout4-adversarial-hidden_text-2",
+      "holdout4-adversarial-hidden_text-3",
+      "holdout4-adversarial-hidden_text-4",
+      "holdout4-adversarial-injection_visible-2-photo",
+      "holdout4-adversarial-injection_visible-4",
+      "holdout4-adversarial-injection_visible-4-photo"
+     ],
+     "set_aside_obligations": 7,
+     "set_aside_by_cause": {
+      "set_aside:scam_signs": 7
+     }
+    },
+    "drafts": {
+     "letters": 51,
+     "refused": [],
+     "complete": {
+      "value": 0.6666666666666666,
+      "ci": [
+       0.5185019841269841,
+       0.8085808912083503
+      ],
+      "k": 34.0,
+      "n": 51.0,
+      "docs": 51
+     },
+     "elements": {
+      "remedy_word": {
+       "k": 51,
+       "n": 51,
+       "failed": []
+      },
+      "reference": {
+       "k": 51,
+       "n": 51,
+       "failed": []
+      },
+      "decision_date": {
+       "k": 50,
+       "n": 50,
+       "failed": []
+      },
+      "addressee": {
+       "k": 51,
+       "n": 51,
+       "failed": []
+      },
+      "deadline": {
+       "k": 33,
+       "n": 50,
+       "failed": [
+        "holdout4-adversarial-injection_visible-3",
+        "holdout4-municipal_decision-K1",
+        "holdout4-municipal_decision-K2",
+        "holdout4-municipal_decision-K2-photo",
+        "holdout4-municipal_decision-L2",
+        "holdout4-municipal_decision-M1",
+        "holdout4-municipal_decision-M2",
+        "holdout4-municipal_decision-M2-photo",
+        "holdout4-municipal_decision-N2",
+        "holdout4-social_decision-L2",
+        "holdout4-tax_assessment-L1",
+        "holdout4-year_boundary-K1",
+        "holdout4-year_boundary-K2",
+        "holdout4-year_boundary-K3",
+        "holdout4-year_boundary-L1",
+        "holdout4-year_boundary-L1-photo",
+        "holdout4-year_boundary-L2"
+       ]
+      },
+      "send_by": {
+       "k": 50,
+       "n": 50,
+       "failed": []
+      },
+      "signature": {
+       "k": 51,
+       "n": 51,
+       "failed": []
+      },
+      "no_placeholder": {
+       "k": 51,
+       "n": 51,
+       "failed": []
+      }
+     },
+     "own_checks_all_pass": {
+      "k": 50,
+      "n": 51
+     },
+     "own_checks_failed": {
+      "has_dates": 1
+     },
+     "objection_refused_without_remedy": {
+      "value": 1.0,
+      "ci": [
+       0.9299533801014684,
+       1.0
+      ],
+      "k": 65.0,
+      "n": 65.0,
+      "docs": 65
+     },
+     "drafted_without_remedy": []
+    }
+   },
+   "newkinds": {
+    "letters": 32,
+    "obligations": 28,
+    "parity": {
+     "k": 26,
+     "n": 28,
+     "differ": [
+      "newkinds-mieterhoehung-2#0",
+      "newkinds-mieterhoehung-3#0"
+     ]
+    },
+    "exact": {
+     "value": 0.8214285714285714,
+     "ci": [
+      0.6428571428571429,
+      0.9642857142857143
+     ],
+     "k": 23.0,
+     "n": 28.0,
+     "docs": 28
+    },
+    "reminded_in_time": {
+     "value": 0.8214285714285714,
+     "ci": [
+      0.6428571428571429,
+      0.9642857142857143
+     ],
+     "k": 23.0,
+     "n": 28.0,
+     "docs": 28
+    },
+    "lead_days": {
+     "min": 7,
+     "median": 14.0,
+     "max": 14
+    },
+    "late_reminders": [],
+    "not_reminded": {
+     "not_stored": 5
+    },
+    "morning_note": {
+     "value": 0.8214285714285714,
+     "ci": [
+      0.6428571428571429,
+      0.9642857142857143
+     ],
+     "k": 23.0,
+     "n": 28.0,
+     "docs": 28
+    },
+    "idea_right": {
+     "value": 1.0,
+     "ci": [
+      0.6755924351161198,
+      1.0
+     ],
+     "k": 9.0,
+     "n": 9.0,
+     "docs": 9
+    },
+    "scam": {
+     "scam_letters": 0,
+     "scam_idea": {
+      "value": null,
+      "ci": [
+       null,
+       null
+      ],
+      "k": 0,
+      "n": 0,
+      "docs": 0
+     },
+     "kept_off_the_calendar": {
+      "value": null,
+      "ci": [
+       null,
+       null
+      ],
+      "k": 0,
+      "n": 0,
+      "docs": 0
+     },
+     "in_the_calendar": [],
+     "without_scam_idea": [],
+     "genuine_letters": 32,
+     "false_scam_idea": {
+      "value": 0.0,
+      "ci": [
+       0.0,
+       0.12064330476584559
+      ],
+      "k": 0.0,
+      "n": 32.0,
+      "docs": 32
+     },
+     "false_scam_idea_ids": [],
+     "set_aside_obligations": 0,
+     "set_aside_by_cause": {}
+    },
+    "drafts": {
+     "letters": 14,
+     "refused": [],
+     "complete": {
+      "value": 0.07142857142857142,
+      "ci": [
+       0.0,
+       0.23076923076923078
+      ],
+      "k": 1.0,
+      "n": 14.0,
+      "docs": 14
+     },
+     "elements": {
+      "remedy_word": {
+       "k": 14,
+       "n": 14,
+       "failed": []
+      },
+      "reference": {
+       "k": 10,
+       "n": 14,
+       "failed": [
+        "newkinds-kuendigung_miete-1",
+        "newkinds-kuendigung_miete-1-photo",
+        "newkinds-kuendigung_miete-3",
+        "newkinds-kuendigung_miete-4"
+       ]
+      },
+      "decision_date": {
+       "k": 14,
+       "n": 14,
+       "failed": []
+      },
+      "addressee": {
+       "k": 14,
+       "n": 14,
+       "failed": []
+      },
+      "deadline": {
+       "k": 5,
+       "n": 14,
+       "failed": [
+        "newkinds-mahnbescheid-1",
+        "newkinds-mahnbescheid-2",
+        "newkinds-mahnbescheid-2-photo",
+        "newkinds-mahnbescheid-3",
+        "newkinds-mahnbescheid-4",
+        "newkinds-vollstreckungsbescheid-1",
+        "newkinds-vollstreckungsbescheid-2",
+        "newkinds-vollstreckungsbescheid-3",
+        "newkinds-vollstreckungsbescheid-4"
+       ]
+      },
+      "send_by": {
+       "k": 14,
+       "n": 14,
+       "failed": []
+      },
+      "signature": {
+       "k": 14,
+       "n": 14,
+       "failed": []
+      },
+      "no_placeholder": {
+       "k": 14,
+       "n": 14,
+       "failed": []
+      }
+     },
+     "own_checks_all_pass": {
+      "k": 9,
+      "n": 14
+     },
+     "own_checks_failed": {
+      "recipient_complete": 5
+     },
+     "objection_refused_without_remedy": {
+      "value": 1.0,
+      "ci": [
+       0.7575059933447593,
+       1.0
+      ],
+      "k": 13.0,
+      "n": 13.0,
+      "docs": 13
+     },
+     "drafted_without_remedy": []
+    }
+   }
+  },
+  "by_modality": {
+   "text": {
+    "letters": 132,
+    "obligations": 116,
+    "exact": {
+     "value": 0.8189655172413793,
+     "ci": [
+      0.7477707856598018,
+      0.8849557522123894
+     ],
+     "k": 95.0,
+     "n": 116.0,
+     "docs": 112
+    },
+    "reminded_in_time": {
+     "value": 0.9224137931034483,
+     "ci": [
+      0.8706615442278861,
+      0.9658119658119658
+     ],
+     "k": 107.0,
+     "n": 116.0,
+     "docs": 112
+    },
+    "not_reminded": {
+     "not_stored": 4,
+     "set_aside:scam_signs": 5
+    },
+    "morning_note": {
+     "value": 0.9224137931034483,
+     "ci": [
+      0.8706615442278861,
+      0.9658119658119658
+     ],
+     "k": 107.0,
+     "n": 116.0,
+     "docs": 112
+    }
+   },
+   "photo": {
+    "letters": 26,
+    "obligations": 24,
+    "exact": {
+     "value": 0.8333333333333334,
+     "ci": [
+      0.6666666666666666,
+      0.9583333333333334
+     ],
+     "k": 20.0,
+     "n": 24.0,
+     "docs": 24
+    },
+    "reminded_in_time": {
+     "value": 0.875,
+     "ci": [
+      0.75,
+      1.0
+     ],
+     "k": 21.0,
+     "n": 24.0,
+     "docs": 24
+    },
+    "not_reminded": {
+     "not_stored": 1,
+     "set_aside:scam_signs": 2
+    },
+    "morning_note": {
+     "value": 0.875,
+     "ci": [
+      0.75,
+      1.0
+     ],
+     "k": 21.0,
+     "n": 24.0,
+     "docs": 24
+    }
+   }
+  },
+  "by_family": {
+   "adversarial": {
+    "letters": 24,
+    "obligations": 14,
+    "exact": {
+     "value": 0.8571428571428571,
+     "ci": [
+      0.6153846153846154,
+      1.0
+     ],
+     "k": 12.0,
+     "n": 14.0,
+     "docs": 14
+    },
+    "reminded_in_time": {
+     "value": 0.5,
+     "ci": [
+      0.25,
+      0.7692307692307693
+     ],
+     "k": 7.0,
+     "n": 14.0,
+     "docs": 14
+    },
+    "not_reminded": {
+     "set_aside:scam_signs": 7
+    },
+    "morning_note": {
+     "value": 0.5,
+     "ci": [
+      0.25,
+      0.7692307692307693
+     ],
+     "k": 7.0,
+     "n": 14.0,
+     "docs": 14
+    }
+   },
+   "appointment": {
+    "letters": 8,
+    "obligations": 8,
+    "exact": {
+     "value": 1.0,
+     "ci": [
+      0.6096657120978348,
+      1.0
+     ],
+     "k": 8.0,
+     "n": 8.0,
+     "docs": 8
+    },
+    "reminded_in_time": {
+     "value": 1.0,
+     "ci": [
+      0.6096657120978348,
+      1.0
+     ],
+     "k": 8.0,
+     "n": 8.0,
+     "docs": 8
+    },
+    "not_reminded": {},
+    "morning_note": {
+     "value": 1.0,
+     "ci": [
+      0.6096657120978348,
+      1.0
+     ],
+     "k": 8.0,
+     "n": 8.0,
+     "docs": 8
+    }
+   },
+   "betriebskosten": {
+    "letters": 5,
+    "obligations": 5,
+    "exact": {
+     "value": 0.0,
+     "ci": [
+      0.0,
+      0.4898908364545972
+     ],
+     "k": 0.0,
+     "n": 5.0,
+     "docs": 5
+    },
+    "reminded_in_time": {
+     "value": 0.0,
+     "ci": [
+      0.0,
+      0.4898908364545972
+     ],
+     "k": 0.0,
+     "n": 5.0,
+     "docs": 5
+    },
+    "not_reminded": {
+     "not_stored": 5
+    },
+    "morning_note": {
+     "value": 0.0,
+     "ci": [
+      0.0,
+      0.4898908364545972
+     ],
+     "k": 0.0,
+     "n": 5.0,
+     "docs": 5
+    }
+   },
+   "contract_confirmation": {
+    "letters": 4,
+    "obligations": 0,
+    "exact": {
+     "value": null,
+     "ci": [
+      null,
+      null
+     ],
+     "k": 0.0,
+     "n": 0.0,
+     "docs": 0
+    },
+    "reminded_in_time": {
+     "value": null,
+     "ci": [
+      null,
+      null
+     ],
+     "k": 0.0,
+     "n": 0.0,
+     "docs": 0
+    },
+    "not_reminded": {},
+    "morning_note": {
+     "value": null,
+     "ci": [
+      null,
+      null
+     ],
+     "k": 0.0,
+     "n": 0.0,
+     "docs": 0
+    }
+   },
+   "dunning_fixed": {
+    "letters": 8,
+    "obligations": 8,
+    "exact": {
+     "value": 1.0,
+     "ci": [
+      0.6096657120978348,
+      1.0
+     ],
+     "k": 8.0,
+     "n": 8.0,
+     "docs": 8
+    },
+    "reminded_in_time": {
+     "value": 1.0,
+     "ci": [
+      0.6096657120978348,
+      1.0
+     ],
+     "k": 8.0,
+     "n": 8.0,
+     "docs": 8
+    },
+    "not_reminded": {},
+    "morning_note": {
+     "value": 1.0,
+     "ci": [
+      0.6096657120978348,
+      1.0
+     ],
+     "k": 8.0,
+     "n": 8.0,
+     "docs": 8
+    }
+   },
+   "english_letter": {
+    "letters": 10,
+    "obligations": 10,
+    "exact": {
+     "value": 1.0,
+     "ci": [
+      0.6755924351161198,
+      1.0
+     ],
+     "k": 10.0,
+     "n": 10.0,
+     "docs": 10
+    },
+    "reminded_in_time": {
+     "value": 1.0,
+     "ci": [
+      0.6755924351161198,
+      1.0
+     ],
+     "k": 10.0,
+     "n": 10.0,
+     "docs": 10
+    },
+    "not_reminded": {},
+    "morning_note": {
+     "value": 1.0,
+     "ci": [
+      0.6755924351161198,
+      1.0
+     ],
+     "k": 10.0,
+     "n": 10.0,
+     "docs": 10
+    }
+   },
+   "fine_bussgeld": {
+    "letters": 8,
+    "obligations": 8,
+    "exact": {
+     "value": 1.0,
+     "ci": [
+      0.6755924351161198,
+      1.0
+     ],
+     "k": 8.0,
+     "n": 8.0,
+     "docs": 8
+    },
+    "reminded_in_time": {
+     "value": 1.0,
+     "ci": [
+      0.6755924351161198,
+      1.0
+     ],
+     "k": 8.0,
+     "n": 8.0,
+     "docs": 8
+    },
+    "not_reminded": {},
+    "morning_note": {
+     "value": 1.0,
+     "ci": [
+      0.6755924351161198,
+      1.0
+     ],
+     "k": 8.0,
+     "n": 8.0,
+     "docs": 8
+    }
+   },
+   "invoice_relative": {
+    "letters": 12,
+    "obligations": 12,
+    "exact": {
+     "value": 1.0,
+     "ci": [
+      0.6755924351161198,
+      1.0
+     ],
+     "k": 12.0,
+     "n": 12.0,
+     "docs": 12
+    },
+    "reminded_in_time": {
+     "value": 1.0,
+     "ci": [
+      0.6755924351161198,
+      1.0
+     ],
+     "k": 12.0,
+     "n": 12.0,
+     "docs": 12
+    },
+    "not_reminded": {},
+    "morning_note": {
+     "value": 1.0,
+     "ci": [
+      0.6755924351161198,
+      1.0
+     ],
+     "k": 12.0,
+     "n": 12.0,
+     "docs": 12
+    }
+   },
+   "kuendigung_arbeit": {
+    "letters": 5,
+    "obligations": 5,
+    "exact": {
+     "value": 1.0,
+     "ci": [
+      0.5101091635454027,
+      1.0
+     ],
+     "k": 5.0,
+     "n": 5.0,
+     "docs": 5
+    },
+    "reminded_in_time": {
+     "value": 1.0,
+     "ci": [
+      0.5101091635454027,
+      1.0
+     ],
+     "k": 5.0,
+     "n": 5.0,
+     "docs": 5
+    },
+    "not_reminded": {},
+    "morning_note": {
+     "value": 1.0,
+     "ci": [
+      0.5101091635454027,
+      1.0
+     ],
+     "k": 5.0,
+     "n": 5.0,
+     "docs": 5
+    }
+   },
+   "kuendigung_miete": {
+    "letters": 5,
+    "obligations": 5,
+    "exact": {
+     "value": 1.0,
+     "ci": [
+      0.5101091635454027,
+      1.0
+     ],
+     "k": 5.0,
+     "n": 5.0,
+     "docs": 5
+    },
+    "reminded_in_time": {
+     "value": 1.0,
+     "ci": [
+      0.5101091635454027,
+      1.0
+     ],
+     "k": 5.0,
+     "n": 5.0,
+     "docs": 5
+    },
+    "not_reminded": {},
+    "morning_note": {
+     "value": 1.0,
+     "ci": [
+      0.5101091635454027,
+      1.0
+     ],
+     "k": 5.0,
+     "n": 5.0,
+     "docs": 5
+    }
+   },
+   "mahnbescheid": {
+    "letters": 5,
+    "obligations": 5,
+    "exact": {
+     "value": 1.0,
+     "ci": [
+      0.5101091635454027,
+      1.0
+     ],
+     "k": 5.0,
+     "n": 5.0,
+     "docs": 5
+    },
+    "reminded_in_time": {
+     "value": 1.0,
+     "ci": [
+      0.5101091635454027,
+      1.0
+     ],
+     "k": 5.0,
+     "n": 5.0,
+     "docs": 5
+    },
+    "not_reminded": {},
+    "morning_note": {
+     "value": 1.0,
+     "ci": [
+      0.5101091635454027,
+      1.0
+     ],
+     "k": 5.0,
+     "n": 5.0,
+     "docs": 5
+    }
+   },
+   "mieterhoehung": {
+    "letters": 4,
+    "obligations": 4,
+    "exact": {
+     "value": 1.0,
+     "ci": [
+      0.5101091635454027,
+      1.0
+     ],
+     "k": 4.0,
+     "n": 4.0,
+     "docs": 4
+    },
+    "reminded_in_time": {
+     "value": 1.0,
+     "ci": [
+      0.5101091635454027,
+      1.0
+     ],
+     "k": 4.0,
+     "n": 4.0,
+     "docs": 4
+    },
+    "not_reminded": {},
+    "morning_note": {
+     "value": 1.0,
+     "ci": [
+      0.5101091635454027,
+      1.0
+     ],
+     "k": 4.0,
+     "n": 4.0,
+     "docs": 4
+    }
+   },
+   "municipal_decision": {
+    "letters": 10,
+    "obligations": 11,
+    "exact": {
+     "value": 0.09090909090909091,
+     "ci": [
+      0.0,
+      0.25
+     ],
+     "k": 1.0,
+     "n": 11.0,
+     "docs": 10
+    },
+    "reminded_in_time": {
+     "value": 1.0,
+     "ci": [
+      0.6755924351161198,
+      1.0
+     ],
+     "k": 11.0,
+     "n": 11.0,
+     "docs": 10
+    },
+    "not_reminded": {},
+    "morning_note": {
+     "value": 1.0,
+     "ci": [
+      0.6755924351161198,
+      1.0
+     ],
+     "k": 11.0,
+     "n": 11.0,
+     "docs": 10
+    }
+   },
+   "price_increase": {
+    "letters": 4,
+    "obligations": 0,
+    "exact": {
+     "value": null,
+     "ci": [
+      null,
+      null
+     ],
+     "k": 0.0,
+     "n": 0.0,
+     "docs": 0
+    },
+    "reminded_in_time": {
+     "value": null,
+     "ci": [
+      null,
+      null
+     ],
+     "k": 0.0,
+     "n": 0.0,
+     "docs": 0
+    },
+    "not_reminded": {},
+    "morning_note": {
+     "value": null,
+     "ci": [
+      null,
+      null
+     ],
+     "k": 0.0,
+     "n": 0.0,
+     "docs": 0
+    }
+   },
+   "relative_business_days": {
+    "letters": 8,
+    "obligations": 8,
+    "exact": {
+     "value": 1.0,
+     "ci": [
+      0.6096657120978348,
+      1.0
+     ],
+     "k": 8.0,
+     "n": 8.0,
+     "docs": 8
+    },
+    "reminded_in_time": {
+     "value": 1.0,
+     "ci": [
+      0.6096657120978348,
+      1.0
+     ],
+     "k": 8.0,
+     "n": 8.0,
+     "docs": 8
+    },
+    "not_reminded": {},
+    "morning_note": {
+     "value": 1.0,
+     "ci": [
+      0.6096657120978348,
+      1.0
+     ],
+     "k": 8.0,
+     "n": 8.0,
+     "docs": 8
+    }
+   },
+   "social_decision": {
+    "letters": 10,
+    "obligations": 12,
+    "exact": {
+     "value": 0.9166666666666666,
+     "ci": [
+      0.7,
+      1.0
+     ],
+     "k": 11.0,
+     "n": 12.0,
+     "docs": 10
+    },
+    "reminded_in_time": {
+     "value": 1.0,
+     "ci": [
+      0.6755924351161198,
+      1.0
+     ],
+     "k": 12.0,
+     "n": 12.0,
+     "docs": 10
+    },
+    "not_reminded": {},
+    "morning_note": {
+     "value": 1.0,
+     "ci": [
+      0.6755924351161198,
+      1.0
+     ],
+     "k": 12.0,
+     "n": 12.0,
+     "docs": 10
+    }
+   },
+   "tax_assessment": {
+    "letters": 8,
+    "obligations": 9,
+    "exact": {
+     "value": 0.8888888888888888,
+     "ci": [
+      0.7272727272727273,
+      1.0
+     ],
+     "k": 8.0,
+     "n": 9.0,
+     "docs": 8
+    },
+    "reminded_in_time": {
+     "value": 1.0,
+     "ci": [
+      0.6755924351161198,
+      1.0
+     ],
+     "k": 9.0,
+     "n": 9.0,
+     "docs": 8
+    },
+    "not_reminded": {},
+    "morning_note": {
+     "value": 1.0,
+     "ci": [
+      0.6755924351161198,
+      1.0
+     ],
+     "k": 9.0,
+     "n": 9.0,
+     "docs": 8
+    }
+   },
+   "vollstreckungsbescheid": {
+    "letters": 4,
+    "obligations": 4,
+    "exact": {
+     "value": 1.0,
+     "ci": [
+      0.5101091635454027,
+      1.0
+     ],
+     "k": 4.0,
+     "n": 4.0,
+     "docs": 4
+    },
+    "reminded_in_time": {
+     "value": 1.0,
+     "ci": [
+      0.5101091635454027,
+      1.0
+     ],
+     "k": 4.0,
+     "n": 4.0,
+     "docs": 4
+    },
+    "not_reminded": {},
+    "morning_note": {
+     "value": 1.0,
+     "ci": [
+      0.5101091635454027,
+      1.0
+     ],
+     "k": 4.0,
+     "n": 4.0,
+     "docs": 4
+    }
+   },
+   "widerruf": {
+    "letters": 4,
+    "obligations": 0,
+    "exact": {
+     "value": null,
+     "ci": [
+      null,
+      null
+     ],
+     "k": 0.0,
+     "n": 0.0,
+     "docs": 0
+    },
+    "reminded_in_time": {
+     "value": null,
+     "ci": [
+      null,
+      null
+     ],
+     "k": 0.0,
+     "n": 0.0,
+     "docs": 0
+    },
+    "not_reminded": {},
+    "morning_note": {
+     "value": null,
+     "ci": [
+      null,
+      null
+     ],
+     "k": 0.0,
+     "n": 0.0,
+     "docs": 0
+    }
+   },
+   "year_boundary": {
+    "letters": 12,
+    "obligations": 12,
+    "exact": {
+     "value": 0.5,
+     "ci": [
+      0.18181818181818182,
+      0.8333333333333334
+     ],
+     "k": 6.0,
+     "n": 12.0,
+     "docs": 12
+    },
+    "reminded_in_time": {
+     "value": 1.0,
+     "ci": [
+      0.7224672001371109,
+      1.0
+     ],
+     "k": 12.0,
+     "n": 12.0,
+     "docs": 12
+    },
+    "not_reminded": {},
+    "morning_note": {
+     "value": 1.0,
+     "ci": [
+      0.7224672001371109,
+      1.0
+     ],
+     "k": 12.0,
+     "n": 12.0,
+     "docs": 12
+    }
+   }
+  }
+ },
+ "set_aside": [
+  {
+   "entry_id": "holdout4-adversarial-hidden_text-1",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "hidden_text",
+   "modality": "text",
+   "index": 0,
+   "kind": "deadline",
+   "nature": "objection",
+   "date_right": true,
+   "cause": "set_aside:scam_signs",
+   "scam_reasons": [
+    "hidden_text"
+   ],
+   "scam_idea": true
+  },
+  {
+   "entry_id": "holdout4-adversarial-hidden_text-2",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "hidden_text",
+   "modality": "text",
+   "index": 0,
+   "kind": "payment",
+   "nature": "payment",
+   "date_right": true,
+   "cause": "set_aside:scam_signs",
+   "scam_reasons": [
+    "hidden_text"
+   ],
+   "scam_idea": true
+  },
+  {
+   "entry_id": "holdout4-adversarial-hidden_text-3",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "hidden_text",
+   "modality": "text",
+   "index": 0,
+   "kind": "deadline",
+   "nature": "objection",
+   "date_right": true,
+   "cause": "set_aside:scam_signs",
+   "scam_reasons": [
+    "hidden_text"
+   ],
+   "scam_idea": true
+  },
+  {
+   "entry_id": "holdout4-adversarial-hidden_text-4",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "hidden_text",
+   "modality": "text",
+   "index": 0,
+   "kind": "payment",
+   "nature": "payment",
+   "date_right": true,
+   "cause": "set_aside:scam_signs",
+   "scam_reasons": [
+    "hidden_text"
+   ],
+   "scam_idea": true
+  },
+  {
+   "entry_id": "holdout4-adversarial-injection_visible-2-photo",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "injection_visible",
+   "modality": "photo",
+   "index": 0,
+   "kind": "payment",
+   "nature": "payment",
+   "date_right": true,
+   "cause": "set_aside:scam_signs",
+   "scam_reasons": [
+    "reading_warning:embedded instruction"
+   ],
+   "scam_idea": true
+  },
+  {
+   "entry_id": "holdout4-adversarial-injection_visible-4",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "injection_visible",
+   "modality": "text",
+   "index": 0,
+   "kind": "payment",
+   "nature": "payment",
+   "date_right": true,
+   "cause": "set_aside:scam_signs",
+   "scam_reasons": [
+    "reading_warning:embedded instruction"
+   ],
+   "scam_idea": true
+  },
+  {
+   "entry_id": "holdout4-adversarial-injection_visible-4-photo",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "injection_visible",
+   "modality": "photo",
+   "index": 0,
+   "kind": "payment",
+   "nature": "payment",
+   "date_right": true,
+   "cause": "set_aside:scam_signs",
+   "scam_reasons": [
+    "reading_warning:embedded instruction"
+   ],
+   "scam_idea": true
+  }
+ ],
+ "errors": [],
+ "letters": [
+  {
+   "entry_id": "holdout4-adversarial-conflicting_dates-1",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "conflicting_dates",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "needs_review",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 2,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-09",
+     "stored": "2026-12-09",
+     "bench": "2026-12-09",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-adversarial-conflicting_dates-2",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "conflicting_dates",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "needs_review",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-22",
+     "stored": "2026-12-21",
+     "bench": "2026-12-21",
+     "parity": true,
+     "exact": false,
+     "reminded": true,
+     "lead_days": 15,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-adversarial-conflicting_dates-3",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "conflicting_dates",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-07",
+     "stored": "2026-12-07",
+     "bench": "2026-12-07",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-adversarial-conflicting_dates-4",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "conflicting_dates",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-22",
+     "stored": "2026-12-22",
+     "bench": "2026-12-22",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-adversarial-hidden_text-1",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "hidden_text",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": true,
+   "scam_idea": true,
+   "scam_reasons": [
+    "hidden_text"
+   ],
+   "calendar_events": 0,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-24",
+     "stored": "2026-12-24",
+     "bench": "2026-12-24",
+     "parity": true,
+     "exact": true,
+     "reminded": false,
+     "lead_days": null,
+     "late_reminder": false,
+     "not_reminded": "set_aside:scam_signs",
+     "morning_note": false,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-adversarial-hidden_text-2",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "hidden_text",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": true,
+   "scam_idea": true,
+   "scam_reasons": [
+    "hidden_text"
+   ],
+   "calendar_events": 0,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-09",
+     "stored": "2026-12-09",
+     "bench": "2026-12-09",
+     "parity": true,
+     "exact": true,
+     "reminded": false,
+     "lead_days": null,
+     "late_reminder": false,
+     "not_reminded": "set_aside:scam_signs",
+     "morning_note": false,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-adversarial-hidden_text-3",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "hidden_text",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": true,
+   "scam_idea": true,
+   "scam_reasons": [
+    "hidden_text"
+   ],
+   "calendar_events": 0,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-22",
+     "stored": "2026-12-22",
+     "bench": "2026-12-22",
+     "parity": true,
+     "exact": true,
+     "reminded": false,
+     "lead_days": null,
+     "late_reminder": false,
+     "not_reminded": "set_aside:scam_signs",
+     "morning_note": false,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-adversarial-hidden_text-4",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "hidden_text",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": true,
+   "scam_idea": true,
+   "scam_reasons": [
+    "hidden_text"
+   ],
+   "calendar_events": 0,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-14",
+     "stored": "2026-12-14",
+     "bench": "2026-12-14",
+     "parity": true,
+     "exact": true,
+     "reminded": false,
+     "lead_days": null,
+     "late_reminder": false,
+     "not_reminded": "set_aside:scam_signs",
+     "morning_note": false,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-adversarial-injection_visible-1",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "injection_visible",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-23",
+     "stored": "2026-12-23",
+     "bench": "2026-12-23",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-adversarial-injection_visible-2",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "injection_visible",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-09",
+     "stored": "2026-12-09",
+     "bench": "2026-12-09",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-adversarial-injection_visible-2-photo",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "injection_visible",
+   "modality": "photo",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": true,
+   "scam_reasons": [
+    "reading_warning:embedded instruction"
+   ],
+   "calendar_events": 0,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-09",
+     "stored": "2026-12-09",
+     "bench": "2026-12-09",
+     "parity": true,
+     "exact": true,
+     "reminded": false,
+     "lead_days": null,
+     "late_reminder": false,
+     "not_reminded": "set_aside:scam_signs",
+     "morning_note": false,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-adversarial-injection_visible-3",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "injection_visible",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-24",
+     "stored": "2026-12-23",
+     "bench": "2026-12-23",
+     "parity": true,
+     "exact": false,
+     "reminded": true,
+     "lead_days": 15,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": false,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-adversarial-injection_visible-4",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "injection_visible",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": true,
+   "scam_reasons": [
+    "reading_warning:embedded instruction"
+   ],
+   "calendar_events": 0,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-04",
+     "stored": "2026-12-04",
+     "bench": "2026-12-04",
+     "parity": true,
+     "exact": true,
+     "reminded": false,
+     "lead_days": null,
+     "late_reminder": false,
+     "not_reminded": "set_aside:scam_signs",
+     "morning_note": false,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-adversarial-injection_visible-4-photo",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "injection_visible",
+   "modality": "photo",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": true,
+   "scam_reasons": [
+    "reading_warning:embedded instruction"
+   ],
+   "calendar_events": 0,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-04",
+     "stored": "2026-12-04",
+     "bench": "2026-12-04",
+     "parity": true,
+     "exact": true,
+     "reminded": false,
+     "lead_days": null,
+     "late_reminder": false,
+     "not_reminded": "set_aside:scam_signs",
+     "morning_note": false,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-adversarial-missing_date-1",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "missing_date",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 0,
+   "obligations": [],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-adversarial-missing_date-2",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "missing_date",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 0,
+   "obligations": [],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": null,
+     "addressee": true,
+     "deadline": null,
+     "send_by": null,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": [
+     "has_dates"
+    ]
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-adversarial-missing_date-3",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "missing_date",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 0,
+   "obligations": [],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-adversarial-missing_date-4",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "missing_date",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 0,
+   "obligations": [],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-adversarial-scam-1",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "scam",
+   "modality": "text",
+   "scam_gold": true,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": true,
+   "scam_reasons": [
+    "reading_warning:scam",
+    "reading_warning:scam+phish"
+   ],
+   "calendar_events": 0,
+   "obligations": [],
+   "draft": null,
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-adversarial-scam-2",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "scam",
+   "modality": "text",
+   "scam_gold": true,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": true,
+   "scam_reasons": [
+    "reading_warning:scam"
+   ],
+   "calendar_events": 0,
+   "obligations": [],
+   "draft": null,
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-adversarial-scam-2-photo",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "scam",
+   "modality": "photo",
+   "scam_gold": true,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": true,
+   "scam_reasons": [
+    "reading_warning:scam"
+   ],
+   "calendar_events": 0,
+   "obligations": [],
+   "draft": null,
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-adversarial-scam-3",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "scam",
+   "modality": "text",
+   "scam_gold": true,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [],
+   "draft": null,
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-adversarial-scam-4",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "scam",
+   "modality": "text",
+   "scam_gold": true,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": true,
+   "scam_reasons": [
+    "reading_warning:scam"
+   ],
+   "calendar_events": 0,
+   "obligations": [],
+   "draft": null,
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-adversarial-scam-4-photo",
+   "split": "holdout4",
+   "family": "adversarial",
+   "variant": "scam",
+   "modality": "photo",
+   "scam_gold": true,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": true,
+   "scam_reasons": [
+    "reading_warning:scam"
+   ],
+   "calendar_events": 0,
+   "obligations": [],
+   "draft": null,
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-appointment-K1",
+   "split": "holdout4",
+   "family": "appointment",
+   "variant": "K",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "appointment",
+     "nature": "appointment",
+     "gold": "2026-12-08",
+     "stored": "2026-12-08",
+     "bench": "2026-12-08",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 2,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-appointment-K1-photo",
+   "split": "holdout4",
+   "family": "appointment",
+   "variant": "K",
+   "modality": "photo",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "appointment",
+     "nature": "appointment",
+     "gold": "2026-12-08",
+     "stored": "2026-12-08",
+     "bench": "2026-12-08",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 2,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-appointment-K2",
+   "split": "holdout4",
+   "family": "appointment",
+   "variant": "K",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "appointment",
+     "nature": "appointment",
+     "gold": "2027-01-13",
+     "stored": "2027-01-13",
+     "bench": "2027-01-13",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 2,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-appointment-L1",
+   "split": "holdout4",
+   "family": "appointment",
+   "variant": "L",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "appointment",
+     "nature": "appointment",
+     "gold": "2026-12-12",
+     "stored": "2026-12-12",
+     "bench": "2026-12-12",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 2,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-appointment-M1",
+   "split": "holdout4",
+   "family": "appointment",
+   "variant": "M",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "appointment",
+     "nature": "appointment",
+     "gold": "2026-12-14",
+     "stored": "2026-12-14",
+     "bench": "2026-12-14",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 2,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-appointment-M1-photo",
+   "split": "holdout4",
+   "family": "appointment",
+   "variant": "M",
+   "modality": "photo",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "appointment",
+     "nature": "appointment",
+     "gold": "2026-12-14",
+     "stored": "2026-12-14",
+     "bench": "2026-12-14",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 2,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-appointment-M2",
+   "split": "holdout4",
+   "family": "appointment",
+   "variant": "M",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "appointment",
+     "nature": "appointment",
+     "gold": "2027-01-21",
+     "stored": "2027-01-21",
+     "bench": "2027-01-21",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 2,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-appointment-N1",
+   "split": "holdout4",
+   "family": "appointment",
+   "variant": "N",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "appointment",
+     "nature": "appointment",
+     "gold": "2027-01-07",
+     "stored": "2027-01-07",
+     "bench": "2027-01-07",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 2,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-contract_confirmation-K1",
+   "split": "holdout4",
+   "family": "contract_confirmation",
+   "variant": "K",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 2,
+   "obligations": [],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-contract_confirmation-L1",
+   "split": "holdout4",
+   "family": "contract_confirmation",
+   "variant": "L",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 2,
+   "obligations": [],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-contract_confirmation-M1",
+   "split": "holdout4",
+   "family": "contract_confirmation",
+   "variant": "M",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 2,
+   "obligations": [],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-contract_confirmation-N1",
+   "split": "holdout4",
+   "family": "contract_confirmation",
+   "variant": "N",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 2,
+   "obligations": [],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-dunning_fixed-K1",
+   "split": "holdout4",
+   "family": "dunning_fixed",
+   "variant": "K",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-04",
+     "stored": "2026-12-04",
+     "bench": "2026-12-04",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-dunning_fixed-K1-photo",
+   "split": "holdout4",
+   "family": "dunning_fixed",
+   "variant": "K",
+   "modality": "photo",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-04",
+     "stored": "2026-12-04",
+     "bench": "2026-12-04",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-dunning_fixed-K2",
+   "split": "holdout4",
+   "family": "dunning_fixed",
+   "variant": "K",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-02",
+     "stored": "2026-12-02",
+     "bench": "2026-12-02",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-dunning_fixed-L1",
+   "split": "holdout4",
+   "family": "dunning_fixed",
+   "variant": "L",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-07",
+     "stored": "2026-12-07",
+     "bench": "2026-12-07",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-dunning_fixed-M1",
+   "split": "holdout4",
+   "family": "dunning_fixed",
+   "variant": "M",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-03",
+     "stored": "2026-12-03",
+     "bench": "2026-12-03",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-dunning_fixed-M1-photo",
+   "split": "holdout4",
+   "family": "dunning_fixed",
+   "variant": "M",
+   "modality": "photo",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-03",
+     "stored": "2026-12-03",
+     "bench": "2026-12-03",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-dunning_fixed-M2",
+   "split": "holdout4",
+   "family": "dunning_fixed",
+   "variant": "M",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-10",
+     "stored": "2026-12-10",
+     "bench": "2026-12-10",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-dunning_fixed-N1",
+   "split": "holdout4",
+   "family": "dunning_fixed",
+   "variant": "N",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-11",
+     "stored": "2026-12-11",
+     "bench": "2026-12-11",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-english_letter-K1",
+   "split": "holdout4",
+   "family": "english_letter",
+   "variant": "K",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "declaration",
+     "gold": "2026-12-14",
+     "stored": "2026-12-14",
+     "bench": "2026-12-14",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-english_letter-K1-photo",
+   "split": "holdout4",
+   "family": "english_letter",
+   "variant": "K",
+   "modality": "photo",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "declaration",
+     "gold": "2026-12-14",
+     "stored": "2026-12-14",
+     "bench": "2026-12-14",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-english_letter-K2",
+   "split": "holdout4",
+   "family": "english_letter",
+   "variant": "K",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-07",
+     "stored": "2026-12-07",
+     "bench": "2026-12-07",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-english_letter-L1",
+   "split": "holdout4",
+   "family": "english_letter",
+   "variant": "L",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "declaration",
+     "gold": "2027-01-15",
+     "stored": "2027-01-15",
+     "bench": "2027-01-15",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-english_letter-L2",
+   "split": "holdout4",
+   "family": "english_letter",
+   "variant": "L",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "declaration",
+     "gold": "2026-12-16",
+     "stored": "2026-12-16",
+     "bench": "2026-12-16",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-english_letter-M1",
+   "split": "holdout4",
+   "family": "english_letter",
+   "variant": "M",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "declaration",
+     "gold": "2026-12-10",
+     "stored": "2026-12-10",
+     "bench": "2026-12-10",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-english_letter-M1-photo",
+   "split": "holdout4",
+   "family": "english_letter",
+   "variant": "M",
+   "modality": "photo",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 2,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "declaration",
+     "gold": "2026-12-10",
+     "stored": "2026-12-10",
+     "bench": "2026-12-10",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-english_letter-M2",
+   "split": "holdout4",
+   "family": "english_letter",
+   "variant": "M",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-14",
+     "stored": "2026-12-14",
+     "bench": "2026-12-14",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-english_letter-N1",
+   "split": "holdout4",
+   "family": "english_letter",
+   "variant": "N",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "declaration",
+     "gold": "2027-01-11",
+     "stored": "2027-01-11",
+     "bench": "2027-01-11",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-english_letter-N2",
+   "split": "holdout4",
+   "family": "english_letter",
+   "variant": "N",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "declaration",
+     "gold": "2026-12-11",
+     "stored": "2026-12-11",
+     "bench": "2026-12-11",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-fine_bussgeld-K1",
+   "split": "holdout4",
+   "family": "fine_bussgeld",
+   "variant": "K",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-07",
+     "stored": "2026-12-07",
+     "bench": "2026-12-07",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": true,
+     "idea_right": true
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-fine_bussgeld-K2",
+   "split": "holdout4",
+   "family": "fine_bussgeld",
+   "variant": "K",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-07",
+     "stored": "2026-12-07",
+     "bench": "2026-12-07",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": true,
+     "idea_right": true
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-fine_bussgeld-L1",
+   "split": "holdout4",
+   "family": "fine_bussgeld",
+   "variant": "L",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-07",
+     "stored": "2026-12-07",
+     "bench": "2026-12-07",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": true,
+     "idea_right": true
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-fine_bussgeld-L2",
+   "split": "holdout4",
+   "family": "fine_bussgeld",
+   "variant": "L",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-07",
+     "stored": "2026-12-07",
+     "bench": "2026-12-07",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": true,
+     "idea_right": true
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-fine_bussgeld-M1",
+   "split": "holdout4",
+   "family": "fine_bussgeld",
+   "variant": "M",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-08",
+     "stored": "2026-12-08",
+     "bench": "2026-12-08",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": true,
+     "idea_right": true
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-fine_bussgeld-M2",
+   "split": "holdout4",
+   "family": "fine_bussgeld",
+   "variant": "M",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-08",
+     "stored": "2026-12-08",
+     "bench": "2026-12-08",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": true,
+     "idea_right": true
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-fine_bussgeld-N1",
+   "split": "holdout4",
+   "family": "fine_bussgeld",
+   "variant": "N",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-08",
+     "stored": "2026-12-08",
+     "bench": "2026-12-08",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": true,
+     "idea_right": true
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-fine_bussgeld-N2",
+   "split": "holdout4",
+   "family": "fine_bussgeld",
+   "variant": "N",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-07",
+     "stored": "2026-12-07",
+     "bench": "2026-12-07",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": true,
+     "idea_right": true
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-invoice_relative-K1",
+   "split": "holdout4",
+   "family": "invoice_relative",
+   "variant": "K",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-03",
+     "stored": "2026-12-03",
+     "bench": "2026-12-03",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-invoice_relative-K1-photo",
+   "split": "holdout4",
+   "family": "invoice_relative",
+   "variant": "K",
+   "modality": "photo",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-03",
+     "stored": "2026-12-03",
+     "bench": "2026-12-03",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-invoice_relative-K2",
+   "split": "holdout4",
+   "family": "invoice_relative",
+   "variant": "K",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-14",
+     "stored": "2026-12-14",
+     "bench": "2026-12-14",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-invoice_relative-L1",
+   "split": "holdout4",
+   "family": "invoice_relative",
+   "variant": "L",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-21",
+     "stored": "2026-12-21",
+     "bench": "2026-12-21",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-invoice_relative-L1-photo",
+   "split": "holdout4",
+   "family": "invoice_relative",
+   "variant": "L",
+   "modality": "photo",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-21",
+     "stored": "2026-12-21",
+     "bench": "2026-12-21",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-invoice_relative-L2",
+   "split": "holdout4",
+   "family": "invoice_relative",
+   "variant": "L",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-09",
+     "stored": "2026-12-09",
+     "bench": "2026-12-09",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-invoice_relative-M1",
+   "split": "holdout4",
+   "family": "invoice_relative",
+   "variant": "M",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-07",
+     "stored": "2026-12-07",
+     "bench": "2026-12-07",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-invoice_relative-M1-photo",
+   "split": "holdout4",
+   "family": "invoice_relative",
+   "variant": "M",
+   "modality": "photo",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-07",
+     "stored": "2026-12-07",
+     "bench": "2026-12-07",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-invoice_relative-M2",
+   "split": "holdout4",
+   "family": "invoice_relative",
+   "variant": "M",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-04",
+     "stored": "2026-12-04",
+     "bench": "2026-12-04",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-invoice_relative-N1",
+   "split": "holdout4",
+   "family": "invoice_relative",
+   "variant": "N",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-09",
+     "stored": "2026-12-09",
+     "bench": "2026-12-09",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-invoice_relative-N1-photo",
+   "split": "holdout4",
+   "family": "invoice_relative",
+   "variant": "N",
+   "modality": "photo",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-09",
+     "stored": "2026-12-09",
+     "bench": "2026-12-09",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-invoice_relative-N2",
+   "split": "holdout4",
+   "family": "invoice_relative",
+   "variant": "N",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-21",
+     "stored": "2026-12-21",
+     "bench": "2026-12-21",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-municipal_decision-K1",
+   "split": "holdout4",
+   "family": "municipal_decision",
+   "variant": "K",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-23",
+     "stored": "2026-12-22",
+     "bench": "2026-12-22",
+     "parity": true,
+     "exact": false,
+     "reminded": true,
+     "lead_days": 15,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": false,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-municipal_decision-K2",
+   "split": "holdout4",
+   "family": "municipal_decision",
+   "variant": "K",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-22",
+     "stored": "2026-12-21",
+     "bench": "2026-12-21",
+     "parity": true,
+     "exact": false,
+     "reminded": true,
+     "lead_days": 15,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": false,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-municipal_decision-K2-photo",
+   "split": "holdout4",
+   "family": "municipal_decision",
+   "variant": "K",
+   "modality": "photo",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-22",
+     "stored": "2026-12-21",
+     "bench": "2026-12-21",
+     "parity": true,
+     "exact": false,
+     "reminded": true,
+     "lead_days": 15,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": false,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-municipal_decision-L1",
+   "split": "holdout4",
+   "family": "municipal_decision",
+   "variant": "L",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 2,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-22",
+     "stored": "2026-12-21",
+     "bench": "2026-12-21",
+     "parity": true,
+     "exact": false,
+     "reminded": true,
+     "lead_days": 15,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    },
+    {
+     "index": 1,
+     "kind": "task",
+     "nature": "other",
+     "gold": "2027-02-26",
+     "stored": "2027-02-26",
+     "bench": "2027-02-26",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-municipal_decision-L2",
+   "split": "holdout4",
+   "family": "municipal_decision",
+   "variant": "L",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-23",
+     "stored": "2026-12-22",
+     "bench": "2026-12-22",
+     "parity": true,
+     "exact": false,
+     "reminded": true,
+     "lead_days": 15,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": false,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-municipal_decision-M1",
+   "split": "holdout4",
+   "family": "municipal_decision",
+   "variant": "M",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-23",
+     "stored": "2026-12-22",
+     "bench": "2026-12-22",
+     "parity": true,
+     "exact": false,
+     "reminded": true,
+     "lead_days": 15,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": false,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-municipal_decision-M2",
+   "split": "holdout4",
+   "family": "municipal_decision",
+   "variant": "M",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-23",
+     "stored": "2026-12-22",
+     "bench": "2026-12-22",
+     "parity": true,
+     "exact": false,
+     "reminded": true,
+     "lead_days": 15,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": false,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-municipal_decision-M2-photo",
+   "split": "holdout4",
+   "family": "municipal_decision",
+   "variant": "M",
+   "modality": "photo",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-23",
+     "stored": "2026-12-22",
+     "bench": "2026-12-22",
+     "parity": true,
+     "exact": false,
+     "reminded": true,
+     "lead_days": 15,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": false,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-municipal_decision-N1",
+   "split": "holdout4",
+   "family": "municipal_decision",
+   "variant": "N",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-22",
+     "stored": "2026-12-21",
+     "bench": "2026-12-21",
+     "parity": true,
+     "exact": false,
+     "reminded": true,
+     "lead_days": 15,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-municipal_decision-N2",
+   "split": "holdout4",
+   "family": "municipal_decision",
+   "variant": "N",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-23",
+     "stored": "2026-12-22",
+     "bench": "2026-12-22",
+     "parity": true,
+     "exact": false,
+     "reminded": true,
+     "lead_days": 15,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": false,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-price_increase-K1",
+   "split": "holdout4",
+   "family": "price_increase",
+   "variant": "K",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 0,
+   "obligations": [],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-price_increase-L1",
+   "split": "holdout4",
+   "family": "price_increase",
+   "variant": "L",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 0,
+   "obligations": [],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-price_increase-M1",
+   "split": "holdout4",
+   "family": "price_increase",
+   "variant": "M",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 0,
+   "obligations": [],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-price_increase-N1",
+   "split": "holdout4",
+   "family": "price_increase",
+   "variant": "N",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 0,
+   "obligations": [],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-relative_business_days-K1",
+   "split": "holdout4",
+   "family": "relative_business_days",
+   "variant": "K",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "declaration",
+     "gold": "2026-12-04",
+     "stored": "2026-12-04",
+     "bench": "2026-12-04",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": true,
+     "idea_right": true
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-relative_business_days-K2",
+   "split": "holdout4",
+   "family": "relative_business_days",
+   "variant": "K",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "declaration",
+     "gold": "2026-12-04",
+     "stored": "2026-12-04",
+     "bench": "2026-12-04",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": true,
+     "idea_right": true
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-relative_business_days-L1",
+   "split": "holdout4",
+   "family": "relative_business_days",
+   "variant": "L",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "declaration",
+     "gold": "2026-12-07",
+     "stored": "2026-12-07",
+     "bench": "2026-12-07",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": true,
+     "idea_right": true
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-relative_business_days-L1-photo",
+   "split": "holdout4",
+   "family": "relative_business_days",
+   "variant": "L",
+   "modality": "photo",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "declaration",
+     "gold": "2026-12-07",
+     "stored": "2026-12-07",
+     "bench": "2026-12-07",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": true,
+     "idea_right": true
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-relative_business_days-M1",
+   "split": "holdout4",
+   "family": "relative_business_days",
+   "variant": "M",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "declaration",
+     "gold": "2026-12-02",
+     "stored": "2026-12-02",
+     "bench": "2026-12-02",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": true,
+     "idea_right": true
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-relative_business_days-M2",
+   "split": "holdout4",
+   "family": "relative_business_days",
+   "variant": "M",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "declaration",
+     "gold": "2026-12-08",
+     "stored": "2026-12-08",
+     "bench": "2026-12-08",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": true,
+     "idea_right": true
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-relative_business_days-N1",
+   "split": "holdout4",
+   "family": "relative_business_days",
+   "variant": "N",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "declaration",
+     "gold": "2026-12-07",
+     "stored": "2026-12-07",
+     "bench": "2026-12-07",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": true,
+     "idea_right": true
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-relative_business_days-N1-photo",
+   "split": "holdout4",
+   "family": "relative_business_days",
+   "variant": "N",
+   "modality": "photo",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "declaration",
+     "gold": "2026-12-07",
+     "stored": "2026-12-07",
+     "bench": "2026-12-07",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": true,
+     "idea_right": true
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "holdout4-social_decision-K1",
+   "split": "holdout4",
+   "family": "social_decision",
+   "variant": "K",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-23",
+     "stored": "2026-12-23",
+     "bench": "2026-12-23",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-social_decision-K2",
+   "split": "holdout4",
+   "family": "social_decision",
+   "variant": "K",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-24",
+     "stored": "2026-12-24",
+     "bench": "2026-12-24",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-social_decision-K2-photo",
+   "split": "holdout4",
+   "family": "social_decision",
+   "variant": "K",
+   "modality": "photo",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-24",
+     "stored": "2026-12-24",
+     "bench": "2026-12-24",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-social_decision-L1",
+   "split": "holdout4",
+   "family": "social_decision",
+   "variant": "L",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 4,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-24",
+     "stored": "2026-12-24",
+     "bench": "2026-12-24",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    },
+    {
+     "index": 1,
+     "kind": "task",
+     "nature": "declaration",
+     "gold": "2027-01-11",
+     "stored": "2027-01-11",
+     "bench": "2027-01-11",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-social_decision-L2",
+   "split": "holdout4",
+   "family": "social_decision",
+   "variant": "L",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-23",
+     "stored": "2026-12-22",
+     "bench": "2026-12-22",
+     "parity": true,
+     "exact": false,
+     "reminded": true,
+     "lead_days": 15,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": false,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-social_decision-M1",
+   "split": "holdout4",
+   "family": "social_decision",
+   "variant": "M",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-24",
+     "stored": "2026-12-24",
+     "bench": "2026-12-24",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-social_decision-M2",
+   "split": "holdout4",
+   "family": "social_decision",
+   "variant": "M",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-24",
+     "stored": "2026-12-24",
+     "bench": "2026-12-24",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-social_decision-M2-photo",
+   "split": "holdout4",
+   "family": "social_decision",
+   "variant": "M",
+   "modality": "photo",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-24",
+     "stored": "2026-12-24",
+     "bench": "2026-12-24",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-social_decision-N1",
+   "split": "holdout4",
+   "family": "social_decision",
+   "variant": "N",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 2,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-23",
+     "stored": "2026-12-23",
+     "bench": "2026-12-23",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    },
+    {
+     "index": 1,
+     "kind": "task",
+     "nature": "declaration",
+     "gold": "2027-01-08",
+     "stored": "2027-01-08",
+     "bench": "2027-01-08",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-social_decision-N2",
+   "split": "holdout4",
+   "family": "social_decision",
+   "variant": "N",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-24",
+     "stored": "2026-12-24",
+     "bench": "2026-12-24",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-tax_assessment-K1",
+   "split": "holdout4",
+   "family": "tax_assessment",
+   "variant": "K",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-23",
+     "stored": "2026-12-23",
+     "bench": "2026-12-23",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-tax_assessment-K2",
+   "split": "holdout4",
+   "family": "tax_assessment",
+   "variant": "K",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-23",
+     "stored": "2026-12-23",
+     "bench": "2026-12-23",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-tax_assessment-L1",
+   "split": "holdout4",
+   "family": "tax_assessment",
+   "variant": "L",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 2,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-24",
+     "stored": "2026-12-23",
+     "bench": "2026-12-23",
+     "parity": true,
+     "exact": false,
+     "reminded": true,
+     "lead_days": 15,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    },
+    {
+     "index": 1,
+     "kind": "payment",
+     "nature": "payment",
+     "gold": "2026-12-28",
+     "stored": "2026-12-28",
+     "bench": "2026-12-28",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": false,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-tax_assessment-L2",
+   "split": "holdout4",
+   "family": "tax_assessment",
+   "variant": "L",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-23",
+     "stored": "2026-12-23",
+     "bench": "2026-12-23",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-tax_assessment-M1",
+   "split": "holdout4",
+   "family": "tax_assessment",
+   "variant": "M",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-24",
+     "stored": "2026-12-24",
+     "bench": "2026-12-24",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-tax_assessment-M2",
+   "split": "holdout4",
+   "family": "tax_assessment",
+   "variant": "M",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-23",
+     "stored": "2026-12-23",
+     "bench": "2026-12-23",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-tax_assessment-N1",
+   "split": "holdout4",
+   "family": "tax_assessment",
+   "variant": "N",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-23",
+     "stored": "2026-12-23",
+     "bench": "2026-12-23",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-tax_assessment-N2",
+   "split": "holdout4",
+   "family": "tax_assessment",
+   "variant": "N",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-23",
+     "stored": "2026-12-23",
+     "bench": "2026-12-23",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-year_boundary-K1",
+   "split": "holdout4",
+   "family": "year_boundary",
+   "variant": "K",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 2,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-28",
+     "stored": "2026-12-23",
+     "bench": "2026-12-23",
+     "parity": true,
+     "exact": false,
+     "reminded": true,
+     "lead_days": 19,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": false,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-year_boundary-K2",
+   "split": "holdout4",
+   "family": "year_boundary",
+   "variant": "K",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-28",
+     "stored": "2026-12-23",
+     "bench": "2026-12-23",
+     "parity": true,
+     "exact": false,
+     "reminded": true,
+     "lead_days": 19,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": false,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-year_boundary-K3",
+   "split": "holdout4",
+   "family": "year_boundary",
+   "variant": "K",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 2,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-28",
+     "stored": "2026-12-24",
+     "bench": "2026-12-24",
+     "parity": true,
+     "exact": false,
+     "reminded": true,
+     "lead_days": 18,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": false,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-year_boundary-L1",
+   "split": "holdout4",
+   "family": "year_boundary",
+   "variant": "L",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-28",
+     "stored": "2026-12-22",
+     "bench": "2026-12-22",
+     "parity": true,
+     "exact": false,
+     "reminded": true,
+     "lead_days": 20,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": false,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-year_boundary-L1-photo",
+   "split": "holdout4",
+   "family": "year_boundary",
+   "variant": "L",
+   "modality": "photo",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-28",
+     "stored": "2026-12-22",
+     "bench": "2026-12-22",
+     "parity": true,
+     "exact": false,
+     "reminded": true,
+     "lead_days": 20,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": false,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-year_boundary-L2",
+   "split": "holdout4",
+   "family": "year_boundary",
+   "variant": "L",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-28",
+     "stored": "2026-12-24",
+     "bench": "2026-12-24",
+     "parity": true,
+     "exact": false,
+     "reminded": true,
+     "lead_days": 18,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": false,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-year_boundary-M1",
+   "split": "holdout4",
+   "family": "year_boundary",
+   "variant": "M",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-24",
+     "stored": "2026-12-24",
+     "bench": "2026-12-24",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-year_boundary-M2",
+   "split": "holdout4",
+   "family": "year_boundary",
+   "variant": "M",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-23",
+     "stored": "2026-12-23",
+     "bench": "2026-12-23",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-year_boundary-M3",
+   "split": "holdout4",
+   "family": "year_boundary",
+   "variant": "M",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-23",
+     "stored": "2026-12-23",
+     "bench": "2026-12-23",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-year_boundary-N1",
+   "split": "holdout4",
+   "family": "year_boundary",
+   "variant": "N",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 2,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-22",
+     "stored": "2026-12-22",
+     "bench": "2026-12-22",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-year_boundary-N1-photo",
+   "split": "holdout4",
+   "family": "year_boundary",
+   "variant": "N",
+   "modality": "photo",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 2,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-22",
+     "stored": "2026-12-22",
+     "bench": "2026-12-22",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "holdout4-year_boundary-N2",
+   "split": "holdout4",
+   "family": "year_boundary",
+   "variant": "N",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-23",
+     "stored": "2026-12-23",
+     "bench": "2026-12-23",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "newkinds-betriebskosten-1",
+   "split": "newkinds",
+   "family": "betriebskosten",
+   "variant": "1",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2027-11-19",
+     "stored": null,
+     "bench": null,
+     "parity": true,
+     "exact": false,
+     "reminded": false,
+     "lead_days": null,
+     "late_reminder": false,
+     "not_reminded": "not_stored",
+     "morning_note": false,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "newkinds-betriebskosten-1-photo",
+   "split": "newkinds",
+   "family": "betriebskosten",
+   "variant": "1",
+   "modality": "photo",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2027-11-19",
+     "stored": null,
+     "bench": null,
+     "parity": true,
+     "exact": false,
+     "reminded": false,
+     "lead_days": null,
+     "late_reminder": false,
+     "not_reminded": "not_stored",
+     "morning_note": false,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "newkinds-betriebskosten-2",
+   "split": "newkinds",
+   "family": "betriebskosten",
+   "variant": "2",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2027-11-18",
+     "stored": null,
+     "bench": null,
+     "parity": true,
+     "exact": false,
+     "reminded": false,
+     "lead_days": null,
+     "late_reminder": false,
+     "not_reminded": "not_stored",
+     "morning_note": false,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "newkinds-betriebskosten-3",
+   "split": "newkinds",
+   "family": "betriebskosten",
+   "variant": "3",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 0,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2027-11-22",
+     "stored": null,
+     "bench": null,
+     "parity": true,
+     "exact": false,
+     "reminded": false,
+     "lead_days": null,
+     "late_reminder": false,
+     "not_reminded": "not_stored",
+     "morning_note": false,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "newkinds-betriebskosten-4",
+   "split": "newkinds",
+   "family": "betriebskosten",
+   "variant": "4",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2027-11-18",
+     "stored": null,
+     "bench": null,
+     "parity": true,
+     "exact": false,
+     "reminded": false,
+     "lead_days": null,
+     "late_reminder": false,
+     "not_reminded": "not_stored",
+     "morning_note": false,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "newkinds-kuendigung_arbeit-1",
+   "split": "newkinds",
+   "family": "kuendigung_arbeit",
+   "variant": "1",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 4,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-10",
+     "stored": "2026-12-10",
+     "bench": "2026-12-10",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "newkinds-kuendigung_arbeit-2",
+   "split": "newkinds",
+   "family": "kuendigung_arbeit",
+   "variant": "2",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 4,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-09",
+     "stored": "2026-12-09",
+     "bench": "2026-12-09",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "newkinds-kuendigung_arbeit-2-photo",
+   "split": "newkinds",
+   "family": "kuendigung_arbeit",
+   "variant": "2",
+   "modality": "photo",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 4,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-09",
+     "stored": "2026-12-09",
+     "bench": "2026-12-09",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "newkinds-kuendigung_arbeit-3",
+   "split": "newkinds",
+   "family": "kuendigung_arbeit",
+   "variant": "3",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 3,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-09",
+     "stored": "2026-12-09",
+     "bench": "2026-12-09",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "newkinds-kuendigung_arbeit-4",
+   "split": "newkinds",
+   "family": "kuendigung_arbeit",
+   "variant": "4",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 5,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-10",
+     "stored": "2026-12-10",
+     "bench": "2026-12-10",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "newkinds-kuendigung_miete-1",
+   "split": "newkinds",
+   "family": "kuendigung_miete",
+   "variant": "1",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 2,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-31",
+     "stored": "2026-12-31",
+     "bench": "2026-12-31",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": false,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "newkinds-kuendigung_miete-1-photo",
+   "split": "newkinds",
+   "family": "kuendigung_miete",
+   "variant": "1",
+   "modality": "photo",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 2,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-31",
+     "stored": "2026-12-31",
+     "bench": "2026-12-31",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": false,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "newkinds-kuendigung_miete-2",
+   "split": "newkinds",
+   "family": "kuendigung_miete",
+   "variant": "2",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "needs_review",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 2,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2027-03-31",
+     "stored": "2027-03-31",
+     "bench": "2027-03-31",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": true,
+    "own_checks_failed": [
+     "recipient_complete"
+    ]
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "newkinds-kuendigung_miete-3",
+   "split": "newkinds",
+   "family": "kuendigung_miete",
+   "variant": "3",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2027-06-30",
+     "stored": "2027-06-30",
+     "bench": "2027-06-30",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": false,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "newkinds-kuendigung_miete-4",
+   "split": "newkinds",
+   "family": "kuendigung_miete",
+   "variant": "4",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "needs_review",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-31",
+     "stored": "2026-12-31",
+     "bench": "2026-12-31",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": false,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": true,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "newkinds-mahnbescheid-1",
+   "split": "newkinds",
+   "family": "mahnbescheid",
+   "variant": "1",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 3,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-07",
+     "stored": "2026-12-07",
+     "bench": "2026-12-07",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": true,
+     "idea_right": true
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": false,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": [
+     "recipient_complete"
+    ]
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "newkinds-mahnbescheid-2",
+   "split": "newkinds",
+   "family": "mahnbescheid",
+   "variant": "2",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "needs_review",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 3,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-04",
+     "stored": "2026-12-04",
+     "bench": "2026-12-04",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": true,
+     "idea_right": true
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": false,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": [
+     "recipient_complete"
+    ]
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "newkinds-mahnbescheid-2-photo",
+   "split": "newkinds",
+   "family": "mahnbescheid",
+   "variant": "2",
+   "modality": "photo",
+   "scam_gold": false,
+   "status": "needs_review",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 3,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-04",
+     "stored": "2026-12-04",
+     "bench": "2026-12-04",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": true,
+     "idea_right": true
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": false,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": [
+     "recipient_complete"
+    ]
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "newkinds-mahnbescheid-3",
+   "split": "newkinds",
+   "family": "mahnbescheid",
+   "variant": "3",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 2,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-04",
+     "stored": "2026-12-04",
+     "bench": "2026-12-04",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": true,
+     "idea_right": true
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": false,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": [
+     "recipient_complete"
+    ]
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "newkinds-mahnbescheid-4",
+   "split": "newkinds",
+   "family": "mahnbescheid",
+   "variant": "4",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 2,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-04",
+     "stored": "2026-12-04",
+     "bench": "2026-12-04",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": true,
+     "idea_right": true
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": false,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "newkinds-mieterhoehung-1",
+   "split": "newkinds",
+   "family": "mieterhoehung",
+   "variant": "1",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "needs_review",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "declaration",
+     "gold": "2027-02-01",
+     "stored": "2027-02-01",
+     "bench": "2027-02-01",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "newkinds-mieterhoehung-2",
+   "split": "newkinds",
+   "family": "mieterhoehung",
+   "variant": "2",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 2,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "declaration",
+     "gold": "2027-02-01",
+     "stored": "2027-02-01",
+     "bench": null,
+     "parity": false,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "newkinds-mieterhoehung-3",
+   "split": "newkinds",
+   "family": "mieterhoehung",
+   "variant": "3",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "declaration",
+     "gold": "2027-02-01",
+     "stored": "2027-02-01",
+     "bench": null,
+     "parity": false,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "newkinds-mieterhoehung-4",
+   "split": "newkinds",
+   "family": "mieterhoehung",
+   "variant": "4",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "needs_review",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "declaration",
+     "gold": "2027-02-01",
+     "stored": "2027-02-01",
+     "bench": "2027-02-01",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 14,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": false,
+     "idea_right": null
+    }
+   ],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "newkinds-vollstreckungsbescheid-1",
+   "split": "newkinds",
+   "family": "vollstreckungsbescheid",
+   "variant": "1",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 2,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-04",
+     "stored": "2026-12-04",
+     "bench": "2026-12-04",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": true,
+     "idea_right": true
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": false,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "newkinds-vollstreckungsbescheid-2",
+   "split": "newkinds",
+   "family": "vollstreckungsbescheid",
+   "variant": "2",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 2,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-07",
+     "stored": "2026-12-07",
+     "bench": "2026-12-07",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": true,
+     "idea_right": true
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": false,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "newkinds-vollstreckungsbescheid-3",
+   "split": "newkinds",
+   "family": "vollstreckungsbescheid",
+   "variant": "3",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 2,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-07",
+     "stored": "2026-12-07",
+     "bench": "2026-12-07",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": true,
+     "idea_right": true
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": false,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "newkinds-vollstreckungsbescheid-4",
+   "split": "newkinds",
+   "family": "vollstreckungsbescheid",
+   "variant": "4",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 2,
+   "obligations": [
+    {
+     "index": 0,
+     "kind": "deadline",
+     "nature": "objection",
+     "gold": "2026-12-07",
+     "stored": "2026-12-07",
+     "bench": "2026-12-07",
+     "parity": true,
+     "exact": true,
+     "reminded": true,
+     "lead_days": 7,
+     "late_reminder": false,
+     "not_reminded": null,
+     "morning_note": true,
+     "idea_due": true,
+     "idea_right": true
+    }
+   ],
+   "draft": {
+    "refused": false,
+    "error": null,
+    "elements": {
+     "remedy_word": true,
+     "reference": true,
+     "decision_date": true,
+     "addressee": true,
+     "deadline": false,
+     "send_by": true,
+     "signature": true,
+     "no_placeholder": true
+    },
+    "complete": false,
+    "own_checks_failed": []
+   },
+   "objection_on_none": null
+  },
+  {
+   "entry_id": "newkinds-widerruf-1",
+   "split": "newkinds",
+   "family": "widerruf",
+   "variant": "1",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "needs_review",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 3,
+   "obligations": [],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "newkinds-widerruf-2",
+   "split": "newkinds",
+   "family": "widerruf",
+   "variant": "2",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "needs_review",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "newkinds-widerruf-3",
+   "split": "newkinds",
+   "family": "widerruf",
+   "variant": "3",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "processed",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [],
+   "draft": null,
+   "objection_on_none": "refused"
+  },
+  {
+   "entry_id": "newkinds-widerruf-4",
+   "split": "newkinds",
+   "family": "widerruf",
+   "variant": "4",
+   "modality": "text",
+   "scam_gold": false,
+   "status": "needs_review",
+   "hidden_text": false,
+   "scam_idea": false,
+   "scam_reasons": [],
+   "calendar_events": 1,
+   "obligations": [],
+   "draft": null,
+   "objection_on_none": "refused"
+  }
+ ]
+}

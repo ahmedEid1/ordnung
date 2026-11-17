@@ -967,6 +967,7 @@ def test_the_evals_readme_lays_out_every_folder_and_names_every_recording_contro
         for path in (ROOT / "evals").iterdir()
         if not path.name.startswith((".", "_")) and (path.is_dir() or path.suffix == ".py")
     }
+    parts.discard("retakes")  # final-0.4.0.json lets the publish add the retakes, not a Layout row
     assert sorted(parts - laid_out) == [], "a part of evals/ without its row in evals/README.md's Layout"
 
     def named(word: str) -> bool:
