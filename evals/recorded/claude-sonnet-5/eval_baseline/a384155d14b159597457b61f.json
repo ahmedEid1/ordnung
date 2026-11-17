@@ -1,0 +1,106 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"f40828419b544f80dc75905cac370a00c3bb2957bcaaf461bbee21c2e85e60fe\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-vollstreckungsbescheid-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d",
+    "recorded_at": "2026-11-24T13:07:51+00:00",
+    "repeat": 1,
+    "commit": "17c7ca3b",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Amtsgericht Exempelsund – Mahngericht\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Geschäftsnummer\",\"value\":\"26-6604318-0-0\"}],\"amounts\":[598,9.41,36,105.3,748.71],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the Vollstreckungsbescheid\",\"quote\":\"Dafür steht ein Zeitraum von zwei Wochen ab Zustellung zur Verfügung, der sich nicht verlängern lässt.\",\"computation\":\"The letter itself states the exact service date: 'Durch die Post zugestellt am Montag, 23.11.2026.' This is a formal court service (Zustellung), so the statutory 4-day deemed-delivery rule for ordinary administrative post does not apply — the stated date is used directly. Under § 187 Abs. 1 BGB the day of delivery (23.11.2026) is not counted; the two-week period (§ 339 Abs. 1, § 700 Abs. 1 ZPO) runs from 24.11.2026 and ends, per § 188 Abs. 2 BGB, on the day of the second week bearing the same name as the delivery day, i.e. Monday 07.12.2026. That day is a normal business day in Schleswig-Holstein (no shift needed under § 222 ZPO). This is a Notfrist and cannot be extended.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Total amount tituliert as owed (already enforceable)\",\"quote\":\"Gesamtbetrag 748,71\",\"computation\":\"The Vollstreckungsbescheid declares the claim enforceable immediately because no Widerspruch was filed against the earlier Mahnbescheid; it does not print a new payment deadline. The underlying Leasingraten were already overdue (August/September 2026). No explicit 'pay by' sentence is given in the letter, so no new exact due date can be computed; the amount is already collectible by enforcement at any time, which is why getting advice before 07.12.2026 (the Einspruch deadline) matters.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":748.71}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"This is a Vollstreckungsbescheid (enforcement order) following an unanswered Mahnbescheid: the two-week Einspruch deadline (07.12.2026) is a non-extendable Notfrist, and the creditor can start enforcement (Zwangsvollstreckung) once it passes — get legal advice promptly if the claim is disputed.\",\"No explicit new payment due-date is printed for the EUR 748,71 total; verify with the court or a lawyer whether partial amounts (e.g. the original leasing instalments) were already overdue before relying on any specific payment date.\",\"The letter was reportedly delivered on Monday 23.11.2026 though dated 20.11.2026 (a Friday) — the delivery date as stated by the person was used for the deadline calculation; double-check the actual postmark/delivery date on the envelope if available.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Amtsgericht Exempelsund – Mahngericht",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Geschäftsnummer",
+          "value": "26-6604318-0-0"
+        }
+      ],
+      "amounts": [
+        598,
+        9.41,
+        36,
+        105.3,
+        748.71
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the Vollstreckungsbescheid",
+          "quote": "Dafür steht ein Zeitraum von zwei Wochen ab Zustellung zur Verfügung, der sich nicht verlängern lässt.",
+          "computation": "The letter itself states the exact service date: 'Durch die Post zugestellt am Montag, 23.11.2026.' This is a formal court service (Zustellung), so the statutory 4-day deemed-delivery rule for ordinary administrative post does not apply — the stated date is used directly. Under § 187 Abs. 1 BGB the day of delivery (23.11.2026) is not counted; the two-week period (§ 339 Abs. 1, § 700 Abs. 1 ZPO) runs from 24.11.2026 and ends, per § 188 Abs. 2 BGB, on the day of the second week bearing the same name as the delivery day, i.e. Monday 07.12.2026. That day is a normal business day in Schleswig-Holstein (no shift needed under § 222 ZPO). This is a Notfrist and cannot be extended.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Total amount tituliert as owed (already enforceable)",
+          "quote": "Gesamtbetrag 748,71",
+          "computation": "The Vollstreckungsbescheid declares the claim enforceable immediately because no Widerspruch was filed against the earlier Mahnbescheid; it does not print a new payment deadline. The underlying Leasingraten were already overdue (August/September 2026). No explicit 'pay by' sentence is given in the letter, so no new exact due date can be computed; the amount is already collectible by enforcement at any time, which is why getting advice before 07.12.2026 (the Einspruch deadline) matters.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 748.71
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "This is a Vollstreckungsbescheid (enforcement order) following an unanswered Mahnbescheid: the two-week Einspruch deadline (07.12.2026) is a non-extendable Notfrist, and the creditor can start enforcement (Zwangsvollstreckung) once it passes — get legal advice promptly if the claim is disputed.",
+        "No explicit new payment due-date is printed for the EUR 748,71 total; verify with the court or a lawyer whether partial amounts (e.g. the original leasing instalments) were already overdue before relying on any specific payment date.",
+        "The letter was reportedly delivered on Monday 23.11.2026 though dated 20.11.2026 (a Friday) — the delivery date as stated by the person was used for the deadline calculation; double-check the actual postmark/delivery date on the envelope if available."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2840,
+      "cache_read_tokens": 14709,
+      "cache_creation_tokens": 3934,
+      "cost_usd": 0.047085800000000004,
+      "duration_ms": 35900,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "receipt",
+            "anchor_date": "2026-11-23",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "delivery_rule": "none",
+            "legal_basis": "§ 700 ZPO, § 339 ZPO",
+            "text": "Dafür steht ein Zeitraum von zwei Wochen ab Zustellung zur Verfügung, der sich nicht verlängern lässt."
+          },
+          "document_date": "2026-11-20",
+          "received_date": "2026-11-23",
+          "sender_kind": "authority",
+          "sender_name": "Amtsgericht Exempelsund",
+          "region": "SH",
+          "recipient_region": "SH",
+          "remedy_type": "einspruch"
+        },
+        "result": "{\"due_date\":\"2026-12-07\",\"weekday\":\"Monday\",\"send_by\":\"2026-12-01\",\"summary\":\"Two weeks after delivery on Mon 23 Nov 2026 (as stated on the letter) is Mon 7 Dec 2026.\",\"confidence\":\"medium\",\"warnings\":[\"This is a court deadline that can't be extended (Notfrist), and the order can be enforced meanwhile. Get advice now (see the card on this letter).\"],\"steps\":[{\"label\":\"Counting starts the day after Mon 23 Nov 2026\",\"date\":\"2026-11-23\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 222 Abs. 1 ZPO; § 187 Abs. 1 BGB\"},{\"label\":\"Two weeks later: Mon 7 Dec 2026\",\"date\":\"2026-12-07\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 222 Abs. 1 ZPO; § 188 Abs. 1, 2 BGB\"},{\"label\":\"Mon 7 Dec 2026 is a working day, so it stays\",\"date\":\"2026-12-07\",\"rule_id\":\"zpo_222\",\"citation\":\"§ 222 Abs. 1, 2 ZPO\"},{\"label\":\"Send by Tue 1 Dec 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-12-01\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"zpo_339\",\"title\":\"Enforcement order (Vollstreckungsbescheid): two weeks to object\",\"citation\":\"§ 700 Abs. 1 ZPO; § 339 Abs. 1 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/zpo/__339.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"zpo_180\",\"title\":\"Court letters count from delivery (Zustellung)\",\"citation\":\"§ 180 ZPO; § 166 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/zpo/__180.html\"},{\"id\":\"zpo_222\",\"title\":\"Court deadlines: weekend and holiday shift\",\"citation\":\"§ 222 Abs. 1, 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/zpo/__222.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-20\",\"received_date\":\"2026-11-23\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"delivery_law\":\"a court's letter: formal service (§ 180 ZPO), no deemed delivery\",\"holiday_calendar\":\"Schleswig-Holstein\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"2ade68eb43d9eec31f8b59b1aec1ffe859d927757e067117930d08cebccd103e\",\"mode\":\"text\",\"region\":\"BY\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-widerruf-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bayern (BY), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag",
+    "recorded_at": "2026-11-24T13:11:27+00:00",
+    "repeat": 1,
+    "commit": "17c7ca3b",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"amounts\":[3034],\"contract\":null,\"document_date\":\"2026-11-18\",\"items\":[{\"kind\":\"expiry\",\"title\":\"Right of withdrawal (Widerrufsrecht) expires\",\"quote\":\"Sie können Ihre Bestellung binnen vierzehn Tagen widerrufen, ohne Gründe zu nennen. Die Frist läuft ab dem Tag, an dem Sie die Ware erhalten haben.\",\"computation\":\"Goods (table and chairs) were delivered to the customer on 18.11.2026 (Wednesday), which is the event that starts the 14-day withdrawal period for a consumer goods purchase (§ 355 Abs. 2, § 356 Abs. 2 BGB). Under § 187 Abs. 1 BGB the day of the event itself is not counted, so the period starts on 19.11.2026. Counting 14 days from there, the period ends on 02.12.2026 (Wednesday). This day is neither a Saturday, a Sunday nor a public holiday in Bayern, so no shift under § 193 BGB is needed. The letter states the withdrawal is timely if sent off before the end of the period, so the goods-in-post date must be no later than 02.12.2026.\",\"due_date\":\"2026-12-02\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"receipt\",\"references\":[{\"label\":\"Bestellnummer\",\"value\":\"MW-2026-10-4471\"},{\"label\":\"Lieferschein\",\"value\":\"LS-88213\"},{\"label\":\"AG Beispielrosenheim HRB\",\"value\":\"6 667\"}],\"remedy_type\":\"none\",\"sender_name\":\"Möbelmanufaktur Musterwendel GmbH\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        3034
+      ],
+      "contract": null,
+      "document_date": "2026-11-18",
+      "items": [
+        {
+          "kind": "expiry",
+          "title": "Right of withdrawal (Widerrufsrecht) expires",
+          "quote": "Sie können Ihre Bestellung binnen vierzehn Tagen widerrufen, ohne Gründe zu nennen. Die Frist läuft ab dem Tag, an dem Sie die Ware erhalten haben.",
+          "computation": "Goods (table and chairs) were delivered to the customer on 18.11.2026 (Wednesday), which is the event that starts the 14-day withdrawal period for a consumer goods purchase (§ 355 Abs. 2, § 356 Abs. 2 BGB). Under § 187 Abs. 1 BGB the day of the event itself is not counted, so the period starts on 19.11.2026. Counting 14 days from there, the period ends on 02.12.2026 (Wednesday). This day is neither a Saturday, a Sunday nor a public holiday in Bayern, so no shift under § 193 BGB is needed. The letter states the withdrawal is timely if sent off before the end of the period, so the goods-in-post date must be no later than 02.12.2026.",
+          "due_date": "2026-12-02",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "receipt",
+      "references": [
+        {
+          "label": "Bestellnummer",
+          "value": "MW-2026-10-4471"
+        },
+        {
+          "label": "Lieferschein",
+          "value": "LS-88213"
+        },
+        {
+          "label": "AG Beispielrosenheim HRB",
+          "value": "6 667"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Möbelmanufaktur Musterwendel GmbH",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2193,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1810,
+      "cost_usd": 0.03028,
+      "duration_ms": 22428,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

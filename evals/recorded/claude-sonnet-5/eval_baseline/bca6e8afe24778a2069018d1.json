@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"8661bfb2e1888bed25c8b472c1460f472980266c2a76f3ae6be10b7948bc6d34\",\"mode\":\"text\",\"region\":\"BW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-widerruf-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Baden-Württemberg (BW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_do",
+    "recorded_at": "2026-11-24T13:12:16+00:00",
+    "repeat": 1,
+    "commit": "17c7ca3b",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract\",\"sender_name\":\"Glanzwerk Beispielputz GmbH\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"GW-10-55821\"}],\"amounts\":[119],\"items\":[{\"kind\":\"deadline\",\"title\":\"Withdraw from cleaning subscription contract (Widerruf)\",\"quote\":\"Innerhalb von 14 Tagen nach Vertragsschluss können Sie sich ohne Begründung wieder von diesem Vertrag lösen, indem Sie ihn widerrufen.\",\"computation\":\"Contract concluded at the sales stand on 21.11.2026 (Saturday), confirmed directly to the customer the same day, so the 14-day withdrawal period runs 'nach Vertragsschluss' (from contract conclusion), not from a later delivery. Under § 187(1) BGB the day of the triggering event (21.11.2026) is not counted; the period starts 22.11.2026. Under § 188(2) BGB a period of days ends with the day that, by its designation, corresponds to the triggering day after the stated number of days: 21.11.2026 + 14 days = 05.12.2026. That date is a Saturday. Under § 193 BGB, if the last day of a period falls on a Saturday, Sunday or public holiday, the period ends on the next business day. The next business day is Monday 07.12.2026 (no Baden-Württemberg public holiday on 05.12. or 06.12. or 07.12.2026). It suffices that the withdrawal is sent ('absenden') by that date.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "contract",
+      "sender_name": "Glanzwerk Beispielputz GmbH",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "GW-10-55821"
+        }
+      ],
+      "amounts": [
+        119
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Withdraw from cleaning subscription contract (Widerruf)",
+          "quote": "Innerhalb von 14 Tagen nach Vertragsschluss können Sie sich ohne Begründung wieder von diesem Vertrag lösen, indem Sie ihn widerrufen.",
+          "computation": "Contract concluded at the sales stand on 21.11.2026 (Saturday), confirmed directly to the customer the same day, so the 14-day withdrawal period runs 'nach Vertragsschluss' (from contract conclusion), not from a later delivery. Under § 187(1) BGB the day of the triggering event (21.11.2026) is not counted; the period starts 22.11.2026. Under § 188(2) BGB a period of days ends with the day that, by its designation, corresponds to the triggering day after the stated number of days: 21.11.2026 + 14 days = 05.12.2026. That date is a Saturday. Under § 193 BGB, if the last day of a period falls on a Saturday, Sunday or public holiday, the period ends on the next business day. The next business day is Monday 07.12.2026 (no Baden-Württemberg public holiday on 05.12. or 06.12. or 07.12.2026). It suffices that the withdrawal is sent ('absenden') by that date.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4786,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1668,
+      "cost_usd": 0.05516039999999999,
+      "duration_ms": 47314,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

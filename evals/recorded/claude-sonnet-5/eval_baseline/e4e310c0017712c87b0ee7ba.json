@@ -1,0 +1,81 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"469be851f4d885e00ac7104d56d2e0f2cabd71f3150352daf044a6b272f7a667\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-widerruf-2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_",
+    "recorded_at": "2026-11-24T13:10:37+00:00",
+    "repeat": 1,
+    "commit": "17c7ca3b",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract\",\"sender_name\":\"Exempelenergie Rheinschiene AG\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"ER-77104528\"},{\"label\":\"Zählernummer\",\"value\":\"1EBZ0115508822\"}],\"amounts\":[29.8,12.5,74],\"items\":[{\"kind\":\"deadline\",\"title\":\"Right to withdraw (Widerruf) from the electricity contract\",\"quote\":\"Sie haben das Recht, binnen vierzehn Tagen ab Vertragsschluss ohne Angabe von Gründen von diesem Vertrag zurückzutreten, indem Sie ihn widerrufen.\",\"computation\":\"Contract was concluded by signature on 20.11.2026, and the confirmation containing the required withdrawal information was handed over in person on the same day, so the 14-day withdrawal period (§ 355 Abs. 2 BGB) starts running from 20.11.2026. Per §187 Abs.1 BGB the day of the triggering event is not counted, so day 1 is 21.11.2026. Counting 14 days: 21.11.2026 is day 1, ... 30.11.2026 is day 10, 01.12.2026 is day 11, 02.12. day 12, 03.12. day 13, 04.12.2026 day 14. 04.12.2026 is a Friday, not a weekend or public holiday in NW, so no shift under §193 BGB is needed. It is sufficient to send (not receive) the withdrawal by this date ('kommt es darauf an, wann Sie den Widerruf absenden').\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Expected start of electricity supply (Lieferbeginn)\",\"quote\":\"Lieferbeginn   voraussichtlich 01.02.2027\",\"computation\":\"The letter states the expected ('voraussichtlich') start of supply as a fixed calendar date, 01.02.2027. This is not a guaranteed date but the planned milestone as printed.\",\"due_date\":\"2027-02-01\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This contract was concluded as a door-to-door sale ('Gespräch an Ihrer Haustür'); the tariff name 'Rhein Strom fix 24' suggests a 24-month minimum term, but the letter does not explicitly state the contract duration or a cancellation deadline for the end of that term, so no contract term/cancel-by date could be computed.\",\"If early supply during the withdrawal period was requested, a pro-rata charge for energy already delivered until withdrawal applies ('zahlen Sie für die bis zum Widerruf gelieferte Energie einen anteiligen Betrag') — worth checking whether early delivery was actually requested, as this is not stated explicitly in the letter.\"]}",
+    "data": {
+      "kind": "contract",
+      "sender_name": "Exempelenergie Rheinschiene AG",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "ER-77104528"
+        },
+        {
+          "label": "Zählernummer",
+          "value": "1EBZ0115508822"
+        }
+      ],
+      "amounts": [
+        29.8,
+        12.5,
+        74
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Right to withdraw (Widerruf) from the electricity contract",
+          "quote": "Sie haben das Recht, binnen vierzehn Tagen ab Vertragsschluss ohne Angabe von Gründen von diesem Vertrag zurückzutreten, indem Sie ihn widerrufen.",
+          "computation": "Contract was concluded by signature on 20.11.2026, and the confirmation containing the required withdrawal information was handed over in person on the same day, so the 14-day withdrawal period (§ 355 Abs. 2 BGB) starts running from 20.11.2026. Per §187 Abs.1 BGB the day of the triggering event is not counted, so day 1 is 21.11.2026. Counting 14 days: 21.11.2026 is day 1, ... 30.11.2026 is day 10, 01.12.2026 is day 11, 02.12. day 12, 03.12. day 13, 04.12.2026 day 14. 04.12.2026 is a Friday, not a weekend or public holiday in NW, so no shift under §193 BGB is needed. It is sufficient to send (not receive) the withdrawal by this date ('kommt es darauf an, wann Sie den Widerruf absenden').",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Expected start of electricity supply (Lieferbeginn)",
+          "quote": "Lieferbeginn   voraussichtlich 01.02.2027",
+          "computation": "The letter states the expected ('voraussichtlich') start of supply as a fixed calendar date, 01.02.2027. This is not a guaranteed date but the planned milestone as printed.",
+          "due_date": "2027-02-01",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This contract was concluded as a door-to-door sale ('Gespräch an Ihrer Haustür'); the tariff name 'Rhein Strom fix 24' suggests a 24-month minimum term, but the letter does not explicitly state the contract duration or a cancellation deadline for the end of that term, so no contract term/cancel-by date could be computed.",
+        "If early supply during the withdrawal period was requested, a pro-rata charge for energy already delivered until withdrawal applies ('zahlen Sie für die bis zum Widerruf gelieferte Energie einen anteiligen Betrag') — worth checking whether early delivery was actually requested, as this is not stated explicitly in the letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3555,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1768,
+      "cost_usd": 0.043732,
+      "duration_ms": 37668,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

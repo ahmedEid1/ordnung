@@ -1,0 +1,65 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"b837d5b969de7d51f7009a4afb650356e1b048383379c0826795ec7da8e2e693\",\"mode\":\"text\",\"region\":\"BE\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-vollstreckungsbescheid-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Berlin (BE), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag",
+    "recorded_at": "2026-11-24T13:08:25+00:00",
+    "repeat": 1,
+    "commit": "17c7ca3b",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Amtsgericht Musterwedding – Zentrales Mahngericht Berlin-Brandenburg\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Geschäftsnummer\",\"value\":\"26-1129650-1-4\"}],\"amounts\":[789.45],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the Vollstreckungsbescheid\",\"quote\":\"Dafür haben Sie ab der Zustellung zwei Wochen Zeit (Notfrist).\",\"computation\":\"This is a formally served court document (Vollstreckungsbescheid); the letter itself states the actual service date: 'Zugestellt am 23.11.2026 (Datum laut Vermerk des Zustellers)'. For formal delivery the stated date is the delivery day itself, no days are added. Under §339 ZPO / §188 Abs. 2 BGB, a two-week (Notfrist) period starting with service on Monday 23.11.2026 (day of event not counted, §187 Abs. 1 BGB) ends on the day of the second following week bearing the same name as the day of service, i.e. Monday 23.11 + 7 = Monday 30.11, +7 = Monday 07.12.2026. 07.12.2026 is a Monday and not a public holiday in Berlin, so under §222 Abs. 2 ZPO/§193 BGB no shift to a later working day is needed. The Einspruch must reach the Amtsgericht Musterwedding in writing by this date.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"This is a formal court order (Vollstreckungsbescheid) following an unanswered Mahnbescheid; missing the two-week Einspruch deadline (07.12.2026) will make the debt legally final and enforceable, so the person should act quickly or verify whether the underlying claim (Exempel Online-Akademie UG, EUR 720,00 course fees) is actually valid and whether the original Mahnbescheid of 12.10.2026 was properly received.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Amtsgericht Musterwedding – Zentrales Mahngericht Berlin-Brandenburg",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Geschäftsnummer",
+          "value": "26-1129650-1-4"
+        }
+      ],
+      "amounts": [
+        789.45
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the Vollstreckungsbescheid",
+          "quote": "Dafür haben Sie ab der Zustellung zwei Wochen Zeit (Notfrist).",
+          "computation": "This is a formally served court document (Vollstreckungsbescheid); the letter itself states the actual service date: 'Zugestellt am 23.11.2026 (Datum laut Vermerk des Zustellers)'. For formal delivery the stated date is the delivery day itself, no days are added. Under §339 ZPO / §188 Abs. 2 BGB, a two-week (Notfrist) period starting with service on Monday 23.11.2026 (day of event not counted, §187 Abs. 1 BGB) ends on the day of the second following week bearing the same name as the day of service, i.e. Monday 23.11 + 7 = Monday 30.11, +7 = Monday 07.12.2026. 07.12.2026 is a Monday and not a public holiday in Berlin, so under §222 Abs. 2 ZPO/§193 BGB no shift to a later working day is needed. The Einspruch must reach the Amtsgericht Musterwedding in writing by this date.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "This is a formal court order (Vollstreckungsbescheid) following an unanswered Mahnbescheid; missing the two-week Einspruch deadline (07.12.2026) will make the debt legally final and enforceable, so the person should act quickly or verify whether the underlying claim (Exempel Online-Akademie UG, EUR 720,00 course fees) is actually valid and whether the original Mahnbescheid of 12.10.2026 was properly received."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3179,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1588,
+      "cost_usd": 0.039251999999999995,
+      "duration_ms": 33074,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

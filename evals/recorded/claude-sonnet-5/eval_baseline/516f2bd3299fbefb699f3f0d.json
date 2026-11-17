@@ -1,0 +1,87 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"8661bfb2e1888bed25c8b472c1460f472980266c2a76f3ae6be10b7948bc6d34\",\"mode\":\"text\",\"region\":\"BW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-widerruf-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Baden-Württemberg (BW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_do",
+    "recorded_at": "2026-11-24T13:12:48+00:00",
+    "repeat": 1,
+    "commit": "17c7ca3b",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract\",\"sender_name\":\"Glanzwerk Beispielputz GmbH\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"GW-10-55821\"}],\"amounts\":[119],\"items\":[{\"kind\":\"deadline\",\"title\":\"Withdraw from cleaning subscription (Widerruf)\",\"quote\":\"Innerhalb von 14 Tagen nach Vertragsschluss können Sie sich ohne Begründung wieder von diesem Vertrag lösen, indem Sie ihn widerrufen.\",\"computation\":\"Contract was concluded at the stand on 21.11.2026 (Saturday), confirmed directly, so this is the start of the 14-day withdrawal period. Per § 187 Abs. 1 BGB the day of conclusion (21.11.2026) is not counted; counting starts 22.11.2026. 14 days later lands on 05.12.2026 (Saturday). Per § 193 BGB, since the last day falls on a Saturday, the deadline shifts to the next business day, Monday 07.12.2026. Sending the withdrawal notice by that date suffices (letter itself states 'Maßgeblich ist, dass Sie den Widerruf innerhalb der Frist absenden').\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter confirms a doorstep/street-stand sale (Aktionsstand) concluded 21.11.2026; no minimum contract term or notice period for ordinary termination is stated anywhere in the letter, so no 'current_term_end' or 'cancel_by' date could be determined beyond the statutory 14-day withdrawal right.\",\"The letter states that any amounts already paid will be refunded within 14 days after a withdrawal, but this is a company promise, not a deadline the recipient must meet.\"]}",
+    "data": {
+      "kind": "contract",
+      "sender_name": "Glanzwerk Beispielputz GmbH",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "GW-10-55821"
+        }
+      ],
+      "amounts": [
+        119
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Withdraw from cleaning subscription (Widerruf)",
+          "quote": "Innerhalb von 14 Tagen nach Vertragsschluss können Sie sich ohne Begründung wieder von diesem Vertrag lösen, indem Sie ihn widerrufen.",
+          "computation": "Contract was concluded at the stand on 21.11.2026 (Saturday), confirmed directly, so this is the start of the 14-day withdrawal period. Per § 187 Abs. 1 BGB the day of conclusion (21.11.2026) is not counted; counting starts 22.11.2026. 14 days later lands on 05.12.2026 (Saturday). Per § 193 BGB, since the last day falls on a Saturday, the deadline shifts to the next business day, Monday 07.12.2026. Sending the withdrawal notice by that date suffices (letter itself states 'Maßgeblich ist, dass Sie den Widerruf innerhalb der Frist absenden').",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter confirms a doorstep/street-stand sale (Aktionsstand) concluded 21.11.2026; no minimum contract term or notice period for ordinary termination is stated anywhere in the letter, so no 'current_term_end' or 'cancel_by' date could be determined beyond the statutory 14-day withdrawal right.",
+        "The letter states that any amounts already paid will be refunded within 14 days after a withdrawal, but this is a company promise, not a deadline the recipient must meet."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 2833,
+      "cache_read_tokens": 25145,
+      "cache_creation_tokens": 5085,
+      "cost_usd": 0.053711,
+      "duration_ms": 29976,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "anchor": "explicit_date",
+            "anchor_date": "2026-11-21",
+            "amount": 14,
+            "unit": "days",
+            "nature": "declaration",
+            "legal_basis": "§ 355 Abs. 2, § 356 BGB - Widerrufsrecht",
+            "text": "Innerhalb von 14 Tagen nach Vertragsschluss können Sie sich ohne Begründung wieder von diesem Vertrag lösen, indem Sie ihn widerrufen."
+          },
+          "document_date": "2026-11-21",
+          "sender_kind": "company",
+          "sender_name": "Glanzwerk Beispielputz GmbH",
+          "region": "BW"
+        },
+        "result": "{\"due_date\":\"2026-12-07\",\"weekday\":\"Monday\",\"send_by\":\"2026-12-07\",\"summary\":\"You can withdraw until Mon 7 Dec 2026 (counted from Sat 21 Nov 2026, sending it in time is enough).\",\"confidence\":\"high\",\"warnings\":[\"For goods the 14 days only start when they arrive (the last item of a split delivery) — if they came later, you have longer.\"],\"steps\":[{\"label\":\"Counting starts the day after Sat 21 Nov 2026\",\"date\":\"2026-11-21\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB\"},{\"label\":\"14 days later: Sat 5 Dec 2026\",\"date\":\"2026-12-05\",\"rule_id\":\"bgb_355\",\"citation\":\"§ 355 Abs. 1, 2 BGB; § 356 Abs. 2 BGB; § 193 BGB\"},{\"label\":\"Sat 5 Dec 2026 is a Saturday, so the deadline moves to Mon 7 Dec 2026\",\"date\":\"2026-12-07\",\"rule_id\":\"bgb_193\",\"citation\":\"§ 193 BGB\"},{\"label\":\"Sending the withdrawal by Mon 7 Dec 2026 is enough — it doesn't have to arrive by then\",\"date\":\"2026-12-07\",\"rule_id\":\"bgb_355\",\"citation\":\"§ 355 Abs. 1, 2 BGB; § 356 Abs. 2 BGB; § 193 BGB\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_355\",\"title\":\"Withdrawal (Widerruf): 14 days\",\"citation\":\"§ 355 Abs. 1, 2 BGB; § 356 Abs. 2 BGB; § 193 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__355.html\"},{\"id\":\"bgb_193\",\"title\":\"Weekend and holiday shift (private law)\",\"citation\":\"§ 193 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__193.html\"}],\"assumed\":{\"today\":\"2026-11-24\",\"letter_date\":\"2026-11-21\",\"holiday_calendar\":\"Germany (nationwide holidays only)\",\"holidays_from\":\"recipient_region: a withdrawal is declared where the consumer lives (§ 193 BGB), so that Land's holidays apply\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

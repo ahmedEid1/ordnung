@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"b837d5b969de7d51f7009a4afb650356e1b048383379c0826795ec7da8e2e693\",\"mode\":\"text\",\"region\":\"BE\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-vollstreckungsbescheid-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Berlin (BE), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag",
+    "recorded_at": "2026-11-24T13:08:33+00:00",
+    "repeat": 1,
+    "commit": "17c7ca3b",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Amtsgericht Musterwedding – Zentrales Mahngericht Berlin-Brandenburg\",\"document_date\":\"2026-11-18\",\"references\":[{\"label\":\"Geschäftsnummer\",\"value\":\"26-1129650-1-4\"}],\"amounts\":[720,17.95,39,12.5,789.45],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the Vollstreckungsbescheid\",\"quote\":\"Dafür haben Sie ab der Zustellung zwei Wochen Zeit (Notfrist).\",\"computation\":\"The letter itself records actual delivery as a fact: 'Zugestellt am 23.11.2026 (Datum laut Vermerk des Zustellers).' Monday 23.11.2026 is therefore the triggering event (§ 222 ZPO i.V.m. § 187 Abs. 1 BGB: the day of delivery itself is not counted, the period starts the next day). The Notfrist is two weeks. Under § 188 Abs. 2 BGB, a period expressed in weeks ends with the expiry of the day of the last week which, by its name, corresponds to the day of the triggering event (Monday). Two weeks after Monday 23.11.2026 falls on Monday 07.12.2026 (23.11 + 7 = 30.11, +7 = 07.12), which is neither a Saturday, Sunday nor a Berlin public holiday, so § 193 BGB does not shift it further. Deadline: 2026-12-07.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The Vollstreckungsbescheid states 'Sie haben ... innerhalb der gesetzten Frist keinen Widerspruch eingelegt' (no Widerspruch was filed against the earlier Mahnbescheid of 12.10.2026) — the recipient should double-check this claim is accurate, since it is the basis for this enforcement order.\",\"No explicit new payment due date is given for the EUR 789,45 total; the underlying claim is already enforceable, so payment (or the Einspruch) should be arranged promptly rather than assuming a separate grace period.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Amtsgericht Musterwedding – Zentrales Mahngericht Berlin-Brandenburg",
+      "document_date": "2026-11-18",
+      "references": [
+        {
+          "label": "Geschäftsnummer",
+          "value": "26-1129650-1-4"
+        }
+      ],
+      "amounts": [
+        720,
+        17.95,
+        39,
+        12.5,
+        789.45
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the Vollstreckungsbescheid",
+          "quote": "Dafür haben Sie ab der Zustellung zwei Wochen Zeit (Notfrist).",
+          "computation": "The letter itself records actual delivery as a fact: 'Zugestellt am 23.11.2026 (Datum laut Vermerk des Zustellers).' Monday 23.11.2026 is therefore the triggering event (§ 222 ZPO i.V.m. § 187 Abs. 1 BGB: the day of delivery itself is not counted, the period starts the next day). The Notfrist is two weeks. Under § 188 Abs. 2 BGB, a period expressed in weeks ends with the expiry of the day of the last week which, by its name, corresponds to the day of the triggering event (Monday). Two weeks after Monday 23.11.2026 falls on Monday 07.12.2026 (23.11 + 7 = 30.11, +7 = 07.12), which is neither a Saturday, Sunday nor a Berlin public holiday, so § 193 BGB does not shift it further. Deadline: 2026-12-07.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The Vollstreckungsbescheid states 'Sie haben ... innerhalb der gesetzten Frist keinen Widerspruch eingelegt' (no Widerspruch was filed against the earlier Mahnbescheid of 12.10.2026) — the recipient should double-check this claim is accurate, since it is the basis for this enforcement order.",
+        "No explicit new payment due date is given for the EUR 789,45 total; the underlying claim is already enforceable, so payment (or the Einspruch) should be arranged promptly rather than assuming a separate grace period."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 4161,
+      "cache_read_tokens": 7830,
+      "cache_creation_tokens": 4496,
+      "cost_usd": 0.061168,
+      "duration_ms": 43522,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

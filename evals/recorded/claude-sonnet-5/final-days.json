@@ -1624,6 +1624,30 @@
    "newkinds-vollstreckungsbescheid-2": {
     "cli": "2.1.326 (Claude Code)",
     "day": "2026-11-24"
+   },
+   "newkinds-vollstreckungsbescheid-3": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-vollstreckungsbescheid-4": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-widerruf-1": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-widerruf-2": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-widerruf-3": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
+   },
+   "newkinds-widerruf-4": {
+    "cli": "2.1.326 (Claude Code)",
+    "day": "2026-11-24"
    }
   }
  }

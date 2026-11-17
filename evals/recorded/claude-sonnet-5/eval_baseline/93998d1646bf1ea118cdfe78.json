@@ -1,0 +1,75 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"8661bfb2e1888bed25c8b472c1460f472980266c2a76f3ae6be10b7948bc6d34\",\"mode\":\"text\",\"region\":\"BW\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-widerruf-4"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Baden-Württemberg (BW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_do",
+    "recorded_at": "2026-11-24T13:12:21+00:00",
+    "repeat": 1,
+    "commit": "17c7ca3b",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract\",\"sender_name\":\"Glanzwerk Beispielputz GmbH\",\"document_date\":\"2026-11-21\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"GW-10-55821\"}],\"amounts\":[119],\"items\":[{\"kind\":\"expiry\",\"title\":\"Deadline to withdraw from the cleaning subscription contract\",\"quote\":\"Innerhalb von 14 Tagen nach Vertragsschluss können Sie sich ohne Begründung wieder von diesem Vertrag lösen, indem Sie ihn widerrufen.\",\"computation\":\"Contract was concluded at the sales stand on 21.11.2026, and this written confirmation was received directly on the same day, so the 14-day withdrawal period under §355 BGB starts with the day of contract conclusion. Per §187 Abs.1 BGB, the day of the event (21.11.2026) is not counted, so day 1 is 22.11.2026 and day 14 falls on 05.12.2026. 05.12.2026 is a Saturday. Because this is a declaration deadline, §193 BGB shifts the end of the period to the next working day: Sunday 06.12.2026 is also non-working, so the deadline moves to Monday 07.12.2026. Note the letter states it suffices that the withdrawal is sent (not received) within the period.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Start of cleaning subscription service\",\"quote\":\"Beginn   07.01.2027\",\"computation\":\"The letter states the service start date directly as a calendar date; no counting is required.\",\"due_date\":\"2027-01-07\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This contract was concluded on the spot at a promotional sales stand in a shopping center; such door-to-door/stand sales situations are a common setting for high-pressure selling, so double-check that the agreed service, price and duration match what was actually discussed before the withdrawal period expires.\",\"The letter gives no information about a minimum contract term or a notice period for ordinary termination after the first term; confirm these details separately if they matter to you.\"]}",
+    "data": {
+      "kind": "contract",
+      "sender_name": "Glanzwerk Beispielputz GmbH",
+      "document_date": "2026-11-21",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "GW-10-55821"
+        }
+      ],
+      "amounts": [
+        119
+      ],
+      "items": [
+        {
+          "kind": "expiry",
+          "title": "Deadline to withdraw from the cleaning subscription contract",
+          "quote": "Innerhalb von 14 Tagen nach Vertragsschluss können Sie sich ohne Begründung wieder von diesem Vertrag lösen, indem Sie ihn widerrufen.",
+          "computation": "Contract was concluded at the sales stand on 21.11.2026, and this written confirmation was received directly on the same day, so the 14-day withdrawal period under §355 BGB starts with the day of contract conclusion. Per §187 Abs.1 BGB, the day of the event (21.11.2026) is not counted, so day 1 is 22.11.2026 and day 14 falls on 05.12.2026. 05.12.2026 is a Saturday. Because this is a declaration deadline, §193 BGB shifts the end of the period to the next working day: Sunday 06.12.2026 is also non-working, so the deadline moves to Monday 07.12.2026. Note the letter states it suffices that the withdrawal is sent (not received) within the period.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Start of cleaning subscription service",
+          "quote": "Beginn   07.01.2027",
+          "computation": "The letter states the service start date directly as a calendar date; no counting is required.",
+          "due_date": "2027-01-07",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This contract was concluded on the spot at a promotional sales stand in a shopping center; such door-to-door/stand sales situations are a common setting for high-pressure selling, so double-check that the agreed service, price and duration match what was actually discussed before the withdrawal period expires.",
+        "The letter gives no information about a minimum contract term or a notice period for ordinary termination after the first term; confirm these details separately if they matter to you."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3211,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1669,
+      "cost_usd": 0.039896,
+      "duration_ms": 34098,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

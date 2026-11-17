@@ -1,0 +1,69 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"396924bbcdef1b27bf48a0384b08ed02e5b62a134434aac04ef4a72321073366\",\"mode\":\"text\",\"region\":\"HH\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-widerruf-1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hamburg (HH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> ta",
+    "recorded_at": "2026-11-24T13:09:28+00:00",
+    "repeat": 1,
+    "commit": "17c7ca3b",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract\",\"sender_name\":\"Wärmepumpenservice Beispielelbe GmbH\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Vertragsnummer\",\"value\":\"WB-WV-26-3318\"}],\"amounts\":[19.9],\"items\":[{\"kind\":\"expiry\",\"title\":\"Right of withdrawal (Widerruf) from maintenance contract expires\",\"quote\":\"Sie können diesen Vertrag innerhalb von vierzehn Tagen ohne Begründung widerrufen.\",\"computation\":\"Contract concluded (signed in person) on 20.11.2026 (Friday). The letter states the 14-day withdrawal period begins with the day the contract was concluded, but under §187 Abs. 1 BGB the day of the triggering event itself is not counted when the period is tied to an event rather than defined as starting on that day; the period starts the next day, 21.11.2026. Counting 14 calendar days from 21.11.2026 (day 1) through 04.12.2026 (day 14) gives the last day of the period. Equivalently, a 14-day period from a Friday ends on the Friday two weeks later: 20.11.2026 + 14 days = 04.12.2026. 04.12.2026 is a Friday, not a Saturday, Sunday or Hamburg public holiday, so no extension under §193 BGB applies. It suffices that the withdrawal declaration is sent (abgeschickt) by this date, not received.\",\"due_date\":\"2026-12-04\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":{\"current_term_end\":\"2027-12-31\",\"cancel_by\":null},\"warnings\":[\"The letter does not state any cancellation deadline or automatic-renewal clause for the 12-month contract term beginning 01.01.2027; only the 12-month duration itself is mentioned, so no cancel_by date could be determined and the person should confirm the full terms (e.g. Allgemeine Geschäftsbedingungen) for how to end the contract after the first term.\",\"The refund promise ('erstatten wir alle Zahlungen spätestens vierzehn Tage nach Eingang Ihres Widerrufs') is conditional on the person actually withdrawing and was not treated as a current obligation.\"]}",
+    "data": {
+      "kind": "contract",
+      "sender_name": "Wärmepumpenservice Beispielelbe GmbH",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Vertragsnummer",
+          "value": "WB-WV-26-3318"
+        }
+      ],
+      "amounts": [
+        19.9
+      ],
+      "items": [
+        {
+          "kind": "expiry",
+          "title": "Right of withdrawal (Widerruf) from maintenance contract expires",
+          "quote": "Sie können diesen Vertrag innerhalb von vierzehn Tagen ohne Begründung widerrufen.",
+          "computation": "Contract concluded (signed in person) on 20.11.2026 (Friday). The letter states the 14-day withdrawal period begins with the day the contract was concluded, but under §187 Abs. 1 BGB the day of the triggering event itself is not counted when the period is tied to an event rather than defined as starting on that day; the period starts the next day, 21.11.2026. Counting 14 calendar days from 21.11.2026 (day 1) through 04.12.2026 (day 14) gives the last day of the period. Equivalently, a 14-day period from a Friday ends on the Friday two weeks later: 20.11.2026 + 14 days = 04.12.2026. 04.12.2026 is a Friday, not a Saturday, Sunday or Hamburg public holiday, so no extension under §193 BGB applies. It suffices that the withdrawal declaration is sent (abgeschickt) by this date, not received.",
+          "due_date": "2026-12-04",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": {
+        "current_term_end": "2027-12-31",
+        "cancel_by": null
+      },
+      "warnings": [
+        "The letter does not state any cancellation deadline or automatic-renewal clause for the 12-month contract term beginning 01.01.2027; only the 12-month duration itself is mentioned, so no cancel_by date could be determined and the person should confirm the full terms (e.g. Allgemeine Geschäftsbedingungen) for how to end the contract after the first term.",
+        "The refund promise ('erstatten wir alle Zahlungen spätestens vierzehn Tage nach Eingang Ihres Widerrufs') is conditional on the person actually withdrawing and was not treated as a current obligation."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3646,
+      "cache_read_tokens": 8003,
+      "cache_creation_tokens": 4538,
+      "cost_usd": 0.056220599999999996,
+      "duration_ms": 37233,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

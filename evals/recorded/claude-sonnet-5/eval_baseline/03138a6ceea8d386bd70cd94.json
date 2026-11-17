@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"f40828419b544f80dc75905cac370a00c3bb2957bcaaf461bbee21c2e85e60fe\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2026-11-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "newkinds-vollstreckungsbescheid-3"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-11-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d",
+    "recorded_at": "2026-11-24T13:07:35+00:00",
+    "repeat": 1,
+    "commit": "17c7ca3b",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Amtsgericht Exempelsund – Mahngericht\",\"document_date\":\"2026-11-20\",\"references\":[{\"label\":\"Geschäftsnummer\",\"value\":\"26-6604318-0-0\"}],\"amounts\":[598,9.41,36,105.3,748.71],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the Vollstreckungsbescheid\",\"quote\":\"Dafür steht ein Zeitraum von zwei Wochen ab Zustellung zur Verfügung, der sich nicht verlängern lässt.\",\"computation\":\"The letter states formal postal delivery (Zustellung) occurred on Monday, 23.11.2026 ('Durch die Post zugestellt am Montag, 23.11.2026'). For a Vollstreckungsbescheid, Einspruch per § 700 ZPO in conjunction with § 339 ZPO runs for two weeks from service. Under § 187 Abs. 1 BGB the day of service (23.11.2026) is not counted; the period starts 24.11.2026. A period of weeks ends, per § 188 Abs. 2 BGB, on the day of the last week bearing the same name as the day of the triggering event, i.e. two Mondays after 23.11.2026 = 07.12.2026. 07.12.2026 is a Monday and not a public holiday in Schleswig-Holstein, so no shift under § 222 Abs. 2 ZPO/§ 193 BGB is needed.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The underlying claim (leasing payments for August and September 2026) is now declared enforceable by this Vollstreckungsbescheid; the letter does not set a new separate payment deadline beyond stating the total enforceable amount of EUR 748,71, so the creditor may proceed with enforcement (e.g. Gerichtsvollzieher) at any time if the Einspruch period lapses without an objection and without payment.\",\"Verify the actual date the enforcement order (not just the underlying Mahnbescheid) physically arrived, since the two-week Einspruch period runs strictly from that formal service date (23.11.2026 as printed) and cannot be extended.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Amtsgericht Exempelsund – Mahngericht",
+      "document_date": "2026-11-20",
+      "references": [
+        {
+          "label": "Geschäftsnummer",
+          "value": "26-6604318-0-0"
+        }
+      ],
+      "amounts": [
+        598,
+        9.41,
+        36,
+        105.3,
+        748.71
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the Vollstreckungsbescheid",
+          "quote": "Dafür steht ein Zeitraum von zwei Wochen ab Zustellung zur Verfügung, der sich nicht verlängern lässt.",
+          "computation": "The letter states formal postal delivery (Zustellung) occurred on Monday, 23.11.2026 ('Durch die Post zugestellt am Montag, 23.11.2026'). For a Vollstreckungsbescheid, Einspruch per § 700 ZPO in conjunction with § 339 ZPO runs for two weeks from service. Under § 187 Abs. 1 BGB the day of service (23.11.2026) is not counted; the period starts 24.11.2026. A period of weeks ends, per § 188 Abs. 2 BGB, on the day of the last week bearing the same name as the day of the triggering event, i.e. two Mondays after 23.11.2026 = 07.12.2026. 07.12.2026 is a Monday and not a public holiday in Schleswig-Holstein, so no shift under § 222 Abs. 2 ZPO/§ 193 BGB is needed.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The underlying claim (leasing payments for August and September 2026) is now declared enforceable by this Vollstreckungsbescheid; the letter does not set a new separate payment deadline beyond stating the total enforceable amount of EUR 748,71, so the creditor may proceed with enforcement (e.g. Gerichtsvollzieher) at any time if the Einspruch period lapses without an objection and without payment.",
+        "Verify the actual date the enforcement order (not just the underlying Mahnbescheid) physically arrived, since the two-week Einspruch period runs strictly from that formal service date (23.11.2026 as printed) and cannot be extended."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2111,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1594,
+      "cost_usd": 0.028596,
+      "duration_ms": 21457,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}
