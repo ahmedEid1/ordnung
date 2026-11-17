@@ -126,5 +126,26 @@
     "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6945756288",
     "created_at": "2026-11-17T10:42:39Z",
     "checkpoint_sha": "6020686ff07ffcbf0e0288a3ac98ea2135ce027c"
+  },
+  {
+    "id": "D007",
+    "kind": "cli_version",
+    "at": "2026-11-17T12:30:59Z",
+    "step": "R1",
+    "what": "R1: the installed CLI reports 2.1.326 (Claude Code), not B's frozen.cli_versions[0] 2.1.322 (Claude Code); B's rule K10, recorded before the step's first unit",
+    "evidence": [
+      "clock (K29, #54): at/created_at real UTC; times below on the recording clock, real + 7 d",
+      "installed CLI: 2.1.326 (Claude Code) (the recording CLI's --version at 2026-11-24T12:30:59Z)",
+      "micro-smoke smoke-2026-11-24: ok true; 2 ledger lines, served_model claude-sonnet-5, cli_version 2.1.326 (Claude Code)",
+      "evals.harness diff-requests f2cacf64: no change"
+    ],
+    "consequence": "include; per-unit versions; same-CLI F3 sensitivity",
+    "applies_to": {
+      "split": "newkinds",
+      "repeat": 1
+    },
+    "issue_comment_url": "https://github.com/ahmedEid1/ordnung/issues/54#issuecomment-6948100229",
+    "created_at": "2026-11-17T12:30:59Z",
+    "checkpoint_sha": null
   }
 ]
