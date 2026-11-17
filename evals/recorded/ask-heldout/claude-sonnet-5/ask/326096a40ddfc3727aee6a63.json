@@ -1,0 +1,344 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"99ef00b98b6fd5502888ae20ae978adbae84ea70eb1fc4ab660a1a4790b44772\",\"question\":\"Which semester fee payments fall due within the next 365 days?\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "doc_nba3k0ka85q0",
+      "doc_5c5axexztnw6",
+      "doc_tszxajp80vd5"
+    ],
+    "prompt_head": "The person asks:\nWhich semester fee payments fall due within the next 365 days?\n",
+    "recorded_at": "2026-11-24T13:23:25+00:00",
+    "repeat": 2,
+    "commit": "0b5e2d7a",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "Based on your records, there is one semester fee payment currently due within the next 365 days:\n\n- **Semester fee (Semesterbeitrag) for summer semester 2027**: 312.40 € [item:itm_85xesrap412m], due Fri 2027-01-15 [item:itm_85xesrap412m]. This payment should be sent by Thu 2027-01-14 [item:itm_85xesrap412m] so it arrives in time.\n- This fee repeats every 6 months, with the following occurrence falling on 2027-07-15 [item:itm_85xesrap412m] — also within your 365‑day window, though no separate to-do has been created for it yet.\n\n**Note:** The letter mentions a late fee and risk of deregistration if payment is missed — those details are in the letter itself, so please check them there; Ordnung's record only confirms the due date and amount above [item:itm_85xesrap412m].",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 802,
+      "cache_read_tokens": 12779,
+      "cache_creation_tokens": 2503,
+      "cost_usd": 0.0205958,
+      "duration_ms": 11175,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Semesterbeitrag"
+      },
+      "tool_use_id": "toolu_01TaNk3MxVNzAz1aL5jHGB2u"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_nba3k0ka85q0\",\"kind\":\"university\",\"date\":\"2026-09-01\",\"party_id\":\"pty_fhp8fzemmzvt\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_nba3k0ka85q0\":{\"title\":\"Semester documents for winter semester 2026/27 and re-registration for summer semester 2027\",\"snippet\":\"…Der Semesterbeitrag in Höhe von 312,40 € muss bis spätestens zum 15.01.2027 auf dem…\"},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01TaNk3MxVNzAz1aL5jHGB2u"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "from_date": "2026-11-24",
+        "to_date": "2027-11-24",
+        "kind": "payment",
+        "status": "all"
+      },
+      "tool_use_id": "toolu_01EPVLCyoteC7fSzUAocoEVF"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-11-24\",\"items\":[{\"id\":\"itm_kgsfgwac9wzx\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-11-27\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"other\",\"party_id\":\"pty_d2ymm5s3htd0\",\"doc_id\":\"doc_5c5axexztnw6\",\"repeats\":\"every 2 weeks\",\"following_due_date\":\"2026-12-11\",\"amount\":4.5,\"currency\":\"EUR\"},{\"id\":\"itm_93jvwb6nxzhe\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-12-01\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"low\",\"area\":\"insurance\",\"party_id\":\"pty_re9nde1xqtfn\",\"doc_id\":\"doc_tszxajp80vd5\",\"contract_id\":\"ctr_w97tm6xhn7zw\",\"repeats\":\"every year on the 1st\",\"following_due_date\":\"2027-12-01\",\"amount\":59.9,\"currency\":\"EUR\"},{\"id\":\"itm_85xesrap412m\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2027-01-15\",\"send_by\":\"2027-01-14\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"study\",\"party_id\":\"pty_fhp8fzemmzvt\",\"doc_id\":\"doc_nba3k0ka85q0\",\"repeats\":\"every 6 months on the 15th\",\"following_due_date\":\"2027-07-15\",\"amount\":312.4,\"currency\":\"EUR\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_kgsfgwac9wzx\":{\"title\":\"Pay the accrued library fee\",\"action\":\"Pay the €4.50 fee at the service desk or the payment machine when returning the items.\",\"consequence\":\"Unpaid and growing fees can lead to your library account being blocked once the balance reaches €10.00.\"},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\"},\"itm_93jvwb6nxzhe\":{\"title\":\"Annual liability insurance premium direct debit\",\"action\":\"Make sure the linked bank account has enough funds for the automatic direct debit.\"},\"pty_re9nde1xqtfn\":{\"name\":\"Muster Versicherung AG\"},\"itm_85xesrap412m\":{\"title\":\"Pay the semester fee (Semesterbeitrag) for summer semester 2027\",\"action\":\"Transfer the semester fee of €312.40 to the university's account, using the given reference, so it arrives by the deadline shown.\",\"consequence\":\"Late payment adds a €15.00 late fee (Säumnisgebühr), and if the fee is not received in time you risk being deregistered (Exmatrikulation).\"},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01EPVLCyoteC7fSzUAocoEVF"
+    },
+    {
+      "type": "text",
+      "text": "Based"
+    },
+    {
+      "type": "text",
+      "text": " on your records, there"
+    },
+    {
+      "type": "text",
+      "text": " is"
+    },
+    {
+      "type": "text",
+      "text": " one semester fee payment curr"
+    },
+    {
+      "type": "text",
+      "text": "ently due within"
+    },
+    {
+      "type": "text",
+      "text": " the next 365 days:"
+    },
+    {
+      "type": "text",
+      "text": "\n\n- **Semester fee ("
+    },
+    {
+      "type": "text",
+      "text": "Semesterbe"
+    },
+    {
+      "type": "text",
+      "text": "itrag) for summer sem"
+    },
+    {
+      "type": "text",
+      "text": "ester 2027**:"
+    },
+    {
+      "type": "text",
+      "text": " 312.40 €"
+    },
+    {
+      "type": "text",
+      "text": " ["
+    },
+    {
+      "type": "text",
+      "text": "item"
+    },
+    {
+      "type": "text",
+      "text": ":it"
+    },
+    {
+      "type": "text",
+      "text": "m_85xesrap412"
+    },
+    {
+      "type": "text",
+      "text": "m], due"
+    },
+    {
+      "type": "text",
+      "text": " F"
+    },
+    {
+      "type": "text",
+      "text": "ri 2"
+    },
+    {
+      "type": "text",
+      "text": "027-01-15 [item"
+    },
+    {
+      "type": "text",
+      "text": ":itm_85xesr"
+    },
+    {
+      "type": "text",
+      "text": "ap412m]. This"
+    },
+    {
+      "type": "text",
+      "text": " payment should"
+    },
+    {
+      "type": "text",
+      "text": " be sent by"
+    },
+    {
+      "type": "text",
+      "text": " Thu 2027-01-"
+    },
+    {
+      "type": "text",
+      "text": "14 [item:itm_"
+    },
+    {
+      "type": "text",
+      "text": "85xesrap412m]"
+    },
+    {
+      "type": "text",
+      "text": " so"
+    },
+    {
+      "type": "text",
+      "text": " it arrives in"
+    },
+    {
+      "type": "text",
+      "text": " time.\n- This"
+    },
+    {
+      "type": "text",
+      "text": " f"
+    },
+    {
+      "type": "text",
+      "text": "ee repeats every 6 "
+    },
+    {
+      "type": "text",
+      "text": "months,"
+    },
+    {
+      "type": "text",
+      "text": " with"
+    },
+    {
+      "type": "text",
+      "text": " the following"
+    },
+    {
+      "type": "text",
+      "text": " occurrence fal"
+    },
+    {
+      "type": "text",
+      "text": "ling on 2027-07-"
+    },
+    {
+      "type": "text",
+      "text": "15 [item:itm_"
+    },
+    {
+      "type": "text",
+      "text": "85xesrap412m]"
+    },
+    {
+      "type": "text",
+      "text": " — also within your"
+    },
+    {
+      "type": "text",
+      "text": " 365"
+    },
+    {
+      "type": "text",
+      "text": "‑day window,"
+    },
+    {
+      "type": "text",
+      "text": " though no"
+    },
+    {
+      "type": "text",
+      "text": " separate to-do has"
+    },
+    {
+      "type": "text",
+      "text": " been created for it yet."
+    },
+    {
+      "type": "text",
+      "text": "\n\n**"
+    },
+    {
+      "type": "text",
+      "text": "Note:** The let"
+    },
+    {
+      "type": "text",
+      "text": "ter mentions a"
+    },
+    {
+      "type": "text",
+      "text": " late fee and ris"
+    },
+    {
+      "type": "text",
+      "text": "k of deregistration if"
+    },
+    {
+      "type": "text",
+      "text": " pay"
+    },
+    {
+      "type": "text",
+      "text": "ment is"
+    },
+    {
+      "type": "text",
+      "text": " missed — those details"
+    },
+    {
+      "type": "text",
+      "text": " are"
+    },
+    {
+      "type": "text",
+      "text": " in the let"
+    },
+    {
+      "type": "text",
+      "text": "ter itself, so please check them"
+    },
+    {
+      "type": "text",
+      "text": " there"
+    },
+    {
+      "type": "text",
+      "text": ";"
+    },
+    {
+      "type": "text",
+      "text": " Ordn"
+    },
+    {
+      "type": "text",
+      "text": "ung"
+    },
+    {
+      "type": "text",
+      "text": "'s record only conf"
+    },
+    {
+      "type": "text",
+      "text": "irms the due"
+    },
+    {
+      "type": "text",
+      "text": " date and amount above ["
+    },
+    {
+      "type": "text",
+      "text": "item:itm_85xes"
+    },
+    {
+      "type": "text",
+      "text": "rap412m]."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Based on your records, there is one semester fee payment currently due within the next 365 days:\n\n- **Semester fee (Semesterbeitrag) for summer semester 2027**: 312.40 € [item:itm_85xesrap412m], due Fri 2027-01-15 [item:itm_85xesrap412m]. This payment should be sent by Thu 2027-01-14 [item:itm_85xesrap412m] so it arrives in time.\n- This fee repeats every 6 months, with the following occurrence falling on 2027-07-15 [item:itm_85xesrap412m] — also within your 365‑day window, though no separate to-do has been created for it yet.\n\n**Note:** The letter mentions a late fee and risk of deregistration if payment is missed — those details are in the letter itself, so please check them there; Ordnung's record only confirms the due date and amount above [item:itm_85xesrap412m].",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 802,
+          "cache_read_tokens": 12779,
+          "cache_creation_tokens": 2503,
+          "cost_usd": 0.0205958,
+          "duration_ms": 11175,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

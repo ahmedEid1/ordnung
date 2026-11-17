@@ -1,0 +1,369 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"99ef00b98b6fd5502888ae20ae978adbae84ea70eb1fc4ab660a1a4790b44772\",\"question\":\"When's the next scholars' meeting of my foundation in Berlin?\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "doc_pa2w9q3gxzqk"
+    ],
+    "prompt_head": "The person asks:\nWhen's the next scholars' meeting of my foundation in Berlin?\n",
+    "recorded_at": "2026-11-24T13:23:45+00:00",
+    "repeat": 2,
+    "commit": "0b5e2d7a",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "The next scholars' meeting (\"Attend Autumn Meeting in Berlin\") for your Global Talent Scholarship Foundation [party:pty_efmwq4xym8cm] is due Sat 7 Nov 2027 [item:itm_espa58t15ncg], and it repeats every year.\n\n- A separate invitation with the programme will still be sent beforehand — the letter's text only, so no fixed time or venue is confirmed in Ordnung yet.\n- You can mark this to-do \"Attend Autumn Meeting in Berlin\" done or add it to your calendar from Ordnung once you have it.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 512,
+      "cache_read_tokens": 20165,
+      "cache_creation_tokens": 6069,
+      "cost_usd": 0.033441,
+      "duration_ms": 10723,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Stipendiaten Treffen"
+      },
+      "tool_use_id": "toolu_01ABGjoNqAeZUDVphgw8VMhX"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "scholars meeting foundation"
+      },
+      "tool_use_id": "toolu_01La8xzrPMuoNWKcGMmwvRsn"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01ABGjoNqAeZUDVphgw8VMhX"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_pa2w9q3gxzqk\",\"kind\":\"other\",\"date\":\"2026-09-05\",\"party_id\":\"pty_efmwq4xym8cm\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_pa2w9q3gxzqk\":{\"title\":\"Award of the Global Talent Scholarship 2026/27\",\"snippet\":\"Award of the Global Talent Scholarship 2026/27 12_stipendium_zusage.pdf\"},\"pty_efmwq4xym8cm\":{\"name\":\"Global Talent Scholarship Foundation\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01La8xzrPMuoNWKcGMmwvRsn"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_party",
+      "input": {
+        "party_id_or_name": "pty_efmwq4xym8cm"
+      },
+      "tool_use_id": "toolu_01TJU2ko9Bjuqjq5pvXWi91c"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"parties\":[{\"id\":\"pty_efmwq4xym8cm\",\"kind\":\"other\",\"documents\":[{\"id\":\"doc_pa2w9q3gxzqk\",\"kind\":\"other\",\"date\":\"2026-09-05\"}],\"open_items\":[{\"id\":\"itm_j2650a27bsty\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-01\",\"date_source\":\"computed\",\"direction\":\"in\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\",\"repeats\":\"every month on the 1st working day\",\"following_due_date\":\"2026-12-01\",\"amount\":450.0,\"currency\":\"EUR\"},{\"id\":\"itm_zse7bv6ce3s1\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-12-15\",\"send_by\":\"2026-12-09\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\",\"repeats\":\"every month on the 15th\",\"following_due_date\":\"2027-01-15\"},{\"id\":\"itm_espa58t15ncg\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2027-11-07\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\",\"repeats\":\"every year\",\"following_due_date\":\"2028-11-07\"},{\"id\":\"itm_gmymk62nzs8x\",\"kind\":\"task\",\"status\":\"open\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\"},{\"id\":\"itm_00sz6dwxn5ch\",\"kind\":\"task\",\"status\":\"open\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\"},{\"id\":\"itm_thkzapqwyg8m\",\"kind\":\"task\",\"status\":\"open\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\"}]}]}\n</ordnung_record>\n<untrusted_document>\n{\"pty_efmwq4xym8cm\":{\"name\":\"Global Talent Scholarship Foundation\",\"address\":\"Beispielallee 20 · 12350 Berlin\",\"phone\":\"+49 123 555 0317\",\"identifiers\":[{\"label\":\"Foundation register\",\"value\":\"Berlin 3/GT-2011\"}]},\"doc_pa2w9q3gxzqk\":{\"title\":\"Award of the Global Talent Scholarship 2026/27\"},\"itm_j2650a27bsty\":{\"title\":\"Receive monthly scholarship stipend\",\"action\":\"No action needed; the stipend arrives automatically each month.\"},\"itm_zse7bv6ce3s1\":{\"title\":\"Submit first progress report\",\"action\":\"Submit your first progress report (max. two pages, countersigned by your academic supervisor) via the scholarship portal using the provided template.\"},\"itm_espa58t15ncg\":{\"title\":\"Attend Autumn Meeting in Berlin\",\"action\":\"Attend the Autumn Meeting for scholars in Berlin; wait for the separate invitation with the programme.\",\"location\":\"Berlin\"},\"itm_gmymk62nzs8x\":{\"title\":\"Upload certificate of enrolment each semester\",\"action\":\"Upload your certificate of enrolment for each semester to the scholarship portal.\"},\"itm_00sz6dwxn5ch\":{\"title\":\"Notify foundation of any change of address, bank details or study status\",\"action\":\"Inform the foundation of any change to your address, bank details or study status within two weeks of the change occurring.\"},\"itm_thkzapqwyg8m\":{\"title\":\"Report other scholarships or grants before accepting\",\"action\":\"Report any other scholarship or grant to the foundation before accepting it.\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01TJU2ko9Bjuqjq5pvXWi91c"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_document",
+      "input": {
+        "doc_id": "doc_pa2w9q3gxzqk"
+      },
+      "tool_use_id": "toolu_01JXDP4woDcSGtaiouvpeiqT"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"id\":\"doc_pa2w9q3gxzqk\",\"kind\":\"other\",\"date\":\"2026-09-05\",\"status\":\"processed\",\"direction\":\"incoming\",\"received_date\":\"2026-09-07\",\"language\":\"en\",\"party_id\":\"pty_efmwq4xym8cm\",\"case_id\":\"cas_wbba5q6a8x6j\",\"urgency\":\"normal\",\"pages\":1,\"tax_relevant\":true,\"items\":[{\"id\":\"itm_j2650a27bsty\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-01\",\"date_source\":\"computed\",\"direction\":\"in\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\",\"repeats\":\"every month on the 1st working day\",\"following_due_date\":\"2026-12-01\",\"amount\":450.0,\"currency\":\"EUR\"},{\"id\":\"itm_zse7bv6ce3s1\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-12-15\",\"send_by\":\"2026-12-09\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\",\"repeats\":\"every month on the 15th\",\"following_due_date\":\"2027-01-15\"},{\"id\":\"itm_espa58t15ncg\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2027-11-07\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\",\"repeats\":\"every year\",\"following_due_date\":\"2028-11-07\"},{\"id\":\"itm_gmymk62nzs8x\",\"kind\":\"task\",\"status\":\"open\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\"},{\"id\":\"itm_00sz6dwxn5ch\",\"kind\":\"task\",\"status\":\"open\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\"},{\"id\":\"itm_thkzapqwyg8m\",\"kind\":\"task\",\"status\":\"open\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\"}],\"contracts\":[]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_j2650a27bsty\":{\"title\":\"Receive monthly scholarship stipend\",\"action\":\"No action needed; the stipend arrives automatically each month.\"},\"pty_efmwq4xym8cm\":{\"name\":\"Global Talent Scholarship Foundation\"},\"itm_zse7bv6ce3s1\":{\"title\":\"Submit first progress report\",\"action\":\"Submit your first progress report (max. two pages, countersigned by your academic supervisor) via the scholarship portal using the provided template.\"},\"itm_espa58t15ncg\":{\"title\":\"Attend Autumn Meeting in Berlin\",\"action\":\"Attend the Autumn Meeting for scholars in Berlin; wait for the separate invitation with the programme.\",\"location\":\"Berlin\"},\"itm_gmymk62nzs8x\":{\"title\":\"Upload certificate of enrolment each semester\",\"action\":\"Upload your certificate of enrolment for each semester to the scholarship portal.\"},\"itm_00sz6dwxn5ch\":{\"title\":\"Notify foundation of any change of address, bank details or study status\",\"action\":\"Inform the foundation of any change to your address, bank details or study status within two weeks of the change occurring.\"},\"itm_thkzapqwyg8m\":{\"title\":\"Report other scholarships or grants before accepting\",\"action\":\"Report any other scholarship or grant to the foundation before accepting it.\"},\"doc_pa2w9q3gxzqk\":{\"tax_note\":\"The letter states the scholarship stipend is generally tax-free under §3 No. 44 of the German Income Tax Act (EStG); keep this letter as documentation for your tax records even though no tax is likely due.\",\"title\":\"Award of the Global Talent Scholarship 2026/27\",\"summary\":\"The Global Talent Scholarship Foundation has awarded Sam Rivera a scholarship for the 2026/27 academic year, paying a monthly stipend of €450.00 from October 2026 to September 2027, with a first progress report due on 15 December 2026.\",\"explanation\":\"This is your official award letter confirming a scholarship for 2026/27. You will receive €450 per month from October 2026 to September 2027 by bank transfer around the first working day of each month. To keep the funding, stay enrolled full-time at Hochschule Musterstadt, upload your enrolment certificate each semester to the portal, and submit your first progress report (countersigned by your supervisor) by 15 December 2026. Tell the foundation within two weeks of any change to your address, bank details or study status, and report any other scholarship or grant before accepting it. You're invited to the Autumn Meeting in Berlin on 7 November 2026; a separate invitation with the programme will follow. Keep this letter for your tax records.\",\"key_facts\":[{\"label\":\"Scholarship ID\",\"value\":\"GTSF-2026-0317\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Monthly stipend\",\"value\":\"EUR 450.00\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Funding period\",\"value\":\"1 October 2026 – 30 September 2027\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"First progress report due\",\"value\":\"15 December 2026\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Notification period for changes\",\"value\":\"within two weeks\",\"page\":1,\"grounding\":\"verified\"}],\"references\":[{\"label\":\"Scholarship ID\",\"value\":\"GTSF-2026-0317\"}],\"text\":\"=== Page 1 ===\\nGLOBAL TALENT\\nS C H O L A R S H I P F O U N D A T I O N\\n\\nScholarship ID   GTSF-2026-0317\\nContact   Dr. Helen Example\\nGlobal Talent Scholarship Foundation · Beispielallee 20 · 12350 Berlin   +49 123 555 0317\\nPhone\\nDate   5 September 2026\\nMr Sam Rivera\\nBeispielweg 5\\n12345 Musterstadt\\n\\nAward of the Global Talent Scholarship 2026/27\\n\\nDear Mr Rivera,\\n\\nOn behalf of the Selection Committee, I am delighted to inform you that you have been awarded a\\nGlobal Talent Scholarship for the academic year 2026/27. The Committee was particularly\\nimpressed by your academic record and by the data-literacy workshops you co-organise for\\nstudents at Hochschule Musterstadt.\\n\\nScholarship details\\n• The monthly stipend of EUR 450.00 will be paid from October 2026 to September 2027 by\\nbank transfer on or around the first working day of each month.\\n• Funding period: 1 October 2026 – 30 September 2027 (12 months).\\n• Scholarship ID: GTSF-2026-0317 (please quote it in all correspondence).\\n\\nConditions\\n1. You remain enrolled as a full-time student at Hochschule Musterstadt throughout the funding\\nperiod and upload your certificate of enrolment for each semester to the scholarship portal.\\n2. Your first progress report is due on 15 December 2026. Please submit it through the\\nscholarship portal using the template provided there. The report (max. two pages) must be\\ncountersigned by your academic supervisor.\\n3. Please notify us of any change of address, bank details or study status within two weeks of\\nthe change.\\n4. Other scholarships or grants must be reported to us before you accept them.\\n\\nThe scholarship is granted to cover living costs while studying. It is generally tax-free under § 3\\nNo. 44 of the German Income Tax Act (EStG); please keep this letter for your records.\\n\\nWe look forward to welcoming you to our scholar community at the Autumn Meeting in Berlin on 7\\nNovember 2026. A separate invitation with the programme will follow.\\n\\nYours sincerely,\\n\\nDr. Helen Example\\nProgramme Director\\n\\nGlobal Talent Scholarship Foundation · gemeinnützige Stiftung bürgerlichen Rechts · Beispielallee 20 · 12350 Berlin · Germany\\nBoard: Prof. Dr. Amara Beispiel (Chair) · Programme Director: Dr. Helen Example · Foundation register Berlin 3/GT-2011\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01JXDP4woDcSGtaiouvpeiqT"
+    },
+    {
+      "type": "text",
+      "text": "The"
+    },
+    {
+      "type": "text",
+      "text": " next"
+    },
+    {
+      "type": "text",
+      "text": " sc"
+    },
+    {
+      "type": "text",
+      "text": "holars"
+    },
+    {
+      "type": "text",
+      "text": "' me"
+    },
+    {
+      "type": "text",
+      "text": "eting "
+    },
+    {
+      "type": "text",
+      "text": "(\"Att"
+    },
+    {
+      "type": "text",
+      "text": "end Aut"
+    },
+    {
+      "type": "text",
+      "text": "umn Meeting in"
+    },
+    {
+      "type": "text",
+      "text": " Ber"
+    },
+    {
+      "type": "text",
+      "text": "lin\") for"
+    },
+    {
+      "type": "text",
+      "text": " your"
+    },
+    {
+      "type": "text",
+      "text": " Global Talent Schol"
+    },
+    {
+      "type": "text",
+      "text": "arship Foundation ["
+    },
+    {
+      "type": "text",
+      "text": "party"
+    },
+    {
+      "type": "text",
+      "text": ":pty"
+    },
+    {
+      "type": "text",
+      "text": "_efm"
+    },
+    {
+      "type": "text",
+      "text": "w"
+    },
+    {
+      "type": "text",
+      "text": "q"
+    },
+    {
+      "type": "text",
+      "text": "4x"
+    },
+    {
+      "type": "text",
+      "text": "ym"
+    },
+    {
+      "type": "text",
+      "text": "8"
+    },
+    {
+      "type": "text",
+      "text": "c"
+    },
+    {
+      "type": "text",
+      "text": "m"
+    },
+    {
+      "type": "text",
+      "text": "] is due"
+    },
+    {
+      "type": "text",
+      "text": " S"
+    },
+    {
+      "type": "text",
+      "text": "at "
+    },
+    {
+      "type": "text",
+      "text": "7 N"
+    },
+    {
+      "type": "text",
+      "text": "ov 2027"
+    },
+    {
+      "type": "text",
+      "text": " [item:it"
+    },
+    {
+      "type": "text",
+      "text": "m_esp"
+    },
+    {
+      "type": "text",
+      "text": "a58"
+    },
+    {
+      "type": "text",
+      "text": "t"
+    },
+    {
+      "type": "text",
+      "text": "15"
+    },
+    {
+      "type": "text",
+      "text": "nc"
+    },
+    {
+      "type": "text",
+      "text": "g], and it repeats every"
+    },
+    {
+      "type": "text",
+      "text": " year.\n\n-"
+    },
+    {
+      "type": "text",
+      "text": " A separ"
+    },
+    {
+      "type": "text",
+      "text": "ate invitation with"
+    },
+    {
+      "type": "text",
+      "text": " the programme will still"
+    },
+    {
+      "type": "text",
+      "text": " be sent be"
+    },
+    {
+      "type": "text",
+      "text": "forehand —"
+    },
+    {
+      "type": "text",
+      "text": " the let"
+    },
+    {
+      "type": "text",
+      "text": "ter's text"
+    },
+    {
+      "type": "text",
+      "text": " only"
+    },
+    {
+      "type": "text",
+      "text": ","
+    },
+    {
+      "type": "text",
+      "text": " so"
+    },
+    {
+      "type": "text",
+      "text": " no"
+    },
+    {
+      "type": "text",
+      "text": " f"
+    },
+    {
+      "type": "text",
+      "text": "ixed time"
+    },
+    {
+      "type": "text",
+      "text": " or"
+    },
+    {
+      "type": "text",
+      "text": " ven"
+    },
+    {
+      "type": "text",
+      "text": "ue is conf"
+    },
+    {
+      "type": "text",
+      "text": "irmed in Ord"
+    },
+    {
+      "type": "text",
+      "text": "nung yet.\n- You"
+    },
+    {
+      "type": "text",
+      "text": " can mark this to"
+    },
+    {
+      "type": "text",
+      "text": "-"
+    },
+    {
+      "type": "text",
+      "text": "do \"Att"
+    },
+    {
+      "type": "text",
+      "text": "end Autumn Mee"
+    },
+    {
+      "type": "text",
+      "text": "ting in Berlin\" done"
+    },
+    {
+      "type": "text",
+      "text": " or add it to your calendar"
+    },
+    {
+      "type": "text",
+      "text": " from"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung once"
+    },
+    {
+      "type": "text",
+      "text": " you have"
+    },
+    {
+      "type": "text",
+      "text": " it."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "The next scholars' meeting (\"Attend Autumn Meeting in Berlin\") for your Global Talent Scholarship Foundation [party:pty_efmwq4xym8cm] is due Sat 7 Nov 2027 [item:itm_espa58t15ncg], and it repeats every year.\n\n- A separate invitation with the programme will still be sent beforehand — the letter's text only, so no fixed time or venue is confirmed in Ordnung yet.\n- You can mark this to-do \"Attend Autumn Meeting in Berlin\" done or add it to your calendar from Ordnung once you have it.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 512,
+          "cache_read_tokens": 20165,
+          "cache_creation_tokens": 6069,
+          "cost_usd": 0.033441,
+          "duration_ms": 10723,
+          "turns": 5
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

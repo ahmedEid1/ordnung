@@ -1,0 +1,330 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"99ef00b98b6fd5502888ae20ae978adbae84ea70eb1fc4ab660a1a4790b44772\",\"question\":\"Wann habe ich zwischen Januar und Ende Juni 2027 meine Kontrolltermine beim Zahnarzt?\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [
+      "doc_xa0f5gvpe0w2",
+      "doc_nba3k0ka85q0",
+      "doc_1dgp8tp2ga0c"
+    ],
+    "prompt_head": "The person asks:\nWann habe ich zwischen Januar und Ende Juni 2027 meine Kontrolltermine beim Zahnarzt?\n",
+    "recorded_at": "2026-11-24T13:23:01+00:00",
+    "repeat": 2,
+    "commit": "0b5e2d7a",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "Im Zeitraum Januar bis Ende Juni 2027 haben Sie zwei Zahnarzt-Kontrolltermine (Kontrolle & Prophylaxe) bei Zahnarztpraxis Dr. Anna Beispiel [party:pty_m3rttkfq94qn]:\n\n- **Fr 8. Jan 2027, 09:15 Uhr** [item:itm_sncxha9wbsxc]\n- **Do 8. Apr 2027** – der nächste Termin laut der im System hinterlegten Wiederholung alle 3 Monate [item:itm_sncxha9wbsxc]\n\nBitte Terminkarte/Krankenkassenkarte mitbringen und bei Verhinderung rechtzeitig absagen, wie es der Termin vorsieht [item:itm_sncxha9wbsxc].",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 528,
+      "cache_read_tokens": 12805,
+      "cache_creation_tokens": 2596,
+      "cost_usd": 0.018233,
+      "duration_ms": 7792,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "from_date": "2027-01-01",
+        "to_date": "2027-06-30"
+      },
+      "tool_use_id": "toolu_01PSdELuFgbrj532ppDpj7Gh"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Zahnarzt"
+      },
+      "tool_use_id": "toolu_01UoYUM5yytpbycVVj7v3893"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-11-24\",\"items\":[{\"id\":\"itm_sncxha9wbsxc\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2027-01-08\",\"due_time\":\"09:15\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_m3rttkfq94qn\",\"doc_id\":\"doc_xa0f5gvpe0w2\",\"repeats\":\"every 3 months\",\"following_due_date\":\"2027-04-08\"},{\"id\":\"itm_85xesrap412m\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2027-01-15\",\"send_by\":\"2027-01-14\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"study\",\"party_id\":\"pty_fhp8fzemmzvt\",\"doc_id\":\"doc_nba3k0ka85q0\",\"repeats\":\"every 6 months on the 15th\",\"following_due_date\":\"2027-07-15\",\"amount\":312.4,\"currency\":\"EUR\"},{\"id\":\"itm_g321eme013j2\",\"kind\":\"expiry\",\"status\":\"open\",\"due_date\":\"2027-02-10\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"other\",\"party_id\":\"pty_z1se3q2nn3k3\",\"doc_id\":\"doc_1dgp8tp2ga0c\"},{\"id\":\"itm_kn5zf3bdwew8\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2027-02-28\",\"send_by\":\"2027-02-22\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_fhp8fzemmzvt\",\"doc_id\":\"doc_nba3k0ka85q0\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_sncxha9wbsxc\":{\"title\":\"Dental checkup and cleaning (PZR)\",\"action\":\"Arrive 10 minutes early and bring your health insurance card (Gesundheitskarte)\",\"consequence\":\"Cancel at least 24 hours in advance if you cannot attend\",\"location\":\"Lindenallee 8, 12345 Musterstadt\"},\"pty_m3rttkfq94qn\":{\"name\":\"Zahnarztpraxis Dr. Anna Beispiel\"},\"itm_85xesrap412m\":{\"title\":\"Pay the semester fee (Semesterbeitrag) for summer semester 2027\",\"action\":\"Transfer the semester fee of €312.40 to the university's account, using the given reference, so it arrives by the deadline shown.\",\"consequence\":\"Late payment adds a €15.00 late fee (Säumnisgebühr), and if the fee is not received in time you risk being deregistered (Exmatrikulation).\"},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"},\"itm_g321eme013j2\":{\"title\":\"Passport expires\",\"action\":\"Apply for a passport renewal before it expires\"},\"pty_z1se3q2nn3k3\":{\"name\":\"Ministry of Interior\"},\"itm_kn5zf3bdwew8\":{\"title\":\"Cancel any separate Deutschlandticket subscription\",\"action\":\"If you hold a separate Deutschlandticket subscription, cancel it in time, since the ticket will be included in your semester fee from summer semester 2027.\",\"consequence\":\"You may otherwise end up paying for two tickets at the same time.\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01PSdELuFgbrj532ppDpj7Gh"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_xa0f5gvpe0w2\",\"kind\":\"appointment\",\"party_id\":\"pty_m3rttkfq94qn\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_xa0f5gvpe0w2\":{\"title\":\"Dental checkup and cleaning appointment\",\"snippet\":\"…0123 334455 zahnarzt-beispiel.example Ihre nächsten Termine Tag | Datum | Uhrzeit | Behandlung Do 08.10.2026…\"},\"pty_m3rttkfq94qn\":{\"name\":\"Zahnarztpraxis Dr. Anna Beispiel\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01UoYUM5yytpbycVVj7v3893"
+    },
+    {
+      "type": "text",
+      "text": "Im"
+    },
+    {
+      "type": "text",
+      "text": " Zeitraum Janu"
+    },
+    {
+      "type": "text",
+      "text": "ar b"
+    },
+    {
+      "type": "text",
+      "text": "is"
+    },
+    {
+      "type": "text",
+      "text": " Ende Juni 2027"
+    },
+    {
+      "type": "text",
+      "text": " haben Sie zw"
+    },
+    {
+      "type": "text",
+      "text": "ei Zahnarz"
+    },
+    {
+      "type": "text",
+      "text": "t-Kontrol"
+    },
+    {
+      "type": "text",
+      "text": "lt"
+    },
+    {
+      "type": "text",
+      "text": "ermine ("
+    },
+    {
+      "type": "text",
+      "text": "Kontrolle"
+    },
+    {
+      "type": "text",
+      "text": " &"
+    },
+    {
+      "type": "text",
+      "text": " Pr"
+    },
+    {
+      "type": "text",
+      "text": "ophylaxe) bei"
+    },
+    {
+      "type": "text",
+      "text": " Zahnarzt"
+    },
+    {
+      "type": "text",
+      "text": "praxis Dr."
+    },
+    {
+      "type": "text",
+      "text": " Anna Beispiel"
+    },
+    {
+      "type": "text",
+      "text": " [party"
+    },
+    {
+      "type": "text",
+      "text": ":p"
+    },
+    {
+      "type": "text",
+      "text": "ty_m3rttkf"
+    },
+    {
+      "type": "text",
+      "text": "q94qn]:\n\n-"
+    },
+    {
+      "type": "text",
+      "text": " **F"
+    },
+    {
+      "type": "text",
+      "text": "r"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "8."
+    },
+    {
+      "type": "text",
+      "text": " J"
+    },
+    {
+      "type": "text",
+      "text": "an 2027, 09:"
+    },
+    {
+      "type": "text",
+      "text": "15 Uhr**"
+    },
+    {
+      "type": "text",
+      "text": " [item"
+    },
+    {
+      "type": "text",
+      "text": ":itm_sncxha"
+    },
+    {
+      "type": "text",
+      "text": "9wbsxc]"
+    },
+    {
+      "type": "text",
+      "text": "\n- **Do"
+    },
+    {
+      "type": "text",
+      "text": " 8. Apr 2"
+    },
+    {
+      "type": "text",
+      "text": "027** –"
+    },
+    {
+      "type": "text",
+      "text": " der n"
+    },
+    {
+      "type": "text",
+      "text": "ächste Termin la"
+    },
+    {
+      "type": "text",
+      "text": "ut der im"
+    },
+    {
+      "type": "text",
+      "text": " System"
+    },
+    {
+      "type": "text",
+      "text": " h"
+    },
+    {
+      "type": "text",
+      "text": "inter"
+    },
+    {
+      "type": "text",
+      "text": "legten W"
+    },
+    {
+      "type": "text",
+      "text": "iederholung al"
+    },
+    {
+      "type": "text",
+      "text": "le 3 Monate ["
+    },
+    {
+      "type": "text",
+      "text": "item:itm_sncx"
+    },
+    {
+      "type": "text",
+      "text": "ha9wbsxc]"
+    },
+    {
+      "type": "text",
+      "text": "\n\nBitte"
+    },
+    {
+      "type": "text",
+      "text": " Ter"
+    },
+    {
+      "type": "text",
+      "text": "minkarte/Kr"
+    },
+    {
+      "type": "text",
+      "text": "ankenk"
+    },
+    {
+      "type": "text",
+      "text": "assenk"
+    },
+    {
+      "type": "text",
+      "text": "arte m"
+    },
+    {
+      "type": "text",
+      "text": "itb"
+    },
+    {
+      "type": "text",
+      "text": "ringen und b"
+    },
+    {
+      "type": "text",
+      "text": "ei Ver"
+    },
+    {
+      "type": "text",
+      "text": "hinderung r"
+    },
+    {
+      "type": "text",
+      "text": "echtzeitig absag"
+    },
+    {
+      "type": "text",
+      "text": "en, wie es der"
+    },
+    {
+      "type": "text",
+      "text": " Termin v"
+    },
+    {
+      "type": "text",
+      "text": "orsieht [item:it"
+    },
+    {
+      "type": "text",
+      "text": "m_sncxha9w"
+    },
+    {
+      "type": "text",
+      "text": "bsxc]."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Im Zeitraum Januar bis Ende Juni 2027 haben Sie zwei Zahnarzt-Kontrolltermine (Kontrolle & Prophylaxe) bei Zahnarztpraxis Dr. Anna Beispiel [party:pty_m3rttkfq94qn]:\n\n- **Fr 8. Jan 2027, 09:15 Uhr** [item:itm_sncxha9wbsxc]\n- **Do 8. Apr 2027** – der nächste Termin laut der im System hinterlegten Wiederholung alle 3 Monate [item:itm_sncxha9wbsxc]\n\nBitte Terminkarte/Krankenkassenkarte mitbringen und bei Verhinderung rechtzeitig absagen, wie es der Termin vorsieht [item:itm_sncxha9wbsxc].",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 528,
+          "cache_read_tokens": 12805,
+          "cache_creation_tokens": 2596,
+          "cost_usd": 0.018233,
+          "duration_ms": 7792,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

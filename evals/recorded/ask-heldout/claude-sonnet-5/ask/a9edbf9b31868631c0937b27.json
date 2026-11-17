@@ -1,0 +1,141 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"258c9eb533aae0c2414271a7fda8681ea1fb736426b2999a45141753d332ff7e\",\"question\":\"How much dog tax does the city charge me this year?\",\"today\":\"2026-11-24\"}|repeat=2",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nHow much dog tax does the city charge me this year?\n",
+    "recorded_at": "2026-11-24T13:21:06+00:00",
+    "repeat": 2,
+    "commit": "0b5e2d7a",
+    "recorded_on": "2026-11-24",
+    "today": "2026-11-24",
+    "cli_version": "2.1.326 (Claude Code)"
+  },
+  "response": {
+    "text": "There's nothing about a dog tax (Hundesteuer) in your records — no letter, to-do, or contract matches that search.",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 171,
+      "cache_read_tokens": 12774,
+      "cache_creation_tokens": 1220,
+      "cost_usd": 0.009152799999999999,
+      "duration_ms": 4635,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Hundesteuer"
+      },
+      "tool_use_id": "toolu_01PStzFPJS7B5VoF4qbD6dbe"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "dog tax"
+      },
+      "tool_use_id": "toolu_01LBcxVXEejtS3ScMzPGyhoS"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01PStzFPJS7B5VoF4qbD6dbe"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01LBcxVXEejtS3ScMzPGyhoS"
+    },
+    {
+      "type": "text",
+      "text": "There"
+    },
+    {
+      "type": "text",
+      "text": "'s"
+    },
+    {
+      "type": "text",
+      "text": " n"
+    },
+    {
+      "type": "text",
+      "text": "othing about"
+    },
+    {
+      "type": "text",
+      "text": " a"
+    },
+    {
+      "type": "text",
+      "text": " dog tax ("
+    },
+    {
+      "type": "text",
+      "text": "H"
+    },
+    {
+      "type": "text",
+      "text": "undeste"
+    },
+    {
+      "type": "text",
+      "text": "uer) in your records —"
+    },
+    {
+      "type": "text",
+      "text": " no let"
+    },
+    {
+      "type": "text",
+      "text": "ter, to"
+    },
+    {
+      "type": "text",
+      "text": "-do, or contract"
+    },
+    {
+      "type": "text",
+      "text": " mat"
+    },
+    {
+      "type": "text",
+      "text": "ches that"
+    },
+    {
+      "type": "text",
+      "text": " search."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "There's nothing about a dog tax (Hundesteuer) in your records — no letter, to-do, or contract matches that search.",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 171,
+          "cache_read_tokens": 12774,
+          "cache_creation_tokens": 1220,
+          "cost_usd": 0.009152799999999999,
+          "duration_ms": 4635,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}
