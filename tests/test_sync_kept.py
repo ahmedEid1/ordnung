@@ -93,8 +93,12 @@ def _leftovers(folder: Path) -> list[str]:
 
 
 def test_a_staged_version_is_kept_as_a_copy_that_opens_with_the_passphrase(
-    pair: Pair, tmp_path: Path
+    pair: Pair, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """The copy is flushed with a plain ``os.fsync`` (not ``F_FULLFSYNC`` on macOS), as the backup was."""
+    sizes: list[int] = []  # of every file flushed: the copy is the only one its size
+    real = durable.fsync
+    monkeypatch.setattr(durable, "fsync", lambda fd: (sizes.append(os.fstat(fd).st_size), real(fd)))
     a = pair.a
     staged = pair.stage_b()
     try:
@@ -104,27 +108,13 @@ def test_a_staged_version_is_kept_as_a_copy_that_opens_with_the_passphrase(
     folder = a.s.local.kept_dir
     copy = folder / info.name
     assert copy.is_file() and _leftovers(folder) == []
+    assert copy.stat().st_size in sizes
     if os.name == "posix":
         assert copy.stat().st_mode & 0o777 == 0o600
     assert info.why == "desktop's changes, before it was removed" and info.digest == staged.target.digest
     assert info in a.s.state.kept and read_index(folder)[info.name] == info
     assert "only on the desktop" in _notes_in(copy, tmp_path / "opened")
     assert "only on the desktop" not in a.notes(), "keeping a copy changes nothing here"
-
-
-def test_a_kept_copy_of_a_staged_version_reaches_the_disk_with_ordnung_s_own_flush(
-    pair: Pair, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """It was flushed with a plain ``os.fsync`` (not ``F_FULLFSYNC`` on macOS), as the backup was."""
-    sizes: list[int] = []  # of every file flushed: the copy is the only one its size
-    real = durable.fsync
-    monkeypatch.setattr(durable, "fsync", lambda fd: (sizes.append(os.fstat(fd).st_size), real(fd)))
-    staged = pair.stage_b()
-    try:
-        info = keep_staged(pair.a.s, staged, "desktop's changes, before it was removed")
-    finally:
-        shutil.rmtree(pair.a.s.local.incoming, ignore_errors=True)
-    assert (pair.a.s.local.kept_dir / info.name).stat().st_size in sizes
 
 
 def test_a_kept_copy_that_can_t_be_written_leaves_no_part_file(
