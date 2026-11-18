@@ -6,8 +6,7 @@ from __future__ import annotations
 
 from datetime import date
 
-import pytest
-
+from helpers_tables import check_rows
 from ordnung.ingest.gaps import deadline_items, letter_date
 from ordnung.models import DocumentExtraction
 from test_reading_gaps import blank, page
@@ -36,31 +35,35 @@ def dropped(head: tuple[str, ...], *lines: str, reading: DocumentExtraction = SH
     ]
 
 
-@pytest.mark.parametrize(
-    "paid",
-    [
-        "Zahlungsstatus: Bezahlt",
-        "Bezahlt am 01.10.2026 per PayPal.",
-        "Bezahlt mit PayPal",
-        "Zahlung erhalten am 01.10.2026",
-        "Zahlungsart: PayPal (bezahlt)",
-        "Wir haben Ihre Zahlung erhalten.",
-    ],
-)
-def test_a_paid_invoice_in_other_words_files_no_payment(paid: str) -> None:
-    assert dropped(SHOP, "Fälligkeitsdatum: 15.10.2026", paid) == []
+PAID_WORDINGS = [
+    "Zahlungsstatus: Bezahlt",
+    "Bezahlt am 01.10.2026 per PayPal.",
+    "Bezahlt mit PayPal",
+    "Zahlung erhalten am 01.10.2026",
+    "Zahlungsart: PayPal (bezahlt)",
+    "Wir haben Ihre Zahlung erhalten.",
+]
 
 
-@pytest.mark.parametrize(
-    "unpaid",
-    [
-        "Leider haben wir den Rechnungsbetrag bisher nicht erhalten.",
-        "Die Rechnung ist noch nicht beglichen.",
-        "Bis heute ist keine Zahlung eingegangen.",
-    ],
-)
-def test_a_reminder_saying_the_amount_is_not_paid_still_files_its_due_date(unpaid: str) -> None:
-    assert dropped(SHOP, unpaid, "Zahlbar bis: 15.10.2026") == ["2026-10-15"]
+def test_a_paid_invoice_in_other_words_files_no_payment() -> None:
+    def check(paid: str) -> None:
+        assert dropped(SHOP, "Fälligkeitsdatum: 15.10.2026", paid) == []
+
+    check_rows(PAID_WORDINGS, check)
+
+
+UNPAID_WORDINGS = [
+    "Leider haben wir den Rechnungsbetrag bisher nicht erhalten.",
+    "Die Rechnung ist noch nicht beglichen.",
+    "Bis heute ist keine Zahlung eingegangen.",
+]
+
+
+def test_a_reminder_saying_the_amount_is_not_paid_still_files_its_due_date() -> None:
+    def check(unpaid: str) -> None:
+        assert dropped(SHOP, unpaid, "Zahlbar bis: 15.10.2026") == ["2026-10-15"]
+
+    check_rows(UNPAID_WORDINGS, check)
 
 
 BENEFIT = (
@@ -78,18 +81,20 @@ BENEFIT_READING = blank(
 )
 
 
-@pytest.mark.parametrize(
-    "payout",
-    [
-        "Das Wohngeld wird monatlich im Voraus auf Ihr Konto überwiesen.",
-        "Wir überweisen den Betrag auf Ihr Konto.",
-        "Die Zahlung erfolgt auf Ihr Konto.",
-        "Der Betrag wird Ihrem Konto gutgeschrieben.",
-        "Wir zahlen den Betrag auf Ihr Konto.",
-    ],
-)
-def test_a_payout_in_other_words_files_no_payment(payout: str) -> None:
-    assert dropped(BENEFIT, payout, "Zahlungstermin: 30.10.2026", reading=BENEFIT_READING) == []
+PAYOUT_WORDINGS = [
+    "Das Wohngeld wird monatlich im Voraus auf Ihr Konto überwiesen.",
+    "Wir überweisen den Betrag auf Ihr Konto.",
+    "Die Zahlung erfolgt auf Ihr Konto.",
+    "Der Betrag wird Ihrem Konto gutgeschrieben.",
+    "Wir zahlen den Betrag auf Ihr Konto.",
+]
+
+
+def test_a_payout_in_other_words_files_no_payment() -> None:
+    def check(payout: str) -> None:
+        assert dropped(BENEFIT, payout, "Zahlungstermin: 30.10.2026", reading=BENEFIT_READING) == []
+
+    check_rows(PAYOUT_WORDINGS, check)
 
 
 STREET = (
@@ -104,23 +109,24 @@ HIER = "Hiergegen kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhob
 DECIDED = blank(document_date="2026-10-01", sender={"name": "Stadt Beispielhausen", "kind": "authority"})
 
 
-@pytest.mark.parametrize(
-    ("heading", "body"),
-    [
-        (
-            "Ablehnung Ihres Antrags auf Stundung",
-            "Ihren Antrag vom 01.09.2026 auf Stundung der noch offenen Gebühr von 85,00 EUR lehnen wir ab.",
-        ),
-        ("Ablehnung Ihres Antrags auf Erlass", "Ihr Antrag auf Erlass der offenen Forderung wird abgelehnt."),
-        ("Mahnung", "Für diese Mahnung setzen wir eine Mahngebühr von 5,00 EUR fest."),
-    ],
-)
-def test_a_letter_that_decides_itself_is_no_reminder_whatever_amount_it_names_open(
-    heading: str, body: str
-) -> None:
+SELF_DECIDING_LETTERS = [
+    (
+        "Ablehnung Ihres Antrags auf Stundung",
+        "Ihren Antrag vom 01.09.2026 auf Stundung der noch offenen Gebühr von 85,00 EUR lehnen wir ab.",
+    ),
+    ("Ablehnung Ihres Antrags auf Erlass", "Ihr Antrag auf Erlass der offenen Forderung wird abgelehnt."),
+    ("Mahnung", "Für diese Mahnung setzen wir eine Mahngebühr von 5,00 EUR fest."),
+]
+
+
+def test_a_letter_that_decides_itself_is_no_reminder_whatever_amount_it_names_open() -> None:
     """The rule for a reminder's restated notice undated these (before, they were dated from the letter, its own decision)."""
-    pages = [page(*STREET, heading, "Sehr geehrte Frau Probe,", body, "Rechtsbehelfsbelehrung", HIER)]
-    assert check_due(pages, DECIDED) is not None
+
+    def check(heading: str, body: str) -> None:
+        pages = [page(*STREET, heading, "Sehr geehrte Frau Probe,", body, "Rechtsbehelfsbelehrung", HIER)]
+        assert check_due(pages, DECIDED) is not None
+
+    check_rows(SELF_DECIDING_LETTERS, check)
 
 
 def test_a_reminder_restating_its_decision_s_notice_stays_undated() -> None:
