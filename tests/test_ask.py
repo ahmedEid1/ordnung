@@ -1072,33 +1072,6 @@ def test_what_ask_sees_of_the_household_moves_the_fingerprint_and_the_token(
     moved(fingerprint=True)
 
 
-async def test_a_recording_goes_stale_once_a_letter_is_filed_for_someone(
-    paths: Paths, store: Store, ids: dict[str, str], tools: LedgerTools, tmp_path: Path
-) -> None:
-    """A recorded answer replays only on the ledger it was made on: once a letter is filed for someone of the
-    household (what Ask's tools then say of it changes), the same question is a new request, and the demo's
-    replay has no answer for it."""
-    from ordnung.secretary import household
-
-    answer = f"Your TechMarkt reminder is due on 30 Sep [item:{ids['dunning_payment']}]."
-    live = ScriptedBackend(turn(tools, answer, ("list_items", {"kind": "payment"})))
-    await collect(make_ctx(paths, store, live), "What do I owe TechMarkt?")
-    (recorded,) = live.calls
-    fixtures = tmp_path / "fixtures"
-    path = fixture_path(fixtures, recorded)
-    path.parent.mkdir(parents=True)
-    stream = [event.model_dump(exclude_none=True) for event in live.script(recorded)]
-    path.write_text(json.dumps({"response": stream[-1]["response"], "stream": stream}), encoding="utf-8")
-    replayed = done_event(
-        await collect(make_ctx(paths, store, ReplayBackend(fixtures)), "What do I owe TechMarkt?")
-    )
-    assert replayed.text == answer
-    (alex,) = _people(store, _Member("Alex Rivera"))
-    household.file(store, {ids["doc_invoice"]: alex})
-    events = await collect(make_ctx(paths, store, ReplayBackend(fixtures)), "What do I owe TechMarkt?")
-    assert [(event.type, getattr(event, "error_code", None)) for event in events] == [("error", "demo_miss")]
-
-
 def test_a_household_in_the_demo_makes_its_suggested_questions_say_it_changed(tmp_path: Path) -> None:
     """The demo's answers were recorded without a household: once the visitor adds someone, Ask's tools
     would answer otherwise, so the suggested questions are no longer offered and asking one says the demo
@@ -1388,6 +1361,11 @@ async def test_works_with_the_real_app_context(data_dir: Path, store: Store, ids
 async def test_recorded_answer_replays(
     paths: Paths, store: Store, ids: dict[str, str], tools: LedgerTools, tmp_path: Path
 ) -> None:
+    """A recorded answer replays only on the ledger it was made on: once a letter is filed for someone of the
+    household (what Ask's tools then say of it changes), the same question is a new request, and the demo's
+    replay has no answer for it."""
+    from ordnung.secretary import household
+
     answer = f"Your TechMarkt reminder is due on 30 Sep [item:{ids['dunning_payment']}]."
     live = ScriptedBackend(turn(tools, answer, ("list_items", {"kind": "payment"})))
     await collect(make_ctx(paths, store, live), "What do I owe TechMarkt?")
@@ -1412,6 +1390,10 @@ async def test_recorded_answer_replays(
     )
     assert again.text == answer and again.thread_id == replayed.thread_id
     assert len(store.list_chat_messages(replayed.thread_id or "")) == 4
+    (alex,) = _people(store, _Member("Alex Rivera"))
+    household.file(store, {ids["doc_invoice"]: alex})
+    events = await collect(make_ctx(paths, store, ReplayBackend(fixtures)), "What do I owe TechMarkt?")
+    assert [(event.type, getattr(event, "error_code", None)) for event in events] == [("error", "demo_miss")]
 
 
 async def test_the_live_demo_fallback_reads_the_conversation(
