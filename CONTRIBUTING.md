@@ -216,7 +216,8 @@ check shows in the numbers at once, and costs nothing.
   (`test_a_missing_asset_is_a_404_not_the_app_page`).
 - A test that replays every recording, times pages or its own growth, explores at length (a long fuzz or model
   run), regenerates or re-reads a whole dataset, or builds the web app is marked `slow` (`make check` runs those
-  too).
+  too). The tests run in parallel processes, a file to a process (`-n auto --dist loadfile`): a test takes its
+  files from `tmp_path` and a port for a server from `tests/helpers_net.py`, never a fixed one.
 - A docs test pins a fact the page states (a flag exists, a number is the one its results file holds, a file it
   names is there), not the sentence that states it: rewording a page should not need a test change.
 

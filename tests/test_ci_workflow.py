@@ -196,6 +196,7 @@ _PYTEST_OPTION_VALUES = (
     "-p",
     "-c",
     "-n",
+    "--dist",
     "-o",
     "-W",
     "--deselect",
@@ -294,6 +295,7 @@ def _can_run(args: list[str], test_file: str) -> bool:
         # an option's value is no test path, whether or not the option is known to take one
         ('-m "not slow" --durations 20', True),
         ("-n 4 -q", True),
+        ('-m "not slow" -n auto --dist loadfile', True),
         ("-W error -m slow", True),
         ("-m slow --junitxml reports/junit.xml", True),
         ("-o addopts= -q", True),
@@ -309,10 +311,13 @@ def test_a_pytest_run_is_read_as_running_the_pre_registration_s_tests_or_not(
 
 def test_a_make_target_s_pytest_runs_are_read_as_the_job_s() -> None:
     """A step that runs a Makefile target runs that target's recipe (and its prerequisites'): `make test` runs the
-    whole suite twice (not slow, then slow), `make eval-reproduce` runs no pytest."""
+    whole suite twice (not slow, then slow), each in parallel processes that take whole files (a module's shared
+    fixtures are built once), `make eval-reproduce` runs no pytest."""
     assert _pytest_runs({"steps": [{"run": "make test"}]}) == [
-        ["-m", "not slow", "--cov=ordnung", "--cov-report=term-missing:skip-covered"],
-        ["-m", "slow"],
+        shlex.split(
+            '-m "not slow" -n auto --dist loadfile --cov=ordnung --cov-report=term-missing:skip-covered'
+        ),
+        shlex.split("-m slow -n auto --dist loadfile"),
     ]
     assert _pytest_runs({"steps": [{"run": "make eval-reproduce"}]}) == []
     assert any(
