@@ -743,28 +743,6 @@ def test_the_suggested_sync_folder_name_doesn_t_say_which_app_wrote_it(tmp_path:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "guessable",
-    [
-        "aaa bbb ccc ddd eee",
-        "abc def ghi jkl mno",
-        "12345 23456 34567 45678 56789",
-        "one two three four five",
-        "january february march april may",
-        "qwerty asdfgh zxcvbn password letmein",
-        "a b c d e f g h i j k l m n o",
-        "the cat sat on the mat today",
-    ],
-)
-def test_trivially_guessable_patterns_are_refused_for_a_new_folder(guessable: str) -> None:
-    """Each used to reach 70 bits by the estimator (a character again and again, runs in order, keyboard
-    walks, numbers and months, a short sentence of common words)."""
-    from ordnung import sync
-
-    assert sync.passphrase_bits(guessable) < sync.MIN_PASSPHRASE_BITS
-    assert sync.passphrase_problem(guessable) == sync.WEAK_PASSPHRASE_MESSAGE
-
-
 def test_the_command_line_suggests_a_strong_passphrase_when_it_sets_up_a_folder(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

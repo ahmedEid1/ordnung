@@ -11,6 +11,7 @@ from typing import Any, get_args
 import pytest
 
 from fake_caldav import MemorySecrets
+from helpers_tables import check_rows
 from ordnung import sync
 from ordnung.api.app import openapi_schema
 from ordnung.api.routes import sync as sync_routes
@@ -87,32 +88,35 @@ def test_the_key_file_takes_256_mib_of_scrypt() -> None:
     sync.SYNC_KDF.check()  # a reader accepts it
 
 
-@pytest.mark.parametrize(
-    ("passphrase", "bits", "accepted"),
-    [
-        ("aqua-blunt-clay-dove-erupt", 70.0, True),  # five words: the suggestion's shape
-        ("CorrectHorseBatteryStapleDoor", 70.0, True),  # camel case is five words too
-        ("correct horse battery staple", 56.0, False),  # four
-        ("password password password password password", 7.0, False),  # once, and a common word
-        ("xkqmzvtpwbrnyhdflcga", 14.0, False),  # one run of letters is at best one word
-        ("Sommer 2025 Urlaub Sommer", 7 + 14 + 4 * math.log2(10), False),  # four digits: about 13 bits
-        # weak patterns: a character again and again, runs in order, keyboard walks, common words
-        ("aaa bbb ccc ddd eee", 5 * (math.log2(26) + 1), False),
-        ("abc def ghi jkl mno", math.log2(26) + 1, False),  # together one run of the alphabet
-        ("12345 23456 34567 45678 56789", 5 * (math.log2(10) + 1), False),
-        ("one two three four five", 35.0, False),
-        ("january february march april may", 35.0, False),
-        ("qwerty asdfgh zxcvbn password letmein", 3 * (math.log2(26) + 1) + 14.0, False),
-        ("a b c d e f g h i j k l m n o", math.log2(26) + 1, False),
-        ("the cat sat on the mat today", 63.0, False),  # a short sentence
-    ],
-)
-def test_a_new_folder_s_passphrase_needs_about_70_bits(passphrase: str, bits: float, accepted: bool) -> None:
-    assert sync.passphrase_bits(passphrase) == pytest.approx(bits)
-    problem = sync.passphrase_problem(passphrase)
-    assert (problem is None) is accepted
-    if not accepted:
-        assert passphrase not in (problem or "")
+NEW_FOLDER_PASSPHRASE_EXAMPLES = [
+    ("aqua-blunt-clay-dove-erupt", 70.0, True),  # five words: the suggestion's shape
+    ("CorrectHorseBatteryStapleDoor", 70.0, True),  # camel case is five words too
+    ("correct horse battery staple", 56.0, False),  # four
+    ("password password password password password", 7.0, False),  # once, and a common word
+    ("xkqmzvtpwbrnyhdflcga", 14.0, False),  # one run of letters is at best one word
+    ("Sommer 2025 Urlaub Sommer", 7 + 14 + 4 * math.log2(10), False),  # four digits: about 13 bits
+    # weak patterns: a character again and again, runs in order, keyboard walks, common words
+    ("aaa bbb ccc ddd eee", 5 * (math.log2(26) + 1), False),
+    ("abc def ghi jkl mno", math.log2(26) + 1, False),  # together one run of the alphabet
+    ("12345 23456 34567 45678 56789", 5 * (math.log2(10) + 1), False),
+    ("one two three four five", 35.0, False),
+    ("january february march april may", 35.0, False),
+    ("qwerty asdfgh zxcvbn password letmein", 3 * (math.log2(26) + 1) + 14.0, False),
+    ("a b c d e f g h i j k l m n o", math.log2(26) + 1, False),
+    ("the cat sat on the mat today", 63.0, False),  # a short sentence
+]
+
+
+def test_a_new_folder_s_passphrase_needs_about_70_bits() -> None:
+    def check(passphrase: str, bits: float, accepted: bool) -> None:
+        assert sync.passphrase_bits(passphrase) == pytest.approx(bits)
+        problem = sync.passphrase_problem(passphrase)
+        assert (problem is None) is accepted
+        if not accepted:
+            assert passphrase not in (problem or "")
+            assert problem == sync.WEAK_PASSPHRASE_MESSAGE
+
+    check_rows(NEW_FOLDER_PASSPHRASE_EXAMPLES, check)
 
 
 def test_passphrase_tokens_and_the_length_rule() -> None:
@@ -122,20 +126,22 @@ def test_passphrase_tokens_and_the_length_rule() -> None:
     assert sync.MIN_PASSPHRASE_BITS == sync.SUGGESTED_WORDS * sync.TOKEN_BITS_MAX
 
 
-@pytest.mark.parametrize(
-    ("name", "kept"),
-    [
-        ("ordnung-kept-2026-10-07-0912.ordnung-backup", True),
-        ("ordnung-kept-2026-10-07-0912-2.ordnung-backup", True),
-        ("ordnung-kept-2026-10-07-0912.ordnung-backup.part", False),
-        ("../ordnung-kept-2026-10-07-0912.ordnung-backup", False),
-        ("ordnung-backup-2026-10-07.ordnung-backup", False),
-        ("ordnung-kept-2026-10-07-0912.ordnung-backup\n", False),
-        ("ordnung-kept-٢٠٢٦-10-07-0912.ordnung-backup", False),
-    ],
-)
-def test_kept_copy_names(name: str, kept: bool) -> None:
-    assert bool(sync.KEPT_RE.fullmatch(name)) is kept
+KEPT_COPY_NAMES = [
+    ("ordnung-kept-2026-10-07-0912.ordnung-backup", True),
+    ("ordnung-kept-2026-10-07-0912-2.ordnung-backup", True),
+    ("ordnung-kept-2026-10-07-0912.ordnung-backup.part", False),
+    ("../ordnung-kept-2026-10-07-0912.ordnung-backup", False),
+    ("ordnung-backup-2026-10-07.ordnung-backup", False),
+    ("ordnung-kept-2026-10-07-0912.ordnung-backup\n", False),
+    ("ordnung-kept-٢٠٢٦-10-07-0912.ordnung-backup", False),
+]
+
+
+def test_kept_copy_names() -> None:
+    def check(name: str, kept: bool) -> None:
+        assert bool(sync.KEPT_RE.fullmatch(name)) is kept
+
+    check_rows(KEPT_COPY_NAMES, check)
 
 
 @pytest.fixture(scope="module")
