@@ -88,13 +88,29 @@ async def _pair(pc: httpx.AsyncClient, phone: httpx.AsyncClient, port: int) -> s
     return token
 
 
-async def _read_events(phone: httpx.AsyncClient) -> int:
+async def _read_events(phone: httpx.AsyncClient, opened: asyncio.Event) -> int:
     lines = 0
     async with phone.stream("GET", "/api/events") as stream:
         assert stream.status_code == 200
+        opened.set()
         async for _line in stream.aiter_lines():
             lines += 1
     return lines
+
+
+async def _open_stream(phone: httpx.AsyncClient, within: float = 10.0) -> asyncio.Task[int]:
+    """The phone's live stream, reading, once its answer has begun, however slow the runner. The gate counts the
+    request as the phone's live stream a moment before that: a removal or a stop in between refuses the request
+    (401, 409) instead of ending a stream."""
+    opened = asyncio.Event()
+    reader = asyncio.create_task(_read_events(phone, opened))
+    waiting = asyncio.ensure_future(opened.wait())
+    await asyncio.wait({reader, waiting}, timeout=within, return_when=asyncio.FIRST_COMPLETED)
+    waiting.cancel()
+    if reader.done():
+        reader.result()  # what failed, if the request did
+    assert opened.is_set(), "the phone's live stream never opened"
+    return reader
 
 
 async def _streaming(pc: httpx.AsyncClient, within: float = 10.0) -> dict[str, Any]:
@@ -131,7 +147,7 @@ async def test_a_phone_listener_runs_next_to_the_computer_s(
             await _pair(pc, phone, port)
             assert (await phone.get("/api/health")).json()["client"] == "phone"
 
-            reader = asyncio.create_task(_read_events(phone))
+            reader = await _open_stream(phone)
             device = await _streaming(pc)
             assert not reader.done()
             assert (await pc.delete(f"/api/phone/devices/{device['id']}")).status_code == 200
@@ -140,7 +156,7 @@ async def test_a_phone_listener_runs_next_to_the_computer_s(
             assert (await pc.get("/api/health")).json()["client"] == "computer"
 
             await _pair(pc, phone, port)
-            reader = asyncio.create_task(_read_events(phone))
+            reader = await _open_stream(phone)
             await _streaming(pc)
             off_at = asyncio.get_running_loop().time()
             assert (await pc.put("/api/phone", json={"enabled": False})).json()["listening"] is False
