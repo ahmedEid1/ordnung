@@ -13,6 +13,9 @@
  * short may have left them syncing, or one standing by, which would refuse the next run's writes — and then the
  * two copies of the synced folder and both password stores are removed and the folders made again, empty. Every
  * path removed is built from `DATA_DIR` (e2e/env.ts), never a pattern.
+ *
+ * A run of one group (`E2E_GROUP`, e2e/env.ts) sets up only the servers it started: the demo, or the two real apps.
+ * Without the demo it still writes the demo's storage state, empty, as every project not on a real app starts from it.
  */
 import { createHash } from "node:crypto";
 import { mkdirSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
@@ -33,6 +36,8 @@ import {
   REAL_LETTER,
   REAL_READINGS,
   REAL_STORAGE_STATE,
+  RUNS_DEMO,
+  RUNS_REAL_APPS,
   STORAGE_STATE,
   SYNC_A_DIR,
   SYNC_B_DIR,
@@ -156,8 +161,16 @@ async function newComputerSession(server: RealServer): Promise<void> {
   saveSession(REAL_B_STORAGE_STATE, server.baseUrl, server.token);
 }
 
+/** A storage state with no session: for the projects that use no server, when the demo isn't running. */
+function noSession(file: string): void {
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, JSON.stringify({ cookies: [], origins: [] }, null, 2));
+}
+
 export default async function globalSetup(): Promise<void> {
-  await demoSession();
+  if (RUNS_DEMO) await demoSession();
+  else noSession(STORAGE_STATE);
+  if (!RUNS_REAL_APPS) return;
   const real = await realServer("the real app", REAL_BASE_URL, REAL_DATA_DIR);
   const second = await realServer("the second computer", REAL_B_BASE_URL, REAL_B_DATA_DIR);
   await leaveSync(real);

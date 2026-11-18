@@ -165,6 +165,11 @@ def _js_regex(literal: str) -> re.Pattern[str]:
     return re.compile(literal[1:-1].replace("\\/", "/"))
 
 
+def _projects_block(config: str) -> str:
+    """The ``projects`` list of ``web/playwright.config.ts``, as written (before ``E2E_GROUP`` picks from it)."""
+    return config.split("projects: projectsOfThisRun([", 1)[1].split("\n  ]),", 1)[0]
+
+
 def test_make_capture_makes_the_readme_pictures_of_the_real_app() -> None:
     """README's pictures of phone access and hand-off sync come from the real app, which the demo never offers:
     ``make capture`` runs their spec in a Playwright project of its own, after every other one, on throwaway
@@ -185,7 +190,7 @@ def test_make_capture_makes_the_readme_pictures_of_the_real_app() -> None:
     assert capture.index("--project pictures") < capture.index('ls -la "$OUT"')
 
     config = (ROOT / "web" / "playwright.config.ts").read_text(encoding="utf-8")
-    block = config.split("projects: [", 1)[1].split("\n  ],", 1)[0]
+    block = _projects_block(config)
     projects = re.findall(r'name: "([\w-]+)"', block)
     assert projects[-2:] == ["real-app", "pictures"], projects
     constants = dict(re.findall(r"^const (\w+) = (/.+/);$", config, re.M))
@@ -208,6 +213,59 @@ def test_make_capture_makes_the_readme_pictures_of_the_real_app() -> None:
     assert re.search(r'^test\.skip\(!OUT, "[^"]+"\);$', spec, re.M)
     assert "address: PHONE_ADDRESS" in spec
     assert '"the pictures asked no model"' in spec
+
+
+def _ts_names(text: str) -> list[str]:
+    return re.findall(r'"([\w-]+)"', text)
+
+
+def test_the_e2e_groups_split_the_run_without_losing_or_reordering_a_project() -> None:
+    """``E2E_GROUP`` (``web/e2e/env.ts``) runs one group of Playwright's projects, so CI can run the groups side by
+    side, each on fresh servers. Together the groups hold every project exactly once; each keeps the whole run's
+    order, so the projects that need the demo's recorded Ask answers (the tour, the pages, the sweep, the layout
+    guards) still run before the ones that change its ledger, the tour still first on an untouched demo, and the
+    README pictures still last, after the real app. A run starts the demo only for a demo project and the two real
+    apps only for a real-app one; with no group, every project and every server, as before."""
+    env_ts = (E2E / "env.ts").read_text(encoding="utf-8")
+    config = (ROOT / "web" / "playwright.config.ts").read_text(encoding="utf-8")
+    run = re.findall(r'name: "([\w-]+)"', _projects_block(config))
+    groups_ts = env_ts.split("export const E2E_GROUPS", 1)[1].split("\n};", 1)[0]
+    groups = {
+        name: _ts_names(members)
+        for name, members in re.findall(r'^  "?([\w-]+)"?: \[([^\]]*)\],$', groups_ts, re.M)
+    }
+    assert len(groups) >= 2, groups
+    assert sorted(p for members in groups.values() for p in members) == sorted(run), groups
+    for members in groups.values():
+        assert members == [p for p in run if p in members], members  # the run's order
+    demo = _ts_names(re.search(r"^export const DEMO_PROJECTS = \[(.*)\] as const;$", env_ts, re.M)[1])
+    real = _ts_names(re.search(r"^export const REAL_APP_PROJECTS = \[(.*)\] as const;$", env_ts, re.M)[1])
+    assert run == [*demo, "eval-report", *real], run
+    assert demo[0] == "tour" and real == ["real-app", "pictures"]
+    needs_recorded_answers = {"tour", "pages", "sweep", "layout"}
+    changes_the_ledger = {"girocode", "high-stakes", "add-date"}
+    for members in groups.values():
+        if "tour" in members:
+            assert members[0] == "tour", members
+        if "real-app" in members or "pictures" in members:
+            assert members[-2:] == ["real-app", "pictures"], members
+        changed = [i for i, p in enumerate(members) if p in changes_the_ledger]
+        assert not any(p in needs_recorded_answers for p in members[min(changed, default=len(members)) :]), (
+            members
+        )
+    # no group: every project; a group: its own, and the servers its projects use, in the pinned order
+    assert (
+        "const runsProject = (name: string): boolean => GROUP_PROJECTS === null || GROUP_PROJECTS.includes(name);"
+        in env_ts
+    )
+    assert "export const RUNS_DEMO = DEMO_PROJECTS.some(runsProject);" in env_ts
+    assert "export const RUNS_REAL_APPS = REAL_APP_PROJECTS.some(runsProject);" in env_ts
+    assert re.findall(
+        r'^      name: "([\w ]+)",$', config.split("webServer: serversOfThisRun([", 1)[1], re.M
+    ) == ["demo", "real app", "second computer"]
+    assert '(server.name === "demo" ? RUNS_DEMO : RUNS_REAL_APPS)' in config
+    setup = (E2E / "global-setup.ts").read_text(encoding="utf-8")
+    assert "if (RUNS_DEMO) await demoSession();" in setup and "if (!RUNS_REAL_APPS) return;" in setup
 
 
 #: An API read in an e2e file: ``<context>.request.get(…)``, or ``.get(…)`` with a path literal ("/…") first, as on
