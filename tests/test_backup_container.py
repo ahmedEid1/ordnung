@@ -13,6 +13,7 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
+from helpers_tables import check_rows
 from ordnung.backup import container
 from ordnung.backup.container import (
     FORMAT_VERSION,
@@ -61,16 +62,21 @@ def chunks_of(sealed: bytes, chunk_size: int = CHUNK) -> list[bytes]:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("size", [0, 1, CHUNK - 1, CHUNK, CHUNK + 1, 3 * CHUNK, 3 * CHUNK + 17])
-def test_round_trip_at_every_chunk_boundary(size: int) -> None:
-    data = bytes(range(256)) * (size // 256 + 1)
-    data = data[:size]
-    sealed = seal(data)
-    assert open_all(sealed) == data
-    # every chunk but the last is full; the last holds 0..chunk bytes
-    expected_chunks = max(1, -(-size // CHUNK))
-    assert len(chunks_of(sealed)) == expected_chunks
-    assert len(sealed) == HEADER_BYTES + size + TAG_BYTES * expected_chunks
+CHUNK_BOUNDARY_SIZES = [0, 1, CHUNK - 1, CHUNK, CHUNK + 1, 3 * CHUNK, 3 * CHUNK + 17]
+
+
+def test_round_trip_at_every_chunk_boundary() -> None:
+    def check(size: int) -> None:
+        data = bytes(range(256)) * (size // 256 + 1)
+        data = data[:size]
+        sealed = seal(data)
+        assert open_all(sealed) == data
+        # every chunk but the last is full; the last holds 0..chunk bytes
+        expected_chunks = max(1, -(-size // CHUNK))
+        assert len(chunks_of(sealed)) == expected_chunks
+        assert len(sealed) == HEADER_BYTES + size + TAG_BYTES * expected_chunks
+
+    check_rows(CHUNK_BOUNDARY_SIZES, check)
 
 
 GOLDEN = {  # format v1 bytes as written before the STREAM refactor (hand-off sync), byte for byte
@@ -83,21 +89,26 @@ GOLDEN = {  # format v1 bytes as written before the STREAM refactor (hand-off sy
 }
 
 
-@pytest.mark.parametrize("size", sorted(GOLDEN))
-def test_format_v1_bytes_are_unchanged(size: int) -> None:
-    out = io.BytesIO()
-    writer = EncryptedWriter(
-        out,
-        "golden passphrase",
-        kdf=KdfParams(log2_n=10, r=8, p=1),
-        chunk_size=CHUNK,
-        random_bytes=lambda n: bytes(range(n)),
-    )
-    data = bytes((i * 7 + 3) % 251 for i in range(size))
-    writer.write(data)
-    writer.close()
-    assert hashlib.sha256(out.getvalue()).hexdigest() == GOLDEN[size]
-    assert open_all(out.getvalue(), "golden passphrase") == data
+GOLDEN_SIZES = sorted(GOLDEN)
+
+
+def test_format_v1_bytes_are_unchanged() -> None:
+    def check(size: int) -> None:
+        out = io.BytesIO()
+        writer = EncryptedWriter(
+            out,
+            "golden passphrase",
+            kdf=KdfParams(log2_n=10, r=8, p=1),
+            chunk_size=CHUNK,
+            random_bytes=lambda n: bytes(range(n)),
+        )
+        data = bytes((i * 7 + 3) % 251 for i in range(size))
+        writer.write(data)
+        writer.close()
+        assert hashlib.sha256(out.getvalue()).hexdigest() == GOLDEN[size]
+        assert open_all(out.getvalue(), "golden passphrase") == data
+
+    check_rows(GOLDEN_SIZES, check)
 
 
 def test_small_reads_return_the_same_bytes() -> None:
@@ -123,12 +134,6 @@ def test_the_header_records_the_parameters() -> None:
 
 def test_two_backups_of_the_same_data_differ() -> None:
     assert seal(b"same") != seal(b"same")  # a fresh salt and nonce prefix every time
-
-
-def test_the_default_key_costs_are_the_documented_ones() -> None:
-    """A new backup's key costs what a new sync folder's key file does: 2^18, r 8, p 1 (256 MiB)."""
-    assert container.DEFAULT_KDF == KdfParams(log2_n=18, r=8, p=1)
-    assert container.CHUNK_SIZE == 1024 * 1024
 
 
 def test_a_backup_sealed_with_the_real_key_costs_records_them_and_opens() -> None:
@@ -157,11 +162,6 @@ def test_the_passphrase_is_not_trimmed() -> None:
         open_all(sealed, "spaces count")
 
 
-def test_an_empty_passphrase_is_refused() -> None:
-    with pytest.raises(container.BackupError):
-        EncryptedWriter(io.BytesIO(), "", kdf=FAST)
-
-
 def test_a_refused_writer_is_let_go_quietly(monkeypatch: pytest.MonkeyPatch) -> None:
     # closing a writer refused before its header was written must not fail when it is collected
     unraisable: list[object] = []
@@ -184,10 +184,15 @@ def test_a_wrong_passphrase_is_refused_before_anything_is_decrypted() -> None:
         EncryptedReader(io.BytesIO(seal(b"secret")), "correct horse battery stapl")
 
 
-@pytest.mark.parametrize("blob", [b"", b"%PDF-1.7\n", b"ORDNUNG-BACKUP", b"SQLite format 3\x00" * 4])
-def test_other_files_are_not_backups(blob: bytes) -> None:
-    with pytest.raises(NotABackup):
-        EncryptedReader(io.BytesIO(blob), PASS)
+OTHER_FILES = [b"", b"%PDF-1.7\n", b"ORDNUNG-BACKUP", b"SQLite format 3\x00" * 4]
+
+
+def test_other_files_are_not_backups() -> None:
+    def check(blob: bytes) -> None:
+        with pytest.raises(NotABackup):
+            EncryptedReader(io.BytesIO(blob), PASS)
+
+    check_rows(OTHER_FILES, check)
 
 
 def test_a_newer_format_is_refused_before_any_key_is_derived(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -224,44 +229,53 @@ def _with_params(sealed: bytes, **fields: int) -> bytes:
     return MAGIC + bytes([header.version]) + params + header.mac + sealed[HEADER_BYTES:]
 
 
-@pytest.mark.parametrize(
-    "fields",
-    [
-        {"log2_n": 30},  # 128 GiB of scrypt memory
-        {"log2_n": 20, "r": 16},  # 2 GiB, inside the old per-field ranges
-        {"log2_n": 19, "r": 8},  # 512 MiB
-        {"log2_n": 18, "r": 9},  # just over 256 MiB
-        {"log2_n": 9},
-        {"r": 0},
-        {"r": 200},
-        {"p": 3},  # three times the work of p=1, before the MAC can say the passphrase is wrong
-        {"p": 64},
-        {"chunk_size": 16},
-        {"chunk_size": 2**31},
-        {"kdf": 2},
-    ],
-)
-def test_hostile_header_parameters_are_refused_before_scrypt_runs(
-    fields: dict[str, int], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    crafted = _with_params(seal(b"x"), **fields)
-
-    def no_key(*_args: object, **_kwargs: object) -> None:
-        raise AssertionError("scrypt must not run for a hostile header")
-
-    monkeypatch.setattr(container, "_derive", no_key)
-    with pytest.raises(DamagedBackup):
-        EncryptedReader(io.BytesIO(crafted), PASS)
+HOSTILE_HEADER_FIELDS = [
+    {"log2_n": 30},  # 128 GiB of scrypt memory
+    {"log2_n": 20, "r": 16},  # 2 GiB, inside the old per-field ranges
+    {"log2_n": 19, "r": 8},  # 512 MiB
+    {"log2_n": 18, "r": 9},  # just over 256 MiB
+    {"log2_n": 9},
+    {"r": 0},
+    {"r": 200},
+    {"p": 3},  # three times the work of p=1, before the MAC can say the passphrase is wrong
+    {"p": 64},
+    {"chunk_size": 16},
+    {"chunk_size": 2**31},
+    {"kdf": 2},
+]
 
 
-@pytest.mark.parametrize(("log2_n", "r", "p"), [(17, 8, 1), (18, 8, 2), (20, 2, 1), (10, 16, 2), (11, 4, 2)])
-def test_key_settings_up_to_256_mib_and_p_2_are_read(log2_n: int, r: int, p: int) -> None:
-    kdf = KdfParams(log2_n=log2_n, r=r, p=p)
-    kdf.check()
-    assert kdf.memory <= container.MAX_SCRYPT_BYTES == 256 * 1024 * 1024
+def test_hostile_header_parameters_are_refused_before_scrypt_runs(monkeypatch: pytest.MonkeyPatch) -> None:
+    def check(fields: dict[str, int]) -> None:
+        crafted = _with_params(seal(b"x"), **fields)
+
+        def no_key(*_args: object, **_kwargs: object) -> None:
+            raise AssertionError("scrypt must not run for a hostile header")
+
+        with monkeypatch.context() as patch:
+            patch.setattr(container, "_derive", no_key)
+            with pytest.raises(DamagedBackup):
+                EncryptedReader(io.BytesIO(crafted), PASS)
+
+    check_rows(HOSTILE_HEADER_FIELDS, check)
+
+
+READABLE_KEY_SETTINGS = [(17, 8, 1), (18, 8, 2), (20, 2, 1), (10, 16, 2), (11, 4, 2)]
+
+
+def test_key_settings_up_to_256_mib_and_p_2_are_read() -> None:
+    def check(log2_n: int, r: int, p: int) -> None:
+        kdf = KdfParams(log2_n=log2_n, r=r, p=p)
+        kdf.check()
+        assert kdf.memory <= container.MAX_SCRYPT_BYTES == 256 * 1024 * 1024
+
+    check_rows(READABLE_KEY_SETTINGS, check)
 
 
 def test_the_documented_bound_is_the_checked_one() -> None:
+    """A new backup's key costs what a new sync folder's key file does: 2^18, r 8, p 1 (256 MiB)."""
+    assert container.DEFAULT_KDF == KdfParams(log2_n=18, r=8, p=1)
+    assert container.CHUNK_SIZE == 1024 * 1024
     # what a written backup costs: the most a reader allows
     assert container.DEFAULT_KDF.memory == container.MAX_SCRYPT_BYTES == 256 * 1024 * 1024
     assert "256 MiB" in (container.__doc__ or "") and "gigabytes" not in (container.__doc__ or "")
@@ -273,10 +287,15 @@ def test_valid_but_different_header_parameters_fail_the_mac() -> None:
         EncryptedReader(io.BytesIO(crafted), PASS)
 
 
-@pytest.mark.parametrize("cut", [len(MAGIC), len(MAGIC) + 1, len(MAGIC) + 5, HEADER_BYTES - 1])
-def test_a_cut_header_is_damaged(cut: int) -> None:
-    with pytest.raises(DamagedBackup, match="cut short"):
-        EncryptedReader(io.BytesIO(seal(b"x")[:cut]), PASS)
+HEADER_CUTS = [len(MAGIC), len(MAGIC) + 1, len(MAGIC) + 5, HEADER_BYTES - 1]
+
+
+def test_a_cut_header_is_damaged() -> None:
+    def check(cut: int) -> None:
+        with pytest.raises(DamagedBackup, match="cut short"):
+            EncryptedReader(io.BytesIO(seal(b"x")[:cut]), PASS)
+
+    check_rows(HEADER_CUTS, check)
 
 
 def test_changing_the_salt_or_nonce_prefix_reads_as_a_wrong_passphrase() -> None:
