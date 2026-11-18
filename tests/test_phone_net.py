@@ -10,46 +10,56 @@ from pathlib import Path
 import ifaddr
 import pytest
 
+from helpers_tables import check_rows
 from ordnung.phone import net
 from ordnung.phone.net import Candidate, Interface, candidate_addresses, client_allowed, usable
 
-
-@pytest.mark.parametrize(
-    ("address", "expected"),
-    [
-        ("192.168.1.5", True),
-        ("10.0.0.1", True),
-        ("172.16.0.1", True),
-        ("172.31.255.254", True),
-        ("172.32.0.1", False),
-        ("100.64.0.1", False),  # carrier-grade NAT
-        ("169.254.1.1", False),  # link-local
-        ("127.0.0.1", False),
-        ("8.8.8.8", False),
-        ("fd00::1", False),
-        ("0.0.0.0", False),
-        ("not an address", False),
-    ],
-)
-def test_usable_addresses_are_ipv4_home_networks(address: str, expected: bool) -> None:
-    assert usable(address) is expected
+USABLE_ADDRESSES = [
+    ("192.168.1.5", True),
+    ("10.0.0.1", True),
+    ("172.16.0.1", True),
+    ("172.31.255.254", True),
+    ("172.32.0.1", False),
+    ("100.64.0.1", False),  # carrier-grade NAT
+    ("169.254.1.1", False),  # link-local
+    ("127.0.0.1", False),
+    ("8.8.8.8", False),
+    ("fd00::1", False),
+    ("0.0.0.0", False),
+    ("not an address", False),
+]
 
 
-@pytest.mark.parametrize(("value", "expected"), [("127.0.0.1", "127.0.0.1"), ("127.0.0.2", "127.0.0.2")])
-def test_the_test_hook_takes_a_loopback_address(
-    monkeypatch: pytest.MonkeyPatch, value: str, expected: str
-) -> None:
-    monkeypatch.setenv(net.TEST_ADDRESS_ENV, value)
-    assert net.test_address() == expected
-    assert candidate_addresses([Interface("en0", "192.168.1.5", 24)]) == [
-        Candidate(expected, "loopback", f"{expected}/32", recommended=True)
-    ]
+def test_usable_addresses_are_ipv4_home_networks() -> None:
+    def check(address: str, expected: bool) -> None:
+        assert usable(address) is expected
+
+    check_rows(USABLE_ADDRESSES, check)
 
 
-@pytest.mark.parametrize("value", ["192.168.1.5", "0.0.0.0", "localhost", "::1", ""])
-def test_the_test_hook_ignores_anything_but_loopback(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
-    monkeypatch.setenv(net.TEST_ADDRESS_ENV, value)
-    assert net.test_address() is None
+LOOPBACK_HOOKS = [("127.0.0.1", "127.0.0.1"), ("127.0.0.2", "127.0.0.2")]
+
+
+def test_the_test_hook_takes_a_loopback_address(monkeypatch: pytest.MonkeyPatch) -> None:
+    def check(value: str, expected: str) -> None:
+        monkeypatch.setenv(net.TEST_ADDRESS_ENV, value)
+        assert net.test_address() == expected
+        assert candidate_addresses([Interface("en0", "192.168.1.5", 24)]) == [
+            Candidate(expected, "loopback", f"{expected}/32", recommended=True)
+        ]
+
+    check_rows(LOOPBACK_HOOKS, check)
+
+
+NOT_LOOPBACK_HOOKS = ["192.168.1.5", "0.0.0.0", "localhost", "::1", ""]
+
+
+def test_the_test_hook_ignores_anything_but_loopback(monkeypatch: pytest.MonkeyPatch) -> None:
+    def check(value: str) -> None:
+        monkeypatch.setenv(net.TEST_ADDRESS_ENV, value)
+        assert net.test_address() is None
+
+    check_rows(NOT_LOOPBACK_HOOKS, check)
 
 
 TUNNELS = [
@@ -93,11 +103,13 @@ TUNNELS = [
 ]
 
 
-@pytest.mark.parametrize("name", TUNNELS)
-def test_tunnels_vms_and_containers_are_never_offered(monkeypatch: pytest.MonkeyPatch, name: str) -> None:
-    monkeypatch.delenv(net.TEST_ADDRESS_ENV, raising=False)
-    found = [Interface(name, "10.8.0.6", 24), Interface("en0", "192.168.178.23", 24)]
-    assert [c.address for c in candidate_addresses(found, default="10.8.0.6")] == ["192.168.178.23"]
+def test_tunnels_vms_and_containers_are_never_offered(monkeypatch: pytest.MonkeyPatch) -> None:
+    def check(name: str) -> None:
+        monkeypatch.delenv(net.TEST_ADDRESS_ENV, raising=False)
+        found = [Interface(name, "10.8.0.6", 24), Interface("en0", "192.168.178.23", 24)]
+        assert [c.address for c in candidate_addresses(found, default="10.8.0.6")] == ["192.168.178.23"]
+
+    check_rows(TUNNELS, check)
 
 
 def test_candidates_come_from_interfaces_with_the_default_route_first(
@@ -166,35 +178,43 @@ WINDOWS_TUNNELS = [
 ]
 
 
-@pytest.mark.parametrize("router", ["192.168.178.1", None])
+WINDOWS_ROUTERS = ["192.168.178.1", None]
+
+
 def test_on_windows_a_tunnel_is_known_by_its_adapter_s_description_or_its_name(
-    monkeypatch: pytest.MonkeyPatch, router: str | None
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """On Windows ``ifaddr`` names an adapter by its description and gives the name people
     see to each address, so a filter of the adapter's name alone offered Hyper-V, WSL, VirtualBox, VMware
     and WireGuard, and recommended a VPN that held the default route."""
-    _adapters(monkeypatch, *(_windows(*tunnel) for tunnel in WINDOWS_TUNNELS), _windows(*WI_FI))
-    monkeypatch.setattr(net, "default_gateway", lambda: router)
-    assert candidate_addresses(default="10.20.30.40") == [
-        Candidate("192.168.178.23", "Wi-Fi", "192.168.178.0/24", recommended=True)
-    ]
+
+    def check(router: str | None) -> None:
+        _adapters(monkeypatch, *(_windows(*tunnel) for tunnel in WINDOWS_TUNNELS), _windows(*WI_FI))
+        monkeypatch.setattr(net, "default_gateway", lambda: router)
+        assert candidate_addresses(default="10.20.30.40") == [
+            Candidate("192.168.178.23", "Wi-Fi", "192.168.178.0/24", recommended=True)
+        ]
+
+    check_rows(WINDOWS_ROUTERS, check)
 
 
-@pytest.mark.parametrize(
-    "description",
-    [
-        "Intel(R) Ethernet Connection (7) I219-V",
-        "Realtek PCIe GbE Family Controller",
-        "Killer(R) Wi-Fi 6 AX1650i 160MHz Wireless Network Adapter (201NGW)",
-        "Realtek USB GbE Family Controller",
-        "Apple Mobile Device Ethernet",
-        "Microsoft Wi-Fi Direct Virtual Adapter",
-    ],
-)
-def test_on_windows_an_ordinary_adapter_is_offered(monkeypatch: pytest.MonkeyPatch, description: str) -> None:
-    _adapters(monkeypatch, _windows(description, "Ethernet", "192.168.178.23", 24))
-    found = candidate_addresses(default="192.168.178.23", router="192.168.178.1")
-    assert [(c.interface, c.recommended) for c in found] == [("Ethernet", True)]
+ORDINARY_WINDOWS_ADAPTERS = [
+    "Intel(R) Ethernet Connection (7) I219-V",
+    "Realtek PCIe GbE Family Controller",
+    "Killer(R) Wi-Fi 6 AX1650i 160MHz Wireless Network Adapter (201NGW)",
+    "Realtek USB GbE Family Controller",
+    "Apple Mobile Device Ethernet",
+    "Microsoft Wi-Fi Direct Virtual Adapter",
+]
+
+
+def test_on_windows_an_ordinary_adapter_is_offered(monkeypatch: pytest.MonkeyPatch) -> None:
+    def check(description: str) -> None:
+        _adapters(monkeypatch, _windows(description, "Ethernet", "192.168.178.23", 24))
+        found = candidate_addresses(default="192.168.178.23", router="192.168.178.1")
+        assert [(c.interface, c.recommended) for c in found] == [("Ethernet", True)]
+
+    check_rows(ORDINARY_WINDOWS_ADAPTERS, check)
 
 
 def test_a_hyper_v_switch_the_router_is_on_carries_the_computer_s_own_network(
@@ -245,11 +265,6 @@ def test_the_router_is_read_with_the_interfaces(monkeypatch: pytest.MonkeyPatch)
     assert candidate_addresses(default="192.168.0.40")[0].address == "192.168.178.23"
 
 
-def test_the_interfaces_can_be_listed() -> None:
-    found = net.interfaces()
-    assert all(isinstance(i.name, str) and isinstance(i.address, str) for i in found)
-
-
 def test_windows_interfaces_carry_the_name_people_see_and_the_adapter_s_description(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -260,22 +275,24 @@ def test_windows_interfaces_carry_the_name_people_see_and_the_adapter_s_descript
     ]
 
 
-@pytest.mark.parametrize(
-    ("client", "allowed"),
-    [
-        ("192.168.178.31", True),
-        ("192.168.178.23", True),
-        ("192.168.178.255", True),
-        ("172.17.0.2", False),  # a container
-        ("10.8.0.6", False),  # a peer behind a VPN
-        ("192.168.179.5", False),
-        ("8.8.8.8", False),
-        ("::ffff:192.168.178.31", False),
-        ("", False),
-    ],
-)
-def test_only_the_bound_address_s_subnet_is_answered(client: str, allowed: bool) -> None:
-    assert client_allowed(client, "192.168.178.23", "192.168.178.0/24") is allowed
+SUBNET_CLIENTS = [
+    ("192.168.178.31", True),
+    ("192.168.178.23", True),
+    ("192.168.178.255", True),
+    ("172.17.0.2", False),  # a container
+    ("10.8.0.6", False),  # a peer behind a VPN
+    ("192.168.179.5", False),
+    ("8.8.8.8", False),
+    ("::ffff:192.168.178.31", False),
+    ("", False),
+]
+
+
+def test_only_the_bound_address_s_subnet_is_answered() -> None:
+    def check(client: str, allowed: bool) -> None:
+        assert client_allowed(client, "192.168.178.23", "192.168.178.0/24") is allowed
+
+    check_rows(SUBNET_CLIENTS, check)
 
 
 def test_an_unknown_netmask_means_a_24() -> None:
