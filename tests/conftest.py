@@ -9,11 +9,19 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from hypothesis import settings
 
 from ordnung import clock, durable
 from ordnung.assistant import ask
 from ordnung.config import OCR_SWITCH, Paths
 from ordnung.db.store import Store
+
+# One Hypothesis profile for every test, loaded before any test module is imported, so a test runs the same
+# examples alone, in a subset, in a parallel worker or in the whole suite. No example database: no examples are
+# saved in the checkout and no run replays another run's failures. A test that wants another number of examples
+# says so with its own ``@settings``.
+settings.register_profile("ordnung", max_examples=150, deadline=None, database=None)
+settings.load_profile("ordnung")
 
 
 @pytest.fixture(autouse=True)

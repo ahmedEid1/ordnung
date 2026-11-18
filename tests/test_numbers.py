@@ -113,7 +113,7 @@ def _valid_tax_ids(draw: st.DrawFn) -> str:
 
 # Hypothesis's own wall-clock checks (too_slow, the deadline) failed this test on a busy machine with coverage:
 # one draw took 1.5 s
-@settings(deadline=None, suppress_health_check=[HealthCheck.too_slow])
+@settings(max_examples=100, deadline=None, suppress_health_check=[HealthCheck.too_slow])
 @given(_valid_tax_ids(), st.integers(0, 10), st.integers(1, 9))
 def test_every_single_misread_digit_of_a_steuer_id_fails(valid: str, position: int, shift: int) -> None:
     assert tax_id_problem(valid) is None
@@ -147,6 +147,7 @@ def _rvnr(body: str, letter: str) -> str:
     return f"{body[:8]}{letter}{body[8:]}{total % 10}"
 
 
+@settings(max_examples=100)
 @given(
     st.text("0123456789", min_size=10, max_size=10),
     st.sampled_from("ABCDEFGHIJKLMNOPQRSTUVWXYZ"),

@@ -327,6 +327,7 @@ def test_every_payload_reads_back_to_what_was_asked_or_is_refused(
         assert read["text"] == clean_text(reference or "")
 
 
+@settings(max_examples=100)
 @given(text=free_text)
 def test_clean_text_is_one_trimmed_line_and_idempotent(text: str) -> None:
     cleaned = clean_text(text)
@@ -335,6 +336,7 @@ def test_clean_text_is_one_trimmed_line_and_idempotent(text: str) -> None:
     assert clean_text(cleaned) == cleaned
 
 
+@settings(max_examples=100)
 @given(body=st.text(alphabet=string.ascii_uppercase + string.digits, min_size=1, max_size=21), data=st.data())
 def test_rf_check_digits_catch_every_change_of_one_letter_or_digit(body: str, data: st.DataObject) -> None:
     """MOD 97-10 catches any one letter changed to another letter, or digit to another digit (a letter
@@ -348,6 +350,7 @@ def test_rf_check_digits_catch_every_change_of_one_letter_or_digit(body: str, da
     assert not creditor_reference_valid(changed)
 
 
+@settings(max_examples=100)
 @given(amount=cents)
 def test_amount_text_round_trips(amount: int) -> None:
     value = Decimal(amount) / 100

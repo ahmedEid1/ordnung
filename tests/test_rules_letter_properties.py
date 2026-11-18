@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from datetime import date, timedelta
 
-from hypothesis import given, settings
+from hypothesis import given
 from hypothesis import strategies as st
 
 from ordnung.models import DateSpec, DocumentExtraction, ExtractedItem, ExtractedParty, Remedy
@@ -27,9 +27,6 @@ from ordnung.rules.tenancy import (
 
 dates = st.dates(min_value=date(2000, 1, 1), max_value=date(2060, 12, 31))
 regions = st.one_of(st.none(), st.sampled_from(sorted(REGION_NAMES)))
-
-settings.register_profile("letters", max_examples=150, deadline=None, database=None)
-settings.load_profile("letters")
 
 
 @given(dates)
