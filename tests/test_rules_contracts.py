@@ -1221,6 +1221,11 @@ def test_late_send_by_is_today_with_warning() -> None:
     assert result.cancel_by == "2026-09-30"
     assert result.send_by == "2026-09-25"
     assert any("usual sending time has passed" in w for w in result.warnings)
+    # the posting step carries the send-by date, and the clamped last step says what to do
+    posting = [step for step in result.steps if step.rule_id == "postal_buffer"]
+    assert posting and posting[-1].date == result.send_by
+    assert result.steps[-1].label == "The usual sending time has passed: send it today, Fri 25 Sep 2026"
+    assert result.steps[-1].date == result.send_by == "2026-09-25"
 
 
 def test_non_positive_numbers_are_treated_as_missing() -> None:

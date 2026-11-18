@@ -13,6 +13,7 @@ from typing import Any
 
 import pytest
 
+from helpers_tables import check_rows
 from ordnung.models import ContractTerms, DateSpec
 from ordnung.rules import catalog
 from ordnung.rules.contracts import compute_contract
@@ -29,22 +30,6 @@ def ctx(today: str = "2026-09-25", **kw: Any) -> RuleContext:
 
 
 # ------------------------------------------------------------------------------------ deadlines
-
-
-def test_backward_payment_deadline_never_moves_later() -> None:
-    # "Pay one month before the course starts on Tue 6 Oct 2026": raw end Sat 5 Sep 2026.
-    spec = DateSpec(
-        type="relative",
-        anchor="explicit_date",
-        anchor_date="2026-10-06",
-        amount=-1,
-        unit="months",
-        nature="payment",
-        text="spätestens einen Monat vor Kursbeginn am 06.10.2026",
-    )
-    receipt = compute_due(spec, ctx(today="2026-08-01", document_date="2026-07-20"))
-    assert receipt.due_date is not None
-    assert receipt.due_date <= "2026-09-05"  # before the fix: Mon 7 Sep 2026 (after "one month before")
 
 
 def test_vwvfg_portal_decision_counts_from_day_after_download() -> None:
@@ -64,22 +49,6 @@ def test_vwvfg_portal_decision_counts_from_day_after_download() -> None:
     assert receipt.due_date is not None and receipt.due_date <= "2026-10-15"
 
 
-def test_private_payment_shift_uses_debtors_holidays() -> None:
-    spec = DateSpec(
-        type="relative",
-        anchor="document_date",
-        amount=14,
-        unit="days",
-        nature="payment",
-        text="zahlbar innerhalb von 14 Tagen nach Rechnungsdatum",
-    )
-    receipt = compute_due(
-        spec, ctx(today="2027-02-22", document_date="2027-02-22", region="BE", recipient_region="NW")
-    )
-    # Mon 8 Mar 2027 is Frauentag in Berlin only; in NRW (payer) it is a working day.
-    assert receipt.due_date == "2027-03-08"  # before the fix: Tue 9 Mar 2027
-
-
 def test_klage_deadline_is_not_a_silent_high_confidence_date() -> None:
     spec = DateSpec(
         type="relative",
@@ -97,17 +66,16 @@ def test_klage_deadline_is_not_a_silent_high_confidence_date() -> None:
     )
 
 
-def test_today_anchor_is_not_high_confidence() -> None:
-    spec = DateSpec(type="relative", anchor="today", amount=14, unit="days", nature="declaration")
-    receipt = compute_due(spec, ctx(document_date="2026-09-01"))
-    assert receipt.confidence != "high"
+HUGE_PERIODS = [(10_000, "years"), (10**7, "days"), (-(10**7), "days")]
 
 
-@pytest.mark.parametrize(("amount", "unit"), [(10_000, "years"), (10**7, "days"), (-(10**7), "days")])
-def test_huge_periods_do_not_crash(amount: int, unit: str) -> None:
-    spec = DateSpec(type="relative", anchor="document_date", amount=amount, unit=unit, nature="payment")  # type: ignore[arg-type]
-    receipt = compute_due(spec, ctx(document_date="2026-09-20"))
-    assert receipt.confidence == "low"
+def test_huge_periods_do_not_crash() -> None:
+    def check(amount: int, unit: str) -> None:
+        spec = DateSpec(type="relative", anchor="document_date", amount=amount, unit=unit, nature="payment")  # type: ignore[arg-type]
+        receipt = compute_due(spec, ctx(document_date="2026-09-20"))
+        assert receipt.confidence == "low"
+
+    check_rows(HUGE_PERIODS, check)
 
 
 # ------------------------------------------------------------------------------------ contracts
@@ -145,24 +113,6 @@ def test_renewal_zero_old_contract_is_cancellable_any_time() -> None:
     assert "renews" not in result.summary
 
 
-def test_vvg_long_term_with_end_date_uses_third_year_exit() -> None:
-    result = compute_contract(
-        ContractTerms(
-            category="insurance",
-            party_kind="insurer",
-            start_date="2024-01-01",
-            initial_term_months=60,
-            end_date="2028-12-31",
-            renewal_term_months=12,
-            notice_value=3,
-            notice_unit="months",
-        ),
-        ctx(today="2026-09-01"),
-    )
-    assert result.earliest_exit == "2026-12-31"
-    assert result.cancel_by == "2026-09-30"  # before the fix: 2028-09-30
-
-
 def test_vvg_third_year_exit_needs_three_months_notice() -> None:
     result = compute_contract(
         ContractTerms(
@@ -178,6 +128,35 @@ def test_vvg_third_year_exit_needs_three_months_notice() -> None:
     )
     assert result.earliest_exit == "2026-12-31"
     assert result.cancel_by == "2026-09-30"  # before the fix: 2026-11-30
+    with_end_date = compute_contract(
+        ContractTerms(
+            category="insurance",
+            party_kind="insurer",
+            start_date="2024-01-01",
+            initial_term_months=60,
+            end_date="2028-12-31",
+            renewal_term_months=12,
+            notice_value=3,
+            notice_unit="months",
+        ),
+        ctx(today="2026-09-01"),
+    )
+    assert with_end_date.earliest_exit == "2026-12-31"
+    assert with_end_date.cancel_by == "2026-09-30"  # before the fix: 2028-09-30
+    # term and end date without a start: the start is derived, year 3 still comes first
+    end_date_only = compute_contract(
+        ContractTerms(
+            category="insurance",
+            party_kind="insurer",
+            initial_term_months=60,
+            end_date="2028-12-31",
+            renewal_term_months=12,
+            notice_value=1,
+            notice_unit="months",
+        ),
+        ctx(today="2026-09-01"),
+    )
+    assert (end_date_only.cancel_by, end_date_only.earliest_exit) == ("2026-09-30", "2026-12-31")
 
 
 def test_old_consumer_contract_first_term_is_capped_at_two_years() -> None:
@@ -198,45 +177,32 @@ def test_old_consumer_contract_first_term_is_capped_at_two_years() -> None:
     assert result.confidence != "high"
 
 
-def test_contract_send_by_step_matches_send_by_field() -> None:
-    result = compute_contract(
-        ContractTerms(
-            category="streaming",
-            concluded_date="2024-11-01",
-            end_date="2026-10-31",
-            notice_value=1,
-            notice_unit="months",
-        ),
-        ctx(region="NW"),
-    )
-    posting = [step for step in result.steps if step.rule_id == "postal_buffer"]
-    assert posting and posting[-1].date == result.send_by
+HUGE_CONTRACT_NUMBERS = [
+    {
+        "category": "gym",
+        "concluded_date": "2021-01-01",
+        "start_date": "2021-01-01",
+        "initial_term_months": 12,
+        "notice_value": 10**6,
+        "notice_unit": "days",
+    },
+    {
+        "category": "bank",
+        "start_date": "2021-01-01",
+        "initial_term_months": 10**6,
+        "renewal_term_months": 12,
+        "notice_value": 1,
+        "notice_unit": "months",
+    },
+]
 
 
-@pytest.mark.parametrize(
-    "kw",
-    [
-        {
-            "category": "gym",
-            "concluded_date": "2021-01-01",
-            "start_date": "2021-01-01",
-            "initial_term_months": 12,
-            "notice_value": 10**6,
-            "notice_unit": "days",
-        },
-        {
-            "category": "bank",
-            "start_date": "2021-01-01",
-            "initial_term_months": 10**6,
-            "renewal_term_months": 12,
-            "notice_value": 1,
-            "notice_unit": "months",
-        },
-    ],
-)
-def test_huge_contract_numbers_do_not_crash(kw: dict[str, Any]) -> None:
-    result = compute_contract(ContractTerms(**kw), ctx())
-    assert result.confidence == "low"
+def test_huge_contract_numbers_do_not_crash() -> None:
+    def check(kw: dict[str, Any]) -> None:
+        result = compute_contract(ContractTerms(**kw), ctx())
+        assert result.confidence == "low"
+
+    check_rows(HUGE_CONTRACT_NUMBERS, check)
 
 
 # ------------------------------------------------------------------------------------ catalog
@@ -280,35 +246,45 @@ def test_backward_period_keeps_its_day_and_gets_a_safe_date() -> None:
     assert (on_a_weekday.due_date, on_a_weekday.safe_date) == ("2026-09-21", "2026-09-21")
     other = compute_due(spec.model_copy(update={"nature": "other"}), ctx(today="2026-08-01"))
     assert (other.due_date, other.safe_date) == ("2026-09-05", None)
+    # the letter's own words, with its date and no known payer region: never later than Sat 5 Sep
+    worded = compute_due(
+        spec.model_copy(update={"text": "spätestens einen Monat vor Kursbeginn am 06.10.2026"}),
+        ctx(today="2026-08-01", document_date="2026-07-20"),
+    )
+    assert worded.due_date is not None
+    assert worded.due_date <= "2026-09-05"  # before the fix: Mon 7 Sep 2026 (after "one month before")
 
 
-@pytest.mark.parametrize(
-    ("scope", "provided", "rule", "expected"),
-    [
-        # § 122a Abs. 4 AO: 4th day after provision (Fri 25 Sep → Tue 29 Sep) — research example
-        pytest.param("ao", "2026-09-25", "ao_122a_4", "2026-10-29", id="elster"),
-        # § 37 Abs. 2a SGB X: 4th day after the notification (Sun 4 Oct, not moved)
-        pytest.param("sgbx", "2026-09-30", "sgbx_37_2a", "2026-11-04", id="sgbx-portal"),
-        # sender unknown: the day after the earliest download (§ 41 Abs. 2a VwVfG), earliest plausible
-        pytest.param(None, "2026-09-14", "vwvfg_41_2a", "2026-10-15", id="unknown-sender-portal"),
-    ],
-)
-def test_portal_rules_are_reachable(scope: str | None, provided: str, rule: str, expected: str) -> None:
+PORTAL_RULES = [
+    # § 122a Abs. 4 AO: 4th day after provision (Fri 25 Sep → Tue 29 Sep) — research example
+    pytest.param("ao", "2026-09-25", "ao_122a_4", "2026-10-29", id="elster"),
+    # § 37 Abs. 2a SGB X: 4th day after the notification (Sun 4 Oct, not moved)
+    pytest.param("sgbx", "2026-09-30", "sgbx_37_2a", "2026-11-04", id="sgbx-portal"),
+    # sender unknown: the day after the earliest download (§ 41 Abs. 2a VwVfG), earliest plausible
+    pytest.param(None, "2026-09-14", "vwvfg_41_2a", "2026-10-15", id="unknown-sender-portal"),
+]
+
+
+def test_portal_rules_are_reachable() -> None:
     """Portal letters cite the portal rule of their scope."""
-    spec = DateSpec(
-        type="relative",
-        anchor="deemed_delivery",
-        amount=1,
-        unit="months",
-        delivery_rule="de_admin_portal",
-        nature="objection",
-    )
-    receipt = compute_due(
-        spec, ctx(document_date=provided, delivery_scope=scope, region="NW", recipient_region="NW")
-    )
-    assert receipt.due_date == expected
-    assert rule in receipt.rule_ids
-    assert "ao_122_2a" not in receipt.rule_ids
+
+    def check(scope: str | None, provided: str, rule: str, expected: str) -> None:
+        spec = DateSpec(
+            type="relative",
+            anchor="deemed_delivery",
+            amount=1,
+            unit="months",
+            delivery_rule="de_admin_portal",
+            nature="objection",
+        )
+        receipt = compute_due(
+            spec, ctx(document_date=provided, delivery_scope=scope, region="NW", recipient_region="NW")
+        )
+        assert receipt.due_date == expected
+        assert rule in receipt.rule_ids
+        assert "ao_122_2a" not in receipt.rule_ids
+
+    check_rows(PORTAL_RULES, check)
 
 
 def test_payment_holidays_follow_the_payer_only_for_private_creditors() -> None:
@@ -336,6 +312,12 @@ def test_payment_holidays_follow_the_payer_only_for_private_creditors() -> None:
     )
     assert tax.due_date == "2027-03-09"  # holidays at the tax office's seat
     assert "ao_108_3" in tax.rule_ids
+    payer_nrw = compute_due(
+        invoice.model_copy(update={"text": "zahlbar innerhalb von 14 Tagen nach Rechnungsdatum"}),
+        ctx(today="2027-02-22", document_date="2027-02-22", region="BE", recipient_region="NW"),
+    )
+    # Mon 8 Mar 2027 is Frauentag in Berlin only; in NRW (payer) it is a working day.
+    assert payer_nrw.due_date == "2027-03-08"  # before the fix: Tue 9 Mar 2027
 
 
 def test_today_anchor_never_counts_from_a_later_day() -> None:
@@ -343,6 +325,7 @@ def test_today_anchor_never_counts_from_a_later_day() -> None:
     spec = DateSpec(type="relative", anchor="today", amount=14, unit="days", nature="declaration")
     written = compute_due(spec, ctx(document_date="2026-09-01"))
     assert written.due_date == "2026-09-15"
+    assert written.confidence != "high"
     future = compute_due(spec, ctx(document_date="2026-10-01"))
     assert (future.due_date, future.confidence) == ("2026-10-09", "medium")
     undated = compute_due(spec, ctx())
@@ -424,39 +407,6 @@ def test_renewal_zero_as_written_and_insurance() -> None:
     assert any("§ 11 Abs. 2 VVG" in w for w in insurance.warnings)
 
 
-def test_vvg_long_term_known_only_from_its_end_date() -> None:
-    """Term and end date without a start: the start is derived, year 3 still comes first."""
-    result = compute_contract(
-        ContractTerms(
-            category="insurance",
-            party_kind="insurer",
-            initial_term_months=60,
-            end_date="2028-12-31",
-            renewal_term_months=12,
-            notice_value=1,
-            notice_unit="months",
-        ),
-        ctx(today="2026-09-01"),
-    )
-    assert (result.cancel_by, result.earliest_exit) == ("2026-09-30", "2026-12-31")
-
-
-def test_contract_send_by_step_says_today_when_late() -> None:
-    """The clamped step says what to do."""
-    result = compute_contract(
-        ContractTerms(
-            category="streaming",
-            concluded_date="2024-11-01",
-            end_date="2026-10-31",
-            notice_value=1,
-            notice_unit="months",
-        ),
-        ctx(region="NW"),
-    )
-    assert result.steps[-1].label == "The usual sending time has passed: send it today, Fri 25 Sep 2026"
-    assert result.steps[-1].date == result.send_by == "2026-09-25"
-
-
 # ------------------------------------------------------------------------------------ observations
 
 
@@ -478,36 +428,37 @@ def test_fine_counted_from_the_letter_date_without_the_envelope() -> None:
     assert not any(step.rule_id in ("vwvfg_41_2", "vwvfg_land_days") for step in receipt.steps)
 
 
-@pytest.mark.parametrize(
-    ("posted", "tax_office", "home", "confidence", "flagged"),
-    [
-        # 4th day Tue 6 Jan 2026 is Epiphany in Saxony-Anhalt (tax office) only: nothing to flag
-        pytest.param("2026-01-02", "ST", "NW", "high", False, id="holiday-at-tax-office-only"),
-        # 4th day Thu 4 Jun 2026 is Fronleichnam where the person lives: it may move → flagged
-        pytest.param("2026-05-31", "ST", "NW", "medium", True, id="holiday-at-home"),
-        # tax office's Land unknown, Epiphany is no holiday in NW: nothing to flag
-        pytest.param("2026-01-02", None, "NW", "high", False, id="office-unknown-no-home-holiday"),
-    ],
-)
-def test_tax_delivery_day_flags_only_the_person_s_holidays(
-    posted: str, tax_office: str | None, home: str, confidence: str, flagged: bool
-) -> None:
+TAX_DELIVERY_DAYS = [
+    # 4th day Tue 6 Jan 2026 is Epiphany in Saxony-Anhalt (tax office) only: nothing to flag
+    pytest.param("2026-01-02", "ST", "NW", "high", False, id="holiday-at-tax-office-only"),
+    # 4th day Thu 4 Jun 2026 is Fronleichnam where the person lives: it may move → flagged
+    pytest.param("2026-05-31", "ST", "NW", "medium", True, id="holiday-at-home"),
+    # tax office's Land unknown, Epiphany is no holiday in NW: nothing to flag
+    pytest.param("2026-01-02", None, "NW", "high", False, id="office-unknown-no-home-holiday"),
+]
+
+
+def test_tax_delivery_day_flags_only_the_person_s_holidays() -> None:
     """Observation: two different known Länder no longer produce the 'if you live in the same Land' text."""
-    spec = DateSpec(
-        type="relative",
-        anchor="deemed_delivery",
-        amount=1,
-        unit="months",
-        delivery_rule="de_admin_post",
-        nature="objection",
-        legal_basis="§ 355 AO",
-    )
-    receipt = compute_due(
-        spec, ctx(document_date=posted, region=tax_office, recipient_region=home, delivery_scope="ao")
-    )
-    assert receipt.confidence == confidence, receipt.warnings
-    assert not any("same Land" in w for w in receipt.warnings)
-    assert any("where you live (Nordrhein-Westfalen)" in w for w in receipt.warnings) == flagged
+
+    def check(posted: str, tax_office: str | None, home: str, confidence: str, flagged: bool) -> None:
+        spec = DateSpec(
+            type="relative",
+            anchor="deemed_delivery",
+            amount=1,
+            unit="months",
+            delivery_rule="de_admin_post",
+            nature="objection",
+            legal_basis="§ 355 AO",
+        )
+        receipt = compute_due(
+            spec, ctx(document_date=posted, region=tax_office, recipient_region=home, delivery_scope="ao")
+        )
+        assert receipt.confidence == confidence, receipt.warnings
+        assert not any("same Land" in w for w in receipt.warnings)
+        assert any("where you live (Nordrhein-Westfalen)" in w for w in receipt.warnings) == flagged
+
+    check_rows(TAX_DELIVERY_DAYS, check)
 
 
 def test_health_insurance_exit_is_a_month_end_after_a_mid_month_start() -> None:
