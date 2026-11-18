@@ -12,6 +12,7 @@ import pytest
 from fastapi.routing import APIRoute
 from starlette.routing import compile_path
 
+from helpers_tables import check_rows
 from ordnung.api.app import openapi_schema
 from ordnung.api.deps import require_computer
 from ordnung.api.routes import documents
@@ -180,36 +181,38 @@ def test_every_operation_classifies_as_its_list(schema: dict[str, Any]) -> None:
     assert not wrong, "\n".join(wrong)
 
 
-@pytest.mark.parametrize(
-    ("method", "path", "expected"),
-    [
-        ("GET", "/api/documents/doc_ab/pages/1.jpg", "phone"),
-        ("HEAD", "/api/documents/doc_x/thumbnail.jpg", "phone"),
-        ("get", "/api/items/itm_x", "phone"),
-        ("GET", "/api/items/itm_x", "phone"),
-        ("GET", "/api/items/itm_x.ics", "computer"),  # matches {item_id} (phone) and {item_id}.ics (not)
-        ("HEAD", "/api/calendar.ics", "computer"),
-        ("DELETE", "/api/drafts/drf_1/answered", "phone"),
-        ("POST", "/api/phone/pair", "phone"),
-        ("GET", "/api/health", "phone"),
-        ("DELETE", "/api/drafts/drf_1", "computer"),
-        ("HEAD", "/api/documents/doc_x/file", "computer"),
-        ("GET", "/api/documents/doc_x/file", "computer"),
-        ("POST", "/api/documents/held/read", "computer"),
-        ("GET", "/api/phone", "computer"),
-        ("DELETE", "/api/phone/devices/phn_x", "computer"),
-        ("GET", "/api/openapi.json", "unknown"),
-        ("GET", "/api/nothing-here", "unknown"),
-        ("GET", "/api/items/", "unknown"),
-        ("OPTIONS", "/api/items", "unknown"),
-        ("POST", "/api/health", "unknown"),
-        ("PUT", "/api/items/itm_x", "unknown"),
-        ("GET", "/api/documents/a/b/file", "unknown"),
-        ("GET", "/", "unknown"),
-    ],
-)
-def test_classify(method: str, path: str, expected: str) -> None:
-    assert classify(method, path) == expected
+CLASSIFY_EXAMPLES = [
+    ("GET", "/api/documents/doc_ab/pages/1.jpg", "phone"),
+    ("HEAD", "/api/documents/doc_x/thumbnail.jpg", "phone"),
+    ("get", "/api/items/itm_x", "phone"),
+    ("GET", "/api/items/itm_x", "phone"),
+    ("GET", "/api/items/itm_x.ics", "computer"),  # matches {item_id} (phone) and {item_id}.ics (not)
+    ("HEAD", "/api/calendar.ics", "computer"),
+    ("DELETE", "/api/drafts/drf_1/answered", "phone"),
+    ("POST", "/api/phone/pair", "phone"),
+    ("GET", "/api/health", "phone"),
+    ("DELETE", "/api/drafts/drf_1", "computer"),
+    ("HEAD", "/api/documents/doc_x/file", "computer"),
+    ("GET", "/api/documents/doc_x/file", "computer"),
+    ("POST", "/api/documents/held/read", "computer"),
+    ("GET", "/api/phone", "computer"),
+    ("DELETE", "/api/phone/devices/phn_x", "computer"),
+    ("GET", "/api/openapi.json", "unknown"),
+    ("GET", "/api/nothing-here", "unknown"),
+    ("GET", "/api/items/", "unknown"),
+    ("OPTIONS", "/api/items", "unknown"),
+    ("POST", "/api/health", "unknown"),
+    ("PUT", "/api/items/itm_x", "unknown"),
+    ("GET", "/api/documents/a/b/file", "unknown"),
+    ("GET", "/", "unknown"),
+]
+
+
+def test_classify() -> None:
+    def check(method: str, path: str, expected: str) -> None:
+        assert classify(method, path) == expected
+
+    check_rows(CLASSIFY_EXAMPLES, check)
 
 
 def test_a_double_match_is_a_phone_request_only_when_every_match_is(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -297,27 +300,27 @@ def test_health_says_who_asked(schema: dict[str, Any]) -> None:
     assert "client" in health["required"]
 
 
-@pytest.mark.parametrize(
-    ("method", "path", "expected"),
-    [
-        ("PATCH", "/api/items/itm_1", (("PATCH", "/api/items/{item_id}"), {"item_id": "itm_1"})),
-        ("HEAD", "/api/items/x", (("GET", "/api/items/{item_id}"), {"item_id": "x"})),
-        ("HEAD", "/api/items/x.ics", None),  # the calendar file of a to-do stays on the computer
-        (
-            "GET",
-            "/api/documents/doc_1/pages/2.jpg",
-            (("GET", "/api/documents/{doc_id}/pages/{page}.jpg"), {"doc_id": "doc_1", "page": "2"}),
-        ),
-        ("POST", "/api/phone/pair", (("POST", "/api/phone/pair"), {})),
-        ("DELETE", "/api/items/itm_1", None),
-        ("GET", "/api/settings", None),
-        ("GET", "/api/nothing-here", None),
-    ],
-)
-def test_a_phone_request_names_its_operation_and_parameters(
-    method: str, path: str, expected: tuple[scope.Operation, dict[str, str]] | None
-) -> None:
-    assert scope.match(method, path) == expected
+PHONE_REQUEST_MATCHES = [
+    ("PATCH", "/api/items/itm_1", (("PATCH", "/api/items/{item_id}"), {"item_id": "itm_1"})),
+    ("HEAD", "/api/items/x", (("GET", "/api/items/{item_id}"), {"item_id": "x"})),
+    ("HEAD", "/api/items/x.ics", None),  # the calendar file of a to-do stays on the computer
+    (
+        "GET",
+        "/api/documents/doc_1/pages/2.jpg",
+        (("GET", "/api/documents/{doc_id}/pages/{page}.jpg"), {"doc_id": "doc_1", "page": "2"}),
+    ),
+    ("POST", "/api/phone/pair", (("POST", "/api/phone/pair"), {})),
+    ("DELETE", "/api/items/itm_1", None),
+    ("GET", "/api/settings", None),
+    ("GET", "/api/nothing-here", None),
+]
+
+
+def test_a_phone_request_names_its_operation_and_parameters() -> None:
+    def check(method: str, path: str, expected: tuple[scope.Operation, dict[str, str]] | None) -> None:
+        assert scope.match(method, path) == expected
+
+    check_rows(PHONE_REQUEST_MATCHES, check)
 
 
 def test_a_refusal_answers_with_its_code_s_status() -> None:
