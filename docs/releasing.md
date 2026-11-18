@@ -42,7 +42,7 @@ change to the README also changes what that page links to.
    - `npm version X.Y.Z --no-git-tag-version` in `web/` (`package.json` and `package-lock.json`);
    - `version` in the static demo's health answer, `HEALTH` in `web/src/mocks/data/system.ts`;
    - the version in the bug report template's placeholder (`.github/ISSUE_TEMPLATE/bug_report.yml`);
-   - then `make openapi`, `ordnung demo --rebuild` and `make build-web`.
+   - then `make openapi`, `ordnung demo --rebuild --no-serve` and `make build-web`.
 
    If a screen or the tour changed since the last release, capture the README's media on this branch, once,
    after the last fix round: `make capture` writes them into `docs/assets` and names the contact sheets to
@@ -72,8 +72,10 @@ The next change goes under a new `## Unreleased` heading again (CONTRIBUTING.md)
 **A version named before its tag.** A version can be named a while before it is tagged, as 0.4.0 was at the
 freeze of the pre-registered evaluation, whose publication its tag waited for. Its section then says so ("The
 `vX.Y.Z` tag and its GitHub release follow once …; until then, install this version by its commit"), and until
-the tag every change goes under `## X.Y.Z`, not under `## Unreleased`, which stays empty: step 1 refuses a tag
-with anything listed above the version. The pull request whose merge is tagged sets the section's date to the day
+the pull request whose merge gets the tag is merged, every change goes under `## X.Y.Z`, not under
+`## Unreleased`, which stays empty: step 1 refuses a tag with anything listed above the version. A change merged
+after that merge goes under `## Unreleased` again, even while the tag is still to be pushed: the tag goes on that
+merge commit, not on `main`'s newest one. The pull request whose merge is tagged sets the section's date to the day
 of the release and drops that sentence: `scripts/release_notes.py --tag` refuses a section that still has it.
 For 0.4.0 that is not the pull request that publishes the evaluation but the one after it, which adds
 `evals/preregistration/published-0.4.0.json`: its merge gets the `v0.4.0` tag. The publishing pull request is
@@ -152,7 +154,7 @@ You need a PyPI account with two-factor authentication. No token is ever needed.
 4. **Turn the upload on.** Under *Settings → Secrets and variables → Actions → Variables*, add the repository
    variable `PYPI_PUBLISH` with the value `true`. Until then the PyPI job is skipped and a release goes to
    GitHub only; any other value turns uploads off again.
-5. **Try it with a pre-release** if you like (the next version's, such as `0.4.0rc1`, above): it reaches PyPI,
+5. **Try it with a pre-release** if you like (the next version's, such as `X.Y.Zrc1`, above): it reaches PyPI,
    but `pipx install ordnung` doesn't install it.
 
 If PyPI refuses the upload as an untrusted publisher, compare the pending publisher's fields with the list
