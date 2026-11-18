@@ -175,12 +175,12 @@ def test_the_frontend_job_has_room_for_a_slow_runner() -> None:
 
 def test_the_backend_legs_have_room_for_a_slow_runner() -> None:
     """The backend's legs on Python 3.11 to 3.14 (install, lint, the type check and the tests with coverage) took
-    16 to 39 minutes on hosted runners (the runs of 3 November 2026, CONTRIBUTING's Fast loop). At 45 minutes a slow
-    runner had 6 left, and a leg it cancels fails the push run on main, which release.yml needs passed before it
-    tags: the limit leaves half as much again as the slowest leg seen. A hung test is still named after 10 minutes
-    (faulthandler_timeout), long before it."""
+    17 to 47 minutes on hosted runners (the runs of 17 and 18 November 2026, CONTRIBUTING's Fast loop). A leg a
+    slow runner cancels fails the push run on main, which release.yml needs passed before it tags: the limit leaves
+    half as much again as the slowest leg seen. A hung test is still named after 10 minutes (faulthandler_timeout),
+    long before it."""
     backend = _jobs()["backend"]
-    slowest_leg_seen = 39
+    slowest_leg_seen = 47
     assert backend["timeout-minutes"] >= 1.5 * slowest_leg_seen
     assert backend["strategy"]["matrix"]["python"] == ["3.11", "3.12", "3.13", "3.14"]
     assert "pytest" in _script(backend)

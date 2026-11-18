@@ -38,12 +38,12 @@ signing in.
 
 ## Fast loop
 
-CI runs its jobs side by side, and a whole run takes about 47 minutes (its runs of 3 November 2026). The
-end-to-end job starts once the frontend has passed, about 8 minutes in, and takes 33 to 39 minutes. Beside it the
-backend's legs on Python 3.11 to 3.14 take 16 to 39 minutes (3.14 the fastest), its slow checks about 25, the
-lowest versions (and, weekly, the newest) 21 to 24, and, on `main` and weekly, Windows 15 and macOS 3.5; the wheel
-and the dependency audit take under a minute. macOS and Windows have to pass too, as Linux does. While you work,
-run the tests near your change:
+CI runs its jobs side by side, and a whole run takes 40 to 50 minutes (its runs of 17 and 18 November 2026).
+The end-to-end job starts once the frontend has passed, 4 to 7 minutes in, and takes 32 to 43 minutes. Beside it
+the backend's legs on Python 3.11 to 3.14 take 17 to 47 minutes (3.14 the fastest), its slow checks 27 to 41, the
+lowest versions (and, weekly, the newest) 19 to 29, and, on `main` and weekly, Windows 10 to 14 and macOS 4 to 7;
+the wheel and the dependency audit take under a minute. macOS and Windows have to pass too, as Linux does. While
+you work, run the tests near your change:
 
 ```bash
 .venv/bin/pytest tests/test_rules_deadlines.py -k weekend     # one file, only the tests whose names match
