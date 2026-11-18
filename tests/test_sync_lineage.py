@@ -17,6 +17,7 @@ from hypothesis import HealthCheck, settings
 from hypothesis import strategies as st
 from hypothesis.stateful import RuleBasedStateMachine, invariant, precondition, rule
 
+from helpers_tables import check_rows
 from ordnung.sync import lineage as lin
 from ordnung.sync.decide import (
     Action,
@@ -77,23 +78,27 @@ def test_bump_keep_this_keep_other() -> None:
     assert other.content == {A: [(1, 1)], B: [(1, 1)]} and other.dropped == {A: [(2, 2)]}
 
 
-@pytest.mark.parametrize(
-    ("local", "other", "expected"),
-    [
-        (L({A: [(1, 1)]}), L({A: [(1, 1)]}), "same"),
-        (L({A: [(1, 1)]}), L({A: [(1, 2)]}), "ahead"),
-        (L({A: [(1, 2)]}), L({A: [(1, 1)]}), "behind"),
-        (L({A: [(1, 1)]}), L({B: [(1, 1)]}), "diverged"),
-        # the winner of "keep this one" sees the loser as behind, never as diverged
-        (L({A: [(1, 2)]}, {B: [(1, 1)]}), L({A: [(1, 1)], B: [(1, 1)]}), "behind"),
-        # … and the loser sees the winner as having decided
-        (L({A: [(1, 1)], B: [(1, 1)]}), L({A: [(1, 2)]}, {B: [(1, 1)]}), "decided"),
-        # two answers to one choice, given apart: asked once more
-        (L({A: [(1, 1)]}, {B: [(1, 1)]}), L({B: [(1, 1)]}, {A: [(1, 1)]}), "diverged"),
-    ],
-)
-def test_relation(local: Lineage, other: Lineage, expected: str) -> None:
-    assert lin.relation(local, other) == expected
+RELATION_EXAMPLES = [
+    (L({A: [(1, 1)]}), L({A: [(1, 1)]}), "same"),
+    (L({A: [(1, 1)]}), L({A: [(1, 2)]}), "ahead"),
+    (L({A: [(1, 2)]}), L({A: [(1, 1)]}), "behind"),
+    (L({A: [(1, 1)]}), L({B: [(1, 1)]}), "diverged"),
+    # the winner of "keep this one" sees the loser as behind, never as diverged
+    (L({A: [(1, 2)]}, {B: [(1, 1)]}), L({A: [(1, 1)], B: [(1, 1)]}), "behind"),
+    # … and the loser sees the winner as having decided
+    (L({A: [(1, 1)], B: [(1, 1)]}), L({A: [(1, 2)]}, {B: [(1, 1)]}), "decided"),
+    # two answers to one choice, given apart: asked once more
+    (L({A: [(1, 1)]}, {B: [(1, 1)]}), L({B: [(1, 1)]}, {A: [(1, 1)]}), "diverged"),
+    # no history at all is behind everything
+    (Lineage(), L({A: [(1, 1)]}), "ahead"),
+]
+
+
+def test_relation() -> None:
+    def check(local: Lineage, other: Lineage, expected: str) -> None:
+        assert lin.relation(local, other) == expected
+
+    check_rows(RELATION_EXAMPLES, check)
 
 
 def test_keeping_this_again_over_an_answer_given_apart_settles_it() -> None:
