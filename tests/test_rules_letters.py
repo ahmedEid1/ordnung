@@ -140,16 +140,6 @@ def test_a_european_order_for_payment_is_no_mahnbescheid() -> None:
     check_rows(A_EUROPEAN_ORDER_FOR_PAYMENT_IS_NO_MAHNBESCHEID, check)
 
 
-def test_an_enforcement_order_wins_over_the_payment_order_it_mentions() -> None:
-    extraction = reading(
-        title="Vollstreckungsbescheid",
-        summary="Enforcement order after the Mahnbescheid of 1 August.",
-        sender=COURT,
-        remedy=EINSPRUCH,
-    )
-    assert routing.classify_letter(extraction) == "enforcement_order"
-
-
 def test_a_debt_collector_threatening_a_mahnbescheid_stays_a_reminder() -> None:
     extraction = reading(
         kind="dunning",
@@ -291,6 +281,16 @@ A_MAHNBESCHEID_THAT_WARNS_OF_THE_ENFORCEMENT_ORDER_IS_A_PAYMENT_ORDER = [
         items=[objection_date("binnen zwei Wochen", legal_basis="§ 692 Abs. 1 Nr. 3 ZPO")],
         sender=COURT,
     ),
+    # an order that explains the hand-over to the court of the main proceedings is still one
+    reading(
+        title="Mahnbescheid",
+        sender=COURT,
+        items=[
+            item(MB_WARNING),
+            item("Im Falle des Widerspruchs wird das Verfahren an das Amtsgericht Köln abgegeben."),
+        ],
+        remedy=WIDERSPRUCH,
+    ),
 ]
 
 
@@ -327,6 +327,13 @@ AN_ENFORCEMENT_ORDER_IS_RECOGNISED_BY_WHAT_IT_IS = [
             item("Dieser Vollstreckungsbescheid ergeht auf Grund des Mahnbescheids vom 01.08.2026."),
             objection_date("Gegen diesen Vollstreckungsbescheid kann Einspruch eingelegt werden."),
         ],
+    ),
+    # it wins over the payment order it mentions
+    reading(
+        title="Vollstreckungsbescheid",
+        summary="Enforcement order after the Mahnbescheid of 1 August.",
+        sender=COURT,
+        remedy=EINSPRUCH,
     ),
 ]
 
@@ -590,19 +597,6 @@ def test_social_administrative_federal_and_constitutional_courts_are_courts() ->
     check_rows(SOCIAL_ADMINISTRATIVE_FEDERAL_AND_CONSTITUTIONAL_COURTS_ARE_COURTS, check)
 
 
-def test_a_payment_order_that_explains_the_hand_over_is_still_one() -> None:
-    extraction = reading(
-        title="Mahnbescheid",
-        sender=COURT,
-        items=[
-            item(MB_WARNING),
-            item("Im Falle des Widerspruchs wird das Verfahren an das Amtsgericht Köln abgegeben."),
-        ],
-        remedy=WIDERSPRUCH,
-    )
-    assert routing.classify_letter(extraction) == "court_payment_order"
-
-
 def _termination(**kw: Any) -> DocumentExtraction:
     change = ExtractedChange(
         type="termination_by_provider", effective_date="2026-12-31", quote="kündigen wir"
@@ -645,24 +639,6 @@ def test_a_labour_court_is_a_court_whose_orders_give_one_week() -> None:
     assert not routing.is_labour_court("Gerichtsvollzieher beim Arbeitsgericht Berlin")
     order = reading(title="Mahnbescheid", sender=LABOUR_COURT, remedy=WIDERSPRUCH)
     assert routing.classify_letter(order) == "court_payment_order"
-
-
-def test_a_termination_by_the_employer_is_a_dismissal() -> None:
-    assert routing.classify_letter(_termination(kind="employment")) == "dismissal"
-    employer = ExtractedParty(name="Café Kranz", kind="employer")
-    assert routing.classify_letter(_termination(sender=employer)) == "dismissal"
-    job = ExtractedContract(name="Werkstudent", category="employment")
-    assert routing.classify_letter(_termination(contract=job)) == "dismissal"
-
-
-def test_a_termination_by_the_landlord_is_a_landlord_notice() -> None:
-    assert routing.classify_letter(_termination(kind="rent_lease")) == "landlord_notice"
-    landlord = ExtractedParty(name="Wohnbau GmbH", kind="landlord")
-    assert routing.classify_letter(_termination(sender=landlord)) == "landlord_notice"
-
-
-def test_other_terminations_keep_their_kind() -> None:
-    assert routing.classify_letter(_termination(kind="contract")) is None
 
 
 def test_a_confirmation_of_your_own_notice_is_not_a_dismissal() -> None:
@@ -850,6 +826,8 @@ OTHER_INCREASES_ARE_STILL_NOT_CONSENT_REQUESTS = [
         "Die Miete steigt zum 01.01.2027 (Mietspiegel).",
         {"key_facts": [ExtractedFact(label="x", value="y", quote="Ihrer Zustimmung bedarf es nicht.")]},
     ),
+    # a price increase without a consent request keeps its kind
+    ("Die Miete steigt ab 1. Januar.", {}),
 ]
 
 
@@ -953,10 +931,6 @@ def test_a_modernisation_increase_without_its_own_consent_request_is_none() -> N
         assert routing.classify_letter(_increase(quote, title=title, key_facts=elsewhere)) is None
 
     check_rows(A_MODERNISATION_INCREASE_WITHOUT_ITS_OWN_CONSENT_REQUEST_IS_NONE, check)
-
-
-def test_a_price_increase_without_a_consent_request_keeps_its_kind() -> None:
-    assert routing.classify_letter(_increase("Die Miete steigt ab 1. Januar.")) is None
 
 
 A_STATEMENT_NEEDS_A_TENANCY_OR_A_BILLING_PERIOD = [
@@ -2076,6 +2050,9 @@ def test_registration_without_any_start_date_gives_no_date() -> None:
         spec(amount=3, unit="days", nature="declaration", legal_basis="§ 38 SGB III"), ctx()
     )
     assert receipt.due_date is None and "start date is missing" in receipt.summary
+    # recognised by its wording instead of its legal basis
+    receipt = compute_due(spec(amount=3, unit="days", nature="declaration", text="arbeitsuchend"), ctx())
+    assert receipt.due_date is None and receipt.confidence == "low"
 
 
 def test_registration_from_the_letters_three_months_wording() -> None:
@@ -2105,11 +2082,6 @@ def test_registration_uses_an_earlier_date_the_letter_names() -> None:
     )
     assert receipt.due_date == "2026-09-27"
     assert any("earlier than the law's date" in w for w in receipt.warnings)
-
-
-def test_registration_without_any_start_gives_no_date() -> None:
-    receipt = compute_due(spec(amount=3, unit="days", nature="declaration", text="arbeitsuchend"), ctx())
-    assert receipt.due_date is None and receipt.confidence == "low"
 
 
 def test_a_dismissal_without_notice_period_counts_the_registration_from_its_arrival() -> None:
@@ -4117,6 +4089,15 @@ WHAT_A_TERMINATION_ENDS_IS_DECIDED_BY_ITS_CONTRACT_THEN_ITS_KIND_THEN_ITS_SENDER
     ({"kind": "other", "sender": ExtractedParty(name="Wohnbau", kind="landlord")}, "landlord_notice"),
     ({"kind": "other", "sender": ExtractedParty(name="Fitness", kind="gym")}, None),
     ({"kind": "other"}, None),
+    # a termination by the employer is a dismissal
+    ({"kind": "employment"}, "dismissal"),
+    ({"sender": ExtractedParty(name="Café Kranz", kind="employer")}, "dismissal"),
+    ({"contract": ExtractedContract(name="Werkstudent", category="employment")}, "dismissal"),
+    # a termination by the landlord is a landlord's notice
+    ({"kind": "rent_lease"}, "landlord_notice"),
+    ({"sender": ExtractedParty(name="Wohnbau GmbH", kind="landlord")}, "landlord_notice"),
+    # other terminations keep their kind
+    ({"kind": "contract"}, None),
 ]
 
 
