@@ -218,11 +218,8 @@ INVALID_AMOUNTS = [(-1, "event"), (0, "day_start")]
 
 def test_add_period_rejects_invalid_amounts() -> None:
     def check(amount: int, mode: str) -> None:
-        try:
+        with pytest.raises(ValueError):
             add_period(D("2026-01-01"), amount, "days", mode=mode)  # type: ignore[arg-type]
-        except ValueError:
-            return
-        raise AssertionError(f"add_period accepted amount {amount} in {mode} mode")
 
     check_rows(INVALID_AMOUNTS, check)
 
