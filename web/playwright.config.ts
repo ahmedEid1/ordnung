@@ -44,7 +44,7 @@ import {
  * installed here changes nothing else.
  *
  * `E2E_GROUP=<name>` (e2e/env.ts) runs one group of the projects below, in the same order, on fresh servers of its
- * own and only those its projects use; CI runs the groups as jobs side by side. Unset, everything runs, as described.
+ * own and only those its projects use, so CI can run the groups as jobs side by side. Unset, everything runs, as described.
  *
  * Local: `npm run build && PW_CHROMIUM_PATH=/path/to/chrome npm run e2e`. See `e2e/env.ts` for
  * the knobs (ports, data folders, reuse running servers, groups).
