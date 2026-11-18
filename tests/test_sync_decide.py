@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
-
+from helpers_tables import check_rows
 from ordnung.sync import lineage as lin
 from ordnung.sync.decide import (
     Action,
@@ -206,7 +205,7 @@ def use(lv: LocalView, fv: FolderView, *, older: bool = False) -> object:
     return decide(lv, fv, Action("use_here", older_copy=older))
 
 
-def test_u0_u1() -> None:
+def test_u0_already_in_use_and_u1_late_changes_are_saved_first() -> None:
     assert isinstance(use(local(BASE), view(ME_HEAD)), AlreadyInUse)
     me = head(ME, 1, BASE, epoch=1, this=True)
     holder = head(A, 2, BASE, epoch=4, state="in_use")
@@ -297,10 +296,15 @@ def test_choose_this_other_waiting_or_none() -> None:
     assert isinstance(decide(local(BASE), arriving, Action("choose", key=2)), Wait)
 
 
-@pytest.mark.parametrize("has_it", [True, False])
-def test_others_have_the_latest(has_it: bool) -> None:  # the second confirmation
-    mine = ref(ME, 1, BASE)
-    other = head(A, 2, AHEAD if has_it else OTHER, epoch=1)
-    assert others_have(view(ME_HEAD, other), mine) is has_it
-    acknowledged = head(A, 2, OTHER, epoch=1, has=mine.id)
-    assert others_have(view(ME_HEAD, acknowledged), mine)
+OTHERS_HAVE_THE_LATEST_EXAMPLES = [True, False]
+
+
+def test_others_have_the_latest() -> None:  # the second confirmation
+    def check(has_it: bool) -> None:
+        mine = ref(ME, 1, BASE)
+        other = head(A, 2, AHEAD if has_it else OTHER, epoch=1)
+        assert others_have(view(ME_HEAD, other), mine) is has_it
+        acknowledged = head(A, 2, OTHER, epoch=1, has=mine.id)
+        assert others_have(view(ME_HEAD, acknowledged), mine)
+
+    check_rows(OTHERS_HAVE_THE_LATEST_EXAMPLES, check)
