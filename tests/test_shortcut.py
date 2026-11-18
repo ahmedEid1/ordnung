@@ -33,6 +33,7 @@ from hypothesis import strategies as st
 from platformdirs import user_data_dir
 from typer.testing import CliRunner
 
+from helpers_net import free_port
 from ordnung import autostart, cli, shortcut
 from ordnung.cli import app
 from ordnung.config import OCR_SWITCH
@@ -1709,14 +1710,6 @@ def test_from_shortcut_waits_for_enter_after_a_failed_start(
     assert invoke("serve", "--data-dir", str(tmp_path / "data"), "--from-shortcut").exit_code == 1
 
 
-def _free_port() -> int:
-    import socket
-
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return int(probe.getsockname()[1])
-
-
 def test_a_start_that_fails_inside_the_server_waits_for_enter(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, launched: list[ServerInfo]
 ) -> None:
@@ -1732,7 +1725,7 @@ def test_a_start_that_fails_inside_the_server_waits_for_enter(
     monkeypatch.setattr(cli, "_in_terminal", lambda: True)
     monkeypatch.setattr(cli, "_create_app", lambda context, token, demo: broken)
     monkeypatch.setattr(cli, "_open_browser_when_ready", lambda info: launched.append(info))
-    port = str(_free_port())
+    port = str(free_port())
     result = invoke("serve", "--data-dir", str(folder), "--port", port, "--from-shortcut", input="\n")
     assert result.exit_code == 1, result.output
     assert result.exit_code != shortcut.NO_WINDOW_EXIT
@@ -1783,7 +1776,7 @@ def test_closing_the_window_stops_ordnung_as_ctrl_c_does(tmp_path: Path) -> None
     import socket
 
     folder = tmp_path / "data"
-    port = _free_port()
+    port = free_port()
     opened = tmp_path / "opened.txt"
     browser = tmp_path / "browser"  # what webbrowser starts with the link: it writes the link down
     browser.write_text(f'#!/bin/sh\nprintf "%s" "$1" > "{opened}.part" && mv "{opened}.part" "{opened}"\n')
@@ -1917,7 +1910,6 @@ def test_a_second_click_gives_up_when_nothing_answers(
 def test_from_shortcut_runs_ordnung_in_its_window(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, launched: list[ServerInfo]
 ) -> None:
-    import socket
 
     import uvicorn
 
@@ -1928,9 +1920,7 @@ def test_from_shortcut_runs_ordnung_in_its_window(
     monkeypatch.setattr(cli, "_open_browser_when_ready", lambda info: launched.append(info))
     monkeypatch.setattr(uvicorn.Server, "run", lambda self: None)
     monkeypatch.setattr(cli, "_shortcut_missing", lambda: True)
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        port = probe.getsockname()[1]
+    port = free_port()
     result = invoke("serve", "--data-dir", str(tmp_path / "data"), "--port", str(port), "--from-shortcut")
     assert result.exit_code == 0, result.output
     text = " ".join(result.output.replace("│", " ").split())
