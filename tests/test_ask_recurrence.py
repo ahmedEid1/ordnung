@@ -19,13 +19,14 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from evals.ask import heldout, heldout_check, recurrence  # noqa: E402
+from evals.ask import heldout, heldout_check, ledger, recurrence  # noqa: E402
 from evals.ask.ledger import LedgerError, SampleLife, build_base, pinned_today  # noqa: E402
 
 from helpers_tables import check_rows  # noqa: E402
 from ordnung.assistant.ask import ledger_fingerprint  # noqa: E402
 from ordnung.config import Paths  # noqa: E402
 from ordnung.db.store import Store  # noqa: E402
+from ordnung.demo.loader import copy_data  # noqa: E402
 
 DAY = date(2026, 12, 8)
 DENTIST = "zahnarzt_terminkarte"  # its truth item 0: an appointment on 2026-10-08
@@ -287,6 +288,34 @@ def test_a_recurrence_question_without_its_gold_is_refused(tmp_path: Path, setup
         heldout.load_questions(path, today=DAY)
 
 
+@pytest.fixture
+def bases_built_once(base: tuple[Path, SampleLife], tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """``build_base`` built once per day for one test: ``validate_window`` builds the ledger for every day of the
+    window on every call, and the base of a day is the same each time (its stamps are settled). The base of a day
+    is built by the real ``build_base`` (``DAY``'s is the module's) and copied into every target asked for; a call
+    with a snapshot, or without a day, goes to the real one. The sample life is loaded once too."""
+    folder, life = base
+    built: dict[date, Path] = {DAY: folder}
+    real_build, real_load = ledger.build_base, SampleLife.load
+
+    def build_base_once(
+        target: Path, life: SampleLife, *, snapshot: Path | None = None, day: date | None = None
+    ) -> Path:
+        if snapshot is not None or day is None:
+            return real_build(target, life, snapshot=snapshot, day=day)
+        if day not in built:
+            built[day] = real_build(tmp_path / f"base-{day.isoformat()}", life, day=day)
+        copy_data(built[day], target)
+        return target
+
+    def load_once(samples: Path | None = None) -> SampleLife:
+        return life if samples is None else real_load(samples)
+
+    monkeypatch.setattr(ledger, "build_base", build_base_once)
+    monkeypatch.setattr(SampleLife, "load", staticmethod(load_once))
+
+
+@pytest.mark.usefixtures("bases_built_once")
 def test_validate_window_holds_the_ledger_to_the_recurrence_gold(tmp_path: Path) -> None:
     """--validate builds the recurrence ledger on each day of the window and compares every to-do's next date in it
     with the blind gold's: a gold that moves a date the ledger does not (or the other way round) is named by id."""
