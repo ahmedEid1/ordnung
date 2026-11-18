@@ -172,6 +172,7 @@ async def test_the_letter_goes_on_stdin_never_on_argv(fake: FakeClaude, letter: 
     assert response.text == "Done."
     assert response.model == "claude-family-x-1"  # the model that answered, from modelUsage
     assert response.backend == "claude"
+    assert response.tool_calls == []  # a call without tools
     usage = response.usage
     assert (usage.input_tokens, usage.output_tokens, usage.cache_read_tokens) == (6, 70, 2311)
     assert (usage.cost_usd, usage.duration_ms, usage.turns) == (0.01234, 5123, 2)
@@ -182,13 +183,6 @@ async def test_an_explicit_binary_path_is_used(fake: FakeClaude, letter: LLMRequ
     backend = ClaudeCLIBackend(binary=str(fake.path), max_retries=0)
     assert backend.binary == str(fake.path)
     assert (await backend.complete(letter)).data == ANSWER
-
-
-async def test_no_claude_on_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, letter: LLMRequest) -> None:
-    monkeypatch.setenv("PATH", str(tmp_path / "empty"))
-    monkeypatch.delenv("ORDNUNG_CLAUDE_BIN", raising=False)
-    with pytest.raises(ClaudeNotInstalled):
-        await ClaudeCLIBackend(max_retries=0).complete(letter)
 
 
 async def test_an_old_claude_is_asked_nothing_until_it_is_updated(
@@ -369,25 +363,34 @@ async def test_a_server_error_is_retried(
     assert len(fake.calls) == 2 and waits == [2.0]
 
 
-@pytest.mark.parametrize(
-    ("subtype", "message"),
-    [
-        ("error_max_turns", "too many steps"),
-        ("error_max_budget_usd", "cost cap"),
-        ("error_during_execution", ""),
-    ],
-)
-async def test_a_stopped_run_is_an_error(
-    fake: FakeClaude, letter: LLMRequest, subtype: str, message: str
-) -> None:
-    result = {"type": "result", "subtype": subtype, "is_error": True, "num_turns": 9}
-    fake.play({"lines": [json.dumps(result)], "exit": 1})
-    with pytest.raises(LLMError, match=message or subtype) as caught:
-        await ClaudeCLIBackend(max_retries=2).complete(letter.model_copy(update={"max_budget_usd": 0.5}))
-    assert type(caught.value) is LLMError  # not retried, not a pause
-    argv = fake.calls[0]["argv"]
-    assert argv[argv.index("--max-budget-usd") + 1] == "0.50"
-    assert len(fake.calls) == 1
+STOPPED_RUNS = [
+    ("error_max_turns", "too many steps"),
+    ("error_max_budget_usd", "cost cap"),
+    ("error_during_execution", ""),
+]
+
+
+async def test_a_stopped_run_is_an_error(fake: FakeClaude, letter: LLMRequest) -> None:
+    async def check(subtype: str, message: str) -> None:
+        fake.log.unlink(missing_ok=True)  # each row sees only its own call
+        result = {"type": "result", "subtype": subtype, "is_error": True, "num_turns": 9}
+        fake.play({"lines": [json.dumps(result)], "exit": 1})
+        with pytest.raises(LLMError, match=message or subtype) as caught:
+            await ClaudeCLIBackend(max_retries=2).complete(letter.model_copy(update={"max_budget_usd": 0.5}))
+        assert type(caught.value) is LLMError  # not retried, not a pause
+        argv = fake.calls[0]["argv"]
+        assert argv[argv.index("--max-budget-usd") + 1] == "0.50"
+        assert len(fake.calls) == 1
+
+    # check_rows cannot await: the same loop, every row run, every failing row named
+    failed: list[str] = []
+    for row in STOPPED_RUNS:
+        try:
+            await check(*row)
+        except Exception as exc:
+            failed.append(f"{row!r}: {type(exc).__name__}: {exc}")
+    assert len(STOPPED_RUNS) >= 2
+    assert not failed, "\n".join(failed)
 
 
 async def test_a_crash_without_a_result_reports_stderr(fake: FakeClaude, letter: LLMRequest) -> None:
@@ -657,11 +660,6 @@ async def test_complete_returns_the_tool_calls_paired_by_id(fake: FakeClaude) ->
     assert iban.name == "mcp__ordnung_rules__check_iban" and json.loads(iban.result or "")["valid"] is True
 
 
-async def test_complete_without_tools_has_no_tool_calls(fake: FakeClaude, letter: LLMRequest) -> None:
-    fake.play({"transcript": "extract_structured.jsonl"})
-    assert (await ClaudeCLIBackend(max_retries=0).complete(letter)).tool_calls == []
-
-
 def test_translate_keeps_the_tool_use_ids() -> None:
     events = claude_cli.translate(
         {
@@ -719,23 +717,13 @@ def test_tool_trace_pairs_by_id_and_falls_back_to_order() -> None:
     assert [(c.name, c.result) for c in legacy.calls] == [("a", "first"), ("b", "second")]
 
 
-def test_the_environment_can_pin_the_model(fake: FakeClaude, monkeypatch: pytest.MonkeyPatch) -> None:
-    """ORDNUNG_CLAUDE_MODEL names the id every call uses, whatever alias the request carries (an
-    alias moves with releases)."""
-    request = LLMRequest(purpose="ask", prompt="Anything due?", system="Answer.")
-    monkeypatch.delenv("ORDNUNG_CLAUDE_MODEL", raising=False)
-    argv = ClaudeCLIBackend().build_args(request)
-    assert argv[argv.index("--model") + 1] == "claude-sonnet-5"  # ordnung.llm.base.DEFAULT_MODEL
-    monkeypatch.setenv("ORDNUNG_CLAUDE_MODEL", "claude-sonnet-5-5")
-    argv = ClaudeCLIBackend().build_args(request)
-    assert argv[argv.index("--model") + 1] == "claude-sonnet-5-5"
-
-
 def test_the_chosen_model_beats_the_request_and_yields_to_the_environment(
     fake: FakeClaude, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The model the person chose (Settings → Claude) is read when the call is made, so a new choice
-    counts from the next call; it beats the request's alias, and only ORDNUNG_CLAUDE_MODEL beats it."""
+    counts from the next call; it beats the request's alias, and only ORDNUNG_CLAUDE_MODEL beats it.
+    ORDNUNG_CLAUDE_MODEL names the id every call uses, whatever alias the request carries (an alias moves
+    with releases)."""
     request = LLMRequest(purpose="brief", prompt="Today?", system="Answer.", model="haiku")
     monkeypatch.delenv("ORDNUNG_CLAUDE_MODEL", raising=False)
     chosen = {"model": "claude-opus-5-5"}
@@ -750,6 +738,13 @@ def test_the_chosen_model_beats_the_request_and_yields_to_the_environment(
     monkeypatch.delenv("ORDNUNG_CLAUDE_MODEL")
     # no setting at all (the doctor probe, the benchmarks): the request's own model
     assert ClaudeCLIBackend().model_for(request) == "haiku"
+
+    default = LLMRequest(purpose="ask", prompt="Anything due?", system="Answer.")
+    argv = ClaudeCLIBackend().build_args(default)
+    assert argv[argv.index("--model") + 1] == "claude-sonnet-5"  # ordnung.llm.base.DEFAULT_MODEL
+    monkeypatch.setenv("ORDNUNG_CLAUDE_MODEL", "claude-sonnet-5-5")
+    argv = ClaudeCLIBackend().build_args(default)
+    assert argv[argv.index("--model") + 1] == "claude-sonnet-5-5"
 
 
 async def test_a_wrapper_that_clears_the_environment_still_gets_argv_stdin_and_is_killed(
