@@ -32,6 +32,13 @@ from sync_sim import SyncToolSim, listing
 @pytest.fixture(autouse=True)
 def _fast(monkeypatch: pytest.MonkeyPatch) -> None:
     use_fast_keys(monkeypatch)
+    no_disk_flush(monkeypatch)
+
+
+def no_disk_flush(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every line that asks for a flush still runs, only the system call is skipped: what reaches the disk
+    in a power cut is decided by :class:`sync_faults.PowerCutFs` at the ``FsOps`` seam, not by a real flush."""
+    monkeypatch.setattr(os, "fsync", lambda fd: None)
 
 
 class Scene:
@@ -117,6 +124,7 @@ def check_i4(computer: Computer) -> None:
 def scene(tmp_path_factory: pytest.TempPathFactory) -> Scene:
     patch = pytest.MonkeyPatch()
     use_fast_keys(patch)
+    no_disk_flush(patch)
     made = Scene(tmp_path_factory.mktemp("crash"))
     patch.undo()
     return made
