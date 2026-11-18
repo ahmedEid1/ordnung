@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 from fakes import use_fast_keys
+from helpers_tables import check_rows
 from ordnung.backup import restore_backup
 from ordnung.config import Paths
 from ordnung.db.store import Store, person_write
@@ -334,28 +335,39 @@ def test_three_computers_and_forgetting_one(tmp_path: Path) -> None:
             computer.close()
 
 
-@pytest.mark.parametrize(
-    "skew", [timedelta(days=-3), timedelta(minutes=-5), timedelta(), timedelta(minutes=5), timedelta(days=3)]
-)
-def test_clock_skew_changes_nothing(tmp_path: Path, skew: timedelta) -> None:
-    pair = Pair(tmp_path, skew=skew)
-    try:
-        a, b = pair.a, pair.b
-        pair.joined()
-        b.person_edit("x")
-        b.round()
-        pair.settle()
-        a.round()
-        assert isinstance(a.use_here().decision, Pull)
-        b.clock.jump_wall(timedelta(days=-10))  # and a jump backwards
-        pair.settle()
-        assert isinstance(b.round().decision, BecomeStandby)
-        a.person_edit("y")
-        a.round()
-        pair.settle()
-        assert isinstance(b.use_here().decision, Pull) and "y" in b.notes()
-    finally:
-        pair.close()
+CLOCK_SKEWS = [
+    timedelta(days=-3),
+    timedelta(minutes=-5),
+    timedelta(),
+    timedelta(minutes=5),
+    timedelta(days=3),
+]
+
+
+def test_clock_skew_changes_nothing(tmp_path: Path) -> None:
+    rows = iter(range(len(CLOCK_SKEWS)))
+
+    def check(skew: timedelta) -> None:
+        pair = Pair(tmp_path / f"row-{next(rows)}", skew=skew)  # a fresh pair per row
+        try:
+            a, b = pair.a, pair.b
+            pair.joined()
+            b.person_edit("x")
+            b.round()
+            pair.settle()
+            a.round()
+            assert isinstance(a.use_here().decision, Pull)
+            b.clock.jump_wall(timedelta(days=-10))  # and a jump backwards
+            pair.settle()
+            assert isinstance(b.round().decision, BecomeStandby)
+            a.person_edit("y")
+            a.round()
+            pair.settle()
+            assert isinstance(b.use_here().decision, Pull) and "y" in b.notes()
+        finally:
+            pair.close()
+
+    check_rows(CLOCK_SKEWS, check)
 
 
 def test_windows_style_paths_travel(pair: Pair) -> None:
