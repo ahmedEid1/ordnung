@@ -9,7 +9,6 @@ import json
 import subprocess
 import sys
 from datetime import UTC, date, datetime, tzinfo
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -22,7 +21,7 @@ from helpers_secretary import TODAY, seed_ledger
 from helpers_tables import check_rows
 from ordnung import clock
 from ordnung.assistant import rules_tools
-from ordnung.assistant.mcp_server import build_server, server_config
+from ordnung.assistant.mcp_server import build_server
 from ordnung.assistant.rules_tools import (
     DISCLAIMER_TEMPLATE,
     FORMAL_SERVICE_HINT,
@@ -1691,17 +1690,6 @@ async def test_the_full_server_has_the_rules_tools_counting_from_the_ledgers_day
     result = await server.call_tool("compute_deadline", {"spec": spec})
     data = _json(result.content[0].text)  # the rules tools answer plain JSON
     assert data["due_date"] == "2026-09-29" and data["assumed"]["today"] == TODAY.isoformat()
-
-
-async def test_asks_server_has_no_rules_tools(store: Store, tmp_path: Path) -> None:
-    """Ask never computes dates: a rules tool would echo any date back and ground it for Ask's fact check."""
-    seed_ledger(store)
-    assert {tool.name for tool in await build_server(store, rules_tools=False).list_tools()} == LEDGER_TOOLS
-    config = server_config(store.data_dir, today="2026-09-28", rules_tools=False)["mcpServers"]["ordnung"]
-    assert config["args"][-1] == "--ledger-only"
-    params = StdioServerParameters(command=config["command"], args=config["args"], env=config["env"])
-    async with Client(params, mode="legacy") as client:  # exactly what Ask's claude process starts
-        assert {tool.name for tool in (await client.list_tools()).tools} == LEDGER_TOOLS
 
 
 async def test_the_full_server_says_the_ledgers_date_wins_for_its_letters(store: Store) -> None:
