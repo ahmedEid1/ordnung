@@ -286,7 +286,7 @@ def test_the_held_out_files_match_their_pre_registration(tmp_path: Path) -> None
 
 
 def test_the_committed_held_out_set_is_the_pre_registered_one() -> None:
-    """Once the pre-registration (commit B) exists, the held-out files must be byte for byte what it hashed."""
+    """Once the pre-registration exists, the held-out files must be byte for byte what it hashed."""
     prereg = ROOT / "evals" / "preregistration" / "final-0.4.0.json"
     if not prereg.exists():
         pytest.skip("no pre-registration yet (it is committed after the code freeze)")
@@ -1592,7 +1592,7 @@ def _on(monkeypatch: pytest.MonkeyPatch, agent: StandInAgent, day: date) -> Stan
 
 
 def _live_heldout(tmp_path: Path, day: date, cap: str, *extra: str) -> list[str]:
-    """The final run's held-out command (runbook §4.6: R6, run 3), on ``day``, into ``tmp_path``."""
+    """The final run's held-out command (its third run), on ``day``, into ``tmp_path``."""
     return [
         "--set", "heldout", "--live", "--write", "--repeat", "3", "--today", day.isoformat(), "--date",
         day.isoformat(), "--concurrency", "1", "--max-cost-usd", cap, "--recorded-dir", str(tmp_path / "recorded"),

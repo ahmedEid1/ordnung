@@ -1242,7 +1242,7 @@ def test_the_ask_line_says_what_the_wrong_answers_are() -> None:
 
 
 def test_the_ask_line_names_the_recording_day_only_when_it_was_not_the_benchmark_s_today() -> None:
-    """A held-out set is recorded on its own day (the plan's addendum, item 8): a date it calls passed is then the
+    """A held-out set is recorded on its own day: a date it calls passed is then the
     model's error, not the recording day leaking in, and the line says no more than the results file supports."""
     same_day = text.ask_line(_ask_doc(two_todays=False, set="heldout"))
     assert "call a date that is still open passed" in same_day and "recording day" not in same_day

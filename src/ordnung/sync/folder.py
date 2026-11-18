@@ -604,7 +604,7 @@ class SyncFolder:
 
     def write_head(self, name: str, sealed: bytes) -> None:
         """Rewrite this computer's head: the commit point of a push (``h/`` is synced at once)."""
-        self.flush()  # everything the head names is durable first (I4)
+        self.flush()  # everything the head names is durable first: a head never names a version that isn't whole
         self._atomic(self.heads_dir, name, lambda out: out.write(sealed))
         self.fs.fsync_dir(self.heads_dir)
         self._touched.discard(self.heads_dir)
@@ -694,7 +694,8 @@ class SyncFolder:
                     yield folder / name
 
     def remove_temps(self, tag: str | None = None) -> int:
-        """Remove the temp files of writer ``tag`` (default: this computer's own; I7, I9)."""
+        """Remove the temp files of writer ``tag`` (default: this computer's own): a crashed writer's half-written
+        files are never taken for data and never left behind."""
         mine = tag or self.tag
         removed = 0
         for path in list(self.temp_files()):

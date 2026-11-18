@@ -449,7 +449,7 @@ def test_the_readme_says_what_the_wrong_ask_answers_are() -> None:
         [("two wrong answers",), ("two are gaps in the ledger", "two wrong answers are gaps in the ledger")],
         [],
     )
-    # recorded on its own today (a held-out set, the plan's addendum item 8): no recording day leaks in
+    # recorded on its own today, as a held-out set is: no recording day leaks in
     own_day = leaks | {"today": "2026-10-30"}
     required, forbidden = _wrong_answer_claims(own_day)
     assert ("recording day",) not in required and "recording day" in forbidden
@@ -5090,7 +5090,7 @@ def test_contributing_says_when_a_recording_is_needed_and_how_to_record() -> Non
         "`ledger.jsonl`",
         "`python -m evals.harness unlock`",
         "reads the prediction cache only with `--resume`",
-        # the evaluation plan's addendum, item 8
+        # a recording is built for the day it is recorded
         "built for the day it is recorded",
         "`--allow-another-today`",
     ):
@@ -5176,7 +5176,7 @@ def test_every_published_recording_command_is_one_the_harness_accepts(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A recording made after the code freeze is built for the day it is recorded, and a live run refuses a set
-    pinned to another day (the plan's addendum, item 8): a command the project publishes must not be one the
+    pinned to another day: a command the project publishes must not be one the
     harness refuses, on any day. The development sets are pinned to their own days, so their recording commands
     say --allow-another-today (a re-recording in the open)."""
     from datetime import UTC, datetime

@@ -1,5 +1,5 @@
 """A process applying a pull is killed (SIGKILL) at random moments; every restart finds a usable data
-folder (I1) holding either the old data, or the new data with ``sync_mark`` naming it — never a mix —
+folder (SQLite's integrity check passes) holding either the old data, or the new data with ``sync_mark`` naming it — never a mix —
 and finishing the pull brings the rest (slow: 200 kills)."""
 
 from __future__ import annotations

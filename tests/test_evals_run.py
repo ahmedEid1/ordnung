@@ -627,7 +627,7 @@ def test_the_prediction_cache_depends_on_every_source_file(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, module: str
 ) -> None:
     """A stale cache must never stand in for a replay: any change to the package's code is a new fingerprint for
-    every condition, so a resumed run predicts again (harness design, weakness 2)."""
+    every condition, so a resumed run predicts again."""
     from evals import conditions
 
     source = ROOT / "src" / "ordnung"

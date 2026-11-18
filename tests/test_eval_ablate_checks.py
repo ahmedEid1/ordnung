@@ -47,7 +47,7 @@ TARGETS = {
     "reask": (extract_mod, "reading_gap_of"),
     "check": (conditions, "verify_extraction"),
 }
-#: What each ablation swaps (the plan's six, after the code as it ships).
+#: What each of the six ablations swaps (after the code as it ships).
 SWAPPED = {
     "all_on": set(),
     "no_two_dates_check": {"settle"},

@@ -6,7 +6,7 @@ every step:
 
 * **no change of the person's is lost:** every note ever written is in one computer's data or in a kept
   copy (opened with the sync passphrase);
-* **I1** on both computers;
+* **the data folder is usable** on both computers (SQLite's ``quick_check``);
 * **nothing incomplete is applied:** every pull's target had fully arrived and verified when applied;
 * **local state stays local:** each computer's own ``inbox_seen`` is never overwritten;
 * after everything is delivered and each computer looked twice, **at most one computer is in use**.

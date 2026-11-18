@@ -330,7 +330,7 @@ def _collect_areas(ledger: Ledger) -> dict[str, _AreaFacts]:
     facts: dict[str, _AreaFacts] = {}
     for doc in ledger.documents.values():
         # letters not read (waiting from the folder, being read, couldn't be read) are filed nowhere yet: an
-        # area of them alone would say "All good · 2 letters, nothing due" (UX U2)
+        # area of them alone would say "All good · 2 letters, nothing due"
         if not is_unread(doc):
             facts.setdefault(document_area(ledger, doc), _AreaFacts()).documents += 1
     for item in ledger.actionable_items():

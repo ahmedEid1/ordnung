@@ -219,7 +219,7 @@ class World:
         self.choices: list[tuple[str, frozenset[str]]] = []  # (chooser, tokens it decided to drop)
         self.asked_after_choice = False
         self.choice_settled = False
-        #: two answers given on two computers before either saw the other's: asked once more (§9)
+        #: two answers given on two computers before either saw the other's: asked once more
         self.conflicting = False
         #: the last choice left something unanswered, or something new came since: a question may be asked
         self.changed_since_choice = False

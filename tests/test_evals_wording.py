@@ -4,8 +4,10 @@ The evaluation plan, its addendum and the runbook are not in this repository, so
 to them: a plan item (``EV8``) or section, the addendum's items, a review or review round, a development batch (E2's,
 E3a), a runbook commit (``commit A``) or step (``R7``), a design document's weakness or a batch's guard id. This test
 reads the evaluation's code (``evals/**/*.py``), the stress cells' README, ``scripts/eval_perturb.py``, the ``needs``
-of the results index's cells and every test's skip reason for those tags. It prints where a tag is and which kind,
-never the line.
+of the results index's cells and every test's skip reason for those tags, and every test module for the tags that
+send a reader to a document (the plan, its addendum, a design document's weakness): the tests name the published
+notes' batches and the final run's steps as recorded, so the other kinds stay the evaluation code's alone. It
+prints where a tag is and which kind, never the line.
 
 Kept on purpose, and allowed here by name:
 
@@ -168,6 +170,23 @@ def test_no_skip_reason_names_a_plan_item_or_a_runbook_commit() -> None:
         f"{name}:{line}: {kind} ({tag})"
         for name, line, reason in _skip_reasons()
         for _, kind, tag in _tags(reason)
+    ]
+    assert not found, "\n".join(found)
+
+
+#: The kinds a test's own words may not name: each sends the reader to a document the repository does not have.
+TEST_KINDS = ("a plan item or section", "the plan's addendum", "a design weakness or a guard id")
+
+
+def test_no_test_points_to_the_plan_its_addendum_or_a_design_document() -> None:
+    """A test says the rule it holds the code to, not the plan item or design note it came from."""
+    modules = sorted(path for path in (ROOT / "tests").rglob("*.py") if path.name != Path(__file__).name)
+    assert len(modules) > 100  # the scan reads the tests, not an empty folder
+    found = [
+        f"{path.relative_to(ROOT).as_posix()}:{line}: {kind} ({tag})"
+        for path in modules
+        for line, kind, tag in _tags(path.read_text(encoding="utf-8"))
+        if kind in TEST_KINDS
     ]
     assert not found, "\n".join(found)
 
