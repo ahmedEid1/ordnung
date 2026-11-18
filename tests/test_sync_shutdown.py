@@ -35,7 +35,7 @@ from ordnung.db import store as store_module
 from ordnung.db.store import Store
 from ordnung.sync import agent as agent_module
 from sync_fake_engine import FakeEngine, FakeSession
-from sync_support import PASSPHRASE, agent_of, computer, connect, eventually, fast_sync
+from sync_support import PASSPHRASE, agent_of, computer, connect, eventually, fast_sync, short_folder_limit
 from test_api_support import lifespan
 
 STILL_RUNNING = "sync: an operation was still running when Ordnung stopped"
@@ -124,6 +124,7 @@ async def test_stopping_waits_for_a_running_engine_call(
 ) -> None:
     """A look at a slow folder outlived its limit and still reads the database when Ordnung stops: the
     stop waits for it, so nothing holds the data folder once the app has stopped."""
+    short_folder_limit(monkeypatch)
     engine = FakeEngine()
     desk = tmp_path / "desk"
     db = Paths(desk).db
@@ -161,10 +162,11 @@ async def test_stopping_waits_for_a_running_engine_call(
 
 
 async def test_stopping_waits_no_longer_than_the_shutdown_limit(
-    tmp_path: Path, folder: Path, caplog: pytest.LogCaptureFixture
+    tmp_path: Path, folder: Path, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A folder that hangs for good never holds up the stop: it waits at most ``SHUTDOWN_PUSH_S``, says
     so in the log and leaves the hung call to its thread (a daemon: it never keeps Ordnung running)."""
+    short_folder_limit(monkeypatch)
     caplog.set_level(logging.WARNING, logger="ordnung.sync")
     engine = FakeEngine()
     desk = tmp_path / "desk"

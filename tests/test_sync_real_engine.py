@@ -18,7 +18,6 @@ from ordnung.sync.local import load_state
 from sync_faults import copy_tree
 from sync_support import (
     PASSPHRASE,
-    REAL_ENGINE_TIMINGS,
     RealEngine,
     agent_of,
     computer,
@@ -34,7 +33,7 @@ pytestmark = pytest.mark.usefixtures("fast")
 
 @pytest.fixture
 def fast(monkeypatch: pytest.MonkeyPatch) -> None:
-    fast_sync(monkeypatch, **REAL_ENGINE_TIMINGS)  # the real engine: see REAL_ENGINE_TIMINGS
+    fast_sync(monkeypatch)
     use_fast_keys(monkeypatch)
 
 
