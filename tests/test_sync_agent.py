@@ -539,8 +539,8 @@ async def test_after_taking_over_this_computer_is_the_one_in_use_at_once(
 async def test_a_waiting_take_over_gives_up_after_its_time(
     tmp_path: Path, folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    # long enough that a slow runner can't spend it before use-here answers (the scan loop looks only every
-    # WAIT_POLL_S = 5 s, so the give-up still comes at the first look after it): 0.3 s once ran out first
+    # long enough that a slow runner can't spend it before use-here answers (0.3 s once ran out first);
+    # once use-here has answered "waiting" the limit drops to 0, so the next look gives up
     monkeypatch.setattr(agent_module, "TAKE_OVER_WAIT_MAX_S", 3.0)
     engine = FakeEngine()
     desk, lap = _dirs(tmp_path)
@@ -548,6 +548,7 @@ async def test_a_waiting_take_over_gives_up_after_its_time(
         await _switch(a, b, folder)
         _withhold_laptop_s(folder)
         assert (await a.client.post("/api/sync/use-here", json={})).json()["take_over_waiting"] is True
+        monkeypatch.setattr(agent_module, "TAKE_OVER_WAIT_MAX_S", 0.0)
         found = await eventually(lambda: agent_of(a)._waiting is None and agent_of(a).summary)
         notices = [notice["code"] for notice in found.notices]
         assert "take_over_cancelled" in notices
