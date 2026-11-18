@@ -724,6 +724,9 @@ async def test_a_hanging_folder_never_holds_up_shutdown(
     tmp_path: Path, folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     short_folder_limit(monkeypatch)
+    # shorter than FAST's 2 s, still longer than the folder call's limit: the last save then gets the lock and
+    # finds the engine busy (below that limit it would give up on the lock, another path)
+    monkeypatch.setattr(agent_module, "SHUTDOWN_PUSH_S", 1.5)
     engine = FakeEngine()
     desk, _ = _dirs(tmp_path)
     started = 0.0
