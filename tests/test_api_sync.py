@@ -8,10 +8,13 @@ from __future__ import annotations
 import logging
 import os
 import re
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
 import pytest
+import pytest_asyncio
 
 from fake_caldav import MemorySecrets
 from helpers_tables import check_rows
@@ -54,6 +57,40 @@ def folder(tmp_path: Path) -> Path:
 @pytest.fixture(scope="module")
 def schema() -> dict[str, Any]:
     return openapi_schema()
+
+
+# Apps that only refuse are built once per module: a refused write never reaches its handler, so no test
+# changes them. The tests that use them run in the module's event loop.
+SHARED_LOOP = pytest.mark.asyncio(loop_scope="module")
+
+
+@asynccontextmanager
+async def _shared_app(tmp_path_factory: pytest.TempPathFactory, **kwargs: Any) -> AsyncIterator[Api]:
+    data_dir = tmp_path_factory.mktemp("shared") / "data"
+    data_dir.mkdir()
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        fast_sync(monkeypatch)
+        async with computer(data_dir, start=False, **kwargs) as api:
+            yield api
+
+
+@pytest_asyncio.fixture(scope="module", loop_scope="module")
+async def not_connected(tmp_path_factory: pytest.TempPathFactory) -> AsyncIterator[Api]:
+    async with _shared_app(tmp_path_factory) as api:
+        yield api
+
+
+@pytest_asyncio.fixture(scope="module", loop_scope="module")
+async def demo(tmp_path_factory: pytest.TempPathFactory) -> AsyncIterator[Api]:
+    async with _shared_app(tmp_path_factory, demo=True) as api:
+        yield api
+
+
+@pytest_asyncio.fixture(scope="module", loop_scope="module")
+async def standing_by(tmp_path_factory: pytest.TempPathFactory) -> AsyncIterator[Api]:
+    async with _shared_app(tmp_path_factory) as api:
+        _standby(api)
+        yield api
 
 
 class _NeverRead(MemorySecrets):
@@ -117,27 +154,29 @@ WRITES = [
 # --------------------------------------------------------------------------------------------------
 
 
+@SHARED_LOOP
 @pytest.mark.parametrize(("method", "path", "body"), WRITES)
-async def test_writes_need_a_connection(data_dir: Path, method: str, path: str, body: Any) -> None:
-    async with computer(data_dir, start=False) as api:
-        response = await api.client.request(method, path, json=body)
-        assert response.status_code == 409, response.text
-        assert response.json() == {"detail": sync.NOT_CONNECTED_MESSAGE, "code": "not_connected"}
+async def test_writes_need_a_connection(not_connected: Api, method: str, path: str, body: Any) -> None:
+    api = not_connected
+    response = await api.client.request(method, path, json=body)
+    assert response.status_code == 409, response.text
+    assert response.json() == {"detail": sync.NOT_CONNECTED_MESSAGE, "code": "not_connected"}
 
 
+@SHARED_LOOP
 @pytest.mark.parametrize(
     ("method", "path", "body"), [*WRITES, ("PUT", "/api/sync", {}), ("DELETE", "/api/sync", None)]
 )
-async def test_the_demo_never_syncs(data_dir: Path, method: str, path: str, body: Any) -> None:
+async def test_the_demo_never_syncs(demo: Api, method: str, path: str, body: Any) -> None:
     payload = {"folder": "/tmp/x", "name": "x", "passphrase": PASSPHRASE} if method == "PUT" else body
-    async with computer(data_dir, start=False, demo=True) as api:
-        response = await api.client.request(method, path, json=payload)
-        assert response.status_code == 409, response.text
-        assert response.json() == {"detail": sync.DEMO_MESSAGE, "code": "unavailable"}
-        kept = await api.client.delete("/api/sync/kept/ordnung-kept-2026-10-07-0912.ordnung-backup")
-        assert kept.status_code == 409 and kept.json()["code"] == "unavailable"
-        found = await status(api)
-        assert (found["available"], found["unavailable"], found["mode"]) == (False, sync.DEMO_MESSAGE, "off")
+    api = demo
+    response = await api.client.request(method, path, json=payload)
+    assert response.status_code == 409, response.text
+    assert response.json() == {"detail": sync.DEMO_MESSAGE, "code": "unavailable"}
+    kept = await api.client.delete("/api/sync/kept/ordnung-kept-2026-10-07-0912.ordnung-backup")
+    assert kept.status_code == 409 and kept.json()["code"] == "unavailable"
+    found = await status(api)
+    assert (found["available"], found["unavailable"], found["mode"]) == (False, sync.DEMO_MESSAGE, "off")
 
 
 async def test_the_demo_s_agent_never_starts(data_dir: Path) -> None:
@@ -191,14 +230,14 @@ async def test_the_status_reads_no_secret_and_lists_no_folder(
 COMPUTER_NAMES_REFUSED = [("", "name"), ("   ", "name"), ("x" * 41, "name"), ("desk\x07", "name")]
 
 
-async def test_a_computer_s_name_must_be_a_name(data_dir: Path, folder: Path) -> None:
+@SHARED_LOOP
+async def test_a_computer_s_name_must_be_a_name(not_connected: Api, folder: Path) -> None:
     answers: list[tuple[str, str, Any]] = []
-    async with computer(data_dir, start=False) as api:  # a refusal writes nothing: one app serves every row
-        for name, code in COMPUTER_NAMES_REFUSED:
-            refused = await api.client.put(
-                "/api/sync", json={"folder": str(folder), "name": name, "passphrase": PASSPHRASE}
-            )
-            answers.append((name, code, refused))
+    for name, code in COMPUTER_NAMES_REFUSED:
+        refused = await not_connected.client.put(
+            "/api/sync", json={"folder": str(folder), "name": name, "passphrase": PASSPHRASE}
+        )
+        answers.append((name, code, refused))
 
     def check(name: str, code: str, refused: Any) -> None:
         assert refused.status_code == 422 and refused.json()["code"] == code
@@ -235,15 +274,15 @@ async def test_a_new_folder_s_passphrase_must_be_strong_and_is_never_echoed_or_l
 FOLDERS_REFUSED = [("relative/folder", "full path"), ("/no/such/parent/Ordnung", "parent folder")]
 
 
-async def test_a_folder_that_can_t_be_used_is_refused(data_dir: Path) -> None:
+@SHARED_LOOP
+async def test_a_folder_that_can_t_be_used_is_refused(not_connected: Api) -> None:
     answers: list[tuple[str, str, Any, Any]] = []
-    async with computer(data_dir, start=False) as api:  # a refusal writes nothing: one app serves every row
-        for value, problem in FOLDERS_REFUSED:
-            info = await api.client.post("/api/sync/inspect", json={"folder": value})
-            refused = await api.client.put(
-                "/api/sync", json={"folder": value, "name": "desk", "passphrase": PASSPHRASE}
-            )
-            answers.append((value, problem, info, refused))
+    for value, problem in FOLDERS_REFUSED:
+        info = await not_connected.client.post("/api/sync/inspect", json={"folder": value})
+        refused = await not_connected.client.put(
+            "/api/sync", json={"folder": value, "name": "desk", "passphrase": PASSPHRASE}
+        )
+        answers.append((value, problem, info, refused))
 
     def check(value: str, problem: str, info: Any, refused: Any) -> None:
         assert (
@@ -335,21 +374,23 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
         metafunc.parametrize("write", _writes(openapi_schema()), ids=lambda op: f"{op[0]} {op[1]}")
 
 
+@SHARED_LOOP
 async def test_every_write_outside_sync_is_refused_while_standing_by(
-    data_dir: Path, write: tuple[str, str]
+    data_dir: Path, standing_by: Api, write: tuple[str, str]
 ) -> None:
     method, template = write
-    async with computer(data_dir, start=False) as api:
-        _standby(api)
-        response = await api.client.request(method, _example(template), json={})
-        if write in sync.ALLOWED_IN_STANDBY:
+    if write in sync.ALLOWED_IN_STANDBY:  # these may write: each gets an app of its own
+        async with computer(data_dir, start=False) as api:
+            _standby(api)
+            response = await api.client.request(method, _example(template), json={})
             assert _code(response) != "standby", response.text
-        else:
-            assert response.status_code == 409, response.text
-            assert response.json() == {
-                "detail": "Ordnung is in use on laptop. Use it here first (Settings → Your computers).",
-                "code": "standby",
-            }
+    else:
+        response = await standing_by.client.request(method, _example(template), json={})
+        assert response.status_code == 409, response.text
+        assert response.json() == {
+            "detail": "Ordnung is in use on laptop. Use it here first (Settings → Your computers).",
+            "code": "standby",
+        }
 
 
 async def test_the_gate_matches_whole_path_segments(data_dir: Path) -> None:
