@@ -23,6 +23,7 @@ import pytest
 from typer.testing import CliRunner
 
 from helpers_secretary import seed_ledger
+from helpers_tables import check_rows
 from ordnung import backup as backups
 from ordnung import clock, durable, sync
 from ordnung.backup import archive
@@ -429,20 +430,22 @@ def test_weak_or_huge_passphrases_are_refused_for_new_backups(
     assert not list(tmp_path.iterdir()) or list(tmp_path.iterdir()) == [life]
 
 
-@pytest.mark.parametrize(
-    "passphrase",
-    [
-        GUESSABLE,
-        "the cat sat on the mat today",
-        "correct horse battery staple",
-        "abcdefghijklmnop",
-        "canyon " * 6,
-    ],
-)
-def test_a_guessable_passphrase_is_refused_for_new_backups(passphrase: str) -> None:
-    assert backups.passphrase_problem(passphrase) == backups.WEAK_PASSPHRASE_MESSAGE
-    assert "can't count this passphrase as strong enough" in backups.WEAK_PASSPHRASE_MESSAGE
-    assert passphrase not in backups.WEAK_PASSPHRASE_MESSAGE
+GUESSABLE_PASSPHRASES = [
+    GUESSABLE,
+    "the cat sat on the mat today",
+    "correct horse battery staple",
+    "abcdefghijklmnop",
+    "canyon " * 6,
+]
+
+
+def test_a_guessable_passphrase_is_refused_for_new_backups() -> None:
+    def check(passphrase: str) -> None:
+        assert backups.passphrase_problem(passphrase) == backups.WEAK_PASSPHRASE_MESSAGE
+        assert "can't count this passphrase as strong enough" in backups.WEAK_PASSPHRASE_MESSAGE
+        assert passphrase not in backups.WEAK_PASSPHRASE_MESSAGE
+
+    check_rows(GUESSABLE_PASSPHRASES, check)
 
 
 def test_a_random_password_from_a_password_manager_protects_a_new_backup() -> None:
@@ -459,13 +462,17 @@ def test_a_random_password_from_a_password_manager_protects_a_new_backup() -> No
 EARLIER_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"
 
 
-@pytest.mark.parametrize(
-    "passphrase", ["fsumn-hqfzc-jgtck-crjwz", "jnkhc-pnbkc-nevya-ngcmd", "k7qmx-3vxdp-9tawr-2emnb"]
-)
-def test_a_passphrase_ordnung_0_1_0_suggested_still_protects_a_new_backup(passphrase: str) -> None:
+EARLIER_SUGGESTIONS = ["fsumn-hqfzc-jgtck-crjwz", "jnkhc-pnbkc-nevya-ngcmd", "k7qmx-3vxdp-9tawr-2emnb"]
+
+
+def test_a_passphrase_ordnung_0_1_0_suggested_still_protects_a_new_backup() -> None:
     """About a third of 0.1.0's suggestions, those with few digits, count as four words (56 bits),
     so a passphrase saved in a password manager was refused after the update."""
-    assert backups.passphrase_problem(passphrase) is None
+
+    def check(passphrase: str) -> None:
+        assert backups.passphrase_problem(passphrase) is None
+
+    check_rows(EARLIER_SUGGESTIONS, check)
 
 
 def test_every_suggestion_ordnung_0_1_0_made_still_protects_a_new_backup() -> None:
@@ -475,18 +482,21 @@ def test_every_suggestion_ordnung_0_1_0_made_still_protects_a_new_backup() -> No
         assert backups.passphrase_problem("-".join(groups)) is None, groups
 
 
-@pytest.mark.parametrize(
-    "passphrase",
-    [
-        "water-water-water-water",
-        "abcde-fghjk-mnpqr-stuvw",
-        "after-these-three-seven",
-    ],
-)
-def test_a_pattern_in_the_shape_of_an_earlier_suggestion_is_still_refused(passphrase: str) -> None:
+PATTERNS_IN_AN_EARLIER_SHAPE = [
+    "water-water-water-water",
+    "abcde-fghjk-mnpqr-stuvw",
+    "after-these-three-seven",
+]
+
+
+def test_a_pattern_in_the_shape_of_an_earlier_suggestion_is_still_refused() -> None:
     """A group again, a run, a keyboard walk or common words: not what 0.1.0 drew."""
-    assert not backups.earlier_suggestion(passphrase)
-    assert backups.passphrase_problem(passphrase) == backups.WEAK_PASSPHRASE_MESSAGE
+
+    def check(passphrase: str) -> None:
+        assert not backups.earlier_suggestion(passphrase)
+        assert backups.passphrase_problem(passphrase) == backups.WEAK_PASSPHRASE_MESSAGE
+
+    check_rows(PATTERNS_IN_AN_EARLIER_SHAPE, check)
 
 
 def test_an_earlier_suggestion_with_a_capital_passes_as_random_characters() -> None:
@@ -497,25 +507,30 @@ def test_an_earlier_suggestion_with_a_capital_passes_as_random_characters() -> N
     assert backups.passphrase_problem("Fsumn-hqfzc-jgtck-crjwz") is None
 
 
-@pytest.mark.parametrize(
-    "passphrase",
-    [
-        "",
-        "short",
-        GUESSABLE,
-        "the cat sat on the mat today",
-        "correct horse battery staple",
-        "correct horse battery staple orbit",
-        "CorrectHorseBatteryStapleMoon",
-        "k7qmx-3vxdp-9tawr-2emnb",
-        PASS,
-        "x" * 1025,
-    ],
-)
-def test_a_new_backup_s_passphrase_meets_the_rule_of_a_new_sync_folder(passphrase: str) -> None:
+PASSPHRASES_FOR_BOTH_RULES = [
+    "",
+    "short",
+    GUESSABLE,
+    "the cat sat on the mat today",
+    "correct horse battery staple",
+    "correct horse battery staple orbit",
+    "CorrectHorseBatteryStapleMoon",
+    "k7qmx-3vxdp-9tawr-2emnb",
+    PASS,
+    "x" * 1025,
+]
+
+
+def test_a_new_backup_s_passphrase_meets_the_rule_of_a_new_sync_folder() -> None:
     """The same estimator and the same threshold: what a new sync folder accepts, a new backup does (and
     a backup also what Ordnung 0.1.0's backup dialog suggested)."""
-    assert (backups.passphrase_problem(passphrase) is None) == (sync.passphrase_problem(passphrase) is None)
+
+    def check(passphrase: str) -> None:
+        assert (backups.passphrase_problem(passphrase) is None) == (
+            sync.passphrase_problem(passphrase) is None
+        )
+
+    check_rows(PASSPHRASES_FOR_BOTH_RULES, check)
 
 
 def test_the_suggested_passphrase_protects_a_new_backup() -> None:
@@ -1194,21 +1209,23 @@ def test_the_new_commands_are_listed() -> None:
         assert command in result.output
 
 
-@pytest.mark.parametrize(
-    ("size", "text"),
-    [
-        (0, "0 bytes"),
-        (999, "999 bytes"),
-        (1000, "1.0 KB"),
-        (10_635_532, "10.6 MB"),
-        (2_400_000_000, "2.4 GB"),
-        (5 * 10**15, "5000.0 TB"),
-    ],
-)
-def test_human_sizes(size: int, text: str) -> None:
-    from ordnung.cli import human_size
+HUMAN_SIZES = [
+    (0, "0 bytes"),
+    (999, "999 bytes"),
+    (1000, "1.0 KB"),
+    (10_635_532, "10.6 MB"),
+    (2_400_000_000, "2.4 GB"),
+    (5 * 10**15, "5000.0 TB"),
+]
 
-    assert human_size(size) == text
+
+def test_human_sizes() -> None:
+    def check(size: int, text: str) -> None:
+        from ordnung.cli import human_size
+
+        assert human_size(size) == text
+
+    check_rows(HUMAN_SIZES, check)
 
 
 def test_restore_check_refuses_a_wrong_passphrase(life: Path, tmp_path: Path) -> None:
