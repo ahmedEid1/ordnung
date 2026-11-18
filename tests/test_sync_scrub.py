@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import contextlib
+import functools
 import importlib
 import json
 import sqlite3
@@ -46,13 +47,25 @@ NOT_META = {"AUTH_STATE_KEY", "LISTENER_KEY", "DEVICE_KEY", "TODAY_KEY", "PAYMEN
 # --------------------------------------------------------------------------------------------------
 
 
+@functools.cache
+def _meta_sources() -> tuple[tuple[Path, ast.Module], ...]:
+    """The parsed modules of ``src/ordnung`` that could name a meta key or touch meta, parsed once: a key
+    constant's name contains ``_KEY`` and a meta access names ``set_meta`` or ``get_meta``, so a file
+    without any of them holds neither (read only)."""
+    parsed = []
+    for path in sorted(SRC.rglob("*.py")):
+        text = path.read_text(encoding="utf-8")
+        if any(word in text for word in ("_KEY", "set_meta", "get_meta")):
+            parsed.append((path, ast.parse(text)))
+    return tuple(parsed)
+
+
 def _key_constants() -> dict[str, str]:
     """Every module-level string constant named like a meta key in ``src/ordnung``."""
     found: dict[str, str] = {}
-    for path in sorted(SRC.rglob("*.py")):
+    for path, tree in _meta_sources():
         if "web" in path.parts:
             continue
-        tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in tree.body:
             if not isinstance(node, ast.Assign) or len(node.targets) != 1:
                 continue
@@ -100,8 +113,7 @@ def test_every_meta_access_uses_a_known_constant() -> None:
         "_SETTINGS_KEY",
         "_INTERRUPTIONS_KEY",
     }
-    for path in sorted(SRC.rglob("*.py")):
-        tree = ast.parse(path.read_text(encoding="utf-8"))
+    for path, tree in _meta_sources():
         for node in ast.walk(tree):
             if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
                 continue
