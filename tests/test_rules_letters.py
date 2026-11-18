@@ -15,6 +15,7 @@ from typing import Any
 
 import pytest
 
+from helpers_tables import check_rows
 from ordnung.models import (
     ComputationReceipt,
     DateSpec,
@@ -117,22 +118,25 @@ def test_a_court_payment_order_is_recognised_from_a_court_sender() -> None:
     assert routing.letter_kind(extraction) == "court_payment_order"
 
 
-@pytest.mark.parametrize(
-    ("title", "period"),
-    [
-        ("European order for payment (Europäischer Zahlungsbefehl)", "binnen 30 Tagen (Art. 16 EuMahnVO)"),
-        ("Europäischer Zahlungsbefehl", "innerhalb von 30 Tagen"),
-        ("Order for payment", "30 Tage, Verordnung (EG) Nr. 1896/2006"),
-    ],
-)
-def test_a_european_order_for_payment_is_no_mahnbescheid(title: str, period: str) -> None:
+A_EUROPEAN_ORDER_FOR_PAYMENT_IS_NO_MAHNBESCHEID = [
+    ("European order for payment (Europäischer Zahlungsbefehl)", "binnen 30 Tagen (Art. 16 EuMahnVO)"),
+    ("Europäischer Zahlungsbefehl", "innerhalb von 30 Tagen"),
+    ("Order for payment", "30 Tage, Verordnung (EG) Nr. 1896/2006"),
+]
+
+
+def test_a_european_order_for_payment_is_no_mahnbescheid() -> None:
     """A European order for payment was filed as a Mahnbescheid — two weeks, a
     Widerspruch, an enforcement order after it. It gives 30 days for an Einspruch at the issuing court (Art. 16
     Abs. 2 VO (EG) 1896/2006), has no Vollstreckungsbescheid, and a late Einspruch needs a review (Art. 20): it
     keeps the model's kind, dated as a court's letter."""
-    court = ExtractedParty(name="Amtsgericht Wedding", kind="authority")
-    remedy = Remedy(type="einspruch", quote="Einspruch", period_text=period)
-    assert routing.classify_letter(reading(title=title, sender=court, remedy=remedy)) is None
+
+    def check(title: str, period: str) -> None:
+        court = ExtractedParty(name="Amtsgericht Wedding", kind="authority")
+        remedy = Remedy(type="einspruch", quote="Einspruch", period_text=period)
+        assert routing.classify_letter(reading(title=title, sender=court, remedy=remedy)) is None
+
+    check_rows(A_EUROPEAN_ORDER_FOR_PAYMENT_IS_NO_MAHNBESCHEID, check)
 
 
 def test_an_enforcement_order_wins_over_the_payment_order_it_mentions() -> None:
@@ -162,62 +166,74 @@ BAILIFF_QUOTE = (
 )
 
 
-@pytest.mark.parametrize(
-    "name",
-    [
-        "Gerichtsvollzieher Klein",
-        "Gerichtskasse Hamm",
-        # the letterhead formula of a bailiff (§ 154 GVG): named after the court they are attached to
-        "Gerichtsvollzieher bei dem Amtsgericht Frankfurt am Main",
-        "Obergerichtsvollzieherin Schmidt, Amtsgericht Köln",
-        "Amtsgericht Hamm – Gerichtskasse",
-    ],
-)
-def test_bailiffs_and_court_cashiers_are_not_courts(name: str) -> None:
-    assert not routing.is_court(name)
-    extraction = reading(
-        title="Vollstreckungsbescheid",
-        sender=ExtractedParty(name=name, kind="authority"),
-        key_facts=[ExtractedFact(label="Titel", value="Vollstreckungsbescheid", quote=BAILIFF_QUOTE)],
-        remedy=EINSPRUCH,  # even a (misread) remedy doesn't make a bailiff a court
-        items=[objection_date(BAILIFF_QUOTE)],
-    )
-    assert routing.classify_letter(extraction) is None
+BAILIFFS_AND_COURT_CASHIERS_ARE_NOT_COURTS = [
+    "Gerichtsvollzieher Klein",
+    "Gerichtskasse Hamm",
+    # the letterhead formula of a bailiff (§ 154 GVG): named after the court they are attached to
+    "Gerichtsvollzieher bei dem Amtsgericht Frankfurt am Main",
+    "Obergerichtsvollzieherin Schmidt, Amtsgericht Köln",
+    "Amtsgericht Hamm – Gerichtskasse",
+]
 
 
-@pytest.mark.parametrize(
-    "name",
-    [
-        "Amtsgericht Kassel",
-        "Landgericht Kassel",
-        "Arbeitsgericht Kassel",
-        "ArbG Kassel",
-        "Sozialgericht Kassel",
-        "SG Kassel",
-        "Bundessozialgericht, Kassel",
-        "Hessischer Verwaltungsgerichtshof Kassel",
-        "Amtsgericht Kassel – Mahnabteilung, Kasseler Straße 1",
-    ],
-)
-def test_a_court_in_kassel_is_a_court(name: str) -> None:
+def test_bailiffs_and_court_cashiers_are_not_courts() -> None:
+    def check(name: str) -> None:
+        assert not routing.is_court(name)
+        extraction = reading(
+            title="Vollstreckungsbescheid",
+            sender=ExtractedParty(name=name, kind="authority"),
+            key_facts=[ExtractedFact(label="Titel", value="Vollstreckungsbescheid", quote=BAILIFF_QUOTE)],
+            remedy=EINSPRUCH,  # even a (misread) remedy doesn't make a bailiff a court
+            items=[objection_date(BAILIFF_QUOTE)],
+        )
+        assert routing.classify_letter(extraction) is None
+
+    check_rows(BAILIFFS_AND_COURT_CASHIERS_ARE_NOT_COURTS, check)
+
+
+A_COURT_IN_KASSEL_IS_A_COURT = [
+    "Amtsgericht Kassel",
+    "Landgericht Kassel",
+    "Arbeitsgericht Kassel",
+    "ArbG Kassel",
+    "Sozialgericht Kassel",
+    "SG Kassel",
+    "Bundessozialgericht, Kassel",
+    "Hessischer Verwaltungsgerichtshof Kassel",
+    "Amtsgericht Kassel – Mahnabteilung, Kasseler Straße 1",
+]
+
+
+def test_a_court_in_kassel_is_a_court() -> None:
     """The court-cashier exclusion matched the place name "Kassel", so every
     court there was an ordinary authority (a labour court's one-week Notfrist came out one week late)."""
-    assert routing.is_court(name, "authority")
-    assert routing.may_be_court(name)
-    extraction = reading(
-        title="Vollstreckungsbescheid",
-        sender=ExtractedParty(name=name, kind="authority"),
-        remedy=EINSPRUCH,
-    )
-    assert routing.classify_letter(extraction) == "enforcement_order"
+
+    def check(name: str) -> None:
+        assert routing.is_court(name, "authority")
+        assert routing.may_be_court(name)
+        extraction = reading(
+            title="Vollstreckungsbescheid",
+            sender=ExtractedParty(name=name, kind="authority"),
+            remedy=EINSPRUCH,
+        )
+        assert routing.classify_letter(extraction) == "enforcement_order"
+
+    check_rows(A_COURT_IN_KASSEL_IS_A_COURT, check)
 
 
-@pytest.mark.parametrize(
-    "name", ["Landesjustizkasse Bamberg", "Kasse des Amtsgerichts Kassel", "Justizkassen Hessen"]
-)
-def test_a_court_cashier_in_any_place_is_no_court(name: str) -> None:
-    assert not routing.is_court(name, "authority")
-    assert not routing.may_be_court(name)
+A_COURT_CASHIER_IN_ANY_PLACE_IS_NO_COURT = [
+    "Landesjustizkasse Bamberg",
+    "Kasse des Amtsgerichts Kassel",
+    "Justizkassen Hessen",
+]
+
+
+def test_a_court_cashier_in_any_place_is_no_court() -> None:
+    def check(name: str) -> None:
+        assert not routing.is_court(name, "authority")
+        assert not routing.may_be_court(name)
+
+    check_rows(A_COURT_CASHIER_IN_ANY_PLACE_IS_NO_COURT, check)
 
 
 def test_a_court_letter_about_something_else_keeps_its_kind() -> None:
@@ -244,128 +260,128 @@ MB_WARNING = (
 MB_OBJECTION = "Sie können binnen zwei Wochen seit der Zustellung dieses Bescheids Widerspruch erheben."
 
 
-@pytest.mark.parametrize(
-    "extraction",
-    [
-        # the title names the order; the quote holds the statutory warning
-        reading(title="Mahnbescheid", sender=COURT, items=[item(MB_WARNING)], remedy=WIDERSPRUCH),
-        reading(
-            title="Court payment order (Mahnbescheid)",
-            summary="The claimant can apply for a Vollstreckungsbescheid after two weeks.",
-            sender=COURT,
-            items=[objection_date(MB_OBJECTION)],
-        ),
-        # an English title alone, with the order named in the letter's own words
-        reading(
-            title="Court payment order from the Amtsgericht",
-            sender=COURT,
-            items=[objection_date(MB_WARNING)],
-        ),
-        # no title signal: the remedy decides
-        reading(title="Letter from the court", sender=COURT, items=[item(MB_WARNING)], remedy=WIDERSPRUCH),
-        # … or the objection date's own wording
-        reading(
-            title="Letter from the court",
-            summary="Mahnbescheid über 1.250,00 EUR.",
-            items=[item(MB_WARNING), objection_date(MB_OBJECTION)],
-            sender=COURT,
-        ),
-        reading(
-            title="Letter from the court",
-            summary="Mahnbescheid über 1.250,00 EUR.",
-            items=[objection_date("binnen zwei Wochen", legal_basis="§ 692 Abs. 1 Nr. 3 ZPO")],
-            sender=COURT,
-        ),
-    ],
-)
-def test_a_mahnbescheid_that_warns_of_the_enforcement_order_is_a_payment_order(
-    extraction: DocumentExtraction,
-) -> None:
-    assert routing.classify_letter(extraction) == "court_payment_order"
+A_MAHNBESCHEID_THAT_WARNS_OF_THE_ENFORCEMENT_ORDER_IS_A_PAYMENT_ORDER = [
+    # the title names the order; the quote holds the statutory warning
+    reading(title="Mahnbescheid", sender=COURT, items=[item(MB_WARNING)], remedy=WIDERSPRUCH),
+    reading(
+        title="Court payment order (Mahnbescheid)",
+        summary="The claimant can apply for a Vollstreckungsbescheid after two weeks.",
+        sender=COURT,
+        items=[objection_date(MB_OBJECTION)],
+    ),
+    # an English title alone, with the order named in the letter's own words
+    reading(
+        title="Court payment order from the Amtsgericht",
+        sender=COURT,
+        items=[objection_date(MB_WARNING)],
+    ),
+    # no title signal: the remedy decides
+    reading(title="Letter from the court", sender=COURT, items=[item(MB_WARNING)], remedy=WIDERSPRUCH),
+    # … or the objection date's own wording
+    reading(
+        title="Letter from the court",
+        summary="Mahnbescheid über 1.250,00 EUR.",
+        items=[item(MB_WARNING), objection_date(MB_OBJECTION)],
+        sender=COURT,
+    ),
+    reading(
+        title="Letter from the court",
+        summary="Mahnbescheid über 1.250,00 EUR.",
+        items=[objection_date("binnen zwei Wochen", legal_basis="§ 692 Abs. 1 Nr. 3 ZPO")],
+        sender=COURT,
+    ),
+]
 
 
-@pytest.mark.parametrize(
-    "extraction",
-    [
-        reading(
-            title="Vollstreckungsbescheid",
-            summary="Auf Grund des Mahnbescheids vom 01.08.2026.",
-            sender=COURT,
-            items=[objection_date("Einspruch binnen zwei Wochen")],
-        ),
-        reading(
-            title="Enforcement order after the payment order",
-            summary="Mahnbescheid vom 01.08.2026",
-            sender=COURT,
-            remedy=EINSPRUCH,
-        ),
-        reading(
-            title="Letter from the court",
-            summary="Mahnbescheid vom 01.08.2026",
-            sender=COURT,
-            remedy=EINSPRUCH,
-        ),
-        reading(
-            title="Letter from the court",
-            sender=COURT,
-            items=[
-                item("Dieser Vollstreckungsbescheid ergeht auf Grund des Mahnbescheids vom 01.08.2026."),
-                objection_date("Gegen diesen Vollstreckungsbescheid kann Einspruch eingelegt werden."),
-            ],
-        ),
-    ],
-)
-def test_an_enforcement_order_is_recognised_by_what_it_is(extraction: DocumentExtraction) -> None:
-    assert routing.classify_letter(extraction) == "enforcement_order"
+def test_a_mahnbescheid_that_warns_of_the_enforcement_order_is_a_payment_order() -> None:
+    def check(extraction: DocumentExtraction) -> None:
+        assert routing.classify_letter(extraction) == "court_payment_order"
+
+    check_rows(A_MAHNBESCHEID_THAT_WARNS_OF_THE_ENFORCEMENT_ORDER_IS_A_PAYMENT_ORDER, check)
 
 
-@pytest.mark.parametrize(
-    "extraction",
-    [
-        # nothing asks the person to answer as the respondent: a notice to the claimant, a bailiff's
-        # quote of the order he enforces, the court's invoice
-        reading(title="Mahnbescheid", sender=COURT),
-        reading(
-            title="Nachricht über die Zustellung des Mahnbescheids",
-            summary="The Mahnbescheid was served on the respondent on 10.09.2026.",
-            sender=COURT,
-            items=[item("Der Mahnbescheid wurde dem Antragsgegner am 10.09.2026 zugestellt.")],
-        ),
-        reading(
-            title="Payment demand",
-            summary="Pay 612 EUR from the Vollstreckungsbescheid of 01.03.2026.",
-            sender=COURT,
-            items=[
-                ExtractedItem(
-                    kind="payment",
-                    title="Pay",
-                    date=DateSpec(
-                        type="relative", anchor="receipt", amount=2, unit="weeks", nature="payment"
-                    ),
-                    quote=BAILIFF_QUOTE,
-                )
-            ],
-        ),
-        # the remedy isn't named by the letter: neither the remedy block nor the objection date says
-        reading(
-            title="Letter from the court",
-            summary="Mahnbescheid vom 01.08.2026",
-            sender=COURT,
-            items=[objection_date("binnen zwei Wochen")],
-        ),
-        # a Vollstreckungsbescheid named outside the Mahnbescheid's warning no longer decides
-        reading(
-            title="Letter from the court",
-            summary="Zahlung aus dem Vollstreckungsbescheid vom 01.03.2025.",
-            sender=COURT,
-            items=[objection_date("binnen zwei Wochen")],
-        ),
-    ],
-)
-def test_a_court_letter_that_doesnt_make_the_person_answer_an_order_is_neither(
-    extraction: DocumentExtraction,
-) -> None:
-    assert routing.classify_letter(extraction) is None
+AN_ENFORCEMENT_ORDER_IS_RECOGNISED_BY_WHAT_IT_IS = [
+    reading(
+        title="Vollstreckungsbescheid",
+        summary="Auf Grund des Mahnbescheids vom 01.08.2026.",
+        sender=COURT,
+        items=[objection_date("Einspruch binnen zwei Wochen")],
+    ),
+    reading(
+        title="Enforcement order after the payment order",
+        summary="Mahnbescheid vom 01.08.2026",
+        sender=COURT,
+        remedy=EINSPRUCH,
+    ),
+    reading(
+        title="Letter from the court",
+        summary="Mahnbescheid vom 01.08.2026",
+        sender=COURT,
+        remedy=EINSPRUCH,
+    ),
+    reading(
+        title="Letter from the court",
+        sender=COURT,
+        items=[
+            item("Dieser Vollstreckungsbescheid ergeht auf Grund des Mahnbescheids vom 01.08.2026."),
+            objection_date("Gegen diesen Vollstreckungsbescheid kann Einspruch eingelegt werden."),
+        ],
+    ),
+]
+
+
+def test_an_enforcement_order_is_recognised_by_what_it_is() -> None:
+    def check(extraction: DocumentExtraction) -> None:
+        assert routing.classify_letter(extraction) == "enforcement_order"
+
+    check_rows(AN_ENFORCEMENT_ORDER_IS_RECOGNISED_BY_WHAT_IT_IS, check)
+
+
+A_COURT_LETTER_THAT_DOESNT_MAKE_THE_PERSON_ANSWER_AN_ORDER_IS_NEITHER = [
+    # nothing asks the person to answer as the respondent: a notice to the claimant, a bailiff's
+    # quote of the order he enforces, the court's invoice
+    reading(title="Mahnbescheid", sender=COURT),
+    reading(
+        title="Nachricht über die Zustellung des Mahnbescheids",
+        summary="The Mahnbescheid was served on the respondent on 10.09.2026.",
+        sender=COURT,
+        items=[item("Der Mahnbescheid wurde dem Antragsgegner am 10.09.2026 zugestellt.")],
+    ),
+    reading(
+        title="Payment demand",
+        summary="Pay 612 EUR from the Vollstreckungsbescheid of 01.03.2026.",
+        sender=COURT,
+        items=[
+            ExtractedItem(
+                kind="payment",
+                title="Pay",
+                date=DateSpec(type="relative", anchor="receipt", amount=2, unit="weeks", nature="payment"),
+                quote=BAILIFF_QUOTE,
+            )
+        ],
+    ),
+    # the remedy isn't named by the letter: neither the remedy block nor the objection date says
+    reading(
+        title="Letter from the court",
+        summary="Mahnbescheid vom 01.08.2026",
+        sender=COURT,
+        items=[objection_date("binnen zwei Wochen")],
+    ),
+    # a Vollstreckungsbescheid named outside the Mahnbescheid's warning no longer decides
+    reading(
+        title="Letter from the court",
+        summary="Zahlung aus dem Vollstreckungsbescheid vom 01.03.2025.",
+        sender=COURT,
+        items=[objection_date("binnen zwei Wochen")],
+    ),
+]
+
+
+def test_a_court_letter_that_doesnt_make_the_person_answer_an_order_is_neither() -> None:
+    def check(extraction: DocumentExtraction) -> None:
+        assert routing.classify_letter(extraction) is None
+
+    check_rows(A_COURT_LETTER_THAT_DOESNT_MAKE_THE_PERSON_ANSWER_AN_ORDER_IS_NEITHER, check)
 
 
 #: A court's later letters about an order: after an objection, to the claimant, and from enforcement.
@@ -409,12 +425,15 @@ FOLLOW_UPS = [
 ]
 
 
-@pytest.mark.parametrize(("title", "quote"), FOLLOW_UPS)
-def test_a_courts_later_letter_about_the_order_is_neither(title: str, quote: str) -> None:
+def test_a_courts_later_letter_about_the_order_is_neither() -> None:
     """They state no remedy of the person's and give no objection date: nothing asks the person to answer
     the order as the respondent (policy 1 (b)), whatever their wording says about it."""
-    extraction = reading(title=title, sender=COURT, items=[item(quote)], key_facts=[_fact(quote)])
-    assert routing.classify_letter(extraction) is None
+
+    def check(title: str, quote: str) -> None:
+        extraction = reading(title=title, sender=COURT, items=[item(quote)], key_facts=[_fact(quote)])
+        assert routing.classify_letter(extraction) is None
+
+    check_rows(FOLLOW_UPS, check)
 
 
 def _fact(quote: str) -> ExtractedFact:
@@ -447,115 +466,127 @@ EINSPRUCH_QUOTE = (
 )
 
 
-@pytest.mark.parametrize(
-    ("title", "quote"),
-    [
-        ("Enforcement order (Vollstreckungsbescheid)", None),
-        ("Enforcement order: you have not objected to the payment order", None),
-        ("Enforcement order after the payment order was served on you", None),
-        ("Vollstreckungsbescheid – the claim was transferred to Inkasso Nord", None),
-        ("Enforcement order (Vollstreckungsbescheid)", "Die Kostenrechnung ist beigefügt."),
-        ("Enforcement order (Vollstreckungsbescheid)", "Ihr Antrag auf Ratenzahlung wurde weitergeleitet."),
-    ],
-)
-def test_a_genuine_enforcement_order_is_never_vetoed_by_what_else_it_says(
-    title: str, quote: str | None
-) -> None:
+A_GENUINE_ENFORCEMENT_ORDER_IS_NEVER_VETOED_BY_WHAT_ELSE_IT_SAYS = [
+    ("Enforcement order (Vollstreckungsbescheid)", None),
+    ("Enforcement order: you have not objected to the payment order", None),
+    ("Enforcement order after the payment order was served on you", None),
+    ("Vollstreckungsbescheid – the claim was transferred to Inkasso Nord", None),
+    ("Enforcement order (Vollstreckungsbescheid)", "Die Kostenrechnung ist beigefügt."),
+    ("Enforcement order (Vollstreckungsbescheid)", "Ihr Antrag auf Ratenzahlung wurde weitergeleitet."),
+]
+
+
+def test_a_genuine_enforcement_order_is_never_vetoed_by_what_else_it_says() -> None:
     """Words a court's later letter may use (objected, served, transferred, costs, "Ihr
     Antrag") no longer hide a genuine Vollstreckungsbescheid and its Notfrist."""
-    extraction = reading(
-        title=title,
-        summary="The court issued an enforcement order for 612 EUR claimed by Inkasso Nord.",
-        sender=ExtractedParty(name="Amtsgericht Hagen", kind="authority"),
-        items=[objection_date(EINSPRUCH_QUOTE)],
-        key_facts=[_fact(quote)] if quote else [],
-        remedy=Remedy(type="einspruch", addressee="Amtsgericht Hagen", quote=EINSPRUCH_QUOTE),
-    )
-    assert routing.classify_letter(extraction) == "enforcement_order"
+
+    def check(title: str, quote: str | None) -> None:
+        extraction = reading(
+            title=title,
+            summary="The court issued an enforcement order for 612 EUR claimed by Inkasso Nord.",
+            sender=ExtractedParty(name="Amtsgericht Hagen", kind="authority"),
+            items=[objection_date(EINSPRUCH_QUOTE)],
+            key_facts=[_fact(quote)] if quote else [],
+            remedy=Remedy(type="einspruch", addressee="Amtsgericht Hagen", quote=EINSPRUCH_QUOTE),
+        )
+        assert routing.classify_letter(extraction) == "enforcement_order"
+
+    check_rows(A_GENUINE_ENFORCEMENT_ORDER_IS_NEVER_VETOED_BY_WHAT_ELSE_IT_SAYS, check)
 
 
-@pytest.mark.parametrize(
-    "name",
-    [
-        "Amtsgericht Hagen",
-        "Geschäftsstelle des Amtsgerichts Hagen",
-        "AG Hagen",
-        "Geschäftsstelle des AG Hagen",
-        "Zentrales Mahngericht Berlin-Brandenburg",
-        "Landgericht Köln",
-        "Kammergericht",
-        "Sozialgericht Berlin",
-        "Verwaltungsgerichtshof Baden-Württemberg",
-        "Bundesgerichtshof",
-    ],
-)
-def test_courts_are_recognised_by_their_kind_in_any_case_or_abbreviated(name: str) -> None:
-    assert routing.is_court(name, "authority") and not routing.is_labour_court(name, "authority")
-    # a name of unknown kind (a recipient typed in) is a court by its full name only
-    assert routing.is_court(name) is (" AG " not in f" {name} ")
+COURTS_ARE_RECOGNISED_BY_THEIR_KIND_IN_ANY_CASE_OR_ABBREVIATED = [
+    "Amtsgericht Hagen",
+    "Geschäftsstelle des Amtsgerichts Hagen",
+    "AG Hagen",
+    "Geschäftsstelle des AG Hagen",
+    "Zentrales Mahngericht Berlin-Brandenburg",
+    "Landgericht Köln",
+    "Kammergericht",
+    "Sozialgericht Berlin",
+    "Verwaltungsgerichtshof Baden-Württemberg",
+    "Bundesgerichtshof",
+]
 
 
-@pytest.mark.parametrize(
-    "name",
-    [
-        # a word ending in "gericht" is a dish, not a court
-        "Lieblingsgericht GmbH",
-        "Leibgericht Catering",
-        "Fertiggericht Express",
-        # a company's "AG", and abbreviations that are also clubs or collecting societies
-        "Allianz AG",
-        "Allianz AG Hamburg",
-        "Allianz Versicherungs-AG, Berlin",
-        "VG Wort",
-        "SG Dynamo Dresden",
-        "BAG Wohnungslosenhilfe e.V.",
-    ],
-)
-def test_business_names_are_not_courts(name: str) -> None:
-    assert not routing.is_court(name)
-    for kind in ("company", "gym", "retailer"):  # an abbreviation counts only from an authority (or other)
-        assert not routing.is_court(name, kind)
+def test_courts_are_recognised_by_their_kind_in_any_case_or_abbreviated() -> None:
+    def check(name: str) -> None:
+        assert routing.is_court(name, "authority") and not routing.is_labour_court(name, "authority")
+        # a name of unknown kind (a recipient typed in) is a court by its full name only
+        assert routing.is_court(name) is (" AG " not in f" {name} ")
+
+    check_rows(COURTS_ARE_RECOGNISED_BY_THEIR_KIND_IN_ANY_CASE_OR_ABBREVIATED, check)
 
 
-@pytest.mark.parametrize(
-    ("name", "labour"),
-    [
-        ("SG Berlin", False),
-        ("VG Minden", False),
-        ("Geschäftsstelle des VG Berlin", False),
-        ("BGH", False),
-        ("BSG, 1. Senat", False),
-        ("BVerwG Leipzig", False),
-        ("BAG", True),
-        ("Bundesverfassungsgericht", False),
-        ("Verfassungsgerichtshof des Landes Berlin", False),
-        ("Staatsgerichtshof des Landes Hessen", False),
-    ],
-)
-def test_social_administrative_federal_and_constitutional_courts_are_courts(name: str, labour: bool) -> None:
+BUSINESS_NAMES_ARE_NOT_COURTS = [
+    # a word ending in "gericht" is a dish, not a court
+    "Lieblingsgericht GmbH",
+    "Leibgericht Catering",
+    "Fertiggericht Express",
+    # a company's "AG", and abbreviations that are also clubs or collecting societies
+    "Allianz AG",
+    "Allianz AG Hamburg",
+    "Allianz Versicherungs-AG, Berlin",
+    "VG Wort",
+    "SG Dynamo Dresden",
+    "BAG Wohnungslosenhilfe e.V.",
+]
+
+
+def test_business_names_are_not_courts() -> None:
+    def check(name: str) -> None:
+        assert not routing.is_court(name)
+        for kind in (
+            "company",
+            "gym",
+            "retailer",
+        ):  # an abbreviation counts only from an authority (or other)
+            assert not routing.is_court(name, kind)
+
+    check_rows(BUSINESS_NAMES_ARE_NOT_COURTS, check)
+
+
+SOCIAL_ADMINISTRATIVE_FEDERAL_AND_CONSTITUTIONAL_COURTS_ARE_COURTS = [
+    ("SG Berlin", False),
+    ("VG Minden", False),
+    ("Geschäftsstelle des VG Berlin", False),
+    ("BGH", False),
+    ("BSG, 1. Senat", False),
+    ("BVerwG Leipzig", False),
+    ("BAG", True),
+    ("Bundesverfassungsgericht", False),
+    ("Verfassungsgerichtshof des Landes Berlin", False),
+    ("Staatsgerichtshof des Landes Hessen", False),
+]
+
+
+def test_social_administrative_federal_and_constitutional_courts_are_courts() -> None:
     """The courts "SG Berlin" and "VG Minden", read as authorities, got the VwVfG delivery fiction and a
     later date than the court's own (a Gerichtsbescheid served on 15 Sep: 15 Oct, not 19 Oct)."""
-    assert routing.is_court(name, "authority") and routing.is_court(name, "other")
-    assert routing.is_labour_court(name, "authority") is labour
-    spec = DateSpec(
-        type="relative",
-        anchor="deemed_delivery",
-        amount=1,
-        unit="months",
-        delivery_rule="de_admin_post",
-        nature="objection",
-        text="Berufung innerhalb eines Monats nach Zustellung",
-    )
-    ctx = RuleContext(
-        today=date(2026, 9, 20),
-        document_date=date(2026, 9, 14),
-        delivery_scope="vwvfg",
-        sender_kind="authority",
-        court=routing.is_court(name, "authority"),
-    )
-    receipt = compute_due(spec, ctx)
-    assert receipt.due_date == "2026-10-14" and receipt.confidence != "high"
-    assert "posting_day" not in receipt.rule_ids and "zpo_180" in receipt.rule_ids
+
+    def check(name: str, labour: bool) -> None:
+        assert routing.is_court(name, "authority") and routing.is_court(name, "other")
+        assert routing.is_labour_court(name, "authority") is labour
+        spec = DateSpec(
+            type="relative",
+            anchor="deemed_delivery",
+            amount=1,
+            unit="months",
+            delivery_rule="de_admin_post",
+            nature="objection",
+            text="Berufung innerhalb eines Monats nach Zustellung",
+        )
+        ctx = RuleContext(
+            today=date(2026, 9, 20),
+            document_date=date(2026, 9, 14),
+            delivery_scope="vwvfg",
+            sender_kind="authority",
+            court=routing.is_court(name, "authority"),
+        )
+        receipt = compute_due(spec, ctx)
+        assert receipt.due_date == "2026-10-14" and receipt.confidence != "high"
+        assert "posting_day" not in receipt.rule_ids and "zpo_180" in receipt.rule_ids
+
+    check_rows(SOCIAL_ADMINISTRATIVE_FEDERAL_AND_CONSTITUTIONAL_COURTS_ARE_COURTS, check)
 
 
 def test_a_payment_order_that_explains_the_hand_over_is_still_one() -> None:
@@ -578,24 +609,27 @@ def _termination(**kw: Any) -> DocumentExtraction:
     return reading(change=change, **kw)
 
 
-@pytest.mark.parametrize(
-    "quote",
-    [
-        "Der Antragsgegner hat gegen den Mahnbescheid keinen Widerspruch erhoben.",
-        "Der Antragsgegner hat nicht rechtzeitig Widerspruch erhoben.",
-        "Da der Antragsgegner keinen Widerspruch erhoben hat, ergeht dieser Vollstreckungsbescheid.",
-    ],
-)
-def test_an_enforcement_order_that_says_why_it_was_issued_is_one(quote: str) -> None:
+AN_ENFORCEMENT_ORDER_THAT_SAYS_WHY_IT_WAS_ISSUED_IS_ONE = [
+    "Der Antragsgegner hat gegen den Mahnbescheid keinen Widerspruch erhoben.",
+    "Der Antragsgegner hat nicht rechtzeitig Widerspruch erhoben.",
+    "Da der Antragsgegner keinen Widerspruch erhoben hat, ergeht dieser Vollstreckungsbescheid.",
+]
+
+
+def test_an_enforcement_order_that_says_why_it_was_issued_is_one() -> None:
     """Why a Vollstreckungsbescheid is issued — no objection was raised — is not a notice that the other
     side objected (a letter to the claimant)."""
-    extraction = reading(
-        title="Enforcement order (Vollstreckungsbescheid)",
-        sender=COURT,
-        remedy=EINSPRUCH,
-        key_facts=[ExtractedFact(label="Grund", value="kein Widerspruch", quote=quote)],
-    )
-    assert routing.classify_letter(extraction) == "enforcement_order"
+
+    def check(quote: str) -> None:
+        extraction = reading(
+            title="Enforcement order (Vollstreckungsbescheid)",
+            sender=COURT,
+            remedy=EINSPRUCH,
+            key_facts=[ExtractedFact(label="Grund", value="kein Widerspruch", quote=quote)],
+        )
+        assert routing.classify_letter(extraction) == "enforcement_order"
+
+    check_rows(AN_ENFORCEMENT_ORDER_THAT_SAYS_WHY_IT_WAS_ISSUED_IS_ONE, check)
 
 
 LABOUR_COURT = ExtractedParty(name="Arbeitsgericht Berlin", kind="authority")
@@ -651,26 +685,28 @@ def test_a_rent_increase_that_asks_for_consent_is_recognised() -> None:
     )
 
 
-@pytest.mark.parametrize(
-    ("quote", "summary"),
-    [
-        (
-            "Die Miete erhöht sich zum 01.01.2027 auf 820,00 EUR.",
-            "The rent rises in line with the consumer price index, as set out in your rental agreement.",
-        ),
-        ("Die Miete erhöht sich zum 01.01.2027 auf 820,00 EUR.", "As agreed in the lease's graduated rent."),
-        (
-            "Die monatliche Vorauszahlung wird ab Januar auf 250,00 EUR angepasst.",
-            "The operating-cost prepayment rises after the statement. You don't need to agree.",
-        ),
-        (
-            "Wir passen die Vorauszahlung nach § 560 Abs. 4 BGB an; Ihrer Zustimmung bedarf es nicht.",
-            "Your prepayments are adjusted.",
-        ),
-    ],
-)
-def test_english_prose_never_makes_an_increase_a_consent_request(quote: str, summary: str) -> None:
-    assert routing.classify_letter(_increase(quote, summary=summary)) is None
+ENGLISH_PROSE_NEVER_MAKES_AN_INCREASE_A_CONSENT_REQUEST = [
+    (
+        "Die Miete erhöht sich zum 01.01.2027 auf 820,00 EUR.",
+        "The rent rises in line with the consumer price index, as set out in your rental agreement.",
+    ),
+    ("Die Miete erhöht sich zum 01.01.2027 auf 820,00 EUR.", "As agreed in the lease's graduated rent."),
+    (
+        "Die monatliche Vorauszahlung wird ab Januar auf 250,00 EUR angepasst.",
+        "The operating-cost prepayment rises after the statement. You don't need to agree.",
+    ),
+    (
+        "Wir passen die Vorauszahlung nach § 560 Abs. 4 BGB an; Ihrer Zustimmung bedarf es nicht.",
+        "Your prepayments are adjusted.",
+    ),
+]
+
+
+def test_english_prose_never_makes_an_increase_a_consent_request() -> None:
+    def check(quote: str, summary: str) -> None:
+        assert routing.classify_letter(_increase(quote, summary=summary)) is None
+
+    check_rows(ENGLISH_PROSE_NEVER_MAKES_AN_INCREASE_A_CONSENT_REQUEST, check)
 
 
 def test_consent_must_be_asked_for_in_the_letters_own_wording() -> None:
@@ -686,35 +722,38 @@ def test_consent_must_be_asked_for_in_the_letters_own_wording() -> None:
     assert routing.classify_letter(request) == "rent_increase"
 
 
-@pytest.mark.parametrize(
-    ("quote", "title"),
-    [
-        (
-            "Bitte stimmen Sie der Erhöhung der Nettokaltmiete auf 780 € ab dem 01.12.2026 zu. Die "
-            "Betriebskostenvorauszahlung wird nicht erhöht.",
-            "Mieterhöhungsverlangen",
-        ),
-        (
-            "Bitte stimmen Sie der Erhöhung der Nettokaltmiete auf 780 € ab dem 01.12.2026 zu.",
-            "Rent increase request and adjustment of operating-cost prepayments",
-        ),
-        (
-            "Hiermit verlangen wir Ihre Zustimmung zur Erhöhung der Nettokaltmiete auf 780 €; die Vorauszahlungen "
-            "werden angepasst.",
-            "Mieterhöhung",
-        ),
-        ("Wir bitten Sie, Ihre Zustimmung zu erteilen; die Vorauszahlung wird erhöht.", "Mieterhöhung"),
-        ("Ihre Zustimmung zur Mieterhöhung; die Vorauszahlung wird auf 250 € erhöht.", "Mieterhöhung"),
-        # the increase's own quote asks for consent, whatever statute it names: a § 559 increase never asks
-        ("Die Miete steigt nach § 559 BGB; bitte stimmen Sie der Vergleichsmiete zu.", "Rent increase"),
-    ],
-)
-def test_the_usual_ways_of_asking_for_consent_make_a_rent_increase_request(quote: str, title: str) -> None:
+THE_USUAL_WAYS_OF_ASKING_FOR_CONSENT_MAKE_A_RENT_INCREASE_REQUEST = [
+    (
+        "Bitte stimmen Sie der Erhöhung der Nettokaltmiete auf 780 € ab dem 01.12.2026 zu. Die "
+        "Betriebskostenvorauszahlung wird nicht erhöht.",
+        "Mieterhöhungsverlangen",
+    ),
+    (
+        "Bitte stimmen Sie der Erhöhung der Nettokaltmiete auf 780 € ab dem 01.12.2026 zu.",
+        "Rent increase request and adjustment of operating-cost prepayments",
+    ),
+    (
+        "Hiermit verlangen wir Ihre Zustimmung zur Erhöhung der Nettokaltmiete auf 780 €; die Vorauszahlungen "
+        "werden angepasst.",
+        "Mieterhöhung",
+    ),
+    ("Wir bitten Sie, Ihre Zustimmung zu erteilen; die Vorauszahlung wird erhöht.", "Mieterhöhung"),
+    ("Ihre Zustimmung zur Mieterhöhung; die Vorauszahlung wird auf 250 € erhöht.", "Mieterhöhung"),
+    # the increase's own quote asks for consent, whatever statute it names: a § 559 increase never asks
+    ("Die Miete steigt nach § 559 BGB; bitte stimmen Sie der Vergleichsmiete zu.", "Rent increase"),
+]
+
+
+def test_the_usual_ways_of_asking_for_consent_make_a_rent_increase_request() -> None:
     """The words "Bitte stimmen Sie … zu" and "verlangen wir Ihre Zustimmung" were not read as
     asking for consent, and "die Vorauszahlung wird nicht erhöht" read as a prepayment increase — the letter
     was not filed as a § 558 request, and its new rent looked like a plain payment."""
-    facts = [ExtractedFact(label="Mietspiegel", value="Mietspiegel 2025", quote="Mietspiegel 2025")]
-    assert routing.classify_letter(_increase(quote, title=title, key_facts=facts)) == "rent_increase"
+
+    def check(quote: str, title: str) -> None:
+        facts = [ExtractedFact(label="Mietspiegel", value="Mietspiegel 2025", quote="Mietspiegel 2025")]
+        assert routing.classify_letter(_increase(quote, title=title, key_facts=facts)) == "rent_increase"
+
+    check_rows(THE_USUAL_WAYS_OF_ASKING_FOR_CONSENT_MAKE_A_RENT_INCREASE_REQUEST, check)
 
 
 def test_a_prepayment_that_is_not_raised_is_no_cost_increase() -> None:
@@ -726,16 +765,18 @@ def test_a_prepayment_that_is_not_raised_is_no_cost_increase() -> None:
     assert routing.classify_letter(raised) is None  # a § 560 adjustment: no consent asked for
 
 
-@pytest.mark.parametrize(
-    "text",
-    [
-        "Die Staffelmiete erhöht sich gemäß Vertrag; Ihre Zustimmung ist nicht nötig.",
-        "Anpassung der Indexmiete an den Verbraucherpreisindex (Zustimmung nicht erforderlich)",
-        "Mieterhöhung nach Modernisierung gemäß § 559 BGB, Zustimmung entbehrlich",
-    ],
-)
-def test_increases_that_need_no_consent_are_not_consent_requests(text: str) -> None:
-    assert routing.classify_letter(_increase(text)) is None
+INCREASES_THAT_NEED_NO_CONSENT_ARE_NOT_CONSENT_REQUESTS = [
+    "Die Staffelmiete erhöht sich gemäß Vertrag; Ihre Zustimmung ist nicht nötig.",
+    "Anpassung der Indexmiete an den Verbraucherpreisindex (Zustimmung nicht erforderlich)",
+    "Mieterhöhung nach Modernisierung gemäß § 559 BGB, Zustimmung entbehrlich",
+]
+
+
+def test_increases_that_need_no_consent_are_not_consent_requests() -> None:
+    def check(text: str) -> None:
+        assert routing.classify_letter(_increase(text)) is None
+
+    check_rows(INCREASES_THAT_NEED_NO_CONSENT_ARE_NOT_CONSENT_REQUESTS, check)
 
 
 #: A § 558 request as it is written: the new total with the prepayment, what happens without consent.
@@ -745,193 +786,210 @@ REQUEST = (
 )
 
 
-@pytest.mark.parametrize(
-    "extra",
-    [
-        {
-            "key_facts": [
-                ExtractedFact(
-                    label="Operating-cost advance payment",
-                    value="180,00 EUR",
-                    quote="Betriebskostenvorauszahlung 180,00 EUR",
-                )
-            ]
-        },
-        {
-            "summary": "The prepayment for operating costs stays at 180 EUR. If you do not agree by 31 Dec, the "
-            "landlord can sue for consent."
-        },
-        {
-            "key_facts": [
-                ExtractedFact(
-                    label="Klage",
-                    value="Klage auf Zustimmung",
-                    quote="Sollten Sie bis zum 31.12.2026 keine Zustimmung erteilen, müsste ich auf Zustimmung klagen.",
-                )
-            ]
-        },
-        {
-            "key_facts": [
-                ExtractedFact(
-                    label="Klage",
-                    value="Klage",
-                    quote="Sollten Sie Ihre Zustimmung nicht erteilen, werde ich Klage erheben.",
-                )
-            ]
-        },
-        {
-            "key_facts": [
-                ExtractedFact(label="Ausstattung", value="Bad modernisiert", quote="Bad 2012 modernisiert")
-            ]
-        },
-        {"title": "Rent increase request (rent index)"},
-    ],
-)
-def test_a_real_consent_request_is_recognised_whatever_else_it_says(extra: dict[str, Any]) -> None:
-    extraction = _increase(REQUEST, **extra)
-    assert routing.classify_letter(extraction) == "rent_increase"
+A_REAL_CONSENT_REQUEST_IS_RECOGNISED_WHATEVER_ELSE_IT_SAYS = [
+    {
+        "key_facts": [
+            ExtractedFact(
+                label="Operating-cost advance payment",
+                value="180,00 EUR",
+                quote="Betriebskostenvorauszahlung 180,00 EUR",
+            )
+        ]
+    },
+    {
+        "summary": "The prepayment for operating costs stays at 180 EUR. If you do not agree by 31 Dec, the "
+        "landlord can sue for consent."
+    },
+    {
+        "key_facts": [
+            ExtractedFact(
+                label="Klage",
+                value="Klage auf Zustimmung",
+                quote="Sollten Sie bis zum 31.12.2026 keine Zustimmung erteilen, müsste ich auf Zustimmung klagen.",
+            )
+        ]
+    },
+    {
+        "key_facts": [
+            ExtractedFact(
+                label="Klage",
+                value="Klage",
+                quote="Sollten Sie Ihre Zustimmung nicht erteilen, werde ich Klage erheben.",
+            )
+        ]
+    },
+    {
+        "key_facts": [
+            ExtractedFact(label="Ausstattung", value="Bad modernisiert", quote="Bad 2012 modernisiert")
+        ]
+    },
+    {"title": "Rent increase request (rent index)"},
+]
 
 
-@pytest.mark.parametrize(
-    ("quote", "extra"),
-    [
-        # the increase's own quote or the title names another kind of increase
-        ("Die Staffelmiete erhöht sich; wir bitten um Zustimmung zur Kenntnisnahme.", {}),
-        (REQUEST, {"title": "Rent increase after modernisation (§ 559 BGB)"}),
-        (REQUEST, {"title": "Index rent adjustment"}),
-        (
-            "Die Betriebskostenvorauszahlung wird ab 01.01.2027 auf 250,00 EUR erhöht; Zustimmung nicht nötig.",
-            {},
-        ),
-        # a quote says consent isn't needed
-        (
-            "Die Miete steigt zum 01.01.2027 (Mietspiegel).",
-            {"key_facts": [ExtractedFact(label="x", value="y", quote="Ihrer Zustimmung bedarf es nicht.")]},
-        ),
-    ],
-)
-def test_other_increases_are_still_not_consent_requests(quote: str, extra: dict[str, Any]) -> None:
-    assert routing.classify_letter(_increase(quote, **extra)) is None
+def test_a_real_consent_request_is_recognised_whatever_else_it_says() -> None:
+    def check(extra: dict[str, Any]) -> None:
+        extraction = _increase(REQUEST, **extra)
+        assert routing.classify_letter(extraction) == "rent_increase"
+
+    check_rows(A_REAL_CONSENT_REQUEST_IS_RECOGNISED_WHATEVER_ELSE_IT_SAYS, check)
 
 
-@pytest.mark.parametrize(
-    ("quote", "title"),
-    [
-        (
-            "Nach der Modernisierung des Bades bitten wir Sie, der Erhöhung der Miete auf die ortsübliche "
-            "Vergleichsmiete von 800,00 € zuzustimmen.",
-            "Rent increase request",
-        ),
-        (
-            "Wir bitten um Ihre Zustimmung zur Mieterhöhung auf 800,00 € gemäß § 558 BGB.",
-            "Rent increase to local comparative rent after modernisation of the bathroom",
-        ),
-    ],
-)
-def test_a_consent_request_that_mentions_a_modernisation_is_one(quote: str, title: str) -> None:
+OTHER_INCREASES_ARE_STILL_NOT_CONSENT_REQUESTS = [
+    # the increase's own quote or the title names another kind of increase
+    ("Die Staffelmiete erhöht sich; wir bitten um Zustimmung zur Kenntnisnahme.", {}),
+    (REQUEST, {"title": "Rent increase after modernisation (§ 559 BGB)"}),
+    (REQUEST, {"title": "Index rent adjustment"}),
+    (
+        "Die Betriebskostenvorauszahlung wird ab 01.01.2027 auf 250,00 EUR erhöht; Zustimmung nicht nötig.",
+        {},
+    ),
+    # a quote says consent isn't needed
+    (
+        "Die Miete steigt zum 01.01.2027 (Mietspiegel).",
+        {"key_facts": [ExtractedFact(label="x", value="y", quote="Ihrer Zustimmung bedarf es nicht.")]},
+    ),
+]
+
+
+def test_other_increases_are_still_not_consent_requests() -> None:
+    def check(quote: str, extra: dict[str, Any]) -> None:
+        assert routing.classify_letter(_increase(quote, **extra)) is None
+
+    check_rows(OTHER_INCREASES_ARE_STILL_NOT_CONSENT_REQUESTS, check)
+
+
+A_CONSENT_REQUEST_THAT_MENTIONS_A_MODERNISATION_IS_ONE = [
+    (
+        "Nach der Modernisierung des Bades bitten wir Sie, der Erhöhung der Miete auf die ortsübliche "
+        "Vergleichsmiete von 800,00 € zuzustimmen.",
+        "Rent increase request",
+    ),
+    (
+        "Wir bitten um Ihre Zustimmung zur Mieterhöhung auf 800,00 € gemäß § 558 BGB.",
+        "Rent increase to local comparative rent after modernisation of the bathroom",
+    ),
+]
+
+
+def test_a_consent_request_that_mentions_a_modernisation_is_one() -> None:
     """A § 558 request that names a modernised bathroom (a Mietspiegel feature)
     wasn't filed as a rent increase — no consent to-do, and "Pay" offered on the new rent, which can count as
     consent (§ 558b Abs. 1 BGB)."""
-    assert routing.classify_letter(_increase(quote, title=title)) == "rent_increase"
+
+    def check(quote: str, title: str) -> None:
+        assert routing.classify_letter(_increase(quote, title=title)) == "rent_increase"
+
+    check_rows(A_CONSENT_REQUEST_THAT_MENTIONS_A_MODERNISATION_IS_ONE, check)
 
 
-@pytest.mark.parametrize(
-    ("quote", "title"),
-    [
-        (  # the standard sentence of § 558 Abs. 1 S. 3 BGB
-            "Gemäß § 558 BGB bitten wir um Zustimmung zur Erhöhung der Nettokaltmiete auf 780,00 € (Erhöhungen "
-            "nach §§ 559 bis 560 BGB bleiben unberücksichtigt).",
-            "Rent increase request",
-        ),
-        (
-            "Wir bitten um Zustimmung zur Mieterhöhung auf 780 € (§ 558 BGB). Die neue Gesamtmiete inkl. "
-            "Vorauszahlungen steigt auf 950 €.",
-            "Rent increase request",
-        ),
-        (
-            "Wir bitten um Ihre Zustimmung zur Erhöhung auf die ortsübliche Vergleichsmiete, die Vorauszahlungen "
-            "werden angepasst.",
-            "Rent increase",
-        ),
-        (REQUEST, "Rent increase and adjustment of operating cost prepayments"),
-        (
-            "Gemäß § 558 BGB bitten wir um Ihre Zustimmung; zugleich passen wir die Vorauszahlungen nach § 560 BGB "
-            "an.",
-            "Rent increase",
-        ),
-    ],
-)
-def test_a_consent_request_that_mentions_prepayments_or_559_560_is_one(quote: str, title: str) -> None:
+A_CONSENT_REQUEST_THAT_MENTIONS_PREPAYMENTS_OR_559_560_IS_ONE = [
+    (  # the standard sentence of § 558 Abs. 1 S. 3 BGB
+        "Gemäß § 558 BGB bitten wir um Zustimmung zur Erhöhung der Nettokaltmiete auf 780,00 € (Erhöhungen "
+        "nach §§ 559 bis 560 BGB bleiben unberücksichtigt).",
+        "Rent increase request",
+    ),
+    (
+        "Wir bitten um Zustimmung zur Mieterhöhung auf 780 € (§ 558 BGB). Die neue Gesamtmiete inkl. "
+        "Vorauszahlungen steigt auf 950 €.",
+        "Rent increase request",
+    ),
+    (
+        "Wir bitten um Ihre Zustimmung zur Erhöhung auf die ortsübliche Vergleichsmiete, die Vorauszahlungen "
+        "werden angepasst.",
+        "Rent increase",
+    ),
+    (REQUEST, "Rent increase and adjustment of operating cost prepayments"),
+    (
+        "Gemäß § 558 BGB bitten wir um Ihre Zustimmung; zugleich passen wir die Vorauszahlungen nach § 560 BGB "
+        "an.",
+        "Rent increase",
+    ),
+]
+
+
+def test_a_consent_request_that_mentions_prepayments_or_559_560_is_one() -> None:
     """A § 558 request whose own quote or title also named the prepayments or
     §§ 559–560 wasn't filed as a rent increase — no consent to-do (§ 558b Abs. 2 BGB), no note that paying the
     new rent can count as consent, and its start not held to the third month (§ 558b Abs. 1 BGB)."""
-    assert routing.classify_letter(_increase(quote, title=title)) == "rent_increase"
+
+    def check(quote: str, title: str) -> None:
+        assert routing.classify_letter(_increase(quote, title=title)) == "rent_increase"
+
+    check_rows(A_CONSENT_REQUEST_THAT_MENTIONS_PREPAYMENTS_OR_559_560_IS_ONE, check)
 
 
-@pytest.mark.parametrize(
-    ("quote", "title"),
-    [
-        ("Die Betriebskostenvorauszahlung wird ab 01.01.2027 auf 250,00 EUR erhöht.", "Rent increase"),
-        ("Die Miete steigt nach § 560 BGB (Mietspiegel beachtet).", "Rent increase"),
-        ("Die Miete steigt ab 01.01.2027 (Mietspiegel 2025).", "Adjustment of your prepayments"),
-    ],
-)
-def test_prepayments_or_559_560_without_a_consent_request_are_none(quote: str, title: str) -> None:
-    assert routing.classify_letter(_increase(quote, title=title)) is None
+PREPAYMENTS_OR_559_560_WITHOUT_A_CONSENT_REQUEST_ARE_NONE = [
+    ("Die Betriebskostenvorauszahlung wird ab 01.01.2027 auf 250,00 EUR erhöht.", "Rent increase"),
+    ("Die Miete steigt nach § 560 BGB (Mietspiegel beachtet).", "Rent increase"),
+    ("Die Miete steigt ab 01.01.2027 (Mietspiegel 2025).", "Adjustment of your prepayments"),
+]
 
 
-@pytest.mark.parametrize(
-    ("quote", "title"),
-    [
-        ("Mieterhöhung nach Modernisierung: Die Miete steigt ab 01.01.2027 um 80,00 EUR.", "Rent increase"),
-        ("Modernisierungsmieterhöhung zum 01.01.2027", "Rent increase"),
-        ("Die Miete steigt ab 01.01.2027 um 80,00 EUR.", "Rent increase after modernisation"),
-        (REQUEST, "Rent increase after modernisation (§ 559 BGB)"),
-    ],
-)
-def test_a_modernisation_increase_without_its_own_consent_request_is_none(quote: str, title: str) -> None:
+def test_prepayments_or_559_560_without_a_consent_request_are_none() -> None:
+    def check(quote: str, title: str) -> None:
+        assert routing.classify_letter(_increase(quote, title=title)) is None
+
+    check_rows(PREPAYMENTS_OR_559_560_WITHOUT_A_CONSENT_REQUEST_ARE_NONE, check)
+
+
+A_MODERNISATION_INCREASE_WITHOUT_ITS_OWN_CONSENT_REQUEST_IS_NONE = [
+    ("Mieterhöhung nach Modernisierung: Die Miete steigt ab 01.01.2027 um 80,00 EUR.", "Rent increase"),
+    ("Modernisierungsmieterhöhung zum 01.01.2027", "Rent increase"),
+    ("Die Miete steigt ab 01.01.2027 um 80,00 EUR.", "Rent increase after modernisation"),
+    (REQUEST, "Rent increase after modernisation (§ 559 BGB)"),
+]
+
+
+def test_a_modernisation_increase_without_its_own_consent_request_is_none() -> None:
     """A modernisation increase needs no consent (§ 559 BGB) — even when another quote mentions the rent
     index; only the increase's own request for consent makes a modernisation a § 558 feature."""
-    elsewhere = [ExtractedFact(label="Mietspiegel", value="Mietspiegel 2025", quote="laut Mietspiegel 2025")]
-    assert routing.classify_letter(_increase(quote, title=title, key_facts=elsewhere)) is None
+
+    def check(quote: str, title: str) -> None:
+        elsewhere = [
+            ExtractedFact(label="Mietspiegel", value="Mietspiegel 2025", quote="laut Mietspiegel 2025")
+        ]
+        assert routing.classify_letter(_increase(quote, title=title, key_facts=elsewhere)) is None
+
+    check_rows(A_MODERNISATION_INCREASE_WITHOUT_ITS_OWN_CONSENT_REQUEST_IS_NONE, check)
 
 
 def test_a_price_increase_without_a_consent_request_keeps_its_kind() -> None:
     assert routing.classify_letter(_increase("Die Miete steigt ab 1. Januar.")) is None
 
 
-@pytest.mark.parametrize(
-    ("sender", "kind", "title", "quote", "named"),
-    [
-        # a Jobcenter asking for the statement doesn't send one
-        (
-            "authority",
-            "other",
-            "Request for documents",
-            "bittet Sie, Ihre Nebenkostenabrechnung 2025 einzureichen",
-            False,
-        ),
-        # a letter that only mentions one, with no tenancy and no billing period
-        ("company", "other", "Offer", "Sparen Sie bei der Nebenkostenabrechnung", False),
-        # a metering company's heating statement names its billing period
-        (
-            "company",
-            "other",
-            "Ihre Abrechnung",
-            "Heizkostenabrechnung für den Abrechnungszeitraum 2025",
-            True,
-        ),
-        # a landlord's statement
-        ("landlord", "other", "Letter", "anbei die Nebenkostenabrechnung", True),
-    ],
-)
-def test_a_statement_needs_a_tenancy_or_a_billing_period(
-    sender: str, kind: str, title: str, quote: str, named: bool
-) -> None:
-    extraction = reading(
-        kind=kind, title=title, sender=ExtractedParty(name="Absender", kind=sender), items=[item(quote)]
-    )
-    assert routing.names_statement(extraction) is named
+A_STATEMENT_NEEDS_A_TENANCY_OR_A_BILLING_PERIOD = [
+    # a Jobcenter asking for the statement doesn't send one
+    (
+        "authority",
+        "other",
+        "Request for documents",
+        "bittet Sie, Ihre Nebenkostenabrechnung 2025 einzureichen",
+        False,
+    ),
+    # a letter that only mentions one, with no tenancy and no billing period
+    ("company", "other", "Offer", "Sparen Sie bei der Nebenkostenabrechnung", False),
+    # a metering company's heating statement names its billing period
+    (
+        "company",
+        "other",
+        "Ihre Abrechnung",
+        "Heizkostenabrechnung für den Abrechnungszeitraum 2025",
+        True,
+    ),
+    # a landlord's statement
+    ("landlord", "other", "Letter", "anbei die Nebenkostenabrechnung", True),
+]
+
+
+def test_a_statement_needs_a_tenancy_or_a_billing_period() -> None:
+    def check(sender: str, kind: str, title: str, quote: str, named: bool) -> None:
+        extraction = reading(
+            kind=kind, title=title, sender=ExtractedParty(name="Absender", kind=sender), items=[item(quote)]
+        )
+        assert routing.names_statement(extraction) is named
+
+    check_rows(A_STATEMENT_NEEDS_A_TENANCY_OR_A_BILLING_PERIOD, check)
 
 
 def test_an_operating_cost_statement_is_recognised_on_read_only() -> None:
@@ -967,45 +1025,44 @@ ENGLISH_COURT = ExtractedParty(name="Local Court of Hagen, Central Dunning Court
 EMPLOYER = ExtractedParty(name="Café Kranz", kind="employer")
 
 
-@pytest.mark.parametrize(
-    ("extraction", "kind"),
-    [
-        (
-            reading(title="Court payment order", sender=ENGLISH_COURT, remedy=WIDERSPRUCH),
-            "court_payment_order",
-        ),
-        # a court order whose reading has no remedy and no objection date
-        (reading(title="Vollstreckungsbescheid", sender=COURT), "enforcement_order"),
-        # a reading without a sender, and a court's full name read as a company
-        (reading(title="Mahnbescheid", remedy=WIDERSPRUCH), "court_payment_order"),
-        (
-            reading(title="Mahnbescheid", sender=ExtractedParty(name="Amtsgericht Hagen", kind="company")),
-            "court_payment_order",
-        ),
-        # terminations the reading doesn't record, or whose contract says nothing
-        (reading(kind="employment", title="Termination of your employment", sender=EMPLOYER), "dismissal"),
-        (
-            reading(
-                kind="rent_lease", title="Notice", contract=ExtractedContract(name="Lease", category="rent")
-            ),
-            "landlord_notice",
-        ),
-        (_termination(kind="contract", contract=ExtractedContract(name="Vertrag")), "landlord_notice"),
-        # a consent request the reading doesn't quote in German
-        (_increase("Please agree to the new rent of 880 EUR from 1 January."), "rent_increase"),
-    ],
-)
-def test_the_kind_the_model_names_is_filed_when_code_reads_none(
-    extraction: DocumentExtraction, kind: str
-) -> None:
+THE_KIND_THE_MODEL_NAMES_IS_FILED_WHEN_CODE_READS_NONE = [
+    (
+        reading(title="Court payment order", sender=ENGLISH_COURT, remedy=WIDERSPRUCH),
+        "court_payment_order",
+    ),
+    # a court order whose reading has no remedy and no objection date
+    (reading(title="Vollstreckungsbescheid", sender=COURT), "enforcement_order"),
+    # a reading without a sender, and a court's full name read as a company
+    (reading(title="Mahnbescheid", remedy=WIDERSPRUCH), "court_payment_order"),
+    (
+        reading(title="Mahnbescheid", sender=ExtractedParty(name="Amtsgericht Hagen", kind="company")),
+        "court_payment_order",
+    ),
+    # terminations the reading doesn't record, or whose contract says nothing
+    (reading(kind="employment", title="Termination of your employment", sender=EMPLOYER), "dismissal"),
+    (
+        reading(kind="rent_lease", title="Notice", contract=ExtractedContract(name="Lease", category="rent")),
+        "landlord_notice",
+    ),
+    (_termination(kind="contract", contract=ExtractedContract(name="Vertrag")), "landlord_notice"),
+    # a consent request the reading doesn't quote in German
+    (_increase("Please agree to the new rent of 880 EUR from 1 January."), "rent_increase"),
+]
+
+
+def test_the_kind_the_model_names_is_filed_when_code_reads_none() -> None:
     """ADR 0010 point 5: the model names the letter's kind itself, and code files it when its own policy
     reads none and nothing in the reading rules it out — the misses ADR 0010 had accepted (a court named only
     in English, an order read without its remedy, a termination the reading doesn't record). A reading that
     names no kind (every reading before prompt version 9) keeps code's result."""
-    assert routing.classify_letter(extraction) is None
-    assert routing.classify_letter(naming(extraction, None)) is None
-    assert routing.classify_letter(naming(extraction, kind)) == kind
-    assert routing.letter_kind(naming(extraction, kind)) == kind
+
+    def check(extraction: DocumentExtraction, kind: str) -> None:
+        assert routing.classify_letter(extraction) is None
+        assert routing.classify_letter(naming(extraction, None)) is None
+        assert routing.classify_letter(naming(extraction, kind)) == kind
+        assert routing.letter_kind(naming(extraction, kind)) == kind
+
+    check_rows(THE_KIND_THE_MODEL_NAMES_IS_FILED_WHEN_CODE_READS_NONE, check)
 
 
 def test_the_kind_code_reads_stands_when_the_model_names_the_same() -> None:
@@ -1015,32 +1072,31 @@ def test_the_kind_code_reads_stands_when_the_model_names_the_same() -> None:
     assert routing.classify_letter(naming(notice, "landlord_notice")) == "landlord_notice"
 
 
-@pytest.mark.parametrize(
-    ("extraction", "named", "kind"),
-    [
-        (
-            reading(title="Vollstreckungsbescheid", sender=COURT, remedy=EINSPRUCH),
-            "court_payment_order",
-            "enforcement_order",
-        ),
-        # an employer ending the lease of a company flat
-        (
-            _termination(
-                contract=ExtractedContract(name="Werkmietwohnung", category="rent"), sender=EMPLOYER
-            ),
-            "dismissal",
-            "landlord_notice",
-        ),
-        (_increase("Wir bitten um Ihre Zustimmung zur Mieterhöhung."), "landlord_notice", "rent_increase"),
-        (_termination(kind="rent_lease"), "operating_costs", "landlord_notice"),
-    ],
-)
-def test_when_code_and_the_model_name_different_kinds_codes_is_filed(
-    extraction: DocumentExtraction, named: str, kind: str
-) -> None:
+WHEN_CODE_AND_THE_MODEL_NAME_DIFFERENT_KINDS_CODES_IS_FILED = [
+    (
+        reading(title="Vollstreckungsbescheid", sender=COURT, remedy=EINSPRUCH),
+        "court_payment_order",
+        "enforcement_order",
+    ),
+    # an employer ending the lease of a company flat
+    (
+        _termination(contract=ExtractedContract(name="Werkmietwohnung", category="rent"), sender=EMPLOYER),
+        "dismissal",
+        "landlord_notice",
+    ),
+    (_increase("Wir bitten um Ihre Zustimmung zur Mieterhöhung."), "landlord_notice", "rent_increase"),
+    (_termination(kind="rent_lease"), "operating_costs", "landlord_notice"),
+]
+
+
+def test_when_code_and_the_model_name_different_kinds_codes_is_filed() -> None:
     """Code's kind is the structured decision: it wins a disagreement."""
-    assert routing.classify_letter(extraction) == kind
-    assert routing.classify_letter(naming(extraction, named)) == kind
+
+    def check(extraction: DocumentExtraction, named: str, kind: str) -> None:
+        assert routing.classify_letter(extraction) == kind
+        assert routing.classify_letter(naming(extraction, named)) == kind
+
+    check_rows(WHEN_CODE_AND_THE_MODEL_NAME_DIFFERENT_KINDS_CODES_IS_FILED, check)
 
 
 @pytest.mark.parametrize("named", ["court_payment_order", "enforcement_order"])
@@ -1080,80 +1136,82 @@ def test_the_models_court_order_is_vetoed_for_a_european_order_for_payment(
     assert routing.classify_letter(naming(order, named)) is None
 
 
-@pytest.mark.parametrize(
-    ("extraction", "named"),
-    [
-        (
-            _termination(
-                kind="employment", contract=ExtractedContract(name="Jobticket", category="transport")
-            ),
-            "dismissal",
-        ),
-        (
-            reading(kind="employment", contract=ExtractedContract(name="Fitnessstudio", category="gym")),
-            "dismissal",
-        ),
-        (
-            reading(kind="rent_lease", contract=ExtractedContract(name="Fitnessstudio", category="gym")),
-            "landlord_notice",
-        ),
-        (
-            reading(sender=EMPLOYER, contract=ExtractedContract(name="Werkmietwohnung", category="rent")),
-            "dismissal",
-        ),
-        (
-            reading(
-                kind="employment", contract=ExtractedContract(name="Arbeitsvertrag", category="employment")
-            ),
-            "landlord_notice",
-        ),
-    ],
-)
-def test_the_models_termination_is_vetoed_by_a_contract_of_another_category(
-    extraction: DocumentExtraction, named: str
-) -> None:
+THE_MODELS_TERMINATION_IS_VETOED_BY_A_CONTRACT_OF_ANOTHER_CATEGORY = [
+    (
+        _termination(kind="employment", contract=ExtractedContract(name="Jobticket", category="transport")),
+        "dismissal",
+    ),
+    (
+        reading(kind="employment", contract=ExtractedContract(name="Fitnessstudio", category="gym")),
+        "dismissal",
+    ),
+    (
+        reading(kind="rent_lease", contract=ExtractedContract(name="Fitnessstudio", category="gym")),
+        "landlord_notice",
+    ),
+    (
+        reading(sender=EMPLOYER, contract=ExtractedContract(name="Werkmietwohnung", category="rent")),
+        "dismissal",
+    ),
+    (
+        reading(kind="employment", contract=ExtractedContract(name="Arbeitsvertrag", category="employment")),
+        "landlord_notice",
+    ),
+]
+
+
+def test_the_models_termination_is_vetoed_by_a_contract_of_another_category() -> None:
     """The contract the reading names decides first, as for code's own kind: a job ticket or a gym ends
     neither a job nor a tenancy, a tenancy no job and a job no tenancy."""
-    assert routing.classify_letter(naming(extraction, named)) is None
+
+    def check(extraction: DocumentExtraction, named: str) -> None:
+        assert routing.classify_letter(naming(extraction, named)) is None
+
+    check_rows(THE_MODELS_TERMINATION_IS_VETOED_BY_A_CONTRACT_OF_ANOTHER_CATEGORY, check)
 
 
-@pytest.mark.parametrize(
-    ("quote", "title"),
-    [
-        ("Die Staffelmiete erhöht sich zum 01.01.2027 auf 820,00 EUR.", "Rent increase"),
-        ("Die Miete erhöht sich zum 01.01.2027 auf 820,00 EUR.", "Index rent adjustment"),
-        ("Anpassung der Betriebskostenvorauszahlung ab 01.01.2027 auf 250,00 EUR.", "Rent increase"),
-        ("Die Miete steigt ab 01.01.2027 um 80,00 EUR.", "Rent increase after modernisation"),
-        ("Die Miete steigt zum 01.01.2027; Ihrer Zustimmung bedarf es nicht.", "Rent increase"),
-    ],
-)
-def test_the_models_rent_increase_is_vetoed_when_it_needs_no_consent(quote: str, title: str) -> None:
-    increase = naming(_increase(quote, title=title), "rent_increase")
-    assert routing.classify_letter(increase) is None
-    assert routing.letter_kind(increase) == "rent_lease"
+THE_MODELS_RENT_INCREASE_IS_VETOED_WHEN_IT_NEEDS_NO_CONSENT = [
+    ("Die Staffelmiete erhöht sich zum 01.01.2027 auf 820,00 EUR.", "Rent increase"),
+    ("Die Miete erhöht sich zum 01.01.2027 auf 820,00 EUR.", "Index rent adjustment"),
+    ("Anpassung der Betriebskostenvorauszahlung ab 01.01.2027 auf 250,00 EUR.", "Rent increase"),
+    ("Die Miete steigt ab 01.01.2027 um 80,00 EUR.", "Rent increase after modernisation"),
+    ("Die Miete steigt zum 01.01.2027; Ihrer Zustimmung bedarf es nicht.", "Rent increase"),
+]
 
 
-@pytest.mark.parametrize(
-    "fact",
-    [
-        "Die Miete ist als Indexmiete (§ 557b BGB) vereinbart; maßgeblich ist der Verbraucherpreisindex.",
-        "Mieterhöhung nach Modernisierung gemäß § 559 BGB: 8 % der aufgewendeten Kosten.",
-    ],
-)
-def test_the_models_rent_increase_is_vetoed_by_another_kind_anywhere_in_its_quotes(fact: str) -> None:
+def test_the_models_rent_increase_is_vetoed_when_it_needs_no_consent() -> None:
+    def check(quote: str, title: str) -> None:
+        increase = naming(_increase(quote, title=title), "rent_increase")
+        assert routing.classify_letter(increase) is None
+        assert routing.letter_kind(increase) == "rent_lease"
+
+    check_rows(THE_MODELS_RENT_INCREASE_IS_VETOED_WHEN_IT_NEEDS_NO_CONSENT, check)
+
+
+THE_MODELS_RENT_INCREASE_IS_VETOED_BY_ANOTHER_KIND_ANYWHERE_IN_ITS_QUOTES = [
+    "Die Miete ist als Indexmiete (§ 557b BGB) vereinbart; maßgeblich ist der Verbraucherpreisindex.",
+    "Mieterhöhung nach Modernisierung gemäß § 559 BGB: 8 % der aufgewendeten Kosten.",
+]
+
+
+def test_the_models_rent_increase_is_vetoed_by_another_kind_anywhere_in_its_quotes() -> None:
     """Index rent or a modernisation increase named only in a key fact, while nothing quoted asks for consent:
     filed as a § 558 request it would be dated a month late (§ 557b Abs. 3 S. 3 BGB) and called optional
     (§ 559b Abs. 2 BGB), so the model's kind gives way. Asking for consent anywhere keeps it."""
-    quote = "Die monatliche Nettokaltmiete erhöht sich daher ab dem 01.11.2026 auf 668,00 EUR."
-    increase = _increase(
-        quote,
-        title="Rent adjustment for your flat",
-        key_facts=[ExtractedFact(label="Grundlage", value="Indexmiete", quote=fact)],
-    )
-    assert routing.classify_letter(naming(increase, "rent_increase")) is None
-    asks = ExtractedFact(label="Bitte", value="Zustimmung", quote="Wir bitten Sie um Ihre Zustimmung.")
-    asking = increase.model_copy(update={"key_facts": [*increase.key_facts, asks]})
-    assert routing.classify_letter(naming(asking, "rent_increase")) == "rent_increase"
+
+    def check(fact: str) -> None:
+        quote = "Die monatliche Nettokaltmiete erhöht sich daher ab dem 01.11.2026 auf 668,00 EUR."
+        increase = _increase(
+            quote,
+            title="Rent adjustment for your flat",
+            key_facts=[ExtractedFact(label="Grundlage", value="Indexmiete", quote=fact)],
+        )
+        assert routing.classify_letter(naming(increase, "rent_increase")) is None
+        asks = ExtractedFact(label="Bitte", value="Zustimmung", quote="Wir bitten Sie um Ihre Zustimmung.")
+        asking = increase.model_copy(update={"key_facts": [*increase.key_facts, asks]})
+        assert routing.classify_letter(naming(asking, "rent_increase")) == "rent_increase"
+
+    check_rows(THE_MODELS_RENT_INCREASE_IS_VETOED_BY_ANOTHER_KIND_ANYWHERE_IN_ITS_QUOTES, check)
 
 
 def test_the_models_operating_cost_statement_is_recognised_on_read_and_never_filed() -> None:
@@ -1180,18 +1238,18 @@ def _notice(quote: str, *, end: str | None = None, **kw: Any) -> DocumentExtract
     return reading(kind="rent_lease", change=change, **kw)
 
 
-@pytest.mark.parametrize(
-    ("quote", "end"),
-    [
-        ("Hiermit kündigen wir das Mietverhältnis fristlos wegen Zahlungsverzugs.", None),
-        ("kündigen wir außerordentlich gemäß § 543 Abs. 2 S. 1 Nr. 3 BGB", "2026-09-30"),
-        ("Wir kündigen ohne Einhaltung einer Kündigungsfrist (§ 569 Abs. 3 BGB).", "2026-10-31"),
-    ],
-)
-def test_a_notice_without_notice_period_is_recognised_from_its_own_wording(
-    quote: str, end: str | None
-) -> None:
-    assert routing.extraordinary_notice(_notice(quote, end=end))
+A_NOTICE_WITHOUT_NOTICE_PERIOD_IS_RECOGNISED_FROM_ITS_OWN_WORDING = [
+    ("Hiermit kündigen wir das Mietverhältnis fristlos wegen Zahlungsverzugs.", None),
+    ("kündigen wir außerordentlich gemäß § 543 Abs. 2 S. 1 Nr. 3 BGB", "2026-09-30"),
+    ("Wir kündigen ohne Einhaltung einer Kündigungsfrist (§ 569 Abs. 3 BGB).", "2026-10-31"),
+]
+
+
+def test_a_notice_without_notice_period_is_recognised_from_its_own_wording() -> None:
+    def check(quote: str, end: str | None) -> None:
+        assert routing.extraordinary_notice(_notice(quote, end=end))
+
+    check_rows(A_NOTICE_WITHOUT_NOTICE_PERIOD_IS_RECOGNISED_FROM_ITS_OWN_WORDING, check)
 
 
 ORDINARY_EIGENBEDARF = (
@@ -1200,142 +1258,142 @@ ORDINARY_EIGENBEDARF = (
 )
 
 
-@pytest.mark.parametrize(
-    "extraction",
-    [
-        # the model's summary says what the notice is not
-        _notice(
-            ORDINARY_EIGENBEDARF,
-            end="2027-03-31",
-            summary="Your landlord gives ordinary notice for personal use, not a notice without notice period.",
-        ),
-        # an ordinary notice for arrears that only reserves a notice without notice period
-        _notice(
-            "Hiermit kündige ich das Mietverhältnis ordentlich und fristgerecht zum 31.03.2027 (§ 573 Abs. 2 "
-            "Nr. 1 BGB).",
-            end="2027-03-31",
-            key_facts=[
-                ExtractedFact(
-                    label="Vorbehalt",
-                    value="fristlose Kündigung vorbehalten",
-                    quote="Eine fristlose Kündigung wegen des Zahlungsverzugs behalten wir uns ausdrücklich vor.",
-                )
-            ],
-        ),
-        # … or says so in the termination's own sentence
-        _notice(
-            "Wir kündigen ordentlich zum 31.03.2027; eine fristlose Kündigung bleibt vorbehalten.",
-            end="2027-03-31",
-        ),
-        _notice("Wir behalten uns vor, das Mietverhältnis fristlos zu kündigen.", end=None),
-        _notice(
-            "Dies ist keine fristlose Kündigung; das Mietverhältnis endet am 31.03.2027.", end="2027-03-31"
-        ),
-        _notice(ORDINARY_EIGENBEDARF, end="2027-03-31", title="Ordinary notice, not without notice"),
-        # a special termination with the statutory period: §§ 574–574c apply (§ 575a Abs. 2 BGB)
-        _notice(
-            "kündigen wir das Mietverhältnis außerordentlich mit der gesetzlichen Frist gemäß § 57a ZVG zum "
-            "31.03.2027",
-            end="2027-03-31",
-        ),
-        _notice("Sonderkündigung gemäß § 111 InsO außerordentlich zum 31.12.2026", end="2026-12-31"),
-        # "fristlos" with the tenancy ending months later: unsure, so the objection to-do is kept
-        _notice("Wir kündigen fristlos; räumen Sie die Wohnung bis zum 31.03.2027.", end="2027-03-31"),
-        _notice("Wir kündigen fristlos.", end="2027-03-31", document_date=None),
-    ],
-)
-def test_a_notice_is_only_without_notice_period_when_its_own_wording_says_so(
-    extraction: DocumentExtraction,
-) -> None:
-    assert not routing.extraordinary_notice(extraction)
-    assert (
-        routing.derived_deadlines(
-            "landlord_notice", end=routing.announced_end(extraction), letter_date=D("2026-09-20")
+A_NOTICE_IS_ONLY_WITHOUT_NOTICE_PERIOD_WHEN_ITS_OWN_WORDING_SAYS_SO = [
+    # the model's summary says what the notice is not
+    _notice(
+        ORDINARY_EIGENBEDARF,
+        end="2027-03-31",
+        summary="Your landlord gives ordinary notice for personal use, not a notice without notice period.",
+    ),
+    # an ordinary notice for arrears that only reserves a notice without notice period
+    _notice(
+        "Hiermit kündige ich das Mietverhältnis ordentlich und fristgerecht zum 31.03.2027 (§ 573 Abs. 2 "
+        "Nr. 1 BGB).",
+        end="2027-03-31",
+        key_facts=[
+            ExtractedFact(
+                label="Vorbehalt",
+                value="fristlose Kündigung vorbehalten",
+                quote="Eine fristlose Kündigung wegen des Zahlungsverzugs behalten wir uns ausdrücklich vor.",
+            )
+        ],
+    ),
+    # … or says so in the termination's own sentence
+    _notice(
+        "Wir kündigen ordentlich zum 31.03.2027; eine fristlose Kündigung bleibt vorbehalten.",
+        end="2027-03-31",
+    ),
+    _notice("Wir behalten uns vor, das Mietverhältnis fristlos zu kündigen.", end=None),
+    _notice("Dies ist keine fristlose Kündigung; das Mietverhältnis endet am 31.03.2027.", end="2027-03-31"),
+    _notice(ORDINARY_EIGENBEDARF, end="2027-03-31", title="Ordinary notice, not without notice"),
+    # a special termination with the statutory period: §§ 574–574c apply (§ 575a Abs. 2 BGB)
+    _notice(
+        "kündigen wir das Mietverhältnis außerordentlich mit der gesetzlichen Frist gemäß § 57a ZVG zum "
+        "31.03.2027",
+        end="2027-03-31",
+    ),
+    _notice("Sonderkündigung gemäß § 111 InsO außerordentlich zum 31.12.2026", end="2026-12-31"),
+    # "fristlos" with the tenancy ending months later: unsure, so the objection to-do is kept
+    _notice("Wir kündigen fristlos; räumen Sie die Wohnung bis zum 31.03.2027.", end="2027-03-31"),
+    _notice("Wir kündigen fristlos.", end="2027-03-31", document_date=None),
+]
+
+
+def test_a_notice_is_only_without_notice_period_when_its_own_wording_says_so() -> None:
+    def check(extraction: DocumentExtraction) -> None:
+        assert not routing.extraordinary_notice(extraction)
+        assert (
+            routing.derived_deadlines(
+                "landlord_notice", end=routing.announced_end(extraction), letter_date=D("2026-09-20")
+            )
+            or routing.announced_end(extraction) is None
         )
-        or routing.announced_end(extraction) is None
-    )
+
+    check_rows(A_NOTICE_IS_ONLY_WITHOUT_NOTICE_PERIOD_WHEN_ITS_OWN_WORDING_SAYS_SO, check)
 
 
-@pytest.mark.parametrize(
-    ("quote", "title"),
-    [
-        # § 573d BGB is headed "Außerordentliche Kündigung mit gesetzlicher Frist": heirs and a buyer at a
-        # forced sale write it so, often without an end ("zum nächstmöglichen Zeitpunkt")
-        (
-            "Wir kündigen das Mietverhältnis außerordentlich mit gesetzlicher Kündigungsfrist zum nächstmöglichen "
-            "Zeitpunkt.",
-            "Kündigung des Mietverhältnisses",
-        ),
-        ("Als Erben kündigen wir das Mietverhältnis außerordentlich mit gesetzlicher Frist.", "Kündigung"),
-        ("Wir kündigen außerordentlich unter Wahrung der gesetzlichen Frist.", "Kündigung"),
-        # … and the model's English title of one
-        (
-            "Als Erbin kündige ich das Mietverhältnis außerordentlich zum nächstmöglichen Termin.",
-            "Extraordinary termination of your tenancy with statutory notice (heirs)",
-        ),
-        (
-            "Als Erbin kündige ich das Mietverhältnis außerordentlich zum nächstmöglichen Termin.",
-            "Extraordinary notice of termination (heir, statutory period)",
-        ),
-    ],
-)
-def test_a_special_termination_with_the_statutory_period_keeps_the_hardship_objection(
-    quote: str, title: str
-) -> None:
+A_SPECIAL_TERMINATION_WITH_THE_STATUTORY_PERIOD_KEEPS_THE_HARDSHIP_OBJECTION = [
+    # § 573d BGB is headed "Außerordentliche Kündigung mit gesetzlicher Frist": heirs and a buyer at a
+    # forced sale write it so, often without an end ("zum nächstmöglichen Zeitpunkt")
+    (
+        "Wir kündigen das Mietverhältnis außerordentlich mit gesetzlicher Kündigungsfrist zum nächstmöglichen "
+        "Zeitpunkt.",
+        "Kündigung des Mietverhältnisses",
+    ),
+    ("Als Erben kündigen wir das Mietverhältnis außerordentlich mit gesetzlicher Frist.", "Kündigung"),
+    ("Wir kündigen außerordentlich unter Wahrung der gesetzlichen Frist.", "Kündigung"),
+    # … and the model's English title of one
+    (
+        "Als Erbin kündige ich das Mietverhältnis außerordentlich zum nächstmöglichen Termin.",
+        "Extraordinary termination of your tenancy with statutory notice (heirs)",
+    ),
+    (
+        "Als Erbin kündige ich das Mietverhältnis außerordentlich zum nächstmöglichen Termin.",
+        "Extraordinary notice of termination (heir, statutory period)",
+    ),
+]
+
+
+def test_a_special_termination_with_the_statutory_period_keeps_the_hardship_objection() -> None:
     """The words "außerordentlich mit gesetzlicher Frist" (§ 573d BGB) are no notice without notice
     period, even with no end stated — the hardship objection applies to it (§ 574 Abs. 1 BGB), so the card
     and the composer (both :func:`~ordnung.rules.routing.extraordinary_notice`) offer it."""
-    assert not routing.extraordinary_notice(_notice(quote, end=None, title=title))
-    # the same letter said fristlos is one
-    assert routing.extraordinary_notice(_notice("Wir kündigen das Mietverhältnis fristlos.", end=None))
+
+    def check(quote: str, title: str) -> None:
+        assert not routing.extraordinary_notice(_notice(quote, end=None, title=title))
+        # the same letter said fristlos is one
+        assert routing.extraordinary_notice(_notice("Wir kündigen das Mietverhältnis fristlos.", end=None))
+
+    check_rows(A_SPECIAL_TERMINATION_WITH_THE_STATUTORY_PERIOD_KEEPS_THE_HARDSHIP_OBJECTION, check)
 
 
-@pytest.mark.parametrize(
-    ("quote", "title"),
-    [
-        # the usual arrears notice: the statutory period belongs to the notice given in the alternative
-        (
-            "Hiermit kündigen wir das Mietverhältnis fristlos wegen Zahlungsverzugs, hilfsweise ordentlich unter "
-            "Einhaltung der gesetzlichen Kündigungsfrist zum 31.12.2026.",
-            "Kündigung des Mietverhältnisses",
-        ),
-        (
-            "Hiermit kündigen wir das Mietverhältnis fristlos. Hilfsweise kündigen wir ordentlich mit der "
-            "gesetzlichen Frist.",
-            "Kündigung des Mietverhältnisses",
-        ),
-        (
-            "Wir kündigen fristlos, vorsorglich auch ordentlich unter Wahrung der gesetzlichen Frist.",
-            "Kündigung",
-        ),
-        ("Wir kündigen fristlos.", "Termination without notice, alternatively with statutory notice"),
-        # a statutory period the wording denies
-        (
-            "Hiermit kündigen wir fristlos wegen Zahlungsverzugs.",
-            "Termination of tenancy without statutory notice",
-        ),
-        ("fristlos wegen Zahlungsverzugs", "Termination without statutory notice period"),
-        ("Wir kündigen fristlos und nicht mit der gesetzlichen Frist.", "Kündigung"),
-    ],
-)
-def test_a_statutory_period_of_the_alternative_notice_or_denied_keeps_it_without_notice_period(
-    quote: str, title: str
-) -> None:
+A_STATUTORY_PERIOD_OF_THE_ALTERNATIVE_NOTICE_OR_DENIED_KEEPS_IT_WITHOUT_NOTICE_PERIOD = [
+    # the usual arrears notice: the statutory period belongs to the notice given in the alternative
+    (
+        "Hiermit kündigen wir das Mietverhältnis fristlos wegen Zahlungsverzugs, hilfsweise ordentlich unter "
+        "Einhaltung der gesetzlichen Kündigungsfrist zum 31.12.2026.",
+        "Kündigung des Mietverhältnisses",
+    ),
+    (
+        "Hiermit kündigen wir das Mietverhältnis fristlos. Hilfsweise kündigen wir ordentlich mit der "
+        "gesetzlichen Frist.",
+        "Kündigung des Mietverhältnisses",
+    ),
+    (
+        "Wir kündigen fristlos, vorsorglich auch ordentlich unter Wahrung der gesetzlichen Frist.",
+        "Kündigung",
+    ),
+    ("Wir kündigen fristlos.", "Termination without notice, alternatively with statutory notice"),
+    # a statutory period the wording denies
+    (
+        "Hiermit kündigen wir fristlos wegen Zahlungsverzugs.",
+        "Termination of tenancy without statutory notice",
+    ),
+    ("fristlos wegen Zahlungsverzugs", "Termination without statutory notice period"),
+    ("Wir kündigen fristlos und nicht mit der gesetzlichen Frist.", "Kündigung"),
+]
+
+
+def test_a_statutory_period_of_the_alternative_notice_or_denied_keeps_it_without_notice_period() -> None:
     """The words "mit der gesetzlichen Frist" and "statutory notice" make a special termination only
     when they are said of the notice itself — not of the notice given in the alternative (after *hilfsweise*,
     *vorsorglich … ordentlich*, "alternatively"), and not denied ("without statutory notice"). Such a notice
     stays one without notice period: urgent, with the fact, and never filed as handled."""
-    extraction = _notice(quote, end=None, title=title)
-    assert routing.extraordinary_notice(extraction)
-    card = letter_advice(
-        "landlord_notice",
-        today=TODAY,
-        extraordinary=True,
-        alternative=routing.alternative_notice(extraction),
-        handled=True,
-    )
-    assert card is not None and card.urgent and not card.handled
-    assert card.facts[0].title == "This reads as a notice without notice period (fristlos)"
+
+    def check(quote: str, title: str) -> None:
+        extraction = _notice(quote, end=None, title=title)
+        assert routing.extraordinary_notice(extraction)
+        card = letter_advice(
+            "landlord_notice",
+            today=TODAY,
+            extraordinary=True,
+            alternative=routing.alternative_notice(extraction),
+            handled=True,
+        )
+        assert card is not None and card.urgent and not card.handled
+        assert card.facts[0].title == "This reads as a notice without notice period (fristlos)"
+
+    check_rows(A_STATUTORY_PERIOD_OF_THE_ALTERNATIVE_NOTICE_OR_DENIED_KEEPS_IT_WITHOUT_NOTICE_PERIOD, check)
 
 
 def test_the_standard_arrears_notice_with_an_end_date_reads_as_without_notice_period() -> None:
@@ -1388,116 +1446,118 @@ def test_court_orders_give_their_relative_dates_the_court_rule() -> None:
     assert routing.kind_statute("dunning", spec()) is None
 
 
-@pytest.mark.parametrize(
-    ("date_spec", "letter", "authority", "rule"),
-    [
-        (spec(nature="declaration", legal_basis="§ 38 Abs. 1 SGB III"), None, False, "sgb3_38"),
-        (spec(nature="declaration", text="Bitte melden Sie sich arbeitsuchend."), None, True, "sgb3_38"),
-        (spec(nature="declaration", text="sich arbeitsuchend zu melden"), "dismissal", False, "sgb3_38"),
-        # a date that isn't a registration is never re-dated as one
-        (
-            DateSpec(
-                type="fixed",
-                date="2026-10-15",
-                nature="appointment",
-                text="Einladung zum Gespräch über Ihre Arbeitsuchendmeldung am 15.10.2026",
-            ),
-            None,
-            True,
-            None,
+SPECIAL_RULES = [
+    (spec(nature="declaration", legal_basis="§ 38 Abs. 1 SGB III"), None, False, "sgb3_38"),
+    (spec(nature="declaration", text="Bitte melden Sie sich arbeitsuchend."), None, True, "sgb3_38"),
+    (spec(nature="declaration", text="sich arbeitsuchend zu melden"), "dismissal", False, "sgb3_38"),
+    # a date that isn't a registration is never re-dated as one
+    (
+        DateSpec(
+            type="fixed",
+            date="2026-10-15",
+            nature="appointment",
+            text="Einladung zum Gespräch über Ihre Arbeitsuchendmeldung am 15.10.2026",
         ),
-        (spec(legal_basis="§ 38 Abs. 1 SGB III"), None, False, None),  # an objection
-        (
-            DateSpec(
-                type="fixed",
-                date="2026-10-15",
-                nature="declaration",
-                text="Reichen Sie die Unterlagen zu Ihrer Arbeitsuchendmeldung bis 15.10.2026 ein",
-            ),
-            None,
-            True,
-            None,
+        None,
+        True,
+        None,
+    ),
+    (spec(legal_basis="§ 38 Abs. 1 SGB III"), None, False, None),  # an objection
+    (
+        DateSpec(
+            type="fixed",
+            date="2026-10-15",
+            nature="declaration",
+            text="Reichen Sie die Unterlagen zu Ihrer Arbeitsuchendmeldung bis 15.10.2026 ein",
         ),
-        (  # an authority's own fixed date for registering stays as the authority set it
-            DateSpec(type="fixed", date="2026-10-15", nature="declaration", legal_basis="§ 38 SGB III"),
-            None,
-            True,
-            None,
+        None,
+        True,
+        None,
+    ),
+    (  # an authority's own fixed date for registering stays as the authority set it
+        DateSpec(type="fixed", date="2026-10-15", nature="declaration", legal_basis="§ 38 SGB III"),
+        None,
+        True,
+        None,
+    ),
+    (spec(legal_basis="§ 558b BGB", nature="declaration"), None, False, "bgb_558b"),
+    (spec(nature="declaration"), "rent_increase", False, "bgb_558b"),
+    # the new rent is never owed before the third month after the request arrived
+    (spec(nature="payment"), "rent_increase", False, "bgb_558b"),
+    (spec(nature="payment", legal_basis="§ 558b BGB"), None, False, None),
+    (  # the date the higher rent is owed from is a payment, not the consent period
+        DateSpec(
+            type="fixed",
+            date="2026-04-01",
+            nature="payment",
+            text="Die erhöhte Miete ist ab dem 01.04.2026 zu zahlen (§ 558b Abs. 1 BGB)",
         ),
-        (spec(legal_basis="§ 558b BGB", nature="declaration"), None, False, "bgb_558b"),
-        (spec(nature="declaration"), "rent_increase", False, "bgb_558b"),
-        # the new rent is never owed before the third month after the request arrived
-        (spec(nature="payment"), "rent_increase", False, "bgb_558b"),
-        (spec(nature="payment", legal_basis="§ 558b BGB"), None, False, None),
-        (  # the date the higher rent is owed from is a payment, not the consent period
-            DateSpec(
-                type="fixed",
-                date="2026-04-01",
-                nature="payment",
-                text="Die erhöhte Miete ist ab dem 01.04.2026 zu zahlen (§ 558b Abs. 1 BGB)",
-            ),
-            None,
-            False,
-            None,
+        None,
+        False,
+        None,
+    ),
+    (spec(legal_basis="§ 574b Abs. 2 BGB"), None, False, "bgb_574b"),
+    (spec(legal_basis="§ 574b Abs. 2 BGB", nature="notice"), None, False, None),
+    (spec(), "landlord_notice", False, "bgb_574b"),
+    (spec(nature="declaration"), "landlord_notice", False, None),
+    (spec(nature="declaration", legal_basis="§ 355 BGB"), None, False, "bgb_355"),
+    (spec(nature="declaration", text="Die Widerrufsfrist beträgt 14 Tage."), None, False, "bgb_355"),
+    (
+        spec(nature="declaration", text="Widerrufsbelehrung"),
+        None,
+        True,
+        None,
+    ),  # an authority's revocation
+    (spec(nature="objection", text="Widerrufsrecht"), None, False, None),
+    (spec(nature="appointment", text="Widerrufsbelehrung"), None, False, None),
+    # only a declaration is a withdrawal: a cancellation or a payment that mentions it is not
+    (
+        DateSpec(
+            type="fixed",
+            date="2026-10-31",
+            nature="notice",
+            text="Kündigung muss bis 31.10.2026 eingehen (unabhängig von Ihrem Widerrufsrecht)",
         ),
-        (spec(legal_basis="§ 574b Abs. 2 BGB"), None, False, "bgb_574b"),
-        (spec(legal_basis="§ 574b Abs. 2 BGB", nature="notice"), None, False, None),
-        (spec(), "landlord_notice", False, "bgb_574b"),
-        (spec(nature="declaration"), "landlord_notice", False, None),
-        (spec(nature="declaration", legal_basis="§ 355 BGB"), None, False, "bgb_355"),
-        (spec(nature="declaration", text="Die Widerrufsfrist beträgt 14 Tage."), None, False, "bgb_355"),
-        (
-            spec(nature="declaration", text="Widerrufsbelehrung"),
-            None,
-            True,
-            None,
-        ),  # an authority's revocation
-        (spec(nature="objection", text="Widerrufsrecht"), None, False, None),
-        (spec(nature="appointment", text="Widerrufsbelehrung"), None, False, None),
-        # only a declaration is a withdrawal: a cancellation or a payment that mentions it is not
-        (
-            DateSpec(
-                type="fixed",
-                date="2026-10-31",
-                nature="notice",
-                text="Kündigung muss bis 31.10.2026 eingehen (unabhängig von Ihrem Widerrufsrecht)",
-            ),
-            None,
-            False,
-            None,
+        None,
+        False,
+        None,
+    ),
+    (
+        spec(
+            nature="payment",
+            anchor="document_date",
+            amount=30,
+            unit="days",
+            text="zahlbar 30 Tage nach Ablauf der Widerrufsfrist",
         ),
-        (
-            spec(
-                nature="payment",
-                anchor="document_date",
-                amount=30,
-                unit="days",
-                text="zahlbar 30 Tage nach Ablauf der Widerrufsfrist",
-            ),
-            None,
-            False,
-            None,
+        None,
+        False,
+        None,
+    ),
+    (spec(nature="other", text="Vertragsbeginn nach Ablauf der Widerrufsfrist"), None, False, None),
+    (  # insurance has its own withdrawal periods (14 or 30 days, § 8, § 152 VVG)
+        spec(
+            nature="declaration",
+            amount=30,
+            unit="days",
+            text="Widerrufsfrist 30 Tage",
+            legal_basis="§ 152 VVG",
         ),
-        (spec(nature="other", text="Vertragsbeginn nach Ablauf der Widerrufsfrist"), None, False, None),
-        (  # insurance has its own withdrawal periods (14 or 30 days, § 8, § 152 VVG)
-            spec(
-                nature="declaration",
-                amount=30,
-                unit="days",
-                text="Widerrufsfrist 30 Tage",
-                legal_basis="§ 152 VVG",
-            ),
-            None,
-            False,
-            None,
-        ),
-        (spec(legal_basis="§ 355 AO"), None, False, None),  # the tax objection, not a withdrawal
-        (DateSpec(type="none", legal_basis="§ 38 SGB III"), None, False, None),
-        (spec(), None, False, None),
-    ],
-)
-def test_special_rules(date_spec: DateSpec, letter: str | None, authority: bool, rule: str | None) -> None:
-    assert routing.special_rule(date_spec, letter, authority=authority) == rule
+        None,
+        False,
+        None,
+    ),
+    (spec(legal_basis="§ 355 AO"), None, False, None),  # the tax objection, not a withdrawal
+    (DateSpec(type="none", legal_basis="§ 38 SGB III"), None, False, None),
+    (spec(), None, False, None),
+]
+
+
+def test_special_rules() -> None:
+    def check(date_spec: DateSpec, letter: str | None, authority: bool, rule: str | None) -> None:
+        assert routing.special_rule(date_spec, letter, authority=authority) == rule
+
+    check_rows(SPECIAL_RULES, check)
 
 
 def test_derived_deadlines_per_kind() -> None:
@@ -1537,42 +1597,42 @@ def test_derived_deadlines_per_kind() -> None:
             assert derived.title and derived.action and derived.consequence
 
 
-@pytest.mark.parametrize(
-    ("date_spec", "dated"),
-    [
-        (DateSpec(type="fixed", date="2026-11-30", nature="objection"), True),
-        (
-            DateSpec(
-                type="relative",
-                anchor="explicit_date",
-                anchor_date="2027-01-31",
-                amount=-2,
-                unit="months",
-                nature="objection",
-            ),
-            True,
+ONLY_AN_OBJECTION_DATE_THAT_CAN_BE_COMPUTED_IS_THE_LETTERS_OWN = [
+    (DateSpec(type="fixed", date="2026-11-30", nature="objection"), True),
+    (
+        DateSpec(
+            type="relative",
+            anchor="explicit_date",
+            anchor_date="2027-01-31",
+            amount=-2,
+            unit="months",
+            nature="objection",
         ),
-        # the statutory hint of a notice with no end: a period from an end it doesn't give
-        (
-            DateSpec(
-                type="relative",
-                anchor="explicit_date",
-                amount=-2,
-                unit="months",
-                nature="objection",
-                text="spätestens zwei Monate vor der Beendigung des Mietverhältnisses",
-            ),
-            False,
+        True,
+    ),
+    # the statutory hint of a notice with no end: a period from an end it doesn't give
+    (
+        DateSpec(
+            type="relative",
+            anchor="explicit_date",
+            amount=-2,
+            unit="months",
+            nature="objection",
+            text="spätestens zwei Monate vor der Beendigung des Mietverhältnisses",
         ),
-        (DateSpec(type="fixed", date=None, nature="objection"), False),
-        (DateSpec(type="none", nature="objection"), False),
-        (DateSpec(type="fixed", date="2026-11-30", nature="payment"), False),
-    ],
-)
-def test_only_an_objection_date_that_can_be_computed_is_the_letters_own(
-    date_spec: DateSpec, dated: bool
-) -> None:
-    assert routing.objection_dated(date_spec) is dated
+        False,
+    ),
+    (DateSpec(type="fixed", date=None, nature="objection"), False),
+    (DateSpec(type="none", nature="objection"), False),
+    (DateSpec(type="fixed", date="2026-11-30", nature="payment"), False),
+]
+
+
+def test_only_an_objection_date_that_can_be_computed_is_the_letters_own() -> None:
+    def check(date_spec: DateSpec, dated: bool) -> None:
+        assert routing.objection_dated(date_spec) is dated
+
+    check_rows(ONLY_AN_OBJECTION_DATE_THAT_CAN_BE_COMPUTED_IS_THE_LETTERS_OWN, check)
 
 
 # ------------------------------------------------------------------------------------ court deadlines
@@ -1631,92 +1691,113 @@ def test_a_court_order_read_as_deemed_delivery_still_runs_from_formal_service() 
     assert any("yellow envelope" in w and "§ 180 ZPO" in w for w in receipt.warnings)
 
 
-@pytest.mark.parametrize(
-    ("anchor", "delivery_rule"),
-    [("document_date", "none"), ("deemed_delivery", "de_admin_post"), (None, "none"), ("today", "none")],
-)
-def test_the_envelope_date_the_person_entered_counts_whatever_anchor_the_order_was_read_with(
-    anchor: str | None, delivery_rule: str
-) -> None:
+THE_ENVELOPE_DATE_THE_PERSON_ENTERED_COUNTS_WHATEVER_ANCHOR_THE_ORDER_WAS_READ_WITH = [
+    ("document_date", "none"),
+    ("deemed_delivery", "de_admin_post"),
+    (None, "none"),
+    ("today", "none"),
+]
+
+
+def test_the_envelope_date_the_person_entered_counts_whatever_anchor_the_order_was_read_with() -> None:
     """A court order runs from delivery (§ 180 ZPO): once the person enters the envelope date it is the
     start, even when the model read the period as counted from the letter's date."""
-    date_spec = spec(anchor=anchor, delivery_rule=delivery_rule, text="binnen zwei Wochen")
-    receipt = compute_due(
-        date_spec,
-        ctx(
-            region="NW",
-            document_date="2026-09-21",
-            received_date="2026-09-25",
-            received_confirmed=True,
-            delivery_scope="vwvfg",
-            letter_kind="court_payment_order",
-        ),
-    )
-    assert receipt.due_date == "2026-10-09"  # two weeks from Fri 25 Sep, not from Mon 21 Sep
-    assert not any("enter the" in w and "envelope date" in w for w in receipt.warnings)
-    assert receipt.confidence == "medium" and "zpo_180" in receipt.rule_ids
-    # the law's to-do isn't filed next to it: this date was counted under the court rule
-    assert routing.computed_under(date_spec, receipt.rule_ids, "zpo_692")
+
+    def check(anchor: str | None, delivery_rule: str) -> None:
+        date_spec = spec(anchor=anchor, delivery_rule=delivery_rule, text="binnen zwei Wochen")
+        receipt = compute_due(
+            date_spec,
+            ctx(
+                region="NW",
+                document_date="2026-09-21",
+                received_date="2026-09-25",
+                received_confirmed=True,
+                delivery_scope="vwvfg",
+                letter_kind="court_payment_order",
+            ),
+        )
+        assert receipt.due_date == "2026-10-09"  # two weeks from Fri 25 Sep, not from Mon 21 Sep
+        assert not any("enter the" in w and "envelope date" in w for w in receipt.warnings)
+        assert receipt.confidence == "medium" and "zpo_180" in receipt.rule_ids
+        # the law's to-do isn't filed next to it: this date was counted under the court rule
+        assert routing.computed_under(date_spec, receipt.rule_ids, "zpo_692")
+
+    check_rows(THE_ENVELOPE_DATE_THE_PERSON_ENTERED_COUNTS_WHATEVER_ANCHOR_THE_ORDER_WAS_READ_WITH, check)
 
 
-@pytest.mark.parametrize(
-    ("anchor", "letter_kind", "court"),
-    [
-        ("receipt", "court_payment_order", True),
-        ("explicit_date", "court_payment_order", True),
-        ("explicit_date", "enforcement_order", True),
-        ("receipt", None, True),  # a court's letter the policy doesn't file as an order
-        ("receipt", None, False),  # any letter read with its delivery day
-    ],
-)
-def test_an_earlier_envelope_date_the_person_entered_beats_a_start_the_reading_names(
-    anchor: str, letter_kind: str | None, court: bool
-) -> None:
+AN_EARLIER_ENVELOPE_DATE_THE_PERSON_ENTERED_BEATS_A_START_THE_READING_NAMES = [
+    ("receipt", "court_payment_order", True),
+    ("explicit_date", "court_payment_order", True),
+    ("explicit_date", "enforcement_order", True),
+    ("receipt", None, True),  # a court's letter the policy doesn't file as an order
+    ("receipt", None, False),  # any letter read with its delivery day
+]
+
+
+def test_an_earlier_envelope_date_the_person_entered_beats_a_start_the_reading_names() -> None:
     """The reading may name a start of its own (a hand-written envelope date misread from a photo as
     Thu 24 Sep); the person enters Tue 22 Sep. The earlier day counts, and a warning names both — two
     days past a Notfrist can't be undone."""
-    date_spec = spec(anchor=anchor, anchor_date="2026-09-24", text="binnen zwei Wochen seit der Zustellung")
-    base = ctx(region="NW", document_date="2026-09-18", letter_kind=letter_kind, court=court)
-    assert compute_due(date_spec, base).due_date == "2026-10-08"
-    receipt = compute_due(date_spec, replace(base, received_date=D("2026-09-22"), received_confirmed=True))
-    assert receipt.due_date == "2026-10-06"
-    assert "22 Sep" in receipt.summary
-    assert any("Tue 22 Sep 2026" in w and "Thu 24 Sep 2026" in w for w in receipt.warnings)
-    assert receipt.confidence != "high"
+
+    def check(anchor: str, letter_kind: str | None, court: bool) -> None:
+        date_spec = spec(
+            anchor=anchor, anchor_date="2026-09-24", text="binnen zwei Wochen seit der Zustellung"
+        )
+        base = ctx(region="NW", document_date="2026-09-18", letter_kind=letter_kind, court=court)
+        assert compute_due(date_spec, base).due_date == "2026-10-08"
+        receipt = compute_due(
+            date_spec, replace(base, received_date=D("2026-09-22"), received_confirmed=True)
+        )
+        assert receipt.due_date == "2026-10-06"
+        assert "22 Sep" in receipt.summary
+        assert any("Tue 22 Sep 2026" in w and "Thu 24 Sep 2026" in w for w in receipt.warnings)
+        assert receipt.confidence != "high"
+
+    check_rows(AN_EARLIER_ENVELOPE_DATE_THE_PERSON_ENTERED_BEATS_A_START_THE_READING_NAMES, check)
 
 
-@pytest.mark.parametrize("anchor", ["receipt", "explicit_date"])
-def test_a_later_envelope_date_keeps_the_earlier_start_the_reading_names_and_says_so(anchor: str) -> None:
+A_LATER_ENVELOPE_DATE_KEEPS_THE_EARLIER_START_THE_READING_NAMES_AND_SAYS_SO = ["receipt", "explicit_date"]
+
+
+def test_a_later_envelope_date_keeps_the_earlier_start_the_reading_names_and_says_so() -> None:
     """The person's later day doesn't move a stated start later (the earliest plausible date); the
     warning names both so the person can check the envelope."""
-    date_spec = spec(anchor=anchor, anchor_date="2026-09-22", text="binnen zwei Wochen seit der Zustellung")
-    receipt = compute_due(
-        date_spec,
-        ctx(
-            region="NW",
-            document_date="2026-09-18",
-            received_date="2026-09-24",
-            received_confirmed=True,
-            letter_kind="court_payment_order",
-            court=True,
-        ),
-    )
-    assert receipt.due_date == "2026-10-06"
-    assert any("Tue 22 Sep 2026" in w and "Thu 24 Sep 2026" in w and "earlier" in w for w in receipt.warnings)
-    assert receipt.confidence == "low"  # a court date (soft) whose start is disputed (soft)
-    # the same day entered and read: nothing to warn about
-    same = compute_due(
-        date_spec,
-        ctx(
-            region="NW",
-            document_date="2026-09-18",
-            received_date="2026-09-22",
-            received_confirmed=True,
-            letter_kind="court_payment_order",
-            court=True,
-        ),
-    )
-    assert same.due_date == "2026-10-06" and not any("you entered" in w.lower() for w in same.warnings)
+
+    def check(anchor: str) -> None:
+        date_spec = spec(
+            anchor=anchor, anchor_date="2026-09-22", text="binnen zwei Wochen seit der Zustellung"
+        )
+        receipt = compute_due(
+            date_spec,
+            ctx(
+                region="NW",
+                document_date="2026-09-18",
+                received_date="2026-09-24",
+                received_confirmed=True,
+                letter_kind="court_payment_order",
+                court=True,
+            ),
+        )
+        assert receipt.due_date == "2026-10-06"
+        assert any(
+            "Tue 22 Sep 2026" in w and "Thu 24 Sep 2026" in w and "earlier" in w for w in receipt.warnings
+        )
+        assert receipt.confidence == "low"  # a court date (soft) whose start is disputed (soft)
+        # the same day entered and read: nothing to warn about
+        same = compute_due(
+            date_spec,
+            ctx(
+                region="NW",
+                document_date="2026-09-18",
+                received_date="2026-09-22",
+                received_confirmed=True,
+                letter_kind="court_payment_order",
+                court=True,
+            ),
+        )
+        assert same.due_date == "2026-10-06" and not any("you entered" in w.lower() for w in same.warnings)
+
+    check_rows(A_LATER_ENVELOPE_DATE_KEEPS_THE_EARLIER_START_THE_READING_NAMES_AND_SAYS_SO, check)
 
 
 def test_an_unreadable_explicit_start_of_a_court_order_uses_the_envelope_date_entered() -> None:
@@ -1835,43 +1916,45 @@ def test_a_fixed_date_on_a_court_order_is_never_high(letter: str, legal_basis: s
     assert any("court deadline" in w for w in receipt.warnings)
 
 
-@pytest.mark.parametrize(
-    "date_spec",
-    [
-        # a labour-court hearing in the court-action case
-        DateSpec(
-            type="fixed",
-            date="2026-11-12",
-            nature="appointment",
-            text="Gütetermin in Sachen Kündigungsschutzklage am 12.11.2026",
-        ),
-        # a severance payment offered if no court action is brought (§ 1a KSchG)
-        DateSpec(
-            type="fixed",
-            date="2026-12-31",
-            nature="payment",
-            text="zum 31.12.2026 eine Abfindung, wenn Sie keine Kündigungsschutzklage erheben",
-        ),
-        DateSpec(
-            type="relative",
-            anchor="receipt",
-            amount=2,
-            unit="weeks",
-            nature="payment",
-            legal_basis="§ 1a KSchG, § 4 KSchG",
-            text="Abfindung zwei Wochen nach Ablauf der Klagefrist",
-        ),
-        # paying isn't what the enforcement order's two weeks are for
-        DateSpec(type="fixed", date="2026-10-08", nature="payment", legal_basis="§ 700 ZPO"),
-    ],
-)
-def test_a_date_that_only_mentions_a_court_rule_doesnt_follow_it(date_spec: DateSpec) -> None:
-    receipt = compute_due(
-        date_spec,
-        ctx(region="NW", document_date="2026-09-24", received_date="2026-09-25", received_confirmed=True),
-    )
-    assert not {"kschg_4", "zpo_339", "zpo_692"} & set(receipt.rule_ids)
-    assert not any("court" in w for w in receipt.warnings)
+A_DATE_THAT_ONLY_MENTIONS_A_COURT_RULE_DOESNT_FOLLOW_IT = [
+    # a labour-court hearing in the court-action case
+    DateSpec(
+        type="fixed",
+        date="2026-11-12",
+        nature="appointment",
+        text="Gütetermin in Sachen Kündigungsschutzklage am 12.11.2026",
+    ),
+    # a severance payment offered if no court action is brought (§ 1a KSchG)
+    DateSpec(
+        type="fixed",
+        date="2026-12-31",
+        nature="payment",
+        text="zum 31.12.2026 eine Abfindung, wenn Sie keine Kündigungsschutzklage erheben",
+    ),
+    DateSpec(
+        type="relative",
+        anchor="receipt",
+        amount=2,
+        unit="weeks",
+        nature="payment",
+        legal_basis="§ 1a KSchG, § 4 KSchG",
+        text="Abfindung zwei Wochen nach Ablauf der Klagefrist",
+    ),
+    # paying isn't what the enforcement order's two weeks are for
+    DateSpec(type="fixed", date="2026-10-08", nature="payment", legal_basis="§ 700 ZPO"),
+]
+
+
+def test_a_date_that_only_mentions_a_court_rule_doesnt_follow_it() -> None:
+    def check(date_spec: DateSpec) -> None:
+        receipt = compute_due(
+            date_spec,
+            ctx(region="NW", document_date="2026-09-24", received_date="2026-09-25", received_confirmed=True),
+        )
+        assert not {"kschg_4", "zpo_339", "zpo_692"} & set(receipt.rule_ids)
+        assert not any("court" in w for w in receipt.warnings)
+
+    check_rows(A_DATE_THAT_ONLY_MENTIONS_A_COURT_RULE_DOESNT_FOLLOW_IT, check)
 
 
 def test_computed_under() -> None:
@@ -2066,23 +2149,25 @@ def test_registering_on_a_weekend_is_said_to_work_online_only() -> None:
     assert "registering online works on any day" in note and "phone" not in note
 
 
-@pytest.mark.parametrize(
-    "quote",
-    [
-        "Hiermit kündigen wir das Arbeitsverhältnis außerordentlich fristlos, hilfsweise fristgerecht zum "
-        "31.12.2026.",
-        "Wir kündigen das Arbeitsverhältnis außerordentlich, hilfsweise ordentlich zum 31.12.2026.",
-        "Wir kündigen das Arbeitsverhältnis gemäß § 626 BGB, hilfsweise zum 31.12.2026.",
-    ],
-)
-def test_a_dismissal_without_notice_period_is_recognised_like_a_landlords(quote: str) -> None:
-    change = ExtractedChange(type="termination_by_provider", effective_date="2026-12-31", quote=quote)
-    dismissal = reading(kind="employment", change=change, document_date="2026-09-24")
-    assert routing.notice_without_period(dismissal) is not None
-    ordinary = change.model_copy(
-        update={"quote": "Wir kündigen das Arbeitsverhältnis fristgerecht zum 31.12.2026."}
-    )
-    assert routing.notice_without_period(reading(kind="employment", change=ordinary)) is None
+A_DISMISSAL_WITHOUT_NOTICE_PERIOD_IS_RECOGNISED_LIKE_A_LANDLORDS = [
+    "Hiermit kündigen wir das Arbeitsverhältnis außerordentlich fristlos, hilfsweise fristgerecht zum "
+    "31.12.2026.",
+    "Wir kündigen das Arbeitsverhältnis außerordentlich, hilfsweise ordentlich zum 31.12.2026.",
+    "Wir kündigen das Arbeitsverhältnis gemäß § 626 BGB, hilfsweise zum 31.12.2026.",
+]
+
+
+def test_a_dismissal_without_notice_period_is_recognised_like_a_landlords() -> None:
+    def check(quote: str) -> None:
+        change = ExtractedChange(type="termination_by_provider", effective_date="2026-12-31", quote=quote)
+        dismissal = reading(kind="employment", change=change, document_date="2026-09-24")
+        assert routing.notice_without_period(dismissal) is not None
+        ordinary = change.model_copy(
+            update={"quote": "Wir kündigen das Arbeitsverhältnis fristgerecht zum 31.12.2026."}
+        )
+        assert routing.notice_without_period(reading(kind="employment", change=ordinary)) is None
+
+    check_rows(A_DISMISSAL_WITHOUT_NOTICE_PERIOD_IS_RECOGNISED_LIKE_A_LANDLORDS, check)
 
 
 # ------------------------------------------------------------------------------------ tenancy
@@ -2188,43 +2273,50 @@ def test_notice_objection_receipts() -> None:
     assert not any("574b Abs. 2 S. 2" in w for w in from_context.warnings)  # still ahead
 
 
-@pytest.mark.parametrize(
-    ("grounding", "confidence", "flagged"),
-    [("quote", "high", False), ("letter", "medium", False), ("none", "low", True)],
-)
-def test_dates_counted_from_the_end_date_are_only_as_sure_as_its_reading(
-    grounding: str, confidence: str, flagged: bool
-) -> None:
+DATES_COUNTED_FROM_THE_END_DATE_ARE_ONLY_AS_SURE_AS_ITS_READING = [
+    ("quote", "high", False),
+    ("letter", "medium", False),
+    ("none", "low", True),
+]
+
+
+def test_dates_counted_from_the_end_date_are_only_as_sure_as_its_reading() -> None:
     """The end a termination announces is the model's reading: only one written in the termination's own
     sentence may give ``high`` (SPEC § 21, anchor stated in the document). The objection to a landlord's
     notice (§ 574b) and the registration three months before the end (§ 38 SGB III) count from it."""
-    notice = routing.derived_deadlines("landlord_notice", end=D("2027-03-31"), letter_date=D("2026-09-20"))[0]
-    objection = compute_due(
-        notice.spec,
-        ctx(
-            region="NW",
-            document_date="2026-09-20",
-            letter_kind="landlord_notice",
-            end_date="2027-03-31",
-            end_date_grounding=grounding,
-        ),
-    )
-    registration = compute_due(
-        routing.derived_deadlines("dismissal", end=D("2027-03-31"))[1].spec,
-        ctx(
-            document_date="2026-09-24",
-            received_date="2026-09-25",
-            received_confirmed=True,
-            letter_kind="dismissal",
-            end_date="2027-03-31",
-            end_date_grounding=grounding,
-        ),
-    )
-    assert objection.due_date == "2027-01-31" and registration.due_date == "2026-12-31"
-    for receipt in (objection, registration):
-        assert receipt.confidence == confidence
-        assert ("termination_end" in receipt.rule_ids) is flagged
-        assert any("Wed 31 Mar 2027" in w for w in receipt.warnings) is (grounding != "quote")
+
+    def check(grounding: str, confidence: str, flagged: bool) -> None:
+        notice = routing.derived_deadlines(
+            "landlord_notice", end=D("2027-03-31"), letter_date=D("2026-09-20")
+        )[0]
+        objection = compute_due(
+            notice.spec,
+            ctx(
+                region="NW",
+                document_date="2026-09-20",
+                letter_kind="landlord_notice",
+                end_date="2027-03-31",
+                end_date_grounding=grounding,
+            ),
+        )
+        registration = compute_due(
+            routing.derived_deadlines("dismissal", end=D("2027-03-31"))[1].spec,
+            ctx(
+                document_date="2026-09-24",
+                received_date="2026-09-25",
+                received_confirmed=True,
+                letter_kind="dismissal",
+                end_date="2027-03-31",
+                end_date_grounding=grounding,
+            ),
+        )
+        assert objection.due_date == "2027-01-31" and registration.due_date == "2026-12-31"
+        for receipt in (objection, registration):
+            assert receipt.confidence == confidence
+            assert ("termination_end" in receipt.rule_ids) is flagged
+            assert any("Wed 31 Mar 2027" in w for w in receipt.warnings) is (grounding != "quote")
+
+    check_rows(DATES_COUNTED_FROM_THE_END_DATE_ARE_ONLY_AS_SURE_AS_ITS_READING, check)
 
 
 def test_the_three_days_after_learning_dont_depend_on_the_end_date() -> None:
@@ -2425,18 +2517,23 @@ def test_advice_cards_for_court_orders_and_dismissals_are_urgent_with_public_hel
     assert dismissal is not None and any("union" in link.name.lower() for link in dismissal.help)
 
 
-@pytest.mark.parametrize("kind", ["court_payment_order", "enforcement_order"])
-def test_a_labour_courts_order_has_its_own_card(kind: str) -> None:
-    card = letter_advice(kind, today=TODAY, labour_court=True)
-    assert card is not None and card.urgent
-    assert "one week" in card.title and "two weeks" not in card.summary
-    assert "labour court" in card.help[0].name.lower() or "labour court" in card.help[0].what
-    assert all("online-mahnantrag" not in (link.url or "") for link in card.help)
-    assert ("arbgg_46a" if kind == "court_payment_order" else "arbgg_59") in card.rule_ids
-    for rule_id in card.rule_ids:
-        catalog.get_rule(rule_id)
-    entered = letter_advice(kind, today=TODAY, labour_court=True, arrival_confirmed=True)
-    assert entered is not None and entered.steps[0].startswith("The period counts from the delivery date")
+A_LABOUR_COURTS_ORDER_HAS_ITS_OWN_CARD = ["court_payment_order", "enforcement_order"]
+
+
+def test_a_labour_courts_order_has_its_own_card() -> None:
+    def check(kind: str) -> None:
+        card = letter_advice(kind, today=TODAY, labour_court=True)
+        assert card is not None and card.urgent
+        assert "one week" in card.title and "two weeks" not in card.summary
+        assert "labour court" in card.help[0].name.lower() or "labour court" in card.help[0].what
+        assert all("online-mahnantrag" not in (link.url or "") for link in card.help)
+        assert ("arbgg_46a" if kind == "court_payment_order" else "arbgg_59") in card.rule_ids
+        for rule_id in card.rule_ids:
+            catalog.get_rule(rule_id)
+        entered = letter_advice(kind, today=TODAY, labour_court=True, arrival_confirmed=True)
+        assert entered is not None and entered.steps[0].startswith("The period counts from the delivery date")
+
+    check_rows(A_LABOUR_COURTS_ORDER_HAS_ITS_OWN_CARD, check)
 
 
 def test_tenancy_cards_are_information() -> None:
@@ -2451,22 +2548,28 @@ def test_tenancy_cards_are_information() -> None:
     assert letter_advice(None, today=TODAY) is None
 
 
-@pytest.mark.parametrize(
-    ("extraordinary", "todo", "urgent"),
-    [(False, True, False), (True, True, True), (False, False, True), (True, False, True)],
-)
-def test_a_landlords_card_comes_first_when_no_to_do_carries_the_notice(
-    extraordinary: bool, todo: bool, urgent: bool
-) -> None:
+A_LANDLORDS_CARD_COMES_FIRST_WHEN_NO_TO_DO_CARRIES_THE_NOTICE = [
+    (False, True, False),
+    (True, True, True),
+    (False, False, True),
+    (True, False, True),
+]
+
+
+def test_a_landlords_card_comes_first_when_no_to_do_carries_the_notice() -> None:
     """A notice without notice period, or one no to-do carries the objection
     of, has only its card to say "act", so it is urgent and rendered first — decided by the to-dos, not by
     whether the reading had an end date."""
-    card = letter_advice(
-        "landlord_notice", today=TODAY, extraordinary=extraordinary, objection_todo=todo, end_unknown=True
-    )
-    assert card is not None and card.urgent is urgent
-    asks_for_end = card.steps[0].startswith("We couldn't read when your tenancy ends")
-    assert asks_for_end is (not todo and not extraordinary)
+
+    def check(extraordinary: bool, todo: bool, urgent: bool) -> None:
+        card = letter_advice(
+            "landlord_notice", today=TODAY, extraordinary=extraordinary, objection_todo=todo, end_unknown=True
+        )
+        assert card is not None and card.urgent is urgent
+        asks_for_end = card.steps[0].startswith("We couldn't read when your tenancy ends")
+        assert asks_for_end is (not todo and not extraordinary)
+
+    check_rows(A_LANDLORDS_CARD_COMES_FIRST_WHEN_NO_TO_DO_CARRIES_THE_NOTICE, check)
 
 
 def test_a_late_statement_card_comes_first_and_says_check_before_paying() -> None:
@@ -2495,17 +2598,22 @@ def test_short_lets_and_furnished_rooms_have_neither_objection_nor_consent_proce
     assert "§ 549 Abs. 2 BGB" in catalog.get_rule("bgb_574b").summary
 
 
-@pytest.mark.parametrize("alternative", [False, True])
-def test_a_notice_without_notice_period_says_so_and_offers_no_useless_objection(alternative: bool) -> None:
-    card = letter_advice("landlord_notice", today=TODAY, extraordinary=True, alternative=alternative)
-    assert card is not None
-    [fact] = card.facts
-    assert fact.title.startswith("This reads as a notice without notice period") and fact.tone == "warn"
-    assert "§ 574 Abs. 1 S. 2 BGB" in (fact.citation or "")
-    # a hardship objection only against the notice given with a notice period in the alternative
-    assert card.draft == ("objection" if alternative else None)
-    assert ("hilfsweise" in fact.text) is alternative
-    assert not any(step.startswith("No hardship objection when") for step in card.steps)  # not twice
+A_NOTICE_WITHOUT_NOTICE_PERIOD_SAYS_SO_AND_OFFERS_NO_USELESS_OBJECTION = [False, True]
+
+
+def test_a_notice_without_notice_period_says_so_and_offers_no_useless_objection() -> None:
+    def check(alternative: bool) -> None:
+        card = letter_advice("landlord_notice", today=TODAY, extraordinary=True, alternative=alternative)
+        assert card is not None
+        [fact] = card.facts
+        assert fact.title.startswith("This reads as a notice without notice period") and fact.tone == "warn"
+        assert "§ 574 Abs. 1 S. 2 BGB" in (fact.citation or "")
+        # a hardship objection only against the notice given with a notice period in the alternative
+        assert card.draft == ("objection" if alternative else None)
+        assert ("hilfsweise" in fact.text) is alternative
+        assert not any(step.startswith("No hardship objection when") for step in card.steps)  # not twice
+
+    check_rows(A_NOTICE_WITHOUT_NOTICE_PERIOD_SAYS_SO_AND_OFFERS_NO_USELESS_OBJECTION, check)
 
 
 def test_the_hardship_objection_is_excluded_against_the_notice_in_the_alternative_too() -> None:
@@ -2694,90 +2802,96 @@ def test_a_notice_without_notice_period_that_names_a_later_end_gives_one_in_the_
     assert objection.rule_id == "bgb_574b"
 
 
-@pytest.mark.parametrize(
-    ("quote", "letter_date"),
-    [
-        ("Wir kündigen fristlos wegen Zahlungsverzugs.", "2026-09-20"),
-        # an end less than two months away is the notice's own (or the day to move out)
-        ("Wir kündigen fristlos zum 30.09.2026.", "2026-09-20"),
-        ("Wir kündigen fristlos. Räumen Sie die Wohnung bis zum 31.10.2026.", "2026-09-20"),
-        ("Wir kündigen fristlos zum 31.02.2027.", "2026-09-20"),  # no calendar date
-        # a later end or the next permissible date said of no notice without notice period
-        ("Wir kündigen zum 31.01.2027 wegen Eigenbedarfs.", "2026-09-20"),
-    ],
-)
-def test_an_end_of_the_notice_itself_gives_no_notice_in_the_alternative(quote: str, letter_date: str) -> None:
-    notice = _notice(quote, document_date=letter_date)
-    assert not routing.alternative_notice(notice)
+AN_END_OF_THE_NOTICE_ITSELF_GIVES_NO_NOTICE_IN_THE_ALTERNATIVE = [
+    ("Wir kündigen fristlos wegen Zahlungsverzugs.", "2026-09-20"),
+    # an end less than two months away is the notice's own (or the day to move out)
+    ("Wir kündigen fristlos zum 30.09.2026.", "2026-09-20"),
+    ("Wir kündigen fristlos. Räumen Sie die Wohnung bis zum 31.10.2026.", "2026-09-20"),
+    ("Wir kündigen fristlos zum 31.02.2027.", "2026-09-20"),  # no calendar date
+    # a later end or the next permissible date said of no notice without notice period
+    ("Wir kündigen zum 31.01.2027 wegen Eigenbedarfs.", "2026-09-20"),
+]
 
 
-@pytest.mark.parametrize(
-    ("quote", "end"),
-    [
-        (
-            "Hiermit kündigen wir das Mietverhältnis unter Einhaltung der vertraglichen Kündigungsfrist. Eine "
-            "fristlose Kündigung nach § 543 BGB behalten wir uns ausdrücklich vor.",
-            None,
-        ),
-        (
-            "Hiermit kündigen wir das Mietverhältnis wegen Eigenbedarfs. Eine fristlose Kündigung gemäß § 543 Abs. 2 "
-            "Nr. 3 BGB bleibt ausdrücklich vorbehalten.",
-            None,
-        ),
-        (
-            "Hiermit kündigen wir das Mietverhältnis zum 31.10.2026. Ein Recht zur fristlosen Kündigung nach § 543 "
-            "BGB behalten wir uns vor.",
-            "2026-10-31",
-        ),
-        (
-            "Hiermit kündigen wir das Mietverhältnis. Eine Kündigung nach § 543 BGB behalten wir uns vor.",
-            None,
-        ),
-        (
-            "Wir behalten uns eine Kündigung nach § 569 Abs. 3 BGB vor; heute kündigen wir zum 31.10.2026.",
-            None,
-        ),
-        (
-            "Hiermit kündigen wir das Mietverhältnis zum 31.10.2026. Von einer fristlosen Kündigung sehen wir ab.",
-            None,
-        ),
-        (
-            "Hiermit kündigen wir das Mietverhältnis zum 31.10.2026. Auf eine fristlose Kündigung verzichten wir.",
-            None,
-        ),
-        ("Wir kündigen das Mietverhältnis. Von einer fristlosen Kündigung sehen wir vorerst ab.", None),
-        ("Wir verzichten auf eine fristlose Kündigung und kündigen zum 31.10.2026.", "2026-10-31"),
-        ("Wir wären zur fristlosen Kündigung berechtigt; wir kündigen zum 31.10.2026.", "2026-10-31"),
-        ("Das Recht, fristlos zu kündigen, bleibt vorbehalten. Wir kündigen zum 31.10.2026.", "2026-10-31"),
-    ],
-)
-def test_a_notice_that_reserves_or_refuses_one_without_notice_period_is_an_ordinary_one(
-    quote: str, end: str | None
-) -> None:
+def test_an_end_of_the_notice_itself_gives_no_notice_in_the_alternative() -> None:
+    def check(quote: str, letter_date: str) -> None:
+        notice = _notice(quote, document_date=letter_date)
+        assert not routing.alternative_notice(notice)
+
+    check_rows(AN_END_OF_THE_NOTICE_ITSELF_GIVES_NO_NOTICE_IN_THE_ALTERNATIVE, check)
+
+
+A_NOTICE_THAT_RESERVES_OR_REFUSES_ONE_WITHOUT_NOTICE_PERIOD_IS_AN_ORDINARY_ONE = [
+    (
+        "Hiermit kündigen wir das Mietverhältnis unter Einhaltung der vertraglichen Kündigungsfrist. Eine "
+        "fristlose Kündigung nach § 543 BGB behalten wir uns ausdrücklich vor.",
+        None,
+    ),
+    (
+        "Hiermit kündigen wir das Mietverhältnis wegen Eigenbedarfs. Eine fristlose Kündigung gemäß § 543 Abs. 2 "
+        "Nr. 3 BGB bleibt ausdrücklich vorbehalten.",
+        None,
+    ),
+    (
+        "Hiermit kündigen wir das Mietverhältnis zum 31.10.2026. Ein Recht zur fristlosen Kündigung nach § 543 "
+        "BGB behalten wir uns vor.",
+        "2026-10-31",
+    ),
+    (
+        "Hiermit kündigen wir das Mietverhältnis. Eine Kündigung nach § 543 BGB behalten wir uns vor.",
+        None,
+    ),
+    (
+        "Wir behalten uns eine Kündigung nach § 569 Abs. 3 BGB vor; heute kündigen wir zum 31.10.2026.",
+        None,
+    ),
+    (
+        "Hiermit kündigen wir das Mietverhältnis zum 31.10.2026. Von einer fristlosen Kündigung sehen wir ab.",
+        None,
+    ),
+    (
+        "Hiermit kündigen wir das Mietverhältnis zum 31.10.2026. Auf eine fristlose Kündigung verzichten wir.",
+        None,
+    ),
+    ("Wir kündigen das Mietverhältnis. Von einer fristlosen Kündigung sehen wir vorerst ab.", None),
+    ("Wir verzichten auf eine fristlose Kündigung und kündigen zum 31.10.2026.", "2026-10-31"),
+    ("Wir wären zur fristlosen Kündigung berechtigt; wir kündigen zum 31.10.2026.", "2026-10-31"),
+    ("Das Recht, fristlos zu kündigen, bleibt vorbehalten. Wir kündigen zum 31.10.2026.", "2026-10-31"),
+]
+
+
+def test_a_notice_that_reserves_or_refuses_one_without_notice_period_is_an_ordinary_one() -> None:
     """A § 543/§ 569 BGB citation inside a reservation, and a refusal ("sehen wir
     ab", "verzichten wir"), made an ordinary notice "certainly fristlos" — no objection to-do, the letter
     refused. The reservation now governs a citation too (ADR 0010 §4)."""
-    notice = _notice(quote, end=end)
-    assert routing.notice_without_period(notice) is None
-    assert not routing.objection_excluded(notice)
+
+    def check(quote: str, end: str | None) -> None:
+        notice = _notice(quote, end=end)
+        assert routing.notice_without_period(notice) is None
+        assert not routing.objection_excluded(notice)
+
+    check_rows(A_NOTICE_THAT_RESERVES_OR_REFUSES_ONE_WITHOUT_NOTICE_PERIOD_IS_AN_ORDINARY_ONE, check)
 
 
-@pytest.mark.parametrize(
-    "quote",
-    [
-        "Hiermit kündigen wir das Mietverhältnis gemäß § 543 Abs. 2 Nr. 3 BGB.",
-        "Wir kündigen das Mietverhältnis nach § 569 Abs. 3 BGB wegen Zahlungsverzugs.",
-    ],
-)
-def test_a_statute_alone_makes_a_notice_only_probably_one_without_notice_period(quote: str) -> None:
+A_STATUTE_ALONE_MAKES_A_NOTICE_ONLY_PROBABLY_ONE_WITHOUT_NOTICE_PERIOD = [
+    "Hiermit kündigen wir das Mietverhältnis gemäß § 543 Abs. 2 Nr. 3 BGB.",
+    "Wir kündigen das Mietverhältnis nach § 569 Abs. 3 BGB wegen Zahlungsverzugs.",
+]
+
+
+def test_a_statute_alone_makes_a_notice_only_probably_one_without_notice_period() -> None:
     """A citation is named in reservations, threats and refusals as often as in the
     notice itself, so alone it keeps the objection to-do and letter (the card says it may be one)."""
-    notice = _notice(quote)
-    assert routing.notice_without_period(notice) == "probable"
-    assert not routing.objection_excluded(notice) and not routing.alternative_notice(notice)
-    later = _notice(f"{quote} Hilfsweise zum 31.01.2027.")
-    assert routing.alternative_notice(later)
-    assert routing.alternative_notice(_notice("Wir kündigen gemäß § 543 BGB, spätestens zum 31.01.2027."))
+
+    def check(quote: str) -> None:
+        notice = _notice(quote)
+        assert routing.notice_without_period(notice) == "probable"
+        assert not routing.objection_excluded(notice) and not routing.alternative_notice(notice)
+        later = _notice(f"{quote} Hilfsweise zum 31.01.2027.")
+        assert routing.alternative_notice(later)
+        assert routing.alternative_notice(_notice("Wir kündigen gemäß § 543 BGB, spätestens zum 31.01.2027."))
+
+    check_rows(A_STATUTE_ALONE_MAKES_A_NOTICE_ONLY_PROBABLY_ONE_WITHOUT_NOTICE_PERIOD, check)
 
 
 def test_without_the_letters_date_any_later_end_gives_notice_in_the_alternative() -> None:
@@ -2796,156 +2910,171 @@ def test_only_the_notices_own_words_give_notice_in_the_alternative() -> None:
     assert routing.extraordinary_notice(fristlos) and not routing.alternative_notice(fristlos)
 
 
-@pytest.mark.parametrize(
-    "quote",
-    [
-        "Hiermit kündigen wir das Mietverhältnis fristlos und behalten uns die Geltendmachung weiterer "
-        "Ansprüche vor.",
-        "Hiermit erklären wir die fristlose Kündigung des Mietverhältnisses und behalten wir uns weitere "
-        "Ansprüche vor.",
-        "Wir kündigen fristlos gemäß § 543 BGB; die Rechte aus § 546a BGB bleiben vorbehalten.",
-        "Wir kündigen fristlos, behalten uns aber Schadensersatz vor.",
-    ],
-)
-def test_reserving_something_else_doesnt_hide_a_notice_without_notice_period(quote: str) -> None:
+RESERVING_SOMETHING_ELSE_DOESNT_HIDE_A_NOTICE_WITHOUT_NOTICE_PERIOD = [
+    "Hiermit kündigen wir das Mietverhältnis fristlos und behalten uns die Geltendmachung weiterer "
+    "Ansprüche vor.",
+    "Hiermit erklären wir die fristlose Kündigung des Mietverhältnisses und behalten wir uns weitere "
+    "Ansprüche vor.",
+    "Wir kündigen fristlos gemäß § 543 BGB; die Rechte aus § 546a BGB bleiben vorbehalten.",
+    "Wir kündigen fristlos, behalten uns aber Schadensersatz vor.",
+]
+
+
+def test_reserving_something_else_doesnt_hide_a_notice_without_notice_period() -> None:
     """Only a reservation of the notice itself makes it "only reserved"."""
-    assert routing.extraordinary_notice(_notice(quote))
+
+    def check(quote: str) -> None:
+        assert routing.extraordinary_notice(_notice(quote))
+
+    check_rows(RESERVING_SOMETHING_ELSE_DOESNT_HIDE_A_NOTICE_WITHOUT_NOTICE_PERIOD, check)
 
 
-@pytest.mark.parametrize(
-    "quote",
-    [
-        "Eine fristlose Kündigung behalten wir uns vor.",
-        "Eine fristlose Kündigung wegen des Zahlungsverzugs behalten wir uns ausdrücklich vor.",
-        "Wir behalten uns eine fristlose Kündigung vor.",
-        "Sollten Sie nicht zahlen, behalten wir uns die fristlose Kündigung vor.",
-        "Vorbehaltlich einer außerordentlichen Kündigung endet das Mietverhältnis ordentlich.",
-    ],
-)
-def test_a_reserved_notice_without_notice_period_is_not_one(quote: str) -> None:
-    assert not routing.extraordinary_notice(_notice(quote))
+A_RESERVED_NOTICE_WITHOUT_NOTICE_PERIOD_IS_NOT_ONE = [
+    "Eine fristlose Kündigung behalten wir uns vor.",
+    "Eine fristlose Kündigung wegen des Zahlungsverzugs behalten wir uns ausdrücklich vor.",
+    "Wir behalten uns eine fristlose Kündigung vor.",
+    "Sollten Sie nicht zahlen, behalten wir uns die fristlose Kündigung vor.",
+    "Vorbehaltlich einer außerordentlichen Kündigung endet das Mietverhältnis ordentlich.",
+]
 
 
-@pytest.mark.parametrize(
-    ("quote", "end", "written"),
-    [
-        # "außerordentlich" as an intensifier of something else, and the notice itself called ordinary
-        (
-            "Aufgrund Ihres außerordentlich störenden Verhaltens kündigen wir das Mietverhältnis ordentlich zum "
-            "30.11.2026.",
-            "2026-11-30",
-            "2026-10-05",
-        ),
-        (
-            "Aufgrund der außerordentlich hohen Sanierungskosten kündigen wir das Mietverhältnis zum 31.10.2026.",
-            "2026-10-31",
-            "2026-09-20",
-        ),
-        (
-            "Aufgrund Ihres außerordentlich störenden Verhaltens kündigen wir das Mietverhältnis.",
-            None,
-            "2026-09-20",
-        ),
-        # a negation after the wording, at the end of its clause
-        (
-            "Wir kündigen das Mietverhältnis zum 31.10.2026; eine fristlose Kündigung ist damit nicht verbunden.",
-            "2026-10-31",
-            "2026-09-20",
-        ),
-        (
-            "Eine außerordentliche Kündigung sprechen wir nicht aus. Wir kündigen zum 31.10.2026.",
-            "2026-10-31",
-            "2026-09-20",
-        ),
-    ],
-)
-def test_an_intensifier_or_a_denied_notice_without_period_keeps_the_objection(
-    quote: str, end: str | None, written: str
-) -> None:
+def test_a_reserved_notice_without_notice_period_is_not_one() -> None:
+    def check(quote: str) -> None:
+        assert not routing.extraordinary_notice(_notice(quote))
+
+    check_rows(A_RESERVED_NOTICE_WITHOUT_NOTICE_PERIOD_IS_NOT_ONE, check)
+
+
+AN_INTENSIFIER_OR_A_DENIED_NOTICE_WITHOUT_PERIOD_KEEPS_THE_OBJECTION = [
+    # "außerordentlich" as an intensifier of something else, and the notice itself called ordinary
+    (
+        "Aufgrund Ihres außerordentlich störenden Verhaltens kündigen wir das Mietverhältnis ordentlich zum "
+        "30.11.2026.",
+        "2026-11-30",
+        "2026-10-05",
+    ),
+    (
+        "Aufgrund der außerordentlich hohen Sanierungskosten kündigen wir das Mietverhältnis zum 31.10.2026.",
+        "2026-10-31",
+        "2026-09-20",
+    ),
+    (
+        "Aufgrund Ihres außerordentlich störenden Verhaltens kündigen wir das Mietverhältnis.",
+        None,
+        "2026-09-20",
+    ),
+    # a negation after the wording, at the end of its clause
+    (
+        "Wir kündigen das Mietverhältnis zum 31.10.2026; eine fristlose Kündigung ist damit nicht verbunden.",
+        "2026-10-31",
+        "2026-09-20",
+    ),
+    (
+        "Eine außerordentliche Kündigung sprechen wir nicht aus. Wir kündigen zum 31.10.2026.",
+        "2026-10-31",
+        "2026-09-20",
+    ),
+]
+
+
+def test_an_intensifier_or_a_denied_notice_without_period_keeps_the_objection() -> None:
     """The word "außerordentlich" anywhere made an ordinary notice one without notice period
     — no objection to-do, and the objection letter refused (§ 574 BGB applies to it). The objection counts
     back from the next permissible end: the end is too short (or not given) for a landlord's period (§ 573c
     Abs. 1 BGB: 31 Dec 2026 → objection by Sat 31 Oct 2026)."""
-    extraction = _notice(quote, end=end, title="Ordinary notice of termination", document_date=written)
-    assert routing.notice_without_period(extraction) is None
-    assert not routing.extraordinary_notice(extraction) and not routing.objection_excluded(extraction)
-    [objection] = routing.derived_deadlines(
-        "landlord_notice", end=routing.announced_end(extraction), letter_date=D(written)
-    )
-    assert objection.rule_id == "bgb_574b" and "nächstmöglichen" in objection.spec.text
-    receipt = compute_due(
-        objection.spec, ctx(document_date=written, letter_kind="landlord_notice", today=D("2026-10-06"))
-    )
-    assert receipt.due_date == "2026-10-31"
+
+    def check(quote: str, end: str | None, written: str) -> None:
+        extraction = _notice(quote, end=end, title="Ordinary notice of termination", document_date=written)
+        assert routing.notice_without_period(extraction) is None
+        assert not routing.extraordinary_notice(extraction) and not routing.objection_excluded(extraction)
+        [objection] = routing.derived_deadlines(
+            "landlord_notice", end=routing.announced_end(extraction), letter_date=D(written)
+        )
+        assert objection.rule_id == "bgb_574b" and "nächstmöglichen" in objection.spec.text
+        receipt = compute_due(
+            objection.spec, ctx(document_date=written, letter_kind="landlord_notice", today=D("2026-10-06"))
+        )
+        assert receipt.due_date == "2026-10-31"
+
+    check_rows(AN_INTENSIFIER_OR_A_DENIED_NOTICE_WITHOUT_PERIOD_KEEPS_THE_OBJECTION, check)
 
 
-@pytest.mark.parametrize(
-    "quote",
-    [
-        "Hiermit kündigen wir das Mietverhältnis außerordentlich.",
-        "Wir kündigen das Mietverhältnis außerordentlich zum 31.10.2026.",
-        "Außerordentliche Kündigung des Mietverhältnisses",
-    ],
-)
-def test_a_notice_only_called_extraordinary_is_probably_one_and_keeps_the_objection(quote: str) -> None:
+A_NOTICE_ONLY_CALLED_EXTRAORDINARY_IS_PROBABLY_ONE_AND_KEEPS_THE_OBJECTION = [
+    "Hiermit kündigen wir das Mietverhältnis außerordentlich.",
+    "Wir kündigen das Mietverhältnis außerordentlich zum 31.10.2026.",
+    "Außerordentliche Kündigung des Mietverhältnisses",
+]
+
+
+def test_a_notice_only_called_extraordinary_is_probably_one_and_keeps_the_objection() -> None:
     """The word "außerordentlich" alone may be a special termination with the statutory
     period (§ 573d BGB), so the objection to-do and letter are kept, and the card says it may be fristlos."""
-    end = "2026-10-31" if "31.10" in quote else None
-    extraction = _notice(quote, end=end)
-    assert routing.notice_without_period(extraction) == "probable"
-    assert routing.extraordinary_notice(extraction) and not routing.objection_excluded(extraction)
-    [objection] = routing.derived_deadlines(
-        "landlord_notice",
-        end=routing.announced_end(extraction),
-        letter_date=D("2026-09-20"),
-        extraordinary=routing.objection_excluded(extraction),
-    )
-    assert "nächstmöglichen" in objection.spec.text
-    card = letter_advice("landlord_notice", today=TODAY, extraordinary=True, probable=True)
-    assert card is not None and card.urgent and card.draft == "objection"
-    assert card.facts[0].title == "This may be a notice without notice period"
-    assert "§ 573d BGB" in card.facts[0].text
-    # the same notice said fristlos is certainly one: no to-do, no letter
-    fristlos = _notice("Hiermit kündigen wir das Mietverhältnis außerordentlich und fristlos.")
-    assert routing.notice_without_period(fristlos) == "certain" and routing.objection_excluded(fristlos)
+
+    def check(quote: str) -> None:
+        end = "2026-10-31" if "31.10" in quote else None
+        extraction = _notice(quote, end=end)
+        assert routing.notice_without_period(extraction) == "probable"
+        assert routing.extraordinary_notice(extraction) and not routing.objection_excluded(extraction)
+        [objection] = routing.derived_deadlines(
+            "landlord_notice",
+            end=routing.announced_end(extraction),
+            letter_date=D("2026-09-20"),
+            extraordinary=routing.objection_excluded(extraction),
+        )
+        assert "nächstmöglichen" in objection.spec.text
+        card = letter_advice("landlord_notice", today=TODAY, extraordinary=True, probable=True)
+        assert card is not None and card.urgent and card.draft == "objection"
+        assert card.facts[0].title == "This may be a notice without notice period"
+        assert "§ 573d BGB" in card.facts[0].text
+        # the same notice said fristlos is certainly one: no to-do, no letter
+        fristlos = _notice("Hiermit kündigen wir das Mietverhältnis außerordentlich und fristlos.")
+        assert routing.notice_without_period(fristlos) == "certain" and routing.objection_excluded(fristlos)
+
+    check_rows(A_NOTICE_ONLY_CALLED_EXTRAORDINARY_IS_PROBABLY_ONE_AND_KEEPS_THE_OBJECTION, check)
 
 
-@pytest.mark.parametrize(
-    "quote",
-    [
-        "Hiermit kündigen wir das Mietverhältnis wegen Eigenbedarfs fristgerecht zum nächstmöglichen Termin.",
-        "Wir kündigen das Mietverhältnis ordentlich zum nächstmöglichen Zeitpunkt.",
-    ],
-)
-def test_a_notice_to_the_next_possible_date_gets_an_objection_to_do(quote: str) -> None:
+A_NOTICE_TO_THE_NEXT_POSSIBLE_DATE_GETS_AN_OBJECTION_TO_DO = [
+    "Hiermit kündigen wir das Mietverhältnis wegen Eigenbedarfs fristgerecht zum nächstmöglichen Termin.",
+    "Wir kündigen das Mietverhältnis ordentlich zum nächstmöglichen Zeitpunkt.",
+]
+
+
+def test_a_notice_to_the_next_possible_date_gets_an_objection_to_do() -> None:
     """A notice that writes no end got no objection deadline, and its card asked
     for an end the notice doesn't write. The objection counts back from the earliest end (§ 573c Abs. 1 BGB)."""
-    extraction = _notice(quote, end=None)
-    assert not routing.extraordinary_notice(extraction)
-    [objection] = routing.derived_deadlines("landlord_notice", end=None, letter_date=D("2026-09-20"))
-    assert "nächstmöglichen" in objection.spec.text
-    receipt = compute_due(objection.spec, ctx(document_date="2026-09-20", letter_kind="landlord_notice"))
-    # arrived 20 Sep (after the third working day): the earliest end is 31 Dec 2026, objection by 31 Oct
-    assert receipt.due_date == "2026-10-31" and NEXT_END_WARNING in receipt.warnings
+
+    def check(quote: str) -> None:
+        extraction = _notice(quote, end=None)
+        assert not routing.extraordinary_notice(extraction)
+        [objection] = routing.derived_deadlines("landlord_notice", end=None, letter_date=D("2026-09-20"))
+        assert "nächstmöglichen" in objection.spec.text
+        receipt = compute_due(objection.spec, ctx(document_date="2026-09-20", letter_kind="landlord_notice"))
+        # arrived 20 Sep (after the third working day): the earliest end is 31 Dec 2026, objection by 31 Oct
+        assert receipt.due_date == "2026-10-31" and NEXT_END_WARNING in receipt.warnings
+
+    check_rows(A_NOTICE_TO_THE_NEXT_POSSIBLE_DATE_GETS_AN_OBJECTION_TO_DO, check)
 
 
-@pytest.mark.parametrize(
-    "quote",
-    [
-        "Wir kündigen das Mietverhältnis fristlos gemäß § 543 BGB. Sollte die fristlose Kündigung unwirksam sein, "
-        "gilt sie als ordentliche Kündigung mit gesetzlicher Frist.",
-        "Wir kündigen fristlos und zugleich ordentlich zum nächstmöglichen Termin.",
-        "Wir kündigen fristlos; im Fall der Unwirksamkeit ist sie in eine ordentliche Kündigung umgedeutet.",
-    ],
-)
-def test_a_notice_in_the_alternative_without_hilfsweise_is_one(quote: str) -> None:
+A_NOTICE_IN_THE_ALTERNATIVE_WITHOUT_HILFSWEISE_IS_ONE = [
+    "Wir kündigen das Mietverhältnis fristlos gemäß § 543 BGB. Sollte die fristlose Kündigung unwirksam sein, "
+    "gilt sie als ordentliche Kündigung mit gesetzlicher Frist.",
+    "Wir kündigen fristlos und zugleich ordentlich zum nächstmöglichen Termin.",
+    "Wir kündigen fristlos; im Fall der Unwirksamkeit ist sie in eine ordentliche Kündigung umgedeutet.",
+]
+
+
+def test_a_notice_in_the_alternative_without_hilfsweise_is_one() -> None:
     """An ordinary notice given in the alternative without the word "hilfsweise"
     read as an ordinary notice with no end, and got no objection deadline."""
-    extraction = _notice(quote, end=None)
-    assert routing.notice_without_period(extraction) == "certain"
-    assert routing.alternative_notice(extraction) and not routing.objection_excluded(extraction)
-    [objection] = routing.derived_deadlines("landlord_notice", end=None, letter_date=D("2026-09-20"))
-    assert "nächstmöglichen" in objection.spec.text
+
+    def check(quote: str) -> None:
+        extraction = _notice(quote, end=None)
+        assert routing.notice_without_period(extraction) == "certain"
+        assert routing.alternative_notice(extraction) and not routing.objection_excluded(extraction)
+        [objection] = routing.derived_deadlines("landlord_notice", end=None, letter_date=D("2026-09-20"))
+        assert "nächstmöglichen" in objection.spec.text
+
+    check_rows(A_NOTICE_IN_THE_ALTERNATIVE_WITHOUT_HILFSWEISE_IS_ONE, check)
 
 
 def test_the_objection_is_only_for_a_home() -> None:
@@ -2960,13 +3089,22 @@ def test_the_objection_is_only_for_a_home() -> None:
     assert "garage" in catalog.get_rule("bgb_574b").summary
 
 
-@pytest.mark.parametrize("kind", ["court_payment_order", "enforcement_order", "dismissal"])
-def test_a_card_doesnt_ask_for_an_arrival_day_the_person_entered(kind: str) -> None:
-    asking = letter_advice(kind, today=TODAY)
-    entered = letter_advice(kind, today=TODAY, arrived=D("2026-09-24"), arrival_confirmed=True)
-    assert asking is not None and entered is not None
-    assert asking.steps[0].startswith(("Find the delivery date", "Enter the day"))
-    assert "you entered" in entered.steps[0] and not entered.steps[0].startswith(("Find", "Enter"))
+A_CARD_DOESNT_ASK_FOR_AN_ARRIVAL_DAY_THE_PERSON_ENTERED = [
+    "court_payment_order",
+    "enforcement_order",
+    "dismissal",
+]
+
+
+def test_a_card_doesnt_ask_for_an_arrival_day_the_person_entered() -> None:
+    def check(kind: str) -> None:
+        asking = letter_advice(kind, today=TODAY)
+        entered = letter_advice(kind, today=TODAY, arrived=D("2026-09-24"), arrival_confirmed=True)
+        assert asking is not None and entered is not None
+        assert asking.steps[0].startswith(("Find the delivery date", "Enter the day"))
+        assert "you entered" in entered.steps[0] and not entered.steps[0].startswith(("Find", "Enter"))
+
+    check_rows(A_CARD_DOESNT_ASK_FOR_AN_ARRIVAL_DAY_THE_PERSON_ENTERED, check)
 
 
 def test_the_dismissal_card_and_registration_to_do_mention_apprentices() -> None:
@@ -2977,28 +3115,30 @@ def test_the_dismissal_card_and_registration_to_do_mention_apprentices() -> None
     assert "apprenticeship" in register.action and "§ 38 Abs. 1 S. 4 SGB III" in register.action
 
 
-@pytest.mark.parametrize(
-    ("old", "new", "tone", "words"),
-    [
-        (800.0, 1000.0, "warn", "more than the 20 % cap (at most €960.00)"),
-        (800.0, 940.0, "warn", "more than the 15 % cap that many cities have (at most €920.00"),
-        (800.0, 880.0, "good", "within both caps"),
-        # the caps are limits in euros: compared exactly, never from a rounded percentage
-        (800.0, 920.0, "good", "within both caps"),
-        (800.0, 920.30, "warn", "within the 20 % cap, but more than the 15 % cap"),
-        (1000.0, 1150.40, "warn", "more than the 15 % cap"),
-        (500.0, 600.20, "warn", "more than the 20 % cap (at most €600.00)"),
-        (1000.0, 1200.45, "warn", "more than the 20 % cap"),
-        (800.0, 960.0, "warn", "within the 20 % cap"),
-        (None, None, "info", "couldn't read the old and new rent"),
-    ],
-)
-def test_rent_cap_fact(old: float | None, new: float | None, tone: str, words: str) -> None:
-    card = letter_advice("rent_increase", today=TODAY, old_amount=old, new_amount=new)
-    assert card is not None
-    [fact] = card.facts
-    assert fact.tone == tone and words in fact.text
-    assert fact.citation == catalog.citation("bgb_558_3")
+RENT_CAP_FACT = [
+    (800.0, 1000.0, "warn", "more than the 20 % cap (at most €960.00)"),
+    (800.0, 940.0, "warn", "more than the 15 % cap that many cities have (at most €920.00"),
+    (800.0, 880.0, "good", "within both caps"),
+    # the caps are limits in euros: compared exactly, never from a rounded percentage
+    (800.0, 920.0, "good", "within both caps"),
+    (800.0, 920.30, "warn", "within the 20 % cap, but more than the 15 % cap"),
+    (1000.0, 1150.40, "warn", "more than the 15 % cap"),
+    (500.0, 600.20, "warn", "more than the 20 % cap (at most €600.00)"),
+    (1000.0, 1200.45, "warn", "more than the 20 % cap"),
+    (800.0, 960.0, "warn", "within the 20 % cap"),
+    (None, None, "info", "couldn't read the old and new rent"),
+]
+
+
+def test_rent_cap_fact() -> None:
+    def check(old: float | None, new: float | None, tone: str, words: str) -> None:
+        card = letter_advice("rent_increase", today=TODAY, old_amount=old, new_amount=new)
+        assert card is not None
+        [fact] = card.facts
+        assert fact.tone == tone and words in fact.text
+        assert fact.citation == catalog.citation("bgb_558_3")
+
+    check_rows(RENT_CAP_FACT, check)
 
 
 def test_a_rise_just_over_a_cap_shows_two_decimals() -> None:
@@ -3014,28 +3154,30 @@ def test_a_rise_just_over_a_cap_shows_two_decimals() -> None:
 STATEMENT = "Betriebskostenabrechnung\nAbrechnungszeitraum: 01.01.2024 - 31.12.2024\nNachzahlung 120,00 EUR"
 
 
-@pytest.mark.parametrize(
-    ("arrived", "confirmed", "title", "tone"),
-    [
-        (D("2026-01-02"), True, "This statement came too late", "warn"),
-        (D("2025-12-20"), False, "Probably on time", "info"),
-        (D("2025-12-20"), True, "On time", "good"),
-    ],
-)
-def test_statement_fact(arrived: date, confirmed: bool, title: str, tone: str) -> None:
-    card = letter_advice(
-        "operating_costs",
-        today=TODAY,
-        arrived=arrived,
-        arrival_confirmed=confirmed,
-        region="NW",
-        text=STATEMENT,
-    )
-    assert card is not None
-    [fact] = card.facts
-    assert fact.title == title and fact.tone == tone
-    if fact.tone == "warn":
-        assert "probably owe no back-payment" in fact.text and "unless" in fact.text
+STATEMENT_FACT = [
+    (D("2026-01-02"), True, "This statement came too late", "warn"),
+    (D("2025-12-20"), False, "Probably on time", "info"),
+    (D("2025-12-20"), True, "On time", "good"),
+]
+
+
+def test_statement_fact() -> None:
+    def check(arrived: date, confirmed: bool, title: str, tone: str) -> None:
+        card = letter_advice(
+            "operating_costs",
+            today=TODAY,
+            arrived=arrived,
+            arrival_confirmed=confirmed,
+            region="NW",
+            text=STATEMENT,
+        )
+        assert card is not None
+        [fact] = card.facts
+        assert fact.title == title and fact.tone == tone
+        if fact.tone == "warn":
+            assert "probably owe no back-payment" in fact.text and "unless" in fact.text
+
+    check_rows(STATEMENT_FACT, check)
 
 
 def test_statement_fact_without_a_period_claims_nothing() -> None:
@@ -3059,93 +3201,102 @@ def test_billing_period() -> None:
     assert billing_period_text("nichts") is None
 
 
-@pytest.mark.parametrize(
-    ("text", "period"),
-    [
-        # a heating year: the range decides, the split year gives way to it
-        (
-            "Abrechnungsjahr 2023/2024 (01.07.2023 bis 30.06.2024)",
-            BillingPeriod(D("2024-06-30"), True, "01.07.2023 – 30.06.2024", True),
-        ),
-        (
-            "Heizkostenabrechnung Abrechnungsjahr 2024 (01.07.2024 - 30.06.2025)",
-            BillingPeriod(D("2025-06-30"), True, "01.07.2024 – 30.06.2025", True),
-        ),
-        # "vom … bis zum …" without a label: its end, but not called the billing period
-        (
-            "Wir rechnen die Kosten vom 01.07.2023 bis zum 30.06.2024 ab.",
-            BillingPeriod(D("2024-06-30"), True, "01.07.2023 – 30.06.2024", False),
-        ),
-        # the previous year's period is not this statement's: the later billing year wins
-        (
-            "Abrechnungszeitraum 2024, Vorjahr: Abrechnungszeitraum 01.01.2023 - 31.12.2023",
-            BillingPeriod(D("2024-12-31"), False, "2024"),
-        ),
-        # a split year alone ends at the latest on 31 December of its second year
-        ("Abrechnungsjahr 2023/24", BillingPeriod(D("2024-12-31"), False, "2023/24")),
-        # two-digit years; a range that ends after the statement arrived is a new prepayment period (a
-        # bare "Zeitraum" is no label)
-        (
-            "Zeitraum 01.01.24-31.12.24; neue Vorauszahlung 01.01.2026 - 31.12.2026",
-            BillingPeriod(D("2024-12-31"), True, "01.01.2024 – 31.12.2024", False),
-        ),
-        # the period in words, as an ISO range, in months, below its label
-        (
-            "Abrechnung für den Zeitraum vom 1. Januar 2024 bis 31. Dez. 2024",
-            BillingPeriod(D("2024-12-31"), True, "01.01.2024 – 31.12.2024", True),
-        ),
-        (
-            "Betriebskostenabrechnung (Zeitraum 2024-07-01 bis 2025-06-30)",
-            BillingPeriod(D("2025-06-30"), True, "01.07.2024 – 30.06.2025", True),
-        ),
-        (
-            "Zeitraum: Juli bis Juni 2025",
-            BillingPeriod(D("2025-06-30"), True, "01.07.2024 – 30.06.2025", False),
-        ),
-        (
-            "Heizkostenabrechnung\nZeitraum: Juli bis Juni 2025",
-            BillingPeriod(D("2025-06-30"), True, "01.07.2024 – 30.06.2025", True),
-        ),
-        (
-            "Abrechnungszeitraum 01/2024 – 12/2024",
-            BillingPeriod(D("2024-12-31"), True, "01.01.2024 – 31.12.2024", True),
-        ),
-        (
-            "Abrechnungszeitraum:\n01.01.2024 - 31.12.2024",
-            BillingPeriod(D("2024-12-31"), True, "01.01.2024 – 31.12.2024", True),
-        ),
-        # a billing year named with the statement, not only with the word Abrechnungsjahr
-        ("Betriebskostenabrechnung für das Jahr 2024", BillingPeriod(D("2024-12-31"), False, "2024")),
-        ("Heizkostenabrechnung 2023/2024", BillingPeriod(D("2024-12-31"), False, "2023/2024")),
-        ("Operating-cost statement 2024", BillingPeriod(D("2024-12-31"), False, "2024")),
-    ],
-)
-def test_billing_period_takes_the_latest_end_of_every_period_named(text: str, period: BillingPeriod) -> None:
-    assert billing_period(text, before=D("2025-12-01")) == period
+BILLING_PERIOD_TAKES_THE_LATEST_END_OF_EVERY_PERIOD_NAMED = [
+    # a heating year: the range decides, the split year gives way to it
+    (
+        "Abrechnungsjahr 2023/2024 (01.07.2023 bis 30.06.2024)",
+        BillingPeriod(D("2024-06-30"), True, "01.07.2023 – 30.06.2024", True),
+    ),
+    (
+        "Heizkostenabrechnung Abrechnungsjahr 2024 (01.07.2024 - 30.06.2025)",
+        BillingPeriod(D("2025-06-30"), True, "01.07.2024 – 30.06.2025", True),
+    ),
+    # "vom … bis zum …" without a label: its end, but not called the billing period
+    (
+        "Wir rechnen die Kosten vom 01.07.2023 bis zum 30.06.2024 ab.",
+        BillingPeriod(D("2024-06-30"), True, "01.07.2023 – 30.06.2024", False),
+    ),
+    # the previous year's period is not this statement's: the later billing year wins
+    (
+        "Abrechnungszeitraum 2024, Vorjahr: Abrechnungszeitraum 01.01.2023 - 31.12.2023",
+        BillingPeriod(D("2024-12-31"), False, "2024"),
+    ),
+    # a split year alone ends at the latest on 31 December of its second year
+    ("Abrechnungsjahr 2023/24", BillingPeriod(D("2024-12-31"), False, "2023/24")),
+    # two-digit years; a range that ends after the statement arrived is a new prepayment period (a
+    # bare "Zeitraum" is no label)
+    (
+        "Zeitraum 01.01.24-31.12.24; neue Vorauszahlung 01.01.2026 - 31.12.2026",
+        BillingPeriod(D("2024-12-31"), True, "01.01.2024 – 31.12.2024", False),
+    ),
+    # the period in words, as an ISO range, in months, below its label
+    (
+        "Abrechnung für den Zeitraum vom 1. Januar 2024 bis 31. Dez. 2024",
+        BillingPeriod(D("2024-12-31"), True, "01.01.2024 – 31.12.2024", True),
+    ),
+    (
+        "Betriebskostenabrechnung (Zeitraum 2024-07-01 bis 2025-06-30)",
+        BillingPeriod(D("2025-06-30"), True, "01.07.2024 – 30.06.2025", True),
+    ),
+    (
+        "Zeitraum: Juli bis Juni 2025",
+        BillingPeriod(D("2025-06-30"), True, "01.07.2024 – 30.06.2025", False),
+    ),
+    (
+        "Heizkostenabrechnung\nZeitraum: Juli bis Juni 2025",
+        BillingPeriod(D("2025-06-30"), True, "01.07.2024 – 30.06.2025", True),
+    ),
+    (
+        "Abrechnungszeitraum 01/2024 – 12/2024",
+        BillingPeriod(D("2024-12-31"), True, "01.01.2024 – 31.12.2024", True),
+    ),
+    (
+        "Abrechnungszeitraum:\n01.01.2024 - 31.12.2024",
+        BillingPeriod(D("2024-12-31"), True, "01.01.2024 – 31.12.2024", True),
+    ),
+    # a billing year named with the statement, not only with the word Abrechnungsjahr
+    ("Betriebskostenabrechnung für das Jahr 2024", BillingPeriod(D("2024-12-31"), False, "2024")),
+    ("Heizkostenabrechnung 2023/2024", BillingPeriod(D("2024-12-31"), False, "2023/2024")),
+    ("Operating-cost statement 2024", BillingPeriod(D("2024-12-31"), False, "2024")),
+]
 
 
-@pytest.mark.parametrize(
-    "text",
-    [
-        # the tenant moved out mid-year: their time in the flat is not the landlord's billing period
-        "Betriebskostenabrechnung 2024\nAbrechnungsjahr 2024\nIhr Nutzungszeitraum: 01.01.2024 - 30.06.2024\n"
-        "Nachzahlung 95,00 EUR",
-        "Betriebskostenabrechnung 2024\nMietdauer 01.01.2024 bis 30.06.2024 (Auszug)\nNachzahlung 95,00 EUR",
-        # a cost item's service period ends earlier in the named year, and is no split year's own months
-        "Operating-cost statement 2024\nWartung Heizung 01.03.2023 - 28.02.2024\nNachzahlung 95,00 EUR",
-    ],
-)
-def test_a_shorter_range_never_makes_a_named_billing_year_end_earlier(text: str) -> None:
+def test_billing_period_takes_the_latest_end_of_every_period_named() -> None:
+    def check(text: str, period: BillingPeriod) -> None:
+        assert billing_period(text, before=D("2025-12-01")) == period
+
+    check_rows(BILLING_PERIOD_TAKES_THE_LATEST_END_OF_EVERY_PERIOD_NAMED, check)
+
+
+A_SHORTER_RANGE_NEVER_MAKES_A_NAMED_BILLING_YEAR_END_EARLIER = [
+    # the tenant moved out mid-year: their time in the flat is not the landlord's billing period
+    "Betriebskostenabrechnung 2024\nAbrechnungsjahr 2024\nIhr Nutzungszeitraum: 01.01.2024 - 30.06.2024\n"
+    "Nachzahlung 95,00 EUR",
+    "Betriebskostenabrechnung 2024\nMietdauer 01.01.2024 bis 30.06.2024 (Auszug)\nNachzahlung 95,00 EUR",
+    # a cost item's service period ends earlier in the named year, and is no split year's own months
+    "Operating-cost statement 2024\nWartung Heizung 01.03.2023 - 28.02.2024\nNachzahlung 95,00 EUR",
+]
+
+
+def test_a_shorter_range_never_makes_a_named_billing_year_end_earlier() -> None:
     """§ 556 Abs. 3 S. 2 BGB counts from the end of the landlord's billing period (31 Dec
     2024: due by 31 Dec 2025), not from a move-out — the card called a statement that arrived on 15 Nov 2025
     "probably too late" and its back-payment "may not be owed"."""
-    assert billing_period(text, before=D("2025-11-15")) == BillingPeriod(D("2024-12-31"), False, "2024")
-    assert not statement_late(text, D("2025-11-15"), True, None)
-    card = letter_advice(
-        "operating_costs", today=D("2025-11-20"), arrived=D("2025-11-15"), arrival_confirmed=True, text=text
-    )
-    assert card is not None and not card.urgent
-    assert "too late" not in card.facts[0].title.casefold()
+
+    def check(text: str) -> None:
+        assert billing_period(text, before=D("2025-11-15")) == BillingPeriod(D("2024-12-31"), False, "2024")
+        assert not statement_late(text, D("2025-11-15"), True, None)
+        card = letter_advice(
+            "operating_costs",
+            today=D("2025-11-20"),
+            arrived=D("2025-11-15"),
+            arrival_confirmed=True,
+            text=text,
+        )
+        assert card is not None and not card.urgent
+        assert "too late" not in card.facts[0].title.casefold()
+
+    check_rows(A_SHORTER_RANGE_NEVER_MAKES_A_NAMED_BILLING_YEAR_END_EARLIER, check)
 
 
 def test_a_split_billing_year_gives_way_to_its_own_months_only() -> None:
@@ -3183,21 +3334,23 @@ COST_ITEM_AND_MOVE_OUT_PERIODS = [
 ]
 
 
-@pytest.mark.parametrize("text", COST_ITEM_AND_MOVE_OUT_PERIODS)
-def test_a_cost_items_or_the_tenants_period_never_makes_a_statement_late(text: str) -> None:
-    arrived = D("2026-07-15")
-    assert billing_period(text, before=arrived) == BillingPeriod(D("2025-12-31"), False, "2025")
-    assert not statement_late(text, arrived, True, "NW")
-    card = letter_advice(
-        "operating_costs",
-        today=D("2026-07-20"),
-        arrived=arrived,
-        arrival_confirmed=True,
-        region="NW",
-        text=text,
-    )
-    assert card is not None and not card.urgent
-    assert card.facts[0].title == "Probably on time"
+def test_a_cost_items_or_the_tenants_period_never_makes_a_statement_late() -> None:
+    def check(text: str) -> None:
+        arrived = D("2026-07-15")
+        assert billing_period(text, before=arrived) == BillingPeriod(D("2025-12-31"), False, "2025")
+        assert not statement_late(text, arrived, True, "NW")
+        card = letter_advice(
+            "operating_costs",
+            today=D("2026-07-20"),
+            arrived=arrived,
+            arrival_confirmed=True,
+            region="NW",
+            text=text,
+        )
+        assert card is not None and not card.urgent
+        assert card.facts[0].title == "Probably on time"
+
+    check_rows(COST_ITEM_AND_MOVE_OUT_PERIODS, check)
 
 
 #: The demo's statement (and most real ones) writes the tenant's own time beside the billing period.
@@ -3235,50 +3388,50 @@ def test_a_labelled_move_out_period_alone_is_at_most_probably_late() -> None:
     assert card.facts[0].title == "Probably too late — check the billing period"
 
 
-@pytest.mark.parametrize(
-    ("text", "arrived", "region", "title"),
-    [
-        # the reported case: a heating year statement that was on time is not called late
-        ("Abrechnungsjahr 2023/2024 (01.07.2023 bis 30.06.2024)", D("2025-03-10"), None, "On time"),
-        (
-            "Heizkostenabrechnung Abrechnungsjahr 2024 (01.07.2024 - 30.06.2025)",
-            D("2026-02-10"),
-            None,
-            "On time",
-        ),
-        (
-            "Abrechnungszeitraum 2024, Vorjahr: Abrechnungszeitraum 01.01.2023 - 31.12.2023",
-            D("2025-02-10"),
-            None,
-            "Probably on time",
-        ),
-        # from a billing year alone a statement is never certainly late
-        ("Abrechnungsjahr 2024", D("2026-01-02"), "NW", "Probably too late — check the billing period"),
-        ("Abrechnungsjahr 2023/2024", D("2025-02-10"), "NW", "Probably on time"),
-        # on time only because the deadline moved off a holiday (Reformation Day, Friday 31 Oct 2025)
-        ("Abrechnungszeitraum 01.11.2023 - 31.10.2024", D("2025-11-03"), None, "Probably on time"),
-        ("Abrechnungszeitraum 01.11.2023 - 31.10.2024", D("2025-11-03"), "NI", "Probably on time"),
-        ("Abrechnungszeitraum 01.11.2023 - 31.10.2024", D("2025-10-30"), None, "On time"),
-    ],
-)
-def test_the_statement_check_never_wrongly_says_you_dont_owe_it(
-    text: str, arrived: date, region: str | None, title: str
-) -> None:
-    card = letter_advice(
-        "operating_costs",
-        today=D("2026-02-20"),
-        arrived=arrived,
-        arrival_confirmed=True,
-        region=region,
-        text=text,
-    )
-    assert card is not None
-    [fact] = card.facts
-    assert fact.title == title
-    if title == "Probably on time" and "weekend or holiday" in fact.text:
-        assert "disputed" in fact.text and ("any Land" in fact.text) == (region is None)
-    if title.startswith("Probably too late"):
-        assert "may owe no back-payment" in fact.text and fact.tone == "warn"
+THE_STATEMENT_CHECK_NEVER_WRONGLY_SAYS_YOU_DONT_OWE_IT = [
+    # the reported case: a heating year statement that was on time is not called late
+    ("Abrechnungsjahr 2023/2024 (01.07.2023 bis 30.06.2024)", D("2025-03-10"), None, "On time"),
+    (
+        "Heizkostenabrechnung Abrechnungsjahr 2024 (01.07.2024 - 30.06.2025)",
+        D("2026-02-10"),
+        None,
+        "On time",
+    ),
+    (
+        "Abrechnungszeitraum 2024, Vorjahr: Abrechnungszeitraum 01.01.2023 - 31.12.2023",
+        D("2025-02-10"),
+        None,
+        "Probably on time",
+    ),
+    # from a billing year alone a statement is never certainly late
+    ("Abrechnungsjahr 2024", D("2026-01-02"), "NW", "Probably too late — check the billing period"),
+    ("Abrechnungsjahr 2023/2024", D("2025-02-10"), "NW", "Probably on time"),
+    # on time only because the deadline moved off a holiday (Reformation Day, Friday 31 Oct 2025)
+    ("Abrechnungszeitraum 01.11.2023 - 31.10.2024", D("2025-11-03"), None, "Probably on time"),
+    ("Abrechnungszeitraum 01.11.2023 - 31.10.2024", D("2025-11-03"), "NI", "Probably on time"),
+    ("Abrechnungszeitraum 01.11.2023 - 31.10.2024", D("2025-10-30"), None, "On time"),
+]
+
+
+def test_the_statement_check_never_wrongly_says_you_dont_owe_it() -> None:
+    def check(text: str, arrived: date, region: str | None, title: str) -> None:
+        card = letter_advice(
+            "operating_costs",
+            today=D("2026-02-20"),
+            arrived=arrived,
+            arrival_confirmed=True,
+            region=region,
+            text=text,
+        )
+        assert card is not None
+        [fact] = card.facts
+        assert fact.title == title
+        if title == "Probably on time" and "weekend or holiday" in fact.text:
+            assert "disputed" in fact.text and ("any Land" in fact.text) == (region is None)
+        if title.startswith("Probably too late"):
+            assert "may owe no back-payment" in fact.text and fact.tone == "warn"
+
+    check_rows(THE_STATEMENT_CHECK_NEVER_WRONGLY_SAYS_YOU_DONT_OWE_IT, check)
 
 
 #: Statements whose own period Ordnung reads in words, as ISO dates or only as a year, next to the
@@ -3310,19 +3463,21 @@ ON_TIME_NEXT_TO_AN_OLDER_RANGE = [
 ]
 
 
-@pytest.mark.parametrize(("text", "title"), ON_TIME_NEXT_TO_AN_OLDER_RANGE)
-def test_the_previous_years_comparison_never_makes_a_statement_late(text: str, title: str) -> None:
-    card = letter_advice(
-        "operating_costs",
-        today=D("2026-09-26"),
-        arrived=D("2026-09-10"),
-        arrival_confirmed=True,
-        region="BE",
-        text=text,
-    )
-    assert card is not None
-    [fact] = card.facts
-    assert fact.title == title and "too late" not in fact.title and fact.tone != "warn"
+def test_the_previous_years_comparison_never_makes_a_statement_late() -> None:
+    def check(text: str, title: str) -> None:
+        card = letter_advice(
+            "operating_costs",
+            today=D("2026-09-26"),
+            arrived=D("2026-09-10"),
+            arrival_confirmed=True,
+            region="BE",
+            text=text,
+        )
+        assert card is not None
+        [fact] = card.facts
+        assert fact.title == title and "too late" not in fact.title and fact.tone != "warn"
+
+    check_rows(ON_TIME_NEXT_TO_AN_OLDER_RANGE, check)
 
 
 def test_a_range_the_letter_doesnt_call_its_billing_period_is_at_most_probably_late() -> None:
@@ -3362,26 +3517,40 @@ def test_court_objections_never_by_email() -> None:
     assert any("doesn't stop enforcement" in tip for tip in enforcement.tips)
 
 
-@pytest.mark.parametrize("letter", ["court_payment_order", "enforcement_order"])
-def test_a_labour_courts_order_is_answered_there_within_one_week(letter: str) -> None:
-    guidance = send_guidance("objection", letter_kind=letter, today=TODAY, court=True, labour_court=True)
-    channels = {c.channel: c for c in guidance.channels}
-    assert "portal" not in channels and not channels["email"].allowed
-    assert "one week" in guidance.form_note and "ArbGG" in guidance.form_note
-    assert channels["registered_letter"].recommended and "labour court" in channels["in_person"].label
+A_LABOUR_COURTS_ORDER_IS_ANSWERED_THERE_WITHIN_ONE_WEEK = ["court_payment_order", "enforcement_order"]
 
 
-@pytest.mark.parametrize(
-    "kind", ["general_reply", "extension_request", "address_change", "payment_plan", "objection"]
-)
-def test_nothing_goes_to_a_court_by_email(kind: str) -> None:
-    guidance = send_guidance(kind, party_kind="authority", today=TODAY, court=True)  # type: ignore[arg-type]
-    channels = {c.channel: c for c in guidance.channels}
-    assert not channels["email"].allowed and not channels["email"].recommended
-    assert channels["letter"].recommended
-    # a court order's objection keeps its own channels (the form, online-mahnantrag.de)
-    order = send_guidance("objection", letter_kind="court_payment_order", today=TODAY, court=True)
-    assert "portal" in {c.channel for c in order.channels}
+def test_a_labour_courts_order_is_answered_there_within_one_week() -> None:
+    def check(letter: str) -> None:
+        guidance = send_guidance("objection", letter_kind=letter, today=TODAY, court=True, labour_court=True)
+        channels = {c.channel: c for c in guidance.channels}
+        assert "portal" not in channels and not channels["email"].allowed
+        assert "one week" in guidance.form_note and "ArbGG" in guidance.form_note
+        assert channels["registered_letter"].recommended and "labour court" in channels["in_person"].label
+
+    check_rows(A_LABOUR_COURTS_ORDER_IS_ANSWERED_THERE_WITHIN_ONE_WEEK, check)
+
+
+NOTHING_GOES_TO_A_COURT_BY_EMAIL = [
+    "general_reply",
+    "extension_request",
+    "address_change",
+    "payment_plan",
+    "objection",
+]
+
+
+def test_nothing_goes_to_a_court_by_email() -> None:
+    def check(kind: str) -> None:
+        guidance = send_guidance(kind, party_kind="authority", today=TODAY, court=True)  # type: ignore[arg-type]
+        channels = {c.channel: c for c in guidance.channels}
+        assert not channels["email"].allowed and not channels["email"].recommended
+        assert channels["letter"].recommended
+        # a court order's objection keeps its own channels (the form, online-mahnantrag.de)
+        order = send_guidance("objection", letter_kind="court_payment_order", today=TODAY, court=True)
+        assert "portal" in {c.channel for c in order.channels}
+
+    check_rows(NOTHING_GOES_TO_A_COURT_BY_EMAIL, check)
 
 
 @pytest.mark.parametrize("letter", ["enforcement_order", "court_payment_order", "landlord_notice"])
@@ -3455,22 +3624,24 @@ def test_replies_to_a_rent_increase_and_a_statement_have_their_own_advice() -> N
     )
 
 
-@pytest.mark.parametrize(
-    "kind",
-    [
-        "extension_request",
-        "payment_plan",
-        "defect_notice",
-        "data_access",
-        "receipts_inspection",
-        "deposit_return",
-        "address_change",
-    ],
-)
-def test_every_template_letter_has_sending_advice(kind: str) -> None:
-    guidance = send_guidance(kind, today=TODAY, due=D("2026-10-30"))  # type: ignore[arg-type]
-    assert guidance.channels and guidance.form == "any"
-    assert guidance.send_by is not None
+EVERY_TEMPLATE_LETTER_HAS_SENDING_ADVICE = [
+    "extension_request",
+    "payment_plan",
+    "defect_notice",
+    "data_access",
+    "receipts_inspection",
+    "deposit_return",
+    "address_change",
+]
+
+
+def test_every_template_letter_has_sending_advice() -> None:
+    def check(kind: str) -> None:
+        guidance = send_guidance(kind, today=TODAY, due=D("2026-10-30"))  # type: ignore[arg-type]
+        assert guidance.channels and guidance.form == "any"
+        assert guidance.send_by is not None
+
+    check_rows(EVERY_TEMPLATE_LETTER_HAS_SENDING_ADVICE, check)
 
 
 def test_template_specific_tips() -> None:
@@ -3515,27 +3686,29 @@ def _statement_date(text: str) -> date | None:
     return min((day for day, _ in advice._dated_statements(text)), default=None)
 
 
-@pytest.mark.parametrize(
-    ("text", "dated"),
-    [
-        (REMINDER_QUOTE, D("2024-11-15")),
-        ("Ihr Widerspruch gegen unsere Abrechnung vom 15. November 2024 ist unbegründet.", D("2024-11-15")),
-        ("Betriebskostenabrechnung vom 2024-11-15", D("2024-11-15")),
-        # two statements named: the earlier date is the earliest the older one can have arrived
-        ("Abrechnung vom 01.12.2025 ersetzt die Abrechnung vom 15.11.2024.", D("2024-11-15")),
-        # a billing period that starts with "vom" is no date of the statement
-        ("Betriebskostenabrechnung vom 01.01.2024 bis 31.12.2024", None),
-        ("Abrechnung für den Zeitraum vom 1. Januar 2024 – 31. Dezember 2024", None),
-        ("Abrechnungszeitraum vom 01.01.2024 bis 31.12.2024", None),
-        # a date without a year, or no full date, or an impossible one, dates nothing
-        ("Abrechnung vom 15.11.", None),
-        ("Abrechnung vom November 2024", None),
-        ("Abrechnung vom 31.02.2024", None),
-        ("Abrechnung vom Hausmeister", None),
-    ],
-)
-def test_the_date_a_letter_gives_the_statement(text: str, dated: date | None) -> None:
-    assert _statement_date(text) == dated
+THE_DATE_A_LETTER_GIVES_THE_STATEMENT = [
+    (REMINDER_QUOTE, D("2024-11-15")),
+    ("Ihr Widerspruch gegen unsere Abrechnung vom 15. November 2024 ist unbegründet.", D("2024-11-15")),
+    ("Betriebskostenabrechnung vom 2024-11-15", D("2024-11-15")),
+    # two statements named: the earlier date is the earliest the older one can have arrived
+    ("Abrechnung vom 01.12.2025 ersetzt die Abrechnung vom 15.11.2024.", D("2024-11-15")),
+    # a billing period that starts with "vom" is no date of the statement
+    ("Betriebskostenabrechnung vom 01.01.2024 bis 31.12.2024", None),
+    ("Abrechnung für den Zeitraum vom 1. Januar 2024 – 31. Dezember 2024", None),
+    ("Abrechnungszeitraum vom 01.01.2024 bis 31.12.2024", None),
+    # a date without a year, or no full date, or an impossible one, dates nothing
+    ("Abrechnung vom 15.11.", None),
+    ("Abrechnung vom November 2024", None),
+    ("Abrechnung vom 31.02.2024", None),
+    ("Abrechnung vom Hausmeister", None),
+]
+
+
+def test_the_date_a_letter_gives_the_statement() -> None:
+    def check(text: str, dated: date | None) -> None:
+        assert _statement_date(text) == dated
+
+    check_rows(THE_DATE_A_LETTER_GIVES_THE_STATEMENT, check)
 
 
 def test_a_later_letter_counts_from_the_statements_own_date() -> None:
@@ -3694,48 +3867,50 @@ def test_a_later_letter_that_arrived_in_time_is_on_time_either_way() -> None:
     assert card.facts[0].title == "On time"
 
 
-@pytest.mark.parametrize(
-    ("text", "counts"),
-    [
-        # a reply that names the statement with its billing year counts from the statement's date, even when
-        # it repeats the statement's period
-        (
-            "Ihr Widerspruch gegen unsere Betriebskostenabrechnung 2023 vom 15.11.2024 ist unbegründet.\n"
-            "Abrechnungszeitraum: 01.01.2023 - 31.12.2023",
-            "counts",
-        ),
-        # without a year, it may be this statement's — or an enclosure's: named, the arrival stays
-        ("Operating-cost statement 2023\nIhr Widerspruch gegen unsere Abrechnung vom 15.11.2024 …", "named"),
-        (REPLY_WITH_PERIOD, "named"),
-        (REPLY_WITH_PERIOD_IN_SUBJECT, "named"),
-        (CORRECTED_STATEMENT, "named"),
-        # another year's statement, even without a period of its own
-        ("Betriebskostenabrechnung 2024\nDie Abrechnung 2023 vom 15.01.2025 wurde korrigiert.", "ignored"),
-        # … or named with its year before this statement's own period ended (the period the card checks)
-        (
-            "Abrechnungszeitraum: 01.01.2025 - 31.12.2025\nDas Guthaben aus der Abrechnung 2024 vom 10.11.2025 "
-            "wurde erstattet.",
-            "ignored",
-        ),
-        # dated before the billing period ended: the previous statement
-        (
-            "Betriebskostenabrechnung 2024\nDas Guthaben aus der letzten Abrechnung vom 10.11.2024 …",
-            "ignored",
-        ),
-        # no billing period at all: nothing to check it against
-        ("Ihr Widerspruch gegen unsere Abrechnung vom 15.11.2024 ist unbegründet.", "ignored"),
-    ],
-)
-def test_which_statement_date_a_later_letter_counts_from(text: str, counts: str) -> None:
-    letter, arrived = D("2026-09-20"), D("2026-09-22")
-    dated = _statement_date(text)
-    assert dated is not None
-    expected = {
-        "counts": (dated, False, None),
-        "named": (arrived, True, dated),
-        "ignored": (arrived, True, None),
-    }[counts]
-    assert statement_arrival(text, arrived, True, letter) == expected
+WHICH_STATEMENT_DATE_A_LATER_LETTER_COUNTS_FROM = [
+    # a reply that names the statement with its billing year counts from the statement's date, even when
+    # it repeats the statement's period
+    (
+        "Ihr Widerspruch gegen unsere Betriebskostenabrechnung 2023 vom 15.11.2024 ist unbegründet.\n"
+        "Abrechnungszeitraum: 01.01.2023 - 31.12.2023",
+        "counts",
+    ),
+    # without a year, it may be this statement's — or an enclosure's: named, the arrival stays
+    ("Operating-cost statement 2023\nIhr Widerspruch gegen unsere Abrechnung vom 15.11.2024 …", "named"),
+    (REPLY_WITH_PERIOD, "named"),
+    (REPLY_WITH_PERIOD_IN_SUBJECT, "named"),
+    (CORRECTED_STATEMENT, "named"),
+    # another year's statement, even without a period of its own
+    ("Betriebskostenabrechnung 2024\nDie Abrechnung 2023 vom 15.01.2025 wurde korrigiert.", "ignored"),
+    # … or named with its year before this statement's own period ended (the period the card checks)
+    (
+        "Abrechnungszeitraum: 01.01.2025 - 31.12.2025\nDas Guthaben aus der Abrechnung 2024 vom 10.11.2025 "
+        "wurde erstattet.",
+        "ignored",
+    ),
+    # dated before the billing period ended: the previous statement
+    (
+        "Betriebskostenabrechnung 2024\nDas Guthaben aus der letzten Abrechnung vom 10.11.2024 …",
+        "ignored",
+    ),
+    # no billing period at all: nothing to check it against
+    ("Ihr Widerspruch gegen unsere Abrechnung vom 15.11.2024 ist unbegründet.", "ignored"),
+]
+
+
+def test_which_statement_date_a_later_letter_counts_from() -> None:
+    def check(text: str, counts: str) -> None:
+        letter, arrived = D("2026-09-20"), D("2026-09-22")
+        dated = _statement_date(text)
+        assert dated is not None
+        expected = {
+            "counts": (dated, False, None),
+            "named": (arrived, True, dated),
+            "ignored": (arrived, True, None),
+        }[counts]
+        assert statement_arrival(text, arrived, True, letter) == expected
+
+    check_rows(WHICH_STATEMENT_DATE_A_LATER_LETTER_COUNTS_FROM, check)
 
 
 def test_two_dates_on_one_day_are_sorted_by_date_alone() -> None:
@@ -3753,90 +3928,109 @@ def test_a_rent_increase_card_says_which_month_ends_the_decision() -> None:
     assert "until 31 March" in card.summary
 
 
-@pytest.mark.parametrize(
-    ("name", "kind"),
-    [
-        ("LG Electronics Deutschland GmbH", "retailer"),
-        ("LG Electronics Deutschland GmbH", None),
-        ("LG Display", "company"),
-        ("AG Wohnbau GmbH", "landlord"),
-        ("AG Wohnbau GmbH", None),
-        ("FG Finanz-Service AG", None),
-        ("OLG Immobilien", "landlord"),
-        ("Kundenservice der LG Electronics Deutschland", "retailer"),
-        ("LG Electronics Deutschland Service Center Nord", None),  # more than a place
-    ],
-)
-def test_a_company_whose_name_starts_like_a_court_abbreviation_is_no_court(
-    name: str, kind: str | None
-) -> None:
+A_COMPANY_WHOSE_NAME_STARTS_LIKE_A_COURT_ABBREVIATION_IS_NO_COURT = [
+    ("LG Electronics Deutschland GmbH", "retailer"),
+    ("LG Electronics Deutschland GmbH", None),
+    ("LG Display", "company"),
+    ("AG Wohnbau GmbH", "landlord"),
+    ("AG Wohnbau GmbH", None),
+    ("FG Finanz-Service AG", None),
+    ("OLG Immobilien", "landlord"),
+    ("Kundenservice der LG Electronics Deutschland", "retailer"),
+    ("LG Electronics Deutschland Service Center Nord", None),  # more than a place
+]
+
+
+def test_a_company_whose_name_starts_like_a_court_abbreviation_is_no_court() -> None:
     """An abbreviation counts only before a place (a word or two, no legal form) and from a
     sender read as an authority (or of unknown kind)."""
-    assert not routing.is_court(name, kind) and not routing.is_labour_court(name, kind)
+
+    def check(name: str, kind: str | None) -> None:
+        assert not routing.is_court(name, kind) and not routing.is_labour_court(name, kind)
+
+    check_rows(A_COMPANY_WHOSE_NAME_STARTS_LIKE_A_COURT_ABBREVIATION_IS_NO_COURT, check)
 
 
-@pytest.mark.parametrize(
-    "name",
-    [
-        "AG Hagen",
-        "AG Frankfurt am Main",
-        "LG Berlin II",
-        "AG Halle (Saale)",
-        "AG Neustadt a. d. Weinstraße",
-        "OLG München, 3. Zivilsenat",
-        "Geschäftsstelle des AG Hamburg-St. Georg",
-    ],
-)
-def test_a_courts_abbreviation_before_its_place_is_a_court(name: str) -> None:
-    assert routing.is_court(name, "authority") and routing.is_court(name, "other")
-    # a name of unknown kind (a recipient typed in) needs the court's full name
-    assert not routing.is_court(name)
+A_COURTS_ABBREVIATION_BEFORE_ITS_PLACE_IS_A_COURT = [
+    "AG Hagen",
+    "AG Frankfurt am Main",
+    "LG Berlin II",
+    "AG Halle (Saale)",
+    "AG Neustadt a. d. Weinstraße",
+    "OLG München, 3. Zivilsenat",
+    "Geschäftsstelle des AG Hamburg-St. Georg",
+]
 
 
-@pytest.mark.parametrize("name", ["LG Electronics", "OLG Immobilien", "AG Hausverwaltung Müller", "AG Hagen"])
-def test_a_typed_recipient_is_a_court_only_by_its_full_name(name: str) -> None:
+def test_a_courts_abbreviation_before_its_place_is_a_court() -> None:
+    def check(name: str) -> None:
+        assert routing.is_court(name, "authority") and routing.is_court(name, "other")
+        # a name of unknown kind (a recipient typed in) needs the court's full name
+        assert not routing.is_court(name)
+
+    check_rows(A_COURTS_ABBREVIATION_BEFORE_ITS_PLACE_IS_A_COURT, check)
+
+
+A_TYPED_RECIPIENT_IS_A_COURT_ONLY_BY_ITS_FULL_NAME = [
+    "LG Electronics",
+    "OLG Immobilien",
+    "AG Hausverwaltung Müller",
+    "AG Hagen",
+]
+
+
+def test_a_typed_recipient_is_a_court_only_by_its_full_name() -> None:
     """A recipient typed into a template letter has no kind; an abbreviation without a legal
     form ("LG Electronics") doesn't make it a court, a court's full name does."""
-    assert not routing.is_court(name, None) and not routing.is_labour_court(name, None)
-    assert routing.is_court("Amtsgericht Hagen", None) and routing.is_labour_court(
-        "Arbeitsgericht Berlin", None
-    )
-    assert not routing.is_court(name, "retailer") and not routing.is_court(name, "company")
-    assert routing.is_court("Amtsgericht Hagen", "other")  # a court's full name counts from any sender kind
-    # … but it may be one, which its sending advice says (:func:`test_a_typed_name_that_may_be_a_court`)
-    assert routing.may_be_court(name)
+
+    def check(name: str) -> None:
+        assert not routing.is_court(name, None) and not routing.is_labour_court(name, None)
+        assert routing.is_court("Amtsgericht Hagen", None) and routing.is_labour_court(
+            "Arbeitsgericht Berlin", None
+        )
+        assert not routing.is_court(name, "retailer") and not routing.is_court(name, "company")
+        assert routing.is_court(
+            "Amtsgericht Hagen", "other"
+        )  # a court's full name counts from any sender kind
+        # … but it may be one, which its sending advice says (:func:`test_a_typed_name_that_may_be_a_court`)
+        assert routing.may_be_court(name)
+
+    check_rows(A_TYPED_RECIPIENT_IS_A_COURT_ONLY_BY_ITS_FULL_NAME, check)
 
 
-@pytest.mark.parametrize(
-    ("name", "maybe"),
-    [
-        ("AG Hagen", True),
-        ("LG Köln", True),
-        ("AG Hagen – Abteilung 12", True),
-        ("Amtsgericht Hagen", True),
-        ("LG Electronics", True),  # can't be told apart from a court
-        ("LG Electronics Deutschland GmbH", False),
-        ("Gerichtsvollzieher beim AG Hagen", False),
-        ("Stadtwerke Hagen", False),
-    ],
-)
-def test_a_typed_name_that_may_be_a_court(name: str, maybe: bool) -> None:
+A_TYPED_NAME_THAT_MAY_BE_A_COURT = [
+    ("AG Hagen", True),
+    ("LG Köln", True),
+    ("AG Hagen – Abteilung 12", True),
+    ("Amtsgericht Hagen", True),
+    ("LG Electronics", True),  # can't be told apart from a court
+    ("LG Electronics Deutschland GmbH", False),
+    ("Gerichtsvollzieher beim AG Hagen", False),
+    ("Stadtwerke Hagen", False),
+]
+
+
+def test_a_typed_name_that_may_be_a_court() -> None:
     """A request for more time sent to "AG Hagen" by plain e-mail isn't validly filed, so a
     typed name that abbreviates a court before a place gets the court's channels — a signed letter first —
     with e-mail last and allowed only for the case it isn't a court. Only for letters sent to a court (an
     objection, a reply, a request for more time): a withdrawal to "LG Electronics" keeps its own channels."""
-    assert routing.may_be_court(name) is maybe
-    unsure = maybe and not routing.is_court(name, None)
-    guidance = send_guidance(
-        "extension_request", court=routing.is_court(name, None), court_unsure=unsure, today=TODAY
-    )
-    [email] = [channel for channel in guidance.channels if channel.channel == "email"]
-    assert guidance.channels[0].channel == ("letter" if maybe else "email")
-    assert email.allowed is (not maybe or unsure) and email.recommended is not maybe
-    if unsure:
-        assert email.note is not None and email.note.startswith("Not valid if this is a court")
-    withdrawal = send_guidance("withdrawal", court=False, court_unsure=unsure, today=TODAY)
-    assert withdrawal.channels[0].channel == "email" and withdrawal.channels[0].allowed
+
+    def check(name: str, maybe: bool) -> None:
+        assert routing.may_be_court(name) is maybe
+        unsure = maybe and not routing.is_court(name, None)
+        guidance = send_guidance(
+            "extension_request", court=routing.is_court(name, None), court_unsure=unsure, today=TODAY
+        )
+        [email] = [channel for channel in guidance.channels if channel.channel == "email"]
+        assert guidance.channels[0].channel == ("letter" if maybe else "email")
+        assert email.allowed is (not maybe or unsure) and email.recommended is not maybe
+        if unsure:
+            assert email.note is not None and email.note.startswith("Not valid if this is a court")
+        withdrawal = send_guidance("withdrawal", court=False, court_unsure=unsure, today=TODAY)
+        assert withdrawal.channels[0].channel == "email" and withdrawal.channels[0].allowed
+
+    check_rows(A_TYPED_NAME_THAT_MAY_BE_A_COURT, check)
 
 
 def test_an_lg_order_confirmation_keeps_the_consumer_withdrawal_rules() -> None:
@@ -3856,46 +4050,46 @@ def test_an_lg_order_confirmation_keeps_the_consumer_withdrawal_rules() -> None:
     assert not next(channel for channel in at_court.channels if channel.channel == "email").allowed
 
 
-@pytest.mark.parametrize(
-    ("extra", "kind"),
-    [
-        # an employer ending the lease of a company flat: a landlord's notice (§ 576a BGB), not a dismissal
-        (
-            {"kind": "rent_lease", "sender": ExtractedParty(name="Werk GmbH", kind="employer")},
-            "landlord_notice",
-        ),
-        (
-            {
-                "sender": ExtractedParty(name="Werk GmbH", kind="employer"),
-                "contract": ExtractedContract(name="Werkmietwohnung", category="rent"),
-            },
-            "landlord_notice",
-        ),
-        # an employer ending a job ticket: neither
-        (
-            {
-                "kind": "employment",
-                "sender": ExtractedParty(name="Werk GmbH", kind="employer"),
-                "contract": ExtractedContract(name="Jobticket", category="transport"),
-            },
-            None,
-        ),
-        # a job whose contract the reading files as "other": the letter's kind decides
-        (
-            {"kind": "employment", "contract": ExtractedContract(name="Vertrag", category="other")},
-            "dismissal",
-        ),
-        # the letter's own kind before the sender's
-        ({"kind": "employment", "sender": ExtractedParty(name="Wohnbau", kind="landlord")}, "dismissal"),
-        ({"kind": "other", "sender": ExtractedParty(name="Wohnbau", kind="landlord")}, "landlord_notice"),
-        ({"kind": "other", "sender": ExtractedParty(name="Fitness", kind="gym")}, None),
-        ({"kind": "other"}, None),
-    ],
-)
-def test_what_a_termination_ends_is_decided_by_its_contract_then_its_kind_then_its_sender(
-    extra: dict[str, Any], kind: str | None
-) -> None:
-    assert routing.classify_letter(_termination(**extra)) == kind
+WHAT_A_TERMINATION_ENDS_IS_DECIDED_BY_ITS_CONTRACT_THEN_ITS_KIND_THEN_ITS_SENDER = [
+    # an employer ending the lease of a company flat: a landlord's notice (§ 576a BGB), not a dismissal
+    (
+        {"kind": "rent_lease", "sender": ExtractedParty(name="Werk GmbH", kind="employer")},
+        "landlord_notice",
+    ),
+    (
+        {
+            "sender": ExtractedParty(name="Werk GmbH", kind="employer"),
+            "contract": ExtractedContract(name="Werkmietwohnung", category="rent"),
+        },
+        "landlord_notice",
+    ),
+    # an employer ending a job ticket: neither
+    (
+        {
+            "kind": "employment",
+            "sender": ExtractedParty(name="Werk GmbH", kind="employer"),
+            "contract": ExtractedContract(name="Jobticket", category="transport"),
+        },
+        None,
+    ),
+    # a job whose contract the reading files as "other": the letter's kind decides
+    (
+        {"kind": "employment", "contract": ExtractedContract(name="Vertrag", category="other")},
+        "dismissal",
+    ),
+    # the letter's own kind before the sender's
+    ({"kind": "employment", "sender": ExtractedParty(name="Wohnbau", kind="landlord")}, "dismissal"),
+    ({"kind": "other", "sender": ExtractedParty(name="Wohnbau", kind="landlord")}, "landlord_notice"),
+    ({"kind": "other", "sender": ExtractedParty(name="Fitness", kind="gym")}, None),
+    ({"kind": "other"}, None),
+]
+
+
+def test_what_a_termination_ends_is_decided_by_its_contract_then_its_kind_then_its_sender() -> None:
+    def check(extra: dict[str, Any], kind: str | None) -> None:
+        assert routing.classify_letter(_termination(**extra)) == kind
+
+    check_rows(WHAT_A_TERMINATION_ENDS_IS_DECIDED_BY_ITS_CONTRACT_THEN_ITS_KIND_THEN_ITS_SENDER, check)
 
 
 def test_not_only_fristlos_is_no_negation() -> None:
@@ -3949,100 +4143,104 @@ def test_a_later_date_the_letter_names_keeps_the_laws_and_says_so(
     assert any(f"later than the law's date ({fmt_date(D(due))})" in w for w in receipt.warnings)
 
 
-@pytest.mark.parametrize(
-    ("todo", "passed", "end_unknown", "first", "urgent"),
-    [
-        # the objection date had passed when the notice was written: no to-do — say why, and act now
-        (False, True, False, "Your tenancy would end less than two months after this letter", True),
-        (False, False, True, "We couldn't read when your tenancy ends", True),
-        # no to-do for another reason (the person deleted it): still urgent, with the rule
-        (False, False, False, "There is no to-do for the objection", True),
-        # the letter's own objection date is the to-do, although the end wasn't read: no such step
-        (True, False, True, "Don't agree to move out", False),
-    ],
-)
-def test_a_landlords_card_says_why_no_to_do_carries_the_objection(
-    todo: bool, passed: bool, end_unknown: bool, first: str, urgent: bool
-) -> None:
-    card = letter_advice(
-        "landlord_notice",
-        today=TODAY,
-        objection_todo=todo,
-        objection_passed=passed,
-        end_unknown=end_unknown,
-    )
-    assert card is not None and card.urgent is urgent
-    assert card.steps[0].startswith(first)
-    if passed:
-        assert "§ 574b Abs. 2 S. 2 BGB" in card.steps[0] and "§ 573c" in card.steps[0]
+A_LANDLORDS_CARD_SAYS_WHY_NO_TO_DO_CARRIES_THE_OBJECTION = [
+    # the objection date had passed when the notice was written: no to-do — say why, and act now
+    (False, True, False, "Your tenancy would end less than two months after this letter", True),
+    (False, False, True, "We couldn't read when your tenancy ends", True),
+    # no to-do for another reason (the person deleted it): still urgent, with the rule
+    (False, False, False, "There is no to-do for the objection", True),
+    # the letter's own objection date is the to-do, although the end wasn't read: no such step
+    (True, False, True, "Don't agree to move out", False),
+]
 
 
-@pytest.mark.parametrize(
-    ("kind", "facts"),
-    [
-        ("court_payment_order", {}),
-        ("court_payment_order", {"labour_court": True}),
-        ("enforcement_order", {"labour_court": True}),
-        ("enforcement_order", {}),
-        ("dismissal", {}),
-        ("dismissal", {"arrival_confirmed": True}),
-        (
-            "operating_costs",
-            {"arrived": D("2026-09-10"), "text": "Abrechnungszeitraum: 01.01.2024 - 31.12.2024"},
-        ),
-    ],
-)
-def test_a_card_is_no_longer_urgent_once_the_person_closed_every_to_do(
-    kind: str, facts: dict[str, Any]
-) -> None:
+def test_a_landlords_card_says_why_no_to_do_carries_the_objection() -> None:
+    def check(todo: bool, passed: bool, end_unknown: bool, first: str, urgent: bool) -> None:
+        card = letter_advice(
+            "landlord_notice",
+            today=TODAY,
+            objection_todo=todo,
+            objection_passed=passed,
+            end_unknown=end_unknown,
+        )
+        assert card is not None and card.urgent is urgent
+        assert card.steps[0].startswith(first)
+        if passed:
+            assert "§ 574b Abs. 2 S. 2 BGB" in card.steps[0] and "§ 573c" in card.steps[0]
+
+    check_rows(A_LANDLORDS_CARD_SAYS_WHY_NO_TO_DO_CARRIES_THE_OBJECTION, check)
+
+
+A_CARD_IS_NO_LONGER_URGENT_ONCE_THE_PERSON_CLOSED_EVERY_TO_DO = [
+    ("court_payment_order", {}),
+    ("court_payment_order", {"labour_court": True}),
+    ("enforcement_order", {"labour_court": True}),
+    ("enforcement_order", {}),
+    ("dismissal", {}),
+    ("dismissal", {"arrival_confirmed": True}),
+    (
+        "operating_costs",
+        {"arrived": D("2026-09-10"), "text": "Abrechnungszeitraum: 01.01.2024 - 31.12.2024"},
+    ),
+]
+
+
+def test_a_card_is_no_longer_urgent_once_the_person_closed_every_to_do() -> None:
     """After the person objected (or went to court) and marked the to-dos done, the card
     stays as information and the verdict settles. It says so (``handled``) and no longer
     asks for the delivery day."""
-    card = letter_advice(kind, today=TODAY, **facts)
-    handled = letter_advice(kind, today=TODAY, handled=True, **facts)
-    assert card is not None and handled is not None
-    assert card.urgent and not handled.urgent and handled.handled and not card.handled
-    asks = kind != "operating_costs"  # the court orders and the dismissal ask for the delivery day first
-    assert handled.steps == (card.steps[1:] if asks else card.steps)
-    assert (
-        handled.model_copy(
-            update={"urgent": True, "handled": False, "steps": card.steps, "title": card.title}
+
+    def check(kind: str, facts: dict[str, Any]) -> None:
+        card = letter_advice(kind, today=TODAY, **facts)
+        handled = letter_advice(kind, today=TODAY, handled=True, **facts)
+        assert card is not None and handled is not None
+        assert card.urgent and not handled.urgent and handled.handled and not card.handled
+        asks = kind != "operating_costs"  # the court orders and the dismissal ask for the delivery day first
+        assert handled.steps == (card.steps[1:] if asks else card.steps)
+        assert (
+            handled.model_copy(
+                update={"urgent": True, "handled": False, "steps": card.steps, "title": card.title}
+            )
+            == card
         )
-        == card
-    )
-    # the title names the letter, never the deadline it no longer urges
-    assert handled.title == f"{card.title.split(' — ')[0]} — you've dealt with it"
+        # the title names the letter, never the deadline it no longer urges
+        assert handled.title == f"{card.title.split(' — ')[0]} — you've dealt with it"
+
+    check_rows(A_CARD_IS_NO_LONGER_URGENT_ONCE_THE_PERSON_CLOSED_EVERY_TO_DO, check)
 
 
-@pytest.mark.parametrize(
-    "facts",
-    [
-        {"extraordinary": True},
-        {"extraordinary": True, "alternative": True},
-        {"objection_todo": False, "end_unknown": True},
-        {"objection_todo": False, "objection_passed": True},
-        {"objection_todo": False},
-    ],
-)
-def test_a_landlords_notice_no_to_do_carries_is_never_handled(facts: dict[str, Any]) -> None:
+A_LANDLORDS_NOTICE_NO_TO_DO_CARRIES_IS_NEVER_HANDLED = [
+    {"extraordinary": True},
+    {"extraordinary": True, "alternative": True},
+    {"objection_todo": False, "end_unknown": True},
+    {"objection_todo": False, "objection_passed": True},
+    {"objection_todo": False},
+]
+
+
+def test_a_landlords_notice_no_to_do_carries_is_never_handled() -> None:
     """Paying the arrears a notice without notice period demands, or closing a handover
     appointment, doesn't deal with a notice no objection to-do carries: its card stays urgent."""
-    card = letter_advice("landlord_notice", today=TODAY, handled=True, **facts)
-    assert card is not None and card.urgent and not card.handled
-    ordinary = letter_advice("landlord_notice", today=TODAY, handled=True)
-    assert ordinary is not None and ordinary.handled and not ordinary.urgent
-    # … until the person says they dealt with it (had advice, moved out, settled): the card
-    # offers that itself, as no to-do can close it
-    assert card.closable and not ordinary.closable
-    dealt = letter_advice("landlord_notice", today=TODAY, dealt_with=True, **facts)
-    assert dealt is not None and dealt.handled and not dealt.urgent and dealt.closable
-    assert dealt.model_copy(update={"urgent": True, "handled": False, "title": card.title}) == card
-    # a handled card no longer urges what it did
-    assert dealt.title == "Notice from your landlord — you've dealt with it"
-    assert ordinary.title == "Notice from your landlord — you've dealt with it"
-    # the tag means nothing on a card its to-dos settle
-    other = letter_advice("landlord_notice", today=TODAY, dealt_with=True)
-    assert other is not None and not other.handled
+
+    def check(facts: dict[str, Any]) -> None:
+        card = letter_advice("landlord_notice", today=TODAY, handled=True, **facts)
+        assert card is not None and card.urgent and not card.handled
+        ordinary = letter_advice("landlord_notice", today=TODAY, handled=True)
+        assert ordinary is not None and ordinary.handled and not ordinary.urgent
+        # … until the person says they dealt with it (had advice, moved out, settled): the card
+        # offers that itself, as no to-do can close it
+        assert card.closable and not ordinary.closable
+        dealt = letter_advice("landlord_notice", today=TODAY, dealt_with=True, **facts)
+        assert dealt is not None and dealt.handled and not dealt.urgent and dealt.closable
+        assert dealt.model_copy(update={"urgent": True, "handled": False, "title": card.title}) == card
+        # a handled card no longer urges what it did
+        assert dealt.title == "Notice from your landlord — you've dealt with it"
+        assert ordinary.title == "Notice from your landlord — you've dealt with it"
+        # the tag means nothing on a card its to-dos settle
+        other = letter_advice("landlord_notice", today=TODAY, dealt_with=True)
+        assert other is not None and not other.handled
+
+    check_rows(A_LANDLORDS_NOTICE_NO_TO_DO_CARRIES_IS_NEVER_HANDLED, check)
 
 
 def _todo(status: str, *rule_ids: str, origin: str = "extracted") -> Item:
@@ -4159,62 +4357,80 @@ def test_every_court_letters_period_runs_from_delivery() -> None:
     assert "zpo_180" not in compute_due(spec(), ctx(document_date="2026-09-21")).rule_ids
 
 
-@pytest.mark.parametrize("own_date", ["document_date", "today"])
-def test_a_court_period_counted_from_the_letters_own_date_ignores_the_envelope_date(own_date: str) -> None:
+A_COURT_PERIOD_COUNTED_FROM_THE_LETTERS_OWN_DATE_IGNORES_THE_ENVELOPE_DATE = ["document_date", "today"]
+
+
+def test_a_court_period_counted_from_the_letters_own_date_ignores_the_envelope_date() -> None:
     """A court may count its own period from its letter's date (§ 221 ZPO: "ab dem Datum
     dieses Schreibens"); the envelope date the person enters never moves it later, and the page doesn't ask
     for it (no § 180 ZPO)."""
-    date_spec = spec(
-        anchor=own_date, nature="declaration", text="binnen zwei Wochen ab dem Datum dieses Schreibens"
-    )
-    court = ctx(document_date="2026-09-01", court=True)
-    entered = replace(court, received_date=D("2026-09-04"), received_confirmed=True)
-    for context in (court, entered):
-        receipt = compute_due(date_spec, context)
-        assert receipt.due_date == "2026-09-15" and receipt.confidence != "high"
-        assert "zpo_180" not in receipt.rule_ids
-    # a court order's statutory period still runs from delivery, whatever anchor it was read with
-    order = spec(anchor=own_date, text="binnen zwei Wochen")
-    as_order = replace(entered, letter_kind="court_payment_order")
-    served = compute_due(order, as_order)
-    assert served.due_date == "2026-09-18" and "zpo_180" in served.rule_ids
-    # … and so does a court's own period that names no start (§ 221 ZPO: delivery)
-    no_start = compute_due(spec(anchor=None, nature="declaration", text="binnen zwei Wochen"), entered)
-    assert no_start.due_date == "2026-09-18" and "zpo_180" in no_start.rule_ids
+
+    def check(own_date: str) -> None:
+        date_spec = spec(
+            anchor=own_date, nature="declaration", text="binnen zwei Wochen ab dem Datum dieses Schreibens"
+        )
+        court = ctx(document_date="2026-09-01", court=True)
+        entered = replace(court, received_date=D("2026-09-04"), received_confirmed=True)
+        for context in (court, entered):
+            receipt = compute_due(date_spec, context)
+            assert receipt.due_date == "2026-09-15" and receipt.confidence != "high"
+            assert "zpo_180" not in receipt.rule_ids
+        # a court order's statutory period still runs from delivery, whatever anchor it was read with
+        order = spec(anchor=own_date, text="binnen zwei Wochen")
+        as_order = replace(entered, letter_kind="court_payment_order")
+        served = compute_due(order, as_order)
+        assert served.due_date == "2026-09-18" and "zpo_180" in served.rule_ids
+        # … and so does a court's own period that names no start (§ 221 ZPO: delivery)
+        no_start = compute_due(spec(anchor=None, nature="declaration", text="binnen zwei Wochen"), entered)
+        assert no_start.due_date == "2026-09-18" and "zpo_180" in no_start.rule_ids
+
+    check_rows(A_COURT_PERIOD_COUNTED_FROM_THE_LETTERS_OWN_DATE_IGNORES_THE_ENVELOPE_DATE, check)
 
 
-@pytest.mark.parametrize("kind", ["authority", "university", "other", None, "employer"])
-def test_the_kschg_period_counts_from_arrival_whoever_the_employer_is(kind: str | None) -> None:
+THE_KSCHG_PERIOD_COUNTS_FROM_ARRIVAL_WHOEVER_THE_EMPLOYER_IS = [
+    "authority",
+    "university",
+    "other",
+    None,
+    "employer",
+]
+
+
+def test_the_kschg_period_counts_from_arrival_whoever_the_employer_is() -> None:
     """A dismissal takes effect on receipt (§ 130 BGB, § 4 S. 1 KSchG) — a city's or a
     university's too; the VwVfG's delivery fiction made it 15 Oct (16 Oct in NW) instead of 12 Oct."""
-    from ordnung.rules import is_private_sender, scope_for_party_kind
 
-    spec = DateSpec(
-        type="relative",
-        anchor="deemed_delivery",
-        delivery_rule="de_admin_post",
-        amount=3,
-        unit="weeks",
-        nature="objection",
-        legal_basis="§ 4 KSchG",
-        text="innerhalb von drei Wochen nach Zugang der Kündigung",
-    )
-    scope = scope_for_party_kind(kind, name="Stadt Musterstadt - Personalamt")
-    for region in (None, "NW"):
-        ctx = RuleContext(
-            today=date(2026, 9, 27),
-            document_date=date(2026, 9, 21),
-            region=region,
-            delivery_scope=scope,
-            sender_kind=kind,
-            private_sender=is_private_sender(kind, scope=scope),
-            letter_kind="dismissal",
+    def check(kind: str | None) -> None:
+        from ordnung.rules import is_private_sender, scope_for_party_kind
+
+        spec = DateSpec(
+            type="relative",
+            anchor="deemed_delivery",
+            delivery_rule="de_admin_post",
+            amount=3,
+            unit="weeks",
+            nature="objection",
+            legal_basis="§ 4 KSchG",
+            text="innerhalb von drei Wochen nach Zugang der Kündigung",
         )
-        receipt = compute_due(spec, ctx)
-        assert receipt.due_date == "2026-10-12" and "posting_day" not in receipt.rule_ids
-        assert "private_sender_arrival" in receipt.rule_ids
-    court_letter = compute_due(spec, replace(ctx, court=True))  # a court's letter keeps formal service
-    assert "private_sender_arrival" not in court_letter.rule_ids
+        scope = scope_for_party_kind(kind, name="Stadt Musterstadt - Personalamt")
+        for region in (None, "NW"):
+            ctx = RuleContext(
+                today=date(2026, 9, 27),
+                document_date=date(2026, 9, 21),
+                region=region,
+                delivery_scope=scope,
+                sender_kind=kind,
+                private_sender=is_private_sender(kind, scope=scope),
+                letter_kind="dismissal",
+            )
+            receipt = compute_due(spec, ctx)
+            assert receipt.due_date == "2026-10-12" and "posting_day" not in receipt.rule_ids
+            assert "private_sender_arrival" in receipt.rule_ids
+        court_letter = compute_due(spec, replace(ctx, court=True))  # a court's letter keeps formal service
+        assert "private_sender_arrival" not in court_letter.rule_ids
+
+    check_rows(THE_KSCHG_PERIOD_COUNTS_FROM_ARRIVAL_WHOEVER_THE_EMPLOYER_IS, check)
 
 
 def test_the_kschg_period_counts_a_regional_holiday_only_where_the_action_may_be_filed() -> None:
@@ -4278,39 +4494,40 @@ def test_a_statement_dated_at_the_end_of_the_calendar_claims_nothing() -> None:
     assert statement_late(named, D("2025-06-01"), True, None, named=end)  # that date never makes it on time
 
 
-@pytest.mark.parametrize(
-    ("letter_date", "arrived", "written", "due"),
-    [
-        # "ab dem 01.11.2026" in a request of 24 Sep 2026 — the law says 1 Dec
-        ("2026-09-24", None, "2026-11-01", "2026-12-01"),
-        # it arrived after the month turned: 1 Jan, whatever the letter says
-        ("2026-09-29", "2026-10-02", "2026-12-01", "2027-01-01"),
-        # a later start the letter names is kept
-        ("2026-09-24", "2026-09-25", "2027-02-01", "2027-02-01"),
-        # a period, not a date: the law's date
-        ("2026-09-24", "2026-09-25", None, "2026-12-01"),
-    ],
-)
-def test_a_rent_increases_new_rent_is_never_due_before_the_law_allows(
-    letter_date: str, arrived: str | None, written: str | None, due: str
-) -> None:
+A_RENT_INCREASES_NEW_RENT_IS_NEVER_DUE_BEFORE_THE_LAW_ALLOWS = [
+    # "ab dem 01.11.2026" in a request of 24 Sep 2026 — the law says 1 Dec
+    ("2026-09-24", None, "2026-11-01", "2026-12-01"),
+    # it arrived after the month turned: 1 Jan, whatever the letter says
+    ("2026-09-29", "2026-10-02", "2026-12-01", "2027-01-01"),
+    # a later start the letter names is kept
+    ("2026-09-24", "2026-09-25", "2027-02-01", "2027-02-01"),
+    # a period, not a date: the law's date
+    ("2026-09-24", "2026-09-25", None, "2026-12-01"),
+]
+
+
+def test_a_rent_increases_new_rent_is_never_due_before_the_law_allows() -> None:
     """The payment to-do kept the letter's earlier date with confidence high (§ 558b Abs. 1
     BGB: owed from the start of the third calendar month after the request arrived)."""
-    date_spec = (
-        DateSpec(type="fixed", date=written, nature="payment", text=f"ab dem {written}")
-        if written
-        else DateSpec(type="relative", anchor="receipt", amount=3, unit="months", nature="payment")
-    )
-    context = ctx(document_date=letter_date, letter_kind="rent_increase")
-    if arrived:
-        context = replace(context, received_date=D(arrived), received_confirmed=True)
-    receipt = compute_due(date_spec, context)
-    assert receipt.due_date == due and "bgb_558b" in receipt.rule_ids
-    assert receipt.send_by is not None and receipt.send_by < due  # a bank transfer, a working day ahead
-    if written and written < due:
-        assert any(f"by law the date is {fmt_date(D(due))}" in warning for warning in receipt.warnings)
-    if arrived is None:
-        assert receipt.confidence == "low"  # the real arrival day may move it later: asked for
+
+    def check(letter_date: str, arrived: str | None, written: str | None, due: str) -> None:
+        date_spec = (
+            DateSpec(type="fixed", date=written, nature="payment", text=f"ab dem {written}")
+            if written
+            else DateSpec(type="relative", anchor="receipt", amount=3, unit="months", nature="payment")
+        )
+        context = ctx(document_date=letter_date, letter_kind="rent_increase")
+        if arrived:
+            context = replace(context, received_date=D(arrived), received_confirmed=True)
+        receipt = compute_due(date_spec, context)
+        assert receipt.due_date == due and "bgb_558b" in receipt.rule_ids
+        assert receipt.send_by is not None and receipt.send_by < due  # a bank transfer, a working day ahead
+        if written and written < due:
+            assert any(f"by law the date is {fmt_date(D(due))}" in warning for warning in receipt.warnings)
+        if arrived is None:
+            assert receipt.confidence == "low"  # the real arrival day may move it later: asked for
+
+    check_rows(A_RENT_INCREASES_NEW_RENT_IS_NEVER_DUE_BEFORE_THE_LAW_ALLOWS, check)
 
 
 def test_a_rent_increases_new_rent_without_a_date_to_count_from() -> None:
@@ -4320,31 +4537,34 @@ def test_a_rent_increases_new_rent_without_a_date_to_count_from() -> None:
     assert receipt.due_date is None
 
 
-@pytest.mark.parametrize(
-    ("received", "region", "end"),
-    [
-        ("2026-09-24", None, "2026-12-31"),  # after the third working day: a month more
-        ("2026-10-02", None, "2026-12-31"),  # 1 Oct, 2 Oct, (3 Oct: a holiday), 5 Oct
-        ("2026-10-05", None, "2026-12-31"),
-        ("2026-10-06", None, "2027-01-31"),
-        ("2026-08-04", None, "2026-10-31"),  # 1 Aug is a Saturday and counts: 1, 3, 4 Aug
-        ("2026-08-05", None, "2026-11-30"),
-        # a Saturday third working day runs on to Monday (§ 193 BGB, as some courts hold): the earlier end
-        ("2027-04-05", None, "2027-06-30"),  # 1 Apr Thu, 2 Apr Fri, 3 Apr Sat → Mon 5 Apr
-        ("2027-04-06", None, "2027-07-31"),
-        ("2027-05-03", None, "2027-07-31"),  # 1 May holiday, 3 May Mon, 4 Tue, 5 Wed
-        ("2025-11-03", None, "2026-01-31"),  # 1 Nov (Sat, a holiday in some Länder), 3 Nov, 4 Nov
-        ("2025-11-04", None, "2026-01-31"),
-        ("2025-11-05", "BE", "2026-02-28"),  # 1 Nov Sat counts in Berlin: 1, 3, 4 Nov
-        ("2025-11-05", None, "2026-01-31"),  # any Land's holiday on 1 Nov doesn't count: 3, 4, 5 Nov
-        ("2026-02-28", "BY", "2026-05-31"),
-    ],
-)
-def test_next_permissible_end_of_a_landlords_notice(received: str, region: str | None, end: str) -> None:
+NEXT_PERMISSIBLE_END_OF_A_LANDLORDS_NOTICE = [
+    ("2026-09-24", None, "2026-12-31"),  # after the third working day: a month more
+    ("2026-10-02", None, "2026-12-31"),  # 1 Oct, 2 Oct, (3 Oct: a holiday), 5 Oct
+    ("2026-10-05", None, "2026-12-31"),
+    ("2026-10-06", None, "2027-01-31"),
+    ("2026-08-04", None, "2026-10-31"),  # 1 Aug is a Saturday and counts: 1, 3, 4 Aug
+    ("2026-08-05", None, "2026-11-30"),
+    # a Saturday third working day runs on to Monday (§ 193 BGB, as some courts hold): the earlier end
+    ("2027-04-05", None, "2027-06-30"),  # 1 Apr Thu, 2 Apr Fri, 3 Apr Sat → Mon 5 Apr
+    ("2027-04-06", None, "2027-07-31"),
+    ("2027-05-03", None, "2027-07-31"),  # 1 May holiday, 3 May Mon, 4 Tue, 5 Wed
+    ("2025-11-03", None, "2026-01-31"),  # 1 Nov (Sat, a holiday in some Länder), 3 Nov, 4 Nov
+    ("2025-11-04", None, "2026-01-31"),
+    ("2025-11-05", "BE", "2026-02-28"),  # 1 Nov Sat counts in Berlin: 1, 3, 4 Nov
+    ("2025-11-05", None, "2026-01-31"),  # any Land's holiday on 1 Nov doesn't count: 3, 4, 5 Nov
+    ("2026-02-28", "BY", "2026-05-31"),
+]
+
+
+def test_next_permissible_end_of_a_landlords_notice() -> None:
     """§ 573c Abs. 1 BGB: received by the third working day (Saturday counts, BGH VIII ZR 206/04) of a
     month, a landlord's notice ends the tenancy at the end of the month after next — the earliest end, for
     an objection that counts back from it."""
-    assert next_permissible_end(D(received), region) == D(end)
+
+    def check(received: str, region: str | None, end: str) -> None:
+        assert next_permissible_end(D(received), region) == D(end)
+
+    check_rows(NEXT_PERMISSIBLE_END_OF_A_LANDLORDS_NOTICE, check)
 
 
 def test_a_short_notices_objection_counts_back_from_the_next_permissible_end() -> None:
@@ -4371,24 +4591,36 @@ def test_a_short_notices_objection_counts_back_from_the_next_permissible_end() -
     assert "bgb_573c_landlord" not in compute_due(own, context).rule_ids
 
 
-@pytest.mark.parametrize("name", ["Sozialgericht Berlin", "SG Kassel", "Landessozialgericht NRW", "BSG"])
-def test_a_social_courts_period_cites_the_sgg(name: str) -> None:
+A_SOCIAL_COURTS_PERIOD_CITES_THE_SGG = ["Sozialgericht Berlin", "SG Kassel", "Landessozialgericht NRW", "BSG"]
+
+
+def test_a_social_courts_period_cites_the_sgg() -> None:
     """A social court counts under § 64 Abs. 1–3 SGG, not § 222 ZPO (the dates
     are the same; "Why this date?" cited the wrong act)."""
-    assert routing.is_social_court(name, "authority")
-    counted = spec(amount=1, unit="months", text="Berufung binnen eines Monats nach Zustellung (§ 151 SGG)")
-    receipt = compute_due(
-        counted,
-        ctx(document_date="2026-09-18", court=True, social_court=routing.is_social_court(name, "authority")),
-    )
-    citations = {step.rule_id: step.citation for step in receipt.steps}
-    assert citations["bgb_187_1"] == "§ 64 Abs. 1 SGG" and citations["bgb_188"] == "§ 64 Abs. 2 SGG"
-    assert "sgg_64" in receipt.rule_ids and "zpo_222" not in receipt.rule_ids
-    # Sun 18 Oct 2026 moves to Monday under § 64 Abs. 3 SGG
-    assert receipt.due_date == "2026-10-19"
-    assert catalog.citation("sgg_64") == "§ 64 Abs. 1–3 SGG"
-    for other in ("Amtsgericht Berlin", "Arbeitsgericht Kassel", "SG Musterverein e. V."):
-        assert not routing.is_social_court(other, "authority")
+
+    def check(name: str) -> None:
+        assert routing.is_social_court(name, "authority")
+        counted = spec(
+            amount=1, unit="months", text="Berufung binnen eines Monats nach Zustellung (§ 151 SGG)"
+        )
+        receipt = compute_due(
+            counted,
+            ctx(
+                document_date="2026-09-18",
+                court=True,
+                social_court=routing.is_social_court(name, "authority"),
+            ),
+        )
+        citations = {step.rule_id: step.citation for step in receipt.steps}
+        assert citations["bgb_187_1"] == "§ 64 Abs. 1 SGG" and citations["bgb_188"] == "§ 64 Abs. 2 SGG"
+        assert "sgg_64" in receipt.rule_ids and "zpo_222" not in receipt.rule_ids
+        # Sun 18 Oct 2026 moves to Monday under § 64 Abs. 3 SGG
+        assert receipt.due_date == "2026-10-19"
+        assert catalog.citation("sgg_64") == "§ 64 Abs. 1–3 SGG"
+        for other in ("Amtsgericht Berlin", "Arbeitsgericht Kassel", "SG Musterverein e. V."):
+            assert not routing.is_social_court(other, "authority")
+
+    check_rows(A_SOCIAL_COURTS_PERIOD_CITES_THE_SGG, check)
 
 
 def test_a_court_deadlines_receipt_cites_the_court_counting_rules() -> None:
