@@ -25,6 +25,7 @@ from typing import Any
 
 import pytest
 
+from helpers_tables import check_rows
 from ordnung.ingest.gaps import deadline_items
 from ordnung.ingest.verify import PageInput
 from ordnung.models import DocumentExtraction, ExtractedItem
@@ -77,10 +78,6 @@ def filed(
     return [(item.date.date, item.date.nature) for item in found]
 
 
-def _id(entry: dict[str, Any]) -> str:
-    return f"{entry.get('family') or entry.get('category')}-{entry['sentence'][:40]}"
-
-
 def test_the_corpus_is_large_enough_and_every_move_has_its_reason() -> None:
     assert len(POSITIVES) == 42 and len(NEGATIVES) == 556
     assert {entry["kind"] for entry in POSITIVES} == {"payment", "declaration"}
@@ -104,22 +101,28 @@ def test_the_corpus_is_large_enough_and_every_move_has_its_reason() -> None:
     assert len(sentences) == len(set(sentences))
 
 
-@pytest.mark.parametrize("entry", POSITIVES, ids=[_id(entry) for entry in POSITIVES])
-def test_a_looser_wording_files_one_to_do_of_its_kind_on_its_date(entry: dict[str, Any]) -> None:
-    written = date.fromisoformat(entry["letter_date"])
-    assert filed(entry["sentence"], written, entry["lang"]) == [(entry["date"], entry["kind"])]
+def test_a_looser_wording_files_one_to_do_of_its_kind_on_its_date() -> None:
+    def check(entry: dict[str, Any]) -> None:
+        written = date.fromisoformat(entry["letter_date"])
+        assert filed(entry["sentence"], written, entry["lang"]) == [(entry["date"], entry["kind"])]
+
+    check_rows(POSITIVES, check)
 
 
-@pytest.mark.parametrize("entry", NEGATIVES, ids=[_id(entry) for entry in NEGATIVES])
-def test_a_date_that_is_no_deadline_of_the_person_s_files_nothing(entry: dict[str, Any]) -> None:
-    written = date.fromisoformat(entry["letter_date"])
-    assert filed(entry["sentence"], written, entry["lang"]) == []
+def test_a_date_that_is_no_deadline_of_the_person_s_files_nothing() -> None:
+    def check(entry: dict[str, Any]) -> None:
+        written = date.fromisoformat(entry["letter_date"])
+        assert filed(entry["sentence"], written, entry["lang"]) == []
+
+    check_rows(NEGATIVES, check)
 
 
-@pytest.mark.parametrize("entry", STRICT_AS_BASE, ids=[_id(entry) for entry in STRICT_AS_BASE])
-def test_the_strict_path_s_false_alarms_stay_as_on_base(entry: dict[str, Any]) -> None:
-    written = date.fromisoformat(entry["letter_date"])
-    assert filed(entry["sentence"], written, entry["lang"]) == [tuple(found) for found in entry["files"]]
+def test_the_strict_path_s_false_alarms_stay_as_on_base() -> None:
+    def check(entry: dict[str, Any]) -> None:
+        written = date.fromisoformat(entry["letter_date"])
+        assert filed(entry["sentence"], written, entry["lang"]) == [tuple(found) for found in entry["files"]]
+
+    check_rows(STRICT_AS_BASE, check)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -127,19 +130,21 @@ def test_the_strict_path_s_false_alarms_stay_as_on_base(entry: dict[str, Any]) -
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("sentence", "written", "today"),
-    [
-        ("Der Restbetrag ist bis 15.01. zu begleichen.", date(2026, 12, 10), date(2026, 12, 11)),
-        ("Bitte gleichen Sie den Restbetrag bis zum 8. Januar aus.", date(2026, 12, 10), date(2026, 12, 11)),
-        ("Wir bitten Sie um Zahlung bis zum 23.10.", date(2026, 10, 5), TODAY),
-        ("Bitte überweisen Sie den Betrag.\nZahlungsfrist: 23. Oktober", date(2026, 10, 5), TODAY),
-        ("Bitte bis 16.10. unterschrieben zurücksenden.", date(2026, 10, 5), TODAY),
-    ],
-)
-def test_a_date_without_its_year_files_nothing(sentence: str, written: date, today: date) -> None:
-    assert filed(sentence, written, today=today) == []
-    assert filed(sentence, None, today=today) == []
+YEARLESS_REQUESTS = [
+    ("Der Restbetrag ist bis 15.01. zu begleichen.", date(2026, 12, 10), date(2026, 12, 11)),
+    ("Bitte gleichen Sie den Restbetrag bis zum 8. Januar aus.", date(2026, 12, 10), date(2026, 12, 11)),
+    ("Wir bitten Sie um Zahlung bis zum 23.10.", date(2026, 10, 5), TODAY),
+    ("Bitte überweisen Sie den Betrag.\nZahlungsfrist: 23. Oktober", date(2026, 10, 5), TODAY),
+    ("Bitte bis 16.10. unterschrieben zurücksenden.", date(2026, 10, 5), TODAY),
+]
+
+
+def test_a_date_without_its_year_files_nothing() -> None:
+    def check(sentence: str, written: date, today: date) -> None:
+        assert filed(sentence, written, today=today) == []
+        assert filed(sentence, None, today=today) == []
+
+    check_rows(YEARLESS_REQUESTS, check)
 
 
 def test_its_year_written_the_same_wording_files() -> None:
@@ -149,16 +154,18 @@ def test_its_year_written_the_same_wording_files() -> None:
     assert filed("Wir bitten Sie um Zahlung bis zum 23.10.2026.", None) == [("2026-10-23", "payment")]
 
 
-@pytest.mark.parametrize(
-    "sentence",
-    [
-        "Wir bitten Sie um Zahlung bis zum 23/10.",  # a slash date needs its year: day and month can't be told apart
-        "Wir bitten Sie um Zahlung bis zum 23.10 auf unser Konto.",  # no full stop after the month: no date
-        "Wir bitten Sie um Zahlung bis zum 03/05/2027.",  # its year written, but day and month ambiguous
-    ],
-)
-def test_an_ambiguous_date_files_nothing(sentence: str) -> None:
-    assert filed(sentence, date(2026, 10, 5)) == []
+AMBIGUOUS_DATES = [
+    "Wir bitten Sie um Zahlung bis zum 23/10.",  # a slash date needs its year: day and month can't be told apart
+    "Wir bitten Sie um Zahlung bis zum 23.10 auf unser Konto.",  # no full stop after the month: no date
+    "Wir bitten Sie um Zahlung bis zum 03/05/2027.",  # its year written, but day and month ambiguous
+]
+
+
+def test_an_ambiguous_date_files_nothing() -> None:
+    def check(sentence: str) -> None:
+        assert filed(sentence, date(2026, 10, 5)) == []
+
+    check_rows(AMBIGUOUS_DATES, check)
 
 
 def test_the_reading_s_own_to_do_and_quote_cover_a_looser_date() -> None:
@@ -232,75 +239,77 @@ PAYS = [("2026-10-23", "payment")]
 SENDS = [("2026-10-23", "declaration")]
 
 
-@pytest.mark.parametrize(
-    ("head", "lines", "expected"),
-    [
-        (
-            SPARKASSE,
-            ("leider ist Ihre Zahlung noch nicht eingegangen.", "Wir bitten Sie um Zahlung des offenen Betrags bis",
-             "zum 23.10.2026."),
-            PAYS,
-        ),
-        # (no one named as the one to pay: the looser path stays silent, 2026-10-07)
-        (SPARKASSE, ("Wir bitten um Zahlung des offenen Betrags bis zum 23.10.2026.",), []),
-        # wordings dropped when the path was narrowed on 2026-10-07 (each filed confirmed false alarms): missed now
-        (
-            SPARKASSE,
-            ("vielen Dank für Ihr Schreiben.",
-             "Damit wir Ihren Antrag bearbeiten können, benötigen wir die Unterlagen bis zum 23.10.2026."),
-            [],
-        ),
-        (SPARKASSE, ("bitte beachten Sie, dass die Zahlung bis zum 23.10.2026 bei uns eingegangen sein muss.",), []),
-        (SPARKASSE, ("Bis zum 23.10.2026 erwarten wir Ihre Rückmeldung.",), []),
-        (SPARKASSE, ("Bitte gleichen Sie den offenen Betrag bis zum 23.10.2026 aus.",), PAYS),
-        (SPARKASSE, ("Senden Sie uns die Unterlagen bis zum 23.10.2026.",), SENDS),
-        (SPARKASSE, ("Ihre Unterlagen werden bis zum 23.10.2026 bei uns benötigt.",), []),
-        (SPARKASSE, ("Die Unterlagen werden bis zum 23.10.2026 benötigt.",), []),
-        (INVOICE_EN, ("Your payment must be received by 23 October 2026.",), []),
-        (INVOICE_EN, ("Payment must be received by 23 October 2026.",), []),
-        (INVOICE_EN, ("You are required to pay the balance by 23 October 2026.",), []),
-        (INVOICE_EN, ("Kindly pay the outstanding amount by 23 October 2026.",), PAYS),
-        (SPARKASSE, ("Wir erwarten die Entscheidung des Gerichts bis zum 23.10.2026.",), []),
-        (SPARKASSE, ("Wir erwarten, dass Ihre Bank den Betrag bis zum 23.10.2026 zurückbucht.",), []),
-        (SPARKASSE, ("Gewinnspiel – Einsendeschluss: 23.10.2026",), []),
-        (SPARKASSE, ("Die Lieferung muss bis zum 23.10.2026 erfolgen.",), []),
-        (SPARKASSE, ("Ihre Versicherung muss die Unterlagen bis zum 23.10.2026 vorlegen.",), []),
-        (SPARKASSE, ("Die Rückzahlung an Sie muss bis zum 23.10.2026 erfolgen.",), []),
-        (
-            SPARKASSE,
-            ("Wir bitten um Ihr Verständnis, dass die Bearbeitung der Unterlagen bis zum 23.10.2026 dauert.",),
-            [],
-        ),
-        (SPARKASSE, ("Anmeldeformulare müssen bis zum 23.10.2026 vorliegen.",), []),
-        (SPARKASSE, ("Sie können die Unterlagen bis zum 23.10.2026 nachreichen.",), []),
-        (SPARKASSE, ("Ihre Zahlung vom 28.09. ist eingegangen.", "Zahlungen bis 30.09. sind berücksichtigt."), []),
-        (INVOICE_EN, ("We expect to complete the repair by 23 October 2026.",), []),
-        (INVOICE_EN, ("Your new card is expected by 23 October 2026.",), []),
-        (INVOICE_EN, ("Applications can be submitted by 23 October 2026.",), []),
-    ],
-)  # fmt: skip
-def test_looser_wordings_in_a_letter_s_flow(
-    head: tuple[str, ...], lines: tuple[str, ...], expected: list[tuple[str, str]]
-) -> None:
-    assert in_flow(head, *lines) == expected
+LETTER_FLOW_EXAMPLES = [
+    (
+        SPARKASSE,
+        ("leider ist Ihre Zahlung noch nicht eingegangen.", "Wir bitten Sie um Zahlung des offenen Betrags bis",
+         "zum 23.10.2026."),
+        PAYS,
+    ),
+    # (no one named as the one to pay: the looser path stays silent, 2026-10-07)
+    (SPARKASSE, ("Wir bitten um Zahlung des offenen Betrags bis zum 23.10.2026.",), []),
+    # wordings dropped when the path was narrowed on 2026-10-07 (each filed confirmed false alarms): missed now
+    (
+        SPARKASSE,
+        ("vielen Dank für Ihr Schreiben.",
+         "Damit wir Ihren Antrag bearbeiten können, benötigen wir die Unterlagen bis zum 23.10.2026."),
+        [],
+    ),
+    (SPARKASSE, ("bitte beachten Sie, dass die Zahlung bis zum 23.10.2026 bei uns eingegangen sein muss.",), []),
+    (SPARKASSE, ("Bis zum 23.10.2026 erwarten wir Ihre Rückmeldung.",), []),
+    (SPARKASSE, ("Bitte gleichen Sie den offenen Betrag bis zum 23.10.2026 aus.",), PAYS),
+    (SPARKASSE, ("Senden Sie uns die Unterlagen bis zum 23.10.2026.",), SENDS),
+    (SPARKASSE, ("Ihre Unterlagen werden bis zum 23.10.2026 bei uns benötigt.",), []),
+    (SPARKASSE, ("Die Unterlagen werden bis zum 23.10.2026 benötigt.",), []),
+    (INVOICE_EN, ("Your payment must be received by 23 October 2026.",), []),
+    (INVOICE_EN, ("Payment must be received by 23 October 2026.",), []),
+    (INVOICE_EN, ("You are required to pay the balance by 23 October 2026.",), []),
+    (INVOICE_EN, ("Kindly pay the outstanding amount by 23 October 2026.",), PAYS),
+    (SPARKASSE, ("Wir erwarten die Entscheidung des Gerichts bis zum 23.10.2026.",), []),
+    (SPARKASSE, ("Wir erwarten, dass Ihre Bank den Betrag bis zum 23.10.2026 zurückbucht.",), []),
+    (SPARKASSE, ("Gewinnspiel – Einsendeschluss: 23.10.2026",), []),
+    (SPARKASSE, ("Die Lieferung muss bis zum 23.10.2026 erfolgen.",), []),
+    (SPARKASSE, ("Ihre Versicherung muss die Unterlagen bis zum 23.10.2026 vorlegen.",), []),
+    (SPARKASSE, ("Die Rückzahlung an Sie muss bis zum 23.10.2026 erfolgen.",), []),
+    (
+        SPARKASSE,
+        ("Wir bitten um Ihr Verständnis, dass die Bearbeitung der Unterlagen bis zum 23.10.2026 dauert.",),
+        [],
+    ),
+    (SPARKASSE, ("Anmeldeformulare müssen bis zum 23.10.2026 vorliegen.",), []),
+    (SPARKASSE, ("Sie können die Unterlagen bis zum 23.10.2026 nachreichen.",), []),
+    (SPARKASSE, ("Ihre Zahlung vom 28.09. ist eingegangen.", "Zahlungen bis 30.09. sind berücksichtigt."), []),
+    (INVOICE_EN, ("We expect to complete the repair by 23 October 2026.",), []),
+    (INVOICE_EN, ("Your new card is expected by 23 October 2026.",), []),
+    (INVOICE_EN, ("Applications can be submitted by 23 October 2026.",), []),
+]  # fmt: skip
 
 
-@pytest.mark.parametrize(
-    "line",
-    [
-        "Wir erwarten " + "Zahlung " * 4000 + "bis zum 23.10.2026",
-        "sollten " * 4000 + "bis 23.10.2026 vorliegen",
-        "Zahlungsfrist " * 4000 + "läuft am 23.10.2026 ab",
-        "\n".join("Zahlung bis: 23.10.2026" for _ in range(1500)),
-        " ".join("Die Zahlung wird bis 15.11. erwartet" for _ in range(1500)),
-        "kann " * 4000 + "werden",
-    ],
-    ids=["long-gap", "sollten", "frist", "many-fields", "many-yearless", "kann"],
-)
-def test_the_looser_patterns_stay_fast_on_long_untrusted_text(line: str) -> None:
+def test_looser_wordings_in_a_letter_s_flow() -> None:
+    def check(head: tuple[str, ...], lines: tuple[str, ...], expected: list[tuple[str, str]]) -> None:
+        assert in_flow(head, *lines) == expected
+
+    check_rows(LETTER_FLOW_EXAMPLES, check)
+
+
+HOSTILE_LINES = [
+    pytest.param("Wir erwarten " + "Zahlung " * 4000 + "bis zum 23.10.2026", id="long-gap"),
+    pytest.param("sollten " * 4000 + "bis 23.10.2026 vorliegen", id="sollten"),
+    pytest.param("Zahlungsfrist " * 4000 + "läuft am 23.10.2026 ab", id="frist"),
+    pytest.param("\n".join("Zahlung bis: 23.10.2026" for _ in range(1500)), id="many-fields"),
+    pytest.param(" ".join("Die Zahlung wird bis 15.11. erwartet" for _ in range(1500)), id="many-yearless"),
+    pytest.param("kann " * 4000 + "werden", id="kann"),
+]
+
+
+def test_the_looser_patterns_stay_fast_on_long_untrusted_text() -> None:
     """Timed in CPU seconds, not on the wall clock: on a busy machine the scheduler pauses the test, which took
     "many-fields" (about 1 s of CPU with coverage) past 5 s."""
-    started = time.process_time()
-    found = deadline_items(reading(date(2026, 10, 5)), [letter(line, date(2026, 10, 5))], today=TODAY)
-    assert len(found) <= 3
-    assert time.process_time() - started < 5
+
+    def check(line: str) -> None:
+        started = time.process_time()
+        found = deadline_items(reading(date(2026, 10, 5)), [letter(line, date(2026, 10, 5))], today=TODAY)
+        assert len(found) <= 3
+        assert time.process_time() - started < 5
+
+    check_rows(HOSTILE_LINES, check)
