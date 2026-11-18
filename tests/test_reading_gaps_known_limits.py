@@ -780,6 +780,11 @@ DROPPED_LETTER = Letter(
 async def test_a_dropped_payment_date_is_filed_and_a_later_complete_reading_replaces_it(
     data_dir: Path, pinned_today: None
 ) -> None:
+    """The payment date the reading left out is filed as a low please-check to-do; its Idea says the reading left
+    the date out (it was found), and code's payment to-do never gets a "Pay" button. A later complete reading
+    replaces it."""
+    from ordnung.secretary.triggers import Ledger, item_action, please_check
+
     router = Router(letters=(DROPPED_LETTER,))
     async with api_for(data_dir, router=router) as api:
         body = await api.upload((f"{DROPPED_MARKER}.pdf", DROPPED_LETTER.pdf()))
@@ -794,6 +799,11 @@ async def test_a_dropped_payment_date_is_filed_and_a_later_complete_reading_repl
         )
         [stored] = api.ctx.store.list_items(doc_id=doc_id)
         assert needs_check(stored)
+        ledger = Ledger(api.ctx.store, clock.today())
+        assert item_action(ledger, stored).label == "Check the letter"
+        [idea] = [idea for idea in please_check(ledger) if idea.refs[0].id == doc_id]
+        assert "left out a date the letter sets for you" in idea.body
+        assert "couldn't find" not in idea.body
 
         # read again, now with the payment: the reading's own to-do, and code's is gone (the person didn't act on it)
         payload = router.payloads[DROPPED_MARKER]

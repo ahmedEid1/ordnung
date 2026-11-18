@@ -550,24 +550,6 @@ def test_the_benchmark_tells_a_dropped_date_from_the_objection_check() -> None:
     assert REASON_TEXT[DEADLINE_LEFT_OUT].startswith(DROPPED_DATE_NOTE)
 
 
-async def test_a_dropped_date_s_idea_never_offers_pay(data_dir: Path, pinned_today: None) -> None:
-    """The please-check Idea says the reading left the date out (it was found), and code's payment
-    to-do never gets a "Pay" button."""
-    from ordnung.secretary.triggers import Ledger, item_action, please_check
-    from test_reading_gaps_known_limits import DROPPED_LETTER, DROPPED_MARKER
-
-    async with api_for(data_dir, router=Router(letters=(DROPPED_LETTER,))) as api:
-        body = await api.upload((f"{DROPPED_MARKER}.pdf", DROPPED_LETTER.pdf()))
-        await api.read_all()
-        doc_id = str(body["documents"][0]["id"])
-        ledger = Ledger(api.ctx.store, clock.today())
-        [item] = api.ctx.store.list_items(doc_id=doc_id)
-        assert item_action(ledger, item).label == "Check the letter"
-        [idea] = [idea for idea in please_check(ledger) if idea.refs[0].id == doc_id]
-        assert "left out a date the letter sets for you" in idea.body
-        assert "couldn't find" not in idea.body
-
-
 DATE_LINE_STAMPS = [("20.11.2026", OWN), ("13.11.2026", OWN), ("06.12.2026", None)]
 
 
