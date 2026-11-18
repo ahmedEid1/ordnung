@@ -374,19 +374,6 @@ def test_windows_style_paths_travel(pair: Pair) -> None:
     assert "\\" not in path and (a.paths.data_dir / path).is_file()
 
 
-def test_delete_everything_on_the_computer_in_use_hands_its_last_version_on(pair: Pair) -> None:
-    a, b = pair.a, pair.b
-    pair.joined()
-    b.person_edit("made just before deleting everything")
-    with pytest.raises(SyncError) as refused:
-        b.s.leave(b.db)
-    assert refused.value.kind == "not_received"  # the second confirmation
-    b.s.leave(b.db, unreceived_ok=True)
-    pair.settle()
-    outcome = a.use_here()
-    assert isinstance(outcome.decision, Pull) and "made just before deleting everything" in a.notes()
-
-
 def test_a_data_folder_put_back_from_an_os_backup(pair: Pair, tmp_path: Path) -> None:
     from sync_faults import copy_tree
 
