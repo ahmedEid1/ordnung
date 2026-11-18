@@ -17,6 +17,7 @@ from typing import Any
 
 import pytest
 
+from helpers_tables import check_rows
 from ordnung.models import ContractTerms
 from ordnung.rules import catalog
 from ordnung.rules.contracts import (
@@ -47,31 +48,33 @@ def terms(**kw: Any) -> ContractTerms:
 # --------------------------------------------------------------------------------------- regimes
 
 
-@pytest.mark.parametrize(
-    ("kw", "regime"),
-    [
-        ({"category": "rent"}, "rent573c"),
-        ({"category": "employment"}, "employment622"),
-        ({"category": "energy", "is_basic_supply": True}, "stromgvv20"),
-        ({"category": "gas", "is_basic_supply": True}, "stromgvv20"),
-        ({"category": "energy", "concluded_date": "2023-01-01"}, "bgb309_new"),
-        ({"category": "insurance", "party_kind": "health_insurer"}, "sgbv175"),
-        ({"category": "insurance", "party_kind": "insurer"}, "vvg11"),
-        ({"category": "mobile"}, "tkg56"),
-        ({"category": "internet", "concluded_date": "2019-03-15"}, "tkg56"),
-        ({"category": "gym", "concluded_date": "2022-03-01"}, "bgb309_new"),
-        ({"category": "gym", "concluded_date": "2022-02-28"}, "bgb309_old"),
-        ({"category": "streaming", "start_date": "2023-05-10"}, "bgb309_new"),
-        ({"category": "streaming"}, "as_written"),
-        ({"category": "bank", "concluded_date": "2023-01-01"}, "as_written"),
-        ({"category": "gym", "concluded_date": "2023-01-01", "is_consumer": False}, "as_written"),
-    ],
-)
-def test_regime_for(kw: dict[str, Any], regime: str) -> None:
-    assert regime_for(terms(**kw)) == regime
+REGIME_EXAMPLES = [
+    ({"category": "rent"}, "rent573c"),
+    ({"category": "employment"}, "employment622"),
+    ({"category": "energy", "is_basic_supply": True}, "stromgvv20"),
+    ({"category": "gas", "is_basic_supply": True}, "stromgvv20"),
+    ({"category": "energy", "concluded_date": "2023-01-01"}, "bgb309_new"),
+    ({"category": "insurance", "party_kind": "health_insurer"}, "sgbv175"),
+    ({"category": "insurance", "party_kind": "insurer"}, "vvg11"),
+    ({"category": "mobile"}, "tkg56"),
+    ({"category": "internet", "concluded_date": "2019-03-15"}, "tkg56"),
+    ({"category": "gym", "concluded_date": "2022-03-01"}, "bgb309_new"),
+    ({"category": "gym", "concluded_date": "2022-02-28"}, "bgb309_old"),
+    ({"category": "streaming", "start_date": "2023-05-10"}, "bgb309_new"),
+    ({"category": "streaming"}, "as_written"),
+    ({"category": "bank", "concluded_date": "2023-01-01"}, "as_written"),
+    ({"category": "gym", "concluded_date": "2023-01-01", "is_consumer": False}, "as_written"),
+]
 
 
-def test_helpers() -> None:
+def test_regime_for() -> None:
+    def check(kw: dict[str, Any], regime: str) -> None:
+        assert regime_for(terms(**kw)) == regime
+
+    check_rows(REGIME_EXAMPLES, check)
+
+
+def test_contract_dates_count_calendar_months_and_the_third_werktag() -> None:
     assert contract_origin(terms(concluded_date="2025-01-02", start_date="2025-01-15")) == D("2025-01-02")
     assert contract_origin(terms(start_date="2025-01-15")) == D("2025-01-15")
     assert contract_origin(terms()) is None
@@ -240,26 +243,26 @@ def test_basic_supply_two_weeks() -> None:
     assert gas.earliest_exit == "2026-10-16"
 
 
-@pytest.mark.parametrize(
-    ("today", "cancel_by", "exit_day", "send_by"),
-    [
-        pytest.param("2026-09-25", "2026-10-05", "2026-12-31", "2026-09-29", id="573c-october-3-oct-holiday"),
-        pytest.param(
-            "2026-10-06", "2026-11-04", "2027-01-31", "2026-10-29", id="573c-received-6-oct-next-month"
-        ),
-        pytest.param("2026-10-20", "2026-11-04", "2027-01-31", "2026-10-29", id="573c-november"),
-        pytest.param("2026-03-20", "2026-04-04", "2026-06-30", "2026-03-27", id="573c-april-saturday"),
-    ],
-)
-def test_rent_notice(today: str, cancel_by: str, exit_day: str, send_by: str) -> None:
-    result = compute_contract(
-        terms(category="rent", party_kind="landlord", start_date="2024-10-01"), ctx(today=today)
-    )
-    assert result.regime == "rent573c"
-    assert result.cancel_by == cancel_by
-    assert result.earliest_exit == exit_day
-    assert result.send_by == send_by
-    assert any("§ 568 BGB" in n for n in result.notes)
+RENT_NOTICE_EXAMPLES = [
+    pytest.param("2026-09-25", "2026-10-05", "2026-12-31", "2026-09-29", id="573c-october-3-oct-holiday"),
+    pytest.param("2026-10-06", "2026-11-04", "2027-01-31", "2026-10-29", id="573c-received-6-oct-next-month"),
+    pytest.param("2026-10-20", "2026-11-04", "2027-01-31", "2026-10-29", id="573c-november"),
+    pytest.param("2026-03-20", "2026-04-04", "2026-06-30", "2026-03-27", id="573c-april-saturday"),
+]
+
+
+def test_rent_notice() -> None:
+    def check(today: str, cancel_by: str, exit_day: str, send_by: str) -> None:
+        result = compute_contract(
+            terms(category="rent", party_kind="landlord", start_date="2024-10-01"), ctx(today=today)
+        )
+        assert result.regime == "rent573c"
+        assert result.cancel_by == cancel_by
+        assert result.earliest_exit == exit_day
+        assert result.send_by == send_by
+        assert any("§ 568 BGB" in n for n in result.notes)
+
+    check_rows(RENT_NOTICE_EXAMPLES, check)
 
 
 def test_rent_saturday_deadline_is_kept_and_explained() -> None:
@@ -321,23 +324,25 @@ def test_a_fixed_term_flat_let_may_still_need_notice() -> None:
     assert "end by themselves" not in rule.title and "§ 575" in rule.summary
 
 
-@pytest.mark.parametrize(
-    ("kw", "cancel_by", "exit_day"),
-    [
-        ({}, "2026-10-03", "2026-10-31"),  # statutory four weeks to the 15th / end of month
-        (
-            {"notice_value": 1, "notice_unit": "months", "notice_basis": "end_of_month"},
-            "2026-09-30",
-            "2026-10-31",
-        ),
-        ({"notice_value": 2, "notice_unit": "weeks", "notice_basis": "any_time"}, None, "2026-10-15"),
-    ],
-)
-def test_employment_notice(kw: dict[str, Any], cancel_by: str | None, exit_day: str) -> None:
-    result = compute_contract(terms(category="employment", **kw), ctx())
-    assert result.cancel_by == cancel_by
-    assert result.earliest_exit == exit_day
-    assert any("§ 623 BGB" in n for n in result.notes)
+EMPLOYMENT_NOTICE_EXAMPLES = [
+    ({}, "2026-10-03", "2026-10-31"),  # statutory four weeks to the 15th / end of month
+    (
+        {"notice_value": 1, "notice_unit": "months", "notice_basis": "end_of_month"},
+        "2026-09-30",
+        "2026-10-31",
+    ),
+    ({"notice_value": 2, "notice_unit": "weeks", "notice_basis": "any_time"}, None, "2026-10-15"),
+]
+
+
+def test_employment_notice() -> None:
+    def check(kw: dict[str, Any], cancel_by: str | None, exit_day: str) -> None:
+        result = compute_contract(terms(category="employment", **kw), ctx())
+        assert result.cancel_by == cancel_by
+        assert result.earliest_exit == exit_day
+        assert any("§ 623 BGB" in n for n in result.notes)
+
+    check_rows(EMPLOYMENT_NOTICE_EXAMPLES, check)
 
 
 def test_employment_fifteenth_exit() -> None:
@@ -431,17 +436,19 @@ def test_a_missed_10th_moves_to_the_next_month_and_names_the_month_from_arrival(
     assert any("on Wed 11 Nov 2026 (§ 56 Abs. 1, 3 TKG)" in w for w in button.warnings)
 
 
-@pytest.mark.parametrize(
-    ("day", "today", "cancel_by", "exit_day"),
-    [
-        (30, "2027-02-01", "2027-02-28", "2027-02-28"),  # a shorter month: its last day
-        (31, "2026-09-28", "2026-09-30", "2026-09-30"),
-        (1, "2026-09-28", "2026-10-01", "2026-10-31"),
-    ],
-)
-def test_the_day_is_a_shorter_months_last_day(day: int, today: str, cancel_by: str, exit_day: str) -> None:
-    result = compute_contract(terms(**{**DEUTSCHLANDTICKET, "notice_day": day}), ctx(today=today))
-    assert (result.cancel_by, result.earliest_exit) == (cancel_by, exit_day)
+NOTICE_DAY_EXAMPLES = [
+    (30, "2027-02-01", "2027-02-28", "2027-02-28"),  # a shorter month: its last day
+    (31, "2026-09-28", "2026-09-30", "2026-09-30"),
+    (1, "2026-09-28", "2026-10-01", "2026-10-31"),
+]
+
+
+def test_the_day_is_a_shorter_months_last_day() -> None:
+    def check(day: int, today: str, cancel_by: str, exit_day: str) -> None:
+        result = compute_contract(terms(**{**DEUTSCHLANDTICKET, "notice_day": day}), ctx(today=today))
+        assert (result.cancel_by, result.earliest_exit) == (cancel_by, exit_day)
+
+    check_rows(NOTICE_DAY_EXAMPLES, check)
 
 
 def test_a_notice_period_stated_with_the_day_applies_too() -> None:
@@ -555,34 +562,38 @@ def test_the_day_waits_for_a_first_term_that_still_runs() -> None:
     assert (missed.cancel_by, missed.earliest_exit) == ("2028-01-10", "2028-01-31")
 
 
-@pytest.mark.parametrize(
-    "kw",
-    [
-        {"category": "gym", "concluded_date": "2021-06-01", "start_date": "2021-06-01"},  # bgb309_old
-        {"category": "streaming"},  # as_written
-    ],
-)
-def test_renewing_contracts_read_the_day_too(kw: dict[str, Any]) -> None:
-    result = compute_contract(terms(**kw, notice_basis="end_of_month", notice_day=15), ctx(today=SAM_TODAY))
-    assert (result.cancel_by, result.earliest_exit) == ("2026-10-15", "2026-10-31")
-    assert result.summary.startswith(
-        "To leave on Sat 31 Oct 2026, your notice must arrive by Thu 15 Oct 2026"
-    )
-    # with a notice period too, both apply (the old consumer rule caps it at three months)
-    short = compute_contract(
-        terms(**kw, notice_basis="end_of_month", notice_day=15, notice_value=2, notice_unit="weeks"),
-        ctx(today=SAM_TODAY),
-    )
-    assert (short.cancel_by, short.earliest_exit) == ("2026-10-15", "2026-10-31")
-    long = compute_contract(
-        terms(**kw, notice_basis="end_of_month", notice_day=15, notice_value=4, notice_unit="months"),
-        ctx(today=SAM_TODAY),
-    )
-    capped = any(w.startswith("Your contract asks for four months' notice") for w in long.warnings)
-    if result.regime == "bgb309_old":
-        assert (long.cancel_by, long.earliest_exit, capped) == ("2026-09-30", "2026-12-31", True)
-    else:
-        assert (long.cancel_by, long.earliest_exit, capped) == ("2026-09-30", "2027-01-31", False)
+RENEWING_WITH_A_NOTICE_DAY = [
+    {"category": "gym", "concluded_date": "2021-06-01", "start_date": "2021-06-01"},  # bgb309_old
+    {"category": "streaming"},  # as_written
+]
+
+
+def test_renewing_contracts_read_the_day_too() -> None:
+    def check(kw: dict[str, Any]) -> None:
+        result = compute_contract(
+            terms(**kw, notice_basis="end_of_month", notice_day=15), ctx(today=SAM_TODAY)
+        )
+        assert (result.cancel_by, result.earliest_exit) == ("2026-10-15", "2026-10-31")
+        assert result.summary.startswith(
+            "To leave on Sat 31 Oct 2026, your notice must arrive by Thu 15 Oct 2026"
+        )
+        # with a notice period too, both apply (the old consumer rule caps it at three months)
+        short = compute_contract(
+            terms(**kw, notice_basis="end_of_month", notice_day=15, notice_value=2, notice_unit="weeks"),
+            ctx(today=SAM_TODAY),
+        )
+        assert (short.cancel_by, short.earliest_exit) == ("2026-10-15", "2026-10-31")
+        long = compute_contract(
+            terms(**kw, notice_basis="end_of_month", notice_day=15, notice_value=4, notice_unit="months"),
+            ctx(today=SAM_TODAY),
+        )
+        capped = any(w.startswith("Your contract asks for four months' notice") for w in long.warnings)
+        if result.regime == "bgb309_old":
+            assert (long.cancel_by, long.earliest_exit, capped) == ("2026-09-30", "2026-12-31", True)
+        else:
+            assert (long.cancel_by, long.earliest_exit, capped) == ("2026-09-30", "2027-01-31", False)
+
+    check_rows(RENEWING_WITH_A_NOTICE_DAY, check)
 
 
 def test_insurance_ignores_the_day() -> None:
@@ -798,28 +809,31 @@ def test_a_lease_that_names_the_statutory_notice_periods() -> None:
     assert not any("statutory notice periods" in n for n in stated.notes)
 
 
-@pytest.mark.parametrize(
-    "kw",
-    [
-        pytest.param(
-            {"category": "gym", "concluded_date": "2025-06-01", "start_date": "2025-06-01"}, id="309new"
-        ),
-        pytest.param(
-            {"category": "gym", "concluded_date": "2021-06-01", "start_date": "2021-06-01"}, id="309old"
-        ),
-        pytest.param(
-            {"category": "mobile", "start_date": "2024-11-15", "initial_term_months": 24}, id="tkg56"
-        ),
-        pytest.param(
-            {"category": "insurance", "start_date": "2023-12-01", "renewal_term_months": 12}, id="vvg11"
-        ),
-        pytest.param({"category": "streaming", "notice_basis": "any_time"}, id="as_written"),
-    ],
-)
-def test_the_statutory_notice_periods_change_nothing_where_no_statute_gives_one(kw: dict[str, Any]) -> None:
+CAP_ONLY_REGIMES = [
+    pytest.param(
+        {"category": "gym", "concluded_date": "2025-06-01", "start_date": "2025-06-01"}, id="309new"
+    ),
+    pytest.param(
+        {"category": "gym", "concluded_date": "2021-06-01", "start_date": "2021-06-01"}, id="309old"
+    ),
+    pytest.param({"category": "mobile", "start_date": "2024-11-15", "initial_term_months": 24}, id="tkg56"),
+    pytest.param(
+        {"category": "insurance", "start_date": "2023-12-01", "renewal_term_months": 12}, id="vvg11"
+    ),
+    pytest.param({"category": "streaming", "notice_basis": "any_time"}, id="as_written"),
+]
+
+
+def test_the_statutory_notice_periods_change_nothing_where_no_statute_gives_one() -> None:
     """The consumer, phone and insurance rules only cap what a contract may ask: no statute gives such a
     contract a period of its own, so a missing period is assumed as before (or missing, as written)."""
-    assert compute_contract(terms(**kw, notice_statutory=True), ctx()) == compute_contract(terms(**kw), ctx())
+
+    def check(kw: dict[str, Any]) -> None:
+        assert compute_contract(terms(**kw, notice_statutory=True), ctx()) == compute_contract(
+            terms(**kw), ctx()
+        )
+
+    check_rows(CAP_ONLY_REGIMES, check)
 
 
 # ------------------------------------------------------------------------ research examples
@@ -959,24 +973,30 @@ def test_open_notice_never_ends_inside_the_minimum_term() -> None:
     assert result.confidence == "medium"
 
 
-@pytest.mark.parametrize(("today", "exit_day"), [("2026-10-05", "2026-11-05"), ("2026-10-03", "2026-11-05")])
-def test_tkg56_old_dsl_contract(today: str, exit_day: str) -> None:
+TKG56_OLD_DSL_EXAMPLES = [("2026-10-05", "2026-11-05"), ("2026-10-03", "2026-11-05")]
+
+
+def test_tkg56_old_dsl_contract() -> None:
     """309old/tkg56: DSL from 2019-03-15 with yearly renewals → one month from receipt (e-mail on a
     Saturday holiday counts from Monday)."""
-    result = compute_contract(
-        terms(
-            category="internet",
-            concluded_date="2019-03-15",
-            start_date="2019-03-15",
-            initial_term_months=24,
-            renewal_term_months=12,
-            notice_value=3,
-            notice_unit="months",
-        ),
-        ctx(today=today),
-        channel="email",
-    )
-    assert result.earliest_exit == exit_day
+
+    def check(today: str, exit_day: str) -> None:
+        result = compute_contract(
+            terms(
+                category="internet",
+                concluded_date="2019-03-15",
+                start_date="2019-03-15",
+                initial_term_months=24,
+                renewal_term_months=12,
+                notice_value=3,
+                notice_unit="months",
+            ),
+            ctx(today=today),
+            channel="email",
+        )
+        assert result.earliest_exit == exit_day
+
+    check_rows(TKG56_OLD_DSL_EXAMPLES, check)
 
 
 def test_tkg56_old_contract_initial_notice_cap_is_three_months() -> None:
@@ -1011,28 +1031,30 @@ def test_open_contract_button_on_holiday() -> None:
     assert result.earliest_exit == "2026-11-03"
 
 
-@pytest.mark.parametrize(
-    ("today", "cancel_by", "exit_day", "renewal"),
-    [
-        pytest.param("2026-09-25", "2026-09-30", "2026-12-31", "2027-01-01", id="309old-magazine"),
-        pytest.param("2026-10-01", "2027-09-30", "2027-12-31", "2027-01-01", id="309old-missed-next-year"),
-    ],
-)
-def test_309_old_yearly_renewal(today: str, cancel_by: str, exit_day: str, renewal: str) -> None:
-    result = compute_contract(
-        terms(
-            category="streaming",
-            concluded_date="2021-01-01",
-            start_date="2021-01-01",
-            initial_term_months=12,
-            renewal_term_months=12,
-            notice_value=3,
-            notice_unit="months",
-        ),
-        ctx(today=today),
-    )
-    assert result.regime == "bgb309_old"
-    assert (result.cancel_by, result.earliest_exit, result.next_renewal) == (cancel_by, exit_day, renewal)
+YEARLY_RENEWAL_EXAMPLES = [
+    pytest.param("2026-09-25", "2026-09-30", "2026-12-31", "2027-01-01", id="309old-magazine"),
+    pytest.param("2026-10-01", "2027-09-30", "2027-12-31", "2027-01-01", id="309old-missed-next-year"),
+]
+
+
+def test_309_old_yearly_renewal() -> None:
+    def check(today: str, cancel_by: str, exit_day: str, renewal: str) -> None:
+        result = compute_contract(
+            terms(
+                category="streaming",
+                concluded_date="2021-01-01",
+                start_date="2021-01-01",
+                initial_term_months=12,
+                renewal_term_months=12,
+                notice_value=3,
+                notice_unit="months",
+            ),
+            ctx(today=today),
+        )
+        assert result.regime == "bgb309_old"
+        assert (result.cancel_by, result.earliest_exit, result.next_renewal) == (cancel_by, exit_day, renewal)
+
+    check_rows(YEARLY_RENEWAL_EXAMPLES, check)
 
 
 def test_309_old_gym_sunday_deadline() -> None:
@@ -1291,20 +1313,22 @@ def test_basic_supply_price_change() -> None:
     assert any("six weeks" in w for w in late.warnings)
 
 
-@pytest.mark.parametrize(
-    ("told", "due", "safe", "timely"),
-    [
-        pytest.param("2026-10-15", "2027-01-15", "2027-01-15", True, id="tkg57-compliant"),
-        pytest.param("2026-10-10", "2027-01-10", "2027-01-08", True, id="tkg57-sunday-window-end"),
-        pytest.param("2026-11-16", "2026-11-30", "2026-11-30", False, id="tkg57-too-late"),
-        pytest.param("2026-08-15", "2026-11-30", "2026-11-30", False, id="tkg57-too-early"),
-    ],
-)
-def test_telecom_price_increase(told: str, due: str, safe: str, timely: bool) -> None:
-    receipt = price_increase_window(D("2026-12-01"), "mobile", D(told), ctx())
-    assert receipt.due_date == due
-    assert receipt.safe_date == safe
-    assert (receipt.confidence == "high") is timely
+TELECOM_PRICE_INCREASE_EXAMPLES = [
+    pytest.param("2026-10-15", "2027-01-15", "2027-01-15", True, id="tkg57-compliant"),
+    pytest.param("2026-10-10", "2027-01-10", "2027-01-08", True, id="tkg57-sunday-window-end"),
+    pytest.param("2026-11-16", "2026-11-30", "2026-11-30", False, id="tkg57-too-late"),
+    pytest.param("2026-08-15", "2026-11-30", "2026-11-30", False, id="tkg57-too-early"),
+]
+
+
+def test_telecom_price_increase() -> None:
+    def check(told: str, due: str, safe: str, timely: bool) -> None:
+        receipt = price_increase_window(D("2026-12-01"), "mobile", D(told), ctx())
+        assert receipt.due_date == due
+        assert receipt.safe_date == safe
+        assert (receipt.confidence == "high") is timely
+
+    check_rows(TELECOM_PRICE_INCREASE_EXAMPLES, check)
 
 
 def test_telecom_price_increase_uses_letter_date_when_receipt_unknown() -> None:
@@ -1401,15 +1425,18 @@ def test_send_guidance_tax_objection() -> None:
     assert guidance.send_by == "2026-10-15"
 
 
-@pytest.mark.parametrize(
-    ("party_kind", "citation"), [("immigration_office", "VwGO"), ("health_insurer", "SGG"), (None, "VwGO")]
-)
-def test_send_guidance_other_objections_reject_plain_email(party_kind: str | None, citation: str) -> None:
-    guidance = send_guidance("objection", party_kind=party_kind, today=TODAY)
-    email = next(c for c in guidance.channels if c.channel == "email")
-    assert not email.allowed
-    assert guidance.form == "written_form"
-    assert citation in (guidance.form_note or "")
+OTHER_OBJECTION_CITATIONS = [("immigration_office", "VwGO"), ("health_insurer", "SGG"), (None, "VwGO")]
+
+
+def test_send_guidance_other_objections_reject_plain_email() -> None:
+    def check(party_kind: str | None, citation: str) -> None:
+        guidance = send_guidance("objection", party_kind=party_kind, today=TODAY)
+        email = next(c for c in guidance.channels if c.channel == "email")
+        assert not email.allowed
+        assert guidance.form == "written_form"
+        assert citation in (guidance.form_note or "")
+
+    check_rows(OTHER_OBJECTION_CITATIONS, check)
 
 
 def test_send_guidance_general_reply_and_past_due() -> None:
