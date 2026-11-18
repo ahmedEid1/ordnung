@@ -23,7 +23,17 @@ from ordnung.models import ClaudeStatus
 from ordnung.sync import agent as agent_module
 from ordnung.sync.push import LocalDamaged, TryAgain
 from sync_fake_engine import FakeEngine, FakeSession, Problem, View, counter, deliver, head_of, withhold
-from sync_support import PASSPHRASE, agent_of, computer, connect, eventually, fast_sync, state_of, status
+from sync_support import (
+    PASSPHRASE,
+    agent_of,
+    computer,
+    connect,
+    eventually,
+    fast_sync,
+    short_folder_limit,
+    state_of,
+    status,
+)
 from test_api_support import Api
 
 pytestmark = pytest.mark.usefixtures("fast")
@@ -419,9 +429,9 @@ async def test_a_write_that_never_finishes_lifts_the_fence_and_nothing_is_replac
         assert agent.mode == "standing_by" and (await status(a))["take_over_waiting"] is True
 
 
-#: Limits long enough for a loaded machine: the fake engine's 1 s limit on a folder call (the join's scan) and the
-#: 1 s the drain waits were each missed once under load. Neither is what the test below checks.
-LOADED_MACHINE = {"FOLDER_OP_TIMEOUT_S": 10.0, "FENCE_WAIT_S": 10.0}
+#: A wait long enough for a loaded machine: the 1 s the drain waits was missed once under load, and it is not what
+#: the test below checks.
+LOADED_MACHINE = {"FENCE_WAIT_S": 10.0}
 
 
 async def test_background_threads_drain_before_the_data_is_replaced(
@@ -679,8 +689,9 @@ async def test_a_locked_password_store_with_the_older_copy_uses_it_here_and_clai
 
 
 async def test_a_hanging_folder_is_unreachable_and_the_status_still_answers(
-    tmp_path: Path, folder: Path
+    tmp_path: Path, folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    short_folder_limit(monkeypatch)
     engine = FakeEngine()
     desk, _ = _dirs(tmp_path)
     async with computer(desk, engine=engine) as api:
@@ -743,7 +754,10 @@ async def test_shutdown_saves_and_says_the_computer_was_closed(tmp_path: Path, f
     assert "push:change" in pushes, "the person's change is saved before readings get their grace period"
 
 
-async def test_a_hanging_folder_never_holds_up_shutdown(tmp_path: Path, folder: Path) -> None:
+async def test_a_hanging_folder_never_holds_up_shutdown(
+    tmp_path: Path, folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    short_folder_limit(monkeypatch)
     engine = FakeEngine()
     desk, _ = _dirs(tmp_path)
     started = 0.0

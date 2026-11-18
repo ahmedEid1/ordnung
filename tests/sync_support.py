@@ -26,6 +26,11 @@ from test_api_support import Api, api_for, lifespan
 #: Five unrelated words: passes the new folder's passphrase rule (about 70 bits).
 PASSPHRASE = "aqua-blunt-clay-dove-erupt"
 
+#: The agent's timings for tests: short, but for a folder call's limit (``FOLDER_OP_TIMEOUT_S``), which is a loaded
+#: machine's 10 s (the app's own is 30 s). Under 1 s, calls that were not meant to hang ran out now and then on a slow
+#: CI runner: the second computer's scan as it joined, and with the real engine a look that copies the database,
+#: which then went on running after the app stopped, holding ordnung.db open (on Windows a file still open can't be
+#: replaced). A test that makes a folder call hang on purpose asks for 1 s (:func:`short_folder_limit`).
 FAST = {
     "WATCH_S": 0.02,
     "PUSH_PERSON_QUIET_S": 0.05,
@@ -35,17 +40,15 @@ FAST = {
     "WAIT_POLL_S": 0.05,
     "START_DECIDE_S": 3.0,
     "FENCE_WAIT_S": 1.0,
-    "FOLDER_OP_TIMEOUT_S": 1.0,
+    "FOLDER_OP_TIMEOUT_S": 10.0,
     "UNREACHABLE_SCAN_S": 1.0,
     "SHUTDOWN_PUSH_S": 2.0,
     "PUSH_RETRY_S": (0.05,),
 }
 
 
-#: The real engine's calls (sealing, a copy of the database) can take seconds on a slow CI runner: under the
-#: fake engine's 1 s limit one went on running after the app stopped, holding ordnung.db open (on Windows a
-#: file still open can't be replaced). The app's own limit is 30 s.
-REAL_ENGINE_TIMINGS: dict[str, Any] = {"FOLDER_OP_TIMEOUT_S": 10.0}
+#: A folder call's limit for a test that makes one hang on purpose: short, so the test does not wait out FAST's 10 s.
+HANG_FOLDER_OP_TIMEOUT_S = 1.0
 
 
 class RealEngine(facade.RealEngine):
@@ -61,9 +64,15 @@ class RealEngine(facade.RealEngine):
 
 
 def fast_sync(monkeypatch: pytest.MonkeyPatch, **overrides: Any) -> None:
-    """The agent's timings in tenths of seconds."""
+    """The agent's timings in tenths of seconds (a folder call's limit aside: see :data:`FAST`)."""
     for name, value in {**FAST, **overrides}.items():
         monkeypatch.setattr(agent_module, name, value)
+
+
+def short_folder_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A folder call's limit of :data:`HANG_FOLDER_OP_TIMEOUT_S`, on top of the timings already set: for a test that
+    makes a folder call hang on purpose."""
+    monkeypatch.setattr(agent_module, "FOLDER_OP_TIMEOUT_S", HANG_FOLDER_OP_TIMEOUT_S)
 
 
 def agent_of(api: Api) -> SyncAgent:
