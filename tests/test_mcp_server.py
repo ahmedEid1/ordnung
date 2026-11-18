@@ -931,15 +931,30 @@ async def test_in_process_client_handshake(store: Store, ids: dict[str, str]) ->
         assert "from_date must be a date" in failed.content[0].text
 
 
-async def test_the_first_calls_of_a_turn_asked_at_once_both_answer(store: Store, ids: dict[str, str]) -> None:
+async def test_stdio_handshake_against_a_read_only_database(store: Store, ids: dict[str, str]) -> None:
+    code = "import sys; from ordnung.assistant.mcp_server import run; run(sys.argv[1])"
+    params = StdioServerParameters(
+        command=sys.executable,
+        args=["-c", code, str(store.data_dir)],
+        env={"ORDNUNG_TODAY": "2026-09-28"},
+    )
+    async with Client(params, mode="legacy") as client:
+        assert client.server_info is not None and client.server_info.name == SERVER_NAME
+        today = await client.call_tool("today", {})
+        assert record_of(today.content[0].text)["today"] == "2026-09-28"
+        items = await client.call_tool("list_items", {"kind": "deadline"})
+        rows = record_of(items.content[0].text)["items"]
+        assert [row["id"] for row in rows] == [ids["tax_objection"]]
+
+
+async def test_the_first_calls_of_a_turn_asked_at_once_both_answer(store: Store) -> None:
     """Ask's server as the claude CLI starts it (``ordnung mcp --ledger-only``), asked for the profile and the
     numbers at once as a turn's first calls. Each call ran in a worker thread of its own and imported its tool's
     modules there for the first time; two threads importing ``ordnung.rules`` together saw it half-initialised,
     and both calls failed with a bare "Error executing tool …" (the Ask benchmark's household turn, three
     recordings in a row).
 
-    After those first calls, the same server answers over the stdio handshake against the read-only database:
-    its name, the pinned day, a read of the ledger, and exactly the ledger tools."""
+    After those first calls, the same server lists exactly the ledger tools."""
     config = server_config(store.data_dir, today="2026-09-28", rules_tools=False)["mcpServers"][SERVER_NAME]
     assert config["args"][-1] == "--ledger-only"
     params = StdioServerParameters(command=config["command"], args=config["args"], env=config["env"])
@@ -950,12 +965,6 @@ async def test_the_first_calls_of_a_turn_asked_at_once_both_answer(store: Store,
         assert [result.is_error for result in results] == [False, False], [
             result.content[0].text for result in results if result.is_error
         ]
-        assert client.server_info is not None and client.server_info.name == SERVER_NAME
-        today = await client.call_tool("today", {})
-        assert record_of(today.content[0].text)["today"] == "2026-09-28"
-        items = await client.call_tool("list_items", {"kind": "deadline"})
-        rows = record_of(items.content[0].text)["items"]
-        assert [row["id"] for row in rows] == [ids["tax_objection"]]
         assert {tool.name for tool in (await client.list_tools()).tools} == LEDGER_TOOL_NAMES
 
 
