@@ -19,6 +19,7 @@ from typing import Any
 import pytest
 
 from fixtures_llm import Letter, Router
+from helpers_tables import check_rows
 from ordnung import clock
 from ordnung.ingest.gaps import (
     CHECK_SLOT,
@@ -115,52 +116,57 @@ def computed(reading: DocumentExtraction, pages: Sequence[PageInput], arrived: s
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("pages", "expected"),
-    [
-        ([served(BEKANNTGABE)], True),
-        ([served(ZUSTELLUNG, marker="Zustellung gegen PZU")], True),
-        ([served(BEKANNTGABE, marker=f"Mit Postzustellungsurkunde{G}Aktenzeichen: 32.1-123")], True),
-        (
-            [
-                plain(
-                    "Dieser Bescheid wird Ihnen mit Postzustellungsurkunde zugestellt.",
-                    BEKANNTGABE,
-                )
-            ],
-            True,
-        ),
-        # a notice that names no start keeps the letter unmarked: the envelope's date never moves that period
-        ([served(NO_START)], False),
-        # another decision's service, or a tip on how to send the objection, is no service of this letter
-        (
-            [
-                plain(
-                    "Der Bescheid vom 03.09.2026 wurde Ihnen mit Postzustellungsurkunde zugestellt.",
-                    BEKANNTGABE,
-                )
-            ],
-            False,
-        ),
-        (
-            [plain(BEKANNTGABE, "Senden Sie den Widerspruch am besten per Einschreiben mit Rückschein.")],
-            False,
-        ),
-        ([plain(BEKANNTGABE)], False),
-    ],
-    ids=[
-        "header",
-        "pzu",
-        "header-column",
-        "sentence",
-        "no-start",
-        "other-decision",
-        "rueckschein-tip",
-        "plain",
-    ],
-)
-def test_a_letter_is_served_formally_only_by_its_own_words(pages: list[PageInput], expected: bool) -> None:
-    assert formally_served(pages) is expected
+SERVICE_WORDINGS = [
+    ([served(BEKANNTGABE)], True),
+    ([served(ZUSTELLUNG, marker="Zustellung gegen PZU")], True),
+    ([served(BEKANNTGABE, marker=f"Mit Postzustellungsurkunde{G}Aktenzeichen: 32.1-123")], True),
+    (
+        [
+            plain(
+                "Dieser Bescheid wird Ihnen mit Postzustellungsurkunde zugestellt.",
+                BEKANNTGABE,
+            )
+        ],
+        True,
+    ),
+    # a notice that names no start keeps the letter unmarked: the envelope's date never moves that period
+    ([served(NO_START)], False),
+    # another decision's service, or a tip on how to send the objection, is no service of this letter
+    (
+        [
+            plain(
+                "Der Bescheid vom 03.09.2026 wurde Ihnen mit Postzustellungsurkunde zugestellt.",
+                BEKANNTGABE,
+            )
+        ],
+        False,
+    ),
+    (
+        [plain(BEKANNTGABE, "Senden Sie den Widerspruch am besten per Einschreiben mit Rückschein.")],
+        False,
+    ),
+    ([plain(BEKANNTGABE)], False),
+]
+SERVICE_WORDINGS_IDS = [
+    "header",
+    "pzu",
+    "header-column",
+    "sentence",
+    "no-start",
+    "other-decision",
+    "rueckschein-tip",
+    "plain",
+]
+
+
+def test_a_letter_is_served_formally_only_by_its_own_words() -> None:
+    def check(pages: list[PageInput], expected: bool) -> None:
+        assert formally_served(pages) is expected
+
+    check_rows(
+        [pytest.param(*row, id=i) for row, i in zip(SERVICE_WORDINGS, SERVICE_WORDINGS_IDS, strict=True)],
+        check,
+    )
 
 
 def test_a_period_from_arrival_on_a_formally_served_letter_cites_the_envelope() -> None:
@@ -179,59 +185,71 @@ def test_a_period_from_arrival_on_a_formally_served_letter_cites_the_envelope() 
     assert "pzu" not in ordinary.rule_ids and ASSUMED_RECEIPT_WARNING in ordinary.warnings
 
 
-@pytest.mark.parametrize(
-    ("arrived", "due", "conflict"),
-    [
-        (None, FROM_LETTER_DUE, False),
-        ("2026-11-10", "2026-12-10", False),
-        # the envelope's date 10 days and more after the letter's: the false early "Please check" is gone
-        ("2026-11-16", "2026-12-16", False),
-        ("2026-11-20", "2026-12-21", False),  # Sun 20 Dec → Mon 21 Dec
-        # more than two weeks after the letter's date: no envelope of this letter's — the notice's date is kept
-        ("2026-11-21", FROM_LETTER_DUE, True),
-    ],
-)
-def test_a_formally_served_letter_counts_the_notice_from_the_envelope_s_date(
-    arrived: str | None, due: str, conflict: bool
-) -> None:
-    pages = [served(BEKANNTGABE)]
-    [(_verified, result)] = computed(from_receipt(BEKANNTGABE), pages, arrived)
-    assert result.due_date == due and result.conflict is conflict
-    if not conflict:
-        assert result.receipt is not None and "pzu" in result.receipt.rule_ids
+ENVELOPE_DATES = [
+    (None, FROM_LETTER_DUE, False),
+    ("2026-11-10", "2026-12-10", False),
+    # the envelope's date 10 days and more after the letter's: the false early "Please check" is gone
+    ("2026-11-16", "2026-12-16", False),
+    ("2026-11-20", "2026-12-21", False),  # Sun 20 Dec → Mon 21 Dec
+    # more than two weeks after the letter's date: no envelope of this letter's — the notice's date is kept
+    ("2026-11-21", FROM_LETTER_DUE, True),
+]
 
 
-@pytest.mark.parametrize("pages", [[plain(BEKANNTGABE)], [served(NO_START)]], ids=["plain", "no-start"])
-def test_without_the_envelope_question_a_late_arrival_still_gets_the_notice_beside_it(
-    pages: list[PageInput],
-) -> None:
+def test_a_formally_served_letter_counts_the_notice_from_the_envelope_s_date() -> None:
+    def check(arrived: str | None, due: str, conflict: bool) -> None:
+        pages = [served(BEKANNTGABE)]
+        [(_verified, result)] = computed(from_receipt(BEKANNTGABE), pages, arrived)
+        assert result.due_date == due and result.conflict is conflict
+        if not conflict:
+            assert result.receipt is not None and "pzu" in result.receipt.rule_ids
+
+    check_rows(ENVELOPE_DATES, check)
+
+
+NO_ENVELOPE_QUESTION = [[plain(BEKANNTGABE)], [served(NO_START)]]
+NO_ENVELOPE_QUESTION_IDS = ["plain", "no-start"]
+
+
+def test_without_the_envelope_question_a_late_arrival_still_gets_the_notice_beside_it() -> None:
     """The guard against a late arrival stays for letters not marked formally served: an arrival entered 14 days after the letter's
     date may be a pickup or a Today saved later — the notice's own date is set beside it, the earlier."""
-    notice = BEKANNTGABE if formally_served(pages) or "Bekanntgabe" in pages[0][1] else NO_START
-    [(_verified, result)] = computed(from_receipt(notice), pages, "2026-11-20")
-    assert result.conflict and result.due_date is not None and result.due_date <= NOTIFIED_DUE
+
+    def check(pages: list[PageInput]) -> None:
+        notice = BEKANNTGABE if formally_served(pages) or "Bekanntgabe" in pages[0][1] else NO_START
+        [(_verified, result)] = computed(from_receipt(notice), pages, "2026-11-20")
+        assert result.conflict and result.due_date is not None and result.due_date <= NOTIFIED_DUE
+
+    check_rows(
+        [
+            pytest.param(row, id=i)
+            for row, i in zip(NO_ENVELOPE_QUESTION, NO_ENVELOPE_QUESTION_IDS, strict=True)
+        ],
+        check,
+    )
 
 
-@pytest.mark.parametrize(
-    ("arrived", "due"),
-    [
-        (None, FROM_LETTER_DUE),
-        ("2026-11-10", "2026-12-10"),
-        ("2026-11-16", "2026-12-16"),
-        ("2026-11-21", FROM_LETTER_DUE),
-    ],
-)
-def test_the_check_on_a_formally_served_letter_asks_for_and_counts_from_the_envelope(
-    arrived: str | None, due: str
-) -> None:
+ENVELOPE_ARRIVALS = [
+    (None, FROM_LETTER_DUE),
+    ("2026-11-10", "2026-12-10"),
+    ("2026-11-16", "2026-12-16"),
+    ("2026-11-21", FROM_LETTER_DUE),
+]
+
+
+def test_the_check_on_a_formally_served_letter_asks_for_and_counts_from_the_envelope() -> None:
     """An empty reading of a served letter: the check cites ``pzu`` (the app asks for the envelope's date) and counts
     from that date once entered, within two weeks of the letter's own; never from a later one."""
-    pages = [served(BEKANNTGABE)]
-    [(verified, result)] = computed(blank(), pages, arrived)
-    assert verified.slot_key == CHECK_SLOT
-    assert result.due_date == due
-    assert result.receipt is not None and "pzu" in result.receipt.rule_ids
-    assert any("yellow envelope" in warning for warning in result.receipt.warnings)
+
+    def check(arrived: str | None, due: str) -> None:
+        pages = [served(BEKANNTGABE)]
+        [(verified, result)] = computed(blank(), pages, arrived)
+        assert verified.slot_key == CHECK_SLOT
+        assert result.due_date == due
+        assert result.receipt is not None and "pzu" in result.receipt.rule_ids
+        assert any("yellow envelope" in warning for warning in result.receipt.warnings)
+
+    check_rows(ENVELOPE_ARRIVALS, check)
 
 
 @pytest.fixture
@@ -329,30 +347,37 @@ REMINDER = (
 )
 
 
-@pytest.mark.parametrize(
-    "decision",
-    [
-        "mit Gebührenbescheid vom 03.09.2026 haben wir eine Gebühr von 85,00 EUR festgesetzt, die noch offen ist.",
-        "mit unserem Gebührenbescheid haben wir eine Gebühr von 85,00 EUR festgesetzt, die noch offen ist.",
-    ],
-    ids=["dated", "undated"],
-)
-@pytest.mark.parametrize(
-    "notice",
-    [
-        "Hinweis: Hiergegen kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.",
-        "Sie können dagegen innerhalb eines Monats nach Bekanntgabe Widerspruch erheben.",
-    ],
-    ids=["hiergegen", "dagegen"],
-)
-def test_a_reminder_s_hiergegen_is_never_dated_from_the_reminder(decision: str, notice: str) -> None:
+REMINDED_DECISIONS = [
+    "mit Gebührenbescheid vom 03.09.2026 haben wir eine Gebühr von 85,00 EUR festgesetzt, die noch offen ist.",
+    "mit unserem Gebührenbescheid haben wir eine Gebühr von 85,00 EUR festgesetzt, die noch offen ist.",
+]
+REMINDED_DECISIONS_IDS = ["dated", "undated"]
+REMINDER_NOTICES = [
+    "Hinweis: Hiergegen kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.",
+    "Sie können dagegen innerhalb eines Monats nach Bekanntgabe Widerspruch erheben.",
+]
+REMINDER_NOTICES_IDS = ["hiergegen", "dagegen"]
+
+
+def test_a_reminder_s_hiergegen_is_never_dated_from_the_reminder() -> None:
     """The reminder of 25.09 restates the notice of a decision of 03.09 (allowed: 2026-10-07): it was
     2026-10-28, counted from the reminder — now undated."""
-    pages = [
-        page(*REMINDER, decision, "Bitte zahlen Sie die Gebühr von 85,00 EUR bis zum 09.10.2026.", notice)
-    ]
-    for reading in (blank(), blank(sender=SENDER, document_date="2026-09-25", items=[payment()])):
-        assert check_due(pages, reading) is None
+
+    def check(decision: str, notice: str) -> None:
+        pages = [
+            page(*REMINDER, decision, "Bitte zahlen Sie die Gebühr von 85,00 EUR bis zum 09.10.2026.", notice)
+        ]
+        for reading in (blank(), blank(sender=SENDER, document_date="2026-09-25", items=[payment()])):
+            assert check_due(pages, reading) is None
+
+    check_rows(
+        [
+            pytest.param(decision, notice, id=f"{notice_id}-{decision_id}")
+            for decision, decision_id in zip(REMINDED_DECISIONS, REMINDED_DECISIONS_IDS, strict=True)
+            for notice, notice_id in zip(REMINDER_NOTICES, REMINDER_NOTICES_IDS, strict=True)
+        ],
+        check,
+    )
 
 
 def test_a_decision_s_own_hiergegen_keeps_its_date() -> None:
@@ -385,33 +410,42 @@ GIVEN = "Gegen diesen Bescheid ist der Widerspruch gegeben."
 BARE = "Der Widerspruch ist innerhalb eines Monats nach Bekanntgabe des Bescheides schriftlich bei der Stadt Kassel einzulegen."
 
 
-@pytest.mark.parametrize(
-    "body",
-    [
-        (
-            "Änderungsbescheid",
-            "Sehr geehrter Herr Lehmann,",
-            "dieser Bescheid ersetzt den Bescheid vom 03.03.2026.",
-        ),
-        (
-            "Änderungsbescheid",
-            "Sehr geehrter Herr Lehmann,",
-            "dieser Bescheid ersetzt den Bescheid vom 11.09.2026.",
-        ),
-        (
-            "Bescheid über besonderes Kirchgeld 2024",
-            "Sehr geehrter Herr Lehmann,",
-            "auf Grundlage des Einkommensteuerbescheids 2024 vom 12.06.2026 setzen wir das Kirchgeld auf 240,00 EUR fest.",
-        ),
-    ],
-    ids=["replaced-long-ago", "replaced-recently", "based-on-another"],
-)
-def test_a_bare_des_bescheides_beside_gegen_diesen_bescheid_is_this_letter(body: tuple[str, ...]) -> None:
+BARE_DES_BESCHEIDES = [
+    (
+        "Änderungsbescheid",
+        "Sehr geehrter Herr Lehmann,",
+        "dieser Bescheid ersetzt den Bescheid vom 03.03.2026.",
+    ),
+    (
+        "Änderungsbescheid",
+        "Sehr geehrter Herr Lehmann,",
+        "dieser Bescheid ersetzt den Bescheid vom 11.09.2026.",
+    ),
+    (
+        "Bescheid über besonderes Kirchgeld 2024",
+        "Sehr geehrter Herr Lehmann,",
+        "auf Grundlage des Einkommensteuerbescheids 2024 vom 12.06.2026 setzen wir das Kirchgeld auf 240,00 EUR fest.",
+    ),
+]
+BARE_DES_BESCHEIDES_IDS = ["replaced-long-ago", "replaced-recently", "based-on-another"]
+
+
+def test_a_bare_des_bescheides_beside_gegen_diesen_bescheid_is_this_letter() -> None:
     """The sentences "Gegen diesen Bescheid ist der Widerspruch gegeben." and "… nach Bekanntgabe des Bescheides …": the
     other decisions' dates are no weak dates of this one — it was undated or 2026-10-14 (12 days early), now the
     letter's own date gives 2026-10-26 (21.09: delivered Thu 24.09, one month Sat 24.10 → Mon 26.10)."""
-    pages = [page(*KASSEL, "Datum: 21.09.2026", *body, "Rechtsbehelfsbelehrung", GIVEN, BARE)]
-    assert check_due(pages) == "2026-10-26"
+
+    def check(body: tuple[str, ...]) -> None:
+        pages = [page(*KASSEL, "Datum: 21.09.2026", *body, "Rechtsbehelfsbelehrung", GIVEN, BARE)]
+        assert check_due(pages) == "2026-10-26"
+
+    check_rows(
+        [
+            pytest.param(row, id=i)
+            for row, i in zip(BARE_DES_BESCHEIDES, BARE_DES_BESCHEIDES_IDS, strict=True)
+        ],
+        check,
+    )
 
 
 def test_a_compound_noun_still_names_another_decision() -> None:
@@ -436,34 +470,39 @@ COURT = (
 )
 
 
-@pytest.mark.parametrize(
-    "reason",
-    [
-        "Der Widerspruch ist unzulässig, weil er erst nach Ablauf der einmonatigen Widerspruchsfrist eingelegt wurde.",
-        "Der Widerspruch ist unzulässig, da er nicht innerhalb eines Monats nach Bekanntgabe des Bescheides vom "
-        "02.06.2026 erhoben wurde.",
-        "Der Widerspruch ist zulässig, insbesondere wurde er fristgerecht innerhalb eines Monats nach Bekanntgabe des "
-        "Kostenbescheides erhoben.",
-    ],
-    ids=["einmonatig", "bescheid-vom", "fristgerecht"],
-)
-def test_a_widerspruchsbescheid_s_reasoning_is_no_notice(reason: str) -> None:
+RULING_REASONS = [
+    "Der Widerspruch ist unzulässig, weil er erst nach Ablauf der einmonatigen Widerspruchsfrist eingelegt wurde.",
+    "Der Widerspruch ist unzulässig, da er nicht innerhalb eines Monats nach Bekanntgabe des Bescheides vom "
+    "02.06.2026 erhoben wurde.",
+    "Der Widerspruch ist zulässig, insbesondere wurde er fristgerecht innerhalb eines Monats nach Bekanntgabe des "
+    "Kostenbescheides erhoben.",
+]
+RULING_REASONS_IDS = ["einmonatig", "bescheid-vom", "fristgerecht"]
+
+
+def test_a_widerspruchsbescheid_s_reasoning_is_no_notice() -> None:
     """The remedy already lodged, reported in the reasoning, is no notice: it left the check undated (a
     period it can't read, a decision of 02.06 as a start) — now the court action's month from 21.09: 2026-10-21."""
-    pages = [
-        page(
-            *KASSEL,
-            "Datum: 21.09.2026",
-            "Widerspruchsbescheid",
-            "Ihr Widerspruch vom 30.07.2026 wird zurückgewiesen.",
-            "Gründe",
-            reason,
-            "Rechtsbehelfsbelehrung",
-            COURT,
-        )
-    ]
-    assert [notice.remedy for notice in remedy_notices(pages)] == ["klage"]
-    assert check_due(pages) == "2026-10-21"
+
+    def check(reason: str) -> None:
+        pages = [
+            page(
+                *KASSEL,
+                "Datum: 21.09.2026",
+                "Widerspruchsbescheid",
+                "Ihr Widerspruch vom 30.07.2026 wird zurückgewiesen.",
+                "Gründe",
+                reason,
+                "Rechtsbehelfsbelehrung",
+                COURT,
+            )
+        ]
+        assert [notice.remedy for notice in remedy_notices(pages)] == ["klage"]
+        assert check_due(pages) == "2026-10-21"
+
+    check_rows(
+        [pytest.param(row, id=i) for row, i in zip(RULING_REASONS, RULING_REASONS_IDS, strict=True)], check
+    )
 
 
 def test_a_requirement_in_the_perfect_is_still_a_notice() -> None:
@@ -497,22 +536,27 @@ FEE = (
 )
 
 
-@pytest.mark.parametrize(
-    "head",
-    [
-        ("06.11.2026", "STADT BEISPIELHAUSEN", "Sozialamt", *ADDRESS),  # a transcript's first line
-        (TOWN_HEAD, *ADDRESS, "", "Ort, Datum: Beispielhausen, 06.11.2026"),
-        (TOWN_HEAD, *ADDRESS, "", f"Ihr Zeichen:{G}Beispielhausen, 06.11.2026"),
-        (TOWN_HEAD, *ADDRESS, "", f"Leistungsabteilung{G}Datum 06.11.2026"),
-        ("Landkreis Beispielhausen · Am Markt 2", "Frau Mara Probe", "Beispielhausen, 06.11.2026"),
-    ],
-    ids=["first-line", "ort-datum", "ihr-zeichen", "leistungsabteilung", "town-of-letterhead"],
-)
-def test_the_letter_s_own_date_in_more_forms_starts_the_check(head: tuple[str, ...]) -> None:
+OWN_DATE_HEADS = [
+    ("06.11.2026", "STADT BEISPIELHAUSEN", "Sozialamt", *ADDRESS),  # a transcript's first line
+    (TOWN_HEAD, *ADDRESS, "", "Ort, Datum: Beispielhausen, 06.11.2026"),
+    (TOWN_HEAD, *ADDRESS, "", f"Ihr Zeichen:{G}Beispielhausen, 06.11.2026"),
+    (TOWN_HEAD, *ADDRESS, "", f"Leistungsabteilung{G}Datum 06.11.2026"),
+    ("Landkreis Beispielhausen · Am Markt 2", "Frau Mara Probe", "Beispielhausen, 06.11.2026"),
+]
+OWN_DATE_HEADS_IDS = ["first-line", "ort-datum", "ihr-zeichen", "leistungsabteilung", "town-of-letterhead"]
+
+
+def test_the_letter_s_own_date_in_more_forms_starts_the_check() -> None:
     """Forms that were read weakly or not at all now date an empty reading (2026-12-09), never later."""
-    pages = [page(*head, *FEE)]
-    assert letter_date(blank(), pages) == date(2026, 11, 6)
-    assert check_due(pages) == NOTIFIED_DUE
+
+    def check(head: tuple[str, ...]) -> None:
+        pages = [page(*head, *FEE)]
+        assert letter_date(blank(), pages) == date(2026, 11, 6)
+        assert check_due(pages) == NOTIFIED_DUE
+
+    check_rows(
+        [pytest.param(row, id=i) for row, i in zip(OWN_DATE_HEADS, OWN_DATE_HEADS_IDS, strict=True)], check
+    )
 
 
 def test_a_stand_label_only_lowers_the_start() -> None:
@@ -523,44 +567,59 @@ def test_a_stand_label_only_lowers_the_start() -> None:
     assert check_due(later) == NOTIFIED_DUE
 
 
-@pytest.mark.parametrize(
-    "planted",
-    [
-        ("Abholung am Schalter, 20.11.2026",),
-        ("Sprechtag, Dienstag, 17.11.2026",),
-        (f"Zustellung{G}Beispielhausen, 20.11.2026",),
-        ("Ortstermin Frankfurt am Main, 20.11.2026",),
-        ("20.11.2026", "09:00 Uhr, Raum 2.14"),
-        ("Ihr Termin", "Datum: 20.11.2026", "Raum: 2.14"),
-        ("Einladung zum Gespräch", "Datum: 20.11.2026", "Ort: Jobcenter, Raum 2.14"),
-        (f"Datum{G}Betrag{G}Kassenzeichen", f"04.12.2026{G}85,00 EUR{G}1234-5678"),
-        (f"Unser Zeichen{G}Datum{G}Stichtag", f"ST-22{G}01.12.2026"),
-    ],
-    ids=["abholung", "sprechtag", "zustellung-column", "ortstermin", "dateline-appointment", "termin-block",
-         "einladung-block", "payments-table", "stichtag-column"],
-)  # fmt: skip
-@pytest.mark.parametrize("own", [(), ("", "Stand: 06.11.2026")], ids=["no-own-date", "stand"])
-def test_a_planted_line_or_an_appointment_never_starts_the_check(
-    planted: tuple[str, ...], own: tuple[str, ...]
-) -> None:
+PLANTED_LINES = [
+    ("Abholung am Schalter, 20.11.2026",),
+    ("Sprechtag, Dienstag, 17.11.2026",),
+    (f"Zustellung{G}Beispielhausen, 20.11.2026",),
+    ("Ortstermin Frankfurt am Main, 20.11.2026",),
+    ("20.11.2026", "09:00 Uhr, Raum 2.14"),
+    ("Ihr Termin", "Datum: 20.11.2026", "Raum: 2.14"),
+    ("Einladung zum Gespräch", "Datum: 20.11.2026", "Ort: Jobcenter, Raum 2.14"),
+    (f"Datum{G}Betrag{G}Kassenzeichen", f"04.12.2026{G}85,00 EUR{G}1234-5678"),
+    (f"Unser Zeichen{G}Datum{G}Stichtag", f"ST-22{G}01.12.2026"),
+]  # fmt: skip
+PLANTED_LINES_IDS = ["abholung", "sprechtag", "zustellung-column", "ortstermin", "dateline-appointment", "termin-block",
+     "einladung-block", "payments-table", "stichtag-column"]  # fmt: skip
+OWN_DATES = [(), ("", "Stand: 06.11.2026")]
+OWN_DATES_IDS = ["no-own-date", "stand"]
+
+
+def test_a_planted_line_or_an_appointment_never_starts_the_check() -> None:
     """While the letter's own date (06.11) is unread, a line named like it but of no own kind — a place the page
     names nowhere else, an appointment's block or time, a payments table — starts nothing: an empty reading is
     undated (it was 2026-12-16 to 2027-01-07); with the reading's own date, 2026-12-09."""
-    pages = [page(TOWN_HEAD, *ADDRESS, "", *planted, *own, *FEE)]
-    assert letter_date(blank(), pages, today=date(2026, 12, 20)) is None
-    assert check_due(pages) is None
-    assert check_due(pages, blank(sender=SENDER, document_date="2026-11-06")) == NOTIFIED_DUE
+
+    def check(planted: tuple[str, ...], own: tuple[str, ...]) -> None:
+        pages = [page(TOWN_HEAD, *ADDRESS, "", *planted, *own, *FEE)]
+        assert letter_date(blank(), pages, today=date(2026, 12, 20)) is None
+        assert check_due(pages) is None
+        assert check_due(pages, blank(sender=SENDER, document_date="2026-11-06")) == NOTIFIED_DUE
+
+    check_rows(
+        [
+            pytest.param(planted, own, id=f"{own_id}-{planted_id}")
+            for planted, planted_id in zip(PLANTED_LINES, PLANTED_LINES_IDS, strict=True)
+            for own, own_id in zip(OWN_DATES, OWN_DATES_IDS, strict=True)
+        ],
+        check,
+    )
 
 
-@pytest.mark.parametrize(("offset", "start"), [(1, date(2026, 11, 6)), (14, date(2026, 11, 6)), (15, None)])
-def test_a_date_alone_under_a_sentence_still_lowers_the_start(offset: int, start: date | None) -> None:
+SENTENCE_DATE_OFFSETS = [(1, date(2026, 11, 6)), (14, date(2026, 11, 6)), (15, None)]
+
+
+def test_a_date_alone_under_a_sentence_still_lowers_the_start() -> None:
     """A date alone on its line under a sentence that names another date ("Mit diesem Bescheid vom … setzen wir …
     fest.", planted above a transcript's first-line date) is weak, not dropped: it lowers the start that sentence
     sets, or leaves none when more than 14 days earlier (the extended fuzz's last late start)."""
-    planted = date(2026, 11, 6) + timedelta(days=offset)
-    lines = (f"Mit diesem Bescheid vom {planted:%d.%m.%Y} setzen wir die Gebühr fest.", "06.11.2026")
-    pages = [page(*lines, TOWN_HEAD, *ADDRESS, "", *FEE)]
-    assert letter_date(blank(), pages) == start
+
+    def check(offset: int, start: date | None) -> None:
+        planted = date(2026, 11, 6) + timedelta(days=offset)
+        lines = (f"Mit diesem Bescheid vom {planted:%d.%m.%Y} setzen wir die Gebühr fest.", "06.11.2026")
+        pages = [page(*lines, TOWN_HEAD, *ADDRESS, "", *FEE)]
+        assert letter_date(blank(), pages) == start
+
+    check_rows(SENTENCE_DATE_OFFSETS, check)
 
 
 def test_the_rival_still_counts_a_place_named_nowhere_else() -> None:
@@ -592,49 +651,53 @@ def dropped(*lines: str, **fields: Any) -> list[tuple[str | None, str]]:
     return [(item.date.date, item.date.nature) for item in items]
 
 
-@pytest.mark.parametrize(
-    ("line", "nature"),
-    [
-        ("Zahlbar bis 15.10.2026", "payment"),
-        ("Fällig am: 15.10.2026", "payment"),
-        (
-            "Bitte überweisen Sie den Betrag von 85,00 EUR bis zum 15.10.2026 auf das unten genannte Konto.",
-            "payment",
-        ),
-        ("Der Betrag ist bis zum 15.10.2026 zu zahlen.", "payment"),
-        ("Die Nachzahlung ist am 15.10.2026 fällig.", "payment"),
-        ("Bitte reichen Sie die fehlenden Unterlagen bis zum 15.10.2026 ein.", "declaration"),
-        ("Die Nachweise sind bis spätestens 15.10.2026 vorzulegen.", "declaration"),
-        ("Please pay the amount of EUR 85.00 by 15.10.2026.", "payment"),
-        ("Please return the signed form by 15.10.2026.", "declaration"),
-    ],
-)
-def test_an_explicit_date_the_reading_left_out_gets_a_to_do(line: str, nature: str) -> None:
-    assert dropped(line) == [("2026-10-15", nature)]
+LEFT_OUT_DATES = [
+    ("Zahlbar bis 15.10.2026", "payment"),
+    ("Fällig am: 15.10.2026", "payment"),
+    (
+        "Bitte überweisen Sie den Betrag von 85,00 EUR bis zum 15.10.2026 auf das unten genannte Konto.",
+        "payment",
+    ),
+    ("Der Betrag ist bis zum 15.10.2026 zu zahlen.", "payment"),
+    ("Die Nachzahlung ist am 15.10.2026 fällig.", "payment"),
+    ("Bitte reichen Sie die fehlenden Unterlagen bis zum 15.10.2026 ein.", "declaration"),
+    ("Die Nachweise sind bis spätestens 15.10.2026 vorzulegen.", "declaration"),
+    ("Please pay the amount of EUR 85.00 by 15.10.2026.", "payment"),
+    ("Please return the signed form by 15.10.2026.", "declaration"),
+]
 
 
-@pytest.mark.parametrize(
-    "line",
-    [
-        "Der Betrag war bis zum 15.10.2026 fällig.",  # past
-        "Ihre Zahlung vom 15.10.2026 haben wir bereits erhalten.",  # already done
-        "Falls Sie nicht bis zum 15.10.2026 zahlen, erhalten Sie eine Mahnung.",  # a condition
-        "Wir buchen den Betrag am 15.10.2026 von Ihrem Konto ab.",  # the sender's own act, a debit
-        "Wir überweisen Ihnen das Guthaben bis zum 15.10.2026.",  # money coming in
-        "Bitte erscheinen Sie am 15.10.2026 um 10:00 Uhr in Zimmer 2.",  # an appointment
-        "Bei Zahlung bis zum 15.10.2026 gewähren wir 2 % Skonto.",  # a discount
-        "Bitte zahlen Sie möglichst bis zum 15.10.2026.",  # a preference
-        "Der Tarif gilt bis zum 15.10.2026.",  # a validity
-        "Gegen diesen Bescheid kann bis zum 15.10.2026 Widerspruch eingelegt werden.",  # the remedy's own check
-        "Ihr Vertrag läuft bis zum 15.10.2026.",  # a term
-        "Bitte überweisen Sie den Betrag bis zum 30.09.2026.",  # before the letter's own date: history
-        "Bitte überweisen Sie den Betrag bis zum 01.10.2026.",  # the letter's own date
-        "Der Zählerstand vom 15.10.2026 wird geschätzt.",  # a date without a deadline's words
-        "Zahlbar innerhalb von 14 Tagen nach Rechnungsdatum.",  # a period, not a date
-    ],
-)
-def test_a_date_that_is_no_deadline_of_the_person_s_gets_none(line: str) -> None:
-    assert dropped(line) == []
+def test_an_explicit_date_the_reading_left_out_gets_a_to_do() -> None:
+    def check(line: str, nature: str) -> None:
+        assert dropped(line) == [("2026-10-15", nature)]
+
+    check_rows(LEFT_OUT_DATES, check)
+
+
+NO_DEADLINE_LINES = [
+    "Der Betrag war bis zum 15.10.2026 fällig.",  # past
+    "Ihre Zahlung vom 15.10.2026 haben wir bereits erhalten.",  # already done
+    "Falls Sie nicht bis zum 15.10.2026 zahlen, erhalten Sie eine Mahnung.",  # a condition
+    "Wir buchen den Betrag am 15.10.2026 von Ihrem Konto ab.",  # the sender's own act, a debit
+    "Wir überweisen Ihnen das Guthaben bis zum 15.10.2026.",  # money coming in
+    "Bitte erscheinen Sie am 15.10.2026 um 10:00 Uhr in Zimmer 2.",  # an appointment
+    "Bei Zahlung bis zum 15.10.2026 gewähren wir 2 % Skonto.",  # a discount
+    "Bitte zahlen Sie möglichst bis zum 15.10.2026.",  # a preference
+    "Der Tarif gilt bis zum 15.10.2026.",  # a validity
+    "Gegen diesen Bescheid kann bis zum 15.10.2026 Widerspruch eingelegt werden.",  # the remedy's own check
+    "Ihr Vertrag läuft bis zum 15.10.2026.",  # a term
+    "Bitte überweisen Sie den Betrag bis zum 30.09.2026.",  # before the letter's own date: history
+    "Bitte überweisen Sie den Betrag bis zum 01.10.2026.",  # the letter's own date
+    "Der Zählerstand vom 15.10.2026 wird geschätzt.",  # a date without a deadline's words
+    "Zahlbar innerhalb von 14 Tagen nach Rechnungsdatum.",  # a period, not a date
+]
+
+
+def test_a_date_that_is_no_deadline_of_the_person_s_gets_none() -> None:
+    def check(line: str) -> None:
+        assert dropped(line) == []
+
+    check_rows(NO_DEADLINE_LINES, check)
 
 
 def test_a_to_do_of_the_reading_within_three_days_covers_the_date() -> None:
