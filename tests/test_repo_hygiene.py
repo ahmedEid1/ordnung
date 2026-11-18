@@ -271,20 +271,53 @@ def test_the_feature_request_warns_against_real_letters_too() -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-def test_contributors_get_the_node_versions_the_guide_requires() -> None:
-    """The guide, *From a source checkout*: the Node.js the web app's package asks for (what Vite 8 needs), and
-    `.nvmrc` picks the line CI tests on."""
+def _node_accepts(versions: str, version: tuple[int, int, int]) -> bool:
+    """Whether an npm ``engines.node`` range takes ``version``, in the forms the locked packages write (``^a.b.c``,
+    ``>=a.b.c`` or ``>= a``, a bare major, alternatives joined by ``||``)."""
+    for alternative in versions.split("||"):
+        parts = re.fullmatch(r"(\^|>=)?\s*v?(\d+)(?:\.(\d+))?(?:\.(\d+))?", alternative.strip())
+        assert parts, versions
+        floor = tuple(int(number or 0) for number in parts.group(2, 3, 4))
+        if parts[1] is None:
+            assert parts[3] is None, versions  # a bare major only: "20" is any 20.x
+            if version[0] == floor[0]:
+                return True
+        elif version >= floor and (parts[1] == ">=" or version[0] == floor[0]):
+            return True
+    return False
+
+
+def test_contributors_get_the_node_versions_every_locked_web_package_runs_on() -> None:
+    """The guide (*From a source checkout*) and CONTRIBUTING name the Node.js versions ``web/package.json`` asks
+    for, and every package in the lock runs on each of them: the router built into the app, Vitest and jsdom under
+    the unit tests, the accessibility checker of the browser checks. ``.nvmrc`` picks the line CI tests on."""
     package = json.loads(_text("web/package.json"))
     lock = json.loads(_text("web/package-lock.json"))
-    lines = re.fullmatch(r"\^(\d+\.\d+)\.0 \|\| >=(\d+\.\d+)\.0", package["engines"]["node"])
+    lines = re.fullmatch(
+        r"\^(\d+\.\d+\.\d+) \|\| \^(\d+\.\d+)\.0 \|\| >=(\d+)\.0\.0", package["engines"]["node"]
+    )
     assert lines, package["engines"]
-    part = _text("docs/guide.md").split("\n### From a source checkout\n", 1)[1].split("\n### ", 1)[0]
-    source_checkout = " ".join(part.split())
-    assert f"Node.js {lines[1]}+ or {lines[2]}+" in source_checkout
-    assert package["engines"] == {"node": "^20.19.0 || >=22.12.0"}
     assert lock["packages"][""]["engines"] == package["engines"]
+    floors = [
+        tuple(int(number) for number in lines[1].split(".")),
+        (*(int(number) for number in lines[2].split(".")), 0),
+        (int(lines[3]), 0, 0),
+    ]
+    refused = sorted(
+        f"{name.removeprefix('node_modules/')} ({entry['engines']['node']}) refuses {'.'.join(map(str, floor))}"
+        for name, entry in lock["packages"].items()
+        if name and isinstance(entry.get("engines"), dict) and "node" in entry["engines"]
+        for floor in floors
+        if not _node_accepts(entry["engines"]["node"], floor)
+    )
+    assert not refused, refused
+    named = f"Node.js {lines[1]}+, {lines[2]}+ or {lines[3]}+"
+    part = _text("docs/guide.md").split("\n### From a source checkout\n", 1)[1].split("\n### ", 1)[0]
+    assert named in " ".join(part.split())
+    setting_up = _text("CONTRIBUTING.md").split("\n## Setting up\n", 1)[1].split("\n## ", 1)[0]
+    assert named in " ".join(setting_up.split())
     nvmrc = _text(".nvmrc").strip()
-    assert nvmrc in ("20", "22")
+    assert any(_node_accepts(package["engines"]["node"], (int(nvmrc), minor, 0)) for minor in range(100))
     steps = [step for job in _yaml(".github/workflows/ci.yml")["jobs"].values() for step in job["steps"]]
     node = [step["with"] for step in steps if str(step.get("uses", "")).startswith("actions/setup-node@")]
     assert node
@@ -292,18 +325,16 @@ def test_contributors_get_the_node_versions_the_guide_requires() -> None:
         assert setup.get("node-version-file") == ".nvmrc" or str(setup.get("node-version")) == nvmrc, setup
 
 
-def test_contributors_learn_that_the_browser_checks_want_the_node_axe_asks_for() -> None:
-    """`@axe-core/playwright`, the accessibility checker of `make e2e` and `make ui-audit`, asks for a newer
-    Node than the web app's own range: the guide and CONTRIBUTING say so next to that range."""
-    lock = json.loads(_text("web/package-lock.json"))
-    axe = lock["packages"]["node_modules/@axe-core/playwright"]
-    assert axe["engines"] == {"node": ">=22.12.0"}, (
-        "a new axe: say what Node it asks for in the guide and CONTRIBUTING"
-    )
-    guide = " ".join(_text("docs/guide.md").split())
-    contributing = " ".join(_text("CONTRIBUTING.md").split())
-    assert "the accessibility checker that `make e2e` and `make ui-audit` use asks for 22.12+" in guide
-    assert "Use 22.12+ for the browser checks (`make e2e`, `make ui-audit`)" in contributing
+def test_the_node_range_reader_reads_the_forms_the_lock_uses() -> None:
+    assert _node_accepts("^22.22.2 || ^24.15.0 || >=26.0.0", (22, 22, 2))
+    assert not _node_accepts("^22.22.2 || ^24.15.0 || >=26.0.0", (22, 22, 1))
+    assert not _node_accepts("^22.22.2 || ^24.15.0 || >=26.0.0", (23, 0, 0))
+    assert _node_accepts("^22.22.2 || ^24.15.0 || >=26.0.0", (27, 1, 0))
+    assert _node_accepts("18 || 20 || >=22", (20, 19, 0))
+    assert not _node_accepts("18 || 20 || >=22", (21, 0, 0))
+    assert _node_accepts(">=v12.22.7", (22, 0, 0)) and _node_accepts(">=12.22", (12, 22, 0))
+    assert _node_accepts(">= 18", (22, 22, 2)) and not _node_accepts("^10 || ^12", (14, 0, 0))
+    assert not _node_accepts("^20.19.0 || >=22.12.0", (22, 11, 9))
 
 
 def test_dependabot_updates_the_actions_and_the_web_packages_and_leaves_python_to_make_constraints() -> None:

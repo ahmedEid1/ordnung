@@ -13,9 +13,9 @@ or a letter you write yourself, and describe a real letter in your own words.
 
 ## Setting up
 
-You need Python 3.11 or newer, [uv](https://docs.astral.sh/uv/) and Node.js 20.19+ or 22.12+ (`nvm use`
-picks the one in `.nvmrc`; `web/package.json` says the same). Use 22.12+ for the browser checks
-(`make e2e`, `make ui-audit`): their accessibility checker (`@axe-core/playwright`) asks for it.
+You need Python 3.11 or newer, [uv](https://docs.astral.sh/uv/) and Node.js 22.22.2+, 24.15+ or 26+
+(`nvm use` picks the one in `.nvmrc`; `web/package.json` says the same): the web app's router asks for 22.22+,
+and jsdom, under the unit tests, for 22.22.2+ or 24.15+.
 
 ```bash
 git clone --filter=blob:none https://github.com/ahmedEid1/ordnung.git && cd ordnung
