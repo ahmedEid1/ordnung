@@ -22,6 +22,7 @@ from helpers_docs import (
     set_page_boxes,
     text_width,
 )
+from helpers_tables import check_rows
 from ordnung.ingest.intake import RenderedPage, render_pages
 from ordnung.ingest.normalize import digit_tokens, fold_punctuation, normalise_with_map
 from ordnung.ingest.text import PageText, Word, extract_pdf_pages
@@ -99,34 +100,36 @@ def _inside(box: Box, point: tuple[float, float], tolerance: float = 0.01) -> bo
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("text", "expected"),
-    [
-        ("  Hello \t  World \n", "hello world"),
-        ("„Bescheid“ ‚vom‘ Amt – heute — morgen − 3 ‐ ‑", "\"bescheid\" 'vom' amt - heute - morgen - 3 - -"),
-        ("Sam’s «Brief» ″x″ `y´", 'sam\'s "brief" "x" \'y\''),
-        ("Einkommen-\nsteuer", "einkommensteuer"),
-        ("Einkommen-  \n   steuer", "einkommensteuer"),
-        ("Einkommen­\nsteuer", "einkommensteuer"),
-        ("Kranken- und Pflegeversicherung", "kranken- und pflegeversicherung"),
-        ("Seite 1-\n2", "seite 1- 2"),
-        ("Muster-\nGmbH", "muster- gmbh"),
-        ("Straße", "strasse"),
-        ("ofﬁziell", "offiziell"),
-        ("12 EUR", "12 eur"),
-        ("１２３", "123"),
-        ("Müller", "müller"),
-        ("Ein­kom​men﻿", "einkommen"),
-        ("", ""),
-        (" \n ", ""),
-    ],
-)
-def test_normalise_with_map(text: str, expected: str) -> None:
-    norm, offsets = normalise_with_map(text)
-    assert norm == expected
-    assert len(offsets) == len(norm)
-    assert offsets == sorted(offsets)
-    assert all(0 <= o < len(text) for o in offsets)
+NORMALISE_WITH_MAP = [
+    ("  Hello \t  World \n", "hello world"),
+    ("„Bescheid“ ‚vom‘ Amt – heute — morgen − 3 ‐ ‑", "\"bescheid\" 'vom' amt - heute - morgen - 3 - -"),
+    ("Sam’s «Brief» ″x″ `y´", 'sam\'s "brief" "x" \'y\''),
+    ("Einkommen-\nsteuer", "einkommensteuer"),
+    ("Einkommen-  \n   steuer", "einkommensteuer"),
+    ("Einkommen­\nsteuer", "einkommensteuer"),
+    ("Kranken- und Pflegeversicherung", "kranken- und pflegeversicherung"),
+    ("Seite 1-\n2", "seite 1- 2"),
+    ("Muster-\nGmbH", "muster- gmbh"),
+    ("Straße", "strasse"),
+    ("ofﬁziell", "offiziell"),
+    ("12 EUR", "12 eur"),
+    ("１２３", "123"),
+    ("Müller", "müller"),
+    ("Ein­kom​men﻿", "einkommen"),
+    ("", ""),
+    (" \n ", ""),
+]
+
+
+def test_normalise_with_map() -> None:
+    def check(text: str, expected: str) -> None:
+        norm, offsets = normalise_with_map(text)
+        assert norm == expected
+        assert len(offsets) == len(norm)
+        assert offsets == sorted(offsets)
+        assert all(0 <= o < len(text) for o in offsets)
+
+    check_rows(NORMALISE_WITH_MAP, check)
 
 
 def test_offsets_point_at_the_source_characters() -> None:
@@ -218,24 +221,31 @@ def test_hyphenated_line_break_matches_the_joined_word(tmp_path: Path) -> None:
     assert len(located.boxes) == 2
 
 
-@pytest.mark.parametrize("rotation", [90, 180, 270])
-def test_located_boxes_on_rotated_cropped_pages(tmp_path: Path, rotation: int) -> None:
-    cropbox = (30.0, 120.0, 580.0, 810.0)
-    rendered, pages = _extract(tmp_path, set_page_boxes(letter_pdf(), 0, rotation=rotation, cropbox=cropbox))
-    located = locate_quote("Bitte zahlen Sie den Betrag bis zum 15.09.2026", pages)
-    assert located is not None
-    [box] = located.boxes
-    assert 0 <= box.x0 < box.x1 <= 1 and 0 <= box.y0 < box.y1 <= 1
-    start = expected_point(LETTER_LEFT + 3, letter_line_y(4) - 4, rotation=rotation, cropbox=cropbox)
-    end = expected_point(
-        LETTER_LEFT + text_width("Bitte zahlen Sie den Betrag bis zum 15.09.2026") - 3,
-        letter_line_y(4) - 4,
-        rotation=rotation,
-        cropbox=cropbox,
-    )
-    assert _inside(box, start)
-    assert _inside(box, end)
-    assert _ink(rendered[0].image_path, box) > 0.1
+LOCATED_BOXES_ON_ROTATED_CROPPED_PAGES = [90, 180, 270]
+
+
+def test_located_boxes_on_rotated_cropped_pages(tmp_path: Path) -> None:
+    def check(rotation: int) -> None:
+        cropbox = (30.0, 120.0, 580.0, 810.0)
+        rendered, pages = _extract(
+            tmp_path / f"r{rotation}", set_page_boxes(letter_pdf(), 0, rotation=rotation, cropbox=cropbox)
+        )
+        located = locate_quote("Bitte zahlen Sie den Betrag bis zum 15.09.2026", pages)
+        assert located is not None
+        [box] = located.boxes
+        assert 0 <= box.x0 < box.x1 <= 1 and 0 <= box.y0 < box.y1 <= 1
+        start = expected_point(LETTER_LEFT + 3, letter_line_y(4) - 4, rotation=rotation, cropbox=cropbox)
+        end = expected_point(
+            LETTER_LEFT + text_width("Bitte zahlen Sie den Betrag bis zum 15.09.2026") - 3,
+            letter_line_y(4) - 4,
+            rotation=rotation,
+            cropbox=cropbox,
+        )
+        assert _inside(box, start)
+        assert _inside(box, end)
+        assert _ink(rendered[0].image_path, box) > 0.1
+
+    check_rows(LOCATED_BOXES_ON_ROTATED_CROPPED_PAGES, check)
 
 
 def test_exact_digit_rule_rejects_a_near_match(letter: tuple[list[RenderedPage], list[PageText]]) -> None:
@@ -245,10 +255,6 @@ def test_exact_digit_rule_rejects_a_near_match(letter: tuple[list[RenderedPage],
     assert fuzz.partial_ratio(norm_quote, normalise_with_map(pages[0].text)[0]) > MIN_SCORE
     assert locate_quote(quote, pages) is None
     assert locate_quote(quote.replace("16.09", "15.09"), pages) is not None
-
-
-def test_amount_digits_must_match_exactly(letter: tuple[list[RenderedPage], list[PageText]]) -> None:
-    _, pages = letter
     assert locate_quote("die festgesetzte Steuer beträgt 1.234,57 EUR", pages) is None
     assert locate_quote("die festgesetzte Steuer beträgt 1234,56 EUR", pages) is None
 
@@ -377,37 +383,40 @@ def test_ground_evidence_on_a_page_without_text_layer_is_unverified() -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("text", "expected"),
-    [
-        ("Frist: 15.10.2026", (15, 10, 2026)),
-        ("am 15.10.26", (15, 10, 2026)),
-        ("geboren 01.01.85", (1, 1, 1985)),
-        ("ab 1.2.2026", (1, 2, 2026)),
-        ("am 15. 10. 2026", (15, 10, 2026)),
-        ("bis 15.01.", (15, 1, None)),
-        ("am 03.11. 14 Uhr", (3, 11, None)),
-        ("bis zum 15. Oktober 2026", (15, 10, 2026)),
-        ("by 15 October 2026", (15, 10, 2026)),
-        ("by October 15, 2026", (15, 10, 2026)),
-        ("by Oct. 15 2026", (15, 10, 2026)),
-        ("on the 15th of October 2026", (15, 10, 2026)),
-        ("October 15th, 2026", (15, 10, 2026)),
-        ("2026-10-15", (15, 10, 2026)),
-        ("3. März 2026", (3, 3, 2026)),
-        ("3. Maerz 2026", (3, 3, 2026)),
-        ("3. MÄRZ 2026", (3, 3, 2026)),
-        ("1. Mai", (1, 5, None)),
-        ("Stichtag 29.02.", (29, 2, None)),
-        ("25/12/2026", (25, 12, 2026)),
-        ("12/25/2026", (25, 12, 2026)),
-        ("05/05/2026", (5, 5, 2026)),
-    ],
-)
-def test_parse_dates_formats(text: str, expected: tuple[int, int, int | None]) -> None:
-    [mention] = parse_dates(text)
-    assert (mention.day, mention.month, mention.year) == expected
-    assert not mention.ambiguous
+PARSE_DATES_FORMATS = [
+    ("Frist: 15.10.2026", (15, 10, 2026)),
+    ("am 15.10.26", (15, 10, 2026)),
+    ("geboren 01.01.85", (1, 1, 1985)),
+    ("ab 1.2.2026", (1, 2, 2026)),
+    ("am 15. 10. 2026", (15, 10, 2026)),
+    ("bis 15.01.", (15, 1, None)),
+    ("am 03.11. 14 Uhr", (3, 11, None)),
+    ("bis zum 15. Oktober 2026", (15, 10, 2026)),
+    ("by 15 October 2026", (15, 10, 2026)),
+    ("by October 15, 2026", (15, 10, 2026)),
+    ("by Oct. 15 2026", (15, 10, 2026)),
+    ("on the 15th of October 2026", (15, 10, 2026)),
+    ("October 15th, 2026", (15, 10, 2026)),
+    ("2026-10-15", (15, 10, 2026)),
+    ("3. März 2026", (3, 3, 2026)),
+    ("3. Maerz 2026", (3, 3, 2026)),
+    ("3. MÄRZ 2026", (3, 3, 2026)),
+    ("1. Mai", (1, 5, None)),
+    ("Stichtag 29.02.", (29, 2, None)),
+    ("25/12/2026", (25, 12, 2026)),
+    ("12/25/2026", (25, 12, 2026)),
+    ("05/05/2026", (5, 5, 2026)),
+    ("Date of expiry 10 FEB / FÉV 2027", (10, 2, 2027)),
+]
+
+
+def test_parse_dates_formats() -> None:
+    def check(text: str, expected: tuple[int, int, int | None]) -> None:
+        [mention] = parse_dates(text)
+        assert (mention.day, mention.month, mention.year) == expected
+        assert not mention.ambiguous
+
+    check_rows(PARSE_DATES_FORMATS, check)
 
 
 def test_parse_dates_ambiguous_numeric_date() -> None:
@@ -416,21 +425,23 @@ def test_parse_dates_ambiguous_numeric_date() -> None:
     assert all(m.ambiguous and m.text == "03/05/2026" for m in mentions)
 
 
-@pytest.mark.parametrize(
-    "text",
-    [
-        "Betrag 1.234,56 EUR",
-        "Version 1.2.3",
-        "am 31.02.2026",
-        "Server 192.168.1.1",
-        "Rechnung 2026-0042",
-        "Kundennummer 123456",
-        "Summe: 12.50.",
-        "you may pay later",
-    ],
-)
-def test_parse_dates_ignores_non_dates(text: str) -> None:
-    assert parse_dates(text) == []
+PARSE_DATES_IGNORES_NON_DATES = [
+    "Betrag 1.234,56 EUR",
+    "Version 1.2.3",
+    "am 31.02.2026",
+    "Server 192.168.1.1",
+    "Rechnung 2026-0042",
+    "Kundennummer 123456",
+    "Summe: 12.50.",
+    "you may pay later",
+]
+
+
+def test_parse_dates_ignores_non_dates() -> None:
+    def check(text: str) -> None:
+        assert parse_dates(text) == []
+
+    check_rows(PARSE_DATES_IGNORES_NON_DATES, check)
 
 
 def test_parse_dates_several_and_as_date() -> None:
@@ -439,41 +450,43 @@ def test_parse_dates_several_and_as_date() -> None:
     assert DateMention("15.01.", 15, 1, None).as_date() is None
 
 
-@pytest.mark.parametrize(
-    ("text", "expected"),
-    [
-        ("Betrag: 1.234,56 EUR", [1234.56]),
-        ("Total: 1,234.56 USD", [1234.56]),
-        ("nur 12,50 €", [12.5]),
-        ("EUR 12.50", [12.5]),
-        ("€ 99", [99.0]),
-        ("99 Euro", [99.0]),
-        ("99,- €", [99.0]),
-        ("Preis 99,-", [99.0]),
-        ("1.200 €", [1200.0]),
-        ("USD 1,000", [1000.0]),
-        ("Gutschrift -49,99 EUR", [49.99]),
-        ("1.234.567,89 EUR", [1234567.89]),
-        ("Summe: 12,50.", [12.5]),
-        ("2.000,00 EUR und 150,00 EUR", [2000.0, 150.0]),
-        ("am 15.10.2026", []),
-        ("Kundennummer 123456", []),
-        ("30 Tage", []),
-        ("1.234", []),
-        ("12,5 %", []),
-        ("Steuernummer 123/456/78901", []),
-        ("Wert 1,234.5", []),
-        ("1.2,34 EUR", []),
-        # malformed groups (an OCR slip, a typo) are not amounts — and never raise
-        ("Ref 12,34..56", []),
-        ("94.99,,31", []),
-        ("Ihre Zahlung vom 15,.09.26 ist eingegangen.", []),
-        ("x 31,.10.30 €", []),
-        ("5,.10.20", []),
-    ],
-)
-def test_parse_amounts(text: str, expected: list[float]) -> None:
-    assert parse_amounts(text) == pytest.approx(expected)
+PARSE_AMOUNTS = [
+    ("Betrag: 1.234,56 EUR", [1234.56]),
+    ("Total: 1,234.56 USD", [1234.56]),
+    ("nur 12,50 €", [12.5]),
+    ("EUR 12.50", [12.5]),
+    ("€ 99", [99.0]),
+    ("99 Euro", [99.0]),
+    ("99,- €", [99.0]),
+    ("Preis 99,-", [99.0]),
+    ("1.200 €", [1200.0]),
+    ("USD 1,000", [1000.0]),
+    ("Gutschrift -49,99 EUR", [49.99]),
+    ("1.234.567,89 EUR", [1234567.89]),
+    ("Summe: 12,50.", [12.5]),
+    ("2.000,00 EUR und 150,00 EUR", [2000.0, 150.0]),
+    ("am 15.10.2026", []),
+    ("Kundennummer 123456", []),
+    ("30 Tage", []),
+    ("1.234", []),
+    ("12,5 %", []),
+    ("Steuernummer 123/456/78901", []),
+    ("Wert 1,234.5", []),
+    ("1.2,34 EUR", []),
+    # malformed groups (an OCR slip, a typo) are not amounts — and never raise
+    ("Ref 12,34..56", []),
+    ("94.99,,31", []),
+    ("Ihre Zahlung vom 15,.09.26 ist eingegangen.", []),
+    ("x 31,.10.30 €", []),
+    ("5,.10.20", []),
+]
+
+
+def test_parse_amounts() -> None:
+    def check(text: str, expected: list[float]) -> None:
+        assert parse_amounts(text) == pytest.approx(expected)
+
+    check_rows(PARSE_AMOUNTS, check)
 
 
 @settings(max_examples=400, deadline=None)
@@ -484,38 +497,48 @@ def test_amount_matches_never_raises(text: str) -> None:
         assert match.value >= 0
 
 
-@pytest.mark.parametrize(
-    "text", ["Gebühr: " + "9" * 400 + " €", "EUR " + "1" * 320 + ",00", "9" * 330 + ",- €"]
-)
-def test_a_number_too_long_to_be_an_amount_is_none(text: str) -> None:
+A_NUMBER_TOO_LONG_TO_BE_AN_AMOUNT_IS_NONE = [
+    "Gebühr: " + "9" * 400 + " €",
+    "EUR " + "1" * 320 + ",00",
+    "9" * 330 + ",- €",
+]
+
+
+def test_a_number_too_long_to_be_an_amount_is_none() -> None:
     """About 310 digits read as ``inf``, and every caller that took its cents raised (a
     hostile letter stopped every Ask answer that read it). Such a number is no amount."""
-    assert amount_matches(text) == [] and parse_amounts(text) == []
+
+    def check(text: str) -> None:
+        assert amount_matches(text) == [] and parse_amounts(text) == []
+
+    check_rows(A_NUMBER_TOO_LONG_TO_BE_AN_AMOUNT_IS_NONE, check)
 
 
-@pytest.mark.parametrize(
-    ("text", "expected"),
-    [
-        ("innerhalb von zwei Wochen", [(2, "weeks")]),
-        ("innerhalb eines Monats nach Bekanntgabe", [(1, "months")]),
-        ("innerhalb einer Woche", [(1, "weeks")]),
-        ("binnen 14 Tagen", [(14, "days")]),
-        ("innerhalb von dreißig Tagen", [(30, "days")]),
-        ("innerhalb von drei Werktagen", [(3, "werktage")]),
-        ("innerhalb von 5 Bankarbeitstagen", [(5, "business_days")]),
-        ("Kündigungsfrist: 3 Monate zum Monatsende", [(3, "months")]),
-        ("zwölf Monate Laufzeit", [(12, "months")]),
-        ("within 5 business days", [(5, "business_days")]),
-        ("within ten working days", [(10, "business_days")]),
-        ("within thirty (30) calendar days", [(30, "days")]),
-        ("within a month", [(1, "months")]),
-        ("for one year", [(1, "years")]),
-        ("eine 30-Tage-Frist", [(30, "days")]),
-        ("Tage und Wochen", []),
-    ],
-)
-def test_parse_periods(text: str, expected: list[tuple[int, str]]) -> None:
-    assert parse_periods(text) == expected
+PARSE_PERIODS = [
+    ("innerhalb von zwei Wochen", [(2, "weeks")]),
+    ("innerhalb eines Monats nach Bekanntgabe", [(1, "months")]),
+    ("innerhalb einer Woche", [(1, "weeks")]),
+    ("binnen 14 Tagen", [(14, "days")]),
+    ("innerhalb von dreißig Tagen", [(30, "days")]),
+    ("innerhalb von drei Werktagen", [(3, "werktage")]),
+    ("innerhalb von 5 Bankarbeitstagen", [(5, "business_days")]),
+    ("Kündigungsfrist: 3 Monate zum Monatsende", [(3, "months")]),
+    ("zwölf Monate Laufzeit", [(12, "months")]),
+    ("within 5 business days", [(5, "business_days")]),
+    ("within ten working days", [(10, "business_days")]),
+    ("within thirty (30) calendar days", [(30, "days")]),
+    ("within a month", [(1, "months")]),
+    ("for one year", [(1, "years")]),
+    ("eine 30-Tage-Frist", [(30, "days")]),
+    ("Tage und Wochen", []),
+]
+
+
+def test_parse_periods() -> None:
+    def check(text: str, expected: list[tuple[int, str]]) -> None:
+        assert parse_periods(text) == expected
+
+    check_rows(PARSE_PERIODS, check)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -574,18 +597,20 @@ def test_explicit_anchor_date_must_be_in_the_quote() -> None:
     assert spec_consistency(quote, other_anchor, None) == (True, [])
 
 
-@pytest.mark.parametrize(
-    "quote",
-    [
-        "Zahlbar bis zum 15.10.2026.",
-        "bis 15.10.26",
-        "bis zum 15. Oktober 2026",
-        "due October 15, 2026",
-        "2026-10-15",
-    ],
-)
-def test_fixed_date_written_in_the_quote(quote: str) -> None:
-    assert spec_consistency(quote, _fixed("2026-10-15"), None) == (True, [])
+FIXED_DATE_WRITTEN_IN_THE_QUOTE = [
+    "Zahlbar bis zum 15.10.2026.",
+    "bis 15.10.26",
+    "bis zum 15. Oktober 2026",
+    "due October 15, 2026",
+    "2026-10-15",
+]
+
+
+def test_fixed_date_written_in_the_quote() -> None:
+    def check(quote: str) -> None:
+        assert spec_consistency(quote, _fixed("2026-10-15"), None) == (True, [])
+
+    check_rows(FIXED_DATE_WRITTEN_IN_THE_QUOTE, check)
 
 
 def test_fixed_date_not_in_the_quote() -> None:
@@ -619,11 +644,16 @@ def test_ambiguous_numeric_date_is_flagged() -> None:
     assert spec_consistency("due on 25/12/2026", _fixed("2026-12-25"), None) == (True, [])
 
 
-@pytest.mark.parametrize("quote", ["Betrag: 1.234,56 EUR", "Amount: 1,234.56 EUR", "EUR 1234.56"])
-def test_amount_must_appear_in_the_quote(quote: str) -> None:
-    spec = DateSpec(type="none")
-    assert spec_consistency(quote, spec, 1234.56) == (True, [])
-    assert spec_consistency(quote, spec, 1234.65) == (False, [AMOUNT_NOT_IN_QUOTE])
+AMOUNT_MUST_APPEAR_IN_THE_QUOTE = ["Betrag: 1.234,56 EUR", "Amount: 1,234.56 EUR", "EUR 1234.56"]
+
+
+def test_amount_must_appear_in_the_quote() -> None:
+    def check(quote: str) -> None:
+        spec = DateSpec(type="none")
+        assert spec_consistency(quote, spec, 1234.56) == (True, [])
+        assert spec_consistency(quote, spec, 1234.65) == (False, [AMOUNT_NOT_IN_QUOTE])
+
+    check_rows(AMOUNT_MUST_APPEAR_IN_THE_QUOTE, check)
 
 
 def test_amount_and_date_reasons_combine() -> None:
@@ -642,77 +672,83 @@ def test_none_spec_without_amount_is_always_consistent() -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("text", "expected"),
-    [
-        ("Die Miete ist spätestens am dritten Werktag eines jeden Monats zu zahlen.", {3}),
-        ("zahlbar bis zum 3. Werktag", {3}),
-        ("zahlbar bis zum 3.Werktag", {3}),
-        ("spätestens am dritten Arbeitstag des Monats", {3}),
-        ("bis zum dritten Bankarbeitstag", {3}),
-        ("due by the third working day of each month", {3}),
-        ("due by the 3rd business day", {3}),
-        ("am 3. (dritten) Werktag", {3}),
-        ("DER ERSTE WERKTAG", {1}),
-        ("am zweiten Werktage des Monats", {2}),
-        ("am fünften Werktag", {5}),
-        ("am fuenften Werktag", {5}),
-        ("am siebten Werktag", {7}),
-        ("am siebenten Werktag", {7}),
-        ("am achten Werktag", {8}),
-        ("am zehnten Werktag", {10}),
-        ("am 10. Werktag", {10}),
-        ("the first business day", {1}),
-        ("the 10th working day", {10}),
-        ("am zweiten oder dritten Werktag", {3}),
-        # the last one (-1): the demo's salary, "spätestens am letzten Bankarbeitstag des Monats"
-        ("die Vergütung wird spätestens am letzten Bankarbeitstag des Monats überwiesen.", {-1}),
-        ("am letzten Werktag des Monats", {-1}),
-        ("zum letzten Arbeitstag", {-1}),
-        ("on the last working day of each month", {-1}),
-        ("by the last business day", {-1}),
-        ("the last bank working day of the month", {-1}),
-        ("on or around the first working day of each month", {1}),
-        # a period of working days, a larger ordinal or no working day at all names none
-        ("innerhalb von 3 Werktagen", set()),
-        ("innerhalb von drei Werktagen", set()),
-        ("within 3 working days", set()),
-        ("am 13. Werktag", set()),
-        ("am dreizehnten Werktag", set()),
-        ("am 1.3. Werktag", set()),
-        ("am 3. Oktober", set()),
-        ("am dritten Kalendertag", set()),
-        ("Bitte beachten Sie: die Miete ist monatlich im Voraus zu zahlen.", set()),
-    ],
-)
-def test_working_days_named(text: str, expected: set[int]) -> None:
-    assert working_days_named(text) == expected
+WORKING_DAYS_NAMED = [
+    ("Die Miete ist spätestens am dritten Werktag eines jeden Monats zu zahlen.", {3}),
+    ("zahlbar bis zum 3. Werktag", {3}),
+    ("zahlbar bis zum 3.Werktag", {3}),
+    ("spätestens am dritten Arbeitstag des Monats", {3}),
+    ("bis zum dritten Bankarbeitstag", {3}),
+    ("due by the third working day of each month", {3}),
+    ("due by the 3rd business day", {3}),
+    ("am 3. (dritten) Werktag", {3}),
+    ("DER ERSTE WERKTAG", {1}),
+    ("am zweiten Werktage des Monats", {2}),
+    ("am fünften Werktag", {5}),
+    ("am fuenften Werktag", {5}),
+    ("am siebten Werktag", {7}),
+    ("am siebenten Werktag", {7}),
+    ("am achten Werktag", {8}),
+    ("am zehnten Werktag", {10}),
+    ("am 10. Werktag", {10}),
+    ("the first business day", {1}),
+    ("the 10th working day", {10}),
+    ("am zweiten oder dritten Werktag", {3}),
+    # the last one (-1): the demo's salary, "spätestens am letzten Bankarbeitstag des Monats"
+    ("die Vergütung wird spätestens am letzten Bankarbeitstag des Monats überwiesen.", {-1}),
+    ("am letzten Werktag des Monats", {-1}),
+    ("zum letzten Arbeitstag", {-1}),
+    ("on the last working day of each month", {-1}),
+    ("by the last business day", {-1}),
+    ("the last bank working day of the month", {-1}),
+    ("on or around the first working day of each month", {1}),
+    # a period of working days, a larger ordinal or no working day at all names none
+    ("innerhalb von 3 Werktagen", set()),
+    ("innerhalb von drei Werktagen", set()),
+    ("within 3 working days", set()),
+    ("am 13. Werktag", set()),
+    ("am dreizehnten Werktag", set()),
+    ("am 1.3. Werktag", set()),
+    ("am 3. Oktober", set()),
+    ("am dritten Kalendertag", set()),
+    ("Bitte beachten Sie: die Miete ist monatlich im Voraus zu zahlen.", set()),
+]
 
 
-@pytest.mark.parametrize(
-    "quote",
-    [
-        "spätestens am dritten Werktag eines jeden Monats",
-        "zahlbar bis zum 3. Werktag",
-        "spätestens am dritten Arbeitstag",
-        "due by the third working day",
-        "due by the 3rd business day",
-    ],
-)
-def test_a_working_day_the_quote_names_is_consistent(quote: str) -> None:
-    assert working_day_consistency(quote, 3) == []
+def test_working_days_named() -> None:
+    def check(text: str, expected: set[int]) -> None:
+        assert working_days_named(text) == expected
+
+    check_rows(WORKING_DAYS_NAMED, check)
 
 
-@pytest.mark.parametrize(
-    ("quote", "working_day"),
-    [
-        ("Die Miete ist monatlich im Voraus zu zahlen.", 3),  # no working day at all
-        ("spätestens am dritten Werktag eines jeden Monats", 1),  # another ordinal
-        ("innerhalb von 3 Werktagen", 3),  # a period, not the 3rd working day
-    ],
-)
-def test_a_working_day_the_quote_does_not_name_is_flagged(quote: str, working_day: int) -> None:
-    assert working_day_consistency(quote, working_day) == [WORKING_DAY_NOT_IN_QUOTE]
+A_WORKING_DAY_THE_QUOTE_NAMES_IS_CONSISTENT = [
+    "spätestens am dritten Werktag eines jeden Monats",
+    "zahlbar bis zum 3. Werktag",
+    "spätestens am dritten Arbeitstag",
+    "due by the third working day",
+    "due by the 3rd business day",
+]
+
+
+def test_a_working_day_the_quote_names_is_consistent() -> None:
+    def check(quote: str) -> None:
+        assert working_day_consistency(quote, 3) == []
+
+    check_rows(A_WORKING_DAY_THE_QUOTE_NAMES_IS_CONSISTENT, check)
+
+
+A_WORKING_DAY_THE_QUOTE_DOES_NOT_NAME_IS_FLAGGED = [
+    ("Die Miete ist monatlich im Voraus zu zahlen.", 3),  # no working day at all
+    ("spätestens am dritten Werktag eines jeden Monats", 1),  # another ordinal
+    ("innerhalb von 3 Werktagen", 3),  # a period, not the 3rd working day
+]
+
+
+def test_a_working_day_the_quote_does_not_name_is_flagged() -> None:
+    def check(quote: str, working_day: int) -> None:
+        assert working_day_consistency(quote, working_day) == [WORKING_DAY_NOT_IN_QUOTE]
+
+    check_rows(A_WORKING_DAY_THE_QUOTE_DOES_NOT_NAME_IS_FLAGGED, check)
 
 
 def test_a_recurrence_without_a_working_day_has_nothing_to_check() -> None:
@@ -742,79 +778,82 @@ def test_a_working_day_not_in_its_quote_lowers_the_grade_with_a_note() -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("text", "expected"),
-    [
-        # the demo's gym fee and Deutschlandticket
-        (
-            "Der Monatsbeitrag von 29,90 € ist monatlich im Voraus fällig und wird zum 1. eines Monats per "
-            "SEPA-Lastschrift eingezogen.",
-            {1},
-        ),
-        ("Zahlungsweise   SEPA-Lastschrift, Abbuchung zum Monatsanfang, Gläubiger-ID", {1}),
-        ("Monatlicher Abschlag 48,00 €, fällig jeweils zum 15. eines Monats, erstmals am", {15}),
-        (
-            "Wir buchen den Beitrag wie bisher zum 15. eines Monats ab, den neuen Betrag erstmals am 15.10.2026.",
-            {15},
-        ),
-        ("fällig am 5. jeden Monats", {5}),
-        ("bis zum 01. des Monats", {1}),
-        ("15. des Monats", {15}),
-        ("payable on the 1st of each month", {1}),
-        ("due on the 22nd", {22}),
-        ("am Monatsbeginn", {1}),
-        ("at the beginning of each month", {1}),
-        ("on the first day of the month", {1}),
-        ("jeweils zum Monatsersten", {1}),
-        ("am Ersten eines jeden Monats", {1}),
-        ("zum ersten Tag des Monats", {1}),
-        # a month's middle is its 15th (§ 192 BGB)
-        ("Der Abschlag wird jeweils zur Monatsmitte abgebucht.", {15}),
-        ("Die Miete ist bis Mitte des Monats zu zahlen.", {15}),
-        ("fällig zur Mitte eines jeden Monats", {15}),
-        ("Mitte jeden Kalendermonats", {15}),
-        ("The fee is debited mid-month.", {15}),
-        ("payable in the middle of each month", {15}),
-        # a month's end is its last day: 31
-        ("Die Miete ist jeweils zum Monatsende zu zahlen.", {31}),
-        ("zum Letzten eines Monats", {31}),
-        ("am letzten Tag des Monats", {31}),
-        ("at the end of each month", {31}),
-        ("jeweils zum 30. und zum 31.", {30, 31}),
-        # a date, a working day, a start date or no day at all names none
-        ("Ihre Gesamtmiete beträgt ab dem 01.11.2026 somit 670,00 € (bisher 640,00 €).", set()),
-        ("am 1.10. abgebucht", set()),
-        ("spätestens bis zum 3. Werktag", set()),
-        ("due on the 3rd business day", set()),
-        ("am letzten Bankarbeitstag des Monats", set()),
-        ("zum letzten Werktag", set()),
-        ("§ 7. Kündigung", set()),
-        ("am 32. eines Monats", set()),
-        ("am ersten Werktag eines Monats", set()),
-        ("Der Beitrag ist monatlich im Voraus zu zahlen.", set()),
-        # … nor does a middle that is no month's: one month's (a date), a word that only starts like it, the
-        # middle of a quarter or three-month period without the reading it is read for (mid_quarter_named)
-        ("Die Abrechnung erhalten Sie Mitte Oktober.", set()),
-        ("Ihre Monatsmitteilung", set()),
-        ("the middle of the monthly statement", set()),
-        ("jeweils in der Mitte eines Dreimonatszeitraums", set()),
-        ("zur Quartalsmitte", set()),
-        ("Der Beitrag ist zur Mitte des Folgemonats zu zahlen.", set()),  # the following month's: not read
-        # … nor a month's start, middle or end that bounds a stretch of time, as digits after "ab dem" don't
-        ("Der Abschlag wird nach der Monatsmitte abgebucht.", set()),
-        ("Der Abschlag wird ab Monatsanfang abgebucht.", set()),
-        ("Die Zahlung muss vor dem Monatsende eingehen.", set()),
-        ("Die Abbuchung erfolgt um die Monatsmitte.", set()),
-        ("Die Abbuchung erfolgt gegen Monatsende.", set()),
-        ("Die Abbuchung erfolgt seit Anfang des Monats.", set()),
-        ("Die Abbuchung erfolgt zwischen Monatsmitte und Monatsende.", set()),
-        ("Die Abbuchung erfolgt zwischen Mitte und Ende des Monats.", set()),
-        ("The fee is debited after the middle of the month.", set()),
-        ("The fee is collected from the start of each month.", set()),
-    ],
-)
-def test_days_of_month_named(text: str, expected: set[int]) -> None:
-    assert days_of_month_named(text) == expected
+DAYS_OF_MONTH_NAMED = [
+    # the demo's gym fee and Deutschlandticket
+    (
+        "Der Monatsbeitrag von 29,90 € ist monatlich im Voraus fällig und wird zum 1. eines Monats per "
+        "SEPA-Lastschrift eingezogen.",
+        {1},
+    ),
+    ("Zahlungsweise   SEPA-Lastschrift, Abbuchung zum Monatsanfang, Gläubiger-ID", {1}),
+    ("Monatlicher Abschlag 48,00 €, fällig jeweils zum 15. eines Monats, erstmals am", {15}),
+    (
+        "Wir buchen den Beitrag wie bisher zum 15. eines Monats ab, den neuen Betrag erstmals am 15.10.2026.",
+        {15},
+    ),
+    ("fällig am 5. jeden Monats", {5}),
+    ("bis zum 01. des Monats", {1}),
+    ("15. des Monats", {15}),
+    ("payable on the 1st of each month", {1}),
+    ("due on the 22nd", {22}),
+    ("am Monatsbeginn", {1}),
+    ("at the beginning of each month", {1}),
+    ("on the first day of the month", {1}),
+    ("jeweils zum Monatsersten", {1}),
+    ("am Ersten eines jeden Monats", {1}),
+    ("zum ersten Tag des Monats", {1}),
+    # a month's middle is its 15th (§ 192 BGB)
+    ("Der Abschlag wird jeweils zur Monatsmitte abgebucht.", {15}),
+    ("Die Miete ist bis Mitte des Monats zu zahlen.", {15}),
+    ("fällig zur Mitte eines jeden Monats", {15}),
+    ("Mitte jeden Kalendermonats", {15}),
+    ("The fee is debited mid-month.", {15}),
+    ("payable in the middle of each month", {15}),
+    ("Die Miete von 640,00 € ist monatlich bis zur Monatsmitte zu zahlen.", {15}),
+    # a month's end is its last day: 31
+    ("Die Miete ist jeweils zum Monatsende zu zahlen.", {31}),
+    ("zum Letzten eines Monats", {31}),
+    ("am letzten Tag des Monats", {31}),
+    ("at the end of each month", {31}),
+    ("jeweils zum 30. und zum 31.", {30, 31}),
+    # a date, a working day, a start date or no day at all names none
+    ("Ihre Gesamtmiete beträgt ab dem 01.11.2026 somit 670,00 € (bisher 640,00 €).", set()),
+    ("am 1.10. abgebucht", set()),
+    ("spätestens bis zum 3. Werktag", set()),
+    ("due on the 3rd business day", set()),
+    ("am letzten Bankarbeitstag des Monats", set()),
+    ("zum letzten Werktag", set()),
+    ("§ 7. Kündigung", set()),
+    ("am 32. eines Monats", set()),
+    ("am ersten Werktag eines Monats", set()),
+    ("Der Beitrag ist monatlich im Voraus zu zahlen.", set()),
+    # … nor does a middle that is no month's: one month's (a date), a word that only starts like it, the
+    # middle of a quarter or three-month period without the reading it is read for (mid_quarter_named)
+    ("Die Abrechnung erhalten Sie Mitte Oktober.", set()),
+    ("Ihre Monatsmitteilung", set()),
+    ("the middle of the monthly statement", set()),
+    ("jeweils in der Mitte eines Dreimonatszeitraums", set()),
+    ("zur Quartalsmitte", set()),
+    ("Der Beitrag ist zur Mitte des Folgemonats zu zahlen.", set()),  # the following month's: not read
+    # … nor a month's start, middle or end that bounds a stretch of time, as digits after "ab dem" don't
+    ("Der Abschlag wird nach der Monatsmitte abgebucht.", set()),
+    ("Der Abschlag wird ab Monatsanfang abgebucht.", set()),
+    ("Die Zahlung muss vor dem Monatsende eingehen.", set()),
+    ("Die Abbuchung erfolgt um die Monatsmitte.", set()),
+    ("Die Abbuchung erfolgt gegen Monatsende.", set()),
+    ("Die Abbuchung erfolgt seit Anfang des Monats.", set()),
+    ("Die Abbuchung erfolgt zwischen Monatsmitte und Monatsende.", set()),
+    ("Die Abbuchung erfolgt zwischen Mitte und Ende des Monats.", set()),
+    ("The fee is debited after the middle of the month.", set()),
+    ("The fee is collected from the start of each month.", set()),
+]
+
+
+def test_days_of_month_named() -> None:
+    def check(text: str, expected: set[int]) -> None:
+        assert days_of_month_named(text) == expected
+
+    check_rows(DAYS_OF_MONTH_NAMED, check)
 
 
 def test_a_day_of_the_month_is_named_or_flagged() -> None:
@@ -845,161 +884,164 @@ QUARTERLY_DATES = (
 )
 
 
-@pytest.mark.parametrize(
-    ("text", "rule", "expected"),
-    [
-        # two or more dates on one day, a whole number of the rule's intervals apart
-        (QUARTERLY_DATES, QUARTERLY, {10}),
-        ("Die Raten sind am 15.02.2027, 15.05.2027 und 15.08.2027 zu zahlen.", QUARTERLY, {15}),
-        ("Instalments are due on 10 March 2026, 10 June 2026 and 10 September 2026.", QUARTERLY, {10}),
-        ("Die Raten sind am 15.02.2027 und 15.08.2027 zu zahlen.", QUARTERLY, {15}),  # one skipped
-        ("Abbuchung am 01.12.2026 und am 01.12.2027.", YEARLY, {1}),
-        ("Abbuchung am 03.11.2026 und 03.12.2026.", MONTHLY, {3}),
-        ("Abbuchung am 10.03. und 10.06.", QUARTERLY, {10}),
-        # another date's day aside, outside the list
-        ("Raten: 10.03., 10.06., 10.09. und 10.12.; Beratungstermin am 12.06.2026.", QUARTERLY, {10}),
-        # … a list with dashes between three or more dates
-        ("Vorauszahlungen fällig: 10.03.2026 – 10.06.2026 – 10.09.2026 – 10.12.2026", QUARTERLY, {10}),
-        # a list of dates each on the last day of its month names the 31st (each month's last day) — and no
-        # other day, though some of its dates share one (31.03. and 31.12., 30.06. and 30.09.)
-        ("Die Abschläge sind am 31.03., 30.06., 30.09. und 31.12. fällig.", QUARTERLY, {31}),
-        ("Abschläge fällig jeweils zum 31.03.2027, 30.06.2027, 30.09.2027 und 31.12.2027", QUARTERLY, {31}),
-        ("Die Raten sind am 30.06., 30.09. und 31.12. zu zahlen.", QUARTERLY, {31}),
-        ("Die Raten sind am 30.06. und 31.12. zu zahlen.", Recurrence(interval=6, unit="months"), {31}),
-        ("Abbuchung am 31.07.2027 und 30.09.2027.", Recurrence(interval=2, unit="months"), {31}),
-        # … February's by its year: the 28th in a common year, the 29th in a leap year
-        ("Die Raten sind am 28.02.2027, 31.05.2027, 31.08.2027 und 30.11.2027 zu zahlen.", QUARTERLY, {31}),
-        ("Abbuchung am 28.02.2027 und am 29.02.2028.", YEARLY, {31}),
-        # … with due wording after it, or the quarter's end named before it (a calendar day, no end of something)
-        ("Der Beitrag ist am 31.03., 30.06., 30.09. und 31.12. fällig.", QUARTERLY, {31}),
-        ("jeweils zum Quartalsende am 31.03., 30.06., 30.09. und 31.12. fällig", QUARTERLY, {31}),
-        # a date without a year, for a rule of a year or more
-        ("Der Jahresbeitrag ist zum 01.12. fällig.", YEARLY, {1}),
-        ("The annual fee is due on 1 December.", YEARLY, {1}),
-        ("Hauptfälligkeit 01.12. eines jeden Jahres", YEARLY, {1}),
-        ("Der Beitrag ist am 15. März fällig.", Recurrence(interval=2, unit="years"), {15}),
-        ("Der Beitrag ist am 15.03. fällig.", Recurrence(interval=24, unit="months"), {15}),
-        # wording that makes a single date recur
-        ("Der Beitrag wird jährlich zum 01.12.2026 abgebucht.", YEARLY, {1}),
-        ("Der Beitrag ist jeweils am 15.11.2026 fällig.", QUARTERLY, {15}),
-        ("The premium is debited each year on 1 December 2026.", YEARLY, {1}),
-        ("The fee is due every quarter on 15 November 2026.", QUARTERLY, {15}),
-        ("The fee is due every three months on 15 November 2026.", QUARTERLY, {15}),
-        ("Die Prämie ist am 01.12.2026 eines jeden Jahres fällig.", YEARLY, {1}),
-        ("The premium is due on 1 December 2026 of each year.", YEARLY, {1}),
-        # a single dated start is never the recurring day, not even with a schedule's wording beside it
-        ("Ihre Gesamtmiete beträgt ab dem 01.11.2026 somit 670,00 €.", MONTHLY, set()),
-        ("Die Miete ist ab dem 01.11.2026 jeweils monatlich zu zahlen.", MONTHLY, set()),
-        ("Die Miete ist jeweils ab dem 01.11.2026 zu zahlen.", MONTHLY, set()),
-        ("Your new rent of 670.00 EUR is payable from 1 November 2026.", MONTHLY, set()),
-        ("Monthly payments of 30.00 EUR, beginning 1 November 2026.", MONTHLY, set()),
-        ("Payable every month starting on 1 November 2026.", MONTHLY, set()),
-        ("Der Beitrag wird mit Wirkung zum 01.11.2026 monatlich abgebucht.", MONTHLY, set()),
-        ("Die Beiträge sind vom 01.11.2026 an monatlich zu zahlen.", MONTHLY, set()),
-        # … however the start is worded, and though it has no year or yearly wording follows
-        ("Ihr Vertrag beginnt am 01.11., der Jahresbeitrag beträgt 120,00 €.", YEARLY, set()),
-        ("Versicherungsbeginn: 1. November; Jahresbeitrag 120,00 €", YEARLY, set()),
-        ("Vertragsbeginn 01.11. / Jahresbeitrag 120,00 €", YEARLY, set()),
-        ("Versicherungsbeginn 01.11.2026 jährlich 120,00 EUR", YEARLY, set()),
-        ("Beginn: 01.11.2026, Beitrag jeweils monatlich", MONTHLY, set()),
-        ("Der Jahresbeitrag ist erstmals am 01.11. fällig.", YEARLY, set()),
-        ("Der Beitrag ist erstmals jeweils am 01.11.2026 fällig.", MONTHLY, set()),
-        ("Der Beitrag ist erstmalig zum 01.11. fällig.", YEARLY, set()),
-        ("Der Beitrag ist zum ersten Mal am 01.11. fällig.", YEARLY, set()),
-        ("Die erste Rate ist am 01.11. fällig.", YEARLY, set()),
-        ("The first payment is due on 1 November.", YEARLY, set()),
-        ("Your cover starts on 1 November; the annual premium is due then.", YEARLY, set()),
-        ("Start 01.11.2026 jährlich 120,00 EUR", YEARLY, set()),
-        ("Cover begins 01.11.2026 jährlich 120,00 EUR", YEARLY, set()),
-        # … nor does a start date make a schedule with another date
-        ("Ab dem 01.11.2026 zahlen Sie monatlich, erstmals am 01.12.2026.", MONTHLY, set()),
-        # a single date on its own
-        ("Der Betrag von 55,08 € ist fällig am 15.11.2026.", QUARTERLY, set()),
-        ("Please return each form by 1 November 2026.", MONTHLY, set()),
-        ("Each payment is due by 1 November 2026.", MONTHLY, set()),
-        # … beside the date of a letter or an invoice, or a contract's start and end
-        ("Rechnungsdatum 15.10.2026, Monatsbeitrag 20,00 € fällig am 15.11.2026.", MONTHLY, set()),
-        ("Rechnung vom 15.10.2026: Der Betrag ist am 15.11.2026 fällig.", MONTHLY, set()),
-        ("Datum: 01.10.2026. Der Beitrag von 20,00 € ist am 01.11.2026 fällig.", MONTHLY, set()),
-        ("Stand 01.11.2026, Beitrag fällig am 01.12.2026", MONTHLY, set()),
-        ("Der Vertrag beginnt am 01.11.2026 und endet am 01.11.2028; Beitrag monatlich.", MONTHLY, set()),
-        ("Der Vertrag beginnt am 01.11.2026 und endet am 01.11.2028; Beitrag monatlich.", QUARTERLY, set()),
-        ("Beginn 01.11.2026, Ende 01.11.2027, Jahresbeitrag 120,00 €", YEARLY, set()),
-        ("Mietbeginn 01.11.2026, Mindestmietdauer bis 01.11.2027, Miete 670 € monatlich", MONTHLY, set()),
-        ("Stand 01.09.2026, Vertragsende 01.11.2027, Beitrag fällig am 01.12.2026", MONTHLY, set()),
-        ("Das Versicherungsjahr endet am 01.12. eines jeden Jahres.", YEARLY, set()),
-        # … also for every date of a list after such wording: periods that end on month ends, or on one day
-        ("Die Abrechnungszeiträume enden am 31.03., 30.06., 30.09. und 31.12.", QUARTERLY, set()),
-        ("Die Abrechnungszeiträume enden am 10.03., 10.06., 10.09. und 10.12.", QUARTERLY, set()),
-        # … and notice dates or reference days, though a payment word is near
-        (
-            "Die Abschläge werden zu den Stichtagen 31.03., 30.06., 30.09. und 31.12. berechnet.",
-            QUARTERLY,
-            set(),
-        ),
-        ("Kündigungstermine sind der 31.03., 30.06., 30.09. und 31.12.", QUARTERLY, set()),
-        ("Der Vertrag ist kündbar zum 15.01., 15.04., 15.07. und 15.10.", QUARTERLY, set()),
-        # month ends on different days without schedule or due wording are no schedule (a notice date here)
-        ("Der Vertrag ist zum 31.03., 30.06., 30.09. oder 31.12. kündbar.", QUARTERLY, set()),
-        ("Der Zins wird zu den Stichtagen 31.03., 30.06., 30.09. und 31.12. berechnet.", QUARTERLY, set()),
-        # … or one other date: two dates are a schedule only as a list after schedule or due wording
-        ("Lieferung am 15.10.2026 und 15.11.2026.", MONTHLY, set()),
-        ("Die Rate ist am 15.10.2026 eingegangen; die nächste ist am 15.11.2026 fällig.", MONTHLY, set()),
-        # a clause or section number reads like a date without a year, and is none
-        ("Gemäß Ziffer 1.3. der AVB wird der Jahresbeitrag ab dem 01.11.2026 fällig.", YEARLY, set()),
-        ("Zahlbar gemäß Nr. 1.1. AVB.", YEARLY, set()),
-        ("Die Beitragszahlung richtet sich nach Abschnitt 1.4. der Bedingungen.", YEARLY, set()),
-        ("Fällig gemäß § 1.2. und § 1.5. der Bedingungen.", QUARTERLY, set()),
-        ("Tarif 1.1. jährlich 120,00 €", YEARLY, set()),
-        ("Die Raten richten sich nach Ziffer 1.3., 1.6. und 1.9. der Bedingungen.", QUARTERLY, set()),
-        # a date without a year and no due wording beside it
-        ("Ihre Unterlagen erhalten Sie am 01.12. mit dem Jahresbeitrag.", YEARLY, set()),
-        # … also written twice
-        ("Der Betrag ist am 15.11.2026 und erneut am 15.11.2026 fällig.", QUARTERLY, set()),
-        # dates on different days
-        ("Die Raten sind am 01.03.2026 und am 15.06.2026 fällig.", QUARTERLY, set()),
-        ("Die Raten sind am 10.03., 11.06., 12.09. und 13.12. fällig.", QUARTERLY, set()),
-        # … also when most of a list's dates share a day: every date of a list must fit, one on another day
-        # (or off the interval) makes it state another schedule than the reading's, whatever wording is before it
-        ("Die Raten sind am 15.01., 15.04., 16.07. und 15.10. zu zahlen.", QUARTERLY, set()),
-        ("Die Raten sind jeweils am 15.01., 15.04., 14.07. und 15.10. fällig.", QUARTERLY, set()),
-        ("Termine: 10.03., 10.06. und 12.06.2026 (Beratung).", QUARTERLY, set()),
-        ("Der Beitrag ist jeweils am 15.01. und 15.02. fällig.", QUARTERLY, set()),
-        ("Hauptfälligkeit 01.03. und 01.09.", YEARLY, set()),
-        # … or a list of month ends with one date that ends no month, or a February date that ends its month
-        # in some years only (without a year, or the 28th of a leap year)
-        ("Die Raten sind am 31.03., 30.06., 29.09. und 31.12. zu zahlen.", QUARTERLY, set()),
-        ("Die Raten sind am 28.02., 31.05., 31.08. und 30.11. zu zahlen.", QUARTERLY, set()),
-        ("Die Raten sind am 28.02.2028, 31.05.2028, 31.08.2028 und 30.11.2028 zu zahlen.", QUARTERLY, set()),
-        # … and month ends all on one day name that day only (the 30th: 30.03. and 30.12. are no month ends)
-        ("Die Raten sind am 30.06. und 30.09. zu zahlen.", QUARTERLY, {30}),
-        # month ends off the rule's interval, or one on its own, name no last day either
-        ("Die Raten sind am 31.03., 30.06., 30.09. und 31.12. zu zahlen.", YEARLY, set()),
-        ("Die Rate ist am 30.06.2027 fällig.", QUARTERLY, set()),
-        # dates whose spacing does not fit the rule's interval
-        ("Die Raten sind am 15.11.2026 und 15.12.2026 fällig.", QUARTERLY, set()),
-        ("Die Raten sind am 10.03. und 10.04. fällig.", QUARTERLY, set()),
-        ("Abbuchung am 01.12.2026 und am 01.06.2027.", YEARLY, set()),
-        # a date without a year, or one wording makes yearly, is no yearly day for a shorter rule
-        ("Der Beitrag ist zum 01.12. fällig.", QUARTERLY, set()),
-        ("Der Beitrag wird jährlich zum 01.12.2026 abgebucht.", MONTHLY, set()),
-        ("Hauptfälligkeit 01.12. eines jeden Jahres", QUARTERLY, set()),
-        ("The premium is debited every year on 1 December 2026.", QUARTERLY, set()),
-        # a period's dates are no due days
-        ("Versicherungsjahr 01.12. – 30.11.", YEARLY, set()),
-        ("Beitragszeitraum vom 01.01.2026 bis 31.12.2026", YEARLY, set()),
-        ("Coverage 1 December 2026 to 1 December 2027", YEARLY, set()),
-        ("Laufzeit 10.03.2026 – 10.06.2026", QUARTERLY, set()),  # two dashed dates are a period
-        # an ambiguous date, a rule in weeks, no rule
-        ("Die Raten sind am 03/05/2026 und 03/08/2026 fällig.", QUARTERLY, set()),
-        (QUARTERLY_DATES, Recurrence(interval=13, unit="weeks"), set()),
-        (QUARTERLY_DATES, None, set()),
-    ],
-)
-def test_schedule_days_named(text: str, rule: Recurrence | None, expected: set[int]) -> None:
+SCHEDULE_DAYS_NAMED = [
+    # two or more dates on one day, a whole number of the rule's intervals apart
+    (QUARTERLY_DATES, QUARTERLY, {10}),
+    ("Die Raten sind am 15.02.2027, 15.05.2027 und 15.08.2027 zu zahlen.", QUARTERLY, {15}),
+    ("Instalments are due on 10 March 2026, 10 June 2026 and 10 September 2026.", QUARTERLY, {10}),
+    ("Die Raten sind am 15.02.2027 und 15.08.2027 zu zahlen.", QUARTERLY, {15}),  # one skipped
+    ("Abbuchung am 01.12.2026 und am 01.12.2027.", YEARLY, {1}),
+    ("Abbuchung am 03.11.2026 und 03.12.2026.", MONTHLY, {3}),
+    ("Abbuchung am 10.03. und 10.06.", QUARTERLY, {10}),
+    # another date's day aside, outside the list
+    ("Raten: 10.03., 10.06., 10.09. und 10.12.; Beratungstermin am 12.06.2026.", QUARTERLY, {10}),
+    # … a list with dashes between three or more dates
+    ("Vorauszahlungen fällig: 10.03.2026 – 10.06.2026 – 10.09.2026 – 10.12.2026", QUARTERLY, {10}),
+    # a list of dates each on the last day of its month names the 31st (each month's last day) — and no
+    # other day, though some of its dates share one (31.03. and 31.12., 30.06. and 30.09.)
+    ("Die Abschläge sind am 31.03., 30.06., 30.09. und 31.12. fällig.", QUARTERLY, {31}),
+    ("Abschläge fällig jeweils zum 31.03.2027, 30.06.2027, 30.09.2027 und 31.12.2027", QUARTERLY, {31}),
+    ("Die Raten sind am 30.06., 30.09. und 31.12. zu zahlen.", QUARTERLY, {31}),
+    ("Die Raten sind am 30.06. und 31.12. zu zahlen.", Recurrence(interval=6, unit="months"), {31}),
+    ("Abbuchung am 31.07.2027 und 30.09.2027.", Recurrence(interval=2, unit="months"), {31}),
+    # … February's by its year: the 28th in a common year, the 29th in a leap year
+    ("Die Raten sind am 28.02.2027, 31.05.2027, 31.08.2027 und 30.11.2027 zu zahlen.", QUARTERLY, {31}),
+    ("Abbuchung am 28.02.2027 und am 29.02.2028.", YEARLY, {31}),
+    # … with due wording after it, or the quarter's end named before it (a calendar day, no end of something)
+    ("Der Beitrag ist am 31.03., 30.06., 30.09. und 31.12. fällig.", QUARTERLY, {31}),
+    ("jeweils zum Quartalsende am 31.03., 30.06., 30.09. und 31.12. fällig", QUARTERLY, {31}),
+    # a date without a year, for a rule of a year or more
+    ("Der Jahresbeitrag ist zum 01.12. fällig.", YEARLY, {1}),
+    ("The annual fee is due on 1 December.", YEARLY, {1}),
+    ("Hauptfälligkeit 01.12. eines jeden Jahres", YEARLY, {1}),
+    ("Der Beitrag ist am 15. März fällig.", Recurrence(interval=2, unit="years"), {15}),
+    ("Der Beitrag ist am 15.03. fällig.", Recurrence(interval=24, unit="months"), {15}),
+    # wording that makes a single date recur
+    ("Der Beitrag wird jährlich zum 01.12.2026 abgebucht.", YEARLY, {1}),
+    ("Der Beitrag ist jeweils am 15.11.2026 fällig.", QUARTERLY, {15}),
+    ("The premium is debited each year on 1 December 2026.", YEARLY, {1}),
+    ("The fee is due every quarter on 15 November 2026.", QUARTERLY, {15}),
+    ("The fee is due every three months on 15 November 2026.", QUARTERLY, {15}),
+    ("Die Prämie ist am 01.12.2026 eines jeden Jahres fällig.", YEARLY, {1}),
+    ("The premium is due on 1 December 2026 of each year.", YEARLY, {1}),
+    # a single dated start is never the recurring day, not even with a schedule's wording beside it
+    ("Ihre Gesamtmiete beträgt ab dem 01.11.2026 somit 670,00 €.", MONTHLY, set()),
+    ("Die Miete ist ab dem 01.11.2026 jeweils monatlich zu zahlen.", MONTHLY, set()),
+    ("Die Miete ist jeweils ab dem 01.11.2026 zu zahlen.", MONTHLY, set()),
+    ("Your new rent of 670.00 EUR is payable from 1 November 2026.", MONTHLY, set()),
+    ("Monthly payments of 30.00 EUR, beginning 1 November 2026.", MONTHLY, set()),
+    ("Payable every month starting on 1 November 2026.", MONTHLY, set()),
+    ("Der Beitrag wird mit Wirkung zum 01.11.2026 monatlich abgebucht.", MONTHLY, set()),
+    ("Die Beiträge sind vom 01.11.2026 an monatlich zu zahlen.", MONTHLY, set()),
+    # … however the start is worded, and though it has no year or yearly wording follows
+    ("Ihr Vertrag beginnt am 01.11., der Jahresbeitrag beträgt 120,00 €.", YEARLY, set()),
+    ("Versicherungsbeginn: 1. November; Jahresbeitrag 120,00 €", YEARLY, set()),
+    ("Vertragsbeginn 01.11. / Jahresbeitrag 120,00 €", YEARLY, set()),
+    ("Versicherungsbeginn 01.11.2026 jährlich 120,00 EUR", YEARLY, set()),
+    ("Beginn: 01.11.2026, Beitrag jeweils monatlich", MONTHLY, set()),
+    ("Der Jahresbeitrag ist erstmals am 01.11. fällig.", YEARLY, set()),
+    ("Der Beitrag ist erstmals jeweils am 01.11.2026 fällig.", MONTHLY, set()),
+    ("Der Beitrag ist erstmalig zum 01.11. fällig.", YEARLY, set()),
+    ("Der Beitrag ist zum ersten Mal am 01.11. fällig.", YEARLY, set()),
+    ("Die erste Rate ist am 01.11. fällig.", YEARLY, set()),
+    ("The first payment is due on 1 November.", YEARLY, set()),
+    ("Your cover starts on 1 November; the annual premium is due then.", YEARLY, set()),
+    ("Start 01.11.2026 jährlich 120,00 EUR", YEARLY, set()),
+    ("Cover begins 01.11.2026 jährlich 120,00 EUR", YEARLY, set()),
+    # … nor does a start date make a schedule with another date
+    ("Ab dem 01.11.2026 zahlen Sie monatlich, erstmals am 01.12.2026.", MONTHLY, set()),
+    # a single date on its own
+    ("Der Betrag von 55,08 € ist fällig am 15.11.2026.", QUARTERLY, set()),
+    ("Please return each form by 1 November 2026.", MONTHLY, set()),
+    ("Each payment is due by 1 November 2026.", MONTHLY, set()),
+    # … beside the date of a letter or an invoice, or a contract's start and end
+    ("Rechnungsdatum 15.10.2026, Monatsbeitrag 20,00 € fällig am 15.11.2026.", MONTHLY, set()),
+    ("Rechnung vom 15.10.2026: Der Betrag ist am 15.11.2026 fällig.", MONTHLY, set()),
+    ("Datum: 01.10.2026. Der Beitrag von 20,00 € ist am 01.11.2026 fällig.", MONTHLY, set()),
+    ("Stand 01.11.2026, Beitrag fällig am 01.12.2026", MONTHLY, set()),
+    ("Der Vertrag beginnt am 01.11.2026 und endet am 01.11.2028; Beitrag monatlich.", MONTHLY, set()),
+    ("Der Vertrag beginnt am 01.11.2026 und endet am 01.11.2028; Beitrag monatlich.", QUARTERLY, set()),
+    ("Beginn 01.11.2026, Ende 01.11.2027, Jahresbeitrag 120,00 €", YEARLY, set()),
+    ("Mietbeginn 01.11.2026, Mindestmietdauer bis 01.11.2027, Miete 670 € monatlich", MONTHLY, set()),
+    ("Stand 01.09.2026, Vertragsende 01.11.2027, Beitrag fällig am 01.12.2026", MONTHLY, set()),
+    ("Das Versicherungsjahr endet am 01.12. eines jeden Jahres.", YEARLY, set()),
+    # … also for every date of a list after such wording: periods that end on month ends, or on one day
+    ("Die Abrechnungszeiträume enden am 31.03., 30.06., 30.09. und 31.12.", QUARTERLY, set()),
+    ("Die Abrechnungszeiträume enden am 10.03., 10.06., 10.09. und 10.12.", QUARTERLY, set()),
+    # … and notice dates or reference days, though a payment word is near
+    (
+        "Die Abschläge werden zu den Stichtagen 31.03., 30.06., 30.09. und 31.12. berechnet.",
+        QUARTERLY,
+        set(),
+    ),
+    ("Kündigungstermine sind der 31.03., 30.06., 30.09. und 31.12.", QUARTERLY, set()),
+    ("Der Vertrag ist kündbar zum 15.01., 15.04., 15.07. und 15.10.", QUARTERLY, set()),
+    # month ends on different days without schedule or due wording are no schedule (a notice date here)
+    ("Der Vertrag ist zum 31.03., 30.06., 30.09. oder 31.12. kündbar.", QUARTERLY, set()),
+    ("Der Zins wird zu den Stichtagen 31.03., 30.06., 30.09. und 31.12. berechnet.", QUARTERLY, set()),
+    # … or one other date: two dates are a schedule only as a list after schedule or due wording
+    ("Lieferung am 15.10.2026 und 15.11.2026.", MONTHLY, set()),
+    ("Die Rate ist am 15.10.2026 eingegangen; die nächste ist am 15.11.2026 fällig.", MONTHLY, set()),
+    # a clause or section number reads like a date without a year, and is none
+    ("Gemäß Ziffer 1.3. der AVB wird der Jahresbeitrag ab dem 01.11.2026 fällig.", YEARLY, set()),
+    ("Zahlbar gemäß Nr. 1.1. AVB.", YEARLY, set()),
+    ("Die Beitragszahlung richtet sich nach Abschnitt 1.4. der Bedingungen.", YEARLY, set()),
+    ("Fällig gemäß § 1.2. und § 1.5. der Bedingungen.", QUARTERLY, set()),
+    ("Tarif 1.1. jährlich 120,00 €", YEARLY, set()),
+    ("Die Raten richten sich nach Ziffer 1.3., 1.6. und 1.9. der Bedingungen.", QUARTERLY, set()),
+    # a date without a year and no due wording beside it
+    ("Ihre Unterlagen erhalten Sie am 01.12. mit dem Jahresbeitrag.", YEARLY, set()),
+    # … also written twice
+    ("Der Betrag ist am 15.11.2026 und erneut am 15.11.2026 fällig.", QUARTERLY, set()),
+    # dates on different days
+    ("Die Raten sind am 01.03.2026 und am 15.06.2026 fällig.", QUARTERLY, set()),
+    ("Die Raten sind am 10.03., 11.06., 12.09. und 13.12. fällig.", QUARTERLY, set()),
+    # … also when most of a list's dates share a day: every date of a list must fit, one on another day
+    # (or off the interval) makes it state another schedule than the reading's, whatever wording is before it
+    ("Die Raten sind am 15.01., 15.04., 16.07. und 15.10. zu zahlen.", QUARTERLY, set()),
+    ("Die Raten sind jeweils am 15.01., 15.04., 14.07. und 15.10. fällig.", QUARTERLY, set()),
+    ("Termine: 10.03., 10.06. und 12.06.2026 (Beratung).", QUARTERLY, set()),
+    ("Der Beitrag ist jeweils am 15.01. und 15.02. fällig.", QUARTERLY, set()),
+    ("Hauptfälligkeit 01.03. und 01.09.", YEARLY, set()),
+    # … or a list of month ends with one date that ends no month, or a February date that ends its month
+    # in some years only (without a year, or the 28th of a leap year)
+    ("Die Raten sind am 31.03., 30.06., 29.09. und 31.12. zu zahlen.", QUARTERLY, set()),
+    ("Die Raten sind am 28.02., 31.05., 31.08. und 30.11. zu zahlen.", QUARTERLY, set()),
+    ("Die Raten sind am 28.02.2028, 31.05.2028, 31.08.2028 und 30.11.2028 zu zahlen.", QUARTERLY, set()),
+    # … and month ends all on one day name that day only (the 30th: 30.03. and 30.12. are no month ends)
+    ("Die Raten sind am 30.06. und 30.09. zu zahlen.", QUARTERLY, {30}),
+    # month ends off the rule's interval, or one on its own, name no last day either
+    ("Die Raten sind am 31.03., 30.06., 30.09. und 31.12. zu zahlen.", YEARLY, set()),
+    ("Die Rate ist am 30.06.2027 fällig.", QUARTERLY, set()),
+    # dates whose spacing does not fit the rule's interval
+    ("Die Raten sind am 15.11.2026 und 15.12.2026 fällig.", QUARTERLY, set()),
+    ("Die Raten sind am 10.03. und 10.04. fällig.", QUARTERLY, set()),
+    ("Abbuchung am 01.12.2026 und am 01.06.2027.", YEARLY, set()),
+    # a date without a year, or one wording makes yearly, is no yearly day for a shorter rule
+    ("Der Beitrag ist zum 01.12. fällig.", QUARTERLY, set()),
+    ("Der Beitrag wird jährlich zum 01.12.2026 abgebucht.", MONTHLY, set()),
+    ("Hauptfälligkeit 01.12. eines jeden Jahres", QUARTERLY, set()),
+    ("The premium is debited every year on 1 December 2026.", QUARTERLY, set()),
+    # a period's dates are no due days
+    ("Versicherungsjahr 01.12. – 30.11.", YEARLY, set()),
+    ("Beitragszeitraum vom 01.01.2026 bis 31.12.2026", YEARLY, set()),
+    ("Coverage 1 December 2026 to 1 December 2027", YEARLY, set()),
+    ("Laufzeit 10.03.2026 – 10.06.2026", QUARTERLY, set()),  # two dashed dates are a period
+    # an ambiguous date, a rule in weeks, no rule
+    ("Die Raten sind am 03/05/2026 und 03/08/2026 fällig.", QUARTERLY, set()),
+    (QUARTERLY_DATES, Recurrence(interval=13, unit="weeks"), set()),
+    (QUARTERLY_DATES, None, set()),
+]
+
+
+def test_schedule_days_named() -> None:
     """A day a letter states as a schedule of dates is named (the dates fit the rule's interval, a yearly
     date has no year, or wording makes the date recur); a single start date never is."""
-    assert schedule_days_named(text, rule) == expected
+
+    def check(text: str, rule: Recurrence | None, expected: set[int]) -> None:
+        assert schedule_days_named(text, rule) == expected
+
+    check_rows(SCHEDULE_DAYS_NAMED, check)
 
 
 def test_a_day_stated_as_a_schedule_of_dates_is_named_by_the_quote() -> None:
@@ -1057,51 +1099,52 @@ RBSTV = (
 QUARTERLY_ON_15TH = Recurrence(interval=3, unit="months", day_of_month=15)
 
 
-@pytest.mark.parametrize(
-    ("text", "rule", "first", "expected"),
-    [
-        # the middle of a three-month period (§ 7 Abs. 3 RBStV): the 15th of its middle month, which runs
-        # from the month the duty to pay begins, so any 15th can be one
-        (RBSTV, QUARTERLY_ON_15TH, date(2026, 11, 15), {15}),
-        (RBSTV, QUARTERLY, date(2027, 2, 15), {15}),
-        (RBSTV, QUARTERLY, date(2027, 1, 15), {15}),  # a duty from December
-        ("payable in the middle of each three-month period", QUARTERLY, date(2026, 12, 15), {15}),
-        ("in der Mitte eines Zeitraums von drei Monaten zu zahlen", QUARTERLY, date(2026, 11, 15), {15}),
-        ("in der Mitte eines dreimonatigen Zeitraums zu zahlen", QUARTERLY, date(2026, 11, 15), {15}),
-        ("in der Mitte eines 3-Monats-Zeitraums zu zahlen", QUARTERLY, date(2026, 11, 15), {15}),
-        ("payable in the middle of each 3-month period", QUARTERLY, date(2026, 11, 15), {15}),
-        # the middle of a calendar quarter: the 15th of February, May, August or November
-        ("Der Abschlag ist jeweils zur Quartalsmitte fällig.", QUARTERLY, date(2026, 11, 15), {15}),
-        ("fällig in der Mitte eines jeden Quartals", QUARTERLY, date(2027, 2, 15), {15}),
-        ("Mitte des Kalendervierteljahres", QUARTERLY, date(2027, 5, 15), {15}),
-        ("The fee is due mid-quarter.", QUARTERLY, date(2027, 8, 15), {15}),
-        ("due in the middle of each quarter", QUARTERLY, date(2027, 8, 15), {15}),
-        # … never another month's 15th for a quarter, nor a first date off the 15th, nor none (a relative or
-        # undated reading), nor another interval than three months
-        ("Der Abschlag ist jeweils zur Quartalsmitte fällig.", QUARTERLY, date(2027, 1, 15), set()),
-        ("due in the middle of each quarter", QUARTERLY, date(2026, 12, 15), set()),
-        (RBSTV, QUARTERLY, date(2026, 11, 1), set()),
-        (RBSTV, QUARTERLY, date(2026, 11, 16), set()),
-        (RBSTV, QUARTERLY, None, set()),
-        (RBSTV, MONTHLY, date(2026, 11, 15), set()),
-        (RBSTV, Recurrence(interval=6, unit="months"), date(2026, 11, 15), set()),
-        (RBSTV, YEARLY, date(2026, 11, 15), set()),
-        (RBSTV, Recurrence(interval=13, unit="weeks"), date(2026, 11, 15), set()),
-        (RBSTV, None, date(2026, 11, 15), set()),
-        # … nor a quarter without its middle
-        ("Der Rundfunkbeitrag ist vierteljährlich zu zahlen.", QUARTERLY, date(2026, 11, 15), set()),
-    ],
-)
-def test_the_middle_of_each_quarter_names_the_15th_for_its_reading(
-    text: str, rule: Recurrence | None, first: date | None, expected: set[int]
-) -> None:
+THE_MIDDLE_OF_EACH_QUARTER_NAMES_THE_15TH_FOR_ITS_READING = [
+    # the middle of a three-month period (§ 7 Abs. 3 RBStV): the 15th of its middle month, which runs
+    # from the month the duty to pay begins, so any 15th can be one
+    (RBSTV, QUARTERLY_ON_15TH, date(2026, 11, 15), {15}),
+    (RBSTV, QUARTERLY, date(2027, 2, 15), {15}),
+    (RBSTV, QUARTERLY, date(2027, 1, 15), {15}),  # a duty from December
+    ("payable in the middle of each three-month period", QUARTERLY, date(2026, 12, 15), {15}),
+    ("in der Mitte eines Zeitraums von drei Monaten zu zahlen", QUARTERLY, date(2026, 11, 15), {15}),
+    ("in der Mitte eines dreimonatigen Zeitraums zu zahlen", QUARTERLY, date(2026, 11, 15), {15}),
+    ("in der Mitte eines 3-Monats-Zeitraums zu zahlen", QUARTERLY, date(2026, 11, 15), {15}),
+    ("payable in the middle of each 3-month period", QUARTERLY, date(2026, 11, 15), {15}),
+    # the middle of a calendar quarter: the 15th of February, May, August or November
+    ("Der Abschlag ist jeweils zur Quartalsmitte fällig.", QUARTERLY, date(2026, 11, 15), {15}),
+    ("fällig in der Mitte eines jeden Quartals", QUARTERLY, date(2027, 2, 15), {15}),
+    ("Mitte des Kalendervierteljahres", QUARTERLY, date(2027, 5, 15), {15}),
+    ("The fee is due mid-quarter.", QUARTERLY, date(2027, 8, 15), {15}),
+    ("due in the middle of each quarter", QUARTERLY, date(2027, 8, 15), {15}),
+    # … never another month's 15th for a quarter, nor a first date off the 15th, nor none (a relative or
+    # undated reading), nor another interval than three months
+    ("Der Abschlag ist jeweils zur Quartalsmitte fällig.", QUARTERLY, date(2027, 1, 15), set()),
+    ("due in the middle of each quarter", QUARTERLY, date(2026, 12, 15), set()),
+    (RBSTV, QUARTERLY, date(2026, 11, 1), set()),
+    (RBSTV, QUARTERLY, date(2026, 11, 16), set()),
+    (RBSTV, QUARTERLY, None, set()),
+    (RBSTV, MONTHLY, date(2026, 11, 15), set()),
+    (RBSTV, Recurrence(interval=6, unit="months"), date(2026, 11, 15), set()),
+    (RBSTV, YEARLY, date(2026, 11, 15), set()),
+    (RBSTV, Recurrence(interval=13, unit="weeks"), date(2026, 11, 15), set()),
+    (RBSTV, None, date(2026, 11, 15), set()),
+    # … nor a quarter without its middle
+    ("Der Rundfunkbeitrag ist vierteljährlich zu zahlen.", QUARTERLY, date(2026, 11, 15), set()),
+]
+
+
+def test_the_middle_of_each_quarter_names_the_15th_for_its_reading() -> None:
     """The middle of each quarter or three-month period names the 15th only for a reading every three months
     whose first date is that middle (``mid_quarter_named``): a three-month period's middle is one and a half
     months on, the end of the 15th of its second month (§§ 186, 189, 192 BGB)."""
-    assert mid_quarter_named(text, rule, first) == expected
-    assert (15 in days_of_month_named(text, rule, first)) == bool(expected)
-    reason = [] if expected else [DAY_OF_MONTH_NOT_IN_QUOTE]
-    assert day_of_month_consistency(text, 15, rule, first) == reason
+
+    def check(text: str, rule: Recurrence | None, first: date | None, expected: set[int]) -> None:
+        assert mid_quarter_named(text, rule, first) == expected
+        assert (15 in days_of_month_named(text, rule, first)) == bool(expected)
+        reason = [] if expected else [DAY_OF_MONTH_NOT_IN_QUOTE]
+        assert day_of_month_consistency(text, 15, rule, first) == reason
+
+    check_rows(THE_MIDDLE_OF_EACH_QUARTER_NAMES_THE_15TH_FOR_ITS_READING, check)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -1134,50 +1177,56 @@ def test_payment_days_stated_finds_the_sentences_about_when_a_payment_is_due() -
     assert payment_days_stated(month_end) == [(month_end, {("day_of_month", 31)})]
 
 
-@pytest.mark.parametrize(
-    "sentence",
-    [
-        "Der Mieter hat den Zählerstand bis zum 15. eines Monats zu melden.",  # "Mieter" is no rent
-        "Die Anzahl der Fahrten ist bis zum 15. eines Monats zu melden.",  # "Anzahl" is no payment
-        "Der Einzug in die Wohnung erfolgt zum 15. des Monats.",  # moving in, not a debit
-        "Die Installation erfolgt am 3. Werktag.",  # no instalment
-        "Mahngebühren werden ab dem 15. eines Monats fällig.",  # late fees from a day on
-        "Bei Zahlungsverzug berechnen wir Zinsen ab dem 3. Werktag.",
-        "Late fees apply from the 15th of each month.",
-        "Ihr Vertrag endet zum Monatsende, der Beitrag wird monatlich abgebucht.",  # a contract's end
-        "Die Laufzeit beginnt zum Monatsersten; der Beitrag wird monatlich abgebucht.",
-        "Your membership ends at the end of the month; the fee is debited monthly.",
-    ],
-)
-def test_a_day_in_a_sentence_not_about_paying_its_due_day_is_no_due_day(sentence: str) -> None:
+A_DAY_IN_A_SENTENCE_NOT_ABOUT_PAYING_ITS_DUE_DAY_IS_NO_DUE_DAY = [
+    "Der Mieter hat den Zählerstand bis zum 15. eines Monats zu melden.",  # "Mieter" is no rent
+    "Die Anzahl der Fahrten ist bis zum 15. eines Monats zu melden.",  # "Anzahl" is no payment
+    "Der Einzug in die Wohnung erfolgt zum 15. des Monats.",  # moving in, not a debit
+    "Die Installation erfolgt am 3. Werktag.",  # no instalment
+    "Mahngebühren werden ab dem 15. eines Monats fällig.",  # late fees from a day on
+    "Bei Zahlungsverzug berechnen wir Zinsen ab dem 3. Werktag.",
+    "Late fees apply from the 15th of each month.",
+    "Ihr Vertrag endet zum Monatsende, der Beitrag wird monatlich abgebucht.",  # a contract's end
+    "Die Laufzeit beginnt zum Monatsersten; der Beitrag wird monatlich abgebucht.",
+    "Your membership ends at the end of the month; the fee is debited monthly.",
+]
+
+
+def test_a_day_in_a_sentence_not_about_paying_its_due_day_is_no_due_day() -> None:
     """Payment words count as whole words or as parts only paying has ("Zahlung", "Kaltmiete", "Beitrag"),
     never inside another word ("Mieter", "Anzahl", "Installation") nor "Einzug" alone; and a day of late fees
     or of a contract's start or end is no payment's due day, though the sentence mentions paying."""
-    assert payment_days_stated(sentence) == []
+
+    def check(sentence: str) -> None:
+        assert payment_days_stated(sentence) == []
+
+    check_rows(A_DAY_IN_A_SENTENCE_NOT_ABOUT_PAYING_ITS_DUE_DAY_IS_NO_DUE_DAY, check)
 
 
-@pytest.mark.parametrize(
-    ("text", "due"),
-    [
-        (
-            "Die Kaltmiete ist spätestens am dritten\nWerktag eines jeden Monats zu zahlen.",
-            ("working_day", 3),
-        ),
-        ("Die Miete ist am letzten\nBankarbeitstag eines Monats fällig.", ("working_day", -1)),
-        ("Der Beitrag wird zum ersten\nTag eines jeden Monats abgebucht.", ("day_of_month", 1)),
-        ("Der Beitrag wird am 3.\nWerktag eines Monats abgebucht.", ("working_day", 3)),
-        ("Die Abbuchung erfolgt jeweils zum Monats-\nanfang.", ("day_of_month", 1)),
-        ("Der Monatsbeitrag wird per Lastschrifteinzug zum\nMonatsende abgebucht.", ("day_of_month", 31)),
-        ("Die Nettomiete ist am dritten (3.)\nWerktag eines Monats zu überweisen.", ("working_day", 3)),
-    ],
-)
-def test_a_due_day_a_line_break_cuts_is_read_whole(text: str, due: DueDay) -> None:
+A_DUE_DAY_A_LINE_BREAK_CUTS_IS_READ_WHOLE = [
+    (
+        "Die Kaltmiete ist spätestens am dritten\nWerktag eines jeden Monats zu zahlen.",
+        ("working_day", 3),
+    ),
+    ("Die Miete ist am letzten\nBankarbeitstag eines Monats fällig.", ("working_day", -1)),
+    ("Der Beitrag wird zum ersten\nTag eines jeden Monats abgebucht.", ("day_of_month", 1)),
+    ("Der Beitrag wird am 3.\nWerktag eines Monats abgebucht.", ("working_day", 3)),
+    ("Die Abbuchung erfolgt jeweils zum Monats-\nanfang.", ("day_of_month", 1)),
+    ("Der Monatsbeitrag wird per Lastschrifteinzug zum\nMonatsende abgebucht.", ("day_of_month", 31)),
+    ("Die Nettomiete ist am dritten (3.)\nWerktag eines Monats zu überweisen.", ("working_day", 3)),
+]
+
+
+def test_a_due_day_a_line_break_cuts_is_read_whole() -> None:
     """A text layer breaks lines anywhere: between an ordinal word and its noun ("am dritten" / "Werktag"),
     before the noun of a day ("Werktag", "Monatsende"), or inside a hyphenated word ("Monats-" / "anfang",
     joined as the quote grounding joins it)."""
-    [(sentence, days)] = payment_days_stated(text)
-    assert days == {due} and "\n" not in sentence
-    assert "Monats- anfang" not in sentence
+
+    def check(text: str, due: DueDay) -> None:
+        [(sentence, days)] = payment_days_stated(text)
+        assert days == {due} and "\n" not in sentence
+        assert "Monats- anfang" not in sentence
+
+    check_rows(A_DUE_DAY_A_LINE_BREAK_CUTS_IS_READ_WHOLE, check)
 
 
 INSURANCE_LETTER = (
@@ -1269,20 +1318,23 @@ def test_a_due_day_stated_as_the_middle_of_each_quarter_is_found_for_its_reading
     assert payment_day_sentence([f"{TICKET_LETTER}{mid_month}"], ("day_of_month", 1)) is None  # two days
 
 
-@pytest.mark.parametrize(
-    "sentence",
-    [
-        # a sum's name alone is no payment's due day: when a new amount is announced or recalculated
-        "Den neuen Rechnungsbetrag teilen wir Ihnen jeweils zur Monatsmitte mit.",
-        "Der Beitrag von 20,00 € wird zum Monatsanfang neu berechnet.",
-        "Monatlicher Abschlag: 48,00 € (Mitte des Monats)",
-    ],
-)
-def test_a_sentence_naming_a_sum_without_a_due_word_states_no_due_day(sentence: str) -> None:
+A_SENTENCE_NAMING_A_SUM_WITHOUT_A_DUE_WORD_STATES_NO_DUE_DAY = [
+    # a sum's name alone is no payment's due day: when a new amount is announced or recalculated
+    "Den neuen Rechnungsbetrag teilen wir Ihnen jeweils zur Monatsmitte mit.",
+    "Der Beitrag von 20,00 € wird zum Monatsanfang neu berechnet.",
+    "Monatlicher Abschlag: 48,00 € (Mitte des Monats)",
+]
+
+
+def test_a_sentence_naming_a_sum_without_a_due_word_states_no_due_day() -> None:
     """A letter's sentence vouches for a payment's day only with a word of paying it when due ("abgebucht",
     "fällig", "zu zahlen", "eingezogen", "due" …), never a sum's name alone ("Rechnungsbetrag", "Beitrag",
     "Abschlag"); with one, such a sentence states its day."""
-    assert payment_days_stated(sentence) == []
-    assert payment_day_sentence([sentence], ("day_of_month", 15)) is None
+
+    def check(sentence: str) -> None:
+        assert payment_days_stated(sentence) == []
+        assert payment_day_sentence([sentence], ("day_of_month", 15)) is None
+
+    check_rows(A_SENTENCE_NAMING_A_SUM_WITHOUT_A_DUE_WORD_STATES_NO_DUE_DAY, check)
     due = "Der Beitrag beträgt monatlich 20,00 € und ist zur Monatsmitte fällig."
     assert payment_days_stated(due) == [(due, {("day_of_month", 15)})]
