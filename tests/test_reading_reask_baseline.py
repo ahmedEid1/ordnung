@@ -30,6 +30,7 @@ from ordnung.ingest.extract import (
     _same_or_earlier,
     cross_check,
     judge_completion,
+    reask_warning,
 )
 from ordnung.ingest.gaps import CHECK_SLOT, Check, check_item
 from ordnung.ingest.pipeline import add_file
@@ -209,6 +210,7 @@ PLANTED_OTHER = {
 
 #: A fee decision with a fixed payment day (an earlier letter date it never gives).
 EARLY = letter("Frühweg", FEE, PAY_BY)
+#: Text addressed to an AI that claims the period was lifted (synthetic).
 INJECTED = letter(
     "Sondernutzung Probeweg",
     FEE,
@@ -511,7 +513,13 @@ async def test_an_earlier_letter_date_the_letter_gives_is_used(tmp_path: Path) -
 
 
 async def test_the_motivating_letter_s_complete_answer_is_used(tmp_path: Path) -> None:
-    await assert_no_worse(tmp_path, INJECTED, BLANK, {**HALF, "items": [objection({})]})
+    """Its almost blank first reading completed: the answer is used, and the warning keeps the advice to send the
+    objection to an address the person already knows (the letter holds text addressed to an AI)."""
+    result = await assert_no_worse(tmp_path, INJECTED, BLANK, {**HALF, "items": [objection({})]})
+    assert result["accepted"] is True
+    assert reask_warning("empty", injected=True) in result["warnings"]
+    assert "address you already know" in reask_warning("empty", injected=True)
+    assert "address you already know" not in reask_warning("remedy_left_out", injected=True)
 
 
 # --------------------------------------------------------------------------------------------------
