@@ -128,7 +128,6 @@ WANTS_MAX = 64
 
 #: The kinds of sealed file: head, manifest, bucket, database slice, data file.
 ObjectKind = Literal["h", "m", "b", "d", "f"]
-OBJECT_KINDS: tuple[ObjectKind, ...] = ("h", "m", "b", "d", "f")
 #: Content-named kinds: the same content gets the same name and — salt and nonce prefix derived from
 #: the name — the same bytes on every computer, so two writers never make a sync-tool conflict copy.
 CONTENT_NAMED_KINDS: frozenset[ObjectKind] = frozenset({"m", "b", "d", "f"})

@@ -130,8 +130,8 @@ def check_newest(changelog: str, version: str) -> None:
             continue
         raise ReleaseError(
             f'CHANGELOG.md lists changes above the section for {version}, under "## {name.strip()}": the tagged '
-            f"commit holds changes its notes leave out. Tag the commit that named the section for {version}: git "
-            f"tag -a v{version} <that commit>."
+            f"commit holds changes its notes leave out. Tag the merge commit of the pull request that dated the "
+            f"section for {version}: git tag -a v{version} <that merge commit>."
         )
 
 

@@ -22,7 +22,7 @@ import { DRAFT_KIND_COPY, PROOF_KIND_COPY, SEND_CHANNEL_COPY, copyFor } from "@/
 import { formatDate } from "@/lib/format";
 import { useHotkey } from "@/lib/hooks";
 import { useTodayISO } from "@/lib/today";
-import { cn, prefersReducedMotion } from "@/lib/utils";
+import { cn, IS_APPLE, prefersReducedMotion } from "@/lib/utils";
 import { usePhoneCompanion } from "@/features/phone/client";
 import { OnYourComputer } from "@/features/phone/ComputerOnly";
 import { PDF_ON_COMPUTER } from "@/features/phone/copy";
@@ -57,7 +57,7 @@ import { focusWhenReady } from "@/features/today/focus";
 /** The "Sent by … on …" banner: where focus goes once a letter is marked as sent (its button is gone). */
 const SENT_BANNER = "letter-sent";
 
-const MOD_KEY = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? "⌘" : "Ctrl";
+const MOD_KEY = IS_APPLE ? "⌘" : "Ctrl";
 
 const EDITED_KEY = "ordnung.letters.edited";
 

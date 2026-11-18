@@ -1283,7 +1283,6 @@ SPEC_HELP = (
     "statute and the sentence as printed; an Anhörungsbogen's reply date is a request, not a legal "
     "deadline: put 'Anhörungsbogen' in legal_basis and the result says so."
 )
-OptionalDate = Annotated[str | None, Field(description="A date written YYYY-MM-DD, or null")]
 RegionArg = Annotated[
     str | None,
     Field(

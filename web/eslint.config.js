@@ -1,10 +1,11 @@
 import js from "@eslint/js";
+import { defineConfig } from "eslint/config";
 import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
-export default tseslint.config(
+export default defineConfig(
   { ignores: ["dist", "node_modules", "src/api/schema.d.ts", "playwright-report", "test-results"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
@@ -18,6 +19,14 @@ export default tseslint.config(
       "react-refresh/only-export-components": "off",
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
     },
+  },
+  {
+    // nothing in the TypeScript sources that the libraries or the browser mark deprecated (an icon, a React
+    // type, a query method): it goes in a later version. This one rule needs the types, so it alone reads the
+    // TypeScript projects (src, e2e and the Vite and Playwright configs; the .mjs scripts are linted without)
+    files: ["**/*.{ts,tsx}"],
+    languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname } },
+    rules: { "@typescript-eslint/no-deprecated": "error" },
   },
   {
     // the UI audit, the README pictures, the build's source hash and notices: they run in Node and hand

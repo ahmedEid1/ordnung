@@ -415,7 +415,7 @@ def test_an_ask_row_says_live_or_re_scoring_from_the_file_whatever_its_schema(tm
 def test_a_held_out_ask_run_and_a_stress_run_are_replayed_on_the_day_they_were_built_for(
     tmp_path: Path,
 ) -> None:
-    """A recording after the freeze is built for the day it is recorded (the plan's addendum, item 8): its replay
+    """A recording after the freeze is built for the day it is recorded: its replay
     must build the same ledger, prompt and letters, so reproduce passes that day on (``--today``)."""
     results = tmp_path / "results"
     results.mkdir()
@@ -839,7 +839,7 @@ def test_a_final_splits_results_file_makes_its_cell_a_replay_with_its_repeat(tmp
 
 
 def test_a_final_recording_with_two_todays_is_refused(tmp_path: Path) -> None:
-    """A final split's letters are built for the day they are recorded (the plan's addendum, item 8): a live file
+    """A final split's letters are built for the day they are recorded: a live file
     whose recording day is not its letters' today (a smoke's --allow-another-today, or a resume on the next day)
     is never indexed as the final run."""
     results = _copy_results(tmp_path, ["2026-10-06-claude-sonnet-5-holdout3.json"])

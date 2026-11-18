@@ -1,8 +1,8 @@
 """Known values and properties of the benchmark's statistics (``evals/stats.py``).
 
-The known values come from the published held-out results, recomputed by hand or by independent scripts in the
-evaluation plan: Clopper–Pearson 55/56, 56/56, 163/168 and 0/112; exact McNemar 31 vs 4 and 14 vs 5; Bonett–Price
-on the pooled held-out discordant pairs. The properties are the ones the plan names: a better score never gets a
+The known values come from the published held-out results, recomputed by hand or by independent scripts:
+Clopper–Pearson 55/56, 56/56, 163/168 and 0/112; exact McNemar 31 vs 4 and 14 vs 5; Bonett–Price
+on the pooled held-out discordant pairs. The properties: a better score never gets a
 lower lower bound, Holm does not depend on the order of its input, and the cluster sign-flip test is exact McNemar
 when every cluster holds one item.
 """

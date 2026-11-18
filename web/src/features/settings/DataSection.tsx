@@ -1,4 +1,4 @@
-import { Fragment, useRef, useState, type FormEvent } from "react";
+import { Fragment, useRef, useState, type SubmitEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import { Check, Copy, Download, FolderDown, FolderOpen, RotateCcw, Trash2 } from "lucide-react";
 import { api } from "@/api/endpoints";
@@ -169,7 +169,7 @@ function DeleteEverythingDialog({
     onBackup();
   };
 
-  const submit = (e?: FormEvent) => {
+  const submit = (e?: SubmitEvent<HTMLFormElement>) => {
     e?.preventDefault();
     if (!confirmed || remove.isPending) return;
     remove.mutate(Boolean(unreceived) && anyway, {

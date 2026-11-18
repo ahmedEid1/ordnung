@@ -11,7 +11,7 @@
  * (`EditDateDialog`, the same form) changes one later — what it says, how it repeats, which dates move — or removes it
  * (`status: dismissed`, with Undo).
  */
-import { useId, useState, type FormEvent, type RefObject } from "react";
+import { useId, useState, type SubmitEvent, type RefObject } from "react";
 import { CalendarPlus, CalendarX2, Check, Plus } from "lucide-react";
 import type { Document, Item, ItemCreate, ItemKind, ItemPatch } from "@/api/types";
 import { useCreateItem, useDeleteItem, useDocuments, useUpdateItem } from "@/api/hooks";
@@ -298,7 +298,7 @@ export function AddDateDialog({ open, onClose, letter = null, item = null, retur
     );
   };
 
-  const submit = (e: FormEvent) => {
+  const submit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (busy) return;
     setTried(true);

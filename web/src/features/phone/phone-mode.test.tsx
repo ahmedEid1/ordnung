@@ -4,7 +4,8 @@
  * (every request the allow-list turned away, 403 `computer_only`) stays empty, and no page offers to delete,
  * download a file or a PDF, or decide about held letters.
  *
- * Settings is P2's (`PhoneSettingsNotice`): its own test makes sure it asks for no settings on a phone.
+ * Settings is covered by `PhoneSettingsNotice`'s own test (PhoneSettingsNotice.test.tsx), which makes sure it asks for
+ * no settings on a phone.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, screen, waitFor, within } from "@testing-library/react";

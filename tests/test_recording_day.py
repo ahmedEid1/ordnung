@@ -1,4 +1,4 @@
-"""A recording's simulated today is the day it is recorded (the orchestrator's addendum to the evaluation plan, item 8).
+"""A recording's simulated today is the day it is recorded.
 
 The ``claude`` CLI tells the model the machine's date in its own context, beside the today Ordnung gives it, and its
 date override does not work in ``-p`` mode. E2 recorded the Ask benchmark, pinned to Mon 28 Sep 2026, on Fri 30 Oct

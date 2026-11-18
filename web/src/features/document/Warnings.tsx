@@ -5,7 +5,7 @@
  * unclear how), "Please check" to-dos, the "When did this letter arrive?" question, the question about
  * the sender's state the postcode on the letter suggests, and any other warnings from reading the letter.
  */
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useState, type SubmitEvent, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { ArrowRight, CalendarCheck, Check, EyeOff, Pencil, Scale, ShieldAlert, TriangleAlert, X } from "lucide-react";
@@ -404,7 +404,7 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
     ? " — unless it took longer than letters usually do: this sender may be an authority, so we then still count from the day it would usually have arrived"
     : "";
 
-  const submit = async (e: FormEvent) => {
+  const submit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!valid) return;
     // Awaited here, not in mutate()'s own onSuccess: the hook refetches the letter first, which answers the
@@ -433,7 +433,7 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
     }
     // the items as recomputed with the arrival day: they say what the date now counts from
     const fresh = await qc
-      .fetchQuery({ queryKey: qk.documents.detail(doc.id), queryFn: () => api.document(doc.id), staleTime: 5_000 })
+      .query({ queryKey: qk.documents.detail(doc.id), queryFn: () => api.document(doc.id), staleTime: 5_000 })
       .catch(() => undefined);
     const asked = new Set(items.map((i) => i.id));
     const recomputed = (fresh?.items ?? []).filter((i) => asked.has(i.id));
@@ -546,7 +546,7 @@ function SenderLandCheck({ detail, party, suggestion }: { detail: DocumentDetail
     title?.focus({ preventScroll: true });
     title?.scrollIntoView?.({ block: "start" });
     const fresh = await qc
-      .fetchQuery({ queryKey: qk.documents.detail(doc.id), queryFn: () => api.document(doc.id), staleTime: 5_000 })
+      .query({ queryKey: qk.documents.detail(doc.id), queryFn: () => api.document(doc.id), staleTime: 5_000 })
       .catch(() => undefined);
     return fresh ? movedNote(before, fresh.items) : null;
   };

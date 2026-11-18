@@ -754,7 +754,7 @@ describe("mock reminders outside the browser", () => {
   });
 });
 
-describe("the person's own choices beside the letters (D3: For taxes, the household)", () => {
+describe("the person's own choices beside the letters (For taxes, the household)", () => {
   const NOBODY_ELSE = { filed_for: null, mine: false, suggested: null, add: null };
   const EMPTY_HOUSEHOLD = { members: [], filed: {}, mine: [], suggested: {}, version: "4f53cda18c2baa0c" };
 

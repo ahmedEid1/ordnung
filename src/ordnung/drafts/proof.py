@@ -156,17 +156,6 @@ SENDING_DAY_KINDS: frozenset[str] = frozenset(
 #: Proofs whose day is the delivery (it can't be before the sending).
 DELIVERY_DAY_KINDS: frozenset[str] = frozenset({"delivery_record", "return_receipt"})
 
-#: The proof kinds that fit each way of sending, the most useful first (the upload form's default).
-CHANNEL_PROOFS: dict[str, tuple[ProofKind, ...]] = {
-    "registered_letter": ("posting_receipt", "delivery_record", "return_receipt"),
-    "fax": ("fax_report",),
-    "email": ("sent_email",),
-    "online_button": ("cancel_confirmation",),
-    "portal": ("other",),
-    "in_person": ("other",),
-    "letter": ("other",),
-}
-
 CHANNEL_LABELS: dict[str, tuple[str, str]] = {
     "online_button": ("the online cancel button", "Kündigungsbutton"),
     "email": ("e-mail", "E-Mail"),

@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState, type FormEvent, type RefObject } from "react";
+import { Fragment, useEffect, useRef, useState, type SubmitEvent, type RefObject } from "react";
 import { CircleCheck, Download, HardDriveDownload, History, KeyRound, LockKeyhole, RefreshCw } from "lucide-react";
 import { ApiError } from "@/api/client";
 import { useBackupInfo, useDownloadBackup } from "@/api/hooks";
@@ -84,7 +84,7 @@ function BackupDialog({
     firstRef.current?.focus();
   };
 
-  const submit = (e?: FormEvent) => {
+  const submit = (e?: SubmitEvent<HTMLFormElement>) => {
     e?.preventDefault();
     if (busy) return;
     const wrong = passphraseProblem(passphrase, repeat, min);

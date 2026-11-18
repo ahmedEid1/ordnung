@@ -173,7 +173,9 @@ def test_a_tag_on_a_commit_with_changes_its_notes_leave_out_stops_the_release(
     assert main(["--root", str(root), "--tag", "v0.3.0", "--out", str(out)]) == 1
     error = " ".join(capsys.readouterr().err.split())
     assert f'CHANGELOG.md lists changes above the section for 0.3.0, under "## {named}"' in error
-    assert "Tag the commit that named the section for 0.3.0: git tag -a v0.3.0 <that commit>" in error
+    # the commit that first named a version before its tag still says the tag follows: it is refused too
+    assert "Tag the merge commit of the pull request that dated the section for 0.3.0" in error
+    assert "git tag -a v0.3.0 <that merge commit>" in error
     assert not out.exists()
     # without a tag it is only a preview: the notes print
     assert main(["--root", str(root), "0.3.0"]) == 0

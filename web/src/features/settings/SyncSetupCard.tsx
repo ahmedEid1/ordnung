@@ -13,7 +13,7 @@
  * A refusal is said next to the field it concerns (`ApiError.code`); the passphrase only travels to this computer's
  * Ordnung, which keeps it in the password store.
  */
-import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type SubmitEvent } from "react";
 import { ArrowRight, Check, CloudUpload, FolderSync, Layers, Link2Off, LockKeyhole, OctagonAlert, Split } from "lucide-react";
 import { ApiError } from "@/api/client";
 import { useConnectSync, useInspectSyncFolder } from "@/api/hooks";
@@ -230,7 +230,7 @@ export function SyncSetupCard({ status, join = false, onConnected }: { status: S
     );
   };
 
-  const submit = (e?: FormEvent) => {
+  const submit = (e?: SubmitEvent<HTMLFormElement>) => {
     e?.preventDefault();
     if (busy || !status.available) return;
     if (!kind || !info) {

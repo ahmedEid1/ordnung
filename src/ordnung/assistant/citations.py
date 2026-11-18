@@ -29,9 +29,6 @@ from pydantic import BaseModel
 from ordnung.assistant.channels import parse_tool_result
 from ordnung.rules.explain import fmt_date
 
-MARKER_TYPES: tuple[str, ...] = ("doc", "item", "contract", "party")
-"""Canonical marker types, as written in answers."""
-
 RefType = Literal["document", "item", "contract", "party"]
 REF_TYPES: dict[str, RefType] = {"doc": "document", "item": "item", "contract": "contract", "party": "party"}
 """Marker type → ledger reference type (the ``SuggestionRef.type`` vocabulary used by the UI)."""

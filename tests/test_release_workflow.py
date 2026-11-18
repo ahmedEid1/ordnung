@@ -295,6 +295,9 @@ def test_releasing_md_says_how_to_release_and_how_the_owner_turns_pypi_on() -> N
         "make build-web",
     ):
         assert needed in page, needed
+    # the demo is rebuilt without being started: `demo --rebuild` alone serves it and opens a browser
+    after = page.split("ordnung demo --rebuild")[1:]
+    assert after and all(rest.startswith(" --no-serve") for rest in after), after
 
 
 # --------------------------------------------------------------------------------------------------

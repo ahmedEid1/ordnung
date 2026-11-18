@@ -1264,7 +1264,7 @@ export async function demoCatalog({ api, server }) {
   for (const s of remindersBackupStates()) add(s);
 
   // ---------------------------------------------------------------------------------------------
-  // D3: "For taxes" on any letter, the Inbox's year, and your household (ADR 0023). The demo has no tax choice and
+  // "For taxes" on any letter, the Inbox's year, and your household (ADR 0023). The demo has no tax choice and
   // no household, and every letter in it is addressed to its persona: these states answer the page's reads
   // themselves (the letter's page, `GET /api/household`), and a press's write is answered in the page — nothing of
   // the shared demo changes.
@@ -1489,7 +1489,7 @@ export async function demoCatalog({ api, server }) {
       },
     });
 
-    // E2: whose it is (ADR 0025) — My numbers per person and the Timeline's tag. The demo has no household: these
+    // whose it is (ADR 0025) — My numbers per person and the Timeline's tag. The demo has no household: these
     // states answer `GET /api/numbers` from the demo's own page with the health insurance number and the passport
     // moved to Alex Rivera (the tax ID on his letters too, the health insurer's call-sheet number and the first open
     // case his), and `GET /api/household` as for today-household. Nothing of the shared demo changes.
@@ -1565,7 +1565,7 @@ export async function demoCatalog({ api, server }) {
   }
 
   // ---------------------------------------------------------------------------------------------
-  // E2: Settings → Data → Text in pictures (ADR 0024). The demo runs with ORDNUNG_OCR=off, so its own line is the
+  // Settings → Data → Text in pictures (ADR 0024). The demo runs with ORDNUNG_OCR=off, so its own line is the
   // variable's callout; the other states answer `GET /api/health` with this computer's state as the doctor words it
   // on Linux, and "off" answers `GET /api/settings` with the switch saved off. Nothing of the shared demo changes.
   // ---------------------------------------------------------------------------------------------

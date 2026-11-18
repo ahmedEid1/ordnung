@@ -15,8 +15,14 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   changes. The README's lead into its evaluation block names the decision rule the final run used.
 - `make eval-reproduce` holds every CI gate to its own replay, each read of holdout4 and of Ask's new questions
   on the demo household included, and `evals/results/INDEX.json` names the gate of each such cell.
-- The web app is built with newer minor and patch versions of its packages (React Query 5.107, lucide-react
-  1.72, motion 14.13, Vite 8.3.8, Tailwind CSS 4.3.5).
+- The web app is built with newer minor and patch versions of its packages (React Query 5.108, lucide-react
+  1.74, motion 14.14, Recharts 3.11, Vite 8.3.8, Tailwind CSS 4.3.5), and `constraints.txt` pins the newest
+  versions of the Python packages within `pyproject.toml`'s ranges (among them FastAPI 0.163, Starlette 1.10,
+  Pydantic 2.14, mcp 2.3 and holidays 0.109; ruff 0.17, mypy 2.4 and pytest 9.2 for the checks; the samples'
+  libraries keep the versions their manifest names).
+- An operating-cost statement (Betriebskostenabrechnung) has a new icon: lucide-react no longer supports the one it
+  had. `npm run lint` now fails on anything in the web app's TypeScript a library or the browser marks deprecated,
+  so the next one is caught before the library drops it.
 
 ### Fixed
 
@@ -25,6 +31,16 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   fell back to the computer's date when they were given no day, even where the day is pinned (`ORDNUNG_TODAY`, the
   demo's day, a test's pinned day). They now follow a pinned day too, and without one still use the computer's date.
   Ordnung itself always gives them a day, so nothing it shows changes and no published evaluation number moves.
+- CONTRIBUTING and the guide said building the web app from source needs Node.js 20.19+ or 22.12+. Its packages
+  ask for 22.22.2+, 24.15+ or 26+ (the router and jsdom under the unit tests; Node 20 has reached its end of life),
+  and they now say so, as `web/package.json` does.
+- The wheel's licence expression names BSD-3-Clause too: the charts library's copy of d3 now declares it, for
+  d3-ease, and the wheel ships its notice. The README lists it with the others.
+- A release tag on a commit with changes above its version is refused with the right advice: tag the merge of the
+  pull request that dated the version's section. It named the commit that first named the section, which for a
+  version named before its tag still says the tag is to follow, and is refused too. CONTRIBUTING and
+  docs/releasing.md say where a change goes once that pull request is merged but the tag is not yet pushed:
+  under `## Unreleased`.
 
 ## 0.4.0 — 2026-11-17
 

@@ -47,7 +47,7 @@ TARGETS = {
     "reask": (extract_mod, "reading_gap_of"),
     "check": (conditions, "verify_extraction"),
 }
-#: What each ablation swaps (the plan's six, after the code as it ships).
+#: What each of the six ablations swaps (after the code as it ships).
 SWAPPED = {
     "all_on": set(),
     "no_two_dates_check": {"settle"},
@@ -63,7 +63,7 @@ def _published() -> dict[str, Any]:
     return json.loads(PUBLISHED.read_text(encoding="utf-8"))
 
 
-def test_the_ablations_are_the_shipped_code_and_the_plan_s_six() -> None:
+def test_the_ablations_are_the_shipped_code_and_six_with_checks_switched_off() -> None:
     assert list(ABLATIONS) == list(SWAPPED)
     for name, ablation in ABLATIONS.items():
         assert ablation.name == name

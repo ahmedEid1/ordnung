@@ -1,7 +1,7 @@
 """The benchmark's analysis (``evals/analysis.py``): the held-out splits re-analysed, and the pre-registered final run.
 
-The re-analysis reads the three held-out results files as recorded and must reproduce what the evaluation plan
-recomputed from them by independent scripts: 163/168 for Ordnung, 31 vs 4 and 14 vs 5 discordant pairs, the flags
+The re-analysis reads the three held-out results files as recorded and must reproduce what independent scripts
+recomputed from them: 163/168 for Ordnung, 31 vs 4 and 14 vs 5 discordant pairs, the flags
 catching none of Ordnung's 5 wrong dates, and the crossover with the rules-text prompt at r = 5.5. The intervals the
 pages publish today stay reproducible beside the new ones. The final run's analysis is checked on synthetic reads
 whose statistics are worked out by hand, written to disk with every frozen input the pre-registration pins (a

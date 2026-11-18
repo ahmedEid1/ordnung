@@ -34,3 +34,6 @@ export function prefersReducedMotion(): boolean {
     ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
     : false;
 }
+
+/** An Apple computer, phone or tablet, whose shortcuts say ⌘ and Option where others say Ctrl and Alt. */
+export const IS_APPLE = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.userAgent);

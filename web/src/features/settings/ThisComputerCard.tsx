@@ -6,7 +6,7 @@
  * Disconnecting asks a second time while no other computer has this one's latest changes: those would
  * reach no other computer.
  */
-import { useRef, useState, type FormEvent } from "react";
+import { useRef, useState, type SubmitEvent } from "react";
 import { ArrowRightLeft, CloudUpload, Link2Off, Pencil, Split } from "lucide-react";
 import { ApiError } from "@/api/client";
 import { useDisconnectSync, useSaveSync, useTakeOver, useUpdateSync } from "@/api/hooks";
@@ -138,7 +138,7 @@ function RenameDialog({ open, onClose, status }: { open: boolean; onClose: () =>
     setError(null);
     onClose();
   };
-  const submit = (e?: FormEvent) => {
+  const submit = (e?: SubmitEvent<HTMLFormElement>) => {
     e?.preventDefault();
     const wrong = nameProblem(name);
     if (wrong) {

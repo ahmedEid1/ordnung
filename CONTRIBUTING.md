@@ -13,9 +13,9 @@ or a letter you write yourself, and describe a real letter in your own words.
 
 ## Setting up
 
-You need Python 3.11 or newer, [uv](https://docs.astral.sh/uv/) and Node.js 20.19+ or 22.12+ (`nvm use`
-picks the one in `.nvmrc`; `web/package.json` says the same). Use 22.12+ for the browser checks
-(`make e2e`, `make ui-audit`): their accessibility checker (`@axe-core/playwright`) asks for it.
+You need Python 3.11 or newer, [uv](https://docs.astral.sh/uv/) and Node.js 22.22.2+, 24.15+ or 26+
+(`nvm use` picks the one in `.nvmrc`; `web/package.json` says the same): the web app's router asks for 22.22+,
+and jsdom, under the unit tests, for 22.22.2+ or 24.15+.
 
 ```bash
 git clone --filter=blob:none https://github.com/ahmedEid1/ordnung.git && cd ordnung
@@ -38,12 +38,12 @@ signing in.
 
 ## Fast loop
 
-CI runs its jobs side by side, and a whole run takes about 47 minutes (its runs of 3 November 2026). The
-end-to-end job starts once the frontend has passed, about 8 minutes in, and takes 33 to 39 minutes. Beside it the
-backend's legs on Python 3.11 to 3.14 take 16 to 39 minutes (3.14 the fastest), its slow checks about 25, the
-lowest versions (and, weekly, the newest) 21 to 24, and, on `main` and weekly, Windows 15 and macOS 3.5; the wheel
-and the dependency audit take under a minute. macOS and Windows have to pass too, as Linux does. While you work,
-run the tests near your change:
+CI runs its jobs side by side, and a whole run takes 40 to 50 minutes (its runs of 17 and 18 November 2026).
+The end-to-end job starts once the frontend has passed, 4 to 7 minutes in, and takes 32 to 43 minutes. Beside it
+the backend's legs on Python 3.11 to 3.14 take 17 to 47 minutes (3.14 the fastest), its slow checks 27 to 41, the
+lowest versions (and, weekly, the newest) 19 to 29, and, on `main` and weekly, Windows 10 to 14 and macOS 4 to 7;
+the wheel and the dependency audit take under a minute. macOS and Windows have to pass too, as Linux does. While
+you work, run the tests near your change:
 
 ```bash
 .venv/bin/pytest tests/test_rules_deadlines.py -k weekend     # one file, only the tests whose names match
@@ -246,7 +246,8 @@ check shows in the numbers at once, and costs nothing.
   colon may come first: "Windows: the lock message names the process holding the data folder",
   "Docs: …". The rebuilt web app goes in a commit of its own: "Rebuild the web app for …".
 - A change people will notice gets a line under "Unreleased" in [CHANGELOG.md](CHANGELOG.md), or, while a
-  version named before its tag waits for it, under that version ([docs/releasing.md](docs/releasing.md)). A
+  version named before its tag waits for the pull request whose merge gets that tag, under that version
+  ([docs/releasing.md](docs/releasing.md)). A
   design decision gets a short record in [docs/decisions/](docs/decisions/).
 - Pull requests go to `main`, and CI must pass. Say what changed and how you checked it, and keep
   real letters and personal data out of the description too.

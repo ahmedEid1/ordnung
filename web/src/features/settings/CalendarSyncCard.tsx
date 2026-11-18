@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type SubmitEvent } from "react";
 import { CalendarCheck, CalendarSearch, Check, ChevronDown, ChevronUp, Link2Off, OctagonAlert, RefreshCw, Unplug } from "lucide-react";
 import { ApiError } from "@/api/client";
 import { useCalendarSync, useCalendarSyncPreview, useConnectCalendarSync, useDisconnectCalendarSync, useDiscoverCalendars, useRunCalendarSync, useSync } from "@/api/hooks";
@@ -262,7 +262,7 @@ function Connect({ status }: { status: CalendarSyncStatus }) {
   };
 
 
-  const submit = (e?: FormEvent) => {
+  const submit = (e?: SubmitEvent<HTMLFormElement>) => {
     e?.preventDefault();
     if (busy || !status.available) return;
     const problem = syncFormProblem({ url, username, password });
@@ -383,7 +383,7 @@ function PasswordAgain({ status, reason }: { status: CalendarSyncStatus; reason:
   const connect = useConnectCalendarSync();
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const submit = (e: FormEvent) => {
+  const submit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!password) {
       setError("Enter the app password for this calendar.");
