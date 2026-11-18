@@ -662,6 +662,12 @@ def _db_bytes(tmp_path: Path, schema: int | None = None) -> bytes:
     return (folder / DB_NAME).read_bytes()
 
 
+@pytest.fixture(scope="module")
+def empty_db(tmp_path_factory: pytest.TempPathFactory) -> bytes:
+    """A new, empty Ordnung database as one self-contained file, made once (bytes: no test can change it)."""
+    return _db_bytes(tmp_path_factory.mktemp("empty-db"))
+
+
 def _manifest(
     db: bytes, files: dict[str, bytes], *, tables: dict[str, int] | None = None, **extra: Any
 ) -> bytes:
@@ -686,8 +692,8 @@ def _manifest(
     return json.dumps(manifest.model_dump() | extra).encode()
 
 
-def test_a_crafted_but_honest_archive_restores(tmp_path: Path) -> None:
-    db = _db_bytes(tmp_path)
+def test_a_crafted_but_honest_archive_restores(tmp_path: Path, empty_db: bytes) -> None:
+    db = empty_db
     files = {"files/aa/x.pdf": b"%PDF"}
     members = [
         _member(DB_NAME, db),
@@ -715,8 +721,8 @@ def test_a_crafted_but_honest_archive_restores(tmp_path: Path) -> None:
         ".ordnung.lock",
     ],
 )
-def test_names_outside_the_policy_are_refused(tmp_path: Path, name: str) -> None:
-    db = _db_bytes(tmp_path)
+def test_names_outside_the_policy_are_refused(tmp_path: Path, empty_db: bytes, name: str) -> None:
+    db = empty_db
     members = [
         _member(DB_NAME, db),
         _member(name, b"payload"),
@@ -725,15 +731,15 @@ def test_names_outside_the_policy_are_refused(tmp_path: Path, name: str) -> None
     with pytest.raises(DamagedBackup):
         restore_backup(craft(tmp_path / "evil", members), PASS, tmp_path / "r")
     assert not (tmp_path / "evil.txt").exists() and not (tmp_path.parent / "evil.txt").exists()
-    assert sorted(p.name for p in tmp_path.iterdir()) == ["db-source", "evil"]
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["evil"]
 
 
 @pytest.mark.parametrize(
     "kind",
     [tarfile.SYMTYPE, tarfile.LNKTYPE, tarfile.DIRTYPE, tarfile.FIFOTYPE, tarfile.CHRTYPE],
 )
-def test_only_regular_files_are_restored(tmp_path: Path, kind: bytes) -> None:
-    db = _db_bytes(tmp_path)
+def test_only_regular_files_are_restored(tmp_path: Path, empty_db: bytes, kind: bytes) -> None:
+    db = empty_db
     members = [
         _member(DB_NAME, db),
         _member("files/x", b"", kind, link="/etc/passwd"),
@@ -744,8 +750,8 @@ def test_only_regular_files_are_restored(tmp_path: Path, kind: bytes) -> None:
     assert not (tmp_path / "r").exists()
 
 
-def test_duplicates_extras_and_mismatches_are_refused(tmp_path: Path) -> None:
-    db = _db_bytes(tmp_path)
+def test_duplicates_extras_and_mismatches_are_refused(tmp_path: Path, empty_db: bytes) -> None:
+    db = empty_db
     good = {"files/a.pdf": b"one"}
     cases = {
         "duplicate": [
@@ -798,23 +804,23 @@ def test_duplicates_extras_and_mismatches_are_refused(tmp_path: Path) -> None:
         assert not [p for p in tmp_path.iterdir() if ".restoring-" in p.name], label
 
 
-def test_a_damaged_database_is_refused(tmp_path: Path) -> None:
-    db = bytearray(_db_bytes(tmp_path))
+def test_a_damaged_database_is_refused(tmp_path: Path, empty_db: bytes) -> None:
+    db = bytearray(empty_db)
     db[4096 + 200 : 4096 + 400] = b"\xff" * 200  # scribble over a b-tree page
     members = [
         _member(DB_NAME, bytes(db)),
-        _member(MANIFEST_NAME, _manifest(_db_bytes(tmp_path / "again"), {})),
+        _member(MANIFEST_NAME, _manifest(empty_db, {})),
     ]
     with pytest.raises(DamagedBackup):
         restore_backup(craft(tmp_path / "b", members), PASS, tmp_path / "r")
 
 
-def test_a_newer_schema_or_archive_format_is_refused(tmp_path: Path) -> None:
+def test_a_newer_schema_or_archive_format_is_refused(tmp_path: Path, empty_db: bytes) -> None:
     newer = _db_bytes(tmp_path, schema=latest_version() + 1)
     members = [_member(DB_NAME, newer), _member(MANIFEST_NAME, _manifest(newer, {}))]
     with pytest.raises(NewerBackupFormat, match="newer version of Ordnung"):
         restore_backup(craft(tmp_path / "b1", members), PASS, tmp_path / "r")
-    db = _db_bytes(tmp_path / "second")
+    db = empty_db
     members = [_member(DB_NAME, db), _member(MANIFEST_NAME, _manifest(db, {}, format=2))]
     with pytest.raises(NewerBackupFormat):
         restore_backup(craft(tmp_path / "b2", members), PASS, tmp_path / "r")
