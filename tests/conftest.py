@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import gc
+import os
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -22,6 +23,14 @@ from ordnung.db.store import Store
 # says so with its own ``@settings``.
 settings.register_profile("ordnung", max_examples=150, deadline=None, database=None)
 settings.load_profile("ordnung")
+
+# The terminal's size is never the tests': a CLI test sets the width it reads its output at (CliRunner's COLUMNS).
+# Rich reads COLUMNS once, when a console is made, and keeps it as a fixed width, so ``ordnung.cli``'s consoles,
+# made when a test module imports it, would keep whatever the environment held then. A pytest-xdist worker is
+# started with the controller's terminal size in its environment (readline exports it there as COLUMNS and LINES,
+# 80 and 24 without a terminal), so without this the CLI tests wrap their output at 80 columns in parallel runs only.
+for _name in ("COLUMNS", "LINES"):
+    os.environ.pop(_name, None)
 
 
 @pytest.fixture(autouse=True)
