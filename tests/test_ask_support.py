@@ -2403,9 +2403,12 @@ THE_GERMAN_WORD_AM_IS_NO_TIME = [
 ]
 
 
-def test_am_before_a_date_is_the_time_in_an_english_answer(tools: LedgerTools, ids: dict[str, str]) -> None:
+def test_am_after_a_number_is_the_time_in_english_and_the_word_in_german(
+    tools: LedgerTools, ids: dict[str, str]
+) -> None:
     """The words "9 am 14 Oct 2026" were read as the German "am" (on), so the 9 am was never read —
-    in an English answer a lower-case "am" after a number is the time."""
+    in an English answer a lower-case "am" after a number is the time. In a German answer,
+    "3 am 14.10.2026" is the word "am" (on) and the sentence stays."""
     evidence = evidence_of(tools, ("list_items", {}))
     item = ids["abh_appointment"]
     text, verdicts = check(f"Your appointment is at 9 am 14 Oct 2026 [item:{item}].", evidence)
@@ -2704,9 +2707,11 @@ A_SLASH_DATE_THAT_READS_TWO_WAYS_IS_NEVER_CHECKED_BY_ONE_READING = [
 ]
 
 
-def test_a_slash_date_that_reads_two_ways_is_never_checked_by_one_reading() -> None:
+def test_a_slash_date_is_checked_by_both_readings_or_by_its_only_one() -> None:
     """The date "03/11/2027" passed for a deadline on 11 Mar 2027 — a German or British
-    reader sees 3 Nov, eight months late. A date that reads two ways is supported only by both readings."""
+    reader sees 3 Nov, eight months late. A date that reads two ways is supported only by both readings;
+    a slash date that reads one way only is checked as usual (03/03/2027 stays; 13/03/2027 can only be 13 Mar
+    and goes)."""
 
     def check_row(sentence: str) -> None:
         checked = check_answer(sentence, SLASH_DEADLINE, citable=SLASH_DEADLINE.seen_ids)
