@@ -384,7 +384,6 @@ COUNTED_BACK_NOTICES = [
     "Einen Widerspruch reichen Sie bitte zwei Wochen vorher ein.",
     "Der Widerspruch ist 14 Tage vor dem Termin einzulegen; die Ladung wurde Ihnen zugestellt.",
     "An objection must be lodged after receipt of this letter and up to two weeks before the hearing.",
-    "Ein Widerspruch ist spätestens zwei Wochen, bevor die Verhandlung beginnt, zu begründen.",
 ]
 
 
