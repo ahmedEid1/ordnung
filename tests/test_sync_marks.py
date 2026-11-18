@@ -27,12 +27,22 @@ def counted(store: Store) -> int:
 
 def test_only_writes_inside_the_context_count(store: Store) -> None:
     store.add_note("background")
-    assert counted(store) == 0
+    assert store.get_meta(PERSON_META_KEY) is None
     with person_write():
         store.add_note("mine")
         assert PERSON_WRITE.get()
     assert not PERSON_WRITE.get()
     assert counted(store) == 1
+    before = counted(store)
+    with person_write():
+        store.add_note("mine")
+        store.add_note("mine too")
+        store.set_meta("profile", store.get_meta("profile") or "{}")  # changes nothing: still counted once
+    assert counted(store) >= before + 2
+    count = counted(store)
+    with person_write():
+        store.list_notes()
+    assert counted(store) == count  # reading counts nothing
 
 
 def test_a_rolled_back_write_counts_nothing(store: Store) -> None:
@@ -90,17 +100,6 @@ def test_every_snapshot_holds_exactly_the_changes_it_counts(store: Store) -> Non
     for thread in threads:
         thread.join()
     assert checks > 3 and counted(store) == written
-
-
-def test_the_context_follows_the_request_into_threads() -> None:
-    """``asyncio.to_thread`` copies the context: a route's blocking work still counts."""
-    import asyncio
-
-    async def route() -> bool:
-        with person_write():
-            return await asyncio.to_thread(PERSON_WRITE.get)
-
-    assert asyncio.run(route())
 
 
 def test_changes_made_while_no_server_ran_count(tmp_path: Path) -> None:

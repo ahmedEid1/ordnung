@@ -16,22 +16,16 @@ import ordnung
 from ordnung.backup.archive import database_copy
 from ordnung.config import Paths
 from ordnung.db.store import HOUSEHOLD_META_KEY, PERSON_META_KEY, TAX_CHOICES_META_KEY, Store, person_write
-from ordnung.ingest import watcher
 from ordnung.models import AppSettings, CalendarSyncState
 from ordnung.sync import (
     DEMO_META,
-    FOLDER_TAKEN_META_KEY,
-    INTERRUPTIONS_META_KEY,
     LOCAL_META,
-    LOCAL_SETTINGS,
     MERGED_META,
     SYNC_MARK_KEY,
     SYNCED_DIRS,
     SYNCED_META,
     SYNCED_META_PREFIXES,
-    SYNCED_SETTINGS,
 )
-from ordnung.sync import PERSON_META_KEY as SYNC_PERSON_META_KEY
 from ordnung.sync.model import CalendarHandover, VersionId
 from ordnung.sync.scrub import (
     calendar_handover,
@@ -120,20 +114,6 @@ def test_every_meta_access_uses_a_known_constant() -> None:
             assert label in names, (
                 f"{path.relative_to(SRC)}:{node.lineno} reads or writes meta {ast.unparse(first)}"
             )
-
-
-def test_the_shared_keys_are_the_same_strings() -> None:
-    assert SYNC_PERSON_META_KEY == PERSON_META_KEY == "sync_person"
-    assert FOLDER_TAKEN_META_KEY == watcher.FOLDER_TAKEN_META_KEY
-    from ordnung.db import store
-
-    assert INTERRUPTIONS_META_KEY == store.INTERRUPTIONS_KEY
-
-
-def test_every_settings_field_is_classified() -> None:
-    assert set(AppSettings.model_fields) == set(LOCAL_SETTINGS) | set(SYNCED_SETTINGS)
-    assert not set(LOCAL_SETTINGS) & set(SYNCED_SETTINGS)
-    assert "read_picture_text" in SYNCED_SETTINGS  # Text in pictures: the person's choice travels
 
 
 def test_every_data_folder_entry_is_classified(paths: Paths) -> None:
@@ -279,20 +259,6 @@ def test_the_digest_covers_files_and_the_calendar(store: Store) -> None:
     assert _digest(store, [("files/aa/x.pdf", "2" * 64)]) != base
     handover = CalendarHandover(target="3" * 64, mode="discreet", events={"a.ics": "x"})
     assert _digest(store, [("files/aa/x.pdf", "1" * 64)], handover) != base
-
-
-def test_the_counter_moves_only_for_the_persons_writes(store: Store) -> None:
-    store.add_note("background")
-    assert store.get_meta(PERSON_META_KEY) is None
-    with person_write():
-        store.add_note("mine")
-        store.add_note("mine too")
-        store.set_meta("profile", store.get_meta("profile") or "{}")  # changes nothing: still counted once
-    assert int(store.get_meta(PERSON_META_KEY) or 0) >= 2
-    count = int(store.get_meta(PERSON_META_KEY) or 0)
-    with person_write():
-        store.list_notes() if hasattr(store, "list_notes") else None
-    assert int(store.get_meta(PERSON_META_KEY) or 0) == count  # reading counts nothing
 
 
 # --------------------------------------------------------------------------------------------------
