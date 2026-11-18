@@ -73,7 +73,6 @@ UNFINISHED_MESSAGE = (
     "Bringing Ordnung over didn't finish ({reason}). Ordnung tries again at its next start; you can also "
     "give it up (this computer then stands by)."
 )
-ABANDONED = "Gave up an unfinished take-over."
 
 
 def human_size(size: int) -> str:

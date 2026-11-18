@@ -396,9 +396,6 @@ def _missing(exc: OSError) -> bool:
 # the folder
 # --------------------------------------------------------------------------------------------------
 
-#: What a sealed object looks like in its shard: its size, and whether its data is here at all.
-ObjectState = Literal["here", "online_only"]
-
 
 @dataclass(frozen=True)
 class FileInfo:

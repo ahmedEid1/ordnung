@@ -1775,8 +1775,6 @@ _CURRENCY_TOKEN = re.compile(
     r"євро|يورو|یورو|यूरो|欧元|\bS?Fr\.",
     re.IGNORECASE,
 )
-_CODE_AFTER = re.compile(rf"\s?(?:{_CURRENCY_TOKEN.pattern})", re.IGNORECASE)
-_CODE_BEFORE = re.compile(rf"(?:{_CURRENCY_TOKEN.pattern})\s?$", re.IGNORECASE)
 
 
 def _currency_code(token: str) -> str:

@@ -81,7 +81,6 @@ def install_hint(platform: str = sys.platform) -> str:
     )
 
 
-NATIVE_INSTALL = native_install()
 INSTALL_HINT = install_hint()
 CLAUDE_BIN_HINT = "Point ORDNUNG_CLAUDE_BIN at the `claude` program, or unset it to use the one on PATH."
 LOGIN_HINT = "Run `claude auth login` (or start `claude` and type /login), then run `ordnung doctor` again."

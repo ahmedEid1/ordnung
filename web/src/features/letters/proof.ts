@@ -5,7 +5,7 @@
 import type { Document, Draft, ProofKind, ProofOverview, WaitingEntry, WaitingStatus } from "@/api/types";
 import { PROOF_KINDS } from "@/api/types";
 
-/** The proof kinds that fit each way of sending, most useful first (as the server's `CHANNEL_PROOFS`). */
+/** The proof kinds that fit each way of sending, most useful first. */
 const CHANNEL_PROOFS: Record<string, readonly ProofKind[]> = {
   registered_letter: ["posting_receipt", "delivery_record", "return_receipt"],
   fax: ["fax_report"],

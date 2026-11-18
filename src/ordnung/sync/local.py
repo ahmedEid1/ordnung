@@ -44,7 +44,6 @@ from pydantic import ValidationError
 
 from ordnung.calendar.secrets import KeyringSecrets
 from ordnung.config import Paths
-from ordnung.db.store import person_write
 from ordnung.sync import (
     FILES_CACHE_FILE,
     HEADS_FILE,
@@ -69,10 +68,6 @@ LOCKED_MESSAGE = "This computer's password store is locked. Unlock it, and Ordnu
 SyncSecrets = partial(
     KeyringSecrets, service=SYNC_SERVICE, feature=SYNC_FEATURE, secret=SYNC_SECRET, locked=LOCKED_MESSAGE
 )
-#: Re-exported: the context in which a write counts as the person's (the gate, the watched folder, the CLI).
-person_writes = person_write
-
-STANDBY_HINT = "Run “ordnung sync use-here” to use it on this computer."
 _CONTROL = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 _LOCK = threading.RLock()
 
