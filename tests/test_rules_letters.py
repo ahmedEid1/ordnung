@@ -3358,19 +3358,29 @@ BESIDE = "Betriebskostenabrechnung 2025\nAbrechnungszeitraum 01.01.–31.12.2025
 BESIDE_FIRST = "Betriebskostenabrechnung 2025\nIhr Nutzungszeitraum: 01.10.–31.12.2025 · Abrechnungszeitraum 01.01.–31.12.2025\nNachzahlung 184,30 €"
 
 
-@pytest.mark.parametrize("text", [BESIDE, BESIDE_FIRST], ids=["tenant-after", "tenant-before"])
-def test_the_tenants_period_written_beside_the_billing_period_leaves_it_the_billing_period(text: str) -> None:
+THE_TENANTS_PERIOD_WRITTEN_BESIDE_THE_BILLING_PERIOD_LEAVES_IT_THE_BILLING_PERIOD = [BESIDE, BESIDE_FIRST]
+
+
+def test_the_tenants_period_written_beside_the_billing_period_leaves_it_the_billing_period() -> None:
     """Found while checking the fix for the move-out period: a tenant marker
     that labels a range of its own says the other range is *not* the tenant's — the demo's statement lost its
     billing period ("doesn't call it the billing period") and was only "probably" on time."""
-    period = BillingPeriod(D("2025-12-31"), True, "01.01.2025 – 31.12.2025", True)
-    assert billing_period(text, before=D("2026-09-10")) == period
-    card = letter_advice(
-        "operating_costs", today=D("2026-09-27"), arrived=D("2026-09-10"), arrival_confirmed=True, text=text
-    )
-    assert card is not None and card.facts[0].title == "On time"
-    # … and a statement that arrives after 31 Dec 2026 is certainly late
-    assert statement_late(text, D("2027-01-15"), True, None) is True
+
+    def check(text: str) -> None:
+        period = BillingPeriod(D("2025-12-31"), True, "01.01.2025 – 31.12.2025", True)
+        assert billing_period(text, before=D("2026-09-10")) == period
+        card = letter_advice(
+            "operating_costs",
+            today=D("2026-09-27"),
+            arrived=D("2026-09-10"),
+            arrival_confirmed=True,
+            text=text,
+        )
+        assert card is not None and card.facts[0].title == "On time"
+        # … and a statement that arrives after 31 Dec 2026 is certainly late
+        assert statement_late(text, D("2027-01-15"), True, None) is True
+
+    check_rows(THE_TENANTS_PERIOD_WRITTEN_BESIDE_THE_BILLING_PERIOD_LEAVES_IT_THE_BILLING_PERIOD, check)
 
 
 def test_a_marker_before_its_own_range_still_marks_it_after_a_gap() -> None:
@@ -3821,28 +3831,30 @@ def test_a_later_letter_that_repeats_the_period_is_never_certainly_late(
     assert ("This letter arrived later" if entered else "This letter is dated later") in fact.text
 
 
-@pytest.mark.parametrize(
-    "text",
-    [
-        ENCLOSING_STATEMENT,
-        # a statement that gives only its billing year, with the same enclosure
-        "Betriebskostenabrechnung 2024\nAnlage: Heizkostenabrechnung der Techem vom 20.03.2025\nNachzahlung: 412,00 EUR",
-    ],
-    ids=["period", "billing-year"],
-)
-def test_a_statement_dating_an_enclosure_says_both_readings(text: str) -> None:
+A_STATEMENT_DATING_AN_ENCLOSURE_SAYS_BOTH_READINGS = [
+    ENCLOSING_STATEMENT,
+    # a statement that gives only its billing year, with the same enclosure
+    "Betriebskostenabrechnung 2024\nAnlage: Heizkostenabrechnung der Techem vom 20.03.2025\nNachzahlung: 412,00 EUR",
+]
+
+
+def test_a_statement_dating_an_enclosure_says_both_readings() -> None:
     """A date without its year may be an enclosure's (the metering company's heating
     statement) in the statement itself, or the statement a later letter is about: Ordnung can't tell which.
     Counting from the day this letter arrived, it is late; from the enclosure's date it would be on time —
     so the card names both and neither calls it certainly late nor probably on time."""
-    letter, arrived = D("2026-01-15"), D("2026-01-17")
-    assert statement_arrival(text, arrived, True, letter) == (arrived, True, D("2025-03-20"))
-    card = _statement_card(text, arrived, letter, D("2026-01-20"))
-    fact = card.facts[0]
-    assert not card.urgent and fact.title == "Too late only if this letter is the statement itself"
-    assert "Only if this letter is the statement itself" in fact.text and "20 Mar 2025" in fact.text
-    if "Abrechnungszeitraum" not in text:
-        assert fact.text.startswith("The letter names the billing year (2024) but not its dates.")
+
+    def check(text: str) -> None:
+        letter, arrived = D("2026-01-15"), D("2026-01-17")
+        assert statement_arrival(text, arrived, True, letter) == (arrived, True, D("2025-03-20"))
+        card = _statement_card(text, arrived, letter, D("2026-01-20"))
+        fact = card.facts[0]
+        assert not card.urgent and fact.title == "Too late only if this letter is the statement itself"
+        assert "Only if this letter is the statement itself" in fact.text and "20 Mar 2025" in fact.text
+        if "Abrechnungszeitraum" not in text:
+            assert fact.text.startswith("The letter names the billing year (2024) but not its dates.")
+
+    check_rows(A_STATEMENT_DATING_AN_ENCLOSURE_SAYS_BOTH_READINGS, check)
 
 
 def test_a_named_statement_date_that_is_late_too_keeps_the_statement_late() -> None:
@@ -4109,38 +4121,38 @@ def test_a_reserved_alternative_notice_still_offers_the_objection() -> None:
     assert routing.extraordinary_notice(reserved) and routing.alternative_notice(reserved)
 
 
-@pytest.mark.parametrize(
-    ("written", "legal_basis", "context", "due"),
-    [
-        # § 574b: the tenancy ends 31 Mar 2027; the law's date is 31 Jan 2027, the letter says 15 Feb 2027
-        (
-            "2027-02-15",
-            "§ 574b BGB",
-            {"letter_kind": "landlord_notice", "end_date": "2027-03-31", "end_date_grounding": "quote"},
-            "2027-01-31",
-        ),
-        # § 38 SGB III: the job ends 31 Dec 2026; the law's date is 30 Sep 2026, the letter says 15 Oct 2026
-        (
-            "2026-10-15",
-            "§ 38 SGB III",
-            {"end_date": "2026-12-31", "end_date_grounding": "quote", "received_date": "2026-09-01"},
-            "2026-09-30",
-        ),
-    ],
-    ids=["objection", "registration"],
-)
-def test_a_later_date_the_letter_names_keeps_the_laws_and_says_so(
-    written: str, legal_basis: str, context: dict[str, Any], due: str
-) -> None:
+A_LATER_DATE_THE_LETTER_NAMES_KEEPS_THE_LAWS_AND_SAYS_SO = [
+    # § 574b: the tenancy ends 31 Mar 2027; the law's date is 31 Jan 2027, the letter says 15 Feb 2027
+    (
+        "2027-02-15",
+        "§ 574b BGB",
+        {"letter_kind": "landlord_notice", "end_date": "2027-03-31", "end_date_grounding": "quote"},
+        "2027-01-31",
+    ),
+    # § 38 SGB III: the job ends 31 Dec 2026; the law's date is 30 Sep 2026, the letter says 15 Oct 2026
+    (
+        "2026-10-15",
+        "§ 38 SGB III",
+        {"end_date": "2026-12-31", "end_date_grounding": "quote", "received_date": "2026-09-01"},
+        "2026-09-30",
+    ),
+]
+
+
+def test_a_later_date_the_letter_names_keeps_the_laws_and_says_so() -> None:
     """The letter's later date is not dropped silently: the receipt names it, keeps the law's
     earlier date and is no longer high (the end it counts from may be misread)."""
-    nature = "objection" if "574b" in legal_basis else "declaration"
-    receipt = compute_due(
-        DateSpec(type="fixed", date=written, nature=nature, legal_basis=legal_basis),
-        ctx(document_date="2026-09-01", received_confirmed=True, region="NW", **context),
-    )
-    assert receipt.due_date == due and receipt.confidence == "medium"
-    assert any(f"later than the law's date ({fmt_date(D(due))})" in w for w in receipt.warnings)
+
+    def check(written: str, legal_basis: str, context: dict[str, Any], due: str) -> None:
+        nature = "objection" if "574b" in legal_basis else "declaration"
+        receipt = compute_due(
+            DateSpec(type="fixed", date=written, nature=nature, legal_basis=legal_basis),
+            ctx(document_date="2026-09-01", received_confirmed=True, region="NW", **context),
+        )
+        assert receipt.due_date == due and receipt.confidence == "medium"
+        assert any(f"later than the law's date ({fmt_date(D(due))})" in w for w in receipt.warnings)
+
+    check_rows(A_LATER_DATE_THE_LETTER_NAMES_KEEPS_THE_LAWS_AND_SAYS_SO, check)
 
 
 A_LANDLORDS_CARD_SAYS_WHY_NO_TO_DO_CARRIES_THE_OBJECTION = [
