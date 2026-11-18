@@ -39,9 +39,14 @@ pytestmark = pytest.mark.usefixtures("fast")
 _PARAM = re.compile(r"\{[^}]+\}")
 
 
+#: A limit on a folder call long enough for a loaded machine: under the fake engine's 1 s, the second computer's scan
+#: as it joined timed out once on a slow CI runner (a taken name gets a number). No test here checks that limit.
+LOADED_MACHINE = {"FOLDER_OP_TIMEOUT_S": 10.0}
+
+
 @pytest.fixture
 def fast(monkeypatch: pytest.MonkeyPatch) -> None:
-    fast_sync(monkeypatch)
+    fast_sync(monkeypatch, **LOADED_MACHINE)
 
 
 @pytest.fixture
@@ -178,7 +183,7 @@ async def test_the_status_reads_no_secret_and_lists_no_folder(
         for _ in range(100):
             assert (await api.client.get("/api/sync")).status_code == 200
         monkeypatch.undo()
-        fast_sync(monkeypatch)
+        fast_sync(monkeypatch, **LOADED_MACHINE)
         assert not [call for call in engine.calls if call in ("open_session", "inspect_folder")]
 
 
