@@ -2094,6 +2094,7 @@ _PIECES = st.lists(
 @given(letter=_PIECES, answer=_PIECES)
 @example(letter="gültig ab 01.01.0000", answer="Your deadline is Wed 21 Oct 2026")
 @example(letter="Einkommensteuerbescheid", answer="4[c:doc_z]+1:0000")
+@example(letter="Frist: 0 Dec 2027", answer="Your deadline is 31.2.'12")  # date-shaped, no date: unreadable
 def test_no_letter_and_no_answer_stops_the_check(letter: str, answer: str) -> None:
     """The minimised fuzz input was ``4[c:doc_z]+1:0000``. Whatever a letter's text or an
     answer holds, reading them never raises (SPEC §10: "never an exception")."""
