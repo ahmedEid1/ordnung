@@ -25,7 +25,8 @@ def check_rows(rows: Iterable[Any], check: Callable[..., object], *, at_least: i
 
     A row that is a tuple is passed as the check's arguments, any other row as its only argument. A row
     written as ``pytest.param(..., id="name")`` is passed by its values and named by its id. The check
-    passes by returning and fails by raising, as a test does. A table with fewer than ``at_least`` rows
+    passes by returning and fails by raising, as a test does (a ``pytest.raises`` that saw nothing raised and
+    ``pytest.fail`` count as that row failing, like an assertion). A table with fewer than ``at_least`` rows
     fails: a table emptied by a wrong filter or a bad merge must not pass by checking nothing.
     """
     __tracebackhide__ = True
@@ -42,9 +43,9 @@ def check_rows(rows: Iterable[Any], check: Callable[..., object], *, at_least: i
         args = row if isinstance(row, tuple) else (row,)
         try:
             check(*args)
-        except Exception as exc:
+        except (Exception, pytest.fail.Exception) as exc:
             reason = str(exc).strip() or type(exc).__name__
-            if not isinstance(exc, AssertionError):
+            if not isinstance(exc, AssertionError | pytest.fail.Exception):
                 reason = f"{type(exc).__name__}: {reason}"
             failed.append(f"row {count}: {name}\n    " + reason.replace("\n", "\n    "))
     if count < at_least:

@@ -36,6 +36,19 @@ def test_a_row_that_raises_something_else_is_a_failing_row() -> None:
         check_rows(["1", "x"], int)
 
 
+def test_a_row_where_nothing_was_raised_though_the_check_expects_it_is_a_failing_row() -> None:
+    def refuses(text: str) -> None:
+        with pytest.raises(ValueError, match="invalid literal"):
+            int(text)
+
+    with pytest.raises(AssertionError) as failure:
+        check_rows(["x", "1", "y", "2"], refuses)
+    message = str(failure.value)
+    assert message.startswith("2 of 4 rows failed")
+    assert "row 2: '1'\n    DID NOT RAISE" in message
+    assert "row 4: '2'\n    DID NOT RAISE" in message
+
+
 def test_a_table_with_too_few_rows_fails() -> None:
     with pytest.raises(AssertionError, match="0 row"):
         check_rows([], lambda row: None)
