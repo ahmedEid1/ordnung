@@ -16,6 +16,14 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - `make eval-reproduce` holds every CI gate to its own replay, each read of holdout4 and of Ask's new questions
   on the demo household included, and `evals/results/INDEX.json` names the gate of each such cell.
 
+### Fixed
+
+- **A day left out follows a pinned day.** Judging the answer to a completeness re-ask, the check for a fixed date a
+  reading left out, the daily note Ordnung writes without Claude and the check of the days Claude's daily note calls due
+  fell back to the computer's date when they were given no day, even where the day is pinned (`ORDNUNG_TODAY`, the
+  demo's day, a test's pinned day). They now follow a pinned day too, and without one still use the computer's date.
+  Ordnung itself always gives them a day, so nothing it shows changes and no published evaluation number moves.
+
 ## 0.4.0 — 2026-11-17
 
 The third numbered release. [Updating](docs/guide.md#updating) says how to install it; *Upgrading* below says

@@ -38,6 +38,7 @@ from typing import Any, Literal
 
 from pydantic import ValidationError
 
+from ordnung import clock
 from ordnung.ingest.gaps import (
     Check,
     Gap,
@@ -797,7 +798,7 @@ def judge_completion(
     6. every dated to-do it adds found on the letter (in its text layer or a photo's transcript), and so the
        sender it names where the first answer named none or another;
     7. at least the first answer's share of its quotes found on the letter (:func:`located`)."""
-    day = today or date.today()
+    day = today or clock.today()
     notices = remedy_notices(pages)
     own_gap = reading_gap(second, pages, notices)
     if (
@@ -1001,7 +1002,7 @@ async def read_document(
         trace=trace,
         unrecorded=unrecorded,
         unanswered=unanswered,
-        today=arrived or _iso_day(data.today) or date.today(),
+        today=arrived or _iso_day(data.today) or clock.today(),
         injected=injected,
     )
 
