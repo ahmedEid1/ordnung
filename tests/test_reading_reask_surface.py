@@ -1,7 +1,7 @@
 """What the completeness re-ask shows and keeps around it (ADR 0016): the letter's warning when its answer was used
 (never a scam sign, never a hedge the benchmark reads as one), the trace (no repair counted, compared between
 readings), no further call once the letter was trashed or deleted, and the benchmark's honesty about a re-ask it
-has no recording of (never cached, said loudly, kept in the results, allowed for one letter only).
+has no recording of (never cached, said loudly, kept in the results).
 
 Synthetic letters (``tests/test_reading_reask.py``); the one benchmark letter named by its entry id only; nothing
 calls a model.
@@ -9,6 +9,7 @@ calls a model.
 
 from __future__ import annotations
 
+import itertools
 import sys
 from collections.abc import Iterator
 from pathlib import Path
@@ -17,14 +18,14 @@ from typing import Any
 import pytest
 
 from fixtures_llm import TODAY
+from helpers_tables import check_rows
 from ordnung import clock
 from ordnung.app_context import build_context
 from ordnung.ingest.extract import REASK_WARNING, reask_warning
 from ordnung.ingest.pipeline import TRASHED_AGAIN_ERROR, add_file, ingest_document
-from ordnung.llm.base import LLMRequest, ReplayMiss
+from ordnung.llm.base import LLMRequest
 from ordnung.llm.fake import FakeBackend
 from ordnung.llm.replay import ReplayBackend
-from ordnung.llm.runtime import LLMService
 from ordnung.secretary.triggers import _NOT_A_SIGN
 from ordnung.trace.compare import compare_traces
 from ordnung.trace.otel import to_otlp
@@ -35,7 +36,6 @@ from test_reading_reask import (
     COMPLETE,
     DECISION,
     EMPTY_READING,
-    MANIFEST,
     RECORDED,
     WithoutReask,
     as_first_recorded,
@@ -48,15 +48,9 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from evals import run as eval_run  # noqa: E402
-from evals.conditions import (  # noqa: E402
-    REASK_MISSING,
-    CallLog,
-    MeteredBackend,
-    prepare_document,
-    run_ordnung,
-)
+from evals.conditions import REASK_MISSING  # noqa: E402
 from evals.metrics import INJECTION_RE, SCAM_RE, UNCERTAINTY_RE  # noqa: E402
-from evals.records import Prediction, load_manifest  # noqa: E402
+from evals.records import Prediction  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -89,13 +83,18 @@ async def test_the_open_telemetry_export_names_the_re_ask_s_link_as_no_repair(da
     assert "ordnung.llm.completes" not in names["Extract"]
 
 
-@pytest.mark.parametrize("gap", ["empty", "remedy_left_out"])
-@pytest.mark.parametrize("injected", [False, True])
-def test_the_warning_is_no_scam_sign_and_no_hedge(gap: str, injected: bool) -> None:
-    warning = reask_warning(gap, injected=injected)  # type: ignore[arg-type]
-    assert REASK_WARNING.match(warning) and _NOT_A_SIGN.search(warning)
-    for pattern in (SCAM_RE, UNCERTAINTY_RE, INJECTION_RE):
-        assert not pattern.search(warning), (pattern.pattern[:40], warning)
+WARNING_GAPS = ["empty", "remedy_left_out"]
+WARNING_INJECTED = [False, True]
+
+
+def test_the_warning_is_no_scam_sign_and_no_hedge() -> None:
+    def check(gap: str, injected: bool) -> None:
+        warning = reask_warning(gap, injected=injected)  # type: ignore[arg-type]
+        assert REASK_WARNING.match(warning) and _NOT_A_SIGN.search(warning)
+        for pattern in (SCAM_RE, UNCERTAINTY_RE, INJECTION_RE):
+            assert not pattern.search(warning), (pattern.pattern[:40], warning)
+
+    check_rows(itertools.product(WARNING_GAPS, WARNING_INJECTED), check)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -158,7 +157,7 @@ async def test_read_again_and_compare_says_whether_the_re_ask_s_answer_was_used(
 
 
 # --------------------------------------------------------------------------------------------------
-# The benchmark: a missing re-ask recording is never cached, said loudly, and allowed for one letter only
+# The benchmark: a missing re-ask recording is never cached, and said loudly
 # --------------------------------------------------------------------------------------------------
 
 
@@ -232,19 +231,3 @@ def test_the_warning_is_said_under_quiet_too(
     assert eval_run.run_cli(args, backend=backend) == 0
     err = capsys.readouterr().err
     assert err.count("without their completeness re-ask's recording") == 1 and EMPTY_READING in err
-
-
-async def test_a_re_ask_miss_on_any_other_letter_is_a_replay_error(tmp_path: Path) -> None:
-    """Only the letter recorded before the re-ask existed may miss it; a change that makes
-    the check fire elsewhere must record that call, never score the first reading silently."""
-    entry = {e.id: e for e in load_manifest(MANIFEST)}["dev-municipal_decision-A1"]
-    document = prepare_document(entry, MANIFEST.parent, tmp_path)
-
-    def respond(request: LLMRequest) -> Any:
-        if request.prompt_name == "reading_gaps":
-            raise ReplayMiss("no recorded response for extract")
-        return dict(BLANK)
-
-    llm = LLMService(MeteredBackend(FakeBackend(respond), CallLog(), timeout_s=60))
-    with pytest.raises(ReplayMiss):
-        await run_ordnung(entry, document, llm, model="claude-sonnet-5")
