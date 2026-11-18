@@ -84,9 +84,34 @@ RULES_TOOL_NAMES = {"compute_deadline", "german_holidays", "add_working_days", "
 TOOL_NAMES = LEDGER_TOOL_NAMES | RULES_TOOL_NAMES
 
 
+@pytest.fixture(scope="module")
+def _seeded_ledger(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, dict[str, str]]:
+    """The seeded ledger, migrated and written once for the module and closed: a data folder to copy."""
+    folder = tmp_path_factory.mktemp("seeded") / "data"
+    folder.mkdir()
+    seeded = Store.open(Paths(folder).ensure())
+    try:
+        ids = seed_ledger(seeded)
+    finally:
+        seeded.close()
+    return folder, ids
+
+
 @pytest.fixture
-def ids(store: Store) -> dict[str, str]:
-    return seed_ledger(store)
+def store(paths: Paths, request: pytest.FixtureRequest) -> Iterator[Store]:
+    """A store of the test's own: a copy of the seeded ledger when the test asks for ``ids`` (directly or through
+    ``tools``), otherwise migrated and empty; closed after the test."""
+    if "ids" in request.fixturenames:
+        folder, _ = request.getfixturevalue("_seeded_ledger")
+        shutil.copytree(folder, paths.data_dir, dirs_exist_ok=True)
+    opened = Store.open(paths)
+    yield opened
+    opened.close()
+
+
+@pytest.fixture
+def ids(store: Store, _seeded_ledger: tuple[Path, dict[str, str]]) -> dict[str, str]:
+    return dict(_seeded_ledger[1])
 
 
 @pytest.fixture
