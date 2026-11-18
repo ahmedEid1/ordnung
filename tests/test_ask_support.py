@@ -350,7 +350,7 @@ def test_overview_totals_never_back_a_claim_about_a_record(tools: LedgerTools, i
     assert check(f"Energy costs you 48.00 € a month [contract:{phone}].", evidence)[1] == ["removed"]
 
 
-def test_top_level_messages_and_ids_are_no_context(tools: LedgerTools) -> None:
+def test_top_level_messages_and_ids_are_no_context() -> None:
     """Only overview values code works out need no citation — not messages or other fields."""
     result = render_tool_result(
         ToolAnswer({"found": False, "message": "Nothing on 31.12.2027", "month": "2026-10"})
