@@ -343,12 +343,16 @@ async def test_only_the_token_s_hash_is_in_the_database(data_dir: Path) -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-async def test_a_removed_phone_is_told_it_was_removed(data_dir: Path) -> None:
+async def test_removing_a_phone_signs_it_out_and_is_saved_first(data_dir: Path) -> None:
     async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
         await pair(api, phone)
         device = phone_of(api).devices[0].id
-        assert (await api.client.delete(f"/api/phone/devices/{device}")).status_code == 200
+        removed = await api.client.delete(f"/api/phone/devices/{device}")
+        assert removed.status_code == 200 and removed.json()["devices"] == []
+        assert load_record(api.ctx.store).devices == []  # saved before the answer
+        # the phone's first request after the removal: that answer clears its cookie, so it comes first
         refused = await phone.get("/api/items")
+        assert refused.status_code == 401
         assert refused.json() == {
             "detail": (
                 "This phone isn't paired with Ordnung any more. Pair it again from Settings → Phone on "
@@ -357,22 +361,13 @@ async def test_a_removed_phone_is_told_it_was_removed(data_dir: Path) -> None:
             "code": "phone_not_paired",
             "removed": "1",
         }
-        # never paired here (no cookie): nothing was removed
-        async with phone_client(api, OTHER_PHONE_IP) as stranger:
-            assert "removed" not in (await stranger.get("/api/items")).json()
-
-
-async def test_removing_a_phone_signs_it_out_and_is_saved_first(data_dir: Path) -> None:
-    async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
-        await pair(api, phone)
-        device = phone_of(api).devices[0].id
-        removed = await api.client.delete(f"/api/phone/devices/{device}")
-        assert removed.status_code == 200 and removed.json()["devices"] == []
-        assert load_record(api.ctx.store).devices == []  # saved before the answer
         assert (await phone.get("/api/documents")).status_code == 401
         assert (await api.client.delete(f"/api/phone/devices/{device}")).status_code == 404
         (entry,) = _kinds(api, "phone.removed")
         assert (entry.message, entry.data) == ("Removed Sam's iPhone", {"device": device, "by": "computer"})
+        # never paired here (no cookie): nothing was removed
+        async with phone_client(api, OTHER_PHONE_IP) as stranger:
+            assert "removed" not in (await stranger.get("/api/items")).json()
 
 
 async def test_starting_over_removes_phones_and_the_certificates(data_dir: Path) -> None:
