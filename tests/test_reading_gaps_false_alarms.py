@@ -524,14 +524,13 @@ def test_a_served_widerspruchsbescheid_naming_the_first_decision_stays_served() 
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("months", [1, 2])
 async def test_a_conflicted_served_letter_still_cites_the_envelope(
-    data_dir: Path, pinned_today: None, months: int
+    data_dir: Path, pinned_today: None
 ) -> None:
     """When settling keeps the letter's own notice (the reading says two months, the notice one), the receipt
     still cites ``pzu`` — so the app asks for the date on the yellow envelope, never "When did it arrive?" with Today."""
     payload = copy.deepcopy(SERVED_LETTER.payload)
-    payload["items"][0]["date"]["amount"] = months
+    payload["items"][0]["date"]["amount"] = 2
     letter = Letter(marker=SERVED_MARKER, pages=SERVED_LETTER.pages, payload=payload)
     async with api_for(data_dir, router=Router(letters=(letter,))) as api:
         body = await api.upload((f"{SERVED_MARKER}.pdf", letter.pdf()))
