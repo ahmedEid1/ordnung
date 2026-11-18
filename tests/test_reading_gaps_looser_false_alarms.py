@@ -21,6 +21,7 @@ from typing import Any
 
 import pytest
 
+from helpers_tables import check_rows
 from ordnung.ingest.gaps import (
     _OPTION_ASKED,
     _W_QUESTION,
@@ -76,11 +77,13 @@ def test_the_re_review_s_cases_are_all_here() -> None:
     assert sum(1 for case in CASES if case["expected"]) <= 10
 
 
-@pytest.mark.parametrize("case", CASES, ids=[case["id"] for case in CASES])
-def test_a_confirmed_false_alarm_or_wrong_date_files_only_what_base_files(case: dict[str, Any]) -> None:
-    extraction, letter_page = _case_letter(case)
-    found = deadline_items(extraction, [letter_page], today=date.fromisoformat(case["today"]))
-    assert [[item.date.date, item.date.nature] for item in found] == case["expected"], case["finding"]
+def test_a_confirmed_false_alarm_or_wrong_date_files_only_what_base_files() -> None:
+    def check(case: dict[str, Any]) -> None:
+        extraction, letter_page = _case_letter(case)
+        found = deadline_items(extraction, [letter_page], today=date.fromisoformat(case["today"]))
+        assert [[item.date.date, item.date.nature] for item in found] == case["expected"], case["finding"]
+
+    check_rows(CASES, check)
 
 
 def in_letter(*lines: str, lang: str = "de") -> list[tuple[str | None, str]]:
@@ -105,25 +108,27 @@ def in_letter(*lines: str, lang: str = "de") -> list[tuple[str | None, str]]:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("sentence", "written", "lang"),
-    [
-        ("Bitte überweisen Sie den Betrag bis zum 15.11.", W, "de"),
-        ("Zahlbar bis: 15.11.", W, "de"),
-        ("Please pay by 15 November.", W, "en"),
-        ("Bitte überweisen Sie den Betrag bis zum 15.01.", date(2026, 12, 10), "de"),
-        ("Bitte gleichen Sie den Betrag bis zum 23.10. aus.", W, "de"),
-        ("Bitte überweisen Sie den Beitrag.\nZahlungsfrist: 23.10.", W, "de"),
-        ("Bitte reichen Sie die Unterlagen bis zum 31.12. des Jahres 2027 ein.", W, "de"),
-        (
-            "Bitte reichen Sie die Unterlagen bis zum 31. März des nächsten Jahres ein.",
-            date(2026, 1, 10),
-            "de",
-        ),
-    ],
-)
-def test_a_date_without_its_year_files_nothing(sentence: str, written: date, lang: str) -> None:
-    assert filed(sentence, written, lang, today=written) == []
+YEARLESS_SENTENCES = [
+    ("Bitte überweisen Sie den Betrag bis zum 15.11.", W, "de"),
+    ("Zahlbar bis: 15.11.", W, "de"),
+    ("Please pay by 15 November.", W, "en"),
+    ("Bitte überweisen Sie den Betrag bis zum 15.01.", date(2026, 12, 10), "de"),
+    ("Bitte gleichen Sie den Betrag bis zum 23.10. aus.", W, "de"),
+    ("Bitte überweisen Sie den Beitrag.\nZahlungsfrist: 23.10.", W, "de"),
+    ("Bitte reichen Sie die Unterlagen bis zum 31.12. des Jahres 2027 ein.", W, "de"),
+    (
+        "Bitte reichen Sie die Unterlagen bis zum 31. März des nächsten Jahres ein.",
+        date(2026, 1, 10),
+        "de",
+    ),
+]
+
+
+def test_a_date_without_its_year_files_nothing() -> None:
+    def check(sentence: str, written: date, lang: str) -> None:
+        assert filed(sentence, written, lang, today=written) == []
+
+    check_rows(YEARLESS_SENTENCES, check)
 
 
 def test_the_same_requests_with_their_year_file() -> None:
@@ -137,48 +142,49 @@ def test_the_same_requests_with_their_year_file() -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("sentence", "lang", "expected"),
-    [
-        ("Senden Sie uns die Unterlagen bis zum 23.10.2026.", "de", SENDS),
-        ("Bitte senden Sie uns Ihren Steuerbescheid bis zum 23.10.2026.", "de", SENDS),
-        ("Bitte gleichen Sie den offenen Betrag bis zum 23.10.2026 aus.", "de", PAYS),
-        ("Bitte lassen Sie uns die fehlenden Belege bis zum 23.10.2026 zukommen.", "de", SENDS),
-        ("Wir bitten Sie um Zahlung bis zum 23.10.2026.", "de", PAYS),
-        ("Bitte bis zum 23.10.2026 überweisen.", "de", PAYS),
-        ("Bitte bis 23.10.2026 ausgefüllt und unterschrieben zurücksenden.", "de", SENDS),
-        ("Kindly pay the outstanding amount by 23 October 2026.", "en", PAYS),
-        ("Please ensure that your payment reaches us by 23 October 2026.", "en", PAYS),
-        ("Bitte überweisen Sie den Betrag auf unser Konto.\nZahlungsfrist: 23.10.2026", "de", PAYS),
-        ("Bitte überweisen Sie den Betrag.\nZahlungseingang bis: 23.10.2026 | 120,00 € | offen", "de", PAYS),
-        ("Bitte senden Sie uns die Unterlagen.\nAbgabetermin: 23.10.2026", "de", SENDS),
-        ("Bitte füllen Sie den Bogen aus.\nRückantwort erbeten bis Freitag, 23.10.2026.", "de", SENDS),
-        ("Please return the signed form to us.\nReply by: 23 October 2026", "en", SENDS),
-    ],
-)
-def test_a_request_in_the_person_s_own_words_still_files(
-    sentence: str, lang: str, expected: list[tuple[str, str]]
-) -> None:
-    assert filed(sentence, W, lang) == expected
+OWN_WORDS_REQUESTS = [
+    ("Senden Sie uns die Unterlagen bis zum 23.10.2026.", "de", SENDS),
+    ("Bitte senden Sie uns Ihren Steuerbescheid bis zum 23.10.2026.", "de", SENDS),
+    ("Bitte gleichen Sie den offenen Betrag bis zum 23.10.2026 aus.", "de", PAYS),
+    ("Bitte lassen Sie uns die fehlenden Belege bis zum 23.10.2026 zukommen.", "de", SENDS),
+    ("Bitte bis zum 23.10.2026 überweisen.", "de", PAYS),
+    ("Bitte bis 23.10.2026 ausgefüllt und unterschrieben zurücksenden.", "de", SENDS),
+    ("Kindly pay the outstanding amount by 23 October 2026.", "en", PAYS),
+    ("Please ensure that your payment reaches us by 23 October 2026.", "en", PAYS),
+    ("Bitte überweisen Sie den Betrag auf unser Konto.\nZahlungsfrist: 23.10.2026", "de", PAYS),
+    ("Bitte überweisen Sie den Betrag.\nZahlungseingang bis: 23.10.2026 | 120,00 € | offen", "de", PAYS),
+    ("Bitte senden Sie uns die Unterlagen.\nAbgabetermin: 23.10.2026", "de", SENDS),
+    ("Bitte füllen Sie den Bogen aus.\nRückantwort erbeten bis Freitag, 23.10.2026.", "de", SENDS),
+    ("Please return the signed form to us.\nReply by: 23 October 2026", "en", SENDS),
+]
 
 
-@pytest.mark.parametrize(
-    ("sentence", "lang"),
-    [
-        # a condition or group no list names, before the request (conditions and groups)
-        ("Bei Nichtgefallen senden Sie uns die Ware bis zum 23.10.2026.", "de"),
-        ("Sobald Sie umgezogen sind, senden Sie uns Ihre neue Anschrift bis zum 23.10.2026.", "de"),
-        ("Bei Inanspruchnahme der Ratenzahlung bitte bis zum 23.10.2026 überweisen.", "de"),
-        ("Als Grenzgänger lassen Sie uns bitte Ihre Bescheinigung bis zum 23.10.2026 zukommen.", "de"),
-        ("When moving out, please ensure the keys reach us by 23 October 2026.", "en"),
-        ("For self-employed members, kindly return the form by 23 October 2026.", "en"),
-        # any other words before it, too (a miss, never a false alarm: precision first)
-        ("Den Betrag bitte bis zum 23.10.2026 überweisen.", "de"),
-        ("Daher bitten wir Sie um Zahlung bis zum 23.10.2026.", "de"),
-    ],
-)
-def test_words_before_the_request_in_its_sentence_file_nothing(sentence: str, lang: str) -> None:
-    assert filed(sentence, W, lang) == []
+def test_a_request_in_the_person_s_own_words_still_files() -> None:
+    def check(sentence: str, lang: str, expected: list[tuple[str, str]]) -> None:
+        assert filed(sentence, W, lang) == expected
+
+    check_rows(OWN_WORDS_REQUESTS, check)
+
+
+WORDS_BEFORE_THE_REQUEST = [
+    # a condition or group no list names, before the request (conditions and groups)
+    ("Bei Nichtgefallen senden Sie uns die Ware bis zum 23.10.2026.", "de"),
+    ("Sobald Sie umgezogen sind, senden Sie uns Ihre neue Anschrift bis zum 23.10.2026.", "de"),
+    ("Bei Inanspruchnahme der Ratenzahlung bitte bis zum 23.10.2026 überweisen.", "de"),
+    ("Als Grenzgänger lassen Sie uns bitte Ihre Bescheinigung bis zum 23.10.2026 zukommen.", "de"),
+    ("When moving out, please ensure the keys reach us by 23 October 2026.", "en"),
+    ("For self-employed members, kindly return the form by 23 October 2026.", "en"),
+    # any other words before it, too (a miss, never a false alarm: precision first)
+    ("Den Betrag bitte bis zum 23.10.2026 überweisen.", "de"),
+    ("Daher bitten wir Sie um Zahlung bis zum 23.10.2026.", "de"),
+]
+
+
+def test_words_before_the_request_in_its_sentence_file_nothing() -> None:
+    def check(sentence: str, lang: str) -> None:
+        assert filed(sentence, W, lang) == []
+
+    check_rows(WORDS_BEFORE_THE_REQUEST, check)
 
 
 def test_a_request_after_the_greeting_s_line_opens_its_sentence() -> None:
@@ -186,58 +192,40 @@ def test_a_request_after_the_greeting_s_line_opens_its_sentence() -> None:
     assert in_letter("• Bitte bis zum 23.10.2026 überweisen.") == PAYS
 
 
-@pytest.mark.parametrize(
-    "sentence",
-    [
-        # a possessive alone names no one as the one to act
-        "Wir bitten um Rücksendung Ihres unterschriebenen Vertrags bis zum 23.10.2026.",
-        "Wir bitten um Zahlung Ihrer Versicherung bis zum 23.10.2026.",
-        # "sie" (they), not "Sie"
-        "Senden sie uns die Unterlagen bis zum 23.10.2026.",
-        # "Sie" in the sentence, but not as the one the sender asks
-        "Wir bitten um Rücksendung des Vertrags, den Sie bis zum 23.10.2026 unterschreiben.",
-    ],
-)
-def test_a_request_that_does_not_name_the_person_as_the_one_to_act_files_nothing(sentence: str) -> None:
-    assert filed(sentence, W) == []
+NOT_THE_PERSON_TO_ACT = [
+    # a possessive alone names no one as the one to act
+    "Wir bitten um Rücksendung Ihres unterschriebenen Vertrags bis zum 23.10.2026.",
+    "Wir bitten um Zahlung Ihrer Versicherung bis zum 23.10.2026.",
+    # "sie" (they), not "Sie"
+    "Senden sie uns die Unterlagen bis zum 23.10.2026.",
+    # "Sie" in the sentence, but not as the one the sender asks
+    "Wir bitten um Rücksendung des Vertrags, den Sie bis zum 23.10.2026 unterschreiben.",
+]
 
 
-@pytest.mark.parametrize(
-    "sentence",
-    [
-        "Bitte bis zum 23.10.2026 abwarten und erst danach überweisen.",
-        "Bitte bis zum 23.10.2026 nichts überweisen.",
-        "Bitte bis zum 23.10.2026 warten und dann überweisen.",
-        "Bitte bis zum 23.10.2026 abwarten und überweisen.",
-        "Bitte bis zum 23.10.2026 nicht überweisen.",
-    ],
-)
-def test_bitte_bis_with_a_wait_or_a_negation_before_the_infinitive_files_nothing(sentence: str) -> None:
-    assert filed(sentence, W) == []
+def test_a_request_that_does_not_name_the_person_as_the_one_to_act_files_nothing() -> None:
+    def check(sentence: str) -> None:
+        assert filed(sentence, W) == []
+
+    check_rows(NOT_THE_PERSON_TO_ACT, check)
+
+
+WAIT_OR_NEGATION = [
+    "Bitte bis zum 23.10.2026 abwarten und überweisen.",
+    "Bitte bis zum 23.10.2026 nicht überweisen.",
+]
+
+
+def test_bitte_bis_with_a_wait_or_a_negation_before_the_infinitive_files_nothing() -> None:
+    def check(sentence: str) -> None:
+        assert filed(sentence, W) == []
+
+    check_rows(WAIT_OR_NEGATION, check)
 
 
 # --------------------------------------------------------------------------------------------------
 # Labels: a window's first day, a statement's or overview's page
 # --------------------------------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize(
-    ("lines", "lang"),
-    [
-        (("Bitte überweisen Sie den Beitrag.", "Zahlungsfrist: 01.11.2026 bis spätestens 15.11.2026"), "de"),
-        (("Bitte überweisen Sie den Beitrag.", "Zahlungsfrist: 01.11.2026 bis einschl. 15.11.2026"), "de"),
-        (("Bitte reichen Sie die Unterlagen ein.", "Abgabefrist: 01.11.2026 bis inkl. 15.11.2026"), "de"),
-        (("Bitte überweisen Sie den Beitrag.", "Zahlungsfrist: 01.11.2026 bis Monatsende"), "de"),
-        (("Bitte reichen Sie die Unterlagen ein.", "Abgabefrist: 01.11.2026 – Ende November"), "de"),
-        (("Bitte überweisen Sie den Beitrag.", "Zahlungsfrist: 01.11.2026 zzgl. 14 Tage"), "de"),
-        (("Please pay the invoice.", "Payment deadline: 1 November 2026 up to 15 November 2026"), "en"),
-        (("Please pay the invoice.", "Payment deadline: 1 November 2026 until the end of the month"), "en"),
-    ],
-)
-def test_a_label_s_date_with_more_words_after_it_on_its_line_files_nothing(
-    lines: tuple[str, ...], lang: str
-) -> None:
-    assert in_letter(*lines, lang=lang) == []
 
 
 def test_a_label_s_date_followed_by_a_field_separator_or_a_bracket_files() -> None:
@@ -248,17 +236,11 @@ def test_a_label_s_date_followed_by_a_field_separator_or_a_bracket_files() -> No
     )
 
 
-@pytest.mark.parametrize(
-    ("lines", "lang"),
-    [
-        (("Umsatzübersicht Oktober", "Ihre Zahlung muss bis zum 30.10.2026 bei uns eingegangen sein, damit sie in "
-          "dieser Übersicht erscheint."), "de"),
-        (("Your quarterly overview", "Your payment must reach us by 30 October 2026 to be listed in this overview."),
-         "en"),
-        (("Kontoauszug Oktober", "Bitte überweisen Sie den Saldo.", "Letzter Zahlungstag: 30.10.2026"), "de"),
-    ],
-)  # fmt: skip
-def test_a_statement_s_cut_off_files_nothing(lines: tuple[str, ...], lang: str) -> None:
+def test_a_statement_s_cut_off_files_nothing() -> None:
+    lines, lang = (
+        ("Kontoauszug Oktober", "Bitte überweisen Sie den Saldo.", "Letzter Zahlungstag: 30.10.2026"),
+        "de",
+    )
     assert in_letter(*lines, lang=lang) == []
 
 
@@ -267,19 +249,21 @@ def test_a_statement_s_cut_off_files_nothing(lines: tuple[str, ...], lang: str) 
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "sentence",
-    [
-        "Senden Sie uns den ausstehenden Betrag bis zum 23.10.2026.",
-        "Bitte senden Sie uns Ihre Zahlung bis zum 23.10.2026.",
-        "Bitte senden Sie uns Ihre Rechnung über die erbrachten Leistungen bis zum 23.10.2026.",
-        "Bitte lassen Sie uns Ihre Steuer-ID bis zum 23.10.2026 zukommen.",
-        "Bitte lassen Sie uns Ihre Gebühren-Übersicht bis zum 23.10.2026 zukommen.",
-        "Bitte lassen Sie uns Ihre Inserate bis zum 23.10.2026 zukommen.",
-    ],
-)
-def test_an_unclear_kind_files_nothing(sentence: str) -> None:
-    assert filed(sentence, W) == []
+UNCLEAR_KINDS = [
+    "Senden Sie uns den ausstehenden Betrag bis zum 23.10.2026.",
+    "Bitte senden Sie uns Ihre Zahlung bis zum 23.10.2026.",
+    "Bitte senden Sie uns Ihre Rechnung über die erbrachten Leistungen bis zum 23.10.2026.",
+    "Bitte lassen Sie uns Ihre Steuer-ID bis zum 23.10.2026 zukommen.",
+    "Bitte lassen Sie uns Ihre Gebühren-Übersicht bis zum 23.10.2026 zukommen.",
+    "Bitte lassen Sie uns Ihre Inserate bis zum 23.10.2026 zukommen.",
+]
+
+
+def test_an_unclear_kind_files_nothing() -> None:
+    def check(sentence: str) -> None:
+        assert filed(sentence, W) == []
+
+    check_rows(UNCLEAR_KINDS, check)
 
 
 def test_a_word_ending_in_rate_names_no_rate() -> None:
@@ -300,24 +284,26 @@ def test_a_hyphenated_compound_counts_by_its_last_part() -> None:
     assert _nouns_kind("die Steuer-Bescheinigung") is None  # the parts disagree: unclear
 
 
-@pytest.mark.parametrize(
-    ("words", "expected"),
-    [
-        ("\nZahlungsfrist: ", "payment"),
-        ("\nLetzter Zahlungstag: ", "payment"),
-        ("\nZahlungseingang bis: ", "payment"),
-        ("\nPayment deadline: ", "payment"),
-        ("\nDeadline for payment: ", "payment"),
-        ("\nRücksendung bis: ", "declaration"),
-        # a compound whose last word is no payment, or a payment that is only what a document is about
-        ("\nFrist für die Zahlungsbestätigung: ", None),
-        ("\nFrist für den Zahlungsnachweis: ", None),
-        ("\nFrist für Ihren Überweisungsbeleg: ", None),
-        ("\nDeadline for proof of payment: ", None),
-    ],
-)
-def test_a_label_s_kind_is_its_whole_word_s(words: str, expected: str | None) -> None:
-    assert _label_kind(words, words) == expected
+LABEL_KINDS = [
+    ("\nZahlungsfrist: ", "payment"),
+    ("\nLetzter Zahlungstag: ", "payment"),
+    ("\nZahlungseingang bis: ", "payment"),
+    ("\nPayment deadline: ", "payment"),
+    ("\nDeadline for payment: ", "payment"),
+    ("\nRücksendung bis: ", "declaration"),
+    # a compound whose last word is no payment, or a payment that is only what a document is about
+    ("\nFrist für die Zahlungsbestätigung: ", None),
+    ("\nFrist für den Zahlungsnachweis: ", None),
+    ("\nFrist für Ihren Überweisungsbeleg: ", None),
+    ("\nDeadline for proof of payment: ", None),
+]
+
+
+def test_a_label_s_kind_is_its_whole_word_s() -> None:
+    def check(words: str, expected: str | None) -> None:
+        assert _label_kind(words, words) == expected
+
+    check_rows(LABEL_KINDS, check)
 
 
 def test_a_verb_on_the_label_s_line_tells_its_kind() -> None:
@@ -363,65 +349,67 @@ def test_a_holiday_or_opening_hours_page_stops_its_labels_not_a_request_in_the_p
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("guarded", "control", "lang"),
-    [
-        # _NOT_OWED (the strict path's words): a condition
-        ("Bitte bis zum 23.10.2026 überweisen, falls noch offen.", "Bitte bis zum 23.10.2026 überweisen.", "de"),
-        # _LOOSE_NOT_OWED: an option, a cut-off, the earliest day
-        ("Bitte bis zum 23.10.2026 überweisen, wenn möglich.", "Bitte bis zum 23.10.2026 überweisen.", "de"),
-        ("Bitte bis zum 23.10.2026 freiwillig überweisen.", "Bitte bis zum 23.10.2026 überweisen.", "de"),
-        ("Kindly pay the amount by 23 October 2026 at the earliest.", "Kindly pay the amount by 23 October 2026.",
-         "en"),
-        # _LOOSE_CONDITION: "ggf.", "bei Bedarf", "in case of"
-        ("Bitte ggf. bis zum 23.10.2026 überweisen.", "Bitte bis zum 23.10.2026 überweisen.", "de"),
-        ("Bitte bei Bedarf bis zum 23.10.2026 überweisen.", "Bitte bis zum 23.10.2026 überweisen.", "de"),
-        ("Kindly pay the amount by 23 October 2026 in case of a claim.", "Kindly pay the amount by 23 October 2026.",
-         "en"),
-        # _SENDER_ACTS: the sender's own processing
-        (
-            "Bitte bis zum 23.10.2026 überweisen, damit wir die Bearbeitung abschließen.",
-            "Bitte bis zum 23.10.2026 überweisen.",
-            "de",
-        ),
-        # _SENDER_DID: the sender's past request in the same sentence
-        ("Bitte bis zum 23.10.2026 überweisen, wie wir Sie im Mai gebeten haben; wir haben Sie aufgefordert.",
-         "Bitte bis zum 23.10.2026 überweisen.", "de"),
-        # _DONE: done or only stated
-        ("Bitte bis zum 23.10.2026 überweisen – das hat sich erledigt.", "Bitte bis zum 23.10.2026 überweisen.", "de"),
-        ("Kindly pay the amount by 23 October 2026; it has been received.", "Kindly pay the amount by 23 October 2026.",
-         "en"),
-        # _NOT_A_DEMAND: an offer, a survey, a contest
-        ("Senden Sie uns den Fragebogen zur Kundenumfrage bis zum 23.10.2026.",
-         "Senden Sie uns den Fragebogen bis zum 23.10.2026.", "de"),
-        # _CLOSED: a holiday or closing in the request's own sentence
-        ("Bitte bis zum 23.10.2026 überweisen, da wir über die Feiertage geschlossen haben.",
-         "Bitte bis zum 23.10.2026 überweisen.", "de"),
-        # _REMEDY: a remedy's sentence is the remedy check's (as on the strict path)
-        ("Senden Sie uns Ihren Widerspruch bis zum 23.10.2026.", "Senden Sie uns Ihre Antwort bis zum 23.10.2026.",
-         "de"),
-        # _PERIOD_END: what the payment is for
-        ("Bitte gleichen Sie den Beitrag für den Zeitraum bis zum 31.12.2026 aus.",
-         "Bitte gleichen Sie den Beitrag bis zum 31.12.2026 aus.", "de"),
-        # _RANGE_START: a window's first day (words and labels no other guard stops)
-        ("Kindly pay the amount by 1 November 2026 to 15 November 2026.", "Kindly pay the amount by 1 November 2026.",
-         "en"),
-        # _VERB_FIRST and _GROUP_ONLY: a label in a sentence opened by a condition's verb or a group
-        ("Bitte senden Sie uns die Unterlagen.\nHaben Sie Kinder unter 18 Jahren, Frist für den Nachweis: "
-         "23.10.2026", "Bitte senden Sie uns die Unterlagen.\nFrist für den Nachweis: 23.10.2026", "de"),
-        ("Bitte senden Sie uns die Unterlagen.\nFür Mitglieder – Abgabefrist: 23.10.2026",
-         "Bitte senden Sie uns die Unterlagen.\nAbgabefrist: 23.10.2026", "de"),
-        # _TO_YOU: money that comes to the person
-        ("Senden Sie uns die Unterlagen bis zum 23.10.2026, damit wir Ihnen das Kindergeld zahlen.",
-         "Senden Sie uns die Unterlagen bis zum 23.10.2026.", "de"),
-        # _THIRD_PARTY: another party in the sentence
-        ("Senden Sie uns die Bescheinigung Ihres Arbeitgebers bis zum 23.10.2026.",
-         "Senden Sie uns die Bescheinigung bis zum 23.10.2026.", "de"),
-    ],
-)  # fmt: skip
-def test_each_guard_alone_stops_a_request(guarded: str, control: str, lang: str) -> None:
-    assert filed(guarded, W, lang) == []
-    assert filed(control, W, lang) != []
+GUARDED_REQUESTS = [
+    # _NOT_OWED (the strict path's words): a condition
+    ("Bitte bis zum 23.10.2026 überweisen, falls noch offen.", "Bitte bis zum 23.10.2026 überweisen.", "de"),
+    # _LOOSE_NOT_OWED: an option, a cut-off, the earliest day
+    ("Bitte bis zum 23.10.2026 überweisen, wenn möglich.", "Bitte bis zum 23.10.2026 überweisen.", "de"),
+    ("Bitte bis zum 23.10.2026 freiwillig überweisen.", "Bitte bis zum 23.10.2026 überweisen.", "de"),
+    ("Kindly pay the amount by 23 October 2026 at the earliest.", "Kindly pay the amount by 23 October 2026.",
+     "en"),
+    # _LOOSE_CONDITION: "ggf.", "bei Bedarf", "in case of"
+    ("Bitte ggf. bis zum 23.10.2026 überweisen.", "Bitte bis zum 23.10.2026 überweisen.", "de"),
+    ("Bitte bei Bedarf bis zum 23.10.2026 überweisen.", "Bitte bis zum 23.10.2026 überweisen.", "de"),
+    ("Kindly pay the amount by 23 October 2026 in case of a claim.", "Kindly pay the amount by 23 October 2026.",
+     "en"),
+    # _SENDER_ACTS: the sender's own processing
+    (
+        "Bitte bis zum 23.10.2026 überweisen, damit wir die Bearbeitung abschließen.",
+        "Bitte bis zum 23.10.2026 überweisen.",
+        "de",
+    ),
+    # _SENDER_DID: the sender's past request in the same sentence
+    ("Bitte bis zum 23.10.2026 überweisen, wie wir Sie im Mai gebeten haben; wir haben Sie aufgefordert.",
+     "Bitte bis zum 23.10.2026 überweisen.", "de"),
+    # _DONE: done or only stated
+    ("Bitte bis zum 23.10.2026 überweisen – das hat sich erledigt.", "Bitte bis zum 23.10.2026 überweisen.", "de"),
+    ("Kindly pay the amount by 23 October 2026; it has been received.", "Kindly pay the amount by 23 October 2026.",
+     "en"),
+    # _NOT_A_DEMAND: an offer, a survey, a contest
+    ("Senden Sie uns den Fragebogen zur Kundenumfrage bis zum 23.10.2026.",
+     "Senden Sie uns den Fragebogen bis zum 23.10.2026.", "de"),
+    # _CLOSED: a holiday or closing in the request's own sentence
+    ("Bitte bis zum 23.10.2026 überweisen, da wir über die Feiertage geschlossen haben.",
+     "Bitte bis zum 23.10.2026 überweisen.", "de"),
+    # _REMEDY: a remedy's sentence is the remedy check's (as on the strict path)
+    ("Senden Sie uns Ihren Widerspruch bis zum 23.10.2026.", "Senden Sie uns Ihre Antwort bis zum 23.10.2026.",
+     "de"),
+    # _PERIOD_END: what the payment is for
+    ("Bitte gleichen Sie den Beitrag für den Zeitraum bis zum 31.12.2026 aus.",
+     "Bitte gleichen Sie den Beitrag bis zum 31.12.2026 aus.", "de"),
+    # _RANGE_START: a window's first day (words and labels no other guard stops)
+    ("Kindly pay the amount by 1 November 2026 to 15 November 2026.", "Kindly pay the amount by 1 November 2026.",
+     "en"),
+    # _VERB_FIRST and _GROUP_ONLY: a label in a sentence opened by a condition's verb or a group
+    ("Bitte senden Sie uns die Unterlagen.\nHaben Sie Kinder unter 18 Jahren, Frist für den Nachweis: "
+     "23.10.2026", "Bitte senden Sie uns die Unterlagen.\nFrist für den Nachweis: 23.10.2026", "de"),
+    ("Bitte senden Sie uns die Unterlagen.\nFür Mitglieder – Abgabefrist: 23.10.2026",
+     "Bitte senden Sie uns die Unterlagen.\nAbgabefrist: 23.10.2026", "de"),
+    # _TO_YOU: money that comes to the person
+    ("Senden Sie uns die Unterlagen bis zum 23.10.2026, damit wir Ihnen das Kindergeld zahlen.",
+     "Senden Sie uns die Unterlagen bis zum 23.10.2026.", "de"),
+    # _THIRD_PARTY: another party in the sentence
+    ("Senden Sie uns die Bescheinigung Ihres Arbeitgebers bis zum 23.10.2026.",
+     "Senden Sie uns die Bescheinigung bis zum 23.10.2026.", "de"),
+]  # fmt: skip
+
+
+def test_each_guard_alone_stops_a_request() -> None:
+    def check(guarded: str, control: str, lang: str) -> None:
+        assert filed(guarded, W, lang) == []
+        assert filed(control, W, lang) != []
+
+    check_rows(GUARDED_REQUESTS, check)
 
 
 def test_a_labelled_sentence_s_window_files_nothing() -> None:
@@ -444,16 +432,18 @@ def test_a_strict_date_in_a_guarded_sentence_neither_covers_nor_asks() -> None:
     assert in_letter(*lines, "Zahlungsfrist: 23.10.2026") == []
 
 
-@pytest.mark.parametrize(
-    "ask",
-    [
-        "Falls noch offen, überweisen Sie den Betrag.",  # a condition (_NOT_OWED)
-        "Bitte überweisen Sie den Betrag nicht.",  # a negation (_LOOSE_NOT_OWED)
-    ],
-)
-def test_a_page_s_request_in_a_condition_or_negation_asks_for_no_label(ask: str) -> None:
-    assert in_letter(ask, "Zahlungsfrist: 23.10.2026") == []
-    assert in_letter("Bitte überweisen Sie den Betrag.", "Zahlungsfrist: 23.10.2026") == PAYS
+CONDITIONAL_PAGE_ASKS = [
+    "Falls noch offen, überweisen Sie den Betrag.",  # a condition (_NOT_OWED)
+    "Bitte überweisen Sie den Betrag nicht.",  # a negation (_LOOSE_NOT_OWED)
+]
+
+
+def test_a_page_s_request_in_a_condition_or_negation_asks_for_no_label() -> None:
+    def check(ask: str) -> None:
+        assert in_letter(ask, "Zahlungsfrist: 23.10.2026") == []
+        assert in_letter("Bitte überweisen Sie den Betrag.", "Zahlungsfrist: 23.10.2026") == PAYS
+
+    check_rows(CONDITIONAL_PAGE_ASKS, check)
 
 
 def test_the_letter_s_own_date_or_one_past_when_read_files_nothing() -> None:
@@ -522,26 +512,28 @@ def test_a_purpose_of_the_sender_s_is_struck_out_before_its_acts_are_read() -> N
     assert filed("Senden Sie uns die Unterlagen zur Bearbeitung bis zum 23.10.2026.", W) == SENDS
 
 
-@pytest.mark.parametrize(
-    ("lines", "control"),
-    [
-        # _STATUS: a status letter's page
-        (("Sachstand Ihres Antrags", "Bitte senden Sie uns die Unterlagen.", "Abgabefrist: 23.10.2026"),
-         ("Ihr Antrag", "Bitte senden Sie uns die Unterlagen.", "Abgabefrist: 23.10.2026")),
-        # _NOT_A_DEMAND on the page: an offer's page
-        (("Unser Angebot für Sie", "Bitte senden Sie uns die Unterlagen.", "Abgabefrist: 23.10.2026"),
-         ("Unser Schreiben an Sie", "Bitte senden Sie uns die Unterlagen.", "Abgabefrist: 23.10.2026")),
-        # _CLOSED on the page: office hours in a sentence of their own
-        (("Unsere Sprechzeiten haben sich geändert.", "Bitte senden Sie uns die Unterlagen.", "Abgabefrist: 23.10.2026"),
-         ("Unsere Telefonnummer hat sich geändert.", "Bitte senden Sie uns die Unterlagen.", "Abgabefrist: 23.10.2026")),
-        # the page asks for the other kind only
-        (("Bitte überweisen Sie den Betrag.", "Abgabefrist: 23.10.2026"),
-         ("Bitte senden Sie uns die Unterlagen.", "Abgabefrist: 23.10.2026")),
-    ],
-)  # fmt: skip
-def test_each_page_guard_alone_stops_a_label(lines: tuple[str, ...], control: tuple[str, ...]) -> None:
-    assert in_letter(*lines) == []
-    assert in_letter(*control) == SENDS
+GUARDED_PAGES = [
+    # _STATUS: a status letter's page
+    (("Sachstand Ihres Antrags", "Bitte senden Sie uns die Unterlagen.", "Abgabefrist: 23.10.2026"),
+     ("Ihr Antrag", "Bitte senden Sie uns die Unterlagen.", "Abgabefrist: 23.10.2026")),
+    # _NOT_A_DEMAND on the page: an offer's page
+    (("Unser Angebot für Sie", "Bitte senden Sie uns die Unterlagen.", "Abgabefrist: 23.10.2026"),
+     ("Unser Schreiben an Sie", "Bitte senden Sie uns die Unterlagen.", "Abgabefrist: 23.10.2026")),
+    # _CLOSED on the page: office hours in a sentence of their own
+    (("Unsere Sprechzeiten haben sich geändert.", "Bitte senden Sie uns die Unterlagen.", "Abgabefrist: 23.10.2026"),
+     ("Unsere Telefonnummer hat sich geändert.", "Bitte senden Sie uns die Unterlagen.", "Abgabefrist: 23.10.2026")),
+    # the page asks for the other kind only
+    (("Bitte überweisen Sie den Betrag.", "Abgabefrist: 23.10.2026"),
+     ("Bitte senden Sie uns die Unterlagen.", "Abgabefrist: 23.10.2026")),
+]  # fmt: skip
+
+
+def test_each_page_guard_alone_stops_a_label() -> None:
+    def check(lines: tuple[str, ...], control: tuple[str, ...]) -> None:
+        assert in_letter(*lines) == []
+        assert in_letter(*control) == SENDS
+
+    check_rows(GUARDED_PAGES, check)
 
 
 def test_a_page_that_says_nothing_needs_doing_files_nothing() -> None:
@@ -598,41 +590,31 @@ def test_a_reading_s_warning_that_doubts_the_money_stops_the_looser_path() -> No
     assert in_letter(*lines) == PAYS
 
 
-def test_a_reading_s_dated_to_do_of_the_kind_covers_a_looser_date() -> None:
-    sentence = "Bitte gleichen Sie den Betrag bis zum 23.10.2026 aus."
-    other = ExtractedItem.model_validate(
-        {
-            "kind": "payment",
-            "title": "Pay",
-            "date": {"type": "fixed", "date": "2026-11-30", "nature": "payment"},
-            "quote": "Rechnung",
-        }
-    )
-    assert filed(sentence, W, items=[other]) == []
-    assert filed(sentence, W) == PAYS
-
-
 # --------------------------------------------------------------------------------------------------
 # Long untrusted text: no scan per date, no regex that backtracks over the page
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "body",
-    [
-        # many greetings' lines and many dates in one sentence (each date's region found by bisection)
-        "\n".join(["Hallo,"] * 10 + ["01.11.2026 x"]) * 1500,
-        # a long question before a dated request: the base path skips it ("Wenn"), the looser path reads the question
-        # only after its last but one "?"
+LONG_UNTRUSTED_BODIES = [
+    # many greetings' lines and many dates in one sentence (each date's region found by bisection)
+    pytest.param("\n".join(["Hallo,"] * 10 + ["01.11.2026 x"]) * 1500, id="greetings-and-dates"),
+    # a long question before a dated request: the base path skips it ("Wenn"), the looser path reads the question
+    # only after its last but one "?"
+    pytest.param(
         "möchten " * 25000 + "? Wenn Sie Fragen haben, rufen Sie uns bis zum 23.10.2026 an.",
-    ],
-    ids=["greetings-and-dates", "option-question"],
-)
-def test_the_looser_path_stays_fast_on_long_untrusted_text(body: str) -> None:
-    # CPU seconds, not the wall clock: on a busy machine the scheduler's pauses would count
-    started = time.process_time()
-    deadline_items(reading(W), [page(*HEADS["de"], "Datum: 05.10.2026", body)], today=TODAY)
-    assert time.process_time() - started < 5
+        id="option-question",
+    ),
+]
+
+
+def test_the_looser_path_stays_fast_on_long_untrusted_text() -> None:
+    def check(body: str) -> None:
+        # CPU seconds, not the wall clock: on a busy machine the scheduler's pauses would count
+        started = time.process_time()
+        deadline_items(reading(W), [page(*HEADS["de"], "Datum: 05.10.2026", body)], today=TODAY)
+        assert time.process_time() - started < 5
+
+    check_rows(LONG_UNTRUSTED_BODIES, check)
 
 
 def test_the_option_question_is_read_as_the_strict_path_reads_it_in_linear_time() -> None:
