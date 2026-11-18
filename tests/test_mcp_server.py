@@ -1237,7 +1237,8 @@ async def test_replays_keep_no_connection_per_call(store: Store, tools: LedgerTo
     tool in one) opened a connection that stayed open until the store closed: a full benchmark replay
     kept 115 on one store and ran out of file descriptors under a limit of 256."""
     first = mcp_server.answer_again(tools, "list_items", {"status": "all"})
-    for _ in range(60):
+    # a leak adds one connection per replayed call: ten calls leave eleven, well over two
+    for _ in range(10):
         assert mcp_server.answer_again(tools, "list_items", {"status": "all"}) == first
     assert len(store._connections) <= 2
 
