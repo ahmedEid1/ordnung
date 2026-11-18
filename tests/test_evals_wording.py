@@ -36,7 +36,7 @@ ROOT = Path(__file__).resolve().parents[1]
 #: What a process tag looks like, by kind.
 TAGS = {
     "a plan item or section": re.compile(
-        r"\bEV\d+\b|\bplan §|\(§\d[\d.]*\)|\bevaluation plan\b|\bthe plan's\b"
+        r"\bEV\d+\b|\bplan §|\(§\d[\d.]*\)|\bevaluation plan\b|(?<![a-z])the[ _]plan(?:'s|_s)(?![a-z])"
     ),
     "the plan's addendum": re.compile(r"\baddendum, item\b"),
     "a review": re.compile(r"(?i:\breview rounds?\b|\bfinal review\b|\breviewer's\b)"),
@@ -207,6 +207,7 @@ def test_the_patterns_see_the_tags_and_not_the_subject_matter() -> None:
         "(tools wrap it: E2's G1 guard)",
         "the cells' recording (plan §7, R7)",
         "The pre-registered decision rules (§6.11)",
+        "def test_the_ablations_are_the_plan_s_six",
     ]
     for text in tagged:
         assert list(_tags(text)), text
@@ -221,6 +222,7 @@ def test_the_patterns_see_the_tags_and_not_the_subject_matter() -> None:
         "SPEC §12c",
         "§ 556 BGB",
         "sha256 4be3a91c",
+        "def test_the_plan_steps_run_in_order",
     ]
     for text in plain:
         assert not list(_tags(text)), text

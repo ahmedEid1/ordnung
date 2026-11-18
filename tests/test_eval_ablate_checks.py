@@ -63,7 +63,7 @@ def _published() -> dict[str, Any]:
     return json.loads(PUBLISHED.read_text(encoding="utf-8"))
 
 
-def test_the_ablations_are_the_shipped_code_and_the_plan_s_six() -> None:
+def test_the_ablations_are_the_shipped_code_and_six_with_checks_switched_off() -> None:
     assert list(ABLATIONS) == list(SWAPPED)
     for name, ablation in ABLATIONS.items():
         assert ablation.name == name

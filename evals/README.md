@@ -28,7 +28,7 @@ What is measured:
 | `dataset/` | the letters, as PDFs and phone photos, split by split, and `manifest.json` with each letter's truth; `VERIFICATION.md` says how the labels were checked |
 | `generate.py`, `gen/` | the generator of `dataset/` (the labels' date arithmetic is `gen/law.py`, never `ordnung.rules`) |
 | `verify_labels.py` | a re-check of the labels that shares no code with the generator or the app |
-| `law/` | the sections of the federal statutes the labels' periods rest on, word for word as Gesetze im Internet gives them, the Länder's delivery rules (`laender.txt`) from each Land's legal portal or law gazette, and `law/SOURCES.md`: where each comes from, the day it was fetched and its sha256 |
+| `law/` | the sections of the federal statutes the labels' periods rest on, word for word as Gesetze im Internet gives them, the Länder's delivery rules (`laender.txt`), each from the Land's legal portal or law gazette (for Bremen, Rheinland-Pfalz, Saarland and Sachsen-Anhalt no text could be retrieved, and their blocks say so), and `law/SOURCES.md`: where each comes from, the day it was fetched and its sha256 |
 | `splits.py` | the splits: their role, their letters' variants, and which are recorded yet |
 | `conditions.py`, `prompts/` | the four conditions, and the prompts of the three that are not Ordnung's pipeline (Ordnung's own are in `src/ordnung/llm/prompts/`) |
 | `run.py`, `records.py`, `metrics.py`, `report.py` | the runner, the manifest's and the answers' types, the scoring, and the results files |
