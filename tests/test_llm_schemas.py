@@ -7,10 +7,10 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
 from evals import conditions
 from pydantic import BaseModel
 
+from helpers_tables import check_rows
 from ordnung import models
 from ordnung.llm import schemas
 from ordnung.llm.schemas import schema_for
@@ -66,12 +66,17 @@ def _inside(model: type[BaseModel]) -> set[str]:
     return {model.__name__, *model.model_json_schema().get("$defs", {})}
 
 
-@pytest.mark.parametrize("name", sorted(GIVEN))
-def test_the_models_claude_is_given_are_these(name: str) -> None:
-    model, inside = GIVEN[name]
-    given: dict[str, Any] = getattr(schemas, name)()
-    assert given == schema_for(model)
-    assert _inside(model) == inside
+GIVEN_SCHEMA_NAMES = sorted(GIVEN)
+
+
+def test_the_models_claude_is_given_are_these() -> None:
+    def check(name: str) -> None:
+        model, inside = GIVEN[name]
+        given: dict[str, Any] = getattr(schemas, name)()
+        assert given == schema_for(model)
+        assert _inside(model) == inside
+
+    check_rows(GIVEN_SCHEMA_NAMES, check)
 
 
 def test_the_completeness_re_ask_and_the_baselines_are_given_the_same_models() -> None:
