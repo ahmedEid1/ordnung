@@ -64,11 +64,10 @@ def fast_keys(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sync_crypto, "SYNC_KDF", FAST)  # a kept copy's sync key file, should one be made
 
 
-@pytest.fixture
-def life(tmp_path: Path) -> Path:
-    """A data folder with a seeded ledger, originals, page images and a letter PDF (closed: its WAL is
-    checkpointed — :func:`test_a_write_only_in_the_wal_is_in_the_backup` covers a running server)."""
-    folder = tmp_path / "life"
+@pytest.fixture(scope="module")
+def life_template(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Built once per module: never handed to a test, only copied (:func:`life`)."""
+    folder = tmp_path_factory.mktemp("template") / "life"
     paths = Paths(folder).ensure()
     store = Store.open(paths)
     try:
@@ -84,6 +83,16 @@ def life(tmp_path: Path) -> Path:
         store.set_meta("written_last", "yes")
     finally:
         store.close()
+    return folder
+
+
+@pytest.fixture
+def life(life_template: Path, tmp_path: Path) -> Path:
+    """A data folder with a seeded ledger, originals, page images and a letter PDF (closed: its WAL is
+    checkpointed — :func:`test_a_write_only_in_the_wal_is_in_the_backup` covers a running server). Each test
+    gets its own copy of one template, so a test that changes it changes no other test's."""
+    folder = tmp_path / "life"
+    shutil.copytree(life_template, folder, symlinks=True)
     return folder
 
 
