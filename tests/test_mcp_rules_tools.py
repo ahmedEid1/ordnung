@@ -19,6 +19,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from typer.testing import CliRunner
 
 from helpers_secretary import TODAY, seed_ledger
+from helpers_tables import check_rows
 from ordnung import clock
 from ordnung.assistant import rules_tools
 from ordnung.assistant.mcp_server import build_server, server_config
@@ -637,31 +638,34 @@ def test_a_late_arrival_giving_the_same_date_is_the_day_counted_from() -> None:
     assert company["steps"][0]["rule_id"] == "private_sender_arrival"
 
 
-@pytest.mark.parametrize(
-    "spec",
-    [
-        {k: v for k, v in POSTED.items() if k != "amount"},
-        {"type": "relative", "anchor": "receipt", "unit": "days", "nature": "payment"},
-        {**POSTED, "amount": 5000, "unit": "years"},
-    ],
-)
-def test_an_unreadable_period_reports_no_arrival_day(spec: dict[str, Any]) -> None:
+UNREADABLE_PERIODS = [
+    {k: v for k, v in POSTED.items() if k != "amount"},
+    {"type": "relative", "anchor": "receipt", "unit": "days", "nature": "payment"},
+    {**POSTED, "amount": 5000, "unit": "years"},
+]
+
+
+def test_an_unreadable_period_reports_no_arrival_day() -> None:
     """Without a readable period nothing is computed — no arrival day was assumed, and
     no hint asks for one or for the sender; the only hint is how to fix the period."""
-    tools = at("2026-09-26")
-    for kind, received in (("bank", None), ("company", "2026-09-03"), (None, None)):
-        result = tools.compute_deadline(
-            spec, document_date="2026-09-01", sender_kind=kind, received_date=received
-        )
-        assert result["due_date"] is None and result["confidence"] == "low"
-        assert len(result["warnings"]) == 1 and PRIVATE_SENDER_WARNING not in result["warnings"]
-        assumed = result["assumed"]
-        assert (assumed["received_date"], assumed["received_date_from"]) == (None, None)
-        assert assumed["received_date_not_used"] == received
-        assert result["hints"] == [
-            "Set spec.amount and spec.unit to the period the letter gives (e.g. 1 and months for "
-            "'innerhalb eines Monats'), then call again."
-        ]
+
+    def check(spec: dict[str, Any]) -> None:
+        tools = at("2026-09-26")
+        for kind, received in (("bank", None), ("company", "2026-09-03"), (None, None)):
+            result = tools.compute_deadline(
+                spec, document_date="2026-09-01", sender_kind=kind, received_date=received
+            )
+            assert result["due_date"] is None and result["confidence"] == "low"
+            assert len(result["warnings"]) == 1 and PRIVATE_SENDER_WARNING not in result["warnings"]
+            assumed = result["assumed"]
+            assert (assumed["received_date"], assumed["received_date_from"]) == (None, None)
+            assert assumed["received_date_not_used"] == received
+            assert result["hints"] == [
+                "Set spec.amount and spec.unit to the period the letter gives (e.g. 1 and months for "
+                "'innerhalb eines Monats'), then call again."
+            ]
+
+    check_rows(UNREADABLE_PERIODS, check)
 
 
 def test_a_private_law_klage_or_widerspruch_keeps_a_private_sender_private() -> None:
@@ -1243,6 +1247,8 @@ def test_a_callers_today_a_day_behind_never_makes_an_expired_deadline_look_live(
 
 
 def test_a_pinned_server_does_not_use_a_callers_today() -> None:
+    """The benchmark's server keeps its letter's day, for a today months off and for one a time zone apart,
+    and gives no view for it (an unpinned server gives that day's view too)."""
     pinned = RulesTools(today=lambda: date(2026, 4, 14), pin_today=True)
     spec = {"type": "fixed", "date": "2026-05-15", "nature": "objection"}
     result = pinned.compute_deadline(spec, today="2026-09-26")
@@ -1254,6 +1260,16 @@ def test_a_pinned_server_does_not_use_a_callers_today() -> None:
     assert (result["assumed"]["today"], result["assumed"]["today_given"]) == ("2026-04-14", "2026-09-26")
     with pytest.raises(RulesToolError, match="is after today"):  # arrival days are checked against it too
         pinned.compute_deadline(RECEIPT, received_date="2026-09-01", today="2026-09-26")
+    spec = {"type": "relative", "anchor": "today", "amount": 10, "unit": "days", "nature": "payment"}
+    for given in ("2026-04-13", "2026-04-15"):
+        result = pinned.compute_deadline(spec, document_date="2026-04-14", today=given)
+        assert result["assumed"]["today"] == "2026-04-14" and result["for_today_given"] is None
+        assert result["assumed"]["today_given"] == given
+    unpinned = RulesTools(today=lambda: date(2026, 4, 14)).compute_deadline(
+        spec, document_date="2026-04-14", today="2026-04-13"
+    )
+    assert unpinned["assumed"]["today"] == "2026-04-14"
+    assert unpinned["for_today_given"]["today"] == "2026-04-13"
 
 
 def test_today_defaults_to_the_day_in_germany(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1284,57 +1300,61 @@ def test_today_defaults_to_the_servers_day_and_can_be_given(tools: RulesTools) -
     assert tools.compute_deadline(spec, today="2026-09-21")["due_date"] == "2026-09-30"
 
 
-@pytest.mark.parametrize(
-    ("spec", "message"),
-    [
-        ({"type": "relative", "amout": 1}, "spec.amout: unknown field (a DateSpec has: type, date,"),
-        ({"type": "relative", "unit": "month"}, "spec.unit: Input should be 'days'"),
-        ({"type": "soon"}, "spec.type: Input should be 'fixed', 'relative' or 'none'"),
-        ({"amount": 1}, "spec.type: Field required"),
-        ("in a month", "spec must be an object"),
-        # a date the engine could not read would silently count from the letter's date instead
-        (
-            {"type": "relative", "anchor": "deemed_delivery", "anchor_date": "02.01.2026"},
-            "spec.anchor_date: must be a date written YYYY-MM-DD, or null (got '02.01.2026')",
-        ),
-        ({"type": "fixed", "date": "2026-02-30"}, "spec.date: must be a date written YYYY-MM-DD"),
-        ({"type": "fixed", "date": "20260131"}, "spec.date: must be a date written YYYY-MM-DD"),
-        (
-            {"type": "fixed", "date": 20260131},
-            "spec.date: must be a date written YYYY-MM-DD, or null (got int)",
-        ),
-        (
-            {"type": "relative", "anchor": "document_date", "amount": True, "unit": "months"},
-            "spec.amount: must be a whole number (got true)",
-        ),
-    ],
-)
-def test_invalid_specs_are_refused_with_readable_errors(tools: RulesTools, spec: Any, message: str) -> None:
-    with pytest.raises(RulesToolError, match="spec") as raised:
-        tools.compute_deadline(spec)
-    assert message in str(raised.value)
+INVALID_SPECS = [
+    ({"type": "relative", "amout": 1}, "spec.amout: unknown field (a DateSpec has: type, date,"),
+    ({"type": "relative", "unit": "month"}, "spec.unit: Input should be 'days'"),
+    ({"type": "soon"}, "spec.type: Input should be 'fixed', 'relative' or 'none'"),
+    ({"amount": 1}, "spec.type: Field required"),
+    ("in a month", "spec must be an object"),
+    # a date the engine could not read would silently count from the letter's date instead
+    (
+        {"type": "relative", "anchor": "deemed_delivery", "anchor_date": "02.01.2026"},
+        "spec.anchor_date: must be a date written YYYY-MM-DD, or null (got '02.01.2026')",
+    ),
+    ({"type": "fixed", "date": "2026-02-30"}, "spec.date: must be a date written YYYY-MM-DD"),
+    ({"type": "fixed", "date": "20260131"}, "spec.date: must be a date written YYYY-MM-DD"),
+    (
+        {"type": "fixed", "date": 20260131},
+        "spec.date: must be a date written YYYY-MM-DD, or null (got int)",
+    ),
+    (
+        {"type": "relative", "anchor": "document_date", "amount": True, "unit": "months"},
+        "spec.amount: must be a whole number (got true)",
+    ),
+]
 
 
-@pytest.mark.parametrize(
-    ("arguments", "message"),
-    [
-        ({"document_date": "15.09.2026"}, "document_date must be a date written YYYY-MM-DD"),
-        # other ISO forms Python would read are refused as well: they are not what the argument says
-        ({"document_date": "20260901"}, "document_date must be a date written YYYY-MM-DD (got '20260901')"),
-        ({"document_date": "2026-W36-1"}, "document_date must be a date written YYYY-MM-DD"),
-        ({"received_date": "2026-09-01T10:00"}, "received_date must be a date written YYYY-MM-DD"),
-        ({"received_date": "yesterday"}, "received_date must be a date"),
-        ({"today": "2026-02-30"}, "today must be a date"),
-        ({"region": "Narnia"}, "region must be a German Land: one of BB, BE, BW"),
-        ({"recipient_region": "Texas"}, "recipient_region must be a German Land"),
-        ({"sender_kind": "bank robber"}, "sender_kind must be one of: authority, tax_office"),
-        ({"remedy_type": "appeal"}, "remedy_type must be one of: einspruch, widerspruch"),
-    ],
-)
-def test_invalid_arguments_are_refused(tools: RulesTools, arguments: dict[str, Any], message: str) -> None:
-    with pytest.raises(RulesToolError) as raised:
-        tools.compute_deadline(TAX_SPEC, **arguments)
-    assert message in str(raised.value)
+def test_invalid_specs_are_refused_with_readable_errors(tools: RulesTools) -> None:
+    def check(spec: Any, message: str) -> None:
+        with pytest.raises(RulesToolError, match="spec") as raised:
+            tools.compute_deadline(spec)
+        assert message in str(raised.value)
+
+    check_rows(INVALID_SPECS, check)
+
+
+INVALID_ARGUMENTS = [
+    ({"document_date": "15.09.2026"}, "document_date must be a date written YYYY-MM-DD"),
+    # other ISO forms Python would read are refused as well: they are not what the argument says
+    ({"document_date": "20260901"}, "document_date must be a date written YYYY-MM-DD (got '20260901')"),
+    ({"document_date": "2026-W36-1"}, "document_date must be a date written YYYY-MM-DD"),
+    ({"received_date": "2026-09-01T10:00"}, "received_date must be a date written YYYY-MM-DD"),
+    ({"received_date": "yesterday"}, "received_date must be a date"),
+    ({"today": "2026-02-30"}, "today must be a date"),
+    ({"region": "Narnia"}, "region must be a German Land: one of BB, BE, BW"),
+    ({"recipient_region": "Texas"}, "recipient_region must be a German Land"),
+    ({"sender_kind": "bank robber"}, "sender_kind must be one of: authority, tax_office"),
+    ({"remedy_type": "appeal"}, "remedy_type must be one of: einspruch, widerspruch"),
+]
+
+
+def test_invalid_arguments_are_refused(tools: RulesTools) -> None:
+    def check(arguments: dict[str, Any], message: str) -> None:
+        with pytest.raises(RulesToolError) as raised:
+            tools.compute_deadline(TAX_SPEC, **arguments)
+        assert message in str(raised.value)
+
+    check_rows(INVALID_ARGUMENTS, check)
 
 
 def test_blank_spec_dates_mean_none(tools: RulesTools) -> None:
@@ -1396,10 +1416,15 @@ def test_nationwide_holidays_and_a_lands_own(tools: RulesTools) -> None:
     )
 
 
-@pytest.mark.parametrize("year", [1990, 2101, True, "2026"])
-def test_holiday_years_are_bounded(tools: RulesTools, year: Any) -> None:
-    with pytest.raises(RulesToolError, match="year must be a whole number from 1991 to 2100"):
-        tools.german_holidays(year)
+HOLIDAY_YEARS_OUT_OF_BOUNDS = [1990, 2101, True, "2026"]
+
+
+def test_holiday_years_are_bounded(tools: RulesTools) -> None:
+    def check(year: Any) -> None:
+        with pytest.raises(RulesToolError, match="year must be a whole number from 1991 to 2100"):
+            tools.german_holidays(year)
+
+    check_rows(HOLIDAY_YEARS_OUT_OF_BOUNDS, check)
 
 
 def test_working_days_skip_weekends_and_holidays(tools: RulesTools) -> None:
@@ -1428,19 +1453,21 @@ def test_working_days_skip_weekends_and_holidays(tools: RulesTools) -> None:
     assert "from the facts given" not in result["disclaimer"] and "not legal advice" in result["disclaimer"]
 
 
-@pytest.mark.parametrize(
-    ("arguments", "message"),
-    [
-        ({"start": "tomorrow", "days": 1}, "start must be a date"),
-        ({"start": "2026-01-01", "days": 1001}, "days must be a whole number from -1000 to 1000"),
-        ({"start": "2026-01-01", "days": 1.5}, "days must be a whole number"),
-        ({"start": "2026-01-01", "days": 1, "day_type": "arbeitstage"}, "day_type must be one of"),
-        ({"start": "9999-12-30", "days": 5}, "outside the calendar"),
-    ],
-)
-def test_invalid_working_day_arguments(tools: RulesTools, arguments: dict[str, Any], message: str) -> None:
-    with pytest.raises(RulesToolError, match=message):
-        tools.add_working_days(**arguments)
+INVALID_WORKING_DAY_ARGUMENTS = [
+    ({"start": "tomorrow", "days": 1}, "start must be a date"),
+    ({"start": "2026-01-01", "days": 1001}, "days must be a whole number from -1000 to 1000"),
+    ({"start": "2026-01-01", "days": 1.5}, "days must be a whole number"),
+    ({"start": "2026-01-01", "days": 1, "day_type": "arbeitstage"}, "day_type must be one of"),
+    ({"start": "9999-12-30", "days": 5}, "outside the calendar"),
+]
+
+
+def test_invalid_working_day_arguments(tools: RulesTools) -> None:
+    def check(arguments: dict[str, Any], message: str) -> None:
+        with pytest.raises(RulesToolError, match=message):
+            tools.add_working_days(**arguments)
+
+    check_rows(INVALID_WORKING_DAY_ARGUMENTS, check)
 
 
 def test_check_iban(tools: RulesTools) -> None:
@@ -1476,68 +1503,74 @@ def test_check_iban(tools: RulesTools) -> None:
     assert "or says the check was not possible, do not pay" in good["note"]
 
 
-@pytest.mark.parametrize(
-    ("iban", "country", "since"),
-    [
-        ("SE45 5000 0000 0583 9825 7466", "Sweden", "9 July 2027"),
-        ("PL61 1090 1014 0000 0712 1981 2874", "Poland", "9 July 2027"),
-        ("BG80 BNBG 9661 1020 3456 78", "Bulgaria", "1 January 2027"),
-    ],
-)
-def test_check_iban_says_when_a_non_euro_banks_name_check_starts(
-    tools: RulesTools, iban: str, country: str, since: str
-) -> None:
+NON_EURO_EU_IBANS = [
+    ("SE45 5000 0000 0583 9825 7466", "Sweden", "9 July 2027"),
+    ("PL61 1090 1014 0000 0712 1981 2874", "Poland", "9 July 2027"),
+    ("BG80 BNBG 9661 1020 3456 78", "Bulgaria", "1 January 2027"),
+]
+
+
+def test_check_iban_says_when_a_non_euro_banks_name_check_starts(tools: RulesTools) -> None:
     """Banks outside the euro area have to answer the payee-name check only from
     9 July 2027 (Art. 5c(9) Reg. (EU) No 260/2012 as amended by 2024/886), Bulgaria's, in the euro since
     1 January 2026, a year later (Art. 16(9)). Until then the note must not promise the check."""
-    from ordnung.money.iban import PAYEE_CHECK_FROM
 
-    result = tools.check_iban(iban)
-    assert result["valid"] is True and result["country"]["name"] == country
-    assert "the bank also checks" not in result["note"]
-    assert (
-        f"This IBAN is from {country}, whose banks have to answer the check of the payee's name before a "
-        f"euro transfer (Empfängerüberprüfung) only from {since}: until then your bank may say the check was "
-        "not possible"
-    ) in result["note"]
-    # from that day the check is the law there too
-    on_the_day = RulesTools(today=lambda: PAYEE_CHECK_FROM[iban[:2]]).check_iban(iban)
-    assert on_the_day["note"] == rules_tools.IBAN_NOTE
-    assert len(PAYEE_CHECK_FROM) == 27 and {"CZ", "DK", "HU", "RO"} <= PAYEE_CHECK_FROM.keys()  # the EU
+    def check(iban: str, country: str, since: str) -> None:
+        from ordnung.money.iban import PAYEE_CHECK_FROM
+
+        result = tools.check_iban(iban)
+        assert result["valid"] is True and result["country"]["name"] == country
+        assert "the bank also checks" not in result["note"]
+        assert (
+            f"This IBAN is from {country}, whose banks have to answer the check of the payee's name before a "
+            f"euro transfer (Empfängerüberprüfung) only from {since}: until then your bank may say the check was "
+            "not possible"
+        ) in result["note"]
+        # from that day the check is the law there too
+        on_the_day = RulesTools(today=lambda: PAYEE_CHECK_FROM[iban[:2]]).check_iban(iban)
+        assert on_the_day["note"] == rules_tools.IBAN_NOTE
+        assert len(PAYEE_CHECK_FROM) == 27 and {"CZ", "DK", "HU", "RO"} <= PAYEE_CHECK_FROM.keys()  # the EU
+
+    check_rows(NON_EURO_EU_IBANS, check)
 
 
-@pytest.mark.parametrize(
-    ("iban", "country"),
-    [
-        ("GB82 WEST 1234 5698 7654 32", "United Kingdom"),
-        ("AE07 0331 2345 6789 0123 456", "United Arab Emirates"),
-        ("CH93 0076 2011 6238 5295 7", "Switzerland"),
-        ("NO93 8601 1117 947", "Norway"),
-        ("BR15 0000 0000 0000 1093 2840 814P 2", "Brazil"),
-    ],
-)
-def test_check_iban_promises_no_name_check_outside_the_eu(tools: RulesTools, iban: str, country: str) -> None:
+NON_EU_IBANS = [
+    ("GB82 WEST 1234 5698 7654 32", "United Kingdom"),
+    ("AE07 0331 2345 6789 0123 456", "United Arab Emirates"),
+    ("CH93 0076 2011 6238 5295 7", "Switzerland"),
+    ("NO93 8601 1117 947", "Norway"),
+    ("BR15 0000 0000 0000 1093 2840 814P 2", "Brazil"),
+]
+
+
+def test_check_iban_promises_no_name_check_outside_the_eu(tools: RulesTools) -> None:
     """The payee-name check (Empfängerüberprüfung) is EU law for EU accounts. For a UK or
     UAE account — where scams often route money — the note must not suggest the bank will warn."""
-    result = tools.check_iban(iban)
-    assert result["valid"] is True and result["country"]["name"] == country
-    assert "the bank also checks" not in result["note"]
-    assert f"This IBAN is from a country outside the EU ({country})" in result["note"]
-    assert "may not happen" in result["note"] and "says nothing about who owns the account" in result["note"]
-    assert "your bank may say it was not possible" in result["note"]
-    # two letters that are no IBAN country are not "well-formed", however the checksum adds up
-    for made_up in ("ZZ22 3704 0044 0532 0130 00", "US88 3704 0044 0532 0130 00"):
-        result = compact(tools.check_iban(made_up))
-        assert result["valid"] is False and "country" not in result
-        assert result["problems"] == [
-            f"{made_up[:2]} is not a country that issues IBANs, so this is not an IBAN."
-        ]
-    # what German letters print, and what copying from a PDF leaves behind
-    labelled = tools.check_iban("IBAN: DE89 3704 0044 0532 0130 00\u200b")
-    assert labelled["valid"] is True and labelled["country"] == {"code": "DE", "name": "Germany"}
-    for value, message in (("", "iban must be the IBAN as printed"), ("D" * 65, "iban is too long")):
-        with pytest.raises(RulesToolError, match=message):
-            tools.check_iban(value)
+
+    def check(iban: str, country: str) -> None:
+        result = tools.check_iban(iban)
+        assert result["valid"] is True and result["country"]["name"] == country
+        assert "the bank also checks" not in result["note"]
+        assert f"This IBAN is from a country outside the EU ({country})" in result["note"]
+        assert (
+            "may not happen" in result["note"] and "says nothing about who owns the account" in result["note"]
+        )
+        assert "your bank may say it was not possible" in result["note"]
+        # two letters that are no IBAN country are not "well-formed", however the checksum adds up
+        for made_up in ("ZZ22 3704 0044 0532 0130 00", "US88 3704 0044 0532 0130 00"):
+            result = compact(tools.check_iban(made_up))
+            assert result["valid"] is False and "country" not in result
+            assert result["problems"] == [
+                f"{made_up[:2]} is not a country that issues IBANs, so this is not an IBAN."
+            ]
+        # what German letters print, and what copying from a PDF leaves behind
+        labelled = tools.check_iban("IBAN: DE89 3704 0044 0532 0130 00\u200b")
+        assert labelled["valid"] is True and labelled["country"] == {"code": "DE", "name": "Germany"}
+        for value, message in (("", "iban must be the IBAN as printed"), ("D" * 65, "iban is too long")):
+            with pytest.raises(RulesToolError, match=message):
+                tools.check_iban(value)
+
+    check_rows(NON_EU_IBANS, check)
 
 
 def test_render_is_compact_but_keeps_a_missing_due_date() -> None:
@@ -1838,29 +1871,32 @@ def _app_receipt(
     return compute_due(parsed, rule_context(None, document, reading, date(2026, 9, 28)))
 
 
-@pytest.mark.parametrize("name", COURT_NAMES)
-def test_a_courts_period_gets_the_apps_date_confidence_and_rules(name: str) -> None:
+def test_a_courts_period_gets_the_apps_date_confidence_and_rules() -> None:
     """ADR 0009: a tool and the app give the same date for the same facts — a court is a court by its
     name, whatever kind the model passed it as (a court is no PartyKind: ``authority`` or ``other``)."""
-    tools = RulesTools(today=lambda: date(2026, 9, 28))
-    for kind in ("authority", "other"):
-        for spec in COURT_SPECS:
-            for remedy in ("widerspruch", "einspruch", None):
-                for received in (None, "2026-09-16"):
-                    got = tools.compute_deadline(
-                        spec,
-                        document_date="2026-09-15",
-                        sender_kind=kind,
-                        sender_name=name,
-                        remedy_type=remedy,
-                        received_date=received,
-                    )
-                    app = _app_receipt(spec, name, kind, remedy, received)
-                    case = (kind, spec["text"], remedy, received)
-                    assert got["due_date"] == app.due_date, case
-                    assert got["confidence"] == app.confidence != "high", case
-                    assert [rule["id"] for rule in got["rules"]] == app.rule_ids, case
-                    assert "posting_day" not in app.rule_ids, case  # never a delivery fiction
+
+    def check(name: str) -> None:
+        tools = RulesTools(today=lambda: date(2026, 9, 28))
+        for kind in ("authority", "other"):
+            for spec in COURT_SPECS:
+                for remedy in ("widerspruch", "einspruch", None):
+                    for received in (None, "2026-09-16"):
+                        got = tools.compute_deadline(
+                            spec,
+                            document_date="2026-09-15",
+                            sender_kind=kind,
+                            sender_name=name,
+                            remedy_type=remedy,
+                            received_date=received,
+                        )
+                        app = _app_receipt(spec, name, kind, remedy, received)
+                        case = (kind, spec["text"], remedy, received)
+                        assert got["due_date"] == app.due_date, case
+                        assert got["confidence"] == app.confidence != "high", case
+                        assert [rule["id"] for rule in got["rules"]] == app.rule_ids, case
+                        assert "posting_day" not in app.rule_ids, case  # never a delivery fiction
+
+    check_rows(COURT_NAMES, check)
 
 
 def test_a_court_order_never_gets_an_administrative_delivery_fiction(tools: RulesTools) -> None:
@@ -1910,19 +1946,3 @@ def test_a_court_order_never_gets_an_administrative_delivery_fiction(tools: Rule
     )
     assert "zpo_692" in {rule["id"] for rule in named["rules"]} and named["confidence"] != "high"
     assert any("§ 694 ZPO" in warning for warning in named["warnings"])
-
-
-def test_a_pinned_server_ignores_a_callers_today_one_day_off() -> None:
-    """The benchmark's server keeps its letter's day even for a today a time zone apart, and gives no view
-    for it (an unpinned server gives that day's view too)."""
-    pinned = RulesTools(today=lambda: date(2026, 4, 14), pin_today=True)
-    spec = {"type": "relative", "anchor": "today", "amount": 10, "unit": "days", "nature": "payment"}
-    for given in ("2026-04-13", "2026-04-15"):
-        result = pinned.compute_deadline(spec, document_date="2026-04-14", today=given)
-        assert result["assumed"]["today"] == "2026-04-14" and result["for_today_given"] is None
-        assert result["assumed"]["today_given"] == given
-    unpinned = RulesTools(today=lambda: date(2026, 4, 14)).compute_deadline(
-        spec, document_date="2026-04-14", today="2026-04-13"
-    )
-    assert unpinned["assumed"]["today"] == "2026-04-14"
-    assert unpinned["for_today_given"]["today"] == "2026-04-13"
