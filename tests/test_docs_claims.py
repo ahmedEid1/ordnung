@@ -1284,6 +1284,7 @@ def _claimed(pattern: str) -> int:
     return int(found.group(1).replace(",", ""))
 
 
+@pytest.mark.slow  # collects the whole suite
 def test_readme_backend_test_count_holds() -> None:
     """README's "N+ backend tests" is at most what pytest collects."""
     claimed = _claimed(r"(\d[\d,]*)\+ backend tests")

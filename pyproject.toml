@@ -194,7 +194,7 @@ addopts = "-q"
 # CI job's time limit ends the run
 faulthandler_timeout = 600
 markers = [
-  "slow: replays every recorded reading, times pages against a wall-clock budget, counts the lines a page runs (sys.settrace, which coverage uses too), or builds the web app; CI runs these once, without coverage (-m slow)",
+  "slow: replays every recorded reading, times pages against a wall-clock budget or its own growth, explores at length (a long fuzz or model run), regenerates or re-reads a whole dataset, counts the lines a page runs (sys.settrace, which coverage uses too), or builds the web app; CI runs these once, without coverage (-m slow)",
 ]
 
 [tool.coverage.run]

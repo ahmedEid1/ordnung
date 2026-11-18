@@ -354,6 +354,7 @@ def test_ibans_have_valid_checksums(manifest: dict[str, Any], docs: dict[str, di
 # --------------------------------------------------------------------------------------------------
 
 
+@pytest.mark.slow  # regenerates the samples
 def test_regeneration_is_deterministic(regenerated: tuple[Path, Path], tmp_path: Path) -> None:
     out, _sources = regenerated
     subset = "mietvertrag,verwarnungsgeld_parken,rundfunk_zahlungszentrale"
@@ -369,6 +370,7 @@ def test_regeneration_is_deterministic(regenerated: tuple[Path, Path], tmp_path:
         assert path.read_bytes() == (out / path.name).read_bytes(), path.name
 
 
+@pytest.mark.slow  # regenerates the samples
 def test_committed_samples_match_regeneration(
     regenerated: tuple[Path, Path], manifest: dict[str, Any]
 ) -> None:
@@ -392,6 +394,7 @@ def test_committed_samples_match_regeneration(
         assert (out / name).read_bytes() == (SAMPLES / name).read_bytes(), name
 
 
+@pytest.mark.slow  # regenerates the samples
 def test_photo_sources_contain_the_quotes(regenerated: tuple[Path, Path], manifest: dict[str, Any]) -> None:
     _out, sources = regenerated
     for doc in manifest["documents"]:

@@ -466,6 +466,7 @@ BIG_EMAILS: dict[str, Callable[[int], str]] = {
 
 
 @pytest.mark.parametrize("name", BIG_EMAILS)
+@pytest.mark.slow  # times its own growth (helpers_timing): a wall-clock ratio
 def test_a_one_megabyte_e_mail_is_read_in_linear_time(name: str) -> None:
     """A realistic 1 MB newsletter takes about 0.2 s on a laptop, and shapes built to stall a parser
     (deep nesting, stray end tags, CSS that never ends a comment, string or block) under a second.

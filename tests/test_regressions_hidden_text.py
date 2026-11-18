@@ -106,6 +106,7 @@ def test_a_dark_mode_ready_e_mail_keeps_its_text_visible() -> None:
     assert hidden == ""
 
 
+@pytest.mark.slow  # a CPU-time budget
 def test_many_descendant_rules_do_not_make_reading_an_e_mail_slow() -> None:
     """``_Rule.matches`` walks every open ancestor for every rule keyed by an element's class, for every
     element and both screens: rules × elements × depth. An 8 KB e-mail with 80 such rules, 80 spans and

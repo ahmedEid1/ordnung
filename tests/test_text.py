@@ -730,6 +730,7 @@ def _page_count(path: Path) -> int:
             document.close()
 
 
+@pytest.mark.slow  # reads every letter of the demo
 def test_the_demo_letters_read_exactly_as_their_database_holds() -> None:
     """The demo's PDF letters give, page for page, the text, words, hidden text and source the demo
     database holds (what every recorded answer was made from), and none has scanner text: keeping a

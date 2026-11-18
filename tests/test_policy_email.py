@@ -100,6 +100,7 @@ def test_a_column_sized_by_the_font_shorthand_or_a_font_tag_is_visible(column: s
     ],
     ids=["inline-font-size", "inline-offset", "inline-rgb", "style-sheet-opacity"],
 )
+@pytest.mark.slow  # times its own growth (helpers_timing): a wall-clock ratio
 def test_a_long_number_in_a_css_value_is_read_in_linear_time(build: Callable[[int], str]) -> None:
     """Point 6: linear time, no regex with catastrophic backtracking (1 MB well under a second, so a
     6 KB e-mail in a few milliseconds). ``re`` holds the GIL, so a crafted e-mail stalls the whole
@@ -112,6 +113,7 @@ def test_a_long_number_in_a_css_value_is_read_in_linear_time(build: Callable[[in
 # --------------------------------------------------------------------------------------------------
 
 
+@pytest.mark.slow  # times its own growth (helpers_timing): a wall-clock ratio
 def test_nested_style_rules_are_read_in_linear_time() -> None:
     """A rule's declarations are the text directly in its block, so no text is read twice."""
 
@@ -126,6 +128,7 @@ def test_nested_style_rules_are_read_in_linear_time() -> None:
 # --------------------------------------------------------------------------------------------------
 
 
+@pytest.mark.slow  # times its own growth (helpers_timing): a wall-clock ratio
 def test_a_selector_full_of_open_brackets_is_read_in_linear_time() -> None:
     def build(n: int) -> str:
         return _mail("<p>Hallo</p>", "<style>" + "[" * n + " { display: block }</style>")
@@ -226,6 +229,7 @@ def test_a_class_shown_by_a_rule_with_a_hex_escape_is_not_hidden() -> None:
     assert "Kündigung bis 31.10.2026." in visible and "Hallo" in visible and hidden == "", (visible, hidden)
 
 
+@pytest.mark.slow  # times its own growth (helpers_timing): a wall-clock ratio
 def test_a_selector_full_of_escapes_is_read_in_linear_time() -> None:
     def build(n: int) -> str:
         return _mail(

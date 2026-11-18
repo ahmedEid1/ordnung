@@ -916,6 +916,7 @@ FUZZ_BODY = [
 ]
 
 
+@pytest.mark.slow  # 3,000 fuzzed letters
 def test_a_fuzzed_header_never_gives_a_start_later_than_the_letter_s_date() -> None:
     """A letter dated ``d`` (any day of 2026–2027) in one of eleven header layouts, with a
     distracting date before or after its own (a due day, a print date, an appointment, an application's …),

@@ -374,6 +374,7 @@ def test_checking_a_checked_answer_removes_nothing(tools: LedgerTools, ids: dict
     assert not second.removed
 
 
+@pytest.mark.slow  # times its own growth (helpers_timing): a wall-clock ratio
 def test_the_check_is_linear_in_practice(tools: LedgerTools, ids: dict[str, str]) -> None:
     """A long answer over big tool results is checked in time proportional to its length — measured against
     the machine itself (:func:`helpers_timing.assert_linear`), never against a wall-clock limit that a busy
@@ -1212,6 +1213,7 @@ def test_warnings_about_injected_text_are_kept(
     assert "“only in the letter”" in (checked.note() or "")
 
 
+@pytest.mark.slow  # times its own growth (helpers_timing): a wall-clock ratio
 def test_the_check_is_linear_in_one_long_sentence(injected: TurnEvidence, ids: dict[str, str]) -> None:
     """One long sentence took 30 s at 88 KB (quadratic clause, widen and overlap scans)."""
     doc = ids["doc_tax"]
@@ -1227,6 +1229,7 @@ def test_the_check_is_linear_in_one_long_sentence(injected: TurnEvidence, ids: d
 
 
 @pytest.mark.parametrize("unit", ["[", "[](x", "[]( ", "  ", "[doc:", "![", "[a](", " [item:"], ids=repr)
+@pytest.mark.slow  # times its own growth (helpers_timing): a wall-clock ratio
 def test_the_check_is_linear_on_bracket_and_space_runs(
     injected: TurnEvidence, ids: dict[str, str], unit: str
 ) -> None:
@@ -1248,6 +1251,7 @@ def test_the_check_is_linear_on_bracket_and_space_runs(
     ["1.", "31|12|2027|", "3l", "1_", "12/2027 ", "2027-12-31T23:59 ", "1 1", "1'", "3 de ", "halb ", "Oct 21-"],
     ids=repr,
 )  # fmt: skip
+@pytest.mark.slow  # times its own growth (helpers_timing): a wall-clock ratio
 def test_the_check_is_linear_on_digit_runs(injected: TurnEvidence, ids: dict[str, str], unit: str) -> None:
     """The check reads every run of digit groups joined by marks (and a time after a date): a run
     is read once, group by group, however long it is."""
@@ -1930,6 +1934,7 @@ def test_no_letter_and_no_answer_stops_the_check(letter: str, answer: str) -> No
 
 
 @pytest.mark.parametrize("mark", [".", "!", "?", ".!?", "?!"], ids=repr)
+@pytest.mark.slow  # times its own growth (helpers_timing): a wall-clock ratio
 def test_a_run_of_full_stops_is_read_in_linear_time(
     injected: TurnEvidence, ids: dict[str, str], mark: str
 ) -> None:

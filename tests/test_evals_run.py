@@ -524,7 +524,11 @@ POSTING_DAY_POLICY = {
 
 # The holdout2 split has had its one recording, so replay tests may run on its recorded outputs (below); this
 # perfect-reading test stays on the splits it was written for (dev, test and holdout).
-@pytest.mark.parametrize("split", ["dev", "test", "holdout"])
+@pytest.mark.parametrize(
+    "split",
+    # each split whole: the smallest in the default run, the two larger with the slow tests
+    ["dev", *(pytest.param(split, marks=pytest.mark.slow) for split in ("test", "holdout"))],
+)
 async def test_rules_engine_reproduces_the_labels_from_a_perfect_reading(tmp_path: Path, split: str) -> None:
     """If the model read every DateSpec exactly like the truth, which dates would still be wrong?
 
