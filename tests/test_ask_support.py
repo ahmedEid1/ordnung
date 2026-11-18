@@ -1005,7 +1005,16 @@ def test_split_note() -> None:
 DEMO_ASKS = Path(__file__).resolve().parents[1] / "src" / "ordnung" / "demo" / "fixtures" / "ask"
 
 
-def _demo_records() -> list[tuple[str, dict[str, Any], CheckedAnswer]]:
+DemoRecords = list[tuple[str, dict[str, Any], CheckedAnswer]]
+
+
+@pytest.fixture(scope="module")
+def demo_records() -> DemoRecords:
+    """Every recorded demo answer, checked once for the tests that read them."""
+    return _demo_records()
+
+
+def _demo_records() -> DemoRecords:
     checked = []
     for path in sorted(DEMO_ASKS.glob("*.json")):
         record = json.loads(path.read_text(encoding="utf-8"))
@@ -1021,9 +1030,9 @@ def _demo_records() -> list[tuple[str, dict[str, Any], CheckedAnswer]]:
     return checked
 
 
-def test_demo_answers_keep_every_sentence_with_a_record_value() -> None:
+def test_demo_answers_keep_every_sentence_with_a_record_value(demo_records: DemoRecords) -> None:
     """The check dropped correct, cited deadlines and appointments from demo answers."""
-    checked = _demo_records()
+    checked = demo_records
     assert len(checked) == 32
     for name, _, answer in checked:
         for sentence in answer.removed:
@@ -1050,14 +1059,14 @@ def test_demo_answers_keep_every_sentence_with_a_record_value() -> None:
     assert known.knows_paragraph("81", "AufenthG")
 
 
-def test_demo_payment_answers_name_the_rent_and_the_scam_demand() -> None:
+def test_demo_payment_answers_name_the_rent_and_the_scam_demand(demo_records: DemoRecords) -> None:
     """Every recorded "what do I have to pay" answer left out the rent (it has
     no stored due date) and, with the scam letter opened, no longer warned about its demand. The warning
     must be about that demand: the answer cites the record money_summary lists under ``do_not_pay`` and
     calls it a scam (its amount is optional — it once stood in for the citation)."""
     payments = [
         (record, answer)
-        for _, record, answer in _demo_records()
+        for _, record, answer in demo_records
         if record["question"] == "What do I have to pay in the next four weeks?"
     ]
     assert len(payments) == 8
@@ -1763,11 +1772,11 @@ def test_the_note_never_names_a_demand_not_to_pay_as_on_file(tools: LedgerTools,
     assert "incoming payment Mon 5 Oct 2026" in (refund.note() or "")  # never "payment due"
 
 
-def test_the_demo_never_cites_a_demand_not_to_pay_for_the_answer() -> None:
+def test_the_demo_never_cites_a_demand_not_to_pay_for_the_answer(demo_records: DemoRecords) -> None:
     """The recorded demo answer to "What do I have to pay in the next four weeks?" got the
     scam demand's chip on its "Payments with a due date" heading."""
     payments = 0
-    for name, record, answer in _demo_records():
+    for name, record, answer in demo_records:
         evidence = TurnEvidence.from_results(record["results"], today=TODAY, catalog=known_laws())
         for sentence in answer.sentences:
             assert not {*sentence.added, *sentence.repeated} & evidence.suspicious, (name, sentence.text)
