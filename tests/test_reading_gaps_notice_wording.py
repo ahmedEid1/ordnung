@@ -19,6 +19,7 @@ import pytest
 
 from fixtures_llm import TODAY, Letter, Router, fake_backend
 from helpers_docs import Line, make_pdf
+from helpers_tables import check_rows
 from ordnung import clock
 from ordnung.app_context import build_context
 from ordnung.ingest.gaps import CHECK_SLOT, _own_start, check_item, letter_date, remedy_notices
@@ -89,19 +90,32 @@ RUN_TOGETHER = {
 }  # fmt: skip
 
 
-@pytest.mark.parametrize("body", [SALUTED, UNSALUTED], ids=["salutation", "no salutation"])
-@pytest.mark.parametrize("head", list(RUN_TOGETHER.values()), ids=list(RUN_TOGETHER))
-def test_the_letter_s_own_date_in_a_header_run_together_starts_the_notice(
-    head: tuple[str, ...], body: tuple[str, ...]
-) -> None:
+LETTER_BODIES = [SALUTED, UNSALUTED]
+LETTER_BODIES_IDS = ["salutation", "no salutation"]
+RUN_TOGETHER_HEADS = list(RUN_TOGETHER.values())
+RUN_TOGETHER_HEADS_IDS = list(RUN_TOGETHER)
+
+
+def test_the_letter_s_own_date_in_a_header_run_together_starts_the_notice() -> None:
     """A "Datum" or a place and date beside an address line ("Am Lindenhof 2", a postcode
     line), an info block whose label and value the text layer set apart, and an abbreviation's period before it
     ("Dr.", "Abt.", "St.") — the letter's own date all the same: an empty reading gets the notice's date
     (2026-12-09), never undated, and nothing later."""
-    pages = [page(*head, *body)]
-    assert _own_start(pages) == date(2026, 11, 6)
-    assert letter_date(blank(), pages) == date(2026, 11, 6)
-    assert check_due(pages) == NOTIFIED_DUE
+
+    def check(head: tuple[str, ...], body: tuple[str, ...]) -> None:
+        pages = [page(*head, *body)]
+        assert _own_start(pages) == date(2026, 11, 6)
+        assert letter_date(blank(), pages) == date(2026, 11, 6)
+        assert check_due(pages) == NOTIFIED_DUE
+
+    check_rows(
+        [
+            pytest.param(head, body, id=f"{head_id}-{body_id}")
+            for body, body_id in zip(LETTER_BODIES, LETTER_BODIES_IDS, strict=True)
+            for head, head_id in zip(RUN_TOGETHER_HEADS, RUN_TOGETHER_HEADS_IDS, strict=True)
+        ],
+        check,
+    )
 
 
 @pytest.fixture
@@ -155,47 +169,53 @@ async def test_a_two_column_pdf_header_with_a_doctor_s_title_dates_the_check(
 FEE_DECISION = (*TOP, "Datum: 06.11.2026", *BODY, NOTICE)
 
 
-@pytest.mark.parametrize(
-    "hint",
-    [
-        "Widerspruch und Anfechtungsklage haben keine aufschiebende Wirkung (§ 80 Abs. 2 Satz 1 Nr. 1 VwGO), d. h. "
-        "der Betrag ist auch bei Einlegung eines Widerspruchs innerhalb von zwei Wochen nach Bekanntgabe zu zahlen.",
-        "Der Betrag ist innerhalb von zwei Wochen nach Bekanntgabe zu zahlen, auch wenn Sie Widerspruch einlegen.",
-        "Bitte zahlen Sie den Betrag innerhalb von zwei Wochen, auch wenn Sie Widerspruch erheben.",
-        "Die Gebühr wird zwei Wochen nach Bekanntgabe dieses Bescheides fällig; die Einlegung eines Widerspruchs "
-        "ändert daran nichts.",
-        "Sie müssen den Betrag auch dann innerhalb von zwei Wochen zahlen, wenn Sie Widerspruch einlegen.",
-        "Der Betrag ist auch dann innerhalb von zwei Wochen zu zahlen, wenn Widerspruch erhoben wird.",
-        "Wenn Sie Widerspruch einlegen, hat dieser keine aufschiebende Wirkung; der Betrag ist trotzdem innerhalb von "
-        "zwei Wochen nach Bekanntgabe zu zahlen.",
-    ],
-)
-def test_a_payment_s_period_beside_a_remedy_word_is_never_the_notice_s(hint: str) -> None:
+PAYMENT_HINTS = [
+    "Widerspruch und Anfechtungsklage haben keine aufschiebende Wirkung (§ 80 Abs. 2 Satz 1 Nr. 1 VwGO), d. h. "
+    "der Betrag ist auch bei Einlegung eines Widerspruchs innerhalb von zwei Wochen nach Bekanntgabe zu zahlen.",
+    "Der Betrag ist innerhalb von zwei Wochen nach Bekanntgabe zu zahlen, auch wenn Sie Widerspruch einlegen.",
+    "Bitte zahlen Sie den Betrag innerhalb von zwei Wochen, auch wenn Sie Widerspruch erheben.",
+    "Die Gebühr wird zwei Wochen nach Bekanntgabe dieses Bescheides fällig; die Einlegung eines Widerspruchs "
+    "ändert daran nichts.",
+    "Sie müssen den Betrag auch dann innerhalb von zwei Wochen zahlen, wenn Sie Widerspruch einlegen.",
+    "Der Betrag ist auch dann innerhalb von zwei Wochen zu zahlen, wenn Widerspruch erhoben wird.",
+    "Wenn Sie Widerspruch einlegen, hat dieser keine aufschiebende Wirkung; der Betrag ist trotzdem innerhalb von "
+    "zwei Wochen nach Bekanntgabe zu zahlen.",
+]
+
+
+def test_a_payment_s_period_beside_a_remedy_word_is_never_the_notice_s() -> None:
     """The period a payment verb governs ("… innerhalb von zwei Wochen … zu zahlen, auch wenn Sie
     Widerspruch einlegen") is the payment's: a correct reading stays unflagged (it was 2026-11-20 or -23, low,
     "Please check") and an empty one gets the notice's month (2026-12-09), never the two weeks."""
-    pages = [page(*FEE_DECISION, "Hinweis", hint)]
-    got, computed = objection_due(pages, ONE_MONTH, quote=NOTICE)
-    assert got == NOTIFIED_DUE and not computed.conflict
-    assert check_due(pages) == NOTIFIED_DUE
+
+    def check(hint: str) -> None:
+        pages = [page(*FEE_DECISION, "Hinweis", hint)]
+        got, computed = objection_due(pages, ONE_MONTH, quote=NOTICE)
+        assert got == NOTIFIED_DUE and not computed.conflict
+        assert check_due(pages) == NOTIFIED_DUE
+
+    check_rows(PAYMENT_HINTS, check)
 
 
-@pytest.mark.parametrize(
-    "notice",
-    [
-        "Die Einlegung eines Widerspruchs muss innerhalb eines Monats nach Bekanntgabe erfolgen; der Betrag ist "
-        "trotzdem bis zum 15.12.2026 zu zahlen.",
-        "Die Erhebung des Widerspruchs ist binnen eines Monats nach Bekanntgabe bei der Stadt Beispielhausen "
-        "vorzunehmen; der Betrag ist dennoch zu zahlen.",
-        "Zur Einlegung eines Widerspruchs haben Sie einen Monat nach Bekanntgabe Zeit; die Gebühr ist gleichwohl "
-        "fällig.",
-    ],
-)
-def test_a_notice_followed_by_a_payment_clause_keeps_its_period(notice: str) -> None:
+NOTICES_THEN_PAYMENT = [
+    "Die Einlegung eines Widerspruchs muss innerhalb eines Monats nach Bekanntgabe erfolgen; der Betrag ist "
+    "trotzdem bis zum 15.12.2026 zu zahlen.",
+    "Die Erhebung des Widerspruchs ist binnen eines Monats nach Bekanntgabe bei der Stadt Beispielhausen "
+    "vorzunehmen; der Betrag ist dennoch zu zahlen.",
+    "Zur Einlegung eines Widerspruchs haben Sie einen Monat nach Bekanntgabe Zeit; die Gebühr ist gleichwohl "
+    "fällig.",
+]
+
+
+def test_a_notice_followed_by_a_payment_clause_keeps_its_period() -> None:
     """The counter-cases: a lodging period with a payment clause after it is still the notice's."""
-    pages = [page(*TOP, "Datum: 06.11.2026", *BODY, notice)]
-    assert fires(pages)
-    assert check_due(pages) == NOTIFIED_DUE
+
+    def check(notice: str) -> None:
+        pages = [page(*TOP, "Datum: 06.11.2026", *BODY, notice)]
+        assert fires(pages)
+        assert check_due(pages) == NOTIFIED_DUE
+
+    check_rows(NOTICES_THEN_PAYMENT, check)
 
 
 def test_a_plain_language_notice_whose_period_follows_in_the_next_sentence_is_dated() -> None:
@@ -223,23 +243,26 @@ ACKNOWLEDGEMENT = (
 )
 
 
-@pytest.mark.parametrize(
-    "line",
-    [
-        "Gegen einen ablehnenden Bescheid können Sie innerhalb eines Monats nach Bekanntgabe Widerspruch erheben.",
-        "Gegen eine ablehnende Entscheidung können Sie innerhalb eines Monats nach Bekanntgabe Widerspruch erheben.",
-        "Gegen den dann ergehenden Bescheid können Sie innerhalb eines Monats nach Bekanntgabe Widerspruch erheben.",
-        "Sie können der Verarbeitung Ihrer Daten jederzeit widersprechen (Art. 21 DSGVO). Wir beantworten Ihre "
-        "Anfrage innerhalb eines Monats nach Eingang.",
-        "Der Abbuchung können Sie innerhalb von acht Wochen bei Ihrer Bank widersprechen.",
-    ],
-)
-def test_a_decision_still_to_come_a_data_right_or_a_debit_s_refund_is_no_notice(line: str) -> None:
+NO_NOTICE_LINES = [
+    "Gegen einen ablehnenden Bescheid können Sie innerhalb eines Monats nach Bekanntgabe Widerspruch erheben.",
+    "Gegen eine ablehnende Entscheidung können Sie innerhalb eines Monats nach Bekanntgabe Widerspruch erheben.",
+    "Gegen den dann ergehenden Bescheid können Sie innerhalb eines Monats nach Bekanntgabe Widerspruch erheben.",
+    "Sie können der Verarbeitung Ihrer Daten jederzeit widersprechen (Art. 21 DSGVO). Wir beantworten Ihre "
+    "Anfrage innerhalb eines Monats nach Eingang.",
+    "Der Abbuchung können Sie innerhalb von acht Wochen bei Ihrer Bank widersprechen.",
+]
+
+
+def test_a_decision_still_to_come_a_data_right_or_a_debit_s_refund_is_no_notice() -> None:
     """A remedy against a decision not yet made ("einen ablehnenden Bescheid", "den dann
     ergehenden"), the data-protection right to object, and a debit's refund are no notice."""
-    pages = [page(*ACKNOWLEDGEMENT, line, "Mit freundlichen Grüßen")]
-    assert not any(found.live for found in remedy_notices(pages))
-    assert not fires(pages)
+
+    def check(line: str) -> None:
+        pages = [page(*ACKNOWLEDGEMENT, line, "Mit freundlichen Grüßen")]
+        assert not any(found.live for found in remedy_notices(pages))
+        assert not fires(pages)
+
+    check_rows(NO_NOTICE_LINES, check)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -262,21 +285,24 @@ MUSTER = (
 )
 
 
-@pytest.mark.parametrize(
-    "closing",
-    [
-        "Dieses Schreiben wurde maschinell erstellt und ist ohne Unterschrift gültig.",
-        "Sollten Sie inzwischen gezahlt haben, betrachten Sie dieses Schreiben bitte als gegenstandslos.",
-    ],
-)
-def test_a_closing_line_after_a_restated_notice_never_dates_it_from_the_reminder(closing: str) -> None:
+CLOSING_LINES = [
+    "Dieses Schreiben wurde maschinell erstellt und ist ohne Unterschrift gültig.",
+    "Sollten Sie inzwischen gezahlt haben, betrachten Sie dieses Schreiben bitte als gegenstandslos.",
+]
+
+
+def test_a_closing_line_after_a_restated_notice_never_dates_it_from_the_reminder() -> None:
     """A closing sentence folded into another decision's restated notice ("Dieses Schreiben …") never
     makes it this letter's: the decision of 03.09 allows 2026-10-07; counted from the reminder's 25.09 it was
     2026-10-28 — now undated or earlier."""
-    pages = [page(*MUSTER, closing)]
-    for reading in (blank(), blank(sender=SENDER, document_date="2026-09-25", items=[payment()])):
-        got = check_due(pages, reading)
-        assert got is None or got <= "2026-10-07"
+
+    def check(closing: str) -> None:
+        pages = [page(*MUSTER, closing)]
+        for reading in (blank(), blank(sender=SENDER, document_date="2026-09-25", items=[payment()])):
+            got = check_due(pages, reading)
+            assert got is None or got <= "2026-10-07"
+
+    check_rows(CLOSING_LINES, check)
 
 
 def _cover(body: str) -> list[Any]:
@@ -323,40 +349,41 @@ FIRST_INSTANCE = (
 )
 
 
-@pytest.mark.parametrize(
-    ("tail", "remedy"),
-    [
+LATER_COURT_ACTIONS = [
+    (
         (
-            (
-                NOTICE,
-                "Über den Widerspruch entscheidet die Widerspruchsbehörde durch Widerspruchsbescheid.",
-                "Gegen den Widerspruchsbescheid kann innerhalb eines Monats nach seiner Zustellung Klage erhoben "
-                "werden.",
-            ),
-            "widerspruch",
+            NOTICE,
+            "Über den Widerspruch entscheidet die Widerspruchsbehörde durch Widerspruchsbescheid.",
+            "Gegen den Widerspruchsbescheid kann innerhalb eines Monats nach seiner Zustellung Klage erhoben "
+            "werden.",
         ),
+        "widerspruch",
+    ),
+    (
         (
-            (
-                "Gegen diesen Bescheid ist der Einspruch gegeben. Der Einspruch ist innerhalb eines Monats nach "
-                "Bekanntgabe dieses Bescheides einzulegen.",
-                "Gegen die Einspruchsentscheidung kann innerhalb eines Monats nach Bekanntgabe Klage beim "
-                "Finanzgericht erhoben werden.",
-            ),
-            "einspruch",
+            "Gegen diesen Bescheid ist der Einspruch gegeben. Der Einspruch ist innerhalb eines Monats nach "
+            "Bekanntgabe dieses Bescheides einzulegen.",
+            "Gegen die Einspruchsentscheidung kann innerhalb eines Monats nach Bekanntgabe Klage beim "
+            "Finanzgericht erhoben werden.",
         ),
-    ],
-)
-def test_a_first_decision_explaining_the_later_court_action_names_the_objection(
-    tail: tuple[str, ...], remedy: str
-) -> None:
+        "einspruch",
+    ),
+]
+
+
+def test_a_first_decision_explaining_the_later_court_action_names_the_objection() -> None:
     """A first decision whose notice also explains the court action against the later decision on the
     objection is no decision on an objection: the to-do is the objection's, dated no later than 2026-12-09."""
-    pages = [page(*FIRST_INSTANCE, *tail, "Mit freundlichen Grüßen")]
-    reading = blank(**COMPLETE, items=[payment(quote="setzen wir eine Gebühr von 120,00 EUR fest")])
-    found = check_item(reading, pages)
-    assert found is not None and found.remedy == remedy
-    got = check_due(pages, reading)
-    assert got is not None and got <= NOTIFIED_DUE
+
+    def check(tail: tuple[str, ...], remedy: str) -> None:
+        pages = [page(*FIRST_INSTANCE, *tail, "Mit freundlichen Grüßen")]
+        reading = blank(**COMPLETE, items=[payment(quote="setzen wir eine Gebühr von 120,00 EUR fest")])
+        found = check_item(reading, pages)
+        assert found is not None and found.remedy == remedy
+        got = check_due(pages, reading)
+        assert got is not None and got <= NOTIFIED_DUE
+
+    check_rows(LATER_COURT_ACTIONS, check)
 
 
 HEARING = (
@@ -373,45 +400,51 @@ HEARING = (
 )
 
 
-@pytest.mark.parametrize(
-    "lines",
-    [
-        (
-            "Sollten wir danach einen Bescheid erlassen, erhalten Sie mit diesem eine",
-            "Rechtsbehelfsbelehrung; danach können Sie innerhalb eines Monats nach Bekanntgabe Widerspruch erheben.",
-        ),
-        (
-            "Gegen einen späteren Bescheid können Sie nach der dort enthaltenen",
-            "Rechtsbehelfsbelehrung innerhalb eines Monats nach Bekanntgabe Widerspruch erheben.",
-        ),
-        (
-            "Erst nach Erlass des Bescheides könnten Sie gemäß der beigefügten",
-            "Rechtsbehelfsbelehrung innerhalb eines Monats nach Bekanntgabe Widerspruch erheben.",
-        ),
-    ],
-)
-def test_a_heading_word_wrapped_inside_a_hearing_s_sentence_is_no_notice(lines: tuple[str, ...]) -> None:
+WRAPPED_HEARINGS = [
+    (
+        "Sollten wir danach einen Bescheid erlassen, erhalten Sie mit diesem eine",
+        "Rechtsbehelfsbelehrung; danach können Sie innerhalb eines Monats nach Bekanntgabe Widerspruch erheben.",
+    ),
+    (
+        "Gegen einen späteren Bescheid können Sie nach der dort enthaltenen",
+        "Rechtsbehelfsbelehrung innerhalb eines Monats nach Bekanntgabe Widerspruch erheben.",
+    ),
+    (
+        "Erst nach Erlass des Bescheides könnten Sie gemäß der beigefügten",
+        "Rechtsbehelfsbelehrung innerhalb eines Monats nach Bekanntgabe Widerspruch erheben.",
+    ),
+]
+
+
+def test_a_heading_word_wrapped_inside_a_hearing_s_sentence_is_no_notice() -> None:
     """The word "Rechtsbehelfsbelehrung" at the start of a wrapped line inside a sentence is no heading that
     cuts off the sentence's condition ("Sollten wir …", "Gegen einen späteren Bescheid …")."""
-    pages = [page(*HEARING, *lines, "Mit freundlichen Grüßen")]
-    assert not any(found.live for found in remedy_notices(pages))
-    assert not fires(pages)
+
+    def check(lines: tuple[str, ...]) -> None:
+        pages = [page(*HEARING, *lines, "Mit freundlichen Grüßen")]
+        assert not any(found.live for found in remedy_notices(pages))
+        assert not fires(pages)
+
+    check_rows([(row,) for row in WRAPPED_HEARINGS], check)
 
 
-@pytest.mark.parametrize(
-    "notice",
-    [
-        "Sie können diesem Bescheid innerhalb eines Monats nach Bekanntgabe widersprechen, auch wenn Sie am "
-        "Lastschriftverfahren teilnehmen.",
-        "Auch bei erteiltem SEPA-Lastschriftmandat können Sie diesem Bescheid innerhalb eines Monats nach "
-        "Bekanntgabe widersprechen.",
-    ],
-)
-def test_a_notice_naming_the_direct_debit_still_fires(notice: str) -> None:
+DEBIT_NOTICES = [
+    "Sie können diesem Bescheid innerhalb eines Monats nach Bekanntgabe widersprechen, auch wenn Sie am "
+    "Lastschriftverfahren teilnehmen.",
+    "Auch bei erteiltem SEPA-Lastschriftmandat können Sie diesem Bescheid innerhalb eines Monats nach "
+    "Bekanntgabe widersprechen.",
+]
+
+
+def test_a_notice_naming_the_direct_debit_still_fires() -> None:
     """The must-fire side: a real notice that also names the direct debit is no debit's refund."""
-    pages = [page(*TOP, "Datum: 06.11.2026", *BODY, notice)]
-    assert fires(pages)
-    assert check_due(pages) == NOTIFIED_DUE
+
+    def check(notice: str) -> None:
+        pages = [page(*TOP, "Datum: 06.11.2026", *BODY, notice)]
+        assert fires(pages)
+        assert check_due(pages) == NOTIFIED_DUE
+
+    check_rows(DEBIT_NOTICES, check)
 
 
 def test_the_own_date_line_with_a_print_time_under_it_starts_the_notice() -> None:
