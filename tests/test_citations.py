@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
+from helpers_tables import check_rows
 from ordnung.assistant.channels import ToolAnswer, render_tool_result
 from ordnung.assistant.citations import (
     Citation,
@@ -74,12 +73,20 @@ def test_a_record_type_with_an_id_of_another_shape_is_parsed_so_it_can_be_stripp
     assert strip_invalid(grouped, {ITEM}) == f"Due 21 Oct [item:{ITEM}]."
 
 
-@pytest.mark.parametrize(
-    ("word", "expected"),
-    [("doc", "doc"), ("Document", "doc"), ("ITM", "item"), ("ctr", "contract"), ("pty", "party")],
-)
-def test_canonical_type(word: str, expected: str) -> None:
-    assert canonical_type(word) == expected
+CANONICAL_TYPE_EXAMPLES = [
+    ("doc", "doc"),
+    ("Document", "doc"),
+    ("ITM", "item"),
+    ("ctr", "contract"),
+    ("pty", "party"),
+]
+
+
+def test_canonical_type() -> None:
+    def check(word: str, expected: str) -> None:
+        assert canonical_type(word) == expected
+
+    check_rows(CANONICAL_TYPE_EXAMPLES, check)
 
 
 def test_well_formed_requires_matching_prefix() -> None:
@@ -226,23 +233,26 @@ def test_tool_labels_never_show_a_value_the_model_chose() -> None:
     assert tool_label("list_items", {"status": "31.12.2027"}) == "Checked your open to-dos & dates"
 
 
-@pytest.mark.parametrize(
-    ("query", "shown"),
-    [
-        ("Frist verlängert Ende Januar", "Frist verlängert …"),
-        ("mid-October payment", "… payment"),
-        ("Zahlung Anfang Oktober 2026", "Zahlung …"),
-        ("Termin um 14h", "Termin um …"),
-        ("late may fee", "late may fee"),  # the verb, as the check reads it
-        ("Kündigung Oktober", "Kündigung Oktober"),  # a month alone is no value the check reads
-        # masked on the words as the check reads them (a Unicode hyphen, markup)
-        ("mid\u2010January fee", "… fee"),
-        ("Frist Ende **Januar**", "Frist …"),
-        ("Frist _Ende_ Januar", "Frist …"),
-        ("the thirty-first of October", "the …"),
-    ],
-)
-def test_tool_labels_hide_every_value_the_check_reads(query: str, shown: str) -> None:
+LABEL_HIDING_EXAMPLES = [
+    ("Frist verlängert Ende Januar", "Frist verlängert …"),
+    ("mid-October payment", "… payment"),
+    ("Zahlung Anfang Oktober 2026", "Zahlung …"),
+    ("Termin um 14h", "Termin um …"),
+    ("late may fee", "late may fee"),  # the verb, as the check reads it
+    ("Kündigung Oktober", "Kündigung Oktober"),  # a month alone is no value the check reads
+    # masked on the words as the check reads them (a Unicode hyphen, markup)
+    ("mid\u2010January fee", "… fee"),
+    ("Frist Ende **Januar**", "Frist …"),
+    ("Frist _Ende_ Januar", "Frist …"),
+    ("the thirty-first of October", "the …"),
+]
+
+
+def test_tool_labels_hide_every_value_the_check_reads() -> None:
     """The check reads "Ende Januar" as 31 January, but the trace showed it, because it
     hid only words with a digit. A label hides every word of a value the check reads."""
-    assert tool_label("search", {"query": query}) == f"Searched your letters for “{shown}”"
+
+    def check(query: str, shown: str) -> None:
+        assert tool_label("search", {"query": query}) == f"Searched your letters for “{shown}”"
+
+    check_rows(LABEL_HIDING_EXAMPLES, check)
