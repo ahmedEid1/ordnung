@@ -150,6 +150,13 @@ def test_the_only_delete_on_a_phone_is_the_undo_of_answered(schema: dict[str, An
     assert deletes - PHONE_ROUTES - {("DELETE", "/api/phone/pairing")} <= set(NEVER_ON_PHONE)
 
 
+def test_every_change_a_phone_can_make_has_a_label() -> None:
+    changes = {op for op in scope.PHONE_ROUTES if op[0] != "GET"} - scope.NOT_CHANGES
+    assert changes == set(scope.CHANGE_LABELS)
+    assert set(scope.LIMITED) <= scope.PHONE_ROUTES
+    assert set(scope.STREAMS) | scope.UPLOADS <= scope.PHONE_ROUTES
+
+
 def test_phone_access_itself_is_computer_only_except_pairing(schema: dict[str, Any]) -> None:
     phone_access = {op for op in scope.schema_operations(schema) if op[1].startswith("/api/phone")}
     assert phone_access & PHONE_ROUTES == {("POST", "/api/phone/pair")}
