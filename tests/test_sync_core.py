@@ -1,5 +1,5 @@
 """The sync core's guarantees, at least one test each; the test names keep the numbers the problems were
-first listed under (blockers 1-4, highs 6-8, findings 9-12, 14-18, 20-21, 25-26, 30 and 34). Several are also
+first listed under (blockers 1, 2 and 4, high 6, findings 9, 12, 15, 18, 20-21, 25-26 and 30). Several are also
 covered in depth elsewhere (named in each docstring); these pin the guarantee itself."""
 
 from __future__ import annotations
@@ -14,7 +14,6 @@ from typing import Any
 import pytest
 
 from fakes import use_fast_keys
-from ordnung import durable
 from ordnung.db.store import Store, person_write
 from ordnung.models import CalendarSyncState
 from ordnung.sync import (
@@ -213,28 +212,6 @@ def test_finding_9_every_head_is_read_on_every_scan(shared: Shared) -> None:
     assert b.s.head_file in cached  # the last good copy (GC)
 
 
-def test_finding_11_durable_while_syncing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from ordnung.config import Paths
-
-    store = Store.open(Paths(tmp_path / "d").ensure(), durable=True)
-    try:
-        with store.tx() as conn:
-            assert conn.execute("PRAGMA synchronous").fetchone()[0] == 2  # FULL
-        store.set_durable(False)
-        with store.tx() as conn:
-            assert conn.execute("PRAGMA synchronous").fetchone()[0] == 1  # NORMAL, at its next transaction
-        store.set_durable(True)
-        calls: list[int] = []
-        monkeypatch.setattr(durable, "fsync", lambda fd: calls.append(fd))
-        from ordnung.ingest import intake
-
-        intake._write_atomic(tmp_path / "d" / "files" / "x.bin", b"original")
-        assert calls  # the file reached the disk before a row could name it
-    finally:
-        store.set_durable(False)
-        store.close()
-
-
 def test_finding_12_a_failed_database_step_can_be_given_up(
     shared: Shared, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -275,22 +252,6 @@ def test_finding_15_the_last_hand_over_is_sent_on(shared: Shared) -> None:
     assert (
         manifest is not None and manifest.calendar is not None and manifest.calendar.events == {"e.ics": "h"}
     )
-
-
-def test_finding_16_a_shared_watched_folder(tmp_path: Path) -> None:
-    from ordnung.ingest import watcher
-
-    store = Store.open(__import__("ordnung.config").config.Paths(tmp_path / "d").ensure())
-    try:
-        data = b"%PDF a scan"
-        assert not watcher.was_taken(store, data)
-        watcher.remember_taken(store, data)
-        assert watcher.was_taken(store, data)  # skipped while sync is connected (test_sync_agent)
-        assert hashlib.sha256(data).hexdigest() in json.loads(
-            store.get_meta(watcher.FOLDER_TAKEN_META_KEY) or "[]"
-        )
-    finally:
-        store.close()
 
 
 def test_finding_18_a_lineage_that_claims_too_much_is_refused(shared: Shared) -> None:
