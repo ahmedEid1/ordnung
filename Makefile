@@ -81,4 +81,4 @@ capture: build-web browser  ## screenshots for the README and the guide (two fro
 	scripts/capture.sh
 
 clean:              ## caches and coverage; the committed web build in src/ordnung/web/dist stays
-	rm -rf .pytest_cache .mypy_cache .ruff_cache htmlcov .coverage web/dist
+	rm -rf .pytest_cache .mypy_cache .ruff_cache .hypothesis htmlcov .coverage coverage.xml web/dist
