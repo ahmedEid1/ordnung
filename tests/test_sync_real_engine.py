@@ -4,6 +4,7 @@ API, sharing one folder, or two copies of it that a test brings in step the way 
 
 from __future__ import annotations
 
+import os
 import shutil
 from pathlib import Path
 from typing import Any
@@ -35,6 +36,7 @@ pytestmark = pytest.mark.usefixtures("fast")
 def fast(monkeypatch: pytest.MonkeyPatch) -> None:
     fast_sync(monkeypatch)
     use_fast_keys(monkeypatch)
+    monkeypatch.setattr(os, "fsync", lambda fd: None)  # no test here is about durability: skip the disk flush
 
 
 async def _add_todo(api: Api, title: str) -> Any:

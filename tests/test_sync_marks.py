@@ -4,6 +4,7 @@ exactly the person changes it counts, in every interleaving, and nothing is ever
 
 from __future__ import annotations
 
+import os
 import threading
 from pathlib import Path
 
@@ -19,6 +20,7 @@ from sync_harness import Computer
 @pytest.fixture(autouse=True)
 def _fast(monkeypatch: pytest.MonkeyPatch) -> None:
     use_fast_keys(monkeypatch)
+    monkeypatch.setattr(os, "fsync", lambda fd: None)  # no test here is about durability: skip the disk flush
 
 
 def counted(store: Store) -> int:

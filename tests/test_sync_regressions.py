@@ -17,6 +17,7 @@ from ordnung.sync import SyncError
 @pytest.fixture(autouse=True)
 def _fast(monkeypatch: pytest.MonkeyPatch) -> None:
     use_fast_keys(monkeypatch)
+    monkeypatch.setattr(os, "fsync", lambda fd: None)  # no test here is about durability: skip the disk flush
 
 
 def test_the_calendar_preview_only_reads(tmp_path: Path) -> None:
