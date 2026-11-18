@@ -212,23 +212,6 @@ def test_the_ledgers_own_deadline_passes_next_to_the_injection(
     )
 
 
-def test_naming_the_letter_never_shows_its_date(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """The wording of a sentence never decides that a letter's value may be shown (ADR 0007, 0008):
-    "the letter says" or not, a date only a letter holds is marked as the letter's, never shown."""
-    evidence = evidence_of(tools, ("get_document", {"doc_id": ids["doc_tax"]}))
-    doc = ids["doc_tax"]
-    for lead in (
-        "The letter says the deadline was",
-        "Laut dem Schreiben wurde die Frist",
-        "Good news: it was",
-    ):
-        checked = check_answer(
-            f"{lead} extended to 31.12.2027 [doc:{doc}].", evidence, citable=evidence.seen_ids
-        )
-        assert "31.12.2027" not in checked.text and "31.12.2027" in checked.sentences[0].left_out
-        assert [s.verdict for s in checked.sentences] == ["redacted"]
-
-
 def test_only_the_cited_letter_marks_a_value_as_its_own(tools: LedgerTools, ids: dict[str, str]) -> None:
     evidence = evidence_of(
         tools, ("get_document", {"doc_id": ids["doc_tax"]}), ("get_document", {"doc_id": ids["doc_power"]})
@@ -713,18 +696,6 @@ def test_month_names_and_soft_line_breaks_are_read(tools: LedgerTools, ids: dict
     check_rows(MONTH_NAMES_AND_SOFT_LINE_BREAKS_ARE_READ, check_row)
 
 
-def test_a_month_is_supported_by_a_record_date_in_it(tools: LedgerTools, ids: dict[str, str]) -> None:
-    evidence = evidence_of(tools, ("list_items", {}))
-    item = ids["tax_objection"]  # due Wed 21 Oct 2026
-    for sentence in (
-        f"Your objection is due in October 2026 [item:{item}].",
-        f"Die Frist endet im Oktober 2026 [item:{item}].",
-        f"Object by 21 Oct\n2026 [item:{item}].",
-    ):
-        assert check(sentence, evidence)[1] == ["kept"], sentence
-    assert check(f"Your objection is due in November 2026 [item:{item}].", evidence)[1] == ["removed"]
-
-
 def test_phone_and_apartment_numbers_are_not_dates(tools: LedgerTools, ids: dict[str, str]) -> None:
     """Numbers like "0221-12-3456" and "Wohnung 05-2-03" were read as unreadable dates."""
     evidence = evidence_of(tools, ("list_items", {}))
@@ -855,6 +826,19 @@ def test_the_wording_never_decides_whose_value_it_is(tools: LedgerTools, ids: di
         text, verdicts = check(answer, evidence)
         assert verdicts == ["redacted"] and "31.12.2027" not in text, answer
         assert "[date only in the letter]" in text or "[Datum nur im Brief]" in text, answer
+
+    # The wording of a sentence never decides that a letter's value may be shown (ADR 0007, 0008):
+    # "the letter says" or not, a date only a letter holds is marked as the letter's, never shown.
+    for lead in (
+        "The letter says the deadline was",
+        "Laut dem Schreiben wurde die Frist",
+        "Good news: it was",
+    ):
+        checked = check_answer(
+            f"{lead} extended to 31.12.2027 [doc:{doc}].", evidence, citable=evidence.seen_ids
+        )
+        assert "31.12.2027" not in checked.text and "31.12.2027" in checked.sentences[0].left_out
+        assert [s.verdict for s in checked.sentences] == ["redacted"]
 
 
 def test_a_letters_date_comes_with_ordnungs_own(tools: LedgerTools, ids: dict[str, str]) -> None:
@@ -1143,10 +1127,8 @@ def test_values_next_to_each_other_are_all_left_out(injected: TurnEvidence, ids:
 
     check_rows(VALUES_NEXT_TO_EACH_OTHER_ARE_ALL_LEFT_OUT, check_row)
 
-
-def test_a_letters_date_next_to_its_amount(injected: TurnEvidence, ids: dict[str, str]) -> None:
-    """The text "31.12.2027 € 412.00" was edited as “31.12.2027 €” 412.00 — each value keeps
-    its own currency."""
+    # The text "31.12.2027 € 412.00" was edited as “31.12.2027 €” 412.00 — each value keeps
+    # its own currency.
     doc = ids["doc_tax"]
     text, verdicts = check(f"The letter says 31.12.2027 € 999,00 [doc:{doc}].", injected)
     assert (text, verdicts) == (
@@ -1679,6 +1661,14 @@ def test_parts_of_a_month_are_read_as_their_days(tools: LedgerTools, ids: dict[s
     assert check("It is due by the end of October 2026 [item:itm_end].", last_day)[1] == ["kept"]
     assert check("It is due by Ende Oktober [item:itm_end].", last_day)[1] == ["kept"]
     assert check("It is due by the end of 2026 [item:itm_end].", last_day)[1] == ["removed"]
+    # a bare month, in German too and across a soft line break, is supported by a record date in it
+    item = objection
+    for sentence in (
+        f"Die Frist endet im Oktober 2026 [item:{item}].",
+        f"Object by 21 Oct\n2026 [item:{item}].",
+    ):
+        assert check(sentence, evidence)[1] == ["kept"], sentence
+    assert check(f"Your objection is due in November 2026 [item:{item}].", evidence)[1] == ["removed"]
 
 
 def test_a_category_total_backs_no_contract_of_a_category_of_two() -> None:
@@ -2202,18 +2192,6 @@ def test_more_forms_of_a_time_are_read(tools: LedgerTools, ids: dict[str, str]) 
     check_rows(MORE_FORMS_OF_A_TIME_ARE_READ, check_row)
 
 
-@pytest.mark.parametrize(
-    "german",
-    ["Sie haben 3 am 14.10.2026 [item:{item}].", "Es sind 4 am Montag, 14.10.2026 [item:{item}].",
-     "Termin 3 am Bahnhof, 14.10.2026 [item:{item}]."],
-)  # fmt: skip
-def test_the_german_word_am_is_no_time(tools: LedgerTools, ids: dict[str, str], german: str) -> None:
-    evidence = evidence_of(tools, ("list_items", {}))
-    item = ids["abh_appointment"]
-    answer = german.format(item=item)
-    assert check(answer, evidence) == (answer, ["kept"])
-
-
 THE_VERB_MAY_IS_NO_PART_OF_MAY = [
     "Pay the TechMarkt reminder of 94.99 € by Wed 30 Sep 2026 [item:{pay}]; paying late may add another "
     "reminder fee.",
@@ -2237,8 +2215,6 @@ def test_the_verb_may_is_no_part_of_may(tools: LedgerTools, ids: dict[str, str])
 
     check_rows(THE_VERB_MAY_IS_NO_PART_OF_MAY, check_row)
 
-
-def test_a_capitalised_part_of_may_is_still_read(tools: LedgerTools, ids: dict[str, str]) -> None:
     evidence = evidence_of(tools, ("list_items", {}))
     obj = ids["tax_objection"]
     for part in ("late May", "early May", "late May 2027", "late may 2027", "Ende März", "mid-March"):
@@ -2382,6 +2358,9 @@ A_TIME_MOVED_BY_WORDS_OR_MINUTES_IS_NEVER_THE_WHOLE_HOUR = [
 ]
 
 
+THE_RECORDS_OWN_TIME_STILL_PASSES = ["um 10 Uhr", "at 10 am", "um 10 Uhr 00", "at 10 h 00", "from 9 to 10 am"]
+
+
 def test_a_time_moved_by_words_or_minutes_is_never_the_whole_hour(
     tools: LedgerTools, ids: dict[str, str]
 ) -> None:
@@ -2398,13 +2377,20 @@ def test_a_time_moved_by_words_or_minutes_is_never_the_whole_hour(
 
     check_rows(A_TIME_MOVED_BY_WORDS_OR_MINUTES_IS_NEVER_THE_WHOLE_HOUR, check_row)
 
+    def check_kept_row(time: str) -> None:
+        evidence = evidence_of(tools, ("list_items", {}))
+        item = ids["abh_appointment"]
+        answer = f"Your appointment is on 14 Oct 2026 {time} [item:{item}]."
+        assert check(answer, evidence) == (answer, ["kept"])
 
-@pytest.mark.parametrize("time", ["um 10 Uhr", "at 10 am", "um 10 Uhr 00", "at 10 h 00", "from 9 to 10 am"])
-def test_the_records_own_time_still_passes(tools: LedgerTools, ids: dict[str, str], time: str) -> None:
-    evidence = evidence_of(tools, ("list_items", {}))
-    item = ids["abh_appointment"]
-    answer = f"Your appointment is on 14 Oct 2026 {time} [item:{item}]."
-    assert check(answer, evidence) == (answer, ["kept"])
+    check_rows(THE_RECORDS_OWN_TIME_STILL_PASSES, check_kept_row)
+
+
+THE_GERMAN_WORD_AM_IS_NO_TIME = [
+    "Sie haben 3 am 14.10.2026 [item:{item}].",
+    "Es sind 4 am Montag, 14.10.2026 [item:{item}].",
+    "Termin 3 am Bahnhof, 14.10.2026 [item:{item}].",
+]
 
 
 def test_am_before_a_date_is_the_time_in_an_english_answer(tools: LedgerTools, ids: dict[str, str]) -> None:
@@ -2421,6 +2407,14 @@ def test_am_before_a_date_is_the_time_in_an_english_answer(tools: LedgerTools, i
     assert check(answer, evidence) == (answer, ["kept"])
     german = f"Ihr Termin: Sie haben 3 am 14.10.2026 [item:{item}]."
     assert check(german, evidence) == (german, ["kept"])
+
+    def check_german_row(german: str) -> None:
+        evidence = evidence_of(tools, ("list_items", {}))
+        item = ids["abh_appointment"]
+        answer = german.format(item=item)
+        assert check(answer, evidence) == (answer, ["kept"])
+
+    check_rows(THE_GERMAN_WORD_AM_IS_NO_TIME, check_german_row)
 
 
 THE_END_OF_A_RANGE_IS_READ_IN_THE_MONTH_OF_ITS_START = [
@@ -2713,8 +2707,6 @@ def test_a_slash_date_that_reads_two_ways_is_never_checked_by_one_reading() -> N
 
     check_rows(A_SLASH_DATE_THAT_READS_TWO_WAYS_IS_NEVER_CHECKED_BY_ONE_READING, check_row)
 
-
-def test_a_slash_date_with_one_reading_is_checked_as_usual() -> None:
     assert _kept("Your deadline is 03/03/2027 [item:itm_same].", SLASH_DEADLINE)
     assert (
         _kept("Your deadline is 13/03/2027 [item:itm_march].", SLASH_DEADLINE) is False
@@ -2931,6 +2923,9 @@ A_PART_OF_THE_DAY_IS_READ_WITH_ITS_HOUR = [
 ]
 
 
+A_MORNING_HOUR_STAYS = ["10 Uhr morgens", "10 Uhr vormittags", "10:00 in the morning", "morgens um 10 Uhr"]
+
+
 def test_a_part_of_the_day_is_read_with_its_hour(tools: LedgerTools, ids: dict[str, str]) -> None:
     """The time "10 Uhr abends" passed as checked for a 10:00 appointment."""
 
@@ -2940,13 +2935,11 @@ def test_a_part_of_the_day_is_read_with_its_hour(tools: LedgerTools, ids: dict[s
 
     check_rows(A_PART_OF_THE_DAY_IS_READ_WITH_ITS_HOUR, check_row)
 
+    def check_kept_row(time: str) -> None:
+        evidence = evidence_of(tools, ("list_items", {}))
+        assert _kept(f"Ihr Termin ist am Mi 14.10.2026 {time} [item:{ids['abh_appointment']}].", evidence)
 
-@pytest.mark.parametrize(
-    "time", ["10 Uhr morgens", "10 Uhr vormittags", "10:00 in the morning", "morgens um 10 Uhr"]
-)
-def test_a_morning_hour_stays(tools: LedgerTools, ids: dict[str, str], time: str) -> None:
-    evidence = evidence_of(tools, ("list_items", {}))
-    assert _kept(f"Ihr Termin ist am Mi 14.10.2026 {time} [item:{ids['abh_appointment']}].", evidence)
+    check_rows(A_MORNING_HOUR_STAYS, check_kept_row)
 
 
 def test_an_evening_hour_is_the_evening_time() -> None:
@@ -2984,6 +2977,12 @@ A_TIME_GLUED_TO_ITS_WORD_OR_WITH_A_COLON_LOOK_ALIKE_IS_READ = [
 ]
 
 
+THE_RIGHT_TIME_AFTER_A_COLON_OR_A_CJK_SIGN_STAYS = [
+    "预约：10:00 [item:{item}]。",
+    "Appointment (time:10:00) [item:{item}].",
+]
+
+
 def test_a_time_glued_to_its_word_or_with_a_colon_look_alike_is_read(
     tools: LedgerTools, ids: dict[str, str]
 ) -> None:
@@ -2996,15 +2995,11 @@ def test_a_time_glued_to_its_word_or_with_a_colon_look_alike_is_read(
 
     check_rows(A_TIME_GLUED_TO_ITS_WORD_OR_WITH_A_COLON_LOOK_ALIKE_IS_READ, check_row)
 
+    def check_kept_row(sentence: str) -> None:
+        evidence = evidence_of(tools, ("list_items", {}))
+        assert _kept(sentence.format(item=ids["abh_appointment"]), evidence)
 
-@pytest.mark.parametrize(
-    "sentence", ["预约：10:00 [item:{item}]。", "Appointment (time:10:00) [item:{item}]."]
-)
-def test_the_right_time_after_a_colon_or_a_cjk_sign_stays(
-    tools: LedgerTools, ids: dict[str, str], sentence: str
-) -> None:
-    evidence = evidence_of(tools, ("list_items", {}))
-    assert _kept(sentence.format(item=ids["abh_appointment"]), evidence)
+    check_rows(THE_RIGHT_TIME_AFTER_A_COLON_OR_A_CJK_SIGN_STAYS, check_kept_row)
 
 
 MORE_FORMS_OF_A_MOVED_DATE_OR_AMOUNT_ARE_READ = [
@@ -3036,8 +3031,6 @@ def test_more_forms_of_a_moved_date_or_amount_are_read(tools: LedgerTools, ids: 
 
     check_rows(MORE_FORMS_OF_A_MOVED_DATE_OR_AMOUNT_ARE_READ, check_row)
 
-
-def test_a_month_of_its_year_is_still_supported(tools: LedgerTools, ids: dict[str, str]) -> None:
     evidence = evidence_of(tools, ("list_items", {}))
     assert _kept(f"Your objection deadline is in October of 2026 [item:{ids['tax_objection']}].", evidence)
     assert _kept(f"Your objection deadline is on 10/21/2026 [item:{ids['tax_objection']}].", evidence)
@@ -3061,8 +3054,6 @@ def test_um_with_a_full_time_is_that_time(tools: LedgerTools, ids: dict[str, str
 
     check_rows(UM_WITH_A_FULL_TIME_IS_THAT_TIME, check_row)
 
-
-def test_a_wrong_time_after_um_is_left_out_whole(tools: LedgerTools, ids: dict[str, str]) -> None:
     evidence = evidence_of(tools, ("list_items", {}))
     item = ids["abh_appointment"]
     checked = check_answer(
@@ -3450,6 +3441,15 @@ APPOINTMENT_TIMES = [
 ]
 
 
+THE_APPOINTMENTS_OWN_TIME_STILL_PASSES = [
+    "The appointment is on 14.10.2026 at 10:00.",
+    "The appointment is on Wednesday morning, 14.10.2026, at 10:00.",
+    "Der Termin ist am 14.10.2026 um 10 Uhr morgens.",
+    "La cita es el 14/10/2026 a las 10:00.",
+    "Next time, the appointment is on 14.10.2026 at 10:00.",
+]
+
+
 def test_a_part_of_the_day_or_a_time_zone_is_read_with_its_time(
     tools: LedgerTools, ids: dict[str, str]
 ) -> None:
@@ -3464,22 +3464,11 @@ def test_a_part_of_the_day_or_a_time_zone_is_read_with_its_time(
 
     check_rows(APPOINTMENT_TIMES, check_row)
 
+    def check_kept_row(sentence: str) -> None:
+        evidence = evidence_of(tools, ("list_items", {}))
+        assert _kept(f"{sentence[:-1]} [item:{ids['abh_appointment']}].", evidence)
 
-@pytest.mark.parametrize(
-    "sentence",
-    [
-        "The appointment is on 14.10.2026 at 10:00.",
-        "The appointment is on Wednesday morning, 14.10.2026, at 10:00.",
-        "Der Termin ist am 14.10.2026 um 10 Uhr morgens.",
-        "La cita es el 14/10/2026 a las 10:00.",
-        "Next time, the appointment is on 14.10.2026 at 10:00.",
-    ],
-)
-def test_the_appointments_own_time_still_passes(
-    tools: LedgerTools, ids: dict[str, str], sentence: str
-) -> None:
-    evidence = evidence_of(tools, ("list_items", {}))
-    assert _kept(f"{sentence[:-1]} [item:{ids['abh_appointment']}].", evidence)
+    check_rows(THE_APPOINTMENTS_OWN_TIME_STILL_PASSES, check_kept_row)
 
 
 INJECTED_YEAR_FORMS = [
@@ -3607,6 +3596,18 @@ WRONG_DAY = [
 A_WRONG_DATE_IN_A_FORM_THE_READER_MISSED_NEVER_PASSES = [*YEAR_LATE, *WRONG_DAY]
 
 
+THE_RIGHT_DATE_IN_THOSE_FORMS_STAYS = [
+    "21-Oct",
+    "Oct-21",
+    "Oct21",
+    "21st-Oct",
+    "Oct the 21st",
+    "21ten Oktober",
+    "Oct 21, '26",
+    "21 Oct/2026",
+]
+
+
 def test_a_wrong_date_in_a_form_the_reader_missed_never_passes(
     tools: LedgerTools, ids: dict[str, str]
 ) -> None:
@@ -3628,14 +3629,11 @@ def test_a_wrong_date_in_a_form_the_reader_missed_never_passes(
 
     check_rows(A_WRONG_DATE_IN_A_FORM_THE_READER_MISSED_NEVER_PASSES, check_row)
 
+    def check_kept_row(written: str) -> None:
+        evidence = evidence_of(tools, ("list_items", {}))
+        assert _kept(f"Your objection deadline is {written} [item:{ids['tax_objection']}].", evidence)
 
-@pytest.mark.parametrize(
-    "written",
-    ["21-Oct", "Oct-21", "Oct21", "21st-Oct", "Oct the 21st", "21ten Oktober", "Oct 21, '26", "21 Oct/2026"],
-)
-def test_the_right_date_in_those_forms_stays(tools: LedgerTools, ids: dict[str, str], written: str) -> None:
-    evidence = evidence_of(tools, ("list_items", {}))
-    assert _kept(f"Your objection deadline is {written} [item:{ids['tax_objection']}].", evidence)
+    check_rows(THE_RIGHT_DATE_IN_THOSE_FORMS_STAYS, check_kept_row)
 
 
 def test_forms_the_new_readers_leave_alone() -> None:
