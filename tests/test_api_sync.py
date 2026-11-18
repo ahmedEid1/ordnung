@@ -14,6 +14,7 @@ from typing import Any
 import pytest
 
 from fake_caldav import MemorySecrets
+from helpers_tables import check_rows
 from ordnung import sync
 from ordnung.api.app import openapi_schema
 from ordnung.calendar.secrets import SecretsUnavailable
@@ -187,16 +188,22 @@ async def test_the_status_reads_no_secret_and_lists_no_folder(
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("name", "code"),
-    [("", "name"), ("   ", "name"), ("x" * 41, "name"), ("desk\x07", "name")],
-)
-async def test_a_computer_s_name_must_be_a_name(data_dir: Path, folder: Path, name: str, code: str) -> None:
-    async with computer(data_dir, start=False) as api:
-        refused = await api.client.put(
-            "/api/sync", json={"folder": str(folder), "name": name, "passphrase": PASSPHRASE}
-        )
+COMPUTER_NAMES_REFUSED = [("", "name"), ("   ", "name"), ("x" * 41, "name"), ("desk\x07", "name")]
+
+
+async def test_a_computer_s_name_must_be_a_name(data_dir: Path, folder: Path) -> None:
+    answers: list[tuple[str, str, Any]] = []
+    async with computer(data_dir, start=False) as api:  # a refusal writes nothing: one app serves every row
+        for name, code in COMPUTER_NAMES_REFUSED:
+            refused = await api.client.put(
+                "/api/sync", json={"folder": str(folder), "name": name, "passphrase": PASSPHRASE}
+            )
+            answers.append((name, code, refused))
+
+    def check(name: str, code: str, refused: Any) -> None:
         assert refused.status_code == 422 and refused.json()["code"] == code
+
+    check_rows(answers, check)
 
 
 async def test_a_new_folder_s_passphrase_must_be_strong_and_is_never_echoed_or_logged(
@@ -225,20 +232,26 @@ async def test_a_new_folder_s_passphrase_must_be_strong_and_is_never_echoed_or_l
         assert PASSPHRASE not in (data_dir / "sync" / "state.json").read_text()
 
 
-@pytest.mark.parametrize(
-    ("value", "problem"),
-    [("relative/folder", "full path"), ("/no/such/parent/Ordnung", "parent folder")],
-)
-async def test_a_folder_that_can_t_be_used_is_refused(data_dir: Path, value: str, problem: str) -> None:
-    async with computer(data_dir, start=False) as api:
-        info = await api.client.post("/api/sync/inspect", json={"folder": value})
+FOLDERS_REFUSED = [("relative/folder", "full path"), ("/no/such/parent/Ordnung", "parent folder")]
+
+
+async def test_a_folder_that_can_t_be_used_is_refused(data_dir: Path) -> None:
+    answers: list[tuple[str, str, Any, Any]] = []
+    async with computer(data_dir, start=False) as api:  # a refusal writes nothing: one app serves every row
+        for value, problem in FOLDERS_REFUSED:
+            info = await api.client.post("/api/sync/inspect", json={"folder": value})
+            refused = await api.client.put(
+                "/api/sync", json={"folder": value, "name": "desk", "passphrase": PASSPHRASE}
+            )
+            answers.append((value, problem, info, refused))
+
+    def check(value: str, problem: str, info: Any, refused: Any) -> None:
         assert (
             info.status_code == 200 and info.json()["kind"] == "refused" and problem in info.json()["problem"]
         )
-        refused = await api.client.put(
-            "/api/sync", json={"folder": value, "name": "desk", "passphrase": PASSPHRASE}
-        )
         assert refused.status_code == 422 and refused.json()["code"] == "folder"
+
+    check_rows(answers, check)
 
 
 async def test_a_folder_with_other_files_names_some_of_them(data_dir: Path, folder: Path) -> None:
