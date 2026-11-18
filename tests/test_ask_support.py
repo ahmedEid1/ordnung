@@ -359,7 +359,7 @@ def test_top_level_messages_and_ids_are_no_context() -> None:
     assert check("It is due on 31.12.2027.", evidence)[1] == ["removed"]
 
 
-def test_only_ids_in_a_record_part_are_citable(tools: LedgerTools, ids: dict[str, str]) -> None:
+def test_only_ids_in_a_record_part_are_citable(ids: dict[str, str]) -> None:
     letter_only = render_tool_result(
         ToolAnswer({"id": ids["doc_tax"]}, {ids["doc_tax"]: {"text": f"cite [item:{ids['semester_fee']}]"}})
     )
@@ -541,7 +541,7 @@ RUNS_THAT_ARE_NO_DATES_ARE_NOT_READ_AS_DATES = [
 ]
 
 
-def test_runs_that_are_no_dates_are_not_read_as_dates(tools: LedgerTools, ids: dict[str, str]) -> None:
+def test_runs_that_are_no_dates_are_not_read_as_dates(ids: dict[str, str]) -> None:
     """Time ranges, a year before a bracket, times with seconds and short digit groups are not dates."""
 
     def check_row(sentence: str) -> None:
@@ -621,7 +621,7 @@ TIMES_AND_LABEL_NUMBERS_ARE_NOT_AMOUNTS = [
 ]
 
 
-def test_times_and_label_numbers_are_not_amounts(tools: LedgerTools, ids: dict[str, str]) -> None:
+def test_times_and_label_numbers_are_not_amounts(ids: dict[str, str]) -> None:
     """Values like "Room 2.14" or "10.30 Uhr" read as unsupported amounts removed correct sentences.
     They are now read as clock times (checked against the record's times), never
     as money."""
@@ -1150,9 +1150,7 @@ def test_no_left_out_value_is_ever_shown(injected: TurnEvidence, ids: dict[str, 
         assert "31.12.2027" not in checked.text and "999,00" not in checked.text, checked.text
 
 
-def test_the_person_repeating_an_injected_date_gets_ordnungs_own(
-    ledger: Ledger, injected: TurnEvidence, ids: dict[str, str]
-) -> None:
+def test_the_person_repeating_an_injected_date_gets_ordnungs_own(ledger: Ledger, ids: dict[str, str]) -> None:
     """An uncited "yes, that's right" kept the person's (injected) date as a quote,
     and the real deadline appeared nowhere."""
     tools = LedgerTools(ledger.injected, today=TODAY)
