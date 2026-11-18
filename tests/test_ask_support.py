@@ -2209,9 +2209,12 @@ THE_VERB_MAY_IS_NO_PART_OF_MAY = [
 ]
 
 
-def test_the_verb_may_is_no_part_of_may(tools: LedgerTools, ids: dict[str, str]) -> None:
+def test_the_verb_may_stays_and_a_capitalised_part_of_may_is_read(
+    tools: LedgerTools, ids: dict[str, str]
+) -> None:
     """The words "late may" / "early may" were read as parts of May with no year, so the consequence
-    warnings a secretary should give ("paying late may add a fee") were garbled or removed."""
+    warnings a secretary should give ("paying late may add a fee") were garbled or removed. A capitalised
+    part of May ("late May", "early May"), with or without a year, is still read and removed as no date."""
 
     def check_row(sentence: str) -> None:
         evidence = evidence_of(tools, ("list_items", {}))
@@ -2367,11 +2370,12 @@ A_TIME_MOVED_BY_WORDS_OR_MINUTES_IS_NEVER_THE_WHOLE_HOUR = [
 THE_RECORDS_OWN_TIME_STILL_PASSES = ["um 10 Uhr", "at 10 am", "um 10 Uhr 00", "at 10 h 00", "from 9 to 10 am"]
 
 
-def test_a_time_moved_by_words_or_minutes_is_never_the_whole_hour(
+def test_only_the_appointments_own_hour_passes_never_a_time_moved_from_it(
     tools: LedgerTools, ids: dict[str, str]
 ) -> None:
     """The times "10 Uhr 45", "10 h 45" and "halb 10 Uhr" (9:30) were read as 10:00, the
-    appointment's own time, so a wrong time passed with its chip."""
+    appointment's own time, so a wrong time passed with its chip. The appointment's own time, in any of its
+    forms, still passes."""
 
     def check_row(time: str) -> None:
         evidence = evidence_of(tools, ("list_items", {}))
@@ -2932,8 +2936,10 @@ A_PART_OF_THE_DAY_IS_READ_WITH_ITS_HOUR = [
 A_MORNING_HOUR_STAYS = ["10 Uhr morgens", "10 Uhr vormittags", "10:00 in the morning", "morgens um 10 Uhr"]
 
 
-def test_a_part_of_the_day_is_read_with_its_hour(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """The time "10 Uhr abends" passed as checked for a 10:00 appointment."""
+def test_an_evening_part_of_the_day_moves_the_hour_and_a_morning_one_does_not(
+    tools: LedgerTools, ids: dict[str, str]
+) -> None:
+    """The time "10 Uhr abends" passed as checked for a 10:00 appointment; "10 Uhr morgens" still passes."""
 
     def check_row(time: str) -> None:
         evidence = evidence_of(tools, ("list_items", {}))
@@ -2989,11 +2995,12 @@ THE_RIGHT_TIME_AFTER_A_COLON_OR_A_CJK_SIGN_STAYS = [
 ]
 
 
-def test_a_time_glued_to_its_word_or_with_a_colon_look_alike_is_read(
+def test_a_time_glued_to_its_word_or_after_a_colon_look_alike_is_held_to_the_records_time(
     tools: LedgerTools, ids: dict[str, str]
 ) -> None:
     """Chinese writes values with no space before them, and a colon look-alike
-    renders as ':' — neither was read, so a wrong time passed as checked (the appointment is at 10:00)."""
+    renders as ':' — neither was read, so a wrong time passed as checked (the appointment is at 10:00). The
+    right time in those forms still passes."""
 
     def check_row(sentence: str) -> None:
         evidence = evidence_of(tools, ("list_items", {}))
@@ -3050,9 +3057,10 @@ UM_WITH_A_FULL_TIME_IS_THAT_TIME = [
 ]
 
 
-def test_um_with_a_full_time_is_that_time(tools: LedgerTools, ids: dict[str, str]) -> None:
+def test_a_time_after_um_is_read_whole_right_or_wrong(tools: LedgerTools, ids: dict[str, str]) -> None:
     """A regression of an earlier fix: "um 10:00 Uhr" was read as "um 10" without its unit,
-    removed and garbled ("[Uhrzeit weggelassen]:00 Uhr")."""
+    removed and garbled ("[Uhrzeit weggelassen]:00 Uhr"). A wrong time after "um" is left out whole, its
+    minutes too."""
 
     def check_row(sentence: str) -> None:
         evidence = evidence_of(tools, ("list_items", {}))
@@ -3614,12 +3622,13 @@ THE_RIGHT_DATE_IN_THOSE_FORMS_STAYS = [
 ]
 
 
-def test_a_wrong_date_in_a_form_the_reader_missed_never_passes(
+def test_a_date_in_a_form_the_reader_missed_passes_only_when_right(
     tools: LedgerTools, ids: dict[str, str]
 ) -> None:
     """A two-digit year after a day and month name, a year joined by a mark, a day and
     month joined by a mark or glued, and a day and month of another answer language were not read — a date a
-    year late or a day off passed as checked, and the check even added its citation."""
+    year late or a day off passed as checked, and the check even added its citation. The right date in
+    those forms still passes."""
 
     def check_row(written: str) -> None:
         evidence = evidence_of(tools, ("list_items", {}))

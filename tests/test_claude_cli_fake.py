@@ -143,6 +143,8 @@ async def _gone(*pids: int) -> bool:
 
 
 async def test_the_letter_goes_on_stdin_never_on_argv(fake: FakeClaude, letter: LLMRequest) -> None:
+    """The letter goes on stdin, never on argv, and the answer is read back whole: a call without tools has
+    no tool calls."""
     fake.play({"transcript": "extract_structured.jsonl"})
     response = await ClaudeCLIBackend(max_retries=0).complete(letter)
 

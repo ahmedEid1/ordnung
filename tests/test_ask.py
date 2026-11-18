@@ -1358,12 +1358,12 @@ async def test_works_with_the_real_app_context(data_dir: Path, store: Store, ids
 # --------------------------------------------------------------------------------------------------
 
 
-async def test_recorded_answer_replays(
+async def test_a_recorded_answer_replays_until_the_ledger_changes(
     paths: Paths, store: Store, ids: dict[str, str], tools: LedgerTools, tmp_path: Path
 ) -> None:
-    """A recorded answer replays only on the ledger it was made on: once a letter is filed for someone of the
-    household (what Ask's tools then say of it changes), the same question is a new request, and the demo's
-    replay has no answer for it."""
+    """A recorded answer replays, also when asked again in its thread, but only on the ledger it was made
+    on: once a letter is filed for someone of the household (what Ask's tools then say of it changes), the
+    same question is a new request, and the demo's replay has no answer for it."""
     from ordnung.secretary import household
 
     answer = f"Your TechMarkt reminder is due on 30 Sep [item:{ids['dunning_payment']}]."
