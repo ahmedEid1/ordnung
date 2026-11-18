@@ -29,6 +29,8 @@ from sync_sim import SyncToolSim, listing
 @pytest.fixture(autouse=True)
 def _fast(monkeypatch: pytest.MonkeyPatch) -> None:
     use_fast_keys(monkeypatch)
+    # no real disk flush: every line that asks for one still runs, only the system call is skipped
+    monkeypatch.setattr(os, "fsync", lambda fd: None)
 
 
 class Shared:
