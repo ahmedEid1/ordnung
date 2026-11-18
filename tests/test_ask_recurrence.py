@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import sys
+import tempfile
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -21,6 +22,7 @@ if str(ROOT) not in sys.path:
 from evals.ask import heldout, heldout_check, recurrence  # noqa: E402
 from evals.ask.ledger import LedgerError, SampleLife, build_base, pinned_today  # noqa: E402
 
+from helpers_tables import check_rows  # noqa: E402
 from ordnung.assistant.ask import ledger_fingerprint  # noqa: E402
 from ordnung.config import Paths  # noqa: E402
 from ordnung.db.store import Store  # noqa: E402
@@ -115,30 +117,35 @@ def test_a_rules_file_makes_sample_life_to_dos_repeat(base: tuple[Path, SampleLi
     }
 
 
-@pytest.mark.parametrize(
-    ("todos", "problem"),
-    [
-        ([_todo("ho-rec-x", "no_such_letter", 0, "2026-10-08", interval=1, unit="months")], "no_such_letter"),
-        ([_todo("ho-rec-x", DENTIST, 7, "2026-10-08", interval=1, unit="months")], "ho-rec-x"),
-        ([_todo("ho-rec-x", RENT, 0, "2026-10-05", interval=1, unit="months")], "repeats already"),
-        ([_todo("ho-rec-x", DENTIST, 0, "2026-10-08", interval=0, unit="months")], "ho-rec-x"),
-        ([_todo("ho-rec-x", DENTIST, 0, "2026-10-08", interval=1, unit="fortnights")], "unit"),
-        (
-            [
-                _todo("ho-rec-x", DENTIST, 0, "2026-10-08", interval=1, unit="months"),
-                _todo("ho-rec-x", REMINDER, 0, "2026-09-30", interval=1, unit="months"),
-            ],
-            "used twice",
-        ),
-    ],
-)
+BUILDER_REFUSALS = [
+    ([_todo("ho-rec-x", "no_such_letter", 0, "2026-10-08", interval=1, unit="months")], "no_such_letter"),
+    ([_todo("ho-rec-x", DENTIST, 7, "2026-10-08", interval=1, unit="months")], "ho-rec-x"),
+    ([_todo("ho-rec-x", RENT, 0, "2026-10-05", interval=1, unit="months")], "repeats already"),
+    ([_todo("ho-rec-x", DENTIST, 0, "2026-10-08", interval=0, unit="months")], "ho-rec-x"),
+    ([_todo("ho-rec-x", DENTIST, 0, "2026-10-08", interval=1, unit="fortnights")], "unit"),
+    (
+        [
+            _todo("ho-rec-x", DENTIST, 0, "2026-10-08", interval=1, unit="months"),
+            _todo("ho-rec-x", REMINDER, 0, "2026-09-30", interval=1, unit="months"),
+        ],
+        "used twice",
+    ),
+]
+
+
 def test_the_builder_refuses_what_the_ledger_cannot_hold(
-    base: tuple[Path, SampleLife], tmp_path: Path, todos: list[dict[str, Any]], problem: str
+    base: tuple[Path, SampleLife], tmp_path: Path
 ) -> None:
     folder, life = base
-    rules = _rules(tmp_path / "heldout", todos)
-    with pinned_today(DAY), pytest.raises(LedgerError, match=problem):
-        recurrence.build_recurrence(folder, tmp_path / "out", life, rules=rules)
+
+    def check(todos: list[dict[str, Any]], problem: str) -> None:
+        # a fresh folder per row: the builder copies the base into "out" before it refuses
+        row = Path(tempfile.mkdtemp(dir=tmp_path))
+        rules = _rules(row / "heldout", todos)
+        with pinned_today(DAY), pytest.raises(LedgerError, match=problem):
+            recurrence.build_recurrence(folder, row / "out", life, rules=rules)
+
+    check_rows(BUILDER_REFUSALS, check)
 
 
 def test_a_rules_file_of_another_schema_or_none_is_refused(
