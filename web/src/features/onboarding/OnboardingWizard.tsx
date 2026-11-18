@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type SubmitEvent, type ReactNode } from "react";
 import { Link } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, ArrowRight, Check, Laptop } from "lucide-react";
@@ -86,7 +86,7 @@ export function OnboardingWizard() {
     });
   };
 
-  const onSubmit = (e: FormEvent) => {
+  const onSubmit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (complete.isPending) return;
     if (!canContinue(step, draft)) {

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type SubmitEvent } from "react";
 import { Link } from "react-router";
 import { BellRing, Plus, X } from "lucide-react";
 import { useUpdateProfile } from "@/api/hooks";
@@ -42,7 +42,7 @@ function AddLead({ kind, label, existing, onAdd }: { kind: ItemKind; label: stri
     setValue("");
     setError(null);
   };
-  const submit = (e: FormEvent) => {
+  const submit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     const why = leadDaysError(value, existing);
     if (why) {

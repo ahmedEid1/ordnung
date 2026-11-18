@@ -40,7 +40,7 @@ describe("offline", () => {
   it("is one warning that stays, with 'Try again', until Ordnung answers — then 'Back online'", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
     client.setQueryData(["dashboard"], { ok: 1 });
-    await act(() => client.fetchQuery({ queryKey: ["dashboard"], queryFn: () => Promise.reject(offline()), retry: false, staleTime: 0 }).catch(() => {}));
+    await act(() => client.query({ queryKey: ["dashboard"], queryFn: () => Promise.reject(offline()), retry: false, staleTime: 0 }).catch(() => {}));
     expect(screen.getByText("Can't reach Ordnung")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
     // it doesn't time out: the data on screen is stale until Ordnung answers
@@ -48,19 +48,19 @@ describe("offline", () => {
     expect(screen.getByText("Can't reach Ordnung")).toBeInTheDocument();
 
     vi.useRealTimers();
-    await act(() => client.fetchQuery({ queryKey: ["dashboard"], queryFn: () => Promise.resolve({ ok: 2 }), staleTime: 0 }));
+    await act(() => client.query({ queryKey: ["dashboard"], queryFn: () => Promise.resolve({ ok: 2 }), staleTime: 0 }));
     expect(screen.getByText("Back online")).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByText("Can't reach Ordnung")).toBeNull());
   });
 
   it("stays quiet about successes when nothing was lost", async () => {
-    await act(() => client.fetchQuery({ queryKey: ["dashboard"], queryFn: () => Promise.resolve(1) }));
+    await act(() => client.query({ queryKey: ["dashboard"], queryFn: () => Promise.resolve(1) }));
     expect(screen.queryByText("Back online")).toBeNull();
   });
 
   it("'Try again' refetches what is on screen", async () => {
     client.setQueryData(["dashboard"], { ok: 1 });
-    await act(() => client.fetchQuery({ queryKey: ["dashboard"], queryFn: () => Promise.reject(offline()), retry: false, staleTime: 0 }).catch(() => {}));
+    await act(() => client.query({ queryKey: ["dashboard"], queryFn: () => Promise.reject(offline()), retry: false, staleTime: 0 }).catch(() => {}));
     const refetch = vi.spyOn(client, "refetchQueries").mockResolvedValue();
     act(() => screen.getByRole("button", { name: "Try again" }).click());
     expect(refetch).toHaveBeenCalledWith({ type: "active" });
@@ -208,8 +208,8 @@ describe("on a paired phone", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it("a phone the computer removed goes to the pairing page, told why — once, however many requests fail", async () => {
-    await act(() => client.fetchQuery({ queryKey: ["dashboard"], queryFn: () => Promise.reject(notPaired()), retry: false }).catch(() => {}));
-    await act(() => client.fetchQuery({ queryKey: ["items"], queryFn: () => Promise.reject(notPaired()), retry: false }).catch(() => {}));
+    await act(() => client.query({ queryKey: ["dashboard"], queryFn: () => Promise.reject(notPaired()), retry: false }).catch(() => {}));
+    await act(() => client.query({ queryKey: ["items"], queryFn: () => Promise.reject(notPaired()), retry: false }).catch(() => {}));
     await act(() => client.getMutationCache().build(client, { mutationFn: () => Promise.reject(notPaired()), meta: { errorTitle: "Couldn't save" } }).execute(undefined).catch(() => {}));
     expect(assign.mock.calls).toEqual([[REMOVED_PHONE_PATH]]);
     expect(REMOVED_PHONE_PATH).toBe("/pair?removed=1");
@@ -248,7 +248,7 @@ describe("on a paired phone", () => {
   it("says it can't reach the computer, and asks about the phone's Wi‑Fi", async () => {
     setClientKind("phone");
     client.setQueryData(["dashboard"], { ok: 1 });
-    await act(() => client.fetchQuery({ queryKey: ["dashboard"], queryFn: () => Promise.reject(new ApiError(0, PHONE_UNREACHABLE)), retry: false, staleTime: 0 }).catch(() => {}));
+    await act(() => client.query({ queryKey: ["dashboard"], queryFn: () => Promise.reject(new ApiError(0, PHONE_UNREACHABLE)), retry: false, staleTime: 0 }).catch(() => {}));
     expect(screen.getByText(PHONE_OFFLINE_TITLE)).toBeInTheDocument();
     expect(screen.getByText(PHONE_OFFLINE_DETAIL)).toBeInTheDocument();
     await act(() => client.getMutationCache().build(client, { mutationFn: () => Promise.reject(new ApiError(0, PHONE_UNREACHABLE)), meta: { errorTitle: "Couldn't save" } }).execute(undefined).catch(() => {}));

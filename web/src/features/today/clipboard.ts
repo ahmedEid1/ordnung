@@ -18,6 +18,9 @@ export async function copyText(text: string): Promise<boolean> {
     ta.style.opacity = "0";
     document.body.appendChild(ta);
     ta.select();
+    // deprecated, but the only way left to copy where navigator.clipboard is missing or refuses (an
+    // older browser, or a page that is not a secure context)
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     const ok = document.execCommand("copy");
     ta.remove();
     return ok;

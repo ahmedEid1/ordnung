@@ -7,7 +7,7 @@
  * reason shows under the field. A name typed but not added yet counts as unsaved (the page's "Save and go"). Claude
  * never sees this list.
  */
-import { useEffect, useRef, useState, type FormEvent, type Ref, type RefObject } from "react";
+import { useEffect, useRef, useState, type SubmitEvent, type Ref, type RefObject } from "react";
 import { Link } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useHousehold } from "@/api/hooks";
@@ -95,7 +95,7 @@ function AddPerson({ household, inputRef }: { household: Household; inputRef: Re
   // a name typed but not added yet is an unsaved change ("Save and go" adds it)
   useReportDirty(name.trim() !== "", add);
 
-  const submit = (e: FormEvent) => {
+  const submit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     void add();
   };

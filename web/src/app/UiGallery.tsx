@@ -65,9 +65,8 @@ import { WhyThisDate } from "@/features/document/WhyThisDate";
 import { useDashboard } from "@/api/hooks";
 import { PIPELINE_STEPS } from "@/lib/copy";
 import { useToday } from "@/lib/today";
+import { IS_APPLE } from "@/lib/utils";
 import { addDays, format } from "date-fns";
-
-const IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
 /** "Why this date?" samples: fixtures here, so the gallery shows them with any data (not only the demo's). */
 const SPEC_BASE: DateSpec = {
@@ -414,7 +413,7 @@ export default function UiGallery() {
         </Row>
         <Row label="Keys & tips">
           <span className="inline-flex items-center gap-1 text-base text-muted">
-            Search <Kbd>/</Kbd> or <Kbd>{IS_MAC ? "⌘" : "Ctrl"}</Kbd>
+            Search <Kbd>/</Kbd> or <Kbd>{IS_APPLE ? "⌘" : "Ctrl"}</Kbd>
             <Kbd>K</Kbd>
           </span>
           <Tooltip content="Found on page 2 of the letter">

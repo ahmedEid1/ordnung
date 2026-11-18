@@ -4,7 +4,7 @@
  * one, whether it names the statutory notice periods (a job's or a lease's, or one read so by mistake) and
  * whether a fixed-term job can be left earlier by notice — the rules engine then works out the dates from them.
  */
-import { useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useId, useRef, useState, type SubmitEvent, type KeyboardEvent } from "react";
 import { useUpdateContract } from "@/api/hooks";
 import type { Contract, ContractPatch, NoticeBasis, NoticeUnit } from "@/api/types";
 import { Button } from "@/components/ui/Button";
@@ -119,7 +119,7 @@ export function NoticePeriodForm({
     dayErr: `${id}-day-err`,
   };
 
-  const submit = (e: FormEvent) => {
+  const submit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     const dayGiven = byDay && day.trim() !== "";
     // with a day of the month the period is optional: the day alone gives the dates — and for a job, which

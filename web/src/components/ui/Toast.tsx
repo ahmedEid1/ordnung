@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { CircleCheck, Info, TriangleAlert, CircleX, X, Undo2 } from "lucide-react";
 import { useHotkey, useMediaQuery } from "@/lib/hooks";
-import { cn } from "@/lib/utils";
+import { cn, IS_APPLE } from "@/lib/utils";
 import { getOverlayRoot, useModalOpen } from "./internal";
 
 export type ToastTone = "info" | "success" | "warn" | "danger";
@@ -104,9 +104,8 @@ const toneIcon: Record<ToastTone, { icon: typeof Info; cls: string }> = {
   danger: { icon: CircleX, cls: "text-danger" },
 };
 
-const IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 /** The keyboard shortcut that moves focus to the newest toast (the notifications region names it). */
-export const TOAST_HOTKEY_LABEL = IS_MAC ? "Option+N" : "Alt+N";
+export const TOAST_HOTKEY_LABEL = IS_APPLE ? "Option+N" : "Alt+N";
 const isToastHotkey = (e: KeyboardEvent) => e.altKey && !e.ctrlKey && !e.metaKey && e.code === "KeyN";
 
 /** A text-sized toast button that is still a 28 px target, its label aligned with the title. */

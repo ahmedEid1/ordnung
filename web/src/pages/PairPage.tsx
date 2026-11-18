@@ -15,7 +15,7 @@
  * The typed code keeps at most {@link CODE_LENGTH} characters: an extra one typed at the end is dropped, so the field
  * never shows a right code that the form then refuses.
  */
-import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type SubmitEvent, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Check, KeyRound, RotateCw, Smartphone } from "lucide-react";
@@ -267,7 +267,7 @@ function PairForm({
   const nameProblem = name.trim() ? null : "Give this phone a name — your computer lists it by this name.";
   const failed = pair.error ? refusal(pair.error) : null;
 
-  const submit = (e: FormEvent) => {
+  const submit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (pair.isPending) return;
     setTried(true);

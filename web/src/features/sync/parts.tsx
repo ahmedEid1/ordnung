@@ -2,7 +2,7 @@
  * Pieces of hand-off sync that Settings → Your computers and the standing-by screen share: a problem with what can
  * be done about it, the passphrase typed again, the folder chosen again, what is arriving, and the notices.
  */
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useState, type SubmitEvent, type ReactNode } from "react";
 import { Download, FolderSearch, KeyRound, X } from "lucide-react";
 import { ApiError } from "@/api/client";
 import { useConnectSync, useDownloadKept, useRefillSync, useSyncPassphrase, useUpdateSync } from "@/api/hooks";
@@ -23,7 +23,7 @@ export function PassphraseAgain({ id = "sync-passphrase-again" }: { id?: string 
   const again = useSyncPassphrase();
   const [passphrase, setPassphrase] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const submit = (e: FormEvent) => {
+  const submit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!passphrase) {
       setError("Type the sync passphrase.");
@@ -69,7 +69,7 @@ function FolderAgain({ status }: { status: SyncStatus }) {
   const [folder, setFolder] = useState(status.folder ?? "");
   const [error, setError] = useState<string | null>(null);
   const id = "sync-folder-again";
-  const submit = (e: FormEvent) => {
+  const submit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!folder.trim()) {
       setError("Enter the folder's whole path.");

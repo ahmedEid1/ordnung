@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type FormEvent, type RefObject } from "react";
+import { useEffect, useId, useRef, useState, type SubmitEvent, type RefObject } from "react";
 import { CircleCheck, Phone, PhoneCall, Trash2, TriangleAlert } from "lucide-react";
 import { useCalls, useCreateCall, useDeleteCall, useUpdateCall } from "@/api/hooks";
 import type { Case, CallNote } from "@/api/types";
@@ -86,7 +86,7 @@ function NoteForm({ partyId, cases, caseId = "", asking, hasTextRef, onCancel, o
     keepRef.current?.focus({ preventScroll: true });
   }, [asking]);
 
-  const submit = (e: FormEvent) => {
+  const submit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     setTried(true);
     const first = CALL_FIELDS.find((k) => problems[k]);

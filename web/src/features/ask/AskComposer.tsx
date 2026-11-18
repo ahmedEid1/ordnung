@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, type FormEvent, type KeyboardEvent, type Ref } from "react";
+import { useLayoutEffect, useRef, type SubmitEvent, type KeyboardEvent, type Ref } from "react";
 import { ArrowUp, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { mergeRefs } from "@/components/ui/internal";
@@ -37,7 +37,7 @@ export function AskComposer({ value, onChange, onSubmit, onStop, streaming, onBu
     el.style.height = `${Math.min(el.scrollHeight, MAX_ROWS_PX)}px`;
   }, [value]);
 
-  const submit = (e?: FormEvent) => {
+  const submit = (e?: SubmitEvent<HTMLFormElement>) => {
     e?.preventDefault();
     const q = value.trim();
     if (streaming) {
