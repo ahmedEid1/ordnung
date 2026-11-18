@@ -3,8 +3,7 @@ code), phones' names, the check words, platform labels and the sliding limits.""
 
 from __future__ import annotations
 
-import pytest
-
+from helpers_tables import check_rows
 from ordnung.phone import pairing
 from ordnung.phone.pairing import (
     CODE_ALPHABET,
@@ -118,21 +117,23 @@ def test_an_open_code_s_progress_counts_wrong_tries_and_who_opened_it() -> None:
     assert (current.wrong_tries, list(current.wrong)) == (1, ["192.168.1.66"])
 
 
-@pytest.mark.parametrize(
-    ("raw", "expected"),
-    [
-        ("Sam's iPhone", "Sam's iPhone"),
-        ("Sam‮'s iPhone", "Sam's iPhone"),  # a right-to-left override
-        ("Sam's​ iPhone", "Sam's iPhone"),  # zero-width space
-        ("Sam's⁦ iPhone⁩", "Sam's iPhone"),  # isolates
-        ("Sam's\x07\x1b iPhone\n", "Sam's iPhone"),
-        ("  Sam's    iPhone  ", "Sam's iPhone"),
-        ("​‮", "Phone"),
-        ("x" * 60, "x" * 40),
-    ],
-)
-def test_a_phone_s_name_is_cleaned(raw: str, expected: str) -> None:
-    assert clean_name(raw) == expected
+NAME_CLEANING = [
+    ("Sam's iPhone", "Sam's iPhone"),
+    ("Sam‮'s iPhone", "Sam's iPhone"),  # a right-to-left override
+    ("Sam's​ iPhone", "Sam's iPhone"),  # zero-width space
+    ("Sam's⁦ iPhone⁩", "Sam's iPhone"),  # isolates
+    ("Sam's\x07\x1b iPhone\n", "Sam's iPhone"),
+    ("  Sam's    iPhone  ", "Sam's iPhone"),
+    ("​‮", "Phone"),
+    ("x" * 60, "x" * 40),
+]
+
+
+def test_a_phone_s_name_is_cleaned() -> None:
+    def check(raw: str, expected: str) -> None:
+        assert clean_name(raw) == expected
+
+    check_rows(NAME_CLEANING, check)
 
 
 def test_a_taken_name_is_numbered() -> None:
@@ -168,9 +169,14 @@ UA = {
 }
 
 
-@pytest.mark.parametrize(("label", "agent"), sorted(UA.items()))
-def test_a_browser_is_summed_up_never_kept(label: str, agent: str) -> None:
-    assert platform_label(agent) == label
+BROWSER_LABELS = sorted(UA.items())
+
+
+def test_a_browser_is_summed_up_never_kept() -> None:
+    def check(label: str, agent: str) -> None:
+        assert platform_label(agent) == label
+
+    check_rows(BROWSER_LABELS, check)
 
 
 def test_an_unknown_browser_is_a_phone() -> None:
