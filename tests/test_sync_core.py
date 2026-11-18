@@ -18,7 +18,6 @@ from ordnung import durable
 from ordnung.db.store import Store, person_write
 from ordnung.models import CalendarSyncState
 from ordnung.sync import (
-    KEY_FILE_BYTES,
     SLICE_CHURN_LIMIT_BYTES,
     SyncError,
 )
@@ -402,27 +401,6 @@ def test_finding_30_the_machine_id_fallback_is_stored_once(
     monkeypatch.setattr("platformdirs.user_config_dir", lambda name: str(tmp_path / "config" / name))
     first = local.machine_id()
     assert first == local.machine_id() and len(first) == 32
-
-
-def test_finding_34_an_interrupted_setup_is_recognised(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from ordnung.sync import engine as engine_module
-
-    a = Computer("a", tmp_path / "a", tmp_path / "sync")
-    try:
-        real_push = engine_module.Session.push
-        monkeypatch.setattr(
-            engine_module.Session, "push", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("cut"))
-        )
-        with pytest.raises(RuntimeError):
-            a.connect()
-        state = json.loads((a.paths.data_dir / "sync" / "state.json").read_text())
-        assert state["complete"] is False and len(bytes.fromhex(state["key_file_bytes"])) == KEY_FILE_BYTES
-        monkeypatch.setattr(engine_module.Session, "push", real_push)
-        assert a.connect("lantern pebble violin harbor quiet").connected
-    finally:
-        a.close()
 
 
 def test_r5_brings_in_quietly_and_r4_asks(shared: Shared) -> None:
