@@ -187,10 +187,16 @@ def test_the_wheel_s_licence_expression_names_every_licence_it_ships() -> None:
 
 
 def test_the_readme_says_where_the_bundled_licences_are() -> None:
+    """The README names each licence the web build's notices carry (a new one comes with a package update) and
+    where the notices are."""
     readme = _text("README.md")
-    disclaimer = readme.split("## Disclaimer", 1)[1]
+    disclaimer = " ".join(readme.split("## Disclaimer", 1)[1].split())
     assert f"src/ordnung/web/dist/{NOTICES}" in disclaimer
-    assert "SIL Open Font License" in disclaimer
+    notices = _text(f"src/ordnung/web/dist/{NOTICES}")
+    named = {part for line in re.findall(r"^Licence: (.+)$", notices, re.M) for part in line.split(" AND ")}
+    words = {"OFL-1.1": "SIL Open Font License 1.1"}
+    (listed,) = re.findall(r"under their own licences \(([^)]*)\)", disclaimer)
+    assert named and all(words.get(name, name) in listed for name in named), (named, listed)
 
 
 # --------------------------------------------------------------------------------------------------
