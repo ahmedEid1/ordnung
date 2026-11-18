@@ -12,8 +12,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
-import pytest
-
+from helpers_tables import check_rows
 from ordnung import encryption
 from ordnung.encryption import TIMEOUT_S, Encryption, disk_encryption
 
@@ -55,27 +54,29 @@ def linux(
     return found, run
 
 
-@pytest.mark.parametrize(
-    ("answer", "expected"),
-    [
-        ("FileVault is On.\n", "on"),
-        ("Encryption in progress: Percent completed = 31.2\n", "on"),
-        ("FileVault is Off.\n", "off"),
-        ("Decryption in progress: Percent completed = 12.0\n", "unknown"),
-        ((1, ""), "unknown"),
-        (FileNotFoundError(2, "No such file"), "unknown"),
-        (subprocess.TimeoutExpired(["fdesetup"], TIMEOUT_S), "unknown"),
-        (RuntimeError("anything"), "unknown"),
-    ],
-)
-def test_filevault_on_macos(answer: Any, expected: str) -> None:
-    found, run = mac(answer)
-    assert found is not None and found.answer == expected and found.what == "FileVault"
-    ((argv, kwargs),) = run.calls
-    assert argv == ["/usr/bin/fdesetup", "status"] and kwargs["timeout"] == TIMEOUT_S == 5.0
-    assert "shell" not in kwargs
-    if expected == "unknown":
-        assert found.reason
+FILEVAULT_ANSWERS = [
+    ("FileVault is On.\n", "on"),
+    ("Encryption in progress: Percent completed = 31.2\n", "on"),
+    ("FileVault is Off.\n", "off"),
+    ("Decryption in progress: Percent completed = 12.0\n", "unknown"),
+    ((1, ""), "unknown"),
+    (FileNotFoundError(2, "No such file"), "unknown"),
+    (subprocess.TimeoutExpired(["fdesetup"], TIMEOUT_S), "unknown"),
+    (RuntimeError("anything"), "unknown"),
+]
+
+
+def test_filevault_on_macos() -> None:
+    def check(answer: Any, expected: str) -> None:
+        found, run = mac(answer)
+        assert found is not None and found.answer == expected and found.what == "FileVault"
+        ((argv, kwargs),) = run.calls
+        assert argv == ["/usr/bin/fdesetup", "status"] and kwargs["timeout"] == TIMEOUT_S == 5.0
+        assert "shell" not in kwargs
+        if expected == "unknown":
+            assert found.reason
+
+    check_rows(FILEVAULT_ANSWERS, check)
 
 
 def test_luks_under_the_data_folder_is_on(tmp_path: Path) -> None:
@@ -118,34 +119,46 @@ def test_an_encrypting_file_system_is_on_without_asking_lsblk(tmp_path: Path) ->
     assert len(run.calls) == 1
 
 
-@pytest.mark.parametrize("source", ["overlay overlay", "tmpfs tmpfs", "tank/home zfs", "//nas/share cifs"])
-def test_a_source_that_isnt_a_disk_is_unknown(tmp_path: Path, source: str) -> None:
-    found, run = linux(tmp_path, source + "\n")
-    assert found is not None and found.answer == "unknown" and found.reason
-    assert len(run.calls) == 1
+SOURCES_THAT_ARENT_DISKS = ["overlay overlay", "tmpfs tmpfs", "tank/home zfs", "//nas/share cifs"]
 
 
-@pytest.mark.parametrize("tools", [("lsblk",), ("findmnt",), ()])
-def test_a_missing_tool_is_unknown(tmp_path: Path, tools: tuple[str, ...]) -> None:
-    found, run = linux(tmp_path, "/dev/sda2 ext4\n", "part\n", tools=tools)
-    assert found is not None and found.answer == "unknown" and "isn't installed" in found.reason
-    assert run.calls == []
+def test_a_source_that_isnt_a_disk_is_unknown(tmp_path: Path) -> None:
+    def check(source: str) -> None:
+        found, run = linux(tmp_path, source + "\n")
+        assert found is not None and found.answer == "unknown" and found.reason
+        assert len(run.calls) == 1
+
+    check_rows(SOURCES_THAT_ARENT_DISKS, check)
 
 
-@pytest.mark.parametrize(
-    ("findmnt", "lsblk"),
-    [
-        (FileNotFoundError(2, "No such file"), ""),
-        (subprocess.TimeoutExpired(["findmnt"], TIMEOUT_S), ""),
-        ((1, ""), ""),
-        ("", ""),
-        ("/dev/sda2 ext4\n", (32, "")),
-        ("/dev/sda2 ext4\n", subprocess.TimeoutExpired(["lsblk"], TIMEOUT_S)),
-    ],
-)
-def test_a_failing_command_is_unknown(tmp_path: Path, findmnt: Any, lsblk: Any) -> None:
-    found, _ = linux(tmp_path, findmnt, lsblk)
-    assert found is not None and found.answer == "unknown" and found.what == "LUKS" and found.reason
+MISSING_TOOLS = [("lsblk",), ("findmnt",), ()]
+
+
+def test_a_missing_tool_is_unknown(tmp_path: Path) -> None:
+    def check(*tools: str) -> None:
+        found, run = linux(tmp_path, "/dev/sda2 ext4\n", "part\n", tools=tools)
+        assert found is not None and found.answer == "unknown" and "isn't installed" in found.reason
+        assert run.calls == []
+
+    check_rows(MISSING_TOOLS, check)
+
+
+FAILING_COMMANDS = [
+    (FileNotFoundError(2, "No such file"), ""),
+    (subprocess.TimeoutExpired(["findmnt"], TIMEOUT_S), ""),
+    ((1, ""), ""),
+    ("", ""),
+    ("/dev/sda2 ext4\n", (32, "")),
+    ("/dev/sda2 ext4\n", subprocess.TimeoutExpired(["lsblk"], TIMEOUT_S)),
+]
+
+
+def test_a_failing_command_is_unknown(tmp_path: Path) -> None:
+    def check(findmnt: Any, lsblk: Any) -> None:
+        found, _ = linux(tmp_path, findmnt, lsblk)
+        assert found is not None and found.answer == "unknown" and found.what == "LUKS" and found.reason
+
+    check_rows(FAILING_COMMANDS, check)
 
 
 def test_a_data_folder_not_made_yet_is_looked_up_by_its_nearest_folder(tmp_path: Path) -> None:
