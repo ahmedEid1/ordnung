@@ -7,7 +7,6 @@ Every letter is synthetic and written in ``tests/test_reading_reask.py`` or here
 
 from __future__ import annotations
 
-import json
 import sys
 from collections.abc import Iterator
 from dataclasses import replace
@@ -19,18 +18,14 @@ import pytest
 from fixtures_llm import TODAY
 from ordnung import clock
 from ordnung.ingest.extract import (
-    MISSING_PARTS,
     extract_document,
     judge_completion,
-    missing_parts,
     read_document,
 )
 from ordnung.ingest.gaps import check_item
-from ordnung.llm import prompts
 from ordnung.llm.base import ClaudeBadOutput, ClaudeTimeout, LLMRequest
 from ordnung.llm.fake import FakeBackend
 from ordnung.llm.runtime import LLMService
-from ordnung.llm.schemas import completion_schema
 from ordnung.models import Page
 from test_reading_reask import (
     BLANK,
@@ -42,7 +37,6 @@ from test_reading_reask import (
     answering,
     data_for,
     pages_of,
-    read,
     reading,
 )
 
@@ -107,24 +101,6 @@ class Sink:
             }
         )
         return len(self.rows)
-
-
-# --------------------------------------------------------------------------------------------------
-# The request the pipeline actually sends (not only completion_request called by hand)
-# --------------------------------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize(("payload", "gap"), [(BLANK, "empty"), (HALF, "remedy_left_out")])
-async def test_the_re_ask_sent_is_keyed_and_worded_for_its_gap(payload: dict[str, Any], gap: str) -> None:
-    backend = answering(payload, payload)
-    await read(backend)
-    first, again = backend.calls
-    assert json.loads(again.cache_key or "")["complete"] == [gap]
-    _, note = prompts.render("reading_gaps", missing=missing_parts([gap]))
-    assert again.prompt == f"{first.prompt}\n\n{note}"  # the assembly is model-facing too, and not locked
-    for part in MISSING_PARTS[gap]:
-        assert f"- {part}" in again.prompt
-    assert again.schema_ == completion_schema()
 
 
 # --------------------------------------------------------------------------------------------------

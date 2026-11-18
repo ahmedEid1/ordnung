@@ -35,7 +35,6 @@ from test_reading_reask import (
     COMPLETE,
     DECISION,
     EMPTY_READING,
-    INJECTED,
     MANIFEST,
     RECORDED,
     WithoutReask,
@@ -72,17 +71,6 @@ def pinned_today() -> Iterator[None]:
 # --------------------------------------------------------------------------------------------------
 
 
-async def test_an_accepted_re_ask_is_said_on_the_letter_and_counts_as_no_repair(data_dir: Path) -> None:
-    ctx, doc_id = await ingest(data_dir, DECISION, pipeline_backend(DECISION, BLANK, COMPLETE))
-    try:
-        document = ctx.store.get_document(doc_id)
-        trace = document_trace(ctx.store, doc_id)
-    finally:
-        ctx.close()
-    assert document is not None and reask_warning("empty") in document.warnings
-    assert trace.run is not None and (trace.run.model_calls, trace.run.repairs) == (2, 0)
-
-
 async def test_the_open_telemetry_export_names_the_re_ask_s_link_as_no_repair(data_dir: Path) -> None:
     ctx, doc_id = await ingest(data_dir, DECISION, pipeline_backend(DECISION, BLANK, COMPLETE))
     try:
@@ -99,16 +87,6 @@ async def test_the_open_telemetry_export_names_the_re_ask_s_link_as_no_repair(da
     again = names["Extract · complete"]
     assert "ordnung.llm.completes" in again and "ordnung.llm.repair_of" not in again
     assert "ordnung.llm.completes" not in names["Extract"]
-
-
-async def test_a_rejected_re_ask_adds_no_warning_of_its_own(data_dir: Path) -> None:
-    ctx, doc_id = await ingest(data_dir, INJECTED, pipeline_backend(INJECTED, BLANK, BLANK))
-    try:
-        document = ctx.store.get_document(doc_id)
-    finally:
-        ctx.close()
-    assert document is not None
-    assert not any(REASK_WARNING.match(warning) for warning in document.warnings)
 
 
 @pytest.mark.parametrize("gap", ["empty", "remedy_left_out"])

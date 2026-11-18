@@ -24,6 +24,7 @@ from ordnung import clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.ingest.extract import (
     MISSING_PARTS,
+    REASK_WARNING,
     Completion,
     ExtractionInput,
     completion_request,
@@ -31,8 +32,10 @@ from ordnung.ingest.extract import (
     extraction_request,
     judge_completion,
     located,
+    missing_parts,
     read_document,
     reading_gap_of,
+    reask_warning,
 )
 from ordnung.ingest.gaps import CHECK_SLOT, check_item, gap_warning, remedy_notices
 from ordnung.ingest.pipeline import add_file
@@ -246,6 +249,13 @@ async def test_an_incomplete_reading_gets_one_re_ask() -> None:
         first, again = backend.calls
         assert (first.prompt_name, again.prompt_name) == ("extract", "reading_gaps")
         assert again.purpose == "extract" and again.doc_ids == first.doc_ids and again.system == first.system
+        # the re-ask sent is keyed and worded for its gap
+        assert json.loads(again.cache_key or "")["complete"] == [gap]
+        _, note = prompts.render("reading_gaps", missing=missing_parts([gap]))
+        assert again.prompt == f"{first.prompt}\n\n{note}"  # the assembly is model-facing too, and not locked
+        for part in MISSING_PARTS[gap]:
+            assert f"- {part}" in again.prompt
+        assert again.schema_ == completion_schema()
 
     raised: list[Exception | None] = []
     for row in INCOMPLETE_READINGS:
@@ -583,6 +593,9 @@ async def test_a_blank_reading_completed_by_the_re_ask_keeps_the_model_s_to_do_a
     assert not needs_check(objection)
     assert document is not None and document.status == "processed"
     assert not any("came back almost blank" in warning for warning in document.warnings)
+    # the accepted re-ask is said on the letter, and counts as no repair
+    assert reask_warning("empty") in document.warnings
+    assert trace.run is not None and (trace.run.model_calls, trace.run.repairs) == (2, 0)
     steps = {span.key: span for span in trace.spans}
     first, again = steps["run/model:extract"], steps["run/model:extract_complete"]
     assert again.name == "Extract · complete" and again.kind == "model" and again.stage == "extract"
@@ -616,6 +629,7 @@ async def test_an_injection_whose_re_ask_also_comes_back_blank_still_gets_the_ch
     assert check.computation is not None and check.computation.confidence == "low" and needs_check(check)
     assert document is not None and document.status == "needs_review"
     assert gap_warning("empty", "dated", "widerspruch") in document.warnings
+    assert not any(REASK_WARNING.match(warning) for warning in document.warnings)  # the rejection adds none
     steps = {span.key: span for span in trace.spans}
     again = steps["run/model:extract_complete"]
     assert (again.attributes["accepted"], again.attributes["kept_because"]) == (False, "not_better")
@@ -737,26 +751,20 @@ async def test_the_replay_takes_the_empty_reading_s_recorded_re_ask(tmp_path: Pa
     assert [(call.purpose, call.ok) for call in log.calls] == [("extract", True), ("extract", True)]
 
 
-async def test_a_re_ask_miss_on_the_empty_reading_is_a_replay_error_now(tmp_path: Path) -> None:
-    """With nothing allowed, the recordings as first made (no re-ask) fail on that letter instead of scoring its
-    first reading silently."""
+async def test_a_replay_without_the_re_ask_s_recording_keeps_the_recorded_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The recorded empty reading, as first recorded: the re-ask has no recording, so the first reading is kept
+    and the check runs as before — the same to-do, and the same single call accounted (a replay miss is no
+    call). With nothing allowed, as now, the same replay fails on that letter instead of scoring its first
+    reading silently."""
     entry = {e.id: e for e in load_manifest(MANIFEST)}[EMPTY_READING]
     document = prepare_document(entry, MANIFEST.parent, tmp_path)
     backend = WithoutReask(RecordedFailures(ReplayBackend(RECORDED), RECORDED, record=False))
     llm = LLMService(MeteredBackend(backend, CallLog(), timeout_s=60))
     with pytest.raises(ReplayMiss):
         await run_ordnung(entry, document, llm, model="claude-sonnet-5")
-
-
-async def test_a_replay_without_the_re_ask_s_recording_keeps_the_recorded_run(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """The recorded empty reading, as first recorded: the re-ask has no recording, so the first reading is kept
-    and the check runs as before — the same to-do, and the same single call accounted (a replay miss is no
-    call)."""
     as_first_recorded(monkeypatch)
-    entry = {e.id: e for e in load_manifest(MANIFEST)}[EMPTY_READING]
-    document = prepare_document(entry, MANIFEST.parent, tmp_path)
     log = CallLog()
     backend = WithoutReask(RecordedFailures(ReplayBackend(RECORDED), RECORDED, record=False))
     llm = LLMService(MeteredBackend(backend, log, timeout_s=60))
