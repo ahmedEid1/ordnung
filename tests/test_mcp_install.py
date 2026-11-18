@@ -17,6 +17,7 @@ import pytest
 from typer.testing import CliRunner
 
 import ordnung
+from helpers_tables import check_rows
 from ordnung.assistant import mcp_install
 from ordnung.assistant.mcp_install import (
     FULL_SERVER_NAME,
@@ -70,22 +71,22 @@ def settings_folder(home: Path) -> Path:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("system", "env", "expected"),
-    [
-        ("darwin", {}, "home/Library/Application Support/Claude/claude_desktop_config.json"),
-        ("win32", {"APPDATA": "{tmp}/Roaming"}, "Roaming/Claude/claude_desktop_config.json"),
-        ("win32", {}, "home/AppData/Roaming/Claude/claude_desktop_config.json"),
-        ("linux", {}, "home/.config/Claude/claude_desktop_config.json"),
-        ("linux", {"XDG_CONFIG_HOME": "{tmp}/xdg"}, "xdg/Claude/claude_desktop_config.json"),
-    ],
-)
-def test_claude_desktop_config_per_platform(
-    tmp_path: Path, system: str, env: dict[str, str], expected: str
-) -> None:
-    resolved = {key: value.replace("{tmp}", str(tmp_path)) for key, value in env.items()}
-    path = desktop_config_path(system=system, env=resolved, home=tmp_path / "home")
-    assert path == tmp_path / expected
+CLAUDE_DESKTOP_CONFIG_PER_PLATFORM = [
+    ("darwin", {}, "home/Library/Application Support/Claude/claude_desktop_config.json"),
+    ("win32", {"APPDATA": "{tmp}/Roaming"}, "Roaming/Claude/claude_desktop_config.json"),
+    ("win32", {}, "home/AppData/Roaming/Claude/claude_desktop_config.json"),
+    ("linux", {}, "home/.config/Claude/claude_desktop_config.json"),
+    ("linux", {"XDG_CONFIG_HOME": "{tmp}/xdg"}, "xdg/Claude/claude_desktop_config.json"),
+]
+
+
+def test_claude_desktop_config_per_platform(tmp_path: Path) -> None:
+    def check(system: str, env: dict[str, str], expected: str) -> None:
+        resolved = {key: value.replace("{tmp}", str(tmp_path)) for key, value in env.items()}
+        path = desktop_config_path(system=system, env=resolved, home=tmp_path / "home")
+        assert path == tmp_path / expected
+
+    check_rows(CLAUDE_DESKTOP_CONFIG_PER_PLATFORM, check)
 
 
 def test_the_entries(tmp_path: Path) -> None:
@@ -257,40 +258,43 @@ def _c_runtime_argv(line: str) -> list[str]:
     return args
 
 
-@pytest.mark.parametrize(
-    "path",
-    [
-        r"C:\Users\Tom&Jerry\venv\Scripts\python.exe",
-        "C:\\Users\\Tom&Jerry\\",
-        r"D:\Data (old)\Ordnung",
-        r"D:\a^b|c<d>e",
-        "C:\\Users\\A B & C\\Ordnung\\",
-        r"C:\Users\Sam\Ordnung",
-    ],
-)
-def test_printed_windows_commands_survive_cmd_exe(path: str) -> None:
+PRINTED_WINDOWS_COMMAND_PATHS = [
+    r"C:\Users\Tom&Jerry\venv\Scripts\python.exe",
+    "C:\\Users\\Tom&Jerry\\",
+    r"D:\Data (old)\Ordnung",
+    r"D:\a^b|c<d>e",
+    "C:\\Users\\A B & C\\Ordnung\\",
+    r"C:\Users\Sam\Ordnung",
+]
+
+
+def test_printed_windows_commands_survive_cmd_exe() -> None:
     """A folder like ``Tom&Jerry`` is legal on Windows, and cmd.exe runs whatever follows
     an unquoted ``&`` as a second command. Every argument must reach the program whole."""
-    argv = [
-        "claude",
-        "mcp",
-        "add",
-        "--scope",
-        "user",
-        "ordnung_rules",
-        "--",
-        path,
-        "-P",
-        "-m",
-        "ordnung",
-        "mcp",
-    ]
-    line = mcp_install.shell_join(argv, system="win32")
-    assert _cmd_acts_on(line) == [], line
-    assert _c_runtime_argv(line) == argv, line
-    # nothing changes for arguments without a metacharacter, and POSIX shells keep shlex's quoting
-    assert mcp_install.shell_join(["a", "b c"], system="win32") == 'a "b c"'
-    assert mcp_install.shell_join(["Tom&Jerry"], system="linux") == "'Tom&Jerry'"
+
+    def check(path: str) -> None:
+        argv = [
+            "claude",
+            "mcp",
+            "add",
+            "--scope",
+            "user",
+            "ordnung_rules",
+            "--",
+            path,
+            "-P",
+            "-m",
+            "ordnung",
+            "mcp",
+        ]
+        line = mcp_install.shell_join(argv, system="win32")
+        assert _cmd_acts_on(line) == [], line
+        assert _c_runtime_argv(line) == argv, line
+        # nothing changes for arguments without a metacharacter, and POSIX shells keep shlex's quoting
+        assert mcp_install.shell_join(["a", "b c"], system="win32") == 'a "b c"'
+        assert mcp_install.shell_join(["Tom&Jerry"], system="linux") == "'Tom&Jerry'"
+
+    check_rows(PRINTED_WINDOWS_COMMAND_PATHS, check)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -312,34 +316,47 @@ def test_merge_adds_next_to_everything_that_is_there() -> None:
     assert updated["mcpServers"]["files"] == EXISTING["mcpServers"]["files"]
 
 
-@pytest.mark.parametrize("text", [None, "", "  \n", "{}", '{"mcpServers": {}}'])
-def test_merge_into_an_empty_config(text: str | None) -> None:
-    merged, status = merge_server(text, RULES_SERVER_NAME, RULES_ENTRY)
-    assert status == "added" and merged == {"mcpServers": {RULES_SERVER_NAME: RULES_ENTRY}}
+EMPTY_CONFIG_TEXTS = [None, "", "  \n", "{}", '{"mcpServers": {}}']
 
 
-@pytest.mark.parametrize(
-    ("text", "message"),
-    [
-        ('{"mcpServers": {', "it is not valid JSON"),
-        ("[1, 2]", "its top level is not a JSON object"),
-        ('"text"', "its top level is not a JSON object"),
-        ('{"mcpServers": []}', 'its "mcpServers" is not a JSON object'),
-        # a key twice would be rewritten as the last one alone
-        ('{"mcpServers": {"a": {"command": "x"}, "a": {"command": "y"}}}', 'the key "a" appears twice'),
-        ('{"theme": "dark", "theme": "light"}', 'the key "theme" appears twice'),
-    ],
-)
-def test_merge_refuses_what_it_cannot_understand(text: str, message: str) -> None:
-    with pytest.raises(InstallError, match=message):
-        merge_server(text, RULES_SERVER_NAME, RULES_ENTRY)
+def test_merge_into_an_empty_config() -> None:
+    def check(text: str | None) -> None:
+        merged, status = merge_server(text, RULES_SERVER_NAME, RULES_ENTRY)
+        assert status == "added" and merged == {"mcpServers": {RULES_SERVER_NAME: RULES_ENTRY}}
+
+    check_rows(EMPTY_CONFIG_TEXTS, check)
 
 
-@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
-def test_merge_refuses_numbers_json_does_not_have(constant: str) -> None:
+CONFIGS_MERGE_CANNOT_UNDERSTAND = [
+    ('{"mcpServers": {', "it is not valid JSON"),
+    ("[1, 2]", "its top level is not a JSON object"),
+    ('"text"', "its top level is not a JSON object"),
+    ('{"mcpServers": []}', 'its "mcpServers" is not a JSON object'),
+    # a key twice would be rewritten as the last one alone
+    ('{"mcpServers": {"a": {"command": "x"}, "a": {"command": "y"}}}', 'the key "a" appears twice'),
+    ('{"theme": "dark", "theme": "light"}', 'the key "theme" appears twice'),
+]
+
+
+def test_merge_refuses_what_it_cannot_understand() -> None:
+    def check(text: str, message: str) -> None:
+        with pytest.raises(InstallError, match=message):
+            merge_server(text, RULES_SERVER_NAME, RULES_ENTRY)
+
+    check_rows(CONFIGS_MERGE_CANNOT_UNDERSTAND, check)
+
+
+NUMBERS_JSON_DOES_NOT_HAVE = ["NaN", "Infinity", "-Infinity"]
+
+
+def test_merge_refuses_numbers_json_does_not_have() -> None:
     """Python reads NaN and Infinity; JSON (and the apps) don't — such a file is refused untouched."""
-    with pytest.raises(InstallError, match="it is not valid JSON"):
-        merge_server(f'{{"limits": {{"x": {constant}}}}}', RULES_SERVER_NAME, RULES_ENTRY)
+
+    def check(constant: str) -> None:
+        with pytest.raises(InstallError, match="it is not valid JSON"):
+            merge_server(f'{{"limits": {{"x": {constant}}}}}', RULES_SERVER_NAME, RULES_ENTRY)
+
+    check_rows(NUMBERS_JSON_DOES_NOT_HAVE, check)
 
 
 def test_render_json_writes_like_json_dumps() -> None:
@@ -359,15 +376,6 @@ def test_write_keeps_every_other_number_as_written(tmp_path: Path) -> None:
         assert f": {literal}" in written, literal
     assert "Infinity" not in written and "100000.0" not in written
     assert json.loads(written)["mcpServers"][RULES_SERVER_NAME] == RULES_ENTRY
-
-
-def test_a_file_with_nan_is_left_untouched(tmp_path: Path) -> None:
-    config = settings_folder(tmp_path) / "claude_desktop_config.json"
-    config.write_text('{"x": NaN}', encoding="utf-8")
-    with pytest.raises(InstallError, match="Nothing was changed"):
-        write_config(desktop_plan(tmp_path), now=NOW)
-    assert config.read_text(encoding="utf-8") == '{"x": NaN}'
-    assert list(config.parent.iterdir()) == [config]  # no backup either
 
 
 # --------------------------------------------------------------------------------------------------
@@ -445,25 +453,33 @@ def test_write_refuses_invalid_json_and_changes_nothing(tmp_path: Path) -> None:
     assert "Fix or move that file" in str(raised.value)
     assert config.read_text(encoding="utf-8") == '{"mcpServers": {"files": '
     assert list(config.parent.iterdir()) == [config]  # no backup, no temp file
+    # a file with NaN is invalid JSON too, though Python would read it
+    config.write_text('{"x": NaN}', encoding="utf-8")
+    with pytest.raises(InstallError, match="Nothing was changed"):
+        write_config(desktop_plan(tmp_path), now=NOW)
+    assert config.read_text(encoding="utf-8") == '{"x": NaN}'
+    assert list(config.parent.iterdir()) == [config]  # no backup either
 
 
-@pytest.mark.parametrize(
-    "text",
-    [
-        '{"mcpServers": {"a": {"command": "x"}, "a": {"command": "y"}}}',
-        '{"note": "\\ud800", "mcpServers": {}}',
-    ],
-    ids=["duplicate key", "lone surrogate"],
-)
-def test_write_refuses_a_config_it_cannot_keep_whole_and_changes_nothing(tmp_path: Path, text: str) -> None:
+CONFIGS_WRITE_CANNOT_KEEP_WHOLE = [
+    pytest.param('{"mcpServers": {"a": {"command": "x"}, "a": {"command": "y"}}}', id="duplicate key"),
+    pytest.param('{"note": "\\ud800", "mcpServers": {}}', id="lone surrogate"),
+]
+
+
+def test_write_refuses_a_config_it_cannot_keep_whole_and_changes_nothing(tmp_path: Path) -> None:
     """Duplicate keys were dropped, and a lone surrogate escape raised a traceback
     after the backup was written."""
     config = settings_folder(tmp_path) / "claude_desktop_config.json"
-    config.write_text(text, encoding="utf-8")
-    with pytest.raises(InstallError, match=r"Nothing was changed: .*Fix or move that file"):
-        write_config(desktop_plan(tmp_path), now=NOW)
-    assert config.read_text(encoding="utf-8") == text
-    assert list(config.parent.iterdir()) == [config]  # no backup, no temp file
+
+    def check(text: str) -> None:
+        config.write_text(text, encoding="utf-8")
+        with pytest.raises(InstallError, match=r"Nothing was changed: .*Fix or move that file"):
+            write_config(desktop_plan(tmp_path), now=NOW)
+        assert config.read_text(encoding="utf-8") == text
+        assert list(config.parent.iterdir()) == [config]  # no backup, no temp file
+
+    check_rows(CONFIGS_WRITE_CANNOT_KEEP_WHOLE, check)
 
 
 def test_write_needs_claude_desktops_settings_folder(tmp_path: Path) -> None:
@@ -744,56 +760,57 @@ def test_a_config_that_links_to_itself_or_nests_too_deep_is_refused_without_a_tr
         assert isinstance(result.exception, SystemExit)
 
 
-@pytest.mark.parametrize(
-    "before",
-    [["--rules-only"], ["--data-dir", "/somewhere"], ["--print-config"]],
-)
-def test_cli_options_before_install_fail_loudly(
-    home: Path, monkeypatch: pytest.MonkeyPatch, before: list[str]
-) -> None:
+OPTIONS_BEFORE_INSTALL = [["--rules-only"], ["--data-dir", "/somewhere"], ["--print-config"]]
+
+
+def test_cli_options_before_install_fail_loudly(home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """`ordnung mcp --rules-only install …` used to drop the flag and install the whole ledger."""
     monkeypatch.setenv("ORDNUNG_HOME", str(default_data_folder(home)))
     config = settings_folder(home) / "claude_desktop_config.json"
-    result = runner.invoke(
-        app, ["mcp", *before, "install", "--client", "claude-desktop", "--with-ledger", "--write"]
-    )
-    assert result.exit_code == 1 and f"{before[0]} before “install” would not be used" in result.stderr
-    assert "Put the options after it" in result.stderr
-    assert not config.exists()
+
+    def check(before: list[str]) -> None:
+        result = runner.invoke(
+            app, ["mcp", *before, "install", "--client", "claude-desktop", "--with-ledger", "--write"]
+        )
+        assert result.exit_code == 1 and f"{before[0]} before “install” would not be used" in result.stderr
+        assert "Put the options after it" in result.stderr
+        assert not config.exists()
+
+    check_rows(OPTIONS_BEFORE_INSTALL, check)
 
 
-@pytest.mark.parametrize(
-    "args",
-    [
-        ["mcp", "install", "--client", "claude-desktop", "--data-dir", "{data}"],
-        ["--data-dir", "{data}", "mcp", "install", "--client", "claude-desktop"],  # the global option too
-    ],
-)
-def test_cli_a_data_folder_without_the_ledger_is_a_mistake(
-    home: Path, tmp_path: Path, args: list[str]
-) -> None:
-    result = runner.invoke(app, [arg.format(data=tmp_path) for arg in args])
-    assert result.exit_code == 1 and "--data-dir would not be used" in result.stderr
-    assert "--with-ledger" in result.stderr
+DATA_FOLDER_WITHOUT_THE_LEDGER = [
+    ["mcp", "install", "--client", "claude-desktop", "--data-dir", "{data}"],
+    ["--data-dir", "{data}", "mcp", "install", "--client", "claude-desktop"],  # the global option too
+]
 
 
-@pytest.mark.parametrize(
-    "args",
-    [
-        ["mcp", "--rules-only", "--data-dir", "{data}", "--print-config"],
-        ["--data-dir", "{data}", "mcp", "--rules-only", "--print-config"],
-    ],
-)
-def test_cli_serving_the_rules_tools_refuses_a_data_folder(
-    home: Path, tmp_path: Path, args: list[str]
-) -> None:
-    result = runner.invoke(app, [arg.format(data=tmp_path) for arg in args])
-    assert result.exit_code == 1 and "The rules tools read no data folder" in result.stderr
-    # both ways out are "leave out": adding --rules-only would not serve the ledger (garbled hint)
-    assert "Leave out --data-dir, or leave out --rules-only to serve your ledger too." in " ".join(
-        result.stderr.split()
-    )
-    assert result.stdout == ""
+def test_cli_a_data_folder_without_the_ledger_is_a_mistake(home: Path, tmp_path: Path) -> None:
+    def check(args: list[str]) -> None:
+        result = runner.invoke(app, [arg.format(data=tmp_path) for arg in args])
+        assert result.exit_code == 1 and "--data-dir would not be used" in result.stderr
+        assert "--with-ledger" in result.stderr
+
+    check_rows(DATA_FOLDER_WITHOUT_THE_LEDGER, check)
+
+
+RULES_TOOLS_WITH_A_DATA_FOLDER = [
+    ["mcp", "--rules-only", "--data-dir", "{data}", "--print-config"],
+    ["--data-dir", "{data}", "mcp", "--rules-only", "--print-config"],
+]
+
+
+def test_cli_serving_the_rules_tools_refuses_a_data_folder(home: Path, tmp_path: Path) -> None:
+    def check(args: list[str]) -> None:
+        result = runner.invoke(app, [arg.format(data=tmp_path) for arg in args])
+        assert result.exit_code == 1 and "The rules tools read no data folder" in result.stderr
+        # both ways out are "leave out": adding --rules-only would not serve the ledger (garbled hint)
+        assert "Leave out --data-dir, or leave out --rules-only to serve your ledger too." in " ".join(
+            result.stderr.split()
+        )
+        assert result.stdout == ""
+
+    check_rows(RULES_TOOLS_WITH_A_DATA_FOLDER, check)
 
 
 def test_cli_reinstalling_the_rules_tools_says_the_ledger_is_still_there(
