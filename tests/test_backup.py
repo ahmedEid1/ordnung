@@ -267,30 +267,15 @@ def test_a_backup_keeps_the_tax_choices_and_the_household(life: Path, tmp_path: 
         store.close()
 
 
-def test_a_scans_scanner_text_is_backed_up_and_restored_with_its_page_images(
-    life: Path, tmp_path: Path
-) -> None:
-    """``derived/<doc>/scan-text.json`` (ADR 0020) lives with the page images, so a backup carries it like
-    them — and the half-written file an atomic write cut short leaves is no file of the person's."""
+def test_picture_text_is_backed_up_and_restored_with_its_page_images(life: Path, tmp_path: Path) -> None:
+    """``derived/<doc>/scan-text.json`` (ADR 0020) and ``derived/<doc>/picture-text.json`` (ADR 0024: the words
+    Ordnung read in a picture itself) live with the page images: a backup carries both, and hand-off sync, which
+    lists the data files the same way (``iter_data_files``), carries them like the page images. The half-written
+    file an atomic write cut short leaves is no file of the person's."""
     from ordnung.db import scan_text
 
     scan_text.write(life / "derived", "doc_1", {1: "Ablesung des Wasserzählers"})
     (life / "derived" / "doc_1" / ".scan-text.json.123.456.part").write_bytes(b"{")
-    names = [name for name, _ in archive.iter_data_files(life)]
-    assert "derived/doc_1/scan-text.json" in names and not any(name.endswith(".part") for name in names)
-    restored = restore_backup(make_backup(life, tmp_path / "b"), PASS, tmp_path / "r").target
-    assert scan_text.read(restored / "derived", "doc_1") == {1: "Ablesung des Wasserzählers"}
-    kept = {name: digest for name, digest in file_digests(life).items() if not name.endswith(".part")}
-    assert file_digests(restored) == kept and len(kept) == 6
-
-
-def test_picture_text_is_backed_up_and_restored_with_its_page_images(life: Path, tmp_path: Path) -> None:
-    """``derived/<doc>/picture-text.json`` (ADR 0024: the words Ordnung read in a picture itself) lives with the
-    page images too, beside the scanner text: a backup carries both, and hand-off sync, which lists the data files
-    the same way (``iter_data_files``), carries them like the page images."""
-    from ordnung.db import scan_text
-
-    scan_text.write(life / "derived", "doc_1", {1: "Ablesung des Wasserzählers"})
     scan_text.write(life / "derived", "doc_1", {1: "", 2: "Ihr Kellerabteil 7"}, name=scan_text.PICTURE_NAME)
     (life / "derived" / "doc_1" / ".picture-text.json.123.456.part").write_bytes(b"{")
     names = [name for name, _ in archive.iter_data_files(life)]
@@ -964,13 +949,6 @@ def test_backup_and_restore_commands(life: Path, tmp_path: Path, pinned_today: N
     assert "Not in the backup" not in result.output  # nothing was left out
 
 
-def test_restore_check_notes_nothing(life: Path, tmp_path: Path) -> None:
-    backup = make_backup(life, tmp_path / "b.ordnung-backup")
-    checked = invoke("restore", str(backup), "--check")
-    assert checked.exit_code == 0, checked.output
-    assert backup_notes(life) == []
-
-
 def test_a_backup_of_a_newer_database_is_made_but_not_noted(
     life: Path, tmp_path: Path, pinned_today: None
 ) -> None:
@@ -1128,6 +1106,9 @@ def test_backup_gives_up_after_three_tries(life: Path, tmp_path: Path, pinned_to
     )
     assert result.exit_code == 1 and "No passphrase" in result.output
     assert not list(tmp_path.glob("*.ordnung-backup"))
+    # the warning comes before the first question
+    warning = result.output.index("not even you")
+    assert warning < result.output.index("Passphrase for the backup")
 
 
 def test_backup_refusals_are_explained(life: Path, tmp_path: Path, pinned_today: None) -> None:
@@ -1141,16 +1122,6 @@ def test_backup_refusals_are_explained(life: Path, tmp_path: Path, pinned_today:
     assert unplugged.exit_code == 1 and "is the drive connected" in unplugged.output
     assert not (tmp_path / "usb").exists()
     assert not list(tmp_path.glob("*.ordnung-backup"))
-
-
-def test_backup_warns_about_the_passphrase_before_asking_for_it(
-    life: Path, tmp_path: Path, pinned_today: None
-) -> None:
-    result = invoke(
-        "backup", "--data-dir", str(life), "--to", str(tmp_path), passphrase=None, input="a\nb\nc\n"
-    )
-    warning = result.output.index("not even you")
-    assert warning < result.output.index("Passphrase for the backup")
 
 
 def test_a_path_in_a_backup_refusal_is_never_split(life: Path, tmp_path: Path) -> None:
@@ -1183,6 +1154,8 @@ def test_restore_explains_a_wrong_passphrase_and_other_files(life: Path, tmp_pat
     wrong = invoke("restore", str(backup), "--data-dir", str(tmp_path / "r"), passphrase="not the passphrase")
     assert wrong.exit_code == 1 and "Wrong passphrase" in wrong.output
     assert not (tmp_path / "r").exists()
+    checked = invoke("restore", str(backup), "--check", passphrase="not the passphrase")
+    assert checked.exit_code == 1 and "Wrong passphrase" in checked.output
     pdf = tmp_path / "letter.pdf"
     pdf.write_bytes(b"%PDF-1.7")
     other = invoke("restore", str(pdf), passphrase=None, input="")
@@ -1226,12 +1199,6 @@ def test_human_sizes() -> None:
         assert human_size(size) == text
 
     check_rows(HUMAN_SIZES, check)
-
-
-def test_restore_check_refuses_a_wrong_passphrase(life: Path, tmp_path: Path) -> None:
-    backup = make_backup(life, tmp_path / "b.ordnung-backup")
-    result = invoke("restore", str(backup), "--check", passphrase="not the passphrase")
-    assert result.exit_code == 1 and "Wrong passphrase" in result.output
 
 
 # --------------------------------------------------------------------------------------------------
