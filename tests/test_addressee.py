@@ -3,8 +3,9 @@ addressee is someone else than the profile's person, and the name the letter's p
 
 from __future__ import annotations
 
-import pytest
+from itertools import product
 
+from helpers_tables import check_rows
 from ordnung.models import Direction, Document, DocumentExtraction
 from ordnung.secretary.addressee import addressed_to, is_the_person, names_alone, names_others, shown_name
 
@@ -29,48 +30,52 @@ def _reading(recipient_name: str | None) -> DocumentExtraction:
     )
 
 
-@pytest.mark.parametrize(
-    "addressee",
-    [
-        "Sam Rivera",
-        "Herrn Dr. Sam Rivera",
-        "Rivera, Sam",
-        "S. Rivera",
-        "SAM RIVERA",
-        "Herrn Rivera",  # a surname alone: could be the person, so nothing is said (a known miss for a spouse)
-        "Sam Peter Rivera",  # the profile's name within the addressee's
-        "Sam Rivera c/o Alex Rivera",  # who it is for comes before "c/o", where it goes after
-        "An Herrn Sam Rivera",
-        "z. Hd. Sam Rivera",
-        "Mr Sam Rivera",
-    ],
-)
-def test_the_person_themselves_is_never_named(addressee: str) -> None:
-    assert is_the_person(addressee, SAM)
-    assert addressed_to(_letter(), _reading(addressee), SAM) is None
+THE_PERSON_THEMSELVES_IS_NEVER_NAMED = [
+    "Sam Rivera",
+    "Herrn Dr. Sam Rivera",
+    "Rivera, Sam",
+    "S. Rivera",
+    "SAM RIVERA",
+    "Herrn Rivera",  # a surname alone: could be the person, so nothing is said (a known miss for a spouse)
+    "Sam Peter Rivera",  # the profile's name within the addressee's
+    "Sam Rivera c/o Alex Rivera",  # who it is for comes before "c/o", where it goes after
+    "An Herrn Sam Rivera",
+    "z. Hd. Sam Rivera",
+    "Mr Sam Rivera",
+]
 
 
-@pytest.mark.parametrize(
-    ("addressee", "shown"),
-    [
-        ("Alex Rivera", "Alex Rivera"),
-        ("Frau Alex Rivera", "Alex Rivera"),  # a leading courtesy word is dropped
-        ("An Frau Alex Rivera", "Alex Rivera"),
-        ("Dr. Alex Rivera", "Dr. Alex Rivera"),  # an academic title stays
-        ("Herrn Dr. Alex Rivera", "Dr. Alex Rivera"),
-        ("Sam und Alex Rivera", "Sam und Alex Rivera"),  # a household is not just the person
-        ("Sam & Alex Rivera", "Sam & Alex Rivera"),
-        ("Sam u. Alex Rivera", "Sam u. Alex Rivera"),
-        ("Mr and Mrs Rivera", "Mr and Mrs Rivera"),
-        ("Familie Rivera", "Familie Rivera"),
-        ("Eheleute Rivera", "Eheleute Rivera"),
-        ("Alex Rivera c/o Sam Rivera", "Alex Rivera"),
-        ("Muster GmbH", "Muster GmbH"),
-    ],
-)
-def test_someone_else_is_named_as_read(addressee: str, shown: str) -> None:
-    assert not is_the_person(addressee, SAM)
-    assert addressed_to(_letter(), _reading(addressee), SAM) == shown
+def test_the_person_themselves_is_never_named() -> None:
+    def check(addressee: str) -> None:
+        assert is_the_person(addressee, SAM)
+        assert addressed_to(_letter(), _reading(addressee), SAM) is None
+
+    check_rows(THE_PERSON_THEMSELVES_IS_NEVER_NAMED, check)
+
+
+SOMEONE_ELSE_IS_NAMED_AS_READ = [
+    ("Alex Rivera", "Alex Rivera"),
+    ("Frau Alex Rivera", "Alex Rivera"),  # a leading courtesy word is dropped
+    ("An Frau Alex Rivera", "Alex Rivera"),
+    ("Dr. Alex Rivera", "Dr. Alex Rivera"),  # an academic title stays
+    ("Herrn Dr. Alex Rivera", "Dr. Alex Rivera"),
+    ("Sam und Alex Rivera", "Sam und Alex Rivera"),  # a household is not just the person
+    ("Sam & Alex Rivera", "Sam & Alex Rivera"),
+    ("Sam u. Alex Rivera", "Sam u. Alex Rivera"),
+    ("Mr and Mrs Rivera", "Mr and Mrs Rivera"),
+    ("Familie Rivera", "Familie Rivera"),
+    ("Eheleute Rivera", "Eheleute Rivera"),
+    ("Alex Rivera c/o Sam Rivera", "Alex Rivera"),
+    ("Muster GmbH", "Muster GmbH"),
+]
+
+
+def test_someone_else_is_named_as_read() -> None:
+    def check(addressee: str, shown: str) -> None:
+        assert not is_the_person(addressee, SAM)
+        assert addressed_to(_letter(), _reading(addressee), SAM) == shown
+
+    check_rows(SOMEONE_ELSE_IS_NAMED_AS_READ, check)
 
 
 def test_case_accents_and_punctuation_do_not_count() -> None:
@@ -83,19 +88,21 @@ def test_case_accents_and_punctuation_do_not_count() -> None:
     assert not is_the_person("U. Rivera", SAM)
 
 
-@pytest.mark.parametrize(
-    ("addressee", "profile_name"),
-    [
-        ("Ayşe Öztürk", "Ayse Ozturk"),
-        ("Jürgen Müller", "Jurgen Muller"),
-        ("Jurgen Muller", "Jürgen Müller"),
-        ("Mueller", "Max Müller"),
-        ("Herrn Ö. Öztürk", "Ömer Ozturk"),
-    ],
-)
-def test_an_umlaut_may_be_written_as_a_plain_vowel_or_with_an_e(addressee: str, profile_name: str) -> None:
-    assert is_the_person(addressee, profile_name)
-    assert addressed_to(_letter(), _reading(addressee), profile_name) is None
+AN_UMLAUT_MAY_BE_WRITTEN_AS_A_PLAIN_VOWEL_OR_WITH_AN_E = [
+    ("Ayşe Öztürk", "Ayse Ozturk"),
+    ("Jürgen Müller", "Jurgen Muller"),
+    ("Jurgen Muller", "Jürgen Müller"),
+    ("Mueller", "Max Müller"),
+    ("Herrn Ö. Öztürk", "Ömer Ozturk"),
+]
+
+
+def test_an_umlaut_may_be_written_as_a_plain_vowel_or_with_an_e() -> None:
+    def check(addressee: str, profile_name: str) -> None:
+        assert is_the_person(addressee, profile_name)
+        assert addressed_to(_letter(), _reading(addressee), profile_name) is None
+
+    check_rows(AN_UMLAUT_MAY_BE_WRITTEN_AS_A_PLAIN_VOWEL_OR_WITH_AN_E, check)
 
 
 def test_nothing_is_said_without_something_to_compare() -> None:
@@ -108,9 +115,14 @@ def test_nothing_is_said_without_something_to_compare() -> None:
     assert addressed_to(letter, None, SAM) is None  # never read (queued, held, kept private)
 
 
-@pytest.mark.parametrize("direction", ["outgoing", "note"])
-def test_only_a_letter_received_has_an_addressee(direction: Direction) -> None:
-    assert addressed_to(_letter(direction), _reading("Alex Rivera"), SAM) is None
+ONLY_A_LETTER_RECEIVED_HAS_AN_ADDRESSEE = ["outgoing", "note"]
+
+
+def test_only_a_letter_received_has_an_addressee() -> None:
+    def check(direction: Direction) -> None:
+        assert addressed_to(_letter(direction), _reading("Alex Rivera"), SAM) is None
+
+    check_rows(ONLY_A_LETTER_RECEIVED_HAS_AN_ADDRESSEE, check)
 
 
 def test_the_name_is_shown_on_one_short_line() -> None:
@@ -136,12 +148,17 @@ _ADDRESSEES = (
 )
 
 
-@pytest.mark.parametrize("addressee", _ADDRESSEES)
-@pytest.mark.parametrize("name", [SAM, "Alex Rivera", "Juergen Gross", "J. Groß", "Rivera"])
-def test_names_alone_is_is_the_person(addressee: str, name: str) -> None:
+NAMES_ALONE_IS_IS_THE_PERSON_NAMES = [SAM, "Alex Rivera", "Juergen Gross", "J. Groß", "Rivera"]
+
+
+def test_names_alone_is_is_the_person() -> None:
     """The household compares an addressee with each person's name by the same rule (ADR 0023): the public
     ``names_alone`` is step 1's comparison, unchanged."""
-    assert names_alone(addressee, name) is is_the_person(addressee, name)
-    assert names_others(addressee) is (
-        "und" in addressee or "Familie" in addressee
-    )  # "c/o" ends the name: what follows it never counts
+
+    def check(addressee: str, name: str) -> None:
+        assert names_alone(addressee, name) is is_the_person(addressee, name)
+        assert names_others(addressee) is (
+            "und" in addressee or "Familie" in addressee
+        )  # "c/o" ends the name: what follows it never counts
+
+    check_rows(product(_ADDRESSEES, NAMES_ALONE_IS_IS_THE_PERSON_NAMES), check)
