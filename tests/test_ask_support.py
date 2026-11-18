@@ -1024,7 +1024,13 @@ def _demo_records() -> DemoRecords:
             results, today=date.fromisoformat(key["today"]), person=[key["question"]], catalog=known_laws()
         )
         answer = check_answer(record["response"]["text"], evidence, citable=evidence.seen_ids)
-        checked.append((path.stem, record | {"question": key["question"], "results": results}, answer))
+        checked.append(
+            (
+                path.stem,
+                record | {"question": key["question"], "results": results, "evidence": evidence},
+                answer,
+            )
+        )
     return checked
 
 
@@ -1816,7 +1822,8 @@ def test_the_demo_never_cites_a_demand_not_to_pay_for_the_answer(demo_records: D
     scam demand's chip on its "Payments with a due date" heading."""
     payments = 0
     for name, record, answer in demo_records:
-        evidence = TurnEvidence.from_results(record["results"], today=TODAY, catalog=known_laws())
+        # the evidence the check used: `suspicious` comes from the results alone
+        evidence = record["evidence"]
         for sentence in answer.sentences:
             assert not {*sentence.added, *sentence.repeated} & evidence.suspicious, (name, sentence.text)
         if record["question"] == "What do I have to pay in the next four weeks?":
