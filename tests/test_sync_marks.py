@@ -144,3 +144,100 @@ def test_sync_bookkeeping_is_never_a_person_change(tmp_path: Path) -> None:
         assert counted(a.db) == before
     finally:
         a.close()
+
+
+async def test_background_work_a_request_starts_is_never_the_persons(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The watched folder, the day change, the weekly review, the phone's address watcher and the check
+    for Claude run as background work even when a request of the person's starts them (a settings
+    save): their writes never move the person counter (they used to inherit ``PERSON_WRITE``)."""
+    import asyncio
+    from datetime import date
+    from typing import Any
+
+    from fixtures_llm import fake_backend
+    from ordnung.app_context import build_context
+    from ordnung.db.store import PERSON_WRITE
+    from ordnung.ingest.watcher import FolderWatcher
+    from ordnung.ingest.worker import IngestWorker
+    from ordnung.phone.access import PhoneAccess
+    from ordnung.tick import DailyTick
+
+    seen: dict[str, bool] = {}
+
+    def capture(name: str) -> Any:
+        async def run(*_args: Any, **_kwargs: Any) -> None:
+            seen[name] = PERSON_WRITE.get()
+
+        return lambda *_args, **_kwargs: run()
+
+    monkeypatch.setattr(DailyTick, "run_forever", capture("day change"))
+    monkeypatch.setattr(DailyTick, "_run_review", capture("weekly review"))
+    monkeypatch.setattr(DailyTick, "_usable_llm", lambda self: object())
+    monkeypatch.setattr(DailyTick, "_review_due", lambda self, today: True)
+    monkeypatch.setattr(FolderWatcher, "_run", capture("watched folder"))
+    monkeypatch.setattr(PhoneAccess, "_watch", capture("phone's address watcher"))
+    ctx = build_context(tmp_path / "data", backend_obj=fake_backend())
+    try:
+        (tmp_path / "Scans").mkdir()
+        ctx.store.save_settings({"inbox_dir": str(tmp_path / "Scans"), "llm_review": True})
+        ctx.reload_settings()
+        tick, watcher = DailyTick(ctx), FolderWatcher(ctx)
+        phone = PhoneAccess(ctx, demo=False, token_on=True)
+        worker = ctx.worker
+        assert isinstance(worker, IngestWorker)
+        checks: list[bool] = []
+
+        async def check() -> bool:
+            checks.append(PERSON_WRITE.get())
+            return False
+
+        with person_write():  # a request of the person's starts them
+            tasks: list[Any] = [tick.start()]
+            assert tick._start_review(date(2026, 10, 7))
+            tasks.append(tick._review)
+            await watcher._start_task()
+            tasks.append(watcher._task)
+            phone._start_watcher()
+            tasks.append(phone._watcher)
+            worker.claude_check, worker._wake, worker._checked_claude_at = check, asyncio.Event(), None
+            worker._check_claude()
+            tasks.append(worker._claude_checking)
+        await asyncio.gather(*tasks)
+        seen["the check for Claude"] = checks == [True]
+        assert seen == {
+            "day change": False,
+            "weekly review": False,
+            "watched folder": False,
+            "phone's address watcher": False,
+            "the check for Claude": False,
+        }
+    finally:
+        ctx.close()
+
+
+async def test_a_settings_save_of_this_computer_s_own_settings_is_not_a_person_change(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Critique 14: saving only per-computer settings (notifications, the watched folder) never counts
+    as the person's change — with unsaved background work it made a person version (a false choice)."""
+    from sync_fake_engine import counter
+    from sync_support import computer, connect, fast_sync
+
+    fast_sync(monkeypatch)
+    (tmp_path / "Nextcloud").mkdir()
+    (tmp_path / "Scans").mkdir()
+    async with computer(tmp_path / "desk") as api:
+        await connect(api, tmp_path / "Nextcloud" / "Vault", "desktop")
+        before = counter(api.ctx.store)
+        for local in (
+            {"desktop_notifications": "full"},
+            {"desktop_notify_time": "07:30", "concurrency": 3},
+            {"inbox_dir": str(tmp_path / "Scans")},
+        ):
+            saved = await api.client.put("/api/settings", json=local)
+            assert saved.status_code == 200, saved.text
+            assert counter(api.ctx.store) == before, local
+        synced = await api.client.put("/api/settings", json={"llm_review": False})
+        assert synced.status_code == 200 and counter(api.ctx.store) == before + 1

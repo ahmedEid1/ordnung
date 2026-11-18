@@ -4,6 +4,7 @@ and a simulated sync tool between them."""
 from __future__ import annotations
 
 import json
+import os
 import random
 from datetime import timedelta
 from pathlib import Path
@@ -12,10 +13,13 @@ import pytest
 
 from fakes import use_fast_keys
 from ordnung.backup import restore_backup
+from ordnung.config import Paths
 from ordnung.db.store import Store, person_write
 from ordnung.models import CalendarSyncState
-from ordnung.sync import SyncError
-from ordnung.sync.decide import BecomeStandby, BringIn, Choice, Pull, Standby
+from ordnung.sync import SyncError, engine
+from ordnung.sync.decide import BecomeStandby, BringIn, Choice, Paused, Pull, Standby
+from ordnung.sync.local import machine_id
+from sync_faults import copy_tree
 from sync_harness import PASSPHRASE, Computer, FakeClock
 from sync_sim import SyncToolSim
 
@@ -48,6 +52,22 @@ class Pair:
         self.settle()
         a.round()
         assert a.mode == "standing_by" and b.mode == "in_use"
+
+    def joined_with_a_in_use(self) -> None:
+        """A set up with a letter; B joined; then A is in use again and B stands by, up to date."""
+        a, b = self.a, self.b
+        a.add_letter("Stadtwerke Abschlag 2027")
+        a.connect()
+        self.settle()
+        assert b.connect().connected
+        self.settle()
+        a.round()
+        a.use_here()
+        a.round()
+        self.settle()
+        b.round()
+        self.settle()
+        assert a.mode == "in_use" and b.mode == "standing_by"
 
 
 @pytest.fixture
@@ -395,6 +415,125 @@ def test_a_data_folder_put_back_from_an_os_backup(pair: Pair, tmp_path: Path) ->
     pair.settle()
     b.round()
     assert not isinstance(b.round().decision, Choice)
+
+
+def _two_saves_after_a_backup(pair: Pair, backup: Path) -> None:
+    """A (in use) is copied away by an OS backup, then saves E1 and E2; B receives them."""
+    a, b = pair.a, pair.b
+    a.close()
+    copy_tree(a.paths.data_dir, backup)
+    a.restart()
+    a.person_edit("E1 before the restore")
+    a.round()
+    a.person_edit("E2 before the restore")
+    a.round()
+    pair.settle()
+    b.round()
+    pair.settle()
+
+
+def _kept_notes(computer: Computer, name: str, target: Path) -> set[str]:
+    restore_backup(computer.s.local.kept_dir / name, PASSPHRASE, target)
+    with Store.open(Paths(target)) as copy:
+        return {row["text"] for row in copy._conn().execute("SELECT text FROM notes")}
+
+
+def test_a_restored_data_folder_started_while_the_sync_folder_is_away(pair: Pair, tmp_path: Path) -> None:
+    """The start waits until the folder shows this computer's own head — never the
+    counters and the rollback check from the restored ``sync/heads.json`` alone."""
+    a, b = pair.a, pair.b
+    pair.joined_with_a_in_use()
+    _two_saves_after_a_backup(pair, tmp_path / "os-backup")
+    seq, pnum, written = a.s.state.seq, a.s.state.pnum, a.s.state.written
+    a.close()
+    copy_tree(tmp_path / "os-backup", a.paths.data_dir)
+    os.rename(a.folder, tmp_path / "away")  # the share isn't mounted yet
+
+    problem = a.restart()
+    assert problem is not None and problem.code == "folder_missing"
+    assert not a.s.started
+    paused = a.round().decision
+    assert isinstance(paused, Paused) and paused.problem.code == "folder_missing"
+    a.person_edit("E3 typed while the folder was away")
+    with pytest.raises(SyncError):
+        a.s.push(a.db)  # nothing is saved from counters the folder hasn't confirmed
+
+    os.rename(tmp_path / "away", a.folder)  # the folder is back: the start completes now
+    paused = a.round().decision
+    assert isinstance(paused, Paused) and paused.problem.code == "local_rollback"
+    assert (a.s.state.seq, a.s.state.pnum, a.s.state.written) >= (seq, pnum, written)
+    outcome = a.s.repair_rollback(a.db)
+    assert outcome.kept is not None
+    assert {"E1 before the restore", "E2 before the restore"} <= a.notes()
+    assert "E3 typed while the folder was away" in _kept_notes(a, outcome.kept.name, tmp_path / "kept")
+
+    a.person_edit("E4 after the repair")
+    a.round()
+    pair.settle()
+    b.round()
+    taken = b.use_here()
+    assert not isinstance(taken.decision, Choice)
+    assert {"E1 before the restore", "E2 before the restore", "E4 after the repair"} <= b.notes()
+
+
+def test_a_command_line_write_after_an_os_backup_is_not_saved_over_the_newer_version(
+    pair: Pair, tmp_path: Path
+) -> None:
+    """``ordnung add`` saves (``push_once``) only after the start —
+    the restored data never goes out under the folder's newer lineage."""
+    a, b = pair.a, pair.b
+    a.machine = machine_id()  # push_once opens its session as the command line does (this machine)
+    pair.joined_with_a_in_use()
+    _two_saves_after_a_backup(pair, tmp_path / "os-backup")
+    a.close()
+    copy_tree(tmp_path / "os-backup", a.paths.data_dir)
+    heads_before = {path.name: path.read_bytes() for path in (a.folder / "h").iterdir()}
+
+    a.store = Store.open(a.paths)
+    with person_write():
+        a.db.add_note("added with ordnung add")
+    said = engine.push_once(a.paths, a.secrets, a.db)
+    assert said.startswith("Not saved to the sync folder") and "back in time" in said, said
+    assert {path.name: path.read_bytes() for path in (a.folder / "h").iterdir()} == heads_before
+
+    problem = a.restart()  # the server starts: the rollback is found and the last saved state put back
+    assert problem is not None and problem.code == "local_rollback"
+    outcome = a.s.repair_rollback(a.db)
+    assert outcome.kept is not None
+    assert "added with ordnung add" in _kept_notes(a, outcome.kept.name, tmp_path / "kept")
+    a.person_edit("E3 after the restore")
+    a.round()
+    pair.settle()
+    b.round()
+    taken = b.use_here()
+    assert not isinstance(taken.decision, Choice)
+    assert {"E1 before the restore", "E2 before the restore", "E3 after the restore"} <= b.notes()
+
+
+def test_setting_sync_up_again_after_disconnect_asks_nothing_and_keeps_the_name(pair: Pair) -> None:
+    """A computer that left joins the same folder again with the data it left with: no choice between it
+    and its own former self, no useless kept copy, its own name again — not "anna-laptop (2)" — and its
+    former self is no longer listed."""
+    a, b = pair.a, pair.b
+    pair.joined_with_a_in_use()
+    a.person_edit("the last change before leaving")
+    engine.disconnect(a.paths, a.secrets, a.db, session=a.s, forget_passphrase=False, unreceived_ok=True)
+    a.session = None
+    pair.settle()
+    joined = a.connect()
+    assert joined.connected and joined.choice is None, joined
+    assert joined.outcome is not None and joined.outcome.kept is None
+    assert a.s.state.name == "anna-laptop" and a.mode == "in_use"
+    assert "the last change before leaving" in a.notes()
+    shown = [h for h in a.s.scan().heads if not h.forgotten]
+    assert sorted(h.head.name for h in shown) == ["anna-laptop", "desktop"]
+    pair.settle()
+    b.round()
+    seen = [h for h in b.s.scan().heads if not h.forgotten]
+    assert sorted(h.head.name for h in seen) == ["anna-laptop", "desktop"]
+    taken = b.use_here()
+    assert not isinstance(taken.decision, Choice)
+    assert "the last change before leaving" in b.notes()
 
 
 def test_the_calendar_record_travels_for_the_same_calendar(pair: Pair) -> None:

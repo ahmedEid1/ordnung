@@ -324,3 +324,33 @@ def test_restoring_over_a_connected_folder_says_the_copy_isn_t_connected(
     assert result.exit_code == 0, result.output
     assert "isn't connected to sync" in result.output
     assert not (target / "sync").exists()
+
+
+def test_the_command_line_suggests_a_strong_passphrase_when_it_sets_up_a_folder(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import io
+    import re
+
+    import typer
+    from rich.console import Console
+
+    from ordnung import cli, sync
+
+    monkeypatch.delenv(sync.PASSPHRASE_ENV, raising=False)
+    said = io.StringIO()
+    monkeypatch.setattr(cli, "err_console", Console(file=said, width=200, no_color=True))
+    shown: list[str] = []
+
+    def prompt(text: str, **_options: object) -> str:
+        found = re.search(r"\b([a-z]{5}(?:-[a-z]{5}){4})\b", said.getvalue())
+        assert found is not None, said.getvalue()
+        shown.append(found.group(1))
+        return found.group(1)
+
+    monkeypatch.setattr(typer, "prompt", prompt)
+    chosen = cli._sync_passphrase(new=True)
+    assert chosen == shown[0] and sync.passphrase_problem(chosen) is None
+    assert sync.passphrase_bits(chosen) >= sync.MIN_PASSPHRASE_BITS
+    for _ in range(50):
+        assert sync.passphrase_problem(sync.suggested_passphrase()) is None
