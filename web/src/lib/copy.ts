@@ -16,7 +16,7 @@ import {
   Gavel,
   KeyRound,
   MapPinHouse,
-  ReceiptEuro,
+  HousePlug,
   Undo2,
   UserX,
   Wrench,
@@ -280,7 +280,7 @@ export const DOCUMENT_KIND_COPY: CopyMap<DocumentKind> = {
   dismissal: { label: "Dismissal", icon: UserX, tone: "task", hint: "Kündigung by your employer: three weeks to go to court." },
   landlord_notice: { label: "Notice from your landlord", icon: KeyRound, tone: "contract", hint: "Kündigung of your flat: a hardship objection must reach your landlord at least two months before the tenancy ends." },
   rent_increase: { label: "Rent increase request", icon: TrendingUp, tone: "payment", hint: "Mieterhöhungsverlangen: until the end of the second month after it arrives to decide whether to agree." },
-  operating_costs: { label: "Operating-cost statement", icon: ReceiptEuro, tone: "payment", hint: "Betriebskostenabrechnung: twelve months from its arrival to object; a back-payment billed over a year after the billing period usually isn't owed." },
+  operating_costs: { label: "Operating-cost statement", icon: HousePlug, tone: "payment", hint: "Betriebskostenabrechnung: twelve months from its arrival to object; a back-payment billed over a year after the billing period usually isn't owed." },
 };
 
 export const DOCUMENT_STATUS_COPY: CopyMap<DocumentStatus> = {
