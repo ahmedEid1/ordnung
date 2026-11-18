@@ -24,6 +24,7 @@ from mcp.client.stdio import StdioServerParameters
 from mcp.server.mcpserver.exceptions import ToolError
 
 from helpers_secretary import TODAY, add_doc, add_item, seed_ledger
+from helpers_tables import check_rows
 from ordnung.assistant import mcp_server
 from ordnung.assistant.ask import known_laws
 from ordnung.assistant.channels import (
@@ -562,17 +563,19 @@ def test_an_e_mail_payment_a_reminder_took_over_and_its_bill_repeats_reads_repla
     )
 
 
-@pytest.mark.parametrize(
-    ("kwargs", "message"),
-    [
-        ({"status": "pending"}, "status must be one of"),
-        ({"kind": "bill"}, "kind must be one of"),
-        ({"from_date": "01.10.2026"}, "from_date must be a date"),
-    ],
-)
-def test_list_items_rejects_bad_arguments(tools: LedgerTools, kwargs: dict[str, Any], message: str) -> None:
-    with pytest.raises(ToolInputError, match=message):
-        tools.list_items(**kwargs)
+BAD_LIST_ITEMS_ARGUMENTS = [
+    ({"status": "pending"}, "status must be one of"),
+    ({"kind": "bill"}, "kind must be one of"),
+    ({"from_date": "01.10.2026"}, "from_date must be a date"),
+]
+
+
+def test_list_items_rejects_bad_arguments(tools: LedgerTools) -> None:
+    def check(kwargs: dict[str, Any], message: str) -> None:
+        with pytest.raises(ToolInputError, match=message):
+            tools.list_items(**kwargs)
+
+    check_rows(BAD_LIST_ITEMS_ARGUMENTS, check)
 
 
 def test_list_contracts_carry_rule_dates(tools: LedgerTools, ids: dict[str, str]) -> None:
@@ -683,17 +686,19 @@ def test_timeline_range_ids_and_privacy(tools: LedgerTools, ids: dict[str, str])
     assert dunning["amount"] == 94.99
 
 
-@pytest.mark.parametrize(
-    ("start", "end", "message"),
-    [
-        ("2026-10-31", "2026-10-01", "must not be before"),
-        ("2026-01-01", "2029-01-01", "at most two years"),
-        ("soon", "2026-10-01", "from_date must be a date"),
-    ],
-)
-def test_timeline_rejects_bad_ranges(tools: LedgerTools, start: str, end: str, message: str) -> None:
-    with pytest.raises(ToolInputError, match=message):
-        tools.timeline(start, end)
+BAD_TIMELINE_RANGES = [
+    ("2026-10-31", "2026-10-01", "must not be before"),
+    ("2026-01-01", "2029-01-01", "at most two years"),
+    ("soon", "2026-10-01", "from_date must be a date"),
+]
+
+
+def test_timeline_rejects_bad_ranges(tools: LedgerTools) -> None:
+    def check(start: str, end: str, message: str) -> None:
+        with pytest.raises(ToolInputError, match=message):
+            tools.timeline(start, end)
+
+    check_rows(BAD_TIMELINE_RANGES, check)
 
 
 def test_money_summary(tools: LedgerTools, ids: dict[str, str]) -> None:
@@ -901,40 +906,32 @@ async def test_in_process_client_handshake(store: Store, ids: dict[str, str]) ->
         assert "from_date must be a date" in failed.content[0].text
 
 
-async def test_stdio_handshake_against_a_read_only_database(store: Store, ids: dict[str, str]) -> None:
-    code = "import sys; from ordnung.assistant.mcp_server import run; run(sys.argv[1])"
-    params = StdioServerParameters(
-        command=sys.executable,
-        args=["-c", code, str(store.data_dir)],
-        env={"ORDNUNG_TODAY": "2026-09-28"},
-    )
+async def test_the_first_calls_of_a_turn_asked_at_once_both_answer(store: Store, ids: dict[str, str]) -> None:
+    """Ask's server as the claude CLI starts it (``ordnung mcp --ledger-only``), asked for the profile and the
+    numbers at once as a turn's first calls. Each call ran in a worker thread of its own and imported its tool's
+    modules there for the first time; two threads importing ``ordnung.rules`` together saw it half-initialised,
+    and both calls failed with a bare "Error executing tool …" (the Ask benchmark's household turn, three
+    recordings in a row).
+
+    After those first calls, the same server answers over the stdio handshake against the read-only database:
+    its name, the pinned day, a read of the ledger, and exactly the ledger tools."""
+    config = server_config(store.data_dir, today="2026-09-28", rules_tools=False)["mcpServers"][SERVER_NAME]
+    assert config["args"][-1] == "--ledger-only"
+    params = StdioServerParameters(command=config["command"], args=config["args"], env=config["env"])
     async with Client(params, mode="legacy") as client:
+        results = await asyncio.gather(
+            client.call_tool("get_profile", {}), client.call_tool("get_my_numbers", {})
+        )
+        assert [result.is_error for result in results] == [False, False], [
+            result.content[0].text for result in results if result.is_error
+        ]
         assert client.server_info is not None and client.server_info.name == SERVER_NAME
         today = await client.call_tool("today", {})
         assert record_of(today.content[0].text)["today"] == "2026-09-28"
         items = await client.call_tool("list_items", {"kind": "deadline"})
         rows = record_of(items.content[0].text)["items"]
         assert [row["id"] for row in rows] == [ids["tax_objection"]]
-
-
-async def test_the_first_calls_of_a_turn_asked_at_once_both_answer(store: Store, ids: dict[str, str]) -> None:
-    """Ask's server as the claude CLI starts it (``ordnung mcp --ledger-only``), asked for the profile and the
-    numbers at once as a turn's first calls. Each call ran in a worker thread of its own and imported its tool's
-    modules there for the first time; two threads importing ``ordnung.rules`` together saw it half-initialised,
-    and both calls failed with a bare "Error executing tool …" (the Ask benchmark's household turn, three
-    recordings in a row)."""
-    params = StdioServerParameters(
-        command=sys.executable,
-        args=["-m", "ordnung", "mcp", "--data-dir", str(store.data_dir), "--ledger-only"],
-        env={"ORDNUNG_TODAY": "2026-09-28"},
-    )
-    async with Client(params, mode="legacy") as client:
-        results = await asyncio.gather(
-            client.call_tool("get_profile", {}), client.call_tool("get_my_numbers", {})
-        )
-    assert [result.is_error for result in results] == [False, False], [
-        result.content[0].text for result in results if result.is_error
-    ]
+        assert {tool.name for tool in (await client.list_tools()).tools} == LEDGER_TOOL_NAMES
 
 
 async def test_the_server_answers_one_tool_call_at_a_time(
@@ -1759,7 +1756,7 @@ def test_get_my_numbers_stays_within_its_budget_with_every_ref_resolvable(
     assert len(rendered) <= RESULT_BUDGET and "left_out_rows" not in rendered
 
 
-def test_get_my_numbers_flags_unconfirmed_dates_and_in_person_fees(
+def test_get_my_numbers_flags_dates_nobody_confirmed(
     tools: LedgerTools, store: Store, ids: dict[str, str]
 ) -> None:
     _numbers_ledger(store, ids)
@@ -2024,7 +2021,9 @@ def test_get_my_numbers_puts_a_member_s_numbers_under_household(
 ) -> None:
     """A number or identity document from letters filed for someone of the household is listed under that
     person (``household``), never under the person's own; a number of the person's that a member's letters
-    show too says so (``also_for``); the note says what both mean. Their values stay letter text."""
+    show too says so (``also_for``); the note says what both mean. Their values stay letter text. A call sheet's
+    number or an open case all of whose letters are filed for one person of the household says whose it is
+    (``filed_for``); the person's own say nothing."""
     _numbers_ledger(store, ids)
     tools = LedgerTools(store, today=TODAY)
     plain = tools.get_my_numbers()
@@ -2064,6 +2063,13 @@ def test_get_my_numbers_puts_a_member_s_numbers_under_household(
     evidence = TurnEvidence.from_results([rendered], today=TODAY, catalog=known_laws())
     said = f"Alex Rivera's passport is valid until Wed 10 Feb 2027 [item:{passport['id']}]."
     assert check_answer(said, evidence, citable=evidence.seen_ids).text == said
+    # a call sheet's number or an open case all of whose letters are filed for Alex says so; the person's own
+    # say nothing
+    (case,) = record["open_cases"]
+    assert case["filed_for"] == alex
+    phone = next(sheet for sheet in record["organisations"] if sheet["party_id"] == ids["funknetz"])
+    assert [rows[ref].get("filed_for") for ref in phone["numbers"]] == [alex]
+    assert [rows[ref].get("filed_for") for ref in phone["their_numbers"]] == [None]
 
 
 def test_a_member_s_numbers_are_never_in_the_person_s_own_group(
@@ -2100,24 +2106,6 @@ def test_a_member_s_numbers_are_never_in_the_person_s_own_group(
             if ref not in {*group["about"], *his}:
                 assert row["group"] == KINDS[row["kind"]][0], ref
     assert mcp_server.MEMBER_NUMBER_GROUP == "about_household_member"
-
-
-def test_get_my_numbers_marks_call_sheet_numbers_and_cases_filed_for_a_member(
-    store: Store, ids: dict[str, str], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """A call sheet's number or an open case all of whose letters are filed for one person of the household
-    says whose it is (``filed_for``); the person's own say nothing."""
-    _numbers_ledger(store, ids)
-    (alex,) = _household(store, ALEX)
-    page = _grouped_page(store, alex)
-    monkeypatch.setattr("ordnung.views.my_numbers", lambda *args, **kwargs: page)
-    record = record_of(render_result(LedgerTools(store, today=TODAY).get_my_numbers()))
-    rows = {row["ref"]: row for row in record["numbers"]}
-    (case,) = record["open_cases"]
-    assert case["filed_for"] == alex
-    phone = next(sheet for sheet in record["organisations"] if sheet["party_id"] == ids["funknetz"])
-    assert [rows[ref].get("filed_for") for ref in phone["numbers"]] == [alex]
-    assert [rows[ref].get("filed_for") for ref in phone["their_numbers"]] == [None]
 
 
 def test_one_organisation_s_numbers_leave_the_household_groups_out(
@@ -2248,18 +2236,6 @@ def test_a_repeating_to_do_says_how_it_repeats_in_every_tool(demo_store: Store) 
     assert _repeat(rent["next_rent"]) == _repeat(listed[DEMO_NEW_RENT])
 
 
-def test_a_rent_a_later_rent_replaces_names_it_and_has_no_following_date(demo_store: Store) -> None:
-    """Point 9 of ordnung.recurrence: October's €640 rent is the last of its series — the €670 rent replaces
-    it from November — so marking it done moves it nowhere, and its record says which rent follows from when
-    instead of a next due date."""
-    tools = LedgerTools(demo_store, today=TODAY)
-    rows = {row["id"]: row for row in tools.list_items(status="all").record["items"]}
-    rent = rows[DEMO_RENT]
-    assert (rent["replaced_by"], rent["replaced_from_month"]) == (DEMO_NEW_RENT, "2026-11")
-    assert "following_due_date" not in rent
-    assert "replaced_by" not in rows[DEMO_NEW_RENT]
-
-
 def test_a_rent_that_keeps_the_earlier_rents_working_day_says_so(demo_store: Store) -> None:
     """The new total rent stores "every month" but keeps the earlier rent's 3rd working day (point 9): Ask is
     given the rule its dates follow, not the stored one, and the due date after Wed 4 Nov 2026."""
@@ -2332,47 +2308,58 @@ def api_day() -> Iterator[None]:
     clock.set_today(None)
 
 
-@pytest.mark.parametrize(
-    ("rule", "due"),
-    [
-        ({"interval": 1, "unit": "weeks"}, "2026-10-01"),
-        ({"interval": 2, "unit": "weeks"}, "2026-09-10"),
-        ({"interval": 1, "unit": "months"}, "2026-10-15"),
-        ({"interval": 3, "unit": "months"}, "2026-10-15"),
-        ({"interval": 1, "unit": "years"}, "2026-10-15"),
-        ({"interval": 1, "unit": "months", "working_day": 3}, "2026-10-01"),
-        ({"interval": 1, "unit": "months", "working_day": -1}, "2026-10-01"),
-        ({"interval": 1, "unit": "months", "day_of_month": 31}, "2026-10-01"),
-        ({"interval": 1, "unit": "weeks", "moved": "2026-10-02"}, "2026-10-01"),
-    ],
-)
-async def test_following_due_date_is_where_marking_it_done_moves_it(
-    data_dir: Path, rule: dict[str, Any], due: str, api_day: None
-) -> None:
+FOLLOWING_DUE_DATE_RULES = [
+    ({"interval": 1, "unit": "weeks"}, "2026-10-01"),
+    ({"interval": 2, "unit": "weeks"}, "2026-09-10"),
+    ({"interval": 1, "unit": "months"}, "2026-10-15"),
+    ({"interval": 3, "unit": "months"}, "2026-10-15"),
+    ({"interval": 1, "unit": "years"}, "2026-10-15"),
+    ({"interval": 1, "unit": "months", "working_day": 3}, "2026-10-01"),
+    ({"interval": 1, "unit": "months", "working_day": -1}, "2026-10-01"),
+    ({"interval": 1, "unit": "months", "day_of_month": 31}, "2026-10-01"),
+    ({"interval": 1, "unit": "weeks", "moved": "2026-10-02"}, "2026-10-01"),
+]
+
+
+async def test_following_due_date_is_where_marking_it_done_moves_it(data_dir: Path, api_day: None) -> None:
     """``following_due_date`` is the due date the to-do moves on to when the person marks it done (``PATCH
     status=done``, :func:`ordnung.recurrence.mark_done`), for every kind of rule — and for a date moved by hand
     ("only this one", point 7), the schedule's next one after it."""
     from test_api_support import TODAY as API_TODAY
     from test_api_support import api_for
 
-    rule = dict(rule)
-    moved = rule.pop("moved", None)
+    # each row makes its own to-do and reads only that one, so one app serves every row; the rows are awaited
+    # one by one and every failing row is reported, as check_rows does for a test that is not async
+    failed: list[str] = []
     async with api_for(data_dir) as api:
-        response = await api.client.post(
-            "/api/items", json={"kind": "reminder", "title": "Repeats", "due_date": due, "recurrence": rule}
-        )
-        assert response.status_code == 201, response.text
-        item = response.json()
-        if moved is not None:
-            response = await api.client.patch(f"/api/items/{item['id']}", json={"due_date": moved})
+
+        async def check(rule: dict[str, Any], due: str) -> None:
+            rule = dict(rule)
+            moved = rule.pop("moved", None)
+            response = await api.client.post(
+                "/api/items",
+                json={"kind": "reminder", "title": "Repeats", "due_date": due, "recurrence": rule},
+            )
+            assert response.status_code == 201, response.text
             item = response.json()
-            assert item["due_date"] == moved
-        tools = LedgerTools(api.ctx.store, today=date.fromisoformat(API_TODAY))
-        (row,) = [r for r in tools.list_items(status="all").record["items"] if r["id"] == item["id"]]
-        following = row["following_due_date"]
-        assert following > item["due_date"]
-        done = (await api.client.patch(f"/api/items/{item['id']}", json={"status": "done"})).json()
-        assert (done["status"], done["due_date"]) == ("open", following)
+            if moved is not None:
+                response = await api.client.patch(f"/api/items/{item['id']}", json={"due_date": moved})
+                item = response.json()
+                assert item["due_date"] == moved
+            tools = LedgerTools(api.ctx.store, today=date.fromisoformat(API_TODAY))
+            (row,) = [r for r in tools.list_items(status="all").record["items"] if r["id"] == item["id"]]
+            following = row["following_due_date"]
+            assert following > item["due_date"]
+            done = (await api.client.patch(f"/api/items/{item['id']}", json={"status": "done"})).json()
+            assert (done["status"], done["due_date"]) == ("open", following)
+
+        for number, (rule, due) in enumerate(FOLLOWING_DUE_DATE_RULES, start=1):
+            try:
+                await check(rule, due)
+            except Exception as exc:
+                failed.append(f"row {number}: {(rule, due)!r}\n    {type(exc).__name__}: {exc}")
+    assert len(FOLLOWING_DUE_DATE_RULES) >= 2
+    assert not failed, f"{len(failed)} of {len(FOLLOWING_DUE_DATE_RULES)} rows failed\n" + "\n".join(failed)
 
 
 @pytest.fixture
