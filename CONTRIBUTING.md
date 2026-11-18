@@ -54,6 +54,8 @@ cd web && npx playwright test e2e/letter-layout.spec.ts       # one end-to-end s
 An end-to-end spec runs against the built web app in `src/ordnung/web/dist`, so after changing `web/` run
 `make build-web` first, and `make browser` once for Playwright's Chromium. It starts the demo and two real apps
 of its own on ports 8799 to 8802, with throwaway data folders; `web/e2e/env.ts` says how to move both.
+`E2E_GROUP=<name>` runs one group of its projects (`E2E_GROUPS` in `web/e2e/env.ts`) on fresh servers of its own,
+only the ones that group uses; CI can run the groups side by side.
 
 ## Checks
 
