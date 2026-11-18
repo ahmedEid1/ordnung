@@ -130,14 +130,14 @@ def test_a_durable_store_commits_with_synchronous_full(paths: Paths, monkeypatch
 
 async def test_without_a_connection_sync_is_off_and_background_work_runs(data_dir: Path) -> None:
     async with computer(data_dir) as api:
+        assert (await _add_todo(api, "Pay the gym")).status_code == 201
+        assert api.ctx.store.get_meta(PERSON_META_KEY) is None  # nothing is counted while sync is off
         agent, state = agent_of(api), state_of(api)
         assert (agent.mode, agent.connected) == ("off", False)
         assert state.background_on and api.ctx.worker.running
         assert agent._task is None  # no loop without a connection
         found = await status(api)
         assert (found["mode"], found["connected"], found["available"]) == ("off", False, True)
-        assert (await _add_todo(api, "Pay the gym")).status_code == 201
-        assert api.ctx.store.get_meta(PERSON_META_KEY) is None  # nothing is counted while sync is off
 
 
 async def test_without_an_engine_sync_is_unavailable_and_writes_say_so(data_dir: Path) -> None:
