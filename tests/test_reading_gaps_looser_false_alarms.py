@@ -237,11 +237,10 @@ def test_a_label_s_date_followed_by_a_field_separator_or_a_bracket_files() -> No
 
 
 def test_a_statement_s_cut_off_files_nothing() -> None:
-    lines, lang = (
-        ("Kontoauszug Oktober", "Bitte überweisen Sie den Saldo.", "Letzter Zahlungstag: 30.10.2026"),
-        "de",
+    assert (
+        in_letter("Kontoauszug Oktober", "Bitte überweisen Sie den Saldo.", "Letzter Zahlungstag: 30.10.2026")
+        == []
     )
-    assert in_letter(*lines, lang=lang) == []
 
 
 # --------------------------------------------------------------------------------------------------
