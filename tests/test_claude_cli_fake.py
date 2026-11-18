@@ -432,7 +432,15 @@ async def test_a_cli_gone_before_the_request_is_written_reports_stderr(
     assert len(fake.calls) == 2
 
 
-async def _probes_of_a_cli_that_exits_before_reading(fake: FakeClaude, runs: int) -> None:
+async def _probes_of_a_cli_that_exits_before_reading(
+    fake: FakeClaude, monkeypatch: pytest.MonkeyPatch, runs: int
+) -> None:
+    async def recent(binary: str | None = None, timeout_s: float = 15) -> str:
+        return "2.1.5 (Claude Code)"
+
+    # every probe makes a new backend, which would first start ``claude --version``: the race under test is
+    # the ``-p`` call's, so the version is taken as read (the version gate has its own tests above)
+    monkeypatch.setattr(claude_cli, "version", recent)
     fake.play(EXITS_AT_ONCE)
     found = [await claude_cli.probe() for _ in range(runs)]
     assert found == [(False, "env: node: No such file or directory", "haiku", True)] * runs
@@ -445,7 +453,7 @@ async def test_the_doctor_probe_of_a_cli_that_exits_before_reading(
     """Settings' *Run check* and ``ordnung doctor --probe`` get a failed probe with the CLI's words, 20 times
     out of 20, however the race between the CLI's exit and the request goes."""
     monkeypatch.delenv("ORDNUNG_CLAUDE_MODEL", raising=False)
-    await _probes_of_a_cli_that_exits_before_reading(fake, 20)
+    await _probes_of_a_cli_that_exits_before_reading(fake, monkeypatch, 20)
 
 
 async def test_the_doctor_probe_of_a_cli_gone_before_the_request(
@@ -453,7 +461,7 @@ async def test_the_doctor_probe_of_a_cli_gone_before_the_request(
 ) -> None:
     """The same when the CLI has always exited before the request is written (it raised "Connection lost")."""
     monkeypatch.delenv("ORDNUNG_CLAUDE_MODEL", raising=False)
-    await _probes_of_a_cli_that_exits_before_reading(fake, 5)
+    await _probes_of_a_cli_that_exits_before_reading(fake, monkeypatch, 5)
 
 
 async def test_a_stream_reports_errors_as_an_event(fake: FakeClaude) -> None:
