@@ -18,6 +18,7 @@ from typing import Any
 
 import pytest
 
+from helpers_tables import check_rows
 from ordnung.models import DateSpec
 from ordnung.rules.calendar_de import REGION_NAMES
 from ordnung.rules.deadlines import (
@@ -114,19 +115,17 @@ OBJECTIONS = [
 ]
 
 
-@pytest.mark.parametrize(
-    ("doc", "scope", "region", "basis", "expected"),
-    [o[1:] for o in OBJECTIONS],
-    ids=[o[0] for o in OBJECTIONS],
-)
-def test_objection_deadlines(doc: str, scope: str, region: str, basis: str, expected: str) -> None:
-    context = ctx(region=region, recipient_region=region, document_date=doc, delivery_scope=scope)
-    receipt = compute_due(notice_spec(legal_basis=basis), context)
-    assert receipt.due_date == expected
-    # Court actions (Klage) carry a "get advice" warning (SPEC § 21); everything else is certain — Hessen's
-    # 3rd day too, which is its own law (§ 41 Abs. 2 HVwVfG).
-    uncertain = "klage_1_month" in receipt.rule_ids
-    assert receipt.confidence == ("medium" if uncertain else "high"), receipt.warnings
+def test_objection_deadlines() -> None:
+    def check(_id: str, doc: str, scope: str, region: str, basis: str, expected: str) -> None:
+        context = ctx(region=region, recipient_region=region, document_date=doc, delivery_scope=scope)
+        receipt = compute_due(notice_spec(legal_basis=basis), context)
+        assert receipt.due_date == expected
+        # Court actions (Klage) carry a "get advice" warning (SPEC § 21); everything else is certain — Hessen's
+        # 3rd day too, which is its own law (§ 41 Abs. 2 HVwVfG).
+        uncertain = "klage_1_month" in receipt.rule_ids
+        assert receipt.confidence == ("medium" if uncertain else "high"), receipt.warnings
+
+    check_rows(OBJECTIONS, check)
 
 
 def test_vwvfg_no_shift_summary_mentions_it() -> None:
@@ -171,42 +170,41 @@ _LAND_DEADLINES = [
 ]
 
 
-@pytest.mark.parametrize(
-    ("region", "posted", "rule", "expected", "confidence"),
-    _LAND_DEADLINES,
-    ids=[f"{row[0]}-{row[1]}-{row[2].removeprefix('de_admin_')}" for row in _LAND_DEADLINES],
-)
-def test_a_lands_delivery_day_in_the_deadline(
-    region: str | None, posted: str, rule: str, expected: str, confidence: str
-) -> None:
-    receipt = compute_due(
-        notice_spec(legal_basis="§ 70 VwGO", delivery_rule=rule),
-        ctx(region=region, document_date=posted, delivery_scope="vwvfg"),
-    )
-    assert (receipt.due_date, receipt.confidence) == (expected, confidence), receipt.warnings
+def test_a_lands_delivery_day_in_the_deadline() -> None:
+    def check(region: str | None, posted: str, rule: str, expected: str, confidence: str) -> None:
+        receipt = compute_due(
+            notice_spec(legal_basis="§ 70 VwGO", delivery_rule=rule),
+            ctx(region=region, document_date=posted, delivery_scope="vwvfg"),
+        )
+        assert (receipt.due_date, receipt.confidence) == (expected, confidence), receipt.warnings
+
+    check_rows(_LAND_DEADLINES, check)
 
 
-@pytest.mark.parametrize(
-    ("arrived", "expected", "late"),
-    [("2026-11-02", "2026-12-02", False), ("2026-11-05", "2026-12-03", True)],
-)
-def test_brandenburg_email_with_its_arrival_day(arrived: str, expected: str, late: bool) -> None:
+BRANDENBURG_EMAIL_ARRIVALS = [("2026-11-02", "2026-12-02", False), ("2026-11-05", "2026-12-03", True)]
+
+
+def test_brandenburg_email_with_its_arrival_day() -> None:
     """An e-mailed decision of a Brandenburg authority counts from the day it arrived, before the 4th day
     (§ 7 VwVfGBbg); after it, the 4th day and the late-arrival note (§ 41 Abs. 2 S. 3 VwVfG)."""
-    receipt = compute_due(
-        notice_spec(legal_basis="§ 70 VwGO", delivery_rule="de_admin_electronic"),
-        ctx(
-            today="2026-11-06",
-            region="BB",
-            document_date="2026-10-30",
-            received_date=arrived,
-            received_confirmed=True,
-            delivery_scope="vwvfg",
-        ),
-    )
-    assert (receipt.due_date, receipt.confidence) == (expected, "high"), receipt.warnings
-    assert ("late_receipt" in receipt.rule_ids) is late
-    assert ("vwvfg_bb_7" in receipt.rule_ids) is not late
+
+    def check(arrived: str, expected: str, late: bool) -> None:
+        receipt = compute_due(
+            notice_spec(legal_basis="§ 70 VwGO", delivery_rule="de_admin_electronic"),
+            ctx(
+                today="2026-11-06",
+                region="BB",
+                document_date="2026-10-30",
+                received_date=arrived,
+                received_confirmed=True,
+                delivery_scope="vwvfg",
+            ),
+        )
+        assert (receipt.due_date, receipt.confidence) == (expected, "high"), receipt.warnings
+        assert ("late_receipt" in receipt.rule_ids) is late
+        assert ("vwvfg_bb_7" in receipt.rule_ids) is not late
+
+    check_rows(BRANDENBURG_EMAIL_ARRIVALS, check)
 
 
 #: The note on a date where a matter begun before the Land's switch keeps the 3rd day: how it starts.
@@ -224,79 +222,84 @@ _MV_RULE = (
 _MV_NOTE = _MV_RULE + ": it must arrive by then, so send it by Tue 6 Jan 2026."
 
 
-@pytest.mark.parametrize(
-    ("region", "posted", "expected", "confidence", "names"),
-    [
-        pytest.param("MV", "2025-12-09", "2026-01-13", "medium", (_MV_NOTE,), id="MV"),
-        pytest.param(
-            "BW",
-            "2025-02-07",
-            "2025-03-11",
-            "medium",
-            ("Mon 10 Feb 2025", "Mon 10 Mar 2025", "send it by Tue 4 Mar 2025."),
-            id="BW",
-        ),
-        pytest.param(
-            "BY",
-            "2026-02-10",
-            "2026-03-16",
-            "medium",
-            ("Fri 13 Feb 2026", "Fri 13 Mar 2026", "send it by Mon 9 Mar 2026."),
-            id="BY",
-        ),
-        # Easter: the 3rd day gives the same deadline
-        pytest.param("BW", "2026-03-02", "2026-04-07", "high", None, id="BW-easter"),
-        # before the switch the old law's 3rd day is counted anyway
-        pytest.param("BW", "2025-02-06", "2025-03-10", "high", None, id="BW-old-law"),
-        pytest.param("MV", "2024-12-31", "2025-02-03", "high", None, id="MV-old-law"),
-        pytest.param("BY", "2024-12-31", "2025-02-03", "high", None, id="BY-old-law"),
-        # without the Land: the 3rd day and the warning that it isn't confirmed, as before
-        pytest.param(None, "2025-12-09", "2026-01-12", "medium", None, id="no-land"),
-    ],
-)
-def test_an_older_matter_in_bw_by_or_mv_names_the_earlier_deadline(
-    region: str | None, posted: str, expected: str, confidence: str, names: tuple[str, ...] | None
-) -> None:
-    receipt = compute_due(
-        notice_spec(legal_basis="§ 70 VwGO"),
-        ctx(today="2024-12-01", region=region, document_date=posted, delivery_scope="vwvfg"),
-    )
-    assert (receipt.due_date, receipt.confidence) == (expected, confidence), receipt.warnings
-    notes = [w for w in receipt.warnings if region and w.startswith(_OLDER.format(REGION_NAMES[region]))]
-    assert ("vwvfg_land_old_procedures" in receipt.rule_ids) is (names is not None)
-    if names is None:
-        assert notes == []
-    else:
-        assert len(notes) == 1 and all(name in notes[0] for name in names), notes
+OLDER_MATTER_EARLIER_DEADLINES = [
+    pytest.param("MV", "2025-12-09", "2026-01-13", "medium", (_MV_NOTE,), id="MV"),
+    pytest.param(
+        "BW",
+        "2025-02-07",
+        "2025-03-11",
+        "medium",
+        ("Mon 10 Feb 2025", "Mon 10 Mar 2025", "send it by Tue 4 Mar 2025."),
+        id="BW",
+    ),
+    pytest.param(
+        "BY",
+        "2026-02-10",
+        "2026-03-16",
+        "medium",
+        ("Fri 13 Feb 2026", "Fri 13 Mar 2026", "send it by Mon 9 Mar 2026."),
+        id="BY",
+    ),
+    # Easter: the 3rd day gives the same deadline
+    pytest.param("BW", "2026-03-02", "2026-04-07", "high", None, id="BW-easter"),
+    # before the switch the old law's 3rd day is counted anyway
+    pytest.param("BW", "2025-02-06", "2025-03-10", "high", None, id="BW-old-law"),
+    pytest.param("MV", "2024-12-31", "2025-02-03", "high", None, id="MV-old-law"),
+    pytest.param("BY", "2024-12-31", "2025-02-03", "high", None, id="BY-old-law"),
+    # without the Land: the 3rd day and the warning that it isn't confirmed, as before
+    pytest.param(None, "2025-12-09", "2026-01-12", "medium", None, id="no-land"),
+]
 
 
-@pytest.mark.parametrize(
-    ("today", "nature", "ending"),
-    [
-        # the receipt's own send-by for the later date is Wed 7 Jan: a day short of the earlier deadline
-        ("2025-12-01", "objection", ": it must arrive by then, so send it by Tue 6 Jan 2026."),
-        # a bank transfer needs one bank business day, as on the receipt
-        ("2025-12-01", "payment", ": it must arrive by then, so send it by Fri 9 Jan 2026."),
-        # past the earlier send-by day, as the receipt says once its own has passed
-        (
-            "2026-01-08",
-            "objection",
-            ": it must arrive by then, so send it today by the fastest channel allowed (online, fax or in person).",
-        ),
-        ("2026-01-13", "objection", ", which has already passed."),
-        # nothing to send: no send-by date on the receipt either
-        ("2025-12-01", "other", ": act by then to be safe."),
-    ],
-)
-def test_an_older_matter_s_note_says_when_to_send(today: str, nature: str, ending: str) -> None:
+def test_an_older_matter_in_bw_by_or_mv_names_the_earlier_deadline() -> None:
+    def check(
+        region: str | None, posted: str, expected: str, confidence: str, names: tuple[str, ...] | None
+    ) -> None:
+        receipt = compute_due(
+            notice_spec(legal_basis="§ 70 VwGO"),
+            ctx(today="2024-12-01", region=region, document_date=posted, delivery_scope="vwvfg"),
+        )
+        assert (receipt.due_date, receipt.confidence) == (expected, confidence), receipt.warnings
+        notes = [w for w in receipt.warnings if region and w.startswith(_OLDER.format(REGION_NAMES[region]))]
+        assert ("vwvfg_land_old_procedures" in receipt.rule_ids) is (names is not None)
+        if names is None:
+            assert notes == []
+        else:
+            assert len(notes) == 1 and all(name in notes[0] for name in names), notes
+
+    check_rows(OLDER_MATTER_EARLIER_DEADLINES, check)
+
+
+OLDER_MATTER_SEND_BY_ENDINGS = [
+    # the receipt's own send-by for the later date is Wed 7 Jan: a day short of the earlier deadline
+    ("2025-12-01", "objection", ": it must arrive by then, so send it by Tue 6 Jan 2026."),
+    # a bank transfer needs one bank business day, as on the receipt
+    ("2025-12-01", "payment", ": it must arrive by then, so send it by Fri 9 Jan 2026."),
+    # past the earlier send-by day, as the receipt says once its own has passed
+    (
+        "2026-01-08",
+        "objection",
+        ": it must arrive by then, so send it today by the fastest channel allowed (online, fax or in person).",
+    ),
+    ("2026-01-13", "objection", ", which has already passed."),
+    # nothing to send: no send-by date on the receipt either
+    ("2025-12-01", "other", ": act by then to be safe."),
+]
+
+
+def test_an_older_matter_s_note_says_when_to_send() -> None:
     """The earlier deadline is the day it must arrive: the note gives its own send-by date, the way the receipt
     counts one for the later date, so posting on the receipt's send-by day is never a day short."""
-    receipt = compute_due(
-        notice_spec(legal_basis="§ 70 VwGO", nature=nature),
-        ctx(today=today, region="MV", document_date="2025-12-09", delivery_scope="vwvfg"),
-    )
-    assert receipt.due_date == "2026-01-13"
-    assert _MV_RULE + ending in receipt.warnings, receipt.warnings
+
+    def check(today: str, nature: str, ending: str) -> None:
+        receipt = compute_due(
+            notice_spec(legal_basis="§ 70 VwGO", nature=nature),
+            ctx(today=today, region="MV", document_date="2025-12-09", delivery_scope="vwvfg"),
+        )
+        assert receipt.due_date == "2026-01-13"
+        assert _MV_RULE + ending in receipt.warnings, receipt.warnings
+
+    check_rows(OLDER_MATTER_SEND_BY_ENDINGS, check)
 
 
 def test_an_older_matter_s_note_counts_the_period_the_deadline_uses() -> None:
@@ -312,40 +315,45 @@ def test_an_older_matter_s_note_counts_the_period_the_deadline_uses() -> None:
     assert len(notes) == 1 and "Mon 10 Feb 2025" in notes[0] and "the deadline is Mon 10 Mar 2025" in notes[0]
 
 
-@pytest.mark.parametrize(
-    ("region", "posted", "switch"),
-    [
-        ("MV", "2025-12-09", "1 January 2025"),
-        ("BW", "2025-02-07", "7 February 2025"),
-        ("BY", "2026-02-10", "1 January 2025"),
-    ],
-)
-def test_an_older_matter_s_note_is_found_by_its_rule(region: str, posted: str, switch: str) -> None:
+OLDER_MATTER_SWITCH_DAYS = [
+    ("MV", "2025-12-09", "1 January 2025"),
+    ("BW", "2025-02-07", "7 February 2025"),
+    ("BY", "2026-02-10", "1 January 2025"),
+]
+
+
+def test_an_older_matter_s_note_is_found_by_its_rule() -> None:
     """The calendar file, the morning notification and the web app's Today find the note by its rule id (the web
     app reads the same id): the note itself and the Land's switch day; none on a receipt without the rule, or whose
     rule's note isn't there (never another warning instead)."""
-    receipt = compute_due(
-        notice_spec(legal_basis="§ 70 VwGO"),
-        ctx(today="2024-12-01", region=region, document_date=posted, delivery_scope="vwvfg"),
-    )
-    note = older_matter_note(receipt)
-    assert OLDER_MATTER_RULE in receipt.rule_ids
-    assert (
-        note is not None and note in receipt.warnings and note.startswith(_OLDER.format(REGION_NAMES[region]))
-    )
-    assert older_matter_switch(receipt) == switch
-    other = [w for w in receipt.warnings if w != note] + ["The letter's period is longer than the law's."]
-    without = receipt.model_copy(update={"warnings": other})
-    assert older_matter_note(without) is None and older_matter_switch(without) is None
-    plain = compute_due(
-        notice_spec(legal_basis="§ 70 VwGO"),
-        ctx(today="2024-12-01", region="NW", document_date=posted, delivery_scope="vwvfg"),
-    )
-    assert OLDER_MATTER_RULE not in plain.rule_ids
-    assert older_matter_note(plain) is None and older_matter_switch(plain) is None
-    assert older_matter_note(None) is None and older_matter_switch(None) is None
-    web = Path(__file__).resolve().parents[1] / "web" / "src" / "features" / "today" / "selection.ts"
-    assert f'OLDER_MATTER_RULE = "{OLDER_MATTER_RULE}"' in web.read_text(encoding="utf-8")
+
+    def check(region: str, posted: str, switch: str) -> None:
+        receipt = compute_due(
+            notice_spec(legal_basis="§ 70 VwGO"),
+            ctx(today="2024-12-01", region=region, document_date=posted, delivery_scope="vwvfg"),
+        )
+        note = older_matter_note(receipt)
+        assert OLDER_MATTER_RULE in receipt.rule_ids
+        assert (
+            note is not None
+            and note in receipt.warnings
+            and note.startswith(_OLDER.format(REGION_NAMES[region]))
+        )
+        assert older_matter_switch(receipt) == switch
+        other = [w for w in receipt.warnings if w != note] + ["The letter's period is longer than the law's."]
+        without = receipt.model_copy(update={"warnings": other})
+        assert older_matter_note(without) is None and older_matter_switch(without) is None
+        plain = compute_due(
+            notice_spec(legal_basis="§ 70 VwGO"),
+            ctx(today="2024-12-01", region="NW", document_date=posted, delivery_scope="vwvfg"),
+        )
+        assert OLDER_MATTER_RULE not in plain.rule_ids
+        assert older_matter_note(plain) is None and older_matter_switch(plain) is None
+        assert older_matter_note(None) is None and older_matter_switch(None) is None
+        web = Path(__file__).resolve().parents[1] / "web" / "src" / "features" / "today" / "selection.ts"
+        assert f'OLDER_MATTER_RULE = "{OLDER_MATTER_RULE}"' in web.read_text(encoding="utf-8")
+
+    check_rows(OLDER_MATTER_SWITCH_DAYS, check)
 
 
 def test_an_older_matter_s_note_only_on_a_period_counted_forward() -> None:
@@ -358,61 +366,55 @@ def test_an_older_matter_s_note_only_on_a_period_counted_forward() -> None:
     assert not any(w.startswith(_OLDER.format("Mecklenburg-Vorpommern")) for w in receipt.warnings)
 
 
-@pytest.mark.parametrize(
-    ("event", "amount", "unit", "region", "basis", "expected"),
-    [
-        pytest.param(
-            "2026-09-07", 1, "months", "NW", "§ 355 AO", "2026-10-07", id="fristbeginn-bekanntgabe-mon"
-        ),
-        pytest.param("2026-10-31", 1, "months", "HE", "§ 70 VwGO", "2026-11-30", id="vwgo70-pzu-saturday"),
-        pytest.param("2026-10-12", 1, "months", "NW", "§ 70 VwGO", "2026-11-12", id="vwzg-pzu-envelope"),
-        pytest.param("2026-10-15", 1, "months", "NW", "§ 70 VwGO", "2026-11-16", id="vwzg-rueckschein"),
-        pytest.param("2026-10-16", 1, "months", "HE", "§ 74 VwGO", "2026-11-16", id="klage-vg-frankfurt-pzu"),
-        pytest.param("2026-09-10", 1, "months", "NW", "§ 355 AO", "2026-10-12", id="ao355-steueranmeldung"),
-        pytest.param("2026-10-15", 3, "months", "NW", "§ 84 SGG", "2027-01-15", id="sgg84-abroad-3-months"),
-        pytest.param("2026-10-03", 1, "months", "NW", "§ 70 VwGO", "2026-11-03", id="link-sat-oct-3"),
-        pytest.param("2025-10-31", 1, "months", "BY", "§ 355 AO", "2025-12-01", id="link-bavaria"),
-        pytest.param("2026-09-18", 1, "months", "NW", "§ 355 AO", "2026-10-19", id="link-fri-sep-18"),
-        pytest.param("2026-09-17", 2, "weeks", "BY", "§ 67 OWiG", "2026-10-01", id="owig67-thursday"),
-        pytest.param(
-            "2026-09-19", 2, "weeks", "NW", "§ 67 OWiG", "2026-10-05", id="owig67-substitute-delivery-sat"
-        ),
-        pytest.param("2026-12-11", 2, "weeks", "BE", "§ 67 OWiG", "2026-12-28", id="owig67-christmas"),
-        pytest.param(
-            "2026-10-16", 2, "weeks", "NI", "§ 67 OWiG", "2026-10-30", id="owig55-later-bussgeldbescheid"
-        ),
-        pytest.param("2026-09-23", 2, "weeks", "BW", "§ 410 StPO", "2026-10-07", id="stpo410-stuttgart"),
-        pytest.param(
-            "2026-11-04", 2, "weeks", "SN", "§ 410 StPO", "2026-11-19", id="stpo410-dresden-buss-und-bettag"
-        ),
-        pytest.param("2026-11-04", 2, "weeks", "BY", "§ 410 StPO", "2026-11-18", id="stpo410-muenchen"),
-        pytest.param(
-            "2026-10-17", 2, "weeks", "NI", "§ 410 StPO", "2026-11-02", id="stpo410-hannover-saturday"
-        ),
-        pytest.param(
-            "2026-12-18", 2, "weeks", "HH", "§ 410 StPO", "2027-01-04", id="stpo410-hamburg-new-year"
-        ),
-        pytest.param("2026-09-28", 2, "weeks", "NW", None, "2026-10-12", id="authority-two-weeks-hearing"),
-        pytest.param("2026-10-17", 14, "days", "NW", None, "2026-11-02", id="widerruf-193-applies"),
-        pytest.param("2026-09-21", 10, "days", "NW", None, "2026-10-01", id="fristende-10-days"),
-    ],
-)
-def test_explicit_event_deadlines(
-    event: str, amount: int, unit: str, region: str, basis: str | None, expected: str
-) -> None:
-    spec = DateSpec(
-        type="relative",
-        anchor="explicit_date",
-        anchor_date=event,
-        amount=amount,
-        unit=unit,  # type: ignore[arg-type]
-        nature="objection" if basis else "declaration",
-        legal_basis=basis,
-    )
-    receipt = compute_due(spec, ctx(region=region))
-    assert receipt.due_date == expected
-    klage = "klage_1_month" in receipt.rule_ids
-    assert receipt.confidence == ("medium" if klage else "high"), receipt.warnings
+EXPLICIT_EVENT_DEADLINES = [
+    pytest.param("2026-09-07", 1, "months", "NW", "§ 355 AO", "2026-10-07", id="fristbeginn-bekanntgabe-mon"),
+    pytest.param("2026-10-31", 1, "months", "HE", "§ 70 VwGO", "2026-11-30", id="vwgo70-pzu-saturday"),
+    pytest.param("2026-10-12", 1, "months", "NW", "§ 70 VwGO", "2026-11-12", id="vwzg-pzu-envelope"),
+    pytest.param("2026-10-15", 1, "months", "NW", "§ 70 VwGO", "2026-11-16", id="vwzg-rueckschein"),
+    pytest.param("2026-10-16", 1, "months", "HE", "§ 74 VwGO", "2026-11-16", id="klage-vg-frankfurt-pzu"),
+    pytest.param("2026-09-10", 1, "months", "NW", "§ 355 AO", "2026-10-12", id="ao355-steueranmeldung"),
+    pytest.param("2026-10-15", 3, "months", "NW", "§ 84 SGG", "2027-01-15", id="sgg84-abroad-3-months"),
+    pytest.param("2026-10-03", 1, "months", "NW", "§ 70 VwGO", "2026-11-03", id="link-sat-oct-3"),
+    pytest.param("2025-10-31", 1, "months", "BY", "§ 355 AO", "2025-12-01", id="link-bavaria"),
+    pytest.param("2026-09-18", 1, "months", "NW", "§ 355 AO", "2026-10-19", id="link-fri-sep-18"),
+    pytest.param("2026-09-17", 2, "weeks", "BY", "§ 67 OWiG", "2026-10-01", id="owig67-thursday"),
+    pytest.param(
+        "2026-09-19", 2, "weeks", "NW", "§ 67 OWiG", "2026-10-05", id="owig67-substitute-delivery-sat"
+    ),
+    pytest.param("2026-12-11", 2, "weeks", "BE", "§ 67 OWiG", "2026-12-28", id="owig67-christmas"),
+    pytest.param(
+        "2026-10-16", 2, "weeks", "NI", "§ 67 OWiG", "2026-10-30", id="owig55-later-bussgeldbescheid"
+    ),
+    pytest.param("2026-09-23", 2, "weeks", "BW", "§ 410 StPO", "2026-10-07", id="stpo410-stuttgart"),
+    pytest.param(
+        "2026-11-04", 2, "weeks", "SN", "§ 410 StPO", "2026-11-19", id="stpo410-dresden-buss-und-bettag"
+    ),
+    pytest.param("2026-11-04", 2, "weeks", "BY", "§ 410 StPO", "2026-11-18", id="stpo410-muenchen"),
+    pytest.param("2026-10-17", 2, "weeks", "NI", "§ 410 StPO", "2026-11-02", id="stpo410-hannover-saturday"),
+    pytest.param("2026-12-18", 2, "weeks", "HH", "§ 410 StPO", "2027-01-04", id="stpo410-hamburg-new-year"),
+    pytest.param("2026-09-28", 2, "weeks", "NW", None, "2026-10-12", id="authority-two-weeks-hearing"),
+    pytest.param("2026-10-17", 14, "days", "NW", None, "2026-11-02", id="widerruf-193-applies"),
+    pytest.param("2026-09-21", 10, "days", "NW", None, "2026-10-01", id="fristende-10-days"),
+]
+
+
+def test_explicit_event_deadlines() -> None:
+    def check(event: str, amount: int, unit: str, region: str, basis: str | None, expected: str) -> None:
+        spec = DateSpec(
+            type="relative",
+            anchor="explicit_date",
+            anchor_date=event,
+            amount=amount,
+            unit=unit,  # type: ignore[arg-type]
+            nature="objection" if basis else "declaration",
+            legal_basis=basis,
+        )
+        receipt = compute_due(spec, ctx(region=region))
+        assert receipt.due_date == expected
+        klage = "klage_1_month" in receipt.rule_ids
+        assert receipt.confidence == ("medium" if klage else "high"), receipt.warnings
+
+    check_rows(EXPLICIT_EVENT_DEADLINES, check)
 
 
 def test_owig_week_period_uses_stpo_43() -> None:
@@ -447,6 +449,7 @@ def test_fine_sent_by_uebergabe_einschreiben() -> None:
     assert receipt.confidence == "medium"  # counted from the letter's date, not the envelope
     assert receipt.summary == "Two weeks after the letter's date (Mon 21 Sep 2026) is Mon 5 Oct 2026."
     assert "vwvfg_41_2" not in receipt.rule_ids
+    assert not any(step.rule_id in ("vwvfg_41_2", "vwvfg_land_days") for step in receipt.steps)
     assert any("Übergabe-Einschreiben the 4th day" in w and "yellow envelope" in w for w in receipt.warnings)
     # With the envelope date as an explicit anchor the week period runs from it (§ 43 StPO).
     served = compute_due(
@@ -524,40 +527,40 @@ def test_pre_dated_letter_counts_from_arrival() -> None:
     assert receipt.summary.startswith("The letter arrived on Thu 15 Oct, before its printed date")
 
 
-@pytest.mark.parametrize(
-    ("doc", "received", "scope", "expected", "alternative"),
-    [
-        pytest.param("2026-09-14", "2026-09-22", "ao", "2026-10-19", "Thu 22 Oct 2026", id="late-imprint"),
-        pytest.param(
-            "2026-09-21",
-            "2026-09-28",
-            "vwvfg",
-            "2026-10-26",
-            "Wed 28 Oct 2026",
-            id="vwvfg-koeln-late-receipt",
-        ),
-        pytest.param(
-            "2026-10-16", "2026-11-04", "ao", "2026-11-20", "Fri 4 Dec 2026", id="anchor-received-weeks-later"
-        ),
-    ],
-)
-def test_late_receipt_keeps_safe_date_and_notes_alternative(
-    doc: str, received: str, scope: str, expected: str, alternative: str
-) -> None:
-    receipt = compute_due(
-        notice_spec(legal_basis="§ 355 AO" if scope == "ao" else "§ 70 VwGO"),
-        ctx(
-            region="NW",
-            document_date=doc,
-            received_date=received,
-            received_confirmed=True,
-            delivery_scope=scope,
-            today=D("2026-09-14"),
-        ),
-    )
-    assert receipt.due_date == expected
-    assert "late_receipt" in receipt.rule_ids
-    assert any(alternative in w for w in receipt.warnings)
+LATE_RECEIPTS = [
+    pytest.param("2026-09-14", "2026-09-22", "ao", "2026-10-19", "Thu 22 Oct 2026", id="late-imprint"),
+    pytest.param(
+        "2026-09-21",
+        "2026-09-28",
+        "vwvfg",
+        "2026-10-26",
+        "Wed 28 Oct 2026",
+        id="vwvfg-koeln-late-receipt",
+    ),
+    pytest.param(
+        "2026-10-16", "2026-11-04", "ao", "2026-11-20", "Fri 4 Dec 2026", id="anchor-received-weeks-later"
+    ),
+]
+
+
+def test_late_receipt_keeps_safe_date_and_notes_alternative() -> None:
+    def check(doc: str, received: str, scope: str, expected: str, alternative: str) -> None:
+        receipt = compute_due(
+            notice_spec(legal_basis="§ 355 AO" if scope == "ao" else "§ 70 VwGO"),
+            ctx(
+                region="NW",
+                document_date=doc,
+                received_date=received,
+                received_confirmed=True,
+                delivery_scope=scope,
+                today=D("2026-09-14"),
+            ),
+        )
+        assert receipt.due_date == expected
+        assert "late_receipt" in receipt.rule_ids
+        assert any(alternative in w for w in receipt.warnings)
+
+    check_rows(LATE_RECEIPTS, check)
 
 
 def test_late_receipt_without_shift() -> None:
@@ -650,34 +653,38 @@ def test_bfh_ix_b_95_25_without_rebuttal() -> None:
     assert receipt.due_date == "2025-03-11"
 
 
-def test_electronic_delivery_rule() -> None:
-    """ao2a: Einspruchsentscheidung e-mailed Wed 23 Dec 2026 → Mon 28 Dec → Klage Thu 28 Jan 2027."""
-    receipt = compute_due(
-        notice_spec(delivery_rule="de_admin_electronic", legal_basis="§ 47 FGO"),
-        ctx(document_date="2026-12-23", delivery_scope="ao", region="NW"),
-    )
-    assert receipt.due_date == "2027-01-28"
-    assert "ao_122_2a" in receipt.rule_ids
+#: An authority's letter sent electronically: (letter's date, scope, region, legal basis, today or None for TODAY,
+#: due, a rule the receipt must cite or None).
+ELECTRONIC_DELIVERIES = [
+    # elster: made available Fri 25 Sep 2026 → Tue 29 Sep → Thu 29 Oct; Thu 2 Apr 2026 → Tue 7 Apr → Thu 7 May
+    ("2026-09-25", "ao", "NW", "§ 355 AO", "2026-04-01", "2026-10-29", None),
+    ("2026-04-02", "ao", "NW", "§ 355 AO", "2026-04-01", "2026-05-07", None),
+    # ozg: federal authority e-mails Fri 30 Oct 2026 → Tue 3 Nov → Thu 3 Dec
+    ("2026-10-30", "vwvfg", "BE", "§ 70 VwGO", None, "2026-12-03", None),
+    # ao2a: Einspruchsentscheidung e-mailed Wed 23 Dec 2026 → Mon 28 Dec → Klage Thu 28 Jan 2027
+    ("2026-12-23", "ao", "NW", "§ 47 FGO", None, "2027-01-28", "ao_122_2a"),
+]
 
 
 def test_elster_and_federal_email_examples() -> None:
-    # elster: made available Fri 25 Sep 2026 → Tue 29 Sep → Thu 29 Oct; Thu 2 Apr 2026 → Tue 7 Apr → Thu 7 May
-    for doc, expected in (("2026-09-25", "2026-10-29"), ("2026-04-02", "2026-05-07")):
+    def check(
+        doc: str, scope: str, region: str, basis: str, today: str | None, expected: str, rule: str | None
+    ) -> None:
+        on = {"today": D(today)} if today else {}
         receipt = compute_due(
-            notice_spec(delivery_rule="de_admin_electronic", legal_basis="§ 355 AO"),
-            ctx(document_date=doc, delivery_scope="ao", region="NW", today=D("2026-04-01")),
+            notice_spec(delivery_rule="de_admin_electronic", legal_basis=basis),
+            ctx(document_date=doc, delivery_scope=scope, region=region, **on),
         )
         assert receipt.due_date == expected
-    # ozg: federal authority e-mails Fri 30 Oct 2026 → Tue 3 Nov → Thu 3 Dec
-    receipt = compute_due(
-        notice_spec(delivery_rule="de_admin_electronic", legal_basis="§ 70 VwGO"),
-        ctx(document_date="2026-10-30", delivery_scope="vwvfg", region="BE"),
-    )
-    assert receipt.due_date == "2026-12-03"
+        if rule is not None:
+            assert rule in receipt.rule_ids
+
+    check_rows(ELECTRONIC_DELIVERIES, check)
 
 
-def test_receipt_anchor_confirmed() -> None:
+def test_a_period_from_receipt_counts_from_the_confirmed_arrival_or_falls_back() -> None:
     spec = DateSpec(type="relative", anchor="receipt", amount=14, unit="days", nature="payment")
+    # a confirmed arrival day: counted from it
     receipt = compute_due(
         spec,
         ctx(region="NW", document_date="2026-09-10", received_date="2026-09-14", received_confirmed=True),
@@ -685,57 +692,56 @@ def test_receipt_anchor_confirmed() -> None:
     assert receipt.due_date == "2026-09-28"
     assert receipt.confidence == "high"
     assert receipt.summary == "14 days after the day you received it (Mon 14 Sep 2026) is Mon 28 Sep 2026."
-
-
-def test_receipt_anchor_unconfirmed_falls_back_to_document_date() -> None:
-    spec = DateSpec(type="relative", anchor="receipt", amount=14, unit="days", nature="payment")
+    # an unconfirmed arrival day: counted from the letter's date, and said so
     receipt = compute_due(spec, ctx(region="NW", document_date="2026-09-10", received_date="2026-09-14"))
     assert receipt.due_date == "2026-09-24"
     assert receipt.confidence == "low"
     assert ASSUMED_RECEIPT_WARNING in receipt.warnings
-
-
-def test_receipt_anchor_without_any_date() -> None:
-    spec = DateSpec(type="relative", anchor="receipt", amount=14, unit="days", nature="payment")
+    # no date at all: no due date
     receipt = compute_due(spec, ctx(region="NW"))
     assert receipt.due_date is None
     assert receipt.confidence == "low"
 
 
-@pytest.mark.parametrize(
-    ("spec", "context"),
-    [
-        (DateSpec(type="relative", anchor="document_date", amount=1, unit="months"), {}),
-        (
-            DateSpec(
-                type="relative",
-                anchor="deemed_delivery",
-                amount=1,
-                unit="months",
-                delivery_rule="de_admin_post",
-            ),
-            {},
+MISSING_INPUTS = [
+    (DateSpec(type="relative", anchor="document_date", amount=1, unit="months"), {}),
+    (
+        DateSpec(
+            type="relative",
+            anchor="deemed_delivery",
+            amount=1,
+            unit="months",
+            delivery_rule="de_admin_post",
         ),
-        (DateSpec(type="relative", anchor="explicit_date", anchor_date="soon", amount=1, unit="months"), {}),
-        (DateSpec(type="relative", amount=1, unit="months"), {}),
-        (DateSpec(type="relative", anchor="document_date", unit="months"), {"document_date": "2026-09-01"}),
-        (DateSpec(type="fixed", date="31.10.2026"), {}),
-    ],
-    ids=[
-        "no-document-date",
-        "no-posting-date",
-        "unreadable-anchor",
-        "no-anchor-no-date",
-        "no-amount",
-        "bad-fixed-date",
-    ],
-)
-def test_missing_inputs_give_no_date_and_low_confidence(spec: DateSpec, context: dict[str, Any]) -> None:
-    receipt = compute_due(spec, ctx(**context))
-    assert receipt.due_date is None
-    assert receipt.confidence == "low"
-    assert receipt.warnings
-    assert receipt.summary.startswith("No date could be computed")
+        {},
+    ),
+    (DateSpec(type="relative", anchor="explicit_date", anchor_date="soon", amount=1, unit="months"), {}),
+    (DateSpec(type="relative", amount=1, unit="months"), {}),
+    (DateSpec(type="relative", anchor="document_date", unit="months"), {"document_date": "2026-09-01"}),
+    (DateSpec(type="fixed", date="31.10.2026"), {}),
+]
+MISSING_INPUT_IDS = [
+    "no-document-date",
+    "no-posting-date",
+    "unreadable-anchor",
+    "no-anchor-no-date",
+    "no-amount",
+    "bad-fixed-date",
+]
+
+
+def test_missing_inputs_give_no_date_and_low_confidence() -> None:
+    def check(spec: DateSpec, context: dict[str, Any]) -> None:
+        receipt = compute_due(spec, ctx(**context))
+        assert receipt.due_date is None
+        assert receipt.confidence == "low"
+        assert receipt.warnings
+        assert receipt.summary.startswith("No date could be computed")
+
+    check_rows(
+        [pytest.param(*row, id=name) for row, name in zip(MISSING_INPUTS, MISSING_INPUT_IDS, strict=True)],
+        check,
+    )
 
 
 def test_missing_anchor_counts_from_document_date() -> None:
@@ -786,9 +792,7 @@ def test_statute_mismatch_uses_earlier_date() -> None:
     assert receipt.due_date == "2026-10-21"  # one month (statutory) is earlier than six weeks
     assert receipt.confidence == "medium"
     assert any("the law (§ 355 Abs. 1 AO; § 357 AO) gives one month" in w for w in receipt.warnings)
-
-
-def test_statute_mismatch_keeps_shorter_letter_period() -> None:
+    # the other way round: the letter's shorter period is kept
     receipt = compute_due(
         notice_spec(amount=2, unit="weeks", legal_basis="§ 355 AO"),
         ctx(region="NW", document_date="2026-09-15", delivery_scope="ao"),
@@ -830,23 +834,25 @@ def test_fourteen_days_equals_two_weeks_for_owig() -> None:
     assert receipt.confidence == "high"
 
 
-@pytest.mark.parametrize(
-    ("text", "rule"),
-    [
-        ("§ 355 Abs. 1 AO", "ao_355"),
-        ("§70 VwGO", "vwgo_70"),
-        ("§ 84 Abs. 1 SGG", "sgg_84"),
-        ("§ 67 OWiG", "owig_67"),
-        ("§ 55 OWiG", "owig_55"),
-        ("Anhörungsbogen", "owig_55"),
-        ("§ 410 StPO", "stpo_410"),
-        ("§ 74 VwGO", "klage_1_month"),
-        ("§ 87 Abs. 1 SGG", "klage_1_month"),
-        ("§ 193 BGB", None),
-    ],
-)
-def test_statute_recognition(text: str, rule: str | None) -> None:
-    assert statute_rule(DateSpec(type="relative", legal_basis=text)) == rule
+STATUTE_NAMES = [
+    ("§ 355 Abs. 1 AO", "ao_355"),
+    ("§70 VwGO", "vwgo_70"),
+    ("§ 84 Abs. 1 SGG", "sgg_84"),
+    ("§ 67 OWiG", "owig_67"),
+    ("§ 55 OWiG", "owig_55"),
+    ("Anhörungsbogen", "owig_55"),
+    ("§ 410 StPO", "stpo_410"),
+    ("§ 74 VwGO", "klage_1_month"),
+    ("§ 87 Abs. 1 SGG", "klage_1_month"),
+    ("§ 193 BGB", None),
+]
+
+
+def test_statute_recognition() -> None:
+    def check(text: str, rule: str | None) -> None:
+        assert statute_rule(DateSpec(type="relative", legal_basis=text)) == rule
+
+    check_rows(STATUTE_NAMES, check)
 
 
 def test_anhoerungsbogen_is_a_soft_deadline() -> None:
@@ -1008,27 +1014,29 @@ def test_a_notice_for_a_named_end_is_not_a_receive_by_date() -> None:
     assert nw.due_date == "2027-02-28" and nw.holiday_calendar == "Nordrhein-Westfalen"
 
 
-@pytest.mark.parametrize(
-    ("text", "quote", "end"),
-    [
-        ("rechtzeitig zum 31.03.2027", _UNI, True),
-        ("zum 31.12.2026", "Eine Kündigung ist zum 31.12.2026 möglich.", True),
-        ("zum Ablauf des 31.12.2026", "Sie können zum Ablauf des 31.12.2026 kündigen.", True),
-        ("mit Wirkung zum 31.12.2026", None, True),
-        ("effective 31 March 2027", "Please cancel effective 31 March 2027.", True),
-        # the day the notice must arrive, whatever else the sentence says
-        ("bis zum 31.03.2027", "Die Kündigung muss bis zum 31.03.2027 bei uns eingehen.", False),
-        ("zum 30.09.2026", "Ihre Kündigung muss uns spätestens zum 30.09.2026 vorliegen.", False),
-        ("zum 30.09.2026", "Die Kündigung muss zum 30.09.2026 bei uns sein.", False),
-        ("31 March 2027", "Your cancellation must reach us by 31 March 2027.", False),
-        ("31.08.2026", "Kündigen Sie bis spätestens 31.08.2026.", False),
-    ],
-)
-def test_which_notice_words_name_an_end(text: str, quote: str | None, end: bool) -> None:
-    spec = DateSpec(type="fixed", date="2027-03-31", nature="notice", text=text, shift_rule="none")
-    receipt = compute_due(spec, replace(ctx(today=D("2026-09-28")), quote=quote))
-    assert (receipt.due_date != "2027-03-31") is end
-    assert (receipt.confidence == "low") is end
+NOTICE_WORDS = [
+    ("rechtzeitig zum 31.03.2027", _UNI, True),
+    ("zum 31.12.2026", "Eine Kündigung ist zum 31.12.2026 möglich.", True),
+    ("zum Ablauf des 31.12.2026", "Sie können zum Ablauf des 31.12.2026 kündigen.", True),
+    ("mit Wirkung zum 31.12.2026", None, True),
+    ("effective 31 March 2027", "Please cancel effective 31 March 2027.", True),
+    # the day the notice must arrive, whatever else the sentence says
+    ("bis zum 31.03.2027", "Die Kündigung muss bis zum 31.03.2027 bei uns eingehen.", False),
+    ("zum 30.09.2026", "Ihre Kündigung muss uns spätestens zum 30.09.2026 vorliegen.", False),
+    ("zum 30.09.2026", "Die Kündigung muss zum 30.09.2026 bei uns sein.", False),
+    ("31 March 2027", "Your cancellation must reach us by 31 March 2027.", False),
+    ("31.08.2026", "Kündigen Sie bis spätestens 31.08.2026.", False),
+]
+
+
+def test_which_notice_words_name_an_end() -> None:
+    def check(text: str, quote: str | None, end: bool) -> None:
+        spec = DateSpec(type="fixed", date="2027-03-31", nature="notice", text=text, shift_rule="none")
+        receipt = compute_due(spec, replace(ctx(today=D("2026-09-28")), quote=quote))
+        assert (receipt.due_date != "2027-03-31") is end
+        assert (receipt.confidence == "low") is end
+
+    check_rows(NOTICE_WORDS, check)
 
 
 def test_only_a_notice_names_an_end() -> None:
@@ -1133,6 +1141,19 @@ def test_relative_notice_backwards_from_contract_end() -> None:
     assert receipt.due_date == "2026-10-31"
     assert receipt.safe_date == "2026-10-30"
     assert receipt.summary.startswith("Three months before Sun 31 Jan 2027 is Sat 31 Oct 2026, a Saturday")
+    # a notice never shifts, even if asked to
+    spec = DateSpec(
+        type="relative",
+        anchor="explicit_date",
+        anchor_date="2027-01-31",
+        amount=-3,
+        unit="months",
+        nature="notice",
+        shift_rule="next_business_day",
+    )
+    receipt = compute_due(spec, ctx(region="NW"))
+    assert receipt.due_date == "2026-10-31"
+    assert receipt.safe_date == "2026-10-30"
 
 
 def test_relative_deadline_expressly_not_shifted() -> None:
@@ -1148,21 +1169,6 @@ def test_relative_deadline_expressly_not_shifted() -> None:
     )
     receipt = compute_due(spec, ctx(region="NW", delivery_scope="vwvfg"))
     assert receipt.due_date == "2026-10-10"  # a Saturday, kept
-
-
-def test_notice_never_shifts_even_if_asked() -> None:
-    spec = DateSpec(
-        type="relative",
-        anchor="explicit_date",
-        anchor_date="2027-01-31",
-        amount=-3,
-        unit="months",
-        nature="notice",
-        shift_rule="next_business_day",
-    )
-    receipt = compute_due(spec, ctx(region="NW"))
-    assert receipt.due_date == "2026-10-31"
-    assert receipt.safe_date == "2026-10-30"
 
 
 def test_relative_backwards_before_an_appointment() -> None:
@@ -1224,31 +1230,33 @@ def test_custom_postal_buffer() -> None:
 # ------------------------------------------------------------------------- one-year fallback
 
 
-@pytest.mark.parametrize(
-    ("event", "region", "expected"),
-    [
-        pytest.param("2025-10-07", "NW", "2026-10-07", id="rbb-steuerbescheid"),
-        pytest.param("2025-10-31", "SN", "2026-11-02", id="rbb-leipzig-saturday"),
-        pytest.param("2024-02-29", "NW", "2025-02-28", id="rbb-leap-day"),
-        pytest.param("2025-10-03", "NW", "2026-10-05", id="rbb-vwvfg-holiday-fiction"),
-    ],
-)
-def test_one_year_fallback(event: str, region: str, expected: str) -> None:
-    spec = DateSpec(
-        type="relative",
-        anchor="explicit_date",
-        anchor_date=event,
-        amount=1,
-        unit="months",
-        nature="objection",
-        legal_basis="§ 355 AO",
-    )
-    receipt = compute_one_year_fallback(spec, ctx(region=region, today=D(event)))
-    assert receipt.due_date == expected
-    assert receipt.confidence == "low"
-    assert "rbb_one_year" in receipt.rule_ids
-    assert receipt.warnings[0].startswith("Only if the instructions on how to object")
-    assert receipt.summary.startswith("If the instructions on how to object were missing or wrong: ")
+ONE_YEAR_FALLBACKS = [
+    pytest.param("2025-10-07", "NW", "2026-10-07", id="rbb-steuerbescheid"),
+    pytest.param("2025-10-31", "SN", "2026-11-02", id="rbb-leipzig-saturday"),
+    pytest.param("2024-02-29", "NW", "2025-02-28", id="rbb-leap-day"),
+    pytest.param("2025-10-03", "NW", "2026-10-05", id="rbb-vwvfg-holiday-fiction"),
+]
+
+
+def test_one_year_fallback() -> None:
+    def check(event: str, region: str, expected: str) -> None:
+        spec = DateSpec(
+            type="relative",
+            anchor="explicit_date",
+            anchor_date=event,
+            amount=1,
+            unit="months",
+            nature="objection",
+            legal_basis="§ 355 AO",
+        )
+        receipt = compute_one_year_fallback(spec, ctx(region=region, today=D(event)))
+        assert receipt.due_date == expected
+        assert receipt.confidence == "low"
+        assert "rbb_one_year" in receipt.rule_ids
+        assert receipt.warnings[0].startswith("Only if the instructions on how to object")
+        assert receipt.summary.startswith("If the instructions on how to object were missing or wrong: ")
+
+    check_rows(ONE_YEAR_FALLBACKS, check)
 
 
 def test_one_year_fallback_from_deemed_delivery() -> None:
@@ -1326,49 +1334,47 @@ def test_a_private_senders_letter_counts_from_its_arrival() -> None:
     assert compute_due(spec, ctx(document_date="2026-09-01")).due_date == "2026-09-18"
 
 
-def test_a_private_sender_drops_a_delivery_rule_on_the_letters_date() -> None:
-    spec = notice_spec(anchor="document_date", amount=14, unit="days", nature="payment")
-    receipt = compute_due(spec, ctx(document_date="2026-09-01", private_sender=True))
-    assert receipt.due_date == "2026-09-15" and PRIVATE_SENDER_DATED_WARNING in receipt.warnings
-    assert receipt.confidence == "high"  # the letter's own date, nothing assumed
+PRIVATE_SENDER_ARRIVALS = [None, "2026-09-16"]
 
 
-@pytest.mark.parametrize("received", [None, "2026-09-16"])
-def test_a_private_senders_period_from_a_date_it_gives_never_claims_to_count_from_arrival(
-    received: str | None,
-) -> None:
+def test_a_private_senders_period_from_a_date_it_gives_never_claims_to_count_from_arrival() -> None:
     """The words "14 days from the invoice date" read with a delivery rule. The rule goes and the
     invoice date stays, so the receipt must not say the period runs from arrival, nor carry the rule id
     that makes the app ask for the arrival day — an answer it would then ignore."""
-    spec = DateSpec(
-        type="relative",
-        anchor="document_date",
-        amount=14,
-        unit="days",
-        delivery_rule="de_admin_post",
-        nature="payment",
-        text="Bitte zahlen Sie innerhalb von 14 Tagen ab Rechnungsdatum.",
-    )
-    arrival = {"received_date": received, "received_confirmed": True} if received else {}
-    receipt = compute_due(
-        spec, ctx(today="2026-09-20", document_date="2026-09-14", private_sender=True, **arrival)
-    )
-    assert receipt.due_date == "2026-09-28" and receipt.confidence == "high"
-    assert receipt.warnings == [PRIVATE_SENDER_DATED_WARNING]
-    assert (
-        "private_sender_no_delivery" in receipt.rule_ids and "private_sender_arrival" not in receipt.rule_ids
-    )
-    assert receipt.steps[0].label == (
-        "Not an authority's letter, so no delivery days: the period runs from the letter's date (Mon 14 Sep 2026)"
-    )
-    assert receipt.steps[0].citation == "§ 187 Abs. 1 BGB"
-    # a period from another date the letter names: that date, whenever the letter arrived
-    named = spec.model_copy(update={"anchor": "explicit_date", "anchor_date": "2026-09-10"})
-    other = compute_due(
-        named, ctx(today="2026-09-20", document_date="2026-09-14", private_sender=True, **arrival)
-    )
-    assert other.due_date == "2026-09-24" and other.warnings == [PRIVATE_SENDER_DATED_WARNING]
-    assert other.steps[0].rule_id == "private_sender_no_delivery"
+
+    def check(received: str | None) -> None:
+        spec = DateSpec(
+            type="relative",
+            anchor="document_date",
+            amount=14,
+            unit="days",
+            delivery_rule="de_admin_post",
+            nature="payment",
+            text="Bitte zahlen Sie innerhalb von 14 Tagen ab Rechnungsdatum.",
+        )
+        arrival = {"received_date": received, "received_confirmed": True} if received else {}
+        receipt = compute_due(
+            spec, ctx(today="2026-09-20", document_date="2026-09-14", private_sender=True, **arrival)
+        )
+        assert receipt.due_date == "2026-09-28" and receipt.confidence == "high"
+        assert receipt.warnings == [PRIVATE_SENDER_DATED_WARNING]
+        assert (
+            "private_sender_no_delivery" in receipt.rule_ids
+            and "private_sender_arrival" not in receipt.rule_ids
+        )
+        assert receipt.steps[0].label == (
+            "Not an authority's letter, so no delivery days: the period runs from the letter's date (Mon 14 Sep 2026)"
+        )
+        assert receipt.steps[0].citation == "§ 187 Abs. 1 BGB"
+        # a period from another date the letter names: that date, whenever the letter arrived
+        named = spec.model_copy(update={"anchor": "explicit_date", "anchor_date": "2026-09-10"})
+        other = compute_due(
+            named, ctx(today="2026-09-20", document_date="2026-09-14", private_sender=True, **arrival)
+        )
+        assert other.due_date == "2026-09-24" and other.warnings == [PRIVATE_SENDER_DATED_WARNING]
+        assert other.steps[0].rule_id == "private_sender_no_delivery"
+
+    check_rows(PRIVATE_SENDER_ARRIVALS, check)
 
 
 def test_a_remedy_statute_keeps_deemed_delivery_for_a_sender_filed_as_private() -> None:
@@ -1474,45 +1480,46 @@ def test_the_private_sender_rule_and_the_court_rules_meet() -> None:
     assert missing.due_date is None and missing.steps[0].label.startswith("A dismissal takes effect")
 
 
-@pytest.mark.parametrize(
-    ("words", "quote"),
-    [
-        ("Die Gebühr ist innerhalb eines Monats nach Bekanntgabe dieses Bescheides zu zahlen.", None),
-        (
-            "innerhalb eines Monats",
-            "Gegen den Gebührenbescheid vom 1. September kann Widerspruch erhoben werden.",
-        ),
-    ],
-)
-def test_words_naming_a_bescheid_keep_a_late_arrival_from_moving_the_date(
-    words: str, quote: str | None
-) -> None:
+BESCHEID_WORDS = [
+    ("Die Gebühr ist innerhalb eines Monats nach Bekanntgabe dieses Bescheides zu zahlen.", None),
+    (
+        "innerhalb eines Monats",
+        "Gegen den Gebührenbescheid vom 1. September kann Widerspruch erhoben werden.",
+    ),
+]
+
+
+def test_words_naming_a_bescheid_keep_a_late_arrival_from_moving_the_date() -> None:
     """A municipal office's Gebührenbescheid filed under a kind no public body goes by (a ``landlord``):
     it counts from the day it arrived, but its words — the spec's, or the sentence it was read from
     (``quote``) — show it may be an authority's, so an arrival after the day it would usually count as
     delivered does not make the date later (Mon 5 Oct, not Wed 14 Oct)."""
-    spec = notice_spec(nature="payment", text=words)
-    late = ctx(
-        today="2026-09-20",
-        document_date="2026-09-01",
-        received_date="2026-09-14",
-        received_confirmed=True,
-        region="NW",
-        private_sender=True,
-        sender_kind="landlord",
-        quote=quote,
-    )
-    receipt = compute_due(spec, late)
-    assert receipt.due_date == "2026-10-05"  # usually delivered Sat 5 Sep (4th day, NW)
-    assert "private_sender_late_arrival" in receipt.rule_ids and "posting_day" not in receipt.rule_ids
-    # arriving by then, it counts from the day it arrived: the earlier start
-    early = compute_due(spec, replace(late, received_date=D("2026-09-02")))
-    assert early.due_date == "2026-10-02" and "private_sender_arrival" in early.rule_ids
-    # without such words a landlord's letter counts from the day it arrived, however late
-    plain = compute_due(
-        notice_spec(nature="payment", text="innerhalb eines Monats"), replace(late, quote=None)
-    )
-    assert plain.due_date == "2026-10-14" and "private_sender_late_arrival" not in plain.rule_ids
+
+    def check(words: str, quote: str | None) -> None:
+        spec = notice_spec(nature="payment", text=words)
+        late = ctx(
+            today="2026-09-20",
+            document_date="2026-09-01",
+            received_date="2026-09-14",
+            received_confirmed=True,
+            region="NW",
+            private_sender=True,
+            sender_kind="landlord",
+            quote=quote,
+        )
+        receipt = compute_due(spec, late)
+        assert receipt.due_date == "2026-10-05"  # usually delivered Sat 5 Sep (4th day, NW)
+        assert "private_sender_late_arrival" in receipt.rule_ids and "posting_day" not in receipt.rule_ids
+        # arriving by then, it counts from the day it arrived: the earlier start
+        early = compute_due(spec, replace(late, received_date=D("2026-09-02")))
+        assert early.due_date == "2026-10-02" and "private_sender_arrival" in early.rule_ids
+        # without such words a landlord's letter counts from the day it arrived, however late
+        plain = compute_due(
+            notice_spec(nature="payment", text="innerhalb eines Monats"), replace(late, quote=None)
+        )
+        assert plain.due_date == "2026-10-14" and "private_sender_late_arrival" not in plain.rule_ids
+
+    check_rows(BESCHEID_WORDS, check)
 
 
 def _late(received: str, **kw: Any) -> RuleContext:
@@ -1660,29 +1667,34 @@ def test_an_authoritys_late_arrival_giving_the_same_date_needs_no_note() -> None
     assert any("the deadline may be Tue 22 Sep 2026 instead" in w for w in later.warnings)
 
 
-@pytest.mark.parametrize(
-    ("rule", "sent"),
-    [
-        ("de_admin_post", "posted on"),
-        ("de_admin_electronic", "sent on"),
-        ("de_admin_portal", "made available on"),
-    ],
-)
-def test_a_capped_start_names_how_the_letter_was_sent(rule: str, sent: str) -> None:
+SENDING_CHANNELS = [
+    ("de_admin_post", "posted on"),
+    ("de_admin_electronic", "sent on"),
+    ("de_admin_portal", "made available on"),
+]
+
+
+def test_a_capped_start_names_how_the_letter_was_sent() -> None:
     """A stated posting day reads by channel: a letter is posted, sent electronically, or made
     available in a portal (where it usually counts as delivered the day after); its own date is its date."""
-    spec = notice_spec(amount=14, unit="days", delivery_rule=rule, anchor_date="2026-09-01")
-    late = compute_due(spec, _late("2026-09-10", document_date=None, sender_kind="company"))
-    deemed = "Wed 2 Sep 2026" if rule == "de_admin_portal" else "Fri 4 Sep 2026"
-    assert late.steps[0].label == (
-        f"It arrived on Thu 10 Sep 2026, later than a letter {sent} Tue 1 Sep 2026 usually counts as "
-        f"delivered ({deemed}): we count from that earlier, safe day"
-    )
-    dated = compute_due(
-        spec.model_copy(update={"anchor_date": None}),
-        _late("2026-09-10", document_date="2026-09-01", sender_kind="company"),
-    )
-    assert dated.steps[0].label.startswith("It arrived on Thu 10 Sep 2026, later than a letter dated Tue 1")
+
+    def check(rule: str, sent: str) -> None:
+        spec = notice_spec(amount=14, unit="days", delivery_rule=rule, anchor_date="2026-09-01")
+        late = compute_due(spec, _late("2026-09-10", document_date=None, sender_kind="company"))
+        deemed = "Wed 2 Sep 2026" if rule == "de_admin_portal" else "Fri 4 Sep 2026"
+        assert late.steps[0].label == (
+            f"It arrived on Thu 10 Sep 2026, later than a letter {sent} Tue 1 Sep 2026 usually counts as "
+            f"delivered ({deemed}): we count from that earlier, safe day"
+        )
+        dated = compute_due(
+            spec.model_copy(update={"anchor_date": None}),
+            _late("2026-09-10", document_date="2026-09-01", sender_kind="company"),
+        )
+        assert dated.steps[0].label.startswith(
+            "It arrived on Thu 10 Sep 2026, later than a letter dated Tue 1"
+        )
+
+    check_rows(SENDING_CHANNELS, check)
 
 
 def test_period_problem_says_why_nothing_was_computed() -> None:
@@ -1869,33 +1881,36 @@ def test_a_period_from_arrival_on_a_letter_served_with_a_pzu_runs_from_the_envel
     assert entered.due_date == "2026-12-10" and "pzu" in entered.rule_ids
 
 
-@pytest.mark.parametrize(
-    "spec",
-    [
-        DateSpec(
-            type="relative",
-            amount=1,
-            unit="months",
-            anchor="deemed_delivery",
-            delivery_rule="de_admin_post",
-            shift_rule="auto",
-            nature="objection",
-        ),
-        DateSpec(
-            type="relative",
-            amount=1,
-            unit="months",
-            anchor="document_date",
-            delivery_rule="de_admin_post",
-            shift_rule="auto",
-            nature="objection",
-        ),
-    ],
-    ids=["deemed", "document-date"],
-)
-def test_a_letter_served_with_a_pzu_gets_no_delivery_days(spec: DateSpec) -> None:
+PZU_SPECS = [
+    DateSpec(
+        type="relative",
+        amount=1,
+        unit="months",
+        anchor="deemed_delivery",
+        delivery_rule="de_admin_post",
+        shift_rule="auto",
+        nature="objection",
+    ),
+    DateSpec(
+        type="relative",
+        amount=1,
+        unit="months",
+        anchor="document_date",
+        delivery_rule="de_admin_post",
+        shift_rule="auto",
+        nature="objection",
+    ),
+]
+PZU_SPEC_IDS = ["deemed", "document-date"]
+
+
+def test_a_letter_served_with_a_pzu_gets_no_delivery_days() -> None:
     """Served formally, it is notified on the day it is served (§ 41 Abs. 5 VwVfG): a reading's deemed delivery
     never moves its date past the letter's own (Fri 6 Nov 2026: one month is Sun 6 Dec → Mon 7 Dec)."""
-    served = ctx(today=date(2026, 11, 25), document_date=date(2026, 11, 6), formal_service=True)
-    assert compute_due(spec, served).due_date == "2026-12-07"
-    assert compute_due(spec, replace(served, formal_service=False)).due_date > "2026-12-07"
+
+    def check(spec: DateSpec) -> None:
+        served = ctx(today=date(2026, 11, 25), document_date=date(2026, 11, 6), formal_service=True)
+        assert compute_due(spec, served).due_date == "2026-12-07"
+        assert compute_due(spec, replace(served, formal_service=False)).due_date > "2026-12-07"
+
+    check_rows([pytest.param(row, id=name) for row, name in zip(PZU_SPECS, PZU_SPEC_IDS, strict=True)], check)
