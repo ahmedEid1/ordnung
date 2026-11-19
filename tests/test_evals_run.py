@@ -9,6 +9,7 @@ assessment, a phone photo of an invoice and a contract confirmation) and check t
 
 from __future__ import annotations
 
+import functools
 import json
 import sys
 from collections.abc import AsyncIterator
@@ -62,21 +63,33 @@ def _german(value: str | None) -> str:
     return "" if not value else f"{value[8:10]}.{value[5:7]}.{value[:4]}"
 
 
+@functools.cache
+def _manifest_views() -> tuple[dict[str, dict[str, Any]], dict[str, Entry]]:
+    """The benchmark's manifest, raw and as entries, by id: parsed once and only ever read."""
+    raw = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    return {entry["id"]: entry for entry in raw["entries"]}, {
+        entry.id: entry for entry in load_manifest(MANIFEST)
+    }
+
+
+@functools.cache
+def _pdf_text(path: Path) -> str:
+    """A letter file's text, extracted once per file (keyed by the file, not by an entry's id)."""
+    with pdfplumber.open(path) as pdf:
+        return "\n".join(page.extract_text() or "" for page in pdf.pages)
+
+
 class Responder:
     """Answers transcribe, extract and eval_baseline requests for the benchmark's own letters."""
 
     def __init__(self) -> None:
-        raw = json.loads(MANIFEST.read_text(encoding="utf-8"))
-        self.raw = {entry["id"]: entry for entry in raw["entries"]}
-        self.entries = {entry.id: entry for entry in load_manifest(MANIFEST)}
-        self.texts: dict[str, str] = {}
+        raw, entries = _manifest_views()
+        self.raw = dict(raw)
+        self.entries = dict(entries)
 
     def text(self, entry: Entry) -> str:
         source = self.entries[entry.source_id] if entry.source_id else entry
-        if source.id not in self.texts:
-            with pdfplumber.open(source.path(MANIFEST.parent)) as pdf:
-                self.texts[source.id] = "\n".join(page.extract_text() or "" for page in pdf.pages)
-        return self.texts[source.id]
+        return _pdf_text(source.path(MANIFEST.parent).resolve())
 
     def quote(self, entry: Entry, *needles: str) -> str:
         lines = [line.strip() for line in self.text(entry).splitlines() if line.strip()]
