@@ -437,7 +437,7 @@ def api(data_dir: Path) -> Iterator[FakeServer]:
     """A fake Ordnung server for ``data_dir``, announced in its ``server.json``."""
     server = FakeServer(("127.0.0.1", 0), FakeApi)
     server.data_dir, server.requests = data_dir, []
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     port = server.server_address[1]
     write_server_info(data_dir, ServerInfo(port=port, token="secret", pid=os.getpid()))
