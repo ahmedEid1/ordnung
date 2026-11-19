@@ -262,7 +262,7 @@ def test_the_results_files_the_final_run_added_stay_and_new_ones_may_join(world:
     ] == [READ]
 
 
-def test_deviations_are_only_appended_after_publication_and_only_label_or_scorer_errors(world: World) -> None:
+def test_deviations_are_only_appended_after_publication_and_only_label_or_scorer_errors() -> None:
     published = [_deviation("D001", "retake"), _deviation("D002", "code_hash_changed")]
     later = [*published, _deviation("D003", "label_error"), _deviation("D004", "scorer_bug")]
     assert prereg_published.deviations_kept_problems(published, published) == []
