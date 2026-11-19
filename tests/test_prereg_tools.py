@@ -1531,10 +1531,6 @@ def _recorded(repo: Path, **changes: Any) -> tuple[str, list[dict[str, Any]]]:
 def test_a_deviation_is_recorded_at_the_time_by_its_checkpoint_commit(repo: Path) -> None:
     freeze, entries = _recorded(repo)
     assert prereg_hashes.history_problems(repo, entries, freeze=freeze) == []
-
-
-def test_a_deviation_whose_checkpoint_is_no_commit_of_this_history_is_refused(repo: Path) -> None:
-    freeze, entries = _recorded(repo)
     late = [dict(entries[0], checkpoint_sha="f" * 40)]
     assert any("not a commit" in p for p in prereg_hashes.history_problems(repo, late, freeze=freeze))
 
