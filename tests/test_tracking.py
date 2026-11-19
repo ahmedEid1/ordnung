@@ -43,8 +43,8 @@ S10_CHECK_DIGIT_WORKED_EXAMPLES = [
 
 
 def test_s10_check_digit_worked_examples() -> None:
-    def check(serial: str, check: int) -> None:
-        assert s10_check_digit(serial) == check
+    def check(serial: str, digit: int) -> None:
+        assert s10_check_digit(serial) == digit
 
     check_rows(S10_CHECK_DIGIT_WORKED_EXAMPLES, check)
 
