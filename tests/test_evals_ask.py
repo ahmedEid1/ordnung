@@ -8,7 +8,7 @@ import contextlib
 import json
 import re
 import sys
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable, Iterator
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -45,7 +45,7 @@ from evals.ask.report import (  # noqa: E402
     write_docs,
     write_results,
 )
-from evals.ask.run import DEFAULT_MODEL, Config, run  # noqa: E402
+from evals.ask.run import DEFAULT_MODEL, Config, RunResult, run  # noqa: E402
 from evals.ask.score import (  # noqa: E402
     SUSPICION,
     Context,
@@ -61,7 +61,10 @@ from evals.ask.score import (  # noqa: E402
     unsupported_values,
 )
 
+from ordnung import clock, durable  # noqa: E402
+from ordnung.assistant import ask as ask_module  # noqa: E402
 from ordnung.assistant.mcp_server import LedgerTools, open_read_only, render_result  # noqa: E402
+from ordnung.config import OCR_SWITCH  # noqa: E402
 from ordnung.llm.base import LLMRequest, LLMResponse, StreamEvent, Usage  # noqa: E402
 from ordnung.llm.fake import FakeBackend  # noqa: E402
 
@@ -658,19 +661,79 @@ class StandInAgent(FakeBackend):
         yield StreamEvent(type="done", response=LLMResponse(text=answer, usage=usage, model="stand-in"))
 
 
-def test_a_run_records_then_replays_exactly(tmp_path: Path) -> None:
-    only = [
-        "deadline-steuerbescheid_2025-0",
-        "none-car-insurance",
-        "cross-pay-this-week",
-        "moved-tax-objection",
-    ]
-    recorded = tmp_path / "recorded"
+FOUR_IDS = [
+    "deadline-steuerbescheid_2025-0",
+    "none-car-insurance",
+    "cross-pay-this-week",
+    "moved-tax-objection",
+]
+
+
+@contextlib.contextmanager
+def _as_in_a_test() -> Iterator[None]:
+    """A module fixture is set up before the autouse fixtures of tests/conftest.py, so it gives itself what they
+    give every test: text in pictures off, no ``claude`` or backend from the shell, Ask's ledger memo verified."""
+    memo = ask_module._LEDGER_MEMO
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setenv(OCR_SWITCH, "off")
+        patch.delenv("ORDNUNG_CLAUDE_BIN", raising=False)
+        patch.delenv("ORDNUNG_BACKEND", raising=False)
+        memo.verify = True
+        yield
+    found, memo.mismatches[:] = list(memo.mismatches), []
+    assert found == [], f"Ask's ledger memo handed out a stale fingerprint: {found}"
+
+
+def _clock_left() -> Callable[[], None]:
+    """Clear the process clock a build left behind (its pinned day, records stamped on it), as conftest's
+    ``_real_stamps`` does after a test; the returned call puts it back for a test that goes on from the build."""
+    day = clock.today() if clock.simulated() else None
+    stamping = (clock._stamp_simulated_day, clock._stamp_zone)
+    durable_on = durable.is_durable()
+    clock.set_today(None)
+    clock.stamp_simulated_day(False)
+    durable.set_durable(False)
+
+    def put_back() -> None:
+        clock.set_today(day)
+        clock.stamp_simulated_day(*stamping)
+        durable.set_durable(durable_on)
+
+    return put_back
+
+
+@pytest.fixture(scope="module")
+def _four_recorded(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> tuple[StandInAgent, RunResult, Path, Callable[[], None]]:
+    tmp = tmp_path_factory.mktemp("four-recorded")
+    recorded = tmp / "recorded"
     agent = StandInAgent()
-    live = run(
-        Config(live=True, only=only, recorded_dir=recorded, live_backend=agent, concurrency=2),
-        work_dir=tmp_path,
-    )
+    with _as_in_a_test():
+        live = run(
+            Config(live=True, only=FOUR_IDS, recorded_dir=recorded, live_backend=agent, concurrency=2),
+            work_dir=tmp,
+        )
+        put_back = _clock_left()
+    return agent, live, recorded, put_back
+
+
+@pytest.fixture
+def recorded_four(
+    _four_recorded: tuple[StandInAgent, RunResult, Path, Callable[[], None]],
+) -> tuple[StandInAgent, RunResult, Path]:
+    """A live run of :data:`FOUR_IDS` with the stand-in agent, recorded once per module: the agent, the live
+    result and the recordings folder. Read only: a test replays it into its own ``tmp_path``."""
+    agent, live, recorded, put_back = _four_recorded
+    put_back()
+    return agent, live, recorded
+
+
+def test_a_run_records_then_replays_exactly(
+    tmp_path: Path, recorded_four: tuple[StandInAgent, RunResult, Path]
+) -> None:
+    only = FOUR_IDS
+    agent, live, recorded = recorded_four
     assert len(agent.calls) == 4 and not live.misses
     scores = {s.id: s for s in live.scored}
     assert scores["deadline-steuerbescheid_2025-0"].correct_final is True
@@ -1060,7 +1123,7 @@ def test_the_committed_lock_takes_what_every_ask_turn_is_given_now() -> None:
 
 
 def test_a_changed_tool_description_needs_a_new_recording(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, recorded_four: tuple[StandInAgent, RunResult, Path]
 ) -> None:
     """What every Ask turn is given besides its prompts — the server's instructions and its tools as tools/list
     gives them, the allowed tools and the cost cap — is locked under the Ask prompt's version (``ask_tools`` in
@@ -1072,8 +1135,7 @@ def test_a_changed_tool_description_needs_a_new_recording(
     from ordnung.assistant import mcp_server
 
     only = ["deadline-steuerbescheid_2025-0"]
-    recorded = tmp_path / "recorded"
-    run(Config(live=True, only=only, recorded_dir=recorded, live_backend=StandInAgent()), work_dir=tmp_path)
+    _, _, recorded = recorded_four
     lock = json.loads((recorded / DEFAULT_MODEL / "prompts.lock.json").read_text(encoding="utf-8"))
     version = prompt_hashes()["ask_system"][0]
     assert lock[ASK_TOOLS] == {version: locked_inputs()[ASK_TOOLS][1]}
@@ -1108,11 +1170,12 @@ def test_a_changed_tool_description_needs_a_new_recording(
             run(Config(only=only, recorded_dir=recorded), work_dir=tmp_path)
 
 
-def test_the_recorded_dir_option_replays_another_folder(tmp_path: Path) -> None:
+def test_the_recorded_dir_option_replays_another_folder(
+    tmp_path: Path, recorded_four: tuple[StandInAgent, RunResult, Path]
+) -> None:
     """``--recorded-dir`` replays (or records) another folder than the committed recordings — a smoke run's."""
     only = ["deadline-steuerbescheid_2025-0"]
-    recorded = tmp_path / "smoke"
-    run(Config(live=True, only=only, recorded_dir=recorded, live_backend=StandInAgent()), work_dir=tmp_path)
+    _, _, recorded = recorded_four
     assert parse_args(["--recorded-dir", str(recorded)]).recorded_dir == recorded
     assert main(["--only", only[0], "--recorded-dir", str(recorded)]) == 0
     assert main(["--only", only[0], "--recorded-dir", str(tmp_path / "empty")]) == 1
