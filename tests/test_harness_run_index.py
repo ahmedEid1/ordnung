@@ -17,23 +17,20 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from evals import harness, report, splits
+from evals import run as eval_run
+from evals.gen.common import SPLIT_VARIANTS
+from evals.records import load_manifest
+
+from helpers_publication import FINAL_SPLITS, final_published
+from helpers_tables import check_rows
+from ordnung.llm.base import Attachment, LLMRequest, LLMResponse, StreamEvent
+from ordnung.llm.claude_cli import ClaudeCLIBackend, build_user_message
+from ordnung.llm.fake import FakeBackend
+from ordnung.llm.runtime import request_key
+from test_evals_run import Responder, make_config
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from evals import harness, report, splits  # noqa: E402
-from evals import run as eval_run  # noqa: E402
-from evals.gen.common import SPLIT_VARIANTS  # noqa: E402
-from evals.records import load_manifest  # noqa: E402
-
-from helpers_publication import FINAL_SPLITS, final_published  # noqa: E402
-from helpers_tables import check_rows  # noqa: E402
-from ordnung.llm.base import Attachment, LLMRequest, LLMResponse, StreamEvent  # noqa: E402
-from ordnung.llm.claude_cli import ClaudeCLIBackend, build_user_message  # noqa: E402
-from ordnung.llm.fake import FakeBackend  # noqa: E402
-from ordnung.llm.runtime import request_key  # noqa: E402
-from test_evals_run import Responder, make_config  # noqa: E402
 
 FAKE_CLAUDE = ROOT / "tests" / "fake_claude.py"
 #: A photo (transcribed by Ordnung, attached as an image for the baselines) and a text letter, both in dev.

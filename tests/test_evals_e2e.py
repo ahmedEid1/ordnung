@@ -19,15 +19,9 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 import pytest
-from icalendar import Alarm, Calendar, Event
-
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from evals.e2e import check, metrics, observe, report  # noqa: E402
-from evals.e2e.check import DRAFT_ELEMENTS, check_letter, draft_elements  # noqa: E402
-from evals.e2e.observe import (  # noqa: E402
+from evals.e2e import check, metrics, observe, report
+from evals.e2e.check import DRAFT_ELEMENTS, check_letter, draft_elements
+from evals.e2e.observe import (
     AgendaProbe,
     CalendarEvent,
     DraftSeen,
@@ -35,11 +29,14 @@ from evals.e2e.observe import (  # noqa: E402
     LetterObservation,
     StoredItem,
 )
-from evals.harness import DAY_INDEX_FILE, DayIndex  # noqa: E402
-from evals.records import Entry, load_manifest  # noqa: E402
-from evals.run import MANIFEST_PATH  # noqa: E402
+from evals.harness import DAY_INDEX_FILE, DayIndex
+from evals.records import Entry, load_manifest
+from evals.run import MANIFEST_PATH
+from icalendar import Alarm, Calendar, Event
 
-from helpers_tables import check_rows  # noqa: E402
+from helpers_tables import check_rows
+
+ROOT = Path(__file__).resolve().parents[1]
 
 READ_ON = "2026-03-09"
 GOLD = "2026-03-20"

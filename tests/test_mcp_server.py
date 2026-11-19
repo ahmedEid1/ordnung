@@ -1882,7 +1882,6 @@ def test_get_my_numbers_gives_no_transfer_day_for_a_fee_paid_at_the_appointment(
 #: Ask's tools answer exactly that (the repeat fields aside, which are new for every repeating to-do). Take
 #: them again only for a change meant to move a tool's answer, and record again the Ask answers it makes stale.
 BASE_TOOL_TEXTS = Path(__file__).resolve().parent / "data" / "ask_tools_at_e2_base.json"
-ROOT = Path(__file__).resolve().parents[1]
 
 
 def demo_tool_texts(store: Store) -> dict[str, str]:
@@ -2393,8 +2392,6 @@ async def test_following_due_date_is_where_marking_it_done_moves_it(data_dir: Pa
 def settled_demo_store(tmp_path: Path) -> Iterator[Store]:
     """A copy of the demo's ledger with every record stamped at the start of its day, as the Ask benchmark
     stamps it (:func:`evals.ask.ledger._settle_stamps`), so ties fall to insertion order at any hour."""
-    if str(ROOT) not in sys.path:
-        sys.path.insert(0, str(ROOT))
     from evals.ask.ledger import _settle_stamps
 
     data = tmp_path / "demo"

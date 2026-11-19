@@ -18,21 +18,17 @@ import json
 import math
 import random
 import shutil
-import sys
 from collections.abc import Callable
 from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
 import pytest
+from evals import analysis, report, stats
 
 from helpers_tables import check_rows
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from evals import analysis, report, stats  # noqa: E402
 
 RESULTS = ROOT / "evals" / "results"
 BASELINES = ("llm_only", "llm_rules_text", "llm_rules_tool")

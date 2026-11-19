@@ -8,16 +8,9 @@ product knows.
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
+from evals.gen import common
 
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from evals.gen import common  # noqa: E402
-
-from ordnung.models import DOCUMENT_KINDS  # noqa: E402
+from ordnung.models import DOCUMENT_KINDS
 
 
 def test_the_generator_s_kinds_are_the_product_s() -> None:

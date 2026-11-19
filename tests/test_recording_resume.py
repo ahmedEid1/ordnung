@@ -19,21 +19,16 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from evals import conditions, harness
+from evals import run as eval_run
+from evals.records import Entry
 
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from evals import conditions, harness  # noqa: E402
-from evals import run as eval_run  # noqa: E402
-from evals.records import Entry  # noqa: E402
-
-from helpers_tables import check_rows  # noqa: E402
-from ordnung.llm import replay as replay_module  # noqa: E402
-from ordnung.llm.base import ClaudeRateLimited, LLMRequest, LLMResponse, StreamEvent, Usage  # noqa: E402
-from ordnung.llm.fake import FakeBackend  # noqa: E402
-from ordnung.llm.replay import RecordingBackend, ReplayBackend, fixture_path  # noqa: E402
-from test_evals_run import IDS, Responder, make_config  # noqa: E402
+from helpers_tables import check_rows
+from ordnung.llm import replay as replay_module
+from ordnung.llm.base import ClaudeRateLimited, LLMRequest, LLMResponse, StreamEvent, Usage
+from ordnung.llm.fake import FakeBackend
+from ordnung.llm.replay import RecordingBackend, ReplayBackend, fixture_path
+from test_evals_run import IDS, Responder, make_config
 
 LEDGER_FIELDS = {
     "at",

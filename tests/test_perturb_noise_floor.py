@@ -11,22 +11,16 @@ from __future__ import annotations
 
 import hashlib
 import json
-import sys
 import tempfile
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import pytest
+from evals import analysis, stats
+from scripts import eval_perturb
 
 from helpers_tables import check_rows
-
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from evals import analysis, stats  # noqa: E402
-from scripts import eval_perturb  # noqa: E402
 
 MODEL = "claude-sonnet-5"
 ALL_CONDITIONS = ("ordnung", "llm_only", "llm_rules_text", "llm_rules_tool")

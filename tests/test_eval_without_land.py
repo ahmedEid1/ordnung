@@ -8,25 +8,15 @@ import asyncio
 import copy
 import dataclasses
 import json
-import sys
 from pathlib import Path
 from typing import Any, get_args
 
 import pytest
-
-from helpers_tables import check_rows
-from ordnung.models import DocumentExtraction, ExtractedParty, Page
-from ordnung.rules.postcodes import Reason, suggest_land_why
-
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from evals import conditions, harness, report, splits  # noqa: E402
-from evals.records import load_manifest, select_entries  # noqa: E402
-from evals.run import DEFAULT_MODEL, MANIFEST_PATH, RESULTS_DIR  # noqa: E402
-from scripts import eval_without_land  # noqa: E402
-from scripts.eval_without_land import (  # noqa: E402
+from evals import conditions, harness, report, splits
+from evals.records import load_manifest, select_entries
+from evals.run import DEFAULT_MODEL, MANIFEST_PATH, RESULTS_DIR
+from scripts import eval_without_land
+from scripts.eval_without_land import (
     changed_dates,
     changed_with_suggestion,
     sender_land_suggested,
@@ -34,6 +24,12 @@ from scripts.eval_without_land import (  # noqa: E402
     split_numbers,
     suggestion_counts,
 )
+
+from helpers_tables import check_rows
+from ordnung.models import DocumentExtraction, ExtractedParty, Page
+from ordnung.rules.postcodes import Reason, suggest_land_why
+
+ROOT = Path(__file__).resolve().parents[1]
 
 #: The published replay (``python -m scripts.eval_without_land --date 2026-10-08``).
 PUBLISHED = "2026-10-08-claude-sonnet-5-without-land.json"

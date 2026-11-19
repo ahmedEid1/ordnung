@@ -13,7 +13,6 @@ import asyncio
 import copy
 import functools
 import json
-import sys
 from collections.abc import AsyncIterator
 from datetime import date, timedelta
 from pathlib import Path
@@ -21,20 +20,15 @@ from typing import Any
 
 import pdfplumber
 import pytest
+from evals import harness, report
+from evals import run as eval_run
+from evals.conditions import TOOL_PREFIX
+from evals.records import Entry, TruthItem, load_manifest
 
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from evals import harness, report  # noqa: E402
-from evals import run as eval_run  # noqa: E402
-from evals.conditions import TOOL_PREFIX  # noqa: E402
-from evals.records import Entry, TruthItem, load_manifest  # noqa: E402
-
-from helpers_tables import check_rows, check_rows_async  # noqa: E402
-from ordnung.assistant.rules_tools import RulesTools, render  # noqa: E402
-from ordnung.config import OCR_SWITCH  # noqa: E402
-from ordnung.llm.base import (  # noqa: E402
+from helpers_tables import check_rows, check_rows_async
+from ordnung.assistant.rules_tools import RulesTools, render
+from ordnung.config import OCR_SWITCH
+from ordnung.llm.base import (
     ClaudeBadOutput,
     LLMError,
     LLMRequest,
@@ -44,8 +38,10 @@ from ordnung.llm.base import (  # noqa: E402
     ToolCall,
     Usage,
 )
-from ordnung.llm.fake import FakeBackend  # noqa: E402
-from ordnung.llm.replay import RecordingBackend, ReplayBackend  # noqa: E402
+from ordnung.llm.fake import FakeBackend
+from ordnung.llm.replay import RecordingBackend, ReplayBackend
+
+ROOT = Path(__file__).resolve().parents[1]
 
 MANIFEST = ROOT / "evals" / "dataset" / "manifest.json"
 IDS = ["dev-contract_confirmation-A1", "dev-invoice_relative-A1-photo", "dev-tax_assessment-A1"]

@@ -27,15 +27,12 @@ from typing import Any
 
 import pdfplumber
 import pytest
+from evals.perturb import build, templates
+from evals.records import Entry, load_manifest
 
 from helpers_tables import check_rows
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from evals.perturb import build, templates  # noqa: E402
-from evals.records import Entry, load_manifest  # noqa: E402
 
 DATASET = ROOT / "evals" / "dataset"
 MANIFEST = DATASET / "manifest.json"

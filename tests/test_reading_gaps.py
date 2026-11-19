@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import itertools
 import re
-import sys
 from collections.abc import Sequence
 from dataclasses import replace
 from datetime import date, timedelta
@@ -17,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from evals.metrics import INJECTION_RE, SCAM_RE, UNCERTAINTY_RE
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
@@ -76,10 +76,6 @@ from ordnung.rules.delivery import shows_administrative_act
 from ordnung.rules.routing import derived_deadlines
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from evals.metrics import INJECTION_RE, SCAM_RE, UNCERTAINTY_RE  # noqa: E402
 
 # --------------------------------------------------------------------------------------------------
 # A synthetic decision of a city (dated Fri 6 Nov 2026) and the readings of it

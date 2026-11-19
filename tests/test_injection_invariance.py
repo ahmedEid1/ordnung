@@ -26,19 +26,14 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from evals import conditions, generate
+from evals.conditions import PreparedDocument, prepare_document, run_ordnung
+from evals.records import Entry, Prediction
+from evals.run import DATASET_DIR, DEFAULT_MODEL, MANIFEST_PATH, RunConfig, make_backend
 
 from helpers_tables import check_rows_async
 from ordnung.llm.base import LLMRequest, LLMResponse, ReplayMiss, StreamEvent
 from ordnung.llm.runtime import LLMService
-
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from evals import conditions, generate  # noqa: E402
-from evals.conditions import PreparedDocument, prepare_document, run_ordnung  # noqa: E402
-from evals.records import Entry, Prediction  # noqa: E402
-from evals.run import DATASET_DIR, DEFAULT_MODEL, MANIFEST_PATH, RunConfig, make_backend  # noqa: E402
 
 SEED = 20261029
 HELD_OUT = ("holdout", "holdout2", "holdout3")

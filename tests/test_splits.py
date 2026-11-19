@@ -7,17 +7,12 @@ from __future__ import annotations
 
 import dataclasses
 import json
-import sys
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+from evals import splits
 
-from evals import splits  # noqa: E402
-
-from helpers_publication import FINAL_SPLITS, final_published  # noqa: E402
+from helpers_publication import FINAL_SPLITS, final_published
 
 MODEL = "claude-sonnet-5"
 

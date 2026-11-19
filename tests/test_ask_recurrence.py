@@ -7,26 +7,20 @@ These tests use small hand-made rules files in a temporary folder and the sample
 from __future__ import annotations
 
 import json
-import sys
 import tempfile
 from datetime import date
 from pathlib import Path
 from typing import Any
 
 import pytest
+from evals.ask import heldout, heldout_check, ledger, recurrence
+from evals.ask.ledger import LedgerError, SampleLife, build_base, pinned_today
 
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from evals.ask import heldout, heldout_check, ledger, recurrence  # noqa: E402
-from evals.ask.ledger import LedgerError, SampleLife, build_base, pinned_today  # noqa: E402
-
-from helpers_tables import check_rows  # noqa: E402
-from ordnung.assistant.ask import ledger_fingerprint  # noqa: E402
-from ordnung.config import Paths  # noqa: E402
-from ordnung.db.store import Store  # noqa: E402
-from ordnung.demo.loader import copy_data  # noqa: E402
+from helpers_tables import check_rows
+from ordnung.assistant.ask import ledger_fingerprint
+from ordnung.config import Paths
+from ordnung.db.store import Store
+from ordnung.demo.loader import copy_data
 
 DAY = date(2026, 12, 8)
 DENTIST = "zahnarzt_terminkarte"  # its truth item 0: an appointment on 2026-10-08

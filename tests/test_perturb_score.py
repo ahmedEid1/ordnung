@@ -8,21 +8,17 @@ import dataclasses
 import json
 import math
 import re
-import sys
 from pathlib import Path
 from typing import Any
 
 import pytest
+from evals.perturb import score
+from evals.perturb.build import Assignment, perturbed_id
+from evals.records import Entry, PredictedItem, Prediction
 
 from helpers_tables import check_rows
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from evals.perturb import score  # noqa: E402
-from evals.perturb.build import Assignment, perturbed_id  # noqa: E402
-from evals.records import Entry, PredictedItem, Prediction  # noqa: E402
 
 TRUTH = "2026-04-07"
 LATER = "2026-04-14"

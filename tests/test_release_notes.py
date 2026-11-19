@@ -13,15 +13,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
-
-import ordnung
-from helpers_tables import check_rows
-
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from scripts.release_notes import (  # noqa: E402
+from scripts.release_notes import (
     REPOSITORY,
     ReleaseError,
     absolute_links,
@@ -32,6 +24,11 @@ from scripts.release_notes import (  # noqa: E402
     section,
     unwrapped,
 )
+
+import ordnung
+from helpers_tables import check_rows
+
+ROOT = Path(__file__).resolve().parents[1]
 
 VERSION = ordnung.__version__
 CHANGELOG = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")

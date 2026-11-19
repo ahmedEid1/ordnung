@@ -11,19 +11,12 @@ from __future__ import annotations
 
 import itertools
 import math
-import sys
 from fractions import Fraction
-from pathlib import Path
 
 import pytest
+from evals import metrics, stats
 
 from helpers_tables import check_rows
-
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from evals import metrics, stats  # noqa: E402
 
 # --------------------------------------------------------------------------------------------------
 # Clopper–Pearson
