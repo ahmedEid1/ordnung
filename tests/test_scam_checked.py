@@ -149,10 +149,7 @@ def test_a_flagged_letter_is_set_aside_and_its_warning_names_the_days_it_asks_fo
     # the morning note's agenda reads the title and the day: both as they were
     assert idea.title == "Possible scam: Tax assessment (genuine)"
     assert idea.due_date == "2026-11-06"
-
-
-def test_a_warning_names_no_day_that_has_passed_and_none_without_dated_to_dos(store: Store) -> None:
-    ids = seed(store)
+    # it names no day that has passed, and none once no dated to-do is left
     store.update_item(ids["genuine_payment"], due_date="2026-10-20")
     run_and_reconcile(store, TODAY)
     assert "It asks you to act by Mon 9 Nov (send by Thu 5 Nov)." in scam_idea(store, ids["genuine"]).body
@@ -169,6 +166,11 @@ def test_i_checked_it_brings_the_letters_reminders_back(store: Store) -> None:
     assert not genuine & calendar_uids(store)
     assert not genuine & soon_ideas(store)
     assert "Object to the assessment (genuine)" not in notification_lines(store)
+    # before the check the pay panel asks for it
+    payment = store.get_item(ids["genuine_payment"])
+    assert payment is not None
+    code = item_girocode(store, payment, TODAY)
+    assert isinstance(code, GiroCodeBlocked) and "Check with the sender" in code.message
 
     check(store, ids["genuine"])
 
@@ -193,15 +195,6 @@ def test_i_checked_it_brings_the_letters_reminders_back(store: Store) -> None:
     assert isinstance(code, GiroCodeBlocked) and code.reason == "scam"
     # and says so, instead of asking for the check the person made
     assert "even after you checked it" in code.message and "Check with the sender" not in code.message
-
-
-def test_before_the_check_the_pay_panel_asks_for_it(store: Store) -> None:
-    ids = seed(store)
-    run_and_reconcile(store, TODAY)
-    payment = store.get_item(ids["genuine_payment"])
-    assert payment is not None
-    code = item_girocode(store, payment, TODAY)
-    assert isinstance(code, GiroCodeBlocked) and "Check with the sender" in code.message
 
 
 def test_a_new_sign_after_the_check_warns_again_and_sets_the_dates_aside(store: Store) -> None:
