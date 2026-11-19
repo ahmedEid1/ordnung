@@ -11,7 +11,9 @@ its registered consequence.
 
 from __future__ import annotations
 
+import copy
 import hashlib
+import itertools
 import json
 import math
 import random
@@ -23,6 +25,8 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+
+from helpers_tables import check_rows
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -42,7 +46,14 @@ def held_out_runs() -> list[analysis.Run]:
 
 @pytest.fixture(scope="module")
 def reanalysis(held_out_runs: list[analysis.Run]) -> dict[str, Any]:
-    return analysis.reanalyse(held_out_runs, date="2026-10-29")
+    """The three held-out splits re-analysed, dated as the committed re-analysis is."""
+    return analysis.reanalyse(held_out_runs, date="2026-10-30")
+
+
+@pytest.fixture(scope="module")
+def published(held_out_runs: list[analysis.Run]) -> dict[str, Any]:
+    """What docs/evals.md publishes today for the pooled held-out splits (``report.pooled_held_out``), computed once."""
+    return report.pooled_held_out([run.results for run in held_out_runs])
 
 
 # --------------------------------------------------------------------------------------------------
@@ -69,14 +80,13 @@ def test_the_reanalysis_reproduces_the_pooled_held_out_counts(reanalysis: dict[s
 
 
 def test_single_rates_get_exact_intervals_and_keep_the_published_ones(
-    reanalysis: dict[str, Any], held_out_runs: list[analysis.Run]
+    reanalysis: dict[str, Any], published: dict[str, Any]
 ) -> None:
     ordnung = reanalysis["conditions"]["ordnung"]
     assert reanalysis["meta"]["methods"]["single_rate"] == "clopper-pearson"  # one method, stated once
     assert ordnung["exact"]["ci"][0] == pytest.approx(0.9319, abs=5e-5)
     assert ordnung["exact"]["ci"][1] == pytest.approx(0.9903, abs=5e-5)
     # the interval docs/evals.md publishes today (cluster bootstrap, Wilson at 0 or 1) is reproduced beside it
-    published = report.pooled_held_out([run.results for run in held_out_runs])
     for condition in CONDITIONS:
         for ours, theirs in (("exact", "due_date_accuracy"), ("late", "dangerous_late_rate")):
             got = reanalysis["conditions"][condition][ours]["published_ci"]
@@ -128,12 +138,12 @@ def test_a_clear_verdict_needs_the_exact_and_the_clustered_test_after_holm(
 
 
 def test_paired_bootstraps_reproduce_the_published_differences(
-    reanalysis: dict[str, Any], held_out_runs: list[analysis.Run]
+    reanalysis: dict[str, Any], published: dict[str, Any]
 ) -> None:
-    published = report.pooled_held_out([run.results for run in held_out_runs])["comparisons"]
+    comparisons = published["comparisons"]
     for key, ours in reanalysis["paired"]["accuracy"].items():
         assert ours["published_bootstrap"]["ci"] == pytest.approx(
-            published[key]["due_date_accuracy_diff"]["ci"], rel=1e-9
+            comparisons[key]["due_date_accuracy_diff"]["ci"], rel=1e-9
         )
     text = reanalysis["paired"]["accuracy"]["ordnung-vs-llm_rules_text"]["published_bootstrap"]
     assert [round(x * 100, 1) for x in text["ci"]] == [0.6, 10.6]
@@ -271,26 +281,34 @@ def test_the_output_holds_no_letter_text(
 
 
 def test_the_render_is_deterministic(held_out_runs: list[analysis.Run], reanalysis: dict[str, Any]) -> None:
-    again = analysis.reanalyse(list(reversed(held_out_runs)), date="2026-10-29")
+    again = analysis.reanalyse(list(reversed(held_out_runs)), date=reanalysis["meta"]["date"])
     assert analysis.render(again) == analysis.render(reanalysis)
 
 
-def test_the_committed_reanalysis_is_what_the_results_render() -> None:
+def test_the_committed_reanalysis_is_what_the_results_render(reanalysis: dict[str, Any]) -> None:
     committed = sorted(RESULTS.glob(f"*-claude-sonnet-5-{analysis.REANALYSIS_KIND}.json"))
     assert len(committed) == 1, committed
+    assert committed[0].name[:10] == reanalysis["meta"]["date"]
+    assert analysis.render(reanalysis) == committed[0].read_text(encoding="utf-8")
+    # the command's own entry point, as ``make eval-reproduce`` runs it
     assert analysis.main(["--check"]) == 0
 
 
 def test_write_then_check_and_a_one_character_edit_fails(tmp_path: Path) -> None:
-    holdout3 = str(RESULTS / analysis.HELD_OUT_AS_RECORDED[2])  # one split keeps the test quick
-    assert analysis.main(["--write", "--date", "2030-01-02", "--out-dir", str(tmp_path), holdout3]) == 0
-    written = tmp_path / "2030-01-02-claude-sonnet-5-heldout-reanalysis.json"
+    # one small synthetic held-out split (the file's own ``_synthetic_run``) keeps the test quick
+    split = tmp_path / "2027-01-01-claude-sonnet-5-holdout3.json"
+    split.write_text(json.dumps(_synthetic_run("holdout3", 1)), encoding="utf-8")
+    holdout3 = str(split)
+    out = tmp_path / "out"
+    out.mkdir()
+    assert analysis.main(["--write", "--date", "2030-01-02", "--out-dir", str(out), holdout3]) == 0
+    written = out / "2030-01-02-claude-sonnet-5-heldout-reanalysis.json"
     assert written.is_file()
-    assert analysis.main(["--check", "--out-dir", str(tmp_path), holdout3]) == 0
+    assert analysis.main(["--check", "--out-dir", str(out), holdout3]) == 0
     text = written.read_text(encoding="utf-8")
-    index = text.index('"items": 56')
-    written.write_text(text[:index] + '"items": 57' + text[index + 11 :], encoding="utf-8")
-    assert analysis.main(["--check", "--out-dir", str(tmp_path), holdout3]) == 1
+    index = text.index('"items": 7')
+    written.write_text(text[:index] + '"items": 8' + text[index + 10 :], encoding="utf-8")
+    assert analysis.main(["--check", "--out-dir", str(out), holdout3]) == 1
 
 
 def test_check_without_a_committed_file_fails(tmp_path: Path) -> None:
@@ -614,10 +632,22 @@ def world(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> World:
     return found
 
 
-def test_the_final_run_families_by_hand(world: World) -> None:
+@pytest.fixture(scope="module")
+def _default_final_once(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
+    return World(tmp_path_factory.mktemp("default-final")).final()
+
+
+@pytest.fixture()
+def default_final(_default_final_once: dict[str, Any]) -> dict[str, Any]:
+    """The final analysis of the synthetic final run as built, with nothing changed (the same for every
+    :class:`World`: it names no path), analysed once; each test gets its own copy."""
+    return copy.deepcopy(_default_final_once)
+
+
+def test_the_final_run_families_by_hand(default_final: dict[str, Any]) -> None:
     """Over three reads, Ordnung minus the model alone, per letter cluster (×3 to integers): accuracy 3, 3, −1, 1
     (sign-flip exact p 6/16), harm −3, 1, −1 (6/8). Unstable items: Ordnung's L3, the model alone's L4."""
-    result = world.final()
+    result = default_final
     primary = result["primary"]
     assert (
         primary["split"],
@@ -653,8 +683,8 @@ def test_the_final_run_families_by_hand(world: World) -> None:
     assert (sensitivity["b"], sensitivity["c"], sensitivity["exact_p"]) == (3, 0, 0.25)
 
 
-def test_the_final_run_stability_and_secondary_numbers(world: World) -> None:
-    primary = world.final()["primary"]
+def test_the_final_run_stability_and_secondary_numbers(default_final: dict[str, Any]) -> None:
+    primary = default_final["primary"]
     ordnung, llm_only = primary["conditions"]["ordnung"], primary["conditions"]["llm_only"]
     assert [r["k"] for r in ordnung["exact_per_read"]] == [7, 6, 7]
     assert (ordnung["pass_all"]["k"], ordnung["pass_any"]["k"]) == (6, 7)
@@ -705,7 +735,7 @@ def test_the_final_run_stability_and_secondary_numbers(world: World) -> None:
     }
     assert ordnung["selective"]["please_check"]["recall_wrong"]["n"] == 0  # L3 is wrong in read 2 only
     assert ordnung["flags_over_reads"]["wrong_dates"] == 1
-    result = world.final()
+    result = default_final
     newkinds = result["secondary"]["newkinds"]
     assert newkinds["conditions"]["ordnung"]["exact"]["k"] == 3
     assert newkinds["conditions"]["ordnung"]["kind_recognised"]["k"] == 1  # L1's kind is not recognised
@@ -909,32 +939,38 @@ READ_MISMATCHES = (
 )
 
 
-@pytest.mark.parametrize(("breaks", "kind", "mismatch", "effect"), READ_MISMATCHES)
 def test_a_read_that_differs_from_the_frozen_inputs_needs_a_deviation_and_is_then_left_out(
-    world: World, breaks: Callable[[World], None], kind: str, mismatch: str, effect: str
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Never waivable (fingerprint, code digest, prompt hash, served model) and "exclude the read" (another
     manifest, a dirty tree): without a deviation recorded at the time the analysis is refused; with one, read 3 is
     left out (listed with its deviation and consequence) and the analysis runs on the reads that stand."""
-    breaks(world)
-    with pytest.raises(analysis.AnalysisError, match=rf"{mismatch}.*deviation"):
-        world.final()
-    world.deviate(kind, {"split": "holdout4", "repeat": 3})
-    result = world.final()
-    assert result["primary"]["reads"] == 2 and result["primary"]["reads_used"] == [1, 2]
-    (left,) = result["meta"]["frozen_check"]["reads_left_out"]
-    assert (left["split"], left["repeat"], left["file"], left["effect"]) == (
-        "holdout4",
-        3,
-        "holdout4-r3.json",
-        effect,
-    )
-    assert left["deviations"] == ["D001"] and left["mismatches"] == [mismatch]
-    assert result["primary"]["families"]["F3_stability"] is not None  # k = 2 = min_reads: F3 still runs
-    # the deviation must name the read: one for read 2 excuses nothing in read 3
-    world.deviations[0]["applies_to"] = {"split": "holdout4", "repeat": 2}
-    with pytest.raises(analysis.AnalysisError, match=mismatch):
-        world.final()
+
+    def check(breaks: Callable[[World], None], kind: str, mismatch: str, effect: str) -> None:
+        world = World(tmp_path / kind)
+        monkeypatch.setattr(analysis, "RECORDED_DIR", world.recorded)
+        monkeypatch.setattr(analysis, "DATASET_DIR", world.dataset)
+        breaks(world)
+        with pytest.raises(analysis.AnalysisError, match=rf"{mismatch}.*deviation"):
+            world.final()
+        world.deviate(kind, {"split": "holdout4", "repeat": 3})
+        result = world.final()
+        assert result["primary"]["reads"] == 2 and result["primary"]["reads_used"] == [1, 2]
+        (left,) = result["meta"]["frozen_check"]["reads_left_out"]
+        assert (left["split"], left["repeat"], left["file"], left["effect"]) == (
+            "holdout4",
+            3,
+            "holdout4-r3.json",
+            effect,
+        )
+        assert left["deviations"] == ["D001"] and left["mismatches"] == [mismatch]
+        assert result["primary"]["families"]["F3_stability"] is not None  # k = 2 = min_reads: F3 still runs
+        # the deviation must name the read: one for read 2 excuses nothing in read 3
+        world.deviations[0]["applies_to"] = {"split": "holdout4", "repeat": 2}
+        with pytest.raises(analysis.AnalysisError, match=mismatch):
+            world.final()
+
+    check_rows(READ_MISMATCHES, check)
 
 
 def test_a_deviation_recorded_while_a_read_is_under_way_leaves_its_tree_clean(world: World) -> None:
@@ -1037,7 +1073,9 @@ def test_a_units_day_is_the_day_index_s_and_the_letters_today(world: World) -> N
         )
 
 
-def test_another_claude_version_is_included_with_a_deviation_and_f3_within_one_version(world: World) -> None:
+def test_another_claude_version_is_included_with_a_deviation_and_f3_within_one_version(
+    world: World, default_final: dict[str, Any]
+) -> None:
     """A unit recorded by another ``claude`` version: refused without a ``cli_version`` deviation; with one, the read
     is included, each read's versions are listed, and F3 is also given over the items whose reads share a version."""
     for letter in ("L1", "L2", "L3"):
@@ -1057,7 +1095,7 @@ def test_another_claude_version_is_included_with_a_deviation_and_f3_within_one_v
     assert same_cli["versions"] == [CLI, "2.1.9"] and same_cli["items"] == 3  # L4, L5, L6
     assert same_cli["F3_stability"]["ordnung-vs-llm_only"]["n"] == 3
     # one version everywhere: nothing to compare apart
-    clean = World(world.root / "clean").final()
+    clean = default_final
     assert clean["sensitivities"]["same_cli_f3"] == {"versions": [CLI], "same_as_primary": True}
 
 
@@ -1079,32 +1117,39 @@ def test_an_unanswered_letter_needs_a_deviation_and_model_failures_are_counted(w
     assert primary["conditions"]["ordnung"]["model_failed_per_read"] == [0, 0, 0]
 
 
-@pytest.mark.parametrize(
-    ("field", "value"),
-    [
-        ("issue_comment_url", None),
-        ("created_at", None),
-        ("checkpoint_sha", None),
-        ("issue_comment_url", "file:///scratch/issue.md#D001"),
-        ("checkpoint_sha", "abc"),
-        ("created_at", "yesterday"),
-        ("consequence", "include"),
-        ("kind", "excuse"),
-    ],
-)
+DEVIATIONS_NOT_RECORDED_AT_THE_TIME = [
+    ("issue_comment_url", None),
+    ("created_at", None),
+    ("checkpoint_sha", None),
+    ("issue_comment_url", "file:///scratch/issue.md#D001"),
+    ("checkpoint_sha", "abc"),
+    ("created_at", "yesterday"),
+    ("consequence", "include"),
+    ("kind", "excuse"),
+]
+
+
 def test_a_deviation_not_recorded_at_the_time_or_off_the_table_is_refused(
-    world: World, field: str, value: Any
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A deviation counts only with its issue comment, its time and the checkpoint that pushed it, and only as the
     pre-registration's table says: any entry of the file that lacks them is refused, used or not."""
-    world.deviate("infrastructure", {"split": "holdout4", "repeat": 2})
-    world.final()  # well-formed: accepted (and an infrastructure loss changes nothing)
-    if value is None:
-        del world.deviations[0][field]
-    else:
-        world.deviations[0][field] = value
-    with pytest.raises(analysis.AnalysisError, match="D001"):
-        world.final()
+    folders = itertools.count(1)
+
+    def check(field: str, value: Any) -> None:
+        world = World(tmp_path / f"row{next(folders)}")
+        monkeypatch.setattr(analysis, "RECORDED_DIR", world.recorded)
+        monkeypatch.setattr(analysis, "DATASET_DIR", world.dataset)
+        world.deviate("infrastructure", {"split": "holdout4", "repeat": 2})
+        world.final()  # well-formed: accepted (and an infrastructure loss changes nothing)
+        if value is None:
+            del world.deviations[0][field]
+        else:
+            world.deviations[0][field] = value
+        with pytest.raises(analysis.AnalysisError, match="D001"):
+            world.final()
+
+    check_rows(DEVIATIONS_NOT_RECORDED_AT_THE_TIME, check)
 
 
 def test_the_registered_table_of_deviation_kinds_is_the_one_the_analysis_applies(world: World) -> None:
@@ -1203,12 +1248,15 @@ def _grid_bounds(
 ) -> tuple[Fraction, Fraction]:
     """The smallest and largest δ on a grid that the registered test does not reject at 5 % (brute force: the
     sign-flip test of the centred cluster totals d − δ·n, run at every grid point)."""
+    # δ = k / scale; the Monte Carlo sums run on every total times scale, as integers (a common positive scale
+    # changes no sign-flip p-value); the exact test is given the centred totals themselves, as fractions
+    assert step.numerator == 1, step
+    scale = step.denominator
     kept = []
-    delta = Fraction(-1)
-    while delta <= 1:
-        centred = [Fraction(d) - delta * n for d, n in clusters]
+    for k in range(-scale, scale + 1):
+        centred = [d * scale - k * n for d, n in clusters]
         if exact_max >= len(clusters):
-            p = stats.cluster_signflip(centred, exact_max=exact_max).p
+            p = stats.cluster_signflip([Fraction(x, scale) for x in centred], exact_max=exact_max).p
         else:  # the same random sign patterns as the inversion: every cluster flipped by its bit
             rng = random.Random(seed)
             total = sum(centred)
@@ -1219,8 +1267,7 @@ def _grid_bounds(
                 hits += abs(total - 2 * flipped) >= abs(total)
             p = (hits + 1) / (draws + 1)
         if p >= 0.05:
-            kept.append(delta)
-        delta += step
+            kept.append(Fraction(k, scale))
     return min(kept), max(kept)
 
 
@@ -1272,8 +1319,10 @@ def test_the_agent_is_higher_only_when_the_whole_bound_is_below_zero() -> None:
     assert decide(-0.2, -0.1, 0.05, "llm_rules_text") == "baseline_higher"
 
 
-def test_non_inferiority_uses_the_inverted_test_and_keeps_the_bootstrap_descriptive(world: World) -> None:
-    primary = world.final()["primary"]
+def test_non_inferiority_uses_the_inverted_test_and_keeps_the_bootstrap_descriptive(
+    default_final: dict[str, Any],
+) -> None:
+    primary = default_final["primary"]
     block = primary["noninferiority"]["ordnung-vs-llm_rules_tool"]
     assert block["margin"] == 0.05 and block["decision"] == primary["decisions"]["vs_llm_rules_tool"]
     assert block["bound"]["method"] == "exact" and (block["bound"]["lo"], block["bound"]["hi"]) == (-1.0, 1.0)
@@ -1295,7 +1344,9 @@ def _baselines_late(condition: str, read: int, letter: str, index: int) -> str:
     return "right" if condition == "ordnung" else "late"
 
 
-def test_f2_has_its_codes_and_one_decision_is_confirmatory(tmp_path: Path) -> None:
+def test_f2_has_its_codes_and_one_decision_is_confirmatory(
+    tmp_path: Path, default_final: dict[str, Any]
+) -> None:
     worse = World(tmp_path / "worse", letters=EIGHT, outcome=_ordnung_late).final()["primary"]
     better = World(tmp_path / "better", letters=EIGHT, outcome=_baselines_late).final()["primary"]
     for baseline in ("llm_only", "llm_rules_text"):
@@ -1323,7 +1374,7 @@ def test_f2_has_its_codes_and_one_decision_is_confirmatory(tmp_path: Path) -> No
         "pair": "ordnung-vs-llm_only",
         "code": "clear",
     }
-    neutral = World(tmp_path / "neutral").final()["primary"]["decisions"]
+    neutral = default_final["primary"]["decisions"]
     assert neutral["f2_vs_llm_only"] == "no_clear_difference"
 
 
@@ -1366,10 +1417,12 @@ def test_the_rules_the_analysis_implements_are_named_in_the_preregistration(worl
 # --------------------------------------------------------------------------------------------------
 
 
-def test_s_conv_accepts_a_disputed_conventions_other_date(world: World) -> None:
+def test_s_conv_accepts_a_disputed_conventions_other_date(
+    world: World, default_final: dict[str, Any]
+) -> None:
     """L4's label rests on a disputed convention whose other reading gives the late date: the model alone's late
     date in read 1 counts as right under S-conv, and the primary does not move."""
-    plain = world.final()
+    plain = default_final
     world.alternatives[("holdout4-L4", 0)] = [LATE_DATE]
     result = world.final()
     assert result["primary"] == plain["primary"]
@@ -1390,12 +1443,14 @@ def test_s_conv_accepts_a_disputed_conventions_other_date(world: World) -> None:
     }
 
 
-def test_the_slots_left_open_are_counted_by_kind_from_the_registered_manifest(world: World) -> None:
+def test_the_slots_left_open_are_counted_by_kind_from_the_registered_manifest(
+    world: World, default_final: dict[str, Any]
+) -> None:
     """A label slot the letter or the law leaves open between two or more dates ("ambiguous") is no scored item,
     and an ambiguous offered date or contract date is scored by no condition: the final analysis counts such slots
     from the registered manifest, deadlines (an item the letter requires), offered dates (an item it offers) and
     contract dates apart, per analysed split and in all. The primary does not move."""
-    plain = world.final()
+    plain = default_final
     zero = {"deadline": 0, "offered": 0, "contract": 0}
     assert plain["labels"] == {"ambiguous_slots": {**zero, "by_split": {"holdout4": zero, "newkinds": zero}}}
     both = {
@@ -1460,8 +1515,10 @@ def test_the_slots_left_open_are_counted_once_per_letter_with_offered_dates_apar
     )
 
 
-def test_the_label_corrected_sensitivity_applies_label_errors_to_all_four_conditions(world: World) -> None:
-    plain = world.final()
+def test_the_label_corrected_sensitivity_applies_label_errors_to_all_four_conditions(
+    world: World, default_final: dict[str, Any]
+) -> None:
+    plain = default_final
     world.deviate(
         "label_error",
         {"split": "holdout4", "items": [{"entry_id": "holdout4-L1", "item": 0, "date": EARLY_DATE}]},
@@ -1476,8 +1533,10 @@ def test_the_label_corrected_sensitivity_applies_label_errors_to_all_four_condit
     assert corrected["conditions"]["llm_rules_text"]["harmful_item_reads"] == 3
 
 
-def test_the_first_attempt_sensitivity_scores_a_timed_out_first_attempt_as_missed(world: World) -> None:
-    plain = world.final()
+def test_the_first_attempt_sensitivity_scores_a_timed_out_first_attempt_as_missed(
+    world: World, default_final: dict[str, Any]
+) -> None:
+    plain = default_final
     world.deviate(
         "retake",
         {
@@ -1498,8 +1557,10 @@ def test_the_first_attempt_sensitivity_scores_a_timed_out_first_attempt_as_misse
     assert first["conditions"]["ordnung"]["harmful_item_reads"] == 3
 
 
-def test_same_day_f3_uses_the_items_whose_reads_share_one_day(tmp_path: Path) -> None:
-    every_read_apart = World(tmp_path / "apart").final()["sensitivities"]["same_day_f3"]
+def test_same_day_f3_uses_the_items_whose_reads_share_one_day(
+    tmp_path: Path, default_final: dict[str, Any]
+) -> None:
+    every_read_apart = default_final["sensitivities"]["same_day_f3"]
     assert every_read_apart["items"] == 0 and every_read_apart["F3_stability"] is None
     world = World(tmp_path / "some")
     for read in (1, 2, 3):

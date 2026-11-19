@@ -11,6 +11,7 @@ from typing import Any
 
 import pytest
 
+from helpers_tables import check_rows_async
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.drafts import templates
@@ -344,25 +345,27 @@ async def test_objection_suspension_only_when_ticked(ctx: AppContext, ids: dict[
         assert "Ich beantrage die Aussetzung der Vollziehung." not in draft.body
 
 
-@pytest.mark.parametrize(
-    ("remedy", "message"),
-    [
-        (Remedy(type="klage", addressee="Verwaltungsgericht"), "court"),
-        (Remedy(type="none"), "Rechtsbehelfsbelehrung"),
-        (Remedy(type="unclear"), "couldn't tell"),
-        (None, "Rechtsbehelfsbelehrung"),
-    ],
-)
+OBJECTION_BLOCKED_EXAMPLES = [
+    (Remedy(type="klage", addressee="Verwaltungsgericht"), "court"),
+    (Remedy(type="none"), "Rechtsbehelfsbelehrung"),
+    (Remedy(type="unclear"), "couldn't tell"),
+    (None, "Rechtsbehelfsbelehrung"),
+]
+
+
 async def test_objection_blocked_without_einspruch_or_widerspruch(
-    ctx: AppContext, ids: dict[str, str], backend: FakeBackend, remedy: Remedy | None, message: str
+    ctx: AppContext, ids: dict[str, str], backend: FakeBackend
 ) -> None:
-    doc_id = _doc(
-        ctx, f"decision-{remedy.type if remedy else 'missing'}", kind="authority_letter", remedy=remedy
-    )
-    with pytest.raises(DraftError, match=message):
-        await compose(ctx, "objection", doc_id=doc_id)
-    assert backend.calls == []
-    assert ctx.store.list_drafts() == []
+    async def check(remedy: Remedy | None, message: str) -> None:
+        doc_id = _doc(
+            ctx, f"decision-{remedy.type if remedy else 'missing'}", kind="authority_letter", remedy=remedy
+        )
+        with pytest.raises(DraftError, match=message):
+            await compose(ctx, "objection", doc_id=doc_id)
+        assert backend.calls == []
+        assert ctx.store.list_drafts() == []
+
+    await check_rows_async(OBJECTION_BLOCKED_EXAMPLES, check)
 
 
 async def test_objection_needs_a_letter(ctx: AppContext, ids: dict[str, str]) -> None:
@@ -387,7 +390,7 @@ async def test_cancellation_finds_the_contract_of_a_letter(ctx: AppContext, ids:
     assert draft.contract_id == ids["phone"] and draft.doc_id == letter
 
 
-async def test_compose_without_model_uses_fixed_text(data_dir: Path) -> None:
+async def test_without_a_model_the_fixed_text_is_used_and_signed_by_the_chosen_name(data_dir: Path) -> None:
     clock.set_today(TODAY)
     failing = FailingBackend()
     context = build_context(data_dir, backend_obj=failing)
@@ -399,10 +402,13 @@ async def test_compose_without_model_uses_fixed_text(data_dir: Path) -> None:
         party = store.add_party(name="FitMuster Studio", kind="gym", address="Sportweg 1, 12345 Musterstadt")
         contract = store.add_contract(name="FitMuster Premium", category="gym", party_id=party.id)
         draft = await compose(context, "cancellation", contract_id=contract.id)
+        assert len(failing.calls) == 1
+        # the fixed translation is signed with the name the letter goes out in
+        signed = await compose(context, "cancellation", contract_id=contract.id, sender_name="Alex Rivera")
     finally:
         context.close()
         clock.set_today(None)
-    assert len(failing.calls) == 1
+    assert signed.body_translation.endswith("Yours faithfully\nAlex Rivera")
     assert "hiermit kündige ich den Vertrag „FitMuster Premium“, zum nächstmöglichen Zeitpunkt." in draft.body
     assert draft.body_translation.startswith("Subject: Cancellation of the contract “FitMuster Premium”")
     assert "I hereby give notice to terminate the contract “FitMuster Premium”" in draft.body_translation
@@ -471,40 +477,16 @@ async def test_a_letter_in_someone_elses_name_is_signed_by_them(ctx: AppContext,
     assert letter_profile(ctx.store, draft).name == "Alex Rivera"
 
 
-async def test_a_fallback_translation_is_signed_with_the_name_chosen(data_dir: Path) -> None:
-    clock.set_today(TODAY)
-    context = build_context(data_dir, backend_obj=FailingBackend())
-    try:
-        store = context.store
-        store.save_profile(
-            Profile(name="Sam Rivera", address="Musterweg 5, 12345 Musterstadt", language="en")
-        )
-        party = store.add_party(name="FitMuster Studio", kind="gym", address="Sportweg 1, 12345 Musterstadt")
-        contract = store.add_contract(name="FitMuster Premium", category="gym", party_id=party.id)
-        draft = await compose(context, "cancellation", contract_id=contract.id, sender_name="Alex Rivera")
-    finally:
-        context.close()
-        clock.set_today(None)
-    assert draft.body_translation.endswith("Yours faithfully\nAlex Rivera")
-
-
-async def test_an_unsent_letter_takes_only_the_name_it_goes_out_in(
+async def test_until_sent_a_letter_takes_todays_contact_lines_and_marking_sent_keeps_them(
     ctx: AppContext, ids: dict[str, str]
 ) -> None:
     draft = await compose(ctx, "objection", doc_id=ids["tax"], sender_name="Alex Rivera")
     profile = ctx.store.get_profile()
     ctx.store.save_profile(profile.model_copy(update={"email": "new@example.org", "phone": "+49 30 999"}))
+    # unsent, the letter takes only the name it goes out in: the contact lines are today's profile
     shown = letter_profile(ctx.store, draft)
     assert (shown.name, shown.email, shown.phone) == ("Alex Rivera", "new@example.org", "+49 30 999")
     assert shown.address == profile.address
-
-
-async def test_marking_sent_keeps_the_name_and_takes_the_contact_lines_of_that_day(
-    ctx: AppContext, ids: dict[str, str]
-) -> None:
-    draft = await compose(ctx, "objection", doc_id=ids["tax"], sender_name="Alex Rivera")
-    profile = ctx.store.get_profile()
-    ctx.store.save_profile(profile.model_copy(update={"email": "new@example.org", "phone": "+49 30 999"}))
     mark_sent(ctx, draft.id, "letter", TODAY)
     kept = SentSigner(name="Alex Rivera", email="new@example.org", phone="+49 30 999")
     assert ctx.store.get_sent_signer(draft.id) == kept

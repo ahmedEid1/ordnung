@@ -13,6 +13,7 @@ import pytest
 import helpers_proof
 from fixtures_llm import record_events
 from helpers_docs import eml_bytes, letter_pdf, photo
+from helpers_tables import check_rows_async
 from ordnung import clock
 from ordnung.drafts.proof import PROOF_SOURCE
 from ordnung.ingest.watcher import is_own_file
@@ -27,6 +28,12 @@ def pinned_today() -> Iterator[None]:
     clock.set_today(TODAY)
     yield
     clock.set_today(None)
+
+
+@pytest.fixture(scope="module")
+def letter_bytes() -> bytes:
+    """One letter PDF for the module (read only: bytes; every test uploads it to its own data folder)."""
+    return letter_pdf()
 
 
 async def _sent(api: Api, **extra: Any) -> tuple[str, helpers_proof.Gym]:
@@ -67,7 +74,7 @@ async def test_a_sent_e_mail_kept_as_proof_adds_no_letters_from_its_attachments(
 
 
 async def test_a_proof_file_is_never_shown_as_a_letter_being_read(
-    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch, letter_bytes: bytes
 ) -> None:
     """Adding a proof also put the upload corner's letter card on screen ("Filed —
     everything is on your timeline", "Open letter"), as every ``job.progress`` becomes a card there. A
@@ -103,7 +110,7 @@ async def test_a_proof_file_is_never_shown_as_a_letter_being_read(
         await api.read_all()
         assert not [data for kind, data in events if kind == "job.progress" and data.get("doc_id") == doc_id]
 
-        letter = await api.client.post("/api/documents", files={"files": ("brief.pdf", letter_pdf())})
+        letter = await api.client.post("/api/documents", files={"files": ("brief.pdf", letter_bytes)})
         letter_id = letter.json()["documents"][0]["id"]
         await api.read_all()
         assert [
@@ -155,7 +162,7 @@ async def test_a_mistyped_tracking_number_is_refused_with_the_reason(data_dir: P
         assert too_long.status_code == 422
 
 
-async def test_a_proof_upload_stays_private_and_out_of_the_inbox(data_dir: Path) -> None:
+async def test_a_proof_upload_stays_private_out_of_the_inbox_and_knows_its_letter(data_dir: Path) -> None:
     async with api_for(data_dir) as api:
         draft_id, _ = await _sent(api)
         calls_before = len(api.backend.calls)
@@ -183,8 +190,12 @@ async def test_a_proof_upload_stays_private_and_out_of_the_inbox(data_dir: Path)
             doc["id"] != document["id"]
             for doc in (await api.client.get("/api/documents", params={"q": "einlieferungsbeleg"})).json()
         )
-        # it opens like any file, from its letter
-        assert (await api.client.get(f"/api/documents/{document['id']}")).status_code == 200
+        # it opens like any file, from its letter, and knows which letter it proves
+        detail = await api.client.get(f"/api/documents/{document['id']}")
+        assert detail.status_code == 200
+        (link,) = detail.json()["proof_of"]
+        assert (link["draft_id"], link["kind"]) == (draft_id, "posting_receipt")
+        assert link["subject"].startswith("Kündigung")
         assert (await api.client.get(f"/api/documents/{document['id']}/file")).status_code == 200
 
 
@@ -225,10 +236,10 @@ async def test_the_demo_takes_proof_files(data_dir: Path) -> None:
         await _add(api, draft_id, "a.jpg", photo("JPEG"))
 
 
-async def test_correcting_and_removing_a_proof(data_dir: Path) -> None:
+async def test_correcting_and_removing_a_proof(data_dir: Path, letter_bytes: bytes) -> None:
     async with api_for(data_dir) as api:
         draft_id, _ = await _sent(api)
-        overview = await _add(api, draft_id, "a.pdf", letter_pdf(), on_date=SENT_ON)
+        overview = await _add(api, draft_id, "a.pdf", letter_bytes, on_date=SENT_ON)
         proof_id = overview["proofs"][0]["proof"]["id"]
         doc_id = overview["proofs"][0]["document"]["id"]
         patched = await api.client.patch(
@@ -359,6 +370,15 @@ async def test_waiting_for_and_call_notes(data_dir: Path) -> None:
         assert (await api.client.delete(f"/api/calls/{call['id']}")).status_code == 404
         assert (await api.client.patch(f"/api/calls/{call['id']}", json={"kept": True})).status_code == 404
 
+        # a promised amount has an upper bound
+        base = {"party_id": gym.party, "called_on": "2026-09-20", "summary": "Call", "promise": "Refund"}
+        assert (
+            await api.client.post("/api/calls", json={**base, "promise_amount": 1e308})
+        ).status_code == 422
+        assert (
+            await api.client.post("/api/calls", json={**base, "promise_amount": 1_000_000})
+        ).status_code == 201
+
 
 # --------------------------------------------------------------------------------------------------
 # what the Nachweis states, privacy of known files, answers, sent letters stay as sent
@@ -474,10 +494,12 @@ async def test_a_known_unread_file_becomes_private_when_added_as_proof(data_dir:
         assert logged and "now kept private, not sent to Claude" in logged[0]
 
 
-async def test_a_known_file_ai_already_read_is_never_called_private(data_dir: Path) -> None:
+async def test_a_known_file_ai_already_read_is_never_called_private(
+    data_dir: Path, letter_bytes: bytes
+) -> None:
     async with api_for(data_dir) as api:
         draft_id, _ = await _sent(api)
-        data = letter_pdf()
+        data = letter_bytes
         await api.client.post("/api/documents", files={"files": ("letter.pdf", data)})
         await api.read_all()  # read by the model
         added = await _add(api, draft_id, "letter.pdf", data, kind="other")
@@ -531,10 +553,12 @@ async def test_a_file_paused_by_a_rate_limit_after_transcription_is_never_called
         assert "not sent to Claude" not in _logged_proof(api)
 
 
-async def test_a_letter_marked_private_after_ai_read_it_is_never_called_private(data_dir: Path) -> None:
+async def test_a_letter_marked_private_after_ai_read_it_is_never_called_private(
+    data_dir: Path, letter_bytes: bytes
+) -> None:
     async with api_for(data_dir) as api:
         draft_id, _ = await _sent(api)
-        data = letter_pdf()
+        data = letter_bytes
         uploaded = (await api.client.post("/api/documents", files={"files": ("letter.pdf", data)})).json()
         await api.read_all()
         doc_id = uploaded["documents"][0]["id"]
@@ -655,35 +679,35 @@ async def test_a_sent_letter_stays_as_it_went_out(data_dir: Path) -> None:
         assert "Das Schreiben wie versandt" in text
         letter = _text((await api.client.get(f"/api/drafts/{draft_id}/pdf")).content)
         assert "Sam Rivera" in letter and "Someone Else" not in letter
-
-
-@pytest.mark.parametrize(
-    ("channel", "caption"),
-    [
-        ("online_button", "nicht als Brief versandt (Kündigungsbutton)"),
-        ("portal", "nicht als Brief versandt (Online-Portal)"),
-        ("email", "per E-Mail versandt"),
-    ],
-)
-async def test_a_letter_that_went_out_as_text_is_not_called_the_letter_as_sent(
-    data_dir: Path, channel: str, caption: str
-) -> None:
-    async with api_for(data_dir) as api:
-        gym = helpers_proof.gym(api.ctx)
-        draft_id = (
-            await api.client.post("/api/drafts", json={"kind": "cancellation", "contract_id": gym.contract})
-        ).json()["id"]
-        await api.client.post(f"/api/drafts/{draft_id}/sent", json={"channel": channel, "date": SENT_ON})
-        text = await _nachweis(api, draft_id)
-        assert caption in text and "Das Schreiben wie versandt" not in text
-
-
-async def test_a_letter_sent_before_its_sender_was_kept_says_so(data_dir: Path) -> None:
-    async with api_for(data_dir) as api:
-        draft_id, _ = await _sent(api)
+        # a letter sent before its sender was kept says so
         with api.ctx.store.tx() as conn:
             conn.execute("UPDATE drafts SET sent_profile = NULL WHERE id = ?", (draft_id,))
         assert "Das Schreiben, wie in Ordnung gespeichert" in await _nachweis(api, draft_id)
+
+
+TEXT_CHANNEL_CAPTIONS = [
+    ("online_button", "nicht als Brief versandt (Kündigungsbutton)"),
+    ("portal", "nicht als Brief versandt (Online-Portal)"),
+    ("email", "per E-Mail versandt"),
+]
+
+
+async def test_a_letter_that_went_out_as_text_is_not_called_the_letter_as_sent(data_dir: Path) -> None:
+    async with api_for(data_dir) as api:
+        gym = helpers_proof.gym(api.ctx)
+
+        async def check(channel: str, caption: str) -> None:
+            # each row composes and marks its own letter, so one app and one gym serve every row
+            draft_id = (
+                await api.client.post(
+                    "/api/drafts", json={"kind": "cancellation", "contract_id": gym.contract}
+                )
+            ).json()["id"]
+            await api.client.post(f"/api/drafts/{draft_id}/sent", json={"channel": channel, "date": SENT_ON})
+            text = await _nachweis(api, draft_id)
+            assert caption in text and "Das Schreiben wie versandt" not in text
+
+        await check_rows_async(TEXT_CHANNEL_CAPTIONS, check)
 
 
 async def test_marking_again_with_another_channel_drops_the_tracking_number(data_dir: Path) -> None:
@@ -717,25 +741,3 @@ async def test_deleting_a_letter_can_keep_its_proof_files(data_dir: Path) -> Non
         kept = (await api.client.get(f"/api/documents/{doc_id}")).json()["document"]
         assert (kept["source"], kept["ai_private"], kept["direction"]) == ("upload", True, "outgoing")
         assert doc_id in {doc["id"] for doc in (await api.client.get("/api/documents")).json()}
-
-
-async def test_a_proof_file_knows_its_letter(data_dir: Path) -> None:
-    async with api_for(data_dir) as api:
-        draft_id, _ = await _sent(api)
-        overview = await _add(api, draft_id, "a.jpg", photo("JPEG"))
-        detail = (await api.client.get(f"/api/documents/{overview['proofs'][0]['document']['id']}")).json()
-        (link,) = detail["proof_of"]
-        assert (link["draft_id"], link["kind"]) == (draft_id, "posting_receipt")
-        assert link["subject"].startswith("Kündigung")
-
-
-async def test_a_promised_amount_has_an_upper_bound(data_dir: Path) -> None:
-    async with api_for(data_dir) as api:
-        gym = helpers_proof.gym(api.ctx)
-        base = {"party_id": gym.party, "called_on": "2026-09-20", "summary": "Call", "promise": "Refund"}
-        assert (
-            await api.client.post("/api/calls", json={**base, "promise_amount": 1e308})
-        ).status_code == 422
-        assert (
-            await api.client.post("/api/calls", json={**base, "promise_amount": 1_000_000})
-        ).status_code == 201

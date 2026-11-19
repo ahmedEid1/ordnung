@@ -123,22 +123,16 @@ async def test_a_failed_weekly_review_is_reported_like_one_asked_for(ctx: Ctx, b
     )
 
 
-async def test_same_day_tick_does_nothing(ctx: Ctx, backend: FakeBackend) -> None:
-    tick = DailyTick(ctx)
-    await tick.check()
-    if tick.review_task:
-        await tick.review_task
-    events, calls = len(ctx.bus.events), len(backend.calls)
-    result = await tick.check()
-    assert not result.day_changed and result.triggers is None
-    assert len(ctx.bus.events) == events and len(backend.calls) == calls
-
-
-async def test_day_change_reruns_triggers_but_review_is_weekly(ctx: Ctx) -> None:
+async def test_day_change_reruns_triggers_but_review_is_weekly(ctx: Ctx, backend: FakeBackend) -> None:
     tick = DailyTick(ctx)
     await tick.check()
     assert tick.review_task is not None
     await tick.review_task
+    # a second check on the same day does nothing
+    events, calls = len(ctx.bus.events), len(backend.calls)
+    result = await tick.check()
+    assert not result.day_changed and result.triggers is None
+    assert len(ctx.bus.events) == events and len(backend.calls) == calls
     clock.set_today(TODAY + timedelta(days=1))
     result = await tick.check()
     assert result.day_changed and not result.review_started

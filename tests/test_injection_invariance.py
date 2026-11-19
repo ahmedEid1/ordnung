@@ -27,6 +27,7 @@ from typing import Any
 
 import pytest
 
+from helpers_tables import check_rows_async
 from ordnung.llm.base import LLMRequest, LLMResponse, ReplayMiss, StreamEvent
 from ordnung.llm.runtime import LLMService
 
@@ -169,16 +170,50 @@ async def _ordnung(entry: Entry, document: PreparedDocument, backend: Any) -> Pr
     return await run_ordnung(entry, document, LLMService(backend), model=DEFAULT_MODEL)
 
 
-async def _check(entry_id: str, number: int, work: Path, *, leak: bool = False) -> dict[str, Any]:
+#: What a letter's calls got: an answer or a recorded failure.
+_Calls = list[tuple[LLMRequest, LLMResponse | Exception]]
+
+
+class _CleanReplays:
+    """Each clean letter's replay, made once per module (the first time a test asks for it, so the test's own
+    environment is in force) and only read after: its document, its prediction and the calls it made."""
+
+    def __init__(self, folder: Path) -> None:
+        self.folder = folder
+        self.done: dict[str, tuple[PreparedDocument, Prediction, _Calls]] = {}
+
+    async def of(self, clean: Entry) -> tuple[PreparedDocument, Prediction, _Calls]:
+        if clean.id not in self.done:
+            capture = _Capture(make_backend(RunConfig(), DEFAULT_MODEL, {clean.id}))
+            document = prepare_document(clean, DATASET_DIR, self.folder / clean.id)
+            prediction = await _ordnung(clean, document, capture)
+            self.done[clean.id] = (document, prediction, capture.calls)
+        return self.done[clean.id]
+
+
+@pytest.fixture(scope="module")
+def clean_replays(tmp_path_factory: pytest.TempPathFactory) -> _CleanReplays:
+    return _CleanReplays(tmp_path_factory.mktemp("clean"))
+
+
+def _answers(calls: _Calls) -> _Calls:
+    """The clean letter's calls with a fresh copy of each answer: no run sees an answer another run touched."""
+    return [
+        (req, answer.model_copy(deep=True) if isinstance(answer, LLMResponse) else answer)
+        for req, answer in calls
+    ]
+
+
+async def _check(
+    entry_id: str, number: int, work: Path, clean_replays: _CleanReplays, *, leak: bool = False
+) -> dict[str, Any]:
     """The clean letter replayed, then its copy with instruction ``number`` hidden, run on the clean letter's
     answers: whether the hidden text was found, and the instruction's own tokens that reached a request.
     ``leak``: the copy's hidden text is put back into its visible text, as a text stage that forgot to keep it
     apart would (the negative control: the check must then see the tokens)."""
     raw = next(entry for entry in _manifest()["entries"] if entry["id"] == entry_id)
     clean = Entry.model_validate(raw)
-    capture = _Capture(make_backend(RunConfig(), DEFAULT_MODEL, {entry_id}))
-    clean_document = prepare_document(clean, DATASET_DIR, work / "clean")
-    clean_prediction = await _ordnung(clean, clean_document, capture)
+    clean_document, clean_prediction, clean_calls = await clean_replays.of(clean)
     data = _with_hidden(entry_id, number)
     folder = work / "copy"
     folder.mkdir(parents=True)
@@ -188,10 +223,10 @@ async def _check(entry_id: str, number: int, work: Path, *, leak: bool = False) 
     if leak:
         pages = [page.model_copy(update={"text": f"{page.text}\n{page.hidden}"}) for page in document.pages]
         document = PreparedDocument(entry=document.entry, file=document.file, pages=pages)
-    mirror = _Mirror(capture.calls)
+    mirror = _Mirror(_answers(clean_calls))
     prediction = await _ordnung(hidden, document, mirror)
     instruction = _tokens(INSTRUCTIONS[number])
-    seen_clean = set().union(*(_tokens(_text(req)) for req, _answer in capture.calls))
+    seen_clean = set().union(*(_tokens(_text(req)) for req, _answer in clean_calls))
     own = instruction - seen_clean  # the instruction's words no request of the clean letter has
     sent = set().union(*(_tokens(_text(req)) for req in mirror.requests))
     return {
@@ -202,11 +237,11 @@ async def _check(entry_id: str, number: int, work: Path, *, leak: bool = False) 
         "warned": conditions.HIDDEN_TEXT_WARNING in prediction.warnings,
         "failed": prediction.failed,
         "requests": len(mirror.requests),
-        "clean_requests": len(capture.calls),
+        "clean_requests": len(clean_calls),
         "own": sorted(own),
         "leaked": sorted(own & sent),
         # reported, never asserted: layout may move a visible character or a line when a block is hidden
-        "same_prompts": [req.prompt for req, _answer in capture.calls]
+        "same_prompts": [req.prompt for req, _answer in clean_calls]
         == [req.prompt for req in mirror.requests],
     }
 
@@ -265,31 +300,42 @@ def test_a_hidden_copy_differs_from_its_letter_and_is_seeded() -> None:
     )
 
 
-async def test_the_check_sees_hidden_text_a_text_stage_lets_through(tmp_path: Path) -> None:
+async def test_the_check_sees_hidden_text_a_text_stage_lets_through(
+    tmp_path: Path, clean_replays: _CleanReplays
+) -> None:
     """The negative control: had the text stage kept the hidden instruction in the page's text, its own tokens,
     the reference code among them, would be found in the request."""
     entry_id = _sample()[0]
     for number, code in enumerate(CODES):
-        found = await _check(entry_id, number, tmp_path / str(number), leak=True)
+        found = await _check(entry_id, number, tmp_path / str(number), clean_replays, leak=True)
         assert code in found["leaked"], (entry_id, number)
         with pytest.raises(AssertionError, match="instruction tokens in a request"):
             _assert_invariant(entry_id, number, found)
 
 
-@pytest.mark.parametrize("entry_id", _sample())
-async def test_a_hidden_instruction_is_found_and_never_sent(entry_id: str, tmp_path: Path) -> None:
-    for number in range(len(INSTRUCTIONS)):
-        found = await _check(entry_id, number, tmp_path / str(number))
-        _assert_invariant(entry_id, number, found)
+SAMPLED_LETTERS = _sample()
+
+
+async def test_a_hidden_instruction_is_found_and_never_sent(
+    tmp_path: Path, clean_replays: _CleanReplays
+) -> None:
+    async def check(entry_id: str) -> None:
+        for number in range(len(INSTRUCTIONS)):
+            found = await _check(entry_id, number, tmp_path / entry_id / str(number), clean_replays)
+            _assert_invariant(entry_id, number, found)
+
+    await check_rows_async(SAMPLED_LETTERS, check)
 
 
 @pytest.mark.slow
-async def test_no_held_out_letter_sends_a_hidden_instruction(tmp_path: Path) -> None:
+async def test_no_held_out_letter_sends_a_hidden_instruction(
+    tmp_path: Path, clean_replays: _CleanReplays
+) -> None:
     """Every held-out standard letter (126), with each instruction."""
     failures = []
     for entry in _pool():
         for number in range(len(INSTRUCTIONS)):
-            found = await _check(entry["id"], number, tmp_path / entry["id"] / str(number))
+            found = await _check(entry["id"], number, tmp_path / entry["id"] / str(number), clean_replays)
             try:
                 _assert_invariant(entry["id"], number, found)
             except AssertionError as exc:

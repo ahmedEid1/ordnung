@@ -44,9 +44,14 @@ MANIFEST = DATASET / "manifest.json"
 
 if str(EVALS) not in sys.path:
     sys.path.insert(0, str(EVALS))
+# the table helper, also where the file runs with only evals/ on the path
+if str(ROOT / "tests") not in sys.path:
+    sys.path.insert(0, str(ROOT / "tests"))
 
 from gen import law  # noqa: E402
 from gen.common import DOCUMENT_KINDS  # noqa: E402
+
+from helpers_tables import check_rows  # noqa: E402
 
 SPLITS = ("dev", "test", "holdout", "holdout2", "holdout3")
 #: The final splits, from the plug-in ``evals/gen/final.py``.
@@ -150,24 +155,28 @@ NEWKINDS_FAMILIES = (
 )
 
 
-@pytest.mark.parametrize("name", FINAL_SPLITS)
-def test_final_split_composition(manifest: dict[str, Any], name: str) -> None:
-    entries = [e for e in _entries(manifest) if e["split"] == name]
-    want = FINAL_COMPOSITION[name]
-    got = {
-        "entries": len(entries),
-        "photos": sum(1 for e in entries if e["photo"]),
-        "adversarial": sum(1 for e in entries if e["family"] == "adversarial"),
-        "scored": _scored(entries),
-    }
-    assert got == want, name
-    assert manifest["counts"][name]["entries"] == want["entries"]
-    assert manifest["counts"][name]["photos"] == want["photos"]
-    for e in entries:
-        assert e["id"].startswith(f"{name}-"), e["id"]
-        assert (e["today"], e["final_day"], e["valid_until"]) == ("2026-11-24", "2026-11-24", "2026-12-01"), (
-            e["id"]
-        )
+def test_final_split_composition(manifest: dict[str, Any]) -> None:
+    def check(name: str) -> None:
+        entries = [e for e in _entries(manifest) if e["split"] == name]
+        want = FINAL_COMPOSITION[name]
+        got = {
+            "entries": len(entries),
+            "photos": sum(1 for e in entries if e["photo"]),
+            "adversarial": sum(1 for e in entries if e["family"] == "adversarial"),
+            "scored": _scored(entries),
+        }
+        assert got == want, name
+        assert manifest["counts"][name]["entries"] == want["entries"]
+        assert manifest["counts"][name]["photos"] == want["photos"]
+        for e in entries:
+            assert e["id"].startswith(f"{name}-"), e["id"]
+            assert (e["today"], e["final_day"], e["valid_until"]) == (
+                "2026-11-24",
+                "2026-11-24",
+                "2026-12-01",
+            ), e["id"]
+
+    check_rows(FINAL_SPLITS, check)
 
 
 def test_newkinds_has_four_one_page_letters_of_each_kind(manifest: dict[str, Any]) -> None:
@@ -175,13 +184,6 @@ def test_newkinds_has_four_one_page_letters_of_each_kind(manifest: dict[str, Any
     assert Counter(e["family"] for e in letters) == dict.fromkeys(NEWKINDS_FAMILIES, 4)
     assert all(e["pages"] == 1 for e in letters)
     assert not {e["family"] for e in _entries(manifest) if e["split"] != "newkinds"} & set(NEWKINDS_FAMILIES)
-
-
-def test_the_dataset_has_room_for_the_final_run_s_letters() -> None:
-    """holdout4 at twice holdout3's size and the newkinds letters take the dataset to about 31.5 MB: the cap these
-    checks hold it to is 40 MiB."""
-    assert fits(31_500_000) and fits(40 * 1024 * 1024 - 1)
-    assert not fits(40 * 1024 * 1024)
 
 
 def test_files_exist_with_matching_sha(manifest: dict[str, Any]) -> None:
@@ -395,15 +397,6 @@ def holdout3_twice(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [*(e for e in entries if e["split"] != FINAL_SPLIT), *copies]
 
 
-def test_a_final_split_made_like_holdout3_meets_the_per_family_rule(manifest: dict[str, Any]) -> None:
-    """A holdout4 made the way holdout3 is made, at twice its size, meets the rule as it stands: the families whose
-    letters carry no dated item in the earlier splits are not asked for four."""
-    entries = holdout3_twice(_entries(manifest))
-    assert len(dated_families(entries)) == 10
-    assert families_short_of_dated_text_letters(entries) == {}
-    assert (dated_text_letters_in(entries) or 0) >= DATED_TEXT_LETTERS_IN_ALL
-
-
 def test_the_per_family_rule_counts_dated_text_letters_only() -> None:
     """A photo, an adversarial letter and a letter whose only scored item has no single date do not count, and a
     family whose letters carried no dated item before is not asked for any."""
@@ -563,52 +556,60 @@ def test_labels_survive_the_independent_recheck() -> None:
     assert not report["window_problems"], report["window_problems"]
 
 
-@pytest.mark.parametrize(
-    ("region", "posted", "scope", "flagged"),
-    [
-        ("HH", "2025-03-03", "vwvfg", True),  # before the HmbVwVfG change took effect (14.05.2025)
-        ("HH", "2025-05-14", "vwvfg", False),
-        ("BW", "2025-02-06", "vwvfg", True),
-        ("BW", "2025-02-07", "vwvfg", False),
-        ("SH", "2025-06-09", "vwvfg", False),  # § 110 Abs. 2 LVwG: the 4th day from 1 January 2025
-        ("SH", "2025-01-02", "vwvfg", False),
-        ("TH", "2025-01-02", "vwvfg", False),
-        ("SH", "2024-12-20", "vwvfg", False),  # the old 3-day rule, certain in every Land
-        ("SH", "2025-03-03", "sgbx", False),  # not a Land VwVfG label
-        ("NW", "2025-01-02", "vwvfg", False),  # NW, BY and MV: 4 days from 1 Jan 2025
-        ("HE", "2026-09-29", "vwvfg", True),  # Hessen keeps the 3rd day: remedy cannot re-derive it
-        ("HE", "2024-12-20", "vwvfg", False),
-        ("RP", "2026-09-29", "vwvfg", True),  # no verified text
-        (None, "2026-09-29", "vwvfg", True),  # no Land
-    ],
-)
-def test_land_vwvfg_labels_avoid_the_uncertain_start_windows(
-    region: str | None, posted: str, scope: str, flagged: bool
-) -> None:
+LAND_WINDOW_EXAMPLES = [
+    ("HH", "2025-03-03", "vwvfg", True),  # before the HmbVwVfG change took effect (14.05.2025)
+    ("HH", "2025-05-14", "vwvfg", False),
+    ("BW", "2025-02-06", "vwvfg", True),
+    ("BW", "2025-02-07", "vwvfg", False),
+    ("SH", "2025-06-09", "vwvfg", False),  # § 110 Abs. 2 LVwG: the 4th day from 1 January 2025
+    ("SH", "2025-01-02", "vwvfg", False),
+    ("TH", "2025-01-02", "vwvfg", False),
+    ("SH", "2024-12-20", "vwvfg", False),  # the old 3-day rule, certain in every Land
+    ("SH", "2025-03-03", "sgbx", False),  # not a Land VwVfG label
+    ("NW", "2025-01-02", "vwvfg", False),  # NW, BY and MV: 4 days from 1 Jan 2025
+    ("HE", "2026-09-29", "vwvfg", True),  # Hessen keeps the 3rd day: remedy cannot re-derive it
+    ("HE", "2024-12-20", "vwvfg", False),
+    ("RP", "2026-09-29", "vwvfg", True),  # no verified text
+    (None, "2026-09-29", "vwvfg", True),  # no Land
+]
+
+
+def test_land_vwvfg_labels_avoid_the_uncertain_start_windows() -> None:
     """``remedy`` counts 4 days from 2025-01-01 in every Land; the guard catches a hand-read letter posted where that
     is not the Land's own day."""
     import verify_labels
 
-    item = {"expected_due": "2025-12-31", "spec": {"delivery_scope": scope, "posted_on": posted}}
-    entry = {"id": "x", "photo": False, "authority_region": region,
-             "truth": {"document_date": None, "items": [item], "optional_items": [], "contract": None}}  # fmt: skip
-    assert bool(verify_labels.check_land_windows([entry])) == flagged
+    def check(region: str | None, posted: str, scope: str, flagged: bool) -> None:
+        item = {"expected_due": "2025-12-31", "spec": {"delivery_scope": scope, "posted_on": posted}}
+        entry = {"id": "x", "photo": False, "authority_region": region,
+                 "truth": {"document_date": None, "items": [item], "optional_items": [], "contract": None}}  # fmt: skip
+        assert bool(verify_labels.check_land_windows([entry])) == flagged
+
+    check_rows(LAND_WINDOW_EXAMPLES, check)
 
 
-@pytest.mark.parametrize("pair", [(a, b) for i, a in enumerate(SPLITS) for b in SPLITS[i + 1 :]])
-def test_the_wording_check_covers_every_pair_of_splits(pair: tuple[str, str]) -> None:
+SPLIT_PAIRS = [(a, b) for i, a in enumerate(SPLITS) for b in SPLITS[i + 1 :]]
+
+
+def test_the_wording_check_covers_every_pair_of_splits() -> None:
     """A deadline sentence shared by any two splits is reported (it used to compare dev with test only)."""
     import verify_labels
 
-    shared = "Bitte antworten Sie uns binnen vierzehn Tagen nach dem Datum dieses Schreibens schriftlich."
-    entries = [{"id": f"{name}-x-A1", "split": name, "photo": False} for name in SPLITS]
-    texts = {  # each other split has a sentence of its own (named by a letter: digits are normalised away)
-        e["id"]: shared
-        if e["split"] in pair
-        else f"Ein Satz ohne jede Frist und ohne Termin, nur zur Info ({'VWXYZ'[SPLITS.index(e['split'])]})."
-        for e in entries
-    }
-    assert verify_labels.shared_deadline_sentences(entries, texts) == [f"{'+'.join(sorted(pair))}: {shared}"]
+    def check(a: str, b: str) -> None:
+        pair = (a, b)
+        shared = "Bitte antworten Sie uns binnen vierzehn Tagen nach dem Datum dieses Schreibens schriftlich."
+        entries = [{"id": f"{name}-x-A1", "split": name, "photo": False} for name in SPLITS]
+        texts = {  # each other split has a sentence of its own (named by a letter: digits are normalised away)
+            e["id"]: shared
+            if e["split"] in pair
+            else f"Ein Satz ohne jede Frist und ohne Termin, nur zur Info ({'VWXYZ'[SPLITS.index(e['split'])]})."
+            for e in entries
+        }
+        assert verify_labels.shared_deadline_sentences(entries, texts) == [
+            f"{'+'.join(sorted(pair))}: {shared}"
+        ]
+
+    check_rows(SPLIT_PAIRS, check)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -816,47 +817,50 @@ def _remedy(posted: date, scope: str, region: str | None) -> tuple[str, str]:
     return notified.isoformat(), end.isoformat()
 
 
-@pytest.mark.parametrize(
-    ("posted", "scope", "region", "notified", "end"),
-    [
-        (date(2026, 9, 29), "ao", "NW", "2026-10-05", "2026-11-05"),  # Sat 3.10. holiday → Mon 5.10.
-        (date(2026, 9, 24), "ao", None, "2026-09-28", "2026-10-28"),
-        (date(2026, 12, 22), "ao", "BE", "2026-12-28", "2027-01-28"),
-        (date(2026, 2, 27), "ao", "HE", "2026-03-03", "2026-04-07"),  # end on Karfreitag → Tue after Easter
-        (date(2026, 10, 28), "ao", "SN", "2026-11-02", "2026-12-02"),
-        (date(2024, 12, 30), "ao", "NW", "2025-01-02", "2025-02-03"),  # old 3-day rule
-        (date(2025, 1, 2), "ao", "NW", "2025-01-06", "2025-02-06"),
-        (date(2025, 1, 2), "ao", "BY", "2025-01-07", "2025-02-07"),  # Heilige Drei Könige in BY
-        (date(2025, 12, 31), "ao", None, "2026-01-05", "2026-02-05"),
-        (date(2025, 10, 27), "ao", "NI", "2025-11-03", "2025-12-03"),  # Reformationstag in NI
-        (date(2025, 10, 27), "ao", "BY", "2025-10-31", "2025-12-01"),
-        (date(2026, 9, 29), "sgbx", None, "2026-10-03", "2026-11-03"),  # no fiction shift outside tax law
-        (date(2026, 11, 27), "sgbx", "BE", "2026-12-01", "2027-01-04"),
-        (date(2026, 12, 23), "sgbx", None, "2026-12-27", "2027-01-27"),
-        (date(2026, 11, 25), "sgbx", None, "2026-11-29", "2026-12-29"),
-        (date(2026, 10, 27), "vwvfg", "NI", "2026-10-31", "2026-11-30"),
-        (date(2026, 9, 29), "vwvfg", "NW", "2026-10-03", "2026-11-03"),
-    ],
-)
-def test_law_reproduces_research_examples(
-    posted: date, scope: str, region: str | None, notified: str, end: str
-) -> None:
-    assert _remedy(posted, scope, region) == (notified, end)
+RESEARCH_EXAMPLES = [
+    (date(2026, 9, 29), "ao", "NW", "2026-10-05", "2026-11-05"),  # Sat 3.10. holiday → Mon 5.10.
+    (date(2026, 9, 24), "ao", None, "2026-09-28", "2026-10-28"),
+    (date(2026, 12, 22), "ao", "BE", "2026-12-28", "2027-01-28"),
+    (date(2026, 2, 27), "ao", "HE", "2026-03-03", "2026-04-07"),  # end on Karfreitag → Tue after Easter
+    (date(2026, 10, 28), "ao", "SN", "2026-11-02", "2026-12-02"),
+    (date(2024, 12, 30), "ao", "NW", "2025-01-02", "2025-02-03"),  # old 3-day rule
+    (date(2025, 1, 2), "ao", "NW", "2025-01-06", "2025-02-06"),
+    (date(2025, 1, 2), "ao", "BY", "2025-01-07", "2025-02-07"),  # Heilige Drei Könige in BY
+    (date(2025, 12, 31), "ao", None, "2026-01-05", "2026-02-05"),
+    (date(2025, 10, 27), "ao", "NI", "2025-11-03", "2025-12-03"),  # Reformationstag in NI
+    (date(2025, 10, 27), "ao", "BY", "2025-10-31", "2025-12-01"),
+    (date(2026, 9, 29), "sgbx", None, "2026-10-03", "2026-11-03"),  # no fiction shift outside tax law
+    (date(2026, 11, 27), "sgbx", "BE", "2026-12-01", "2027-01-04"),
+    (date(2026, 12, 23), "sgbx", None, "2026-12-27", "2027-01-27"),
+    (date(2026, 11, 25), "sgbx", None, "2026-11-29", "2026-12-29"),
+    (date(2026, 10, 27), "vwvfg", "NI", "2026-10-31", "2026-11-30"),
+    (date(2026, 9, 29), "vwvfg", "NW", "2026-10-03", "2026-11-03"),
+]
 
 
-@pytest.mark.parametrize(
-    ("served", "region", "end"),
-    [
-        (date(2026, 9, 17), "BY", "2026-10-01"),
-        (date(2026, 9, 19), "NW", "2026-10-05"),
-        (date(2026, 12, 11), "BE", "2026-12-28"),
-    ],
-)
-def test_law_two_week_fine_examples(served: date, region: str, end: str) -> None:
-    why = law.Derivation()
-    assert (
-        law.period_end(served, 2, "weeks", region, why, shift=True, shift_citation="test").isoformat() == end
-    )
+def test_law_reproduces_research_examples() -> None:
+    def check(posted: date, scope: str, region: str | None, notified: str, end: str) -> None:
+        assert _remedy(posted, scope, region) == (notified, end)
+
+    check_rows(RESEARCH_EXAMPLES, check)
+
+
+TWO_WEEK_FINE_EXAMPLES = [
+    (date(2026, 9, 17), "BY", "2026-10-01"),
+    (date(2026, 9, 19), "NW", "2026-10-05"),
+    (date(2026, 12, 11), "BE", "2026-12-28"),
+]
+
+
+def test_law_two_week_fine_examples() -> None:
+    def check(served: date, region: str, end: str) -> None:
+        why = law.Derivation()
+        assert (
+            law.period_end(served, 2, "weeks", region, why, shift=True, shift_citation="test").isoformat()
+            == end
+        )
+
+    check_rows(TWO_WEEK_FINE_EXAMPLES, check)
 
 
 def test_law_contract_examples() -> None:

@@ -14,6 +14,8 @@ from typing import Any
 
 import pytest
 
+from helpers_tables import check_rows
+
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -112,14 +114,21 @@ def _prediction(
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("k", "n", "low", "high"),
-    [(55, 56, 0.9045, 0.99955), (56, 56, 0.9362, 1.0), (163, 168, 0.9319, 0.9903), (0, 112, 0.0, 0.0324)],
-)
-def test_clopper_pearson_known_values(k: int, n: int, low: float, high: float) -> None:
-    lo, hi = score.clopper_pearson(k, n)
-    assert lo == pytest.approx(low, abs=6e-5)
-    assert hi == pytest.approx(high, abs=6e-5)
+CLOPPER_PEARSON_KNOWN_VALUES = [
+    (55, 56, 0.9045, 0.99955),
+    (56, 56, 0.9362, 1.0),
+    (163, 168, 0.9319, 0.9903),
+    (0, 112, 0.0, 0.0324),
+]
+
+
+def test_clopper_pearson_known_values() -> None:
+    def check(k: int, n: int, low: float, high: float) -> None:
+        lo, hi = score.clopper_pearson(k, n)
+        assert lo == pytest.approx(low, abs=6e-5)
+        assert hi == pytest.approx(high, abs=6e-5)
+
+    check_rows(CLOPPER_PEARSON_KNOWN_VALUES, check)
 
 
 def test_clopper_pearson_is_monotone_and_handles_no_data() -> None:
@@ -130,11 +139,14 @@ def test_clopper_pearson_is_monotone_and_handles_no_data() -> None:
     assert score.clopper_pearson(0, 0) == (0.0, 1.0)
 
 
-@pytest.mark.parametrize(
-    ("b", "c", "p"), [(31, 4, 3.47e-6), (4, 31, 3.47e-6), (14, 5, 0.0636), (13, 0, 2.44e-4)]
-)
-def test_mcnemar_exact_known_values(b: int, c: int, p: float) -> None:
-    assert score.mcnemar_exact(b, c) == pytest.approx(p, rel=5e-3)
+MCNEMAR_EXACT_KNOWN_VALUES = [(31, 4, 3.47e-6), (4, 31, 3.47e-6), (14, 5, 0.0636), (13, 0, 2.44e-4)]
+
+
+def test_mcnemar_exact_known_values() -> None:
+    def check(b: int, c: int, p: float) -> None:
+        assert score.mcnemar_exact(b, c) == pytest.approx(p, rel=5e-3)
+
+    check_rows(MCNEMAR_EXACT_KNOWN_VALUES, check)
 
 
 def test_mcnemar_exact_without_discordant_pairs_is_one() -> None:
@@ -428,25 +440,27 @@ def test_a_replay_on_other_code_or_another_python_equals_the_live_recording() ->
     assert score.compare(live, replay) == ["cells.I1.ordnung.targeted.k"]
 
 
-@pytest.mark.parametrize(
-    ("path", "value"),
-    [
-        ("cells.I1.ordnung.targeted.k", None),  # a count, one more
-        ("meta.today", "2026-11-28"),
-        ("meta.runs.D1.dirty", ["evals/perturb/score.py"]),
-        ("meta.runs.clean.dataset.manifest_sha256", "e" * 64),
-        ("meta.runs.I1.repeat", 2),
-        ("meta.cells", ["I1"]),
-    ],
-)
-def test_a_replay_still_differs_by_each_number_day_and_changed_path(path: str, value: Any) -> None:
-    live, replay = _recorded_and_replayed()
-    *parents, last = path.split(".")
-    target = replay
-    for key in parents:
-        target = target[key]
-    target[last] = target[last] + 1 if value is None else value
-    assert score.compare(live, replay) == [path]
+REPLAY_DIFFERENCES = [
+    ("cells.I1.ordnung.targeted.k", None),  # a count, one more
+    ("meta.today", "2026-11-28"),
+    ("meta.runs.D1.dirty", ["evals/perturb/score.py"]),
+    ("meta.runs.clean.dataset.manifest_sha256", "e" * 64),
+    ("meta.runs.I1.repeat", 2),
+    ("meta.cells", ["I1"]),
+]
+
+
+def test_a_replay_still_differs_by_each_number_day_and_changed_path() -> None:
+    def check(path: str, value: Any) -> None:
+        live, replay = _recorded_and_replayed()
+        *parents, last = path.split(".")
+        target = replay
+        for key in parents:
+            target = target[key]
+        target[last] = target[last] + 1 if value is None else value
+        assert score.compare(live, replay) == [path]
+
+    check_rows(REPLAY_DIFFERENCES, check)
 
 
 def test_noise_floor_rates_sit_beside_the_cells() -> None:

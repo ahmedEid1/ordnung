@@ -419,7 +419,8 @@ async def _tax_choice_everywhere(api: Api, doc_id: str) -> tuple[object, object,
 
 async def test_patch_tax_choice_marks_unmarks_and_clears(data_dir: Path) -> None:
     """true → false → null: each answers the letter (its own fields as they were, Claude's mark kept), and the
-    letter's page, its row and the records say the choice. The letter's row in the database isn't touched."""
+    letter's page, its row and the records say the choice. The letter's row in the database isn't touched.
+    A tax_choice that is not true, false or null is refused with 422 and stores nothing."""
     async with api_for(data_dir) as api:
         doc_id = await _read_letter(api, TAX_LETTER.pdf())
         before = api.ctx.store.get_document(doc_id)
@@ -432,6 +433,10 @@ async def test_patch_tax_choice_marks_unmarks_and_clears(data_dir: Path) -> None
             assert "tax_choice" not in response.json()
             assert await _tax_choice_everywhere(api, doc_id) == (choice, choice, choice)
             assert api.ctx.store.get_document(doc_id) == before  # updated_at too
+        assert api.ctx.store.tax_choices() == {}
+        for bad in ("yes", "true", 1, 2, [True], {"choice": True}):
+            response = await api.client.patch(f"/api/documents/{doc_id}", json={"tax_choice": bad})
+            assert response.status_code == 422, bad
         assert api.ctx.store.tax_choices() == {}
         # with the letter's own fields in one request
         both = await api.client.patch(
@@ -542,15 +547,6 @@ async def test_patch_tax_choice_publishes_document_updated_and_refreshes_ideas(
         assert events == [("document.updated", {"doc_id": doc_id})] and refreshes == []
 
 
-async def test_patch_rejects_a_tax_choice_that_isnt_true_false_or_null(data_dir: Path) -> None:
-    async with api_for(data_dir) as api:
-        doc_id = await _read_letter(api, TAX_LETTER.pdf())
-        for bad in ("yes", "true", 1, 2, [True], {"choice": True}):
-            response = await api.client.patch(f"/api/documents/{doc_id}", json={"tax_choice": bad})
-            assert response.status_code == 422, bad
-        assert api.ctx.store.tax_choices() == {}
-
-
 async def test_a_paired_phone_can_mark_a_letter_for_taxes(data_dir: Path) -> None:
     """The same correction as on the computer, logged as "Corrected a letter"; the records stay computer only."""
     from phone_support import pair, phone_app, phone_client
@@ -599,6 +595,8 @@ async def test_a_reminders_pay_once_warning_follows_the_kind_it_is_filed_as(data
 
 
 async def test_confirmed_arrival_date_recomputes_the_to_dos(data_dir: Path) -> None:
+    """A confirmed arrival date recomputes the dates counted from it; a due date set by hand survives a later
+    change of the arrival date."""
     async with api_for(data_dir) as api:
         doc_id = await _read_letter(api, FINE_LETTER.pdf())
         (fine,) = (await api.client.get("/api/items", params={"doc_id": doc_id})).json()
@@ -624,13 +622,9 @@ async def test_confirmed_arrival_date_recomputes_the_to_dos(data_dir: Path) -> N
             entry["kind"] for entry in (await api.client.get("/api/activity")).json()
         ]
 
-
-async def test_manual_dates_are_not_recomputed(data_dir: Path) -> None:
-    async with api_for(data_dir) as api:
-        doc_id = await _read_letter(api, FINE_LETTER.pdf())
-        (fine,) = (await api.client.get("/api/items", params={"doc_id": doc_id})).json()
-        await api.client.patch(f"/api/items/{fine['id']}", json={"due_date": "2026-10-01"})
-        await api.client.patch(f"/api/documents/{doc_id}", json={"received_date": "2026-09-18"})
+        # a date the person set by hand is kept when the arrival date changes again
+        await api.client.patch(f"/api/items/{recomputed['id']}", json={"due_date": "2026-10-01"})
+        await api.client.patch(f"/api/documents/{doc_id}", json={"received_date": "2026-09-17"})
         (kept,) = (await api.client.get("/api/items", params={"doc_id": doc_id})).json()
         assert kept["due_date"] == "2026-10-01" and kept["due_date_source"] == "manual"
 
@@ -641,27 +635,16 @@ async def test_manual_dates_are_not_recomputed(data_dir: Path) -> None:
 
 
 async def test_reprocess_queues_a_forced_job(data_dir: Path) -> None:
-    async with api_for(data_dir) as api:
-        doc_id = await _read_letter(api, INVOICE_LETTER.pdf())
-        response = await api.client.post(f"/api/documents/{doc_id}/reprocess")
-        assert response.status_code == 202
-        job = response.json()
-        assert (job["kind"], job["force"], job["doc_id"]) == ("reprocess", True, doc_id)
-        assert await api.read_all() == 1
-        assert (await api.client.get(f"/api/documents/{doc_id}")).json()["document"]["status"] == "processed"
-        assert [call.purpose for call in api.backend.calls] == ["extract", "extract"]  # cache bypassed
-
-
-async def test_read_again_while_a_reading_waits_or_runs_queues_no_second_one(data_dir: Path) -> None:
-    """Two quick “Read again” (a double click, or the phone as well) get the same job back, also while it
-    runs: Claude reads the letter once."""
+    """Read again queues a forced job that reads the letter past the cache. Two quick “Read again” (a double
+    click, or the phone as well) get the same job back, also while it runs: Claude reads the letter once."""
     async with api_for(data_dir) as api:
         doc_id = await _read_letter(api, INVOICE_LETTER.pdf())
         url = f"/api/documents/{doc_id}/reprocess"
         first, second = await asyncio.gather(api.client.post(url), api.client.post(url))
         assert first.status_code == second.status_code == 202
         job = first.json()
-        assert second.json() == job and (job["kind"], job["force"]) == ("reprocess", True)
+        assert (job["kind"], job["force"], job["doc_id"]) == ("reprocess", True, doc_id)
+        assert second.json() == job
 
         running = api.ctx.store.claim_next_job()
         assert running is not None and running.id == job["id"]
@@ -672,7 +655,8 @@ async def test_read_again_while_a_reading_waits_or_runs_queues_no_second_one(dat
 
         api.ctx.store.update_job(job["id"], status="queued")  # give it back to the worker
         assert await api.read_all() == 1
-        assert [call.purpose for call in api.backend.calls] == ["extract", "extract"]
+        assert (await api.client.get(f"/api/documents/{doc_id}")).json()["document"]["status"] == "processed"
+        assert [call.purpose for call in api.backend.calls] == ["extract", "extract"]  # cache bypassed
 
 
 async def test_delete_moves_to_trash_or_purges(data_dir: Path) -> None:
@@ -704,11 +688,11 @@ async def test_delete_moves_to_trash_or_purges(data_dir: Path) -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-def _failing_route(app: FastAPI, exc: Exception) -> None:
+def _failing_route(app: FastAPI, exc: Exception, path: str = "/api/test-boom") -> None:
     async def boom() -> None:
         raise exc
 
-    app.add_api_route("/api/test-boom", boom, methods=["GET"])
+    app.add_api_route(path, boom, methods=["GET"])
     app.router.routes.insert(0, app.router.routes.pop())  # before the web app's catch-all
 
 
@@ -722,9 +706,8 @@ async def test_model_failures_become_503_with_a_code(data_dir: Path) -> None:
             "code": "claude_auth",
         }
 
-    async with api_for(data_dir) as api:
-        _failing_route(api.app, ClaudeRateLimited("Usage limit reached", reset_at="3pm"))
-        response = await api.client.get("/api/test-boom")
+        _failing_route(api.app, ClaudeRateLimited("Usage limit reached", reset_at="3pm"), "/api/test-limit")
+        response = await api.client.get("/api/test-limit")
         assert response.status_code == 503
         assert response.json()["code"] == "llm_paused" and response.headers["retry-after"]
 

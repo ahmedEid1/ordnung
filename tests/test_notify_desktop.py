@@ -17,6 +17,7 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from helpers_secretary import TODAY, seed_ledger
+from helpers_tables import check_rows
 from ordnung import clock
 from ordnung.db.store import Store
 from ordnung.llm.runtime import LLMService
@@ -76,7 +77,7 @@ def agenda(**sections: list[AgendaEntry]) -> Agenda:
 # --------------------------------------------------------------------------------------------------
 
 
-def test_the_example_from_the_brief() -> None:
+def test_discreet_counts_the_things_and_full_lists_each_with_amount_and_day() -> None:
     week = agenda(
         next_7_days=[entry("Pay the parking fine", MON + timedelta(days=3), amount=30.0)],
         decisions=[entry("FitWell membership", MON + timedelta(days=3), kind="contract", amount=24.9)],
@@ -306,43 +307,47 @@ def test_contract_decisions_count_only_within_the_week() -> None:
     )
 
 
-@pytest.mark.parametrize(
-    ("count", "overdue", "expected"),
-    [
-        (1, 0, "1 thing due this week"),
-        (3, 0, "3 things due this week"),
-        (1, 1, "1 thing overdue"),
-        (2, 2, "2 things overdue"),
-        (3, 1, "1 overdue · 2 due this week"),
-    ],
-)
-def test_summary_wording(count: int, overdue: int, expected: str) -> None:
-    things = [
-        entry(f"t{i}", MON - timedelta(days=1) if i < overdue else MON + timedelta(days=1))
-        for i in range(count)
-    ]
-    week = agenda(overdue=things[:overdue], next_7_days=things[overdue:])
-    assert summary(things_due(week)) == expected
+SUMMARY_WORDING = [
+    (1, 0, "1 thing due this week"),
+    (3, 0, "3 things due this week"),
+    (1, 1, "1 thing overdue"),
+    (2, 2, "2 things overdue"),
+    (3, 1, "1 overdue · 2 due this week"),
+]
 
 
-@pytest.mark.parametrize(
-    ("today", "overdue", "later", "expected"),
-    [
-        (1, 0, 0, "1 thing due today"),
-        (2, 0, 0, "2 things due today"),
-        (2, 1, 0, "2 due today · 1 overdue"),
-        (2, 0, 3, "2 due today · 3 more this week"),
-        (3, 4, 5, "3 due today · 4 overdue · 5 more this week"),
-    ],
-)
-def test_what_ends_today_is_counted_apart(today: int, overdue: int, later: int, expected: str) -> None:
-    week = agenda(
-        overdue=[entry(f"o{i}", MON - timedelta(days=1)) for i in range(overdue)],
-        today=[entry(f"t{i}", MON) for i in range(today)],
-        next_7_days=[entry(f"l{i}", MON + timedelta(days=2)) for i in range(later)],
-    )
-    assert summary(things_due(week)) == expected
-    assert compose(week, "discreet") == Notification("Ordnung", expected)
+def test_summary_wording() -> None:
+    def check(count: int, overdue: int, expected: str) -> None:
+        things = [
+            entry(f"t{i}", MON - timedelta(days=1) if i < overdue else MON + timedelta(days=1))
+            for i in range(count)
+        ]
+        week = agenda(overdue=things[:overdue], next_7_days=things[overdue:])
+        assert summary(things_due(week)) == expected
+
+    check_rows(SUMMARY_WORDING, check)
+
+
+WHAT_ENDS_TODAY_IS_COUNTED_APART = [
+    (1, 0, 0, "1 thing due today"),
+    (2, 0, 0, "2 things due today"),
+    (2, 1, 0, "2 due today · 1 overdue"),
+    (2, 0, 3, "2 due today · 3 more this week"),
+    (3, 4, 5, "3 due today · 4 overdue · 5 more this week"),
+]
+
+
+def test_what_ends_today_is_counted_apart() -> None:
+    def check(today: int, overdue: int, later: int, expected: str) -> None:
+        week = agenda(
+            overdue=[entry(f"o{i}", MON - timedelta(days=1)) for i in range(overdue)],
+            today=[entry(f"t{i}", MON) for i in range(today)],
+            next_7_days=[entry(f"l{i}", MON + timedelta(days=2)) for i in range(later)],
+        )
+        assert summary(things_due(week)) == expected
+        assert compose(week, "discreet") == Notification("Ordnung", expected)
+
+    check_rows(WHAT_ENDS_TODAY_IS_COUNTED_APART, check)
 
 
 def test_short_days() -> None:
@@ -354,19 +359,21 @@ def test_short_days() -> None:
     assert short_day(date(2027, 1, 2), date(2026, 12, 20)) == "Sat 2 Jan 2027"
 
 
-@pytest.mark.parametrize(
-    ("raw", "expected"),
-    [
-        ("Pay\nthe\tfine", "Pay the fine"),
-        ("\u202eenif eht yaP", "enif eht yaP"),  # a right-to-left override can't reverse the text
-        ("Pay\x1b]52;c;ZWNobw==\x07 now", "Pay ]52;c;ZWNobw== now"),  # no terminal/escape sequences
-        ("-- --help", "help"),
-        ("— Pay it", "Pay it"),
-        ("x" * 80, "x" * 59 + "…"),
-    ],
-)
-def test_letters_words_are_cleaned(raw: str, expected: str) -> None:
-    assert clean(raw) == expected
+LETTERS_WORDS_ARE_CLEANED = [
+    ("Pay\nthe\tfine", "Pay the fine"),
+    ("\u202eenif eht yaP", "enif eht yaP"),  # a right-to-left override can't reverse the text
+    ("Pay\x1b]52;c;ZWNobw==\x07 now", "Pay ]52;c;ZWNobw== now"),  # no terminal/escape sequences
+    ("-- --help", "help"),
+    ("— Pay it", "Pay it"),
+    ("x" * 80, "x" * 59 + "…"),
+]
+
+
+def test_letters_words_are_cleaned() -> None:
+    def check(raw: str, expected: str) -> None:
+        assert clean(raw) == expected
+
+    check_rows(LETTERS_WORDS_ARE_CLEANED, check)
 
 
 def test_a_hostile_title_cannot_become_an_option_or_markup() -> None:
@@ -465,18 +472,20 @@ def test_send_on_windows_adds_the_texts_to_the_environment() -> None:
     assert env["ORDNUNG_NOTIFY_BODY"] == NOTE.body and "PATH" in env
 
 
-@pytest.mark.parametrize(
-    ("run", "detail"),
-    [
-        (FakeRun(returncode=1), "failed (exit code 1)"),
-        (FakeRun(raises=subprocess.TimeoutExpired("notify-send", 10)), "didn't answer within 10 seconds"),
-        (FakeRun(raises=FileNotFoundError(2, "No such file")), "couldn't be started"),
-    ],
-)
-def test_send_fails_quietly(run: FakeRun, detail: str) -> None:
-    result = send(NOTE, system="linux", which=which_of("notify-send"), run=run)
-    assert not result.sent and result.mechanism == "notify-send"
-    assert result.detail is not None and detail in result.detail
+SEND_FAILS_QUIETLY = [
+    (FakeRun(returncode=1), "failed (exit code 1)"),
+    (FakeRun(raises=subprocess.TimeoutExpired("notify-send", 10)), "didn't answer within 10 seconds"),
+    (FakeRun(raises=FileNotFoundError(2, "No such file")), "couldn't be started"),
+]
+
+
+def test_send_fails_quietly() -> None:
+    def check(run: FakeRun, detail: str) -> None:
+        result = send(NOTE, system="linux", which=which_of("notify-send"), run=run)
+        assert not result.sent and result.mechanism == "notify-send"
+        assert result.detail is not None and detail in result.detail
+
+    check_rows(SEND_FAILS_QUIETLY, check)
 
 
 def test_a_missing_tool_is_explained() -> None:
@@ -661,23 +670,24 @@ async def test_the_tick_shows_it_on_every_check_until_it_has(store: Store) -> No
     assert sender.notes == [Notification("Ordnung", "1 overdue · 3 due this week")]
 
 
-@pytest.mark.parametrize(
-    ("at", "now", "sleep"),
-    [
-        ("23:50", (23, 48), 121.0),  # would be skipped: 23:48 is too early, the next check is tomorrow
-        ("08:00", (7, 50), 601.0),
-        ("08:00", (6, 0), 900.0),  # the usual interval
-        ("08:00", (7, 59, 50), 30.0),  # never less than half a minute
-    ],
-)
-def test_the_tick_wakes_up_for_the_notification(
-    store: Store, at: str, now: tuple[int, ...], sleep: float
-) -> None:
+THE_TICK_WAKES_UP_FOR_THE_NOTIFICATION = [
+    ("23:50", (23, 48), 121.0),  # would be skipped: 23:48 is too early, the next check is tomorrow
+    ("08:00", (7, 50), 601.0),
+    ("08:00", (6, 0), 900.0),  # the usual interval
+    ("08:00", (7, 59, 50), 30.0),  # never less than half a minute
+]
+
+
+def test_the_tick_wakes_up_for_the_notification(store: Store) -> None:
     seed_ledger(store)
-    switch_on(store, at=at)
-    moment = datetime(2026, 9, 28, *now, tzinfo=ZoneInfo("Europe/Berlin"))
-    tick = DailyTick(Ctx(store=store, llm=None), now=lambda _s: moment)
-    assert tick.next_check_in() == pytest.approx(sleep)
+
+    def check(at: str, now: tuple[int, ...], sleep: float) -> None:
+        switch_on(store, at=at)
+        moment = datetime(2026, 9, 28, *now, tzinfo=ZoneInfo("Europe/Berlin"))
+        tick = DailyTick(Ctx(store=store, llm=None), now=lambda _s: moment)
+        assert tick.next_check_in() == pytest.approx(sleep)
+
+    check_rows(THE_TICK_WAKES_UP_FOR_THE_NOTIFICATION, check)
 
 
 async def test_a_late_time_is_shown_on_the_day(store: Store) -> None:

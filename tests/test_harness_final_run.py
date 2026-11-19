@@ -32,6 +32,7 @@ from evals import harness, reproduce  # noqa: E402
 from evals import run as eval_run  # noqa: E402
 from evals.records import Prediction, load_manifest  # noqa: E402
 
+from ordnung.config import OCR_SWITCH  # noqa: E402
 from ordnung.llm.base import ClaudeTimeout, LLMRequest  # noqa: E402
 from ordnung.llm.fake import FakeBackend  # noqa: E402
 from test_evals_run import Responder  # noqa: E402
@@ -154,6 +155,27 @@ def record_two_days(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, manifest: P
     _at(monkeypatch, D2)
     assert run(tmp_path, manifest, "--live", "--today", D2.isoformat()) == 0
     return tmp_path / "results" / f"{D1.isoformat()}-{MODEL}-{SPLIT}.json"
+
+
+@pytest.fixture(scope="module")
+def _two_days_once(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """The synthetic final split recorded on two days (``record_two_days``), made once: a folder to copy."""
+    folder = tmp_path_factory.mktemp("two-days")
+    with pytest.MonkeyPatch.context() as patch:
+        # a module fixture is set up before tests/conftest.py's autouse fixtures: it gives itself what they give
+        patch.setenv(OCR_SWITCH, "off")
+        patch.delenv("ORDNUNG_CLAUDE_BIN", raising=False)
+        patch.delenv("ORDNUNG_BACKEND", raising=False)
+        record_two_days(folder, patch, final_split(folder))
+    return folder
+
+
+@pytest.fixture
+def two_days(_two_days_once: Path, tmp_path: Path) -> Path:
+    """A copy of the two-day recording in this test's folder (its dataset, recordings and results); the
+    manifest's path. The test sets the clock and the live ``claude`` itself where it needs them."""
+    shutil.copytree(_two_days_once, tmp_path, dirs_exist_ok=True)
+    return tmp_path / "dataset" / "manifest.json"
 
 
 def predictions(results: dict[str, Any]) -> dict[str, Any]:
@@ -343,12 +365,11 @@ def test_an_incomplete_unit_of_another_day_is_refused_until_it_is_retaken(
 
 
 def test_a_complete_unit_never_reaches_the_model_again(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, two_days: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """A complete unit replays from its recordings; were one of them gone, its call would record a valid answer
     again (on another day): it is refused, and the run fails instead."""
-    manifest = final_split(tmp_path)
-    record_two_days(tmp_path, monkeypatch, manifest)
+    manifest = two_days
     first = letters(manifest)[0]
     lock = json.loads((root(tmp_path) / harness.LOCK_FILE).read_text(encoding="utf-8"))
     key = next(key for key, entry in lock.items() if entry["docs"] == [first])
@@ -378,11 +399,13 @@ async def test_the_live_calls_refuse_a_closed_unit_s_letter() -> None:
     assert len(inner.calls) == 1
 
 
-def test_retake_refuses_a_complete_unit_and_an_unknown_one(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+def test_retake_refuses_a_complete_unit_an_unknown_one_and_a_whole_run_of_the_benchmark(
+    tmp_path: Path, two_days: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    manifest = final_split(tmp_path)
-    record_two_days(tmp_path, monkeypatch, manifest)
+    """Retake moves nothing aside for a complete unit, a letter without cassettes or a call without the
+    recordings' folder. ``--whole-run`` is an Ask run's or a stress invocation's: it names its folder, never with
+    --split, and never the benchmark's recordings (where the final splits' day index lives)."""
+    manifest = two_days
     first = letters(manifest)[0]
     before = cassettes(root(tmp_path))
     common = ["--split", SPLIT, "--repeat", "1", "--to", str(tmp_path / "aside")]
@@ -393,6 +416,19 @@ def test_retake_refuses_a_complete_unit_and_an_unknown_one(
     assert "no cassette" in capsys.readouterr().err
     assert harness.main(["retake", "--repeat", "1", "--to", str(tmp_path / "aside"), "--ids", first]) == 2
     assert cassettes(root(tmp_path)) == before and not (tmp_path / "aside").exists()
+    capsys.readouterr()
+    aside = ["--to", str(tmp_path / "aside")]
+    folder = ["--recorded-dir", str(tmp_path / "recorded")]
+    assert harness.main(["retake", "--whole-run", "--repeat", "1", *aside, *folder]) == 2
+    assert "day index" in capsys.readouterr().err
+    assert (
+        harness.main(["retake", "--split", "newkinds", "--whole-run", "--repeat", "1", *aside, *folder]) == 2
+    )
+    assert "--split" in capsys.readouterr().err
+    assert harness.main(["retake", "--whole-run", "--repeat", "1", *aside]) == 2
+    assert "--recorded-dir" in capsys.readouterr().err
+    assert cassettes(root(tmp_path)) == before and len(units(tmp_path)) == 3
+    assert not (tmp_path / "aside").exists()
 
 
 def test_retake_moves_a_whole_run_of_one_repeat(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -623,10 +659,10 @@ class _NoModel:
 
 
 def test_a_replay_gives_each_letter_its_unit_s_day_from_the_day_index(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, two_days: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    manifest = final_split(tmp_path)
-    live = record_two_days(tmp_path, monkeypatch, manifest)
+    manifest = two_days
+    live = tmp_path / "results" / f"{D1.isoformat()}-{MODEL}-{SPLIT}.json"
     monkeypatch.setattr(eval_run, "ClaudeCLIBackend", _NoModel)
     _at(monkeypatch, D2 + timedelta(days=30))  # any later day
     replayed = tmp_path / "replayed"
@@ -794,28 +830,6 @@ def test_a_resume_with_nothing_left_to_record_keeps_the_read_s_day(
     assert data["meta"]["recording_day"] == D1.isoformat()
     assert data["meta"]["recording_days"] == [D1.isoformat()]
     reproduce._row(live, data, "run", "final")
-
-
-def test_a_whole_run_retake_never_touches_a_benchmark_s_recordings(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """``--whole-run`` is an Ask run's or a stress invocation's: it names its folder, never with --split, and never
-    the benchmark's recordings (where the final splits' day index lives)."""
-    manifest = final_split(tmp_path)
-    record_two_days(tmp_path, monkeypatch, manifest)
-    before = cassettes(root(tmp_path))
-    aside = ["--to", str(tmp_path / "aside")]
-    folder = ["--recorded-dir", str(tmp_path / "recorded")]
-    assert harness.main(["retake", "--whole-run", "--repeat", "1", *aside, *folder]) == 2
-    assert "day index" in capsys.readouterr().err
-    assert (
-        harness.main(["retake", "--split", "newkinds", "--whole-run", "--repeat", "1", *aside, *folder]) == 2
-    )
-    assert "--split" in capsys.readouterr().err
-    assert harness.main(["retake", "--whole-run", "--repeat", "1", *aside]) == 2
-    assert "--recorded-dir" in capsys.readouterr().err
-    assert cassettes(root(tmp_path)) == before and len(units(tmp_path)) == 3
-    assert not (tmp_path / "aside").exists()
 
 
 def test_the_ask_and_stress_stops_name_the_whole_retake_command() -> None:

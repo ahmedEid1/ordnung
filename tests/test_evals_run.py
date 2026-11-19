@@ -9,6 +9,9 @@ assessment, a phone photo of an invoice and a contract confirmation) and check t
 
 from __future__ import annotations
 
+import asyncio
+import copy
+import functools
 import json
 import sys
 from collections.abc import AsyncIterator
@@ -28,7 +31,9 @@ from evals import run as eval_run  # noqa: E402
 from evals.conditions import TOOL_PREFIX  # noqa: E402
 from evals.records import Entry, TruthItem, load_manifest  # noqa: E402
 
+from helpers_tables import check_rows, check_rows_async  # noqa: E402
 from ordnung.assistant.rules_tools import RulesTools, render  # noqa: E402
+from ordnung.config import OCR_SWITCH  # noqa: E402
 from ordnung.llm.base import (  # noqa: E402
     ClaudeBadOutput,
     LLMError,
@@ -62,21 +67,33 @@ def _german(value: str | None) -> str:
     return "" if not value else f"{value[8:10]}.{value[5:7]}.{value[:4]}"
 
 
+@functools.cache
+def _manifest_views() -> tuple[dict[str, dict[str, Any]], dict[str, Entry]]:
+    """The benchmark's manifest, raw and as entries, by id: parsed once and only ever read."""
+    raw = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    return {entry["id"]: entry for entry in raw["entries"]}, {
+        entry.id: entry for entry in load_manifest(MANIFEST)
+    }
+
+
+@functools.cache
+def _pdf_text(path: Path) -> str:
+    """A letter file's text, extracted once per file (keyed by the file, not by an entry's id)."""
+    with pdfplumber.open(path) as pdf:
+        return "\n".join(page.extract_text() or "" for page in pdf.pages)
+
+
 class Responder:
     """Answers transcribe, extract and eval_baseline requests for the benchmark's own letters."""
 
     def __init__(self) -> None:
-        raw = json.loads(MANIFEST.read_text(encoding="utf-8"))
-        self.raw = {entry["id"]: entry for entry in raw["entries"]}
-        self.entries = {entry.id: entry for entry in load_manifest(MANIFEST)}
-        self.texts: dict[str, str] = {}
+        raw, entries = _manifest_views()
+        self.raw = dict(raw)
+        self.entries = dict(entries)
 
     def text(self, entry: Entry) -> str:
         source = self.entries[entry.source_id] if entry.source_id else entry
-        if source.id not in self.texts:
-            with pdfplumber.open(source.path(MANIFEST.parent)) as pdf:
-                self.texts[source.id] = "\n".join(page.extract_text() or "" for page in pdf.pages)
-        return self.texts[source.id]
+        return _pdf_text(source.path(MANIFEST.parent).resolve())
 
     def quote(self, entry: Entry, *needles: str) -> str:
         lines = [line.strip() for line in self.text(entry).splitlines() if line.strip()]
@@ -614,21 +631,20 @@ async def test_an_empty_reading_s_read_this_letter_placeholder_is_never_scored(t
     assert any("came back almost blank" in warning for warning in prediction.warnings)
 
 
-@pytest.mark.parametrize(
-    "module",
-    [
-        "ingest/gaps.py",
-        "ingest/conflicts.py",
-        "recurrence.py",  # a working day or day of the month: graded by plan
-        "money/iban.py",  # the invalid-IBAN signal
-        "llm/claude_cli.py",  # parses every condition's answer
-        "llm/runtime.py",  # the replay key itself: outside the hand-written list the digest had until 0.4.0
-        "payments.py",
-        "brand_new_module.py",  # a file added anywhere under src/ordnung/
-    ],
-)
+PREDICTION_CACHE_MODULES = [
+    "ingest/gaps.py",
+    "ingest/conflicts.py",
+    "recurrence.py",  # a working day or day of the month: graded by plan
+    "money/iban.py",  # the invalid-IBAN signal
+    "llm/claude_cli.py",  # parses every condition's answer
+    "llm/runtime.py",  # the replay key itself: outside the hand-written list the digest had until 0.4.0
+    "payments.py",
+    "brand_new_module.py",  # a file added anywhere under src/ordnung/
+]
+
+
 def test_the_prediction_cache_depends_on_every_source_file(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, module: str
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A stale cache must never stand in for a replay: any change to the package's code is a new fingerprint for
     every condition, so a resumed run predicts again."""
@@ -641,15 +657,28 @@ def test_the_prediction_cache_depends_on_every_source_file(
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(path.read_bytes())
     monkeypatch.setattr(conditions, "_SRC", copy)
-    conditions._code_digest.cache_clear()
-    try:
+
+    def check(module: str) -> None:
+        # Each row starts from the unchanged tree: its own "before", and its change undone afterwards.
+        conditions._code_digest.cache_clear()
         before = {condition: conditions._code_digest(condition) for condition in eval_run.CONDITIONS}
         path = copy / module
-        old = path.read_text(encoding="utf-8") if path.exists() else ""
-        path.write_text(old + "\n# changed\n", encoding="utf-8")
-        conditions._code_digest.cache_clear()
-        after = {condition: conditions._code_digest(condition) for condition in eval_run.CONDITIONS}
-        assert all(after[condition] != before[condition] for condition in eval_run.CONDITIONS)
+        existed = path.exists()
+        old = path.read_text(encoding="utf-8") if existed else ""
+        original = path.read_bytes() if existed else b""
+        try:
+            path.write_text(old + "\n# changed\n", encoding="utf-8")
+            conditions._code_digest.cache_clear()
+            after = {condition: conditions._code_digest(condition) for condition in eval_run.CONDITIONS}
+            assert all(after[condition] != before[condition] for condition in eval_run.CONDITIONS)
+        finally:
+            if existed:
+                path.write_bytes(original)
+            else:
+                path.unlink()
+
+    try:
+        check_rows(PREDICTION_CACHE_MODULES, check)
     finally:
         monkeypatch.undo()
         conditions._code_digest.cache_clear()
@@ -759,7 +788,7 @@ def test_cli_rejects_bad_arguments() -> None:
     assert eval_run.run_cli(["--split", "dev", "--families", "no_such_family", "--quiet"]) == 1
 
 
-def test_backends(tmp_path: Path) -> None:
+def test_make_backend_stacks_replay_recording_lock_and_repeat_as_the_run_asks(tmp_path: Path) -> None:
     config = make_config(tmp_path)
     locked = eval_run.make_backend(config, "claude-family-x-1", {"a"})
     assert isinstance(locked, harness.LockedRequests) and not locked.record
@@ -834,7 +863,7 @@ def test_pending_page_and_svg_fallback(tmp_path: Path) -> None:
     assert [label for label, _ in report.chart_groups(results)] == ["All letters", "Text PDFs"]
 
 
-def test_manifest_views() -> None:
+def test_the_manifest_gives_a_photo_its_cluster_and_region_and_selects_letters() -> None:
     entries = {entry.id: entry for entry in load_manifest(MANIFEST)}
     photo = entries["dev-invoice_relative-A1-photo"]
     assert photo.cluster == "dev-invoice_relative-A1" and photo.modality == "photo"
@@ -1231,44 +1260,78 @@ def test_the_ci_gate_replay_writes_no_results_file(
     assert list(default.glob("*.json"))
 
 
-@pytest.mark.parametrize("condition", ["llm_only", "llm_rules_text"])
+PUBLISHED_BASELINES = ["llm_only", "llm_rules_text"]
+
+
 def test_the_ci_gate_fails_when_a_published_baseline_no_longer_replays(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str], condition: str
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """A changed llm_only prompt or rules text must fail CI: their published numbers must keep replaying.
     Only the tool condition (whose replay key holds Python docstrings) may be left out."""
-    gate = [
-        "--split",
-        "dev",
-        "--ids",
-        "dev-tax_assessment-A1",
-        "--results-dir",
-        str(tmp_path / "results"),
-        "--date",
-        "2026-09-25",
-        "--resamples",
-        "50",
-        "--no-docs",
-        "--min-accuracy",
-        "0.95",
-        "--max-dangerous-late",
-        "0",
-    ]
-    assert eval_run.run_cli(gate, backend=MissingRecordings(condition)) == 1
-    err = capsys.readouterr().err
-    assert "left out" not in err and f"{condition} dev-tax_assessment-A1: " in err
+
+    def check(condition: str) -> None:
+        gate = [
+            "--split",
+            "dev",
+            "--ids",
+            "dev-tax_assessment-A1",
+            "--results-dir",
+            str(tmp_path / condition / "results"),
+            "--date",
+            "2026-09-25",
+            "--resamples",
+            "50",
+            "--no-docs",
+            "--min-accuracy",
+            "0.95",
+            "--max-dangerous-late",
+            "0",
+        ]
+        assert eval_run.run_cli(gate, backend=MissingRecordings(condition)) == 1
+        err = capsys.readouterr().err
+        assert "left out" not in err and f"{condition} dev-tax_assessment-A1: " in err
+
+    check_rows(PUBLISHED_BASELINES, check)
 
 
-async def test_rescored_run_is_shown_next_to_the_held_out_one(tmp_path: Path) -> None:
-    held_out = (
-        (
-            await eval_run.run_benchmark(
-                make_config(tmp_path, write_docs=False, allow_errors=True), backend=Flaky()
-            )
+@pytest.fixture(scope="module")
+def _held_out_runs_once(tmp_path_factory: pytest.TempPathFactory) -> dict[str, dict[str, Any]]:
+    """The published run (with a crashed letter) and a run labelled with each held-out split, made once for the
+    tests that only render them; each test gets its own copy (``held_out_runs``)."""
+    folder = tmp_path_factory.mktemp("held-out-runs")
+
+    async def make(patch: pytest.MonkeyPatch) -> dict[str, dict[str, Any]]:
+        published = await eval_run.run_benchmark(
+            make_config(folder / "test", write_docs=False, allow_errors=True), backend=Flaky()
         )
-        .runs[0]
-        .results
-    )
+        runs = {"published": published.runs[0].results}
+        for split, held_out_run in (
+            ("holdout", _holdout_run),
+            ("holdout2", _holdout2_run),
+            ("holdout3", _holdout3_run),
+        ):
+            runs[split] = (await held_out_run(folder / split, patch, write_docs=False)).runs[0].results
+        assert all(results is not None for results in runs.values())
+        return runs  # type: ignore[return-value]
+
+    with pytest.MonkeyPatch.context() as patch:
+        # a module fixture is set up before tests/conftest.py's autouse fixtures: it gives itself what they give
+        patch.setenv(OCR_SWITCH, "off")
+        patch.delenv("ORDNUNG_CLAUDE_BIN", raising=False)
+        patch.delenv("ORDNUNG_BACKEND", raising=False)
+        return asyncio.run(make(patch))
+
+
+@pytest.fixture
+def held_out_runs(_held_out_runs_once: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """A copy of the shared runs: a test that changes its dicts cannot change its neighbours'."""
+    return copy.deepcopy(_held_out_runs_once)
+
+
+async def test_rescored_run_is_shown_next_to_the_held_out_one(
+    tmp_path: Path, held_out_runs: dict[str, dict[str, Any]]
+) -> None:
+    held_out = held_out_runs["published"]
     assert held_out is not None
     rescored = {
         **held_out,
@@ -1292,16 +1355,10 @@ async def test_rescored_run_is_shown_next_to_the_held_out_one(tmp_path: Path) ->
     assert "(commit `abc1234`, a commit from before the history was squashed)" in noted
 
 
-async def test_prompt_now_is_shown_beside_the_published_run(tmp_path: Path) -> None:
-    held_out = (
-        (
-            await eval_run.run_benchmark(
-                make_config(tmp_path, write_docs=False, allow_errors=True), backend=Flaky()
-            )
-        )
-        .runs[0]
-        .results
-    )
+async def test_prompt_now_is_shown_beside_the_published_run(
+    tmp_path: Path, held_out_runs: dict[str, dict[str, Any]]
+) -> None:
+    held_out = held_out_runs["published"]
     assert held_out is not None
     later = {**held_out, "meta": {**held_out["meta"], "date": "2026-09-29", "commit": "def5678"}}
     practice = {
@@ -1365,40 +1422,64 @@ async def _holdout_run(
     return await eval_run.run_benchmark(config, backend=FakeBackend(Responder()))
 
 
+HELD_OUT_SPLITS_AND_DOCS_HINTS = [
+    ("holdout", None),
+    ("holdout2", "--holdout2-run <holdout2 run>.json"),
+    ("holdout3", "--holdout3-run <holdout3 run>.json"),
+]
+
+
 async def test_a_holdout_run_never_rewrites_the_published_page(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """The holdout split is recorded once with every condition: the results file is written under the split's
-    name, docs/evals.md never is — not by a complete live run, and not when asked for with --docs."""
-    docs = tmp_path / "docs" / "evals.md"
-    outcome = await _holdout_run(tmp_path, monkeypatch, live=True, write_docs=True)
-    run = outcome.runs[0]
-    assert outcome.ok and run.results is not None and run.results_path is not None
-    assert run.results_path.name == "2026-09-25-claude-sonnet-5-holdout.json"
-    assert run.results["meta"]["split"] == "holdout" and not run.results["meta"]["partial"]
-    assert set(run.results["metrics"]) == set(eval_run.CONDITIONS)
-    assert outcome.docs_path is None and not docs.exists()
-    assert eval_run.build_parser().parse_args(["--split", "holdout"]).split == "holdout"
-    with pytest.raises(SystemExit):
-        eval_run.run_cli(["--split", "holdout", "--docs", "--quiet"])
-    assert "a holdout run never rewrites docs/evals.md" in capsys.readouterr().err
+    """Every held-out split is recorded once with every condition: the results file is written under the split's
+    name, docs/evals.md never is — not by a complete live run, and not when asked for with --docs (the refusal
+    names the split's own option where it has one); each is one of the runner's and the page's held-out splits. The held-out runs below run on the holdout letters and are
+    labelled with the split (``_holdout2_run``, ``_holdout3_run``)."""
+    runs = {"holdout": _holdout_run, "holdout2": _holdout2_run, "holdout3": _holdout3_run}
+
+    async def check(split: str, docs_hint: str | None) -> None:
+        folder = tmp_path / split
+        docs = folder / "docs" / "evals.md"
+        outcome = await runs[split](folder, monkeypatch, live=True, write_docs=True)
+        run = outcome.runs[0]
+        assert outcome.ok and run.results is not None and run.results_path is not None
+        assert run.results_path.name == f"2026-09-25-claude-sonnet-5-{split}.json"
+        assert run.results["meta"]["split"] == split and not run.results["meta"]["partial"]
+        assert set(run.results["metrics"]) == set(eval_run.CONDITIONS)
+        assert outcome.docs_path is None and not docs.exists()
+        assert eval_run.build_parser().parse_args(["--split", split]).split == split
+        assert split in eval_run.SPLITS and split in report.HELD_OUT_SPLITS
+        with pytest.raises(SystemExit):
+            eval_run.run_cli(["--split", split, "--docs", "--quiet"])
+        err = capsys.readouterr().err
+        assert f"a {split} run never rewrites docs/evals.md" in err
+        if docs_hint is not None:
+            assert docs_hint in err
+
+    await check_rows_async(HELD_OUT_SPLITS_AND_DOCS_HINTS, check)
+
+
+async def test_a_replay_never_overwrites_the_holdout3_live_recording(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A replay on the day of the holdout3 recording never overwrites it: the recording is the held-out number."""
+    outcome = await _holdout3_run(tmp_path, monkeypatch, live=True, write_docs=False)
+    recorded = outcome.runs[0].results_path
+    assert recorded is not None and recorded.name == "2026-09-25-claude-sonnet-5-holdout3.json"
+    recorded.write_text(json.dumps({"meta": {"backend": "live", "split": "holdout3"}}), encoding="utf-8")
+    with pytest.raises(ValueError, match="holds a live recording"):
+        await _holdout3_run(tmp_path, monkeypatch, write_docs=False)
+    assert json.loads(recorded.read_text(encoding="utf-8"))["meta"]["backend"] == "live"
 
 
 async def test_a_holdout_note_is_stored_in_its_results_file_and_shown_with_it(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, held_out_runs: dict[str, dict[str, Any]], capsys: pytest.CaptureFixture[str]
 ) -> None:
     """``--holdout-note`` (a second model, an interruption) is kept in the holdout run's file, like
     ``--prompt-note``, and opens the held-out section; it goes with ``--holdout-run``."""
-    published = (
-        (
-            await eval_run.run_benchmark(
-                make_config(tmp_path / "test", write_docs=False, allow_errors=True), backend=Flaky()
-            )
-        )
-        .runs[0]
-        .results
-    )
-    holdout = (await _holdout_run(tmp_path / "holdout", monkeypatch, write_docs=False)).runs[0].results
+    published = held_out_runs["published"]
+    holdout = held_out_runs["holdout"]
     assert published is not None and holdout is not None
     published_path, holdout_path = tmp_path / "published.json", tmp_path / "holdout.json"
     report.write_json(published_path, published)
@@ -1423,18 +1504,10 @@ async def test_a_holdout_note_is_stored_in_its_results_file_and_shown_with_it(
 
 
 async def test_the_holdout_run_is_shown_beside_the_published_run(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, held_out_runs: dict[str, dict[str, Any]]
 ) -> None:
-    published = (
-        (
-            await eval_run.run_benchmark(
-                make_config(tmp_path / "test", write_docs=False, allow_errors=True), backend=Flaky()
-            )
-        )
-        .runs[0]
-        .results
-    )
-    holdout = (await _holdout_run(tmp_path / "holdout", monkeypatch, write_docs=False)).runs[0].results
+    published = held_out_runs["published"]
+    holdout = held_out_runs["holdout"]
     assert published is not None and holdout is not None
     assert "## Held-out run: the holdout split" not in report.render_markdown([published])
     page = report.render_markdown([published], holdout_run=holdout)
@@ -1513,21 +1586,13 @@ async def test_the_holdout_run_is_shown_beside_the_published_run(
 
 
 async def test_a_rescored_holdout_run_is_one_more_row_labelled_not_held_out(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, held_out_runs: dict[str, dict[str, Any]], capsys: pytest.CaptureFixture[str]
 ) -> None:
     """``--holdout-rescored``: the holdout recordings replayed with later code — a check written after the
     held-out run and informed by its late dates — is one more row of the held-out table, labelled re-scored
     and not held-out, with a sentence saying so; the held-out rows stay as recorded."""
-    published = (
-        (
-            await eval_run.run_benchmark(
-                make_config(tmp_path / "test", write_docs=False, allow_errors=True), backend=Flaky()
-            )
-        )
-        .runs[0]
-        .results
-    )
-    recorded = (await _holdout_run(tmp_path / "holdout", monkeypatch, write_docs=False)).runs[0].results
+    published = held_out_runs["published"]
+    recorded = held_out_runs["holdout"]
     assert published is not None and recorded is not None
     # the held-out run gave one letter a late date; the re-scored run (a replay on later code) did not
     entries = json.loads(json.dumps(recorded["entries"]))
@@ -1640,42 +1705,12 @@ async def test_a_replay_never_overwrites_a_live_recording(
         assert "pass --results-dir <dir>" in capsys.readouterr().err
 
 
-async def test_a_holdout2_run_never_rewrites_the_published_page(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """The holdout2 split follows the holdout split's rule: the results file is named after the split, and
-    docs/evals.md is never written — not by a complete live run, and not when asked for with --docs."""
-    docs = tmp_path / "docs" / "evals.md"
-    outcome = await _holdout2_run(tmp_path, monkeypatch, live=True, write_docs=True)
-    run = outcome.runs[0]
-    assert outcome.ok and run.results is not None and run.results_path is not None
-    assert run.results_path.name == "2026-09-25-claude-sonnet-5-holdout2.json"
-    assert run.results["meta"]["split"] == "holdout2" and not run.results["meta"]["partial"]
-    assert set(run.results["metrics"]) == set(eval_run.CONDITIONS)
-    assert outcome.docs_path is None and not docs.exists()
-    assert eval_run.build_parser().parse_args(["--split", "holdout2"]).split == "holdout2"
-    with pytest.raises(SystemExit):
-        eval_run.run_cli(["--split", "holdout2", "--docs", "--quiet"])
-    err = capsys.readouterr().err
-    assert (
-        "a holdout2 run never rewrites docs/evals.md" in err and "--holdout2-run <holdout2 run>.json" in err
-    )
-
-
 async def test_the_holdout2_run_is_shown_in_a_section_of_its_own(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, held_out_runs: dict[str, dict[str, Any]], capsys: pytest.CaptureFixture[str]
 ) -> None:
-    published = (
-        (
-            await eval_run.run_benchmark(
-                make_config(tmp_path / "test", write_docs=False, allow_errors=True), backend=Flaky()
-            )
-        )
-        .runs[0]
-        .results
-    )
-    holdout = (await _holdout_run(tmp_path / "holdout", monkeypatch, write_docs=False)).runs[0].results
-    holdout2 = (await _holdout2_run(tmp_path / "holdout2", monkeypatch, write_docs=False)).runs[0].results
+    published = held_out_runs["published"]
+    holdout = held_out_runs["holdout"]
+    holdout2 = held_out_runs["holdout2"]
     assert published is not None and holdout is not None and holdout2 is not None
     heading, holdout_heading = "## Held-out run: the holdout2 split", "## Held-out run: the holdout split"
 
@@ -1834,51 +1869,13 @@ async def _holdout3_run(
     return await eval_run.run_benchmark(config, backend=FakeBackend(Responder()))
 
 
-async def test_a_holdout3_run_never_rewrites_the_published_page(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """The holdout3 split follows the other held-out splits' rule: the results file is named after the split,
-    and docs/evals.md is never written — not by a complete live run, and not when asked for with --docs."""
-    docs = tmp_path / "docs" / "evals.md"
-    outcome = await _holdout3_run(tmp_path, monkeypatch, live=True, write_docs=True)
-    run = outcome.runs[0]
-    assert outcome.ok and run.results is not None and run.results_path is not None
-    assert run.results_path.name == "2026-09-25-claude-sonnet-5-holdout3.json"
-    assert run.results["meta"]["split"] == "holdout3" and not run.results["meta"]["partial"]
-    assert set(run.results["metrics"]) == set(eval_run.CONDITIONS)
-    assert outcome.docs_path is None and not docs.exists()
-    assert eval_run.build_parser().parse_args(["--split", "holdout3"]).split == "holdout3"
-    assert "holdout3" in eval_run.SPLITS and "holdout3" in report.HELD_OUT_SPLITS
-    with pytest.raises(SystemExit):
-        eval_run.run_cli(["--split", "holdout3", "--docs", "--quiet"])
-    err = capsys.readouterr().err
-    assert (
-        "a holdout3 run never rewrites docs/evals.md" in err and "--holdout3-run <holdout3 run>.json" in err
-    )
-    # a replay on the day of the holdout3 recording never overwrites it: the recording is the held-out number
-    run.results_path.write_text(
-        json.dumps({"meta": {"backend": "live", "split": "holdout3"}}), encoding="utf-8"
-    )
-    with pytest.raises(ValueError, match="holds a live recording"):
-        await _holdout3_run(tmp_path, monkeypatch, write_docs=False)
-    assert json.loads(run.results_path.read_text(encoding="utf-8"))["meta"]["backend"] == "live"
-
-
 async def test_the_holdout3_run_is_shown_in_a_section_of_its_own(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, held_out_runs: dict[str, dict[str, Any]], capsys: pytest.CaptureFixture[str]
 ) -> None:
-    published = (
-        (
-            await eval_run.run_benchmark(
-                make_config(tmp_path / "test", write_docs=False, allow_errors=True), backend=Flaky()
-            )
-        )
-        .runs[0]
-        .results
-    )
-    holdout = (await _holdout_run(tmp_path / "holdout", monkeypatch, write_docs=False)).runs[0].results
-    holdout2 = (await _holdout2_run(tmp_path / "holdout2", monkeypatch, write_docs=False)).runs[0].results
-    holdout3 = (await _holdout3_run(tmp_path / "holdout3", monkeypatch, write_docs=False)).runs[0].results
+    published = held_out_runs["published"]
+    holdout = held_out_runs["holdout"]
+    holdout2 = held_out_runs["holdout2"]
+    holdout3 = held_out_runs["holdout3"]
     assert published is not None and holdout is not None and holdout2 is not None and holdout3 is not None
     heading = "## Held-out run: the holdout3 split"
     holdout_heading, holdout2_heading = (
@@ -2055,7 +2052,7 @@ def test_tool_condition_extends_the_llm_only_request(tmp_path: Path, monkeypatch
         conditions.baseline_prompt_digest.cache_clear()
 
 
-def test_tool_uses_policy() -> None:
+def test_only_compute_deadline_gives_a_tool_call_s_due_date() -> None:
     from evals.conditions import tool_uses
 
     calls = [

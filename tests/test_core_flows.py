@@ -39,39 +39,6 @@ async def _open_items(api: Api, **params: str) -> list[dict[str, Any]]:
 # --------------------------------------------------------------------------------------------------
 
 
-async def test_marking_a_recurring_payment_done_keeps_the_series_going(data_dir: Path) -> None:
-    """Paying this month's rent ("Pay" → "Mark as paid" on Today) must not cancel next month's rent.
-
-    ``recurrence.roll_forward`` only moves items that are ``open``/``snoozed``; a ``done`` recurring
-    item never came back, so the monthly obligation silently disappeared after the first payment. Now
-    "done" moves it on to the next month and it stays open.
-    """
-    clock.set_today("2026-09-25")
-    async with api_for(data_dir) as api:
-        created = await api.client.post(
-            "/api/items",
-            json={
-                "kind": "payment",
-                "title": "Rent",
-                "due_date": "2026-10-01",
-                "amount": 650.0,
-                "recurrence": MONTHLY,
-            },
-        )
-        assert created.status_code == 201, created.text
-        item_id = created.json()["id"]
-        paid = await api.client.patch(f"/api/items/{item_id}", json={"status": "done"})
-        assert paid.status_code == 200
-
-        rent = [item for item in await _open_items(api) if item["title"] == "Rent"]
-        assert [item["due_date"] for item in rent] == ["2026-11-01"]
-
-        roll_forward(api.ctx.store, date(2026, 11, 2), item_context)  # what the daily tick does on 2 Nov
-
-        rent = [item for item in await _open_items(api) if item["title"] == "Rent"]
-        assert [item["due_date"] for item in rent] == ["2026-12-01"]
-
-
 async def test_manual_monthly_item_keeps_its_day_of_month_after_february(data_dir: Path) -> None:
     """A to-do added by hand "every month on the 31st" must come back on 31 March, not 28 March.
 

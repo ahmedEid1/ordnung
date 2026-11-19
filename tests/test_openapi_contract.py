@@ -22,7 +22,6 @@ from ordnung import clock, models
 from ordnung.api.app import VIEW_MODELS, openapi_json, openapi_schema
 from ordnung.api.routes import documents
 from ordnung.api.routes.drafts import DraftCreate
-from ordnung.db.store import HOUSEHOLD_META_KEY
 from ordnung.ingest import pipeline
 from ordnung.rules.deadlines import LAND_WAIT_REASONS
 from test_api_support import TODAY, api_for
@@ -230,33 +229,6 @@ def test_a_doctor_check_can_be_info(schema: dict[str, Any]) -> None:
     assert sorted(status["enum"]) == ["fail", "info", "ok", "warn"]
 
 
-async def test_the_health_of_this_computer_says_what_text_in_pictures_does(data_dir: Path) -> None:
-    """The computer's health carries its Text in pictures (each state: ``tests/test_picture_text_switch.py``); here
-    the tests' own ``ORDNUNG_OCR=off``."""
-    async with api_for(data_dir) as api:
-        health = (await api.client.get("/api/health")).json()
-        assert health["picture_text"] == {
-            "state": "off_by_variable",
-            "detail": "Turned off (ORDNUNG_OCR=off)",
-            "fix": None,
-        }
-
-
-async def test_the_text_in_pictures_setting_is_saved(data_dir: Path) -> None:
-    """``PUT /api/settings`` saves the switch (hand-off sync carries it: ``tests/test_sync_contract.py``)."""
-    async with api_for(data_dir) as api:
-        store = api.ctx.store
-        assert (await api.client.get("/api/settings")).json()["read_picture_text"] is True
-        saved = await api.client.put("/api/settings", json={"read_picture_text": False})
-        assert saved.status_code == 200, saved.text
-        assert saved.json()["read_picture_text"] is False
-        assert store.get_settings().read_picture_text is False
-        assert (await api.client.put("/api/settings", json={"llm_brief": False})).json()[
-            "read_picture_text"
-        ] is False
-        assert (await api.client.put("/api/settings", json={"read_picture_text": "maybe"})).status_code == 422
-
-
 def test_my_numbers_answers_the_numbers_page(schema: dict[str, Any]) -> None:
     """``GET /api/numbers`` answers ``NumbersPage``: the person's page as before, and each person of the
     household's numbers (``household``), the call-sheet numbers and cases that are only a member's
@@ -281,16 +253,6 @@ def test_my_numbers_answers_the_numbers_page(schema: dict[str, Any]) -> None:
     }
     assert set(person["properties"]) == set(person["required"]) == {"id", "name", "about", "documents"}
     assert issubclass(models.NumbersPage, models.MyNumbers)
-
-
-async def test_my_numbers_without_a_household_has_empty_household_parts(data_dir: Path) -> None:
-    async with api_for(data_dir) as api:
-        body = await api.upload(("bescheid.pdf", TAX_LETTER.pdf()))
-        await api.read_all()
-        assert body["documents"]
-        page = (await api.client.get("/api/numbers")).json()
-        assert (page["household"], page["filed_for"], page["also_for"]) == ([], {}, {})
-        models.NumbersPage.model_validate(page)
 
 
 def test_party_and_letter_details_carry_a_region_suggestion(schema: dict[str, Any]) -> None:
@@ -501,20 +463,6 @@ def test_a_letters_detail_names_its_picture_text_pages(schema: dict[str, Any]) -
     assert "picture_text_pages" not in components["DocumentDetail"]["properties"]
 
 
-async def test_a_letter_with_no_text_read_from_its_picture_names_no_such_page(data_dir: Path) -> None:
-    """Without text Ordnung read from a picture, a letter's page names no such page, and a search finds the
-    letter by its own words, never as ``picture_text``."""
-    async with api_for(data_dir) as api:
-        client = api.client
-        body = await api.upload(("bescheid.pdf", TAX_LETTER.pdf()))
-        await api.read_all()
-        doc_id = body["documents"][0]["id"]
-        assert (await client.get(f"/api/documents/{doc_id}")).json()["picture_text_pages"] == []
-        assert [row["found_in"] for row in (await client.get("/api/documents")).json()] == [None]
-        found = (await client.get("/api/documents", params={"q": "Einkommensteuer"})).json()
-        assert [row["found_in"] for row in found] == ["letter"]
-
-
 def test_the_household_has_three_operations_and_its_shapes(schema: dict[str, Any]) -> None:
     """``/api/household``: GET and PATCH (file letters) for the phone too, PUT (edit the people) on the
     computer only. Bodies refuse unknown fields; the caps are in the schema."""
@@ -543,36 +491,6 @@ def test_the_household_has_three_operations_and_its_shapes(schema: dict[str, Any
     assert filing["additionalProperties"] is False
     letters = filing["properties"]["letters"]
     assert (letters["minProperties"], letters["maxProperties"]) == (1, 1000)
-
-
-async def test_a_new_library_has_no_tax_choice_and_an_empty_household(data_dir: Path) -> None:
-    """Before the person chooses anything: every letter says no tax choice (Claude's mark counts) and
-    nobody else it is for, and the household is empty. Bodies that break the contract answer 422."""
-    async with api_for(data_dir) as api:
-        client = api.client
-        body = await api.upload(("bescheid.pdf", TAX_LETTER.pdf()))
-        await api.read_all()
-        doc_id = body["documents"][0]["id"]
-        detail = (await client.get(f"/api/documents/{doc_id}")).json()
-        assert detail["tax_choice"] is None
-        assert detail["household"] == {"filed_for": None, "mine": False, "suggested": None, "add": None}
-        assert [row["tax_choice"] for row in (await client.get("/api/documents")).json()] == [None]
-        assert [row["tax_choice"] for row in (await client.get("/api/documents.json")).json()] == [None]
-        for bad in ("maybe", 2, []):
-            assert (
-                await client.patch(f"/api/documents/{doc_id}", json={"tax_choice": bad})
-            ).status_code == 422
-        assert (await client.patch(f"/api/documents/{doc_id}", json={"title": "Bescheid"})).status_code == 200
-        empty = {"members": [], "filed": {}, "mine": [], "suggested": {}, "version": "4f53cda18c2baa0c"}
-        assert (await client.get("/api/household")).json() == empty
-        change = {"base": empty["version"], "members": [{"name": "Alex Rivera"}]}
-        assert (await client.put("/api/household", json={**change, "extra": 1})).status_code == 422
-        assert (
-            await client.put("/api/household", json={**change, "also_file": ["a", "b"]})
-        ).status_code == 422
-        assert (await client.patch("/api/household", json={"letters": {}})).status_code == 422
-        assert api.ctx.store.tax_choices() == {}
-        assert api.ctx.store.get_meta(HOUSEHOLD_META_KEY) is None
 
 
 def test_the_upload_form_names_every_kind_of_file_it_takes(schema: dict[str, Any]) -> None:

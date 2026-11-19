@@ -188,11 +188,19 @@ def test_a_date_counted_backwards_may_be_late(store: Store) -> None:
     party = _sender(store)
     letter = letter_from(store, party, MUNICH)
     to_do(store, party, letter, HOLIDAY)
-    to_do(store, party, letter, BACKWARDS)
+    early = to_do(store, party, letter, BACKWARDS)
 
     found = _suggest(store, party)
 
     assert found is not None and (found.waiting, found.may_be_late, found.reason) == (2, True, "earlier")
+    # the Idea says so, and is due on the earliest day to act
+    [idea] = _ideas(store)
+    assert idea.body == (
+        "80331 is on their letter. Their state's rules and public holidays may change 2 of your dates with them; "
+        "until you answer, act a working day before them."
+    )
+    item = store.get_item(early)
+    assert item is not None and idea.due_date == item.send_by == "2026-11-09"  # the earliest day to act
 
 
 def test_the_3_or_4_day_rule_waits_only_for_a_land_that_uses_the_4th_day(store: Store) -> None:
@@ -213,6 +221,14 @@ def test_the_3_or_4_day_rule_waits_only_for_a_land_that_uses_the_4th_day(store: 
     )
     assert in_thuringia is not None and (in_thuringia.region, in_thuringia.waiting) == ("TH", 1)
     assert in_thuringia.reason == "days"
+    # only the Thuringian authority's letter is asked about, a day early by the Land's law
+    [idea] = _ideas(store)
+    assert idea.title == "Is Stadt Erfurt in Thuringia?"
+    assert idea.body == (
+        "99084 is on their letter. Their state decides whether their letters count as delivered after 3 or 4 days, "
+        "and its rules may change 1 of your dates with them; until you answer, Ordnung counts 3, so it may be a day "
+        "early, more around weekends and holidays."
+    )
 
 
 def test_a_payment_to_a_company_waits_for_the_person_s_land_not_the_sender_s(store: Store) -> None:
@@ -347,22 +363,6 @@ def test_the_idea_asks_only_while_a_date_waits_for_the_land(store: Store) -> Non
     assert soon.priority == "high" and soon.id == idea.id
 
 
-def test_the_idea_says_when_a_date_may_be_late(store: Store) -> None:
-    party = _sender(store, name="Stadt München")
-    letter = letter_from(store, party, MUNICH)
-    to_do(store, party, letter, HOLIDAY)
-    early = to_do(store, party, letter, BACKWARDS)
-
-    [idea] = _ideas(store)
-
-    assert idea.body == (
-        "80331 is on their letter. Their state's rules and public holidays may change 2 of your dates with them; "
-        "until you answer, act a working day before them."
-    )
-    item = store.get_item(early)
-    assert item is not None and idea.due_date == item.send_by == "2026-11-09"  # the earliest day to act
-
-
 def test_the_idea_says_why_an_emailed_decision_waits(store: Store) -> None:
     """Counted from the day it was sent (or the arrival day the person entered) while the sender's Land is unknown,
     an e-mailed decision may count from the 3rd or 4th day after it: several days, not a holiday's day or two. The
@@ -390,21 +390,6 @@ def test_the_idea_says_why_an_emailed_decision_waits(store: Store) -> None:
     assert late.body == (
         "80331 is on their letter. Their state's rules and public holidays may change 3 of your dates with them; "
         "until you answer, act a working day before them."
-    )
-
-
-def test_the_idea_says_why_a_land_authority_s_letter_waits(store: Store) -> None:
-    """A Land authority's letter counted with 3 days where the Land may count 4: a day early, by the Land's law."""
-    party = _sender(store, name="Stadt Erfurt")
-    to_do(store, party, letter_from(store, party, ERFURT), DELIVERY)
-
-    [idea] = _ideas(store)
-
-    assert idea.title == "Is Stadt Erfurt in Thuringia?"
-    assert idea.body == (
-        "99084 is on their letter. Their state decides whether their letters count as delivered after 3 or 4 days, "
-        "and its rules may change 1 of your dates with them; until you answer, Ordnung counts 3, so it may be a day "
-        "early, more around weekends and holidays."
     )
 
 

@@ -12,6 +12,7 @@ import pdfplumber
 import pytest
 
 from fixtures_llm import INVOICE_LETTER, TAX_LETTER
+from helpers_tables import check_rows_async
 from ordnung import clock
 from ordnung.ingest.watcher import is_own_file
 from ordnung.llm.base import LLMRequest, LLMResponse
@@ -225,20 +226,26 @@ async def test_the_from_line_decides_who_signs_a_letter_not_sent_yet(data_dir: P
         assert api.ctx.store.get_sent_signer(mine["id"]) is not None
 
 
-@pytest.mark.parametrize("name", ["", "   ", "sam  RIVERA", "Sam\nRivera"])
-async def test_a_sender_name_that_is_yours_changes_nothing(data_dir: Path, name: str) -> None:
+NAMES_THAT_ARE_YOURS = ["", "   ", "sam  RIVERA", "Sam\nRivera"]
+
+
+async def test_a_sender_name_that_is_yours_changes_nothing(data_dir: Path) -> None:
     async with api_for(data_dir) as api:
         assert (await api.client.put("/api/profile", json=PROFILE)).status_code == 200
         doc_id = await _letter(api, TAX_LETTER.pdf())
         ask = {"kind": "objection", "doc_id": doc_id}
-        plain = (await api.client.post("/api/drafts", json=ask)).json()
-        named = await api.client.post("/api/drafts", json={**ask, "sender_name": name})
-        assert named.status_code == 201, named.text
-        unchanged = {"id", "created_at", "updated_at"}
-        assert {k: v for k, v in named.json().items() if k not in unchanged} == {
-            k: v for k, v in plain.items() if k not in unchanged
-        }
-        assert api.ctx.store.get_sent_signer(named.json()["id"]) is None
+
+        async def check(name: str) -> None:
+            plain = (await api.client.post("/api/drafts", json=ask)).json()
+            named = await api.client.post("/api/drafts", json={**ask, "sender_name": name})
+            assert named.status_code == 201, named.text
+            unchanged = {"id", "created_at", "updated_at"}
+            assert {k: v for k, v in named.json().items() if k not in unchanged} == {
+                k: v for k, v in plain.items() if k not in unchanged
+            }
+            assert api.ctx.store.get_sent_signer(named.json()["id"]) is None
+
+        await check_rows_async(NAMES_THAT_ARE_YOURS, check)
 
 
 async def test_letters_that_cannot_be_drafted_or_sent(data_dir: Path) -> None:

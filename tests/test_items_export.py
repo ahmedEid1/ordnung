@@ -41,6 +41,12 @@ def committed() -> list[dict[str, str]]:
     return list(csv.DictReader(io.StringIO(ITEMS_CSV.read_text(encoding="utf-8"))))
 
 
+@pytest.fixture(scope="module")
+def runs() -> dict[Path, dict[str, Any]]:
+    """The exported run files and their contents, loaded once (read only)."""
+    return {path: json.loads(path.read_text(encoding="utf-8")) for path in export.run_files(RESULTS_DIR)}
+
+
 def test_items_csv_is_what_the_results_files_give() -> None:
     """Generated, never edited: a fresh export of the committed results files is the committed file, byte for byte
     (``python -m evals.export --write`` rewrites it; ``make eval-reproduce`` checks it)."""
@@ -77,26 +83,30 @@ def test_no_cell_holds_free_text(committed: list[dict[str, str]]) -> None:
         assert row["file"].endswith(".json") and row["entry_id"].startswith(row["split"] + "-")
 
 
-def test_no_title_or_quote_of_a_results_file_reaches_the_csv() -> None:
+def test_no_title_or_quote_of_a_results_file_reaches_the_csv(runs: dict[Path, dict[str, Any]]) -> None:
     text = ITEMS_CSV.read_text(encoding="utf-8")
-    leaked = 0
-    for path in export.run_files(RESULTS_DIR):
-        for entry in json.loads(path.read_text(encoding="utf-8"))["entries"]:
+    values: set[str] = set()  # each distinct value is looked for once
+    for data in runs.values():
+        for entry in data["entries"]:
             for item in entry["expected"]:
-                leaked += len(item["title"]) > 3 and item["title"] in text
+                if len(item["title"]) > 3:
+                    values.add(item["title"])
             for condition in entry["conditions"].values():
                 for predicted in (condition["prediction"] or {}).get("items", []):
                     for key in ("title", "quote", "explanation"):
                         value = predicted.get(key)
-                        leaked += bool(value) and len(value) > 3 and value in text
-    assert leaked == 0
+                        if value and len(value) > 3:
+                            values.add(value)
+    leaked = sum(value in text for value in values)
+    assert leaked == 0  # a count only: the values are recorded text, never printed
 
 
-def test_only_the_pinned_models_per_letter_runs_are_exported(committed: list[dict[str, str]]) -> None:
+def test_only_the_pinned_models_per_letter_runs_are_exported(
+    committed: list[dict[str, str]], runs: dict[Path, dict[str, Any]]
+) -> None:
     """The archived runs of an earlier model are left out (their recordings are not in the repository), and so are
     the summaries (Ask, without the Land, the ablation, end to end, the analysis): one row per item of the rest."""
-    files = export.run_files(RESULTS_DIR)
-    names = {path.name for path in files}
+    names = {path.name for path in runs}
     assert names == {row["file"] for row in committed}
     for path in RESULTS_DIR.glob("*.json"):
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -104,8 +114,7 @@ def test_only_the_pinned_models_per_letter_runs_are_exported(committed: list[dic
         is_run = isinstance(data.get("entries"), list) and bool(meta.get("split"))
         assert (path.name in names) == (is_run and meta.get("model") == DEFAULT_MODEL), path.name
     expected_rows = 0
-    for path in files:
-        data = json.loads(path.read_text(encoding="utf-8"))
+    for data in runs.values():
         for entry in data["entries"]:
             for condition in data["meta"]["conditions"]:
                 score = entry["conditions"][condition]["score"]

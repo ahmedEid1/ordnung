@@ -13,12 +13,11 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   for the frontend job. `make check` runs the backend tests in parallel too.
 - The backend tests hold one behaviour each. The examples of one rule are now the rows of one table test
   (`check_rows` in `tests/helpers_tables.py`, which names every failing row) instead of one collected test per
-  example, and tests and rows that only repeated another were removed. So far that is the rules engine, the
-  reading check and the reading pipeline, Ask, hand-off sync with phone access and backups, and the ways a letter
-  comes in: the suite went from 13,788 collected tests to 8,555, with every covered branch still covered and every
-  planted bug the old tests caught still caught. Ask's tests take under half the time (its largest file an
-  eighth), because they build their ledger once instead of once per test. The README's count of backend tests
-  follows.
+  example, and tests and rows that only repeated another were removed. That is now every family but the tests of
+  the documents and of the process: the suite went from 13,788 collected tests to 6,724, with every covered branch
+  still covered and every planted bug the old tests caught still caught. Where tests rebuilt what none of them
+  changes, they build it once: Ask's tests take under half the time (its largest file an eighth), the
+  evaluation's about two thirds. The README's count of backend tests follows.
 - **The report of the final evaluation says more of what was registered.** Its statistics give the gap each power
   figure was computed at, with the registered caveat; each secondary endpoint (the replay without the sender's
   Land, the checks ablated, selective prediction, cost and latency) shows the final run first and the earlier

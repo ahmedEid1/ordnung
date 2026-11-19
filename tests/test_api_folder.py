@@ -121,6 +121,8 @@ async def test_a_folder_chosen_again_counts_as_chosen_now(data_dir: Path, tmp_pa
 
 
 async def test_keep_private_and_ids_that_no_longer_wait(data_dir: Path) -> None:
+    """Keep private takes the waiting letters and skips ids that no longer wait; its Undo (POST /held/wait)
+    puts the letter back to wait, once."""
     async with api_for(data_dir) as api:
         doc_id = await waiting_letter(api, INVOICE_LETTER.pdf(), "rechnung.pdf")
         kept = await api.client.post(
@@ -136,6 +138,13 @@ async def test_keep_private_and_ids_that_no_longer_wait(data_dir: Path) -> None:
         assert again == {"documents": [], "jobs": [], "skipped": [doc_id]}  # answered already
         assert api.backend.calls == []
         assert (await api.client.get("/api/folder")).json()["waiting"] == 0
+
+        undone = await api.client.post("/api/documents/held/wait", json={"doc_ids": [doc_id]})
+        assert undone.status_code == 200
+        assert [(doc["id"], doc["status"]) for doc in undone.json()["documents"]] == [(doc_id, "held")]
+        assert (await api.client.get("/api/folder")).json()["waiting"] == 1
+        again = (await api.client.post("/api/documents/held/wait", json={"doc_ids": [doc_id]})).json()
+        assert again == {"documents": [], "jobs": [], "skipped": [doc_id]}  # it waits already
 
 
 async def test_answers_need_ids(data_dir: Path) -> None:
@@ -214,6 +223,8 @@ async def test_delete_everything_stops_watching(data_dir: Path, tmp_path: Path) 
     scans = tmp_path / "Scans"
     scans.mkdir()
     async with api_for(data_dir) as api, lifespan(api.app):
+        api.app.state.ordnung.folder.settle_s = 0.2
+        api.app.state.ordnung.folder.tick_ms = 50
         await api.client.put("/api/settings", json={"inbox_dir": str(scans)})
         await eventually_json(api, "/api/folder", lambda body: body["state"] == "watching")
         response = await api.client.request("DELETE", "/api/data", json={"confirm": "DELETE"})
@@ -235,6 +246,8 @@ async def test_when_delete_everything_fails_the_folder_is_watched_again(
         raise OSError("a file is locked")
 
     async with api_for(data_dir) as api, lifespan(api.app):
+        api.app.state.ordnung.folder.settle_s = 0.2
+        api.app.state.ordnung.folder.tick_ms = 50
         await api.client.put("/api/settings", json={"inbox_dir": str(scans)})
         await eventually_json(api, "/api/folder", lambda body: body["state"] == "watching")
         monkeypatch.setattr(data_routes, "wipe_data_dir", locked)
@@ -256,6 +269,8 @@ async def test_when_the_calendar_keeps_everything_the_folder_is_watched_again(
         raise data_routes.CalendarNotCleared("The calendar couldn't be reached, so nothing was deleted.")
 
     async with api_for(data_dir) as api, lifespan(api.app):
+        api.app.state.ordnung.folder.settle_s = 0.2
+        api.app.state.ordnung.folder.tick_ms = 50
         await api.client.put("/api/settings", json={"inbox_dir": str(scans)})
         await eventually_json(api, "/api/folder", lambda body: body["state"] == "watching")
         monkeypatch.setattr(data_routes, "wipe_data_dir", calendar_unreachable)
@@ -263,18 +278,6 @@ async def test_when_the_calendar_keeps_everything_the_folder_is_watched_again(
         assert refused.status_code == 409 and "nothing was deleted" in refused.json()["detail"]
         status = await eventually_json(api, "/api/folder", lambda body: body["state"] == "watching")
         assert status["folder"] == str(scans.resolve())
-
-
-async def test_keep_private_can_be_undone(data_dir: Path) -> None:
-    async with api_for(data_dir) as api:
-        doc_id = await waiting_letter(api, INVOICE_LETTER.pdf(), "rechnung.pdf")
-        await api.client.post("/api/documents/held/keep-private", json={"doc_ids": [doc_id]})
-        undone = await api.client.post("/api/documents/held/wait", json={"doc_ids": [doc_id]})
-        assert undone.status_code == 200
-        assert [(doc["id"], doc["status"]) for doc in undone.json()["documents"]] == [(doc_id, "held")]
-        assert (await api.client.get("/api/folder")).json()["waiting"] == 1
-        again = (await api.client.post("/api/documents/held/wait", json={"doc_ids": [doc_id]})).json()
-        assert again == {"documents": [], "jobs": [], "skipped": [doc_id]}  # it waits already
 
 
 async def test_today_says_letters_wait_and_files_them_nowhere_else(data_dir: Path) -> None:

@@ -401,7 +401,9 @@ async def test_a_rent_increase_not_yet_agreed_leaves_the_old_rent_running(data_d
     """A § 558 increase's new rent (€700 from Thu 3 Dec, the lease's day) is only owed once agreed: the old
     rent runs on into December next to it, and the new one keeps its note. Once the person pays the new
     rent — paying counts as agreeing — the old rent, which had moved on to December, goes back to November,
-    its last month, and closes there, since November was marked paid."""
+    its last month, and closes there, since November was marked paid. "Undo" on that payment makes the
+    increase not agreed again, so the old rent is back where it stood — December, as November was paid —
+    and December has a reminder for the rent still owed."""
     lease, increase = _lease(), _increase()
     clock.set_today("2026-09-29")
     async with api_for(data_dir, router=_router(lease, increase)) as api:
@@ -426,6 +428,17 @@ async def test_a_rent_increase_not_yet_agreed_leaves_the_old_rent_running(data_d
             "“Monthly rent” ends with the payment marked paid (Wed 4 Nov 2026) — replaced by “New monthly rent "
             "€700” from Dec 2026" in _log(api, rent["id"])
         )
+
+        undone = await _patch(api, new["id"], status="open")  # the toast's "Undo"
+        assert (undone["status"], undone["due_date"]) == ("open", "2026-12-03")
+        old = await _item(api, rent["id"])
+        assert (old["status"], old["due_date"]) == ("open", "2026-12-03")
+        assert (
+            "Reopened “Monthly rent” (Thu 3 Dec 2026) — the payment of “New monthly rent €700” that ended it was "
+            "undone" in _log(api, rent["id"])
+        )
+        december = await _rents(api, **{"from": "2026-12-01", "to": "2026-12-31"})
+        assert {r["id"] for r in december} == {rent["id"], new["id"]}
 
 
 async def test_a_rent_increase_without_a_date_stays_undated_on_a_day_of_the_month(data_dir: Path) -> None:
@@ -756,32 +769,6 @@ async def test_an_undone_payment_leaves_the_one_before_it_standing(data_dir: Pat
         await _read(api, statement)
         old = await _item(api, rent["id"])
         assert (old["status"], old["due_date"]) == ("done", "2026-10-05")
-
-
-async def test_undoing_the_payment_that_agreed_an_increase_brings_the_old_rent_back(data_dir: Path) -> None:
-    """The new rent of a § 558 increase marked paid closes the old rent at November; "Undo" on that payment
-    makes the increase not agreed again, so the old rent is back where it stood — December, as November was
-    paid — and December has a reminder for the rent still owed."""
-    lease, increase = _lease(), _increase()
-    clock.set_today("2026-09-29")
-    async with api_for(data_dir, router=_router(lease, increase)) as api:
-        _, rent = await _read(api, lease)
-        _, new = await _read(api, increase)
-        await _patch(api, rent["id"], status="done")
-        assert (await _patch(api, rent["id"], status="done"))["due_date"] == "2026-12-03"
-        await _patch(api, new["id"], status="done")
-        assert (await _item(api, rent["id"]))["status"] == "done"
-
-        undone = await _patch(api, new["id"], status="open")  # the toast's "Undo"
-        assert (undone["status"], undone["due_date"]) == ("open", "2026-12-03")
-        old = await _item(api, rent["id"])
-        assert (old["status"], old["due_date"]) == ("open", "2026-12-03")
-        assert (
-            "Reopened “Monthly rent” (Thu 3 Dec 2026) — the payment of “New monthly rent €700” that ended it was "
-            "undone" in _log(api, rent["id"])
-        )
-        december = await _rents(api, **{"from": "2026-12-01", "to": "2026-12-31"})
-        assert {r["id"] for r in december} == {rent["id"], new["id"]}
 
 
 async def test_a_rent_on_the_last_day_of_the_month_passes_that_day_on(data_dir: Path) -> None:

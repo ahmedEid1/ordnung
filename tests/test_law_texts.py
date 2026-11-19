@@ -10,12 +10,15 @@ import datetime as dt
 import hashlib
 import re
 import shutil
+import tempfile
 import unicodedata
 import urllib.parse
 from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
+
+from helpers_tables import check_rows
 
 ROOT = Path(__file__).resolve().parents[1]
 LAW = ROOT / "evals" / "law"
@@ -407,15 +410,6 @@ def test_every_text_matches_its_row_in_sources_md() -> None:
     assert problems(LAW) == []
 
 
-def test_every_land_has_a_block_or_is_listed_as_not_retrieved() -> None:
-    """laender.txt holds one block per Land, in order: the Land's rule as its portal gives it, or the one line that
-    says it was not retrieved; SOURCES.md has a row for each, naming its official portal and the block's sha256."""
-    blocks = land_blocks((LAW / LAENDER_FILE).read_text(encoding="utf-8"))
-    assert [land for land, _ in blocks] == list(LAENDER)
-    assert sorted(row.land for row in land_rows(LAW)) == sorted(LAENDER)
-    assert laender_problems(LAW) == []
-
-
 def test_the_laender_not_retrieved_are_the_known_gap() -> None:
     """The gap, listed: the Länder whose portal could not be fetched. A Land filled in later leaves this list."""
     blocks = land_blocks((LAW / LAENDER_FILE).read_text(encoding="utf-8"))
@@ -608,66 +602,71 @@ def _edit_sources(old: str, new: str):
     return edit
 
 
-@pytest.mark.parametrize(
-    ("mutate", "expected"),
-    [
-        (_flip_a_byte, "bgb.txt: sha256 is not the one in SOURCES.md"),
-        (
-            lambda folder: (folder / "extra.txt").write_text("§ 1\n", encoding="utf-8"),
-            "not listed in SOURCES.md",
-        ),
-        (lambda folder: (folder / "kschg.txt").unlink(), "kschg.txt: listed in SOURCES.md but missing"),
-        (_drop_a_section, "kschg.txt: sections in the file are not the ones SOURCES.md lists"),
-        (
-            _edit_sources("https://www.gesetze-im-internet.de/stpo/", "https://example.org/stpo/"),
-            "stpo.txt: source",
-        ),
-        (_edit_sources("| Kündigungsschutzgesetz (KSchG) |", "| KSchG |"), "kschg.txt: first line is not"),
-        (_edit_sources("|---|\n", "|---|\n| `sgg.txt` | x | § 1 | x | x | `x` |\n"), "sgg.txt: listed twice"),
-        (_edit_sources("| `tkg.txt` |", "| `tkg.txt` |"), None),
-        (_flip_a_land_byte, "laender.txt: Bayern: sha256 is not the one in SOURCES.md"),
-        (_drop_a_land, "laender.txt: the Länder are not the sixteen, each once, in order"),
-        (
-            _drop_a_land_provision,
-            "laender.txt: Bayern: provisions in the file are not the ones SOURCES.md lists",
-        ),
-        (_move_a_land_source, "laender.txt: Bayern: source is not on www.gesetze-bayern.de"),
-        (_move_a_gazette_source, "laender.txt: Thüringen: source is not on"),
-        (
-            _drop_a_fundstelle,
-            "laender.txt: Berlin: a block from a gazette does not name the gazette and its pages",
-        ),
-        (_claim_a_land_not_retrieved, "laender.txt: Bayern: SOURCES.md and the file disagree"),
-        (lambda folder: (folder / "laender.txt").unlink(), "laender.txt: missing"),
-    ],
-    ids=[
-        "changed-byte",
-        "unlisted-file",
-        "missing-file",
-        "dropped-section",
-        "other-site",
-        "other-statute",
-        "listed-twice",
-        "unchanged",
-        "land-changed-byte",
-        "land-dropped",
-        "land-dropped-provision",
-        "land-other-site",
-        "gazette-other-site",
-        "gazette-without-fundstelle",
-        "land-not-retrieved",
-        "laender-missing",
-    ],
-)
-def test_a_change_to_the_folder_is_caught(tmp_path: Path, mutate, expected: str | None) -> None:
-    folder = tmp_path / "law"
-    shutil.copytree(LAW, folder)
-    mutate(folder)
-    found = problems(folder)
-    if expected is None:
-        assert found == []
-    else:
-        assert any(expected in problem for problem in found), found
+FOLDER_CHANGES = [
+    (_flip_a_byte, "bgb.txt: sha256 is not the one in SOURCES.md"),
+    (
+        lambda folder: (folder / "extra.txt").write_text("§ 1\n", encoding="utf-8"),
+        "not listed in SOURCES.md",
+    ),
+    (lambda folder: (folder / "kschg.txt").unlink(), "kschg.txt: listed in SOURCES.md but missing"),
+    (_drop_a_section, "kschg.txt: sections in the file are not the ones SOURCES.md lists"),
+    (
+        _edit_sources("https://www.gesetze-im-internet.de/stpo/", "https://example.org/stpo/"),
+        "stpo.txt: source",
+    ),
+    (_edit_sources("| Kündigungsschutzgesetz (KSchG) |", "| KSchG |"), "kschg.txt: first line is not"),
+    (_edit_sources("|---|\n", "|---|\n| `sgg.txt` | x | § 1 | x | x | `x` |\n"), "sgg.txt: listed twice"),
+    (_edit_sources("| `tkg.txt` |", "| `tkg.txt` |"), None),
+    (_flip_a_land_byte, "laender.txt: Bayern: sha256 is not the one in SOURCES.md"),
+    (_drop_a_land, "laender.txt: the Länder are not the sixteen, each once, in order"),
+    (
+        _drop_a_land_provision,
+        "laender.txt: Bayern: provisions in the file are not the ones SOURCES.md lists",
+    ),
+    (_move_a_land_source, "laender.txt: Bayern: source is not on www.gesetze-bayern.de"),
+    (_move_a_gazette_source, "laender.txt: Thüringen: source is not on"),
+    (
+        _drop_a_fundstelle,
+        "laender.txt: Berlin: a block from a gazette does not name the gazette and its pages",
+    ),
+    (_claim_a_land_not_retrieved, "laender.txt: Bayern: SOURCES.md and the file disagree"),
+    (lambda folder: (folder / "laender.txt").unlink(), "laender.txt: missing"),
+]
+FOLDER_CHANGES_IDS = [
+    "changed-byte",
+    "unlisted-file",
+    "missing-file",
+    "dropped-section",
+    "other-site",
+    "other-statute",
+    "listed-twice",
+    "unchanged",
+    "land-changed-byte",
+    "land-dropped",
+    "land-dropped-provision",
+    "land-other-site",
+    "gazette-other-site",
+    "gazette-without-fundstelle",
+    "land-not-retrieved",
+    "laender-missing",
+]
+
+
+def test_a_change_to_the_folder_is_caught(tmp_path: Path) -> None:
+    def check(mutate, expected: str | None) -> None:
+        folder = Path(tempfile.mkdtemp(dir=tmp_path)) / "law"
+        shutil.copytree(LAW, folder)
+        mutate(folder)
+        found = problems(folder)
+        if expected is None:
+            assert found == []
+        else:
+            assert any(expected in problem for problem in found), found
+
+    check_rows(
+        [pytest.param(*row, id=name) for row, name in zip(FOLDER_CHANGES, FOLDER_CHANGES_IDS, strict=True)],
+        check,
+    )
 
 
 def test_a_retrieval_day_must_be_a_past_date(tmp_path: Path) -> None:
@@ -721,19 +720,25 @@ def test_a_footnote_that_starts_with_a_section_number_is_no_heading() -> None:
     assert headings("T\n\n§ 1 A\n\nFußnote\n\nx\ny\n\n§ 2\n\nz\n") == ["§ 1", "§ 2"]
 
 
-@pytest.mark.parametrize("name", sorted(FILES | {LAENDER_FILE}))
-def test_each_text_is_plain_utf8_lines_that_hash_the_same_everywhere(name: str) -> None:
+TEXT_FILES = sorted(FILES | {LAENDER_FILE})
+
+
+def test_each_text_is_plain_utf8_lines_that_hash_the_same_everywhere() -> None:
     """UTF-8 in NFC, LF line ends, no tab, no trailing space, no empty runs, one final newline: the bytes, and so
     the sha256, are the same on every system (.gitattributes checks every file out byte for byte)."""
-    data = (LAW / name).read_bytes()
-    text = data.decode("utf-8")
-    assert unicodedata.normalize("NFC", text) == text
-    assert "\r" not in text and "\t" not in text and " " not in text
-    assert text.endswith("\n") and not text.endswith("\n\n")
-    assert "\n\n\n" not in text
-    lines = text.split("\n")[:-1]
-    assert all(line == line.rstrip() for line in lines)
-    assert all(ch.isprintable() for line in lines for ch in line)
+
+    def check(name: str) -> None:
+        data = (LAW / name).read_bytes()
+        text = data.decode("utf-8")
+        assert unicodedata.normalize("NFC", text) == text
+        assert "\r" not in text and "\t" not in text and " " not in text
+        assert text.endswith("\n") and not text.endswith("\n\n")
+        assert "\n\n\n" not in text
+        lines = text.split("\n")[:-1]
+        assert all(line == line.rstrip() for line in lines)
+        assert all(ch.isprintable() for line in lines for ch in line)
+
+    check_rows(TEXT_FILES, check)
 
 
 def test_the_folder_names_no_software_and_no_file_of_this_repository() -> None:

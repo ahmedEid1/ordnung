@@ -14,6 +14,7 @@ import pytest
 import helpers_proof
 from helpers_docs import letter_pdf, photo
 from helpers_proof import DRAFT_ANSWER, SENT, TODAY, TRACKING, TRACKING_SHOWN, Gym, incoming
+from helpers_tables import check_rows
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.drafts import proof, sent
@@ -41,6 +42,12 @@ def ctx(data_dir: Path) -> Iterator[AppContext]:
 @pytest.fixture
 def gym(ctx: AppContext) -> Gym:
     return helpers_proof.gym(ctx)
+
+
+@pytest.fixture(scope="module")
+def letter_bytes() -> bytes:
+    """One letter PDF for the module (read only: bytes; every test stores it in its own data folder)."""
+    return letter_pdf()
 
 
 async def _sent_letter(
@@ -170,43 +177,55 @@ def test_an_einschreiben_bought_online_wants_the_printout_of_its_stamp() -> None
     assert "square code of an online stamp" in proof.MISSING_TRACKING
 
 
-@pytest.mark.parametrize("kind", sorted(proof.SENDING_DAY_KINDS))
-def test_a_sending_proof_on_another_day_than_the_sending_is_pointed_out(kind: str) -> None:
-    draft = _draft()  # sent 2026-09-01
-    assert proof.conflicts(draft, _had(kind, day="2026-09-01")) == []
-    assert proof.conflicts(draft, _had(kind)) == []  # no day: nothing to compare
-    (said,) = proof.conflicts(draft, _had(kind, day="2026-09-03"))
-    assert "Thu 3 Sep 2026" in said and "Tue 1 Sep 2026" in said and "correct one of them" in said
-    assert proof.conflicts(draft, _had("delivery_record", day="2026-09-03")) == []
-    assert proof.conflicts(_draft(status="draft", sent_at=None), _had(kind, day="2026-09-03")) == []
+SENDING_DAY_KINDS = sorted(proof.SENDING_DAY_KINDS)
 
 
-@pytest.mark.parametrize("kind", sorted(proof.DELIVERY_DAY_KINDS))
-def test_a_delivery_before_the_sending_day_is_pointed_out(kind: str) -> None:
-    draft = _draft(sent_at="2026-09-10")
-    (said,) = proof.conflicts(draft, _had(kind, day="2026-09-03"))
-    assert "delivered on Thu 3 Sep 2026, before" in said and "Thu 10 Sep 2026" in said
-    assert proof.conflicts(draft, _had(kind, day="2026-09-10")) == []
-    assert proof.conflicts(draft, _had(kind, day="2026-09-12")) == []
+def test_a_sending_proof_on_another_day_than_the_sending_is_pointed_out() -> None:
+    def check(kind: str) -> None:
+        draft = _draft()  # sent 2026-09-01
+        assert proof.conflicts(draft, _had(kind, day="2026-09-01")) == []
+        assert proof.conflicts(draft, _had(kind)) == []  # no day: nothing to compare
+        (said,) = proof.conflicts(draft, _had(kind, day="2026-09-03"))
+        assert "Thu 3 Sep 2026" in said and "Tue 1 Sep 2026" in said and "correct one of them" in said
+        assert proof.conflicts(draft, _had("delivery_record", day="2026-09-03")) == []
+        assert proof.conflicts(_draft(status="draft", sent_at=None), _had(kind, day="2026-09-03")) == []
+
+    check_rows(SENDING_DAY_KINDS, check)
 
 
-@pytest.mark.parametrize(
-    ("channel", "have", "expected"),
-    [
-        ("fax", [], [proof.MISSING_FAX]),
-        ("fax", ["fax_report"], []),
-        ("email", [], [proof.MISSING_EMAIL]),
-        ("email", ["sent_email"], []),
-        ("online_button", [], [proof.MISSING_BUTTON]),
-        ("online_button", ["cancel_confirmation"], []),
-        ("letter", [], [proof.MISSING_LETTER]),
-        ("letter", ["other"], []),
-        ("in_person", [], [proof.MISSING_IN_PERSON]),
-        ("portal", [], [proof.MISSING_PORTAL]),
-    ],
-)
-def test_what_is_missing_follows_the_channel(channel: str, have: list[str], expected: list[str]) -> None:
-    assert _missing(_draft(sent_channel=channel), have, answered=False) == expected
+DELIVERY_DAY_KINDS = sorted(proof.DELIVERY_DAY_KINDS)
+
+
+def test_a_delivery_before_the_sending_day_is_pointed_out() -> None:
+    def check(kind: str) -> None:
+        draft = _draft(sent_at="2026-09-10")
+        (said,) = proof.conflicts(draft, _had(kind, day="2026-09-03"))
+        assert "delivered on Thu 3 Sep 2026, before" in said and "Thu 10 Sep 2026" in said
+        assert proof.conflicts(draft, _had(kind, day="2026-09-10")) == []
+        assert proof.conflicts(draft, _had(kind, day="2026-09-12")) == []
+
+    check_rows(DELIVERY_DAY_KINDS, check)
+
+
+MISSING_BY_CHANNEL = [
+    ("fax", [], [proof.MISSING_FAX]),
+    ("fax", ["fax_report"], []),
+    ("email", [], [proof.MISSING_EMAIL]),
+    ("email", ["sent_email"], []),
+    ("online_button", [], [proof.MISSING_BUTTON]),
+    ("online_button", ["cancel_confirmation"], []),
+    ("letter", [], [proof.MISSING_LETTER]),
+    ("letter", ["other"], []),
+    ("in_person", [], [proof.MISSING_IN_PERSON]),
+    ("portal", [], [proof.MISSING_PORTAL]),
+]
+
+
+def test_what_is_missing_follows_the_channel() -> None:
+    def check(channel: str, have: list[str], expected: list[str]) -> None:
+        assert _missing(_draft(sent_channel=channel), have, answered=False) == expected
+
+    check_rows(MISSING_BY_CHANNEL, check)
 
 
 def test_a_letter_not_yet_sent_misses_nothing() -> None:
@@ -461,10 +480,12 @@ async def test_a_proof_attached_to_a_kept_private_email_stays_private_when_the_e
     assert document is not None and (document.status, document.ai_private) == ("processed", True)
 
 
-async def test_proof_files_are_no_letters_of_the_ledger(ctx: AppContext, gym: Gym) -> None:
+async def test_proof_files_are_no_letters_of_the_ledger(
+    ctx: AppContext, gym: Gym, letter_bytes: bytes
+) -> None:
     letter = await _sent_letter(ctx, gym)
     added = await sent.add_proof(
-        ctx, letter.id, letter_pdf(), "beleg.pdf", kind="delivery_record", today=TODAY
+        ctx, letter.id, letter_bytes, "beleg.pdf", kind="delivery_record", today=TODAY
     )
     ledger = Ledger(ctx.store, TODAY)
     assert added.doc_id not in ledger.documents
@@ -559,9 +580,11 @@ async def test_removing_a_proof_deletes_its_file_for_good(ctx: AppContext, gym: 
     assert ctx.store.list_proofs(letter.id) == []
 
 
-async def test_a_letter_already_in_ordnung_is_linked_and_kept(ctx: AppContext, gym: Gym) -> None:
+async def test_a_letter_already_in_ordnung_is_linked_and_kept(
+    ctx: AppContext, gym: Gym, letter_bytes: bytes
+) -> None:
     letter = await _sent_letter(ctx, gym)
-    data = letter_pdf()
+    data = letter_bytes
     known = await add_file(ctx, data, "sent-copy.pdf", private=True)
     added = await sent.add_proof(ctx, letter.id, data, "sent-copy.pdf", kind="other", today=TODAY)
     assert added.doc_id == known.id
@@ -569,10 +592,12 @@ async def test_a_letter_already_in_ordnung_is_linked_and_kept(ctx: AppContext, g
     assert ctx.store.get_document(known.id) is not None
 
 
-async def test_deleting_a_letter_deletes_its_proofs_and_their_files(ctx: AppContext, gym: Gym) -> None:
+async def test_deleting_a_letter_deletes_its_proofs_and_their_files(
+    ctx: AppContext, gym: Gym, letter_bytes: bytes
+) -> None:
     letter = await _sent_letter(ctx, gym)
     one = await sent.add_proof(ctx, letter.id, photo("JPEG"), "a.jpg", kind="posting_receipt", today=TODAY)
-    two = await sent.add_proof(ctx, letter.id, letter_pdf(), "b.pdf", kind="delivery_record", today=TODAY)
+    two = await sent.add_proof(ctx, letter.id, letter_bytes, "b.pdf", kind="delivery_record", today=TODAY)
     sent.delete_letter(ctx.store, letter.id)
     assert ctx.store.get_draft(letter.id) is None
     assert ctx.store.list_proofs() == []
@@ -629,7 +654,7 @@ async def test_an_unsent_letter_has_an_empty_overview_and_no_nachweis(ctx: AppCo
 
 
 async def test_the_nachweis_holds_the_timeline_the_letter_and_the_proof_files(
-    ctx: AppContext, gym: Gym
+    ctx: AppContext, gym: Gym, letter_bytes: bytes
 ) -> None:
     letter = await _sent_letter(ctx, gym, tracking_number=TRACKING)
     await sent.add_proof(
@@ -644,7 +669,7 @@ async def test_the_nachweis_holds_the_timeline_the_letter_and_the_proof_files(
     await sent.add_proof(
         ctx,
         letter.id,
-        letter_pdf(),
+        letter_bytes,
         "zustellung.pdf",
         kind="delivery_record",
         on_date="2026-09-03",

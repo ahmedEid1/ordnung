@@ -91,19 +91,14 @@ async def _tax_zip(api: Api) -> dict[str, dict[str, str]]:
 # --------------------------------------------------------------------------------------------------
 
 
-async def test_a_letter_without_a_choice_goes_by_claudes_mark(data_dir: Path) -> None:
-    async with api_for(data_dir) as api:
-        tax = await _read(api, TAX_LETTER.pdf(), "bescheid.pdf")
-        invoice = await _read(api, INVOICE_LETTER.pdf(), "rechnung.pdf")
-        assert await _page(api, tax) == (True, None)
-        assert await _page(api, invoice) == (False, None)
-        assert set(await _tax_zip(api)) == {tax}
-
-
 async def test_the_persons_choice_overrides_claudes_mark_both_ways(data_dir: Path) -> None:
     async with api_for(data_dir) as api:
         tax = await _read(api, TAX_LETTER.pdf(), "bescheid.pdf")
         invoice = await _read(api, INVOICE_LETTER.pdf(), "rechnung.pdf")
+        # a letter without a choice goes by Claude's mark
+        assert await _page(api, tax) == (True, None)
+        assert await _page(api, invoice) == (False, None)
+        assert set(await _tax_zip(api)) == {tax}
         await _choose(api, tax, False)
         await _choose(api, invoice, True)
         # Claude's own mark stays on each letter; what counts is the person's choice
@@ -113,14 +108,8 @@ async def test_the_persons_choice_overrides_claudes_mark_both_ways(data_dir: Pat
         assert set(rows) == {invoice} and rows[invoice]["for_taxes"] == "yes"
         await _choose(api, tax, None)  # back to Claude's mark
         assert set(await _tax_zip(api)) == {tax, invoice}
-
-
-async def test_the_trash_keeps_the_choice_and_deleting_for_good_drops_it(data_dir: Path) -> None:
-    async with api_for(data_dir) as api:
-        tax = await _read(api, TAX_LETTER.pdf(), "bescheid.pdf")
-        invoice = await _read(api, INVOICE_LETTER.pdf(), "rechnung.pdf")
+        # the trash keeps the choice and deleting for good drops it
         await _choose(api, tax, False)
-        await _choose(api, invoice, True)
         assert (await api.client.delete(f"/api/documents/{tax}")).json()["purged"] is False
         assert api.ctx.store.tax_choices() == {tax: False, invoice: True}
         assert (
@@ -134,13 +123,23 @@ async def test_the_trash_keeps_the_choice_and_deleting_for_good_drops_it(data_di
 # --------------------------------------------------------------------------------------------------
 
 
+def _asked(calls: list[LLMRequest]) -> list[dict[str, Any]]:
+    return [call.model_dump(mode="json", by_alias=True) for call in calls]
+
+
 async def test_the_tax_choice_survives_read_again_both_ways(data_dir: Path) -> None:
     router = ApiRouter()
     async with api_for(data_dir, router=router) as api:
         doc_id = await _read(api, TAX_LETTER.pdf(), "bescheid.pdf")
-        # Claude marked it; the person took it off: read again, Claude marks it again and the choice stays
-        await _choose(api, doc_id, False)
-        await _read_again(api, doc_id)
+        # read again asks Claude exactly the same with or without a choice
+        without = await _read_again(api, doc_id)
+        assert without and {call.purpose for call in without} >= {"extract"}
+        # Claude marked it; the person marked it too, then took it off: read again, Claude marks it again
+        # and the choice stays
+        for choice in (True, False):
+            await _choose(api, doc_id, choice)
+            assert _asked(await _read_again(api, doc_id)) == _asked(without), choice
+            assert api.ctx.store.tax_choices() == {doc_id: choice}
         assert await _page(api, doc_id) == (True, False)
         assert set(await _tax_zip(api)) == set()
         # the other way: this time Claude doesn't mark it, and the person did
@@ -149,21 +148,6 @@ async def test_the_tax_choice_survives_read_again_both_ways(data_dir: Path) -> N
         await _read_again(api, doc_id)
         assert await _page(api, doc_id) == (False, True)
         assert set(await _tax_zip(api)) == {doc_id}
-        assert api.ctx.store.tax_choices() == {doc_id: True}
-
-
-def _asked(calls: list[LLMRequest]) -> list[dict[str, Any]]:
-    return [call.model_dump(mode="json", by_alias=True) for call in calls]
-
-
-async def test_read_again_asks_claude_the_same_with_or_without_a_choice(data_dir: Path) -> None:
-    async with api_for(data_dir) as api:
-        doc_id = await _read(api, TAX_LETTER.pdf(), "bescheid.pdf")
-        without = await _read_again(api, doc_id)
-        assert without and {call.purpose for call in without} >= {"extract"}
-        for choice in (False, True):
-            await _choose(api, doc_id, choice)
-            assert _asked(await _read_again(api, doc_id)) == _asked(without), choice
         assert api.ctx.store.tax_choices() == {doc_id: True}
 
 

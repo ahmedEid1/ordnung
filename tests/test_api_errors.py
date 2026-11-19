@@ -10,6 +10,7 @@ from pathlib import Path
 import httpx
 import pytest
 
+from helpers_tables import check_rows_async
 from ordnung import clock
 from ordnung.api.app import UNEXPECTED_MESSAGE
 from ordnung.api.routes.items import REPEAT_INTERVAL_MESSAGE
@@ -82,19 +83,22 @@ async def test_a_date_on_the_calendars_last_day_leaves_the_calendar_working(
     assert single.json() == {"detail": TOO_FAR_AHEAD}
 
 
-@pytest.mark.parametrize(
-    "path",
-    [
-        "/api/documents?offset=100000000000000000000",
-        "/api/documents?offset=1000001",
-        "/api/documents/doc_x/pages/100000000000000000000.jpg",
-        "/api/documents/doc_x/pages/10001.jpg",
-    ],
-)
-async def test_an_offset_or_page_number_out_of_range_is_a_422(data_dir: Path, path: str) -> None:
+OUT_OF_RANGE_PATHS = [
+    "/api/documents?offset=100000000000000000000",
+    "/api/documents?offset=1000001",
+    "/api/documents/doc_x/pages/100000000000000000000.jpg",
+    "/api/documents/doc_x/pages/10001.jpg",
+]
+
+
+async def test_an_offset_or_page_number_out_of_range_is_a_422(data_dir: Path) -> None:
     async with api_for(data_dir) as api:
-        response = await api.client.get(path)
-    assert response.status_code == 422, response.text
+
+        async def check(path: str) -> None:
+            response = await api.client.get(path)
+            assert response.status_code == 422, response.text
+
+        await check_rows_async(OUT_OF_RANGE_PATHS, check)
 
 
 async def test_a_page_number_below_one_is_no_page(data_dir: Path) -> None:
@@ -105,39 +109,50 @@ async def test_a_page_number_below_one_is_no_page(data_dir: Path) -> None:
             assert response.json() == {"detail": "This page doesn't exist."}
 
 
-@pytest.mark.parametrize("zone", ["Europe", "x" * 300, "Europe/", "Mars/Olympus"])
-async def test_a_time_zone_that_is_none_is_a_422(data_dir: Path, zone: str) -> None:
+UNKNOWN_TIME_ZONES = ["Europe", "x" * 300, "Europe/", "Mars/Olympus"]
+
+
+async def test_a_time_zone_that_is_none_is_a_422(data_dir: Path) -> None:
     async with api_for(data_dir) as api:
-        response = await api.client.put("/api/profile", json={"timezone": zone})
-        kept = (await api.client.get("/api/profile")).json()["timezone"]
-    assert response.status_code == 422, response.text
-    assert "is not a known time zone (e.g. Europe/Berlin)." in response.text
-    assert kept != zone
+
+        async def check(zone: str) -> None:
+            response = await api.client.put("/api/profile", json={"timezone": zone})
+            kept = (await api.client.get("/api/profile")).json()["timezone"]
+            assert response.status_code == 422, response.text
+            assert "is not a known time zone (e.g. Europe/Berlin)." in response.text
+            assert kept != zone
+
+        await check_rows_async(UNKNOWN_TIME_ZONES, check)
 
 
-@pytest.mark.parametrize(
-    "recurrence",
-    [
-        {"interval": 1_000_000_000, "unit": "years"},
-        {"interval": 121, "unit": "days"},
-        {"interval": 0, "unit": "months"},
-    ],
-)
-async def test_a_repeat_interval_out_of_range_is_a_422(data_dir: Path, recurrence: dict[str, object]) -> None:
+REPEATS_OUT_OF_RANGE = [
+    {"interval": 1_000_000_000, "unit": "years"},
+    {"interval": 121, "unit": "days"},
+    {"interval": 0, "unit": "months"},
+]
+
+
+async def test_a_repeat_interval_out_of_range_is_a_422(data_dir: Path) -> None:
     """Every 1 to 120 days, weeks, months or years, checked where a to-do is added or changed by hand; the rule a
     letter is read with stays as it is."""
     async with api_for(data_dir) as api:
-        body = {"kind": "reminder", "title": "UStVA", "due_date": "2026-10-10"}
-        created = await api.client.post("/api/items", json={**body, "recurrence": recurrence})
-        item = await api.client.post(
-            "/api/items", json={**body, "recurrence": {"interval": 120, "unit": "years"}}
-        )
-        assert item.status_code == 201, item.text
-        patched = await api.client.patch(f"/api/items/{item.json()['id']}", json={"recurrence": recurrence})
-        stored = (await api.client.get(f"/api/items/{item.json()['id']}")).json()
-    assert created.status_code == patched.status_code == 422
-    assert REPEAT_INTERVAL_MESSAGE in created.text and REPEAT_INTERVAL_MESSAGE in patched.text
-    assert stored["recurrence"]["interval"] == 120
+
+        async def check(recurrence: dict[str, object]) -> None:
+            body = {"kind": "reminder", "title": "UStVA", "due_date": "2026-10-10"}
+            created = await api.client.post("/api/items", json={**body, "recurrence": recurrence})
+            item = await api.client.post(
+                "/api/items", json={**body, "recurrence": {"interval": 120, "unit": "years"}}
+            )
+            assert item.status_code == 201, item.text
+            patched = await api.client.patch(
+                f"/api/items/{item.json()['id']}", json={"recurrence": recurrence}
+            )
+            stored = (await api.client.get(f"/api/items/{item.json()['id']}")).json()
+            assert created.status_code == patched.status_code == 422
+            assert REPEAT_INTERVAL_MESSAGE in created.text and REPEAT_INTERVAL_MESSAGE in patched.text
+            assert stored["recurrence"]["interval"] == 120
+
+        await check_rows_async(REPEATS_OUT_OF_RANGE, check)
 
 
 async def test_a_usage_limit_hint_with_no_real_time_zone_waits_the_usual_pause(data_dir: Path) -> None:

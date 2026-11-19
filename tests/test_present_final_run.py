@@ -14,16 +14,17 @@ from __future__ import annotations
 
 import ast
 import copy
+import functools
 import hashlib
 import html
 import json
-import os
 import re
 import shutil
 import subprocess
 import sys
 from collections.abc import Callable, Iterator
 from html.parser import HTMLParser
+from itertools import product
 from pathlib import Path
 from typing import Any
 
@@ -47,11 +48,12 @@ from evals.present import (
     views,
 )
 from evals.present.__main__ import main
-from scripts import prereg_hashes, prereg_published
+from scripts import prereg_hashes
 
 import helpers_final as hf
 import test_present_final as builders
 from helpers_publication import final_published, final_run_files, results_before_publication
+from helpers_tables import check_rows
 
 #: what a path of the building computer starts with (as tests/test_present.py)
 PATH_MARKS = ("/home/", "/Users/", "/root/", "/tmp/", "\\Users\\")
@@ -136,15 +138,35 @@ def no_final_outputs() -> dict[str, str]:
     return rendered
 
 
+#: A final analysis, the sources it renders with and its reads (``hf.calibration``, ``hf.realistic``).
+Analysed = tuple[dict[str, Any], dict[str, Any], list[tuple[str, str]]]
+
+
 @pytest.fixture(scope="module")
-def made(tmp_path_factory: pytest.TempPathFactory) -> Callable[[str], Made]:
+def calibration(_results_before_publication: None) -> Callable[[], Analysed]:
+    """The calibration's final analysis (the real ``evals.analysis`` over the earlier held-out splits), run once when
+    first asked for: every checkout of it writes its own copy (``hf.final_root``), so the checkouts share it read-only."""
+    return functools.cache(hf.calibration)
+
+
+@pytest.fixture(scope="module")
+def realistic(_results_before_publication: None) -> Analysed:
+    """``hf.realistic()``, analysed once: the real final analysis of synthetic reads, its sources and its reads, which
+    the tests that write a checkout of it share read-only (``hf.final_root`` copies the analysis)."""
+    return hf.realistic()
+
+
+@pytest.fixture(scope="module")
+def made(
+    tmp_path_factory: pytest.TempPathFactory, calibration: Callable[[], Analysed]
+) -> Callable[[str], Made]:
     """A checkout per final, built once: its root, ``model.build`` of it and every output it renders."""
     cache: dict[str, Made] = {}
 
     def make(name: str) -> Made:
         if name not in cache:
             tmp = tmp_path_factory.mktemp(name)
-            cache[name] = Made(hf.realistic_root(tmp) if name == "realistic" else hf.scenario_root(tmp, name))
+            cache[name] = Made(_final_root(tmp, name, calibration))
         return cache[name]
 
     return make
@@ -181,209 +203,220 @@ def _views() -> dict[str, Any]:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("name", hf.SCENARIO_IDS)
-def test_a_published_final_takes_the_headline_by_rule(made: Callable[[str], Made], name: str) -> None:
+def test_a_published_final_takes_the_headline_by_rule(made: Callable[[str], Made]) -> None:
     """Whatever the result, the final run is the headline: ``presentation.json``'s ``final`` holds it, the row order
     is its mean accuracy's, the README's block says the registered README sentences and nothing of the pooled
     re-analysis, and the report's summary is the registered paragraph with the final run's chart. The pooled
     held-out splits stay in section 6.2, as recorded, with their chart."""
-    root, doc, outputs = made(name)
-    source, prereg, named = hf.published(root)
-    assert doc["final"] is not None and doc["final"]["source"]["file"] == hf.FINAL_NAME
-    means = {c: source["primary"]["conditions"][c]["mean_accuracy"]["value"] for c in final.CONDITIONS}
-    assert doc["order"] == sorted(final.CONDITIONS, key=lambda c: (-means[c], final.CONDITIONS.index(c)))
-    said = final.coded(source, prereg, block="readme", sources=named)
-    block = _block(outputs["README.md"])
-    picture = block[block.index("") + 1]
-    assert block == final.readme_block(said, prereg["sentences"], picture)
-    assert "Held out, read once" not in "\n".join(block) and "**Ask:**" not in "\n".join(block)
-    report = outputs["docs/evals.md"]
-    summary = _section(report, "1. Summary")
-    paragraph = [s.text for s in said if s.slot in prereg["sentences"]["readme_layout"]["paragraph"]]
-    assert _flat(" ".join(paragraph)) in _flat(summary)
-    assert "assets/eval-final-light.svg" in summary and "eval-held-out" not in summary
-    assert _flat(text.headline(doc)) not in _flat(report)
-    results = _section(report, "6. Results")
-    assert "### 6.2 The held-out splits pooled, as recorded" in results
-    assert "assets/eval-held-out-light.svg" in results.split("### 6.2 ", 1)[1]
-    assert "not pre-registered" not in report.split("\n## ", 1)[0]  # the header names the final run
+
+    def check(name: str) -> None:
+        root, doc, outputs = made(name)
+        source, prereg, named = hf.published(root)
+        assert doc["final"] is not None and doc["final"]["source"]["file"] == hf.FINAL_NAME
+        means = {c: source["primary"]["conditions"][c]["mean_accuracy"]["value"] for c in final.CONDITIONS}
+        assert doc["order"] == sorted(final.CONDITIONS, key=lambda c: (-means[c], final.CONDITIONS.index(c)))
+        said = final.coded(source, prereg, block="readme", sources=named)
+        block = _block(outputs["README.md"])
+        picture = block[block.index("") + 1]
+        assert block == final.readme_block(said, prereg["sentences"], picture)
+        assert "Held out, read once" not in "\n".join(block) and "**Ask:**" not in "\n".join(block)
+        report = outputs["docs/evals.md"]
+        summary = _section(report, "1. Summary")
+        paragraph = [s.text for s in said if s.slot in prereg["sentences"]["readme_layout"]["paragraph"]]
+        assert _flat(" ".join(paragraph)) in _flat(summary)
+        assert "assets/eval-final-light.svg" in summary and "eval-held-out" not in summary
+        assert _flat(text.headline(doc)) not in _flat(report)
+        results = _section(report, "6. Results")
+        assert "### 6.2 The held-out splits pooled, as recorded" in results
+        assert "assets/eval-held-out-light.svg" in results.split("### 6.2 ", 1)[1]
+        assert "not pre-registered" not in report.split("\n## ", 1)[0]  # the header names the final run
+
+    check_rows(hf.SCENARIO_IDS, check)
 
 
-@pytest.mark.parametrize("name", ["good", "bad", "one_read", "realistic"])
+PRESENTATION_FINALS = ["good", "bad", "one_read", "realistic"]
+
+
 def test_every_number_in_presentation_json_final_is_the_analysis_value_at_its_path(
-    made: Callable[[str], Made], name: str
+    made: Callable[[str], Made],
 ) -> None:
     """``presentation.json``'s ``final`` copies the final analysis, the pre-registration and the files it names: each
     number is the value at its path, never computed again, and the registered sentences are ``final.coded``'s."""
-    root, doc = made(name).root, made(name).doc
-    source, prereg, named = hf.published(root)
-    shown = json.loads(model.dumps(doc))["final"]
-    assert shown == doc["final"]
-    primary = source["primary"]
-    for key in ("split", "reads", "reads_registered", "reads_used", "reads_missing", "items", "letters"):
-        assert shown[key] == primary[key], key
-    assert (shown["clusters"], shown["not_run"]) == (primary["clusters"], primary["not_run"])
-    for condition in final.CONDITIONS:
-        ours, theirs = shown["conditions"][condition], primary["conditions"][condition]
-        for key in ("exact_per_read", "harmful_per_read", "late_per_read"):
-            assert ours[key] == [{k: rate[k] for k in ("k", "n", "value", "ci")} for rate in theirs[key]]
-        for key in ("mean_accuracy", "mean_harmful"):
-            assert ours[key] == {k: theirs[key][k] for k in ("value", "ci", "method")}
-        for key in ("pass_all", "pass_any", "unstable"):
-            assert ours[key] == {k: theirs[key][k] for k in ("k", "n", "value", "ci")}
-        for key in ("model_failed_per_read", "unanswered_per_read"):
-            assert ours[key] == theirs[key]
-    for family in ("F1_accuracy", "F2_harm"):
-        for pair, row in primary["families"][family].items():
-            got = shown["families"][family][pair]
-            assert (got["n"], got["diff"], got["lo"], got["hi"], got["holm"], got["p"]) == (
-                row["n"],
-                row["diff"],
-                row["bootstrap"]["lo"],
-                row["bootstrap"]["hi"],
-                row["holm"],
-                row["signflip"]["p"],
+
+    def check(name: str) -> None:
+        root, doc = made(name).root, made(name).doc
+        source, prereg, named = hf.published(root)
+        shown = json.loads(model.dumps(doc))["final"]
+        assert shown == doc["final"]
+        primary = source["primary"]
+        for key in ("split", "reads", "reads_registered", "reads_used", "reads_missing", "items", "letters"):
+            assert shown[key] == primary[key], key
+        assert (shown["clusters"], shown["not_run"]) == (primary["clusters"], primary["not_run"])
+        for condition in final.CONDITIONS:
+            ours, theirs = shown["conditions"][condition], primary["conditions"][condition]
+            for key in ("exact_per_read", "harmful_per_read", "late_per_read"):
+                assert ours[key] == [{k: rate[k] for k in ("k", "n", "value", "ci")} for rate in theirs[key]]
+            for key in ("mean_accuracy", "mean_harmful"):
+                assert ours[key] == {k: theirs[key][k] for k in ("value", "ci", "method")}
+            for key in ("pass_all", "pass_any", "unstable"):
+                assert ours[key] == {k: theirs[key][k] for k in ("k", "n", "value", "ci")}
+            for key in ("model_failed_per_read", "unanswered_per_read"):
+                assert ours[key] == theirs[key]
+        for family in ("F1_accuracy", "F2_harm"):
+            for pair, row in primary["families"][family].items():
+                got = shown["families"][family][pair]
+                assert (got["n"], got["diff"], got["lo"], got["hi"], got["holm"], got["p"]) == (
+                    row["n"],
+                    row["diff"],
+                    row["bootstrap"]["lo"],
+                    row["bootstrap"]["hi"],
+                    row["holm"],
+                    row["signflip"]["p"],
+                )
+        stability = primary["families"]["F3_stability"]
+        if stability is None:
+            assert shown["families"]["F3_stability"] is None
+        else:
+            for pair, row in stability.items():
+                for key in ("n", "b", "c", "diff", "midp", "exact_p", "bonett_price", "holm"):
+                    assert shown["families"]["F3_stability"][pair][key] == row[key]
+        for pair, block in primary["noninferiority"].items():
+            got = shown["noninferiority"][pair]
+            assert (got["margin"], got["lo"], got["hi"], got["estimate"], got["errors"], got["decision"]) == (
+                block["margin"],
+                block["bound"]["lo"],
+                block["bound"]["hi"],
+                block["bound"]["estimate"],
+                block["errors"],
+                block["decision"],
             )
-    stability = primary["families"]["F3_stability"]
-    if stability is None:
-        assert shown["families"]["F3_stability"] is None
-    else:
-        for pair, row in stability.items():
-            for key in ("n", "b", "c", "diff", "midp", "exact_p", "bonett_price", "holm"):
-                assert shown["families"]["F3_stability"][pair][key] == row[key]
-    for pair, block in primary["noninferiority"].items():
-        got = shown["noninferiority"][pair]
-        assert (got["margin"], got["lo"], got["hi"], got["estimate"], got["errors"], got["decision"]) == (
-            block["margin"],
-            block["bound"]["lo"],
-            block["bound"]["hi"],
-            block["bound"]["estimate"],
-            block["errors"],
-            block["decision"],
+        for key in ("decisions", "decision_roles", "confirmatory"):
+            assert shown[key] == primary[key], key
+        assert [set(row) for row in shown["errors"]] == [ERROR_KEYS] * len(primary["errors"])
+        assert shown["errors"] == [{k: row[k] for k in ERROR_KEYS} for row in primary["errors"]]
+        settings = source["meta"]["settings"]
+        assert shown["settings"] == {
+            k: settings[k]
+            for k in ("level", "alpha", "noninferiority_margin", "seed", "resamples", "signflip_draws")
+        }
+        assert (shown["model"], shown["date"], shown["methods"]) == (
+            source["meta"]["model"],
+            source["meta"]["date"],
+            source["meta"]["methods"],
         )
-    for key in ("decisions", "decision_roles", "confirmatory"):
-        assert shown[key] == primary[key], key
-    assert [set(row) for row in shown["errors"]] == [ERROR_KEYS] * len(primary["errors"])
-    assert shown["errors"] == [{k: row[k] for k in ERROR_KEYS} for row in primary["errors"]]
-    settings = source["meta"]["settings"]
-    assert shown["settings"] == {
-        k: settings[k]
-        for k in ("level", "alpha", "noninferiority_margin", "seed", "resamples", "signflip_draws")
-    }
-    assert (shown["model"], shown["date"], shown["methods"]) == (
-        source["meta"]["model"],
-        source["meta"]["date"],
-        source["meta"]["methods"],
-    )
-    digest = hashlib.sha256((root / hf.FILES["prereg"]).read_bytes()).hexdigest()
-    assert shown["prereg"]["file"] == hf.FILES["prereg"]
-    assert shown["prereg"]["sha256"] == digest == source["meta"]["prereg"]["sha256"]
-    assert shown["prereg"]["registered"] == prereg["registered"]
-    assert shown["source"] == {
-        "file": hf.FINAL_NAME,
-        "sha256": hashlib.sha256((root / "evals" / "results" / hf.FINAL_NAME).read_bytes()).hexdigest(),
-    }
-    for block_name in ("page", "readme"):
-        assert shown["sentences"][block_name] == [
-            s._asdict() for s in final.coded(source, prereg, block=block_name, sources=named)
+        digest = hashlib.sha256((root / hf.FILES["prereg"]).read_bytes()).hexdigest()
+        assert shown["prereg"]["file"] == hf.FILES["prereg"]
+        assert shown["prereg"]["sha256"] == digest == source["meta"]["prereg"]["sha256"]
+        assert shown["prereg"]["registered"] == prereg["registered"]
+        assert shown["source"] == {
+            "file": hf.FINAL_NAME,
+            "sha256": hashlib.sha256((root / "evals" / "results" / hf.FINAL_NAME).read_bytes()).hexdigest(),
+        }
+        for block_name in ("page", "readme"):
+            assert shown["sentences"][block_name] == [
+                s._asdict() for s in final.coded(source, prereg, block=block_name, sources=named)
+            ]
+        sentences = prereg["sentences"]
+        assert shown["layout"] == {
+            "readme_block": sentences["readme_block"],
+            "readme_layout": sentences["readme_layout"],
+        }
+        assert shown["views"] == _views()
+        deviations = named["deviations"]
+        assert [(row["id"], row["kind"]) for row in shown["deviations"]] == [
+            (d["id"], d["kind"]) for d in deviations
         ]
-    sentences = prereg["sentences"]
-    assert shown["layout"] == {
-        "readme_block": sentences["readme_block"],
-        "readme_layout": sentences["readme_layout"],
-    }
-    assert shown["views"] == _views()
-    deviations = named["deviations"]
-    assert [(row["id"], row["kind"]) for row in shown["deviations"]] == [
-        (d["id"], d["kind"]) for d in deviations
-    ]
-    assert all("what" not in row and "evidence" not in row for row in shown["deviations"])
-    assert shown["owner"] == {
-        "labels": named["owner_labels"]["status"],
-        "kappa": named["owner_kappa"]["status"],
-    }
-    if named["ask"] is None:
-        assert shown["ask"] is None
-    else:
-        ask = named["ask"]
-        assert shown["ask"]["runs"] == ask["consistency"]["runs"]
-        assert shown["ask"]["strict"]["k"] == int(ask["r1"]["strict_accuracy"]["k"])
-        assert shown["ask"]["harmful_any"]["k"] == int(ask["consistency"]["harmful_any"]["k"])
-    endpoints = named["stress"]["endpoints"] if named["stress"] else None
-    if endpoints is None:
-        assert shown["stress"] is None
-    else:
-        for name_ in ("injection_targeted", "distractor_taken", "harmful_unflagged"):
-            assert shown["stress"][name_] == {
-                **{k: endpoints[name_][k] for k in ("n", "ordnung", "llm_rules_tool", "b", "c", "p")},
-                "holm": endpoints["holm"][name_],
-            }
-    scam = named["e2e"]["metrics"]["all"]["scam"]
-    assert shown["e2e"]["file"] == hf.E2E_NAME
-    assert (shown["e2e"]["set_aside"], shown["e2e"]["scam_letters"]) == (
-        scam["set_aside_obligations"],
-        scam["scam_letters"],
-    )
-    assert shown["power"] == {
-        family: {pair: row["power"] for pair, row in rows.items()}
-        for family, rows in named["power"]["comparisons"].items()
-    }
-    # where each power was simulated, the power file's; the caveat, the pre-registration's as registered
-    for family, rows in shown["power_at"].items():
-        for pair, row in rows.items():
-            source_row = named["power"]["comparisons"][family][pair]
-            assert row["gap"] == (source_row.get("observed") or {}).get("gap")
-            assert row["power_half_gap"] == source_row.get("power_half_gap")
-            assert row["mdd"] == (source_row.get("mdd") or {}).get("gap")
-    assert shown["power_caveat"] == (prereg.get("power") or {}).get("caveats")
-    # the cost and latency, read 1's flags and the flags over the reads, the analysis's own (a hand-built
-    # final has none of them)
-    for condition in final.CONDITIONS:
-        theirs = primary["conditions"][condition]
-        if shown["cost"] is None:
-            assert "cost" not in theirs
+        assert all("what" not in row and "evidence" not in row for row in shown["deviations"])
+        assert shown["owner"] == {
+            "labels": named["owner_labels"]["status"],
+            "kappa": named["owner_kappa"]["status"],
+        }
+        if named["ask"] is None:
+            assert shown["ask"] is None
         else:
-            assert shown["cost"][condition] == {
-                **{key: theirs["cost"][key] for key in finalrun.COST_FIELDS},
-                "latency_ms": {key: theirs["latency_ms"][key] for key in finalrun.LATENCY_FIELDS},
-            }
-            assert finaltext.LATENCY_FIELDS == finalrun.LATENCY_FIELDS
-        if shown["selective"] is None:
-            assert "selective" not in theirs
+            ask = named["ask"]
+            assert shown["ask"]["runs"] == ask["consistency"]["runs"]
+            assert shown["ask"]["strict"]["k"] == int(ask["r1"]["strict_accuracy"]["k"])
+            assert shown["ask"]["harmful_any"]["k"] == int(ask["consistency"]["harmful_any"]["k"])
+        endpoints = named["stress"]["endpoints"] if named["stress"] else None
+        if endpoints is None:
+            assert shown["stress"] is None
         else:
-            ours = shown["selective"][condition]
-            assert (ours["aurc"], ours["excess"], ours["auroc"]) == (
-                theirs["selective"]["aurc"]["aurc"],
-                theirs["selective"]["aurc"]["excess"],
-                theirs["selective"]["auroc"],
-            )
-            assert ours["please_check"]["k"] == int(theirs["selective"]["please_check"]["recall_wrong"]["k"])
-            over = theirs["flags_over_reads"]["caught"]
-            assert ours["over_reads"] == {"k": int(over["k"]), "n": int(over["n"])}
+            for name_ in ("injection_targeted", "distractor_taken", "harmful_unflagged"):
+                assert shown["stress"][name_] == {
+                    **{k: endpoints[name_][k] for k in ("n", "ordnung", "llm_rules_tool", "b", "c", "p")},
+                    "holm": endpoints["holm"][name_],
+                }
+        scam = named["e2e"]["metrics"]["all"]["scam"]
+        assert shown["e2e"]["file"] == hf.E2E_NAME
+        assert (shown["e2e"]["set_aside"], shown["e2e"]["scam_letters"]) == (
+            scam["set_aside_obligations"],
+            scam["scam_letters"],
+        )
+        assert shown["power"] == {
+            family: {pair: row["power"] for pair, row in rows.items()}
+            for family, rows in named["power"]["comparisons"].items()
+        }
+        # where each power was simulated, the power file's; the caveat, the pre-registration's as registered
+        for family, rows in shown["power_at"].items():
+            for pair, row in rows.items():
+                source_row = named["power"]["comparisons"][family][pair]
+                assert row["gap"] == (source_row.get("observed") or {}).get("gap")
+                assert row["power_half_gap"] == source_row.get("power_half_gap")
+                assert row["mdd"] == (source_row.get("mdd") or {}).get("gap")
+        assert shown["power_caveat"] == (prereg.get("power") or {}).get("caveats")
+        # the cost and latency, read 1's flags and the flags over the reads, the analysis's own (a hand-built
+        # final has none of them)
+        for condition in final.CONDITIONS:
+            theirs = primary["conditions"][condition]
+            if shown["cost"] is None:
+                assert "cost" not in theirs
+            else:
+                assert shown["cost"][condition] == {
+                    **{key: theirs["cost"][key] for key in finalrun.COST_FIELDS},
+                    "latency_ms": {key: theirs["latency_ms"][key] for key in finalrun.LATENCY_FIELDS},
+                }
+                assert finaltext.LATENCY_FIELDS == finalrun.LATENCY_FIELDS
+            if shown["selective"] is None:
+                assert "selective" not in theirs
+            else:
+                ours = shown["selective"][condition]
+                assert (ours["aurc"], ours["excess"], ours["auroc"]) == (
+                    theirs["selective"]["aurc"]["aurc"],
+                    theirs["selective"]["aurc"]["excess"],
+                    theirs["selective"]["auroc"],
+                )
+                assert ours["please_check"]["k"] == int(
+                    theirs["selective"]["please_check"]["recall_wrong"]["k"]
+                )
+                over = theirs["flags_over_reads"]["caught"]
+                assert ours["over_reads"] == {"k": int(over["k"]), "n": int(over["n"])}
 
-    def strings(value: Any, path: str = "") -> Iterator[tuple[str, str]]:
-        if isinstance(value, dict):
-            for key, inner in value.items():
-                # the registered words: the sentences, the view templates, the pre-registration's own texts
-                if key not in (
-                    "sentences",
-                    "views",
-                    "layout",
-                    "methods",
-                    "consequence",
-                    "not_run",
-                    "power_caveat",
-                ):
-                    yield from strings(inner, f"{path}.{key}")
-        elif isinstance(value, list):
-            for inner in value:
-                yield from strings(inner, path)
-        elif isinstance(value, str):
-            yield path, value
+        def strings(value: Any, path: str = "") -> Iterator[tuple[str, str]]:
+            if isinstance(value, dict):
+                for key, inner in value.items():
+                    # the registered words: the sentences, the view templates, the pre-registration's own texts
+                    if key not in (
+                        "sentences",
+                        "views",
+                        "layout",
+                        "methods",
+                        "consequence",
+                        "not_run",
+                        "power_caveat",
+                    ):
+                        yield from strings(inner, f"{path}.{key}")
+            elif isinstance(value, list):
+                for inner in value:
+                    yield from strings(inner, path)
+            elif isinstance(value, str):
+                yield path, value
 
-    # nothing but registered or templated words, codes, ids and numbers: no sentence of a letter can hide in it
-    prose = [path for path, value in strings(shown) if len(value) >= 24 and value.count(" ") >= 3]
-    assert prose == []
+        # nothing but registered or templated words, codes, ids and numbers: no sentence of a letter can hide in it
+        prose = [path for path, value in strings(shown) if len(value) >= 24 and value.count(" ") >= 3]
+        assert prose == []
+
+    check_rows(PRESENTATION_FINALS, check)
 
 
 def test_a_final_in_pending_is_never_read(tmp_path: Path) -> None:
@@ -409,13 +442,15 @@ def test_a_final_in_pending_is_never_read(tmp_path: Path) -> None:
     assert build.check(root) == [FINAL_SVGS[0]]
 
 
-def test_the_results_before_publication_leave_out_the_final_run_s_files_only(tmp_path: Path) -> None:
+def test_the_results_before_publication_leave_out_the_final_run_s_files_only(
+    tmp_path: Path, realistic: Analysed
+) -> None:
     """Once the final run is published, the presenter's tests read the results folder as it was before the publish
     PR (``tests/helpers_publication.py``): every results file but the final run's own. Shown on a checkout with a
     synthetic final run beside the results with none: its analysis, its reads, the files it names (the held-out Ask
     set's file, the stress test, its end-to-end replay), a re-scored read and a replay without the sender's Land of a
     final split are left out, and nothing else."""
-    doc, src, reads = hf.realistic()
+    doc, src, reads = realistic
     rescored = json.loads(reads[0][1])
     rescored["meta"]["backend"] = "replay"
     without_land = next(
@@ -574,10 +609,10 @@ def test_every_final_companion_file_has_one_kind_and_role(tmp_path: Path) -> Non
     assert text.ask_line(built) == text.ask_line(pooled)
 
 
-def test_a_read_the_final_analysis_does_not_read_is_refused(tmp_path: Path) -> None:
+def test_a_read_the_final_analysis_does_not_read_is_refused(tmp_path: Path, realistic: Analysed) -> None:
     """A read of a final split is shown only through the analysis that reads it: one more read beside it, or an
     analysis that reads a file that is not there, is refused by name."""
-    doc, src, reads = hf.realistic()
+    doc, src, reads = realistic
     more = ("2027-01-04-claude-sonnet-5-holdout4-r4.json", hf._text(hf.synthetic_read("holdout4", 4, 12)))
     prereg = hf.complete_prereg(builders.prereg())
     root = hf.final_root(tmp_path / "a", doc, sources=src, prereg=prereg, reads=[*reads, more])
@@ -592,8 +627,8 @@ def test_a_read_the_final_analysis_does_not_read_is_refused(tmp_path: Path) -> N
         model.build(root / "evals" / "results")
 
 
-def test_an_input_whose_bytes_changed_is_refused_for_the_final(tmp_path: Path) -> None:
-    doc, src, reads = hf.realistic()
+def test_an_input_whose_bytes_changed_is_refused_for_the_final(tmp_path: Path, realistic: Analysed) -> None:
+    doc, src, reads = realistic
     name, body = reads[1]
     changed = [*reads[:1], (name, body + "\n"), *reads[2:]]
     root = hf.final_root(
@@ -673,25 +708,31 @@ def test_a_final_is_presented_from_a_checkout_only(tmp_path: Path) -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("name", [*hf.SCENARIO_IDS, "realistic"])
-def test_the_readme_block_is_the_registered_layout(made: Callable[[str], Made], name: str) -> None:
+README_FINALS = [*hf.SCENARIO_IDS, "realistic"]
+
+
+def test_the_readme_block_is_the_registered_layout(made: Callable[[str], Made]) -> None:
     """The README's block is ``final.readme_block`` of the README sentences under the registered templates, line for
     line, within the registered budget, its chart line in the registered frame, and every README slot said whatever
     its result."""
-    root, _, outputs = made(name)
-    source, prereg, named = hf.published(root)
-    said = final.coded(source, prereg, block="readme", sources=named)
-    readme = outputs["README.md"]
-    assert final.readme_problems(readme, said, prereg["sentences"]) == []
-    block = _block(readme)
-    assert len(block) <= final.README_BLOCK_MAX_LINES
-    (picture,) = [line for line in block if line.startswith("<picture>")]
-    assert final._is_picture(picture)
-    assert all(len(line) <= final.README_LINE_MAX for line in block if line != picture)
-    flat = _flat(" ".join(block))
-    for slot in prereg["sentences"]["readme_block"]:
-        texts = [s.text for s in said if s.slot == slot]
-        assert texts and all(_flat(t) in flat for t in texts), slot
+
+    def check(name: str) -> None:
+        root, _, outputs = made(name)
+        source, prereg, named = hf.published(root)
+        said = final.coded(source, prereg, block="readme", sources=named)
+        readme = outputs["README.md"]
+        assert final.readme_problems(readme, said, prereg["sentences"]) == []
+        block = _block(readme)
+        assert len(block) <= final.README_BLOCK_MAX_LINES
+        (picture,) = [line for line in block if line.startswith("<picture>")]
+        assert final._is_picture(picture)
+        assert all(len(line) <= final.README_LINE_MAX for line in block if line != picture)
+        flat = _flat(" ".join(block))
+        for slot in prereg["sentences"]["readme_block"]:
+            texts = [s.text for s in said if s.slot == slot]
+            assert texts and all(_flat(t) in flat for t in texts), slot
+
+    check_rows(README_FINALS, check)
 
 
 def test_the_final_chart_line_fits_its_frame_with_four_digit_numbers(made: Callable[[str], Made]) -> None:
@@ -724,23 +765,30 @@ def test_the_readme_outside_the_block_is_unchanged_with_a_final(made: Callable[[
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("name", [*hf.SCENARIO_IDS, "realistic"])
-def test_the_page_s_final_section_is_the_page_sentences_in_order(
-    made: Callable[[str], Made], name: str
-) -> None:
+PAGE_SECTION_FINALS = [*hf.SCENARIO_IDS, "realistic"]
+
+
+def test_the_page_s_final_section_is_the_page_sentences_in_order(made: Callable[[str], Made]) -> None:
     """docs/evals.md's final section, between ``final.PAGE_BEGIN`` and ``final.PAGE_END`` under "6.1 The final run",
     is every registered page sentence in ``page_block`` order and nothing else."""
-    root, _, outputs = made(name)
-    source, prereg, named = hf.published(root)
-    coded = final.coded(source, prereg, block="page", sources=named)
-    report = outputs["docs/evals.md"]
-    assert final.page_problems(report, [s.text for s in coded]) == []
-    heading = report.index("\n### 6.1 The final run\n")
-    assert (
-        heading < report.index(final.PAGE_BEGIN) < report.index(final.PAGE_END) < report.index("\n### 6.2 ")
-    )
-    quiet = {"limitations.reads"} if source["primary"]["reads"] == 1 else set()
-    assert {s.slot for s in coded} == set(prereg["sentences"]["page_block"]) - quiet
+
+    def check(name: str) -> None:
+        root, _, outputs = made(name)
+        source, prereg, named = hf.published(root)
+        coded = final.coded(source, prereg, block="page", sources=named)
+        report = outputs["docs/evals.md"]
+        assert final.page_problems(report, [s.text for s in coded]) == []
+        heading = report.index("\n### 6.1 The final run\n")
+        assert (
+            heading
+            < report.index(final.PAGE_BEGIN)
+            < report.index(final.PAGE_END)
+            < report.index("\n### 6.2 ")
+        )
+        quiet = {"limitations.reads"} if source["primary"]["reads"] == 1 else set()
+        assert {s.slot for s in coded} == set(prereg["sentences"]["page_block"]) - quiet
+
+    check_rows(PAGE_SECTION_FINALS, check)
 
 
 def test_the_card_says_pre_registered_with_file_and_hash(made: Callable[[str], Made]) -> None:
@@ -812,43 +860,48 @@ def test_the_report_keeps_its_anchors_with_a_final(
     assert "docs/evals.md#15-reproduce" in final.load_templates()["readme_layout"]["link"]
 
 
-@pytest.mark.parametrize(
-    ("owner", "code"),
-    [
-        ("pending", "owner.pending"),
-        ("labels", "owner.labels_done"),
-        ("kappa", "owner.kappa_done"),
-        ("done", "owner.done"),
-        (None, "owner.pending"),
-    ],
-)
-def test_the_owner_sentence_is_pending_until_the_files_say_done(
-    tmp_path: Path, owner: str | None, code: str
-) -> None:
+OWNER_STATES = [
+    ("pending", "owner.pending"),
+    ("labels", "owner.labels_done"),
+    ("kappa", "owner.kappa_done"),
+    ("done", "owner.done"),
+    (None, "owner.pending"),
+]
+
+
+def test_the_owner_sentence_is_pending_until_the_files_say_done(tmp_path: Path) -> None:
     """The owner's checks are said pending until their files say done; a file not there yet is pending."""
-    doc, src = hf.complete(builders.good(), builders.no_set_aside(builders.sources(owner=owner or "pending")))
-    if owner is None:
-        src["owner_labels"] = src["owner_kappa"] = None
-    root = hf.final_root(tmp_path, doc, sources=src, prereg=hf.complete_prereg(builders.prereg()))
-    built = model.build(root / "evals" / "results")
-    (sentence,) = [s for s in built["final"]["sentences"]["page"] if s["slot"] == "owner"]
-    assert sentence["code"] == code
-    status = {"labels": "pending", "kappa": "pending"}
-    if owner in ("labels", "done"):
-        status["labels"] = "done"
-    if owner in ("kappa", "done"):
-        status["kappa"] = "done"
-    assert built["final"]["owner"] == status
-    report = text.report(built)
-    between = report.split(final.PAGE_BEGIN, 1)[1].split(final.PAGE_END, 1)[0]
-    assert _flat(sentence["text"]) in _flat(between)
+
+    def check(owner: str | None, code: str) -> None:
+        doc, src = hf.complete(
+            builders.good(), builders.no_set_aside(builders.sources(owner=owner or "pending"))
+        )
+        if owner is None:
+            src["owner_labels"] = src["owner_kappa"] = None
+        root = hf.final_root(
+            tmp_path / str(owner), doc, sources=src, prereg=hf.complete_prereg(builders.prereg())
+        )
+        built = model.build(root / "evals" / "results")
+        (sentence,) = [s for s in built["final"]["sentences"]["page"] if s["slot"] == "owner"]
+        assert sentence["code"] == code
+        status = {"labels": "pending", "kappa": "pending"}
+        if owner in ("labels", "done"):
+            status["labels"] = "done"
+        if owner in ("kappa", "done"):
+            status["kappa"] = "done"
+        assert built["final"]["owner"] == status
+        report = text.report(built)
+        between = report.split(final.PAGE_BEGIN, 1)[1].split(final.PAGE_END, 1)[0]
+        assert _flat(sentence["text"]) in _flat(between)
+
+    check_rows(OWNER_STATES, check)
 
 
-def test_a_rescored_final_split_file_is_a_history_row_only(tmp_path: Path) -> None:
+def test_a_rescored_final_split_file_is_a_history_row_only(tmp_path: Path, realistic: Analysed) -> None:
     """A read of a final split replayed with later code (a fix after the run) is a re-scored row of the history page,
     not held out; the final run, its order and its report stay as they are (but for the provenance's hash of
     presentation.json, which lists every results file)."""
-    doc, src, reads = hf.realistic()
+    doc, src, reads = realistic
     prereg = hf.complete_prereg(builders.prereg())
     rescored = json.loads(reads[0][1])
     rescored["meta"]["backend"] = "replay"
@@ -914,21 +967,27 @@ def written(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return root
 
 
-@pytest.mark.parametrize("relative", FINAL_OUTPUTS)
-def test_check_covers_every_final_output_and_fails_after_a_one_character_edit(
-    written: Path, relative: str
-) -> None:
+def test_check_covers_every_final_output_and_fails_after_a_one_character_edit(written: Path) -> None:
+    # clean once: each row restores its file, and a row left unrestored makes the next row's check name two paths
     assert build.check(written) == []
-    path = written / relative
-    original = path.read_bytes()
-    middle = original.index(b"Final run, pre-registered") if relative == "README.md" else len(original) // 2
-    path.write_bytes(
-        original[:middle] + (b"x" if original[middle : middle + 1] != b"x" else b"y") + original[middle + 1 :]
-    )
-    try:
-        assert build.check(written) == [relative]
-    finally:
-        path.write_bytes(original)
+
+    def check(relative: str) -> None:
+        path = written / relative
+        original = path.read_bytes()
+        middle = (
+            original.index(b"Final run, pre-registered") if relative == "README.md" else len(original) // 2
+        )
+        path.write_bytes(
+            original[:middle]
+            + (b"x" if original[middle : middle + 1] != b"x" else b"y")
+            + original[middle + 1 :]
+        )
+        try:
+            assert build.check(written) == [relative]
+        finally:
+            path.write_bytes(original)
+
+    check_rows(FINAL_OUTPUTS, check)
 
 
 def test_two_final_renders_are_byte_identical_and_hold_no_machine_path(
@@ -946,24 +1005,6 @@ def test_two_final_renders_are_byte_identical_and_hold_no_machine_path(
         ):  # the page of 0.3.0 shows `--results-dir /tmp/holdout` as it was
             for mark in PATH_MARKS:
                 assert mark not in content, (relative, mark)
-
-
-def test_the_page_with_a_final_draws_its_chart_and_passes_its_check(
-    made: Callable[[str], Made], tmp_path: Path
-) -> None:
-    """The report page of a final run holds the final chart with its table and CSV, keeps the pooled chart under
-    6.2, writes the README's final SVGs for PyPI, shows no marker line, and passes its own check."""
-    _, doc, outputs = made("good")
-    out = tmp_path / "site"
-    site.build_site(doc, out)
-    assert site.check_site(out, doc, forbidden=site.dataset_sentences()) == []
-    page = (out / "index.html").read_text(encoding="utf-8")
-    assert '<figure id="final">' in page and (out / "final.csv").is_file()
-    for theme in ("light", "dark"):
-        assert (out / f"eval-final-{theme}.svg").read_text(encoding="utf-8") == outputs[
-            f"docs/assets/eval-final-{theme}.svg"
-        ]
-    assert final.PAGE_BEGIN not in page and final.PAGE_END not in page
 
 
 # --------------------------------------------------------------------------------------------------
@@ -1187,50 +1228,56 @@ def _baselines(doc: dict[str, Any]) -> list[str]:
     return [c for c in doc["order"] if c != "ordnung"]
 
 
-@pytest.mark.parametrize("name", ["good", "bad", "undecided", "not_confirmed", "realistic"])
-def test_the_forest_chart_s_numbers_are_the_sentences_numbers(made: Callable[[str], Made], name: str) -> None:
+FOREST_FINALS = ["good", "bad", "undecided", "not_confirmed", "realistic"]
+
+
+def test_the_forest_chart_s_numbers_are_the_sentences_numbers(made: Callable[[str], Made]) -> None:
     """The forest of the final run, Ordnung minus each baseline for exact dates and for late or missed ones, shows
     each comparison's difference and interval as its registered sentence prints them, every comparison's, the agent's
     included: exact dates against the agent are the non-inferiority test's bound, with no sign-flip or Holm p beside it,
     and harm against the agent is described, not tested, so it has no p and no power either."""
-    doc = made(name).doc
-    shown = doc["final"]
-    header, rows = charts.table("final-differences", doc)
-    assert header[6] == views.fill(shown["views"], "chart.final-differences.col.test")
-    pairs = [(family, b) for family in ("F1_accuracy", "F2_harm") for b in _baselines(doc)]
-    assert [row[0] for row in rows] == [palette.LABELS[b] for _, b in pairs]
-    bound = shown["noninferiority"][f"ordnung-vs-{final.AGENT}"]
-    for (family, baseline), row in zip(pairs, rows, strict=True):
-        pair = shown["families"][family][f"ordnung-vs-{baseline}"]
-        lo, hi = (
-            (bound["lo"], bound["hi"])
-            if (family, baseline) == ("F1_accuracy", final.AGENT)
-            else (
-                pair["lo"],
-                pair["hi"],
+
+    def check(name: str) -> None:
+        doc = made(name).doc
+        shown = doc["final"]
+        header, rows = charts.table("final-differences", doc)
+        assert header[6] == views.fill(shown["views"], "chart.final-differences.col.test")
+        pairs = [(family, b) for family in ("F1_accuracy", "F2_harm") for b in _baselines(doc)]
+        assert [row[0] for row in rows] == [palette.LABELS[b] for _, b in pairs]
+        bound = shown["noninferiority"][f"ordnung-vs-{final.AGENT}"]
+        for (family, baseline), row in zip(pairs, rows, strict=True):
+            pair = shown["families"][family][f"ordnung-vs-{baseline}"]
+            lo, hi = (
+                (bound["lo"], bound["hi"])
+                if (family, baseline) == ("F1_accuracy", final.AGENT)
+                else (
+                    pair["lo"],
+                    pair["hi"],
+                )
             )
-        )
-        numbers = _POINTS.findall(row[2])
-        said = _POINTS.findall(_slot_text(doc, SLOTS[(family, baseline)]))
-        assert numbers[0] == said[0] == _points(pair["diff"]), (family, baseline)
-        if lo == hi == 0:
-            assert numbers == [_points(pair["diff"])]
-        else:
-            assert numbers == [_points(pair["diff"]), _points(lo), _points(hi)] == said[:3], (
-                family,
-                baseline,
-            )
-        if (family, baseline) == ("F1_accuracy", final.AGENT):
-            assert row[3:5] == ["—", "—"] and row[6] == views.fill(
-                shown["views"], "verdict.test.noninferiority", level="95"
-            )
-        elif family == "F2_harm" and baseline == final.AGENT:
-            assert row[3:6] == ["—", "—", "—"]
-            assert row[6] == views.fill(shown["views"], "verdict.test.described")
-        else:
-            assert row[3:5] == [fmt.p_value(pair["p"]), fmt.p_value(pair["holm"])]
-            assert row[6] == views.fill(shown["views"], "verdict.test.signflip")
-    assert "[+0.0, +0.0]" not in " ".join(cell for row in rows for cell in row)
+            numbers = _POINTS.findall(row[2])
+            said = _POINTS.findall(_slot_text(doc, SLOTS[(family, baseline)]))
+            assert numbers[0] == said[0] == _points(pair["diff"]), (family, baseline)
+            if lo == hi == 0:
+                assert numbers == [_points(pair["diff"])]
+            else:
+                assert numbers == [_points(pair["diff"]), _points(lo), _points(hi)] == said[:3], (
+                    family,
+                    baseline,
+                )
+            if (family, baseline) == ("F1_accuracy", final.AGENT):
+                assert row[3:5] == ["—", "—"] and row[6] == views.fill(
+                    shown["views"], "verdict.test.noninferiority", level="95"
+                )
+            elif family == "F2_harm" and baseline == final.AGENT:
+                assert row[3:6] == ["—", "—", "—"]
+                assert row[6] == views.fill(shown["views"], "verdict.test.described")
+            else:
+                assert row[3:5] == [fmt.p_value(pair["p"]), fmt.p_value(pair["holm"])]
+                assert row[6] == views.fill(shown["views"], "verdict.test.signflip")
+        assert "[+0.0, +0.0]" not in " ".join(cell for row in rows for cell in row)
+
+    check_rows(FOREST_FINALS, check)
 
 
 def test_the_stability_chart_is_drawn_from_two_reads_and_never_from_one(made: Callable[[str], Made]) -> None:
@@ -1259,56 +1306,61 @@ def test_the_stability_chart_is_drawn_from_two_reads_and_never_from_one(made: Ca
     assert sentence["code"] == "stability.not_run"
 
 
-@pytest.mark.parametrize("name", ["good", "two_reads", "realistic"])
-def test_the_hero_shows_each_read_and_the_mean_with_its_interval(
-    made: Callable[[str], Made], name: str
-) -> None:
+HERO_FINALS = ["good", "two_reads", "realistic"]
+
+
+def test_the_hero_shows_each_read_and_the_mean_with_its_interval(made: Callable[[str], Made]) -> None:
     """The headline chart shows, per condition, the mean over the reads with its interval (exact dates and late or
     missed ones) and each read alone as a hollow ring, every value named in its description."""
-    doc = made(name).doc
-    shown = doc["final"]
-    svg = charts.svg("final", doc, "light")
-    rings = re.findall(r'<circle [^>]*style="fill:none;[^"]*"><title>[^<]+</title>', svg)
-    assert len(rings) == 2 * len(final.CONDITIONS) * len(shown["reads_used"])
-    assert len(re.findall(r"stroke-linecap:round", svg)) == 2 * len(final.CONDITIONS)
-    description = _values(svg)
-    for condition in doc["order"]:
-        summary = shown["conditions"][condition]
-        for mean, per_read in (("mean_accuracy", "exact_per_read"), ("mean_harmful", "harmful_per_read")):
-            assert fmt.pct(summary[mean]["value"]) in description
-            assert fmt.ci(summary[mean]["ci"]) in description
-            assert " · ".join(fmt.num(rate["value"]) for rate in summary[per_read]) in description
+
+    def check(name: str) -> None:
+        doc = made(name).doc
+        shown = doc["final"]
+        svg = charts.svg("final", doc, "light")
+        rings = re.findall(r'<circle [^>]*style="fill:none;[^"]*"><title>[^<]+</title>', svg)
+        assert len(rings) == 2 * len(final.CONDITIONS) * len(shown["reads_used"])
+        assert len(re.findall(r"stroke-linecap:round", svg)) == 2 * len(final.CONDITIONS)
+        description = _values(svg)
+        for condition in doc["order"]:
+            summary = shown["conditions"][condition]
+            for mean, per_read in (("mean_accuracy", "exact_per_read"), ("mean_harmful", "harmful_per_read")):
+                assert fmt.pct(summary[mean]["value"]) in description
+                assert fmt.ci(summary[mean]["ci"]) in description
+                assert " · ".join(fmt.num(rate["value"]) for rate in summary[per_read]) in description
+
+    check_rows(HERO_FINALS, check)
 
 
-@pytest.mark.parametrize("name", _DRAWN)
-@pytest.mark.parametrize("theme", ["light", "dark", "css"])
-@pytest.mark.parametrize("narrow", [False, True])
-def test_every_final_chart_names_itself_every_value_and_has_its_table(
-    made: Callable[[str], Made], name: str, theme: str, narrow: bool
-) -> None:
+def test_every_final_chart_names_itself_every_value_and_has_its_table(made: Callable[[str], Made]) -> None:
     """Each final chart has a title, a description naming every condition and value, a title on every mark and a
     table twin with the same numbers, in light, dark and the page's CSS colours, wide and narrow."""
-    doc = made("good").doc
-    svg = charts.svg(name, doc, theme, narrow=narrow)
-    assert svg.startswith("<svg ") and 'role="img"' in svg and "aria-labelledby=" in svg
-    title = re.search(r'<title id="[^"]+">([^<]+)</title>', svg)
-    assert title and html.unescape(title.group(1)) == charts.title(name, doc)
-    description = _values(svg)
-    assert description == charts.description(name, doc)
-    header, rows = charts.table(name, doc)
-    assert rows and all(len(row) == len(header) for row in rows)
-    unescaped = html.unescape(svg)
-    for row in rows:
-        assert row[0] in description, (name, row[0])
-        for cell in row[1:]:
-            plain = cell.replace("`", "")
-            # a dash is no value: the comparison has none (described, or bounded with no p)
-            assert plain == finalcharts.NONE or plain in description or plain in unescaped, (name, cell)
-    titled = re.findall(r"<(?:circle|rect|polygon)[^>]*><title>[^<]+</title>", svg)
-    assert len(titled) >= len(rows)
-    series = {palette.LIGHT[c] for c in palette.CONDITIONS} | {palette.DARK[c] for c in palette.CONDITIONS}
-    assert not [fill for fill in re.findall(r'<text[^>]*style="fill:([^;"]+)', svg) if fill in series]
-    assert site.caption(name, doc) == finalcharts.caption(name, doc)
+
+    def check(name: str, theme: str, narrow: bool) -> None:
+        doc = made("good").doc
+        svg = charts.svg(name, doc, theme, narrow=narrow)
+        assert svg.startswith("<svg ") and 'role="img"' in svg and "aria-labelledby=" in svg
+        title = re.search(r'<title id="[^"]+">([^<]+)</title>', svg)
+        assert title and html.unescape(title.group(1)) == charts.title(name, doc)
+        description = _values(svg)
+        assert description == charts.description(name, doc)
+        header, rows = charts.table(name, doc)
+        assert rows and all(len(row) == len(header) for row in rows)
+        unescaped = html.unescape(svg)
+        for row in rows:
+            assert row[0] in description, (name, row[0])
+            for cell in row[1:]:
+                plain = cell.replace("`", "")
+                # a dash is no value: the comparison has none (described, or bounded with no p)
+                assert plain == finalcharts.NONE or plain in description or plain in unescaped, (name, cell)
+        titled = re.findall(r"<(?:circle|rect|polygon)[^>]*><title>[^<]+</title>", svg)
+        assert len(titled) >= len(rows)
+        series = {palette.LIGHT[c] for c in palette.CONDITIONS} | {
+            palette.DARK[c] for c in palette.CONDITIONS
+        }
+        assert not [fill for fill in re.findall(r'<text[^>]*style="fill:([^;"]+)', svg) if fill in series]
+        assert site.caption(name, doc) == finalcharts.caption(name, doc)
+
+    check_rows(product(_DRAWN, ["light", "dark", "css"], [False, True]), check)
 
 
 def test_every_final_chart_follows_the_final_order_and_draws_ordnung_last_when_last(
@@ -1369,25 +1421,31 @@ def test_no_interval_reads_plus_zero_to_plus_zero(made: Callable[[str], Made]) -
         assert "[+0.0, +0.0]" not in value and "+0.0 to +0.0" not in value
 
 
-@pytest.mark.parametrize("name", ["good", "one_read", "realistic"])
-def test_the_final_charts_are_small_and_byte_identical(made: Callable[[str], Made], name: str) -> None:
+SMALL_CHART_FINALS = ["good", "one_read", "realistic"]
+
+
+def test_the_final_charts_are_small_and_byte_identical(made: Callable[[str], Made]) -> None:
     """Every final chart renders the same bytes twice (and from presentation.json as written), stays under 40 KB,
     and keeps its narrow text at 12 px or more on a 288 px column."""
-    doc = made(name).doc
-    again = json.loads(model.dumps(doc))
-    for chart in _final_charts(doc):
-        for theme in ("light", "dark", "css"):
-            for narrow in (False, True):
-                svg = charts.svg(chart, doc, theme, narrow=narrow)
-                assert svg == charts.svg(chart, again, theme, narrow=narrow), (chart, theme, narrow)
-                assert len(svg.encode("utf-8")) <= 40_000, (chart, theme, narrow)
-        svg = charts.svg(chart, doc, "css", narrow=True)
-        width = float(re.search(r'viewBox="0 0 ([\d.]+) ', svg).group(1))  # type: ignore[union-attr]
-        smallest = min(float(size) for size in re.findall(r'font-size="([\d.]+)"', svg))
-        assert smallest * 288 / width >= 12, (chart, smallest)
-    for relative, content in made(name).outputs.items():
-        if relative.endswith(".svg"):
-            assert len(content.encode("utf-8")) <= 40_000, relative
+
+    def check(name: str) -> None:
+        doc = made(name).doc
+        again = json.loads(model.dumps(doc))
+        for chart in _final_charts(doc):
+            for theme in ("light", "dark", "css"):
+                for narrow in (False, True):
+                    svg = charts.svg(chart, doc, theme, narrow=narrow)
+                    assert svg == charts.svg(chart, again, theme, narrow=narrow), (chart, theme, narrow)
+                    assert len(svg.encode("utf-8")) <= 40_000, (chart, theme, narrow)
+            svg = charts.svg(chart, doc, "css", narrow=True)
+            width = float(re.search(r'viewBox="0 0 ([\d.]+) ', svg).group(1))  # type: ignore[union-attr]
+            smallest = min(float(size) for size in re.findall(r'font-size="([\d.]+)"', svg))
+            assert smallest * 288 / width >= 12, (chart, smallest)
+        for relative, content in made(name).outputs.items():
+            if relative.endswith(".svg"):
+                assert len(content.encode("utf-8")) <= 40_000, relative
+
+    check_rows(SMALL_CHART_FINALS, check)
 
 
 def _template_pattern(template: str) -> re.Pattern[str]:
@@ -1493,108 +1551,125 @@ def _shown(doc: dict[str, Any], blocks: list[text.Block]) -> Iterator[str]:
             yield from (cell for row in rows for cell in row)
 
 
-@pytest.mark.parametrize("name", ["good", "bad", "one_read", "realistic"])
-def test_the_final_report_s_prose_is_registered_or_templated(
-    made: Callable[[str], Made], name: str, monkeypatch: pytest.MonkeyPatch
-) -> None:
+PROSE_FINALS = ["good", "bad", "one_read", "realistic"]
+
+
+def test_the_final_report_s_prose_is_registered_or_templated(made: Callable[[str], Made]) -> None:
     """Every string the final run adds to sections 1, 6.1 and 7 (and draws in its charts: titles, subtitles,
     headings, values, tooltips, footnotes, descriptions, captions) is a view template filled, a registered sentence,
     a condition's name, an id or code, or a number: nothing worded in code or after the results."""
-    doc = made(name).doc
-    said = [s["text"] for block in ("page", "readme") for s in doc["final"]["sentences"][block]]
-    drawn: list[str] = []
-    original = charts._dot_chart
 
-    def capture(
-        ident: str,
-        theme: str,
-        narrow: bool,
-        title: str,
-        subtitle: str,
-        description: str,
-        panels: Any,
-        footnote: str,
-    ) -> str:
-        drawn.extend([title, subtitle, description, footnote])
-        for panel in panels:
-            drawn.append(panel.heading)
-            for row in panel.rows:
-                drawn.extend([row.shown, row.tip, *(tip for _, tip in row.rings)])
-        return original(ident, theme, narrow, title, subtitle, description, panels, footnote)
+    def check(name: str) -> None:
+        doc = made(name).doc
+        said = [s["text"] for block in ("page", "readme") for s in doc["final"]["sentences"][block]]
+        drawn: list[str] = []
+        original = charts._dot_chart
 
-    monkeypatch.setattr(charts, "_dot_chart", capture)
-    for chart in _final_charts(doc):
-        charts.svg(chart, doc, "light")
-    assert drawn
-    blocks = [*finaltext.summary(doc), *finaltext.final_run(doc), *finaltext.statistics(doc)]
-    shown = list(_shown(doc, blocks))
-    assert [value for value in [*shown, *drawn] if not _templated(value, said)] == []
+        def capture(
+            ident: str,
+            theme: str,
+            narrow: bool,
+            title: str,
+            subtitle: str,
+            description: str,
+            panels: Any,
+            footnote: str,
+        ) -> str:
+            drawn.extend([title, subtitle, description, footnote])
+            for panel in panels:
+                drawn.append(panel.heading)
+                for row in panel.rows:
+                    drawn.extend([row.shown, row.tip, *(tip for _, tip in row.rings)])
+            return original(ident, theme, narrow, title, subtitle, description, panels, footnote)
+
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            monkeypatch.setattr(charts, "_dot_chart", capture)
+            for chart in _final_charts(doc):
+                charts.svg(chart, doc, "light")
+        assert drawn
+        blocks = [*finaltext.summary(doc), *finaltext.final_run(doc), *finaltext.statistics(doc)]
+        shown = list(_shown(doc, blocks))
+        assert [value for value in [*shown, *drawn] if not _templated(value, said)] == []
+
+    check_rows(PROSE_FINALS, check)
 
 
-@pytest.mark.parametrize("name", ["good", "bad", "one_read", "realistic"])
+VERDICT_FINALS = ["good", "bad", "one_read", "realistic"]
+
+
 def test_the_verdict_table_says_each_decision_by_its_registered_sentence_code_only(
-    made: Callable[[str], Made], name: str
+    made: Callable[[str], Made],
 ) -> None:
     """The summary's verdict table has one row per pre-registered comparison, in the registered order: what it
     compares and how it is tested (view templates), its numbers, its role and the code of the registered sentence that
     says it. The analysis's own decision code (``level_within_noise``, ``no_clear_difference`` with an interval that
     excludes 0) is never shown: the registered sentence is the decision a reader sees."""
-    doc = made(name).doc
-    shown = doc["final"]
-    table = _table(finaltext.summary(doc), "verdict.caption")
-    assert all(isinstance(cell, views.Filled) for cell in table.header)
-    assert [cell.key for cell in table.header] == [
-        f"verdict.col.{column}" for column in ("comparison", "test", "result", "role", "sentence")
-    ]
-    assert len(table.rows) == len(VERDICTS)
-    page = shown["sentences"]["page"]
-    for (slot, key), row in zip(VERDICTS, table.rows, strict=True):
-        comparison, test, result, role, sentence = row
-        assert isinstance(comparison, views.Filled) and isinstance(test, views.Filled)
-        assert isinstance(result, views.Filled) or _no_words(result), result
-        codes = [
-            s["code"]
-            for s in page
-            if s["slot"] == slot and s["code"].split(".")[1] not in ("intro", "deviations")
+
+    def check(name: str) -> None:
+        doc = made(name).doc
+        shown = doc["final"]
+        table = _table(finaltext.summary(doc), "verdict.caption")
+        assert all(isinstance(cell, views.Filled) for cell in table.header)
+        assert [cell.key for cell in table.header] == [
+            f"verdict.col.{column}" for column in ("comparison", "test", "result", "role", "sentence")
         ]
-        assert sentence == f"`{codes[0]}`", slot
-        assert role == ("—" if key is None else f"`{shown['decision_roles'][key]}`"), slot
-    assert table.rows[0][3] == "`confirmatory`"
+        assert len(table.rows) == len(VERDICTS)
+        page = shown["sentences"]["page"]
+        for (slot, key), row in zip(VERDICTS, table.rows, strict=True):
+            comparison, test, result, role, sentence = row
+            assert isinstance(comparison, views.Filled) and isinstance(test, views.Filled)
+            assert isinstance(result, views.Filled) or _no_words(result), result
+            codes = [
+                s["code"]
+                for s in page
+                if s["slot"] == slot and s["code"].split(".")[1] not in ("intro", "deviations")
+            ]
+            assert sentence == f"`{codes[0]}`", slot
+            assert role == ("—" if key is None else f"`{shown['decision_roles'][key]}`"), slot
+        assert table.rows[0][3] == "`confirmatory`"
+
+    check_rows(VERDICT_FINALS, check)
 
 
-@pytest.mark.parametrize("name", ["good", "bad", "realistic"])
-def test_the_gallery_lists_harmful_errors_first_by_id_only(made: Callable[[str], Made], name: str) -> None:
+GALLERY_FINALS = ["good", "bad", "realistic"]
+
+
+def test_the_gallery_lists_harmful_errors_first_by_id_only(made: Callable[[str], Made]) -> None:
     """Section 11 opens with the final run's failures: every late or missed date first (every condition and read),
     then Ordnung's other wrong dates, in the page's row order; letter ids, reads and codes only. The earlier held-out
     splits' table follows under its own label."""
-    _, doc, outputs = made(name)
-    rank = {c: i for i, c in enumerate(doc["order"])}
 
-    def harmful(row: dict[str, Any]) -> bool:
-        return bool(row["outcome"] == "missed" or row["direction"] == "late")
+    def check(name: str) -> None:
+        _, doc, outputs = made(name)
+        rank = {c: i for i, c in enumerate(doc["order"])}
 
-    chosen = sorted(
-        (row for row in doc["final"]["errors"] if harmful(row) or row["condition"] == "ordnung"),
-        key=lambda row: (
-            not harmful(row),
-            rank[row["condition"]],
-            row["read"],
-            row["split"],
-            row["entry_id"],
-            row["item"],
-        ),
-    )
-    assert chosen and harmful(chosen[0])
-    table = _table(finaltext.gallery(doc), "gallery.caption")
-    assert [row[0] for row in table.rows] == [f"`{row['entry_id']}`" for row in chosen]
-    assert [row[1] for row in table.rows] == [str(row["read"]) for row in chosen]
-    assert [row[2] for row in table.rows] == [palette.LABELS[row["condition"]] for row in chosen]
-    for row in table.rows:
-        assert all(_no_words(cell) for cell in row[3:]), row
-    failures = _section(outputs["docs/evals.md"], "11. Failure analysis")
-    pooled = views.fill(doc["final"]["views"], "gallery.pooled.heading")
-    first = failures.index(f"`{chosen[0]['entry_id']}`")
-    assert first < failures.index(f"### {pooled}") < failures.index("| Letter | Condition |")
+        def harmful(row: dict[str, Any]) -> bool:
+            return bool(row["outcome"] == "missed" or row["direction"] == "late")
+
+        chosen = sorted(
+            (row for row in doc["final"]["errors"] if harmful(row) or row["condition"] == "ordnung"),
+            key=lambda row: (
+                not harmful(row),
+                rank[row["condition"]],
+                row["read"],
+                row["split"],
+                row["entry_id"],
+                row["item"],
+            ),
+        )
+        assert chosen and harmful(chosen[0])
+        table = _table(finaltext.gallery(doc), "gallery.caption")
+        assert [row[0] for row in table.rows] == [f"`{row['entry_id']}`" for row in chosen]
+        assert [row[1] for row in table.rows] == [str(row["read"]) for row in chosen]
+        assert [row[2] for row in table.rows] == [palette.LABELS[row["condition"]] for row in chosen]
+        for row in table.rows:
+            assert all(_no_words(cell) for cell in row[3:]), row
+        failures = _section(outputs["docs/evals.md"], "11. Failure analysis")
+        pooled = views.fill(doc["final"]["views"], "gallery.pooled.heading")
+        first = failures.index(f"`{chosen[0]['entry_id']}`")
+        assert first < failures.index(f"### {pooled}") < failures.index("| Letter | Condition |")
+
+    check_rows(GALLERY_FINALS, check)
 
 
 def _deviation_entries() -> list[dict[str, Any]]:
@@ -1669,12 +1744,14 @@ def _recorded(doc: dict[str, Any]) -> set[str]:
     return values
 
 
-def test_every_provenance_value_is_a_recorded_field(made: Callable[[str], Made], tmp_path: Path) -> None:
+def test_every_provenance_value_is_a_recorded_field(
+    made: Callable[[str], Made], tmp_path: Path, realistic: Analysed
+) -> None:
     """Section 17's values are recorded fields only (the pre-registration and its hash, the freeze, the commit that
     added the letters, the days, the data's and the blind writing's hashes, the final analysis and its reads, the
     named files, the presenter's posted tree when there is one) and presentation.json's hash as rendered; no hash is
     typed into a template."""
-    doc, src, reads = hf.realistic()
+    doc, src, reads = realistic
     record = {"head": "c" * 40, "tree_sha256": "d" * 64}
     root = hf.final_root(
         tmp_path,
@@ -1726,35 +1803,41 @@ def test_good_and_bad_results_fill_the_same_places(made: Callable[[str], Made]) 
     assert _places(made("good")) == _places(made("bad"))
 
 
-@pytest.mark.parametrize("name", ["two_reads", "one_read"])
-def test_a_read_not_run_is_said_with_its_deviation(made: Callable[[str], Made], name: str) -> None:
+MISSING_READ_FINALS = ["two_reads", "one_read"]
+
+
+def test_a_read_not_run_is_said_with_its_deviation(made: Callable[[str], Made]) -> None:
     """A registered read that was not recorded is published as such: section 6.1 lists it with the kind and id of the
     deviation recorded at the time, the card says how many reads were used of those registered, and nothing is
     drawn from a read that does not exist."""
-    _, doc, outputs = made(name)
-    shown = doc["final"]
-    assert shown["reads_missing"]
-    table = _table(finaltext.final_run(doc), "results.final.missing.caption")
-    assert table.rows == [
-        [
-            str(row["read"]),
-            ", ".join(f"`{kind}`" for kind in row["kinds"]),
-            ", ".join(f"`{dev}`" for dev in row["deviations"]),
+
+    def check(name: str) -> None:
+        _, doc, outputs = made(name)
+        shown = doc["final"]
+        assert shown["reads_missing"]
+        table = _table(finaltext.final_run(doc), "results.final.missing.caption")
+        assert table.rows == [
+            [
+                str(row["read"]),
+                ", ".join(f"`{kind}`" for kind in row["kinds"]),
+                ", ".join(f"`{dev}`" for dev in row["deviations"]),
+            ]
+            for row in shown["reads_missing"]
         ]
-        for row in shown["reads_missing"]
-    ]
-    report = outputs["docs/evals.md"]
-    final_run = _section(report, "6. Results").split("\n### 6.2 ", 1)[0]
-    deviations = _section(report, "16. Deviations")
-    for row in shown["reads_missing"]:
-        for dev in row["deviations"]:
-            assert f"`{dev}`" in final_run and f"`{dev}`" in deviations
-    assert "`budget_cut`" in final_run
-    assert _card(report)["Reads"] == views.fill(
-        shown["views"], "card.reads", used=len(shown["reads_used"]), registered=shown["reads_registered"]
-    )
-    _, rows = charts.table("final", doc)
-    assert all(len(row[3].split(" · ")) == len(shown["reads_used"]) for row in rows)
+        report = outputs["docs/evals.md"]
+        final_run = _section(report, "6. Results").split("\n### 6.2 ", 1)[0]
+        deviations = _section(report, "16. Deviations")
+        for row in shown["reads_missing"]:
+            for dev in row["deviations"]:
+                assert f"`{dev}`" in final_run and f"`{dev}`" in deviations
+        assert "`budget_cut`" in final_run
+        assert _card(report)["Reads"] == views.fill(
+            shown["views"], "card.reads", used=len(shown["reads_used"]), registered=shown["reads_registered"]
+        )
+        _, rows = charts.table("final", doc)
+        assert all(len(row[3].split(" · ")) == len(shown["reads_used"]) for row in rows)
+
+    check_rows(MISSING_READ_FINALS, check)
 
 
 #: The sensitivity table's columns, in order.
@@ -1878,49 +1961,55 @@ def test_a_real_analysis_counts_the_answers_a_disputed_reading_changes_apart_fro
     assert f" {s_conv['tagged_items']} of {built['final']['items']} " in said
 
 
-@pytest.mark.parametrize("name", ["good", "realistic"])
-def test_the_timeline_names_the_final_split_as_recorded(made: Callable[[str], Made], name: str) -> None:
+TIMELINE_FINALS = ["good", "realistic"]
+
+
+def test_the_timeline_names_the_final_split_as_recorded(made: Callable[[str], Made]) -> None:
     """With a final run, section 3's timeline and table show holdout4 (and the new kinds) as recorded: when, how many
     reads, Ordnung's exact dates, and the split's part in the words of the view templates; never "not yet written".
     holdout4's are Ordnung's mean over the reads, the analysis's own number, said as such beside its count of
     deadlines (never answers summed over the reads); the new kinds', read once, their count of that read. The section
     says which of its rows are the final run's and which the earlier held-out splits', as recorded."""
-    _, doc, outputs = made(name)
-    shown = doc["final"]
-    assert shown["split"] == "holdout4"
-    rows = {row["split"]: row for row in doc["splits"]}
-    held = rows["holdout4"]
-    deviations = len(shown["deviations"])
-    assert held["role"] == views.fill(shown["views"], "split.role.holdout4", count=deviations)
-    mean = shown["conditions"]["ordnung"]["mean_accuracy"]
-    assert held["ordnung"] == {"value": mean["value"], "ci": mean["ci"]}
-    assert held["recordings"] == len(shown["reads_used"])
-    dates = sorted(row["date"] for row in shown["inputs"] if row["split"] == shown["split"])
-    assert held["recorded"] == (dates[0] if dates else shown["date"])
-    newkinds = rows["newkinds"]
-    assert newkinds["role"] == views.fill(shown["views"], "split.role.newkinds")
-    assert newkinds["ordnung"]["k"] == shown["newkinds"]["conditions"]["ordnung"]["exact"]["k"]
-    _, table = charts.table("timeline", doc)
-    (row,) = [row for row in table if row[0] == "holdout4"]
-    assert row[1] == held["recorded"] and row[3] == str(shown["items"])
-    assert row[5] == views.fill(shown["views"], "chart.timeline.mean", value=fmt.pct(mean["value"]))
-    assert row[4] == views.fill(shown["views"], "split.short.holdout4")
-    (row,) = [row for row in table if row[0] == "newkinds"]
-    assert row[5] == fmt.of(newkinds["ordnung"])
-    exact = shown["conditions"]["ordnung"]["exact_per_read"]
-    summed = f"{sum(rate['k'] for rate in exact)} of {sum(rate['n'] for rate in exact)}"
-    data = _flat(_section(outputs["docs/evals.md"], "3. Data and labels"))
-    note = views.fill(
-        shown["views"], "data.note", splits="holdout4 and newkinds", results=finaltext.RESULTS_ANCHOR
-    )
-    assert note in data and data.index(note) < data.index("| Split |")
-    assert summed not in data and summed not in charts.svg("timeline", doc)
-    for content in (
-        outputs["docs/evals.md"],
-        outputs["evals/present/presentation.json"],
-        charts.svg("timeline", doc),
-    ):
-        assert "not yet written" not in content and "to be pre-registered" not in content
+
+    def check(name: str) -> None:
+        _, doc, outputs = made(name)
+        shown = doc["final"]
+        assert shown["split"] == "holdout4"
+        rows = {row["split"]: row for row in doc["splits"]}
+        held = rows["holdout4"]
+        deviations = len(shown["deviations"])
+        assert held["role"] == views.fill(shown["views"], "split.role.holdout4", count=deviations)
+        mean = shown["conditions"]["ordnung"]["mean_accuracy"]
+        assert held["ordnung"] == {"value": mean["value"], "ci": mean["ci"]}
+        assert held["recordings"] == len(shown["reads_used"])
+        dates = sorted(row["date"] for row in shown["inputs"] if row["split"] == shown["split"])
+        assert held["recorded"] == (dates[0] if dates else shown["date"])
+        newkinds = rows["newkinds"]
+        assert newkinds["role"] == views.fill(shown["views"], "split.role.newkinds")
+        assert newkinds["ordnung"]["k"] == shown["newkinds"]["conditions"]["ordnung"]["exact"]["k"]
+        _, table = charts.table("timeline", doc)
+        (row,) = [row for row in table if row[0] == "holdout4"]
+        assert row[1] == held["recorded"] and row[3] == str(shown["items"])
+        assert row[5] == views.fill(shown["views"], "chart.timeline.mean", value=fmt.pct(mean["value"]))
+        assert row[4] == views.fill(shown["views"], "split.short.holdout4")
+        (row,) = [row for row in table if row[0] == "newkinds"]
+        assert row[5] == fmt.of(newkinds["ordnung"])
+        exact = shown["conditions"]["ordnung"]["exact_per_read"]
+        summed = f"{sum(rate['k'] for rate in exact)} of {sum(rate['n'] for rate in exact)}"
+        data = _flat(_section(outputs["docs/evals.md"], "3. Data and labels"))
+        note = views.fill(
+            shown["views"], "data.note", splits="holdout4 and newkinds", results=finaltext.RESULTS_ANCHOR
+        )
+        assert note in data and data.index(note) < data.index("| Split |")
+        assert summed not in data and summed not in charts.svg("timeline", doc)
+        for content in (
+            outputs["docs/evals.md"],
+            outputs["evals/present/presentation.json"],
+            charts.svg("timeline", doc),
+        ):
+            assert "not yet written" not in content and "to be pre-registered" not in content
+
+    check_rows(TIMELINE_FINALS, check)
 
 
 def test_the_pooled_numbers_carry_their_not_pre_registered_label_with_a_final(
@@ -1960,25 +2049,31 @@ def test_the_pooled_numbers_carry_their_not_pre_registered_label_with_a_final(
     assert "#17-provenance" in limitations and "\n## 17. Provenance\n" in report
 
 
-@pytest.mark.parametrize("name", ["good", "two_reads", "one_read"])
+READS_LIMITATION_FINALS = ["good", "two_reads", "one_read"]
+
+
 def test_the_reads_limitation_says_run_to_run_noise_only_when_the_reads_measured_it(
-    made: Callable[[str], Made], name: str
+    made: Callable[[str], Made],
 ) -> None:
     """With two reads or more, section 14 says the reads were recorded within days, so they measure run-to-run noise.
     With one read the registered rules say nothing of the kind (``limitations.reads`` is quiet), and section 14 says
     only that no run-to-run noise was measured."""
-    _, doc, outputs = made(name)
-    shown = doc["final"]
-    limitations = _flat(_section(outputs["docs/evals.md"], "14. Limitations"))
-    values = {"reads": shown["reads"], "registered": shown["reads_registered"]}
-    measured = views.fill(shown["views"], "limitations.reads", **values)
-    unmeasured = views.fill(shown["views"], "limitations.reads.one", **values)
-    if int(shown["reads"]) >= 2:
-        assert measured in limitations and unmeasured not in limitations
-    else:
-        assert unmeasured in limitations and measured not in limitations
-        assert "they measure run-to-run noise" not in limitations
-        assert all(s["slot"] != "limitations.reads" for s in shown["sentences"]["page"])
+
+    def check(name: str) -> None:
+        _, doc, outputs = made(name)
+        shown = doc["final"]
+        limitations = _flat(_section(outputs["docs/evals.md"], "14. Limitations"))
+        values = {"reads": shown["reads"], "registered": shown["reads_registered"]}
+        measured = views.fill(shown["views"], "limitations.reads", **values)
+        unmeasured = views.fill(shown["views"], "limitations.reads.one", **values)
+        if int(shown["reads"]) >= 2:
+            assert measured in limitations and unmeasured not in limitations
+        else:
+            assert unmeasured in limitations and measured not in limitations
+            assert "they measure run-to-run noise" not in limitations
+            assert all(s["slot"] != "limitations.reads" for s in shown["sentences"]["page"])
+
+    check_rows(READS_LIMITATION_FINALS, check)
 
 
 def test_the_final_run_s_protocol_words_name_the_deviations_recorded_at_the_time(
@@ -2035,19 +2130,25 @@ def _site_texts(doc: dict[str, Any], out: Path) -> dict[str, str]:
     }
 
 
-@pytest.mark.parametrize("name", ["bad", "undecided", "realistic"])
+HOLM_P_FINALS = ["bad", "undecided", "realistic"]
+
+
 def test_every_p_a_template_prints_after_holm_or_sign_flip_is_in_the_registered_format(
-    made: Callable[[str], Made], name: str, tmp_path: Path
+    made: Callable[[str], Made], tmp_path: Path
 ) -> None:
     """One Holm p is printed one way: wherever a template says "Holm p", "Holm mid-p" or "sign-flip p" before a value,
     the value is in the registered sentences' format (``= 0.020``, ``< 0.001``), in the report, the README, the charts
     and the page; a table cell under such a heading holds the number alone."""
-    _, doc, outputs = made(name)
-    texts = {**outputs, **_site_texts(doc, tmp_path / "site")}
-    found = {relative: _BARE_P.findall(content) for relative, content in texts.items()}
-    assert {relative: hits for relative, hits in found.items() if hits} == {}
-    _, rows = charts.table("final-differences", doc)
-    assert not [cell for row in rows for cell in row[3:5] if cell.startswith("=")]
+
+    def check(name: str) -> None:
+        _, doc, outputs = made(name)
+        texts = {**outputs, **_site_texts(doc, tmp_path / name / "site")}
+        found = {relative: _BARE_P.findall(content) for relative, content in texts.items()}
+        assert {relative: hits for relative, hits in found.items() if hits} == {}
+        _, rows = charts.table("final-differences", doc)
+        assert not [cell for row in rows for cell in row[3:5] if cell.startswith("=")]
+
+    check_rows(HOLM_P_FINALS, check)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -2121,94 +2222,108 @@ def _captions(blocks: list[text.Block]) -> list[str]:
     return [block.caption for block in blocks if isinstance(block, text.Table)]
 
 
-@pytest.mark.parametrize("name", ["good", "bad", "one_read", "realistic"])
+PAGE_FINALS = ["good", "bad", "one_read", "realistic"]
+
+
 def test_the_final_page_holds_every_sentence_chart_gallery_deviations_and_provenance(
-    made: Callable[[str], Made], name: str, tmp_path: Path
+    made: Callable[[str], Made], tmp_path: Path
 ) -> None:
     """The report page of a final run: its tiles, lede and description are the final run's (view templates filled
     with its numbers), every registered page sentence is there as a reader sees it, every final chart has its table
     and CSV (the stability over the reads only with two reads or more), the gallery, the deviations and the
-    provenance follow with sections 16 and 17 in the contents, and the footer names ``presentation.json``'s hash."""
-    _, doc, outputs = made(name)
-    shown, templates = doc["final"], doc["final"]["views"]
-    out = tmp_path / "site"
-    site.build_site(doc, out)
-    assert site.check_site(out, doc, forbidden=site.dataset_sentences()) == []
-    page = (out / "index.html").read_text(encoding="utf-8")
-    seen = _seen(page)
+    provenance follow with sections 16 and 17 in the contents, and the footer names ``presentation.json``'s hash. The
+    page writes the README's final SVGs for PyPI, shows no marker line, and passes its own check."""
 
-    # every registered page sentence, decided or not, in the page's text
-    for i, sentence in enumerate(shown["sentences"]["page"], 1):
-        assert _plain(sentence["text"]) in seen, (i, sentence["slot"], sentence["code"])
+    def check(name: str) -> None:
+        _, doc, outputs = made(name)
+        shown, templates = doc["final"], doc["final"]["views"]
+        out = tmp_path / name / "site"
+        site.build_site(doc, out)
+        assert site.check_site(out, doc, forbidden=site.dataset_sentences()) == []
+        page = (out / "index.html").read_text(encoding="utf-8")
+        seen = _seen(page)
+        assert '<figure id="final">' in page and (out / "final.csv").is_file()
+        # the README's final SVGs, written beside the page for PyPI; no marker line shows
+        for theme in ("light", "dark"):
+            assert (out / f"eval-final-{theme}.svg").read_text(encoding="utf-8") == outputs[
+                f"docs/assets/eval-final-{theme}.svg"
+            ]
+        assert final.PAGE_BEGIN not in page and final.PAGE_END not in page
 
-    # the tiles: the final run's mean accuracy for Ordnung and the model alone, and the late or missed dates over
-    # the reads against the model alone's
-    conditions = shown["conditions"]
-    o, alone = conditions["ordnung"], conditions["llm_only"]
-    level = final._formatted(shown["settings"]["level"], "percent_number", finalcharts.WHERE)
+        # every registered page sentence, decided or not, in the page's text
+        for i, sentence in enumerate(shown["sentences"]["page"], 1):
+            assert _plain(sentence["text"]) in seen, (i, sentence["slot"], sentence["code"])
 
-    def interval(summary: dict[str, Any]) -> str:
-        low, high = summary["mean_accuracy"]["ci"]
-        return views.fill(templates, "interval", level=level, lo=fmt.num(low), hi=fmt.num(high))
+        # the tiles: the final run's mean accuracy for Ordnung and the model alone, and the late or missed dates over
+        # the reads against the model alone's
+        conditions = shown["conditions"]
+        o, alone = conditions["ordnung"], conditions["llm_only"]
+        level = final._formatted(shown["settings"]["level"], "percent_number", finalcharts.WHERE)
 
-    k, n = _harm(o)
-    assert _tiles(page) == [
-        (
-            fmt.pct(o["mean_accuracy"]["value"]),
-            views.fill(templates, "site.tile.exact", interval=interval(o)),
-        ),
-        (f"{k} of {n}", views.fill(templates, "site.tile.harm", alone=_harm(alone)[0])),
-        (
-            fmt.pct(alone["mean_accuracy"]["value"]),
-            views.fill(templates, "site.tile.alone", interval=interval(alone)),
-        ),
-    ]
-    count = len(shown["deviations"])
-    lede = views.fill(templates, "site.lede", count=count)
-    description = views.fill(templates, "site.description")
-    assert f'<p class="lede">{html.escape(lede, quote=False)}</p>' in page
-    assert f'<meta name="description" content="{html.escape(description)}">' in page
-    assert html.escape(site.DESCRIPTION) not in page and "held out)</span>" not in page
+        def interval(summary: dict[str, Any]) -> str:
+            low, high = summary["mean_accuracy"]["ci"]
+            return views.fill(templates, "interval", level=level, lo=fmt.num(low), hi=fmt.num(high))
 
-    # every chart with its table and CSV; the stability over the reads with two reads or more only
-    for chart in charts.names(doc):
-        figure = page.split(f'<figure id="{chart}">', 1)[1].split("</figure>", 1)[0]
-        assert "<table" in figure and f'href="{chart}.csv"' in figure and (out / f"{chart}.csv").is_file(), (
-            chart
+        k, n = _harm(o)
+        assert _tiles(page) == [
+            (
+                fmt.pct(o["mean_accuracy"]["value"]),
+                views.fill(templates, "site.tile.exact", interval=interval(o)),
+            ),
+            (f"{k} of {n}", views.fill(templates, "site.tile.harm", alone=_harm(alone)[0])),
+            (
+                fmt.pct(alone["mean_accuracy"]["value"]),
+                views.fill(templates, "site.tile.alone", interval=interval(alone)),
+            ),
+        ]
+        count = len(shown["deviations"])
+        lede = views.fill(templates, "site.lede", count=count)
+        description = views.fill(templates, "site.description")
+        assert f'<p class="lede">{html.escape(lede, quote=False)}</p>' in page
+        assert f'<meta name="description" content="{html.escape(description)}">' in page
+        assert html.escape(site.DESCRIPTION) not in page and "held out)</span>" not in page
+
+        # every chart with its table and CSV; the stability over the reads with two reads or more only
+        for chart in charts.names(doc):
+            figure = page.split(f'<figure id="{chart}">', 1)[1].split("</figure>", 1)[0]
+            assert (
+                "<table" in figure and f'href="{chart}.csv"' in figure and (out / f"{chart}.csv").is_file()
+            ), chart
+        assert ('<figure id="final-stability">' in page) == (int(shown["reads"]) >= 2)
+        timeline = page.split('<figure id="timeline">', 1)[1].split("</figure>", 1)[0]
+        caption = html.unescape(timeline.split("<figcaption>", 1)[1].split("</figcaption>", 1)[0])
+        assert caption == "What this shows: " + views.fill(templates, "chart.timeline.caption", count=count)
+
+        # every section in the contents, the deviations and the provenance last; the final run's tables
+        sections = text.sections(doc)
+        for section in sections:
+            assert f'<section id="{section.anchor}"' in page and f'href="#{section.anchor}"' in page, (
+                section.title
+            )
+        assert [section.title for section in sections[-2:]] == ["16. Deviations", "17. Provenance"]
+        tables = (
+            _captions(finaltext.summary(doc))
+            + _captions(finaltext.final_run(doc))
+            + _captions(finaltext.statistics(doc))
+            + _captions(finaltext.gallery(doc))
+            + _captions(finaltext.deviations(doc))
+            + _captions(finaltext.provenance(doc))
         )
-    assert ('<figure id="final-stability">' in page) == (int(shown["reads"]) >= 2)
-    timeline = page.split('<figure id="timeline">', 1)[1].split("</figure>", 1)[0]
-    caption = html.unescape(timeline.split("<figcaption>", 1)[1].split("</figcaption>", 1)[0])
-    assert caption == "What this shows: " + views.fill(templates, "chart.timeline.caption", count=count)
+        assert views.fill(templates, "provenance.caption") in tables
+        for table in tables:
+            assert f"<caption>{html.escape(table)}</caption>" in page, table
 
-    # every section in the contents, the deviations and the provenance last; the final run's tables
-    sections = text.sections(doc)
-    for section in sections:
-        assert f'<section id="{section.anchor}"' in page and f'href="#{section.anchor}"' in page, (
-            section.title
+        # the footer names the hash of presentation.json as built, the one the provenance lists
+        digest = hashlib.sha256(outputs["evals/present/presentation.json"].encode("utf-8")).hexdigest()
+        assert digest == hashlib.sha256((out / "data.json").read_bytes()).hexdigest()
+        footer = page.split("<footer>", 1)[1]
+        assert (
+            digest in footer
+            and digest in page.split('<section id="17-provenance"', 1)[1].split("</section>", 1)[0]
         )
-    assert [section.title for section in sections[-2:]] == ["16. Deviations", "17. Provenance"]
-    tables = (
-        _captions(finaltext.summary(doc))
-        + _captions(finaltext.final_run(doc))
-        + _captions(finaltext.statistics(doc))
-        + _captions(finaltext.gallery(doc))
-        + _captions(finaltext.deviations(doc))
-        + _captions(finaltext.provenance(doc))
-    )
-    assert views.fill(templates, "provenance.caption") in tables
-    for table in tables:
-        assert f"<caption>{html.escape(table)}</caption>" in page, table
+        assert '<a href="#17-provenance">' in footer
 
-    # the footer names the hash of presentation.json as built, the one the provenance lists
-    digest = hashlib.sha256(outputs["evals/present/presentation.json"].encode("utf-8")).hexdigest()
-    assert digest == hashlib.sha256((out / "data.json").read_bytes()).hexdigest()
-    footer = page.split("<footer>", 1)[1]
-    assert (
-        digest in footer
-        and digest in page.split('<section id="17-provenance"', 1)[1].split("</section>", 1)[0]
-    )
-    assert '<a href="#17-provenance">' in footer
+    check_rows(PAGE_FINALS, check)
 
 
 def test_the_final_page_passes_its_own_check_and_fails_on_each_mutation(
@@ -2326,7 +2441,7 @@ def test_the_report_page_s_end_to_end_cases_build_a_synthetic_final_in_their_own
 
 
 # --------------------------------------------------------------------------------------------------
-# End to end, on every synthetic final; the page with no final; the phase-2 record
+# End to end, on every synthetic final; the phase-2 record
 # --------------------------------------------------------------------------------------------------
 
 #: Every synthetic final: the hand-built ones, a real analysis of synthetic reads, and the calibration's (the pooled
@@ -2336,44 +2451,54 @@ EVERY_FINAL = [*hf.SCENARIO_IDS, "realistic", "calibration"]
 README_MAX_LINES, PUBLISH_ROOM = 250, 2
 
 
-def _final_root(tmp_path: Path, name: str) -> Path:
+def _final_root(tmp_path: Path, name: str, calibration: Callable[[], Analysed]) -> Path:
     if name == "realistic":
         return hf.realistic_root(tmp_path)
-    if name == "calibration":
-        return hf.calibration_root(tmp_path)
+    if name == "calibration":  # hf.calibration_root, with the analysis run once
+        doc, src, reads = calibration()
+        return hf.final_root(
+            tmp_path, doc, sources=src, prereg=hf.complete_prereg(builders.prereg()), reads=reads
+        )
     return hf.scenario_root(tmp_path, name)
 
 
-@pytest.mark.parametrize("name", EVERY_FINAL)
-def test_every_synthetic_final_renders_through_the_whole_presenter(name: str, tmp_path: Path) -> None:
+def test_every_synthetic_final_renders_through_the_whole_presenter(
+    tmp_path: Path, calibration: Callable[[], Analysed]
+) -> None:
     """Each synthetic final goes through the presenter as the publish PR's will: ``--write``, then ``--check`` finds
     nothing; the README's block is the registered layout of the registered README sentences and the report's final
     section the registered page sentences; the report page passes ``--check-site``; and README.md, with this block,
     keeps under its limit with the room the largest block needs."""
-    root = _final_root(tmp_path / "checkout", name)
-    assert main(["--root", str(root), "--write"]) == 0
-    assert main(["--root", str(root), "--check"]) == 0
-    source, prereg, named = hf.published(root)
-    readme = (root / build.README).read_text(encoding="utf-8")
-    said = final.coded(source, prereg, block="readme", sources=named)
-    assert final.readme_problems(readme, said, prereg["sentences"]) == []
-    page = [s.text for s in final.coded(source, prereg, block="page", sources=named)]
-    assert final.page_problems((root / build.REPORT).read_text(encoding="utf-8"), page) == []
-    out = tmp_path / "site"
-    assert main(["--root", str(root), "--site", str(out), "--check-site"]) == 0
-    doc = json.loads((root / build.PRESENTATION).read_text(encoding="utf-8"))
-    assert doc["final"]["source"]["file"] == hf.FINAL_NAME
-    assert sorted(f"{name}.csv" for name in charts.names(doc)) == sorted(p.name for p in out.glob("*.csv"))
-    lines = readme.splitlines()
-    begin, end = lines.index(BEGIN), lines.index(END)
-    outside = len(lines) - (end - begin - 1)
-    assert len(lines) < README_MAX_LINES
-    # the publish PR's room is kept only until it has rewritten its bullets, as tests/test_readme.py keeps it
-    spare = 0 if final_published() else PUBLISH_ROOM
-    assert outside + final.README_BLOCK_MAX_LINES + spare < README_MAX_LINES
-    for relative in build.output_paths(doc):
-        content = (root / relative).read_text(encoding="utf-8")
-        assert str(tmp_path) not in content and str(hf.ROOT) not in content, relative
+
+    def check(name: str) -> None:
+        root = _final_root(tmp_path / name / "checkout", name, calibration)
+        assert main(["--root", str(root), "--write"]) == 0
+        assert main(["--root", str(root), "--check"]) == 0
+        source, prereg, named = hf.published(root)
+        readme = (root / build.README).read_text(encoding="utf-8")
+        said = final.coded(source, prereg, block="readme", sources=named)
+        assert final.readme_problems(readme, said, prereg["sentences"]) == []
+        page = [s.text for s in final.coded(source, prereg, block="page", sources=named)]
+        assert final.page_problems((root / build.REPORT).read_text(encoding="utf-8"), page) == []
+        out = tmp_path / name / "site"
+        assert main(["--root", str(root), "--site", str(out), "--check-site"]) == 0
+        doc = json.loads((root / build.PRESENTATION).read_text(encoding="utf-8"))
+        assert doc["final"]["source"]["file"] == hf.FINAL_NAME
+        assert sorted(f"{name}.csv" for name in charts.names(doc)) == sorted(
+            p.name for p in out.glob("*.csv")
+        )
+        lines = readme.splitlines()
+        begin, end = lines.index(BEGIN), lines.index(END)
+        outside = len(lines) - (end - begin - 1)
+        assert len(lines) < README_MAX_LINES
+        # the publish PR's room is kept only until it has rewritten its bullets, as tests/test_readme.py keeps it
+        spare = 0 if final_published() else PUBLISH_ROOM
+        assert outside + final.README_BLOCK_MAX_LINES + spare < README_MAX_LINES
+        for relative in build.output_paths(doc):
+            content = (root / relative).read_text(encoding="utf-8")
+            assert str(tmp_path) not in content and str(hf.ROOT) not in content, relative
+
+    check_rows(EVERY_FINAL, check)
 
 
 #: A difference's interval as the pages print one: ``[lo, hi]`` or ``lo to hi``, each end a signed number of points.
@@ -2463,88 +2588,37 @@ def _decision_problems(texts: dict[str, str], codes: set[str], known: set[str]) 
     return problems
 
 
-@pytest.mark.parametrize("name", EVERY_FINAL)
 def test_no_output_of_a_final_prints_the_analysis_s_decision_codes_or_within_noise(
-    name: str, tmp_path: Path, no_final_units: set[str]
+    made: Callable[[str], Made], tmp_path: Path, no_final_units: set[str]
 ) -> None:
     """Every page a reader sees of a final run (the README, docs/evals.md, the history, every chart, the report page and
     its CSVs) says a decision only by the registered sentences: no "within noise", no decision code of the analysis
     (``level_within_noise``, ``no_clear_difference``) outside a registered sentence's code, and "no clear difference"
     only where every interval beside it includes 0. The earlier held-out splits' own words, which the outputs hold with
     no final run too, are theirs."""
-    root = _final_root(tmp_path / "checkout", name)
-    outputs = build.outputs(root)
-    doc = json.loads(outputs[build.PRESENTATION])
-    texts = {path: content for path, content in outputs.items() if path != build.PRESENTATION}
-    texts |= _site_texts(doc, tmp_path / "site")
-    codes = {
-        value
-        for value in (*doc["final"]["decisions"].values(), "level_within_noise", "no_clear_difference")
-        if isinstance(value, str) and "_" in value
-    }
-    assert _decision_problems(texts, codes, no_final_units) == []
-    # the check finds what it looks for: a bare code and a contradicted "no clear difference"
-    planted = {
-        "x.md": "| a | `level_within_noise` |\n\nNo clear difference (+3.0 points, 95 % CI +1.0 to +5.0)."
-    }
-    assert len(_decision_problems(planted, codes, no_final_units)) == 3
 
+    def check(name: str) -> None:
+        outputs = made(name).outputs
+        doc = json.loads(outputs[build.PRESENTATION])
+        texts = {path: content for path, content in outputs.items() if path != build.PRESENTATION}
+        texts |= _site_texts(doc, tmp_path / name / "site")
+        codes = {
+            value
+            for value in (*doc["final"]["decisions"].values(), "level_within_noise", "no_clear_difference")
+            if isinstance(value, str) and "_" in value
+        }
+        assert _decision_problems(texts, codes, no_final_units) == []
+        # the check finds what it looks for: a bare code and a contradicted "no clear difference"
+        planted = {
+            "x.md": "| a | `level_within_noise` |\n\nNo clear difference (+3.0 points, 95 % CI +1.0 to +5.0)."
+        }
+        assert len(_decision_problems(planted, codes, no_final_units)) == 3
 
-#: The code at the freeze for the pre-registered final evaluation.
-FREEZE = "f2cacf64771a8736262f52a535d29b79032969c9"
+    check_rows(EVERY_FINAL, check)
 
 
 def _git(*args: str) -> subprocess.CompletedProcess[bytes]:
     return subprocess.run(["git", "-C", str(hf.ROOT), *args], capture_output=True, check=False)
-
-
-@pytest.mark.slow
-def test_the_site_with_no_final_is_the_freeze_s_byte_for_byte(tmp_path: Path) -> None:
-    """With no final run the report page this presenter builds is the freeze's, file for file and byte for byte: the
-    freeze's ``evals/present`` (from git) and this checkout's each build it from their own ``presentation.json``, in
-    folders of their own. Once the final run is published, this checkout's ``presentation.json`` holds it: this
-    checkout's side then builds from the presentation with no final run, rendered from the results as they were
-    before the publish PR. It holds the presenter to the freeze, so it ends with it: once the publish record names
-    the publish commit, the presenter may change (the README's generated block stays: tests/test_preregistration.py)."""
-    if (hf.ROOT / prereg_published.RECORD).is_file():
-        pytest.skip(
-            f"after publication: {prereg_published.RECORD} ends the freeze, and the presenter may change"
-        )
-    if shutil.which("git") is None or _git("cat-file", "-e", f"{FREEZE}^{{commit}}").returncode != 0:
-        pytest.skip("the freeze commit is not in this clone (a shallow checkout)")
-    frozen, here = tmp_path / "freeze", tmp_path / "head"
-    archive = _git("archive", FREEZE, "evals/__init__.py", "evals/present")
-    assert archive.returncode == 0, archive.stderr
-    frozen.mkdir()
-    subprocess.run(["tar", "-x", "-C", str(frozen)], input=archive.stdout, check=True)
-    (here / "evals").mkdir(parents=True)
-    shutil.copyfile(hf.ROOT / "evals" / "__init__.py", here / "evals" / "__init__.py")
-    shutil.copytree(
-        hf.ROOT / "evals" / "present",
-        here / "evals" / "present",
-        ignore=shutil.ignore_patterns("__pycache__"),
-    )
-    if final_published():
-        no_final = model.build(hf.RESULTS)
-        assert no_final["final"] is None
-        (here / build.PRESENTATION).write_text(model.dumps(no_final), encoding="utf-8")
-    environment = {key: value for key, value in os.environ.items() if key != "PYTHONPATH"}
-    built = {}
-    for side in (frozen, here):
-        out = tmp_path / f"site-{side.name}"
-        result = subprocess.run(
-            [sys.executable, "-B", "-m", "evals.present", "--site", str(out)],
-            cwd=side,
-            env=environment,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        assert result.returncode == 0, result.stderr
-        built[side.name] = {path.name: path.read_bytes() for path in sorted(out.iterdir())}
-    assert sorted(built["head"]) == sorted(built["freeze"])
-    for name, content in built["freeze"].items():
-        assert built["head"][name] == content, name
 
 
 def test_the_phase2_record_of_this_tree_checks_clean_and_names_an_edit(tmp_path: Path) -> None:

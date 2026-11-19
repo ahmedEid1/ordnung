@@ -7,6 +7,7 @@ import io
 from typing import Any
 
 import pdfplumber
+import pytest
 from PIL import Image
 
 from ordnung.drafts.pdf import PREVIEW_GAP, PREVIEW_WIDTH, render, render_preview
@@ -45,8 +46,14 @@ def _open(data: bytes) -> pdfplumber.PDF:
     return pdfplumber.open(io.BytesIO(data))
 
 
-def test_pdf_is_a_readable_letter() -> None:
-    data = render(_draft(), PROFILE)
+@pytest.fixture(scope="module")
+def one_page() -> bytes:
+    """The one-page letter, rendered once for the module (read only: bytes)."""
+    return render(_draft(), PROFILE)
+
+
+def test_pdf_is_a_readable_letter(one_page: bytes) -> None:
+    data = one_page
     assert data.startswith(b"%PDF")
     with _open(data) as pdf:
         assert len(pdf.pages) == 1
@@ -63,15 +70,15 @@ def test_pdf_is_a_readable_letter() -> None:
     assert "ordnung" not in text.casefold()  # no branding
 
 
-def test_pdf_draws_fold_and_hole_marks() -> None:
-    with _open(render(_draft(), PROFILE)) as pdf:
+def test_pdf_draws_fold_and_hole_marks(one_page: bytes) -> None:
+    with _open(one_page) as pdf:
         lines = pdf.pages[0].lines
     marks = sorted(round(line["top"] / MM, 1) for line in lines if line["x0"] < 10 * MM)
     assert marks == [105.0, 148.5, 210.0]
 
 
-def test_pdf_places_address_in_the_window() -> None:
-    with _open(render(_draft(), PROFILE)) as pdf:
+def test_pdf_places_address_in_the_window(one_page: bytes) -> None:
+    with _open(one_page) as pdf:
         words = pdf.pages[0].extract_words()
     recipient = next(word for word in words if word["text"] == "Finanzamt")
     assert 20 * MM <= recipient["x0"] <= 105 * MM
@@ -82,9 +89,9 @@ def test_pdf_places_address_in_the_window() -> None:
     assert info and 50 * MM <= info[0]["top"] < 90 * MM
 
 
-def test_pdf_is_deterministic() -> None:
-    assert render(_draft(), PROFILE) == render(_draft(), PROFILE)
-    assert render(_draft(), PROFILE) != render(_draft(created_at="2026-09-29T08:00:00Z"), PROFILE)
+def test_pdf_is_deterministic(one_page: bytes) -> None:
+    assert render(_draft(), PROFILE) == one_page
+    assert one_page != render(_draft(created_at="2026-09-29T08:00:00Z"), PROFILE)
 
 
 def test_long_letter_gets_page_numbers() -> None:

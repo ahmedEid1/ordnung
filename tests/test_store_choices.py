@@ -10,6 +10,7 @@ from contextlib import contextmanager
 
 import pytest
 
+from helpers_tables import check_rows
 from ordnung.db.store import (
     HOUSEHOLD_META_KEY,
     PERSON_META_KEY,
@@ -98,18 +99,25 @@ def test_the_keys_and_the_household_id_prefix() -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("marked", "choice", "counts"),
-    [(False, None, False), (True, None, True), (False, True, True), (True, False, False), (True, True, True)],
-)
-def test_for_taxes_is_the_persons_choice_else_claudes_mark(
-    store: Store, marked: bool, choice: bool | None, counts: bool
-) -> None:
+FOR_TAXES_EXAMPLES = [
+    (False, None, False),
+    (True, None, True),
+    (False, True, True),
+    (True, False, False),
+    (True, True, True),
+]
+
+
+def test_for_taxes_is_the_persons_choice_else_claudes_mark(store: Store) -> None:
     letter = _letter(store, "letter")
-    document = store.update_document(letter, tax_relevant=marked)
-    choices = {} if choice is None else {letter: choice}
-    assert for_taxes(document, choices) is counts
-    assert for_taxes(document, {"doc_another": not counts}) is marked
+
+    def check(marked: bool, choice: bool | None, counts: bool) -> None:
+        document = store.update_document(letter, tax_relevant=marked)
+        choices = {} if choice is None else {letter: choice}
+        assert for_taxes(document, choices) is counts
+        assert for_taxes(document, {"doc_another": not counts}) is marked
+
+    check_rows(FOR_TAXES_EXAMPLES, check)
 
 
 def test_a_tax_choice_is_set_changed_and_cleared(store: Store) -> None:
@@ -161,20 +169,29 @@ def test_a_tax_choice_is_a_person_change(store: Store) -> None:
     assert store.get_meta(PERSON_META_KEY) == "2"
 
 
-@pytest.mark.parametrize(
-    "raw",
-    ["not json", "[true]", '"tax"', "null", '{"doc_x": "yes", "doc_y": 1, "doc_z": null}'],
-)
-def test_an_unreadable_tax_choices_row_counts_as_no_choice(store: Store, raw: str) -> None:
+UNREADABLE_TAX_CHOICES_ROWS = [
+    "not json",
+    "[true]",
+    '"tax"',
+    "null",
+    '{"doc_x": "yes", "doc_y": 1, "doc_z": null}',
+]
+
+
+def test_an_unreadable_tax_choices_row_counts_as_no_choice(store: Store) -> None:
     letter = _letter(store, "letter")
-    store.set_meta(TAX_CHOICES_META_KEY, raw)
-    assert store.tax_choices() == {}
-    # clearing a choice that isn't there leaves the row as it is
-    assert store.set_tax_choice(letter, None) is False
-    assert _raw(store, TAX_CHOICES_META_KEY) == raw
-    # a new choice replaces it with what can be read
-    assert store.set_tax_choice(letter, True) is True
-    assert store.tax_choices() == {letter: True}
+
+    def check(raw: str) -> None:
+        store.set_meta(TAX_CHOICES_META_KEY, raw)
+        assert store.tax_choices() == {}
+        # clearing a choice that isn't there leaves the row as it is
+        assert store.set_tax_choice(letter, None) is False
+        assert _raw(store, TAX_CHOICES_META_KEY) == raw
+        # a new choice replaces it with what can be read
+        assert store.set_tax_choice(letter, True) is True
+        assert store.tax_choices() == {letter: True}
+
+    check_rows(UNREADABLE_TAX_CHOICES_ROWS, check)
 
 
 def test_readable_choices_are_kept_beside_unreadable_ones(store: Store) -> None:
@@ -296,14 +313,19 @@ def test_adding_a_letter_leaves_both_rows_as_they_are_when_neither_names_it(stor
     assert _raw(store, HOUSEHOLD_META_KEY) == household
 
 
-@pytest.mark.parametrize("raw", ["not json", '{"format": 1, "links": []}', "[]"])
-def test_a_purge_never_fails_on_a_row_it_can_t_read(store: Store, raw: str) -> None:
-    letter = _letter(store, "letter")
-    store.set_meta(HOUSEHOLD_META_KEY, raw)
-    store.set_meta(TAX_CHOICES_META_KEY, raw)
-    assert store.delete_document(letter) is True
-    assert store.get_document(letter) is None
-    assert _raw(store, HOUSEHOLD_META_KEY) == raw
+UNREADABLE_ROWS_FOR_A_PURGE = ["not json", '{"format": 1, "links": []}', "[]"]
+
+
+def test_a_purge_never_fails_on_a_row_it_can_t_read(store: Store) -> None:
+    def check(raw: str) -> None:
+        letter = _letter(store, f"letter {raw}")  # a letter of its own per row
+        store.set_meta(HOUSEHOLD_META_KEY, raw)
+        store.set_meta(TAX_CHOICES_META_KEY, raw)
+        assert store.delete_document(letter) is True
+        assert store.get_document(letter) is None
+        assert _raw(store, HOUSEHOLD_META_KEY) == raw
+
+    check_rows(UNREADABLE_ROWS_FOR_A_PURGE, check)
 
 
 def test_a_purge_without_either_row_writes_neither(store: Store) -> None:
@@ -337,6 +359,7 @@ def test_each_row_moves_asks_ledger_token(store: Store) -> None:
 def test_recipient_names_reads_one_query_of_live_letters(store: Store) -> None:
     """Every letter in the Inbox: the name its reading says it is addressed to — only for an incoming
     letter with a reading; never a letter in the trash or a proof file."""
+    assert store.recipient_names() == {}  # an empty library
     alex = _letter(store, "alex", recipient="Alex Rivera")
     nobody = _letter(store, "nobody", recipient=None)
     unread = _letter(store, "unread", read=False)
@@ -349,7 +372,3 @@ def test_recipient_names_reads_one_query_of_live_letters(store: Store) -> None:
     assert names == {alex: "Alex Rivera", nobody: None, unread: None, sent: None}
     assert trashed not in names and proof not in names
     assert len([sql for sql in seen if sql.lstrip().upper().startswith("SELECT")]) == 1
-
-
-def test_recipient_names_of_an_empty_library(store: Store) -> None:
-    assert store.recipient_names() == {}

@@ -20,6 +20,7 @@ from typing import Any, TypeVar
 import pytest
 from pydantic import ValidationError
 
+from helpers_tables import check_rows
 from ordnung.config import Paths
 from ordnung.db import store as store_module
 from ordnung.db.migrate import latest_version
@@ -224,22 +225,18 @@ def test_store_from_a_db_path_uses_its_folder_as_data_dir(tmp_path: Path) -> Non
 
 
 def test_close_closes_every_threads_connection(store: Store) -> None:
+    mine = store._conn()
+    assert mine is store._conn()  # one connection per thread
     connections: list[sqlite3.Connection] = []
     errors = run_threads(3, lambda _: connections.append(store._conn()))
     assert not errors and len({id(c) for c in connections}) == 3
+    assert all(conn is not mine for conn in connections)
     store.close()
     with pytest.raises(RuntimeError, match="closed"):
         store.get_meta("x")
     for conn in connections:
         with pytest.raises(sqlite3.ProgrammingError):
             conn.execute("SELECT 1")
-
-
-def test_one_connection_per_thread(store: Store) -> None:
-    assert store._conn() is store._conn()
-    other: list[sqlite3.Connection] = []
-    run_threads(1, lambda _: other.append(store._conn()))
-    assert other[0] is not store._conn()
 
 
 def test_a_threads_connection_is_closed_when_the_thread_ends(store: Store) -> None:
@@ -422,14 +419,6 @@ def test_read_only_store_needs_an_existing_current_database(tmp_path: Path) -> N
         Store(tmp_path / "old.db", read_only=True)
 
 
-def test_opening_a_newer_database_fails_cleanly(tmp_path: Path) -> None:
-    conn = sqlite3.connect(tmp_path / "future.db")
-    conn.execute("PRAGMA user_version = 99")
-    conn.close()
-    with pytest.raises(RuntimeError, match="newer"):
-        Store(tmp_path / "future.db")
-
-
 # --------------------------------------------------------------------------------------------------
 # meta / profile / settings
 # --------------------------------------------------------------------------------------------------
@@ -460,15 +449,6 @@ def test_settings_defaults_and_round_trip(store: Store) -> None:
     store.save_settings(settings)
     loaded = store.get_settings()
     assert loaded == settings and loaded.models.extract == "opus" and loaded.model == "claude-opus-5-5"
-
-
-def test_settings_saved_before_the_model_setting_get_the_default(store: Store) -> None:
-    """Settings are one JSON row: a folder from before the field existed loads with Sonnet 5."""
-    old = AppSettings(concurrency=3).model_dump()
-    del old["model"]
-    store.set_meta("settings", json.dumps(old))
-    loaded = store.get_settings()
-    assert loaded.model == DEFAULT_MODEL and loaded.concurrency == 3
 
 
 # --------------------------------------------------------------------------------------------------
@@ -833,12 +813,16 @@ def test_search_finds_substrings_in_german_compounds(store: Store) -> None:
     assert "Einkommensteuerbescheid" in hits[0].snippet
 
 
-@pytest.mark.parametrize(
-    "query", ["Kündigung", "KÜNDIGUNG", "kundigung", "Kuendigung", "kündigung zum 31.12."]
-)
-def test_search_matches_umlaut_variants(store: Store, query: str) -> None:
+UMLAUT_VARIANT_QUERIES = ["Kündigung", "KÜNDIGUNG", "kundigung", "Kuendigung", "kündigung zum 31.12."]
+
+
+def test_search_matches_umlaut_variants(store: Store) -> None:
     document = add_text_doc(store, "Bestätigung Ihrer Kündigung zum 31.12.2026")
-    assert [h.doc_id for h in store.search(query)] == [document.id]
+
+    def check(query: str) -> None:
+        assert [h.doc_id for h in store.search(query)] == [document.id]
+
+    check_rows(UMLAUT_VARIANT_QUERIES, check)
 
 
 def test_search_matches_transliterated_text_and_sharp_s(store: Store) -> None:
@@ -876,12 +860,15 @@ HOSTILE_QUERIES = [
 ]
 
 
-@pytest.mark.parametrize("query", HOSTILE_QUERIES)
-def test_hostile_queries_never_raise(store: Store, query: str) -> None:
+def test_hostile_queries_never_raise(store: Store) -> None:
     add_text_doc(store, "Kündigung zum 31.12.2026 — foo and bar")
-    assert isinstance(store.search(query), list)
-    assert isinstance(store.list_documents(q=query), list)
-    assert raw(store, "SELECT COUNT(*) FROM documents") == [(1,)]
+
+    def check(query: str) -> None:
+        assert isinstance(store.search(query), list)
+        assert isinstance(store.list_documents(q=query), list)
+        assert raw(store, "SELECT COUNT(*) FROM documents") == [(1,)]
+
+    check_rows(HOSTILE_QUERIES, check)
 
 
 def test_random_queries_never_raise(store: Store) -> None:
@@ -971,36 +958,43 @@ def scan_file(store: Store, doc_id: str) -> Path:
     return store.paths.derived / doc_id / "scan-text.json"
 
 
-@pytest.mark.parametrize(
-    "query",
-    [
-        "Wasserzählers",
-        "wasserzahlers",
-        "Wasserzaehlers",
-        "zähler",  # a part of a compound (substring rule)
-        "WASSERZÄHLERS 4711",
-        "Kündigung",
-        "Kuendigung",
-        "kundigung",
-        "31.12.",  # a multi-part token: consecutive words
-        "Musterstrasse",
-        "musterstraße",
-        "Ablesung 4711",
-    ],
-)
-def test_scanner_text_matches_words_compounds_and_umlauts(store: Store, query: str) -> None:
+SCANNER_TEXT_MATCHES = [
+    "Wasserzählers",
+    "wasserzahlers",
+    "Wasserzaehlers",
+    "zähler",  # a part of a compound (substring rule)
+    "WASSERZÄHLERS 4711",
+    "Kündigung",
+    "Kuendigung",
+    "kundigung",
+    "31.12.",  # a multi-part token: consecutive words
+    "Musterstrasse",
+    "musterstraße",
+    "Ablesung 4711",
+]
+
+
+def test_scanner_text_matches_words_compounds_and_umlauts(store: Store) -> None:
     """The scanner text is matched with the very rules the search indexes apply (whole words, and every
     term of three or more letters as a substring in either spelling of its umlauts)."""
     scan = add_scan(store)
-    assert store.scan_text_matches(query) == {scan.id}
+
+    def check(query: str) -> None:
+        assert store.scan_text_matches(query) == {scan.id}
+
+    check_rows(SCANNER_TEXT_MATCHES, check)
 
 
-@pytest.mark.parametrize(
-    "query", ["Stromzähler", "Wasserzählers 4712", "12.31", "zum 31.13", "*", "", "AND", "ab"]
-)
-def test_scanner_text_matches_only_what_it_says(store: Store, query: str) -> None:
+SCANNER_TEXT_MISSES = ["Stromzähler", "Wasserzählers 4712", "12.31", "zum 31.13", "*", "", "AND", "ab"]
+
+
+def test_scanner_text_matches_only_what_it_says(store: Store) -> None:
     add_scan(store)
-    assert store.scan_text_matches(query) == set()
+
+    def check(query: str) -> None:
+        assert store.scan_text_matches(query) == set()
+
+    check_rows(SCANNER_TEXT_MISSES, check)
 
 
 def test_scanner_text_counts_only_on_pages_without_text(store: Store) -> None:
@@ -1938,6 +1932,13 @@ def test_settings_stored_by_an_older_version_still_load(store: Store) -> None:
     settings = store.get_settings()
     assert settings.model_dump() == AppSettings().model_dump()
     assert "ocr" not in settings.model_dump() and "capture" not in settings.models.model_dump()
+    # Settings are one JSON row: a folder from before the model field existed loads with the default
+    # model (DEFAULT_MODEL).
+    old = AppSettings(concurrency=3).model_dump()
+    del old["model"]
+    store.set_meta("settings", json.dumps(old))
+    loaded = store.get_settings()
+    assert loaded.model == DEFAULT_MODEL and loaded.concurrency == 3
 
 
 def test_cache_put_get_replace_and_purge(store: Store) -> None:
@@ -1998,26 +1999,81 @@ def test_counts(store: Store) -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "table",
-    [
-        store_module._PARTIES,
-        store_module._CASES,
-        store_module._DOCUMENTS,
-        store_module._PAGES,
-        store_module._CONTRACTS,
-        store_module._ITEMS,
-        store_module._SUGGESTIONS,
-        store_module._DRAFTS,
-        store_module._NOTES,
-        store_module._CHAT,
-        store_module._JOBS,
-        store_module._ACTIVITY,
-        store_module._LLM_CALLS,
-    ],
-    ids=lambda t: t.name,
-)
-def test_every_model_field_has_a_column(store: Store, table: Any) -> None:
-    columns = {row[1] for row in raw(store, f"PRAGMA table_info({table.name})")}
-    assert set(table.column_of.values()) <= columns
-    assert set(table.extras) <= columns
+MODEL_TABLES = [
+    store_module._PARTIES,
+    store_module._CASES,
+    store_module._DOCUMENTS,
+    store_module._PAGES,
+    store_module._CONTRACTS,
+    store_module._ITEMS,
+    store_module._SUGGESTIONS,
+    store_module._DRAFTS,
+    store_module._NOTES,
+    store_module._CHAT,
+    store_module._JOBS,
+    store_module._ACTIVITY,
+    store_module._LLM_CALLS,
+]
+
+
+def test_every_model_field_has_a_column(store: Store) -> None:
+    def check(table: Any) -> None:
+        columns = {row[1] for row in raw(store, f"PRAGMA table_info({table.name})")}
+        assert set(table.column_of.values()) <= columns, table.name
+        assert set(table.extras) <= columns, table.name
+
+    check_rows(MODEL_TABLES, check)
+
+
+# --------------------------------------------------------------------------------------------------
+# additions used by the HTTP API
+# --------------------------------------------------------------------------------------------------
+
+
+def _doc(store: Store, label: str) -> str:
+    sha = (label * 64)[:64]
+    return store.add_document(
+        sha256=sha, filename=f"{label}.pdf", mime="application/pdf", file_path=f"files/{label}.pdf"
+    ).id
+
+
+def test_latest_job_is_the_newest_job_of_the_document(store: Store) -> None:
+    first, other = _doc(store, "a"), _doc(store, "b")
+    assert store.latest_job(first) is None
+
+    store.enqueue_job("ingest", first)
+    store.enqueue_job("ingest", other)
+    newest = store.enqueue_job("reprocess", first, force=True)
+
+    found = store.latest_job(first)
+    assert found is not None
+    assert found.id == newest.id
+    assert found.kind == "reprocess"
+    assert store.latest_job("doc_missing") is None
+
+
+def test_documents_of_one_source(store: Store) -> None:
+    upload = _doc(store, "a")
+    attached = store.add_document(
+        sha256="c" * 64,
+        filename="c.pdf",
+        mime="application/pdf",
+        file_path="files/c.pdf",
+        source=f"email:{upload}",
+    ).id
+    assert [doc.id for doc in store.list_documents(source=f"email:{upload}")] == [attached]
+    assert [doc.id for doc in store.list_documents(source="upload")] == [upload]
+    assert store.list_documents(source="folder") == []
+
+
+def test_activity_by_kind_and_data(store: Store) -> None:
+    store.log_activity("document.added", "Added a", data={"source": "folder"})
+    store.log_activity("document.added", "Added b", data={"source": "upload"})
+    store.log_activity("folder.refused", "Refused c", data={"source": "folder"})
+    store.log_activity("calendar.exported", "Exported", data={"source": "folder"})
+    kinds = ["document.added", "folder.refused"]
+    found = store.list_activity(10, kinds=kinds, data={"source": "folder"})
+    assert [entry.message for entry in found] == ["Refused c", "Added a"]
+    assert [entry.message for entry in store.list_activity(1, kinds=kinds)] == ["Refused c"]
+    with pytest.raises(ValueError, match="not a data key"):
+        store.list_activity(10, data={"source') OR 1=1 --": "x"})

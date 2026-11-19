@@ -4,6 +4,7 @@ plus fingerprints and reconciliation."""
 from __future__ import annotations
 
 import shutil
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -11,6 +12,7 @@ from pathlib import Path
 import pytest
 
 from helpers_secretary import TODAY, add_doc, add_item, seed_ledger
+from helpers_tables import check_rows
 from ordnung.config import Paths
 from ordnung.db.store import Store
 from ordnung.ids import content_id
@@ -41,6 +43,21 @@ def ids(store: Store) -> dict[str, str]:
     return seed_ledger(store)
 
 
+Seeded = tuple[Store, dict[str, str]]
+
+
+@pytest.fixture(scope="module")
+def seeded(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Seeded]:
+    """The seeded ledger built once for the tests that only read it; a test that writes takes ``store``."""
+    data_dir = tmp_path_factory.mktemp("seeded") / "data"
+    data_dir.mkdir()
+    shared = Store.open(Paths(data_dir).ensure())
+    try:
+        yield shared, seed_ledger(shared)
+    finally:
+        shared.close()
+
+
 def ideas(store: Store, rule_id: str, today: date = TODAY) -> list[Suggestion]:
     return run_triggers(store, today)[rule_id]
 
@@ -54,7 +71,8 @@ def refs_of(idea: Suggestion) -> set[tuple[str, str]]:
 # --------------------------------------------------------------------------------------------------
 
 
-def test_every_idea_is_well_formed_and_points_at_real_records(store: Store, ids: dict[str, str]) -> None:
+def test_every_idea_is_well_formed_and_points_at_real_records(seeded: Seeded) -> None:
+    store = seeded[0]
     results = run_triggers(store, TODAY)
     assert set(results) == set(TRIGGERS)
     getters = {
@@ -78,7 +96,8 @@ def test_every_idea_is_well_formed_and_points_at_real_records(store: Store, ids:
             assert getters[idea.action.target_type](idea.action.target_id) is not None
 
 
-def test_triggers_are_deterministic(store: Store, ids: dict[str, str]) -> None:
+def test_triggers_are_deterministic(seeded: Seeded) -> None:
+    store = seeded[0]
     first = {rule: [i.fingerprint for i in batch] for rule, batch in run_triggers(store, TODAY).items()}
     second = {rule: [i.fingerprint for i in batch] for rule, batch in run_triggers(store, TODAY).items()}
     assert first == second
@@ -95,24 +114,17 @@ def test_fingerprint_hashes_the_triggering_values() -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-def test_deadline_soon_reports_items_within_their_reminder_window(store: Store, ids: dict[str, str]) -> None:
+def test_deadline_soon_reports_items_within_their_reminder_window(seeded: Seeded) -> None:
+    store, ids = seeded
     found = {idea.refs[0].id: idea for idea in ideas(store, "deadline_soon")}
+    # objection: send-by 15 Oct is 17 days away (> 14); refund is incoming money; the reminder has its
+    # own rule; the scam letter's "payment" must never be suggested
     assert set(found) == {ids["parking_payment"], ids["semester_fee"]}
     parking = found[ids["parking_payment"]]
     assert parking.due_date == "2026-09-29"
     assert parking.priority == "critical"
     assert parking.action is not None and parking.action.label == "Pay"
     assert "tomorrow" in parking.body
-
-
-def test_deadline_soon_leaves_out_far_refunds_dunning_and_scam_items(
-    store: Store, ids: dict[str, str]
-) -> None:
-    reported = {idea.refs[0].id for idea in ideas(store, "deadline_soon")}
-    # objection: send-by 15 Oct is 17 days away (> 14); refund is incoming money; the reminder has its
-    # own rule; the scam letter's "payment" must never be suggested
-    for label in ("tax_objection", "tax_refund", "dunning_payment", "scam_payment", "abh_appointment"):
-        assert ids[label] not in reported
 
 
 def test_deadline_soon_leaves_out_direct_debits(store: Store, ids: dict[str, str]) -> None:
@@ -132,37 +144,37 @@ def test_deadline_soon_leaves_out_direct_debits(store: Store, ids: dict[str, str
     assert any(("item", debit) in refs_of(idea) for idea in ideas(store, "deadline_soon"))
 
 
-@pytest.mark.parametrize(
-    ("title", "action"),
-    [
-        ("Rundfunkbeitrag nachzahlen – konnte nicht eingezogen werden", "Pay 49.99 € by 01.10.2026"),
-        ("Pay Rundfunkbeitrag (amount could not be debited)", "Pay 49.99 € by 01.10.2026"),
-        ("Mitgliedsbeitrag nach Rücklastschrift", None),
-        ("Die erste Miete von 640 € zahlen, sobald Sie eingezogen sind", None),
-    ],
-)
-def test_a_returned_debit_or_a_first_rent_keeps_its_reminders(
-    store: Store, ids: dict[str, str], title: str, action: str | None
-) -> None:
+RETURNED_DEBIT_OR_FIRST_RENT = [
+    ("Rundfunkbeitrag nachzahlen – konnte nicht eingezogen werden", "Pay 49.99 € by 01.10.2026"),
+    ("Pay Rundfunkbeitrag (amount could not be debited)", "Pay 49.99 € by 01.10.2026"),
+    ("Mitgliedsbeitrag nach Rücklastschrift", None),
+    ("Die erste Miete von 640 € zahlen, sobald Sie eingezogen sind", None),
+]
+
+
+def test_a_returned_debit_or_a_first_rent_keeps_its_reminders(store: Store, ids: dict[str, str]) -> None:
     """Its words name a debit that failed, or moving in: the person pays it, so it is reminded of
     before its day and when it is overdue — not left out as money the sender collects."""
-    payment = add_item(
-        store,
-        kind="payment",
-        title=title,
-        action=action,
-        due_date="2026-10-01",
-        amount=49.99,
-        currency="EUR",
-        direction="out",
-    )
-    assert any(("item", payment) in refs_of(idea) for idea in ideas(store, "deadline_soon"))
-    assert any(("item", payment) in refs_of(idea) for idea in ideas(store, "overdue", date(2026, 10, 5)))
+
+    def check(title: str, action: str | None) -> None:
+        payment = add_item(
+            store,
+            kind="payment",
+            title=title,
+            action=action,
+            due_date="2026-10-01",
+            amount=49.99,
+            currency="EUR",
+            direction="out",
+        )
+        assert any(("item", payment) in refs_of(idea) for idea in ideas(store, "deadline_soon"))
+        assert any(("item", payment) in refs_of(idea) for idea in ideas(store, "overdue", date(2026, 10, 5)))
+
+    check_rows(RETURNED_DEBIT_OR_FIRST_RENT, check)
 
 
-def test_deadline_soon_offers_an_objection_draft_when_the_window_opens(
-    store: Store, ids: dict[str, str]
-) -> None:
+def test_deadline_soon_offers_an_objection_draft_when_the_window_opens(seeded: Seeded) -> None:
+    store, ids = seeded
     found = {idea.refs[0].id: idea for idea in ideas(store, "deadline_soon", date(2026, 10, 5))}
     objection = found[ids["tax_objection"]]
     assert objection.due_date == "2026-10-15"  # the send-by day, not the legal deadline
@@ -213,9 +225,6 @@ def test_overdue_is_computed_on_read_and_never_changes_the_item(store: Store, id
     assert found[0].title == "Overdue: Return library books"
     item = store.get_item(ids["library_task"])
     assert item is not None and item.status == "open"
-
-
-def test_overdue_ignores_done_items(store: Store, ids: dict[str, str]) -> None:
     store.update_item(ids["library_task"], status="done")
     assert ideas(store, "overdue") == []  # the done invoice and the reminder-kind follow-up never count
 
@@ -225,7 +234,8 @@ def test_overdue_ignores_done_items(store: Store, ids: dict[str, str]) -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-def test_contract_cancel_window_uses_the_rules_engine(store: Store, ids: dict[str, str]) -> None:
+def test_contract_cancel_window_uses_the_rules_engine(seeded: Seeded) -> None:
+    store, ids = seeded
     found = ideas(store, "contract_cancel_window")
     assert [idea.refs[0].id for idea in found] == [ids["phone"]]
     phone = found[0]
@@ -240,9 +250,6 @@ def test_contract_cancel_window_uses_the_rules_engine(store: Store, ids: dict[st
         ids["phone"],
         "Draft cancellation",
     )
-
-
-def test_contract_cancel_window_is_quiet_outside_60_days(store: Store, ids: dict[str, str]) -> None:
     # 1 Aug: the phone's send-by (8 Oct) is 68 days away; any-time and fixed-term contracts never count
     assert ideas(store, "contract_cancel_window", date(2026, 8, 1)) == []
 
@@ -262,11 +269,7 @@ def test_price_increase_right_shows_the_yearly_extra_cost_and_window(
     assert idea.due_date == "2026-10-26"
     assert refs_of(idea) == {("document", ids["doc_power"]), ("contract", ids["power"])}
     assert idea.rationale and "§ 41 Abs. 5 EnWG" in idea.rationale
-
-
-def test_price_increase_right_expires_with_the_window_or_the_contract(
-    store: Store, ids: dict[str, str]
-) -> None:
+    # it expires with the window or the contract
     assert ideas(store, "price_increase_right", date(2026, 11, 2)) == []
     store.update_contract(ids["power"], status="cancelled")
     assert ideas(store, "price_increase_right") == []
@@ -346,6 +349,9 @@ def test_confirm_cancellation_asks_before_closing_the_contract(store: Store, ids
     assert ids["gym_contract"] not in {
         i.refs[0].id for i in ideas(store, "contract_cancel_window", date(2026, 10, 30))
     }
+    # quiet once the contract is cancelled
+    store.update_contract(ids["gym_contract"], status="cancelled")
+    assert ideas(store, "confirm_cancellation") == []
 
 
 def test_a_cancellation_marked_as_sent_is_no_decision_any_more(store: Store, ids: dict[str, str]) -> None:
@@ -375,19 +381,13 @@ def test_a_cancellation_marked_as_sent_is_no_decision_any_more(store: Store, ids
     assert ids["phone"] not in Ledger(store, TODAY).decided_contracts()
 
 
-def test_confirm_cancellation_is_quiet_once_the_contract_is_cancelled(
-    store: Store, ids: dict[str, str]
-) -> None:
-    store.update_contract(ids["gym_contract"], status="cancelled")
-    assert ideas(store, "confirm_cancellation") == []
-
-
 # --------------------------------------------------------------------------------------------------
 # residence
 # --------------------------------------------------------------------------------------------------
 
 
-def test_expiry_soon_flags_permit_at_90_days_and_passport_at_180(store: Store, ids: dict[str, str]) -> None:
+def test_expiry_soon_flags_permit_at_90_days_and_passport_at_180(seeded: Seeded) -> None:
+    store, ids = seeded
     found = {idea.refs[0].id: idea for idea in ideas(store, "expiry_soon")}
     assert set(found) == {ids["permit_expiry"], ids["passport_expiry"]}
     permit = found[ids["permit_expiry"]]
@@ -396,14 +396,9 @@ def test_expiry_soon_flags_permit_at_90_days_and_passport_at_180(store: Store, i
     assert permit.action is not None and permit.action.label == "Check the permit"
     passport = found[ids["passport_expiry"]]
     assert passport.title == "Your passport expires Wed 10 Feb 2027"
-
-
-def test_expiry_soon_is_quiet_when_expiries_are_far(store: Store, ids: dict[str, str]) -> None:
     # 1 Jun: permit in 197 days (> 90), passport in 254 days (> 180)
     assert ideas(store, "expiry_soon", date(2026, 6, 1)) == []
-
-
-def test_expiry_soon_escalates_an_expired_permit(store: Store, ids: dict[str, str]) -> None:
+    # an expired permit is escalated
     found = {idea.refs[0].id: idea for idea in ideas(store, "expiry_soon", date(2026, 12, 20))}
     permit = found[ids["permit_expiry"]]
     assert permit.priority == "critical"
@@ -415,9 +410,7 @@ def test_passport_before_permit(store: Store, ids: dict[str, str]) -> None:
     assert len(found) == 1
     assert refs_of(found[0]) >= {("item", ids["passport_expiry"]), ("item", ids["permit_expiry"])}
     assert found[0].due_date == "2026-12-15"
-
-
-def test_passport_before_permit_is_quiet_for_a_long_valid_passport(store: Store, ids: dict[str, str]) -> None:
+    # quiet for a passport valid long after the permit
     store.update_item(ids["passport_expiry"], due_date="2030-01-01")
     assert ideas(store, "passport_before_permit") == []
 
@@ -437,15 +430,13 @@ def test_student_permit_info_card(store: Store, ids: dict[str, str]) -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-def test_followup_due_after_a_sent_letter(store: Store, ids: dict[str, str]) -> None:
+def test_followup_due_after_a_sent_letter(seeded: Seeded) -> None:
+    store, ids = seeded
     found = ideas(store, "followup_due")
     assert len(found) == 1
     assert refs_of(found[0]) == {("item", ids["followup"]), ("draft", ids["draft_uni"])}
     assert "Question about my enrolment" in found[0].body
-
-
-def test_followup_due_waits_for_the_follow_up_date(store: Store, ids: dict[str, str]) -> None:
-    assert ideas(store, "followup_due", date(2026, 9, 25)) == []
+    assert ideas(store, "followup_due", date(2026, 9, 25)) == []  # it waits for the follow-up date
 
 
 def test_please_check_lists_the_unconfirmed_facts(store: Store, ids: dict[str, str]) -> None:
@@ -494,6 +485,9 @@ def test_scam_warning_quotes_both_accounts(store: Store, ids: dict[str, str]) ->
     assert "hidden text" in idea.body
     assert "LT12 1000 0111 0100 1000" in idea.body and "DE02 4401 0046 0123 4567 89" in idea.body
     assert idea.action is not None and idea.action.label == "See why"
+    # quiet for an ordinary letter
+    store.update_document(ids["doc_scam"], hidden_text=False, warnings=[], payment=None)
+    assert ideas(store, "scam_warning") == []
 
 
 def test_scam_warning_title_says_it_once_in_the_apps_words(store: Store, ids: dict[str, str]) -> None:
@@ -561,11 +555,6 @@ def test_scam_warning_counts_the_signs_its_letter_shows_and_says_hidden_text_onc
     assert ordinary is not None and ledger.scam_signs(ordinary) == []
 
 
-def test_scam_warning_is_quiet_for_ordinary_letters(store: Store, ids: dict[str, str]) -> None:
-    store.update_document(ids["doc_scam"], hidden_text=False, warnings=[], payment=None)
-    assert ideas(store, "scam_warning") == []
-
-
 def test_an_invalid_iban_alone_is_a_misprint_not_a_scam(store: Store, ids: dict[str, str]) -> None:
     # a scammer needs an account that works: bad check digits are almost always a typo or a misread photo
     store.update_document(ids["doc_scam"], hidden_text=False, warnings=[], party_id=None)
@@ -578,6 +567,9 @@ def test_an_invalid_iban_alone_is_a_misprint_not_a_scam(store: Store, ids: dict[
     assert "misprinted" in idea.title and "LT71 7300 0100 0000 0000" in idea.body
     assert idea.action is not None and idea.action.label == "Check the letter"
     assert idea.due_date == "2026-10-01"
+    # quiet without a transfer to make
+    store.update_item(ids["scam_payment"], action="Ensure sufficient funds for the SEPA direct debit.")
+    assert ideas(store, "iban_misprint") == []
 
 
 def test_an_invalid_iban_is_one_more_sign_next_to_others(store: Store, ids: dict[str, str]) -> None:
@@ -589,24 +581,15 @@ def test_an_invalid_iban_is_one_more_sign_next_to_others(store: Store, ids: dict
     assert ideas(store, "iban_misprint") == []
 
 
-def test_iban_misprint_is_quiet_without_a_transfer_to_make(store: Store, ids: dict[str, str]) -> None:
-    store.update_document(ids["doc_scam"], hidden_text=False, warnings=[], party_id=None)
-    store.update_document(ids["doc_scam"], payment={"iban": "LT717300010000000000", "iban_valid": False})
-    store.update_item(ids["scam_payment"], action="Ensure sufficient funds for the SEPA direct debit.")
-    assert ideas(store, "iban_misprint") == []
-
-
-def test_tax_documents_in_tax_season_only(store: Store, ids: dict[str, str]) -> None:
+def test_tax_documents_in_tax_season_only(seeded: Seeded) -> None:
+    store, ids = seeded
     assert ideas(store, "tax_documents") == []  # September
     found = ideas(store, "tax_documents", date(2026, 3, 1))
     assert len(found) == 1
     assert refs_of(found[0]) == {("document", ids["doc_payslip"])}
     assert found[0].due_date == "2026-07-31"
-
-
-def test_the_tax_idea_opens_the_tax_year(store: Store, ids: dict[str, str]) -> None:
-    """ "See the documents" opens the year's tax letters (``/inbox/taxes?year=2025``), not the first one."""
-    (idea,) = ideas(store, "tax_documents", date(2026, 3, 1))
+    # "See the documents" opens the year's tax letters (``/inbox/taxes?year=2025``), not the first one
+    (idea,) = found
     assert idea.action is not None
     assert (idea.action.type, idea.action.target_type, idea.action.target_id, idea.action.label) == (
         "open",
@@ -1023,11 +1006,7 @@ def test_reconcile_expires_ideas_whose_trigger_stopped_firing(store: Store, ids:
     assert again.new == 1
     revived = store.get_suggestion(semester.id)
     assert revived is not None and revived.status == "new"
-
-
-def test_a_changed_due_date_replaces_the_idea(store: Store, ids: dict[str, str]) -> None:
-    store.set_meta("last_calendar_export_at", FAR_FUTURE)
-    run_and_reconcile(store, TODAY)
+    # a changed due date replaces the Idea
     old = next(s for s in store.list_suggestions() if ("item", ids["semester_fee"]) in refs_of(s))
     store.update_item(ids["semester_fee"], due_date="2026-10-03")
     run = run_and_reconcile(store, TODAY)
@@ -1126,18 +1105,11 @@ def test_an_invoice_covered_by_its_payment_reminder_is_not_a_second_to_do(
 ) -> None:
     from ordnung.views import dashboard
 
-    invoice_item, _ = _invoice_and_reminder(store, ids)
+    invoice_item, reminder = _invoice_and_reminder(store, ids)
     overdue_ids = {idea.refs[0].id for idea in ideas(store, "overdue") if idea.refs}
     assert invoice_item not in overdue_ids
     assert invoice_item not in {item.id for item in dashboard(store, TODAY).attention}
-
-
-def test_the_invoice_payment_is_back_once_its_reminder_is_in_the_trash(
-    store: Store, ids: dict[str, str]
-) -> None:
-    from ordnung.views import dashboard
-
-    invoice_item, reminder = _invoice_and_reminder(store, ids)
+    # the invoice payment is back once its reminder is in the trash
     store.trash_document(reminder)
 
     assert invoice_item in {idea.refs[0].id for idea in ideas(store, "overdue") if idea.refs}

@@ -6,6 +6,7 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
+from helpers_tables import check_rows
 from ordnung.drafts.tracking import (
     DOMESTIC_NOTE,
     EXAMPLE,
@@ -31,19 +32,21 @@ SERIALS = st.text(alphabet="0123456789", min_size=8, max_size=8)
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("serial", "check"),
-    [
-        ("12345678", 5),  # the UPU's own example, RR 123 456 785 DE: sum 204, remainder 6
-        ("47312482", 9),  # sum 200, remainder 2
-        ("00300000", 0),  # remainder 1: 11 − 1 = 10 becomes 0
-        ("00000000", 5),  # remainder 0: 11 becomes 5
-        ("01000000", 5),  # remainder 6 gives 5 as well (the check's known blind spot)
-        ("00000001", 4),  # remainder 7
-    ],
-)
-def test_s10_check_digit_worked_examples(serial: str, check: int) -> None:
-    assert s10_check_digit(serial) == check
+S10_CHECK_DIGIT_WORKED_EXAMPLES = [
+    ("12345678", 5),  # the UPU's own example, RR 123 456 785 DE: sum 204, remainder 6
+    ("47312482", 9),  # sum 200, remainder 2
+    ("00300000", 0),  # remainder 1: 11 − 1 = 10 becomes 0
+    ("00000000", 5),  # remainder 0: 11 becomes 5
+    ("01000000", 5),  # remainder 6 gives 5 as well (the check's known blind spot)
+    ("00000001", 4),  # remainder 7
+]
+
+
+def test_s10_check_digit_worked_examples() -> None:
+    def check(serial: str, digit: int) -> None:
+        assert s10_check_digit(serial) == digit
+
+    check_rows(S10_CHECK_DIGIT_WORKED_EXAMPLES, check)
 
 
 def test_s10_check_digit_needs_eight_digits() -> None:
@@ -131,46 +134,65 @@ def test_twelve_digits_are_kept_unchecked_with_a_note() -> None:
     )
 
 
-@pytest.mark.parametrize(
-    "typed", ["A0 0123 45D6 0000 123C EC", "a0012345d60000123cec", "A0-0123-45D6-0000-123C-EC"]
-)
-def test_the_number_of_an_online_stamp_is_kept_unchecked_with_a_note(typed: str) -> None:
+THE_NUMBER_OF_AN_ONLINE_STAMP_IS_KEPT_UNCHECKED_WITH_A_NOTE = [
+    "A0 0123 45D6 0000 123C EC",
+    "a0012345d60000123cec",
+    "A0-0123-45D6-0000-123C-EC",
+]
+
+
+def test_the_number_of_an_online_stamp_is_kept_unchecked_with_a_note() -> None:
     """An Einschreiben bought online (Internetmarke) has the 20 characters next to its square code."""
-    info = parse_tracking_number(typed)
-    assert (info.number, info.display, info.format, info.checked, info.note) == (
-        "A0012345D60000123CEC",
-        f"A0{NB}0123{NB}45D6{NB}0000{NB}123C{NB}EC",
-        "online_stamp",
-        False,
-        ONLINE_STAMP_NOTE,
-    )
+
+    def check(typed: str) -> None:
+        info = parse_tracking_number(typed)
+        assert (info.number, info.display, info.format, info.checked, info.note) == (
+            "A0012345D60000123CEC",
+            f"A0{NB}0123{NB}45D6{NB}0000{NB}123C{NB}EC",
+            "online_stamp",
+            False,
+            ONLINE_STAMP_NOTE,
+        )
+
+    check_rows(THE_NUMBER_OF_AN_ONLINE_STAMP_IS_KEPT_UNCHECKED_WITH_A_NOTE, check)
 
 
-@pytest.mark.parametrize("text", ["A0012345D60000123CE", "A0012345D60000123CEC0", "G0012345D60000123CEC"])
-def test_an_online_stamp_number_of_another_length_or_letter_is_refused(text: str) -> None:
-    with pytest.raises(TrackingError, match="20 characters next to the square code"):
-        parse_tracking_number(text)
+AN_ONLINE_STAMP_NUMBER_OF_ANOTHER_LENGTH_OR_LETTER_IS_REFUSED = [
+    "A0012345D60000123CE",
+    "A0012345D60000123CEC0",
+    "G0012345D60000123CEC",
+]
+
+
+def test_an_online_stamp_number_of_another_length_or_letter_is_refused() -> None:
+    def check(text: str) -> None:
+        with pytest.raises(TrackingError, match="20 characters next to the square code"):
+            parse_tracking_number(text)
+
+    check_rows(AN_ONLINE_STAMP_NUMBER_OF_ANOTHER_LENGTH_OR_LETTER_IS_REFUSED, check)
 
 
 def test_the_refusal_names_the_formats_a_person_can_find() -> None:
     assert "12 digits" not in NOT_A_NUMBER and "online" in NOT_A_NUMBER and EXAMPLE in NOT_A_NUMBER
 
 
-@pytest.mark.parametrize(
-    ("text", "message"),
-    [
-        ("RT12345678DE", "8 digits"),  # one digit missing: a typo, never "another format"
-        ("RT1234567855DE", "10 digits"),
-        ("hello", "doesn't look like a tracking number"),
-        ("12345678901", "doesn't look like"),  # eleven digits
-        ("1234567890123", "doesn't look like"),  # thirteen digits
-        ("", "doesn't look like"),
-        ("R" * 100, "doesn't look like"),
-    ],
-)
-def test_anything_else_is_refused_with_what_a_number_looks_like(text: str, message: str) -> None:
-    with pytest.raises(TrackingError, match=message):
-        parse_tracking_number(text)
+ANYTHING_ELSE_IS_REFUSED_WITH_WHAT_A_NUMBER_LOOKS_LIKE = [
+    ("RT12345678DE", "8 digits"),  # one digit missing: a typo, never "another format"
+    ("RT1234567855DE", "10 digits"),
+    ("hello", "doesn't look like a tracking number"),
+    ("12345678901", "doesn't look like"),  # eleven digits
+    ("1234567890123", "doesn't look like"),  # thirteen digits
+    ("", "doesn't look like"),
+    ("R" * 100, "doesn't look like"),
+]
+
+
+def test_anything_else_is_refused_with_what_a_number_looks_like() -> None:
+    def check(text: str, message: str) -> None:
+        with pytest.raises(TrackingError, match=message):
+            parse_tracking_number(text)
+
+    check_rows(ANYTHING_ELSE_IS_REFUSED_WITH_WHAT_A_NUMBER_LOOKS_LIKE, check)
 
 
 def test_a_stored_number_is_shown_even_when_the_policy_changed() -> None:
@@ -182,22 +204,24 @@ def test_a_stored_number_is_shown_even_when_the_policy_changed() -> None:
     assert kept.note and "check digit" in kept.note
 
 
-@pytest.mark.parametrize(
-    ("typed", "number"),
-    [
-        ("RR１２３４５６７８５DE", "RR123456785DE"),  # full-width digits
-        ("ＲＲ１２３４５６７８５ＤＥ", "RR123456785DE"),  # full-width letters too
-        ("RR١٢٣٤٥٦٧٨٥DE", "RR123456785DE"),  # Arabic-Indic digits
-        ("RR۱۲۳۴۵۶۷۸۵DE", "RR123456785DE"),  # Eastern Arabic-Indic (Persian) digits
-        ("RR १२३ ४५६ ७८५ DE", "RR123456785DE"),  # Devanagari digits, spaced
-        ("１２３４５６７８９０１２", "123456789012"),  # a domestic number in full-width digits
-        ("٠٠٣٤ ٠٤٣٤ ١٢٣٤", "003404341234"),
-    ],
-)
-def test_other_digits_are_stored_as_ascii(typed: str, number: str) -> None:
-    info = parse_tracking_number(typed)
-    assert info.number == number and info.number.isascii()
-    assert normalise(info.display) == number
+OTHER_DIGITS_ARE_STORED_AS_ASCII = [
+    ("RR１２３４５６７８５DE", "RR123456785DE"),  # full-width digits
+    ("ＲＲ１２３４５６７８５ＤＥ", "RR123456785DE"),  # full-width letters too
+    ("RR١٢٣٤٥٦٧٨٥DE", "RR123456785DE"),  # Arabic-Indic digits
+    ("RR۱۲۳۴۵۶۷۸۵DE", "RR123456785DE"),  # Eastern Arabic-Indic (Persian) digits
+    ("RR १२३ ४५६ ७८५ DE", "RR123456785DE"),  # Devanagari digits, spaced
+    ("１２３４５６７８９０１２", "123456789012"),  # a domestic number in full-width digits
+    ("٠٠٣٤ ٠٤٣٤ ١٢٣٤", "003404341234"),
+]
+
+
+def test_other_digits_are_stored_as_ascii() -> None:
+    def check(typed: str, number: str) -> None:
+        info = parse_tracking_number(typed)
+        assert info.number == number and info.number.isascii()
+        assert normalise(info.display) == number
+
+    check_rows(OTHER_DIGITS_ARE_STORED_AS_ASCII, check)
 
 
 def test_a_wrong_check_digit_in_other_digits_is_still_refused() -> None:

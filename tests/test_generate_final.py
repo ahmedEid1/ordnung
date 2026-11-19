@@ -78,6 +78,18 @@ def plugin(fixture: ModuleType) -> Any:
 
 
 @pytest.fixture(scope="module")
+def cases_with_plugin(plugin: Any) -> list[Any]:
+    """``build_cases`` with the synthetic plug-in, built once: the tests only read the cases."""
+    return generate.build_cases(plugin)
+
+
+@pytest.fixture(scope="module")
+def cases_without_plugin() -> list[Any]:
+    """``build_cases`` without a plug-in, built once: the tests only read the cases."""
+    return generate.build_cases(None)
+
+
+@pytest.fixture(scope="module")
 def manifest() -> dict[str, Any]:
     data: dict[str, Any] = json.loads(MANIFEST.read_text(encoding="utf-8"))
     return data
@@ -108,19 +120,23 @@ def test_the_manifest_lists_the_generator_s_conventions_first(manifest: dict[str
 # --------------------------------------------------------------------------------------------------
 
 
-def test_the_synthetic_plug_in_builds_its_split(plugin: Any, fixture: ModuleType) -> None:
+def test_the_synthetic_plug_in_builds_its_split(
+    plugin: Any, fixture: ModuleType, cases_with_plugin: list[Any], cases_without_plugin: list[Any]
+) -> None:
     assert plugin.final_day == fixture.FINAL_DAY and plugin.valid_until == fixture.VALID_UNTIL
-    cases = generate.build_cases(plugin)
+    cases = cases_with_plugin
     final = [c for c in cases if c.split == "newkinds"]
     assert [c.id for c in final] == [fixture.CASE_ID]
     assert {c.split for c in cases} == {*EARLIER_SPLITS, "newkinds"}
     assert final[0].truth["kind_also_accepted"] == ["invoice"]
-    without = generate.build_cases(None)
+    without = cases_without_plugin
     assert {c.split for c in without} == set(EARLIER_SPLITS)
 
 
-def test_each_final_entry_carries_its_day_and_window(plugin: Any, tmp_path: Path) -> None:
-    (case,) = [c for c in generate.build_cases(plugin) if c.split == "newkinds"]
+def test_each_final_entry_carries_its_day_and_window(
+    plugin: Any, tmp_path: Path, cases_with_plugin: list[Any], cases_without_plugin: list[Any]
+) -> None:
+    (case,) = [c for c in cases_with_plugin if c.split == "newkinds"]
     entries = generate.write_case(case, tmp_path, plugin)
     assert [e["id"] for e in entries] == [case.id, f"{case.id}-photo"]
     for entry in entries:
@@ -128,7 +144,7 @@ def test_each_final_entry_carries_its_day_and_window(plugin: Any, tmp_path: Path
         assert entry["valid_until"] == plugin.valid_until.isoformat()
         assert list(entry).index("final_day") == list(entry).index("today") + 1
         assert (tmp_path / entry["file"]).is_file()
-    (earlier,) = [c for c in generate.build_cases(None) if c.id == "test-dunning_fixed-C1"]
+    (earlier,) = [c for c in cases_without_plugin if c.id == "test-dunning_fixed-C1"]
     (plain, *_rest) = generate.write_case(earlier, tmp_path, plugin)
     assert "final_day" not in plain and "valid_until" not in plain
 
@@ -157,10 +173,6 @@ def _with_truth(case: Any, change: Any) -> Any:
     truth = copy.deepcopy(case.truth)
     change(truth)
     return dataclasses.replace(case, truth=truth)
-
-
-def test_the_synthetic_case_passes(fixture: ModuleType, plugin: Any) -> None:
-    _check(_case(fixture), plugin)
 
 
 def test_a_scored_date_inside_the_window_is_refused(fixture: ModuleType, plugin: Any) -> None:
@@ -536,20 +548,19 @@ def test_the_lint_allows_only_the_listed_phrases() -> None:
 
 def test_a_writer_s_sandbox_holds_no_hint_of_the_software() -> None:
     """The sandbox lint passes over every file of a data or template writer's sandbox: each hit is on an allowed
-    line, or on a line another change removes. Paths, line numbers, words and hashes only."""
+    line, or on a line another change removes, and every hit listed as pending is still there. Paths, line numbers,
+    words and hashes only."""
     files = _profile_files()
     assert "evals/generate.py" in files and "evals/gen/law.py" in files and "evals/perturb/README.md" in files
+    found = _hits()
     unexpected = [
         f"{path}:{number}: {word} (sha256 {sha})"
-        for path, hits in _hits().items()
+        for path, hits in found.items()
         for number, word, sha in hits
         if sha not in ALLOWED.get(path, {}) and sha not in PENDING.get(path, {})
     ]
     assert not unexpected, "\n".join(unexpected)
-
-
-def test_every_pending_hit_is_still_there() -> None:
-    present = {(path, sha) for path, hits in _hits().items() for _, _, sha in hits}
+    present = {(path, sha) for path, hits in found.items() for _, _, sha in hits}
     gone = [f"{path} {sha}" for path, shas in PENDING.items() for sha in shas if (path, sha) not in present]
     assert not gone, "gone (delete from PENDING): " + ", ".join(gone)
 

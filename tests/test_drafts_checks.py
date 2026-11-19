@@ -5,8 +5,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
-import pytest
-
+from helpers_tables import check_rows
 from ordnung.drafts.checks import (
     LABELS,
     CheckContext,
@@ -103,26 +102,37 @@ def test_recipient_and_sender_complete() -> None:
     assert not no_address.ok and "Settings" in (no_address.detail or "")
 
 
-@pytest.mark.parametrize("token", ["[Ihr Text]", "{contract_name}", "XXX", "TODO", "Frist ]"])
-def test_no_placeholders_flags(token: str) -> None:
-    result = no_placeholders(_draft(body=f"{BODY}\n\n{token}"), CONTEXT)
-    assert not result.ok
-    assert no_placeholders(_draft(), CONTEXT).ok
-    assert not no_placeholders(_draft(enclosures=["Kopie [Datum]"]), CONTEXT).ok
+PLACEHOLDER_TOKENS = ["[Ihr Text]", "{contract_name}", "XXX", "TODO", "Frist ]"]
 
 
-@pytest.mark.parametrize(
-    "block",
-    ["Amtsgericht Hünfeld\nZentrales Mahngericht\n36088 Hünfeld", "AG Coburg\nMahnabteilung\n96447 Coburg"],
-)
-def test_a_court_addressed_by_its_own_postcode_needs_no_street(block: str) -> None:
+def test_no_placeholders_flags() -> None:
+    def check(token: str) -> None:
+        result = no_placeholders(_draft(body=f"{BODY}\n\n{token}"), CONTEXT)
+        assert not result.ok
+        assert no_placeholders(_draft(), CONTEXT).ok
+        assert not no_placeholders(_draft(enclosures=["Kopie [Datum]"]), CONTEXT).ok
+
+    check_rows(PLACEHOLDER_TOKENS, check)
+
+
+CENTRAL_COURT_BLOCKS = [
+    "Amtsgericht Hünfeld\nZentrales Mahngericht\n36088 Hünfeld",
+    "AG Coburg\nMahnabteilung\n96447 Coburg",
+]
+
+
+def test_a_court_addressed_by_its_own_postcode_needs_no_street() -> None:
     """A central Mahngericht is addressed by its own postcode, with no street — the
     objection's check said "Add the recipient's street and house number" on a correct letter."""
-    assert recipient_complete(_draft(recipient_block=block), CONTEXT).ok
-    court_only = recipient_complete(_draft(recipient_block="Amtsgericht Hünfeld"), CONTEXT)
-    assert not court_only.ok and court_only.detail == "Add the recipient's postcode and town."
-    company = recipient_complete(_draft(recipient_block="Muster Inkasso GmbH\n36088 Hünfeld"), CONTEXT)
-    assert company.detail == "Add the recipient's street and house number."
+
+    def check(block: str) -> None:
+        assert recipient_complete(_draft(recipient_block=block), CONTEXT).ok
+        court_only = recipient_complete(_draft(recipient_block="Amtsgericht Hünfeld"), CONTEXT)
+        assert not court_only.ok and court_only.detail == "Add the recipient's postcode and town."
+        company = recipient_complete(_draft(recipient_block="Muster Inkasso GmbH\n36088 Hünfeld"), CONTEXT)
+        assert company.detail == "Add the recipient's street and house number."
+
+    check_rows(CENTRAL_COURT_BLOCKS, check)
 
 
 def test_language_matches() -> None:

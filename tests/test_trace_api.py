@@ -4,6 +4,7 @@ the prebuilt demo database."""
 
 from __future__ import annotations
 
+import asyncio
 import json
 import shutil
 import sqlite3
@@ -20,7 +21,7 @@ from fixtures_llm import APPOINTMENT_LETTER, TAX_LETTER
 from ordnung import cli, clock
 from ordnung.app_context import build_context
 from ordnung.cli import app
-from ordnung.config import Paths
+from ordnung.config import OCR_SWITCH, Paths
 from ordnung.db.migrate import MIGRATIONS_DIR, latest_version, migrate
 from ordnung.db.store import Store
 from ordnung.demo.loader import DEFAULT_SNAPSHOT
@@ -51,6 +52,23 @@ async def _read_tax_letter(data_dir: Path) -> str:
         return document.id
     finally:
         ctx.close()
+
+
+@pytest.fixture(scope="module")
+def tax_letter_read(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, str]:
+    """A data folder with the tax letter read once, for the tests that only read it (never write to it)."""
+    data_dir = tmp_path_factory.mktemp("tax_letter_read") / "data"
+    data_dir.mkdir()
+    with pytest.MonkeyPatch.context() as patch:  # what the function-scoped autouse fixtures set
+        patch.setenv(OCR_SWITCH, "off")
+        patch.delenv("ORDNUNG_CLAUDE_BIN", raising=False)
+        patch.delenv("ORDNUNG_BACKEND", raising=False)
+        clock.set_today(TODAY)
+        try:
+            doc_id = asyncio.run(_read_tax_letter(data_dir))
+        finally:
+            clock.set_today(None)
+    return data_dir, doc_id
 
 
 # --------------------------------------------------------------------------------------------------
@@ -143,8 +161,10 @@ def _attributes(span: dict[str, Any]) -> dict[str, Any]:
     return {entry["key"]: entry["value"] for entry in span["attributes"]}
 
 
-async def test_the_otel_export_follows_otlp_json_and_the_genai_conventions(data_dir: Path) -> None:
-    doc_id = await _read_tax_letter(data_dir)
+async def test_the_otel_export_follows_otlp_json_and_the_genai_conventions(
+    tax_letter_read: tuple[Path, str],
+) -> None:
+    data_dir, doc_id = tax_letter_read
     with Store.open(Paths(data_dir)) as store:
         trace = document_trace(store, doc_id)
     exported = to_otlp(trace, key=b"k")
@@ -174,8 +194,8 @@ async def test_the_otel_export_follows_otlp_json_and_the_genai_conventions(data_
     assert "Finanzamt" not in text and "Income tax" not in text, "no names, only ids"
 
 
-async def test_otel_input_tokens_count_the_whole_prompt(data_dir: Path) -> None:
-    doc_id = await _read_tax_letter(data_dir)
+async def test_otel_input_tokens_count_the_whole_prompt(tax_letter_read: tuple[Path, str]) -> None:
+    data_dir, doc_id = tax_letter_read
     with Store.open(Paths(data_dir)) as store:
         trace = document_trace(store, doc_id)
     # Claude reports the prompt-cache tokens apart from ``input_tokens`` (2 tokens for a 9,809-token prompt)
@@ -203,8 +223,8 @@ async def test_otel_input_tokens_count_the_whole_prompt(data_dir: Path) -> None:
     assert attributes["gen_ai.usage.cache_creation.input_tokens"] == {"intValue": "3052"}
 
 
-async def test_otel_ids_cannot_be_traced_back_to_the_letter(data_dir: Path) -> None:
-    doc_id = await _read_tax_letter(data_dir)
+async def test_otel_ids_cannot_be_traced_back_to_the_letter(tax_letter_read: tuple[Path, str]) -> None:
+    data_dir, doc_id = tax_letter_read
     with Store.open(Paths(data_dir)) as store:
         trace = document_trace(store, doc_id)
         items = store.list_items(doc_id=doc_id)
@@ -279,8 +299,10 @@ def test_a_letter_without_a_reading_exports_no_spans() -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-async def test_ordnung_trace_prints_json_and_otel_in_process(data_dir: Path, tmp_path: Path) -> None:
-    doc_id = await _read_tax_letter(data_dir)
+async def test_ordnung_trace_prints_json_and_otel_in_process(
+    tax_letter_read: tuple[Path, str], tmp_path: Path
+) -> None:
+    data_dir, doc_id = tax_letter_read
     plain = runner.invoke(app, ["trace", doc_id, "--data-dir", str(data_dir)])
     assert plain.exit_code == 0, plain.output
     trace = json.loads(plain.stdout)
@@ -303,14 +325,14 @@ async def test_ordnung_trace_prints_json_and_otel_in_process(data_dir: Path, tmp
 
 
 async def test_ordnung_trace_writes_its_file_privately_never_through_a_link_or_over_a_file(
-    data_dir: Path, tmp_path: Path
+    tax_letter_read: tuple[Path, str], tmp_path: Path
 ) -> None:
     """The plain JSON names to-dos and organisations: its file is the account's own (0600), a symbolic
     link is never followed, and an existing file is replaced only with --force."""
     import os
     import stat
 
-    doc_id = await _read_tax_letter(data_dir)
+    data_dir, doc_id = tax_letter_read
     target = tmp_path / "trace.json"
     written = runner.invoke(app, ["trace", doc_id, "-o", str(target), "--data-dir", str(data_dir)])
     assert written.exit_code == 0, written.output
@@ -372,13 +394,13 @@ class _TraceServer(ThreadingHTTPServer):
 
 
 async def test_ordnung_trace_asks_the_running_server(
-    data_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tax_letter_read: tuple[Path, str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    doc_id = await _read_tax_letter(data_dir)
+    data_dir, doc_id = tax_letter_read
     with Store.open(Paths(data_dir)) as store:
         trace = document_trace(store, doc_id)
     server = _TraceServer(trace)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     try:
         info = ServerInfo(port=server.server_address[1], pid=1, token="t")

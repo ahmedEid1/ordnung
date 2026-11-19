@@ -15,6 +15,7 @@ from types import SimpleNamespace
 import pytest
 
 from helpers_secretary import add_doc
+from helpers_tables import check_rows, check_rows_async
 from ordnung import doctor
 from ordnung.api import deps
 from ordnung.config import Paths
@@ -128,24 +129,32 @@ def test_an_old_claude_fails_with_an_update_hint(isolated_path: Path, data_dir: 
     assert report.claude.ok is False
 
 
-@pytest.mark.parametrize(
-    ("version", "ready"),
-    [("2.0.9 (Claude Code)", False), ("2.1.0 (Claude Code)", True), ("2.10.3 (Claude Code)", True)],
-)
-async def test_the_app_holds_claude_to_the_doctors_minimum(
-    isolated_path: Path, version: str, ready: bool
-) -> None:
+CLAUDE_MINIMUM_EXAMPLES = [
+    ("2.0.9 (Claude Code)", False),
+    ("2.1.0 (Claude Code)", True),
+    ("2.10.3 (Claude Code)", True),
+]
+
+
+async def test_the_app_holds_claude_to_the_doctors_minimum(isolated_path: Path) -> None:
     """The app's zero-token status check and ``ordnung doctor`` (also behind "Run check") count the same
     Claude Code as too old: it is not ready (letters wait), and the status names the version needed and the
     update command."""
-    fake_claude(isolated_path, version=version)
-    app, doctors = await deps.probe_claude_cli(), await doctor.claude_status()
-    for status in (app, doctors):
-        assert status.installed and status.ok is ready and deps.claude_ready(status) is ready
-        assert status.needs_version == (None if ready else "2.1.0")
-    if not ready:
-        assert app.detail is not None
-        assert "2.0.9" in app.detail and "2.1.0 or newer" in app.detail and "“claude update”" in app.detail
+
+    async def check(version: str, ready: bool) -> None:
+        fake_claude(isolated_path, version=version)
+        app, doctors = await deps.probe_claude_cli(), await doctor.claude_status()
+        for status in (app, doctors):
+            assert status.installed and status.ok is ready and deps.claude_ready(status) is ready
+            assert status.needs_version == (None if ready else "2.1.0")
+        assert doctors.version == version.removesuffix(" (Claude Code)")
+        if not ready:
+            assert app.detail is not None
+            assert (
+                "2.0.9" in app.detail and "2.1.0 or newer" in app.detail and "“claude update”" in app.detail
+            )
+
+    await check_rows_async(CLAUDE_MINIMUM_EXAMPLES, check)
 
 
 async def test_a_version_nobody_can_read_counts_as_the_doctor_says(
@@ -423,12 +432,6 @@ def test_web_ui_missing_is_a_warning(tmp_path: Path, monkeypatch: pytest.MonkeyP
     assert check.status == "warn" and check.fix is not None and "Reinstall Ordnung" in check.fix
 
 
-async def test_claude_status_for_the_health_endpoint(isolated_path: Path) -> None:
-    fake_claude(isolated_path)
-    status = await doctor.claude_status()
-    assert status.installed and status.ok and status.version == "2.1.5"
-
-
 # --------------------------------------------------------------------------------------------------
 # the last backup and disk encryption (warn only)
 # --------------------------------------------------------------------------------------------------
@@ -511,25 +514,20 @@ def _connected(monkeypatch: pytest.MonkeyPatch, mode: str, saved_at: str | None)
     monkeypatch.setattr(agent, "load_engine", lambda: SimpleNamespace(local_summary=lambda paths: summary))
 
 
-def test_hand_off_syncs_recent_save_counts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_the_backup_row_reads_hand_off_syncs_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     data_dir = _folder_with_a_letter(tmp_path)
     _connected(monkeypatch, "in_use", datetime.now().astimezone().isoformat(timespec="seconds"))
     check = doctor.backup_check(data_dir)
     assert check is not None and check.status == "ok"
     assert check.detail == "Hand-off sync saved an encrypted copy today"
 
-
-def test_standing_by_the_computer_in_use_keeps_the_copy(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    data_dir = _folder_with_a_letter(tmp_path)
+    # standing by, the computer in use keeps the copy
     _connected(monkeypatch, "standing_by", None)
     check = doctor.backup_check(data_dir)
     assert check is not None and check.status == "ok"
     assert check.detail == "Hand-off sync: the computer in use keeps an encrypted copy in the sync folder"
 
-
-def test_a_sync_state_that_cant_be_read_is_no_copy(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # a sync state that can't be read is no copy
     from ordnung import app_context
     from ordnung.sync import agent
 
@@ -538,7 +536,7 @@ def test_a_sync_state_that_cant_be_read_is_no_copy(tmp_path: Path, monkeypatch: 
 
     monkeypatch.setattr(app_context, "sync_connected", lambda paths: True)
     monkeypatch.setattr(agent, "load_engine", lambda: SimpleNamespace(local_summary=unreadable))
-    check = doctor.backup_check(_folder_with_a_letter(tmp_path))
+    check = doctor.backup_check(data_dir)
     assert check is not None and check.status == "warn"
 
 
@@ -549,53 +547,53 @@ def test_a_database_that_cant_be_read_has_no_backup_row(tmp_path: Path) -> None:
     assert doctor.backup_check(data_dir) is None  # the database check says what is wrong
 
 
-@pytest.mark.parametrize(
-    ("found", "status", "detail", "fix"),
-    [
-        (Encryption("on", "FileVault"), "ok", "FileVault is on", None),
-        (Encryption("on", "LUKS"), "ok", "The disk under the data folder is encrypted (LUKS)", None),
-        (
-            Encryption("on", "eCryptfs"),
-            "ok",
-            "The data folder is on an encrypted file system (eCryptfs)",
-            None,
-        ),
-        (
-            Encryption("off", "FileVault"),
-            "warn",
-            "FileVault is off: whoever has this Mac can read your letters, tax ID and IBANs.",
-            "System Settings → Privacy & Security → FileVault",
-        ),
-        (
-            Encryption("off", "LUKS"),
-            "warn",
-            "Ordnung found no disk encryption (LUKS) under the data folder.",
-            "Encrypted another way (fscrypt, ZFS)? Then this is fine.",
-        ),
-        (
-            Encryption("unknown", "FileVault", "`fdesetup status` didn't answer"),
-            "warn",
-            "Ordnung couldn't tell whether FileVault is on: `fdesetup status` didn't answer.",
-            "System Settings → Privacy & Security → FileVault",
-        ),
-        (
-            Encryption("unknown", "LUKS", "lsblk isn't installed"),
-            "warn",
-            "Ordnung couldn't tell whether the disk under the data folder is encrypted: lsblk isn't installed.",
-            "Encrypted another way (fscrypt, ZFS)? Then this is fine.",
-        ),
-    ],
-)
-def test_disk_encryption_only_ever_warns(
-    tmp_path: Path, found: Encryption, status: str, detail: str, fix: str | None
-) -> None:
-    check = doctor.disk_encryption_check(tmp_path, probe=lambda path: found)
-    assert check is not None and check.id == "disk_encryption" and check.label == "Disk encryption"
-    assert check.status == status and check.detail == detail
-    if fix is None:
-        assert check.fix is None
-    else:
-        assert check.fix is not None and fix in check.fix
+DISK_ENCRYPTION_ROWS = [
+    (Encryption("on", "FileVault"), "ok", "FileVault is on", None),
+    (Encryption("on", "LUKS"), "ok", "The disk under the data folder is encrypted (LUKS)", None),
+    (
+        Encryption("on", "eCryptfs"),
+        "ok",
+        "The data folder is on an encrypted file system (eCryptfs)",
+        None,
+    ),
+    (
+        Encryption("off", "FileVault"),
+        "warn",
+        "FileVault is off: whoever has this Mac can read your letters, tax ID and IBANs.",
+        "System Settings → Privacy & Security → FileVault",
+    ),
+    (
+        Encryption("off", "LUKS"),
+        "warn",
+        "Ordnung found no disk encryption (LUKS) under the data folder.",
+        "Encrypted another way (fscrypt, ZFS)? Then this is fine.",
+    ),
+    (
+        Encryption("unknown", "FileVault", "`fdesetup status` didn't answer"),
+        "warn",
+        "Ordnung couldn't tell whether FileVault is on: `fdesetup status` didn't answer.",
+        "System Settings → Privacy & Security → FileVault",
+    ),
+    (
+        Encryption("unknown", "LUKS", "lsblk isn't installed"),
+        "warn",
+        "Ordnung couldn't tell whether the disk under the data folder is encrypted: lsblk isn't installed.",
+        "Encrypted another way (fscrypt, ZFS)? Then this is fine.",
+    ),
+]
+
+
+def test_disk_encryption_only_ever_warns(tmp_path: Path) -> None:
+    def check(found: Encryption, status: str, detail: str, fix: str | None) -> None:
+        row = doctor.disk_encryption_check(tmp_path, probe=lambda path: found)
+        assert row is not None and row.id == "disk_encryption" and row.label == "Disk encryption"
+        assert row.status == status and row.detail == detail
+        if fix is None:
+            assert row.fix is None
+        else:
+            assert row.fix is not None and fix in row.fix
+
+    check_rows(DISK_ENCRYPTION_ROWS, check)
 
 
 def test_no_disk_encryption_row_where_ordnung_cant_tell(tmp_path: Path) -> None:

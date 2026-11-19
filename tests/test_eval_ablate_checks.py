@@ -13,6 +13,7 @@ from typing import Any
 
 import pytest
 
+from helpers_tables import check_rows
 from ordnung.ingest import extract as extract_mod
 from ordnung.ingest import plan as plan_mod
 from ordnung.ingest.conflicts import CONFLICTING_DATES
@@ -72,13 +73,20 @@ def test_the_ablations_are_the_shipped_code_and_six_with_checks_switched_off() -
         assert bool(ablation.switches_off) == (name != "all_on")
 
 
-@pytest.mark.parametrize("name", list(SWAPPED))
-def test_each_ablation_swaps_only_its_functions_and_puts_them_back(name: str) -> None:
-    before = {key: getattr(module, attr) for key, (module, attr) in TARGETS.items()}
-    with ablated(name):
-        swapped = {key for key, (module, attr) in TARGETS.items() if getattr(module, attr) is not before[key]}
-    assert swapped == SWAPPED[name]
-    assert all(getattr(module, attr) is before[key] for key, (module, attr) in TARGETS.items())
+ABLATIONS_SWAPPED = list(SWAPPED)
+
+
+def test_each_ablation_swaps_only_its_functions_and_puts_them_back() -> None:
+    def check(name: str) -> None:
+        before = {key: getattr(module, attr) for key, (module, attr) in TARGETS.items()}
+        with ablated(name):
+            swapped = {
+                key for key, (module, attr) in TARGETS.items() if getattr(module, attr) is not before[key]
+            }
+        assert swapped == SWAPPED[name]
+        assert all(getattr(module, attr) is before[key] for key, (module, attr) in TARGETS.items())
+
+    check_rows(ABLATIONS_SWAPPED, check)
 
 
 def test_an_ablation_puts_the_functions_back_after_an_error() -> None:

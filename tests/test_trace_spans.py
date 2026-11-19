@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 from pydantic import BaseModel
 
+from helpers_tables import check_rows
 from ordnung.config import Paths
 from ordnung.db.store import Store
 from ordnung.llm.base import DEFAULT_MODEL, ClaudeTimeout, LLMRequest, LLMResponse, Usage
@@ -207,19 +208,21 @@ def test_a_quote_is_described_never_copied() -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("failed", "valid", "repair", "outcome"),
-    [
-        (False, True, False, "ok"),
-        (False, False, False, "invalid"),
-        (False, True, True, "repaired"),
-        (False, False, True, "failed"),
-        (True, True, False, "failed"),
-        (True, False, True, "failed"),
-    ],
-)
-def test_call_outcome_policy(failed: bool, valid: bool, repair: bool, outcome: str) -> None:
-    assert call_outcome(failed=failed, valid=valid, repair=repair) == outcome
+CALL_OUTCOME_EXAMPLES = [
+    (False, True, False, "ok"),
+    (False, False, False, "invalid"),
+    (False, True, True, "repaired"),
+    (False, False, True, "failed"),
+    (True, True, False, "failed"),
+    (True, False, True, "failed"),
+]
+
+
+def test_call_outcome_policy() -> None:
+    def check(failed: bool, valid: bool, repair: bool, outcome: str) -> None:
+        assert call_outcome(failed=failed, valid=valid, repair=repair) == outcome
+
+    check_rows(CALL_OUTCOME_EXAMPLES, check)
 
 
 class _Answer(BaseModel):

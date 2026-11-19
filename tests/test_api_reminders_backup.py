@@ -16,6 +16,7 @@ import pytest
 
 from fakes import use_fast_keys
 from helpers_secretary import TODAY, seed_ledger
+from helpers_tables import check_rows_async
 from ordnung import autostart, clock, shortcut
 from ordnung import backup as backups
 from ordnung.api.routes import backup as backup_route
@@ -164,21 +165,24 @@ async def test_the_demo_offers_no_start_at_login_or_shortcut_command(data_dir: P
         assert body["shortcut"]["command"] is None and not body["shortcut"]["added"]
 
 
-@pytest.mark.parametrize(
-    ("platform", "kind"),
-    [
-        ("linux", "app menu entry"),
-        ("darwin", "app in your Applications folder"),
-        ("win32", "Start menu shortcut"),
-    ],
-)
+SHORTCUT_KINDS = [
+    ("linux", "app menu entry"),
+    ("darwin", "app in your Applications folder"),
+    ("win32", "Start menu shortcut"),
+]
+
+
 async def test_the_shortcut_is_named_as_this_system_names_it(
-    data_dir: Path, home: Path, monkeypatch: pytest.MonkeyPatch, platform: str, kind: str
+    data_dir: Path, home: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(sys, "platform", platform)
     async with api_for(data_dir) as api:
-        body = (await api.client.get("/api/reminders/desktop", params={"preview": "false"})).json()
-        assert body["shortcut"]["kind"] == kind
+
+        async def check(platform: str, kind: str) -> None:
+            monkeypatch.setattr(sys, "platform", platform)
+            body = (await api.client.get("/api/reminders/desktop", params={"preview": "false"})).json()
+            assert body["shortcut"]["kind"] == kind
+
+        await check_rows_async(SHORTCUT_KINDS, check)
 
 
 async def test_the_status_says_why_the_last_notification_wasnt_shown(data_dir: Path, home: Path) -> None:
@@ -422,21 +426,14 @@ async def test_a_weak_passphrase_is_refused_without_echoing_it(
         wrong_type = await api.client.post("/api/backup", json={"passphrase": 12345678901234})
         assert wrong_type.status_code == 422
         assert (await api.client.post("/api/backup", json={})).status_code == 422
-    assert "hunter2" not in caplog.text
-
-
-async def test_a_guessable_passphrase_is_refused_with_the_rule(
-    data_dir: Path, caplog: pytest.LogCaptureFixture
-) -> None:
-    """A new backup's passphrase meets the rule of a new sync folder: long enough isn't enough."""
-    caplog.set_level(logging.DEBUG)
-    async with api_for(data_dir) as api:
+        # a new backup's passphrase meets the rule of a new sync folder: long enough isn't enough
         for secret in ("a long enough passphrase", "correct horse battery staple"):
             response = await api.client.post("/api/backup", json={"passphrase": secret})
             assert response.status_code == 422
             assert response.json()["detail"] == backups.WEAK_PASSPHRASE_MESSAGE
             assert secret not in response.text
         assert not [a for a in api.ctx.store.list_activity(limit=10) if a.kind == "backup.created"]
+    assert "hunter2" not in caplog.text
     assert "a long enough passphrase" not in caplog.text
 
 

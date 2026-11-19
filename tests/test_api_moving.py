@@ -10,6 +10,7 @@ from typing import Any
 import pytest
 
 from helpers_secretary import seed_ledger
+from helpers_tables import check_rows_async
 from ordnung import clock
 from ordnung.secretary.moving import RULE_ID
 from test_api_support import TODAY, api_for
@@ -27,14 +28,11 @@ def pinned_today() -> Iterator[None]:
     clock.set_today(None)
 
 
-async def test_no_move_is_told_until_the_person_says_so(data_dir: Path) -> None:
-    async with api_for(data_dir) as api:
-        profile = (await api.client.get("/api/profile")).json()
-        assert (profile["moved_on"], profile["old_address"]) == (None, "")
-
-
 async def test_a_move_is_saved_and_cleared(data_dir: Path) -> None:
     async with api_for(data_dir) as api:
+        # no move is told until the person says so
+        profile = (await api.client.get("/api/profile")).json()
+        assert (profile["moved_on"], profile["old_address"]) == (None, "")
         saved = await api.client.put(
             "/api/profile", json={"moved_on": "2026-09-21", "old_address": OLD_ADDRESS}
         )
@@ -49,14 +47,22 @@ async def test_a_move_is_saved_and_cleared(data_dir: Path) -> None:
         assert (await api.client.get("/api/profile")).json()["moved_on"] is None
 
 
-@pytest.mark.parametrize(
-    "bad", [{"moved_on": "2026-13-01"}, {"moved_on": "soon"}, {"old_address": "x" * 1001}]
-)
-async def test_a_move_that_isnt_a_day_or_an_address_is_refused(data_dir: Path, bad: dict[str, str]) -> None:
+MOVES_THAT_ARE_NO_DAY_OR_ADDRESS = [
+    {"moved_on": "2026-13-01"},
+    {"moved_on": "soon"},
+    {"old_address": "x" * 1001},
+]
+
+
+async def test_a_move_that_isnt_a_day_or_an_address_is_refused(data_dir: Path) -> None:
     async with api_for(data_dir) as api:
-        response = await api.client.put("/api/profile", json=bad)
-        assert response.status_code == 422, response.text
-        assert (await api.client.get("/api/profile")).json()["moved_on"] is None
+
+        async def check(bad: dict[str, str]) -> None:
+            response = await api.client.put("/api/profile", json=bad)
+            assert response.status_code == 422, response.text
+            assert (await api.client.get("/api/profile")).json()["moved_on"] is None
+
+        await check_rows_async(MOVES_THAT_ARE_NO_DAY_OR_ADDRESS, check)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -69,23 +75,32 @@ def _rows(ideas: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [idea for idea in ideas if idea["rule_id"] == RULE_ID]
 
 
-@pytest.mark.parametrize(
-    ("moved_on", "allowed"),
-    [("2026-03-29", True), ("2026-12-24", True), ("2026-03-28", False), ("2026-12-25", False)],
-)
-async def test_a_move_is_told_from_six_months_back_to_three_ahead(
-    data_dir: Path, moved_on: str, allowed: bool
-) -> None:
+MOVE_WINDOW_BOUNDARIES = [
+    ("2026-03-29", True),
+    ("2026-12-24", True),
+    ("2026-03-28", False),
+    ("2026-12-25", False),
+]
+
+
+async def test_a_move_is_told_from_six_months_back_to_three_ahead(data_dir: Path) -> None:
     """Today is Fri 25 Sep 2026: 29 Mar is 180 days back, 24 Dec 90 days ahead."""
     async with api_for(data_dir) as api:
-        response = await api.client.put(
-            "/api/profile", json={"moved_on": moved_on, "old_address": OLD_ADDRESS}
-        )
-        assert (response.status_code == 200) is allowed, response.text
-        if not allowed:
-            assert response.json()["detail"] == WINDOW
-            profile = (await api.client.get("/api/profile")).json()
-            assert (profile["moved_on"], profile["old_address"]) == (None, "")  # nothing of it is saved
+
+        async def check(moved_on: str, allowed: bool) -> None:
+            # every row starts from a profile with no move, as on its own app
+            cleared = await api.client.put("/api/profile", json={"moved_on": "", "old_address": ""})
+            assert cleared.status_code == 200, cleared.text
+            response = await api.client.put(
+                "/api/profile", json={"moved_on": moved_on, "old_address": OLD_ADDRESS}
+            )
+            assert (response.status_code == 200) is allowed, response.text
+            if not allowed:
+                assert response.json()["detail"] == WINDOW
+                profile = (await api.client.get("/api/profile")).json()
+                assert (profile["moved_on"], profile["old_address"]) == (None, "")  # nothing of it is saved
+
+        await check_rows_async(MOVE_WINDOW_BOUNDARIES, check)
 
 
 async def test_onboarding_checks_the_day_of_a_move_too(data_dir: Path) -> None:

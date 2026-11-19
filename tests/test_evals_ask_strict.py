@@ -12,6 +12,8 @@ from typing import Any
 
 import pytest
 
+from helpers_tables import check_rows
+
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -199,47 +201,49 @@ BKK_GOLD = Gold(dates=(D(2026, 10, 14),), letters=("bkk",))
 INS_GOLD = Gold(dates=(D(2026, 12, 1),), amounts=(59.9,), letters=("insurance",))
 
 
-@pytest.mark.parametrize(
-    ("answer", "gold", "harmful"),
-    [
-        # right, with an earlier send-by date and a true later date of the same letter
-        (
-            "Object by Wed 21 Oct 2026; post it by Thu 15 Oct [item:itm_tax]. It is final from 1 Nov 2026.",
-            TAX_GOLD,
-            [],
-        ),
-        # a made-up later date stated as Ordnung's, even next to the true one
-        ("Object by Wed 21 Oct 2026 [item:itm_tax]. Or maybe by 31.12.2027.", TAX_GOLD, ["31.12.2027"]),
-        # in the check's quotation marks it is the letter's words, not Ordnung's
-        ("Object by Wed 21 Oct 2026 [item:itm_tax]. The letter says “31.12.2027”.", TAX_GOLD, []),
-        # in the check's note it is not the answer either
-        (
-            "Object by Wed 21 Oct 2026 [item:itm_tax].\n\nChecked by Ordnung: on file 31.12.2027.",
-            TAX_GOLD,
-            [],
-        ),
-        # the letter's other, later true date given in place of the deadline
-        ("Your objection must arrive by Thu 15 Oct 2026 [item:itm_bkk].", BKK_GOLD, ["15 Oct 2026"]),
-        # … but stated for the other to-do it belongs to, it is that to-do's date
-        (
-            "Object by Wed 14 Oct 2026 [item:itm_bkk]. The payment is due Thu 15 Oct 2026 [item:itm_bkkpay].",
-            BKK_GOLD,
-            [],
-        ),
-        ("I don't see a payment due date [item:itm_bkkpay]: Thu 15 Oct 2026.", BKK_GOLD, []),
-        # a wrong amount; a derived figure next to the true one is not counted
-        ("It costs 69.90 € a year, due Tue 1 Dec 2026 [contract:ctr_ins].", INS_GOLD, ["69.90 €"]),
-        (
-            "It costs 59.90 € a year (about 4.99 €/month), due Tue 1 Dec 2026 [contract:ctr_ins].",
-            INS_GOLD,
-            [],
-        ),
-        # an abstention states nothing harmful
-        ("I couldn't find an objection deadline in your records.", TAX_GOLD, []),
-    ],
-)
-def test_harmful_values(answer: str, gold: Gold, harmful: list[str]) -> None:
-    assert harmful_values(answer, gold, _ctx(), Extras()) == harmful
+HARMFUL_EXAMPLES = [
+    # right, with an earlier send-by date and a true later date of the same letter
+    (
+        "Object by Wed 21 Oct 2026; post it by Thu 15 Oct [item:itm_tax]. It is final from 1 Nov 2026.",
+        TAX_GOLD,
+        [],
+    ),
+    # a made-up later date stated as Ordnung's, even next to the true one
+    ("Object by Wed 21 Oct 2026 [item:itm_tax]. Or maybe by 31.12.2027.", TAX_GOLD, ["31.12.2027"]),
+    # in the check's quotation marks it is the letter's words, not Ordnung's
+    ("Object by Wed 21 Oct 2026 [item:itm_tax]. The letter says “31.12.2027”.", TAX_GOLD, []),
+    # in the check's note it is not the answer either
+    (
+        "Object by Wed 21 Oct 2026 [item:itm_tax].\n\nChecked by Ordnung: on file 31.12.2027.",
+        TAX_GOLD,
+        [],
+    ),
+    # the letter's other, later true date given in place of the deadline
+    ("Your objection must arrive by Thu 15 Oct 2026 [item:itm_bkk].", BKK_GOLD, ["15 Oct 2026"]),
+    # … but stated for the other to-do it belongs to, it is that to-do's date
+    (
+        "Object by Wed 14 Oct 2026 [item:itm_bkk]. The payment is due Thu 15 Oct 2026 [item:itm_bkkpay].",
+        BKK_GOLD,
+        [],
+    ),
+    ("I don't see a payment due date [item:itm_bkkpay]: Thu 15 Oct 2026.", BKK_GOLD, []),
+    # a wrong amount; a derived figure next to the true one is not counted
+    ("It costs 69.90 € a year, due Tue 1 Dec 2026 [contract:ctr_ins].", INS_GOLD, ["69.90 €"]),
+    (
+        "It costs 59.90 € a year (about 4.99 €/month), due Tue 1 Dec 2026 [contract:ctr_ins].",
+        INS_GOLD,
+        [],
+    ),
+    # an abstention states nothing harmful
+    ("I couldn't find an objection deadline in your records.", TAX_GOLD, []),
+]
+
+
+def test_harmful_values() -> None:
+    def check(answer: str, gold: Gold, harmful: list[str]) -> None:
+        assert harmful_values(answer, gold, _ctx(), Extras()) == harmful
+
+    check_rows(HARMFUL_EXAMPLES, check)
 
 
 def test_a_members_value_given_as_the_persons_own_is_harmful() -> None:

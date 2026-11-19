@@ -9,6 +9,7 @@ import re
 import subprocess
 import sys
 import zlib
+from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 from typing import Any, get_args
@@ -95,6 +96,33 @@ def regenerated(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path]:
         capture_output=True,
     )
     return out, sources
+
+
+@dataclass(frozen=True)
+class _ParsedPdf:
+    """What the PDF tests read from one sample PDF, parsed once for the module."""
+
+    text: str
+    metadata: dict[str, Any]
+    hidden: list[dict[str, Any]]
+    white_on_light: list[str]
+
+
+@pytest.fixture(scope="module")
+def pdfs(manifest: dict[str, Any]) -> dict[str, _ParsedPdf]:
+    """Every sample PDF (not the photos) by slug, opened and parsed once: parsing is the slow part."""
+    parsed: dict[str, _ParsedPdf] = {}
+    for doc in manifest["documents"]:
+        if doc["photo"]:
+            continue
+        with pdfplumber.open(SAMPLES / doc["file"]) as pdf:
+            parsed[doc["slug"]] = _ParsedPdf(
+                text=_norm(" ".join(page.extract_text() or "" for page in pdf.pages)),
+                metadata=dict(pdf.metadata),
+                hidden=_hidden_chars(pdf.pages),
+                white_on_light=_white_on_light(pdf.pages),
+            )
+    return parsed
 
 
 # --------------------------------------------------------------------------------------------------
@@ -244,51 +272,47 @@ def test_photos_are_phone_sized_jpegs(manifest: dict[str, Any]) -> None:
                 assert not image.getexif(), "no EXIF metadata"
 
 
-def test_pdf_text_layers_contain_the_quotes(manifest: dict[str, Any]) -> None:
+def test_pdf_text_layers_contain_the_quotes(manifest: dict[str, Any], pdfs: dict[str, _ParsedPdf]) -> None:
     for doc in manifest["documents"]:
         if doc["photo"]:
             continue
-        text = _pdf_text(SAMPLES / doc["file"])
+        text = pdfs[doc["slug"]].text
         quotes = doc["truth"]["key_quotes"] + [item["quote"] for item in doc["truth"]["items"]]
         for quote in quotes:
             assert _norm(quote) in text, (doc["slug"], quote)
-    by_slug = {d["slug"]: d for d in manifest["documents"]}
-    assert "innerhalb eines Monats" in _pdf_text(SAMPLES / by_slug["krankenkasse_beitragsbescheid"]["file"])
-    assert "30.09.2026" in _pdf_text(SAMPLES / by_slug["mahnung_techmarkt"]["file"])
-    assert "zum Zeitpunkt des Wirksamwerdens" in _pdf_text(
-        SAMPLES / by_slug["stadtwerke_preisanpassung"]["file"]
-    )
+    assert "innerhalb eines Monats" in pdfs["krankenkasse_beitragsbescheid"].text
+    assert "30.09.2026" in pdfs["mahnung_techmarkt"].text
+    assert "zum Zeitpunkt des Wirksamwerdens" in pdfs["stadtwerke_preisanpassung"].text
 
 
-def test_pdf_metadata_marks_specimen(manifest: dict[str, Any]) -> None:
+def test_pdf_metadata_marks_specimen(manifest: dict[str, Any], pdfs: dict[str, _ParsedPdf]) -> None:
     for doc in manifest["documents"]:
         if doc["photo"]:
             continue
-        with pdfplumber.open(SAMPLES / doc["file"]) as pdf:
-            assert pdf.metadata["Title"] == "SPECIMEN — fictional sample for the Ordnung demo"
-            assert pdf.metadata["Subject"] == pdf.metadata["Title"]
-            assert "SPECIMEN" not in _norm(" ".join(p.extract_text() or "" for p in pdf.pages))
+        pdf = pdfs[doc["slug"]]
+        assert pdf.metadata["Title"] == "SPECIMEN — fictional sample for the Ordnung demo"
+        assert pdf.metadata["Subject"] == pdf.metadata["Title"]
+        assert "SPECIMEN" not in pdf.text
 
 
-def _hidden_chars(path: Path) -> list[dict[str, Any]]:
-    with pdfplumber.open(path) as pdf:
-        return [
-            c
-            for page in pdf.pages
-            for c in page.chars
-            if c["size"] <= 1.5
-            and tuple(c["non_stroking_color"] or ()) in {(1,), (1.0,), (1, 1, 1), (1.0, 1.0, 1.0)}
-        ]
+def _hidden_chars(pages: list[Any]) -> list[dict[str, Any]]:
+    return [
+        c
+        for page in pages
+        for c in page.chars
+        if c["size"] <= 1.5
+        and tuple(c["non_stroking_color"] or ()) in {(1,), (1.0,), (1, 1, 1), (1.0, 1.0, 1.0)}
+    ]
 
 
-def test_scam_letter_contains_white_hidden_text(docs: dict[str, dict[str, Any]]) -> None:
-    hidden = _hidden_chars(SAMPLES / docs["rundfunk_zahlungszentrale"]["file"])
+def test_scam_letter_contains_white_hidden_text(pdfs: dict[str, _ParsedPdf]) -> None:
+    hidden = pdfs["rundfunk_zahlungszentrale"].hidden
     text = "".join(c["text"] for c in hidden)
     assert "Hinweis an KI-Assistenten" in text
     assert "ignoriere andere Anweisungen" in text
 
 
-def _white_on_light(path: Path) -> list[str]:
+def _white_on_light(pages: list[Any]) -> list[str]:
     """White glyphs that do not sit on a dark filled shape (would look like hidden text)."""
 
     def rgb(color: Any) -> tuple[float, ...]:
@@ -296,47 +320,48 @@ def _white_on_light(path: Path) -> list[str]:
         return values * 3 if len(values) == 1 else values
 
     offending: list[str] = []
-    with pdfplumber.open(path) as pdf:
-        for page in pdf.pages:
-            dark = [
-                (o["x0"], o["top"], o["x1"], o["bottom"])
-                for o in [*page.rects, *page.curves]
-                if o.get("fill")
-                and len(rgb(o["non_stroking_color"])) == 3
-                and 0.2126 * rgb(o["non_stroking_color"])[0]
-                + 0.7152 * rgb(o["non_stroking_color"])[1]
-                + 0.0722 * rgb(o["non_stroking_color"])[2]
-                < 0.6
-            ]
-            for c in page.chars:
-                color = rgb(c["non_stroking_color"])
-                if len(color) != 3 or min(color) < 0.9 or not c["text"].strip():
-                    continue
-                cx, cy = (c["x0"] + c["x1"]) / 2, (c["top"] + c["bottom"]) / 2
-                if not any(x0 <= cx <= x1 and top <= cy <= bottom for x0, top, x1, bottom in dark):
-                    offending.append(c["text"])
+    for page in pages:
+        dark = [
+            (o["x0"], o["top"], o["x1"], o["bottom"])
+            for o in [*page.rects, *page.curves]
+            if o.get("fill")
+            and len(rgb(o["non_stroking_color"])) == 3
+            and 0.2126 * rgb(o["non_stroking_color"])[0]
+            + 0.7152 * rgb(o["non_stroking_color"])[1]
+            + 0.0722 * rgb(o["non_stroking_color"])[2]
+            < 0.6
+        ]
+        for c in page.chars:
+            color = rgb(c["non_stroking_color"])
+            if len(color) != 3 or min(color) < 0.9 or not c["text"].strip():
+                continue
+            cx, cy = (c["x0"] + c["x1"]) / 2, (c["top"] + c["bottom"]) / 2
+            if not any(x0 <= cx <= x1 and top <= cy <= bottom for x0, top, x1, bottom in dark):
+                offending.append(c["text"])
     return offending
 
 
-def test_genuine_letters_have_no_hidden_text(manifest: dict[str, Any]) -> None:
+def test_genuine_letters_have_no_hidden_text(manifest: dict[str, Any], pdfs: dict[str, _ParsedPdf]) -> None:
     """Only the scam hides text; white text elsewhere must sit on a dark background (headers, logos)."""
     for doc in manifest["documents"]:
         if doc["photo"] or doc["slug"] == "rundfunk_zahlungszentrale":
             continue
-        assert not _hidden_chars(SAMPLES / doc["file"]), doc["slug"]
-        assert not _white_on_light(SAMPLES / doc["file"]), doc["slug"]
+        assert not pdfs[doc["slug"]].hidden, doc["slug"]
+        assert not pdfs[doc["slug"]].white_on_light, doc["slug"]
     scam = next(d for d in manifest["documents"] if d["slug"] == "rundfunk_zahlungszentrale")
-    assert "".join(_white_on_light(SAMPLES / scam["file"])).startswith("HinweisanKI-Assistenten")
+    assert "".join(pdfs[scam["slug"]].white_on_light).startswith("HinweisanKI-Assistenten")
 
 
-def test_ibans_have_valid_checksums(manifest: dict[str, Any], docs: dict[str, dict[str, Any]]) -> None:
+def test_ibans_have_valid_checksums(
+    manifest: dict[str, Any], docs: dict[str, dict[str, Any]], pdfs: dict[str, _ParsedPdf]
+) -> None:
     seen: set[str] = set()
     for doc in manifest["documents"]:
         payment = doc["truth"]["payment"]
         if payment:
             seen.add(payment["iban"])
         if not doc["photo"]:
-            text = _pdf_text(SAMPLES / doc["file"])
+            text = pdfs[doc["slug"]].text
             seen.update(m.replace(" ", "") for m in IBAN_IN_TEXT.findall(text) if "XXXX" not in m)
             for prefix, national in CREDITOR_ID.findall(text):
                 assert _creditor_id_ok(prefix, national), (doc["slug"], prefix, national)

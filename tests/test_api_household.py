@@ -78,17 +78,6 @@ async def test_an_empty_household(data_dir: Path) -> None:
         assert api.ctx.store.get_meta(HOUSEHOLD_META_KEY) is None
 
 
-def test_the_stored_row_and_a_refusal_have_their_shapes() -> None:
-    stored = household.StoredHousehold()
-    assert (stored.format, stored.members, stored.links) == (1, [], {})
-    member = household.HouseholdMember(id="hhm_0123456789ab", name="Alex Rivera")
-    assert member.signs is True
-    assert household.version([member]) != household.version([])
-    refused = household.HouseholdError(422, "Type a name.")
-    assert (refused.status, refused.detail, str(refused)) == (422, "Type a name.", "Type a name.")
-    assert household.LetterFor() == household.LetterFor(filed_for=None, mine=False, suggested=None, add=None)
-
-
 async def test_put_adds_renames_and_removes(data_dir: Path) -> None:
     async with api_for(data_dir) as api:
         _as_sam(api)

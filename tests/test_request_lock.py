@@ -10,8 +10,11 @@ attachments' bytes), so a replay of a request that changed under the same key fa
 from __future__ import annotations
 
 import asyncio
+import dataclasses
+import functools
 import json
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -23,7 +26,9 @@ if str(ROOT) not in sys.path:
 
 from evals import conditions, harness  # noqa: E402
 from evals import run as eval_run  # noqa: E402
+from evals.records import Entry  # noqa: E402
 
+from helpers_tables import check_rows  # noqa: E402
 from ordnung.assistant.mcp_server import server_config  # noqa: E402
 from ordnung.assistant.rules_tools import rules_server_config  # noqa: E402
 from ordnung.llm.base import Attachment, LLMRequest  # noqa: E402
@@ -31,6 +36,30 @@ from ordnung.llm.fake import FakeBackend  # noqa: E402
 from test_evals_run import IDS, Responder, make_config  # noqa: E402
 
 TEXT_LETTER = "dev-tax_assessment-A1"
+
+
+@functools.cache
+def _responder() -> Responder:
+    """One fake model for the module's runs: its only state is a cache of the letters' texts."""
+    return Responder()
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _letters_prepared_once(tmp_path_factory: pytest.TempPathFactory) -> Iterator[None]:
+    """Each letter's pages are rendered and read once per module: the runs here hold what the lock records and
+    refuses, not the rendering, and the same bytes make the same requests."""
+    prepared: dict[tuple[str, str, Path], conditions.PreparedDocument] = {}
+    real = eval_run.prepare_document
+
+    def prepare(entry: Entry, dataset_dir: Path, work_dir: Path) -> conditions.PreparedDocument:
+        key = (entry.id, entry.sha256, Path(dataset_dir))
+        if key not in prepared:
+            prepared[key] = real(entry, dataset_dir, tmp_path_factory.mktemp("pages"))
+        return dataclasses.replace(prepared[key], entry=entry)
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(eval_run, "prepare_document", prepare)
+        yield
 
 
 def _request(tmp_path: Path, **overrides: Any) -> LLMRequest:
@@ -153,29 +182,30 @@ INTERPRETERS = (
 )
 
 
-@pytest.mark.parametrize("interpreter", INTERPRETERS[1:])
-def test_two_venvs_give_the_same_lock_entry(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, interpreter: str
-) -> None:
+def test_two_venvs_give_the_same_lock_entry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """The rules-tool condition's ``--mcp-config`` starts the server with ``sys.executable``, and Ask's with it too:
     a path of the machine and the venv, in what the CLI gets but in no replay key. The lock's entry (its content hash
     and every part's hash) is the same whichever interpreter made it, so a lock built on one machine checks on
     another (E2's recording found it: its request dumps differed in every rules-tool cell between two venvs)."""
-    monkeypatch.setattr(sys, "executable", INTERPRETERS[0])
-    here = [
-        _request(tmp_path, mcp_config=rules_server_config(today="2026-10-01")),
-        _request(tmp_path, purpose="ask", mcp_config=server_config(tmp_path / "one", rules_tools=False)),
-    ]
-    monkeypatch.setattr(sys, "executable", interpreter)
-    there = [
-        _request(tmp_path, mcp_config=rules_server_config(today="2026-10-01")),
-        _request(tmp_path, purpose="ask", mcp_config=server_config(tmp_path / "two", rules_tools=False)),
-    ]
-    for one, two in zip(here, there, strict=True):
-        assert one.mcp_config != two.mcp_config
-        assert harness.lock_entry(one) == harness.lock_entry(two)
-        assert harness.lock_entry(one, repeat=2) == harness.lock_entry(two, repeat=2)
-        assert harness.request_content(one) == harness.request_content(two)
+
+    def check(interpreter: str) -> None:
+        monkeypatch.setattr(sys, "executable", INTERPRETERS[0])
+        here = [
+            _request(tmp_path, mcp_config=rules_server_config(today="2026-10-01")),
+            _request(tmp_path, purpose="ask", mcp_config=server_config(tmp_path / "one", rules_tools=False)),
+        ]
+        monkeypatch.setattr(sys, "executable", interpreter)
+        there = [
+            _request(tmp_path, mcp_config=rules_server_config(today="2026-10-01")),
+            _request(tmp_path, purpose="ask", mcp_config=server_config(tmp_path / "two", rules_tools=False)),
+        ]
+        for one, two in zip(here, there, strict=True):
+            assert one.mcp_config != two.mcp_config
+            assert harness.lock_entry(one) == harness.lock_entry(two)
+            assert harness.lock_entry(one, repeat=2) == harness.lock_entry(two, repeat=2)
+            assert harness.request_content(one) == harness.request_content(two)
+
+    check_rows(INTERPRETERS[1:], check)
 
 
 def test_a_server_that_is_not_python_keeps_its_command(tmp_path: Path) -> None:
@@ -195,7 +225,7 @@ def test_a_server_that_is_not_python_keeps_its_command(tmp_path: Path) -> None:
 
 
 async def test_a_live_recording_locks_every_request_it_records(tmp_path: Path) -> None:
-    fake = FakeBackend(Responder())
+    fake = FakeBackend(_responder())
     assert (
         await eval_run.run_benchmark(make_config(tmp_path, live=True, write_docs=False, live_backend=fake))
     ).ok
@@ -216,7 +246,7 @@ async def test_a_live_recording_locks_every_request_it_records(tmp_path: Path) -
 async def test_a_request_that_changed_under_its_key_is_a_stale_recording(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    fake = FakeBackend(Responder())
+    fake = FakeBackend(_responder())
     live = make_config(tmp_path, ids=[TEXT_LETTER], conditions=["llm_only"], live=True, write_docs=False)
     live.live_backend = fake
     assert (await eval_run.run_benchmark(live)).ok
@@ -261,7 +291,7 @@ async def test_a_request_that_changed_under_its_key_is_a_stale_recording(
 async def test_a_recording_the_lock_does_not_know_is_refused(tmp_path: Path) -> None:
     ids = [TEXT_LETTER]
     live = make_config(tmp_path, ids=ids, conditions=["llm_only"], live=True, write_docs=False)
-    live.live_backend = FakeBackend(Responder())
+    live.live_backend = FakeBackend(_responder())
     assert (await eval_run.run_benchmark(live)).ok
     lock_path = _root(tmp_path) / harness.LOCK_FILE
     (key,) = _lock(tmp_path)
@@ -304,7 +334,7 @@ async def test_diff_requests_against_a_ref(
 ) -> None:
     root = tmp_path / "recorded"
     live = make_config(tmp_path, ids=[TEXT_LETTER], live=True, write_docs=False)
-    live.live_backend = FakeBackend(Responder())
+    live.live_backend = FakeBackend(_responder())
     assert (await eval_run.run_benchmark(live)).ok
     committed = (_root(tmp_path) / harness.LOCK_FILE).read_text(encoding="utf-8")
     asked: list[tuple[str, str]] = []

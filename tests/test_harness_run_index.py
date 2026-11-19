@@ -28,6 +28,7 @@ from evals.gen.common import SPLIT_VARIANTS  # noqa: E402
 from evals.records import load_manifest  # noqa: E402
 
 from helpers_publication import FINAL_SPLITS, final_published  # noqa: E402
+from helpers_tables import check_rows  # noqa: E402
 from ordnung.llm.base import Attachment, LLMRequest, LLMResponse, StreamEvent  # noqa: E402
 from ordnung.llm.claude_cli import ClaudeCLIBackend, build_user_message  # noqa: E402
 from ordnung.llm.fake import FakeBackend  # noqa: E402
@@ -57,14 +58,10 @@ def _request(**overrides: Any) -> LLMRequest:
 # --------------------------------------------------------------------------------------------------
 
 
-def test_run_one_keeps_its_request_and_its_key() -> None:
-    req = _request()
-    assert harness.repeat_request(req, 1) is req
-    assert request_key(harness.repeat_request(req, 1)) == request_key(req)
-
-
 def test_a_repeat_suffixes_the_cache_key_or_the_prompt_s_hash() -> None:
     req = _request()
+    assert harness.repeat_request(req, 1) is req  # run 1 keeps its request and its key
+    assert request_key(harness.repeat_request(req, 1)) == request_key(req)
     assert harness.repeat_request(req, 2).cache_key == "doc|today|repeat=2"
     bare = _request(cache_key=None, prompt="the whole prompt")
     digest = hashlib.sha256(b"the whole prompt").hexdigest()
@@ -497,29 +494,33 @@ def test_a_repeat_that_asks_run_one_s_requests_again_counts_nothing_apart(tmp_pa
 NEW_READING = "the page as run 2 read it"
 
 
-@pytest.mark.parametrize(
-    ("again", "why"),
-    [
-        (
-            {"transcribe": {"prompt": "Transcribe this page."}},
-            "the photo's first request differs (its prompt)",
-        ),
-        ({"transcribe": {"system": "t2"}}, "the photo's first request differs (another part)"),
-        ({"text_extract": {"prompt": "Read: another text"}}, "a text letter's reading is a first request"),
-        ({"photo_baseline": {"prompt": "Read this picture."}}, "a baseline is a first request"),
-        ({"text_baseline": {"schema_": {"type": "object"}}}, "a baseline differs in another part"),
-        ({"photo_extract": {"system": "s2"}}, "the reading differs in more than its prompt"),
-        ({"photo_extract": {"schema_": {"type": "object"}}}, "the reading differs in more than its prompt"),
-    ],
-)
-def test_the_smoke_still_judges_every_first_request_and_every_other_part(
-    tmp_path: Path, again: dict[str, dict[str, Any]], why: str
-) -> None:
+SMOKE_FAILURES = [
+    (
+        {"transcribe": {"prompt": "Transcribe this page."}},
+        "the photo's first request differs (its prompt)",
+    ),
+    ({"transcribe": {"system": "t2"}}, "the photo's first request differs (another part)"),
+    ({"text_extract": {"prompt": "Read: another text"}}, "a text letter's reading is a first request"),
+    ({"photo_baseline": {"prompt": "Read this picture."}}, "a baseline is a first request"),
+    ({"text_baseline": {"schema_": {"type": "object"}}}, "a baseline differs in another part"),
+    ({"photo_extract": {"system": "s2"}}, "the reading differs in more than its prompt"),
+    ({"photo_extract": {"schema_": {"type": "object"}}}, "the reading differs in more than its prompt"),
+]
+
+
+def test_the_smoke_still_judges_every_first_request_and_every_other_part(tmp_path: Path) -> None:
     """Even with a transcript that differs from run 1's (and every baseline's answer too), a first request that is
     not run 1's, or a reading that differs in more than its prompt, fails the smoke."""
-    checks = _smoke(tmp_path, reading=NEW_READING, answer={"kind": "other"}, **again)
-    assert checks["repeated"] == 5, why  # run 1's key still: judged, not a follow-up
-    assert not checks["requests_identical_to_run_1"], why
+    folders = (tmp_path / f"row{number}" for number in range(1, len(SMOKE_FAILURES) + 1))
+
+    def check(again: dict[str, dict[str, Any]], why: str) -> None:
+        folder = next(folders)
+        folder.mkdir()
+        checks = _smoke(folder, reading=NEW_READING, answer={"kind": "other"}, **again)
+        assert checks["repeated"] == 5, why  # run 1's key still: judged, not a follow-up
+        assert not checks["requests_identical_to_run_1"], why
+
+    check_rows(SMOKE_FAILURES, check)
 
 
 def test_a_reading_whose_prompt_differs_on_run_one_s_transcript_fails(tmp_path: Path) -> None:
@@ -675,10 +676,13 @@ def test_the_registry_declares_every_split_and_the_final_ones_before_their_lette
     assert not splits.is_held_out("dev") and not splits.is_held_out("test") and not splits.is_held_out("nope")
 
 
-def variants_problems(split_variants: Mapping[str, tuple[str, ...]]) -> list[str]:
+def variants_problems(
+    split_variants: Mapping[str, tuple[str, ...]], recorded: tuple[str, ...] | None = None
+) -> list[str]:
     """Where the generator's template variants (``evals/gen/common.py``) and the registry disagree: a split the
     generator writes variants for that the registry lacks or gives other variants, or a recorded split whose
-    letters are variants (newkinds' are not) with none in the generator."""
+    letters are variants (newkinds' are not) with none in the generator. ``recorded``: ``splits.recorded()``,
+    when the caller has it already."""
     problems = []
     for name, variants in split_variants.items():
         if name not in splits.names():
@@ -688,29 +692,31 @@ def variants_problems(split_variants: Mapping[str, tuple[str, ...]]) -> list[str
                 f"{name}: the generator writes variants {', '.join(variants)}, the registry says "
                 f"{', '.join(splits.get(name).variants)}"
             )
-    for name in splits.recorded():
+    for name in splits.recorded() if recorded is None else recorded:
         if splits.get(name).variants and name not in split_variants:
             problems.append(f"{name}: recorded, but the generator writes no variants for it")
     return problems
 
 
 def test_the_registry_agrees_with_the_page_and_the_generator() -> None:
+    """The page's held-out splits are the registry's. holdout4's letters are written after the code freeze and
+    recorded later: the generator gets its variants (``SPLIT_VARIANTS``) with its letters, while the split is not
+    recorded yet. The generator names only splits of the registry, with the registry's variants, and every recorded
+    split whose letters are variants."""
     assert report.HELD_OUT_SPLITS == tuple(s.name for s in splits.REGISTRY if s.role == "held-out")
-    assert variants_problems(SPLIT_VARIANTS) == []
-
-
-def test_a_final_split_s_variants_join_the_generator_before_its_recording() -> None:
-    """holdout4's letters are written after the code freeze and recorded later: the generator gets its variants
-    (``SPLIT_VARIANTS``) with its letters, while the split is not recorded yet. The generator names only splits of
-    the registry, with the registry's variants, and every recorded split whose letters are variants."""
-    assert variants_problems(SPLIT_VARIANTS) == []
-    assert variants_problems({**SPLIT_VARIANTS, "holdout4": ("K", "L", "M", "N")}) == []
-    assert variants_problems({**SPLIT_VARIANTS, "holdout4": ("K", "L")}) == [
+    recorded = splits.recorded()
+    assert variants_problems(SPLIT_VARIANTS, recorded) == []
+    assert variants_problems({**SPLIT_VARIANTS, "holdout4": ("K", "L", "M", "N")}, recorded) == []
+    assert variants_problems({**SPLIT_VARIANTS, "holdout4": ("K", "L")}, recorded) == [
         "holdout4: the generator writes variants K, L, the registry says K, L, M, N"
     ]
-    assert variants_problems({**SPLIT_VARIANTS, "holdout5": ("O", "P")}) == ["holdout5: not in the registry"]
+    assert variants_problems({**SPLIT_VARIANTS, "holdout5": ("O", "P")}, recorded) == [
+        "holdout5: not in the registry"
+    ]
     without = {name: variants for name, variants in SPLIT_VARIANTS.items() if name != "holdout3"}
-    assert variants_problems(without) == ["holdout3: recorded, but the generator writes no variants for it"]
+    assert variants_problems(without, recorded) == [
+        "holdout3: recorded, but the generator writes no variants for it"
+    ]
 
 
 def test_a_final_split_follows_the_held_out_rules_before_its_letters_exist(

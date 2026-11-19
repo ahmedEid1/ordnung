@@ -11,6 +11,7 @@ from typing import Any
 import pytest
 
 from helpers_secretary import add_item
+from helpers_tables import check_rows_async
 from ordnung import clock
 from ordnung.models import DateSpec, Recurrence
 from test_api_support import TODAY, Api, api_for
@@ -101,22 +102,27 @@ async def test_stopping_a_repeat_keeps_its_date_and_done_is_done_for_good(data_d
         assert (done["status"], done["due_date"]) == ("done", "2026-10-15")
 
 
-@pytest.mark.parametrize(
-    ("due", "recurrence"),
-    [("9999-12-15", MONTHLY), ("9999-12-31", MONTHLY), ("9999-12-28", {"interval": 1, "unit": "weeks"})],
-)
-async def test_a_repeating_date_with_no_next_one_on_the_calendar_is_done(
-    data_dir: Path, due: str, recurrence: dict[str, Any]
-) -> None:
+NO_NEXT_ONE_ON_THE_CALENDAR = [
+    ("9999-12-15", MONTHLY),
+    ("9999-12-31", MONTHLY),
+    ("9999-12-28", {"interval": 1, "unit": "weeks"}),
+]
+
+
+async def test_a_repeating_date_with_no_next_one_on_the_calendar_is_done(data_dir: Path) -> None:
     """The next one would be past 31 Dec 9999, the last day a date can have (a misread year, a typo): marked done,
     it is done like a date that doesn't repeat, and "Undo" opens it again where it stood."""
     async with api_for(data_dir) as api:
-        item = await _add(api, due, recurrence)
-        assert (item["status"], item["due_date"]) == ("open", due)
-        done = await _patch(api, item, status="done")
-        assert (done["status"], done["due_date"], done["recurrence"]) == ("done", due, item["recurrence"])
-        undone = await _patch(api, done, status="open")
-        assert (undone["status"], undone["due_date"]) == ("open", due)
+
+        async def check(due: str, recurrence: dict[str, Any]) -> None:
+            item = await _add(api, due, recurrence)
+            assert (item["status"], item["due_date"]) == ("open", due)
+            done = await _patch(api, item, status="done")
+            assert (done["status"], done["due_date"], done["recurrence"]) == ("done", due, item["recurrence"])
+            undone = await _patch(api, done, status="open")
+            assert (undone["status"], undone["due_date"]) == ("open", due)
+
+        await check_rows_async(NO_NEXT_ONE_ON_THE_CALENDAR, check)
 
 
 async def test_a_date_that_stopped_repeating_no_longer_says_it_repeats(data_dir: Path) -> None:
@@ -256,30 +262,40 @@ async def test_a_weekly_payment_has_each_weeks_own_send_by_day(data_dir: Path) -
             assert (item["due_date"], item["send_by"]) == (due, send_by)
 
 
-@pytest.mark.parametrize(
-    ("unit", "start"), [("days", "1990-01-01"), ("weeks", "1800-01-01"), ("months", "1100-01-01")]
-)
-async def test_a_repeat_from_too_far_back_is_refused_plainly(data_dir: Path, unit: str, start: str) -> None:
+REPEATS_FROM_TOO_FAR_BACK = [("days", "1990-01-01"), ("weeks", "1800-01-01"), ("months", "1100-01-01")]
+
+
+async def test_a_repeat_from_too_far_back_is_refused_plainly(data_dir: Path) -> None:
     """A schedule that can't reach today (a misread year, a typo) is refused with a sentence, never a server
     error, and nothing is stored: on a new to-do, and on a to-do of that date that starts to repeat."""
-    repeat = {"interval": 1, "unit": unit}
-    async with api_for(data_dir) as api:
-        created = await api.client.post(
-            "/api/items", json={"kind": "payment", "title": "Fee", "due_date": start, "recurrence": repeat}
-        )
-        assert created.status_code == 422
-        assert (
-            created.json()["detail"] == "This date is too far in the past to repeat from: choose a later one."
-        )
-        assert api.ctx.store.list_items() == []
-        one_off = await api.client.post(
-            "/api/items", json={"kind": "payment", "title": "Fee", "due_date": start}
-        )
-        assert one_off.status_code == 201
-        patched = await api.client.patch(f"/api/items/{one_off.json()['id']}", json={"recurrence": repeat})
-        assert patched.status_code == 422
-        stored = api.ctx.store.get_item(one_off.json()["id"])
-        assert stored is not None and stored.recurrence is None and stored.due_date == start
+
+    async def check(unit: str, start: str) -> None:
+        repeat = {"interval": 1, "unit": unit}
+        own_dir = data_dir / unit  # each row starts from an empty store: it asserts nothing is stored
+        own_dir.mkdir()
+        async with api_for(own_dir) as api:
+            created = await api.client.post(
+                "/api/items",
+                json={"kind": "payment", "title": "Fee", "due_date": start, "recurrence": repeat},
+            )
+            assert created.status_code == 422
+            assert (
+                created.json()["detail"]
+                == "This date is too far in the past to repeat from: choose a later one."
+            )
+            assert api.ctx.store.list_items() == []
+            one_off = await api.client.post(
+                "/api/items", json={"kind": "payment", "title": "Fee", "due_date": start}
+            )
+            assert one_off.status_code == 201
+            patched = await api.client.patch(
+                f"/api/items/{one_off.json()['id']}", json={"recurrence": repeat}
+            )
+            assert patched.status_code == 422
+            stored = api.ctx.store.get_item(one_off.json()["id"])
+            assert stored is not None and stored.recurrence is None and stored.due_date == start
+
+    await check_rows_async(REPEATS_FROM_TOO_FAR_BACK, check)
 
 
 def test_rolling_forward_leaves_a_schedule_that_cant_reach_today_as_it_is(

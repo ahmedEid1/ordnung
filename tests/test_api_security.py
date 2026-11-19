@@ -17,10 +17,12 @@ from typing import Any
 import httpx
 import pytest
 
+from helpers_tables import check_rows_async
 from ordnung import __version__, clock
 from ordnung.api import app as app_module
 from ordnung.api.deps import ClaudeStatusCache, probe_claude_cli
 from ordnung.api.security import content_security_policy, host_allowed, inline_script_hashes
+from ordnung.cli import launch_browser
 from ordnung.models import ClaudeStatus
 from ordnung.server import (
     ServerInfo,
@@ -94,17 +96,21 @@ async def test_writes_need_the_client_header(data_dir: Path) -> None:
         assert (await api.client.put("/api/profile", json={"name": "Sam"})).status_code == 200
 
 
-@pytest.mark.parametrize(
-    ("site", "allowed"), [("same-origin", True), ("none", True), ("same-site", False), ("cross-site", False)]
-)
-async def test_fetch_metadata(data_dir: Path, site: str, allowed: bool) -> None:
+FETCH_SITES = [("same-origin", True), ("none", True), ("same-site", False), ("cross-site", False)]
+
+
+async def test_fetch_metadata(data_dir: Path) -> None:
     async with api_for(data_dir) as api:
-        response = await api.client.put(
-            "/api/profile", json={"name": "Sam"}, headers={"Sec-Fetch-Site": site}
-        )
-        assert (response.status_code == 200) is allowed
-        if not allowed:
-            assert response.status_code == 403
+
+        async def check(site: str, allowed: bool) -> None:
+            response = await api.client.put(
+                "/api/profile", json={"name": "Sam"}, headers={"Sec-Fetch-Site": site}
+            )
+            assert (response.status_code == 200) is allowed
+            if not allowed:
+                assert response.status_code == 403
+
+        await check_rows_async(FETCH_SITES, check)
 
 
 async def test_origin_must_match_host(data_dir: Path) -> None:
@@ -204,12 +210,19 @@ def _path(url: str) -> str:
     return url.removeprefix(BASE_URL)
 
 
-async def test_a_one_time_link_signs_in_once(data_dir: Path, web_dist: Path) -> None:
-    """What Ordnung opens the browser with: a code made with the token, never the token itself (a browser's
-    command line can be read by other accounts), good for one sign-in within a minute."""
+async def test_a_one_time_link_signs_in_once(
+    data_dir: Path, web_dist: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """What Ordnung opens the browser with (the link launch_browser opens): a code made with the token, never
+    the token itself (a browser's command line can be read by other accounts), good for one sign-in within a
+    minute."""
     info = ServerInfo(port=8765, token=TOKEN, pid=os.getpid())
+    opened: list[str] = []
+    monkeypatch.setattr("ordnung.cli.webbrowser.open", lambda url: opened.append(url))
     async with api_for(data_dir, token=TOKEN) as api:
-        link = _path(info.open_url())
+        launch_browser(info)
+        [url] = opened
+        link = _path(url)
         assert link.startswith("/?open=") and TOKEN not in link
         assert info.open_url() != info.open_url()  # a new code each time
 
@@ -332,10 +345,6 @@ async def test_a_one_time_link_keeps_the_rest_of_the_address(data_dir: Path, web
     async with api_for(data_dir, token=TOKEN) as api:
         login = await api.client.get(_path(info.open_url()).replace("/?", "/documents/doc_abc?tab=facts&", 1))
         assert login.status_code == 303 and login.headers["location"] == "/documents/doc_abc?tab=facts"
-
-
-def test_a_server_without_a_token_opens_its_plain_address() -> None:
-    assert ServerInfo(port=8766, pid=os.getpid()).open_url() == "http://127.0.0.1:8766/"
 
 
 async def test_a_chunked_api_request_is_refused_before_its_body_is_read() -> None:

@@ -9,7 +9,9 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import shutil
 import subprocess
+import tempfile
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -19,6 +21,8 @@ from evals import analysis, conditions
 from evals.ask import owner
 from evals.records import CONDITIONS
 from scripts import eval_power, owner_label_sample, prereg_calibration, prereg_hashes
+
+from helpers_tables import check_rows
 
 ROOT = Path(__file__).resolve().parents[1]
 SHA = "a" * 40
@@ -278,22 +282,36 @@ def _deviation(**changes: Any) -> dict[str, Any]:
     return entry
 
 
-@pytest.mark.parametrize("shape", ["map", "nested", "list"])
-def test_the_table_of_deviation_kinds_is_read_in_each_shape(shape: str) -> None:
-    raw: Any = {
-        "map": TABLE,
-        "nested": {kind: {"consequence": text} for kind, text in TABLE.items()},
-        "list": [{"kind": kind, "consequence": text} for kind, text in TABLE.items()],
-    }[shape]
-    assert prereg_hashes.kinds_table(raw) == TABLE
+TABLE_SHAPES = ["map", "nested", "list"]
 
 
-@pytest.mark.parametrize(
-    "raw", [{"retake": 3}, {"retake": {"consequence": None}}, [{"kind": "retake"}], "retake", None]
-)
-def test_a_table_without_a_text_consequence_is_refused(raw: Any) -> None:
-    with pytest.raises(ValueError):
-        prereg_hashes.kinds_table(raw)
+def test_the_table_of_deviation_kinds_is_read_in_each_shape() -> None:
+    def check(shape: str) -> None:
+        raw: Any = {
+            "map": TABLE,
+            "nested": {kind: {"consequence": text} for kind, text in TABLE.items()},
+            "list": [{"kind": kind, "consequence": text} for kind, text in TABLE.items()],
+        }[shape]
+        assert prereg_hashes.kinds_table(raw) == TABLE
+
+    check_rows(TABLE_SHAPES, check)
+
+
+TABLES_WITHOUT_A_TEXT_CONSEQUENCE = [
+    {"retake": 3},
+    {"retake": {"consequence": None}},
+    [{"kind": "retake"}],
+    "retake",
+    None,
+]
+
+
+def test_a_table_without_a_text_consequence_is_refused() -> None:
+    def check(raw: Any) -> None:
+        with pytest.raises(ValueError):
+            prereg_hashes.kinds_table(raw)
+
+    check_rows(TABLES_WITHOUT_A_TEXT_CONSEQUENCE, check)
 
 
 def test_a_deviation_recorded_at_the_time_is_well_formed() -> None:
@@ -306,32 +324,32 @@ def test_a_deviation_recorded_at_the_time_is_well_formed() -> None:
     assert prereg_hashes.deviation_problems([], TABLE) == []
 
 
-@pytest.mark.parametrize(
-    ("changes", "problem"),
-    [
-        ({"issue_comment_url": None}, "D001: no comment on the pre-registration issue"),
-        (
-            {"issue_comment_url": "file:///tmp/issue.md#D001"},
-            "D001: no comment on the pre-registration issue",
-        ),
-        ({"created_at": None}, "D001: no time it was recorded"),
-        ({"created_at": "yesterday"}, "D001: no time it was recorded"),
-        ({"checkpoint_sha": None}, "D001: no checkpoint commit"),
-        ({"checkpoint_sha": "abc1234"}, "D001: no checkpoint commit"),
-        ({"consequence": "exclude the read"}, "D001: its consequence is not the registered one for retake"),
-        ({"kind": "label_fixed"}, "D001: kind 'label_fixed' is not in the pre-registration's table"),
-        ({"step": ""}, "D001: no step"),
-        ({"evidence": []}, "D001: no evidence"),
-        ({"note": "x"}, "D001: unknown key note"),
-        ({"what": "seen with " + "claude-" + "mini-1"}, "D001: names a model other than claude-sonnet-5"),
-        ({"applies_to": ["holdout4"]}, "D001: applies_to is not an object"),
-    ],
-)
-def test_a_deviation_that_was_not_recorded_at_the_time_is_refused(
-    changes: dict[str, Any], problem: str
-) -> None:
-    found = prereg_hashes.deviation_problems([_deviation(**changes)], TABLE)
-    assert any(line.startswith(problem) for line in found), found
+DEVIATIONS_NOT_RECORDED_AT_THE_TIME = [
+    ({"issue_comment_url": None}, "D001: no comment on the pre-registration issue"),
+    (
+        {"issue_comment_url": "file:///tmp/issue.md#D001"},
+        "D001: no comment on the pre-registration issue",
+    ),
+    ({"created_at": None}, "D001: no time it was recorded"),
+    ({"created_at": "yesterday"}, "D001: no time it was recorded"),
+    ({"checkpoint_sha": None}, "D001: no checkpoint commit"),
+    ({"checkpoint_sha": "abc1234"}, "D001: no checkpoint commit"),
+    ({"consequence": "exclude the read"}, "D001: its consequence is not the registered one for retake"),
+    ({"kind": "label_fixed"}, "D001: kind 'label_fixed' is not in the pre-registration's table"),
+    ({"step": ""}, "D001: no step"),
+    ({"evidence": []}, "D001: no evidence"),
+    ({"note": "x"}, "D001: unknown key note"),
+    ({"what": "seen with " + "claude-" + "mini-1"}, "D001: names a model other than claude-sonnet-5"),
+    ({"applies_to": ["holdout4"]}, "D001: applies_to is not an object"),
+]
+
+
+def test_a_deviation_that_was_not_recorded_at_the_time_is_refused() -> None:
+    def check(changes: dict[str, Any], problem: str) -> None:
+        found = prereg_hashes.deviation_problems([_deviation(**changes)], TABLE)
+        assert any(line.startswith(problem) for line in found), found
+
+    check_rows(DEVIATIONS_NOT_RECORDED_AT_THE_TIME, check)
 
 
 def test_the_deviations_file_is_a_list_of_entries_with_one_id_each() -> None:
@@ -473,23 +491,25 @@ def test_the_command_writes_the_phase2_record_and_checks_the_checkout_against_it
     assert "web/e2e/eval-report.spec.ts: differs" in capsys.readouterr().out
 
 
-@pytest.mark.parametrize(
-    ("path", "pattern", "hit"),
-    [
-        ("src/ordnung/llm/runtime.py", "src/ordnung/**", True),
-        ("src/ordnung/x.py", "src/ordnung/**", True),
-        ("evals/run.py", "evals/*.py", True),
-        ("evals/ask/score.py", "evals/*.py", False),
-        ("evals/recorded/claude-sonnet-5/extract/a.json", "evals/recorded/**", True),
-        ("evals/preregistration/deviations-0.4.0.json", "evals/preregistration/deviations-0.4.0.json", True),
-        ("tests/test_x.py", "tests/**", True),
-        ("README.md", "tests/**", False),
-        ("docs/evals-ask.md", "docs/evals*.md", True),
-        ("docs/assets/eval-cost-dark.svg", "docs/assets/eval-*", True),
-    ],
-)
-def test_a_path_matches_a_pattern_as_a_glob_with_double_star(path: str, pattern: str, hit: bool) -> None:
-    assert prereg_hashes.matches(path, pattern) is hit
+GLOB_MATCHES = [
+    ("src/ordnung/llm/runtime.py", "src/ordnung/**", True),
+    ("src/ordnung/x.py", "src/ordnung/**", True),
+    ("evals/run.py", "evals/*.py", True),
+    ("evals/ask/score.py", "evals/*.py", False),
+    ("evals/recorded/claude-sonnet-5/extract/a.json", "evals/recorded/**", True),
+    ("evals/preregistration/deviations-0.4.0.json", "evals/preregistration/deviations-0.4.0.json", True),
+    ("tests/test_x.py", "tests/**", True),
+    ("README.md", "tests/**", False),
+    ("docs/evals-ask.md", "docs/evals*.md", True),
+    ("docs/assets/eval-cost-dark.svg", "docs/assets/eval-*", True),
+]
+
+
+def test_a_path_matches_a_pattern_as_a_glob_with_double_star() -> None:
+    def check(path: str, pattern: str, hit: bool) -> None:
+        assert prereg_hashes.matches(path, pattern) is hit
+
+    check_rows(GLOB_MATCHES, check)
 
 
 def test_a_path_changed_since_the_freeze_must_be_allowed_and_never_an_identical_one() -> None:
@@ -573,13 +593,29 @@ def _fixed_repo(root: Path, message: str) -> tuple[Path, dict[str, Any], str]:
     return root, registered, freeze
 
 
+@pytest.fixture(scope="module")
+def fixed_template(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, dict[str, Any], str]:
+    """``fixed`` built once per module; never handed to a test, only copied (see ``_fixed_copy``)."""
+    message = f"Final run checkpoint: phase2 (0 calls, $0.00)\n\nPre-registration issue: {ISSUE}\n"
+    return _fixed_repo(tmp_path_factory.mktemp("fixed") / "checkout", message)
+
+
+def _fixed_copy(template: tuple[Path, dict[str, Any], str], root: Path) -> tuple[Path, dict[str, Any], str]:
+    """A copy of the template repository at ``root`` (its own history, which the test may change), with the code map
+    as registered and the freeze."""
+    origin, registered, freeze = template
+    shutil.copytree(origin, root, symlinks=True)
+    return root, copy.deepcopy(registered), freeze
+
+
 @pytest.fixture()
-def fixed(tmp_path: Path) -> tuple[Path, dict[str, Any], str]:
+def fixed(
+    fixed_template: tuple[Path, dict[str, Any], str], tmp_path: Path
+) -> tuple[Path, dict[str, Any], str]:
     """A repository whose code map was registered at the freeze; then the first checkpoint, which adds the phase-2
     record and names the issue in its message (B's registered.issue_binding); then a runner fix. The repository, the
     code map as registered, and the freeze."""
-    message = f"Final run checkpoint: phase2 (0 calls, $0.00)\n\nPre-registration issue: {ISSUE}\n"
-    return _fixed_repo(tmp_path / "checkout", message)
+    return _fixed_copy(fixed_template, tmp_path / "checkout")
 
 
 def _runner_fix(root: Path, *paths: str, **changes: Any) -> dict[str, Any]:
@@ -751,18 +787,26 @@ def _spoiled(root: Path, registered: dict[str, Any], spoil: str) -> Any:
     return deviations
 
 
-@pytest.mark.parametrize("spoil", SPOILS)
-def test_nothing_else_excuses_a_path(fixed: tuple[Path, dict[str, Any], str], spoil: str) -> None:
+def test_nothing_else_excuses_a_path(
+    fixed_template: tuple[Path, dict[str, Any], str], tmp_path: Path
+) -> None:
     """Only a ``runner-fix`` code_hash_changed deviation recorded at the time excuses a path: well formed with its
     whole file (ids, keys, an applies_to the analysis reads), a comment on the issue the first checkpoint names, a
     checkpoint commit of HEAD's history that holds it as it is and was made after it was written; and only by the
     exact line ``<path> sha256 <the sha256 of the file the checkout and HEAD hold>``."""
-    root, registered, freeze = fixed
-    deviations = _spoiled(root, registered, spoil)
-    assert TARGET not in prereg_hashes.excused_paths(deviations, TABLE, root, freeze=freeze)
-    found = _flagged(root, registered, freeze, deviations)
-    assert f"{TARGET}: differs from the code map (sha256)" in found
-    assert f"{TARGET}: not in any list of paths allowed to change after the freeze" in found
+
+    def check(spoil: str) -> None:
+        # each row spoils its own copy of the repository, as each case had its own ``fixed``
+        root, registered, freeze = _fixed_copy(
+            fixed_template, Path(tempfile.mkdtemp(dir=tmp_path)) / "checkout"
+        )
+        deviations = _spoiled(root, registered, spoil)
+        assert TARGET not in prereg_hashes.excused_paths(deviations, TABLE, root, freeze=freeze)
+        found = _flagged(root, registered, freeze, deviations)
+        assert f"{TARGET}: differs from the code map (sha256)" in found
+        assert f"{TARGET}: not in any list of paths allowed to change after the freeze" in found
+
+    check_rows(SPOILS, check)
 
 
 def test_no_deviation_excuses_a_code_digest_or_fingerprint_input_or_the_sentence_code(
@@ -819,21 +863,22 @@ def test_the_issue_is_the_one_the_first_checkpoint_names(fixed: tuple[Path, dict
     assert prereg_hashes.bound_issue(root, freeze) == ISSUE
 
 
-@pytest.mark.parametrize(
-    "message",
-    [
-        "Final run checkpoint: phase2 (0 calls, $0.00)",
-        f"Final run checkpoint: phase2\n\nPre-registration issue: {ISSUE}\nAlso: https://github.com/owner/repo/issues/8\n",
-    ],
-)
-def test_without_one_issue_named_by_the_first_checkpoint_nothing_is_excused(
-    tmp_path: Path, message: str
-) -> None:
-    root, registered, freeze = _fixed_repo(tmp_path / "checkout", message)
-    assert prereg_hashes.bound_issue(root, freeze) is None
-    deviations = _checkpoint(root, _runner_fix(root, *RUNNER_FIX))
-    assert prereg_hashes.excused_paths(deviations, TABLE, root, freeze=freeze) == set()
-    assert len(_flagged(root, registered, freeze, deviations)) == 2 * len(RUNNER_FIX)
+MESSAGES_WITHOUT_ONE_ISSUE = [
+    "Final run checkpoint: phase2 (0 calls, $0.00)",
+    f"Final run checkpoint: phase2\n\nPre-registration issue: {ISSUE}\nAlso: https://github.com/owner/repo/issues/8\n",
+]
+
+
+def test_without_one_issue_named_by_the_first_checkpoint_nothing_is_excused(tmp_path: Path) -> None:
+    def check(message: str) -> None:
+        # each row its own repository: the first checkpoint's message differs
+        root, registered, freeze = _fixed_repo(Path(tempfile.mkdtemp(dir=tmp_path)) / "checkout", message)
+        assert prereg_hashes.bound_issue(root, freeze) is None
+        deviations = _checkpoint(root, _runner_fix(root, *RUNNER_FIX))
+        assert prereg_hashes.excused_paths(deviations, TABLE, root, freeze=freeze) == set()
+        assert len(_flagged(root, registered, freeze, deviations)) == 2 * len(RUNNER_FIX)
+
+    check_rows(MESSAGES_WITHOUT_ONE_ISSUE, check)
 
 
 def test_a_path_named_but_not_in_the_checkout_is_not_excused(fixed: tuple[Path, dict[str, Any], str]) -> None:
@@ -1283,22 +1328,24 @@ def test_the_label_sample_waits_for_the_final_letters(tmp_path: Path) -> None:
         owner_label_sample.sample(manifest, seed=20261029)
 
 
-@pytest.mark.parametrize(
-    ("pairs", "kappa"),
-    [
-        ([(True, True), (False, False), (True, True), (False, False)], 1.0),
-        ([(True, True), (True, False), (False, True), (False, False)], 0.0),
-        # 50 items: both yes 20, yes/no 5, no/yes 10, both no 15: p_o 0.7, p_e 0.5
-        ([("y", "y")] * 20 + [("y", "n")] * 5 + [("n", "y")] * 10 + [("n", "n")] * 15, 0.4),
-        # three categories: p_o 0.6, p_e 0.42
-        (
-            [("a", "a")] * 4 + [("b", "b")] * 1 + [("c", "c")] * 1 + [("a", "b")] * 2 + [("c", "a")] * 2,
-            0.3103,
-        ),
-    ],
-)
-def test_cohen_s_kappa_on_textbook_tables(pairs: list[tuple[Any, Any]], kappa: float) -> None:
-    assert owner.cohen_kappa(pairs) == pytest.approx(kappa, abs=1e-4)
+KAPPA_TEXTBOOK_TABLES = [
+    ([(True, True), (False, False), (True, True), (False, False)], 1.0),
+    ([(True, True), (True, False), (False, True), (False, False)], 0.0),
+    # 50 items: both yes 20, yes/no 5, no/yes 10, both no 15: p_o 0.7, p_e 0.5
+    ([("y", "y")] * 20 + [("y", "n")] * 5 + [("n", "y")] * 10 + [("n", "n")] * 15, 0.4),
+    # three categories: p_o 0.6, p_e 0.42
+    (
+        [("a", "a")] * 4 + [("b", "b")] * 1 + [("c", "c")] * 1 + [("a", "b")] * 2 + [("c", "a")] * 2,
+        0.3103,
+    ),
+]
+
+
+def test_cohen_s_kappa_on_textbook_tables() -> None:
+    def check(pairs: list[tuple[Any, Any]], kappa: float) -> None:
+        assert owner.cohen_kappa(pairs) == pytest.approx(kappa, abs=1e-4)
+
+    check_rows(KAPPA_TEXTBOOK_TABLES, check)
 
 
 def test_kappa_is_undefined_without_pairs_or_with_one_category() -> None:
@@ -1511,10 +1558,6 @@ def _recorded(repo: Path, **changes: Any) -> tuple[str, list[dict[str, Any]]]:
 def test_a_deviation_is_recorded_at_the_time_by_its_checkpoint_commit(repo: Path) -> None:
     freeze, entries = _recorded(repo)
     assert prereg_hashes.history_problems(repo, entries, freeze=freeze) == []
-
-
-def test_a_deviation_whose_checkpoint_is_no_commit_of_this_history_is_refused(repo: Path) -> None:
-    freeze, entries = _recorded(repo)
     late = [dict(entries[0], checkpoint_sha="f" * 40)]
     assert any("not a commit" in p for p in prereg_hashes.history_problems(repo, late, freeze=freeze))
 

@@ -20,6 +20,7 @@ from typing import Any
 
 import pytest
 
+from helpers_tables import check_rows
 from ordnung import letters_zip
 from ordnung.config import Paths
 from ordnung.db.store import Store
@@ -125,11 +126,17 @@ def files_of(archive: zipfile.ZipFile) -> list[str]:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("case", SHARED["cases"], ids=[case["name"] for case in SHARED["cases"]])
-def test_the_letters_chosen_are_the_ones_the_dialog_counts(case: dict[str, Any]) -> None:
-    docs = [_shared_doc(fields) for fields in SHARED["docs"]]
-    chosen = select_documents(docs, _choice(case["choice"]), SHARED_CHOICES)
-    assert [doc.id for doc in chosen] == case["expected_ids"]
+#: The shared table's cases, each named by its ``name`` so a failing row says which case it is.
+SHARED_CASES = [pytest.param(case, id=case["name"]) for case in SHARED["cases"]]
+
+
+def test_the_letters_chosen_are_the_ones_the_dialog_counts() -> None:
+    def check(case: dict[str, Any]) -> None:
+        docs = [_shared_doc(fields) for fields in SHARED["docs"]]
+        chosen = select_documents(docs, _choice(case["choice"]), SHARED_CHOICES)
+        assert [doc.id for doc in chosen] == case["expected_ids"]
+
+    check_rows(SHARED_CASES, check)
 
 
 def test_the_shared_table_has_letters_the_person_marked_and_unmarked() -> None:
@@ -142,10 +149,12 @@ def test_the_shared_table_has_letters_the_person_marked_and_unmarked() -> None:
     }
 
 
-@pytest.mark.parametrize("case", SHARED["cases"], ids=[case["name"] for case in SHARED["cases"]])
-def test_the_zip_is_named_as_the_dialog_names_it(case: dict[str, Any]) -> None:
-    today = date.fromisoformat(SHARED["today"])
-    assert zip_name(_choice(case["choice"]), today) == case["expected_name"]
+def test_the_zip_is_named_as_the_dialog_names_it() -> None:
+    def check(case: dict[str, Any]) -> None:
+        today = date.fromisoformat(SHARED["today"])
+        assert zip_name(_choice(case["choice"]), today) == case["expected_name"]
+
+    check_rows(SHARED_CASES, check)
 
 
 def test_a_letter_waiting_in_the_trash_or_a_proof_file_never_goes_in(store: Store, paths: Paths) -> None:
@@ -163,35 +172,37 @@ def test_a_letter_waiting_in_the_trash_or_a_proof_file_never_goes_in(store: Stor
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("text", "expected"),
-    [
-        ("../../etc/passwd", "-..-etc-passwd"),
-        ("..\\..\\x", "-..-x"),
-        ("C:\\Windows", "C--Windows"),
-        ("/abs", "-abs"),
-        (".", "Fallback"),
-        ("..", "Fallback"),
-        ("", "Fallback"),
-        ("   ", "Fallback"),
-        ('Re: x?*|<>"', "Re- x------"),
-        ("evil\u202egnp.exe", "evilgnp.exe"),
-        ("bell\x07 and\x1b[31m csi\x9b", "bell and[31m csi"),
-        ("Mu\u0308ller", "Müller"),
-        ("trailing dots and spaces. . .", "trailing dots and spaces"),
-        (".hidden", "hidden"),
-        ("tab\tand\nnew line", "tab and new line"),
-        ("CON", "_CON"),
-        ("aux", "_aux"),
-        ("NUL.txt", "_NUL.txt"),
-        ("com1", "_com1"),
-        ("LPT9.tar.gz", "_LPT9.tar.gz"),
-        ("Console", "Console"),
-        ("COM10", "COM10"),
-    ],
-)
-def test_a_name_from_a_letter_is_made_safe_for_every_file_system(text: str, expected: str) -> None:
-    assert safe_component(text, "Fallback", chars=60, max_bytes=80) == expected
+SAFE_NAME_EXAMPLES = [
+    ("../../etc/passwd", "-..-etc-passwd"),
+    ("..\\..\\x", "-..-x"),
+    ("C:\\Windows", "C--Windows"),
+    ("/abs", "-abs"),
+    (".", "Fallback"),
+    ("..", "Fallback"),
+    ("", "Fallback"),
+    ("   ", "Fallback"),
+    ('Re: x?*|<>"', "Re- x------"),
+    ("evil\u202egnp.exe", "evilgnp.exe"),
+    ("bell\x07 and\x1b[31m csi\x9b", "bell and[31m csi"),
+    ("Mu\u0308ller", "Müller"),
+    ("trailing dots and spaces. . .", "trailing dots and spaces"),
+    (".hidden", "hidden"),
+    ("tab\tand\nnew line", "tab and new line"),
+    ("CON", "_CON"),
+    ("aux", "_aux"),
+    ("NUL.txt", "_NUL.txt"),
+    ("com1", "_com1"),
+    ("LPT9.tar.gz", "_LPT9.tar.gz"),
+    ("Console", "Console"),
+    ("COM10", "COM10"),
+]
+
+
+def test_a_name_from_a_letter_is_made_safe_for_every_file_system() -> None:
+    def check(text: str, expected: str) -> None:
+        assert safe_component(text, "Fallback", chars=60, max_bytes=80) == expected
+
+    check_rows(SAFE_NAME_EXAMPLES, check)
 
 
 def test_a_hostile_name_never_leaves_its_folder() -> None:
@@ -486,23 +497,25 @@ def test_the_index_says_for_taxes_as_the_person_chose_and_leaves_out_a_note_they
     assert (rows[marked]["for_taxes"], rows[marked]["tax_note"]) == ("yes", "")
 
 
-@pytest.mark.parametrize(
-    ("value", "expected"),
-    [
-        ('=HYPERLINK("http://x.example","click")', '\'=HYPERLINK("http://x.example","click")'),
-        ("+49 30 1234", "'+49 30 1234"),
-        ("-2+3", "'-2+3"),
-        ("@SUM(A1:A2)", "'@SUM(A1:A2)"),
-        ("\t=1", "'\t=1"),
-        ("\r=1", "'\r=1"),
-        ("Rechnung = 12 €", "Rechnung = 12 €"),
-        ("", ""),
-        (None, ""),
-        (3, "3"),
-    ],
-)
-def test_a_cell_never_starts_a_spreadsheet_formula(value: object, expected: str) -> None:
-    assert csv_cell(value) == expected
+CSV_CELL_EXAMPLES = [
+    ('=HYPERLINK("http://x.example","click")', '\'=HYPERLINK("http://x.example","click")'),
+    ("+49 30 1234", "'+49 30 1234"),
+    ("-2+3", "'-2+3"),
+    ("@SUM(A1:A2)", "'@SUM(A1:A2)"),
+    ("\t=1", "'\t=1"),
+    ("\r=1", "'\r=1"),
+    ("Rechnung = 12 €", "Rechnung = 12 €"),
+    ("", ""),
+    (None, ""),
+    (3, "3"),
+]
+
+
+def test_a_cell_never_starts_a_spreadsheet_formula() -> None:
+    def check(value: object, expected: str) -> None:
+        assert csv_cell(value) == expected
+
+    check_rows(CSV_CELL_EXAMPLES, check)
 
 
 def test_a_title_a_letter_planted_stays_text_in_the_index(store: Store, paths: Paths) -> None:

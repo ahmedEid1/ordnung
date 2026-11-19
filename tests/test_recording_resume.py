@@ -8,10 +8,12 @@ by a live run; every live call leaves one line in ``ledger.jsonl``.
 
 from __future__ import annotations
 
+import dataclasses
+import functools
 import json
 import subprocess
 import sys
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -22,9 +24,11 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from evals import harness  # noqa: E402
+from evals import conditions, harness  # noqa: E402
 from evals import run as eval_run  # noqa: E402
+from evals.records import Entry  # noqa: E402
 
+from helpers_tables import check_rows  # noqa: E402
 from ordnung.llm import replay as replay_module  # noqa: E402
 from ordnung.llm.base import ClaudeRateLimited, LLMRequest, LLMResponse, StreamEvent, Usage  # noqa: E402
 from ordnung.llm.fake import FakeBackend  # noqa: E402
@@ -44,6 +48,30 @@ LEDGER_FIELDS = {
     "served_model",
     "cli_version",
 }
+
+
+@functools.cache
+def _responder() -> Responder:
+    """One fake model for the module's runs: its only state is a cache of the letters' texts."""
+    return Responder()
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _letters_prepared_once(tmp_path_factory: pytest.TempPathFactory) -> Iterator[None]:
+    """Each letter's pages are rendered and read once per module: the runs here hold what the recorder writes,
+    resumes and refuses, not the rendering, and the same bytes make the same requests."""
+    prepared: dict[tuple[str, str, Path], conditions.PreparedDocument] = {}
+    real = eval_run.prepare_document
+
+    def prepare(entry: Entry, dataset_dir: Path, work_dir: Path) -> conditions.PreparedDocument:
+        key = (entry.id, entry.sha256, Path(dataset_dir))
+        if key not in prepared:
+            prepared[key] = real(entry, dataset_dir, tmp_path_factory.mktemp("pages"))
+        return dataclasses.replace(prepared[key], entry=entry)
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(eval_run, "prepare_document", prepare)
+        yield
 
 
 def _root(tmp_path: Path) -> Path:
@@ -95,7 +123,7 @@ class Limited:
         clock: Clock | None = None,
         until: datetime | None = None,
     ) -> None:
-        self.inner = FakeBackend(Responder())
+        self.inner = FakeBackend(_responder())
         self.after = after
         self.reset_at = reset_at
         self.clock = clock
@@ -122,7 +150,7 @@ class Limited:
 
 async def _clean_run(tmp_path: Path) -> int:
     """How many calls a recording of the test letters makes when nothing goes wrong."""
-    fake = FakeBackend(Responder())
+    fake = FakeBackend(_responder())
     clean = make_config(tmp_path / "clean", live=True, write_docs=False, live_backend=fake)
     assert (await eval_run.run_benchmark(clean)).ok
     return len(fake.calls)
@@ -213,25 +241,27 @@ async def test_a_limit_without_a_readable_reset_waits_half_an_hour(
     assert clock.slept[0] == pytest.approx(30 * 60)
 
 
-@pytest.mark.parametrize(
-    ("text", "expected"),
-    [
-        ("3pm (Europe/Berlin)", datetime(2026, 10, 29, 14, 0, tzinfo=UTC)),
-        ("3:30pm (Europe/Berlin)", datetime(2026, 10, 29, 14, 30, tzinfo=UTC)),
-        ("9am (Europe/Berlin)", datetime(2026, 10, 30, 8, 0, tzinfo=UTC)),  # 9am today is past: tomorrow
-        ("15:00 UTC", datetime(2026, 10, 29, 15, 0, tzinfo=UTC)),
-        ("2 hours", datetime(2026, 10, 29, 12, 0, tzinfo=UTC)),
-        ("1 hour 30 minutes", datetime(2026, 10, 29, 11, 30, tzinfo=UTC)),
-        ("45 minutes", datetime(2026, 10, 29, 10, 45, tzinfo=UTC)),
-        ("2026-10-29T18:00:00Z", datetime(2026, 10, 29, 18, 0, tzinfo=UTC)),
-        ("1761768000", datetime(2025, 10, 29, 20, 0, tzinfo=UTC)),
-        ("soon", None),
-        (None, None),
-    ],
-)
-def test_reset_times_the_cli_names(text: str | None, expected: datetime | None) -> None:
-    now = datetime(2026, 10, 29, 10, 0, tzinfo=UTC)
-    assert harness.parse_reset(text, now, local=UTC) == expected
+RESET_TIMES = [
+    ("3pm (Europe/Berlin)", datetime(2026, 10, 29, 14, 0, tzinfo=UTC)),
+    ("3:30pm (Europe/Berlin)", datetime(2026, 10, 29, 14, 30, tzinfo=UTC)),
+    ("9am (Europe/Berlin)", datetime(2026, 10, 30, 8, 0, tzinfo=UTC)),  # 9am today is past: tomorrow
+    ("15:00 UTC", datetime(2026, 10, 29, 15, 0, tzinfo=UTC)),
+    ("2 hours", datetime(2026, 10, 29, 12, 0, tzinfo=UTC)),
+    ("1 hour 30 minutes", datetime(2026, 10, 29, 11, 30, tzinfo=UTC)),
+    ("45 minutes", datetime(2026, 10, 29, 10, 45, tzinfo=UTC)),
+    ("2026-10-29T18:00:00Z", datetime(2026, 10, 29, 18, 0, tzinfo=UTC)),
+    ("1761768000", datetime(2025, 10, 29, 20, 0, tzinfo=UTC)),
+    ("soon", None),
+    (None, None),
+]
+
+
+def test_reset_times_the_cli_names() -> None:
+    def check(text: str | None, expected: datetime | None) -> None:
+        now = datetime(2026, 10, 29, 10, 0, tzinfo=UTC)
+        assert harness.parse_reset(text, now, local=UTC) == expected
+
+    check_rows(RESET_TIMES, check)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -409,7 +439,7 @@ async def test_a_live_run_takes_the_lock_and_frees_it(tmp_path: Path) -> None:
             seen.append(lock.exists())
             return await super().complete(req)
 
-    config = make_config(tmp_path, live=True, write_docs=False, live_backend=Watching(Responder()))
+    config = make_config(tmp_path, live=True, write_docs=False, live_backend=Watching(_responder()))
     assert config.recorder_lock is None  # beside the recordings unless the CLI names the shared one
     assert (await eval_run.run_benchmark(config)).ok
     assert seen and all(seen) and not lock.exists()
@@ -441,7 +471,7 @@ async def test_a_crash_before_the_rename_leaves_no_half_cassette(
 
 
 async def test_a_half_cassette_is_named_on_replay_and_recorded_again_live(tmp_path: Path) -> None:
-    fake = FakeBackend(Responder())
+    fake = FakeBackend(_responder())
     ids = ["dev-tax_assessment-A1"]
     live = make_config(
         tmp_path, ids=ids, conditions=["llm_only"], live=True, write_docs=False, live_backend=fake
@@ -480,7 +510,7 @@ async def test_a_half_cassette_is_named_on_replay_and_recorded_again_live(tmp_pa
 
 
 async def test_every_live_call_writes_one_ledger_line(tmp_path: Path) -> None:
-    fake = FakeBackend(Responder())
+    fake = FakeBackend(_responder())
     config = make_config(tmp_path, live=True, write_docs=False, live_backend=fake)
     assert (await eval_run.run_benchmark(config)).ok
     lines = _ledger(tmp_path)
@@ -494,7 +524,7 @@ async def test_every_live_call_writes_one_ledger_line(tmp_path: Path) -> None:
         sum(call.cost_usd for runs in config_calls(config) for call in runs)
     )
     # a resume replays what is recorded: no call, no line
-    again = make_config(tmp_path, live=True, write_docs=False, live_backend=FakeBackend(Responder()))
+    again = make_config(tmp_path, live=True, write_docs=False, live_backend=FakeBackend(_responder()))
     assert (await eval_run.run_benchmark(again)).ok
     assert len(_ledger(tmp_path)) == len(lines)
 

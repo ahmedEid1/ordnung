@@ -267,10 +267,6 @@ def test_an_older_matter_s_earlier_deadline_is_in_the_event_where_the_person_act
     assert note not in str(events[f"{done}@ordnung.local"]["description"])
 
 
-def test_export_is_stable(store: Store, ids: dict[str, str]) -> None:
-    assert build_ics(store) == build_ics(store)
-
-
 def test_include_done_and_single_item(store: Store, ids: dict[str, str]) -> None:
     events = _events(build_ics(store, include_done=True))
     done = events[f"{ids['done']}@ordnung.local"]

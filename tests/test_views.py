@@ -9,6 +9,7 @@ import pytest
 
 from helpers_secretary import TODAY, add_doc, add_item, seed_ledger
 from ordnung import clock
+from ordnung.config import Paths
 from ordnung.db.store import Store
 from ordnung.models import RefLink
 from ordnung.secretary.triggers import run_and_reconcile
@@ -28,12 +29,28 @@ def ids(store: Store) -> dict[str, str]:
     return seed_ledger(store)
 
 
+Seeded = tuple[Store, dict[str, str]]
+
+
+@pytest.fixture(scope="module")
+def seeded(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Seeded]:
+    """The seeded ledger built once for the tests that only read it; a test that writes takes ``store``."""
+    data_dir = tmp_path_factory.mktemp("seeded") / "data"
+    data_dir.mkdir()
+    shared = Store.open(Paths(data_dir).ensure())
+    try:
+        yield shared, seed_ledger(shared)
+    finally:
+        shared.close()
+
+
 # --------------------------------------------------------------------------------------------------
 # dashboard
 # --------------------------------------------------------------------------------------------------
 
 
-def test_dashboard_attention_and_upcoming(store: Store, ids: dict[str, str]) -> None:
+def test_dashboard_attention_and_upcoming(seeded: Seeded) -> None:
+    store, ids = seeded
     board = dashboard(store, TODAY)
     assert (board.today, board.greeting_name, board.simulated) == ("2026-09-28", "Sam", True)
     # overdue first, then by the day to act; the scam letter's payment is never a to-do
@@ -52,7 +69,8 @@ def test_dashboard_attention_and_upcoming(store: Store, ids: dict[str, str]) -> 
 
 
 def test_a_sent_cancellation_leaves_the_decisions_and_life_areas(store: Store, ids: dict[str, str]) -> None:
-    """Today still said "Decide on FunkNetz Smart M" after its cancellation was sent."""
+    """Today still said "Decide on FunkNetz Smart M" after its cancellation was sent, and the Timeline still
+    drew the phone's "Send by" window."""
     board = dashboard(store, TODAY)
     assert [c.id for c in board.decisions] == [ids["phone"]]
     store.add_draft(
@@ -61,9 +79,16 @@ def test_a_sent_cancellation_leaves_the_decisions_and_life_areas(store: Store, i
     board = dashboard(store, TODAY)
     assert board.decisions == []
     assert not any("Decide on" in area.headline for area in board.areas)
+    contracts = next(
+        lane for lane in lanes(store, date(2026, 9, 1), date(2027, 8, 31)) if lane.id == "contracts"
+    )
+    bars = {bar.id: bar for bar in contracts.bars}
+    assert f"{ids['phone']}:notice" not in bars
+    assert (bars[ids["phone"]].end, bars[ids["phone"]].status) == ("2026-11-14", "ok")
 
 
-def test_dashboard_decisions_money_and_stats(store: Store, ids: dict[str, str]) -> None:
+def test_dashboard_decisions_money_and_stats(seeded: Seeded) -> None:
+    store, ids = seeded
     board = dashboard(store, TODAY)
     assert [c.id for c in board.decisions] == [ids["phone"]]  # the gym's cancellation is confirmed
     phone = board.decisions[0]
@@ -97,7 +122,8 @@ def test_recent_letters_are_ordered_by_the_day_they_are_listed_under(store: Stor
     assert [d.id for d in board.recent_documents] == [undated, only_dated, arrived_later, dated_later]
 
 
-def test_dashboard_areas(store: Store, ids: dict[str, str]) -> None:
+def test_dashboard_areas(seeded: Seeded) -> None:
+    store = seeded[0]
     areas = {area.area: area for area in dashboard(store, TODAY).areas}
     assert list(areas) == [
         "residence",
@@ -304,7 +330,8 @@ def test_grounding_ratio_counts_user_confirmations(store: Store, ids: dict[str, 
 # --------------------------------------------------------------------------------------------------
 
 
-def test_timeline_merges_letters_items_contracts_and_sent_letters(store: Store, ids: dict[str, str]) -> None:
+def test_timeline_merges_letters_items_contracts_and_sent_letters(seeded: Seeded) -> None:
+    store, ids = seeded
     entries = timeline(store, date(2026, 9, 1), date(2026, 10, 31))
     by_id = {entry.id: entry for entry in entries}
     assert [e.date for e in entries] == sorted(e.date for e in entries)
@@ -358,7 +385,8 @@ def test_timeline_says_money_in_and_set_aside_payments_are_never_overdue(
     assert entries[ids["library_task"]].direction is None
 
 
-def test_timeline_past_flag_follows_today(store: Store, ids: dict[str, str]) -> None:
+def test_timeline_past_flag_follows_today(seeded: Seeded) -> None:
+    store, ids = seeded
     entries = timeline(store, date(2026, 12, 1), date(2026, 12, 31), today=date(2027, 1, 1))
     permit = next(e for e in entries if e.id == ids["permit_expiry"])
     assert permit.past and permit.type == "expiry"
@@ -369,14 +397,16 @@ def test_timeline_past_flag_follows_today(store: Store, ids: dict[str, str]) -> 
 # --------------------------------------------------------------------------------------------------
 
 
-def test_lanes_only_areas_with_data_in_fixed_order(store: Store, ids: dict[str, str]) -> None:
+def test_lanes_only_areas_with_data_in_fixed_order(seeded: Seeded) -> None:
+    store = seeded[0]
     result = lanes(store, date(2026, 9, 1), date(2027, 8, 31))
     lane_ids = [lane.id for lane in result]
     assert lane_ids == ["residence", "contracts", "tax", "study", "work", "money", "health", "mobility"]
     assert lane_ids == [lane for lane in LANE_ORDER if lane in lane_ids]
 
 
-def test_residence_lane_shows_validity_and_apply_before(store: Store, ids: dict[str, str]) -> None:
+def test_residence_lane_shows_validity_and_apply_before(seeded: Seeded) -> None:
+    store, ids = seeded
     residence = next(
         lane for lane in lanes(store, date(2026, 9, 1), date(2027, 8, 31)) if lane.id == "residence"
     )
@@ -394,7 +424,8 @@ def test_residence_lane_shows_validity_and_apply_before(store: Store, ids: dict[
     assert [m.label for m in residence.markers] == ["Appointment at the Ausländerbehörde"]
 
 
-def test_contracts_lane_has_notice_windows(store: Store, ids: dict[str, str]) -> None:
+def test_contracts_lane_has_notice_windows(seeded: Seeded) -> None:
+    store, ids = seeded
     contracts = next(
         lane for lane in lanes(store, date(2026, 9, 1), date(2027, 8, 31)) if lane.id == "contracts"
     )
@@ -417,20 +448,8 @@ def test_contracts_lane_has_notice_windows(store: Store, ids: dict[str, str]) ->
     assert bars[ids["power"]].end == "2027-08-31"  # any-time contract: runs to the end of the range
 
 
-def test_a_sent_cancellation_has_no_notice_window_left(store: Store, ids: dict[str, str]) -> None:
-    """The Timeline still drew the phone's "Send by" window after its cancellation was sent."""
-    store.add_draft(
-        kind="cancellation", contract_id=ids["phone"], status="sent", sent_at="2026-09-28T09:00:00Z"
-    )
-    contracts = next(
-        lane for lane in lanes(store, date(2026, 9, 1), date(2027, 8, 31)) if lane.id == "contracts"
-    )
-    bars = {bar.id: bar for bar in contracts.bars}
-    assert f"{ids['phone']}:notice" not in bars
-    assert (bars[ids["phone"]].end, bars[ids["phone"]].status) == ("2026-11-14", "ok")
-
-
-def test_tax_work_and_money_lanes(store: Store, ids: dict[str, str]) -> None:
+def test_tax_work_and_money_lanes(seeded: Seeded) -> None:
+    store = seeded[0]
     by_id = {lane.id: lane for lane in lanes(store, date(2026, 9, 1), date(2027, 8, 31))}
     objection = by_id["tax"].bars[0]
     assert (objection.start, objection.end, objection.kind) == ("2026-09-15", "2026-10-21", "period")
@@ -445,9 +464,10 @@ def test_tax_work_and_money_lanes(store: Store, ids: dict[str, str]) -> None:
     assert by_id["mobility"].label == "Getting around"
 
 
-def test_every_lane_mark_says_its_area_and_what_it_stands_for(store: Store, ids: dict[str, str]) -> None:
+def test_every_lane_mark_says_its_area_and_what_it_stands_for(seeded: Seeded) -> None:
     """The timeline filters the lanes by area and opens a mark's
     to-do or contract; a contract with no end date says so (its end is only where the lanes stop)."""
+    store, ids = seeded
     by_id = {lane.id: lane for lane in lanes(store, date(2026, 9, 1), date(2027, 8, 31))}
     for lane in by_id.values():
         for bar in lane.bars:
@@ -466,7 +486,8 @@ def test_every_lane_mark_says_its_area_and_what_it_stands_for(store: Store, ids:
     assert not by_id["work"].bars[0].open_end  # the fixed-term job ends on 31 Mar
 
 
-def test_lanes_clip_to_the_range(store: Store, ids: dict[str, str]) -> None:
+def test_lanes_clip_to_the_range(seeded: Seeded) -> None:
+    store = seeded[0]
     result = lanes(store, date(2027, 1, 1), date(2027, 1, 31))
     assert [lane.id for lane in result] == ["residence", "contracts", "work"]
     for lane in result:

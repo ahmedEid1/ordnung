@@ -16,6 +16,7 @@ from pathlib import Path
 
 import pytest
 
+from helpers_tables import check_rows
 from ordnung import doctor
 from ordnung.config import OCR_SWITCH, Paths
 from ordnung.db.store import Store
@@ -64,69 +65,86 @@ def test_text_in_pictures_names_the_version_and_languages() -> None:
     assert german.status == "ok" and german.detail.startswith("Tesseract 4.1.1 (German): photos and scans")
 
 
-@pytest.mark.parametrize("platform", SYSTEMS)
-def test_text_in_pictures_warns_without_german(platform: str) -> None:
+def test_text_in_pictures_warns_without_german() -> None:
     """English alone misreads ä, ö, ü and ß; neither language reads nothing. Both say how to add German."""
-    english = Tesseract("/usr/bin/tesseract", (5, 3, 4), ("eng",))
-    check = doctor.text_in_pictures_check(platform=platform, env=ON, find=_found(english))
-    assert (check.id, check.status) == ("ocr", "warn")
-    assert check.detail == (
-        "Tesseract 5.3.4 has no German language data: words with ä, ö, ü or ß are often misread"
-    )
-    assert check.fix == GERMAN[platform]
-    neither = Tesseract("/usr/bin/tesseract", (5, 3, 4), ())
-    check = doctor.text_in_pictures_check(platform=platform, env=ON, find=_found(neither))
-    assert check.status == "warn"
-    assert check.detail == (
-        "Tesseract 5.3.4 has neither German nor English language data, so Ordnung reads no pictures"
-    )
-    assert check.fix == GERMAN[platform]
+
+    def check(platform: str) -> None:
+        english = Tesseract("/usr/bin/tesseract", (5, 3, 4), ("eng",))
+        row = doctor.text_in_pictures_check(platform=platform, env=ON, find=_found(english))
+        assert (row.id, row.status) == ("ocr", "warn")
+        assert row.detail == (
+            "Tesseract 5.3.4 has no German language data: words with ä, ö, ü or ß are often misread"
+        )
+        assert row.fix == GERMAN[platform]
+        neither = Tesseract("/usr/bin/tesseract", (5, 3, 4), ())
+        row = doctor.text_in_pictures_check(platform=platform, env=ON, find=_found(neither))
+        assert row.status == "warn"
+        assert row.detail == (
+            "Tesseract 5.3.4 has neither German nor English language data, so Ordnung reads no pictures"
+        )
+        assert row.fix == GERMAN[platform]
+
+    check_rows(SYSTEMS, check)
 
 
-@pytest.mark.parametrize("platform", SYSTEMS)
-def test_text_in_pictures_warns_when_older_than_4_1(platform: str) -> None:
-    old = Tesseract("/usr/bin/tesseract", (4, 0, 0), ("deu", "eng"))
-    check = doctor.text_in_pictures_check(platform=platform, env=ON, find=_found(old))
-    assert check.status == "warn"
-    assert check.detail == "Tesseract 4.0.0 is too old: Ordnung needs 4.1 or newer, so it reads no pictures"
-    assert check.fix == f"Install a newer one: {INSTALL[platform]}"
+def test_text_in_pictures_warns_when_older_than_4_1() -> None:
+    def check(platform: str) -> None:
+        old = Tesseract("/usr/bin/tesseract", (4, 0, 0), ("deu", "eng"))
+        row = doctor.text_in_pictures_check(platform=platform, env=ON, find=_found(old))
+        assert row.status == "warn"
+        assert row.detail == "Tesseract 4.0.0 is too old: Ordnung needs 4.1 or newer, so it reads no pictures"
+        assert row.fix == f"Install a newer one: {INSTALL[platform]}"
+
+    check_rows(SYSTEMS, check)
 
 
-@pytest.mark.parametrize("platform", SYSTEMS)
-def test_text_in_pictures_warns_when_tesseract_doesnt_answer(platform: str) -> None:
+def test_text_in_pictures_warns_when_tesseract_doesnt_answer() -> None:
     """A broken install says why, and never claims "not installed"."""
-    silent = Tesseract(r"C:\Program Files\Tesseract-OCR\tesseract.exe", None, ())
-    check = doctor.text_in_pictures_check(platform=platform, env=ON, find=_found(silent))
-    assert check.status == "warn"
-    assert check.detail == (
-        r"Tesseract at C:\Program Files\Tesseract-OCR\tesseract.exe didn't answer, so Ordnung reads no pictures"
-    )
-    assert check.fix == f"Install it again: {INSTALL[platform]}"
+
+    def check(platform: str) -> None:
+        silent = Tesseract(r"C:\Program Files\Tesseract-OCR\tesseract.exe", None, ())
+        row = doctor.text_in_pictures_check(platform=platform, env=ON, find=_found(silent))
+        assert row.status == "warn"
+        assert row.detail == (
+            r"Tesseract at C:\Program Files\Tesseract-OCR\tesseract.exe didn't answer, so Ordnung reads no pictures"
+        )
+        assert row.fix == f"Install it again: {INSTALL[platform]}"
+
+    check_rows(SYSTEMS, check)
 
 
-@pytest.mark.parametrize("platform", SYSTEMS)
-def test_text_in_pictures_is_optional_when_not_installed(platform: str) -> None:
+def test_text_in_pictures_is_optional_when_not_installed() -> None:
     """Info, not a warning: Ordnung works the same without it. The fix says what it would add, and how."""
-    check = doctor.text_in_pictures_check(platform=platform, env=ON, find=_found(None))
-    assert (check.id, check.label, check.status) == ("ocr", "Text in pictures", "info")
-    assert check.detail == "Not installed (optional)"
-    assert check.fix == (
-        f"To find photos and scans Claude doesn't read by their words, install Tesseract: {INSTALL[platform]}"
-    )
-    assert doctor.tesseract_install(platform) == INSTALL[platform]
-    assert doctor.tesseract_german(platform) == GERMAN[platform]
+
+    def check(platform: str) -> None:
+        row = doctor.text_in_pictures_check(platform=platform, env=ON, find=_found(None))
+        assert (row.id, row.label, row.status) == ("ocr", "Text in pictures", "info")
+        assert row.detail == "Not installed (optional)"
+        assert row.fix == (
+            f"To find photos and scans Claude doesn't read by their words, install Tesseract: {INSTALL[platform]}"
+        )
+        assert doctor.tesseract_install(platform) == INSTALL[platform]
+        assert doctor.tesseract_german(platform) == GERMAN[platform]
+
+    check_rows(SYSTEMS, check)
 
 
-@pytest.mark.parametrize("value", ["off", "OFF", " 0 ", "false", "No"])
-def test_text_in_pictures_says_when_turned_off(value: str, monkeypatch: pytest.MonkeyPatch) -> None:
+OFF_SPELLINGS = ["off", "OFF", " 0 ", "false", "No"]
+
+
+def test_text_in_pictures_says_when_turned_off(monkeypatch: pytest.MonkeyPatch) -> None:
     """Turned off, nothing is looked for or run, and the row is info: the person chose it."""
     monkeypatch.setattr(ocr, "find", lambda **_: _never())
-    check = doctor.text_in_pictures_check(env={OCR_SWITCH: value}, find=_never)
-    assert (check.id, check.status, check.fix) == ("ocr", "info", None)
-    assert check.detail == "Turned off (ORDNUNG_OCR=off)"
-    # the process environment by default (the tests' own switch is off)
-    monkeypatch.setenv(OCR_SWITCH, value)
-    assert doctor.text_in_pictures_check().detail == "Turned off (ORDNUNG_OCR=off)"
+
+    def check(value: str) -> None:
+        row = doctor.text_in_pictures_check(env={OCR_SWITCH: value}, find=_never)
+        assert (row.id, row.status, row.fix) == ("ocr", "info", None)
+        assert row.detail == "Turned off (ORDNUNG_OCR=off)"
+        # the process environment by default (the tests' own switch is off)
+        monkeypatch.setenv(OCR_SWITCH, value)
+        assert doctor.text_in_pictures_check().detail == "Turned off (ORDNUNG_OCR=off)"
+
+    check_rows(OFF_SPELLINGS, check)
 
 
 def test_the_doctor_looks_for_tesseract_again_on_every_run(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -246,27 +264,28 @@ def test_the_cli_doctor_reads_the_setting_without_creating_the_folder(
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("read", "env", "engine", "state"),
-    [
-        (True, ON, FOUND, "reading"),
-        (False, ON, FOUND, "off"),
-        (True, {OCR_SWITCH: "off"}, FOUND, "off_by_variable"),
-        (False, {OCR_SWITCH: "off"}, FOUND, "off_by_variable"),
-        (True, ON, None, "not_installed"),
-        (True, ON, Tesseract("/usr/bin/tesseract", (4, 0, 0), ("deu", "eng")), "not_usable"),
-        (True, ON, Tesseract("/usr/bin/tesseract", (5, 3, 4), ("eng",)), "not_usable"),
-        (True, ON, Tesseract("/usr/bin/tesseract", None, ()), "not_usable"),
-    ],
-)
-def test_picture_text_status_is_the_doctor_s_row_as_a_state(
-    read: bool, env: dict[str, str], engine: Tesseract | None, state: PictureTextState
-) -> None:
+PICTURE_TEXT_STATES = [
+    (True, ON, FOUND, "reading"),
+    (False, ON, FOUND, "off"),
+    (True, {OCR_SWITCH: "off"}, FOUND, "off_by_variable"),
+    (False, {OCR_SWITCH: "off"}, FOUND, "off_by_variable"),
+    (True, ON, None, "not_installed"),
+    (True, ON, Tesseract("/usr/bin/tesseract", (4, 0, 0), ("deu", "eng")), "not_usable"),
+    (True, ON, Tesseract("/usr/bin/tesseract", (5, 3, 4), ("eng",)), "not_usable"),
+    (True, ON, Tesseract("/usr/bin/tesseract", None, ()), "not_usable"),
+]
+
+
+def test_picture_text_status_is_the_doctor_s_row_as_a_state() -> None:
     """Settings' card shows the doctor's own words: each state carries the row's detail and fix."""
-    find = _never if state in ("off", "off_by_variable") else _found(engine)
-    status = doctor.picture_text_status(read, platform="linux", env=env, find=find)
-    row = doctor.text_in_pictures_check(read_picture_text=read, platform="linux", env=env, find=find)
-    assert status == PictureTextStatus(state=state, detail=row.detail, fix=row.fix)
+
+    def check(read: bool, env: dict[str, str], engine: Tesseract | None, state: PictureTextState) -> None:
+        find = _never if state in ("off", "off_by_variable") else _found(engine)
+        status = doctor.picture_text_status(read, platform="linux", env=env, find=find)
+        row = doctor.text_in_pictures_check(read_picture_text=read, platform="linux", env=env, find=find)
+        assert status == PictureTextStatus(state=state, detail=row.detail, fix=row.fix)
+
+    check_rows(PICTURE_TEXT_STATES, check)
 
 
 def test_picture_text_status_uses_the_answer_already_found(monkeypatch: pytest.MonkeyPatch) -> None:
