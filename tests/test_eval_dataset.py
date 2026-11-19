@@ -44,9 +44,14 @@ MANIFEST = DATASET / "manifest.json"
 
 if str(EVALS) not in sys.path:
     sys.path.insert(0, str(EVALS))
+# the table helper, also where the file runs with only evals/ on the path
+if str(ROOT / "tests") not in sys.path:
+    sys.path.insert(0, str(ROOT / "tests"))
 
 from gen import law  # noqa: E402
 from gen.common import DOCUMENT_KINDS  # noqa: E402
+
+from helpers_tables import check_rows  # noqa: E402
 
 SPLITS = ("dev", "test", "holdout", "holdout2", "holdout3")
 #: The final splits, from the plug-in ``evals/gen/final.py``.
@@ -151,8 +156,6 @@ NEWKINDS_FAMILIES = (
 
 
 def test_final_split_composition(manifest: dict[str, Any]) -> None:
-    from helpers_tables import check_rows
-
     def check(name: str) -> None:
         entries = [e for e in _entries(manifest) if e["split"] == name]
         want = FINAL_COMPOSITION[name]
@@ -576,8 +579,6 @@ def test_land_vwvfg_labels_avoid_the_uncertain_start_windows() -> None:
     is not the Land's own day."""
     import verify_labels
 
-    from helpers_tables import check_rows
-
     def check(region: str | None, posted: str, scope: str, flagged: bool) -> None:
         item = {"expected_due": "2025-12-31", "spec": {"delivery_scope": scope, "posted_on": posted}}
         entry = {"id": "x", "photo": False, "authority_region": region,
@@ -593,8 +594,6 @@ SPLIT_PAIRS = [(a, b) for i, a in enumerate(SPLITS) for b in SPLITS[i + 1 :]]
 def test_the_wording_check_covers_every_pair_of_splits() -> None:
     """A deadline sentence shared by any two splits is reported (it used to compare dev with test only)."""
     import verify_labels
-
-    from helpers_tables import check_rows
 
     def check(a: str, b: str) -> None:
         pair = (a, b)
@@ -840,8 +839,6 @@ RESEARCH_EXAMPLES = [
 
 
 def test_law_reproduces_research_examples() -> None:
-    from helpers_tables import check_rows
-
     def check(posted: date, scope: str, region: str | None, notified: str, end: str) -> None:
         assert _remedy(posted, scope, region) == (notified, end)
 
@@ -856,8 +853,6 @@ TWO_WEEK_FINE_EXAMPLES = [
 
 
 def test_law_two_week_fine_examples() -> None:
-    from helpers_tables import check_rows
-
     def check(served: date, region: str, end: str) -> None:
         why = law.Derivation()
         assert (
