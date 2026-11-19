@@ -9,6 +9,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import shutil
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
@@ -591,13 +592,29 @@ def _fixed_repo(root: Path, message: str) -> tuple[Path, dict[str, Any], str]:
     return root, registered, freeze
 
 
+@pytest.fixture(scope="module")
+def fixed_template(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, dict[str, Any], str]:
+    """``fixed`` built once per module; never handed to a test, only copied (see ``_fixed_copy``)."""
+    message = f"Final run checkpoint: phase2 (0 calls, $0.00)\n\nPre-registration issue: {ISSUE}\n"
+    return _fixed_repo(tmp_path_factory.mktemp("fixed") / "checkout", message)
+
+
+def _fixed_copy(template: tuple[Path, dict[str, Any], str], root: Path) -> tuple[Path, dict[str, Any], str]:
+    """A copy of the template repository at ``root`` (its own history, which the test may change), with the code map
+    as registered and the freeze."""
+    origin, registered, freeze = template
+    shutil.copytree(origin, root, symlinks=True)
+    return root, copy.deepcopy(registered), freeze
+
+
 @pytest.fixture()
-def fixed(tmp_path: Path) -> tuple[Path, dict[str, Any], str]:
+def fixed(
+    fixed_template: tuple[Path, dict[str, Any], str], tmp_path: Path
+) -> tuple[Path, dict[str, Any], str]:
     """A repository whose code map was registered at the freeze; then the first checkpoint, which adds the phase-2
     record and names the issue in its message (B's registered.issue_binding); then a runner fix. The repository, the
     code map as registered, and the freeze."""
-    message = f"Final run checkpoint: phase2 (0 calls, $0.00)\n\nPre-registration issue: {ISSUE}\n"
-    return _fixed_repo(tmp_path / "checkout", message)
+    return _fixed_copy(fixed_template, tmp_path / "checkout")
 
 
 def _runner_fix(root: Path, *paths: str, **changes: Any) -> dict[str, Any]:
