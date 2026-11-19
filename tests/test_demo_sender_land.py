@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import shutil
 from collections.abc import Iterator
-from pathlib import Path
 
 import pytest
 
@@ -17,11 +16,12 @@ from ordnung.secretary.triggers import Ledger, run_triggers
 from ordnung.tick import local_today
 
 
-@pytest.fixture
-def demo(tmp_path: Path) -> Iterator[Store]:
+@pytest.fixture(scope="module")
+def demo(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Store]:
+    """One copy of the demo for the module: both tests only read it."""
     if not (DEFAULT_SNAPSHOT / "ordnung.db").is_file():
         pytest.skip("no demo snapshot in this checkout")
-    data = tmp_path / "demo"
+    data = tmp_path_factory.mktemp("demo") / "demo"
     shutil.copytree(DEFAULT_SNAPSHOT, data)
     store = Store.open(Paths(data))
     yield store
