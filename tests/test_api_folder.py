@@ -121,6 +121,8 @@ async def test_a_folder_chosen_again_counts_as_chosen_now(data_dir: Path, tmp_pa
 
 
 async def test_keep_private_and_ids_that_no_longer_wait(data_dir: Path) -> None:
+    """Keep private takes the waiting letters and skips ids that no longer wait; its Undo (POST /held/wait)
+    puts the letter back to wait, once."""
     async with api_for(data_dir) as api:
         doc_id = await waiting_letter(api, INVOICE_LETTER.pdf(), "rechnung.pdf")
         kept = await api.client.post(

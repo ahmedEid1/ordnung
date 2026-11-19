@@ -419,7 +419,8 @@ async def _tax_choice_everywhere(api: Api, doc_id: str) -> tuple[object, object,
 
 async def test_patch_tax_choice_marks_unmarks_and_clears(data_dir: Path) -> None:
     """true → false → null: each answers the letter (its own fields as they were, Claude's mark kept), and the
-    letter's page, its row and the records say the choice. The letter's row in the database isn't touched."""
+    letter's page, its row and the records say the choice. The letter's row in the database isn't touched.
+    A tax_choice that is not true, false or null is refused with 422 and stores nothing."""
     async with api_for(data_dir) as api:
         doc_id = await _read_letter(api, TAX_LETTER.pdf())
         before = api.ctx.store.get_document(doc_id)
@@ -594,6 +595,8 @@ async def test_a_reminders_pay_once_warning_follows_the_kind_it_is_filed_as(data
 
 
 async def test_confirmed_arrival_date_recomputes_the_to_dos(data_dir: Path) -> None:
+    """A confirmed arrival date recomputes the dates counted from it; a due date set by hand survives a later
+    change of the arrival date."""
     async with api_for(data_dir) as api:
         doc_id = await _read_letter(api, FINE_LETTER.pdf())
         (fine,) = (await api.client.get("/api/items", params={"doc_id": doc_id})).json()
