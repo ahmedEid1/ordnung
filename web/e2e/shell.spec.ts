@@ -8,7 +8,7 @@
  * read on a phone, and the opaque drop overlay.
  */
 import type { Page, Route } from "@playwright/test";
-import { apiGet, expect, letterId, open, settle, setTour, test } from "./helpers";
+import { apiGet, expect, letterId, open, openMail, settle, setTour, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -135,6 +135,8 @@ test.describe("tablet 768 px: the rail", () => {
   test.use({ viewport: { width: 768, height: 1024 } });
 
   test("names every section under its icon, uncut, and shows the number to check", async ({ page }) => {
+    // a letter to check: the scam letter from New mail is one once opened (a fresh demo has none)
+    await openMail(page, "Rundfunk-Beitragsservice");
     await open(page, "/inbox", "Inbox");
     const nav = page.getByRole("navigation", { name: "Primary" });
     for (const label of ["Today", "Inbox", "Timeline", "Contracts", "Letters", "Ask"]) {
@@ -144,7 +146,8 @@ test.describe("tablet 768 px: the rail", () => {
     }
     const toCheck = await apiGet<unknown[]>(page, "/api/documents?status=needs_review");
     // named by its label, then the bubble's number and what it counts (WCAG 2.5.3): "Inbox 1 — 1 letter to check"
-    if (toCheck.length) await expect(nav.getByRole("link", { name: /^Inbox \d+ — / })).toContainText(String(toCheck.length));
+    expect(toCheck.length).toBeGreaterThan(0);
+    await expect(nav.getByRole("link", { name: /^Inbox \d+ — / })).toContainText(String(toCheck.length));
   });
 });
 
