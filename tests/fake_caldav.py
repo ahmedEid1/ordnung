@@ -270,7 +270,8 @@ def _handler(fake: FakeCalDav) -> type[BaseHTTPRequestHandler]:
 def serve_on_loopback(fake: FakeCalDav) -> Iterator[str]:
     """Serve ``fake`` on ``http://127.0.0.1:<free port>``; yields the calendar's address."""
     server = ThreadingHTTPServer(("127.0.0.1", 0), _handler(fake))
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    # a short poll: shutdown() waits for the serving loop to notice it (0.5 s by default)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     try:
         yield f"http://127.0.0.1:{server.server_address[1]}{fake.path}"
