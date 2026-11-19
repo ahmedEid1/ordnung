@@ -68,27 +68,18 @@ def test_serve_says_when_the_web_app_is_missing(
     data_dir: Path, no_web_app: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Without a web build `ordnung demo`/`ordnung serve` used to look healthy (only the link panel)
-    and the link led to a 503 page; now the terminal says so."""
-    import uvicorn
-
-    monkeypatch.setattr(cli, "_create_app", lambda context, token, demo: object())
-    monkeypatch.setattr(uvicorn.Server, "run", lambda self: None)
-    port = free_port()
-    result = runner.invoke(app, ["serve", "--no-browser", "--port", str(port), "--data-dir", str(data_dir)])
-    assert result.exit_code == 0, result.output
-    assert "web app" in result.output.lower(), result.output
-
-
-def test_serve_opens_no_browser_on_the_missing_web_app(
-    data_dir: Path, no_web_app: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """The browser could only show the "web app is missing" page; the terminal already says it."""
+    and the link led to a 503 page; now the terminal says so. Nor does it open a browser: the browser could
+    only show the "web app is missing" page; the terminal already says it."""
     import uvicorn
 
     opened: list[object] = []
     monkeypatch.setattr(cli, "_create_app", lambda context, token, demo: object())
     monkeypatch.setattr(cli, "_open_browser_when_ready", lambda info: opened.append(info))
     monkeypatch.setattr(uvicorn.Server, "run", lambda self: None)
+    port = free_port()
+    result = runner.invoke(app, ["serve", "--no-browser", "--port", str(port), "--data-dir", str(data_dir)])
+    assert result.exit_code == 0, result.output
+    assert "web app" in result.output.lower(), result.output
     port = free_port()
     result = runner.invoke(app, ["serve", "--port", str(port), "--data-dir", str(data_dir)])
     assert result.exit_code == 0, result.output
@@ -154,28 +145,20 @@ def test_dependency_floors_install_a_working_app() -> None:
     )
     for name, needed in {"typer": "0.19", "fpdf2": "2.8.5", "icalendar": "6.1", "holidays": "0.66"}.items():
         assert Version(floors[name]) >= Version(needed), name
-
-
-def test_the_server_floors_are_ones_the_lowest_job_can_install() -> None:
-    """The pyproject said uvicorn>=0.30 and sse-starlette>=2.1, but mcp needs uvicorn
-    0.31.1 and sse-starlette 3.0, so CI's lowest-direct job installed those and the phone listener's test
-    that claimed to run on uvicorn 0.30 never did. The floors are at least what mcp requires, and the
-    test names the floor it runs on."""
-    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
-    floors = dict(
-        re.findall(r"^([\w.-]+)(?:\[[\w,]+\])?>=([\d.]+)", "\n".join(project["dependencies"]), re.M)
-    )
-    needed: dict[str, Version] = {}
+    # The pyproject said uvicorn>=0.30 and sse-starlette>=2.1, but mcp needs uvicorn 0.31.1 and sse-starlette
+    # 3.0, so CI's lowest-direct job installed those and the phone listener's test that claimed to run on uvicorn
+    # 0.30 never did. The floors are at least what mcp requires, and the test names the floor it runs on.
+    mcp_needs: dict[str, Version] = {}
     for line in importlib.metadata.requires("mcp") or []:
         requirement = Requirement(line)
         if requirement.name in ("uvicorn", "sse-starlette") and (
             requirement.marker is None or requirement.marker.evaluate()
         ):
-            needed[requirement.name] = max(
+            mcp_needs[requirement.name] = max(
                 Version(spec.version) for spec in requirement.specifier if spec.operator == ">="
             )
-    assert set(needed) == {"uvicorn", "sse-starlette"}
-    for name, version in needed.items():
+    assert set(mcp_needs) == {"uvicorn", "sse-starlette"}
+    for name, version in mcp_needs.items():
         assert Version(floors[name]) >= version, (name, floors[name], version)
     listener = (ROOT / "tests" / "test_phone_listener.py").read_text(encoding="utf-8")
     assert f"uvicorn's floor ({floors['uvicorn']}," in listener
