@@ -558,8 +558,11 @@ def _ways_in() -> dict[str, tuple[list[int], list[int]]]:
         (REPO_DIR / "scripts", REPO_DIR),
     ):
         for path in sorted(root.rglob("*.py")):
+            text = path.read_text(encoding="utf-8")
+            if not any(call in text for call in INTAKE_CALLS):
+                continue  # a call by name spells the name: this file hands intake nothing
             visitor = _Calls()
-            visitor.visit(ast.parse(path.read_text(encoding="utf-8")))
+            visitor.visit(ast.parse(text))
             openers = {"as_email"} | {
                 name for name, calls in visitor.calls.items() if any(call == "as_email" for call, _ in calls)
             }
