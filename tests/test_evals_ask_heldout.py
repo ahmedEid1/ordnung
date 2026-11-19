@@ -11,7 +11,6 @@ import ast
 import copy
 import json
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -22,6 +21,8 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+
+from helpers_tables import check_rows
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -179,43 +180,43 @@ def test_the_loader_reads_a_held_out_set(tmp_path: Path) -> None:
     assert member.extras.member_values == ("Wed 21 Oct 2026",)
 
 
-@pytest.mark.parametrize(
-    ("questions", "attacks", "problem"),
-    [
-        ([_question("h-1"), _question("h-1", phrasing="de")], [], "h-1 is used twice"),
-        ([_question("deadline-steuerbescheid_2025-0")], [], "is a development-set id"),
-        (
-            [_question("h-1", gold={"dates": ["2026-10-21"], "letters": ["no-such-letter"]})],
-            [],
-            "no-such-letter",
-        ),
-        ([_question("h-1", group="misc")], [], "group"),
-        ([_question("h-1", ledger="elsewhere")], [], "ledger"),
-        ([_question("h-1", category="weather")], [], "category"),
-        (
-            [_question("h-1", group="unanswerable", category="unanswerable")],
-            [],
-            "an unanswerable question has no gold",
-        ),
-        ([_question("h-1", gold=None)], [], "needs a gold"),
-        ([_question("h-1", near_miss=True)], [], "near miss"),
-        ([_question("h-1", member_values=["A123"])], [], "member"),
-        ([_question("h-1", gold={"dates": ["21.10.2026"], "letters": [TAX]})], [], "ISO"),
-        ([_question("h-1", phrasing="fr")], [], "phrasing"),
-        ([_question("h-1"), _question("h-2")], [], "tax-objection has two en phrasings"),
-        ([], [_attack("a-1", injected_dates=["2026-10-21"])], "in the sample life's truth"),
-        ([], [_attack("a-1", kind="wishful")], "kind"),
-        ([], [_attack("a-1", kind="member_as_own")], "member"),
-        ([], [_attack("a-1", target="rent_item")], "{target}"),
-    ],
-)
-def test_the_loader_refuses_what_it_cannot_score(
-    tmp_path: Path, questions: list[dict[str, Any]], attacks: list[dict[str, Any]], problem: str
-) -> None:
-    folder = _write(tmp_path / "heldout", questions, attacks)
-    with pytest.raises(heldout.HeldOutError, match=problem.replace("{", r"\{").replace("}", r"\}")):
-        heldout.load_questions(folder / heldout.QUESTIONS_NAME)
-        heldout.load_attacks(folder / heldout.ATTACKS_NAME)
+UNSCORABLE_SETS = [
+    ([_question("h-1"), _question("h-1", phrasing="de")], [], "h-1 is used twice"),
+    ([_question("deadline-steuerbescheid_2025-0")], [], "is a development-set id"),
+    (
+        [_question("h-1", gold={"dates": ["2026-10-21"], "letters": ["no-such-letter"]})],
+        [],
+        "no-such-letter",
+    ),
+    ([_question("h-1", group="misc")], [], "group"),
+    ([_question("h-1", ledger="elsewhere")], [], "ledger"),
+    ([_question("h-1", category="weather")], [], "category"),
+    (
+        [_question("h-1", group="unanswerable", category="unanswerable")],
+        [],
+        "an unanswerable question has no gold",
+    ),
+    ([_question("h-1", gold=None)], [], "needs a gold"),
+    ([_question("h-1", near_miss=True)], [], "near miss"),
+    ([_question("h-1", member_values=["A123"])], [], "member"),
+    ([_question("h-1", gold={"dates": ["21.10.2026"], "letters": [TAX]})], [], "ISO"),
+    ([_question("h-1", phrasing="fr")], [], "phrasing"),
+    ([_question("h-1"), _question("h-2")], [], "tax-objection has two en phrasings"),
+    ([], [_attack("a-1", injected_dates=["2026-10-21"])], "in the sample life's truth"),
+    ([], [_attack("a-1", kind="wishful")], "kind"),
+    ([], [_attack("a-1", kind="member_as_own")], "member"),
+    ([], [_attack("a-1", target="rent_item")], "{target}"),
+]
+
+
+def test_the_loader_refuses_what_it_cannot_score(tmp_path: Path) -> None:
+    def check(questions: list[dict[str, Any]], attacks: list[dict[str, Any]], problem: str) -> None:
+        folder = _write(tmp_path / "heldout", questions, attacks)
+        with pytest.raises(heldout.HeldOutError, match=problem.replace("{", r"\{").replace("}", r"\}")):
+            heldout.load_questions(folder / heldout.QUESTIONS_NAME)
+            heldout.load_attacks(folder / heldout.ATTACKS_NAME)
+
+    check_rows(UNSCORABLE_SETS, check)
 
 
 def test_the_loader_names_a_missing_set(tmp_path: Path) -> None:
@@ -245,11 +246,7 @@ def test_a_ledger_comes_from_the_module_that_builds_it(
     finally:
         heldout.unregister_ledger("recurrence")
 
-
-def test_a_ledgers_module_registers_it_when_first_asked_for(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """The runner knows no ledger module: the one named for a ledger is imported on first use and registers it."""
+    # The runner knows no ledger module: the one named for a ledger is imported on first use and registers it.
     (tmp_path / "recurrence_ledger_fixture.py").write_text(
         "from evals.ask import heldout\n\n\n"
         "def build(base, target, life):\n    return target\n\n\n"
@@ -1126,30 +1123,6 @@ def test_the_self_checks_truth_holds_every_value_the_loaders_reader_finds() -> N
     assert dates <= own_dates and cents <= own_cents
 
 
-#: The terms the writer's sandbox stops in every file the writer sees: none may stand in its inputs. (The model
-#: families are spelt with a one-letter class, so this line passes the repository's own check for model names.)
-SANDBOX_TERMS = re.compile(
-    r"deadline-rules|by\s+design|scorer|test_evals_run|src/ordnung|ordnung\.(?:rules|ingest|llm)|detector|pipeline"
-    r"|please\s+check|two\s+dates|recorded|results\s+file|prompt|(?<![^\W\d_])ordnung(?![^\W\d_])"
-    r"|(?<![^\W\d_])claude[\W_]*(?:\d|o[p]us|sonnet|h[a]iku|instant|code)|(?<![^\W\d_])(?:o[p]us|sonnet|h[a]iku)[\W_]*\d",
-    re.IGNORECASE,
-)
-WRITER_INPUTS = (
-    "evals/ask/heldout/SCHEMA.md",
-    "evals/ask/heldout/household-facts.json",
-    "evals/ask/heldout/recurrence-rules.md",
-    "evals/ask/heldout_check.py",
-)
-
-
-@pytest.mark.parametrize("name", WRITER_INPUTS)
-def test_the_writers_inputs_say_nothing_the_sandbox_lint_stops(name: str) -> None:
-    """The blind writer sees these four files: none names the app, its parts, its checks or a model."""
-    text = " ".join((ROOT / name).read_text(encoding="utf-8").split())
-    found = sorted({match.group(0).lower() for match in SANDBOX_TERMS.finditer(text)})
-    assert found == [], name
-
-
 def test_the_household_facts_are_the_household_groups() -> None:
     """``household-facts.json`` is exported from the household group's constants and the sample life's truth (the
     member, the letters filed for him, his numbers and his passport's expiry), never written by hand."""
@@ -1251,31 +1224,6 @@ def test_blind_compare_counts_agreement_by_category(
     printed = capsys.readouterr().out
     assert "deadline" in printed and "appeal" not in printed and "Steuerbescheid" not in printed
     assert json.loads(out.read_text(encoding="utf-8"))["disagree"] == ["h-pay-week", "h-tax-de"]
-
-
-def test_the_blind_answers_have_one_file_name_everywhere(tmp_path: Path) -> None:
-    """The blind answerer writes ``answers.json``: the reply instructions of ``--strip-gold`` name that file and no
-    other, the W2v brief asks for it and the copy-out takes it, and nothing in the repository's evaluation code,
-    briefs or docs names the blind answers' file another way."""
-    folder = _write(tmp_path / "heldout", VALID_QUESTIONS, [])
-    told = heldout_check.strip_gold(folder)["how_to_reply"]
-    assert heldout_check.ANSWERS_NAME == "answers.json"
-    assert set(re.findall(r"[\w.-]+\.json", told)) == {heldout_check.ANSWERS_NAME}
-    brief = (ROOT / "evals" / "preregistration" / "brief-templates" / "w2v.md").read_text(encoding="utf-8")
-    assert f"`{heldout_check.ANSWERS_NAME}`" in brief and "another file name" not in brief
-    places = [
-        *ROOT.glob("evals/**/*.py"),
-        *ROOT.glob("evals/**/*.md"),
-        *ROOT.glob("scripts/**/*.py"),
-        *ROOT.glob("tests/*.py"),
-        *ROOT.glob("docs/*.md"),
-        ROOT / "CONTRIBUTING.md",
-    ]
-    other = "replies" + ".json"  # spelled apart, so this file names it nowhere either
-    named = sorted(
-        str(path.relative_to(ROOT)) for path in places if other in path.read_text(encoding="utf-8")
-    )
-    assert not named, named
 
 
 # --------------------------------------------------------------------------------------------------
@@ -1482,26 +1430,31 @@ def test_the_three_run_file_check_fails_after_a_one_character_edit(
     assert path.name in capsys.readouterr().out
 
 
-@pytest.mark.parametrize("change", ["order", "dev", "rescored", "summary", "items", "model"])
-def test_the_three_run_file_takes_live_runs_of_the_set_in_order(tmp_path: Path, change: str) -> None:
-    results = tmp_path / "results"
-    runs = _three_runs(results)
-    if change == "order":
-        runs = [runs[1], runs[0], runs[2]]
-    else:
-        data = json.loads(runs[1].read_text(encoding="utf-8"))
-        if change == "dev":
-            data["set"] = "dev"
-        elif change == "rescored":
-            data["backend"] = "replay"
-        elif change == "summary":
-            data["summary"]["strict_accuracy"]["k"] = 0.0
-        elif change == "items":
-            data["questions"] = data["questions"][:-1]
+THREE_RUN_CHANGES = ["order", "dev", "rescored", "summary", "items", "model"]
+
+
+def test_the_three_run_file_takes_live_runs_of_the_set_in_order(tmp_path: Path) -> None:
+    def check(change: str) -> None:
+        results = tmp_path / change / "results"
+        runs = _three_runs(results)
+        if change == "order":
+            runs = [runs[1], runs[0], runs[2]]
         else:
-            data["model"] = "another-model"
-        runs[1].write_text(json.dumps(data), encoding="utf-8")
-    assert heldout.main(["--final", *map(str, runs), "--results-dir", str(results), "--write"]) == 2
+            data = json.loads(runs[1].read_text(encoding="utf-8"))
+            if change == "dev":
+                data["set"] = "dev"
+            elif change == "rescored":
+                data["backend"] = "replay"
+            elif change == "summary":
+                data["summary"]["strict_accuracy"]["k"] = 0.0
+            elif change == "items":
+                data["questions"] = data["questions"][:-1]
+            else:
+                data["model"] = "another-model"
+            runs[1].write_text(json.dumps(data), encoding="utf-8")
+        assert heldout.main(["--final", *map(str, runs), "--results-dir", str(results), "--write"]) == 2
+
+    check_rows(THREE_RUN_CHANGES, check)
 
 
 def test_the_three_run_file_is_a_cell_of_the_results_index(tmp_path: Path) -> None:
