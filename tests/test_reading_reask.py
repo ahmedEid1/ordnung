@@ -75,6 +75,13 @@ EMPTY_READING = "holdout2-adversarial-injection_visible-1"
 DAY = date.fromisoformat(TODAY)
 
 
+@pytest.fixture(scope="module")
+def empty_reading(tmp_path_factory: pytest.TempPathFactory) -> tuple[Any, Any]:
+    """The benchmark's empty reading (its entry and its prepared pages), made once: the tests only read it."""
+    entry = {e.id: e for e in load_manifest(MANIFEST)}[EMPTY_READING]
+    return entry, prepare_document(entry, MANIFEST.parent, tmp_path_factory.mktemp("empty_reading"))
+
+
 @pytest.fixture(autouse=True)
 def pinned_today() -> Iterator[None]:
     clock.set_today(TODAY)
@@ -352,11 +359,10 @@ def test_the_key_marker_is_added_only_when_set() -> None:
     assert marked == {**json.loads(plain), "complete": ["empty", "remedy_left_out"]}
 
 
-async def test_a_recorded_reading_keeps_its_key_and_its_re_ask_gets_a_new_one(tmp_path: Path) -> None:
+async def test_a_recorded_reading_keeps_its_key_and_its_re_ask_gets_a_new_one(empty_reading: Any) -> None:
     """The recorded reading of the benchmark's empty letter is still found under the extraction's key (so every
     existing recording replays); its re-ask is keyed apart, under the file its one live recording will write."""
-    entry = {e.id: e for e in load_manifest(MANIFEST)}[EMPTY_READING]
-    document = prepare_document(entry, MANIFEST.parent, tmp_path)
+    entry, document = empty_reading
     data = ExtractionInput(
         doc_id=entry.id,
         sha256=entry.sha256,
@@ -729,11 +735,10 @@ def test_no_letter_may_miss_its_re_ask_any_more() -> None:
     assert (RECORDED / "extract" / "8d1dde25a0c13b0277de4c04.json").is_file()
 
 
-async def test_the_replay_takes_the_empty_reading_s_recorded_re_ask(tmp_path: Path) -> None:
+async def test_the_replay_takes_the_empty_reading_s_recorded_re_ask(empty_reading: Any) -> None:
     """The recordings as they are: the empty reading's re-ask (recorded live on 2026-10-03) is replayed and
     accepted — two calls, and the model's own objection deadline, Thu 10 Dec 2026 — so the check files nothing."""
-    entry = {e.id: e for e in load_manifest(MANIFEST)}[EMPTY_READING]
-    document = prepare_document(entry, MANIFEST.parent, tmp_path)
+    entry, document = empty_reading
     log = CallLog()
     backend = RecordedFailures(ReplayBackend(RECORDED), RECORDED, record=False)
     prediction = await run_ordnung(
@@ -752,14 +757,13 @@ async def test_the_replay_takes_the_empty_reading_s_recorded_re_ask(tmp_path: Pa
 
 
 async def test_a_replay_without_the_re_ask_s_recording_keeps_the_recorded_run(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    empty_reading: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The recorded empty reading, as first recorded: the re-ask has no recording, so the first reading is kept
     and the check runs as before — the same to-do, and the same single call accounted (a replay miss is no
     call). With nothing allowed, as now, the same replay fails on that letter instead of scoring its first
     reading silently."""
-    entry = {e.id: e for e in load_manifest(MANIFEST)}[EMPTY_READING]
-    document = prepare_document(entry, MANIFEST.parent, tmp_path)
+    entry, document = empty_reading
     backend = WithoutReask(RecordedFailures(ReplayBackend(RECORDED), RECORDED, record=False))
     llm = LLMService(MeteredBackend(backend, CallLog(), timeout_s=60))
     with pytest.raises(ReplayMiss):
