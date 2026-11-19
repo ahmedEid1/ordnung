@@ -50,6 +50,10 @@ from ordnung.days import SIMULATED_TODAY_KEY, local_today
 from ordnung.db.migrate import latest_version
 from ordnung.db.store import Store
 from ordnung.demo import MANIFEST_NAME, DemoError, Manifest, SampleDocument, load_manifest, samples_root
+from ordnung.demo.marker import MARKER_NAME as MARKER_NAME
+from ordnung.demo.marker import _write_marker
+from ordnung.demo.marker import is_demo_dir as is_demo_dir
+from ordnung.demo.marker import read_demo_version as read_demo_version
 from ordnung.demo.tour import (
     ASKS_FILE,
     REPLAY_MISS_PREFIX,
@@ -81,7 +85,6 @@ log = logging.getLogger(__name__)
 
 BackendKind = Literal["replay", "record"]
 
-MARKER_NAME = ".ordnung-demo"
 VERSION_NAME = "VERSION"
 DB_NAME = "ordnung.db"
 COPIED_DIRS = ("files", "derived")
@@ -207,25 +210,6 @@ def demo_version(*, samples: str | Path | None = None, fixtures: str | Path | No
         digest.update(path.relative_to(root).as_posix().encode() + b"\0")
         digest.update(path.read_bytes())
     return digest.hexdigest()[:32]
-
-
-def read_demo_version(data_dir: Path) -> str | None:
-    """The version recorded in a demo folder's marker (``None``: not a demo folder)."""
-    try:
-        marker = json.loads((data_dir / MARKER_NAME).read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return None
-    return str(marker.get("version") or "") if isinstance(marker, dict) else None
-
-
-def is_demo_dir(data_dir: Path) -> bool:
-    """Whether ``data_dir`` is a demo folder (made by :func:`build_demo` or :func:`prepare_demo`)."""
-    return read_demo_version(data_dir) is not None
-
-
-def _write_marker(data_dir: Path, version: str) -> None:
-    payload = {"kind": "ordnung-demo", "version": version}
-    (data_dir / MARKER_NAME).write_text(json.dumps(payload) + "\n", encoding="utf-8")
 
 
 def snapshot_version(snapshot: Path) -> str | None:
