@@ -156,6 +156,23 @@ def record_two_days(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, manifest: P
     return tmp_path / "results" / f"{D1.isoformat()}-{MODEL}-{SPLIT}.json"
 
 
+@pytest.fixture(scope="module")
+def _two_days_once(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """The synthetic final split recorded on two days (``record_two_days``), made once: a folder to copy."""
+    folder = tmp_path_factory.mktemp("two-days")
+    with pytest.MonkeyPatch.context() as patch:
+        record_two_days(folder, patch, final_split(folder))
+    return folder
+
+
+@pytest.fixture
+def two_days(_two_days_once: Path, tmp_path: Path) -> Path:
+    """A copy of the two-day recording in this test's folder (its dataset, recordings and results); the
+    manifest's path. The test sets the clock and the live ``claude`` itself where it needs them."""
+    shutil.copytree(_two_days_once, tmp_path, dirs_exist_ok=True)
+    return tmp_path / "dataset" / "manifest.json"
+
+
 def predictions(results: dict[str, Any]) -> dict[str, Any]:
     """Every prediction of a results file, without what a replay measures itself (wall time, the backend's name)."""
     out: dict[str, Any] = {}
@@ -343,12 +360,11 @@ def test_an_incomplete_unit_of_another_day_is_refused_until_it_is_retaken(
 
 
 def test_a_complete_unit_never_reaches_the_model_again(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, two_days: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """A complete unit replays from its recordings; were one of them gone, its call would record a valid answer
     again (on another day): it is refused, and the run fails instead."""
-    manifest = final_split(tmp_path)
-    record_two_days(tmp_path, monkeypatch, manifest)
+    manifest = two_days
     first = letters(manifest)[0]
     lock = json.loads((root(tmp_path) / harness.LOCK_FILE).read_text(encoding="utf-8"))
     key = next(key for key, entry in lock.items() if entry["docs"] == [first])
@@ -379,13 +395,12 @@ async def test_the_live_calls_refuse_a_closed_unit_s_letter() -> None:
 
 
 def test_retake_refuses_a_complete_unit_an_unknown_one_and_a_whole_run_of_the_benchmark(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, two_days: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Retake moves nothing aside for a complete unit, a letter without cassettes or a call without the
     recordings' folder. ``--whole-run`` is an Ask run's or a stress invocation's: it names its folder, never with
     --split, and never the benchmark's recordings (where the final splits' day index lives)."""
-    manifest = final_split(tmp_path)
-    record_two_days(tmp_path, monkeypatch, manifest)
+    manifest = two_days
     first = letters(manifest)[0]
     before = cassettes(root(tmp_path))
     common = ["--split", SPLIT, "--repeat", "1", "--to", str(tmp_path / "aside")]
@@ -639,10 +654,10 @@ class _NoModel:
 
 
 def test_a_replay_gives_each_letter_its_unit_s_day_from_the_day_index(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, two_days: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    manifest = final_split(tmp_path)
-    live = record_two_days(tmp_path, monkeypatch, manifest)
+    manifest = two_days
+    live = tmp_path / "results" / f"{D1.isoformat()}-{MODEL}-{SPLIT}.json"
     monkeypatch.setattr(eval_run, "ClaudeCLIBackend", _NoModel)
     _at(monkeypatch, D2 + timedelta(days=30))  # any later day
     replayed = tmp_path / "replayed"
