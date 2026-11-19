@@ -2,7 +2,8 @@
  * Your household on the demo, where jsdom can't look (ADR 0023): the Settings card (empty, with people, an edit with
  * its refusal, the question before removing someone with letters), a letter's question *Is this letter for …?*, its
  * *Who is this letter for?* choices (a sheet on phones) and *Add … to your household* with its visible *Also file*
- * box — at 320, 375 and 1280 px, light and dark, with axe and the layout sweep's probes.
+ * box — at 320 and 1280 px (no breakpoint of these views between 320 and 640 px), light and dark, with axe and the
+ * layout sweep's probes.
  *
  * Every demo letter is addressed to the demo persona, Sam Rivera. Renamed Alex Rivera for this spec (`PUT
  * /api/profile`), the person is no longer the addressee, so Sam Rivera can be someone of the household. Everything
@@ -18,7 +19,7 @@ const FILE = "19_bank_preisaenderung.pdf";
 const RENAMED = "Alex Rivera";
 const ADDRESSEE = "Sam Rivera";
 const CHILD = "Mia Rivera";
-const WIDTHS = [320, 375, 1280] as const;
+const WIDTHS = [320, 1280] as const;
 const THEMES = ["light", "dark"] as const;
 const OWN_NAME = "That's your own name. Your household is the other people your letters come for.";
 

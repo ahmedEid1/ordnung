@@ -1,7 +1,8 @@
 /**
  * My numbers per person, where jsdom can't look (ADR 0023): the *People* tab, an *About …* group of someone the person
  * filed letters for, the line that says a number is on another person's letters too, and the *For …* tags on a call
- * sheet's number and an open case — at 320, 375 and 1280 px, light and dark, with axe and the layout sweep's probes.
+ * sheet's number and an open case — at 320 and 1280 px (My numbers has no breakpoint between 320 and 640 px), light
+ * and dark, with axe and the layout sweep's probes.
  *
  * The demo has no household. This spec answers `GET /api/numbers` itself from the demo's own page: its health
  * insurance number and its passport moved to someone with a long name (so a tag is cut with the whole name at hand),
@@ -15,7 +16,7 @@ import { expect, expectAccessible, open, settle, setTour, test } from "./helpers
 
 /** Someone of the household with a long name. */
 const LONG = { id: "hhm_e2elong00001", name: "Alexandra Maria Rivera-Hernández von Musterstadt" };
-const WIDTHS = [320, 375, 1280] as const;
+const WIDTHS = [320, 1280] as const;
 const THEMES = ["light", "dark"] as const;
 
 test.describe.configure({ mode: "serial" });

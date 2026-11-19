@@ -1,15 +1,16 @@
 /**
- * Settings → Data → *Text in pictures* (ADR 0024) on the real demo, at 320, 375 and 1280 px in light and dark: the
+ * Settings → Data → *Text in pictures* (ADR 0024) on the real demo, at 320 and 1280 px in light and dark: the
  * card fits without sideways scroll and nothing sticks out of it — the doctor's install lines are long, with code in
  * them — and axe finds nothing serious, in each state its line shows. The demo runs with `ORDNUNG_OCR=off`, so its
  * own state is "turned off by the variable" (the callout above the switch); the other states are this computer's
- * health as the test answers it. Saving the switch off and on shows each toast; the demo's switch is left on.
+ * health as the test answers it (375 px is in 320 px's class for every breakpoint of the card). Saving the switch off
+ * and on shows each toast, at 375 px; the demo's switch is left on.
  */
 import type { Page, Route } from "@playwright/test";
 import type { Health, PictureTextStatus } from "@/api/types";
 import { apiGet, apiSend, expect, expectAccessible, open, setTour, settle, test } from "./helpers";
 
-const WIDTHS = [320, 375, 1280] as const;
+const WIDTHS = [320, 1280] as const;
 const THEMES = ["light", "dark"] as const;
 const TITLE = "Text in pictures";
 const SWITCH = /^Read the words in photos and scans Claude isn't reading/;
