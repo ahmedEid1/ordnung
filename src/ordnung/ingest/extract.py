@@ -61,6 +61,7 @@ from ordnung.models import DateSpec, DocumentExtraction, ExtractedItem, Page, Pa
 from ordnung.recurrence import rule_day_of_month, rule_working_day
 from ordnung.rules import RuleContext, compute_due, is_private_sender, scope_for_party_kind
 from ordnung.rules.calendar_de import REGION_NAMES
+from ordnung.rules.deadlines import parse_date as _iso_day
 from ordnung.rules.routing import classify_letter, is_court, letter_kind
 from ordnung.trace import facts
 from ordnung.trace.spans import NO_SPAN, Span
@@ -508,13 +509,6 @@ def located(verification: Verification) -> Fraction:
     if not evidence:
         return Fraction(1)
     return Fraction(sum(e.grounding != "unverified" for e in evidence), len(evidence))
-
-
-def _iso_day(value: str | None) -> date | None:
-    try:
-        return date.fromisoformat(value.strip()[:10]) if value else None
-    except ValueError:
-        return None
 
 
 def _words(text: str) -> str:
