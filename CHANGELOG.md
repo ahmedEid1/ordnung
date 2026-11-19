@@ -35,7 +35,7 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - The web app's unit tests are about a tenth faster: the 47 files that touch no DOM run in node instead of jsdom,
   two tests move the clock instead of waiting seconds, and nine tests that repeated another are gone or merged
   into it, each with a planted bug to show the remaining test still fails for it. One test is new: moving to
-  another Settings section while the settings still load. Vitest runs 2,861 tests where it ran 2,853, with the
+  another Settings section while the settings still load. Vitest runs 2,862 tests where it ran 2,853, with the
   new tests of the fixes below.
 - The code's layers are tighter, with nothing a person, an API client or a file on disk can observe changing. In the
   backend, the helpers for the person's day live in a module of their own (`ordnung/days.py`), the replay key beside
@@ -77,11 +77,13 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   you had gone straight on to the name, the rest of what you typed landed in the passphrase field, and with the
   name left empty *Bring it here* only showed the name's error. A slow folder (a NAS, a network drive) made it
   likelier. The form now moves on only if you are still where you pressed Next.
-- **Search: Enter right after typing opens a match of what you typed.** The list under the search field still
-  showed the matches of what you had typed a moment before while the new search was on its way, and Enter opened
-  the first of those: typing *Stadtwerke* quickly after a search for *Stadt* could open the wrong letter. Enter
-  now waits for the answer and opens its highlighted match; pressing Escape, leaving the field or choosing again
-  with the arrow keys before it comes opens nothing.
+- **Search: Enter right after typing opens a match of what you typed.** The list under the search field still showed
+  the matches of what you had typed a moment before while the new search was on its way, and Enter opened the first
+  of those: typing *Stadtwerke* quickly after a search for *Stadt* could open the wrong letter. Enter now waits for
+  the answer and opens its highlighted match; pressing Escape, leaving the field or choosing again with the arrow
+  keys before it comes opens nothing. And while a search has not been answered yet (the browser is offline, for
+  example), the list says it is still searching: it used to say *No letters match* when the search before had found
+  nothing.
 - **Finding your calendars no longer moves you while you are elsewhere.** After *Find my calendars* the card moved
   to the chosen calendar when the calendars came, wherever you were by then; if you had gone on to the choice of
   what the events show, your next arrow key changed which calendar Ordnung would write into. Closing what a
