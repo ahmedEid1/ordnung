@@ -333,16 +333,19 @@ async def test_changes_while_the_ideas_refresh_get_one_more_run(
     api: Api, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     gate = threading.Event()
+    started = threading.Event()
     runs: list[date] = []
 
     def slow_triggers(store: Store, today: date) -> None:
+        started.set()
         gate.wait(10)
         runs.append(today)
 
     monkeypatch.setattr(pipeline, "run_and_reconcile", slow_triggers)
-    for _ in range(3):  # the first starts a run; the others ask for one more after it
+    api.ctx.worker.refresh_ideas()  # starts a run
+    assert await asyncio.to_thread(started.wait, 5)
+    for _ in range(2):  # the run is under way: these ask for one more after it
         api.ctx.worker.refresh_ideas()
-        await asyncio.sleep(0.05)
     gate.set()
     await api.ctx.worker.ideas_settled()
     assert runs == [TODAY, TODAY]
