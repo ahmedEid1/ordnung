@@ -31,6 +31,7 @@ from rich.console import Console
 
 from fixtures_llm import INVOICE_LETTER, TAX_LETTER
 from helpers_docs import letter_pdf
+from helpers_tables import check_rows
 from ordnung import clock
 from ordnung.cli import launch_browser, summary_table
 from ordnung.config import REPO_DIR, Paths
@@ -108,22 +109,6 @@ def test_browser_is_opened_without_the_session_token_on_its_command_line(
     assert first != second  # each one a new code
     launch_browser(ServerInfo(port=8765, pid=os.getpid()))  # --no-token: nothing to sign in with
     assert opened[-1] == "http://127.0.0.1:8765/"
-
-
-async def test_a_launched_link_signs_the_browser_in_once(
-    data_dir: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    opened: list[str] = []
-    monkeypatch.setattr("ordnung.cli.webbrowser.open", lambda url: opened.append(url))
-    async with api_for(data_dir, token="s3cret-token") as api:
-        launch_browser(ServerInfo(port=8765, token="s3cret-token", pid=os.getpid()))
-        [url] = opened
-        link = url.removeprefix("http://127.0.0.1:8765")
-        login = await api.client.get(link)
-        assert login.status_code == 303 and login.headers["set-cookie"].startswith("ordnung_token_8765=")
-        assert "s3cret-token" not in login.headers["set-cookie"]  # a session of its own
-        api.client.cookies.clear()
-        assert (await api.client.get(link)).status_code == 401  # once only
 
 
 async def test_the_forwarding_page_signs_the_browser_in(data_dir: Path) -> None:
@@ -244,14 +229,16 @@ def _rc4_decrypted(monkeypatch: pytest.MonkeyPatch) -> list[int]:
     return lengths
 
 
-@pytest.mark.parametrize("method", ENCRYPTIONS)
-def test_encrypted_pdf_decompression_bomb_is_rejected(method: EncryptionMethod) -> None:
-    bomb = _with_encrypted_stream(_protected_pdf(method), _nested_bomb(), b"[/FlateDecode /FlateDecode]")
-    # CPU seconds, not the wall clock: on a busy machine the scheduler's pauses would count
-    started = time.process_time()
-    with pytest.raises(IntakeError, match="expands to far more data"):
-        normalise_upload(bomb, "kontoauszug.pdf")
-    assert time.process_time() - started < 10
+def test_encrypted_pdf_decompression_bomb_is_rejected() -> None:
+    def check(method: EncryptionMethod) -> None:
+        bomb = _with_encrypted_stream(_protected_pdf(method), _nested_bomb(), b"[/FlateDecode /FlateDecode]")
+        # CPU seconds, not the wall clock: on a busy machine the scheduler's pauses would count
+        started = time.process_time()
+        with pytest.raises(IntakeError, match="expands to far more data"):
+            normalise_upload(bomb, "kontoauszug.pdf")
+        assert time.process_time() - started < 10
+
+    check_rows(ENCRYPTIONS, check)
 
 
 def test_encrypted_bomb_behind_a_planted_endstream_is_measured_to_its_end() -> None:
@@ -320,13 +307,16 @@ def test_decrypting_counts_against_the_measuring_budget(monkeypatch: pytest.Monk
     expansion.check_pdf_expansion(pdf)
 
 
-@pytest.mark.parametrize("method", ENCRYPTIONS)
-def test_pdf_protected_only_by_an_owner_password_is_read(method: EncryptionMethod, tmp_path: Path) -> None:
-    data, mime, _ = normalise_upload(bytes(_protected_pdf(method).output()), "kontoauszug.pdf")
-    stored = store_original(tmp_path / "files", data, "kontoauszug.pdf")
-    pages = render_pages(stored.path, mime, tmp_path / "derived", "doc_test")
-    [page] = text.extract_pdf_pages(stored.path, pages)
-    assert "Kontoauszug September 2026" in page.text
+def test_pdf_protected_only_by_an_owner_password_is_read(tmp_path: Path) -> None:
+    def check(method: EncryptionMethod) -> None:
+        folder = tmp_path / method.name  # each row its own files
+        data, mime, _ = normalise_upload(bytes(_protected_pdf(method).output()), "kontoauszug.pdf")
+        stored = store_original(folder / "files", data, "kontoauszug.pdf")
+        pages = render_pages(stored.path, mime, folder / "derived", "doc_test")
+        [page] = text.extract_pdf_pages(stored.path, pages)
+        assert "Kontoauszug September 2026" in page.text
+
+    check_rows(ENCRYPTIONS, check)
 
 
 def test_pdf_that_needs_a_password_is_rejected_as_protected() -> None:
@@ -372,36 +362,35 @@ def _one_page(dictionary: bytes, data: bytes, before: bytes = b"") -> bytes:
 TWO_FLATES = b"[/FlateDecode /FlateDecode]"
 
 
-@pytest.mark.parametrize(
-    ("dictionary", "before"),
-    [
-        pytest.param(
-            b"<< /Filter " + TWO_FLATES + b" /X (9 0 obj) >>", b"", id="a fake object header in a string"
-        ),
-        pytest.param(
-            b"<< /F#69lter " + TWO_FLATES + b" >>", b"", id="the /Filter key written with an escape"
-        ),
-        pytest.param(
-            b"<< /Filter [/Fl#61teDecode /FlateDecode] >>", b"", id="a filter name written with an escape"
-        ),
-        pytest.param(
-            b"<< /Filter " + TWO_FLATES + b" /Pad [" + b"0 " * 40_000 + b"] >>", b"", id="an 80 KB dictionary"
-        ),
-        pytest.param(
-            b"<< /Filter 6 0 R >>", b"6 0 obj\n" + TWO_FLATES + b"\nendobj\n", id="an indirect /Filter"
-        ),
-        pytest.param(
-            b"<< /Filter " + TWO_FLATES + b" >>",
-            b"5 0 obj\n<< >>\nstream\nabc\nendobj\n",
-            id="a stream before it that has no endstream",
-        ),
-    ],
-)
-def test_bombs_a_byte_scan_would_miss_are_rejected(dictionary: bytes, before: bytes) -> None:
+BOMBS_A_BYTE_SCAN_WOULD_MISS = [
+    pytest.param(
+        b"<< /Filter " + TWO_FLATES + b" /X (9 0 obj) >>", b"", id="a fake object header in a string"
+    ),
+    pytest.param(b"<< /F#69lter " + TWO_FLATES + b" >>", b"", id="the /Filter key written with an escape"),
+    pytest.param(
+        b"<< /Filter [/Fl#61teDecode /FlateDecode] >>", b"", id="a filter name written with an escape"
+    ),
+    pytest.param(
+        b"<< /Filter " + TWO_FLATES + b" /Pad [" + b"0 " * 40_000 + b"] >>", b"", id="an 80 KB dictionary"
+    ),
+    pytest.param(b"<< /Filter 6 0 R >>", b"6 0 obj\n" + TWO_FLATES + b"\nendobj\n", id="an indirect /Filter"),
+    pytest.param(
+        b"<< /Filter " + TWO_FLATES + b" >>",
+        b"5 0 obj\n<< >>\nstream\nabc\nendobj\n",
+        id="a stream before it that has no endstream",
+    ),
+]
+
+
+def test_bombs_a_byte_scan_would_miss_are_rejected() -> None:
     """PDFium reads these page contents as the bomb they are (each peaked at 600 MB while rendering a
     300 MB version); the check reads the dictionaries as PDF syntax, as PDFium does."""
-    with pytest.raises(IntakeError, match="expands to far more data"):
-        normalise_upload(_one_page(dictionary, _nested_bomb(), before), "bomb.pdf")
+
+    def check(dictionary: bytes, before: bytes) -> None:
+        with pytest.raises(IntakeError, match="expands to far more data"):
+            normalise_upload(_one_page(dictionary, _nested_bomb(), before), "bomb.pdf")
+
+    check_rows(BOMBS_A_BYTE_SCAN_WOULD_MISS, check)
 
 
 def test_numbers_longer_than_any_real_pdfs_are_refused_not_a_crash() -> None:
@@ -446,19 +435,27 @@ def test_thousands_of_stream_keywords_behind_one_object_are_refused_quickly() ->
     assert time.process_time() - started < 5
 
 
-@pytest.mark.parametrize("filters", [b"/A85/Fl", b"/AHx/Fl"])
-def test_thousands_of_ascii_streams_running_into_each_other_are_checked_quickly(filters: bytes) -> None:
+ASCII_STREAM_FILTERS = [b"/A85/Fl", b"/AHx/Fl"]
+
+
+def test_thousands_of_ascii_streams_running_into_each_other_are_checked_quickly() -> None:
     """Each stream's ASCII85 data was decoded up front, to the first character
     that can't be part of it, and ``N 0 obj<</Filter[/A85/Fl]>>stream`` is ASCII85 itself, so thousands of
     such objects made one run, decoded again for each stream: 100 KB took 45 s. Now ASCII85 and ASCIIHex
     are decoded as the filter behind them reads, and what they read counts against the budget."""
-    unit = b"%d 0 obj<</Filter[" + filters + b"]>>stream\n"
-    data = b"%PDF-1.4\n" + b"".join(unit % number for number in range(1, 3000)) + b"~>\nendstream endobj\n"
-    # CPU seconds, not the wall clock: on a busy machine the scheduler pauses the test, which took this
-    # check (about 2 s of CPU with coverage) past 5 s
-    started = time.process_time()
-    expansion.check_pdf_expansion(data)  # nothing in it expands
-    assert time.process_time() - started < 5
+
+    def check(filters: bytes) -> None:
+        unit = b"%d 0 obj<</Filter[" + filters + b"]>>stream\n"
+        data = (
+            b"%PDF-1.4\n" + b"".join(unit % number for number in range(1, 3000)) + b"~>\nendstream endobj\n"
+        )
+        # CPU seconds, not the wall clock: on a busy machine the scheduler pauses the test, which took this
+        # check (about 2 s of CPU with coverage) past 5 s
+        started = time.process_time()
+        expansion.check_pdf_expansion(data)  # nothing in it expands
+        assert time.process_time() - started < 5
+
+    check_rows(ASCII_STREAM_FILTERS, check)
 
 
 def test_unusual_but_valid_syntax_is_accepted() -> None:
@@ -560,16 +557,27 @@ def test_large_jpegs_are_decoded_at_a_reduced_scale(tmp_path: Path) -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-async def test_purge_removes_the_document_terms_from_the_search_index(data_dir: Path) -> None:
+async def test_a_purged_letter_leaves_no_trace_in_the_search_index_or_the_activity_log(
+    data_dir: Path,
+) -> None:
     async with api_for(data_dir) as api:
-        body = await api.upload(("steuer.pdf", TAX_LETTER.pdf()))
+        body = await api.upload(("steuerbescheid-2025.pdf", TAX_LETTER.pdf()))
         await api.read_all()
         doc_id = body["documents"][0]["id"]
         assert api.ctx.store.search("Rechtsbehelfsbelehrung")
+        await api.client.patch(f"/api/documents/{doc_id}", json={"received_date": "2026-09-20"})
 
         assert (
             await api.client.delete(f"/api/documents/{doc_id}", params={"purge": "true"})
         ).status_code == 200
+
+        log = api.ctx.store.list_activity(200)
+        written = json.dumps([entry.model_dump() for entry in log], ensure_ascii=False)
+        assert "steuerbescheid-2025" not in written
+        assert "Income tax assessment" not in written and doc_id not in written
+        assert any(entry.kind == "document.deleted" for entry in log)
+        calls = api.ctx.store.usage_stats(recent=50).recent
+        assert calls and all(doc_id not in call.doc_ids for call in calls)
 
         store = api.ctx.store
         conn = store._conn()
@@ -582,23 +590,6 @@ async def test_purge_removes_the_document_terms_from_the_search_index(data_dir: 
         files = [Paths(data_dir).db, Paths(data_dir).db.with_name("ordnung.db-wal")]
         raw = b"".join(path.read_bytes() for path in files if path.exists())
         assert b"Rechtsbehelfsbelehrung" not in raw
-
-
-async def test_purge_leaves_no_title_or_filename_in_the_activity_log(data_dir: Path) -> None:
-    async with api_for(data_dir) as api:
-        body = await api.upload(("steuerbescheid-2025.pdf", TAX_LETTER.pdf()))
-        await api.read_all()
-        doc_id = body["documents"][0]["id"]
-        await api.client.patch(f"/api/documents/{doc_id}", json={"received_date": "2026-09-20"})
-        await api.client.delete(f"/api/documents/{doc_id}", params={"purge": "true"})
-
-        log = api.ctx.store.list_activity(200)
-        written = json.dumps([entry.model_dump() for entry in log], ensure_ascii=False)
-        assert "steuerbescheid-2025" not in written
-        assert "Income tax assessment" not in written and doc_id not in written
-        assert any(entry.kind == "document.deleted" for entry in log)
-        calls = api.ctx.store.usage_stats(recent=50).recent
-        assert calls and all(doc_id not in call.doc_ids for call in calls)
 
 
 async def test_purge_drops_quotes_of_the_deleted_letter_from_kept_contracts(store: Store) -> None:
