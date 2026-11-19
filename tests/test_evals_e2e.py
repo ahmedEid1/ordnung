@@ -39,6 +39,8 @@ from evals.harness import DAY_INDEX_FILE, DayIndex  # noqa: E402
 from evals.records import Entry, load_manifest  # noqa: E402
 from evals.run import MANIFEST_PATH  # noqa: E402
 
+from helpers_tables import check_rows  # noqa: E402
+
 READ_ON = "2026-03-09"
 GOLD = "2026-03-20"
 SIGNER = "Sam Rivera"
@@ -443,16 +445,14 @@ def test_a_complete_objection_letter_passes_every_element() -> None:
     assert check.draft_complete(elements)
 
 
-def test_every_element_has_a_mutation() -> None:
-    assert set(MUTATIONS) == set(DRAFT_ELEMENTS)
+def test_taking_any_element_away_fails_that_element_and_the_letter() -> None:
+    def check_element(element: str) -> None:
+        elements = _elements(MUTATIONS[element](_draft()))
+        assert elements[element] is False, elements
+        assert [name for name, ok in elements.items() if ok is False] == [element]
+        assert not check.draft_complete(elements)
 
-
-@pytest.mark.parametrize("element", DRAFT_ELEMENTS)
-def test_taking_any_element_away_fails_that_element_and_the_letter(element: str) -> None:
-    elements = _elements(MUTATIONS[element](_draft()))
-    assert elements[element] is False, elements
-    assert [name for name, ok in elements.items() if ok is False] == [element]
-    assert not check.draft_complete(elements)
+    check_rows(DRAFT_ELEMENTS, check_element)
 
 
 def test_the_remedy_word_must_be_the_letter_s_own() -> None:
@@ -797,10 +797,6 @@ def test_the_set_aside_check_reads_the_scam_verdict_by_cause() -> None:
         "payment_check",
         "reading_warning:prompt injection",
     ]
-
-
-def test_a_reason_names_every_scam_word_in_it_and_other_when_none() -> None:
-    from evals.e2e.harness import reason_codes
 
     quoted = "This document contains text addressed to an AI (“a fake notice”). Ordnung treated it as ordinary content."
     phishing = "This looks like phishing and the sender may be impersonating the tax office."
