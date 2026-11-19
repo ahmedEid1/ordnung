@@ -24,7 +24,7 @@ from mcp.client.stdio import StdioServerParameters
 from mcp.server.mcpserver.exceptions import ToolError
 
 from helpers_secretary import TODAY, add_doc, add_item, seed_ledger
-from helpers_tables import check_rows
+from helpers_tables import check_rows, check_rows_async
 from ordnung.assistant import mcp_server
 from ordnung.assistant.ask import known_laws
 from ordnung.assistant.channels import (
@@ -2363,9 +2363,7 @@ async def test_following_due_date_is_where_marking_it_done_moves_it(data_dir: Pa
     from test_api_support import TODAY as API_TODAY
     from test_api_support import api_for
 
-    # each row makes its own to-do and reads only that one, so one app serves every row; the rows are awaited
-    # one by one and every failing row is reported, as check_rows does for a test that is not async
-    failed: list[str] = []
+    # each row makes its own to-do and reads only that one, so one app serves every row
     async with api_for(data_dir) as api:
 
         async def check(rule: dict[str, Any], due: str) -> None:
@@ -2388,13 +2386,7 @@ async def test_following_due_date_is_where_marking_it_done_moves_it(data_dir: Pa
             done = (await api.client.patch(f"/api/items/{item['id']}", json={"status": "done"})).json()
             assert (done["status"], done["due_date"]) == ("open", following)
 
-        for number, (rule, due) in enumerate(FOLLOWING_DUE_DATE_RULES, start=1):
-            try:
-                await check(rule, due)
-            except Exception as exc:
-                failed.append(f"row {number}: {(rule, due)!r}\n    {type(exc).__name__}: {exc}")
-    assert len(FOLLOWING_DUE_DATE_RULES) >= 2
-    assert not failed, f"{len(failed)} of {len(FOLLOWING_DUE_DATE_RULES)} rows failed\n" + "\n".join(failed)
+        await check_rows_async(FOLLOWING_DUE_DATE_RULES, check)
 
 
 @pytest.fixture

@@ -26,6 +26,7 @@ from typing import Any
 
 import pytest
 
+from helpers_tables import check_rows_async
 from ordnung.llm import claude_cli
 from ordnung.llm.base import (
     Attachment,
@@ -384,15 +385,7 @@ async def test_a_stopped_run_is_an_error(fake: FakeClaude, letter: LLMRequest) -
         assert argv[argv.index("--max-budget-usd") + 1] == "0.50"
         assert len(fake.calls) == 1
 
-    # check_rows cannot await: the same loop, every row run, every failing row named
-    failed: list[str] = []
-    for row in STOPPED_RUNS:
-        try:
-            await check(*row)
-        except Exception as exc:
-            failed.append(f"{row!r}: {type(exc).__name__}: {exc}")
-    assert len(STOPPED_RUNS) >= 2
-    assert not failed, "\n".join(failed)
+    await check_rows_async(STOPPED_RUNS, check)
 
 
 async def test_a_crash_without_a_result_reports_stderr(fake: FakeClaude, letter: LLMRequest) -> None:
