@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Your household in the mock backend (the static demo, `?mock=1`): the API's policy ported to `./household`, held to
  * it by the shared vectors (`householdVectors.json`, which `tests/test_household_vectors.py` holds the API to), and

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * My numbers per person in the mock backend (the static demo): the visitor files a letter for someone of the
  * household and its numbers move to their *About* group, as `ordnung/numbers.py` moves them. Held to the real code by

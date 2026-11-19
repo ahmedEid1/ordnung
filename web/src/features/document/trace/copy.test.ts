@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import type { TraceChange, TraceRun, TraceSpan } from "@/api/types";
 import { assertNoRawEnums } from "@/lib/copy";

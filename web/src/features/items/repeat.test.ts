@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import type { Recurrence } from "@/api/types";
 import { makeItem } from "@/features/document/fixtures";

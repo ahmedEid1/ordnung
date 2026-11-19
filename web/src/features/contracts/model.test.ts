@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import type { Contract, ContractRegime } from "@/api/types";
 import { CONTRACT_REGIMES } from "@/api/types";

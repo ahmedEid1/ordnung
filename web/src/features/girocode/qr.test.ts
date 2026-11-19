@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * The GiroCode's QR matrix: level M within version 13 (EPC069-12), a four-module quiet zone, a path
  * that draws exactly the dark modules — and a round trip: an independent decoder (`qr`, MIT) reads

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * API contract: the web app, the in-memory mock backend (`?mock=1` and the static demo) and the
  * backend's OpenAPI schema (`web/openapi.json`, generated from FastAPI by `make openapi`) agree.

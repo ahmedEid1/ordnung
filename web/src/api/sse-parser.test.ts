@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { accumulateAll } from "@/features/ask/stream";
 import { SseParser, readStreamEvents, toStreamEvent } from "./sse-parser";

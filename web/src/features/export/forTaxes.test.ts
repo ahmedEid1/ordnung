@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * "For taxes" on any letter: one helper decides whether a letter counts for taxes — the person's
  * own choice if they made one, else Claude's mark (`secretary.tax_choice.for_taxes` on the server) — and the

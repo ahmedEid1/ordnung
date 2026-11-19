@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Phone access in the mock behaves as the API describes it (routes/phone.py, the phone listener's gate and the
  * design's amendments): off by default, a code that pairs one phone once, one answer for every wrong code, a

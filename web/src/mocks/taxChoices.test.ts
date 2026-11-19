@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * The person's "For taxes" choices in the mock backend (the static demo and `?mock=1`): kept apart from the
  * letters as the API keeps them apart from Claude's reading, with the API's answers and refusals.

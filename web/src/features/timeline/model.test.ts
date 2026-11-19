@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import type { Lane, LaneBar, TimelineEntry, TimelineMarker } from "@/api/types";
 import { TIMELINE_TYPES } from "@/api/types";

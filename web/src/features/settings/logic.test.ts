@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Settings' sections: their order (Phone right after the watched folder, Your computers right before Data), their
  * names, and where the privacy log sends phone access's and hand-off sync's entries.

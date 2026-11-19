@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * The passphrase estimator counts as the server's (`src/ordnung/passphrase.py`): both are held to the same vectors
  * (`passphraseVectors.json`, which `tests/test_passphrase_strength.py` reads too) — what people make up stays

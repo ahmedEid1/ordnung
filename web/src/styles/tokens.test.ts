@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * The design tokens and base rules in `index.css` (jsdom has no layout, so these check the
  * stylesheet itself; the Playwright suite checks focus visibility on real pages):

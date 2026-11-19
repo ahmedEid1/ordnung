@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { emptyCopy, isNarrowed, resultLine, type InboxView } from "./status";
 

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import type { Box, DocumentDetail, Evidence } from "@/api/types";
 import { boxToStyle, boxesByPage, centerScrollOffset, collectAnchors, highlightGroups, hitBoxStyle, hitBoxes, labelPlacement, normalizeBox, unionBox } from "./evidence";

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * *Text in pictures* in the mock backend (the static demo and `?mock=1`), as the API answers it: `GET /health` says
  * what the mock's computer does (`picture_text`, the doctor's row as a state), following the switch saved under

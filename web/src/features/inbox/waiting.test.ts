@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * The Inbox's "From your folder — not read yet" (pure logic): which letters wait and in what order
  * (an e-mail's attachments right under it), that they are in no other group or filter, and the words.
