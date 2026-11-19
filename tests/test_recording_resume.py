@@ -25,6 +25,7 @@ if str(ROOT) not in sys.path:
 from evals import harness  # noqa: E402
 from evals import run as eval_run  # noqa: E402
 
+from helpers_tables import check_rows  # noqa: E402
 from ordnung.llm import replay as replay_module  # noqa: E402
 from ordnung.llm.base import ClaudeRateLimited, LLMRequest, LLMResponse, StreamEvent, Usage  # noqa: E402
 from ordnung.llm.fake import FakeBackend  # noqa: E402
@@ -213,25 +214,27 @@ async def test_a_limit_without_a_readable_reset_waits_half_an_hour(
     assert clock.slept[0] == pytest.approx(30 * 60)
 
 
-@pytest.mark.parametrize(
-    ("text", "expected"),
-    [
-        ("3pm (Europe/Berlin)", datetime(2026, 10, 29, 14, 0, tzinfo=UTC)),
-        ("3:30pm (Europe/Berlin)", datetime(2026, 10, 29, 14, 30, tzinfo=UTC)),
-        ("9am (Europe/Berlin)", datetime(2026, 10, 30, 8, 0, tzinfo=UTC)),  # 9am today is past: tomorrow
-        ("15:00 UTC", datetime(2026, 10, 29, 15, 0, tzinfo=UTC)),
-        ("2 hours", datetime(2026, 10, 29, 12, 0, tzinfo=UTC)),
-        ("1 hour 30 minutes", datetime(2026, 10, 29, 11, 30, tzinfo=UTC)),
-        ("45 minutes", datetime(2026, 10, 29, 10, 45, tzinfo=UTC)),
-        ("2026-10-29T18:00:00Z", datetime(2026, 10, 29, 18, 0, tzinfo=UTC)),
-        ("1761768000", datetime(2025, 10, 29, 20, 0, tzinfo=UTC)),
-        ("soon", None),
-        (None, None),
-    ],
-)
-def test_reset_times_the_cli_names(text: str | None, expected: datetime | None) -> None:
-    now = datetime(2026, 10, 29, 10, 0, tzinfo=UTC)
-    assert harness.parse_reset(text, now, local=UTC) == expected
+RESET_TIMES = [
+    ("3pm (Europe/Berlin)", datetime(2026, 10, 29, 14, 0, tzinfo=UTC)),
+    ("3:30pm (Europe/Berlin)", datetime(2026, 10, 29, 14, 30, tzinfo=UTC)),
+    ("9am (Europe/Berlin)", datetime(2026, 10, 30, 8, 0, tzinfo=UTC)),  # 9am today is past: tomorrow
+    ("15:00 UTC", datetime(2026, 10, 29, 15, 0, tzinfo=UTC)),
+    ("2 hours", datetime(2026, 10, 29, 12, 0, tzinfo=UTC)),
+    ("1 hour 30 minutes", datetime(2026, 10, 29, 11, 30, tzinfo=UTC)),
+    ("45 minutes", datetime(2026, 10, 29, 10, 45, tzinfo=UTC)),
+    ("2026-10-29T18:00:00Z", datetime(2026, 10, 29, 18, 0, tzinfo=UTC)),
+    ("1761768000", datetime(2025, 10, 29, 20, 0, tzinfo=UTC)),
+    ("soon", None),
+    (None, None),
+]
+
+
+def test_reset_times_the_cli_names() -> None:
+    def check(text: str | None, expected: datetime | None) -> None:
+        now = datetime(2026, 10, 29, 10, 0, tzinfo=UTC)
+        assert harness.parse_reset(text, now, local=UTC) == expected
+
+    check_rows(RESET_TIMES, check)
 
 
 # --------------------------------------------------------------------------------------------------
