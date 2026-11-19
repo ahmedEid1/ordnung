@@ -5,6 +5,7 @@ whose deadline counts from the day it arrived."""
 from __future__ import annotations
 
 import copy
+import functools
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -16,7 +17,7 @@ from fastapi import FastAPI
 
 from fixtures_llm import ALL_LETTERS, Letter, Router
 from helpers_store import seed_database
-from ordnung.api.app import create_app
+from ordnung.api.app import create_app, openapi_schema
 from ordnung.app_context import AppContext, build_context
 from ordnung.llm.base import LLMRequest
 from ordnung.llm.fake import FakeBackend
@@ -170,6 +171,17 @@ async def api_for(
     finally:
         await ctx.worker.ideas_settled()
         ctx.close()
+
+
+@functools.cache
+def _schema_built_once() -> dict[str, Any]:
+    return openapi_schema()
+
+
+def api_schema() -> dict[str, Any]:
+    """The API's OpenAPI schema (``openapi_schema()``), built once per test process for the tests that only read
+    it; every caller gets its own copy. The OpenAPI contract test builds its own."""
+    return copy.deepcopy(_schema_built_once())
 
 
 @asynccontextmanager
