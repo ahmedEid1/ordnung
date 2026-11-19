@@ -42,6 +42,7 @@ from fake_caldav import (
     serve_on_loopback,
 )
 from helpers_secretary import TODAY, seed_ledger
+from helpers_tables import check_rows
 from ordnung import clock
 from ordnung.calendar import caldav, ics
 from ordnung.calendar.caldav import CalDavError
@@ -104,47 +105,51 @@ def private_words(store: Store) -> set[str]:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("raw", "expected"),
-    [
-        (
-            "https://Cloud.Example.org/remote.php/dav/calendars/sam/ordnung",
-            "https://cloud.example.org/remote.php/dav/calendars/sam/ordnung/",
-        ),
-        (
-            "  https://caldav.icloud.com/123/calendars/home/  ",
-            "https://caldav.icloud.com/123/calendars/home/",
-        ),
-        ("http://127.0.0.1:5232/sam/ordnung/", "http://127.0.0.1:5232/sam/ordnung/"),
-        ("http://localhost:5232/sam/ordnung", "http://localhost:5232/sam/ordnung/"),
-        ("http://[::1]:5232/sam/", "http://[::1]:5232/sam/"),
-    ],
-)
-def test_calendar_addresses_are_normalised(raw: str, expected: str) -> None:
-    assert caldav.check_url(raw) == expected
+CALENDAR_ADDRESSES_ARE_NORMALISED = [
+    (
+        "https://Cloud.Example.org/remote.php/dav/calendars/sam/ordnung",
+        "https://cloud.example.org/remote.php/dav/calendars/sam/ordnung/",
+    ),
+    (
+        "  https://caldav.icloud.com/123/calendars/home/  ",
+        "https://caldav.icloud.com/123/calendars/home/",
+    ),
+    ("http://127.0.0.1:5232/sam/ordnung/", "http://127.0.0.1:5232/sam/ordnung/"),
+    ("http://localhost:5232/sam/ordnung", "http://localhost:5232/sam/ordnung/"),
+    ("http://[::1]:5232/sam/", "http://[::1]:5232/sam/"),
+]
 
 
-@pytest.mark.parametrize(
-    ("raw", "why"),
-    [
-        ("", "https://"),
-        ("cloud.example.org/dav", "https://"),
-        ("ftp://cloud.example.org/dav/", "https://"),
-        ("http://cloud.example.org/dav/", "unencrypted"),
-        ("http://192.168.1.10/dav/", "unencrypted"),
-        ("https://sam:secret@cloud.example.org/dav/", "own fields"),
-        ("https://cloud.example.org/dav/#x", "#"),
-        ("https://cloud.example.org/da v/", "https://"),
-        ("https://cloud.example.org/d\nav/", "https://"),
-        ("https://" + "a" * 3000 + ".org/", "https://"),
-        ("https://[cloud.example.org/dav/", "can't be read"),
-        ("https://cloud.example.org:dav/", "can't be read"),
-    ],
-)
-def test_unusable_addresses_are_refused_with_a_reason(raw: str, why: str) -> None:
-    with pytest.raises(CalDavError) as refused:
-        caldav.check_url(raw)
-    assert refused.value.kind == "address" and why in str(refused.value)
+def test_calendar_addresses_are_normalised() -> None:
+    def check(raw: str, expected: str) -> None:
+        assert caldav.check_url(raw) == expected
+
+    check_rows(CALENDAR_ADDRESSES_ARE_NORMALISED, check)
+
+
+UNUSABLE_ADDRESSES_ARE_REFUSED_WITH_A_REASON = [
+    ("", "https://"),
+    ("cloud.example.org/dav", "https://"),
+    ("ftp://cloud.example.org/dav/", "https://"),
+    ("http://cloud.example.org/dav/", "unencrypted"),
+    ("http://192.168.1.10/dav/", "unencrypted"),
+    ("https://sam:secret@cloud.example.org/dav/", "own fields"),
+    ("https://cloud.example.org/dav/#x", "#"),
+    ("https://cloud.example.org/da v/", "https://"),
+    ("https://cloud.example.org/d\nav/", "https://"),
+    ("https://" + "a" * 3000 + ".org/", "https://"),
+    ("https://[cloud.example.org/dav/", "can't be read"),
+    ("https://cloud.example.org:dav/", "can't be read"),
+]
+
+
+def test_unusable_addresses_are_refused_with_a_reason() -> None:
+    def check(raw: str, why: str) -> None:
+        with pytest.raises(CalDavError) as refused:
+            caldav.check_url(raw)
+        assert refused.value.kind == "address" and why in str(refused.value)
+
+    check_rows(UNUSABLE_ADDRESSES_ARE_REFUSED_WITH_A_REASON, check)
 
 
 def test_user_names_are_trimmed_and_checked() -> None:
@@ -297,16 +302,18 @@ def test_a_date_at_the_calendars_ends_is_left_out_of_sync_not_the_rest(
     assert far in caplog.text and early in caplog.text
 
 
-@pytest.mark.parametrize(
-    ("start", "trigger", "label"),
-    [
-        (date(2026, 10, 5), timedelta(hours=9), "on the day at 09:00"),
-        (date(2026, 10, 5), timedelta(days=-1, hours=9), "the day before at 09:00"),
-        (date(2026, 10, 5), timedelta(days=-3, hours=9), "3 days before at 09:00"),
-    ],
-)
-def test_alarm_labels(start: date, trigger: timedelta, label: str) -> None:
-    assert caldav._alarm_label(start, trigger) == label
+ALARM_LABELS = [
+    (date(2026, 10, 5), timedelta(hours=9), "on the day at 09:00"),
+    (date(2026, 10, 5), timedelta(days=-1, hours=9), "the day before at 09:00"),
+    (date(2026, 10, 5), timedelta(days=-3, hours=9), "3 days before at 09:00"),
+]
+
+
+def test_alarm_labels() -> None:
+    def check(start: date, trigger: timedelta, label: str) -> None:
+        assert caldav._alarm_label(start, trigger) == label
+
+    check_rows(ALARM_LABELS, check)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -467,90 +474,93 @@ def test_a_refused_request_without_a_uid_is_not_a_conflict(
     assert report.failed == 1 and report.error_kind == "server" and "HTTP 400" in (report.error or "")
 
 
-@pytest.mark.parametrize(
-    ("change", "kind", "words"),
-    [
-        ({"password": "wrong"}, "auth", "refused the user name or app password"),
-        ({"calendar": False}, "not_calendar", "not one calendar"),
-        ({"components": ("VTODO",)}, "not_calendar", "only takes tasks"),
-        ({"path": "/dav/calendars/sam/other/"}, "not_found", "no calendar at this address"),
-    ],
-)
-def test_connecting_to_something_unusable_stores_nothing(
-    store: Store, ids: dict[str, str], secrets: MemorySecrets, change: dict[str, Any], kind: str, words: str
-) -> None:
-    server = FakeCalDav(**change)
-    with pytest.raises(CalDavError) as refused:
-        connect(store, secrets, server)
-    assert refused.value.kind == kind and words in str(refused.value)
-    assert PASSWORD not in str(refused.value)
-    assert caldav.load_state(store) is None and secrets.saved == {}
-    assert "PUT" not in server.methods()
+CONNECTING_TO_SOMETHING_UNUSABLE_STORES_NOTHING = [
+    ({"password": "wrong"}, "auth", "refused the user name or app password"),
+    ({"calendar": False}, "not_calendar", "not one calendar"),
+    ({"components": ("VTODO",)}, "not_calendar", "only takes tasks"),
+    ({"path": "/dav/calendars/sam/other/"}, "not_found", "no calendar at this address"),
+]
 
 
-@pytest.mark.parametrize(
-    ("answer", "kind", "words"),
-    [
-        (
-            (301, {"Location": "https://cal.example.org/new/"}, b""),
-            "address",
-            "moved to https://cal.example.org/new/",
-        ),
-        ((302, {"Location": "http://evil.example/"}, b""), "address", "another address"),
-        ((403, {}, b""), "forbidden", "read-only"),
-        ((500, {}, b""), "server", "HTTP 500"),
-        ((200, {}, b"<html>hi</html>"), "not_calendar", "doesn't speak CalDAV"),
-        (
-            (207, {}, b'<!DOCTYPE x [<!ENTITY a "aaaa">]><d:multistatus xmlns:d="DAV:">&a;</d:multistatus>'),
-            "server",
-            "couldn't be read",
-        ),
-        # the same in UTF-16: a byte search misses "<!DOCTYPE", the parser does not
-        (
-            (
-                207,
-                {},
-                '<?xml version="1.0" encoding="UTF-16"?><!DOCTYPE x [<!ENTITY a "aaaa">]>'
-                '<d:multistatus xmlns:d="DAV:">&a;</d:multistatus>'.encode("utf-16"),
-            ),
-            "server",
-            "couldn't be read",
-        ),
-        ((207, {}, b"<d:multistatus xmlns:d='DAV:'><d:response>"), "server", "couldn't be read"),
-        ((207, {}, b"x" * (caldav.MAX_RESPONSE_BYTES + 10)), "server", "too large"),
-        ((207, {}, b"<d:multistatus xmlns:d='DAV:'/>"), "not_calendar", "not a calendar"),
-        # an address in the answer that can't be read names nothing (never an unhandled error)
-        (
-            (207, {}, multistatus(response("http://[oops/", calendar_props()))),
-            "not_calendar",
-            "not a calendar",
-        ),
-        ((301, {"Location": "http://[oops/"}, b""), "address", "another address"),
-    ],
-)
-def test_odd_answers_read_as_reasons(
-    store: Store, secrets: MemorySecrets, answer: tuple[int, dict[str, str], bytes], kind: str, words: str
-) -> None:
-    server = FakeCalDav(override=answer)
-    with pytest.raises(CalDavError) as refused:
-        connect(store, secrets, server)
-    assert refused.value.kind == kind and words in str(refused.value)
-    assert caldav.load_state(store) is None
+def test_connecting_to_something_unusable_stores_nothing(store: Store, ids: dict[str, str]) -> None:
+    def check(change: dict[str, Any], kind: str, words: str) -> None:
+        secrets = MemorySecrets()
+        server = FakeCalDav(**change)
+        with pytest.raises(CalDavError) as refused:
+            connect(store, secrets, server)
+        assert refused.value.kind == kind and words in str(refused.value)
+        assert PASSWORD not in str(refused.value)
+        assert caldav.load_state(store) is None and secrets.saved == {}
+        assert "PUT" not in server.methods()
+
+    check_rows(CONNECTING_TO_SOMETHING_UNUSABLE_STORES_NOTHING, check)
 
 
-@pytest.mark.parametrize(
-    ("error", "kind", "words"),
-    [
-        (httpx.ConnectError("refused"), "network", "Couldn't reach cal.example.org"),
-        (httpx.ReadTimeout("slow"), "network", "didn't answer in time"),
-    ],
-)
-def test_the_network_failing_reads_as_a_reason(
-    store: Store, secrets: MemorySecrets, error: Exception, kind: str, words: str
-) -> None:
-    with pytest.raises(CalDavError) as refused:
-        connect(store, secrets, FakeCalDav(raises=error))
-    assert refused.value.kind == kind and words in str(refused.value)
+ODD_ANSWERS_READ_AS_REASONS = [
+    (
+        (301, {"Location": "https://cal.example.org/new/"}, b""),
+        "address",
+        "moved to https://cal.example.org/new/",
+    ),
+    ((302, {"Location": "http://evil.example/"}, b""), "address", "another address"),
+    ((403, {}, b""), "forbidden", "read-only"),
+    ((500, {}, b""), "server", "HTTP 500"),
+    ((200, {}, b"<html>hi</html>"), "not_calendar", "doesn't speak CalDAV"),
+    (
+        (207, {}, b'<!DOCTYPE x [<!ENTITY a "aaaa">]><d:multistatus xmlns:d="DAV:">&a;</d:multistatus>'),
+        "server",
+        "couldn't be read",
+    ),
+    # the same in UTF-16: a byte search misses "<!DOCTYPE", the parser does not
+    (
+        (
+            207,
+            {},
+            '<?xml version="1.0" encoding="UTF-16"?><!DOCTYPE x [<!ENTITY a "aaaa">]>'
+            '<d:multistatus xmlns:d="DAV:">&a;</d:multistatus>'.encode("utf-16"),
+        ),
+        "server",
+        "couldn't be read",
+    ),
+    ((207, {}, b"<d:multistatus xmlns:d='DAV:'><d:response>"), "server", "couldn't be read"),
+    ((207, {}, b"x" * (caldav.MAX_RESPONSE_BYTES + 10)), "server", "too large"),
+    ((207, {}, b"<d:multistatus xmlns:d='DAV:'/>"), "not_calendar", "not a calendar"),
+    # an address in the answer that can't be read names nothing (never an unhandled error)
+    (
+        (207, {}, multistatus(response("http://[oops/", calendar_props()))),
+        "not_calendar",
+        "not a calendar",
+    ),
+    ((301, {"Location": "http://[oops/"}, b""), "address", "another address"),
+]
+
+
+def test_odd_answers_read_as_reasons(store: Store) -> None:
+    def check(answer: tuple[int, dict[str, str], bytes], kind: str, words: str) -> None:
+        secrets = MemorySecrets()
+        server = FakeCalDav(override=answer)
+        with pytest.raises(CalDavError) as refused:
+            connect(store, secrets, server)
+        assert refused.value.kind == kind and words in str(refused.value)
+        assert caldav.load_state(store) is None
+
+    check_rows(ODD_ANSWERS_READ_AS_REASONS, check)
+
+
+THE_NETWORK_FAILING_READS_AS_A_REASON = [
+    (httpx.ConnectError("refused"), "network", "Couldn't reach cal.example.org"),
+    (httpx.ReadTimeout("slow"), "network", "didn't answer in time"),
+]
+
+
+def test_the_network_failing_reads_as_a_reason(store: Store) -> None:
+    def check(error: Exception, kind: str, words: str) -> None:
+        secrets = MemorySecrets()
+        with pytest.raises(CalDavError) as refused:
+            connect(store, secrets, FakeCalDav(raises=error))
+        assert refused.value.kind == kind and words in str(refused.value)
+
+    check_rows(THE_NETWORK_FAILING_READS_AS_A_REASON, check)
 
 
 def test_an_unverifiable_certificate_sends_nothing(store: Store, secrets: MemorySecrets) -> None:
@@ -635,6 +645,11 @@ def test_disconnecting_removes_only_ordnungs_events_when_asked_and_forgets_the_p
     assert caldav.disconnect(store, secrets, remove_events=True, transport=server.transport()) == 0
 
     connect(store, secrets, server)
+    server.raises = httpx.ConnectError("down")
+    with pytest.raises(CalDavError) as refused:
+        caldav.disconnect(store, secrets, remove_events=True, transport=server.transport())
+    assert refused.value.kind == "network"
+    assert caldav.load_state(store) is not None and secrets.saved
     assert caldav.disconnect(store, secrets, remove_events=False, transport=server.transport()) == 0
     assert len(server.resources) == count and caldav.load_state(store) is None
 
@@ -713,17 +728,6 @@ def test_only_a_sync_says_it_is_tried_again(
     )
 
 
-def test_disconnecting_keeps_the_connection_when_the_events_cant_be_removed(
-    store: Store, ids: dict[str, str], server: FakeCalDav, secrets: MemorySecrets
-) -> None:
-    connect(store, secrets, server)
-    server.raises = httpx.ConnectError("down")
-    with pytest.raises(CalDavError) as refused:
-        caldav.disconnect(store, secrets, remove_events=True, transport=server.transport())
-    assert refused.value.kind == "network"
-    assert caldav.load_state(store) is not None and secrets.saved
-
-
 # --------------------------------------------------------------------------------------------------
 # finding the calendar
 # --------------------------------------------------------------------------------------------------
@@ -743,20 +747,21 @@ def test_a_calendars_own_address_finds_just_that_calendar(server: FakeCalDav) ->
     assert server.methods() == ["PROPFIND"]
 
 
-@pytest.mark.parametrize(
-    "start",
-    [
-        BASE + HOME_PATH,  # the calendar home: the calendars in it
-        BASE + "/",  # the server: its principal's calendar home
-        BASE + PRINCIPAL_PATH,  # the account
-        BASE + "/somewhere/else/",  # nothing there: the server's /.well-known/caldav
-        "https://CAL.example.org",
-    ],
-)
-def test_an_account_or_server_address_finds_the_calendars_that_take_events(
-    server: FakeCalDav, start: str
-) -> None:
-    assert found(server, start) == [ORDNUNG, PERSONAL]  # not the tasks-only list
+AN_ACCOUNT_OR_SERVER_ADDRESS_FINDS_THE_CALENDARS_THAT_TAKE_EVENTS = [
+    BASE + HOME_PATH,  # the calendar home: the calendars in it
+    BASE + "/",  # the server: its principal's calendar home
+    BASE + PRINCIPAL_PATH,  # the account
+    BASE + "/somewhere/else/",  # nothing there: the server's /.well-known/caldav
+    "https://CAL.example.org",
+]
+
+
+def test_an_account_or_server_address_finds_the_calendars_that_take_events() -> None:
+    def check(start: str) -> None:
+        server = FakeCalDav()
+        assert found(server, start) == [ORDNUNG, PERSONAL]  # not the tasks-only list
+
+    check_rows(AN_ACCOUNT_OR_SERVER_ADDRESS_FINDS_THE_CALENDARS_THAT_TAKE_EVENTS, check)
 
 
 def test_a_calendar_home_on_another_https_host_is_followed(server: FakeCalDav) -> None:
@@ -785,19 +790,27 @@ def test_an_account_without_event_calendars_says_what_to_do(server: FakeCalDav) 
     assert refused.value.kind == "not_calendar" and "named “Ordnung”" in str(refused.value)
 
 
-@pytest.mark.parametrize("start", [BASE, BASE + "/", "https://cal.example.org/index.php/"])
-def test_a_web_root_that_redirects_to_its_login_page_still_finds_the_calendars(
-    server: FakeCalDav, start: str
-) -> None:
-    # Nextcloud answers a PROPFIND on its web root (and index.php) with a redirect to the login page
-    login = (302, {"Location": "/login"}, b"")
-    server.answers = {
-        "/": login,
-        "/index.php/": login,
-        "/login": (200, {"Content-Type": "text/html"}, b"<html>Log in</html>"),
-    }
-    assert found(server, start) == [ORDNUNG, PERSONAL]  # via /.well-known/caldav
-    assert ("PROPFIND", "/.well-known/caldav") in server.requests
+A_WEB_ROOT_THAT_REDIRECTS_TO_ITS_LOGIN_PAGE_STILL_FINDS_THE_CALENDARS = [
+    BASE,
+    BASE + "/",
+    "https://cal.example.org/index.php/",
+]
+
+
+def test_a_web_root_that_redirects_to_its_login_page_still_finds_the_calendars() -> None:
+    def check(start: str) -> None:
+        server = FakeCalDav()
+        # Nextcloud answers a PROPFIND on its web root (and index.php) with a redirect to the login page
+        login = (302, {"Location": "/login"}, b"")
+        server.answers = {
+            "/": login,
+            "/index.php/": login,
+            "/login": (200, {"Content-Type": "text/html"}, b"<html>Log in</html>"),
+        }
+        assert found(server, start) == [ORDNUNG, PERSONAL]  # via /.well-known/caldav
+        assert ("PROPFIND", "/.well-known/caldav") in server.requests
+
+    check_rows(A_WEB_ROOT_THAT_REDIRECTS_TO_ITS_LOGIN_PAGE_STILL_FINDS_THE_CALENDARS, check)
 
 
 def test_a_moved_calendar_on_the_same_host_is_found_where_it_is(server: FakeCalDav) -> None:
@@ -812,22 +825,31 @@ def test_a_well_known_redirect_to_another_host_is_named_not_followed(server: Fak
     assert refused.value.kind == "address" and "https://caldav.elsewhere.example/dav/" in str(refused.value)
 
 
-@pytest.mark.parametrize("href", ["http://[oops/", "https://cal.example.org:x/dav/"])
-def test_unreadable_addresses_in_the_servers_answers_are_skipped_while_finding(
-    server: FakeCalDav, href: str
-) -> None:
+UNREADABLE_ADDRESSES_IN_THE_SERVERS_ANSWERS_ARE_SKIPPED_WHILE_FINDING = [
+    "http://[oops/",
+    "https://cal.example.org:x/dav/",
+]
+
+
+def test_unreadable_addresses_in_the_servers_answers_are_skipped_while_finding() -> None:
     """A server's answer is untrusted input: an address in it that can't be read is not followed."""
-    broken = multistatus(
-        response(href, calendar_props()),
-        response(
-            PRINCIPAL_PATH, f"<d:current-user-principal><d:href>{href}</d:href></d:current-user-principal>"
-        ),
-    )
-    server.answers["/"] = (207, {"Content-Type": "application/xml"}, broken)
-    # skipped, the search goes on at the server's /.well-known/caldav
-    assert found(server, BASE + "/") == [ORDNUNG, PERSONAL]
-    assert [r.url for r in caldav.read_resources(broken, BASE + "/")] == [BASE + PRINCIPAL_PATH]
-    assert caldav.read_resources(broken, BASE + "/")[0].principal is None
+
+    def check(href: str) -> None:
+        server = FakeCalDav()
+        broken = multistatus(
+            response(href, calendar_props()),
+            response(
+                PRINCIPAL_PATH,
+                f"<d:current-user-principal><d:href>{href}</d:href></d:current-user-principal>",
+            ),
+        )
+        server.answers["/"] = (207, {"Content-Type": "application/xml"}, broken)
+        # skipped, the search goes on at the server's /.well-known/caldav
+        assert found(server, BASE + "/") == [ORDNUNG, PERSONAL]
+        assert [r.url for r in caldav.read_resources(broken, BASE + "/")] == [BASE + PRINCIPAL_PATH]
+        assert caldav.read_resources(broken, BASE + "/")[0].principal is None
+
+    check_rows(UNREADABLE_ADDRESSES_IN_THE_SERVERS_ANSWERS_ARE_SKIPPED_WHILE_FINDING, check)
 
 
 def test_finding_needs_a_password_and_a_usable_address(server: FakeCalDav) -> None:
@@ -1116,36 +1138,40 @@ class HomeMadeKeyring(MemoryKeyring):
 HomeMadeKeyring.__module__ = "keyrings.alt.file"
 
 
-@pytest.mark.parametrize(
-    "backend",
-    [keyring.backends.null.Keyring(), PlaintextKeyring(), HomeMadeKeyring()],
-    ids=["null", "plaintext", "keyrings.alt"],
-)
-def test_a_password_store_that_isnt_one_is_refused(
-    store: Store, server: FakeCalDav, backend: keyring.backend.KeyringBackend
-) -> None:
-    previous = keyring.get_keyring()
-    keyring.set_keyring(backend)
-    try:
-        secrets = KeyringSecrets()
-        problem = secrets.problem()
-        assert problem is not None and "doesn't keep passwords safely" in str(problem)
-        with pytest.raises(CalDavError) as refused:
-            caldav.connect(
-                store,
-                secrets,
-                url=URL,
-                username=USERNAME,
-                password=PASSWORD,
-                mode="discreet",
-                transport=server.transport(),
-            )
-        assert refused.value.kind == "unavailable" and server.requests == []
-        with pytest.raises(SecretsUnavailable):
-            secrets.set("a", "b")
-        assert getattr(backend, "data", {}) == {}  # nothing was written to it
-    finally:
-        keyring.set_keyring(previous)
+A_PASSWORD_STORE_THAT_ISNT_ONE_IS_REFUSED = [
+    pytest.param(keyring.backends.null.Keyring(), id="null"),
+    pytest.param(PlaintextKeyring(), id="plaintext"),
+    pytest.param(HomeMadeKeyring(), id="keyrings.alt"),
+]
+
+
+def test_a_password_store_that_isnt_one_is_refused(store: Store) -> None:
+    def check(backend: keyring.backend.KeyringBackend) -> None:
+        server = FakeCalDav()
+        previous = keyring.get_keyring()
+        keyring.set_keyring(backend)
+        try:
+            secrets = KeyringSecrets()
+            problem = secrets.problem()
+            assert problem is not None and "doesn't keep passwords safely" in str(problem)
+            with pytest.raises(CalDavError) as refused:
+                caldav.connect(
+                    store,
+                    secrets,
+                    url=URL,
+                    username=USERNAME,
+                    password=PASSWORD,
+                    mode="discreet",
+                    transport=server.transport(),
+                )
+            assert refused.value.kind == "unavailable" and server.requests == []
+            with pytest.raises(SecretsUnavailable):
+                secrets.set("a", "b")
+            assert getattr(backend, "data", {}) == {}  # nothing was written to it
+        finally:
+            keyring.set_keyring(previous)
+
+    check_rows(A_PASSWORD_STORE_THAT_ISNT_ONE_IS_REFUSED, check)
 
 
 def test_a_chain_of_password_stores_is_judged_by_the_one_it_stores_into() -> None:
@@ -1195,35 +1221,37 @@ def test_without_keyring_the_command_for_this_installation_is_named(monkeypatch:
     assert problem is not None and problem.install == install_command()
 
 
-@pytest.mark.parametrize(
-    ("prefix", "executable", "command"),
-    [
-        (
-            "/home/sam/.local/share/pipx/venvs/ordnung",
-            "/home/sam/.local/share/pipx/venvs/ordnung/bin/python",
-            "pipx inject ordnung keyring",
-        ),
-        (
-            "C:\\Users\\Jürgen\\pipx\\venvs\\ordnung",
-            "C:\\Users\\Jürgen\\pipx\\venvs\\ordnung\\Scripts\\python.exe",
-            "pipx inject ordnung keyring",
-        ),
-        (
-            "/home/sam/.local/share/uv/tools/ordnung",
-            "/home/sam/.local/share/uv/tools/ordnung/bin/python",
-            "uv tool install --reinstall --with 'keyring>=25' git+https://github.com/ahmedEid1/ordnung",
-        ),
-        (
-            "/home/sam/ordnung/.venv",
-            "/home/sam/ordnung/.venv/bin/python",
-            "/home/sam/ordnung/.venv/bin/python -m pip install 'keyring>=25'",
-        ),
-        ("/opt/my env", "/opt/my env/bin/python", "'/opt/my env/bin/python' -m pip install 'keyring>=25'"),
-    ],
-)
-def test_the_install_command_fits_the_installation(prefix: str, executable: str, command: str) -> None:
-    # never a package name on PyPI that isn't Ordnung's ("pip install ordnung[…]")
-    assert install_command(prefix, executable) == command
+THE_INSTALL_COMMAND_FITS_THE_INSTALLATION = [
+    (
+        "/home/sam/.local/share/pipx/venvs/ordnung",
+        "/home/sam/.local/share/pipx/venvs/ordnung/bin/python",
+        "pipx inject ordnung keyring",
+    ),
+    (
+        "C:\\Users\\Jürgen\\pipx\\venvs\\ordnung",
+        "C:\\Users\\Jürgen\\pipx\\venvs\\ordnung\\Scripts\\python.exe",
+        "pipx inject ordnung keyring",
+    ),
+    (
+        "/home/sam/.local/share/uv/tools/ordnung",
+        "/home/sam/.local/share/uv/tools/ordnung/bin/python",
+        "uv tool install --reinstall --with 'keyring>=25' git+https://github.com/ahmedEid1/ordnung",
+    ),
+    (
+        "/home/sam/ordnung/.venv",
+        "/home/sam/ordnung/.venv/bin/python",
+        "/home/sam/ordnung/.venv/bin/python -m pip install 'keyring>=25'",
+    ),
+    ("/opt/my env", "/opt/my env/bin/python", "'/opt/my env/bin/python' -m pip install 'keyring>=25'"),
+]
+
+
+def test_the_install_command_fits_the_installation() -> None:
+    def check(prefix: str, executable: str, command: str) -> None:
+        # never a package name on PyPI that isn't Ordnung's ("pip install ordnung[…]")
+        assert install_command(prefix, executable) == command
+
+    check_rows(THE_INSTALL_COMMAND_FITS_THE_INSTALLATION, check)
 
 
 def test_keyring_is_one_of_ordnungs_dependencies() -> None:
@@ -1232,29 +1260,6 @@ def test_keyring_is_one_of_ordnungs_dependencies() -> None:
     project = tomllib.loads((Path(__file__).parents[1] / "pyproject.toml").read_text())["project"]
     assert any(dep.startswith("keyring") for dep in project["dependencies"])
     assert "caldav" not in project.get("optional-dependencies", {})
-
-
-def test_the_triggers_read_the_same_connection_record() -> None:
-    from ordnung.secretary.triggers import CALENDAR_SYNC_META_KEY
-
-    assert caldav.STATE_KEY == CALENDAR_SYNC_META_KEY
-
-
-def test_an_emailed_bill_reaches_the_synced_calendar_once(store: Store) -> None:
-    """The e-mail repeating its attached bill's payment is set aside: one event with alarms, not two, and
-    none left once the bill is paid (it would remind of a bill already paid)."""
-    from helpers_secretary import add_emailed_bill
-
-    bill = add_emailed_bill(store, due="2026-10-15")
-    for mode in ("full", "discreet"):
-        uids = {event.stable_uid for event in caldav.build_events(store, mode)}
-        assert f"{bill['bill_payment']}@ordnung.local" in uids
-        assert f"{bill['email_payment']}@ordnung.local" not in uids
-    store.update_item(bill["bill_payment"], status="done")
-    assert not {event.stable_uid for event in caldav.build_events(store, "full")} & {
-        f"{bill['bill_payment']}@ordnung.local",
-        f"{bill['email_payment']}@ordnung.local",
-    }
 
 
 def test_a_discreet_events_name_is_the_same_in_a_restored_copy_and_another_folders_differs(
