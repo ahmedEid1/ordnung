@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import pytest
-
 from fixtures_llm import iban
+from helpers_tables import check_rows
 from ordnung.db.store import Store
 from ordnung.models import PaymentDetails
 from ordnung.secretary import scam
@@ -21,32 +20,36 @@ KNOWN = iban("DE", "200200200987654321")
 OTHER = iban("DE", "300300300111222333")
 
 
-@pytest.mark.parametrize(
-    "value",
-    [
-        "DE89 3704 0044 0532 0130 00",
-        "de89370400440532013000",
-        "GB82 WEST 1234 5698 7654 32",
-        "NL91ABNA0417164300",
-    ],
-)
-def test_valid_ibans(value: str) -> None:
-    assert iban_valid(value)
+VALID_IBANS = [
+    "DE89 3704 0044 0532 0130 00",
+    "de89370400440532013000",
+    "GB82 WEST 1234 5698 7654 32",
+    "NL91ABNA0417164300",
+]
 
 
-@pytest.mark.parametrize(
-    "value",
-    [
-        "DE89 3704 0044 0532 0130 01",  # one digit changed
-        "DE98 3704 0044 0532 0130 00",  # check digits swapped
-        "DE89 3704 0044 0532 0130",  # too short for Germany
-        "XX",
-        "",
-        "DE89-3704-0044-0532-0130-0X",
-    ],
-)
-def test_invalid_ibans(value: str) -> None:
-    assert not iban_valid(value)
+def test_valid_ibans() -> None:
+    def check(value: str) -> None:
+        assert iban_valid(value)
+
+    check_rows(VALID_IBANS, check)
+
+
+INVALID_IBANS = [
+    "DE89 3704 0044 0532 0130 01",  # one digit changed
+    "DE98 3704 0044 0532 0130 00",  # check digits swapped
+    "DE89 3704 0044 0532 0130",  # too short for Germany
+    "XX",
+    "",
+    "DE89-3704-0044-0532-0130-0X",
+]
+
+
+def test_invalid_ibans() -> None:
+    def check(value: str) -> None:
+        assert not iban_valid(value)
+
+    check_rows(INVALID_IBANS, check)
 
 
 def test_normalize_and_format() -> None:
@@ -54,29 +57,33 @@ def test_normalize_and_format() -> None:
     assert format_iban("DE89370400440532013000") == "DE89 3704 0044 0532 0130 00"
 
 
-@pytest.mark.parametrize(
-    ("a", "b"),
-    [
-        ("Rundfunk-Beitragsservice – Zahlungszentrale", "Beitragsservice Musterstadt"),
-        ("Rundfunkbeitragsservice", "ARD ZDF Deutschlandradio Beitragsservice"),
-        ("Techniker Krankenkasse Service", "Techniker Krankenkasse"),
-    ],
-)
-def test_look_alike_names(a: str, b: str) -> None:
-    assert names_similar(a, b) and names_similar(b, a)
+LOOK_ALIKE_NAMES = [
+    ("Rundfunk-Beitragsservice – Zahlungszentrale", "Beitragsservice Musterstadt"),
+    ("Rundfunkbeitragsservice", "ARD ZDF Deutschlandradio Beitragsservice"),
+    ("Techniker Krankenkasse Service", "Techniker Krankenkasse"),
+]
 
 
-@pytest.mark.parametrize(
-    ("a", "b"),
-    [
-        ("Finanzamt Musterstadt", "Stadtwerke Musterstadt"),  # only the town is shared
-        ("Muster Telecom", "Muster Energie"),  # a short brand prefix is not distinctive
-        ("AOK Krankenkasse", "Techniker Krankenkasse"),
-        ("Deutsche Bahn", "Deutsche Telekom"),
-    ],
-)
-def test_different_organisations(a: str, b: str) -> None:
-    assert not names_similar(a, b)
+def test_look_alike_names() -> None:
+    def check(a: str, b: str) -> None:
+        assert names_similar(a, b) and names_similar(b, a)
+
+    check_rows(LOOK_ALIKE_NAMES, check)
+
+
+DIFFERENT_ORGANISATIONS = [
+    ("Finanzamt Musterstadt", "Stadtwerke Musterstadt"),  # only the town is shared
+    ("Muster Telecom", "Muster Energie"),  # a short brand prefix is not distinctive
+    ("AOK Krankenkasse", "Techniker Krankenkasse"),
+    ("Deutsche Bahn", "Deutsche Telekom"),
+]
+
+
+def test_different_organisations() -> None:
+    def check(a: str, b: str) -> None:
+        assert not names_similar(a, b)
+
+    check_rows(DIFFERENT_ORGANISATIONS, check)
 
 
 def test_town_of_the_person_is_ignored() -> None:
@@ -99,20 +106,23 @@ def test_invalid_iban_is_a_finding(store: Store) -> None:
     )
 
 
-@pytest.mark.parametrize(
-    ("value", "reason"),
-    [
-        ("HR74 1234 5678 9012 3456 7890", "Croatia IBANs have 21 characters; this one has 24."),
-        ("US51 1234 5678 9012 3456 7890", "US is not a country that issues IBANs, so this is not an IBAN."),
-    ],
-)
-def test_an_invalid_iban_names_the_real_reason(store: Store, value: str, reason: str) -> None:
+INVALID_IBAN_REASONS = [
+    ("HR74 1234 5678 9012 3456 7890", "Croatia IBANs have 21 characters; this one has 24."),
+    ("US51 1234 5678 9012 3456 7890", "US is not a country that issues IBANs, so this is not an IBAN."),
+]
+
+
+def test_an_invalid_iban_names_the_real_reason(store: Store) -> None:
     """Both checksums add up: the warning must not blame the check digits for a length or country problem."""
     party = store.add_party(name="Muster Energie")
-    finding = payment_mismatch(store, party, payment(value))
-    assert finding is not None and finding.kind == "invalid_iban"
-    assert reason in finding.message and "check digits" not in finding.message
-    assert scam.invalid_iban_message(value) == finding.message
+
+    def check(value: str, reason: str) -> None:
+        finding = payment_mismatch(store, party, payment(value))
+        assert finding is not None and finding.kind == "invalid_iban"
+        assert reason in finding.message and "check digits" not in finding.message
+        assert scam.invalid_iban_message(value) == finding.message
+
+    check_rows(INVALID_IBAN_REASONS, check)
 
 
 def test_known_iban_is_fine_and_a_new_one_is_not(store: Store) -> None:
