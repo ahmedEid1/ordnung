@@ -15,9 +15,15 @@ export function focusIsLost(): boolean {
 /**
  * Once `find` returns an element (checked every frame for up to `ms`), focus it — but only when
  * focus is lost by then, so someone who has moved on is not pulled back (unless `always`: the
- * person asked for it, e.g. "Show more" moves on to the first new card).
+ * person asked for it, e.g. "Show more" moves on to the first new card). `from`: focus also moves
+ * while it is still where the person asked from (the button they pressed), but not once they have
+ * gone on to type somewhere else.
  */
-export function focusWhenReady(find: () => HTMLElement | null, ms = 5000, { always = false }: { always?: boolean } = {}): void {
+export function focusWhenReady(
+  find: () => HTMLElement | null,
+  ms = 5000,
+  { always = false, from = null }: { always?: boolean; from?: Element | null } = {},
+): void {
   const until = performance.now() + ms;
   const tick = () => {
     const el = find();
@@ -25,7 +31,7 @@ export function focusWhenReady(find: () => HTMLElement | null, ms = 5000, { alwa
       if (performance.now() < until) requestAnimationFrame(tick);
       return;
     }
-    if (!always && !focusIsLost()) return;
+    if (!always && !focusIsLost() && !(from && document.activeElement === from)) return;
     if (!el.hasAttribute("tabindex")) el.tabIndex = -1;
     el.focus();
   };
