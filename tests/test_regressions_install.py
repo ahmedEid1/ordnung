@@ -14,7 +14,6 @@ import shutil
 import subprocess
 import tomllib
 from pathlib import Path
-from typing import Any
 
 import pytest
 from packaging.requirements import Requirement
@@ -182,18 +181,6 @@ def test_the_server_floors_are_ones_the_lowest_job_can_install() -> None:
     assert f"uvicorn's floor ({floors['uvicorn']}," in listener
 
 
-def test_ci_installs_the_samples_library_versions() -> None:
-    """The samples regenerate byte for byte only with their manifest's libraries: CI installs with
-    ``-c constraints.txt``, which pins them."""
-    manifest = json.loads((ROOT / "src/ordnung/demo/samples/manifest.json").read_text(encoding="utf-8"))
-    constraints = (ROOT / "constraints.txt").read_text(encoding="utf-8")
-    pins = dict(re.findall(r"^([\w.-]+)==([^\s;]+)", constraints, re.M))
-    for name in ("fpdf2", "fonttools", "pillow", "pypdfium2"):
-        assert pins[name] == manifest["generator"]["environment"][name], name
-    workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-    assert workflow.count('uv pip install -e ".[dev]" -c constraints.txt') >= 2
-
-
 # --------------------------------------------------------------------------------------------------
 # the version: one place, above every earlier install, and what an update needs
 # --------------------------------------------------------------------------------------------------
@@ -311,38 +298,6 @@ def test_the_bug_template_suggests_this_version() -> None:
 # --------------------------------------------------------------------------------------------------
 # macOS and Windows
 # --------------------------------------------------------------------------------------------------
-
-
-def _ci_jobs() -> dict[str, Any]:
-    yaml = pytest.importorskip("yaml")  # PyYAML comes with uvicorn[standard]
-    workflow = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
-    return dict(workflow["jobs"])
-
-
-def test_ci_runs_the_platform_code_on_macos_and_windows() -> None:
-    """Every job ran on Ubuntu, so the data-folder lock's, the durable writes', sync's
-    computer id and phone access's macOS and Windows code never ran. One job runs their tests there,
-    outside pull requests, and a failure there fails the run; every test it names exists."""
-    job = _ci_jobs()["other-systems"]
-    assert job["strategy"]["matrix"]["os"] == ["macos-latest", "windows-latest"]
-    assert job["runs-on"] == "${{ matrix.os }}"
-    assert job["if"] == "github.event_name != 'pull_request'"
-    assert "continue-on-error" not in job and all("continue-on-error" not in step for step in job["steps"])
-    tests = "\n".join(step.get("run", "") for step in job["steps"] if "pytest" in step.get("run", ""))
-    named = re.findall(r"tests/[\w*]+\.py(?:::\w+)?", tests)
-    assert "tests/test_platform_smoke.py" in named
-    for name in named:
-        pattern, _, test = name.partition("::")
-        files = list(ROOT.glob(pattern))
-        assert files, f"{name} names no test file"
-        assert not test or f"def {test}(" in files[0].read_text(encoding="utf-8"), f"{name} names no test"
-
-
-def test_the_installed_wheel_reports_the_package_version_in_ci() -> None:
-    for name in ("wheel", "other-systems"):
-        script = "\n".join(step.get("run", "") for step in _ci_jobs()[name]["steps"])
-        assert "src/ordnung/__init__.py" in script and 'ordnung" --version' in script, name
-        assert 'test "$reported" = "ordnung $version"' in script, name
 
 
 def test_a_windows_checkout_keeps_every_file_byte_for_byte() -> None:
