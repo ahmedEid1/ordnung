@@ -1792,8 +1792,10 @@ def test_the_hand_off_sync_docs_state_the_code_s_numbers() -> None:
 
 
 def test_the_sync_key_file_takes_the_most_scrypt_a_backup_reader_allows() -> None:
-    """ADR 0018: scrypt "256 MiB, the most a backup reader allows" — and no more (a reader refuses beyond)."""
+    """ADR 0018: scrypt "256 MiB, the most a backup reader allows" — and no more (a reader refuses beyond); a new
+    backup takes the key costs of a new sync folder."""
     assert sync.SYNC_KDF.memory == MAX_SCRYPT_BYTES
+    assert DEFAULT_KDF == sync.SYNC_KDF
 
 
 _ADR_BACKUP = ROOT / "docs" / "decisions" / "0013-backups-and-reminders-outside-the-browser.md"
@@ -1846,10 +1848,6 @@ def test_the_backup_docs_state_the_code_s_passphrase_rule_and_key_costs() -> Non
     check_rows(_BACKUP_CLAIMS, check)
 
 
-def test_a_new_backup_takes_the_key_costs_of_a_new_sync_folder() -> None:
-    assert DEFAULT_KDF == sync.SYNC_KDF
-
-
 def test_the_first_save_is_not_ten_seconds_after_a_change_any_more() -> None:
     """An earlier draft saved "about ten seconds after a change"; the person's change is saved after
     ``PUSH_PERSON_QUIET_S``, so no document may promise ten."""
@@ -1895,7 +1893,9 @@ def test_what_stays_on_each_computer_is_what_the_privacy_page_lists() -> None:
     """docs/privacy.md, "What stays on each computer": only the ledger and the letters' files travel; never
     phone access, the calendar connection, the watched folder and what it remembers (but the fingerprints
     of what it brought in), Claude's pause, the morning notification's bookkeeping, nor the privacy-log
-    entries of a backup made there, its phone access and its watched folder."""
+    entries of a backup made there, its phone access and its watched folder. The entry a restore writes
+    (``backup.restored``) is local like a backup's, so the backup reminder counts only copies this computer made
+    or came from."""
     text = _sync_doc("docs/privacy.md")
     assert "Only your ledger and your letters' files travel." in text
     assert sync.SYNCED_DIRS == ("files", "derived", "drafts")
@@ -1919,11 +1919,6 @@ def test_what_stays_on_each_computer_is_what_the_privacy_page_lists() -> None:
     ) in text
     assert "backup.created" in sync.LOCAL_ACTIVITY_KINDS
     assert {"phone.", "folder."} <= set(sync.LOCAL_ACTIVITY_PREFIXES)
-
-
-def test_the_note_of_a_restore_stays_on_that_computer_too() -> None:
-    """docs/privacy.md, "What stays on each computer": the privacy-log entry a restore writes (``backup.restored``)
-    is local like a backup's, so the backup reminder counts only copies this computer made or came from."""
     assert {"backup.created", "backup.restored"} <= sync.LOCAL_ACTIVITY_KINDS
 
 
@@ -1970,7 +1965,10 @@ def test_the_lost_computer_checklist_says_what_to_do_without_legal_periods() -> 
 
 def test_the_backup_docs_say_when_ordnung_reminds_you() -> None:
     """The reminder comes once the newest copy kept elsewhere is more than ``BackupCopy.due_after_days`` old, or
-    there is none; Ordnung can't see backups of the whole computer, so they don't count."""
+    there is none; Ordnung can't see backups of the whole computer, so they don't count. ``ordnung.backup.reminder``
+    reminds after those days, counting the backups made here and the one a restored copy came from."""
+    from ordnung.backup import reminder
+
     days = BackupCopy().due_after_days
     assert days == 30
     documents = {
@@ -1982,13 +1980,6 @@ def test_the_backup_docs_say_when_ordnung_reminds_you() -> None:
         assert "Time Machine" in text and "File History" in text, name
     limitations = _limitations()
     assert "Time Machine" in limitations and "BitLocker" in limitations
-
-
-def test_the_backup_reminder_s_policy_is_the_one_the_docs_describe() -> None:
-    """``ordnung.backup.reminder`` reminds after the days the docs state, counting the backups made here and the
-    one a restored copy came from."""
-    from ordnung.backup import reminder
-
     assert reminder.DUE_AFTER_DAYS == BackupCopy().due_after_days
     assert set(reminder.BACKUP_KINDS) == {"backup.created", "backup.restored"}
 
@@ -2912,18 +2903,11 @@ def test_contributing_says_how_an_end_to_end_test_waits_and_reads() -> None:
     assert re.search(r"^browser: ", (ROOT / "Makefile").read_text(encoding="utf-8"), re.M)
 
 
-def test_the_architecture_says_how_ask_keeps_its_replay_key() -> None:
-    """docs/architecture.md, "Asking a question": the ledger fingerprint is kept per state of the ledger."""
-    asking = (
-        (ROOT / "docs" / "architecture.md").read_text(encoding="utf-8").split("## Asking a question", 1)[1]
-    )
-    assert ASK_KEY_KEPT in _flat(asking.split("\n## ", 1)[0])
-
-
 def test_ask_keeps_its_replay_key_as_the_architecture_says(store: Store) -> None:
     """d1-ask-memo against the architecture's paragraph: the token watches exactly the letters, pages, to-dos,
     contracts, senders and cases (and the profile); Ask's own writes leave it, a sender moves it; and the tests'
-    verify mode works the fingerprint out again wherever it was kept."""
+    verify mode works the fingerprint out again wherever it was kept; the architecture's "Asking a question" says
+    the ledger fingerprint is kept per state of the ledger."""
     from ordnung.assistant import ask
     from ordnung.db import store as store_module
 
@@ -2935,6 +2919,10 @@ def test_ask_keeps_its_replay_key_as_the_architecture_says(store: Store) -> None
     assert store.ledger_token() != token
     assert hasattr(ask, "_LEDGER_MEMO")
     assert "memo.verify = True" in (ROOT / "tests" / "conftest.py").read_text(encoding="utf-8")
+    asking = (
+        (ROOT / "docs" / "architecture.md").read_text(encoding="utf-8").split("## Asking a question", 1)[1]
+    )
+    assert ASK_KEY_KEPT in _flat(asking.split("\n## ", 1)[0])
 
 
 def test_the_docs_say_the_windows_link_names_its_target(tmp_path: Path) -> None:
@@ -3064,7 +3052,9 @@ def test_the_privacy_page_says_what_is_compressed_and_what_the_list_leaves_out()
 async def test_compression_follows_the_rules_the_docs_state(data_dir: Path) -> None:
     """d2-compression against SPEC § 13, ADR 0022 and docs/architecture.md: JSON only, at least 1 KiB, level 6, a
     thread from 128 KiB, never with a cookie, a download's or a file's headers; the outermost middleware; the web
-    app's five text types; TLS compression off on the phone listener."""
+    app's five text types; TLS compression off on the phone listener. SPEC § 13 and docs/architecture.md say what
+    is compressed, on both listeners, that the middleware decides on an answer's start and lets a live stream
+    through at once, and that the web app's files are gzipped once."""
     from ordnung.api import compress
     from ordnung.phone import access
 
@@ -3088,6 +3078,20 @@ async def test_compression_follows_the_rules_the_docs_state(data_dir: Path) -> N
         plain = await api.client.get("/api/rules", headers={"Accept-Encoding": "identity"})
     assert zipped.headers.get("content-encoding") == "gzip" and "content-encoding" not in plain.headers
     assert zipped.json() == plain.json() and "Accept-Encoding" in zipped.headers["vary"]
+    assert (
+        "Compression (`api/compress.py`, ADR 0022): on both listeners, a JSON answer to a `GET` that takes gzip goes "
+        "out gzipped when it is a `200` of at least 1 KiB in one message (level 6; from 128 KiB in a thread)"
+    ) in _spec()
+    architecture = _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
+    concurrency = architecture.split("## Concurrency model", 1)[1].split(" ## ", 1)[0]
+    for words in (
+        "**Compressed answers** (`api/compress.py`, "
+        "[ADR 0022](decisions/0022-compressed-answers-and-a-lighter-letter-list.md)).",
+        "the outermost middleware on both listeners (then the security checks or the phone's gate, then sync's gate)",
+        "anything else, a live stream first of all, passes at once",
+        "The web app's text files are gzipped once and kept in memory, per file and version.",
+    ):
+        assert words in concurrency, words
 
 
 def _stated_bytes(text: str) -> float:
@@ -3198,25 +3202,6 @@ def test_outlook_files_come_in_where_the_docs_say() -> None:
     assert any(dependency.startswith("olefile>=") for dependency in pyproject["project"]["dependencies"])
 
 
-def test_the_spec_and_architecture_say_how_answers_are_compressed() -> None:
-    """SPEC § 13 and docs/architecture.md: what is compressed, on both listeners; the middleware is the outermost,
-    decides on an answer's start and lets a live stream through at once; the web app's files are gzipped once."""
-    assert (
-        "Compression (`api/compress.py`, ADR 0022): on both listeners, a JSON answer to a `GET` that takes gzip goes "
-        "out gzipped when it is a `200` of at least 1 KiB in one message (level 6; from 128 KiB in a thread)"
-    ) in _spec()
-    architecture = _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
-    concurrency = architecture.split("## Concurrency model", 1)[1].split(" ## ", 1)[0]
-    for words in (
-        "**Compressed answers** (`api/compress.py`, "
-        "[ADR 0022](decisions/0022-compressed-answers-and-a-lighter-letter-list.md)).",
-        "the outermost middleware on both listeners (then the security checks or the phone's gate, then sync's gate)",
-        "anything else, a live stream first of all, passes at once",
-        "The web app's text files are gzipped once and kept in memory, per file and version.",
-    ):
-        assert words in concurrency, words
-
-
 def test_every_test_and_script_the_architecture_names_exists() -> None:
     """Every backticked path under ``tests/``, ``web/e2e/``, ``web/src/``, ``scripts/`` or ``web/scripts/`` in
     docs/architecture.md is a file or folder of the repository (``*`` matches as in a shell)."""
@@ -3246,29 +3231,12 @@ SPEC_ANSWERED_AGAIN = (
 )
 
 
-def test_the_docs_say_the_daily_check_stops_after_its_work_and_an_answer_given_again_stands() -> None:
-    """SPEC § 9: stopping the daily check waits for its work; § 12c and docs/architecture.md: hand-off sync's
-    question, answered apart and then once more, settles with that answer."""
-    spec = _spec()
-    assert SPEC_TICK_STOP in spec.split("## 9. Secretary", 1)[1].split(" ## ", 1)[0]
-    assert SPEC_ANSWERED_AGAIN in spec.split("- **Versions** (`sync/lineage.py`, `sync/decide.py`).", 1)[1]
-    architecture = (ROOT / "docs" / "architecture.md").read_text(encoding="utf-8")
-    (row,) = [
-        line
-        for line in architecture.splitlines()
-        if line.startswith("| **Whose content is newer** (lineage)")
-    ]
-    assert (
-        "(two answers given apart are asked about once more, and the answer given then stands: the changes it keeps "
-        "again are numbered anew)"
-    ) in row
-
-
 def test_the_daily_check_and_hand_off_sync_do_what_the_changelog_says() -> None:
     """d2-races against the CHANGELOG and SPEC: every thread call of the daily tick is waited for on a cancel (at
     most 10 s); two answers given apart, then answered once more by keeping the same version, leave the other
     computer seeing that answer as having decided, and the save numbers the kept changes anew; a version with the
-    same content as one kept elsewhere counts that choice's drops as answered."""
+    same content as one kept elsewhere counts that choice's drops as answered. SPEC § 9, § 12c and
+    docs/architecture.md say the daily check's stop waits for its work and an answer given again stands."""
     import ordnung.tick as tick_module
     from ordnung.sync import decide, push
     from ordnung.sync import lineage as lin
@@ -3287,6 +3255,19 @@ def test_the_daily_check_and_hand_off_sync_do_what_the_changelog_says() -> None:
     assert "renumbers(" in inspect.getsource(push.push)
     for rule in (decide._in_use, decide._use_here):
         assert "_informed(" in inspect.getsource(rule), rule.__name__
+    spec = _spec()
+    assert SPEC_TICK_STOP in spec.split("## 9. Secretary", 1)[1].split(" ## ", 1)[0]
+    assert SPEC_ANSWERED_AGAIN in spec.split("- **Versions** (`sync/lineage.py`, `sync/decide.py`).", 1)[1]
+    architecture = (ROOT / "docs" / "architecture.md").read_text(encoding="utf-8")
+    (row,) = [
+        line
+        for line in architecture.splitlines()
+        if line.startswith("| **Whose content is newer** (lineage)")
+    ]
+    assert (
+        "(two answers given apart are asked about once more, and the answer given then stands: the changes it keeps "
+        "again are numbered anew)"
+    ) in row
 
 
 # --------------------------------------------------------------------------------------------------
@@ -3941,39 +3922,13 @@ def _guide_pictures() -> str:
     return _flat(_install_part("Words in photos (optional)"))
 
 
-def test_the_guide_says_what_text_in_pictures_finds_and_misses() -> None:
-    """The guide: Install's paragraph (optional, how to install, what it does, the off switch), the doctor's
-    comment, CI on Linux and on other systems; Limitations replace "No OCR of its own". The decisions' index lists
-    ADR 0024 after 0023."""
-    from ordnung import doctor
-
-    pictures = _guide_pictures()
-    for sentence in GUIDE_PICTURES:
-        assert sentence in pictures, sentence
-    for name, platform in TESSERACT_SYSTEMS.items():
-        assert f"- {name}: {doctor.tesseract_install(platform)}" in pictures, name
-    (line,) = [line for line in _guide().splitlines() if line.startswith("ordnung doctor ")]
-    assert "text in pictures" in line
-    install = _flat(_section(_guide(), "## Install and run").split("```", 1)[0])
-    assert "CI tests Ordnung on Linux, with a real Tesseract for text in pictures." in install
-    assert (
-        "autostart entries, app-menu shortcuts, backups and text in pictures (looking for Tesseract, which isn't "
-        "installed there)."
-    ) in install
-    limitations = _limitations()
-    for sentence in GUIDE_PICTURES_LIMIT:
-        assert sentence in limitations, sentence
-    for document in (_readme(), _guide()):
-        assert "No OCR of its own" not in document
-    assert "or waiting for Claude, is found only by its name" not in limitations
-    assert _index_row(_ADR_HOUSEHOLD) < _index_row(_ADR_PICTURES)
-
-
 def test_text_in_pictures_is_documented_as_optional_and_off_switchable() -> None:
     """The guide's install lines are the doctor's, per system (its *Not installed (optional)* row, ok, with the
     line as its fix); the off switch is the one ``config`` reads, the doctor says *Turned off* with it, and start at
     login and the app-menu launchers record it; docs/privacy.md names ``ORDNUNG_OCR=off`` and
-    ``picture-text.json``; the guide links ADR 0024 and privacy.md's section on it."""
+    ``picture-text.json``; the guide links ADR 0024 and privacy.md's section on it. The guide also says what text
+    in pictures finds and misses (Install's paragraph, the doctor's comment, CI on Linux and on other systems,
+    Limitations replacing "No OCR of its own"), and the decisions' index lists ADR 0024 after 0023."""
     from ordnung import autostart, config, doctor
 
     pictures = _guide_pictures()
@@ -4004,6 +3959,23 @@ def test_text_in_pictures_is_documented_as_optional_and_off_switchable() -> None
     assert "`<data dir>/derived/<letter>/picture-text.json`" in privacy
     assert _ADR_PICTURES_LINK in pictures
     assert "([how](privacy.md#words-in-pictures-optional))" in pictures
+    for sentence in GUIDE_PICTURES:
+        assert sentence in pictures, sentence
+    (line,) = [line for line in _guide().splitlines() if line.startswith("ordnung doctor ")]
+    assert "text in pictures" in line
+    install = _flat(_section(_guide(), "## Install and run").split("```", 1)[0])
+    assert "CI tests Ordnung on Linux, with a real Tesseract for text in pictures." in install
+    assert (
+        "autostart entries, app-menu shortcuts, backups and text in pictures (looking for Tesseract, which isn't "
+        "installed there)."
+    ) in install
+    limitations = _limitations()
+    for sentence in GUIDE_PICTURES_LIMIT:
+        assert sentence in limitations, sentence
+    for document in (_readme(), _guide()):
+        assert "No OCR of its own" not in document
+    assert "or waiting for Claude, is found only by its name" not in limitations
+    assert _index_row(_ADR_HOUSEHOLD) < _index_row(_ADR_PICTURES)
 
 
 def test_the_off_switch_and_the_file_are_the_ones_the_docs_name() -> None:
