@@ -10,6 +10,7 @@ Every letter here is synthetic and written in this file or the floor tests; noth
 from __future__ import annotations
 
 import copy
+import itertools
 import sys
 from collections.abc import Iterator
 from dataclasses import replace
@@ -20,6 +21,7 @@ from typing import Any
 import pytest
 
 from fixtures_llm import TODAY, Letter
+from helpers_tables import check_rows
 from ordnung import clock
 from ordnung.app_context import build_context
 from ordnung.ingest import extract
@@ -223,59 +225,74 @@ INJECTED = letter(
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "sender",
-    [
-        {"name": "Stadt Musterhausen", "kind": "tax_office"},
-        {"name": "Stadt Musterhausen", "kind": "health_insurer"},
-        {"name": "Amtsgericht Musterhausen", "kind": "other"},
-    ],
-    ids=["tax_office", "health_insurer", "court-name"],
-)
-@pytest.mark.parametrize(
-    "item",
-    [
-        objection({"anchor": "document_date", "delivery_rule": "none"}),
-        {
-            **objection({}),
-            "date": {"type": "fixed", "date": "2026-10-15", "nature": "objection", "text": "bis"},
-        },
-        objection({}),
-    ],
-    ids=["document-date", "fixed", "deemed"],
-)
-async def test_a_sender_read_anew_never_moves_a_kept_to_do_later(
-    tmp_path: Path, sender: dict[str, Any], item: dict[str, Any]
-) -> None:
+SENDERS_READ_ANEW = [
+    {"name": "Stadt Musterhausen", "kind": "tax_office"},
+    {"name": "Stadt Musterhausen", "kind": "health_insurer"},
+    {"name": "Amtsgericht Musterhausen", "kind": "other"},
+]
+#: The objection the answer adds beside the kept payment: dated from the letter's date, fixed, and deemed.
+ADDED_OBJECTIONS = [
+    objection({"anchor": "document_date", "delivery_rule": "none"}),
+    {
+        **objection({}),
+        "date": {"type": "fixed", "date": "2026-10-15", "nature": "objection", "text": "bis"},
+    },
+    objection({}),
+]
+
+
+async def test_a_sender_read_anew_never_moves_a_kept_to_do_later(tmp_path: Path) -> None:
     """The same DateSpec for the payment, counted in the second reading's context (a tax office's weekend move, a
     health insurer's or a court's start), ends later than in the first's: the payment counts as dropped."""
-    first = {**HALF, "items": [PAY_RELATIVE]}
-    again = {**first, "sender": sender, "items": [PAY_RELATIVE, item]}
-    await assert_baseline(tmp_path, PAY_LETTER, first, again, "dropped", received="2026-10-01")
+
+    async def check(where: Path, sender: dict[str, Any], item: dict[str, Any]) -> None:
+        first = {**HALF, "items": [PAY_RELATIVE]}
+        again = {**first, "sender": sender, "items": [PAY_RELATIVE, item]}
+        await assert_baseline(where, PAY_LETTER, first, again, "dropped", received="2026-10-01")
+
+    rows = list(itertools.product(SENDERS_READ_ANEW, ADDED_OBJECTIONS))
+    raised: list[Exception | None] = []
+    for number, row in enumerate(rows):
+        try:
+            await check(tmp_path / str(number), *row)
+        except Exception as exc:
+            raised.append(exc)
+        else:
+            raised.append(None)
+    outcomes = iter(raised)
+
+    def settled(*_row: Any) -> None:
+        if (error := next(outcomes)) is not None:
+            raise error
+
+    check_rows(rows, settled)
 
 
-@pytest.mark.parametrize(
-    "item",
-    [
-        objection({"anchor": "document_date", "delivery_rule": "none"}),
-        {
-            **objection({}),
-            "date": {"type": "fixed", "date": "2026-10-15", "nature": "objection", "text": "bis"},
-        },
-        objection({}),
-    ],
-    ids=["document-date", "fixed", "deemed"],
-)
-async def test_a_sender_read_as_a_firm_that_moves_nothing_later_is_used(
-    tmp_path: Path, item: dict[str, Any]
-) -> None:
-    first = {**HALF, "items": [PAY_RELATIVE]}
-    again = {
-        **first,
-        "sender": {"name": "Stadt Musterhausen", "kind": "company"},
-        "items": [PAY_RELATIVE, item],
-    }
-    await assert_no_worse(tmp_path, PAY_LETTER, first, again, received="2026-10-01")
+async def test_a_sender_read_as_a_firm_that_moves_nothing_later_is_used(tmp_path: Path) -> None:
+    async def check(where: Path, item: dict[str, Any]) -> None:
+        first = {**HALF, "items": [PAY_RELATIVE]}
+        again = {
+            **first,
+            "sender": {"name": "Stadt Musterhausen", "kind": "company"},
+            "items": [PAY_RELATIVE, item],
+        }
+        await assert_no_worse(where, PAY_LETTER, first, again, received="2026-10-01")
+
+    raised: list[Exception | None] = []
+    for number, row in enumerate(ADDED_OBJECTIONS):
+        try:
+            await check(tmp_path / str(number), row)
+        except Exception as exc:
+            raised.append(exc)
+        else:
+            raised.append(None)
+    outcomes = iter(raised)
+
+    def settled(*_row: Any) -> None:
+        if (error := next(outcomes)) is not None:
+            raise error
+
+    check_rows(ADDED_OBJECTIONS, settled)
 
 
 async def test_a_tax_office_s_correct_answer_is_not_used_when_it_ends_after_the_check_s_date(
@@ -306,50 +323,52 @@ def test_the_shape_alone_passes_that_tax_answer() -> None:
 FOUR_DAYS = tuple(sorted(VWVFG_FOUR_DAY_FROM))
 
 
-def test_every_four_day_land_counts_four_days_by_the_letters_compared() -> None:
-    """The letters below are of January 2026, after every Land's switch to the 4th day (Hamburg's 14 May 2025 the
-    last), so each Land of the table counts four days for them."""
-    assert FOUR_DAYS and max(VWVFG_FOUR_DAY_FROM.values()) < date(2026, 1, 19)
-    assert {"HB", "TH"} <= set(FOUR_DAYS)
-
-
-@pytest.mark.parametrize("land", FOUR_DAYS)
-def test_an_objection_date_later_in_some_land_only_is_not_used(
-    monkeypatch: pytest.MonkeyPatch, land: str
-) -> None:
+def test_an_objection_date_later_in_some_land_only_is_not_used(monkeypatch: pytest.MonkeyPatch) -> None:
     """Thursday 22.01.2026: the tax office's four days end on Monday 26.01, the check's three for a letter read
     without a sender on Sunday 25.01 — a day later in every Land that still counts three, the same day in every
     other. Every Land is compared: compared in one of the others only, the answer would be used."""
-    pages = pages_of(tax_letter("22.01.2026"))
-    today = date(2026, 1, 27)
-    second = reading({**TAX_HALF, "document_date": "2026-01-22", "items": [TAX_OBJECTION]})
-    assert judge_completion("doc_x", reading(BLANK), second, pages, gap="empty", today=today) == "later"
-    monkeypatch.setattr(extract, "_REGIONS", (land,))
-    assert judge_completion("doc_x", reading(BLANK), second, pages, gap="empty", today=today) is None
+    # the letters compared are of January 2026, after every Land's switch to the 4th day (Hamburg's 14 May 2025
+    # the last), so each Land of the table counts four days for them
+    assert FOUR_DAYS and max(VWVFG_FOUR_DAY_FROM.values()) < date(2026, 1, 19)
+    assert {"HB", "TH"} <= set(FOUR_DAYS)
+
+    def check(land: str) -> None:
+        pages = pages_of(tax_letter("22.01.2026"))
+        today = date(2026, 1, 27)
+        second = reading({**TAX_HALF, "document_date": "2026-01-22", "items": [TAX_OBJECTION]})
+        assert judge_completion("doc_x", reading(BLANK), second, pages, gap="empty", today=today) == "later"
+        with monkeypatch.context() as patch:
+            patch.setattr(extract, "_REGIONS", (land,))
+            assert judge_completion("doc_x", reading(BLANK), second, pages, gap="empty", today=today) is None
+
+    check_rows(FOUR_DAYS, check)
 
 
-@pytest.mark.parametrize("land", FOUR_DAYS)
-def test_a_kept_to_do_later_in_some_land_only_counts_as_dropped(
-    monkeypatch: pytest.MonkeyPatch, land: str
-) -> None:
+def test_a_kept_to_do_later_in_some_land_only_counts_as_dropped(monkeypatch: pytest.MonkeyPatch) -> None:
     """Monday 19.01.2026, a payment two weeks after notification: read as an authority's letter it is due on
     Thursday 05.02 where the Land counts three days, read anew as a tax office's on Friday 06.02 everywhere. The
     objection the answer adds ends on the letter's date plus its month, never after the check's."""
-    pages = pages_of(tax_letter("19.01.2026", PAY_AFTER))
-    today = date(2026, 1, 24)
-    first = {**TAX_HALF, "sender": {**TAX_SENDER, "kind": "authority"}, "document_date": "2026-01-19"}
-    first["items"] = [PAY_RELATIVE]
-    objection_by = {
-        **TAX_OBJECTION,
-        "date": {"type": "fixed", "date": "2026-02-19", "nature": "objection", "text": "bis"},
-    }
-    second = reading({**first, "sender": TAX_SENDER, "items": [PAY_RELATIVE, objection_by]})
-    verdict = judge_completion("doc_x", reading(first), second, pages, gap="remedy_left_out", today=today)
-    assert verdict == "dropped"
-    monkeypatch.setattr(extract, "_REGIONS", (land,))
-    assert (
-        judge_completion("doc_x", reading(first), second, pages, gap="remedy_left_out", today=today) is None
-    )
+
+    def check(land: str) -> None:
+        pages = pages_of(tax_letter("19.01.2026", PAY_AFTER))
+        today = date(2026, 1, 24)
+        first = {**TAX_HALF, "sender": {**TAX_SENDER, "kind": "authority"}, "document_date": "2026-01-19"}
+        first["items"] = [PAY_RELATIVE]
+        objection_by = {
+            **TAX_OBJECTION,
+            "date": {"type": "fixed", "date": "2026-02-19", "nature": "objection", "text": "bis"},
+        }
+        second = reading({**first, "sender": TAX_SENDER, "items": [PAY_RELATIVE, objection_by]})
+        verdict = judge_completion("doc_x", reading(first), second, pages, gap="remedy_left_out", today=today)
+        assert verdict == "dropped"
+        with monkeypatch.context() as patch:
+            patch.setattr(extract, "_REGIONS", (land,))
+            assert (
+                judge_completion("doc_x", reading(first), second, pages, gap="remedy_left_out", today=today)
+                is None
+            )
+
+    check_rows(FOUR_DAYS, check)
 
 
 async def test_the_second_reading_s_own_check_may_not_end_later_either(tmp_path: Path) -> None:
@@ -380,11 +399,28 @@ async def test_the_first_answer_s_sender_named_again_needs_no_looking_up(tmp_pat
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("items", [[PLANTED_OTHER], [objection({}), PLANTED_OTHER]], ids=["alone", "beside"])
-async def test_a_remedy_filed_under_another_nature_never_ends_after_the_check_s_date(
-    tmp_path: Path, items: list[dict[str, Any]]
-) -> None:
-    await assert_baseline(tmp_path, PLANT, BLANK, {**HALF, "items": items}, "later")
+PLANTED_OTHER_FILINGS = [[PLANTED_OTHER], [objection({}), PLANTED_OTHER]]  # alone, and beside the objection
+
+
+async def test_a_remedy_filed_under_another_nature_never_ends_after_the_check_s_date(tmp_path: Path) -> None:
+    async def check(where: Path, items: list[dict[str, Any]]) -> None:
+        await assert_baseline(where, PLANT, BLANK, {**HALF, "items": items}, "later")
+
+    raised: list[Exception | None] = []
+    for number, row in enumerate(PLANTED_OTHER_FILINGS):
+        try:
+            await check(tmp_path / str(number), row)
+        except Exception as exc:
+            raised.append(exc)
+        else:
+            raised.append(None)
+    outcomes = iter(raised)
+
+    def settled(*_row: Any) -> None:
+        if (error := next(outcomes)) is not None:
+            raise error
+
+    check_rows(PLANTED_OTHER_FILINGS, settled)
 
 
 async def test_a_remedy_filed_under_another_nature_is_never_used_where_the_check_can_t_date_it(
@@ -552,32 +588,39 @@ CTX = RuleContext(today=date(2026, 9, 25), document_date=date(2026, 9, 15))
 SECOND = reading(COMPLETE)
 
 
-@pytest.mark.parametrize(
-    ("spec", "allowed"),
-    [
-        ({"type": "fixed", "date": "2026-10-15"}, True),  # the floor's start plus its period
-        ({"type": "fixed", "date": "2026-10-16"}, False),  # one day later
-        ({**OBJ_DATE, "amount": 1}, True),
-        ({**OBJ_DATE, "amount": 2}, False),  # a longer period
-        ({**OBJ_DATE, "amount": 5, "unit": "weeks"}, False),  # another unit
-        ({**OBJ_DATE, "anchor": "receipt"}, False),
-        ({**OBJ_DATE, "anchor": "document_date", "delivery_rule": "none"}, True),
-        ({**OBJ_DATE, "anchor": "explicit_date", "anchor_date": "2026-09-16"}, False),  # a later start
-    ],
-    ids=["fixed", "fixed+1", "same", "longer", "unit", "receipt", "document-date", "later-start"],
-)
-def test_the_shape_of_an_objection_date(spec: dict[str, Any], allowed: bool) -> None:
-    date_spec = DateSpec.model_validate({"nature": "objection", "text": "x", **spec})
-    assert _not_later_spec(FLOOR, date_spec, SECOND, CTX) is allowed
+OBJECTION_DATE_SHAPES = [
+    ({"type": "fixed", "date": "2026-10-15"}, True),  # the floor's start plus its period
+    ({"type": "fixed", "date": "2026-10-16"}, False),  # one day later
+    ({**OBJ_DATE, "amount": 1}, True),
+    ({**OBJ_DATE, "amount": 2}, False),  # a longer period
+    ({**OBJ_DATE, "amount": 5, "unit": "weeks"}, False),  # another unit
+    ({**OBJ_DATE, "anchor": "receipt"}, False),
+    ({**OBJ_DATE, "anchor": "document_date", "delivery_rule": "none"}, True),
+    ({**OBJ_DATE, "anchor": "explicit_date", "anchor_date": "2026-09-16"}, False),  # a later start
+]
 
 
-@pytest.mark.parametrize("who", [{"private_sender": True}, {"court": True}], ids=["private", "court"])
-def test_deemed_delivery_never_counts_for_a_sender_without_it(who: dict[str, bool]) -> None:
+def test_the_shape_of_an_objection_date() -> None:
+    def check(spec: dict[str, Any], allowed: bool) -> None:
+        date_spec = DateSpec.model_validate({"nature": "objection", "text": "x", **spec})
+        assert _not_later_spec(FLOOR, date_spec, SECOND, CTX) is allowed
+
+    check_rows(OBJECTION_DATE_SHAPES, check)
+
+
+SENDERS_WITHOUT_DEEMED_DELIVERY = [{"private_sender": True}, {"court": True}]
+
+
+def test_deemed_delivery_never_counts_for_a_sender_without_it() -> None:
     """A private sender's letter or a court's has no deemed delivery: a period from it would be counted from the
     arrival, which a later arrival moves later."""
-    spec = DateSpec.model_validate(OBJ_DATE)
-    assert _not_later_spec(FLOOR, spec, SECOND, CTX)
-    assert not _not_later_spec(FLOOR, spec, SECOND, replace(CTX, **who))
+
+    def check(who: dict[str, bool]) -> None:
+        spec = DateSpec.model_validate(OBJ_DATE)
+        assert _not_later_spec(FLOOR, spec, SECOND, CTX)
+        assert not _not_later_spec(FLOOR, spec, SECOND, replace(CTX, **who))
+
+    check_rows(SENDERS_WITHOUT_DEEMED_DELIVERY, check)
 
 
 async def test_a_day_one_day_after_the_period_is_never_used_though_the_check_s_date_is_later(
@@ -633,43 +676,61 @@ def test_a_second_reading_s_own_check_less_dated_than_the_floor_never_covers_it(
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("allowed", [True, False], ids=["allowed", "as-now"])
-@pytest.mark.parametrize(
-    ("error", "signal"),
-    [
-        (ReplayMiss("no recorded response for extract"), "reading_reask_missing"),
-        (ClaudeBadOutput("no structured output"), "reading_reask:rejected"),
-        (ClaudeTimeout("timed out"), None),
-    ],
-    ids=["replay-miss", "bad-output", "timeout"],
-)
+REASK_ALLOWED = [True, False]  # allowed, and as now
+REASK_ERRORS = [
+    (ReplayMiss("no recorded response for extract"), "reading_reask_missing"),
+    (ClaudeBadOutput("no structured output"), "reading_reask:rejected"),
+    (ClaudeTimeout("timed out"), None),
+]
+
+
 async def test_on_an_allowed_letter_only_a_replay_miss_is_missing(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, error: Exception, signal: str | None, allowed: bool
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """On a letter :data:`REASK_UNRECORDED` lists (the empty reading's, before its re-ask was recorded) a
     replay miss keeps the first reading; with nothing listed, as now, it is a replay error. A recorded failure
     or a timeout is the same either way."""
-    if allowed:
-        monkeypatch.setattr(conditions, "REASK_UNRECORDED", frozenset({EMPTY_READING}))
-    assert (EMPTY_READING in conditions.REASK_UNRECORDED) is allowed
-    if not allowed and isinstance(error, ReplayMiss):
-        signal = None  # raised, like every other missing recording
     entry = {e.id: e for e in load_manifest(MANIFEST)}[EMPTY_READING]
     document = prepare_document(entry, MANIFEST.parent, tmp_path)
 
-    def respond(request: LLMRequest) -> Any:
-        if request.prompt_name == "reading_gaps":
-            raise error
-        return dict(BLANK)
+    async def check(allowed: bool, error: Exception, signal: str | None) -> None:
+        with monkeypatch.context() as patch:
+            if allowed:
+                patch.setattr(conditions, "REASK_UNRECORDED", frozenset({EMPTY_READING}))
+            assert (EMPTY_READING in conditions.REASK_UNRECORDED) is allowed
+            if not allowed and isinstance(error, ReplayMiss):
+                signal = None  # raised, like every other missing recording
 
-    llm = LLMService(MeteredBackend(FakeBackend(respond), CallLog(), timeout_s=60))
-    if signal is None:
-        with pytest.raises(type(error)):
-            await run_ordnung(entry, document, llm, model="claude-sonnet-5")
-        return
-    prediction = await run_ordnung(entry, document, llm, model="claude-sonnet-5")
-    reask = [s for s in prediction.signals if s.startswith("reading_reask")]
-    assert reask == [signal]
+            def respond(request: LLMRequest) -> Any:
+                if request.prompt_name == "reading_gaps":
+                    raise error
+                return dict(BLANK)
+
+            llm = LLMService(MeteredBackend(FakeBackend(respond), CallLog(), timeout_s=60))
+            if signal is None:
+                with pytest.raises(type(error)):
+                    await run_ordnung(entry, document, llm, model="claude-sonnet-5")
+                return
+            prediction = await run_ordnung(entry, document, llm, model="claude-sonnet-5")
+            reask = [s for s in prediction.signals if s.startswith("reading_reask")]
+            assert reask == [signal]
+
+    rows = [(allowed, *case) for allowed, case in itertools.product(REASK_ALLOWED, REASK_ERRORS)]
+    raised: list[Exception | None] = []
+    for row in rows:
+        try:
+            await check(*row)
+        except Exception as exc:
+            raised.append(exc)
+        else:
+            raised.append(None)
+    outcomes = iter(raised)
+
+    def settled(*_row: Any) -> None:
+        if (error := next(outcomes)) is not None:
+            raise error
+
+    check_rows(rows, settled)
 
 
 def test_the_check_s_floor_ignores_the_injection_flag_for_its_date() -> None:
