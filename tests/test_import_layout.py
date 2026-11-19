@@ -36,8 +36,8 @@ ALLOWED_CYCLES: dict[frozenset[str], str] = {
 STAYS_LIGHT = [
     # the person's today and the day parsers: a leaf, below the store, the tick and the triggers
     ("ordnung.days", {"ordnung.db.store", "ordnung.tick", "ordnung.secretary.triggers"}),
-    # the calendar file needs today, not the daily tick or the reading pipeline
-    ("ordnung.calendar.ics", {"ordnung.tick", "ordnung.ingest.pipeline"}),
+    # the calendar file needs today and the ledger's facts, not the daily tick, the reading pipeline or the triggers
+    ("ordnung.calendar.ics", {"ordnung.tick", "ordnung.ingest.pipeline", "ordnung.secretary.triggers"}),
     # recurring dates need the postal buffer from the rules engine, not the trigger engine
     ("ordnung.recurrence", {"ordnung.secretary.triggers"}),
 ]

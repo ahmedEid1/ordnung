@@ -300,7 +300,7 @@ apart from two `meta` moments:
   last session" read. Its *Post and keep proof* step reads a sent letter's proofs the way its proof
   overview does (`drafts.proof.missing`), its *Waiting for* step is the Waiting for page
   (`secretary.waiting.waiting_for`), and the rows it counts as overdue carry `overdue`. The facts both
-  read models share with the Ideas and Ask live in `secretary/triggers.py`: `action_day`, `is_overdue`,
+  read models share with the Ideas and Ask live in `secretary/ledger.py`: `action_day`, `is_overdue`,
   `paid_at_appointment` (a fee paid on site is no transfer), `unconfirmed_reason` (a date not confirmed
   against its letter, until "The date looks right"), `Ledger.is_set_aside` (a letter with scam signs, an
   invoice a payment reminder took over, an e-mail's payment its attached bill repeats — never counted,
