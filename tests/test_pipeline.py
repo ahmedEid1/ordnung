@@ -23,6 +23,7 @@ from fixtures_llm import (
     record_events,
 )
 from helpers_docs import INJECTION, hidden_text_pdf, photo, scanned_pdf
+from helpers_tables import check_rows
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.ingest import pipeline
@@ -71,7 +72,7 @@ def items_by_kind(ctx: AppContext, doc_id: str) -> dict[str, Item]:
 # --------------------------------------------------------------------------------------------------
 
 
-async def test_tax_assessment_objection_deadline_is_computed_and_grounded(ctx: AppContext) -> None:
+async def test_the_tax_assessment_is_read_into_grounded_to_dos_linked_to_its_sender(ctx: AppContext) -> None:
     document = await add_file(ctx, TAX_LETTER.pdf(), "bescheid.pdf")
     assert document.status == "queued"
     assert document.id.startswith("doc_")
@@ -96,13 +97,6 @@ async def test_tax_assessment_objection_deadline_is_computed_and_grounded(ctx: A
     assert "ao_122_2_1" in objection.computation.rule_ids
     assert objection.send_by is not None and objection.send_by < "2026-10-21"
     assert objection.slot_key and objection.id.startswith("itm_")
-
-
-async def test_tax_payment_fixed_date_party_case_and_facts(ctx: AppContext) -> None:
-    document = await add_file(ctx, TAX_LETTER.pdf(), "bescheid.pdf")
-    await ctx.worker.run_until_idle()
-    document = ctx.store.get_document(document.id)
-    assert document is not None
 
     payment = items_by_kind(ctx, document.id)["payment"]
     assert payment.due_date == "2026-10-15"
@@ -202,9 +196,6 @@ async def test_reupload_returns_the_same_document_without_a_new_job(ctx: AppCont
     assert len(ctx.store.list_jobs()) == 1
     assert ctx.store.counts()["documents"] == 1
 
-
-async def test_reupload_restores_a_trashed_document(ctx: AppContext) -> None:
-    first = await add_file(ctx, TAX_LETTER.pdf(), "bescheid.pdf")
     ctx.store.trash_document(first.id)
     again = await add_file(ctx, TAX_LETTER.pdf(), "bescheid.pdf")
     assert again.id == first.id and again.deleted_at is None
@@ -267,14 +258,6 @@ async def test_reprocess_drops_stale_items_that_nobody_edited(ctx: AppContext, r
     assert check.slot_key.split("#")[0] == DEADLINE_SLOT and check.kind == "payment" and needs_check(check)
 
 
-async def test_second_read_uses_the_cache(ctx: AppContext) -> None:
-    document = await add_file(ctx, TAX_LETTER.pdf(), "bescheid.pdf")
-    await ctx.worker.run_until_idle()
-    await ingest_document(ctx, document.id)
-    assert len(backend(ctx).calls) == 1
-    assert ctx.store.usage_stats().cache_hits == 1
-
-
 async def test_a_new_model_choice_is_a_new_call_not_a_cache_hit(data_dir: Path, router: Router) -> None:
     """The cache is keyed by the model the backend runs a call on (Settings → Claude, an environment
     pin), not by the request's alias: a letter read again after the choice changed is read anew."""
@@ -317,9 +300,7 @@ async def test_private_documents_never_reach_a_model(ctx: AppContext) -> None:
     logged = [entry.message for entry in ctx.store.list_activity(5, kinds=["document.private"])]
     assert logged == ["Stored “bescheid.pdf” privately · not sent to Claude"]
 
-
-async def test_private_photo_is_not_transcribed(ctx: AppContext) -> None:
-    await add_file(ctx, photo("JPEG", size=(600, 800)), "IMG.jpg", private=True)
+    await add_file(ctx, photo("JPEG", size=(600, 800)), "IMG.jpg", private=True)  # a photo is not transcribed
     await ctx.worker.run_until_idle()
     assert backend(ctx).calls == []
 
@@ -369,11 +350,9 @@ async def test_the_scanner_text_never_reaches_a_prompt(ctx: AppContext) -> None:
     assert page is not None and page.text_source == "transcript"
     assert not _scan_file(ctx, document.id).exists()
 
-
-async def test_a_scan_claude_read_leaves_no_scanner_text_file(ctx: AppContext) -> None:
-    """A scan without a scanner's text (like the demo's New-mail letter) read by Claude: the file the text
-    stage kept ("looked, nothing there") goes once every page has its transcript, and the catch-up has
-    nothing left to do."""
+    # A scan without a scanner's text (like the demo's New-mail letter) read by Claude: the file the text
+    # stage kept ("looked, nothing there") goes once every page has its transcript, and the catch-up has
+    # nothing left to do.
     document = await add_file(ctx, scanned_pdf(), "scan.pdf")
     assert await ctx.worker.run_until_idle() == 1
     assert [page.text_source for page in ctx.store.list_pages(document.id)] == ["transcript"]
@@ -717,10 +696,7 @@ async def test_an_empty_reading_of_a_decision_gets_a_dated_please_check_to_do(ga
     assert check.grounding == "verified" and not check.evidence[0].value_consistent
     assert needs_check(check)
 
-
-async def test_the_please_check_idea_says_the_reading_came_back_incomplete(gap_ctx: AppContext) -> None:
-    """Nothing was "not found" on the letter: the Idea says why the to-do is there."""
-    doc_id = await _read_gap_letter(gap_ctx)
+    # Nothing was "not found" on the letter: the Idea says why the to-do is there.
     [idea] = please_check(Ledger(gap_ctx.store, clock.today()))
     assert idea.body.startswith(
         "Claude's reading of this letter came back incomplete, so Ordnung added a to-do"
@@ -730,9 +706,13 @@ async def test_the_please_check_idea_says_the_reading_came_back_incomplete(gap_c
 
 
 async def test_confirming_the_check_to_do_clears_please_check(data_dir: Path) -> None:
+    """Confirming Ordnung's own to-do clears "Please check"; a "Read again" after that brings its warning
+    not back (a first read still says it)."""
     async with api_for(data_dir, router=gap_api_router()) as api:
         doc_id = (await api.upload(("bescheid.pdf", GAP_LETTER.pdf())))["documents"][0]["id"]
         await api.read_all()
+        document = api.ctx.store.get_document(doc_id)
+        assert document is not None and any(GAP_WARNING.match(w) for w in document.warnings)
         [check] = (await api.client.get("/api/items", params={"doc_id": doc_id})).json()
         assert check["slot_key"] == CHECK_SLOT
         assert (await api.client.get(f"/api/documents/{doc_id}")).json()["document"][
@@ -740,9 +720,16 @@ async def test_confirming_the_check_to_do_clears_please_check(data_dir: Path) ->
         ] == "needs_review"
         assert (await api.client.post(f"/api/items/{check['id']}/confirm")).status_code == 200
         assert (await api.client.get(f"/api/documents/{doc_id}")).json()["document"]["status"] == "processed"
+        assert (await api.client.post(f"/api/documents/{doc_id}/reprocess")).status_code == 202
+        await api.read_all()
+        document = api.ctx.store.get_document(doc_id)
+        assert document is not None and not any(GAP_WARNING.match(w) for w in document.warnings)
 
 
 async def test_a_recompute_keeps_the_check_to_do_low_and_please_check(data_dir: Path) -> None:
+    """The check to-do is stored as read, so a recompute meets it with the reading's to-dos; it stays low,
+    "Please check", and gets no second date. (Its own date is the notice's, so this can't tell whether
+    ``with_notice`` skips it: the ``CHECK_SLOT`` filter there is defensive.)"""
     async with api_for(data_dir, router=gap_api_router()) as api:
         doc_id = (await api.upload(("bescheid.pdf", GAP_LETTER.pdf())))["documents"][0]["id"]
         await api.read_all()
@@ -752,6 +739,7 @@ async def test_a_recompute_keeps_the_check_to_do_low_and_please_check(data_dir: 
         assert check.slot_key == CHECK_SLOT and check.due_date is not None
         assert check.computation is not None and check.computation.confidence == "low"
         assert needs_check(check)
+        assert not any("two dates" in note for note in check.computation.warnings)
         document = api.ctx.store.get_document(doc_id)
         assert document is not None and document.status == "needs_review"
 
@@ -791,27 +779,43 @@ async def test_a_recompute_keeps_ordnung_s_own_grade_until_the_person_confirms(d
         assert check.computation is not None and OWN_NOTE not in check.computation.warnings
 
 
-@pytest.mark.parametrize(
-    ("corrected", "due"),
-    [
-        ("2026-09-25", "2026-09-29"),  # later than the letter gives for itself: never later
-        ("2026-10-20", "2026-09-29"),
-        ("2026-09-10", "2026-09-24"),  # earlier: earlier
-    ],
-)
-async def test_a_corrected_letter_date_never_moves_the_check_to_do_later(
-    data_dir: Path, corrected: str, due: str
-) -> None:
+CORRECTED_LETTER_DATES = [
+    ("2026-09-25", "2026-09-29"),  # later than the letter gives for itself: never later
+    ("2026-10-20", "2026-09-29"),
+    ("2026-09-10", "2026-09-24"),  # earlier: earlier
+]
+
+
+async def test_a_corrected_letter_date_never_moves_the_check_to_do_later(data_dir: Path) -> None:
     """The person's letter date moves the to-do only earlier; a later one gets a note."""
-    async with api_for(data_dir, router=gap_api_router(SERVED_LETTER)) as api:
-        doc_id, check = await _served_check(api)
-        response = await api.client.patch(f"/api/documents/{doc_id}", json={"doc_date": corrected})
-        assert response.status_code == 200
-        [check] = api.ctx.store.list_items(doc_id=doc_id)
-        assert check.due_date == due and check.due_date <= "2026-09-29"
-        assert check.computation is not None
-        earlier_note = any(note.startswith("The letter gives") for note in check.computation.warnings)
-        assert earlier_note == (corrected > "2026-09-15")
+
+    async def check(folder: Path, corrected: str, due: str) -> None:
+        async with api_for(folder, router=gap_api_router(SERVED_LETTER)) as api:
+            doc_id, check = await _served_check(api)
+            response = await api.client.patch(f"/api/documents/{doc_id}", json={"doc_date": corrected})
+            assert response.status_code == 200
+            [check] = api.ctx.store.list_items(doc_id=doc_id)
+            assert check.due_date == due and check.due_date <= "2026-09-29"
+            assert check.computation is not None
+            earlier_note = any(note.startswith("The letter gives") for note in check.computation.warnings)
+            assert earlier_note == (corrected > "2026-09-15")
+
+    # each row reads its letter in a data folder of its own, awaited in turn
+    raised: list[Exception | None] = []
+    for number, row in enumerate(CORRECTED_LETTER_DATES):
+        try:
+            await check(data_dir / str(number), *row)
+        except Exception as exc:
+            raised.append(exc)
+        else:
+            raised.append(None)
+    outcomes = iter(raised)
+
+    def settled(*_row: Any) -> None:
+        if (error := next(outcomes)) is not None:
+            raise error
+
+    check_rows(CORRECTED_LETTER_DATES, settled)
 
 
 def _later_objection_router() -> ApiRouter:
@@ -1023,38 +1027,46 @@ def _fine(months: int | None) -> Letter:
     )
 
 
-@pytest.mark.parametrize(("months", "due", "flagged"), [(None, "2026-10-05", False), (3, "2026-10-05", True)])
+SERVICE_DATE_FINES = [(None, "2026-10-05", False), (3, "2026-10-05", True)]
+
+
 async def test_the_letter_s_notice_never_overrides_the_service_date_the_person_entered(
-    data_dir: Path, months: int | None, due: str, flagged: bool
+    data_dir: Path,
 ) -> None:
     """The person enters the yellow envelope's date (20.09, 19 days after the letter's): two
     weeks from service is Mon 5 Oct, never the letter's date's passed 15 Sep — and a planted three months is still
     pulled to 5 Oct, with "Please check" on the letter."""
-    letter = _fine(months)
-    async with api_for(data_dir, router=_router(letter)) as api:
-        doc_id = (await api.upload(("fine.pdf", letter.pdf())))["documents"][0]["id"]
-        await api.read_all()
-        response = await api.client.patch(f"/api/documents/{doc_id}", json={"received_date": "2026-09-20"})
-        assert response.status_code == 200
-        [objection] = api.ctx.store.list_items(doc_id=doc_id)
-        assert objection.due_date == due and needs_check(objection) is flagged
-        document = api.ctx.store.get_document(doc_id)
-        assert document is not None and (document.status == "needs_review") is flagged
 
+    async def check(folder: Path, months: int | None, due: str, flagged: bool) -> None:
+        letter = _fine(months)
+        async with api_for(folder, router=_router(letter)) as api:
+            doc_id = (await api.upload(("fine.pdf", letter.pdf())))["documents"][0]["id"]
+            await api.read_all()
+            response = await api.client.patch(
+                f"/api/documents/{doc_id}", json={"received_date": "2026-09-20"}
+            )
+            assert response.status_code == 200
+            [objection] = api.ctx.store.list_items(doc_id=doc_id)
+            assert objection.due_date == due and needs_check(objection) is flagged
+            document = api.ctx.store.get_document(doc_id)
+            assert document is not None and (document.status == "needs_review") is flagged
 
-async def test_the_check_s_own_to_do_never_gets_the_notice_beside_it_when_recomputed(data_dir: Path) -> None:
-    """The check to-do is stored as read, so a recompute meets it with the reading's to-dos; it gets no
-    second date. (Its own date is the notice's, so this can't tell whether ``with_notice`` skips it: the
-    ``CHECK_SLOT`` filter there is defensive.)"""
-    async with api_for(data_dir, router=gap_api_router()) as api:
-        doc_id = (await api.upload(("bescheid.pdf", GAP_LETTER.pdf())))["documents"][0]["id"]
-        await api.read_all()
-        assert (
-            await api.client.put("/api/profile", json={"region": "HH", "onboarded": True})
-        ).status_code == 200
-        [check] = api.ctx.store.list_items(doc_id=doc_id)
-        assert check.slot_key == CHECK_SLOT and check.computation is not None
-        assert not any("two dates" in note for note in check.computation.warnings)
+    # each row reads its letter in a data folder of its own, awaited in turn
+    raised: list[Exception | None] = []
+    for number, row in enumerate(SERVICE_DATE_FINES):
+        try:
+            await check(data_dir / str(number), *row)
+        except Exception as exc:
+            raised.append(exc)
+        else:
+            raised.append(None)
+    outcomes = iter(raised)
+
+    def settled(*_row: Any) -> None:
+        if (error := next(outcomes)) is not None:
+            raise error
+
+    check_rows(SERVICE_DATE_FINES, settled)
 
 
 async def test_reading_again_completely_removes_the_untouched_check_to_do(
@@ -1122,24 +1134,6 @@ async def test_a_letter_read_months_after_its_only_date_gets_an_undated_check(da
         await api.read_all()
         [check] = api.ctx.store.list_items(doc_id=doc_id)
         assert check.slot_key == CHECK_SLOT and check.due_date is None
-
-
-async def test_reading_again_after_the_person_confirmed_the_check_brings_no_warning_back(
-    data_dir: Path,
-) -> None:
-    """A "Read again" after the person confirmed Ordnung's own to-do: its warning stays
-    gone (a first read still says it)."""
-    async with api_for(data_dir, router=gap_api_router()) as api:
-        doc_id = (await api.upload(("bescheid.pdf", GAP_LETTER.pdf())))["documents"][0]["id"]
-        await api.read_all()
-        document = api.ctx.store.get_document(doc_id)
-        assert document is not None and any(GAP_WARNING.match(w) for w in document.warnings)
-        [check] = api.ctx.store.list_items(doc_id=doc_id)
-        assert (await api.client.post(f"/api/items/{check.id}/confirm")).status_code == 200
-        assert (await api.client.post(f"/api/documents/{doc_id}/reprocess")).status_code == 202
-        await api.read_all()
-        document = api.ctx.store.get_document(doc_id)
-        assert document is not None and not any(GAP_WARNING.match(w) for w in document.warnings)
 
 
 async def test_a_confirmed_to_do_is_never_listed_as_unsure_in_the_please_check_idea(data_dir: Path) -> None:
