@@ -32,6 +32,7 @@ from evals import harness, reproduce  # noqa: E402
 from evals import run as eval_run  # noqa: E402
 from evals.records import Prediction, load_manifest  # noqa: E402
 
+from ordnung.config import OCR_SWITCH  # noqa: E402
 from ordnung.llm.base import ClaudeTimeout, LLMRequest  # noqa: E402
 from ordnung.llm.fake import FakeBackend  # noqa: E402
 from test_evals_run import Responder  # noqa: E402
@@ -161,6 +162,10 @@ def _two_days_once(tmp_path_factory: pytest.TempPathFactory) -> Path:
     """The synthetic final split recorded on two days (``record_two_days``), made once: a folder to copy."""
     folder = tmp_path_factory.mktemp("two-days")
     with pytest.MonkeyPatch.context() as patch:
+        # a module fixture is set up before tests/conftest.py's autouse fixtures: it gives itself what they give
+        patch.setenv(OCR_SWITCH, "off")
+        patch.delenv("ORDNUNG_CLAUDE_BIN", raising=False)
+        patch.delenv("ORDNUNG_BACKEND", raising=False)
         record_two_days(folder, patch, final_split(folder))
     return folder
 
