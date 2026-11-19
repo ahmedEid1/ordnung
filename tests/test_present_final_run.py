@@ -945,8 +945,10 @@ def written(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 
 def test_check_covers_every_final_output_and_fails_after_a_one_character_edit(written: Path) -> None:
+    # clean once: each row restores its file, and a row left unrestored makes the next row's check name two paths
+    assert build.check(written) == []
+
     def check(relative: str) -> None:
-        assert build.check(written) == []
         path = written / relative
         original = path.read_bytes()
         middle = (
