@@ -89,7 +89,8 @@ jobs:
         run: .venv/bin/pytest -m "not slow" -n auto --dist loadfile
       - name: Tests with coverage (and pyproject.toml's coverage floor for the whole package)
         if: ${{ matrix.coverage }}
-        run: .venv/bin/pytest -m "not slow" -n auto --dist loadfile --cov=ordnung --cov-report=term-missing:skip-covered
+        # the 15 slowest tests named at the end: the leg is among a run's longest, so its long pole is on record
+        run: .venv/bin/pytest -m "not slow" -n auto --dist loadfile --cov=ordnung --cov-report=term-missing:skip-covered --durations=15
       - name: Coverage floors of hand-off sync and phone access (read from the run above)
         if: ${{ matrix.coverage }}
         run: |
@@ -124,7 +125,8 @@ jobs:
           uv venv .venv
           uv pip install -e ".[dev]" -c constraints.txt
       - name: Slow tests (every recorded reading replayed, and the page timing; once, without coverage)
-        run: .venv/bin/pytest -m slow -n auto --dist loadfile
+        # the 15 slowest named at the end, as in the coverage leg
+        run: .venv/bin/pytest -m slow -n auto --dist loadfile --durations=15
       - name: Rules engine keeps 100 % line and branch coverage
         run: .venv/bin/pytest tests/test_rules_*.py --cov=ordnung.rules --cov-branch --cov-report=term-missing:skip-covered --cov-fail-under=100
 

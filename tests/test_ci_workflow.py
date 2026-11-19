@@ -402,12 +402,14 @@ PYTEST_RUNS = [
     ('-m "not slow" --ignore=tests/test_preregistration.py', False),
     # an option's value is no test path, whether or not the option is known to take one
     ('-m "not slow" --durations 20', True),
+    ("-m slow -n auto --dist loadfile --durations=15", True),
     ("-n 4 -q", True),
     ('-m "not slow" -n auto --dist loadfile', True),
     ("-W error -m slow", True),
     ("-m slow --junitxml reports/junit.xml", True),
     ("-o addopts= -q", True),
     ("--durations 20 tests/test_rules_dates.py", False),
+    ("--durations=15 tests/test_rules_dates.py", False),
     ('-m "not slow" tests/test_platform_smoke.py tests/test_cli.py::test_x tests/test_sync_*.py', False),
 ]
 
