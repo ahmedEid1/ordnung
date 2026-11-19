@@ -25,6 +25,7 @@ from jsonschema import Draft202012Validator
 from fake_caldav import MemorySecrets
 from fixtures_llm import GYM_CONTRACT_LETTER, TAX_LETTER
 from ordnung import clock
+from ordnung.api.app import openapi_schema
 from ordnung.api.routes import calendar_sync, documents, sync
 from ordnung.drafts.proof import PROOF_SOURCE
 from test_api_support import TODAY, Api, api_for, sse_messages
@@ -37,6 +38,12 @@ def pinned_today() -> Iterator[None]:
     clock.set_today(TODAY)
     yield
     clock.set_today(None)
+
+
+@pytest.fixture(scope="module")
+def schema() -> dict[str, Any]:
+    """The API's OpenAPI schema, built once for the file (the app's own ``openapi()`` is the same schema)."""
+    return openapi_schema()
 
 
 class Contract:
@@ -188,10 +195,12 @@ async def _hand_off_sync(contract: Contract, data_dir: Path, folder: Path) -> No
         await _get_file(lap, contract, f"/api/sync/kept/{kept.name}", "application/octet-stream")
 
 
-async def test_every_get_endpoint_matches_the_openapi_schema(data_dir: Path, tmp_path: Path) -> None:
+async def test_every_get_endpoint_matches_the_openapi_schema(
+    data_dir: Path, tmp_path: Path, schema: dict[str, Any]
+) -> None:
     (tmp_path / "Nextcloud").mkdir()
     async with api_for(data_dir, demo=True) as api:
-        contract = Contract(api.app.openapi())
+        contract = Contract(schema)
         ids = await _seed(api, contract)
         assert all(ids.values()), ids
 
@@ -290,9 +299,9 @@ async def test_every_get_endpoint_matches_the_openapi_schema(data_dir: Path, tmp
         assert not missing, f"GET routes without a contract check: {missing}"
 
 
-async def test_health_probe_runs_the_doctor_once_a_minute(data_dir: Path) -> None:
+async def test_health_probe_runs_the_doctor_once_a_minute(data_dir: Path, schema: dict[str, Any]) -> None:
     async with api_for(data_dir) as api:
-        contract = Contract(api.app.openapi())
+        contract = Contract(schema)
         first = await api.client.get("/api/health", params={"probe": "1"})
         assert first.status_code == 200, first.text
         contract.check_json("get", "/api/health", 200, first.json())
