@@ -23,6 +23,7 @@ from typer.testing import CliRunner
 
 from fixtures_llm import TAX_LETTER, TODAY, Router, fake_backend
 from helpers_net import free_port
+from helpers_tables import check_rows
 from ordnung import cli, clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.cli import app, reachable_server
@@ -161,27 +162,27 @@ def test_add_private_keeps_the_letter_from_the_model(
     assert logged == ["Stored “private.pdf” privately · not sent to Claude"]
 
 
-@pytest.mark.parametrize(
-    ("status", "private", "expected"),
-    [
-        ("held", False, "Not read yet — not sent to Claude"),
-        ("processed", True, "Private — not sent to Claude"),
-    ],
-)
-def test_privacy_statuses_name_who_does_not_read_the_letter(
-    status: DocumentStatus, private: bool, expected: str
-) -> None:
-    document = Document(
-        id="doc_1",
-        sha256="0" * 64,
-        filename="bescheid.pdf",
-        mime="application/pdf",
-        created_at="2026-09-01T09:00:00+00:00",
-        updated_at="2026-09-01T09:00:00+00:00",
-        status=status,
-        ai_private=private,
-    )
-    assert cli._status_text(document) == expected
+PRIVACY_STATUSES = [
+    ("held", False, "Not read yet — not sent to Claude"),
+    ("processed", True, "Private — not sent to Claude"),
+]
+
+
+def test_privacy_statuses_name_who_does_not_read_the_letter() -> None:
+    def check(status: DocumentStatus, private: bool, expected: str) -> None:
+        document = Document(
+            id="doc_1",
+            sha256="0" * 64,
+            filename="bescheid.pdf",
+            mime="application/pdf",
+            created_at="2026-09-01T09:00:00+00:00",
+            updated_at="2026-09-01T09:00:00+00:00",
+            status=status,
+            ai_private=private,
+        )
+        assert cli._status_text(document) == expected
+
+    check_rows(PRIVACY_STATUSES, check)
 
 
 @pytest.mark.parametrize(
@@ -637,16 +638,15 @@ def test_demo_check_fails_on_a_missing_recording(
     assert "replay miss: brief" in result.output and "The demo check failed" in result.output
 
 
-def test_demo_prepares_its_own_folder(demo_env: Path) -> None:
+def test_demo_prepares_its_own_folder(
+    demo_env: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # the demo never writes into the folder ORDNUNG_HOME names
+    monkeypatch.setenv("ORDNUNG_HOME", str(data_dir))
     result = invoke("demo", "--no-serve")
     assert result.exit_code == 0, result.output
     assert (demo_env / "home" / "ordnung.db").is_file()
     assert "The demo is ready" in result.output
-
-
-def test_demo_ignores_ordnung_home(demo_env: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("ORDNUNG_HOME", str(data_dir))
-    assert invoke("demo", "--no-serve").exit_code == 0
     assert not (data_dir / "ordnung.db").exists()
 
 
@@ -716,23 +716,29 @@ def test_the_demo_runs_beside_ordnung_on_a_port_of_its_own(
     assert served[-1] == (8765, True)
 
 
-@pytest.mark.parametrize(
-    "args", [("--reset",), ("--rebuild",), ("--reset", "--no-serve")], ids=["reset", "rebuild", "no-serve"]
-)
-def test_demo_reset_while_the_demo_runs_says_to_stop_it_first(
-    demo_env: Path, api: FakeServer, args: tuple[str, ...]
-) -> None:
+DEMO_RESET_ARGS = [("--reset",), ("--rebuild",), ("--reset", "--no-serve")]
+DEMO_RESET_IDS = ["reset", "rebuild", "no-serve"]
+
+
+def test_demo_reset_while_the_demo_runs_says_to_stop_it_first(demo_env: Path, api: FakeServer) -> None:
     """Settings → Data and Ask send people to ``ordnung demo --reset`` while the demo runs: it used to
     say "already running", exit 0 and reset nothing."""
-    result = invoke("demo", *args, "--no-browser", "--data-dir", str(api.data_dir))
-    assert result.exit_code == 1, result.output
-    port = api.server_address[1]
-    option = args[0]
-    assert " ".join(result.output.split()) == (
-        f"✗ The demo is running at http://127.0.0.1:{port}. "
-        f"Stop the demo (Ctrl+C where it runs), then run `ordnung demo {option}`."
+
+    def check(*args: str) -> None:
+        result = invoke("demo", *args, "--no-browser", "--data-dir", str(api.data_dir))
+        assert result.exit_code == 1, result.output
+        port = api.server_address[1]
+        option = args[0]
+        assert " ".join(result.output.split()) == (
+            f"✗ The demo is running at http://127.0.0.1:{port}. "
+            f"Stop the demo (Ctrl+C where it runs), then run `ordnung demo {option}`."
+        )
+        assert not (api.data_dir / "ordnung.db").exists()
+
+    check_rows(
+        [pytest.param(*args, id=name) for args, name in zip(DEMO_RESET_ARGS, DEMO_RESET_IDS, strict=True)],
+        check,
     )
-    assert not (api.data_dir / "ordnung.db").exists()
 
 
 # --------------------------------------------------------------------------------------------------
@@ -909,12 +915,6 @@ def test_a_database_from_a_newer_ordnung_is_explained(data_dir: Path) -> None:
     assert "Update Ordnung, or restore a backup made with this version" in out
 
 
-def test_mcp_help() -> None:
-    result = invoke("mcp", "--help")
-    assert result.exit_code == 0
-    assert "--data-dir" in plain(result.output) and "--print-config" in plain(result.output)
-
-
 def test_mcp_print_config(data_dir: Path) -> None:
     result = invoke("mcp", "--print-config", "--data-dir", str(data_dir))
     assert result.exit_code == 0
@@ -923,7 +923,10 @@ def test_mcp_print_config(data_dir: Path) -> None:
     assert server["args"] == ["-P", "-m", "ordnung", "mcp", "--data-dir", str(data_dir.resolve())]
     ledger_only = invoke("mcp", "--print-config", "--ledger-only", "--data-dir", str(data_dir))
     assert json.loads(ledger_only.output)["mcpServers"]["ordnung"]["args"][-1] == "--ledger-only"
-    assert "--ledger-only" not in plain(invoke("mcp", "--help").output)  # Ask's switch, not for people
+    help_result = invoke("mcp", "--help")
+    assert help_result.exit_code == 0
+    assert "--data-dir" in plain(help_result.output) and "--print-config" in plain(help_result.output)
+    assert "--ledger-only" not in plain(help_result.output)  # Ask's switch, not for people
 
 
 def test_mcp_without_a_database_says_so_on_stderr(tmp_path: Path) -> None:
