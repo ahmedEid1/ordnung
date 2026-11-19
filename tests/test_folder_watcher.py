@@ -393,7 +393,8 @@ async def test_a_missing_folder_is_reported_and_watched_once_it_exists(
     def counted(folder: Path) -> str | None:
         nonlocal checks
         checks += 1
-        return folder_problem(folder)
+        problem: str | None = folder_problem(folder)
+        return problem
 
     monkeypatch.setattr(watcher, "folder_problem", counted)
     async with watching(ctx) as folder_watcher:
