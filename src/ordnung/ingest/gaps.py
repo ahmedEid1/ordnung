@@ -90,6 +90,7 @@ from ordnung.models import (
     PaymentDetails,
 )
 from ordnung.rules import RuleContext
+from ordnung.rules.deadlines import parse_date as _iso
 from ordnung.rules.delivery import scope_for_party_kind, shows_administrative_act
 from ordnung.rules.routing import letter_kind, special_rule
 
@@ -1363,14 +1364,6 @@ def _empty(extraction: DocumentExtraction) -> bool:
         and all(_blank(details) for details in (extraction.contract, extraction.change, extraction.payment))
         and (remedy is None or remedy.type == "none")
     )
-
-
-def _iso(value: str | None) -> date | None:
-    """An ISO date as the rules engine reads one (``rules.deadlines.parse_date``)."""
-    try:
-        return date.fromisoformat(value.strip()[:10]) if value else None
-    except ValueError:
-        return None
 
 
 def _computable(spec: DateSpec, dated: bool = True) -> bool:
