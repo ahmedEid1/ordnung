@@ -1004,9 +1004,10 @@ def _days_asked(ledger: Ledger, doc: Document) -> str | None:
 
 
 def scam_warning(ledger: Ledger) -> list[Suggestion]:
-    """Scam indicators found by code (hidden text, invalid IBAN, payee mismatch) or flagged in the
-    document's warnings. The warning names the days the letter asks for (:func:`_days_asked`); its title and day
-    don't change with them (the morning note reads both). Its fingerprint is :func:`scam_fingerprint`."""
+    """Scam indicators found by code (hidden text, invalid IBAN, payee mismatch) or flagged in the document's
+    warnings. The warning names the days the letter asks for (:func:`_days_asked`); its title and day don't
+    change with them (the morning note reads both). Its fingerprint is
+    :func:`~ordnung.secretary.ledger.scam_fingerprint`."""
     ideas: list[Suggestion] = []
     today = ledger.today
     for doc in ledger.documents.values():

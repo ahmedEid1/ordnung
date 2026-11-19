@@ -76,8 +76,9 @@ OVERDUE_KINDS = frozenset({"deadline", "payment", "task"})
 IDENTITY_WINDOW_DAYS = 180
 PERMIT_WINDOW_DAYS = 90
 CALENDAR_META_KEY = "last_calendar_export_at"
-#: The scam warning's rule (:func:`scam_warning`): the person dismisses it with *I checked — it's genuine*
-#: (:attr:`Ledger.scam_checked`); Ask's ledger token watches its rows (``db.store.LEDGER_SUGGESTION_RULES``).
+#: The scam warning's rule (:func:`~ordnung.secretary.triggers.scam_warning`): the person dismisses it with
+#: *I checked — it's genuine* (:attr:`Ledger.scam_checked`); Ask's ledger token watches its rows
+#: (``db.store.LEDGER_SUGGESTION_RULES``).
 SCAM_RULE = "scam_warning"
 
 _DEFAULT_WINDOWS = {"deadline": 14, "payment": 7, "appointment": 2, "task": 3, "reminder": 0, "milestone": 7}
@@ -1114,9 +1115,9 @@ def _scam_reasons(store: Store, doc: Document, party: Party | None) -> list[str]
     """Hidden text, scam-like warnings and — via :mod:`ordnung.secretary.scam` — an IBAN or payee that
     doesn't match what the sender (or a look-alike organisation) used before.
 
-    An IBAN that only fails its checksum is almost always a misprint or a misread digit (a scammer
-    needs an account that works), so on its own it is no scam sign — :func:`iban_misprint` reports
-    it calmly. Next to other signs it is listed as one more.
+    An IBAN that only fails its checksum is almost always a misprint or a misread digit (a scammer needs an
+    account that works), so on its own it is no scam sign — :func:`~ordnung.secretary.triggers.iban_misprint`
+    reports it calmly. Next to other signs it is listed as one more.
     """
     reasons: list[str] = []
     if doc.hidden_text:
@@ -1139,9 +1140,9 @@ def _scam_reasons(store: Store, doc: Document, party: Party | None) -> list[str]
 
 
 def scam_fingerprint(doc_id: str, signs: Sequence[str]) -> str:
-    """The fingerprint of a letter's scam warning (:func:`scam_warning`): the signs it lists, so a new sign makes
-    a new warning, and a dismissed one (the person's check, :attr:`Ledger.scam_checked`) holds only for the signs
-    the person saw."""
+    """The fingerprint of a letter's scam warning (:func:`~ordnung.secretary.triggers.scam_warning`): the signs
+    it lists, so a new sign makes a new warning, and a dismissed one (the person's check,
+    :attr:`Ledger.scam_checked`) holds only for the signs the person saw."""
     return fingerprint(SCAM_RULE, doc_id, *sorted(signs))
 
 

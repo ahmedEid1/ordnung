@@ -316,7 +316,7 @@ def older_matters(store: Store, agenda: Agenda) -> dict[str, str]:
 
 def household_names(store: Store, today: date) -> dict[str, str]:
     """The name of the person of the household each letter outside the trash is filed for, by letter id
-    (:attr:`ordnung.secretary.triggers.Ledger.household_filed`; ADR 0023)."""
+    (:attr:`ordnung.secretary.ledger.Ledger.household_filed`; ADR 0023)."""
     return {doc_id: member.name for doc_id, member in Ledger(store, today).household_filed.items()}
 
 

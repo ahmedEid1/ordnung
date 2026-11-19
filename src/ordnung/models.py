@@ -1441,7 +1441,7 @@ class DocumentDetail(_Model):
     #: the sent letters this file is proof of (a proof file, or a letter also linked as proof)
     proof_of: list[ProofLink] = Field(default_factory=list)
     #: The letter's scam warning signs, as its Idea lists them (empty: none;
-    #: :func:`ordnung.secretary.triggers.scam_signs`).
+    #: :func:`ordnung.secretary.ledger.scam_signs`).
     scam_signs: list[str] = Field(default_factory=list)
     #: Whether Claude ever had the letter: it was read, or a model call carried it
     #: (:meth:`ordnung.db.store.Store.given_to_model`); ``False``: "Not sent to Claude".

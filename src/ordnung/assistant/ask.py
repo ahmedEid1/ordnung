@@ -187,7 +187,7 @@ def ledger_fingerprint(store: Store) -> str:
     (:func:`ordnung.secretary.household.ask_view`) count too, each only when there is one: a ledger without a
     choice or a household hashes as it did before Ask read either, so the answers recorded then still replay.
     So do the letters the person checked (*I checked — it's genuine*,
-    :attr:`~ordnung.secretary.triggers.Ledger.scam_checked`), whose to-dos Ask's tools then list as any other.
+    :attr:`~ordnung.secretary.ledger.Ledger.scam_checked`), whose to-dos Ask's tools then list as any other.
 
     :func:`ask_cache_key` keeps it per state of the ledger (:class:`_LedgerMemo`); a table it starts to read
     must join :data:`ordnung.db.store.LEDGER_TABLES`, a ``meta`` row :data:`ordnung.db.store.LEDGER_META_KEYS`,
@@ -643,7 +643,7 @@ def check_turn(
 
 def known_laws() -> list[str]:
     """The § citations any Ask sentence may state: the rules catalog and the laws Ordnung's own Ideas
-    state (:data:`~ordnung.secretary.triggers.IDEA_LAWS`)."""
+    state (:data:`~ordnung.secretary.ledger.IDEA_LAWS`)."""
     return [*catalog_texts(), *IDEA_LAWS]
 
 

@@ -13,17 +13,17 @@ reason the person reads:
    to-do's words, but a code makes paying easy, and a transfer next to a direct debit pays twice.
 2. **It is still to be paid** — open, snoozed or missed; not marked paid or set aside, and not on a
    letter in the trash.
-3. **The letter shows no scam signs** (:meth:`~ordnung.secretary.triggers.Ledger.scam_reasons`):
+3. **The letter shows no scam signs** (:meth:`~ordnung.secretary.ledger.Ledger.scam_reasons`):
    hidden text, scam-like warnings, an IBAN or payee unlike what the sender — or an organisation with
    a look-alike name — used before. An attacker's IBAN with valid check digits on a letter that looks
    like a known sender's is exactly this case. Nor does its IBAN appear on another letter with scam
    signs (in the trash too): a scam letter teaches its sender's IBANs like any other, so a follow-up
    asking for the same account looks clean on its own. The person's *I checked — it's genuine* changes
    none of this: it brings the letter's reminders back
-   (:meth:`~ordnung.secretary.triggers.Ledger.shows_scam_signs`), but a check never unlocks a code (ADR 0012).
+   (:meth:`~ordnung.secretary.ledger.Ledger.shows_scam_signs`), but a check never unlocks a code (ADR 0012).
 4. **It is the payment to make from this letter** — not an invoice payment a payment reminder took
    over (pay once, from the reminder), not an e-mail's payment its attached bill asks for too (pay
-   once, from the bill: :meth:`~ordnung.secretary.triggers.Ledger.is_covered_by_attachment`), and not
+   once, from the bill: :meth:`~ordnung.secretary.ledger.Ledger.is_covered_by_attachment`), and not
    one of several: a letter's bank details are read once
    per letter, and when it asks for several transfers its reference may belong to only one of them.
    A one-off payment must be the letter's only open one-off transfer — a new monthly amount the same
