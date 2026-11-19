@@ -11,6 +11,7 @@ the label check's own table (``evals/verify_labels.py``, separate code) gives th
 from __future__ import annotations
 
 import importlib
+import itertools
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -22,6 +23,8 @@ import pytest
 from evals import verify_labels as vl
 from evals.gen import law
 from evals.gen.common import objection_item
+
+from helpers_tables import check_rows
 
 ROOT = Path(__file__).resolve().parents[1]
 LAENDER_TXT = ROOT / "evals" / "law" / "laender.txt"
@@ -131,53 +134,67 @@ def fiction(posted: date, land: str | None, began: date | None = None, *, scope:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("name", TABLES)
-def test_the_table_names_exactly_the_laender_with_a_verified_text(name: str) -> None:
-    mine = table(name)
-    texts = blocks()
-    assert set(texts) == set(law.LAENDER)
-    with_text = set(verified())
-    assert len(with_text) == 12
-    assert set(mine.fourth_from) | mine.third_day == with_text
-    assert not set(mine.fourth_from) & mine.third_day
-    assert mine.unverified == set(law.LAENDER) - with_text == {"HB", "RP", "SL", "ST"}
-    for code in mine.unverified:
-        assert texts[code] == f"{law.LAND_NAMES[code]}\n{NOT_RETRIEVED_LINE}\n", code
-    assert set(law.LAND_VWVFG_PROVISION) == with_text
+def test_the_table_names_exactly_the_laender_with_a_verified_text() -> None:
+    def check(name: str) -> None:
+        mine = table(name)
+        texts = blocks()
+        assert set(texts) == set(law.LAENDER)
+        with_text = set(verified())
+        assert len(with_text) == 12
+        assert set(mine.fourth_from) | mine.third_day == with_text
+        assert not set(mine.fourth_from) & mine.third_day
+        assert mine.unverified == set(law.LAENDER) - with_text == {"HB", "RP", "SL", "ST"}
+        for code in mine.unverified:
+            assert texts[code] == f"{law.LAND_NAMES[code]}\n{NOT_RETRIEVED_LINE}\n", code
+        assert set(law.LAND_VWVFG_PROVISION) == with_text
+
+    check_rows(TABLES, check)
 
 
-@pytest.mark.parametrize("name", TABLES)
-@pytest.mark.parametrize("code", sorted(verified()))
-def test_each_land_s_day_count_and_start_are_its_text_s(code: str, name: str) -> None:
+#: The Länder with a verified text, by code.
+VERIFIED_CODES = sorted(verified())
+
+
+def test_each_land_s_day_count_and_start_are_its_text_s() -> None:
     """A Land whose own § 41 (or the amendment of it) says the 3rd day keeps it; one that says the 4th, or that
     applies the federal act (whose § 41 says the 4th) without leaving out its § 41, counts the 4th from the day its
     block gives. Each table, the generator's and the label check's, is held to the block on its own."""
-    mine = table(name)
-    block = verified()[code]
-    if OWN_THIRD in block and not OWN_FOURTH.search(block):
-        assert code in mine.third_day
-        assert code not in mine.fourth_from
-        return
-    assert code in mine.fourth_from, code
-    if OWN_FOURTH.search(block):
-        pattern, plus = START[code]
-        found = re.search(pattern, block)
-        assert found, code
-        start = german_date(found.group(1)) + timedelta(days=plus)
-    else:
-        federal = APPLIES_FEDERAL.search(block)
-        assert federal, code
-        excepted = EXCEPTED.match(block, federal.end())
-        assert (excepted is not None) == (code in WITH_EXCEPTIONS), (code, "its list of sections left out")
-        exceptions = excepted.group("except") if excepted else ""
-        assert not re.search(r"(?<![\d.])41(?![\d])", exceptions), (code, "the federal § 41 is not excepted")
-        assert "am vierten Tag nach der Aufgabe zur Post" in VWVFG_TXT.read_text(encoding="utf-8")
-        start = FEDERAL_START
-        if code in START:  # an act of its own that applies the federal one from a later day (TH)
-            found = re.search(START[code][0], block)
+
+    def check(code: str, name: str) -> None:
+        mine = table(name)
+        block = verified()[code]
+        if OWN_THIRD in block and not OWN_FOURTH.search(block):
+            assert code in mine.third_day
+            assert code not in mine.fourth_from
+            return
+        assert code in mine.fourth_from, code
+        if OWN_FOURTH.search(block):
+            pattern, plus = START[code]
+            found = re.search(pattern, block)
             assert found, code
-            start = max(start, german_date(found.group(1)))
-    assert mine.fourth_from[code] == start, code
+            start = german_date(found.group(1)) + timedelta(days=plus)
+        else:
+            federal = APPLIES_FEDERAL.search(block)
+            assert federal, code
+            excepted = EXCEPTED.match(block, federal.end())
+            assert (excepted is not None) == (code in WITH_EXCEPTIONS), (
+                code,
+                "its list of sections left out",
+            )
+            exceptions = excepted.group("except") if excepted else ""
+            assert not re.search(r"(?<![\d.])41(?![\d])", exceptions), (
+                code,
+                "the federal § 41 is not excepted",
+            )
+            assert "am vierten Tag nach der Aufgabe zur Post" in VWVFG_TXT.read_text(encoding="utf-8")
+            start = FEDERAL_START
+            if code in START:  # an act of its own that applies the federal one from a later day (TH)
+                found = re.search(START[code][0], block)
+                assert found, code
+                start = max(start, german_date(found.group(1)))
+        assert mine.fourth_from[code] == start, code
+
+    check_rows(itertools.product(VERIFIED_CODES, TABLES), check)
 
 
 def test_the_exception_lists_are_read_whole() -> None:
@@ -201,23 +218,26 @@ def test_hamburg_s_act_takes_effect_the_day_after_its_gazette() -> None:
     )
 
 
-@pytest.mark.parametrize("name", TABLES)
-def test_the_laender_that_keep_the_3rd_day_for_an_older_procedure(name: str) -> None:
+def test_the_laender_that_keep_the_3rd_day_for_an_older_procedure() -> None:
     """Baden-Württemberg's § 102b, Bavaria's Art. 98 and Mecklenburg-Vorpommern's § 120a keep the old wording for a
     procedure begun before their switch; Nordrhein-Westfalen's § 97 and Thüringen's § 8 do not (the new law applies
     to a procedure under way, a posting being a step of its own)."""
-    mine = table(name)
-    kept = {
-        code: german_date(found.group("day"))
-        for code, block in verified().items()
-        if (found := OLD_LAW_KEPT.search(block))
-    }
-    assert kept == mine.old_procedures
-    assert kept == {code: mine.fourth_from[code] for code in kept}
-    assert set(law.LAND_VWVFG_OLD_PROCEDURE_RULE) == set(kept)
-    for code, rule in law.LAND_VWVFG_OLD_PROCEDURE_RULE.items():
-        number = rule.split()[1]
-        assert re.search(rf"(?:§|Art\.) {re.escape(number)}\b", verified()[code]), (code, rule)
+
+    def check(name: str) -> None:
+        mine = table(name)
+        kept = {
+            code: german_date(found.group("day"))
+            for code, block in verified().items()
+            if (found := OLD_LAW_KEPT.search(block))
+        }
+        assert kept == mine.old_procedures
+        assert kept == {code: mine.fourth_from[code] for code in kept}
+        assert set(law.LAND_VWVFG_OLD_PROCEDURE_RULE) == set(kept)
+        for code, rule in law.LAND_VWVFG_OLD_PROCEDURE_RULE.items():
+            number = rule.split()[1]
+            assert re.search(rf"(?:§|Art\.) {re.escape(number)}\b", verified()[code]), (code, rule)
+
+    check_rows(TABLES, check)
 
 
 def test_brandenburg_s_e_mail_rule_is_held_and_refused() -> None:
@@ -239,44 +259,49 @@ def test_brandenburg_s_e_mail_rule_is_held_and_refused() -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("land", "posted", "began", "day"),
-    [
-        ("HE", date(2026, 9, 29), None, 3),  # § 41 Abs. 2 HVwVfG: the 3rd day
-        ("HE", date(2025, 1, 2), None, 3),
-        ("HE", date(2024, 12, 30), None, 3),
-        ("HH", date(2025, 5, 13), None, 3),  # before the HmbVwVfG change took effect
-        ("HH", date(2025, 5, 14), None, 4),
-        ("BW", date(2025, 2, 6), None, 3),
-        ("BW", date(2025, 2, 7), None, 4),
-        ("SH", date(2025, 3, 3), None, 4),  # § 110 Abs. 2 LVwG from 1 January 2025
-        ("TH", date(2025, 1, 2), None, 4),
-        ("TH", date(2024, 12, 31), None, 3),
-        ("NW", date(2025, 1, 2), date(2024, 11, 1), 4),  # § 97 VwVfG NRW: the posting decides
-        ("MV", date(2025, 12, 9), date(2024, 11, 1), 3),  # § 120a VwVfG M-V
-        ("MV", date(2025, 12, 9), None, 4),
-        ("MV", date(2025, 12, 9), date(2025, 3, 1), 4),
-        ("BY", date(2025, 12, 2), date(2024, 12, 31), 3),  # Art. 98 BayVwVfG
-        ("BY", date(2025, 12, 2), date(2025, 1, 1), 4),
-        ("BW", date(2025, 3, 3), date(2025, 2, 6), 3),  # § 102b LVwVfG
-        ("BW", date(2025, 3, 3), date(2025, 2, 7), 4),
-        ("BE", date(2026, 10, 27), None, 4),
-        ("BB", date(2026, 10, 27), None, 4),
-        ("NI", date(2026, 10, 27), None, 4),
-        ("SN", date(2026, 10, 27), None, 4),
-    ],
-)
-def test_a_land_authority_s_letter_counts_its_land_s_day(
-    land: str, posted: date, began: date | None, day: int
-) -> None:
-    assert fiction(posted, land, began) == posted + timedelta(days=day)
+LAND_DAY_EXAMPLES = [
+    ("HE", date(2026, 9, 29), None, 3),  # § 41 Abs. 2 HVwVfG: the 3rd day
+    ("HE", date(2025, 1, 2), None, 3),
+    ("HE", date(2024, 12, 30), None, 3),
+    ("HH", date(2025, 5, 13), None, 3),  # before the HmbVwVfG change took effect
+    ("HH", date(2025, 5, 14), None, 4),
+    ("BW", date(2025, 2, 6), None, 3),
+    ("BW", date(2025, 2, 7), None, 4),
+    ("SH", date(2025, 3, 3), None, 4),  # § 110 Abs. 2 LVwG from 1 January 2025
+    ("TH", date(2025, 1, 2), None, 4),
+    ("TH", date(2024, 12, 31), None, 3),
+    ("NW", date(2025, 1, 2), date(2024, 11, 1), 4),  # § 97 VwVfG NRW: the posting decides
+    ("MV", date(2025, 12, 9), date(2024, 11, 1), 3),  # § 120a VwVfG M-V
+    ("MV", date(2025, 12, 9), None, 4),
+    ("MV", date(2025, 12, 9), date(2025, 3, 1), 4),
+    ("BY", date(2025, 12, 2), date(2024, 12, 31), 3),  # Art. 98 BayVwVfG
+    ("BY", date(2025, 12, 2), date(2025, 1, 1), 4),
+    ("BW", date(2025, 3, 3), date(2025, 2, 6), 3),  # § 102b LVwVfG
+    ("BW", date(2025, 3, 3), date(2025, 2, 7), 4),
+    ("BE", date(2026, 10, 27), None, 4),
+    ("BB", date(2026, 10, 27), None, 4),
+    ("NI", date(2026, 10, 27), None, 4),
+    ("SN", date(2026, 10, 27), None, 4),
+]
 
 
-@pytest.mark.parametrize("land", ["HB", "RP", "SL", "ST"])
-def test_a_land_without_a_verified_text_is_refused(land: str) -> None:
-    with pytest.raises(ValueError, match="no verified text") as refused:
-        fiction(date(2026, 11, 3), land)
-    assert law.LAND_NAMES[land] in str(refused.value) and "evals/law/laender.txt" in str(refused.value)
+def test_a_land_authority_s_letter_counts_its_land_s_day() -> None:
+    def check(land: str, posted: date, began: date | None, day: int) -> None:
+        assert fiction(posted, land, began) == posted + timedelta(days=day)
+
+    check_rows(LAND_DAY_EXAMPLES, check)
+
+
+LAENDER_WITHOUT_TEXT = ["HB", "RP", "SL", "ST"]
+
+
+def test_a_land_without_a_verified_text_is_refused() -> None:
+    def check(land: str) -> None:
+        with pytest.raises(ValueError, match="no verified text") as refused:
+            fiction(date(2026, 11, 3), land)
+        assert law.LAND_NAMES[land] in str(refused.value) and "evals/law/laender.txt" in str(refused.value)
+
+    check_rows(LAENDER_WITHOUT_TEXT, check)
 
 
 def test_a_land_authority_s_letter_names_its_land() -> None:
@@ -293,21 +318,25 @@ def test_a_procedure_s_start_is_checked() -> None:
         fiction(date(2026, 11, 3), "MV", date(2024, 11, 4), scope="ao")
 
 
-@pytest.mark.parametrize("scope", ["ao", "sgbx"])
-@pytest.mark.parametrize(
-    "posted", [date(2024, 12, 30), date(2025, 1, 2), date(2025, 5, 13), date(2026, 9, 29)]
-)
-def test_tax_and_social_law_decisions_are_the_same_in_every_land(scope: str, posted: date) -> None:
+TAX_AND_SOCIAL_SCOPES = ["ao", "sgbx"]
+TAX_AND_SOCIAL_POSTINGS = [date(2024, 12, 30), date(2025, 1, 2), date(2025, 5, 13), date(2026, 9, 29)]
+
+
+def test_tax_and_social_law_decisions_are_the_same_in_every_land() -> None:
     """Under the AO and SGB X the Land changes nothing but the holidays: with or without the authority's Land, the
     same day and the same words."""
-    for region in (None, *law.LAENDER):
-        plain, with_land = law.Derivation(), law.Derivation()
-        day = law.deemed_delivery(posted, scope, region, plain)
-        for land in (None, *law.LAENDER):
-            assert law.deemed_delivery(posted, scope, region, with_land, land=land) == day
-            assert with_land.steps == plain.steps
-            with_land = law.Derivation()
-        assert (day - posted).days >= (3 if posted <= law.OLD_FICTION_LAST_DAY else 4)
+
+    def check(scope: str, posted: date) -> None:
+        for region in (None, *law.LAENDER):
+            plain, with_land = law.Derivation(), law.Derivation()
+            day = law.deemed_delivery(posted, scope, region, plain)
+            for land in (None, *law.LAENDER):
+                assert law.deemed_delivery(posted, scope, region, with_land, land=land) == day
+                assert with_land.steps == plain.steps
+                with_land = law.Derivation()
+            assert (day - posted).days >= (3 if posted <= law.OLD_FICTION_LAST_DAY else 4)
+
+    check_rows(itertools.product(TAX_AND_SOCIAL_SCOPES, TAX_AND_SOCIAL_POSTINGS), check)
 
 
 #: The step every Land 4th-day label of the five earlier splits carries, word for word.
@@ -333,62 +362,63 @@ def test_the_earlier_splits_keep_the_words_of_their_4th_day_step() -> None:
     assert step(date(2026, 9, 29), "NW") != EARLIER_FOURTH_DAY_STEP
 
 
-@pytest.mark.parametrize(
-    ("land", "posted", "began", "words"),
-    [
-        (
-            "NW",
-            date(2026, 9, 29),
-            None,
-            "§ 41 Abs. 2 S. 1 VwVfG NRW (Nordrhein-Westfalen counts the 4th day for items "
-            "posted from 2025-01-01): day 4 after posting = Sat 2026-10-03.",
-        ),
-        (
-            "HH",
-            date(2025, 5, 14),
-            None,
-            "§ 41 Abs. 2 S. 1 HmbVwVfG (Hamburg counts the 4th day for items posted "
-            "from 2025-05-14): day 4 after posting = Sun 2025-05-18.",
-        ),
-        (
-            "BW",
-            date(2025, 2, 7),
-            None,
-            "§ 41 Abs. 2 S. 1 LVwVfG (Baden-Württemberg counts the 4th day for items "
-            "posted from 2025-02-07; the letter states no procedure begun before 2025-02-07): day 4 after posting = "
-            "Tue 2025-02-11.",
-        ),
-        (
-            "BY",
-            date(2026, 9, 29),
-            None,
-            "Art. 41 Abs. 2 S. 1 BayVwVfG (Bayern counts the 4th day for items posted "
-            "from 2025-01-01; the letter states no procedure begun before 2025-01-01): day 4",
-        ),
-        (
-            "MV",
-            date(2025, 12, 9),
-            date(2025, 3, 1),
-            "§ 41 Abs. 2 S. 1 VwVfG M-V (Mecklenburg-Vorpommern counts the "
-            "4th day for items posted from 2025-01-01; the procedure began Sat 2025-03-01, not before 2025-01-01)",
-        ),
-        (
-            "NI",
-            date(2026, 9, 29),
-            None,
-            "§ 1 Abs. 1 NVwVfG with § 41 Abs. 2 S. 1 VwVfG (Niedersachsen counts the "
-            "4th day for items posted from 2025-01-01)",
-        ),
-    ],
-)
-def test_a_land_s_4th_day_step_names_its_own_provision_and_start(
-    land: str, posted: date, began: date | None, words: str
-) -> None:
+FOURTH_DAY_STEPS = [
+    (
+        "NW",
+        date(2026, 9, 29),
+        None,
+        "§ 41 Abs. 2 S. 1 VwVfG NRW (Nordrhein-Westfalen counts the 4th day for items "
+        "posted from 2025-01-01): day 4 after posting = Sat 2026-10-03.",
+    ),
+    (
+        "HH",
+        date(2025, 5, 14),
+        None,
+        "§ 41 Abs. 2 S. 1 HmbVwVfG (Hamburg counts the 4th day for items posted "
+        "from 2025-05-14): day 4 after posting = Sun 2025-05-18.",
+    ),
+    (
+        "BW",
+        date(2025, 2, 7),
+        None,
+        "§ 41 Abs. 2 S. 1 LVwVfG (Baden-Württemberg counts the 4th day for items "
+        "posted from 2025-02-07; the letter states no procedure begun before 2025-02-07): day 4 after posting = "
+        "Tue 2025-02-11.",
+    ),
+    (
+        "BY",
+        date(2026, 9, 29),
+        None,
+        "Art. 41 Abs. 2 S. 1 BayVwVfG (Bayern counts the 4th day for items posted "
+        "from 2025-01-01; the letter states no procedure begun before 2025-01-01): day 4",
+    ),
+    (
+        "MV",
+        date(2025, 12, 9),
+        date(2025, 3, 1),
+        "§ 41 Abs. 2 S. 1 VwVfG M-V (Mecklenburg-Vorpommern counts the "
+        "4th day for items posted from 2025-01-01; the procedure began Sat 2025-03-01, not before 2025-01-01)",
+    ),
+    (
+        "NI",
+        date(2026, 9, 29),
+        None,
+        "§ 1 Abs. 1 NVwVfG with § 41 Abs. 2 S. 1 VwVfG (Niedersachsen counts the "
+        "4th day for items posted from 2025-01-01)",
+    ),
+]
+
+
+def test_a_land_s_4th_day_step_names_its_own_provision_and_start() -> None:
     """Outside the earlier splits a Land's 4th-day step cites the Land's provision and the day its 4th day starts,
     not the federal rule's start (PostModG); in BW, BY and MV it also says that the label rests on a procedure begun
     on or after the switch."""
-    text = step(posted, land, began)
-    assert words in text and "PostModG" not in text and "(Land VwVfG)" not in text, text
+
+    def check(land: str, posted: date, began: date | None, words: str) -> None:
+        text = step(posted, land, began)
+        assert words in text and "PostModG" not in text and "(Land VwVfG)" not in text, text
+
+    check_rows(FOURTH_DAY_STEPS, check)
 
 
 def test_a_final_letter_s_land_step_is_its_land_s_own() -> None:
