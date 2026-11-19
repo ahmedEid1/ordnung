@@ -12,6 +12,7 @@ from typing import Any
 import pytest
 from typer.testing import CliRunner
 
+from helpers_tables import check_rows
 from ordnung import autostart
 from ordnung.autostart import (
     LAUNCH_LABEL,
@@ -98,22 +99,24 @@ def test_other_unixes_use_the_systemd_layout(tmp_path: Path) -> None:
     assert plan(Path("/d"), platform="freebsd14", env={}, home=tmp_path, python=PY).system == "linux"
 
 
-@pytest.mark.parametrize(
-    "path",
-    [
-        "/home/sam/My Documents/ordnung",
-        "/home/sam/100%/ordnung",
-        "/home/sam/$HOME/ordnung",
-        '/home/sam/"quoted"/ordnung',
-        "/home/sam/back\\slash/ordnung",
-        "/home/sam/Ordnung – Größe/ordnung",
-    ],
-)
-def test_systemd_quoting_round_trips_awkward_paths(tmp_path: Path, path: str) -> None:
-    entry = plan(Path(path), platform="linux", env={"PATH": "/usr/bin"}, home=tmp_path, python=PY)
-    exec_line = next(line for line in entry.content.splitlines() if line.startswith("ExecStart="))
-    assert systemd_unquote(exec_line.removeprefix("ExecStart=")) == list(entry.argv)
-    assert "%" not in exec_line.replace("%%", "") and "$" not in exec_line.replace("$$", "")
+SYSTEMD_AWKWARD = [
+    "/home/sam/My Documents/ordnung",
+    "/home/sam/100%/ordnung",
+    "/home/sam/$HOME/ordnung",
+    '/home/sam/"quoted"/ordnung',
+    "/home/sam/back\\slash/ordnung",
+    "/home/sam/Ordnung – Größe/ordnung",
+]
+
+
+def test_systemd_quoting_round_trips_awkward_paths(tmp_path: Path) -> None:
+    def check(path: str) -> None:
+        entry = plan(Path(path), platform="linux", env={"PATH": "/usr/bin"}, home=tmp_path, python=PY)
+        exec_line = next(line for line in entry.content.splitlines() if line.startswith("ExecStart="))
+        assert systemd_unquote(exec_line.removeprefix("ExecStart=")) == list(entry.argv)
+        assert "%" not in exec_line.replace("%%", "") and "$" not in exec_line.replace("$$", "")
+
+    check_rows(SYSTEMD_AWKWARD, check)
 
 
 def test_systemd_quote_rules() -> None:
@@ -369,12 +372,11 @@ def test_a_moved_python_makes_the_entry_stale(tmp_path: Path, platform: str) -> 
     # another PATH in this terminal changes nothing
     other_path = {**env, "PATH": "/x"}
     assert state(tmp_path / "d", platform=platform, env=other_path, home=tmp_path, python=PY).current
-
-
-@pytest.mark.parametrize("platform", [pytest.param("linux", marks=POSIX_ONLY), "darwin", "win32"])
-def test_a_custom_port_is_part_of_the_entry(tmp_path: Path, platform: str) -> None:
-    env = {"PATH": "/usr/bin", "APPDATA": str(tmp_path / "roaming")}
-    enable(plan(tmp_path / "d", port=9001, platform=platform, env=env, home=tmp_path, python=PY))
+    # a custom port is part of the entry: state reads the entry's own port
+    assert (
+        enable(plan(tmp_path / "d", port=9001, platform=platform, env=env, home=tmp_path, python=PY))
+        == "updated"
+    )
     assert state(tmp_path / "d", platform=platform, env=env, home=tmp_path, python=PY).current
 
 
