@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import ast
 import copy
+import functools
 import hashlib
 import html
 import json
@@ -137,15 +138,28 @@ def no_final_outputs() -> dict[str, str]:
     return rendered
 
 
+#: The calibration's final analysis, the sources it renders with and its reads (``hf.calibration``).
+Calibration = tuple[dict[str, Any], dict[str, Any], list[tuple[str, str]]]
+
+
 @pytest.fixture(scope="module")
-def made(tmp_path_factory: pytest.TempPathFactory) -> Callable[[str], Made]:
+def calibration(_results_before_publication: None) -> Callable[[], Calibration]:
+    """The calibration's final analysis (the real ``evals.analysis`` over the earlier held-out splits), run once when
+    first asked for: every checkout of it writes its own copy (``hf.final_root``), so the checkouts share it read-only."""
+    return functools.cache(hf.calibration)
+
+
+@pytest.fixture(scope="module")
+def made(
+    tmp_path_factory: pytest.TempPathFactory, calibration: Callable[[], Calibration]
+) -> Callable[[str], Made]:
     """A checkout per final, built once: its root, ``model.build`` of it and every output it renders."""
     cache: dict[str, Made] = {}
 
     def make(name: str) -> Made:
         if name not in cache:
             tmp = tmp_path_factory.mktemp(name)
-            cache[name] = Made(_final_root(tmp, name))
+            cache[name] = Made(_final_root(tmp, name, calibration))
         return cache[name]
 
     return make
@@ -2426,22 +2440,27 @@ EVERY_FINAL = [*hf.SCENARIO_IDS, "realistic", "calibration"]
 README_MAX_LINES, PUBLISH_ROOM = 250, 2
 
 
-def _final_root(tmp_path: Path, name: str) -> Path:
+def _final_root(tmp_path: Path, name: str, calibration: Callable[[], Calibration]) -> Path:
     if name == "realistic":
         return hf.realistic_root(tmp_path)
-    if name == "calibration":
-        return hf.calibration_root(tmp_path)
+    if name == "calibration":  # hf.calibration_root, with the analysis run once
+        doc, src, reads = calibration()
+        return hf.final_root(
+            tmp_path, doc, sources=src, prereg=hf.complete_prereg(builders.prereg()), reads=reads
+        )
     return hf.scenario_root(tmp_path, name)
 
 
-def test_every_synthetic_final_renders_through_the_whole_presenter(tmp_path: Path) -> None:
+def test_every_synthetic_final_renders_through_the_whole_presenter(
+    tmp_path: Path, calibration: Callable[[], Calibration]
+) -> None:
     """Each synthetic final goes through the presenter as the publish PR's will: ``--write``, then ``--check`` finds
     nothing; the README's block is the registered layout of the registered README sentences and the report's final
     section the registered page sentences; the report page passes ``--check-site``; and README.md, with this block,
     keeps under its limit with the room the largest block needs."""
 
     def check(name: str) -> None:
-        root = _final_root(tmp_path / name / "checkout", name)
+        root = _final_root(tmp_path / name / "checkout", name, calibration)
         assert main(["--root", str(root), "--write"]) == 0
         assert main(["--root", str(root), "--check"]) == 0
         source, prereg, named = hf.published(root)
