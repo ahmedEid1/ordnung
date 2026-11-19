@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 
+from helpers_tables import check_rows
 from ordnung.api.routes.contracts import notice_evidence
 from ordnung.db.store import Store
 from ordnung.ids import content_id
@@ -55,35 +56,37 @@ def add_doc(store: Store, sha_char: str = "a") -> Document:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("label", "kind"),
-    [
-        ("Aktenzeichen", "aktenzeichen"),
-        ("Az.", "aktenzeichen"),
-        ("Unser Zeichen", "aktenzeichen"),
-        ("Kassenzeichen", "aktenzeichen"),
-        ("Rechnungsnummer", "rechnungsnummer"),
-        ("Rechnungs-Nr.", "rechnungsnummer"),
-        ("Invoice no.", "rechnungsnummer"),
-        ("Kundennummer", "kundennummer"),
-        ("Kd.-Nr.", "kundennummer"),
-        ("Customer reference", "kundennummer"),
-        ("Vertragsnummer", "vertragsnummer"),
-        ("Versicherungsschein-Nr.", "vertragsnummer"),
-        ("Steuernummer", "steuernummer"),
-        ("St.-Nr.", "steuernummer"),
-        ("Beitragsnummer", "beitragsnummer"),
-        ("Mitgliedsnummer", "account"),
-        ("Steuer-ID", "personal"),
-        ("Steuerliche Identifikationsnummer", "personal"),
-        ("Rentenversicherungsnummer", "personal"),
-        ("IBAN", "personal"),
-        ("USt-IdNr.", "other"),
-        ("Ihr Zeichen", "other"),
-    ],
-)
-def test_reference_kind(label: str, kind: str) -> None:
-    assert reference_kind(label) == kind
+REFERENCE_KIND = [
+    ("Aktenzeichen", "aktenzeichen"),
+    ("Az.", "aktenzeichen"),
+    ("Unser Zeichen", "aktenzeichen"),
+    ("Kassenzeichen", "aktenzeichen"),
+    ("Rechnungsnummer", "rechnungsnummer"),
+    ("Rechnungs-Nr.", "rechnungsnummer"),
+    ("Invoice no.", "rechnungsnummer"),
+    ("Kundennummer", "kundennummer"),
+    ("Kd.-Nr.", "kundennummer"),
+    ("Customer reference", "kundennummer"),
+    ("Vertragsnummer", "vertragsnummer"),
+    ("Versicherungsschein-Nr.", "vertragsnummer"),
+    ("Steuernummer", "steuernummer"),
+    ("St.-Nr.", "steuernummer"),
+    ("Beitragsnummer", "beitragsnummer"),
+    ("Mitgliedsnummer", "account"),
+    ("Steuer-ID", "personal"),
+    ("Steuerliche Identifikationsnummer", "personal"),
+    ("Rentenversicherungsnummer", "personal"),
+    ("IBAN", "personal"),
+    ("USt-IdNr.", "other"),
+    ("Ihr Zeichen", "other"),
+]
+
+
+def test_reference_kind() -> None:
+    def check(label: str, kind: str) -> None:
+        assert reference_kind(label) == kind
+
+    check_rows(REFERENCE_KIND, check)
 
 
 def test_party_identifiers_keep_account_references_and_own_ids_only() -> None:
@@ -183,19 +186,21 @@ def test_a_sender_name_cannot_plant_text_in_later_readings(store: Store) -> None
     ]
 
 
-@pytest.mark.parametrize(
-    ("raw", "kept"),
-    [
-        ("Finanzamt  Musterstadt", "Finanzamt Musterstadt"),
-        ("AOK\tNordost\r\nKundencenter", "AOK Nordost Kundencenter"),
-        ("Deutsche​ Rentenversicherung", "Deutsche Rentenversicherung"),
-        ("\x1b[31mBank\x1b[0m", "[31mBank [0m"),
-        (" \n\x00 ", ""),
-        ("x" * 130, "x" * MAX_PARTY_NAME),
-    ],
-)
-def test_party_name(raw: str, kept: str) -> None:
-    assert party_name(raw) == kept
+PARTY_NAME = [
+    ("Finanzamt  Musterstadt", "Finanzamt Musterstadt"),
+    ("AOK\tNordost\r\nKundencenter", "AOK Nordost Kundencenter"),
+    ("Deutsche​ Rentenversicherung", "Deutsche Rentenversicherung"),
+    ("\x1b[31mBank\x1b[0m", "[31mBank [0m"),
+    (" \n\x00 ", ""),
+    ("x" * 130, "x" * MAX_PARTY_NAME),
+]
+
+
+def test_party_name() -> None:
+    def check(raw: str, kept: str) -> None:
+        assert party_name(raw) == kept
+
+    check_rows(PARTY_NAME, check)
 
 
 # --------------------------------------------------------------------------------------------------
