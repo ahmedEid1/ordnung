@@ -889,10 +889,10 @@ def _add_in_process(paths: Paths, files: Sequence[Path], *, combine: bool, priva
     async def work(
         ctx: AppContext,
     ) -> tuple[list[tuple[Document, str | None, list[Item]]], dict[str, str], date]:
+        from ordnung.days import local_today
         from ordnung.ingest.layout_guard import text_layout_refused
         from ordnung.ingest.outlook import as_email
         from ordnung.ingest.pipeline import add_file
-        from ordnung.tick import local_today
 
         added = []
         for group in groups:

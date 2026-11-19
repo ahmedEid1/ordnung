@@ -37,6 +37,7 @@ from __future__ import annotations
 
 from datetime import date
 
+from ordnung.days import parse_day
 from ordnung.drafts.proof import channel_label, kind_info, waiting_context, waits_for
 from ordnung.drafts.tracking import tracking_info
 from ordnung.models import Area, CallNote, Document, Draft, Item, RefLink, WaitingEntry, WaitingStatus
@@ -46,7 +47,6 @@ from ordnung.secretary.triggers import (
     day_label,
     is_active,
     money,
-    parse_day,
     was_history_when_filed,
 )
 

@@ -29,6 +29,7 @@ from pydantic import ValidationError
 from rapidfuzz import fuzz
 
 from ordnung.clock import now_iso
+from ordnung.days import parse_day
 from ordnung.db.store import Store
 from ordnung.ids import content_id
 from ordnung.ingest.normalize import fold_punctuation
@@ -51,7 +52,7 @@ from ordnung.models import (
 )
 from ordnung.rules import list_rules
 from ordnung.secretary.tax_choice import for_taxes
-from ordnung.secretary.triggers import Ledger, action_day, is_overdue, parse_day
+from ordnung.secretary.triggers import Ledger, action_day, is_overdue
 
 log = logging.getLogger(__name__)
 

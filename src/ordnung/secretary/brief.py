@@ -22,6 +22,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from ordnung import clock
 from ordnung.clock import now_iso
+from ordnung.days import parse_day
 from ordnung.db.store import Store
 from ordnung.ingest.normalize import fold_punctuation
 from ordnung.ingest.verify import parse_amounts, parse_dates
@@ -48,7 +49,6 @@ from ordnung.secretary.triggers import (
     is_overdue,
     money,
     paid_at_appointment,
-    parse_day,
     priority_rank,
 )
 

@@ -13,6 +13,7 @@ from datetime import date, timedelta
 from typing import Literal
 
 from ordnung import clock
+from ordnung.days import local_today, parse_day, simulated_day
 from ordnung.db.store import Store
 from ordnung.ingest.held import is_held
 from ordnung.models import (
@@ -49,13 +50,11 @@ from ordnung.secretary.triggers import (
     expiry_class,
     is_decision,
     is_overdue,
-    parse_day,
     priority_rank,
     was_history_when_filed,
 )
 from ordnung.secretary.waiting import waiting_for
 from ordnung.secretary.week import build_weekly_session, pending_items, session_state
-from ordnung.tick import local_today, simulated_day
 
 ATTENTION_DAYS = 7
 UPCOMING_DAYS = 30

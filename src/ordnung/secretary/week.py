@@ -91,6 +91,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
 from ordnung.clock import now_iso
+from ordnung.days import parse_day, parse_timestamp
 from ordnung.db.store import Store
 from ordnung.drafts.proof import RecordedProof, missing
 from ordnung.models import (
@@ -119,8 +120,6 @@ from ordnung.secretary.triggers import (
     is_active,
     is_overdue,
     paid_at_appointment,
-    parse_day,
-    parse_timestamp,
     unconfirmed_reason,
 )
 from ordnung.secretary.waiting import delivered_on, waiting_for

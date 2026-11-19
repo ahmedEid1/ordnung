@@ -188,7 +188,7 @@ class LedgerTools:
         """Today for the person (the pinned date, the demo's simulated day, or their local date)."""
         if self._today is not None:
             return self._today
-        from ordnung.tick import local_today
+        from ordnung.days import local_today
 
         return local_today(self.store)
 
@@ -202,7 +202,7 @@ class LedgerTools:
 
     def today(self) -> ToolAnswer:
         """Today's date and weekday."""
-        from ordnung.tick import simulated_day
+        from ordnung.days import simulated_day
 
         day = self.current_day()
         pinned = self._today is not None or simulated_day(self.store) is not None
@@ -1259,7 +1259,8 @@ def _contract_deadlines(
     opened (``special_cancellation``; of several letters' windows in the range, the one that closes first,
     :func:`_first_closing`), in one row per contract; a contract whose cancellation was sent or confirmed
     has none left (:meth:`~ordnung.secretary.triggers.Ledger.decided_contracts`)."""
-    from ordnung.secretary.triggers import is_decision, parse_day
+    from ordnung.days import parse_day
+    from ordnung.secretary.triggers import is_decision
 
     def in_range(*values: str | None) -> bool:
         days = [day for day in map(parse_day, values) if day is not None]
@@ -1378,8 +1379,8 @@ def _window_needs_check(ledger: Ledger, window: PriceIncreaseWindow) -> bool:
     """Whether a special cancellation window rests on a day its letter's text does not write, like a to-do
     whose date is not found in its letter: the day the new price applies as the model read it, and the
     letter's own date as it read it when the window counts from it (:data:`NOTICE_RULES`)."""
+    from ordnung.days import parse_day
     from ordnung.ingest.verify import parse_dates
-    from ordnung.secretary.triggers import parse_day
 
     days: list[date | None] = [window.effective]
     if NOTICE_RULES & set(window.receipt.rule_ids):

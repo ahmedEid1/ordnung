@@ -15,9 +15,9 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
+from ordnung.days import parse_day
 from ordnung.db.store import NotFoundError, Store
 from ordnung.models import CallNote
-from ordnung.secretary.triggers import parse_day
 
 MAX_SUMMARY = 2000
 MAX_PROMISE = 300

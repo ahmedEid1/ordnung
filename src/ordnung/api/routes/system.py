@@ -25,10 +25,10 @@ from pydantic import BaseModel, ConfigDict
 from ordnung import __version__
 from ordnung.api.deps import ApiState, StateDep, StoreDep, backend_uses_cli, is_phone
 from ordnung.api.security import request_authenticated
+from ordnung.days import local_today, simulated_day
 from ordnung.doctor import DoctorReport, local_checks, picture_text_status
 from ordnung.models import DoctorCheck, Health, Job, RuleInfo
 from ordnung.rules import LAST_CHECKED, list_rules
-from ordnung.tick import local_today, simulated_day
 
 router = APIRouter(tags=["system"])
 

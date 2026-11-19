@@ -20,20 +20,14 @@ ALLOWED_CYCLES: dict[frozenset[str], str] = {
     frozenset(
         {
             "ordnung.calendar.ics",
-            "ordnung.ingest.extract",
             "ordnung.ingest.gaps",
-            "ordnung.ingest.pipeline",
             "ordnung.ingest.plan",
-            "ordnung.notify.desktop",
             "ordnung.recurrence",
-            "ordnung.secretary.brief",
             "ordnung.secretary.moving",
-            "ordnung.secretary.review",
             "ordnung.secretary.sender_land",
             "ordnung.secretary.triggers",
-            "ordnung.tick",
         }
-    ): "the trigger engine's shared helpers sit in triggers.py, which the pipeline and the read models import",
+    ): "triggers.py holds both the triggers (which call these modules lazily) and the helpers they import from it",
     frozenset(
         {"ordnung.rules.deadlines", "ordnung.rules.letters"}
     ): "the letter rules build on the deadline receipts; deadlines imports them lazily where needed",
