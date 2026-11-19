@@ -7,7 +7,7 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ### Changed
 
-- CI on a pull request takes 20 to 23 minutes instead of 40 to 50: the backend tests run in parallel
+- CI on a pull request takes 13 to 16 minutes instead of 40 to 50: the backend tests run in parallel
   processes, coverage is measured on the Python 3.12 leg alone, lint and types run once, the slow tests and the
   replayed benchmarks have a job each, and the end-to-end tests run in three groups side by side without waiting
   for the frontend job. The layout guards, the longest of the three, run as two legs. `make check` runs the
@@ -24,6 +24,10 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   layout file sets up what it needs instead of relying on a letter an earlier file left open, so the files run in
   any split. Playwright lists 479 tests where it listed 539, with every bug planted behind a merged or removed
   test still caught. The README's count of Playwright tests follows.
+- The web app's unit tests are about a tenth faster: the 47 files that touch no DOM run in node instead of jsdom,
+  two tests move the clock instead of waiting seconds, and nine tests that repeated another are gone or merged
+  into it, each with a planted bug to show the remaining test still fails for it. One test is new: moving to
+  another Settings section while the settings still load. Vitest runs 2,845 tests where it ran 2,853.
 - **The report of the final evaluation says more of what was registered.** Its statistics give the gap each power
   figure was computed at, with the registered caveat; each secondary endpoint (the replay without the sender's
   Land, the checks ablated, selective prediction, cost and latency) shows the final run first and the earlier
