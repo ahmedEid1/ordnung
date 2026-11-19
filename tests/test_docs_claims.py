@@ -30,6 +30,7 @@ from fastapi.routing import APIRoute
 
 from helpers_media import gif_info, mp4_info
 from helpers_secretary import TODAY, seed_ledger
+from helpers_tables import check_rows
 from ordnung import clock, letters_zip, shortcut, sync
 from ordnung.api.app import openapi_schema
 from ordnung.api.deps import require_computer
@@ -952,15 +953,23 @@ async def test_the_guide_names_exactly_the_rules_tools() -> None:
     assert named == listed
 
 
-@pytest.mark.parametrize(
-    "document", ["README.md", "docs/guide.md", "docs/decisions/0001-claude-cli-as-the-model-runtime.md"]
-)
-def test_the_claude_code_version_needed_is_the_one_ordnung_checks(document: str) -> None:
+CLAUDE_CODE_VERSION_DOCUMENTS = [
+    "README.md",
+    "docs/guide.md",
+    "docs/decisions/0001-claude-cli-as-the-model-runtime.md",
+]
+
+
+def test_the_claude_code_version_needed_is_the_one_ordnung_checks() -> None:
     """README's and the guide's Install and ADR 0001 name the oldest Claude Code that ``ordnung doctor`` and the
     app accept."""
-    assert f"Claude Code {version_text(MIN_CLAUDE_VERSION)} or newer" in _flat(
-        (ROOT / document).read_text(encoding="utf-8")
-    )
+
+    def check(document: str) -> None:
+        assert f"Claude Code {version_text(MIN_CLAUDE_VERSION)} or newer" in _flat(
+            (ROOT / document).read_text(encoding="utf-8")
+        )
+
+    check_rows(CLAUDE_CODE_VERSION_DOCUMENTS, check)
 
 
 def test_the_guide_installs_claude_code_as_anthropic_s_setup_page_does() -> None:
@@ -1495,20 +1504,16 @@ def _doc(name: str) -> str:
     return _flat(path.read_text(encoding="utf-8"))
 
 
-@pytest.mark.parametrize(
-    ("document", "sentence"),
-    _PHONE_CLAIMS,
-    ids=[
-        f"{Path(document).stem.split('-')[0]}-{'-'.join(_FIELD.findall(sentence))}"
-        for document, sentence in _PHONE_CLAIMS
-    ],
-)
-def test_the_phone_access_docs_state_the_code_s_numbers(document: str, sentence: str) -> None:
+def test_the_phone_access_docs_state_the_code_s_numbers() -> None:
     """Every number the phone-access docs state is the constant it names, as the code has it: the
     pairing code's length, life and tries, the phones, idle and sign-in times, the hourly limits, the
     certificates' lives, the port and the listener's limits (SPEC §12b)."""
-    stated = sentence.format(**{name: _PHONE_NUMBERS[name]() for name in _FIELD.findall(sentence)})
-    assert stated in _doc(document)
+
+    def check(document: str, sentence: str) -> None:
+        stated = sentence.format(**{name: _PHONE_NUMBERS[name]() for name in _FIELD.findall(sentence)})
+        assert stated in _doc(document)
+
+    check_rows(_PHONE_CLAIMS, check)
 
 
 def _example_path(template: str) -> str:
@@ -1774,20 +1779,16 @@ _SYNC_CLAIMS: list[tuple[str, str]] = [
 ]
 
 
-@pytest.mark.parametrize(
-    ("document", "sentence"),
-    _SYNC_CLAIMS,
-    ids=[
-        f"{Path(document).stem.split('-')[0]}-{'-'.join(_FIELD.findall(sentence)) or 'text'}"
-        for document, sentence in _SYNC_CLAIMS
-    ],
-)
-def test_the_hand_off_sync_docs_state_the_code_s_numbers(document: str, sentence: str) -> None:
+def test_the_hand_off_sync_docs_state_the_code_s_numbers() -> None:
     """Every number the hand-off sync docs state is the constant it names, as ``ordnung.sync`` has it: the
     key file's scrypt, the format's sizes and caps, when saves happen, the scan, arrival and fence timings,
     the garbage collection's grace, kept copies' warning and the new folder's passphrase rule."""
-    stated = sentence.format(**{name: _SYNC_NUMBERS[name]() for name in _FIELD.findall(sentence)})
-    assert stated in _sync_doc(document)
+
+    def check(document: str, sentence: str) -> None:
+        stated = sentence.format(**{name: _SYNC_NUMBERS[name]() for name in _FIELD.findall(sentence)})
+        assert stated in _sync_doc(document)
+
+    check_rows(_SYNC_CLAIMS, check)
 
 
 def test_the_sync_key_file_takes_the_most_scrypt_a_backup_reader_allows() -> None:
@@ -1833,20 +1834,16 @@ _BACKUP_CLAIMS: list[tuple[str, str]] = [
 ]
 
 
-@pytest.mark.parametrize(
-    ("document", "sentence"),
-    _BACKUP_CLAIMS,
-    ids=[
-        f"{Path(document).stem.split('-')[0]}-{'-'.join(_FIELD.findall(sentence)) or 'text'}"
-        for document, sentence in _BACKUP_CLAIMS
-    ],
-)
-def test_the_backup_docs_state_the_code_s_passphrase_rule_and_key_costs(document: str, sentence: str) -> None:
+def test_the_backup_docs_state_the_code_s_passphrase_rule_and_key_costs() -> None:
     """A new backup's passphrase meets a new sync folder's rule, and its key takes the same scrypt costs: the
     docs say so with the numbers ``ordnung.backup`` uses."""
-    stated = sentence.format(**{name: _BACKUP_NUMBERS[name]() for name in _FIELD.findall(sentence)})
-    path = _ADR_BACKUP if document == _ADR_BACKUP.name else ROOT / document
-    assert stated in _flat(path.read_text(encoding="utf-8"))
+
+    def check(document: str, sentence: str) -> None:
+        stated = sentence.format(**{name: _BACKUP_NUMBERS[name]() for name in _FIELD.findall(sentence)})
+        path = _ADR_BACKUP if document == _ADR_BACKUP.name else ROOT / document
+        assert stated in _flat(path.read_text(encoding="utf-8"))
+
+    check_rows(_BACKUP_CLAIMS, check)
 
 
 def test_a_new_backup_takes_the_key_costs_of_a_new_sync_folder() -> None:
