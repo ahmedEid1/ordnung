@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from helpers_secretary import TODAY, add_doc, add_item, seed_ledger
+from helpers_tables import check_rows
 from ordnung.config import Paths, fixtures_dir
 from ordnung.db.store import Store
 from ordnung.llm.base import LLMError, LLMRequest, LLMResponse
@@ -100,16 +101,13 @@ def test_agenda_text_is_plain_and_complete(store: Store, ids: dict[str, str]) ->
     assert "Decide on your FunkNetz mobile: send a cancellation by Thu 8 Oct if you want to leave." in text
 
 
-def test_agenda_text_all_clear() -> None:
-    assert agenda_text(Agenda(date="2026-09-28")) == "All clear — nothing is due in the next 7 days."
-
-
 def test_agenda_text_is_never_all_clear_while_letters_wait() -> None:
     """Letters from the watched folder that wait unread may ask for anything: only what was read is
     clear (the count stays out of what the model sees and of the facts its note is checked against)."""
     agenda = Agenda(date="2026-09-28", waiting=2)
     assert agenda_text(agenda) == "Nothing is due in the next 7 days from the letters that were read."
     unread = Agenda(date="2026-09-28")
+    assert agenda_text(unread) == "All clear — nothing is due in the next 7 days."
     assert brief_request(agenda, Profile(), AppSettings()) == brief_request(unread, Profile(), AppSettings())
 
 
@@ -280,14 +278,8 @@ async def test_the_models_note_is_shown_only_while_its_agenda_is_unchanged(
     store.update_item(ids["dunning_payment"], status="open")  # put back: the note fits again
     assert current_brief(store, TODAY) == written
 
-
-async def test_a_models_note_stored_without_its_agendas_key_is_not_vouched_for(
-    store: Store, ids: dict[str, str]
-) -> None:
-    """A note kept before the key was stored (an update during the day) can't be checked against the
-    agenda, so the code-written one is shown until the next note."""
-    llm = LLMService(FakeBackend({"brief": {"text": GOOD_NOTE}}), sink=store)
-    await generate_brief(store, llm, TODAY)
+    # A note kept before the key was stored (an update during the day) can't be checked against the
+    # agenda, so the code-written one is shown until the next note.
     kept = get_brief(store, TODAY)
     assert kept is not None
     store.set_meta(f"brief:{TODAY.isoformat()}", kept.served().model_dump_json())
@@ -437,14 +429,16 @@ MISLABELLED = [
 ]
 
 
-@pytest.mark.parametrize("note", MISLABELLED)
 def test_a_note_that_calls_a_send_by_day_due_is_rejected(
-    store: Store, ids: dict[str, str], rent: str, note: str
+    store: Store, ids: dict[str, str], rent: str
 ) -> None:
-    agenda = build_agenda(store, TODAY)
-    assert not Facts.from_data(agenda.model_dump()).unsupported(note)  # every date and amount is there
-    assert mislabelled_dates(note, agenda)
-    assert not grounded_note(note, agenda)
+    def check(note: str) -> None:
+        agenda = build_agenda(store, TODAY)
+        assert not Facts.from_data(agenda.model_dump()).unsupported(note)  # every date and amount is there
+        assert mislabelled_dates(note, agenda)
+        assert not grounded_note(note, agenda)
+
+    check_rows(MISLABELLED, check)
 
 
 CORRECT = [
@@ -463,13 +457,13 @@ CORRECT = [
 ]
 
 
-@pytest.mark.parametrize("note", CORRECT)
-def test_a_note_that_labels_its_dates_right_is_accepted(
-    store: Store, ids: dict[str, str], rent: str, note: str
-) -> None:
-    agenda = build_agenda(store, TODAY)
-    assert mislabelled_dates(note, agenda) == []
-    assert grounded_note(note, agenda)
+def test_a_note_that_labels_its_dates_right_is_accepted(store: Store, ids: dict[str, str], rent: str) -> None:
+    def check(note: str) -> None:
+        agenda = build_agenda(store, TODAY)
+        assert mislabelled_dates(note, agenda) == []
+        assert grounded_note(note, agenda)
+
+    check_rows(CORRECT, check)
 
 
 async def test_brief_text_falls_back_when_the_note_calls_a_send_by_day_due(
@@ -559,12 +553,14 @@ MISLABELLED_IN_WEEK = [
 ]
 
 
-@pytest.mark.parametrize(("today", "note"), MISLABELLED_IN_WEEK)
-def test_a_day_word_or_by_date_called_due_is_checked(today: date, note: str) -> None:
-    agenda = _week(today)
-    assert not Facts.from_data(agenda.model_dump()).unsupported(note)
-    assert mislabelled_dates(note, agenda)
-    assert not grounded_note(note, agenda)
+def test_a_day_word_or_by_date_called_due_is_checked() -> None:
+    def check(today: date, note: str) -> None:
+        agenda = _week(today)
+        assert not Facts.from_data(agenda.model_dump()).unsupported(note)
+        assert mislabelled_dates(note, agenda)
+        assert not grounded_note(note, agenda)
+
+    check_rows(MISLABELLED_IN_WEEK, check)
 
 
 CORRECT_IN_WEEK = [
@@ -611,8 +607,10 @@ CORRECT_IN_WEEK = [
 ]
 
 
-@pytest.mark.parametrize(("today", "note"), CORRECT_IN_WEEK)
-def test_a_correct_note_about_the_week_is_accepted(today: date, note: str) -> None:
-    agenda = _week(today)
-    assert mislabelled_dates(note, agenda) == []
-    assert grounded_note(note, agenda)
+def test_a_correct_note_about_the_week_is_accepted() -> None:
+    def check(today: date, note: str) -> None:
+        agenda = _week(today)
+        assert mislabelled_dates(note, agenda) == []
+        assert grounded_note(note, agenda)
+
+    check_rows(CORRECT_IN_WEEK, check)
