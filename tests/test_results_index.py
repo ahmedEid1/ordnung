@@ -8,10 +8,12 @@ hand-made results — and the command end to end on a small folder with a stand-
 from __future__ import annotations
 
 import copy
+import functools
 import json
 import re
 import shutil
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +28,17 @@ ROOT = Path(__file__).resolve().parents[1]
 INDEX = RESULTS_DIR / "INDEX.json"
 CITING = ("README.md", "docs/evals.md", "docs/evals-ask.md", "docs/evals-history.md")
 RESULTS_NAME = re.compile(r"\b(\d{4}-\d{2}-\d{2}-[A-Za-z0-9._-]+?\.json)\b")
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _checkout_hashed_once() -> Iterator[None]:
+    """The dataset's and the recordings' hashes, computed once for this file: no test here changes either, and
+    ``reproduce.static_index`` would hash the whole recorded tree on every call. Each caller gets its own copy."""
+    dataset, recordings = functools.cache(reproduce.dataset_info), functools.cache(reproduce.recordings_info)
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(reproduce, "dataset_info", lambda *args: copy.deepcopy(dataset(*args)))
+        patch.setattr(reproduce, "recordings_info", lambda *args: copy.deepcopy(recordings(*args)))
+        yield
 
 
 @pytest.fixture(scope="module")
