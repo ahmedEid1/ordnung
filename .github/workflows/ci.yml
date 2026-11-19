@@ -89,7 +89,8 @@ jobs:
         run: .venv/bin/pytest -m "not slow" -n auto --dist loadfile
       - name: Tests with coverage (and pyproject.toml's coverage floor for the whole package)
         if: ${{ matrix.coverage }}
-        run: .venv/bin/pytest -m "not slow" -n auto --dist loadfile --cov=ordnung --cov-report=term-missing:skip-covered
+        # the 15 slowest tests named at the end: the leg is among a run's longest, so its long pole is on record
+        run: .venv/bin/pytest -m "not slow" -n auto --dist loadfile --cov=ordnung --cov-report=term-missing:skip-covered --durations=15
       - name: Coverage floors of hand-off sync and phone access (read from the run above)
         if: ${{ matrix.coverage }}
         run: |
@@ -124,14 +125,16 @@ jobs:
           uv venv .venv
           uv pip install -e ".[dev]" -c constraints.txt
       - name: Slow tests (every recorded reading replayed, and the page timing; once, without coverage)
-        run: .venv/bin/pytest -m slow -n auto --dist loadfile
+        # the 15 slowest named at the end, as in the coverage leg
+        run: .venv/bin/pytest -m slow -n auto --dist loadfile --durations=15
       - name: Rules engine keeps 100 % line and branch coverage
         run: .venv/bin/pytest tests/test_rules_*.py --cov=ordnung.rules --cov-branch --cov-report=term-missing:skip-covered --cov-fail-under=100
 
   backend-slow:
     name: Benchmarks replayed (Python 3.12)
-    # the replayed benchmarks with their gates, the presenter's check, every published number and demo --check:
-    # 12 to 13 minutes (18 Nov 2026). The job keeps its id: evals/reproduce.py reads the gates from it
+    # the replayed benchmarks with their gates, the presenter's check and demo --check: about 6 minutes expected.
+    # With every published number replayed as well it took 12 to 13 (18 Nov 2026), that step 6 of them (19 Nov):
+    # the step has a job of its own now, "reproduce". The job keeps its id: evals/reproduce.py reads the gates here
     if: github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -195,14 +198,35 @@ jobs:
           --min-strict-accuracy 0.86 --max-harmful 6 --check-docs
       - name: The evaluation's README block, report, history page and charts are what the results files render
         run: .venv/bin/python -m evals.present --check
+      - name: Demo rebuilds identically from the samples and recordings
+        run: .venv/bin/ordnung demo --check
+
+  reproduce:
+    name: Every published number replayed (Python 3.12)
+    # beside the gates' job, not after them in it: the replay took 6 of that job's 12 to 13 minutes and made it the
+    # longest of a run (19 Nov 2026); here about 6.5 expected. It reads the gates from backend-slow's steps, and
+    # needs nothing the steps there write (it works in a temporary folder of its own)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      # no test runs here, and no replay reads the history: the latest commit is enough
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: constraints.txt
+      - name: Install (the versions in constraints.txt)
+        run: |
+          uv venv .venv
+          uv pip install -e ".[dev]" -c constraints.txt
       - name: Every published number is replayed with no model call and checked against evals/results/INDEX.json
         # every split, condition, Ask set, end-to-end run and ablation with a recording replayed, the analysis, the
         # pages and items.csv checked, all compared with the results index (evals/reproduce.py): a changed date or
         # count, or a replayed number that moved, needs its reason there; a cell recorded after the code freeze
         # shows as "not recorded yet" until it is
         run: make eval-reproduce
-      - name: Demo rebuilds identically from the samples and recordings
-        run: .venv/bin/ordnung demo --check
 
   lowest:
     name: Lowest direct versions (Python 3.11)
@@ -343,9 +367,9 @@ jobs:
     name: Other systems (${{ matrix.os }}, Python 3.12)
     # the lock, durable writes, sync's computer id, phone access's network lookups, autostart, the
     # app-menu shortcut (the Mac bundle opened, the Windows link read back and opened), the
-    # disk-encryption probe and text in pictures with Tesseract missing differ on macOS and Windows: on
-    # main, by hand and weekly (not on pull requests), and a failure there fails the run
-    if: github.event_name != 'pull_request'
+    # disk-encryption probe and text in pictures with Tesseract missing differ on macOS and Windows: on every
+    # pull request, on main, by hand and weekly, and a failure there fails the run. Windows took 8 minutes and macOS
+    # 3 to 4 (19 Nov 2026), under the longest Linux jobs, so a pull request's run waits no longer for them
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:
@@ -451,7 +475,10 @@ jobs:
 
   e2e:
     name: End-to-end (${{ matrix.group }}${{ matrix.group == 'layout' && format(' {0}/2', matrix.shard) || '' }})
-    # each leg installs its own Python, Node and Chromium and builds the UI itself: it waits for no other job.
+    # each leg installs its own Python, Node and Chromium and checks that the committed web build matches its
+    # sources (Playwright drives the build the wheel ships; the frontend job proves the sources still build): it
+    # waits for no other job. Chromium is its headless shell alone, without apt: the system packages
+    # --with-deps added are fonts, and one apt mirror hung a leg for 4 minutes (19 Nov 2026).
     # The groups of Playwright's projects (E2E_GROUPS in web/e2e/env.ts) run side by side, each on fresh servers
     # of its own. One run of them all took 39 minutes (18 Nov 2026), and the layout guards as one leg 23. So the
     # layout group runs in two halves (Playwright's --shard, which keeps whole files and their order), each on a
@@ -488,13 +515,13 @@ jobs:
           uv pip install -e ".[dev]" -c constraints.txt
           cd web && npm ci
           echo "playwright=$(node -p 'require("@playwright/test/package.json").version')" >> "$GITHUB_OUTPUT"
-      - name: Cache Playwright's Chromium (one per Playwright version)
+      - name: Cache Playwright's Chromium headless shell (one per Playwright version)
         uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-chromium-${{ runner.os }}-${{ steps.install.outputs.playwright }}
-      - name: Playwright's Chromium (downloaded unless the cache had it) and the system packages it needs
-        run: cd web && npx playwright install --with-deps chromium
+          key: playwright-shell-${{ runner.os }}-${{ steps.install.outputs.playwright }}
+      - name: Playwright's Chromium headless shell (downloaded unless the cache had it; no system packages)
+        run: cd web && npx playwright install --only-shell chromium
       - name: Checks that need both toolchains (node + web/node_modules and the Python package)
         # the static demo's My numbers and weekly session match the Python code; the README's Vitest and
         # Playwright counts hold; a web build ships the licences of what it bundles. Only this job has both,
@@ -506,8 +533,8 @@ jobs:
           .venv/bin/pytest -q tests/test_mock_numbers.py
           tests/test_docs_claims.py::test_readme_vitest_and_playwright_counts_hold
           tests/test_repo_hygiene.py::test_a_web_build_ships_the_licence_of_every_package_it_bundles
-      - name: Build UI
-        run: cd web && npm run build
+      - name: Committed web build is up to date (Playwright drives it as it ships)
+        run: cd web && node scripts/source-hash.mjs --check ../src/ordnung/web/dist/build-info.json
       - name: Install Tesseract with German (the real app reads a private photo's words, ADR 0024)
         if: matrix.group == 'real'
         run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends tesseract-ocr tesseract-ocr-deu

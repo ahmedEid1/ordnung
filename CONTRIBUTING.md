@@ -38,24 +38,25 @@ signing in.
 
 ## Fast loop
 
-CI runs its jobs side by side, none waiting for another, and a whole run takes 13 to 16 minutes (its runs of 19
-November 2026; 40 to 50 before, with each suite in one process). The end-to-end job waits for no other job: its
-legs, one for each group of Playwright's projects, take 7 to 13 minutes. The layout guards took 23 as one leg, so
-they run as two (Playwright's `--shard`, each half on a demo of its own: a layout file sets up what it needs and
-relies on no file before it), of 11 to 15 and 8 to 10 minutes. Beside them the replayed benchmarks take 11 to 16,
-the backend's 3.12 leg, which measures the coverage, 10 to 12, the slow tests 10, the backend's other legs (Python
-3.11, 3.13 and 3.14) 4 to 5, the lowest versions (and, weekly, the newest) 6, the frontend 5 to 7, and, on `main`
-and weekly, Windows 8 and macOS 4; lint and types, the wheel and the dependency audit take under a minute each.
-Windows and macOS run on `main`, weekly and when the workflow is started by hand, not on a pull request: after a
-change to code or tests that differ per system (`PER_SYSTEM_TESTS` in `tests/test_ci_workflow.py`), start the
-workflow on your branch before merging (Actions → CI → Run workflow). macOS and Windows have to pass too, as Linux
-does. While you work, run the tests near your change, and the fast suite in parallel processes before you push:
+CI runs its jobs side by side, none waiting for another, and a whole run took 13 to 16 minutes (its runs of 19
+November 2026; 40 to 50 before, with each suite in one process), with the replayed benchmarks the longest job.
+The end-to-end job waits for no other job: its legs, one for each group of Playwright's projects, take 7 to 13
+minutes. The layout guards took 23 as one leg, so they run as two (Playwright's `--shard`, each half on a demo of
+its own: a layout file sets up what it needs and relies on no file before it), of 11 to 15 and 8 to 10 minutes.
+Beside them the replayed benchmarks took 11 to 16 with every published number replayed in the same job; that
+replay (`make eval-reproduce`) took 6 of them and has a job of its own now, so each is about 6 to 7 expected. The
+backend's 3.12 leg, which measures the coverage, takes 10 to 12, the slow tests 10, the backend's other legs (Python
+3.11, 3.13 and 3.14) 4 to 5, the lowest versions (and, weekly, the newest) 6, the frontend 5 to 7, Windows 8 and
+macOS 4 (measured on `main`); lint and types, the wheel and the dependency audit take under a minute each.
+Windows and macOS run on every pull request too, with the tests of the code that differs per system
+(`PER_SYSTEM_TESTS` in `tests/test_ci_workflow.py`), and have to pass, as Linux does. While you work, run the
+tests near your change, and the fast suite in parallel processes before you push:
 
 ```bash
 .venv/bin/pytest tests/test_rules_deadlines.py -k weekend     # one file, only the tests whose names match
 cd web && npx vitest run src/features/today                   # one folder or file of the web app's tests (-t "<name>")
 cd web && npx playwright test e2e/letter-layout.spec.ts       # one end-to-end spec (-g "<title>" for one test)
-.venv/bin/pytest -m "not slow" -n auto --dist loadfile         # the fast suite, a file to each process (9 to 18 minutes on 4 cores)
+.venv/bin/pytest -m "not slow" -n auto --dist loadfile         # the fast suite, a file to each process, one per core (about 10 to 11 minutes in two processes on a busy 4-core computer, measured in two halves)
 ```
 
 An end-to-end spec runs against the built web app in `src/ordnung/web/dist`, so after changing `web/` run

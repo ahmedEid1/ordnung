@@ -67,15 +67,16 @@ def _weekly(job: dict[str, Any]) -> bool:
 def test_each_check_runs_on_pull_requests_in_a_job_of_its_own() -> None:
     """A run's time is its longest job's. The slow tests and the replays took a backend leg to 36 of its 45
     minutes; in a job of their own (``backend-slow``) they took 27 to 41 (November 2026), the slow tests alone 21
-    of them. So the slow tests, the replays (the gates, ``make eval-reproduce``, ``demo --check``) and lint with
-    the type check (the same on every Python: pyproject.toml gives ruff and mypy 3.11 as their target) each have
-    a job, all on pull requests, and every check still runs. The replays keep the job id ``backend-slow``:
-    evals/reproduce.py reads the gates from it."""
+    of them, and ``make eval-reproduce`` took 6 of the replays' 12 to 13. So the slow tests, the gates' replays
+    (with ``demo --check``), ``make eval-reproduce`` and lint with the type check (the same on every Python:
+    pyproject.toml gives ruff and mypy 3.11 as their target) each have a job, all on pull requests, and every check
+    still runs. The gates' replays keep the job id ``backend-slow``: evals/reproduce.py reads the gates from it."""
     jobs = _jobs()
     lint, backend, tests, replays = jobs["lint"], jobs["backend"], jobs["slow-tests"], jobs["backend-slow"]
-    assert all(_on_pull_requests(job) for job in (lint, backend, tests, replays))
-    assert tests["runs-on"] == replays["runs-on"] == backend["runs-on"] == "ubuntu-24.04"
-    for job in (lint, tests, replays):
+    reproduce = jobs["reproduce"]
+    assert all(_on_pull_requests(job) for job in (lint, backend, tests, replays, reproduce))
+    assert {job["runs-on"] for job in (backend, tests, replays, reproduce)} == {"ubuntu-24.04"}
+    for job in (lint, tests, replays, reproduce):
         assert any(step.get("with", {}).get("python-version") == "3.12" for step in job["steps"])
     where = {
         "ruff check": lint,
@@ -88,13 +89,13 @@ def test_each_check_runs_on_pull_requests_in_a_job_of_its_own() -> None:
         "ordnung eval": replays,
         "evals.ask": replays,
         "evals.present --check": replays,
-        "make eval-reproduce": replays,
+        "make eval-reproduce": reproduce,
         "ordnung demo --check": replays,
     }
     for check, job in where.items():
         assert check in _script(job), check
         assert job is backend or check not in _script(backend), check  # once, not in each leg
-    assert "pytest" not in _script(replays)
+    assert "pytest" not in _script(replays) and "pytest" not in _script(reproduce)
 
 
 def test_the_samples_must_regenerate_byte_for_byte_in_the_job_that_runs_their_check() -> None:
@@ -137,12 +138,15 @@ def _e2e_groups() -> list[str]:
 
 
 def test_the_end_to_end_groups_start_at_once_and_together_run_every_project() -> None:
-    """Each end-to-end leg installs its own Python, Node and Chromium and builds the web app itself: it uses
-    nothing another job makes, so it waits for none (waiting for the frontend job put 8 minutes before a 39-minute
-    Playwright run, 18 Nov 2026; a broken build still fails the leg's own build step). Its legs are the groups of
-    web/e2e/env.ts, each once: a group left out here would never run in CI. Only the layout group, the longest,
-    runs as two halves (Playwright's ``--shard``), and the two halves together are the whole group: every other
-    group has one leg that runs all of it. The checks that need both toolchains run on one leg, not on each."""
+    """Each end-to-end leg installs its own Python, Node and Chromium and checks that the committed web build
+    matches its sources: it uses nothing another job makes, so it waits for none (waiting for the frontend job put 8
+    minutes before a 39-minute Playwright run, 18 Nov 2026; a stale build fails the leg's own check, and the
+    frontend job's build proves the sources still build). Playwright drives the committed build, the one the wheel
+    ships, never one the leg builds. Chromium comes as its headless shell, with no system packages (an apt mirror
+    once hung the install and failed a run), cached under a key of its own. Its legs are the groups of
+    web/e2e/env.ts, each once: a group left out here would never run in CI. Only the layout group, the longest, runs
+    as two halves (Playwright's ``--shard``), and the two halves together are the whole group: every other group has
+    one leg that runs all of it. The checks that need both toolchains run on one leg, not on each."""
     jobs = _jobs()
     e2e = jobs["e2e"]
     assert "needs" not in e2e and "download-artifact" not in json.dumps(e2e)
@@ -169,6 +173,14 @@ def test_the_end_to_end_groups_start_at_once_and_together_run_every_project() ->
     assert upload["with"]["name"] == "playwright-report-${{ matrix.group }}-${{ matrix.shard }}"
     (checks,) = [step for step in e2e["steps"] if "ORDNUNG_REQUIRE_MOCK_CHECK" in step.get("env", {})]
     assert checks["if"] == "matrix.group == 'real'"
+    fresh_at, fresh = _step(e2e, "cd web && node scripts/source-hash.mjs --check")
+    assert fresh["run"].endswith(" ../src/ordnung/web/dist/build-info.json")
+    assert "npm run build" not in _script(e2e) and "npm run build" in _script(jobs["frontend"])
+    assert fresh_at < _step(e2e, "npm run e2e")[0]
+    _, browser = _step(e2e, "npx playwright install")
+    assert browser["run"] == "cd web && npx playwright install --only-shell chromium"
+    (cache,) = [step for step in e2e["steps"] if "ms-playwright" in step.get("with", {}).get("path", "")]
+    assert cache["with"]["key"].startswith("playwright-shell-")
 
 
 def test_only_a_pull_request_s_older_run_is_cancelled() -> None:
@@ -194,9 +206,9 @@ def test_only_a_pull_request_s_older_run_is_cancelled() -> None:
 
 def test_a_failure_on_macos_or_windows_fails_the_run() -> None:
     """The release gate counts a run as passed when its macOS or Windows job failed while that job may fail. It
-    is required now; only the weekly check of Claude Code's flags, which installs whatever Anthropic released
-    last, still shows a failure without failing the run. The guide says so, and neither it nor README says
-    otherwise."""
+    is required now, on every pull request as well; only the weekly check of Claude Code's flags, which installs
+    whatever Anthropic released last, still shows a failure without failing the run. The guide says so, and neither
+    it nor README says otherwise."""
     jobs = _jobs()
     assert "continue-on-error" not in jobs["other-systems"]
     assert [name for name, job in jobs.items() if "continue-on-error" in job] == ["claude-code"]
@@ -208,7 +220,7 @@ def test_a_failure_on_macos_or_windows_fails_the_run() -> None:
     comment = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8").split("  other-systems:", 1)[1]
     assert "without failing the run" not in comment.split("    steps:", 1)[0]
     guide = " ".join((ROOT / "docs/guide.md").read_text(encoding="utf-8").split())
-    assert "(weekly and on main, required to pass)" in guide
+    assert "(on every pull request, on main and weekly, required to pass)" in guide
     for name in ("README.md", "docs/guide.md"):
         text = " ".join((ROOT / name).read_text(encoding="utf-8").split())
         assert "not yet required to pass" not in text and "Not yet a gate: weekly and on main" not in text, (
@@ -395,12 +407,14 @@ PYTEST_RUNS = [
     ('-m "not slow" --ignore=tests/test_preregistration.py', False),
     # an option's value is no test path, whether or not the option is known to take one
     ('-m "not slow" --durations 20', True),
+    ("-m slow -n auto --dist loadfile --durations=15", True),
     ("-n 4 -q", True),
     ('-m "not slow" -n auto --dist loadfile', True),
     ("-W error -m slow", True),
     ("-m slow --junitxml reports/junit.xml", True),
     ("-o addopts= -q", True),
     ("--durations 20 tests/test_rules_dates.py", False),
+    ("--durations=15 tests/test_rules_dates.py", False),
     ('-m "not slow" tests/test_platform_smoke.py tests/test_cli.py::test_x tests/test_sync_*.py', False),
 ]
 
@@ -565,18 +579,20 @@ def test_the_without_land_replay_goes_to_a_temporary_folder_and_must_match_the_p
     assert "dev" in done.stderr
 
 
-def test_make_eval_reproduce_replays_every_published_number_in_the_slow_job() -> None:
+def test_make_eval_reproduce_replays_every_published_number_in_a_job_of_its_own() -> None:
     """One command reproduces every published number: every split, condition, Ask set, end-to-end,
     ablation and stress cell that exists replayed with no model call, the analysis and the presenter checked, all
-    compared with ``evals/results/INDEX.json``. It runs in backend-slow beside the gates, which stay; like them it
-    gets no ``claude`` and no secret (``evals/reproduce.py`` points any stray call at a path that doesn't exist)."""
-    slow = _jobs()["backend-slow"]
-    at, step = _step(slow, "make eval-reproduce")
+    compared with ``evals/results/INDEX.json``. It runs in a job of its own, beside backend-slow's gates, which
+    stay; like them it gets no ``claude`` and no secret (``evals/reproduce.py`` points any stray call at a path that
+    doesn't exist)."""
+    jobs = _jobs()
+    slow, reproduce = jobs["backend-slow"], jobs["reproduce"]
+    assert reproduce["if"] == "github.event_name != 'schedule'"  # on pull requests and main, not weekly
+    _, step = _step(reproduce, "make eval-reproduce")
     assert step["run"].strip() == "make eval-reproduce" and "env" not in step
-    gates_at, _ = _step(slow, "--split holdout2")
-    assert gates_at < at  # the gates say first what failed, then reproduce says everything that differs
+    assert [name for name, job in jobs.items() if "make eval-reproduce" in _script(job)] == ["reproduce"]
     assert set(_gates(_script(slow))) == set(GATED_SPLITS)  # the gates stay
-    workflow = json.dumps(slow)
+    workflow = json.dumps([slow, reproduce])
     assert "secrets." not in workflow and "ANTHROPIC_API_KEY" not in workflow and "install.sh" not in workflow
     makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
     assert "eval-reproduce" in makefile.split(".PHONY:", 1)[1].splitlines()[0]
@@ -637,8 +653,9 @@ PER_SYSTEM_TESTS = (
 
 def test_the_other_systems_job_runs_the_tests_whose_subject_differs_per_system() -> None:
     """Every job ran on Ubuntu, so the data-folder lock's, the durable writes', sync's
-    computer id and phone access's macOS and Windows code never ran. One job runs their tests there,
-    outside pull requests, and a failure there fails the run; every test it names exists."""
+    computer id and phone access's macOS and Windows code never ran. One job runs their tests there on every
+    event, pull requests and the weekly run among them (it has no ``if``), and a failure there fails the run; every
+    test it names exists."""
     job = _jobs()["other-systems"]
     (step,) = [step for step in job["steps"] if "pytest" in step.get("run", "")]
     named = step["run"].replace("\\\n", " ").split()
@@ -646,7 +663,7 @@ def test_the_other_systems_job_runs_the_tests_whose_subject_differs_per_system()
         assert name in named, name
     assert job["strategy"]["matrix"]["os"] == ["macos-latest", "windows-latest"]
     assert job["runs-on"] == "${{ matrix.os }}"
-    assert job["if"] == "github.event_name != 'pull_request'"
+    assert "if" not in job
     assert "continue-on-error" not in job and all("continue-on-error" not in step for step in job["steps"])
     tests = "\n".join(step.get("run", "") for step in job["steps"] if "pytest" in step.get("run", ""))
     named = re.findall(r"tests/[\w*]+\.py(?:::\w+)?", tests)
