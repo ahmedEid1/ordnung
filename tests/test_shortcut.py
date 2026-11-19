@@ -1913,7 +1913,7 @@ def test_a_second_click_gives_up_when_nothing_answers(
 
     monkeypatch.setattr(locking, "DataDirLock", Held)
     monkeypatch.setattr(cli, "_in_terminal", lambda: True)
-    monkeypatch.setattr(cli, "BROWSER_WAIT_S", 0.3)
+    monkeypatch.setattr(cli, "BROWSER_WAIT_S", 0.0)
     result = invoke("serve", "--data-dir", str(folder), "--from-shortcut", input="\n")
     assert result.exit_code == 1 and "Another Ordnung process" in result.output
     assert "Press Enter to close this window." in result.output and launched == []
