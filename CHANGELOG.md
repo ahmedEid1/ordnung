@@ -12,9 +12,10 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   replayed benchmarks have a job each, and the end-to-end tests run in three groups side by side without waiting
   for the frontend job. The layout guards, the longest of the three, run as two legs. `make check` runs the
   backend tests in parallel too. Every published number is replayed in a job of its own (it made the benchmarks'
-  job the longest of a run), Windows and macOS run on every pull request and not only on `main`, and the
-  end-to-end legs drive the committed web build with Chromium's headless shell, installed without system
-  packages: a package mirror that hung could fail a run.
+  job the longest of a run), Windows runs on every pull request and not only on `main` (macOS stays on `main`
+  and the weekly run: on a pull request its runner was 10 minutes in coming once, and once none came and the run
+  failed for it), and the end-to-end legs drive the committed web build with Chromium's headless shell, installed
+  without system packages: a package mirror that hung could fail a run.
 - The backend tests hold one behaviour each. The examples of one rule are now the rows of one table test
   (`check_rows` in `tests/helpers_tables.py`, which names every failing row) instead of one collected test per
   example, and tests and rows that only repeated another were removed. That is now every family: the suite went
