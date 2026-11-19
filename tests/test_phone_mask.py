@@ -138,9 +138,10 @@ def test_ask_s_tools_mask_the_person_s_numbers_for_a_phone(store: Store) -> None
 async def test_attribution_ends_with_the_phone_s_request() -> None:
     phone = DeviceRef("phn_000000000001", "Sam's iPhone")
     seen: list[object] = []
+    ended = asyncio.Event()
 
     async def later() -> None:
-        await asyncio.sleep(0.01)
+        await ended.wait()
         seen.append(current())
 
     with acting(phone):
@@ -151,6 +152,7 @@ async def test_attribution_ends_with_the_phone_s_request() -> None:
         )
         assert await asyncio.to_thread(current) == phone  # work in a thread is the request's too
         task = asyncio.create_task(later())
+    ended.set()  # the request has ended before the task reads who is acting
     await task
     assert seen == [None]  # a task the request started, running on after it ended, is not the phone's
     assert current() is None and attribute("x", {"a": 1}) == ("x", {"a": 1})
