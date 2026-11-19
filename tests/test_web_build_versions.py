@@ -35,22 +35,19 @@ def _pinned() -> dict[str, str]:
     }
 
 
-def test_the_notices_name_the_packages_of_the_build() -> None:
-    """The parse below finds every section, so the comparison is not empty by accident."""
+def test_every_bundled_package_is_the_version_the_lockfile_pins() -> None:
+    """After a dependency update, ``npm ci`` and ``make build-web`` bring the build to the lockfile. The parse of the
+    notices finds every section, so the comparison is not empty by accident."""
     listed = _built_from()
     names = [name for name, _ in listed]
     assert len(listed) >= 40, listed
     assert len(set(names)) == len(names), names
     for name in ("react", "react-dom", "@tanstack/react-query", "lucide-react", "motion", "vite"):
         assert name in names, name
-
-
-def test_every_bundled_package_is_the_version_the_lockfile_pins() -> None:
-    """After a dependency update, ``npm ci`` and ``make build-web`` bring the build to the lockfile."""
     pinned = _pinned()
     stale = {
         name: f"built from {version}, the lockfile pins {pinned.get(name, 'nothing')}"
-        for name, version in _built_from()
+        for name, version in listed
         if pinned.get(name) != version
     }
     assert not stale, stale
