@@ -12,6 +12,7 @@ its registered consequence.
 from __future__ import annotations
 
 import hashlib
+import itertools
 import json
 import math
 import random
@@ -23,6 +24,8 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+
+from helpers_tables import check_rows
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -909,32 +912,38 @@ READ_MISMATCHES = (
 )
 
 
-@pytest.mark.parametrize(("breaks", "kind", "mismatch", "effect"), READ_MISMATCHES)
 def test_a_read_that_differs_from_the_frozen_inputs_needs_a_deviation_and_is_then_left_out(
-    world: World, breaks: Callable[[World], None], kind: str, mismatch: str, effect: str
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Never waivable (fingerprint, code digest, prompt hash, served model) and "exclude the read" (another
     manifest, a dirty tree): without a deviation recorded at the time the analysis is refused; with one, read 3 is
     left out (listed with its deviation and consequence) and the analysis runs on the reads that stand."""
-    breaks(world)
-    with pytest.raises(analysis.AnalysisError, match=rf"{mismatch}.*deviation"):
-        world.final()
-    world.deviate(kind, {"split": "holdout4", "repeat": 3})
-    result = world.final()
-    assert result["primary"]["reads"] == 2 and result["primary"]["reads_used"] == [1, 2]
-    (left,) = result["meta"]["frozen_check"]["reads_left_out"]
-    assert (left["split"], left["repeat"], left["file"], left["effect"]) == (
-        "holdout4",
-        3,
-        "holdout4-r3.json",
-        effect,
-    )
-    assert left["deviations"] == ["D001"] and left["mismatches"] == [mismatch]
-    assert result["primary"]["families"]["F3_stability"] is not None  # k = 2 = min_reads: F3 still runs
-    # the deviation must name the read: one for read 2 excuses nothing in read 3
-    world.deviations[0]["applies_to"] = {"split": "holdout4", "repeat": 2}
-    with pytest.raises(analysis.AnalysisError, match=mismatch):
-        world.final()
+
+    def check(breaks: Callable[[World], None], kind: str, mismatch: str, effect: str) -> None:
+        world = World(tmp_path / kind)
+        monkeypatch.setattr(analysis, "RECORDED_DIR", world.recorded)
+        monkeypatch.setattr(analysis, "DATASET_DIR", world.dataset)
+        breaks(world)
+        with pytest.raises(analysis.AnalysisError, match=rf"{mismatch}.*deviation"):
+            world.final()
+        world.deviate(kind, {"split": "holdout4", "repeat": 3})
+        result = world.final()
+        assert result["primary"]["reads"] == 2 and result["primary"]["reads_used"] == [1, 2]
+        (left,) = result["meta"]["frozen_check"]["reads_left_out"]
+        assert (left["split"], left["repeat"], left["file"], left["effect"]) == (
+            "holdout4",
+            3,
+            "holdout4-r3.json",
+            effect,
+        )
+        assert left["deviations"] == ["D001"] and left["mismatches"] == [mismatch]
+        assert result["primary"]["families"]["F3_stability"] is not None  # k = 2 = min_reads: F3 still runs
+        # the deviation must name the read: one for read 2 excuses nothing in read 3
+        world.deviations[0]["applies_to"] = {"split": "holdout4", "repeat": 2}
+        with pytest.raises(analysis.AnalysisError, match=mismatch):
+            world.final()
+
+    check_rows(READ_MISMATCHES, check)
 
 
 def test_a_deviation_recorded_while_a_read_is_under_way_leaves_its_tree_clean(world: World) -> None:
@@ -1079,32 +1088,39 @@ def test_an_unanswered_letter_needs_a_deviation_and_model_failures_are_counted(w
     assert primary["conditions"]["ordnung"]["model_failed_per_read"] == [0, 0, 0]
 
 
-@pytest.mark.parametrize(
-    ("field", "value"),
-    [
-        ("issue_comment_url", None),
-        ("created_at", None),
-        ("checkpoint_sha", None),
-        ("issue_comment_url", "file:///scratch/issue.md#D001"),
-        ("checkpoint_sha", "abc"),
-        ("created_at", "yesterday"),
-        ("consequence", "include"),
-        ("kind", "excuse"),
-    ],
-)
+DEVIATIONS_NOT_RECORDED_AT_THE_TIME = [
+    ("issue_comment_url", None),
+    ("created_at", None),
+    ("checkpoint_sha", None),
+    ("issue_comment_url", "file:///scratch/issue.md#D001"),
+    ("checkpoint_sha", "abc"),
+    ("created_at", "yesterday"),
+    ("consequence", "include"),
+    ("kind", "excuse"),
+]
+
+
 def test_a_deviation_not_recorded_at_the_time_or_off_the_table_is_refused(
-    world: World, field: str, value: Any
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A deviation counts only with its issue comment, its time and the checkpoint that pushed it, and only as the
     pre-registration's table says: any entry of the file that lacks them is refused, used or not."""
-    world.deviate("infrastructure", {"split": "holdout4", "repeat": 2})
-    world.final()  # well-formed: accepted (and an infrastructure loss changes nothing)
-    if value is None:
-        del world.deviations[0][field]
-    else:
-        world.deviations[0][field] = value
-    with pytest.raises(analysis.AnalysisError, match="D001"):
-        world.final()
+    folders = itertools.count(1)
+
+    def check(field: str, value: Any) -> None:
+        world = World(tmp_path / f"row{next(folders)}")
+        monkeypatch.setattr(analysis, "RECORDED_DIR", world.recorded)
+        monkeypatch.setattr(analysis, "DATASET_DIR", world.dataset)
+        world.deviate("infrastructure", {"split": "holdout4", "repeat": 2})
+        world.final()  # well-formed: accepted (and an infrastructure loss changes nothing)
+        if value is None:
+            del world.deviations[0][field]
+        else:
+            world.deviations[0][field] = value
+        with pytest.raises(analysis.AnalysisError, match="D001"):
+            world.final()
+
+    check_rows(DEVIATIONS_NOT_RECORDED_AT_THE_TIME, check)
 
 
 def test_the_registered_table_of_deviation_kinds_is_the_one_the_analysis_applies(world: World) -> None:
