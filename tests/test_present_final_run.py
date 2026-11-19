@@ -145,7 +145,7 @@ def made(tmp_path_factory: pytest.TempPathFactory) -> Callable[[str], Made]:
     def make(name: str) -> Made:
         if name not in cache:
             tmp = tmp_path_factory.mktemp(name)
-            cache[name] = Made(hf.realistic_root(tmp) if name == "realistic" else hf.scenario_root(tmp, name))
+            cache[name] = Made(_final_root(tmp, name))
         return cache[name]
 
     return make
@@ -2559,7 +2559,7 @@ def _decision_problems(texts: dict[str, str], codes: set[str], known: set[str]) 
 
 
 def test_no_output_of_a_final_prints_the_analysis_s_decision_codes_or_within_noise(
-    tmp_path: Path, no_final_units: set[str]
+    made: Callable[[str], Made], tmp_path: Path, no_final_units: set[str]
 ) -> None:
     """Every page a reader sees of a final run (the README, docs/evals.md, the history, every chart, the report page and
     its CSVs) says a decision only by the registered sentences: no "within noise", no decision code of the analysis
@@ -2568,8 +2568,7 @@ def test_no_output_of_a_final_prints_the_analysis_s_decision_codes_or_within_noi
     no final run too, are theirs."""
 
     def check(name: str) -> None:
-        root = _final_root(tmp_path / name / "checkout", name)
-        outputs = build.outputs(root)
+        outputs = made(name).outputs
         doc = json.loads(outputs[build.PRESENTATION])
         texts = {path: content for path, content in outputs.items() if path != build.PRESENTATION}
         texts |= _site_texts(doc, tmp_path / name / "site")
