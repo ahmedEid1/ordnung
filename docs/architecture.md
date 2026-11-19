@@ -688,7 +688,7 @@ ZIP64 when the sizes need it) with names made safe per part (`safe_component`) a
 spreadsheet formulas. It writes nothing — not even a privacy-log row, so it needs no place in hand-off sync's
 fence — and is computer-only (`NEVER_ON_PHONE`, and `require_computer` in the route). The web app's export
 dialog counts with the same rules (`web/src/features/export/selection.ts`; both test suites read
-`selection-cases.json`). The **tax year** page and the tax-season Idea file a letter by `triggers.letter_day`
+`selection-cases.json`). The **tax year** page and the tax-season Idea file a letter by `ledger.letter_day`
 (the date printed on it, else the day it arrived), which no table stores; the Inbox's year choice files letters
 the same way, in the browser.
 

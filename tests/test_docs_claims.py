@@ -2312,7 +2312,7 @@ def _moving_limitation() -> str:
 
 def test_the_guide_s_limitations_say_what_the_tax_year_export_scans_and_moving_checklist_can_t_do() -> None:
     """The guide's Limitations: the tax year files a letter by its printed date (else its arrival,
-    ``triggers.letter_day``), so its January–May group is a heuristic; Claude marks a letter for taxes and the
+    ``ledger.letter_day``), so its January–May group is a heuristic; Claude marks a letter for taxes and the
     person's *For taxes* choice changes that (``DocumentPatch.tax_choice``, never Claude's own ``tax_relevant``),
     and Ask and the weekly review follow it (ADR 0025); the ZIP isn't encrypted; a scanner's text is unchecked; the moving checklist knows
     only the organisations Ordnung has seen."""

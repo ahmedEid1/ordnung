@@ -56,7 +56,7 @@ them; *documents* the identity documents with their expiry (the letter's expiry 
 identity-document or residence-permit letter, or one whose title names a passport, ID card or residence
 title: a library card, student ID or Visa card that expires is none — flagged when that date is not
 confirmed against the letter) and the renewal window the Ideas use
-(:data:`~ordnung.secretary.triggers.IDENTITY_WINDOW_DAYS`, :data:`~ordnung.secretary.triggers.PERMIT_WINDOW_DAYS`;
+(:data:`~ordnung.secretary.ledger.IDENTITY_WINDOW_DAYS`, :data:`~ordnung.secretary.ledger.PERMIT_WINDOW_DAYS`;
 a residence permit's note says what § 81 Abs. 4 AufenthG means before it expires and after). Each
 organisation gets a *call sheet* — contact details, every number of yours its letters show, its open
 cases, its own numbers apart, its last letter — when it has a number of yours that is not an identity
@@ -69,7 +69,7 @@ letters' (a to-do added to a letter of the thread keeps it open): a recurring pa
 going, not a case, so an old order number drops out. Its next step is the earliest of the person's own
 to-dos (on the same day a deadline or appointment before its fee or paperwork), money coming in only
 when nothing else is open; a fee paid at the appointment
-(:func:`~ordnung.secretary.triggers.paid_at_appointment`) counts on its day, never on a transfer day
+(:func:`~ordnung.secretary.ledger.paid_at_appointment`) counts on its day, never on a transfer day
 (``at_appointment``), and money coming in keeps its ``direction``: it is expected on its day, never
 overdue. Within an organisation the same number (compared without spaces and marks) is one
 entry; the latest letter's label wins.
@@ -747,7 +747,7 @@ class NumbersInput:
     ``documents`` are live letters; ``items`` their to-dos (and those of no letter); ``open_items`` the
     to-dos worth acting on — open or snoozed (putting a to-do off keeps its case open), no scam signs,
     not taken over by a reminder; ``expiry_classes`` says for each expiry to-do whether it is a
-    ``permit``, an ``identity`` document or ``other`` (:func:`ordnung.secretary.triggers.expiry_class`).
+    ``permit``, an ``identity`` document or ``other`` (:func:`ordnung.secretary.ledger.expiry_class`).
     """
 
     today: date

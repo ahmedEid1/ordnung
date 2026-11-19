@@ -168,7 +168,7 @@ LEDGER_META_KEYS = (_PROFILE_KEY, TAX_CHOICES_META_KEY, HOUSEHOLD_META_KEY)
 _WATCHED_META = ", ".join(f"'{key}'" for key in LEDGER_META_KEYS)
 #: The rules whose Ideas Ask's ledger fingerprint reads, which :meth:`Store.ledger_token` watches too: the scam
 #: warnings, whose dismissal is the person's check of a letter (*I checked — it's genuine*,
-#: :attr:`ordnung.secretary.triggers.Ledger.scam_checked`). Of their rows it reads the rule, the status and the
+#: :attr:`ordnung.secretary.ledger.Ledger.scam_checked`). Of their rows it reads the rule, the status and the
 #: fingerprint, so refreshing an Idea's words moves nothing.
 LEDGER_SUGGESTION_RULES = ("scam_warning",)
 _WATCHED_RULES = ", ".join(f"'{rule}'" for rule in LEDGER_SUGGESTION_RULES)

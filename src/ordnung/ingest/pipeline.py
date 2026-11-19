@@ -996,7 +996,7 @@ async def _finish_private(
 ) -> Document:
     """Private and held documents: keep the text layer (and a scanner's text, search only) for search; no
     model ever sees them. An
-    e-mail is titled by its subject and sender (:func:`~ordnung.ingest.text.email_heading`).
+    e-mail is titled by its subject and sender (:func:`~ordnung.ingest.email_text.email_heading`).
 
     The letter is read again first, so an answer the person gave while this ran stands: one they let
     Claude read is left to its reading job, one they kept private ends private.

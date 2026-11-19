@@ -70,7 +70,7 @@ SIGNER_ADDRESS = "Musterweg 1\n50667 Köln"
 DRAFT_PURPOSE = "draft"
 #: Kinds whose Idea window (the profile's longest reminder) the checker reads.
 WINDOW_KINDS = ("deadline", "payment", "appointment", "task")
-#: The words that make a warning a scam sign (``ordnung.secretary.triggers.is_scam_warning``), to name which one
+#: The words that make a warning a scam sign (``ordnung.secretary.ledger.is_scam_warning``), to name which one
 #: did without quoting the warning; a sign none of them names is ``other``.
 SCAM_WORDS = (
     "scam",

@@ -475,7 +475,7 @@ REASK_ADDRESS = (
     "address or phone number in this letter."
 )
 #: The start of the letter's warning when the re-ask's answer was used (:func:`reask_warning`): no scam sign
-#: (``secretary.triggers._NOT_A_SIGN``, the web's ``REASK_WARNING``).
+#: (``secretary.ledger._NOT_A_SIGN``, the web's ``REASK_WARNING``).
 REASK_WARNING = re.compile(r"^Claude's first answer for this letter left out")
 
 

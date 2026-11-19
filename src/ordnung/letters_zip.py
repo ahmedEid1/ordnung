@@ -4,7 +4,7 @@ The policy:
 
 * **Which letters.** Every letter that isn't in the trash, waiting for the person (held) or a proof file —
   private letters too, as they are the person's own files — narrowed by the :class:`Choice`: a year by
-  the letter's day (:func:`ordnung.secretary.triggers.letter_day`: the date printed on it, else the day it
+  the letter's day (:func:`ordnung.secretary.ledger.letter_day`: the date printed on it, else the day it
   arrived; undated letters belong to no year), ``until`` a day of the next year (the yearly statements that
   come early in it), only letters for taxes — the person's own choice, else Claude's mark
   (:func:`ordnung.secretary.tax_choice.for_taxes`) —, one sender. The web app's export dialog counts the
