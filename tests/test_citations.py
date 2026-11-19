@@ -12,11 +12,10 @@ from ordnung.assistant.citations import (
     is_well_formed,
     parse_citations,
     remove_markers,
-    result_summary,
     strip_invalid,
-    tool_label,
     tool_name,
 )
+from ordnung.assistant.tool_steps import result_summary, tool_label
 
 DOC = "doc_k3j9x0a1b2c4"
 ITEM = "itm_7h2m4n6p8q0r"

@@ -53,9 +53,7 @@ from ordnung.assistant.citations import (
     CitationRef,
     is_well_formed,
     parse_citations,
-    result_summary,
     strip_invalid,
-    tool_label,
     tool_name,
 )
 from ordnung.assistant.mcp_server import PARTY_FIELDS, SERVER_NAME, TOOL_NAMES, server_config
@@ -68,6 +66,7 @@ from ordnung.assistant.support import (
     split_note,
     style_for,
 )
+from ordnung.assistant.tool_steps import result_summary, tool_label
 from ordnung.config import Paths
 from ordnung.days import local_today
 from ordnung.db.store import Store

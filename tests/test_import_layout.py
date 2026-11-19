@@ -21,9 +21,6 @@ ALLOWED_CYCLES: dict[frozenset[str], str] = {
     frozenset(
         {"ordnung.rules.deadlines", "ordnung.rules.letters"}
     ): "the letter rules build on the deadline receipts; deadlines imports them lazily where needed",
-    frozenset(
-        {"ordnung.assistant.citations", "ordnung.assistant.support"}
-    ): "support reads the citation markers; citations imports support lazily to read values as shown",
 }
 
 #: (module, modules that importing it must not load): a low layer stays light.
