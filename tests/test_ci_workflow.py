@@ -525,8 +525,9 @@ def test_the_slow_tests_run_in_two_jobs_that_share_their_files() -> None:
     names left out with an ``--ignore`` each. The two lists are the same files: no slow test is dropped, none runs
     twice, and a new slow test file runs in ``slow-tests`` without an edit to the workflow (it names no path). So
     ``slow-long`` names whole files (a node id would leave the file's other slow tests in neither job), and neither
-    job narrows its selection further (``-k``, ``--deselect``, ``--ignore-glob``). The pre-registration's file
-    stays in ``slow-tests``, where the whole history is checked out. ``slow-long`` keeps its files in the order
+    job narrows its selection further (``-k``, ``--deselect``, ``--ignore-glob``, ``--lf``, a second ``-m``, which
+    pytest reads instead of the first, or any of them in ``PYTEST_ADDOPTS``) or only collects (``--co``). The
+    pre-registration's file stays in ``slow-tests``, where the whole history is checked out. ``slow-long`` keeps its files in the order
     given (pytest-xdist would sort them by their number of tests), with the kill test's file fourth: of the 4
     processes, each takes one file and then a second while it has at most 2 tests waiting, in turn, so with at
     most 2 slow tests in each of the first three files and at most 7 files the kill test's process, the fourth,
@@ -542,8 +543,14 @@ def test_the_slow_tests_run_in_two_jobs_that_share_their_files() -> None:
     assert arguments == named, "slow-long names whole files"
     for args in (rest, longest):
         options = {arg.split("=", 1)[0] for arg in args if arg.startswith("-")}
-        assert not options & {"--deselect", "--ignore-glob"}, options
+        narrowing = {"--deselect", "--ignore-glob", "--co", "--collect-only", "--lf", "--last-failed"}
+        assert not options & narrowing, options
         assert not any(arg.startswith("-k") for arg in args), args
+        assert args.count("-m") == 1 and not any(a.startswith("-m") and a != "-m" for a in args), args
+    for name in SLOW_JOBS:
+        job = jobs[name]
+        assert "PYTEST_ADDOPTS" not in json.dumps(job.get("env", {})) + json.dumps(job["steps"]), name
+    assert "PYTEST_ADDOPTS" not in json.dumps(_workflow().get("env", {}))
     assert len(named) == len(set(named)) and len(left_out) == len(set(left_out))
     assert sorted(named) == sorted(left_out), "the files slow-long names are the files slow-tests leaves out"
     assert all(re.fullmatch(r"tests/test_\w+\.py", name) for name in named), named
