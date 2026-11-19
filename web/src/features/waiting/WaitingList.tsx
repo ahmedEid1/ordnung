@@ -13,7 +13,7 @@ import { toast } from "@/components/ui/Toast";
 import { TONES, WAITING_SOURCE_COPY, WAITING_STATUS_COPY, copyFor } from "@/lib/copy";
 import { usePartyDrawer } from "@/lib/party-drawer";
 import { cn } from "@/lib/utils";
-import { focusWhenReady } from "@/features/today/focus";
+import { focusWhenReady } from "@/lib/focus";
 import { WAITING_GROUPS, WRAPPING_BUTTON, asksForACall, closeLabel, groupWaiting } from "./model";
 
 const rowHeadingId = (entryId: string) => `waiting-row-${entryId}`;

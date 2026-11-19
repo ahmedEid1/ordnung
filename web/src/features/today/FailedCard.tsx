@@ -14,7 +14,7 @@ import type { ListedLetter } from "@/api/types";
 import { useReprocessDocuments } from "@/api/hooks";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { plural } from "@/lib/utils";
-import { focusAfterLeaving } from "./focus";
+import { focusAfterLeaving } from "@/lib/focus";
 import { fadeUp } from "./motion";
 
 const TITLE_ID = "failed-card-title";

@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
 import { RefText } from "@/features/ask/RefText";
-import { focusAfterLeaving, focusWhenReady } from "./focus";
+import { focusAfterLeaving, focusWhenReady } from "@/lib/focus";
 import { ideaHref } from "./helpers";
 import { collapseOut, fadeUp } from "./motion";
 import { MOVING_CHECKLIST_ID, MOVING_SHOWN, openDraftFor } from "./moving";

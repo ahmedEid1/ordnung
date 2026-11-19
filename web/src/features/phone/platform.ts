@@ -3,7 +3,7 @@
  * listener before the server said so, and the page loads the pairing flow makes.
  */
 import { clientKind } from "@/api/clientKind";
-import { isStaticDemo } from "@/mocks/mode";
+import { isStaticDemo } from "@/lib/mode";
 
 /** What a phone is called when its name can't be guessed (the person can change it before pairing). */
 export const DEFAULT_PHONE_NAME = "Phone";

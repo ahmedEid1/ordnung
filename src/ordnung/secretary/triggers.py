@@ -25,11 +25,13 @@ import threading
 import weakref
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, datetime, timedelta
 from functools import cached_property
 from typing import TYPE_CHECKING, Any, cast
 
 from ordnung.clock import now_iso
+from ordnung.days import parse_day as parse_day
+from ordnung.days import parse_timestamp as parse_timestamp
 from ordnung.db.store import Store
 from ordnung.drafts.proof import (
     PROOF_SOURCE,
@@ -68,7 +70,8 @@ from ordnung.models import (
 )
 from ordnung.payments import is_collected_or_incoming, is_direct_debit
 from ordnung.rules import RuleContext, compute_contract, get_rule, price_increase_window
-from ordnung.rules.deadlines import POSTAL_BUFFER_DAYS, sending_time_passed
+from ordnung.rules.deadlines import postal_buffer as postal_buffer
+from ordnung.rules.deadlines import sending_time_passed
 from ordnung.rules.explain import fmt_date
 from ordnung.secretary.tax_choice import for_taxes
 
@@ -146,31 +149,10 @@ _PERMIT_LINKS = (
 # --------------------------------------------------------------------------------------------------
 
 
-def parse_day(value: str | None) -> date | None:
-    """``YYYY-MM-DD`` (or an ISO timestamp) → date; ``None`` for missing or malformed values."""
-    if not value:
-        return None
-    try:
-        return date.fromisoformat(value[:10])
-    except ValueError:
-        return None
-
-
 def letter_day(doc: Document) -> date | None:
     """The day a letter is filed under by year (the tax year, the export's folders): the date printed on
     it, else the day it arrived (``None``: neither is known)."""
     return parse_day(doc.doc_date) or parse_day(doc.received_date)
-
-
-def parse_timestamp(value: str | None) -> datetime | None:
-    """ISO-8601 timestamp (``Z`` allowed) → aware datetime; ``None`` for missing or malformed values."""
-    if not value:
-        return None
-    try:
-        moment = datetime.fromisoformat(value)
-    except ValueError:
-        return None
-    return moment if moment.tzinfo else moment.replace(tzinfo=UTC)
 
 
 def day_label(day: date, today: date) -> str:
@@ -379,11 +361,6 @@ def is_overdue(item: Item, today: date) -> bool:
         and is_active(item, today)
         and not was_history_when_filed(item)
     )
-
-
-def postal_buffer(profile: Profile) -> int:
-    """Business days a letter needs: the person's setting, never less than the §21 default."""
-    return max(profile.postal_buffer_days, POSTAL_BUFFER_DAYS)
 
 
 def contract_computation(

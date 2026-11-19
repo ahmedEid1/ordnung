@@ -34,20 +34,12 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from icalendar import Alarm, Calendar, Event
 
 from ordnung.clock import now_iso
+from ordnung.days import local_today, parse_day, parse_timestamp
 from ordnung.db.store import NotFoundError, Store
 from ordnung.models import Contract, ContractComputation, Item, Profile
 from ordnung.rules.deadlines import older_matter_note
 from ordnung.rules.explain import fmt_date
-from ordnung.secretary.triggers import (
-    CALENDAR_META_KEY,
-    Ledger,
-    eur,
-    is_decision,
-    parse_day,
-    parse_timestamp,
-    was_history_when_filed,
-)
-from ordnung.tick import local_today
+from ordnung.secretary.triggers import CALENDAR_META_KEY, Ledger, eur, is_decision, was_history_when_filed
 
 log = logging.getLogger(__name__)
 

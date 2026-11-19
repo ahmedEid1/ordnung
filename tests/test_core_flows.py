@@ -385,7 +385,7 @@ def utc_computer_berlin_person(monkeypatch: pytest.MonkeyPatch) -> None:
     clock.set_today(None)
     monkeypatch.delenv("ORDNUNG_TODAY", raising=False)
     monkeypatch.setattr("ordnung.clock.date", _SystemDate)
-    monkeypatch.setattr("ordnung.tick.datetime", _SystemDatetime)
+    monkeypatch.setattr("ordnung.days.datetime", _SystemDatetime)
     assert not os.environ.get("ORDNUNG_TODAY")
 
 

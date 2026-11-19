@@ -61,7 +61,7 @@ from ordnung.recurrence import (
     settle_rents,
 )
 from ordnung.rules import RuleContext, compute_due
-from ordnung.secretary.triggers import postal_buffer
+from ordnung.rules.deadlines import postal_buffer
 
 MANUAL_SUMMARY = "You set this date yourself."
 _KIND_NATURES: dict[str, DateNature] = {"payment": "payment", "appointment": "appointment"}

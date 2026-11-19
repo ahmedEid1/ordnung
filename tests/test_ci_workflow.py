@@ -7,6 +7,7 @@ checks out the whole history."""
 
 from __future__ import annotations
 
+import ast
 import functools
 import json
 import re
@@ -232,15 +233,31 @@ def test_a_hung_test_is_named_and_no_unread_coverage_report_is_written() -> None
 
 def test_the_type_check_covers_the_scripts_each_under_one_name() -> None:
     """CI's type check (``mypy`` with pyproject.toml's list) covers scripts/ too: they write data the tests and the
-    static demo pin (the sample life, the postcode table, the mock data). scripts/eval_without_land.py is left off
-    the list and checked as ``scripts.eval_without_land``, the name evals/ imports it by, and scripts/prereg_hashes.py
-    as ``scripts.prereg_hashes``, the name scripts/prereg_published.py imports it by: listed as a file as well, mypy
+    static demo pin (the sample life, the postcode table, the mock data). evals/ never imports scripts/, so every
+    script is checked under its file name but scripts/prereg_hashes.py, which is checked as
+    ``scripts.prereg_hashes``, the name scripts/prereg_published.py imports it by: listed as a file as well, mypy
     would find it under two names and stop before checking anything."""
     mypy = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["mypy"]
     assert mypy["files"] == ["src/ordnung", "evals", "scripts"]
-    assert mypy["exclude"] == [r"^scripts/eval_without_land\.py$", r"^scripts/prereg_hashes\.py$"]
-    harness = (ROOT / "evals" / "e2e" / "harness.py").read_text(encoding="utf-8")
-    assert re.search(r"^\s*from scripts\.eval_without_land import ", harness, re.M)
+    assert mypy["exclude"] == [r"^scripts/prereg_hashes\.py$"]
+    evals = ROOT / "evals"
+    data = {"dataset", "recorded", "prompts", "results", "retakes"}
+    from_scripts = []
+    for path in sorted(evals.rglob("*.py")):
+        parts = path.relative_to(evals).parts
+        if data & set(parts[:-1]) or parts[:2] == ("ask", "heldout"):
+            continue
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if isinstance(node, ast.Import):
+                names = [alias.name for alias in node.names]
+            elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                names = [node.module]
+            else:
+                continue
+            from_scripts += [
+                f"{path.relative_to(ROOT)}: {name}" for name in names if name.split(".")[0] == "scripts"
+            ]
+    assert from_scripts == [], "evals/ imports scripts/"
     published = (ROOT / "scripts" / "prereg_published.py").read_text(encoding="utf-8")
     assert re.search(r"^from scripts\.prereg_hashes import ", published, re.M)
     assert [step["run"] for step in _jobs()["lint"]["steps"] if "mypy" in step.get("run", "")] == [

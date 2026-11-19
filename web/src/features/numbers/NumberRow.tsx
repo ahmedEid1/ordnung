@@ -11,7 +11,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { isGermanText } from "@/features/document/fact-text";
 import { PersonTag } from "@/features/household/PersonTag";
 import { FULL_NUMBER_ON_COMPUTER } from "@/features/phone/copy";
-import { useClipboard } from "@/features/today/clipboard";
+import { useClipboard } from "@/lib/clipboard";
 import { glueText } from "@/lib/format";
 import { NBSP } from "@/lib/glue";
 import { useFormatDate } from "@/lib/today";

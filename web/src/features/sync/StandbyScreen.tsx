@@ -20,7 +20,7 @@ import { Button, buttonVariants } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
 import { toast } from "@/components/ui/Toast";
 import { inUseName, olderCopyLabel, reassuranceLine, standbyHeading, standbyStatusLine, waitingLine } from "@/features/settings/sync";
-import { focusWhenReady } from "@/features/today/focus";
+import { focusWhenReady } from "@/lib/focus";
 import { cn } from "@/lib/utils";
 import { ChoiceDialog } from "./ChoiceDialog";
 import { ArrivingNote, ProgressLine, SyncNotices, SyncProblemCallout } from "./parts";

@@ -14,7 +14,7 @@ import { toast } from "@/components/ui/Toast";
 import { daysUntil, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { collapseOut, fadeUp } from "./motion";
-import { focusAfterLeaving, focusWhenReady } from "./focus";
+import { focusAfterLeaving, focusWhenReady } from "@/lib/focus";
 import { ideaActionLabel, ideaHref, payActionFor } from "./helpers";
 import { ReadMore } from "./ReadMore";
 import { ideaFigure, isFreshIdea, type TodayAction } from "./selection";

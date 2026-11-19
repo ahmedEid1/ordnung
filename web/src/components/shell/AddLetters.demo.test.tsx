@@ -9,7 +9,7 @@ import { renderWithProviders } from "@/test/render";
 import { AddLettersProvider, useAddLetters } from "./AddLetters";
 import { DropZone } from "./DropZone";
 
-vi.mock("@/mocks/mode", () => ({ isStaticDemo: () => true }));
+vi.mock("@/lib/mode", () => ({ isStaticDemo: () => true }));
 
 let fetchSpy: ReturnType<typeof vi.fn>;
 beforeEach(() => {

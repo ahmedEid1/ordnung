@@ -15,7 +15,7 @@ import { Popover } from "@/components/ui/Popover";
 import { toast } from "@/components/ui/Toast";
 import { DOCUMENT_KIND_COPY, documentKindLabel } from "@/lib/copy";
 import { softHyphens } from "@/lib/germanTerms";
-import { isStaticDemo } from "@/mocks/mode";
+import { isStaticDemo } from "@/lib/mode";
 
 const HIGH_STAKES = new Set<string>(HIGH_STAKES_KINDS);
 /** Everyday kinds by name ("Other letter" last). */

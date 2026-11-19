@@ -38,4 +38,38 @@ export default defineConfig(
       "no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
     },
   },
+  {
+    // the app's code never reaches into the mock backend: only main.tsx installs it, with a dynamic import
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/mocks/**", "src/test/**", "**/*.test.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": ["error", { patterns: [
+        { regex: "^(@/|\\./|(\\.\\./)+)mocks(/|$)", caseSensitive: true, message: "Only main.tsx loads the mocks (lazily); mock mode is @/lib/mode." },
+      ] }],
+    },
+  },
+  {
+    // no-restricted-imports does not see import(): a dynamic import of the mocks is refused here, except in
+    // main.tsx, the one file that loads them
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/main.tsx", "src/mocks/**", "src/test/**", "**/*.test.{ts,tsx}"],
+    rules: {
+      "no-restricted-syntax": ["error", {
+        selector: "ImportExpression[source.value=/^(@|\\.|\\.\\.([\\u002f]\\.\\.)*)[\\u002f]mocks([\\u002f]|$)/]",
+        message: "Only main.tsx loads the mocks (lazily); mock mode is @/lib/mode.",
+      }],
+    },
+  },
+  {
+    // layers: lib, api, components/ui and styles are shared pieces; they never import a screen, the app, its shell or the mocks
+    // (src/styles holds no code file yet: its entry guards the ones added later)
+    files: ["src/lib/**/*.{ts,tsx}", "src/api/**/*.{ts,tsx}", "src/components/ui/**/*.{ts,tsx}", "src/styles/**/*.{ts,tsx}"],
+    ignores: ["**/*.test.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": ["error", { patterns: [
+        { regex: "^@/(features|pages|app|components/shell|mocks)(/|$)", caseSensitive: true, message: "A shared piece never imports a feature, a page, the app or its shell, or the mocks." },
+        { regex: "^(\\.\\./)+(features|pages|app|mocks|shell|components/shell)(/|$)", caseSensitive: true, message: "A shared piece never imports a feature, a page, the app or its shell, or the mocks." },
+      ] }],
+    },
+  },
 );

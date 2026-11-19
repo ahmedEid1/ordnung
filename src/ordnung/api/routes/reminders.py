@@ -27,8 +27,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from ordnung import autostart, shortcut
 from ordnung.api.deps import CtxDep, StateDep
 from ordnung.app_context import AppContext
+from ordnung.days import local_today
 from ordnung.notify import desktop
-from ordnung.tick import local_today
 
 router = APIRouter(tags=["reminders"])
 

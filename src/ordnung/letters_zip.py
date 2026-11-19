@@ -43,12 +43,13 @@ from types import MappingProxyType
 from typing import BinaryIO
 
 from ordnung.backup.archive import Drain
+from ordnung.days import parse_day
 from ordnung.db.store import Store
 from ordnung.ingest.held import is_held
 from ordnung.ingest.intake import TEXT_TYPES, download_name, strip_control
 from ordnung.models import PROOF_SOURCE, Document
 from ordnung.secretary.tax_choice import for_taxes
-from ordnung.secretary.triggers import letter_day, parse_day
+from ordnung.secretary.triggers import letter_day
 
 SENDER_CHARS, SENDER_BYTES = 60, 80  # a sender's folder
 STEM_CHARS, STEM_BYTES = 90, 150  # "<date> <title>", before a " (2)" and the extension

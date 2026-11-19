@@ -20,7 +20,7 @@ import { usePhoneCompanion } from "@/features/phone/client";
 import { ComputerOnly, OnYourComputer } from "@/features/phone/ComputerOnly";
 import { EXPORT_ON_COMPUTER } from "@/features/phone/copy";
 import { TAX_SEASON_SENTENCE, defaultTaxYear, earlyStatements, inTaxSeason, parseTaxYear, taxGroups, taxLetters, taxYears, undatedTaxLetters } from "@/features/taxes/taxYear";
-import { isStaticDemo } from "@/mocks/mode";
+import { isStaticDemo } from "@/lib/mode";
 import { useStickyError } from "@/lib/hooks";
 import { useTodayISO } from "@/lib/today";
 import { plural } from "@/lib/utils";

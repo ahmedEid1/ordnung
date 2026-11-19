@@ -28,13 +28,13 @@ from typing import TYPE_CHECKING, Any
 
 from ordnung.assistant.ask import build_request, demo_changed_event, demo_miss_event
 from ordnung.config import PACKAGE_DIR
+from ordnung.days import local_today
 from ordnung.db.store import Store
 from ordnung.demo import DemoError, Manifest, SampleDocument, load_manifest, samples_root
 from ordnung.ingest.pipeline import StageCallback, add_file, ingest_document, run_triggers
 from ordnung.llm.base import LLMError, ReplayMiss, StreamEvent
 from ordnung.llm.replay import ReplayBackend, fixture_path
 from ordnung.models import Document, Job, MailTrayItem, TourState
-from ordnung.tick import local_today
 
 if TYPE_CHECKING:
     from ordnung.app_context import AppContext

@@ -3772,7 +3772,7 @@ _CHOICE_AND_HOUSEHOLD_PAGE_WORDS = (
     ("features/household/LetterFor.tsx", "Its dates, reminders and numbers stay in your Ordnung either way."),
     ("features/household/LetterFor.tsx", "Also file this letter for"),
     ("features/household/FileThese.tsx", "not filed yet"),
-    ("features/letters/LetterComposer.tsx", "who doesn't sign letters, so it goes out in your name."),
+    ("features/letters/SignerField.tsx", "who doesn't sign letters, so it goes out in your name."),
     ("features/settings/DataSection.tsx", "people & organisations, your household, your drafts"),
 )
 

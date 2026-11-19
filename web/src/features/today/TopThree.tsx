@@ -31,7 +31,7 @@ import { cn, plural } from "@/lib/utils";
 import { doneLine } from "@/features/items/repeat";
 import { actionMember } from "@/features/household/logic";
 import { PersonTag } from "@/features/household/PersonTag";
-import { focusAfterLeaving, focusWhenReady } from "./focus";
+import { focusAfterLeaving, focusWhenReady } from "@/lib/focus";
 import { fadeUp, stagger } from "./motion";
 import { allClearTitle, composerHref, worthASecondLook, type ActionVerb, type DateRole, type TodayAction } from "./selection";
 import { actionHref } from "./useTodayData";

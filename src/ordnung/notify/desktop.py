@@ -59,12 +59,13 @@ from typing import Any, Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from ordnung import clock
+from ordnung.days import parse_day
 from ordnung.db.store import Store
 from ordnung.models import AppSettings
 from ordnung.rules.deadlines import older_matter_switch
 from ordnung.rules.explain import fmt_date
 from ordnung.secretary.brief import Agenda, AgendaEntry, build_agenda
-from ordnung.secretary.triggers import Ledger, money, parse_day
+from ordnung.secretary.triggers import Ledger, money
 
 When = Literal["today", "overdue", "upcoming"]
 

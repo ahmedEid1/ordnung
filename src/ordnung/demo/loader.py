@@ -46,6 +46,7 @@ from ordnung.app_context import AppContext, build_context
 from ordnung.assistant.ask import ask_stream, record_label
 from ordnung.assistant.citations import parse_citations
 from ordnung.config import PACKAGE_DIR, Paths, fixtures_dir
+from ordnung.days import SIMULATED_TODAY_KEY, local_today
 from ordnung.db.migrate import latest_version
 from ordnung.db.store import Store
 from ordnung.demo import MANIFEST_NAME, DemoError, Manifest, SampleDocument, load_manifest, samples_root
@@ -74,7 +75,7 @@ from ordnung.models import (
 )
 from ordnung.secretary.brief import brief_key, generate_brief, get_brief
 from ordnung.secretary.review import run_review
-from ordnung.tick import SIMULATED_TODAY_KEY, DailyTick, local_today
+from ordnung.tick import DailyTick
 
 log = logging.getLogger(__name__)
 

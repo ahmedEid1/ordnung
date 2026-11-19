@@ -35,7 +35,7 @@ import { Skeleton, SkeletonText } from "@/components/ui/Skeleton";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { toast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
-import { useClipboard } from "@/features/today/clipboard";
+import { useClipboard } from "@/lib/clipboard";
 import { factLabel } from "@/features/document/fact-text";
 import { NumberRow } from "@/features/numbers/NumberRow";
 import { BUNDESLAENDER } from "@/features/onboarding/options";

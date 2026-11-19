@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
 import { Dialog } from "@/components/ui/Dialog";
 import { toast } from "@/components/ui/Toast";
-import { focusWhenReady } from "@/features/today/focus";
+import { focusWhenReady } from "@/lib/focus";
 import { formatDate, formatTimeAgo } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
 import { plural } from "@/lib/utils";

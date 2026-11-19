@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import "./styles/index.css";
 import { initTheme } from "@/app/theme";
 import { reloadOnStaleChunks } from "@/app/staleChunks";
-import { mockMode } from "@/mocks/mode";
+import { mockMode } from "@/lib/mode";
 import { copyWithoutGlue } from "@/lib/glue";
 
 async function boot() {

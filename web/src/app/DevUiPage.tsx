@@ -4,7 +4,7 @@
  * "Not found".
  */
 import { useHealth } from "@/api/hooks";
-import { shouldUseMocks } from "@/mocks/mode";
+import { shouldUseMocks } from "@/lib/mode";
 import { NotFound } from "./screens";
 import UiGallery from "./UiGallery";
 

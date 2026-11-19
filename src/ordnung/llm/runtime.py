@@ -19,7 +19,6 @@ no bytes sent, so a letter that was never sent is never said to have been (``Sto
 from __future__ import annotations
 
 import contextlib
-import hashlib
 import logging
 import os
 from collections.abc import AsyncIterator, Callable, Sequence
@@ -35,6 +34,7 @@ from ordnung.llm.base import (
     StreamEvent,
     Usage,
 )
+from ordnung.llm.base import request_key as request_key
 from ordnung.models import CallOutcome
 from ordnung.trace.facts import model_call
 from ordnung.trace.spans import NO_SPAN, Span
@@ -117,13 +117,6 @@ def _bytes_sent(req: LLMRequest) -> int:
         with contextlib.suppress(OSError):
             total += Path(att.path).stat().st_size
     return total
-
-
-def request_key(req: LLMRequest) -> str:
-    """Stable key for cache + replay. Callers set ``cache_key`` to identify the *input*."""
-    basis = req.cache_key if req.cache_key is not None else req.prompt
-    raw = f"{req.purpose}|{req.prompt_version}|{req.model}|{basis}"
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
 class LLMService:

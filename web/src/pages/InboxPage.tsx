@@ -28,7 +28,7 @@ import { isTaxLetter } from "@/features/taxes/taxYear";
 import { parseYear } from "@/features/export/selection";
 import { FILE_THESE_BUTTON_ID, FileThese } from "@/features/household/FileThese";
 import { MINE, filedMember, forOptions, matchesFor, memberById, parseFor, suggestedFor } from "@/features/household/logic";
-import { focusWhenReady } from "@/features/today/focus";
+import { focusWhenReady } from "@/lib/focus";
 import {
   filterCounts,
   filterDocuments,

@@ -17,7 +17,7 @@ import { usePartyDrawer } from "@/lib/party-drawer";
 import { displayTracking } from "@/lib/tracking";
 import { cn } from "@/lib/utils";
 import { composerHref } from "@/features/today/selection";
-import { focusWhenReady } from "@/features/today/focus";
+import { focusWhenReady } from "@/lib/focus";
 import { WRAPPING_BUTTON, asksForACall, closeLabel } from "@/features/waiting/model";
 import { usePhoneCompanion } from "@/features/phone/client";
 import { OnYourComputer } from "@/features/phone/ComputerOnly";

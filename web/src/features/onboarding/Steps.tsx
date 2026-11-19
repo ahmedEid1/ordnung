@@ -7,7 +7,7 @@ import { Field, Input, Textarea } from "@/components/ui/Field";
 import { Glossary } from "@/components/ui/Glossary";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/utils";
-import { CopyCommand } from "./CopyCommand";
+import { CopyCommand } from "@/components/ui/CopyCommand";
 import { InstallClaude, UpdateClaude } from "./InstallClaude";
 import { BUNDESLAENDER, CLAUDE_LOGIN_CMD, CLAUDE_PLAN_NOTE, LANGUAGES, PRIVACY_STATEMENT } from "./options";
 import { REVISIT_HEADING, WIZARD_STEPS, claudeUsable, returnLine, stepLabel, type ClaudeView, type OnboardingDraft } from "./wizard";

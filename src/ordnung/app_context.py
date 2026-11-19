@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Any, TypeVar
 
 from ordnung import clock
 from ordnung.config import Paths, resolve_paths
+from ordnung.days import SIMULATED_TODAY_KEY as SIMULATED_TODAY_KEY
 from ordnung.db.store import Store
 from ordnung.events import EventBus
 from ordnung.llm.base import LLMBackend
@@ -34,7 +35,6 @@ from ordnung.models import AppSettings
 if TYPE_CHECKING:
     from ordnung.ingest.worker import IngestWorker
 
-SIMULATED_TODAY_KEY = "simulated_today"
 #: ``<data>/sync/state.json``: hand-off sync is connected (``ordnung.sync``; its state lives there).
 SYNC_STATE = ("sync", "state.json")
 

@@ -26,6 +26,7 @@ from dataclasses import dataclass, replace
 from datetime import date
 from typing import Final
 
+from ordnung.days import parse_day
 from ordnung.ids import content_id
 from ordnung.ingest.plan import item_context
 from ordnung.models import (
@@ -48,7 +49,6 @@ from ordnung.secretary.triggers import (
     is_active,
     is_decision,
     make_idea,
-    parse_day,
     was_history_when_filed,
 )
 

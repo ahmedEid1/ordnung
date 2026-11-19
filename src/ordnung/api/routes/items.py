@@ -53,7 +53,7 @@ from ordnung.recurrence import (
     undo_done,
     undo_replaced,
 )
-from ordnung.secretary.triggers import postal_buffer
+from ordnung.rules.deadlines import postal_buffer
 
 router = APIRouter(tags=["items"])
 

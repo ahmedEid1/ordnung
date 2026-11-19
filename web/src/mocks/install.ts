@@ -9,9 +9,9 @@
 import { setAssetResolver } from "@/api/client";
 import { emit, installMockEventSource } from "./events";
 import { createMockServer, type MockServer } from "./server";
-import { isStaticDemo, mockMode } from "./mode";
+import { isStaticDemo, mockMode } from "@/lib/mode";
 
-export { isStaticDemo, mockMode, shouldUseMocks } from "./mode";
+export { isStaticDemo, mockMode, shouldUseMocks } from "@/lib/mode";
 
 let server: MockServer | null = null;
 

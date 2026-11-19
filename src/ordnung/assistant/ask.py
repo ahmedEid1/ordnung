@@ -69,6 +69,7 @@ from ordnung.assistant.support import (
     style_for,
 )
 from ordnung.config import Paths
+from ordnung.days import local_today
 from ordnung.db.store import Store
 from ordnung.ids import new_id
 from ordnung.ingest.extract import wrap_untrusted
@@ -79,7 +80,6 @@ from ordnung.models import AppSettings, ChatMessage
 from ordnung.secretary.household import ask_view
 from ordnung.secretary.review import catalog_texts, correct_weekdays, language_name, stable_hash
 from ordnung.secretary.triggers import IDEA_LAWS, Ledger
-from ordnung.tick import local_today
 
 #: Ask keeps to the ledger (ADR 0011): its server is started ``--ledger-only`` and the CLI may call only
 #: Ordnung's ledger tools, by name — never the ledger-free rules tools, which compute a new date from a

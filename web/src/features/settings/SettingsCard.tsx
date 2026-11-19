@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { CircleAlert, CircleCheck, Save } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { focusIsLost } from "@/features/today/focus";
+import { focusIsLost } from "@/lib/focus";
 import { cn } from "@/lib/utils";
 import { useReportDirty } from "./dirty";
 

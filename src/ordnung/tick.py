@@ -31,9 +31,11 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
 from typing import Any, Protocol, TypeVar
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from ordnung import clock
+from ordnung.days import SIMULATED_TODAY_KEY as SIMULATED_TODAY_KEY
+from ordnung.days import local_today as local_today
+from ordnung.days import parse_day
+from ordnung.days import simulated_day as simulated_day
 from ordnung.db.store import Store, background_context
 from ordnung.ingest.pipeline import ledger_lock
 from ordnung.ingest.plan import item_contexts
@@ -45,7 +47,7 @@ from ordnung.recurrence import roll_forward
 from ordnung.secretary import household
 from ordnung.secretary.brief import Brief, generate_brief
 from ordnung.secretary.review import LAST_REVIEW_KEY, run_review
-from ordnung.secretary.triggers import TriggerRun, parse_day, run_and_reconcile
+from ordnung.secretary.triggers import TriggerRun, run_and_reconcile
 
 log = logging.getLogger(__name__)
 
@@ -54,7 +56,6 @@ TICK_INTERVAL_S = 15 * 60.0
 MIN_WAKE_S = 30.0
 REVIEW_EVERY = timedelta(days=7)
 LAST_TICK_KEY = "last_tick_date"
-SIMULATED_TODAY_KEY = "simulated_today"
 #: how long a cancelled check waits for its worker thread (calendar sync, the day's work) to end
 STOP_WAIT_S = 10.0
 
@@ -78,27 +79,6 @@ class TickContext(Protocol):
 
     @property
     def bus(self) -> Publisher | None: ...
-
-
-def simulated_day(store: Store) -> date | None:
-    """The pinned demo/test date, if any: ``clock`` override, then settings, then meta."""
-    if clock.simulated():
-        return clock.today()
-    configured = store.get_settings().simulated_today
-    return parse_day(configured) or parse_day(store.get_meta(SIMULATED_TODAY_KEY))
-
-
-def local_today(store: Store) -> date:
-    """Today in the person's time zone (``profile.timezone``), honouring a simulated date."""
-    pinned = simulated_day(store)
-    if pinned is not None:
-        return pinned
-    try:
-        zone = ZoneInfo(store.get_profile().timezone)
-    except (ZoneInfoNotFoundError, ValueError):
-        log.warning("unknown time zone in the profile; using the system date")
-        return clock.today()
-    return datetime.now(zone).date()
 
 
 def replay_miss_prone(llm: LLMService) -> bool:

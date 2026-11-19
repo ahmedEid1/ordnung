@@ -45,6 +45,7 @@ from typing import TYPE_CHECKING, Literal
 
 from ordnung import clock
 from ordnung.clock import now_iso
+from ordnung.days import local_today
 from ordnung.db.store import NotFoundError, Store
 from ordnung.ids import doc_id_for_sha
 from ordnung.ingest import held as consent
@@ -923,8 +924,6 @@ def commit_ledger(store: Store, data: LedgerInput, *, trace: Span = NO_SPAN) -> 
 
 def person_today(store: Store) -> date:
     """The person's today (their time zone, or the pinned demo date) — not the computer's date."""
-    from ordnung.tick import local_today  # the tick imports this module
-
     return local_today(store)
 
 

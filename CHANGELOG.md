@@ -32,6 +32,13 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   two tests move the clock instead of waiting seconds, and nine tests that repeated another are gone or merged
   into it, each with a planted bug to show the remaining test still fails for it. One test is new: moving to
   another Settings section while the settings still load. Vitest runs 2,845 tests where it ran 2,853.
+- The code's layers are tighter, with nothing a person, an API client or a file on disk can observe changing. In
+  the backend, the helpers for the person's day live in a module of their own (`ordnung/days.py`), the replay key
+  beside the request it keys, the postal buffer in the rules engine, and the evaluation no longer imports from
+  `scripts/`. Two circles of modules importing each other are gone and the largest went from 13 modules to 4;
+  `tests/test_import_layout.py` names the circles that remain and fails when a new one appears. In the web app,
+  shared helpers moved out of feature folders into `lib/` and `components/ui`, an ESLint rule keeps the shared
+  layers from importing a feature, a page or the mocks, and the letter composer's 1,551-line file is four files.
 - **The report of the final evaluation says more of what was registered.** Its statistics give the gap each power
   figure was computed at, with the registered caveat; each secondary endpoint (the replay without the sender's
   Land, the checks ablated, selective prediction, cost and latency) shows the final run first and the earlier

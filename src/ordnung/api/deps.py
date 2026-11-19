@@ -46,6 +46,7 @@ from fastapi import Depends, Request
 from ordnung.api.security import DEVICE_KEY, LISTENER_KEY, PHONE_LISTENER
 from ordnung.app_context import AppContext
 from ordnung.calendar import caldav
+from ordnung.days import local_today
 from ordnung.db.store import Store, background_context
 from ordnung.doctor import CLAUDE_CODE_URL, DoctorReport, run_doctor
 from ordnung.ingest.watcher import FolderWatcher
@@ -56,7 +57,7 @@ from ordnung.phone import PhoneRefusal
 from ordnung.phone.access import PhoneAccess
 from ordnung.phone.actor import DeviceRef
 from ordnung.sync.agent import SyncAgent
-from ordnung.tick import DailyTick, local_today
+from ordnung.tick import DailyTick
 
 log = logging.getLogger(__name__)
 

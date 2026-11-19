@@ -509,7 +509,9 @@ The app in `web/` is React and TypeScript, built with Vite; `ordnung serve` serv
 - **Layout.** `web/src/app/` is the shell: the routes (`web/src/app/router.tsx`), the providers, the query client and
   the screens for an error or a server that isn't running. `web/src/pages/` has one component per route,
   `web/src/features/` the parts of the screens by subject (`web/src/features/today/`, `web/src/features/document/`, …),
-  and `web/src/components/ui/` the shared pieces, most of them shown on one page at `/dev/ui`.
+  and `web/src/components/ui/` the shared pieces, most of them shown on one page at `/dev/ui`. `web/src/lib/`,
+  `web/src/api/` and `web/src/components/ui/` never import a feature, a page or the shell, and only
+  `web/src/main.tsx` loads `web/src/mocks/` (`web/eslint.config.js`).
 - **Data.** `web/src/api/endpoints.ts` has one typed function per route. Their paths, parameters and answers come from
   `web/src/api/schema.d.ts`, which `make openapi` generates from the FastAPI app through `web/openapi.json`, so a
   route the backend renames fails `tsc`. Components read through the TanStack Query hooks of

@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router";
 import { useReducedMotion } from "motion/react";
 import { Lock, MessagesSquare, Plus, RotateCw, SquarePen } from "lucide-react";
 import { useDemoQuestions, useDocuments, useHealth } from "@/api/hooks";
-import { isStaticDemo } from "@/mocks/mode";
+import { isStaticDemo } from "@/lib/mode";
 import { Page } from "@/components/shell/Page";
 import { ACCEPTED_ONE, useOptionalAddLetters } from "@/components/shell/AddLetters";
 import { Button } from "@/components/ui/Button";

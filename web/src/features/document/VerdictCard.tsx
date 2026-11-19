@@ -80,7 +80,7 @@ import { englishInline, isGermanText } from "./fact-text";
 import { WhyThisDate } from "./WhyThisDate";
 import { GermanTerms } from "@/lib/germanTerms";
 import { keepCitations, protectRefs } from "@/lib/glue";
-import { DEMO_NOTE } from "@/mocks/mode";
+import { DEMO_NOTE } from "@/lib/mode";
 import { AnswerButton } from "@/features/inbox/AnswerButton";
 import { usePhoneCompanion } from "@/features/phone/client";
 

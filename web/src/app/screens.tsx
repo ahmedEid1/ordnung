@@ -8,9 +8,9 @@ import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState, EmptyArt } from "@/components/ui/EmptyState";
 import { technicalDetails } from "@/components/ui/LoadError";
 import { Page } from "@/components/shell/Page";
-import { CopyCommand } from "@/features/onboarding/CopyCommand";
+import { CopyCommand } from "@/components/ui/CopyCommand";
 import { servedToPhone } from "@/features/phone/platform";
-import { useClipboard } from "@/features/today/clipboard";
+import { useClipboard } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
 
 /** The splash says "Starting Ordnung…" once loading takes longer than this (a fast start shows the logo only). */

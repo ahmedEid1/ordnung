@@ -19,7 +19,15 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Final, Literal, NamedTuple
 
-from ordnung.models import ComputationReceipt, ComputationStep, Confidence, DateNature, DateSpec, PeriodUnit
+from ordnung.models import (
+    ComputationReceipt,
+    ComputationStep,
+    Confidence,
+    DateNature,
+    DateSpec,
+    PeriodUnit,
+    Profile,
+)
 from ordnung.rules import calendar_de, catalog, routing
 from ordnung.rules.delivery import (
     LAND_DAYS_UNCONFIRMED,
@@ -46,6 +54,13 @@ from ordnung.rules.periods import add_period, latest_receipt_for, shift_to_busin
 
 #: Default business days allowed for a letter to arrive (SPEC § 21).
 POSTAL_BUFFER_DAYS: Final = 4
+
+
+def postal_buffer(profile: Profile) -> int:
+    """Business days a letter needs: the person's setting, never less than the §21 default."""
+    return max(profile.postal_buffer_days, POSTAL_BUFFER_DAYS)
+
+
 #: Business days a bank transfer may take to reach the payee's bank (§ 675s Abs. 1 BGB).
 PAYMENT_BUFFER_DAYS: Final = 1
 #: Longest plausible period per unit (100 years); anything longer is a misreading, not a deadline.

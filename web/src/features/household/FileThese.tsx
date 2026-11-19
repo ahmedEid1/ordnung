@@ -20,7 +20,7 @@ import { toast } from "@/components/ui/Toast";
 import { AnswerButton } from "@/features/inbox/AnswerButton";
 import { inboxDateInfo } from "@/features/inbox/filters";
 import { Thumb } from "@/features/inbox/LettersList";
-import { focusWhenReady } from "@/features/today/focus";
+import { focusWhenReady } from "@/lib/focus";
 import { fileTheseLabel, undoLetters } from "./logic";
 
 /** The card's button: after an Undo, focus comes back to it. */

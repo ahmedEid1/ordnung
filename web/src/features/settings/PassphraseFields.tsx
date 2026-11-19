@@ -2,7 +2,7 @@ import type { ReactNode, Ref } from "react";
 import { Check, Copy, Eye, EyeOff, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
-import { useClipboard } from "@/features/today/clipboard";
+import { useClipboard } from "@/lib/clipboard";
 import type { PassphraseProblem } from "./backup";
 
 export interface PassphraseFieldsProps {
