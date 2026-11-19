@@ -96,7 +96,8 @@ describe("on a paired phone", () => {
     act(() => vi.advanceTimersByTime(BOOT_STUCK_MS));
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Still waiting — is your computer on?");
     expect(screen.getByRole("main")).toHaveTextContent(/this phone is on the same Wi‑Fi/);
-    expect(screen.getByRole("main")).not.toHaveTextContent(/ordnung serve/);
+    // nothing about where the phone isn't, and no command it can't run
+    expect(document.body.textContent).not.toMatch(/this computer|ordnung (serve|demo|restore)|in a terminal/i);
     screen.getByRole("button", { name: "Try again" }).click();
     expect(onRetry).toHaveBeenCalledTimes(1);
   });

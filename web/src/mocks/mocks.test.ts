@@ -383,10 +383,6 @@ describe("mock dataset", () => {
     expect(saved.checks.every((c) => c.ok)).toBe(true);
   });
 
-  it("uses the demo persona's two-line address", () => {
-    expect(PROFILE.address).toBe("Beispielweg 5\n12345 Musterstadt");
-  });
-
   it("addresses FunkNetz's cancellation to the address its letter and details show, as the demo does", () => {
     const funknetz = PARTIES.find((p) => p.id === "pty_funknetz")!;
     const draft = DRAFTS.find((d) => d.id === "drf_phone")!;

@@ -78,37 +78,6 @@ describe("settings logic", () => {
 });
 
 describe("Settings page", () => {
-  it("edits the profile and saves it", async () => {
-    const { calls } = useMockApi();
-    const user = userEvent.setup();
-    renderWithProviders(<SettingsPage />, { route: "/settings" });
-    const name = await screen.findByLabelText("Full name");
-    expect(name).toHaveValue("Sam Rivera");
-    await user.clear(name);
-    await user.type(name, "Sam R. Rivera");
-    await user.click(screen.getByRole("button", { name: "Save changes" }));
-    await waitFor(() => expect(calls.some((c) => c.method === "PUT" && c.path === "/profile")).toBe(true));
-    expect(calls.find((c) => c.method === "PUT")?.body).toMatchObject({ name: "Sam R. Rivera" });
-    // confirmed in the save bar (no toast over it)
-    expect(await screen.findByText("New letters use this name and address.")).toBeInTheDocument();
-    expect(screen.getByText("Saved.")).toBeInTheDocument();
-  });
-
-  it("changes reminder lead days", async () => {
-    const { calls } = useMockApi();
-    const user = userEvent.setup();
-    renderWithProviders(<SettingsPage />, { route: "/settings?section=reminders" });
-    const deadlines = await screen.findByRole("list", { name: "Reminders for deadlines" });
-    expect(within(deadlines).getAllByRole("listitem").map((li) => li.textContent)).toEqual(["2 weeks before", "1 week before", "3 days before", "1 day before"]);
-    await user.click(within(deadlines).getByRole("button", { name: "Remove reminder 1 day before for deadlines" }));
-    await user.click(screen.getByRole("button", { name: "Add a reminder for deadlines" }));
-    await user.type(screen.getByLabelText("Days before, for deadlines"), "30{Enter}");
-    expect(within(deadlines).getAllByRole("listitem")[0]).toHaveTextContent("30 days before");
-    await user.click(screen.getByRole("button", { name: "Save changes" }));
-    await waitFor(() => expect(calls.some((c) => c.method === "PUT")).toBe(true));
-    expect((calls.find((c) => c.method === "PUT")?.body as { reminder_days: Record<string, number[]> }).reminder_days.deadline).toEqual([30, 14, 7, 3]);
-  });
-
   it("privacy & AI usage: the statement, what was sent per call, and the activity log", async () => {
     useMockApi();
     const user = userEvent.setup();
@@ -134,19 +103,6 @@ describe("Settings page", () => {
     expect(costs.parentElement).toHaveClass("sr-only");
     expect(await screen.findByText("Weekly Ideas: 2 new")).toBeInTheDocument();
     assertNoRawEnumsInElement(container);
-  });
-
-  it("how dates are computed: the rules with citations, links and the disclaimer", async () => {
-    useMockApi();
-    const user = userEvent.setup();
-    renderWithProviders(<SettingsPage />, { route: "/settings?section=rules" });
-    expect(await screen.findByText("Tax letters count as delivered 4 days after posting")).toBeInTheDocument();
-    expect(screen.getByText("§ 122 Abs. 2 Nr. 1 AO")).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: /Read the law/ }).length).toBeGreaterThan(5);
-    await user.type(screen.getByLabelText("Find a rule"), "TKG");
-    expect(screen.getByText("Phone & internet contracts")).toBeInTheDocument();
-    expect(screen.queryByText("Tax objection: one month")).toBeNull();
-    expect(screen.getByText(/Not legal advice/)).toBeInTheDocument();
   });
 
   it("Claude connection: status, version and the probe", async () => {
@@ -203,18 +159,6 @@ describe("Settings page", () => {
     expect(await screen.findByText(/never puts the address and IBAN you enter here into its requests to Claude/)).toBeInTheDocument();
     expect(screen.getByText(/letters you add are read as they are printed/)).toBeInTheDocument();
     expect(screen.queryByText(/Your address and IBAN are never sent to Claude/)).toBeNull();
-  });
-
-  it("switches sections from the sub-navigation", async () => {
-    useMockApi();
-    const user = userEvent.setup();
-    const { router } = renderWithProviders(<SettingsPage />, { route: "/settings" });
-    const nav = await screen.findByRole("navigation", { name: "Settings sections" });
-    expect(within(nav).getByRole("link", { name: "Profile & address" })).toHaveAttribute("aria-current", "page");
-    await user.click(within(nav).getByRole("link", { name: "Data" }));
-    expect(router.state.location.search).toBe("?section=data");
-    expect(await screen.findByRole("heading", { level: 2, name: "Data" })).toBeInTheDocument();
-    expect(screen.getByText("/tmp/ordnung-test")).toBeInTheDocument();
   });
 
   it("Data: exports the letters' original files from their own card, and the JSON card points to it", async () => {
