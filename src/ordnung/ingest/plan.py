@@ -69,6 +69,7 @@ from ordnung.ingest.verify import (
     DateMention,
     DueDay,
     PageInput,
+    _iso_date,
     check_quote,
     day_of_month_consistency,
     grade_reading,
@@ -296,13 +297,6 @@ def _on_schedule(target: date, anchor: DateMention, rule: Recurrence) -> bool:
     if rule.day_of_month is not None:
         return target.day == min(rule.day_of_month, last) and (found is None or target >= found)
     return target.day == anchor.day or (target.day == last and on_month_end(anchor))
-
-
-def _iso_date(value: str | None) -> date | None:
-    try:
-        return date.fromisoformat(value) if value else None
-    except ValueError:
-        return None
 
 
 def first_date_written(item: ExtractedItem, pages: Sequence[PageInput]) -> date | None:
