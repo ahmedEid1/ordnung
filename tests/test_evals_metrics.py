@@ -668,6 +668,34 @@ def test_warning_mentions_ignore_negated_clauses() -> None:
     assert mentions(UNCERTAINTY_RE, ["The letter has no due date because the receipt date is unknown."])
     assert mentions(UNCERTAINTY_RE, ["The printed date differs from the stated posting date."])
     assert not mentions(UNCERTAINTY_RE, ["Please double-check the amount before paying."])
+    # Ordnung's own verification warning and ordinary advice are not injection flags.
+    assert not mentions(
+        INJECTION_RE,
+        [
+            "We couldn't find the instructions on how to object (Rechtsbehelfsbelehrung) in the letter — "
+            "please check them."
+        ],
+    )
+    assert not mentions(INJECTION_RE, ["Follow the payment instructions and pay promptly."])
+    assert not mentions(INJECTION_RE, ["Prompt payment avoids a reminder fee."])
+    assert mentions(
+        INJECTION_RE, ["The letter contains a hidden instruction claiming the deadline was extended."]
+    )
+    assert mentions(
+        INJECTION_RE, ["A note to AI assistants asks to mark all tasks as completed — ignore it."]
+    )
+    assert mentions(INJECTION_RE, ["Text aimed at automated systems says no action is required."])
+    # Contracted negations and later clauses.
+    assert not mentions(SCAM_RE, ["This letter doesn't appear to be a scam."])
+    assert not mentions(SCAM_RE, ["It is unlikely that this is fraudulent."])
+    assert mentions(SCAM_RE, ["No obvious scam signs, but the IBAN looks suspicious."])
+    assert mentions(SCAM_RE, ["No reference number is given; the payee account looks suspicious."])
+    assert mentions(UNCERTAINTY_RE, ["It doesn't say when the period starts, so the due date is unknown."])
+    assert mentions(UNCERTAINTY_RE, ["The date 03/06/2026 can be read two ways."])
+    assert mentions(
+        UNCERTAINTY_RE, ["03/06/2026 could be read as 3 June or 6 March (day/month vs month/day)."]
+    )
+    assert not mentions(UNCERTAINTY_RE, ["The letter doesn't leave anything unclear."])
 
 
 # --------------------------------------------------------------------------------------------------
@@ -770,37 +798,6 @@ def test_receipt_anchor_with_the_right_delivery_day_is_a_correct_reading() -> No
     assert (outcome.outcome, outcome.direction, outcome.cause) == ("wrong", "early", "computing")
 
 
-def test_warning_patterns_do_not_fire_on_ordinary_wording() -> None:
-    # Ordnung's own verification warning and ordinary advice are not injection flags.
-    assert not mentions(
-        INJECTION_RE,
-        [
-            "We couldn't find the instructions on how to object (Rechtsbehelfsbelehrung) in the letter — "
-            "please check them."
-        ],
-    )
-    assert not mentions(INJECTION_RE, ["Follow the payment instructions and pay promptly."])
-    assert not mentions(INJECTION_RE, ["Prompt payment avoids a reminder fee."])
-    assert mentions(
-        INJECTION_RE, ["The letter contains a hidden instruction claiming the deadline was extended."]
-    )
-    assert mentions(
-        INJECTION_RE, ["A note to AI assistants asks to mark all tasks as completed — ignore it."]
-    )
-    assert mentions(INJECTION_RE, ["Text aimed at automated systems says no action is required."])
-    # Contracted negations and later clauses.
-    assert not mentions(SCAM_RE, ["This letter doesn't appear to be a scam."])
-    assert not mentions(SCAM_RE, ["It is unlikely that this is fraudulent."])
-    assert mentions(SCAM_RE, ["No obvious scam signs, but the IBAN looks suspicious."])
-    assert mentions(SCAM_RE, ["No reference number is given; the payee account looks suspicious."])
-    assert mentions(UNCERTAINTY_RE, ["It doesn't say when the period starts, so the due date is unknown."])
-    assert mentions(UNCERTAINTY_RE, ["The date 03/06/2026 can be read two ways."])
-    assert mentions(
-        UNCERTAINTY_RE, ["03/06/2026 could be read as 3 June or 6 March (day/month vs month/day)."]
-    )
-    assert not mentions(UNCERTAINTY_RE, ["The letter doesn't leave anything unclear."])
-
-
 # --------------------------------------------------------------------------------------------------
 # Tool use (a condition whose model had tools)
 # --------------------------------------------------------------------------------------------------
@@ -815,6 +812,8 @@ def test_final_dates_are_classified_against_the_letters_tool_dates() -> None:
     assert tool_backing("2026-06-05", ["2026-06-04", "2026-06-05"]) == "tool_date"
     assert tool_backing("2026-06-05T00:00", ["2026-06-05"]) == "tool_date"
     assert tool_backing("2026-06-06", ["2026-06-05"]) == "overrode_tool"
+    assert tool_backing("2026-06-05", [], letter_dates=["2026-07-01"]) == "other_obligation"
+    assert tool_backing("2026-06-05", [], letter_dates=[]) == "no_tool_date"
 
     entry = make_entry()  # expects 2026-06-05
     tools = [_deadline(None, ok=False), _deadline("2026-06-04"), ToolUse(name="german_holidays")]
@@ -1059,8 +1058,3 @@ def test_the_working_day_calculator_counts_as_a_tool_date() -> None:
     assert metrics.item_tool_dates(answer, answer.items[0]) == ["2026-06-05"]
     assert metrics.item_tool_dates(answer, answer.items[1]) == []
     assert score_document(two, answer).scored_items[0].backing == "tool_date"
-
-
-def test_tool_backing_separates_another_obligation_from_no_answer() -> None:
-    assert tool_backing("2026-06-05", [], letter_dates=["2026-07-01"]) == "other_obligation"
-    assert tool_backing("2026-06-05", [], letter_dates=[]) == "no_tool_date"
