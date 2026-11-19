@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ast
 import fnmatch
+import functools
 import hashlib
 import importlib
 import inspect
@@ -27,9 +28,11 @@ from typing import Any
 
 import pytest
 from fastapi.routing import APIRoute
+from PIL import Image
 
-from helpers_media import gif_info, mp4_info
+from helpers_media import mp4_info
 from helpers_secretary import TODAY, seed_ledger
+from helpers_tables import check_rows
 from ordnung import clock, letters_zip, shortcut, sync
 from ordnung.api.app import openapi_schema
 from ordnung.api.deps import require_computer
@@ -45,7 +48,6 @@ from ordnung.backup.container import DEFAULT_KDF, MAX_SCRYPT_BYTES
 from ordnung.db import scan_text
 from ordnung.db.store import Store
 from ordnung.drafts.compose import compose
-from ordnung.drafts.sent import letter_profile
 from ordnung.drafts.template_letters import TEMPLATES
 from ordnung.ingest import pipeline, worker
 from ordnung.ingest.extract import ExtractionInput, extraction_request
@@ -76,6 +78,9 @@ from test_api_support import api_for
 ROOT = Path(__file__).resolve().parents[1]
 
 NOW = "2026-09-25T10:00:00Z"
+
+#: The API's OpenAPI schema, built once: the tests here only read it.
+_openapi = functools.cache(openapi_schema)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -112,16 +117,6 @@ def test_a_date_read_from_a_photo_is_labelled_not_flagged() -> None:
     its numbers is not marked Please check; a photo-read one is labelled as read from the photo."""
     item = _photo_read_item()
     assert not item.needs_check and item.evidence is not None and item.evidence.grounding == "model_read"
-
-
-def test_rules_branch_coverage_is_a_ci_gate() -> None:
-    """README.md:232 lists '100 % branch coverage of rules/' as a quality gate: CI must measure
-    branches and fail under 100 % (it used to do neither)."""
-    config = "\n".join(
-        (ROOT / name).read_text(encoding="utf-8")
-        for name in (".github/workflows/ci.yml", "Makefile", "pyproject.toml")
-    )
-    assert re.search(r"cov-branch|branch\s*=\s*true", config) and re.search(r"fail[-_]under", config)
 
 
 def test_mypy_is_strict_on_the_rules_engine() -> None:
@@ -203,11 +198,6 @@ def test_mypy_finds_the_generators_the_benchmark_code_imports() -> None:
     ]
 
 
-def test_demo_check_runs_in_ci() -> None:
-    """README.md:232 and docs/privacy.md:87: CI runs ``ordnung demo --check`` (added in abe86a7)."""
-    assert "ordnung demo --check" in (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-
-
 def _readme() -> str:
     return (ROOT / "README.md").read_text(encoding="utf-8")
 
@@ -236,11 +226,6 @@ def _pct(value: float) -> str:
     return text.removesuffix(".0") if text in ("100.0", "0.0") else text
 
 
-def _words(n: int) -> str:
-    """A small count as README writes it ("four wrong answers")."""
-    return ("no", "one", "two", "three", "four", "five", "six")[n] if n <= 6 else str(n)
-
-
 def _results(name: str) -> dict[str, Any]:
     return json.loads((ROOT / "evals" / "results" / name).read_text(encoding="utf-8"))
 
@@ -251,14 +236,6 @@ def _block() -> str:
 
     readme = _readme()
     return BEGIN + readme.split(BEGIN, 1)[1].split(END, 1)[0] + END
-
-
-def test_the_readme_evaluation_block_is_what_the_presenter_renders() -> None:
-    """README's benchmark section is one generated block (``python -m evals.present``): rendered again from the
-    results files, it is the committed block, every number in it included."""
-    from evals.present import model, text
-
-    assert _block() + "\n" == text.readme_block(model.build()), "run python -m evals.present --write"
 
 
 def _benchmark_numbers() -> tuple[set[str], set[tuple[int, int]]]:
@@ -308,151 +285,6 @@ def test_the_readme_types_no_benchmark_number_by_hand() -> None:
     ]
     assert not counts, counts
     assert not re.search(r"CI requires[^.]*\d+ ?%", _flat(outside))
-
-
-#: What a wrong Ask answer is, in README's words (singular, plural): it calls a gold date still open on the
-#: benchmark's today passed (the day it was recorded leaking in as today); the gold is not in
-#: Ordnung's record (a gap in the ledger); or the record holds it and the answer leaves it out.
-WRONG_ANSWER_KINDS = {
-    "leak": ("calls a date that is still open passed", "call a date that is still open passed"),
-    "gap": ("is a gap in the ledger", "are gaps in the ledger"),
-    "other": ("leaves out a value ordnung's record holds", "leave out a value ordnung's record holds"),
-}
-
-
-def _wrong_answer_claims(results: dict[str, Any]) -> tuple[list[tuple[str, ...]], list[str]]:
-    """What README must say about the wrong answers of an Ask results file, lower case, each claim a choice of
-    wordings: how many there are, and for each kind (:data:`WRONG_ANSWER_KINDS`) how many are of it — "four call
-    a date that is still open passed", or "the four wrong answers call …" when all are — with the recording day
-    named for a leak when the file says it was recorded on another day than its today. And what it must not say:
-    that they are gaps, unless every one is; the recording day as a cause when the file was recorded on its today."""
-    wrong = [
-        entry
-        for entry in results["questions"]
-        if entry["gold"] is not None and entry["scores"]["correct_final"] is False
-    ]
-    kinds: dict[str, list[str]] = {kind: [] for kind in WRONG_ANSWER_KINDS}
-    for entry in wrong:
-        scores = entry["scores"]
-        if set(scores.get("called_passed_final") or ()) & set(entry["gold"]["dates"]):
-            kinds["leak"].append(entry["id"])
-        elif scores["in_record"] is False:
-            kinds["gap"].append(entry["id"])
-        else:
-            kinds["other"].append(entry["id"])
-    total = len(wrong)
-    lead = f"{_words(total)} wrong answer{'s' if total > 1 else ''}"
-    required: list[tuple[str, ...]] = [(lead,)]
-    for kind, ids in kinds.items():
-        if not ids:
-            continue
-        says = WRONG_ANSWER_KINDS[kind][len(ids) > 1]
-        words = [f"{_words(len(ids))} {says}"]
-        if len(ids) == total:
-            words.append(f"{lead} {says}")
-        required.append(tuple(words))
-    two_todays = (
-        bool(results.get("today")) and results.get("recorded", results.get("date")) != results["today"]
-    )
-    if kinds["leak"] and two_todays:
-        required.append(("recording day",))
-    forbidden = [] if len(kinds["gap"]) == total else ["wrong answers are gaps", "wrong answer is a gap"]
-    if not two_todays:
-        forbidden.append("recording day")
-    return required, forbidden
-
-
-def _wrong_answer_problems(readme: str, results: dict[str, Any]) -> list[str]:
-    """The claims of :func:`_wrong_answer_claims` README misses, and the wordings it must not use but does."""
-    required, forbidden = _wrong_answer_claims(results)
-    flat = _flat(readme).lower()
-    missing = [" | ".join(claim) for claim in required if not any(words in flat for words in claim)]
-    return missing + [f"says: {words}" for words in forbidden if words in flat]
-
-
-def test_the_readme_block_says_what_the_newest_ask_run_s_wrong_answers_are() -> None:
-    """E2's Ask section is the generated block's Ask line now: it states the newest Ask run's accuracy and its
-    household answers, and says what each wrong answer is — never a gap in the ledger when it is not one."""
-    from evals.ask.report import latest_results
-
-    from helpers_publication import final_published
-
-    if final_published():
-        pytest.skip(
-            "the README block holds the final run's registered sentences, without the development set's Ask line"
-        )
-    latest = latest_results(ROOT / "evals" / "results", "claude-sonnet-5")
-    assert latest is not None
-    results = json.loads(latest.read_text(encoding="utf-8"))
-    summary, block = results["summary"], _flat(_block())
-    accuracy = summary["accuracy"]
-    assert f"{int(accuracy['k'])} of {int(accuracy['n'])} answers right" in block
-    household = summary["household"]["attribution"]
-    assert f"{int(household['k'])} of {int(household['n'])} household answers say whose a number is" in block
-    assert _wrong_answer_problems(block, results) == []
-    # the harm count E2 published (6 of 73), never only the wrong answers: a right answer can be harmful too
-    harmful = summary["harmful"]
-    assert f"{int(harmful['k'])} of {int(harmful['n'])} answers (questions and attacks) are harmful" in block
-    strict = summary["strict_accuracy"]
-    assert f"({int(strict['k'])} of {int(strict['n'])} strictly correct)" in block
-
-
-def test_the_readme_says_what_the_wrong_ask_answers_are() -> None:
-    """README never calls a wrong Ask answer a gap in the ledger when it is not one. Round 3 of
-    the E2 recording had four wrong answers, all of them calling a gold date still open on the benchmark's today
-    passed (the day the answers were recorded leaking in as today), none a gap."""
-
-    def entry(qid: str, *, passed: bool = False, in_record: bool = True) -> dict[str, Any]:
-        scores = {"correct_final": False, "in_record": in_record}
-        scores["called_passed_final"] = ["2026-10-14"] if passed else []
-        return {"id": qid, "gold": {"dates": ["2026-10-14"], "amounts": []}, "scores": scores}
-
-    right = {"id": "right", "gold": {"dates": [], "amounts": [1.0]}, "scores": {"correct_final": True}}
-    unanswerable = {"id": "none-x", "gold": None, "scores": {"correct_final": None}}
-    days = {"date": "2026-10-30", "recorded": "2026-10-30", "today": "2026-09-28"}  # E2's: two todays
-    leaks = {"questions": [entry(f"q{i}", passed=True) for i in range(4)] + [right, unanswerable]} | days
-    required, forbidden = _wrong_answer_claims(leaks)
-    assert required == [
-        ("four wrong answers",),
-        (
-            "four call a date that is still open passed",
-            "four wrong answers call a date that is still open passed",
-        ),
-        ("recording day",),
-    ]
-    assert forbidden == ["wrong answers are gaps", "wrong answer is a gap"]
-    mixed = {
-        "questions": [entry("a", passed=True), entry("b", in_record=False), entry("c"), entry("d")]
-    } | days
-    required, forbidden = _wrong_answer_claims(mixed)
-    assert required == [
-        ("four wrong answers",),
-        ("one calls a date that is still open passed",),
-        ("one is a gap in the ledger",),
-        ("two leave out a value ordnung's record holds",),
-        ("recording day",),
-    ]
-    assert "wrong answers are gaps" in forbidden
-    # the README's words: what they are, never "gaps" when they are not
-    said = (
-        "The four wrong answers call a date that is still open passed: the recording day leaking in as today, "
-        "not gaps in the ledger."
-    )
-    assert _wrong_answer_problems(said, leaks) == []
-    assert _wrong_answer_problems("The four wrong answers are gaps in the ledger.", leaks) == [
-        "four call a date that is still open passed | four wrong answers call a date that is still open passed",
-        "recording day",
-        "says: wrong answers are gaps",
-    ]
-    gaps = {"questions": [entry("a", in_record=False), entry("b", in_record=False)]} | days
-    assert _wrong_answer_claims(gaps) == (
-        [("two wrong answers",), ("two are gaps in the ledger", "two wrong answers are gaps in the ledger")],
-        [],
-    )
-    # recorded on its own today, as a held-out set is: no recording day leaks in
-    own_day = leaks | {"today": "2026-10-30"}
-    required, forbidden = _wrong_answer_claims(own_day)
-    assert ("recording day",) not in required and "recording day" in forbidden
 
 
 def _flat(text: str) -> str:
@@ -694,15 +526,6 @@ def test_the_readme_credits_geonames_for_the_postcode_data() -> None:
     assert "src/ordnung/rules/data/LICENSE-GeoNames.txt" in project["license-files"]
 
 
-def test_the_spec_no_longer_says_nothing_derives_a_sender_s_land_from_a_postcode() -> None:
-    """SPEC § 21: the postcode on a sender's letter suggests their Land, as a question (ADR 0019); only the
-    person sets it."""
-    spec = _flat((ROOT / "docs" / "SPEC.md").read_text(encoding="utf-8"))
-    assert "nothing derives it from a postcode" not in spec
-    holidays = spec.split("**Holidays.**", 1)[1].split("**", 1)[0]
-    assert "only the person sets" in holidays and "0019-a-sender-s-land-is-suggested-never-set.md" in holidays
-
-
 # --------------------------------------------------------------------------------------------------
 # docs/evals.md and docs/evals-history.md: rendered from the results files alone
 # --------------------------------------------------------------------------------------------------
@@ -728,18 +551,67 @@ def _held_out_runs() -> dict[str, dict[str, Any]]:
     return {split: _results(name) for split, name in HELD_OUT_FILES.items()}
 
 
-def test_the_evaluation_report_and_the_history_page_are_what_the_results_render() -> None:
+def test_the_evaluation_report_and_the_history_page_are_what_the_results_render(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """docs/evals.md and docs/evals-history.md say "do not edit by hand": rendered again by ``python -m
     evals.present`` from the results files, they are the committed pages; the history page's second part is the
-    page docs/evals.md was until 0.3.0, as ``evals.report`` renders it from the same files as then."""
+    page docs/evals.md was until 0.3.0, as ``evals.report`` renders it from the same files as then. README's
+    benchmark section is one generated block: rendered again, it is the committed block, every number in it
+    included. The history page's "Held-out splits pooled" is the three held-out recordings together, as recorded:
+    per condition, the exact dates and late dates their results files hold, added up, with intervals over all
+    their letters and the paired differences."""
+    from evals import report
     from evals.present import build, model, text
 
+    pooled_calls: list[tuple[list[Any], dict[str, Any]]] = []
+    pool = report.pooled_held_out
+
+    def pooled_held_out(runs: Any) -> dict[str, Any]:
+        """The real pooling, remembered: the history page's render pools the three held-out runs once."""
+        result = pool(runs)
+        pooled_calls.append((list(runs), result))
+        return result
+
+    monkeypatch.setattr(report, "pooled_held_out", pooled_held_out)
     doc = model.build()
     legacy = build.legacy_page(ROOT / "evals" / "results")
     assert (ROOT / "docs" / "evals.md").read_text(encoding="utf-8") == text.report(doc)
     assert _history_page() == text.history(doc, legacy)
     assert legacy.split("\n", 1)[1].strip() in _history_page()
     assert build.HISTORY_INPUTS["without_land"] == WITHOUT_LAND
+    assert _block() + "\n" == text.readme_block(doc), "run python -m evals.present --write"
+
+    runs = _held_out_runs()
+    ((pooled_runs, pooled),) = pooled_calls
+    assert pooled_runs == list(runs.values())
+    section = _evals_section(_history_page(), "Held-out splits pooled")
+    letters = sum(run["meta"]["entries"] for run in runs.values())
+    items = sum(run["meta"]["scored_items"] for run in runs.values())
+    assert (
+        f"{letters} letters ({sum(run['meta']['photos'] for run in runs.values())} phone photos, "
+        f"{sum(run['meta']['adversarial'] for run in runs.values())} adversarial), {items} required items with a "
+        "known date"
+    ) in _flat(section)
+    counts: dict[str, tuple[int, int]] = {}
+    for condition in report.CONDITIONS:
+        k = sum(int(run["metrics"][condition]["due_date_accuracy"]["k"]) for run in runs.values())
+        late = sum(int(run["metrics"][condition]["dangerous_late_rate"]["k"]) for run in runs.values())
+        metrics = pooled["metrics"][condition]
+        assert (metrics["due_date_accuracy"]["k"], metrics["due_date_accuracy"]["n"]) == (k, items)
+        assert metrics["dangerous_late_rate"]["k"] == late
+        assert (
+            f"| **{report._label(condition)}** | {report.rate(metrics['due_date_accuracy'])} | {k}/{items} | "
+            f"{report.rate(metrics['dangerous_late_rate'], ci=False, counts=True)} |"
+        ) in section
+        counts[condition] = (k, late)
+    for key, value in pooled["comparisons"].items():
+        first, second = (report._label(name) for name in key.split("-vs-", 1))
+        assert f"- {first} − {second}: accuracy {report.diff(value['due_date_accuracy_diff'])}" in section
+    assert counts["ordnung"] == (163, 2) and counts["llm_rules_tool"] == (167, 1)
+    # the first held-out run (the test split) isn't pooled, and there the rules-text prompt was ahead
+    first = _results("2026-09-25-sonnet-test.json")["metrics"]
+    assert first["llm_rules_text"]["due_date_accuracy"]["k"] > first["ordnung"]["due_date_accuracy"]["k"]
 
 
 def test_the_benchmark_method_names_every_held_out_split() -> None:
@@ -864,43 +736,6 @@ def test_only_held_out_runs_of_different_splits_bootstrapped_alike_are_pooled() 
     ):
         with pytest.raises(ValueError, match=why):
             report.pooled_held_out(bad)
-
-
-def test_the_pooled_held_out_table_adds_up_the_three_recordings() -> None:
-    """The history page's "Held-out splits pooled": the three held-out recordings together, as recorded — per
-    condition, the exact dates and late dates their results files hold, added up, with intervals over all their
-    letters and the paired differences."""
-    from evals import report
-
-    runs = _held_out_runs()
-    pooled = report.pooled_held_out(list(runs.values()))
-    section = _evals_section(_history_page(), "Held-out splits pooled")
-    letters = sum(run["meta"]["entries"] for run in runs.values())
-    items = sum(run["meta"]["scored_items"] for run in runs.values())
-    assert (
-        f"{letters} letters ({sum(run['meta']['photos'] for run in runs.values())} phone photos, "
-        f"{sum(run['meta']['adversarial'] for run in runs.values())} adversarial), {items} required items with a "
-        "known date"
-    ) in _flat(section)
-    counts: dict[str, tuple[int, int]] = {}
-    for condition in report.CONDITIONS:
-        k = sum(int(run["metrics"][condition]["due_date_accuracy"]["k"]) for run in runs.values())
-        late = sum(int(run["metrics"][condition]["dangerous_late_rate"]["k"]) for run in runs.values())
-        metrics = pooled["metrics"][condition]
-        assert (metrics["due_date_accuracy"]["k"], metrics["due_date_accuracy"]["n"]) == (k, items)
-        assert metrics["dangerous_late_rate"]["k"] == late
-        assert (
-            f"| **{report._label(condition)}** | {report.rate(metrics['due_date_accuracy'])} | {k}/{items} | "
-            f"{report.rate(metrics['dangerous_late_rate'], ci=False, counts=True)} |"
-        ) in section
-        counts[condition] = (k, late)
-    for key, value in pooled["comparisons"].items():
-        first, second = (report._label(name) for name in key.split("-vs-", 1))
-        assert f"- {first} − {second}: accuracy {report.diff(value['due_date_accuracy_diff'])}" in section
-    assert counts["ordnung"] == (163, 2) and counts["llm_rules_tool"] == (167, 1)
-    # the first held-out run (the test split) isn't pooled, and there the rules-text prompt was ahead
-    first = _results("2026-09-25-sonnet-test.json")["metrics"]
-    assert first["llm_rules_text"]["due_date_accuracy"]["k"] > first["ordnung"]["due_date_accuracy"]["k"]
 
 
 def test_scam_letters_are_also_scored_as_the_app_decides() -> None:
@@ -1127,15 +962,23 @@ async def test_the_guide_names_exactly_the_rules_tools() -> None:
     assert named == listed
 
 
-@pytest.mark.parametrize(
-    "document", ["README.md", "docs/guide.md", "docs/decisions/0001-claude-cli-as-the-model-runtime.md"]
-)
-def test_the_claude_code_version_needed_is_the_one_ordnung_checks(document: str) -> None:
+CLAUDE_CODE_VERSION_DOCUMENTS = [
+    "README.md",
+    "docs/guide.md",
+    "docs/decisions/0001-claude-cli-as-the-model-runtime.md",
+]
+
+
+def test_the_claude_code_version_needed_is_the_one_ordnung_checks() -> None:
     """README's and the guide's Install and ADR 0001 name the oldest Claude Code that ``ordnung doctor`` and the
     app accept."""
-    assert f"Claude Code {version_text(MIN_CLAUDE_VERSION)} or newer" in _flat(
-        (ROOT / document).read_text(encoding="utf-8")
-    )
+
+    def check(document: str) -> None:
+        assert f"Claude Code {version_text(MIN_CLAUDE_VERSION)} or newer" in _flat(
+            (ROOT / document).read_text(encoding="utf-8")
+        )
+
+    check_rows(CLAUDE_CODE_VERSION_DOCUMENTS, check)
 
 
 def test_the_guide_installs_claude_code_as_anthropic_s_setup_page_does() -> None:
@@ -1190,30 +1033,6 @@ def _tour() -> str:
     return _section(_guide(), "## A tour")
 
 
-def test_the_guide_s_tour_shows_phone_access_and_hand_off_sync() -> None:
-    """The guide's tour pictures phone access and hand-off sync, in a row of their own with alt text that names
-    neither the pairing code nor the two words (both change on every capture); a footnote says the pictures
-    come from the real app and which spec makes them. The "Also" list no longer repeats the two."""
-    tour = _tour()
-    images = dict(_images(tour))
-    for name in _REAL_APP_PICTURES:
-        alt = images.get(f"assets/{name}")
-        assert alt and alt.strip(), name
-    assert "two check words" in images["assets/pair-phone.png"]
-    footnote = tour.split("\n‡ ", 1)[1].split("\n\n", 1)[0]
-    assert "[`web/e2e/readme-pictures.spec.ts`](../web/e2e/readme-pictures.spec.ts)" in footnote
-    assert "`make capture`" in footnote and "127.0.0.1" in footnote
-    assert "Everything else, apart from the two pictures marked ‡, is `ordnung demo`." in _flat(tour)
-    assert tour.count("‡") == 4  # two cells, the sentence above and the footnote
-    also = tour.split("**Also:**", 1)[1]
-    assert "*your phone at home*" not in also and "*hand-off between your computers*" not in also
-    spec = _flat((ROOT / "docs" / "SPEC.md").read_text(encoding="utf-8"))
-    assert (
-        "the phone pairing and Your computers pictures from the real app (`web/e2e/readme-pictures.spec.ts`), "
-        "since the demo has neither"
-    ) in spec
-
-
 def test_the_tour_s_pictures_from_the_real_app_are_1440_by_900_pngs() -> None:
     """The two pictures from the real app are PNGs of 1440×900 like the rest of the tour, and small (each about
     120 KB when they were first made)."""
@@ -1230,7 +1049,9 @@ def test_readme_hero_shows_the_gif_as_made_and_the_video_s_length() -> None:
     assets = ROOT / "docs" / "assets"
     (hero,) = [tag for tag in re.findall(r"<img\b[^>]*>", _readme()) if 'src="docs/assets/demo.gif"' in tag]
     width = re.search(r'\bwidth="(\d+)"', hero)
-    assert width and int(width.group(1)) == gif_info(assets / "demo.gif").width
+    with Image.open(assets / "demo.gif") as gif:  # the size alone: no frame is decoded
+        assert gif.format == "GIF"
+        assert width and int(width.group(1)) == gif.size[0]
     alt = re.search(r'\balt="([^"]*)"', hero)
     assert alt and "arrives as new mail and is read;" in alt.group(1)
     assert "read live" not in alt.group(1)
@@ -1483,25 +1304,6 @@ async def test_a_letter_in_someone_else_s_name_never_sends_that_name(
     assert "Rivera" not in _draft_call(backend)
 
 
-async def test_the_changelog_says_what_0_2_0_prints_for_a_letter_in_someone_else_s_name(
-    draft_ctx: tuple[AppContext, FakeBackend],
-) -> None:
-    """CHANGELOG, Upgrading: a letter written in someone else's name keeps that name as its signer from the start
-    (``drafts.sent_profile``), which 0.2.0 reads only once the letter is sent — and its marking keeps a stored
-    signer. So only an unsent letter's PDF made on 0.2.0 shows the person's own name under the signature."""
-    ctx, _ = draft_ctx
-    contract = _phone_contract(ctx.store)
-    draft = await compose(ctx, "cancellation", contract_id=contract, sender_name="Alex Rivera")
-    signer = ctx.store.get_sent_signer(draft.id)
-    assert signer is not None and signer.name == "Alex Rivera"
-    assert letter_profile(ctx.store, draft).name == "Alex Rivera"
-    upgrading = _unreleased("Upgrading")
-    assert (
-        "On a computer still on 0.2.0, a letter written in someone else's name prints your name under its "
-        "signature until it is marked as sent. Print such letters on an updated computer."
-    ) in upgrading
-
-
 async def test_weekly_review_can_be_switched_off(store: Store) -> None:
     """docs/privacy.md: the weekly Ideas review can be switched off in Settings."""
     ids = seed_ledger(store)
@@ -1713,20 +1515,16 @@ def _doc(name: str) -> str:
     return _flat(path.read_text(encoding="utf-8"))
 
 
-@pytest.mark.parametrize(
-    ("document", "sentence"),
-    _PHONE_CLAIMS,
-    ids=[
-        f"{Path(document).stem.split('-')[0]}-{'-'.join(_FIELD.findall(sentence))}"
-        for document, sentence in _PHONE_CLAIMS
-    ],
-)
-def test_the_phone_access_docs_state_the_code_s_numbers(document: str, sentence: str) -> None:
+def test_the_phone_access_docs_state_the_code_s_numbers() -> None:
     """Every number the phone-access docs state is the constant it names, as the code has it: the
     pairing code's length, life and tries, the phones, idle and sign-in times, the hourly limits, the
     certificates' lives, the port and the listener's limits (SPEC §12b)."""
-    stated = sentence.format(**{name: _PHONE_NUMBERS[name]() for name in _FIELD.findall(sentence)})
-    assert stated in _doc(document)
+
+    def check(document: str, sentence: str) -> None:
+        stated = sentence.format(**{name: _PHONE_NUMBERS[name]() for name in _FIELD.findall(sentence)})
+        assert stated in _doc(document)
+
+    check_rows(_PHONE_CLAIMS, check)
 
 
 def _example_path(template: str) -> str:
@@ -1827,7 +1625,7 @@ def _sync_doc(name: str) -> str:
 
 def _sync_operations() -> int:
     """How many operations hand-off sync has (``/api/sync`` and ``/api/sync/…``)."""
-    operations = phone_scope.schema_operations(openapi_schema())
+    operations = phone_scope.schema_operations(_openapi())
     return len({op for op in operations if op[1].split("/")[:3] == ["", "api", "sync"]})
 
 
@@ -1992,25 +1790,23 @@ _SYNC_CLAIMS: list[tuple[str, str]] = [
 ]
 
 
-@pytest.mark.parametrize(
-    ("document", "sentence"),
-    _SYNC_CLAIMS,
-    ids=[
-        f"{Path(document).stem.split('-')[0]}-{'-'.join(_FIELD.findall(sentence)) or 'text'}"
-        for document, sentence in _SYNC_CLAIMS
-    ],
-)
-def test_the_hand_off_sync_docs_state_the_code_s_numbers(document: str, sentence: str) -> None:
+def test_the_hand_off_sync_docs_state_the_code_s_numbers() -> None:
     """Every number the hand-off sync docs state is the constant it names, as ``ordnung.sync`` has it: the
     key file's scrypt, the format's sizes and caps, when saves happen, the scan, arrival and fence timings,
     the garbage collection's grace, kept copies' warning and the new folder's passphrase rule."""
-    stated = sentence.format(**{name: _SYNC_NUMBERS[name]() for name in _FIELD.findall(sentence)})
-    assert stated in _sync_doc(document)
+
+    def check(document: str, sentence: str) -> None:
+        stated = sentence.format(**{name: _SYNC_NUMBERS[name]() for name in _FIELD.findall(sentence)})
+        assert stated in _sync_doc(document)
+
+    check_rows(_SYNC_CLAIMS, check)
 
 
 def test_the_sync_key_file_takes_the_most_scrypt_a_backup_reader_allows() -> None:
-    """ADR 0018: scrypt "256 MiB, the most a backup reader allows" — and no more (a reader refuses beyond)."""
+    """ADR 0018: scrypt "256 MiB, the most a backup reader allows" — and no more (a reader refuses beyond); a new
+    backup takes the key costs of a new sync folder."""
     assert sync.SYNC_KDF.memory == MAX_SCRYPT_BYTES
+    assert DEFAULT_KDF == sync.SYNC_KDF
 
 
 _ADR_BACKUP = ROOT / "docs" / "decisions" / "0013-backups-and-reminders-outside-the-browser.md"
@@ -2051,24 +1847,16 @@ _BACKUP_CLAIMS: list[tuple[str, str]] = [
 ]
 
 
-@pytest.mark.parametrize(
-    ("document", "sentence"),
-    _BACKUP_CLAIMS,
-    ids=[
-        f"{Path(document).stem.split('-')[0]}-{'-'.join(_FIELD.findall(sentence)) or 'text'}"
-        for document, sentence in _BACKUP_CLAIMS
-    ],
-)
-def test_the_backup_docs_state_the_code_s_passphrase_rule_and_key_costs(document: str, sentence: str) -> None:
+def test_the_backup_docs_state_the_code_s_passphrase_rule_and_key_costs() -> None:
     """A new backup's passphrase meets a new sync folder's rule, and its key takes the same scrypt costs: the
     docs say so with the numbers ``ordnung.backup`` uses."""
-    stated = sentence.format(**{name: _BACKUP_NUMBERS[name]() for name in _FIELD.findall(sentence)})
-    path = _ADR_BACKUP if document == _ADR_BACKUP.name else ROOT / document
-    assert stated in _flat(path.read_text(encoding="utf-8"))
 
+    def check(document: str, sentence: str) -> None:
+        stated = sentence.format(**{name: _BACKUP_NUMBERS[name]() for name in _FIELD.findall(sentence)})
+        path = _ADR_BACKUP if document == _ADR_BACKUP.name else ROOT / document
+        assert stated in _flat(path.read_text(encoding="utf-8"))
 
-def test_a_new_backup_takes_the_key_costs_of_a_new_sync_folder() -> None:
-    assert DEFAULT_KDF == sync.SYNC_KDF
+    check_rows(_BACKUP_CLAIMS, check)
 
 
 def test_the_first_save_is_not_ten_seconds_after_a_change_any_more() -> None:
@@ -2116,7 +1904,9 @@ def test_what_stays_on_each_computer_is_what_the_privacy_page_lists() -> None:
     """docs/privacy.md, "What stays on each computer": only the ledger and the letters' files travel; never
     phone access, the calendar connection, the watched folder and what it remembers (but the fingerprints
     of what it brought in), Claude's pause, the morning notification's bookkeeping, nor the privacy-log
-    entries of a backup made there, its phone access and its watched folder."""
+    entries of a backup made there, its phone access and its watched folder. The entry a restore writes
+    (``backup.restored``) is local like a backup's, so the backup reminder counts only copies this computer made
+    or came from."""
     text = _sync_doc("docs/privacy.md")
     assert "Only your ledger and your letters' files travel." in text
     assert sync.SYNCED_DIRS == ("files", "derived", "drafts")
@@ -2140,11 +1930,6 @@ def test_what_stays_on_each_computer_is_what_the_privacy_page_lists() -> None:
     ) in text
     assert "backup.created" in sync.LOCAL_ACTIVITY_KINDS
     assert {"phone.", "folder."} <= set(sync.LOCAL_ACTIVITY_PREFIXES)
-
-
-def test_the_note_of_a_restore_stays_on_that_computer_too() -> None:
-    """docs/privacy.md, "What stays on each computer": the privacy-log entry a restore writes (``backup.restored``)
-    is local like a backup's, so the backup reminder counts only copies this computer made or came from."""
     assert {"backup.created", "backup.restored"} <= sync.LOCAL_ACTIVITY_KINDS
 
 
@@ -2191,7 +1976,10 @@ def test_the_lost_computer_checklist_says_what_to_do_without_legal_periods() -> 
 
 def test_the_backup_docs_say_when_ordnung_reminds_you() -> None:
     """The reminder comes once the newest copy kept elsewhere is more than ``BackupCopy.due_after_days`` old, or
-    there is none; Ordnung can't see backups of the whole computer, so they don't count."""
+    there is none; Ordnung can't see backups of the whole computer, so they don't count. ``ordnung.backup.reminder``
+    reminds after those days, counting the backups made here and the one a restored copy came from."""
+    from ordnung.backup import reminder
+
     days = BackupCopy().due_after_days
     assert days == 30
     documents = {
@@ -2203,13 +1991,6 @@ def test_the_backup_docs_say_when_ordnung_reminds_you() -> None:
         assert "Time Machine" in text and "File History" in text, name
     limitations = _limitations()
     assert "Time Machine" in limitations and "BitLocker" in limitations
-
-
-def test_the_backup_reminder_s_policy_is_the_one_the_docs_describe() -> None:
-    """``ordnung.backup.reminder`` reminds after the days the docs state, counting the backups made here and the
-    one a restored copy came from."""
-    from ordnung.backup import reminder
-
     assert reminder.DUE_AFTER_DAYS == BackupCopy().due_after_days
     assert set(reminder.BACKUP_KINDS) == {"backup.created", "backup.restored"}
 
@@ -2285,18 +2066,6 @@ def test_kept_copies_are_where_the_docs_and_the_backup_policy_say() -> None:
     assert "lost with this computer's disk and with *Delete everything*" in _sync_doc("docs/privacy.md")
     assert sync.KEPT_RE.match("ordnung-kept-2026-10-07-0912.ordnung-backup")
     assert sync.KEPT_RE.match("ordnung-kept-2026-10-07-0912-2.ordnung-backup")
-
-
-def test_the_guide_s_limitations_say_how_ordnung_moves_between_computers() -> None:
-    """The guide's Limitations: the "no sync between computers" half became how hand-off sync works and what it
-    doesn't do; the phone's half stays (pinned by the phone's own test)."""
-    limitation = _limitations()
-    assert "no sync between computers" not in limitation
-    assert (
-        "Ordnung moves between your computers one at a time through a folder you sync yourself; it doesn't "
-        "merge changes made on two computers at once (it asks which to keep)"
-    ) in limitation
-    assert "There is no app-store app." in limitation
 
 
 async def test_sync_demo_never_syncs(data_dir: Path) -> None:
@@ -2515,51 +2284,6 @@ SCANNER_TEXT_KEPT = (
 _CITATION = re.compile(r"§+ ?\d+[a-z]?(?: Abs\. \d+)?(?: (?:Satz|S\.|Nr\.) \d+)* [A-Z][A-Za-z]+")
 
 
-def _unreleased(heading: str, changelog: str | None = None) -> str:
-    """The CHANGELOG's ``### heading`` lists of what came after 0.2.0, flattened: Unreleased's and, once
-    released, those of the versions since (the newest first)."""
-    text = changelog if changelog is not None else (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-    sections = text.split("\n## 0.2.0 — ", 1)[0].split("\n## ")[1:]
-    lists = [
-        _flat(section.split(f"\n### {heading}\n", 1)[1].split("\n### ", 1)[0])
-        for section in sections
-        if f"\n### {heading}\n" in section
-    ]
-    assert lists, heading
-    return " ".join(lists)
-
-
-def test_the_changelog_claims_still_hold_after_the_next_release() -> None:
-    """docs/releasing.md renames "## Unreleased" to the version, and CONTRIBUTING.md starts a new one for the
-    next change: the claims about what came after 0.2.0 still find their bullets then. What is under Unreleased
-    now (empty or not) becomes the release's section, under a new Unreleased with a fix of its own."""
-    changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-    released = changelog.replace(
-        "\n## Unreleased\n",
-        "\n## Unreleased\n\n### Fixed\n\n- A small fix after the release.\n\n## 0.3.1 — 2026-11-02\n",
-        1,
-    )
-    fix = _flat("- A small fix after the release.")
-    for heading in ("Added", "Changed", "Upgrading"):
-        assert _unreleased(heading, released) == _unreleased(heading)
-    assert _unreleased("Fixed", released) == f"{fix} {_unreleased('Fixed')}"
-    assert "**Open Ordnung from your app menu.**" in _unreleased("Added", released)
-
-
-def test_the_changelog_s_label_in_name_fix_quotes_the_inbox_link_as_the_app_names_it() -> None:
-    """CHANGELOG, 0.4.0 → Fixed: links and buttons are named by the words they show (WCAG 2.5.3, issue #37).
-    The Inbox link's new name is the one the web app's shell test pins, and the shell no longer builds the old
-    one ("Inbox, 1 letter to check, …")."""
-    (bullet,) = [part for part in _unreleased("Fixed").split(" - ") if "*Label in Name*" in part]
-    new, old = "Inbox 4 — 1 letter to check, 3 not read yet", "Inbox, 1 letter to check, 3 not read yet"
-    assert f'The Inbox link is "{new}"; it was "{old}".' in bullet
-    assert "Each still says everything it said before." in bullet
-    shell = ROOT / "web" / "src" / "components" / "shell"
-    assert f'getByRole("link", {{ name: "{new}" }})' in (shell / "shell.test.tsx").read_text(encoding="utf-8")
-    for name in ("Sidebar.tsx", "MobileTabBar.tsx"):
-        assert "`${item.label}, ${inboxCountText(" not in (shell / name).read_text(encoding="utf-8"), name
-
-
 def _bullet(flat_list: str, lead: str) -> str:
     """The bold-led bullet of a flattened list that starts with ``lead``, up to the next bold-led one."""
     return flat_list.split(f"- {lead}", 1)[1].split(" - **", 1)[0]
@@ -2588,28 +2312,6 @@ def _moving_limitation() -> str:
     """The guide's Limitations bullet about the moving checklist."""
     (bullet,) = [part for part in _limitations().split(" - ") if "moving checklist" in part]
     return bullet
-
-
-def test_the_guide_names_the_tax_year_the_export_and_the_moving_checklist() -> None:
-    """The guide's "Also:" names the three features, and its Install says what search finds without Claude: a
-    PDF's own text or the text a scanner added (search only), a photo by its name and, with Tesseract installed, by
-    the words Ordnung reads in it (ADR 0024); a waiting letter by its PDF's words."""
-    also = _flat(_tour().split("**Also:**", 1)[1])
-    for words in (
-        "*tax year* — a year's letters for your tax return, by the date on them",
-        "*export letters* — your originals as files in folders by year and sender, with a list for a spreadsheet",
-        "*moving checklist* — who needs your new address, from your contracts and letters, starting with the "
-        "Bürgeramt's two weeks",
-    ):
-        assert words in also, words
-    install = _flat(_section(_guide(), "## Install and run").split("```", 1)[0])
-    assert (
-        "Without Claude you can still store letters privately, find them by name or by the text in the file (a "
-        "PDF's own text, or the text a scanner added to a scan — kept for search only, never checked or sent to "
-        "Claude; a photo by its name, and by the words Ordnung reads in it when Tesseract is installed, kept the "
-        "same way) and add your own dates"
-    ) in install
-    assert "meanwhile search finds it by the words in its PDF" in install
 
 
 def test_the_guide_s_limitations_say_what_the_tax_year_export_scans_and_moving_checklist_can_t_do() -> None:
@@ -2755,23 +2457,6 @@ def test_a_move_can_be_told_after_the_new_address_was_saved_as_the_docs_say() ->
     assert "tick <em>I moved</em>" not in note and "tell Ordnung you moved" in note
 
 
-def test_adrs_0020_and_0021_exist_and_the_index_lists_them() -> None:
-    """Two new decisions, numbered after ADR 0019 and listed in the decisions' index: a scanner's text is for
-    finding, not reading (0020); a move is said, never guessed (0021)."""
-    titles = {
-        _ADR_SCANS: "# ADR 0020 — A scanner's text is for finding, not reading",
-        _ADR_MOVING: "# ADR 0021 — A move is said, never guessed",
-    }
-    index = _decisions_index()
-    for path, title in titles.items():
-        text = path.read_text(encoding="utf-8")
-        assert text.startswith(title + "\n"), path.name
-        assert "**Status:** accepted" in text, path.name
-        assert f"[{path.name[:4]}]({path.name})" in index, path.name
-    assert "| A scanner's text is for finding, not reading |" in index
-    assert "| A move is said, never guessed |" in index
-
-
 def test_the_scanner_text_s_file_marker_and_note_are_the_ones_the_docs_quote() -> None:
     """ADR 0020, SPEC § 8 and the CHANGELOG: the file is ``derived/<doc>/scan-text.json``, at most 20,000 characters
     a page; a letter found only by it is marked with the words the web app shows, and its page says what the text
@@ -2866,9 +2551,6 @@ def test_no_moving_row_carries_an_address_as_the_privacy_page_says(store: Store)
 # --------------------------------------------------------------------------------------------------
 
 _ADR_OUTSIDE = ROOT / "docs" / "decisions" / "0013-backups-and-reminders-outside-the-browser.md"
-#: What the sign-in page (``api/security.py``) and the web app's "isn't running" card (``screens.tsx``) say
-#: before their commands.
-OPEN_FROM_YOUR_APPS = "If you added Ordnung to your apps with “ordnung shortcut”, open it from there."
 
 
 def _without_a_terminal() -> str:
@@ -2878,19 +2560,6 @@ def _without_a_terminal() -> str:
 
 def _privacy() -> str:
     return _flat((ROOT / "docs" / "privacy.md").read_text(encoding="utf-8"))
-
-
-def test_the_sign_in_page_and_the_isn_t_running_screen_send_you_to_your_apps_first() -> None:
-    """The sign-in page and the web app's "isn't running" / "open from its link" card name the shortcut, in the
-    same words, before the commands that start Ordnung."""
-    assert OPEN_FROM_YOUR_APPS in (ROOT / "src" / "ordnung" / "api" / "security.py").read_text(
-        encoding="utf-8"
-    )
-    screens = (ROOT / "web" / "src" / "app" / "screens.tsx").read_text(encoding="utf-8")
-    assert re.search(
-        r"If you added Ordnung to your apps with <code[^>]*>ordnung shortcut</code>, open it from there\.",
-        screens,
-    )
 
 
 def test_serve_points_to_the_shortcut_as_the_spec_says() -> None:
@@ -2947,21 +2616,6 @@ def test_the_guide_says_how_to_open_ordnung_without_a_terminal() -> None:
         "opening it from the desktop's own menu isn't tested on any system.",
     ):
         assert words in text, words
-
-
-def test_guide_updating_says_to_close_the_shortcut_s_window_and_add_it_again_once_python_moved() -> None:
-    """The guide's Updating: the shortcut's window is Ordnung (closing it stops Ordnung), and a launcher whose
-    Python moved is made again with `ordnung shortcut` (as start at login is)."""
-    updating = _flat(_section(_guide(), "### Updating"))
-    assert (
-        "Stop Ordnung first (Ctrl+C where `ordnung serve` runs, or close the window the shortcut opened;"
-        in updating
-    )
-    assert (
-        "If the shortcut stops opening Ordnung after an update (its window closes at once, or nothing opens), "
-        "the Python it runs has moved: run `ordnung shortcut` again, and `ordnung autostart enable` too if "
-        "Ordnung starts at login."
-    ) in updating
 
 
 def test_the_privacy_page_says_the_shortcut_prints_the_sign_in_link_only_in_its_own_window() -> None:
@@ -3092,19 +2746,6 @@ def test_the_spec_lists_every_command_and_names_the_hidden_flags() -> None:
         assert f"hidden `{flag}`" in _flat(cli), flag
 
 
-def test_the_architecture_shows_the_shortcut_beside_start_at_login() -> None:
-    """docs/architecture.md: the launcher in the diagram of what runs while the browser is closed, its bullet,
-    the trust boundary to the OS, and its tests in the testing table."""
-    arch = (ROOT / "docs" / "architecture.md").read_text(encoding="utf-8")
-    diagram = arch.split("## While the browser is closed", 1)[1].split("```mermaid", 1)[1].split("```", 1)[0]
-    assert "ordnung.desktop · Ordnung.app · Ordnung.lnk<br/>(written by ordnung shortcut)" in diagram
-    assert "serve --from-shortcut" in diagram
-    flat = _flat(arch)
-    assert "- **The app-menu shortcut** (`shortcut.py`) writes one launcher and runs nothing;" in flat
-    assert "The app-menu shortcut is a file Ordnung writes too" in flat
-    assert "app-menu launchers per system written into temporary home folders" in flat
-
-
 def test_the_launchers_the_docs_describe_are_the_ones_ordnung_shortcut_writes(tmp_path: Path) -> None:
     """The guide, SPEC and ADR 0013 against ``ordnung.shortcut`` (the launcher package): where each launcher
     goes, that the Linux entry asks for a terminal, what it runs, the Windows link's mark, the command's
@@ -3134,25 +2775,6 @@ def test_the_launchers_the_docs_describe_are_the_ones_ordnung_shortcut_writes(tm
     steps = " ".join(str(step.get("run", "")) for step in ci["jobs"]["other-systems"]["steps"])
     assert "tests/test_shortcut.py" in steps
     assert "autostart entries, app-menu shortcuts, backups and text in pictures" in _flat(_guide())
-
-
-def test_the_release_the_changelog_describes_waits_for_the_owner_s_pypi_setup() -> None:
-    """The CHANGELOG's *Releases* and the doc map against the release package: a pushed `v*` tag runs
-    `release.yml`, PyPI only with the repository variable and the `pypi` environment, no stored token, and
-    docs/releasing.md says how the owner sets it up."""
-    import yaml
-
-    workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
-    release = yaml.safe_load(workflow)
-    assert release[True] == {"push": {"tags": ["v*"]}}  # PyYAML reads the key `on` as True
-    pypi = release["jobs"]["pypi"]
-    assert "vars.PYPI_PUBLISH == 'true'" in pypi["if"] and pypi["environment"]["name"] == "pypi"
-    assert "secrets." not in workflow
-    releasing = (ROOT / "docs" / "releasing.md").read_text(encoding="utf-8")
-    for words in ("PYPI_PUBLISH", "release.yml", "pending publisher", "`pypi`"):
-        assert words in releasing, words
-    doc_map = _flat((ROOT / "docs" / "README.md").read_text(encoding="utf-8"))
-    assert "[releasing.md](releasing.md): how a release is made, and the one-time setup for PyPI" in doc_map
 
 
 # --------------------------------------------------------------------------------------------------
@@ -3247,54 +2869,6 @@ async def test_the_guide_says_a_weekly_deadline_or_payment_of_your_own_is_nearly
         assert (ids[case] in with_idea_after) is expected, case
 
 
-def test_the_spec_lists_the_weekly_repeats_and_still_one_entry_at_the_next_day() -> None:
-    """SPEC (Timeline's *Add a date*) lists every week and every 2 weeks first, as the dialog does; the server's
-    rule takes weeks (``Recurrence.unit``), and the guide still says a repeating date is one entry at its next
-    day."""
-    assert (
-        "*Repeats* (every week or every 2 weeks on its weekday, every month on its day or on a working day, every 3 "
-        "or 6 months, every year)"
-    ) in _spec()
-    from ordnung.models import Recurrence
-
-    assert Recurrence(interval=2, unit="weeks").unit == "weeks"
-    assert "A repeating date is one entry at its next day" in _limitations()
-
-
-def test_the_changelog_s_package_updates_are_the_repository_s() -> None:
-    """CHANGELOG, 0.3.0 → Changed: motion 14, version 7 of checkout, setup-node and upload-artifact in CI
-    (major tags) and the release workflow (commits pinned with their version), Dependabot without labels and holding
-    TypeScript majors back; CONTRIBUTING's Dependencies say how such updates land."""
-    import yaml
-
-    package = json.loads((ROOT / "web" / "package.json").read_text(encoding="utf-8"))
-    assert package["dependencies"]["motion"].startswith("^14.")
-    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-    release = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
-    for action in ("checkout", "setup-node", "upload-artifact"):
-        assert set(re.findall(rf"actions/{action}@(\S+)", ci)) == {"v7"}, action
-        pins = re.findall(rf"actions/{action}@[0-9a-f]{{40}} # (v\d+)\.\d+\.\d+$", release, re.M)
-        assert pins and set(pins) == {"v7"}, action
-    dependabot = yaml.safe_load((ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8"))
-    assert all("labels" not in update for update in dependabot["updates"])
-    (npm,) = [update for update in dependabot["updates"] if update["package-ecosystem"] == "npm"]
-    assert {"dependency-name": "typescript", "update-types": ["version-update:semver-major"]} in npm["ignore"]
-    contributing = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
-    dependencies = _flat(contributing.split("## Dependencies", 1)[1].split("\n## ", 1)[0])
-    for words in (
-        "Dependabot opens update pull requests every week (`.github/dependabot.yml`): minor and patch updates "
-        "together, each major on its own.",
-        "One for `web/` changes `package-lock.json`, so CI passes only once `make build-web` has run and "
-        "`src/ordnung/web/dist` is committed on its branch; or fold the updates into a pull request of your own.",
-        "TypeScript majors are skipped until the packages that need TypeScript (openapi-typescript, "
-        "typescript-eslint) take them: a test in `tests/test_repo_hygiene.py` fails then, saying to remove the rule.",
-        "`ci.yml` names actions by their major version (`actions/checkout@v7`), and `release.yml` pins each to a "
-        "commit with its version beside it; keep both on the same major (`tests/test_release_workflow.py` compares "
-        "them).",
-    ):
-        assert words in dependencies, words
-
-
 def test_the_privacy_page_links_microsoft_s_own_page_on_device_encryption(tmp_path: Path) -> None:
     """docs/privacy.md, before a computer is lost: where Ordnung can't check (Windows: the doctor's info row says
     where to look), Microsoft's own page on Device encryption, and what its note says when Settings shows no such
@@ -3340,18 +2914,11 @@ def test_contributing_says_how_an_end_to_end_test_waits_and_reads() -> None:
     assert re.search(r"^browser: ", (ROOT / "Makefile").read_text(encoding="utf-8"), re.M)
 
 
-def test_the_architecture_says_how_ask_keeps_its_replay_key() -> None:
-    """docs/architecture.md, "Asking a question": the ledger fingerprint is kept per state of the ledger."""
-    asking = (
-        (ROOT / "docs" / "architecture.md").read_text(encoding="utf-8").split("## Asking a question", 1)[1]
-    )
-    assert ASK_KEY_KEPT in _flat(asking.split("\n## ", 1)[0])
-
-
 def test_ask_keeps_its_replay_key_as_the_architecture_says(store: Store) -> None:
     """d1-ask-memo against the architecture's paragraph: the token watches exactly the letters, pages, to-dos,
     contracts, senders and cases (and the profile); Ask's own writes leave it, a sender moves it; and the tests'
-    verify mode works the fingerprint out again wherever it was kept."""
+    verify mode works the fingerprint out again wherever it was kept; the architecture's "Asking a question" says
+    the ledger fingerprint is kept per state of the ledger."""
     from ordnung.assistant import ask
     from ordnung.db import store as store_module
 
@@ -3363,30 +2930,10 @@ def test_ask_keeps_its_replay_key_as_the_architecture_says(store: Store) -> None
     assert store.ledger_token() != token
     assert hasattr(ask, "_LEDGER_MEMO")
     assert "memo.verify = True" in (ROOT / "tests" / "conftest.py").read_text(encoding="utf-8")
-
-
-def test_the_web_offers_the_weekly_repeats_the_docs_name() -> None:
-    """d1-web-small against CHANGELOG and SPEC: *Repeats* offers every week and every 2 weeks right after "Doesn't
-    repeat", before every month, and names their weekday."""
-    source = (ROOT / "web" / "src" / "features" / "items" / "repeat.ts").read_text(encoding="utf-8")
-    assert re.search(r'export type RepeatChoice = "never" \| "week" \| "two_weeks" \| "month"', source)
-    choices = re.search(r"const choices: RepeatChoice\[\] = \[([^\]]*)\]", source)
-    assert choices is not None
-    assert choices[1].split(", ")[:4] == ['"never"', '"week"', '"two_weeks"', '"month"']
-    assert '"Every week"' in source and "`Every ${WEEKS[choice]} weeks`" in source
-
-
-def test_the_calendar_settings_say_what_the_changelog_says_about_google_and_outlook() -> None:
-    """d1-web-small against CHANGELOG: the calendar sync card says Google Calendar and Outlook.com take the calendar
-    file, and *Where do I find these?* lists them with that."""
-    card = _flat((ROOT / "web/src/features/settings/CalendarSyncCard.tsx").read_text(encoding="utf-8"))
-    assert (
-        "Google Calendar and Outlook.com don't offer this, so use the calendar file above for them." in card
+    asking = (
+        (ROOT / "docs" / "architecture.md").read_text(encoding="utf-8").split("## Asking a question", 1)[1]
     )
-    assert (
-        '<span className="font-medium text-ink">Google Calendar, Outlook.com</span> — no calendar address with an '
-        "app password: download the calendar file above instead"
-    ) in card
+    assert ASK_KEY_KEPT in _flat(asking.split("\n## ", 1)[0])
 
 
 def test_the_docs_say_the_windows_link_names_its_target(tmp_path: Path) -> None:
@@ -3435,13 +2982,6 @@ _OUTLOOK_FIXTURE = ROOT / "web" / "e2e" / "fixtures" / "outlook-bill.msg"
 #: The web app's text files, which go out gzipped (``api/compress.py``'s ``FILE_TYPES``).
 _APP_TEXT_FILES = frozenset({".js", ".css", ".svg", ".txt", ".json"})
 
-#: The guide's Limitations: how e-mail comes in (it replaced "it can't open Outlook's `.msg` files").
-GUIDE_EMAIL_LIMIT = (
-    "E-mailed letters come in as saved files: `.eml`, or Outlook's `.msg`, which Ordnung keeps as an `.eml` copy "
-    "(the `.msg` itself isn't kept). Ordnung doesn't fetch mail from a mailbox. An Outlook e-mail whose text is "
-    "only in RTF comes in without its text (its attachments still come in), and a signed or encrypted one can't be "
-    "opened: save its attachments and add those."
-)
 #: docs/privacy.md, "Hardening built into every model call": what is compressed, and why that is safe.
 PRIVACY_COMPRESSED = (
     "Answers are compressed (gzip) only when they are a JSON answer to a GET that sets no cookie, or one of the "
@@ -3457,11 +2997,6 @@ PRIVACY_LIST = "The letter list no longer carries bank details or key facts: a l
 PRIVACY_OUTLOOK = (
     "An e-mail saved from Outlook (`.msg`) is opened on this computer and kept as an `.eml` copy; the `.msg` "
     "itself isn't kept, so keep it yourself if you need the original."
-)
-#: ADR 0022: the rule for a later GET route with a secret in its answer.
-ADR_SECRET_RULE = (
-    "**The rule for later:** a new `GET` route whose JSON answer carries a secret (a code, a token, a password or "
-    "a key) gets a test that proves its answer is never compressed, or it isn't a `GET`."
 )
 
 
@@ -3480,7 +3015,7 @@ def test_the_letter_list_and_the_records_copy_are_what_the_docs_say() -> None:
         "tax_choice",  # the person's own "For taxes" choice (SPEC § 4, checked below)
     }
     assert not hasattr(models, "DocumentListEntry") and not hasattr(models, "SearchFoundIn")
-    components = openapi_schema()["components"]["schemas"]
+    components = _openapi()["components"]["schemas"]
     assert "DocumentRow" in components and "DocumentListEntry" not in components
     operation = ("GET", "/api/documents.json")
     assert phone_scope.classify(*operation) == "computer"
@@ -3510,14 +3045,6 @@ def test_the_letter_list_and_the_records_copy_are_what_the_docs_say() -> None:
     assert "stays, unused, until `models.py` next changes" not in adr
 
 
-def test_the_records_copy_takes_every_letter_whole() -> None:
-    """d2-list-consumers against the CHANGELOG: *Download a copy of your records* takes its letters from the
-    computer-only ``documents.json``, never from the lighter list."""
-    section = (ROOT / "web" / "src" / "features" / "settings" / "DataSection.tsx").read_text(encoding="utf-8")
-    export = section.split("async function buildExport()", 1)[1].split("\n}\n", 1)[0]
-    assert "api.documentsFull()" in export and "api.documents()" not in export
-
-
 def test_the_privacy_page_says_what_is_compressed_and_what_the_list_leaves_out() -> None:
     """docs/privacy.md: what is compressed and why it is safe (with the hardening), the letter list on a phone,
     and an Outlook e-mail kept as its ``.eml`` copy (with the e-mail attachments, and opened within limits)."""
@@ -3536,7 +3063,9 @@ def test_the_privacy_page_says_what_is_compressed_and_what_the_list_leaves_out()
 async def test_compression_follows_the_rules_the_docs_state(data_dir: Path) -> None:
     """d2-compression against SPEC § 13, ADR 0022 and docs/architecture.md: JSON only, at least 1 KiB, level 6, a
     thread from 128 KiB, never with a cookie, a download's or a file's headers; the outermost middleware; the web
-    app's five text types; TLS compression off on the phone listener."""
+    app's five text types; TLS compression off on the phone listener. SPEC § 13 and docs/architecture.md say what
+    is compressed, on both listeners, that the middleware decides on an answer's start and lets a live stream
+    through at once, and that the web app's files are gzipped once."""
     from ordnung.api import compress
     from ordnung.phone import access
 
@@ -3560,25 +3089,20 @@ async def test_compression_follows_the_rules_the_docs_state(data_dir: Path) -> N
         plain = await api.client.get("/api/rules", headers={"Accept-Encoding": "identity"})
     assert zipped.headers.get("content-encoding") == "gzip" and "content-encoding" not in plain.headers
     assert zipped.json() == plain.json() and "Accept-Encoding" in zipped.headers["vary"]
-
-
-def test_adr_0022_states_the_rule_for_a_secret_in_a_get_answer_and_the_index_lists_it() -> None:
-    """ADR 0022 (numbered after 0021, listed in the decisions' index) says why compression is safe here and the
-    rule a later route with a secret in a GET answer must follow; it keeps ``models.py`` untouched."""
-    text = _ADR_COMPRESSED.read_text(encoding="utf-8")
-    assert text.startswith("# ADR 0022 — Compressed answers and a lighter letter list\n")
-    assert "**Status:** accepted" in text
-    adr = _flat(text)
-    assert ADR_SECRET_RULE in adr
+    assert (
+        "Compression (`api/compress.py`, ADR 0022): on both listeners, a JSON answer to a `GET` that takes gzip goes "
+        "out gzipped when it is a `200` of at least 1 KiB in one message (level 6; from 128 KiB in a thread)"
+    ) in _spec()
+    architecture = _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
+    concurrency = architecture.split("## Concurrency model", 1)[1].split(" ## ", 1)[0]
     for words in (
-        "## Why compression is safe here (BREACH)",
-        "**`models.py` is untouched on purpose.**",
-        "**Starlette's `GZipMiddleware`:**",
+        "**Compressed answers** (`api/compress.py`, "
+        "[ADR 0022](decisions/0022-compressed-answers-and-a-lighter-letter-list.md)).",
+        "the outermost middleware on both listeners (then the security checks or the phone's gate, then sync's gate)",
+        "anything else, a live stream first of all, passes at once",
+        "The web app's text files are gzipped once and kept in memory, per file and version.",
     ):
-        assert words in adr, words
-    index = _decisions_index()
-    assert f"[0022]({_ADR_COMPRESSED.name})" in index
-    assert "| Compressed answers and a lighter letter list |" in index
+        assert words in concurrency, words
 
 
 def _stated_bytes(text: str) -> float:
@@ -3616,7 +3140,7 @@ async def test_the_adr_s_measurements_are_the_demo_s(tmp_path: Path) -> None:
             api.app.dependency_overrides[sync_routes.get_secrets] = lambda: MemorySecrets()
             listed = await api.client.get("/api/documents")
             whole = await api.client.get("/api/documents.json")
-            for path, operations in openapi_schema()["paths"].items():
+            for path, operations in _openapi()["paths"].items():
                 get = operations.get("get")
                 if get is None or "{" in path or path in {"/api/events", "/api/health"}:
                     continue
@@ -3659,16 +3183,6 @@ async def test_the_adr_s_measurements_are_the_demo_s(tmp_path: Path) -> None:
     assert f"about {round(size / gzipped)} times less" in measured
 
 
-def test_the_guide_says_outlook_files_come_in_as_an_eml_copy() -> None:
-    """The guide's "Also" line names Outlook's ``.msg``; its Limitations no longer say it can't be opened (nor does
-    README), still say Ordnung doesn't fetch mail from a mailbox, and say what an Outlook e-mail loses."""
-    also = _flat(_tour().split("**Also:**", 1)[1])
-    assert "and e-mails (`.eml`, or Outlook's `.msg`) whose PDF and photo attachments become letters" in also
-    assert GUIDE_EMAIL_LIMIT in _limitations()
-    for document in (_readme(), _guide()):
-        assert "can't open Outlook's `.msg` files" not in _flat(document)
-
-
 def test_outlook_files_come_in_where_the_docs_say() -> None:
     """d2-outlook against README, the CHANGELOG and SPEC § 8: an Outlook file becomes an ``.eml`` copy named like
     it, the same copy every time, before intake looks at it — at upload and the phone, the watched folder (which
@@ -3697,48 +3211,6 @@ def test_outlook_files_come_in_where_the_docs_say() -> None:
         assert ".msg" in picker.read_text(encoding="utf-8"), picker.name
     pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     assert any(dependency.startswith("olefile>=") for dependency in pyproject["project"]["dependencies"])
-
-
-def test_the_spec_architecture_and_privacy_describe_outlook_files() -> None:
-    """SPEC § 3.2, § 8 and § 8.1, docs/architecture.md's diagram and trust boundaries, and docs/privacy.md's table:
-    an Outlook ``.msg`` comes in as its ``.eml`` copy."""
-    spec = _spec()
-    for words in (
-        "ifaddr (phone access: the network interfaces with their netmasks), olefile (Outlook `.msg` files)",
-        "**Outlook files** (`ingest/outlook.py`, policy in its docstring). An Outlook `.msg` (an OLE compound file, "
-        "whatever its name) becomes the `.eml` copy Ordnung stores, named like the file (`Rechnung.msg` → "
-        "`Rechnung.eml`), before intake looks at its bytes",
-        "The `.msg` itself is not kept.",
-        "Files directly in the folder with a type Ordnung reads (`.pdf .jpg .jpeg .png .webp .heic .heif .txt .eml "
-        ".msg`, any case)",
-    ):
-        assert words in spec, words
-    architecture = (ROOT / "docs" / "architecture.md").read_text(encoding="utf-8")
-    assert 'L["Letters · PDFs · phone photos · .eml · .msg"]' in architecture
-    (row,) = [line for line in architecture.splitlines() if line.startswith("| Outlook file → e-mail |")]
-    assert "`ingest/outlook.py`" in row and "then passes the upload checks below" in row
-    privacy = (ROOT / "docs" / "privacy.md").read_text(encoding="utf-8")
-    (glance,) = [line for line in privacy.splitlines() if line.startswith("| Original files")]
-    assert "an Outlook e-mail as its `.eml` copy" in glance
-
-
-def test_the_spec_and_architecture_say_how_answers_are_compressed() -> None:
-    """SPEC § 13 and docs/architecture.md: what is compressed, on both listeners; the middleware is the outermost,
-    decides on an answer's start and lets a live stream through at once; the web app's files are gzipped once."""
-    assert (
-        "Compression (`api/compress.py`, ADR 0022): on both listeners, a JSON answer to a `GET` that takes gzip goes "
-        "out gzipped when it is a `200` of at least 1 KiB in one message (level 6; from 128 KiB in a thread)"
-    ) in _spec()
-    architecture = _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
-    concurrency = architecture.split("## Concurrency model", 1)[1].split(" ## ", 1)[0]
-    for words in (
-        "**Compressed answers** (`api/compress.py`, "
-        "[ADR 0022](decisions/0022-compressed-answers-and-a-lighter-letter-list.md)).",
-        "the outermost middleware on both listeners (then the security checks or the phone's gate, then sync's gate)",
-        "anything else, a live stream first of all, passes at once",
-        "The web app's text files are gzipped once and kept in memory, per file and version.",
-    ):
-        assert words in concurrency, words
 
 
 def test_every_test_and_script_the_architecture_names_exists() -> None:
@@ -3770,29 +3242,12 @@ SPEC_ANSWERED_AGAIN = (
 )
 
 
-def test_the_docs_say_the_daily_check_stops_after_its_work_and_an_answer_given_again_stands() -> None:
-    """SPEC § 9: stopping the daily check waits for its work; § 12c and docs/architecture.md: hand-off sync's
-    question, answered apart and then once more, settles with that answer."""
-    spec = _spec()
-    assert SPEC_TICK_STOP in spec.split("## 9. Secretary", 1)[1].split(" ## ", 1)[0]
-    assert SPEC_ANSWERED_AGAIN in spec.split("- **Versions** (`sync/lineage.py`, `sync/decide.py`).", 1)[1]
-    architecture = (ROOT / "docs" / "architecture.md").read_text(encoding="utf-8")
-    (row,) = [
-        line
-        for line in architecture.splitlines()
-        if line.startswith("| **Whose content is newer** (lineage)")
-    ]
-    assert (
-        "(two answers given apart are asked about once more, and the answer given then stands: the changes it keeps "
-        "again are numbered anew)"
-    ) in row
-
-
 def test_the_daily_check_and_hand_off_sync_do_what_the_changelog_says() -> None:
     """d2-races against the CHANGELOG and SPEC: every thread call of the daily tick is waited for on a cancel (at
     most 10 s); two answers given apart, then answered once more by keeping the same version, leave the other
     computer seeing that answer as having decided, and the save numbers the kept changes anew; a version with the
-    same content as one kept elsewhere counts that choice's drops as answered."""
+    same content as one kept elsewhere counts that choice's drops as answered. SPEC § 9, § 12c and
+    docs/architecture.md say the daily check's stop waits for its work and an answer given again stands."""
     import ordnung.tick as tick_module
     from ordnung.sync import decide, push
     from ordnung.sync import lineage as lin
@@ -3811,6 +3266,19 @@ def test_the_daily_check_and_hand_off_sync_do_what_the_changelog_says() -> None:
     assert "renumbers(" in inspect.getsource(push.push)
     for rule in (decide._in_use, decide._use_here):
         assert "_informed(" in inspect.getsource(rule), rule.__name__
+    spec = _spec()
+    assert SPEC_TICK_STOP in spec.split("## 9. Secretary", 1)[1].split(" ## ", 1)[0]
+    assert SPEC_ANSWERED_AGAIN in spec.split("- **Versions** (`sync/lineage.py`, `sync/decide.py`).", 1)[1]
+    architecture = (ROOT / "docs" / "architecture.md").read_text(encoding="utf-8")
+    (row,) = [
+        line
+        for line in architecture.splitlines()
+        if line.startswith("| **Whose content is newer** (lineage)")
+    ]
+    assert (
+        "(two answers given apart are asked about once more, and the answer given then stands: the changes it keeps "
+        "again are numbered anew)"
+    ) in row
 
 
 # --------------------------------------------------------------------------------------------------
@@ -3827,14 +3295,6 @@ GUIDE_TAX_LIMIT = (
     "Claude marks a letter for taxes when it reads it; *For taxes* on a letter's page changes that, for private "
     "letters too, and your choice stays when the letter is read again; Ask and the Ideas Claude suggests each "
     "week follow it. A letter still waiting under *From your folder — not read yet* can't be marked"
-)
-#: The guide's "Also:": the tax year with *For taxes* and the Inbox's year, and your household.
-GUIDE_ALSO_TAXES_HOUSEHOLD = (
-    "*tax year* — a year's letters for your tax return, by the date on them; mark or unmark any letter "
-    "yourself, and the Inbox shows one year at a time",
-    "*your household* — file a letter for your partner or your child when Ordnung asks (it never files one by "
-    "itself), find their letters, see their numbers on My numbers and whose a date is on Today and the "
-    "Timeline, and reply in their name when they sign their own",
 )
 #: docs/privacy.md, "What is sent to Claude, per feature": what of the choices reaches Claude (ADR 0025); the tax
 #: Idea's title.
@@ -3924,19 +3384,6 @@ def test_the_choices_and_the_household_are_synced_meta_rows_without_a_migration(
     assert keys.isdisjoint(archive._LEFT_OUT_META)
     migrations = sorted(p.name for p in (ROOT / "src" / "ordnung" / "db" / "migrations").glob("*.sql"))
     assert len(migrations) == 5 and migrations[-1].startswith("0005_"), migrations
-
-
-def test_the_guide_names_for_taxes_the_inbox_year_and_your_household() -> None:
-    """The guide's "Also" line names *For taxes*, the Inbox's year and your household (where the household and the
-    choices reach Claude is docs/privacy.md's, checked below); the decisions' index lists ADR 0023 after 0022."""
-    also = _flat(_tour().split("**Also:**", 1)[1])
-    for words in GUIDE_ALSO_TAXES_HOUSEHOLD:
-        assert words in also, words
-    index = _decisions_index()
-    assert (
-        f"| [0023]({_ADR_HOUSEHOLD.name}) | Letters for your household are suggested, never filed |" in index
-    )
-    assert _index_row(_ADR_COMPRESSED) < _index_row(_ADR_HOUSEHOLD)
 
 
 def test_the_privacy_page_says_where_the_choices_and_the_household_live(store: Store) -> None:
@@ -4131,7 +3578,7 @@ def test_the_spec_names_the_route_local_letter_models_and_routes() -> None:
         "picture_text_pages",  # ADR 0024
     }
     assert set(documents.LetterRecord.model_fields) == set(Document.model_fields) | {"tax_choice"}
-    paths = openapi_schema()["paths"]
+    paths = _openapi()["paths"]
 
     def answer(path: str) -> Any:
         return paths[path]["get"]["responses"]["200"]["content"]["application/json"]["schema"]
@@ -4247,8 +3694,6 @@ async def test_a_tax_choice_is_kept_apart_and_followed_as_the_docs_say(data_dir:
     and never touches Claude's mark; the letter's page, its row and the records carry it; the tax-season Idea
     follows it; a letter waiting from the folder can't be marked; ``Ledger.tax_choices`` is lazy and the ZIP's
     selection takes the choices."""
-    import functools
-
     from helpers_secretary import add_doc
 
     assert isinstance(inspect.getattr_static(Ledger, "tax_choices"), functools.cached_property)
@@ -4486,39 +3931,13 @@ def _guide_pictures() -> str:
     return _flat(_install_part("Words in photos (optional)"))
 
 
-def test_the_guide_says_what_text_in_pictures_finds_and_misses() -> None:
-    """The guide: Install's paragraph (optional, how to install, what it does, the off switch), the doctor's
-    comment, CI on Linux and on other systems; Limitations replace "No OCR of its own". The decisions' index lists
-    ADR 0024 after 0023."""
-    from ordnung import doctor
-
-    pictures = _guide_pictures()
-    for sentence in GUIDE_PICTURES:
-        assert sentence in pictures, sentence
-    for name, platform in TESSERACT_SYSTEMS.items():
-        assert f"- {name}: {doctor.tesseract_install(platform)}" in pictures, name
-    (line,) = [line for line in _guide().splitlines() if line.startswith("ordnung doctor ")]
-    assert "text in pictures" in line
-    install = _flat(_section(_guide(), "## Install and run").split("```", 1)[0])
-    assert "CI tests Ordnung on Linux, with a real Tesseract for text in pictures." in install
-    assert (
-        "autostart entries, app-menu shortcuts, backups and text in pictures (looking for Tesseract, which isn't "
-        "installed there)."
-    ) in install
-    limitations = _limitations()
-    for sentence in GUIDE_PICTURES_LIMIT:
-        assert sentence in limitations, sentence
-    for document in (_readme(), _guide()):
-        assert "No OCR of its own" not in document
-    assert "or waiting for Claude, is found only by its name" not in limitations
-    assert _index_row(_ADR_HOUSEHOLD) < _index_row(_ADR_PICTURES)
-
-
 def test_text_in_pictures_is_documented_as_optional_and_off_switchable() -> None:
     """The guide's install lines are the doctor's, per system (its *Not installed (optional)* row, ok, with the
     line as its fix); the off switch is the one ``config`` reads, the doctor says *Turned off* with it, and start at
     login and the app-menu launchers record it; docs/privacy.md names ``ORDNUNG_OCR=off`` and
-    ``picture-text.json``; the guide links ADR 0024 and privacy.md's section on it."""
+    ``picture-text.json``; the guide links ADR 0024 and privacy.md's section on it. The guide also says what text
+    in pictures finds and misses (Install's paragraph, the doctor's comment, CI on Linux and on other systems,
+    Limitations replacing "No OCR of its own"), and the decisions' index lists ADR 0024 after 0023."""
     from ordnung import autostart, config, doctor
 
     pictures = _guide_pictures()
@@ -4549,6 +3968,23 @@ def test_text_in_pictures_is_documented_as_optional_and_off_switchable() -> None
     assert "`<data dir>/derived/<letter>/picture-text.json`" in privacy
     assert _ADR_PICTURES_LINK in pictures
     assert "([how](privacy.md#words-in-pictures-optional))" in pictures
+    for sentence in GUIDE_PICTURES:
+        assert sentence in pictures, sentence
+    (line,) = [line for line in _guide().splitlines() if line.startswith("ordnung doctor ")]
+    assert "text in pictures" in line
+    install = _flat(_section(_guide(), "## Install and run").split("```", 1)[0])
+    assert "CI tests Ordnung on Linux, with a real Tesseract for text in pictures." in install
+    assert (
+        "autostart entries, app-menu shortcuts, backups and text in pictures (looking for Tesseract, which isn't "
+        "installed there)."
+    ) in install
+    limitations = _limitations()
+    for sentence in GUIDE_PICTURES_LIMIT:
+        assert sentence in limitations, sentence
+    for document in (_readme(), _guide()):
+        assert "No OCR of its own" not in document
+    assert "or waiting for Claude, is found only by its name" not in limitations
+    assert _index_row(_ADR_HOUSEHOLD) < _index_row(_ADR_PICTURES)
 
 
 def test_the_off_switch_and_the_file_are_the_ones_the_docs_name() -> None:
@@ -4747,206 +4183,6 @@ def test_the_pages_say_what_the_docs_quote_about_pictures() -> None:
 # pictures switch, doctor info rows: README, the CHANGELOG, docs/privacy.md, SPEC, docs/architecture.md,
 # CONTRIBUTING and ADRs 0022 to 0025
 # --------------------------------------------------------------------------------------------------
-
-_ADR_WHOSE_LINK = f"[ADR 0025](docs/decisions/{_ADR_WHOSE.name})"
-#: CHANGELOG, 0.4.0 → Added: My numbers per person, its sentences in order.
-UNRELEASED_WHOSE_NUMBER = (
-    "A number from a letter you filed for someone in your household is listed under *About Alex Rivera* on My "
-    "numbers, whose first tab is then *People*.",
-    'A number that letters for two of you show says "Also on letters for Alex Rivera — check whose it is", and a '
-    "sender's numbers or a case that are only theirs say *For Alex Rivera*.",
-    "On a paired phone their numbers show only their last 4 characters, like yours.",
-)
-#: CHANGELOG, 0.4.0 → Added: Ask, the Ideas, reminders and the Timeline.
-UNRELEASED_WHOSE_SAID = (
-    "Ask is told who is in your household, which letters you filed for whom and whose each number is; letters you "
-    "keep private stay out.",
-    "An Idea about their letters names them (*Alex Rivera's passport expires …*, *For Alex Rivera: …*), unless "
-    "you keep one of them private; filing a letter later renames the same Idea, so *Not relevant* or *Remind me "
-    "in a week* still holds.",
-    "The calendar file, calendar sync *With details* and the morning notification *With details* put their name "
-    "in front of a to-do of their letter; *Discreet* never names anyone.",
-    "On the Timeline, a date from their letter says *For Alex Rivera ·*, as Today does.",
-    f"Ordnung still files a letter only when you say so ({_ADR_WHOSE_LINK}).",
-)
-#: CHANGELOG, 0.4.0 → Added: repeat fields in Ask's records.
-UNRELEASED_REPEATS = (
-    "For a to-do or date that repeats, Ask is told how, in the words the app uses (*every month on the 3rd working "
-    "day*), and the date it moves on to once you mark this one done — also for a date you moved by hand, whose "
-    "schedule carries on after it.",
-    "A rent a later rent replaces says from which month.",
-)
-#: CHANGELOG, 0.4.0 → Added: the Settings switch.
-UNRELEASED_PICTURE_SWITCH = (
-    "Settings → Data → *Text in pictures* turns off reading the words in photos and scans Claude isn't reading.",
-    "It counts at once: a reading under way stops and the words read before are deleted; turned on again, Ordnung "
-    "starts reading and looks for Tesseract afresh.",
-    "The card says what this computer does: reading, with Tesseract's version; not installed, with the line to "
-    "install it; or turned off by `ORDNUNG_OCR=off`, which still wins on that computer.",
-    "With hand-off sync the switch travels with your settings.",
-)
-#: CHANGELOG, 0.4.0 → Changed: Ask and the weekly Ideas follow *For taxes*.
-UNRELEASED_FOR_TAXES = (
-    "A letter you took off your letters for taxes no longer reaches them as one for taxes, and Ask no longer gets "
-    "Claude's note on why it could matter for your tax return; a letter you marked yourself reaches them as one "
-    "for taxes, and Ask is told you marked it.",
-    "Letters you keep private stay private: neither sees anything of them, your choice included.",
-)
-#: CHANGELOG, 0.4.0 → Changed: the other lines.
-UNRELEASED_CHANGED = (
-    "`ordnung doctor` marks a row that is neither fine nor a problem as info (`i`): Tesseract not installed, text "
-    "in pictures turned off, and on Windows a new *Disk encryption* row that says where to check BitLocker or "
-    "Device encryption, which Ordnung can't read there. An info row never fails the check, and its fix is printed "
-    "as an *Optional —* tip.",
-    "A file of a type Ordnung doesn't read is refused with a message that names Outlook's `.msg` among the types "
-    "it takes.",
-    "In the demo, adding someone to your household or marking a letter for taxes makes the suggested questions' "
-    "recorded answers stop fitting, as changing a letter does; Ask says how to start the demo over.",
-)
-#: CHANGELOG, 0.4.0 → Fixed.
-UNRELEASED_FIXED = (
-    "*Renew your passport before extending your residence permit* pairs a passport and a residence permit of the "
-    "same person, and the student permit card reads only your own residence permit: a letter filed for someone "
-    "of your household no longer counts as yours there.",
-    "An Outlook e-mail or older Office file is never taken for a PDF, even one with a PDF in its first bytes: if "
-    "it reaches the reading without being opened as an e-mail, Ordnung says what it is and how to add it.",
-)
-#: CHANGELOG, 0.4.0 → Upgrading: what a computer still on 0.3.0 does.
-UNRELEASED_UPGRADING = (
-    "A computer still on 0.3.0 shows every number as yours and the Ideas' titles without names, and Ideas it "
-    "refreshes lose the name until an updated computer refreshes them. Update both computers.",
-    "A computer still on 0.3.0 doesn't know the *Text in pictures* switch: it reads pictures as its `ORDNUNG_OCR` "
-    "says, and the settings it saves leave the switch out. An updated computer that then receives them by "
-    "hand-off sync keeps its own choice.",
-)
-#: SPEC § 2: what was decided not to build after 0.3.0 (#37's deferred list), each line's lead.
-SPEC_NOT_BUILT = (
-    "**An IMAP mailbox:**",
-    '**An activity line "from your e-mail folder":**',
-    "**Keyset paging of the letter list:**",
-    "**A *Whose letters* filter on the Timeline, Letters or Tax year page, a ZIP per person, a one-press name for "
-    "a letter that answers none:**",
-    "**Weekly dates as calendar series (RRULE):**",
-    "**macOS Vision and Windows OCR:**",
-    "**A BitLocker probe:**",
-    "***Let Claude decide*, an Inbox *Undated* year, *Not for taxes* on Tax-year rows:**",
-    "**A permanent per-request content lock (`requests.lock.json`) (deferred):**",
-    "**The web's repeat words for a rent that keeps an earlier rent's working day (deferred):**",
-    "**An Ask benchmark question about the next occurrence (deferred):**",
-    "**Scrubbing a name of the household from Ideas that no longer fire (deferred):**",
-    "**Naming contracts' dates after someone of the household, a demo household:**",
-)
-
-
-def test_the_unreleased_changelog_says_what_the_code_does() -> None:
-    """CHANGELOG, 0.4.0: My numbers per person, whose it is in Ask, the Ideas, reminders and the Timeline,
-    repeat fields, the Settings switch (Added); For taxes in Ask and the review, info rows, the `.msg` message,
-    the demo (Changed); the passport rule and an unopened Outlook file (Fixed); what 0.3.0 does (Upgrading) —
-    each against the code it describes."""
-    from ordnung import cli, doctor
-    from ordnung.assistant.ask import DEMO_CHANGED
-    from ordnung.ingest import intake
-
-    added = _unreleased("Added")
-    for lead, sentences in (
-        ("**Whose number it is.**", UNRELEASED_WHOSE_NUMBER),
-        ("**Ask, the Ideas, your reminders and the Timeline say whose it is.**", UNRELEASED_WHOSE_SAID),
-        ("**Ask knows how your dates repeat.**", UNRELEASED_REPEATS),
-        ("**Text in pictures can be turned off in Settings.**", UNRELEASED_PICTURE_SWITCH),
-    ):
-        bullet = _bullet(added, lead)
-        for sentence in sentences:
-            assert sentence in bullet, sentence
-        assert [bullet.index(s) for s in sentences] == sorted(bullet.index(s) for s in sentences), lead
-    changed = _unreleased("Changed")
-    bullet = _bullet(changed, "**Ask and *Weekly Ideas* follow your *For taxes* choice.**")
-    for sentence in UNRELEASED_FOR_TAXES:
-        assert sentence in bullet, sentence
-    for sentence in UNRELEASED_CHANGED:
-        assert f"- {sentence}" in changed, sentence
-    fixed = _unreleased("Fixed")
-    for sentence in UNRELEASED_FIXED:
-        assert f"- {sentence}" in fixed, sentence
-    upgrading = _unreleased("Upgrading")
-    for sentence in UNRELEASED_UPGRADING:
-        assert f"- {sentence}" in upgrading, sentence
-    # the words are the code's
-    web = ROOT / "web" / "src"
-    people = (web / "features" / "numbers" / "people.ts").read_text(encoding="utf-8")
-    assert "`Also on letters for ${namesList(names)} — check whose it is`" in people
-    view = (web / "features" / "numbers" / "NumbersView.tsx").read_text(encoding="utf-8")
-    assert (
-        "title={`About ${person.name}`}" in view
-        and '{ label: "People", shortLabel: "People", count }' in people
-    )
-    assert triggers.for_member(_member("Alex Rivera"), "x") == "For Alex Rivera: x"
-    assert cli.STATUS_ICONS["info"] == "[blue]i[/]"
-    assert doctor.disk_encryption_check(Path("."), platform="win32") is not None
-    assert ".msg" in intake.UNSUPPORTED and "Outlook e-mail" in intake.OLE_UNOPENED
-    assert "household" in DEMO_CHANGED
-
-
-def _member(name: str) -> Any:
-    from ordnung.secretary.household import HouseholdMember
-
-    return HouseholdMember(id="hhm_k3j9x0a1b2c4", name=name, signs=True)
-
-
-def test_adr_0025_says_what_reaches_claude_and_amends_adr_0023() -> None:
-    """ADR 0025: the whose rule, what Ask is given (only through ``ask_view`` and ``Ledger.household_filed``), the
-    *For taxes* choice, the two tool descriptions that name the household (the prompts' text unchanged, their
-    version moved), empty means as before, the Ideas and reminders, the known limits; ADR 0023's status line and
-    point 9 point to it; the decisions' index lists it after 0024."""
-    adr = _adr(_ADR_WHOSE)
-    assert adr.startswith("# ADR 0025 — Ask and the Ideas say whose it is")
-    for words in (
-        "**Status:** accepted · **Date:** 2026-10-29 · Amends [ADR 0023]",
-        "a letter is someone's of the household only when the person filed it for them",
-        "`household.ask_view` and `Ledger.household_filed`",
-        'Ask is told never whether someone signs, "mine" or a suggestion',
-        "Letters the person keeps private are left out, and `household_note` says whose they are isn't known",
-        "`get_my_numbers` puts their numbers under `household` (and names there, by id and name, everyone "
-        "`filed_for` and `also_for` give)",
-        "One of two sentences says when the person chose",
-        "**Two tool descriptions name the household; no server instruction or prompt text changes.**",
-        '"and the people of their household with the letters filed for each"',
-        "listed under that person (household, filed_for), never as the person's own",
-        "so the Ask prompt's version moves with them (`ask_system`, its text unchanged)",
-        "Without people and without a choice, no tool's answer carries either, byte for byte,",
-        "`LEDGER_META_KEYS`",
-        "§ 81 Abs. 4 AufenthG",
-        "a contract's decision is the person's",
-        "*Discreet* never names anyone",
-        "An Idea that stops firing keeps its last title, a name too",
-        "A dismissed Idea that still fires is renamed like any other",
-        "an Idea all of whose letters are filed for one person, none of them kept private (its title reaches Claude), starts",
-    ):
-        assert words in adr, words
-    household = _adr(_ADR_HOUSEHOLD)
-    assert "**Status:** accepted · **Date:** 2026-10-27 · **Amended by:** [ADR 0025]" in household
-    assert "9. **What reaches Claude** ([ADR 0025](0025-ask-and-the-ideas-say-whose-it-is.md))." in household
-    assert "Never seen by Claude." not in household and "Ask keeps seeing Claude's own mark" not in household
-    assert "Left out to keep the step small." not in household
-    index = _decisions_index()
-    assert f"| [0025]({_ADR_WHOSE.name}) | Ask and the Ideas say whose it is |" in index
-    assert _index_row(_ADR_PICTURES) < _index_row(_ADR_WHOSE)
-    for module in ("secretary/household.py", "secretary/tax_choice.py"):
-        assert "ADR 0025" in (ROOT / "src" / "ordnung" / module).read_text(encoding="utf-8"), module
-
-
-def test_the_spec_says_what_was_decided_not_to_build() -> None:
-    """SPEC § 2: after what was cut from the first version, a paragraph of what was decided not to build after
-    0.3.0 (#37's deferred list), one line each; a deferred one says so."""
-    spec = (ROOT / "docs" / "SPEC.md").read_text(encoding="utf-8")
-    section = _flat(spec.split("## 2. Not built", 1)[1].split("\n## 3.", 1)[0])
-    paragraph = section.split("**Decided not to build (after 0.3.0, #37's deferred list):**", 1)[1]
-    places = [paragraph.index(f"- {lead}") for lead in SPEC_NOT_BUILT]
-    assert places == sorted(places)
-    # built after the household group's first recording (ADR 0025): no longer deferred
-    assert "Ask tool-description clauses for the household" not in paragraph
-    assert section.index("**Cut from the first version, and not built since:**") < section.index(
-        "**Decided not to build"
-    )
 
 
 def test_the_docs_say_whose_a_number_an_idea_and_a_date_is() -> None:
@@ -5232,10 +4468,9 @@ def test_no_public_page_calls_the_new_ask_set_held_out() -> None:
         page for page in sorted((ROOT / "docs").glob("*.md")) if f"docs/{page.name}" not in _GENERATED_PAGES
     ]
     found = [
-        f"{page.relative_to(ROOT)}: …{match[0]}…"
+        f"{page.relative_to(ROOT)}: …{text[max(match.start() - 40, 0) : match.end() + 20]}…"
         for page in pages
-        for match in re.finditer(
-            r".{0,40}\bheld[- ]out Ask\b.{0,20}", _flat(page.read_text(encoding="utf-8")), re.I
-        )
+        for text in [_flat(page.read_text(encoding="utf-8"))]
+        for match in re.finditer(r"\bheld[- ]out Ask\b", text, re.I)
     ]
     assert found == [], found

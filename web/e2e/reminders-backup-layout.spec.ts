@@ -11,7 +11,7 @@
 import { readFile } from "node:fs/promises";
 import AxeBuilder from "@axe-core/playwright";
 import type { Locator, Page } from "@playwright/test";
-import { apiGet, expect, expectAccessible, open, READ, setTour, settle, test } from "./helpers";
+import { apiGet, expect, expectAccessibleInBothThemes, open, READ, setTheme, setTour, settle, test } from "./helpers";
 
 const AXE_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"];
 
@@ -322,48 +322,50 @@ test("the demo never syncs: Settings → Your computers says so, and setting it 
   await expect(page.getByRole("main").getByText(SYNC_DEMO_MESSAGE).first()).toBeVisible();
 });
 
-for (const scheme of ["light", "dark"] as const) {
-  test.describe(`without axe violations (${scheme})`, () => {
-    test.use({ colorScheme: scheme });
-
-    test("the desktop notification card with a preview", async ({ page }) => {
-      await open(page, "/settings?section=reminders", "Settings");
-      const card = page.getByRole("region", { name: "Desktop notification each morning" });
-      await card.getByRole("switch", { name: /Notify me each morning/ }).click();
-      await expect(card.getByRole("figure")).toContainText("Today it would say");
-      // the whole card on screen, just below the top bar: nothing of it under a sticky bar (a
-      // page scan would count whatever else the scroll position puts half under the top bar)
-      await card.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 72));
-      await settle(page);
-      const results = await new AxeBuilder({ page }).include('section[aria-labelledby="set-desktop"]').withTags(AXE_TAGS).analyze();
-      const blocking = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
-      expect(blocking.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
-      await card.getByRole("button", { name: "Discard" }).click();
-    });
-
-    for (const connected of [false, true]) {
-      test(`calendar sync ${connected ? "connected" : "in the demo"}`, async ({ page }) => {
-        if (connected) await connectedCalendar(page);
-        await open(page, "/settings?section=calendar", "Settings");
-        const card = page.getByRole("region", { name: "Sync with your own calendar" });
-        await expect(card.getByRole("list", { name: "Events, discreet" })).toBeVisible();
-        await card.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 72));
-        await settle(page);
-        const results = await new AxeBuilder({ page }).include('section[aria-labelledby="set-cal-sync"]').withTags(AXE_TAGS).analyze();
-        const blocking = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
-        expect(blocking.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
-      });
-    }
-
-    test("the backup dialog with its errors", async ({ page }, testInfo) => {
-      await open(page, "/settings?section=data", "Settings");
-      await page.getByRole("region", { name: "Encrypted backup" }).getByRole("button", { name: "Download encrypted backup…" }).click();
-      const dialog = page.getByRole("dialog", { name: "Download an encrypted backup" });
-      await dialog.getByLabel("Passphrase", { exact: true }).fill("too short");
-      await dialog.getByRole("button", { name: "Download backup" }).click();
-      await expect(dialog.getByText(/Use a passphrase of at least 12 characters/)).toBeVisible();
-      await settle(page);
-      await expectAccessible(page, testInfo, `backup-dialog-${scheme}`);
-    });
-  });
+/** Axe on one card only, scrolled to just below the top bar, in light and then dark (switched in place); ends in light. */
+async function expectCardAccessibleInBothThemes(page: Page, card: Locator, selector: string): Promise<void> {
+  for (const theme of ["light", "dark"] as const) {
+    await setTheme(page, theme);
+    // the whole card on screen, just below the top bar: nothing of it under a sticky bar (a
+    // page scan would count whatever else the scroll position puts half under the top bar)
+    await card.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 72));
+    await settle(page);
+    const results = await new AxeBuilder({ page }).include(selector).withTags(AXE_TAGS).analyze();
+    const blocking = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
+    expect(blocking.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`), theme).toEqual([]);
+  }
+  await setTheme(page, "light");
 }
+
+// each state set up once and scanned in light, then in dark
+test.describe("without axe violations in light and dark", () => {
+  test("the desktop notification card with a preview", async ({ page }) => {
+    await open(page, "/settings?section=reminders", "Settings");
+    const card = page.getByRole("region", { name: "Desktop notification each morning" });
+    await card.getByRole("switch", { name: /Notify me each morning/ }).click();
+    await expect(card.getByRole("figure")).toContainText("Today it would say");
+    await expectCardAccessibleInBothThemes(page, card, 'section[aria-labelledby="set-desktop"]');
+    await card.getByRole("button", { name: "Discard" }).click();
+  });
+
+  for (const connected of [false, true]) {
+    test(`calendar sync ${connected ? "connected" : "in the demo"}`, async ({ page }) => {
+      if (connected) await connectedCalendar(page);
+      await open(page, "/settings?section=calendar", "Settings");
+      const card = page.getByRole("region", { name: "Sync with your own calendar" });
+      await expect(card.getByRole("list", { name: "Events, discreet" })).toBeVisible();
+      await expectCardAccessibleInBothThemes(page, card, 'section[aria-labelledby="set-cal-sync"]');
+    });
+  }
+
+  test("the backup dialog with its errors", async ({ page }, testInfo) => {
+    await open(page, "/settings?section=data", "Settings");
+    await page.getByRole("region", { name: "Encrypted backup" }).getByRole("button", { name: "Download encrypted backup…" }).click();
+    const dialog = page.getByRole("dialog", { name: "Download an encrypted backup" });
+    await dialog.getByLabel("Passphrase", { exact: true }).fill("too short");
+    await dialog.getByRole("button", { name: "Download backup" }).click();
+    await expect(dialog.getByText(/Use a passphrase of at least 12 characters/)).toBeVisible();
+    await settle(page);
+    await expectAccessibleInBothThemes(page, testInfo, "backup-dialog");
+  });
+});

@@ -7,7 +7,7 @@
  */
 import AxeBuilder from "@axe-core/playwright";
 import type { Locator, Page } from "@playwright/test";
-import { expect, expectAccessible, open, setTour, settle, test } from "./helpers";
+import { expect, expectAccessibleInBothThemes, open, setTour, settle, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -122,30 +122,27 @@ test("at 1024 px next to the open app sidebar the sections are pills above the p
   expect((await nav.boundingBox())!.x + (await nav.boundingBox())!.width).toBeLessThan((await heading.boundingBox())!.x);
 });
 
-for (const scheme of ["light", "dark"] as const) {
-  test.describe(`forms without axe violations (${scheme})`, () => {
-    test.use({ colorScheme: scheme });
-
-    for (const section of ["region", "reminders", "calendar", "ai", "claude", "computers"]) {
-      test(`Settings → ${section}`, async ({ page }, testInfo) => {
-        await open(page, `/settings?section=${section}`, "Settings");
-        await expectAccessible(page, testInfo, `settings-${section}-${scheme}`);
-      });
-    }
-
-    test("Settings → profile with a mistake and the save bar pinned", async ({ page }, testInfo) => {
-      await page.setViewportSize({ width: 390, height: 844 });
-      await open(page, "/settings?section=profile", "Settings");
-      const email = page.getByRole("textbox", { name: /Email/ });
-      await email.fill("sam.rivera@");
-      await page.getByRole("main").getByRole("button", { name: "Save changes" }).click();
-      await expect(email).toBeFocused();
-      await expect(page.getByText("Fix the highlighted field to save")).toBeVisible();
-      await expectAccessible(page, testInfo, `settings-profile-invalid-${scheme}`);
-      await page.getByRole("main").getByRole("button", { name: "Discard" }).click();
+// each form loaded once and scanned in light, then in dark (switched in place)
+test.describe("forms without axe violations in light and dark", () => {
+  for (const section of ["region", "reminders", "calendar", "ai", "claude", "computers"]) {
+    test(`Settings → ${section}`, async ({ page }, testInfo) => {
+      await open(page, `/settings?section=${section}`, "Settings");
+      await expectAccessibleInBothThemes(page, testInfo, `settings-${section}`);
     });
+  }
+
+  test("Settings → profile with a mistake and the save bar pinned", async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await open(page, "/settings?section=profile", "Settings");
+    const email = page.getByRole("textbox", { name: /Email/ });
+    await email.fill("sam.rivera@");
+    await page.getByRole("main").getByRole("button", { name: "Save changes" }).click();
+    await expect(email).toBeFocused();
+    await expect(page.getByText("Fix the highlighted field to save")).toBeVisible();
+    await expectAccessibleInBothThemes(page, testInfo, "settings-profile-invalid");
+    await page.getByRole("main").getByRole("button", { name: "Discard" }).click();
   });
-}
+});
 
 test.describe("phone 390×844", () => {
   test.use({ viewport: { width: 390, height: 844 } });

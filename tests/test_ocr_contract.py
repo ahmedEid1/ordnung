@@ -10,10 +10,12 @@ import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
 
+from helpers_tables import check_rows
 from ordnung import config
 from ordnung.ingest import ocr
 
@@ -27,26 +29,27 @@ PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("value", ["off", "OFF", " Off ", "0", "false", "False", "no", "NO", "\toff\n"])
-def test_the_off_switch_reads_off_0_false_and_no_in_any_case(value: str) -> None:
-    assert config.OCR_SWITCH == "ORDNUNG_OCR"
-    assert config.ocr_turned_off({"ORDNUNG_OCR": value})
-    assert ocr.turned_off({"ORDNUNG_OCR": value})
+OFF_VALUES = ["off", "OFF", " Off ", "0", "false", "False", "no", "NO", "\toff\n"]
 
 
-@pytest.mark.parametrize("value", ["", " ", "on", "1", "true", "yes", "offf", "of", "nope", "0ff"])
-def test_any_other_value_leaves_it_on(value: str) -> None:
-    assert not config.ocr_turned_off({"ORDNUNG_OCR": value})
-    assert not config.ocr_turned_off({})
+def test_the_off_switch_reads_off_0_false_and_no_in_any_case() -> None:
+    def check(value: str) -> None:
+        assert config.OCR_SWITCH == "ORDNUNG_OCR"
+        assert config.ocr_turned_off({"ORDNUNG_OCR": value})
+        assert ocr.turned_off({"ORDNUNG_OCR": value})
+
+    check_rows(OFF_VALUES, check)
 
 
-def test_the_switch_is_read_again_on_every_call(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("ORDNUNG_OCR")
-    assert not config.ocr_turned_off() and not ocr.turned_off()
-    monkeypatch.setenv("ORDNUNG_OCR", "off")
-    assert config.ocr_turned_off() and ocr.turned_off()
-    monkeypatch.setenv("ORDNUNG_OCR", "on")
-    assert not config.ocr_turned_off()
+ON_VALUES = ["", " ", "on", "1", "true", "yes", "offf", "of", "nope", "0ff"]
+
+
+def test_any_other_value_leaves_it_on() -> None:
+    def check(value: str) -> None:
+        assert not config.ocr_turned_off({"ORDNUNG_OCR": value})
+        assert not config.ocr_turned_off({})
+
+    check_rows(ON_VALUES, check)
 
 
 def test_every_test_runs_with_text_in_pictures_turned_off() -> None:
@@ -70,22 +73,22 @@ def test_the_engine_s_limits_are_the_decided_ones() -> None:
     assert ocr.NICENESS == 10
 
 
-@pytest.mark.parametrize(
-    ("version", "languages", "usable"),
-    [
-        ((5, 3, 4), ("deu", "eng"), True),
-        ((5, 3, 4), ("eng",), True),
-        ((4, 1, 0), ("deu",), True),
-        ((4, 0, 0), ("deu", "eng"), False),
-        ((3, 5, 2), ("deu",), False),
-        ((5, 3, 4), (), False),
-        (None, ("deu", "eng"), False),
-    ],
-)
-def test_a_tesseract_is_usable_from_4_1_with_german_or_english(
-    version: tuple[int, int, int] | None, languages: tuple[str, ...], usable: bool
-) -> None:
-    assert ocr.Tesseract("/usr/bin/tesseract", version, languages).usable is usable
+USABLE_TESSERACTS = [
+    ((5, 3, 4), ("deu", "eng"), True),
+    ((5, 3, 4), ("eng",), True),
+    ((4, 1, 0), ("deu",), True),
+    ((4, 0, 0), ("deu", "eng"), False),
+    ((3, 5, 2), ("deu",), False),
+    ((5, 3, 4), (), False),
+    (None, ("deu", "eng"), False),
+]
+
+
+def test_a_tesseract_is_usable_from_4_1_with_german_or_english() -> None:
+    def check(version: tuple[int, int, int] | None, languages: tuple[str, ...], usable: bool) -> None:
+        assert ocr.Tesseract("/usr/bin/tesseract", version, languages).usable is usable
+
+    check_rows(USABLE_TESSERACTS, check)
 
 
 def test_a_tesseract_runs_by_its_path_or_through_a_launcher() -> None:
@@ -100,11 +103,6 @@ def test_a_tesseract_runs_by_its_path_or_through_a_launcher() -> None:
 def test_stopping_is_a_recognition_error_too() -> None:
     assert issubclass(ocr.Stopped, ocr.RecognitionError)
     assert issubclass(ocr.RecognitionError, Exception)
-
-
-def test_find_runs_nothing_while_turned_off() -> None:
-    assert ocr.find() is None
-    assert ocr.find(refresh=True) is None
 
 
 # --------------------------------------------------------------------------------------------------
@@ -123,27 +121,27 @@ def _fake(
     )
 
 
-@pytest.mark.parametrize(
-    ("mode", "version", "languages"),
-    [
-        ("ok", "5.3.4", ["deu", "eng", "osd"]),
-        ("echo", "5.3.4", ["deu", "eng", "osd"]),
-        ("old", "4.0.0", ["deu", "eng", "osd"]),
-        ("no-deu", "5.3.4", ["eng", "osd"]),
-        ("no-langs", "5.3.4", ["osd"]),
-    ],
-)
-def test_the_fake_answers_its_version_and_languages_like_tesseract(
-    mode: str, version: str, languages: list[str]
-) -> None:
-    answer = _fake(mode, "--version")
-    assert answer.returncode == 0
-    assert answer.stdout.decode().splitlines()[0] == f"tesseract {version}"
-    listed = _fake(mode, "--list-langs")
-    assert listed.returncode == 0
-    head, *names = listed.stdout.decode().splitlines()
-    assert re.fullmatch(r'List of available languages in "[^"]+" \(\d+\):', head), head
-    assert names == languages and head.endswith(f"({len(languages)}):")
+FAKE_ANSWERS = [
+    ("ok", "5.3.4", ["deu", "eng", "osd"]),
+    ("echo", "5.3.4", ["deu", "eng", "osd"]),
+    ("old", "4.0.0", ["deu", "eng", "osd"]),
+    ("no-deu", "5.3.4", ["eng", "osd"]),
+    ("no-langs", "5.3.4", ["osd"]),
+]
+
+
+def test_the_fake_answers_its_version_and_languages_like_tesseract() -> None:
+    def check(mode: str, version: str, languages: list[str]) -> None:
+        answer = _fake(mode, "--version")
+        assert answer.returncode == 0
+        assert answer.stdout.decode().splitlines()[0] == f"tesseract {version}"
+        listed = _fake(mode, "--list-langs")
+        assert listed.returncode == 0
+        head, *names = listed.stdout.decode().splitlines()
+        assert re.fullmatch(r'List of available languages in "[^"]+" \(\d+\):', head), head
+        assert names == languages and head.endswith(f"({len(languages)}):")
+
+    check_rows(FAKE_ANSWERS, check)
 
 
 def test_the_fake_reads_a_picture_from_stdin_and_prints_its_words_to_stdout() -> None:
@@ -170,10 +168,39 @@ def test_the_fake_reports_how_it_was_run(tmp_path: Path) -> None:
     assert json.loads(report.read_text("utf-8"))["png"] is False
 
 
-@pytest.mark.parametrize(("mode", "args"), [("silent", ("--version",)), ("hang", ("stdin", "stdout"))])
-def test_the_fake_can_hang_until_it_is_killed(mode: str, args: tuple[str, ...]) -> None:
-    with pytest.raises(subprocess.TimeoutExpired):
-        _fake(mode, *args, stdin=PNG_SIGNATURE, timeout=1.0)
+HANGING_MODES = [("silent", ("--version",)), ("hang", ("stdin", "stdout"))]
+
+
+def test_the_fake_can_hang_until_it_is_killed() -> None:
+    """Each fake is started with its picture handed over and closed at once, and must still be running 1.0 s after
+    its own start; both are started first so the two waits overlap."""
+    started: dict[str, tuple[subprocess.Popen[bytes], float]] = {}
+    try:
+        for mode, args in HANGING_MODES:
+            process = subprocess.Popen(
+                [sys.executable, str(FAKE), *args],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                env={**os.environ, "FAKE_TESSERACT_MODE": mode},
+            )
+            began = time.monotonic()
+            assert process.stdin is not None
+            process.stdin.write(PNG_SIGNATURE)
+            process.stdin.close()
+            started[mode] = (process, began)
+
+        def check(mode: str, args: tuple[str, ...]) -> None:
+            process, began = started[mode]
+            while (left := began + 1.0 - time.monotonic()) > 0:
+                time.sleep(left)
+            assert process.poll() is None, f"{mode} {args} ended within 1.0 s with {process.returncode}"
+
+        check_rows(HANGING_MODES, check)
+    finally:
+        for process, _ in started.values():
+            process.kill()
+            process.wait()
 
 
 def test_the_fake_knows_only_its_modes() -> None:

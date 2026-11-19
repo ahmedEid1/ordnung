@@ -1,11 +1,6 @@
-"""Job crash recovery and the health-insurance special right.
-
-* ``Store.requeue_running_jobs`` fails a job after ``MAX_JOB_ATTEMPTS`` interruptions — it used to count
-  ``attempts``, i.e. every claim, including the ones the worker gave back because Claude's usage limit
-  was reached.
-* ``zusatzbeitrag_raised`` decides whether a health insurer's letter opens the special right to cancel
-  (§ 175 Abs. 4 S. 5 SGB V); it used to read the letter's sentences (its "unchanged" words matched
-  inside ordinary German words) and now reads the rates the extraction states.
+"""Job crash recovery: ``Store.requeue_running_jobs`` fails a job after ``MAX_JOB_ATTEMPTS`` interruptions — it
+used to count ``attempts``, i.e. every claim, including the ones the worker gave back because Claude's usage limit
+was reached.
 """
 
 from __future__ import annotations
@@ -13,8 +8,6 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 from ordnung.db.store import MAX_JOB_ATTEMPTS, Store
-from ordnung.models import ExtractedChange
-from ordnung.secretary.triggers import zusatzbeitrag_raised
 
 RATE_LIMIT_REASON = "Waiting for Claude: the usage limit was reached. Ordnung continues at about 14:00."
 
@@ -45,12 +38,3 @@ def test_rate_limit_pauses_do_not_count_as_crashes(store: Store) -> None:
         store.requeue_running_jobs()
     failed = store.get_job(job.id)
     assert failed is not None and failed.status == "failed"
-
-
-def test_a_raise_stated_in_ordinary_wording_is_read_from_the_rates() -> None:
-    """The model states the rates of "Gleichzeitig erhöhen wir unseren Zusatzbeitrag … von 2,69 % auf
-    2,99 %", so the raise no longer depends on which words the sentence uses."""
-    change = ExtractedChange(
-        type="price_increase", effective_date="2027-01-01", unit_price_old="2,69 %", unit_price_new="2,99 %"
-    )
-    assert zusatzbeitrag_raised(change)

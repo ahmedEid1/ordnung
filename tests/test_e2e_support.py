@@ -18,6 +18,7 @@ import keyring
 import pytest
 
 import ordnung
+from helpers_tables import check_rows
 from ordnung import sync
 from ordnung.calendar.secrets import KeyringSecrets, backend_problem
 
@@ -322,8 +323,10 @@ def test_the_e2e_guard_finds_reads_and_changes_by_their_arguments() -> None:
     assert _calls(source, _E2E_CHANGE) == [(4, '"/api/drafts", { data: { a: "(" }, headers: CLIENT }')]
 
 
-@pytest.mark.parametrize("name", [p.name for p in sorted(E2E.glob("*.ts"))])
-def test_the_e2e_reads_retry_a_connection_the_server_dropped(name: str) -> None:
+E2E_FILES = [p.name for p in sorted(E2E.glob("*.ts"))]
+
+
+def test_the_e2e_reads_retry_a_connection_the_server_dropped() -> None:
     """Every read of the API in ``web/e2e/`` passes ``READ`` (``apiGet`` does): uvicorn closes a keep-alive
     connection after 5 s without a request, and Playwright's request context can reuse it just as it closes, which
     ends in "socket hang up" unless the read is retried. Changes never pass it: one that reached the server must
@@ -334,10 +337,16 @@ def test_the_e2e_reads_retry_a_connection_the_server_dropped(name: str) -> None:
         "const res = await page.request.get(path, READ);"
         in helpers.split("export async function apiGet", 1)[1]
     )
-    source = (E2E / name).read_text(encoding="utf-8")
-    unretried = [
-        f"{name}:{line}" for line, args in _calls(source, _E2E_READ) if not re.search(r"\bREAD\b", args)
-    ]
-    assert unretried == [], "API reads without READ"
-    retried = [f"{name}:{line}" for line, args in _calls(source, _E2E_CHANGE) if re.search(r"\bREAD\b", args)]
-    assert retried == [], "changes that pass READ"
+
+    def check(name: str) -> None:
+        source = (E2E / name).read_text(encoding="utf-8")
+        unretried = [
+            f"{name}:{line}" for line, args in _calls(source, _E2E_READ) if not re.search(r"\bREAD\b", args)
+        ]
+        assert unretried == [], "API reads without READ"
+        retried = [
+            f"{name}:{line}" for line, args in _calls(source, _E2E_CHANGE) if re.search(r"\bREAD\b", args)
+        ]
+        assert retried == [], "changes that pass READ"
+
+    check_rows(E2E_FILES, check)

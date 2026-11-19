@@ -6,7 +6,7 @@
  */
 import AxeBuilder from "@axe-core/playwright";
 import type { Locator, Page } from "@playwright/test";
-import { apiGet, contractOf, expect, expectNoRawEnums, open, setTour, settle, test } from "./helpers";
+import { apiGet, contractOf, expect, expectNoRawEnums, open, setTheme, setTour, settle, test } from "./helpers";
 
 const CLIENT = { "X-Ordnung-Client": "web" };
 const TRACKING = "RT 123 456 785 DE";
@@ -145,35 +145,36 @@ for (const width of [320, 390, 768, 1280, 1920]) {
   });
 }
 
-for (const scheme of ["light", "dark"] as const) {
-  test(`proof, Waiting for and Calls pass axe (${scheme})`, async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.emulateMedia({ colorScheme: scheme });
-    await page.addInitScript((t) => localStorage.setItem("ordnung.theme", t), scheme);
-    const { draftId, partyId, partyName } = setup!;
-    const scan = async (include: string, what: string) => {
+// one walk through the four views; at each, axe in light and then in dark (switched in place)
+test("proof, Waiting for and Calls pass axe in light and dark", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const { draftId, partyId, partyName } = setup!;
+  const scan = async (include: string, what: string) => {
+    for (const scheme of ["light", "dark"] as const) {
+      await setTheme(page, scheme);
       await settle(page);
       const results = await new AxeBuilder({ page }).include(include).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
       expect(
         results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`),
         `${what} (${scheme})`,
       ).toEqual([]);
-    };
-    await open(page, `/letters/${draftId}`);
-    await scan('section[aria-labelledby="proof-title"]', "proof card");
-    await page.getByRole("region", { name: "Proof of sending" }).getByRole("button", { name: "Add proof" }).click();
-    await expect(page.getByRole("dialog", { name: "Add proof" })).toBeVisible();
-    await scan('[role="dialog"]', "Add proof");
-    await page.keyboard.press("Escape");
-    await open(page, "/letters/waiting", "Waiting for");
-    await scan("main", "Waiting for");
-    await page.goto(`/letters?party=${partyId}`);
-    const calls = page.getByRole("dialog", { name: partyName }).getByRole("region", { name: /^Calls/ });
-    await calls.getByRole("button", { name: "Note a call" }).click();
-    await expect(calls.getByRole("form", { name: "Note a call" })).toBeVisible();
-    await scan('[role="dialog"]', "drawer with the call form");
-  });
-}
+    }
+    await setTheme(page, "light");
+  };
+  await open(page, `/letters/${draftId}`);
+  await scan('section[aria-labelledby="proof-title"]', "proof card");
+  await page.getByRole("region", { name: "Proof of sending" }).getByRole("button", { name: "Add proof" }).click();
+  await expect(page.getByRole("dialog", { name: "Add proof" })).toBeVisible();
+  await scan('[role="dialog"]', "Add proof");
+  await page.keyboard.press("Escape");
+  await open(page, "/letters/waiting", "Waiting for");
+  await scan("main", "Waiting for");
+  await page.goto(`/letters?party=${partyId}`);
+  const calls = page.getByRole("dialog", { name: partyName }).getByRole("region", { name: /^Calls/ });
+  await calls.getByRole("button", { name: "Note a call" }).click();
+  await expect(calls.getByRole("form", { name: "Note a call" })).toBeVisible();
+  await scan('[role="dialog"]', "drawer with the call form");
+});
 
 test("keyboard focus never falls to <body> after the proof, Waiting-for and call actions", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });

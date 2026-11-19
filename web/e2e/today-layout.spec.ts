@@ -4,10 +4,12 @@
  * sits in the card's corner, Coming up gets the page's width until there is room for the side
  * cards (then both start level, Ideas below in two columns), and focus has somewhere to go when a
  * paid card leaves and when Undo brings it back. Without a household (as the demo starts), no row says whose letter
- * it is and there is no filter of whose letters.
+ * it is and there is no filter of whose letters. The side cards' test opens the scam letter from New mail (left in
+ * review, as e2e/document-warnings-layout.spec.ts leaves it) so that "Please check" has a letter, also when this file
+ * runs alone on a fresh demo.
  */
 import type { Locator, Page } from "@playwright/test";
-import { apiPatch, expect, open, setTour, settle, test } from "./helpers";
+import { apiPatch, expect, open, openMail, setTour, settle, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -95,6 +97,8 @@ test.describe("small phone 320×640", () => {
 
 test.describe("Coming up and the side cards", () => {
   test("share the row only when both fit; start level; Ideas below in two columns", async ({ page }) => {
+    // "Please check" lists the letters in review: a fresh demo has none, the scam letter from New mail is one once opened
+    await openMail(page, "Rundfunk-Beitragsservice");
     // an open sidebar at 1024 leaves too little room: one column, the side cards under Coming up
     await page.setViewportSize({ width: 1024, height: 900 });
     await open(page, "/", /Sam/);

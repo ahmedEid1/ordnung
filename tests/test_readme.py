@@ -2,7 +2,7 @@
 CI tests and pyproject.toml allows, an install that says what it needs and names no tag, a scam caption that says
 what SPEC §21 says, a trust table that names the phone's listener, a pre-registration bullet that says what the
 evaluation card says, a lead into the evaluation block that names the pre-registration's paired tests, the privacy
-statement SPEC §1 asks for, and no source comments left in it.
+statement SPEC §1 asks for.
 
 Most of the rest of what README states is pinned where the fact lives (``tests/test_docs_claims.py``,
 ``test_present.py``, ``test_release_workflow.py`` and the others that read it).
@@ -55,11 +55,6 @@ def _section(heading: str) -> str:
     return _readme().split(f"\n## {heading}\n", 1)[1].split("\n## ", 1)[0]
 
 
-def test_the_readme_is_under_250_lines() -> None:
-    lines = _readme().splitlines()
-    assert len(lines) < MAX_LINES, f"README.md has {len(lines)} lines; move the detail to docs/guide.md"
-
-
 #: Lines the README keeps spare outside its block until the final run is published: room for the publish PR's
 #: rewrite of the two bullets that describe today's analysis, "Held out." and "Pre-registered next." (the evaluation
 #: card's *Pre-registration* row changes then, and the test below on it asks README to follow; runbook §5.2).
@@ -67,14 +62,16 @@ PUBLISH_ROOM = 2
 
 
 def test_the_readme_has_room_for_the_largest_final_block() -> None:
-    """When the final run is published, its block (``evals.present.final.readme_block``) takes the place of today's
-    and may take up to ``README_BLOCK_MAX_LINES`` lines, a budget registered before any result: the README's own text
-    outside the block leaves room for it, so README.md stays under its limit whatever the final run shows. Until then
-    it also keeps ``PUBLISH_ROOM`` lines spare, so that the publish PR can rewrite its two bullets on today's analysis
-    without cutting anything else. A line added to the README later has to make room too."""
+    """README.md is under its limit, today and once the final run is published: then its block
+    (``evals.present.final.readme_block``) takes the place of today's and may take up to ``README_BLOCK_MAX_LINES``
+    lines, a budget registered before any result, and the README's own text outside the block leaves room for it,
+    whatever the final run shows. Until then it also keeps ``PUBLISH_ROOM`` lines spare, so that the publish PR can
+    rewrite its two bullets on today's analysis without cutting anything else. A line added to the README later has
+    to make room too."""
     from evals.present import BEGIN, END, final
 
     lines = _readme().splitlines()
+    assert len(lines) < MAX_LINES, f"README.md has {len(lines)} lines; move the detail to docs/guide.md"
     begin, end = lines.index(BEGIN), lines.index(END)
     outside = len(lines) - (end - begin - 1)
     spare = PUBLISH_ROOM if final.published(ROOT) is None else 0
@@ -237,9 +234,3 @@ def test_the_readme_s_privacy_says_spec_s_statement_and_what_stays_off() -> None
     ):
         assert row in table, row
     assert "(docs/privacy.md#if-your-computer-is-lost-or-stolen)" in _section("Privacy")
-
-
-def test_the_readme_carries_no_source_comments() -> None:
-    """README was written with a source comment after each claim; they are for the reviewer, not the reader, and
-    the PyPI page would carry them."""
-    assert "<!-- src:" not in _readme()

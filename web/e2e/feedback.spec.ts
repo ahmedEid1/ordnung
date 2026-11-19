@@ -117,7 +117,7 @@ test.describe("laptop 1280 px: toasts", () => {
     expect(toastOnTop).toBe(false);
     await page.keyboard.press("Escape");
     await expect(drawer).toBeHidden();
-    await page.waitForTimeout(6000);
+    // that an error outlives a plain toast's time is held with fake timers in src/components/ui/Toast.test.tsx
     await expect(error).toBeVisible();
   });
 });

@@ -5,7 +5,7 @@
 import type { Page } from "@playwright/test";
 import type { PhoneStatus } from "@/api/types";
 import { PHONE_DEMO_MESSAGE } from "@/mocks/data/phone";
-import { apiGet, contractOf, expect, expectAccessible, expectNoRawEnums, letterDetail, letterId, open, openMail, READ, setTour, shownAs, test } from "./helpers";
+import { apiGet, contractOf, expect, expectAccessible, expectAccessibleInBothThemes, expectNoRawEnums, letterDetail, letterId, open, openMail, READ, settle, setTour, shownAs, test } from "./helpers";
 
 // The tour card floats over every page; these tests are about the pages themselves.
 test.beforeEach(async ({ page }) => {
@@ -204,34 +204,30 @@ test("no raw enum values in the visible text of any page", async ({ page }) => {
   }
 });
 
-for (const scheme of ["light", "dark"] as const) {
-  test.describe(`accessibility (${scheme})`, () => {
-    test.use({ colorScheme: scheme });
-
-    for (const p of MAIN_PAGES) {
-      test(`${p.name} has no serious or critical axe violations`, async ({ page }, testInfo) => {
-        await open(page, await p.path(page), await heading(page, p));
-        await expect(page.locator("html")).toHaveClass(scheme === "dark" ? /\bdark\b/ : /^(?!.*\bdark\b)/);
-        await expectAccessible(page, testInfo, `${p.name}-${scheme}`);
-      });
-    }
-
-    test("a drafted letter has no serious or critical axe violations", async ({ page }, testInfo) => {
-      const drafts = await apiGet<{ id: string }[]>(page, "/api/drafts");
-      test.skip(!drafts.length, "needs the letter drafted by the Letters test");
-      await open(page, `/letters/${drafts[0]!.id}`);
-      await expect(page.getByRole("region", { name: "Checks" })).toBeVisible();
-      await expectAccessible(page, testInfo, `letter-${scheme}`);
+// each page loaded once and scanned in light, then in dark (the theme switched in place, `html.dark` checked)
+test.describe("accessibility in light and dark", () => {
+  for (const p of MAIN_PAGES) {
+    test(`${p.name} has no serious or critical axe violations`, async ({ page }, testInfo) => {
+      await open(page, await p.path(page), await heading(page, p));
+      await expectAccessibleInBothThemes(page, testInfo, p.name);
     });
+  }
 
-    test("an answered question has no serious or critical axe violations", async ({ page }, testInfo) => {
-      await open(page, "/ask");
-      await page.getByRole("button", { name: "When does my phone contract end, and by when do I have to cancel it?" }).click();
-      await expect(page.getByRole("main").getByRole("status")).toHaveText("Answer ready.");
-      await expectAccessible(page, testInfo, `ask-answer-${scheme}`);
-    });
+  test("a drafted letter has no serious or critical axe violations", async ({ page }, testInfo) => {
+    const drafts = await apiGet<{ id: string }[]>(page, "/api/drafts");
+    test.skip(!drafts.length, "needs the letter drafted by the Letters test");
+    await open(page, `/letters/${drafts[0]!.id}`);
+    await expect(page.getByRole("region", { name: "Checks" })).toBeVisible();
+    await expectAccessibleInBothThemes(page, testInfo, "letter");
   });
-}
+
+  test("an answered question has no serious or critical axe violations", async ({ page }, testInfo) => {
+    await open(page, "/ask");
+    await page.getByRole("button", { name: "When does my phone contract end, and by when do I have to cancel it?" }).click();
+    await expect(page.getByRole("main").getByRole("status")).toHaveText("Answer ready.");
+    await expectAccessibleInBothThemes(page, testInfo, "ask-answer");
+  });
+});
 
 // ------------------------------------------------------------------------------------------------
 // Phone (390 × 844)
@@ -287,19 +283,22 @@ test.describe("phone", () => {
 
   test("Ask answers fit a phone: no citation chip starts a line, nothing scrolls sideways", async ({ page }) => {
     // a no-break space before a chip did not keep it on its line (an inline-grid
-    // chip is a line-break opportunity of its own); the word before it now wraps with it
+    // chip is a line-break opportunity of its own); the word before it now wraps with it.
+    // The three answers are asked once; the page is then narrowed in place and read at each width
+    await page.setViewportSize({ width: 320, height: 844 });
+    await open(page, "/ask");
+    for (const question of [
+      "When does my phone contract end, and by when do I have to cancel it?",
+      "What do I have to pay in the next four weeks?",
+      "When does my residence permit expire, and what should I do before then?",
+    ]) {
+      await page.getByRole("textbox").first().fill(question);
+      await page.getByRole("textbox").first().press("Enter");
+      await expect(page.getByRole("main").getByRole("status")).toHaveText("Answer ready.");
+    }
     for (const width of [320, 360, 390]) {
       await page.setViewportSize({ width, height: 844 });
-      await open(page, "/ask");
-      for (const question of [
-        "When does my phone contract end, and by when do I have to cancel it?",
-        "What do I have to pay in the next four weeks?",
-        "When does my residence permit expire, and what should I do before then?",
-      ]) {
-        await page.getByRole("textbox").first().fill(question);
-        await page.getByRole("textbox").first().press("Enter");
-        await expect(page.getByRole("main").getByRole("status")).toHaveText("Answer ready.");
-      }
+      await settle(page);
       await expectNoSideways(page);
       const orphans = await page.evaluate(() => {
         const found: string[] = [];

@@ -165,17 +165,13 @@ def test_a_change_to_the_notices_script_makes_the_committed_build_stale(tmp_path
     assert source_hash() != before
 
 
-def test_the_wheel_lists_the_notices_among_its_licence_files() -> None:
-    """The notices are in the committed build, which the wheel carries (and so its licence files)."""
+def test_the_wheel_s_licence_expression_names_every_licence_it_ships() -> None:
+    """The notices are in the committed build, which the wheel carries (and so its licence files). The wheel said
+    ``License-Expression: MIT`` beside notices for ISC and OFL-1.1 code and fonts, the DejaVu fonts (Bitstream Vera)
+    and GeoNames' postcodes (CC BY 4.0)."""
     pyproject = tomllib.loads(_text("pyproject.toml"))
     assert f"src/ordnung/web/dist/{NOTICES}" in pyproject["project"]["license-files"]
     assert "src/ordnung/web/dist/**" in pyproject["tool"]["hatch"]["build"]["targets"]["wheel"]["artifacts"]
-
-
-def test_the_wheel_s_licence_expression_names_every_licence_it_ships() -> None:
-    """The wheel said ``License-Expression: MIT`` beside notices for ISC and OFL-1.1
-    code and fonts, the DejaVu fonts (Bitstream Vera) and GeoNames' postcodes (CC BY 4.0)."""
-    pyproject = tomllib.loads(_text("pyproject.toml"))
     expression = set(pyproject["project"]["license"].split(" AND "))
     notices = _text(f"src/ordnung/web/dist/{NOTICES}")
     named = {part for line in re.findall(r"^Licence: (.+)$", notices, re.M) for part in line.split(" AND ")}
@@ -1134,30 +1130,6 @@ def test_the_evals_readme_s_replays_write_no_results_file_into_the_checkout(
     assert "evals/results/" in _make_targets()["eval"] and "make eval-reproduce" in _make_targets()["eval"]
 
 
-def test_the_repository_settings_are_the_project_s_own() -> None:
-    """docs/releasing.md lists what only the owner sets on GitHub: the website is the online demo, the topics
-    leave out `rag` (ADR 0005: no vector database), and private vulnerability reporting is the step SECURITY.md
-    asks of the owner."""
-    from evals.present import PAGES_URL
-
-    settings = " ".join(
-        _section(_text("docs/releasing.md"), "Repository settings (once, by the owner)").split()
-    )
-    assert PAGES_URL.removesuffix("evals/") in settings
-    topics = re.search(r"\*Topics\*: (.+?) - \*", settings)  # up to the next item
-    assert topics is not None
-    names = re.findall(r"`([^`]+)`", topics[1])
-    assert names and "rag" not in names and all(re.fullmatch(r"[a-z0-9-]+", name) for name in names)
-    for setting in (
-        "Social preview",
-        "Pull request title and description",
-        "Automatically delete head branches",
-    ):
-        assert setting in settings, setting
-    assert "Private vulnerability reporting" in settings
-    assert "private vulnerability reporting" in _text("SECURITY.md").lower()
-
-
 #: The About box's topics as docs/releasing.md records them, for the owner to set on GitHub.
 ABOUT_TOPICS = [
     "claude",
@@ -1175,20 +1147,34 @@ ABOUT_TOPICS = [
 ]
 
 
-def test_the_about_box_says_what_the_readme_says() -> None:
-    """docs/releasing.md records the About box the owner sets on GitHub. Its description fits GitHub's 350
-    characters and says what the README says: Claude reads the letters, tested code works out each deadline with
-    the law behind it, and a held-out benchmark replays with zero tokens. Its topics name what Ordnung is and is
-    built with, never `rag`. The 0.4.0 tag goes on the merge of the pull request after the evaluation's
-    publication."""
+def test_the_repository_settings_are_the_project_s_own() -> None:
+    """docs/releasing.md lists what only the owner sets on GitHub: the website is the online demo, the topics
+    leave out `rag` (ADR 0005: no vector database), and private vulnerability reporting is the step SECURITY.md
+    asks of the owner. Its About box's description fits GitHub's 350 characters and says what the README says:
+    Claude reads the letters, tested code works out each deadline with the law behind it, and a held-out benchmark
+    replays with zero tokens. Its topics name what Ordnung is and is built with. The 0.4.0 tag goes on the merge of
+    the pull request after the evaluation's publication."""
+    from evals.present import PAGES_URL
+
     releasing = _text("docs/releasing.md")
     settings = " ".join(_section(releasing, "Repository settings (once, by the owner)").split())
+    assert PAGES_URL.removesuffix("evals/") in settings
+    topics = re.search(r"\*Topics\*: (.+?) - \*", settings)  # up to the next item
+    assert topics is not None
+    names = re.findall(r"`([^`]+)`", topics[1])
+    assert names and "rag" not in names and all(re.fullmatch(r"[a-z0-9-]+", name) for name in names)
+    for setting in (
+        "Social preview",
+        "Pull request title and description",
+        "Automatically delete head branches",
+    ):
+        assert setting in settings, setting
+    assert "Private vulnerability reporting" in settings
+    assert "private vulnerability reporting" in _text("SECURITY.md").lower()
     description = re.search(r'\*Description\*: "([^"]+)"', settings)
     assert description is not None and len(description[1]) <= 350, description
     for words in ("Claude reads your letters", "tested code", "the law behind it", "held-out", "zero tokens"):
         assert words in description[1], words
-    topics = re.search(r"\*Topics\*: (.+?) - \*", settings)
-    assert topics is not None
     assert re.findall(r"`([^`]+)`", topics[1].split(";", 1)[0]) == ABOUT_TOPICS
     flat = " ".join(releasing.split())
     assert "`evals/preregistration/published-0.4.0.json`" in flat

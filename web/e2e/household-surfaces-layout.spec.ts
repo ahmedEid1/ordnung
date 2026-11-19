@@ -2,8 +2,9 @@
  * Whose letter it is, on Today, the Timeline and in the composer, where jsdom can't look (ADR 0023): the "For …" tag
  * of a Top 3 card, "For … · " at the start of a Coming-up row, of a recent letter and of a Timeline row (never a
  * contract's), no filter on Today or the Timeline, and the composer's From field for a letter filed for someone who
- * signs their own letters and for someone who doesn't — at 320, 375 and 1280 px, light and dark, with axe and the
- * layout sweep's probes.
+ * signs their own letters and for someone who doesn't — light and dark, with axe and the layout sweep's probes. Today
+ * and the Timeline at 320, 375 and 1280 px (their rows change between 320 and 375 px: `min-[360px]`, `max-[360px]`);
+ * the composer at 320 and 1280 px (no breakpoint of it between 320 and 480 px).
  *
  * The demo has no household, and its letters are all addressed to its persona. This spec answers `GET /api/household`
  * itself (every letter filed for someone with a long name, so a tag is cut with the whole name at hand; the library's
@@ -23,6 +24,8 @@ const REPLY = "13_nebenkostenabrechnung_2025.pdf";
 /** A letter to answer, filed for {@link CHILD}: the library's reminder. */
 const CHILDS = "20_stadtbibliothek_mahnung.pdf";
 const WIDTHS = [320, 375, 1280] as const;
+/** The composer's widths: 375 px is in 320 px's class for every breakpoint of it. */
+const COMPOSER_WIDTHS = [320, 1280] as const;
 const THEMES = ["light", "dark"] as const;
 
 test.describe.configure({ mode: "serial" });
@@ -180,7 +183,7 @@ test("the composer's From field: filed for someone who signs, and for a child wh
   test.setTimeout(180_000);
   const drafts = (await apiGet<unknown[]>(page, "/api/drafts")).length;
   const { reply, childs } = await answerHousehold(page);
-  for (const width of WIDTHS) {
+  for (const width of COMPOSER_WIDTHS) {
     await page.setViewportSize({ width, height: width === 1280 ? 800 : 700 });
 
     // someone who signs: the person's own name first, theirs (as typed in Settings) one press away

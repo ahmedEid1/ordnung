@@ -4,6 +4,7 @@ runs for a pull request, stores no token, and gives each job only the rights it 
 
 from __future__ import annotations
 
+import functools
 import json
 import re
 import tomllib
@@ -30,11 +31,17 @@ def _twine_check() -> str:
     return f"uvx --from 'twine=={versions.pop()}' twine check"
 
 
-def _workflow(path: Path = RELEASE) -> dict[Any, Any]:
+@functools.cache
+def _parsed(path: Path) -> dict[Any, Any]:
+    """A workflow parsed once for the module: every test only reads it."""
     yaml = pytest.importorskip("yaml")  # PyYAML comes with uvicorn[standard]
     loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
     assert isinstance(loaded, dict)
     return loaded
+
+
+def _workflow(path: Path = RELEASE) -> dict[Any, Any]:
+    return dict(_parsed(path))
 
 
 def _jobs(path: Path = RELEASE) -> dict[str, Any]:

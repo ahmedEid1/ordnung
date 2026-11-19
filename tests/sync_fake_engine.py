@@ -11,7 +11,8 @@ standing by (``up_to_date``, ``arriving``, ``choice``) and "Use Ordnung here" (`
 ``late_push``, ``claim``, ``pull`` with ``keep``, ``wait``, ``choice``).
 
 Hooks for tests: :func:`withhold` / :func:`deliver` mark a version as not arrived / arrived;
-:attr:`FakeEngine.hang` makes every folder call block until it is set; :attr:`FakeEngine.fail_push`
+:attr:`FakeEngine.hang` makes every folder call block until it is set (only the calls named in
+:attr:`FakeEngine.hang_calls`, when it names any); :attr:`FakeEngine.fail_push`
 makes saves fail; :attr:`FakeEngine.calls` records each call's name, and :meth:`FakeEngine.calls_of`
 one computer's calls (two computers share one engine); :attr:`FakeEngine.on_apply` runs inside
 :meth:`FakeSession.apply` (to prove writes are fenced).
@@ -337,6 +338,10 @@ class FakeEngine:
         self.calls: list[str] = []
         self.made: list[tuple[Path, str]] = []  # (the caller's data folder, the call)
         self.hang: threading.Event | None = None
+        # unlike the real engine, whose folder operations give up after FOLDER_OP_TIMEOUT_S (``TimedFs``), a hung
+        # call here never does: a test names the calls that may hang when another one hanging (a save, which the
+        # agent gives no limit) would leave nothing to run into a limit
+        self.hang_calls: frozenset[str] = frozenset()
         self.fail_push: BaseException | None = None
         self.on_apply: Callable[[], None] | None = None
         self.resumed = 0
@@ -354,7 +359,7 @@ class FakeEngine:
     def _call(self, name: str, paths: Paths) -> None:
         self.calls.append(name)
         self.made.append((paths.data_dir.resolve(), name))
-        if self.hang is not None:
+        if self.hang is not None and (not self.hang_calls or name in self.hang_calls):
             self.hang.wait()
 
     # ------------------------------------------------------------------------------ keyless

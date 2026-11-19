@@ -7,6 +7,7 @@ checks out the whole history."""
 
 from __future__ import annotations
 
+import functools
 import json
 import re
 import shlex
@@ -18,21 +19,32 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from evals.present.build import HISTORY_INPUTS
 
+from helpers_tables import check_rows
 from ordnung.doctor import native_install, tesseract_install
 from ordnung.llm.claude_cli import MIN_CLAUDE_VERSION, version_text
-from test_docs_claims import WITHOUT_LAND
 from test_final_gates import FINAL, workflow_gates
 
 ROOT = Path(__file__).resolve().parents[1]
 #: The splits whose numbers the README and docs/evals.md publish as replayed on the current code (holdout3 is
 #: replayed letter by letter in tests/test_holdout3_replay.py).
 GATED_SPLITS = ("test", "holdout", "holdout2", "dev")
+#: The published without-Land results file: the report's input, which tests/test_docs_claims.py holds to be the
+#: file the docs cite.
+WITHOUT_LAND = HISTORY_INPUTS["without_land"]
+assert isinstance(WITHOUT_LAND, str)
+
+
+@functools.cache
+def _parsed_workflow() -> dict[Any, Any]:
+    """ci.yml parsed once for the module: every test only reads it."""
+    yaml = pytest.importorskip("yaml")  # PyYAML comes with uvicorn[standard]
+    return dict(yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")))
 
 
 def _workflow() -> dict[Any, Any]:
-    yaml = pytest.importorskip("yaml")  # PyYAML comes with uvicorn[standard]
-    return dict(yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")))
+    return dict(_parsed_workflow())
 
 
 def _jobs() -> dict[str, Any]:
@@ -105,6 +117,15 @@ def test_the_samples_must_regenerate_byte_for_byte_in_the_job_that_runs_their_ch
     assert "-c constraints.txt" in _script(job)
     for name, other in jobs.items():
         assert name == runner or "ORDNUNG_REQUIRE_SAMPLES" not in json.dumps(other), name
+    # the samples regenerate byte for byte only with their manifest's libraries: CI installs with
+    # ``-c constraints.txt``, which pins them
+    manifest = json.loads((ROOT / "src/ordnung/demo/samples/manifest.json").read_text(encoding="utf-8"))
+    constraints = (ROOT / "constraints.txt").read_text(encoding="utf-8")
+    pins = dict(re.findall(r"^([\w.-]+)==([^\s;]+)", constraints, re.M))
+    for name in ("fpdf2", "fonttools", "pillow", "pypdfium2"):
+        assert pins[name] == manifest["generator"]["environment"][name], name
+    workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    assert workflow.count('uv pip install -e ".[dev]" -c constraints.txt') >= 2
 
 
 def _e2e_groups() -> list[str]:
@@ -118,16 +139,33 @@ def test_the_end_to_end_groups_start_at_once_and_together_run_every_project() ->
     """Each end-to-end leg installs its own Python, Node and Chromium and builds the web app itself: it uses
     nothing another job makes, so it waits for none (waiting for the frontend job put 8 minutes before a 39-minute
     Playwright run, 18 Nov 2026; a broken build still fails the leg's own build step). Its legs are the groups of
-    web/e2e/env.ts, each once: a group left out here would never run in CI. The checks that need both toolchains
-    run on one leg, not on each."""
+    web/e2e/env.ts, each once: a group left out here would never run in CI. Only the layout group, the longest,
+    runs as two halves (Playwright's ``--shard``), and the two halves together are the whole group: every other
+    group has one leg that runs all of it. The checks that need both toolchains run on one leg, not on each."""
     jobs = _jobs()
     e2e = jobs["e2e"]
     assert "needs" not in e2e and "download-artifact" not in json.dumps(e2e)
     assert _on_pull_requests(e2e) and _on_pull_requests(jobs["frontend"])
-    groups = e2e["strategy"]["matrix"]["group"]
+    matrix = e2e["strategy"]["matrix"]
+    groups = matrix["group"]
     assert sorted(groups) == sorted(set(groups)) == sorted(_e2e_groups())
+    assert set(matrix) == {"group", "shard", "exclude"} and matrix["shard"] == [1, 2]
+    legs = [
+        (group, shard)
+        for group in groups
+        for shard in matrix["shard"]
+        if {"group": group, "shard": shard} not in matrix["exclude"]
+    ]
+    assert sorted(legs) == sorted([(group, 1) for group in groups] + [("layout", 2)])
     _, playwright = _step(e2e, "npm run e2e")
     assert playwright["env"]["E2E_GROUP"] == "${{ matrix.group }}"
+    # a leg runs its shard of as many as its group has legs: 1/1 is the whole group, 1/2 and 2/2 the layout's
+    assert playwright["run"] == (
+        "cd web && npm run e2e -- --shard=${{ matrix.shard }}/${{ matrix.group == 'layout' && 2 || 1 }}"
+    )
+    assert "format(' {0}/2', matrix.shard)" in e2e["name"]
+    (upload,) = [step for step in e2e["steps"] if "upload-artifact" in step.get("uses", "")]
+    assert upload["with"]["name"] == "playwright-report-${{ matrix.group }}-${{ matrix.shard }}"
     (checks,) = [step for step in e2e["steps"] if "ORDNUNG_REQUIRE_MOCK_CHECK" in step.get("env", {})]
     assert checks["if"] == "matrix.group == 'real'"
 
@@ -328,33 +366,33 @@ def _can_run(args: list[str], test_file: str) -> bool:
     return not paths or any(path in (".", "", "tests") or fnmatch(test_file, path) for path in paths)
 
 
-@pytest.mark.parametrize(
-    ("command", "runs_it"),
-    [
-        ('-m "not slow" --cov=ordnung --cov-report=term-missing:skip-covered', True),
-        ("-m slow", True),
-        ('-m "not slow" --deselect tests/test_openapi_contract.py::test_web_openapi_json_is_current', True),
-        ("-q tests", True),
-        ("tests/test_pre*.py", True),
-        ("tests/test_preregistration.py::test_every_required_field_is_there", True),
-        ("tests/test_rules_*.py --cov=ordnung.rules --cov-branch", False),
-        ("-q tests/test_mock_numbers.py tests/test_docs_claims.py::test_x", False),
-        ('-m "not slow" --ignore=tests/test_preregistration.py', False),
-        # an option's value is no test path, whether or not the option is known to take one
-        ('-m "not slow" --durations 20', True),
-        ("-n 4 -q", True),
-        ('-m "not slow" -n auto --dist loadfile', True),
-        ("-W error -m slow", True),
-        ("-m slow --junitxml reports/junit.xml", True),
-        ("-o addopts= -q", True),
-        ("--durations 20 tests/test_rules_dates.py", False),
-        ('-m "not slow" tests/test_platform_smoke.py tests/test_cli.py::test_x tests/test_sync_*.py', False),
-    ],
-)
-def test_a_pytest_run_is_read_as_running_the_pre_registration_s_tests_or_not(
-    command: str, runs_it: bool
-) -> None:
-    assert _can_run(shlex.split(command), PREREGISTRATION_TESTS) is runs_it
+PYTEST_RUNS = [
+    ('-m "not slow" --cov=ordnung --cov-report=term-missing:skip-covered', True),
+    ("-m slow", True),
+    ('-m "not slow" --deselect tests/test_openapi_contract.py::test_web_openapi_json_is_current', True),
+    ("-q tests", True),
+    ("tests/test_pre*.py", True),
+    ("tests/test_preregistration.py::test_every_required_field_is_there", True),
+    ("tests/test_rules_*.py --cov=ordnung.rules --cov-branch", False),
+    ("-q tests/test_mock_numbers.py tests/test_docs_claims.py::test_x", False),
+    ('-m "not slow" --ignore=tests/test_preregistration.py', False),
+    # an option's value is no test path, whether or not the option is known to take one
+    ('-m "not slow" --durations 20', True),
+    ("-n 4 -q", True),
+    ('-m "not slow" -n auto --dist loadfile', True),
+    ("-W error -m slow", True),
+    ("-m slow --junitxml reports/junit.xml", True),
+    ("-o addopts= -q", True),
+    ("--durations 20 tests/test_rules_dates.py", False),
+    ('-m "not slow" tests/test_platform_smoke.py tests/test_cli.py::test_x tests/test_sync_*.py', False),
+]
+
+
+def test_a_pytest_run_is_read_as_running_the_pre_registration_s_tests_or_not() -> None:
+    def check(command: str, runs_it: bool) -> None:
+        assert _can_run(shlex.split(command), PREREGISTRATION_TESTS) is runs_it
+
+    check_rows(PYTEST_RUNS, check)
 
 
 def test_a_make_target_s_pytest_runs_are_read_as_the_job_s() -> None:
@@ -459,32 +497,24 @@ def _newest_ask() -> Path:
     return latest
 
 
-def test_the_ask_benchmark_gates_the_household_group_at_its_recorded_number() -> None:
+def test_the_ask_benchmark_gates_each_score_at_its_recorded_number() -> None:
     """The Ask benchmark's household group (whose a number is) is gated at the share its newest recording
     measured, as each reading split is: a change that loses one of its answers fails the build. The headline
-    thresholds hold for that recording too (its notes say why each is where it is)."""
+    thresholds hold for that recording too (its notes say why each is where it is). The strict scores of the newest
+    Ask file (schema 2, the re-scoring of E2's recording) are gated at the values it measured too: one more strictly
+    wrong answer, or one more harmful answer (a date still open called passed, a later date or a wrong amount given
+    as Ordnung's), fails the build. Never a gate the published numbers fail."""
     args = shlex.split(_ask_line().split("-m evals.ask", 1)[1])
     option = {name: args[args.index(name) + 1] for name in args if name.startswith(("--min-", "--max-"))}
     latest = _newest_ask()
-    summary = json.loads(latest.read_text(encoding="utf-8"))["summary"]
+    data = json.loads(latest.read_text(encoding="utf-8"))
+    summary = data["summary"]
     right, asked = summary["household"]["attribution"]["k"], summary["household"]["attribution"]["n"]
     assert (right - 1) / asked < float(option["--min-household"]) <= right / asked
     assert float(option["--min-accuracy"]) <= summary["accuracy"]["value"]
     assert float(option["--min-abstention"]) <= summary["abstention"]["value"]
     assert int(option["--max-unsupported"]) == 0 == summary["guard"]["unsupported_in_final"]
-
-
-def test_the_ask_benchmark_gates_strict_correctness_and_harm_at_their_recorded_numbers() -> None:
-    """The strict scores of the newest Ask file (schema 2, the re-scoring of E2's recording) are gated at the values
-    it measured, as the household group is: one more strictly wrong answer, or one more harmful answer (a date still
-    open called passed, a later date or a wrong amount given as Ordnung's), fails the build. Never a gate the
-    published numbers fail."""
-    args = shlex.split(_ask_line().split("-m evals.ask", 1)[1])
-    option = {name: args[args.index(name) + 1] for name in args if name.startswith(("--min-", "--max-"))}
-    latest = _newest_ask()
-    data = json.loads(latest.read_text(encoding="utf-8"))
     assert data["schema"] == 2
-    summary = data["summary"]
     right, asked = summary["strict_accuracy"]["k"], summary["strict_accuracy"]["n"]
     assert (right - 1) / asked < float(option["--min-strict-accuracy"]) <= right / asked
     assert int(option["--max-harmful"]) == len(summary["harmful_answers"]) == summary["harmful"]["k"]
@@ -589,10 +619,33 @@ PER_SYSTEM_TESTS = (
 
 
 def test_the_other_systems_job_runs_the_tests_whose_subject_differs_per_system() -> None:
-    (step,) = [step for step in _jobs()["other-systems"]["steps"] if "pytest" in step.get("run", "")]
+    """Every job ran on Ubuntu, so the data-folder lock's, the durable writes', sync's
+    computer id and phone access's macOS and Windows code never ran. One job runs their tests there,
+    outside pull requests, and a failure there fails the run; every test it names exists."""
+    job = _jobs()["other-systems"]
+    (step,) = [step for step in job["steps"] if "pytest" in step.get("run", "")]
     named = step["run"].replace("\\\n", " ").split()
     for name in PER_SYSTEM_TESTS:
         assert name in named, name
+    assert job["strategy"]["matrix"]["os"] == ["macos-latest", "windows-latest"]
+    assert job["runs-on"] == "${{ matrix.os }}"
+    assert job["if"] == "github.event_name != 'pull_request'"
+    assert "continue-on-error" not in job and all("continue-on-error" not in step for step in job["steps"])
+    tests = "\n".join(step.get("run", "") for step in job["steps"] if "pytest" in step.get("run", ""))
+    named = re.findall(r"tests/[\w*]+\.py(?:::\w+)?", tests)
+    assert "tests/test_platform_smoke.py" in named
+    for name in named:
+        pattern, _, test = name.partition("::")
+        files = list(ROOT.glob(pattern))
+        assert files, f"{name} names no test file"
+        assert not test or f"def {test}(" in files[0].read_text(encoding="utf-8"), f"{name} names no test"
+
+
+def test_the_installed_wheel_reports_the_package_version_in_ci() -> None:
+    for name in ("wheel", "other-systems"):
+        script = "\n".join(step.get("run", "") for step in _jobs()[name]["steps"])
+        assert "src/ordnung/__init__.py" in script and 'ordnung" --version' in script, name
+        assert 'test "$reported" = "ordnung $version"' in script, name
 
 
 #: what installs Tesseract with its German language data (Ubuntu's ``tesseract-ocr`` brings English with it)

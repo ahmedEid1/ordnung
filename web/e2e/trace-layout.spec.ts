@@ -7,7 +7,7 @@
  * row that opens has something to show, and the summary's figures line up however their labels wrap.
  */
 import type { Page } from "@playwright/test";
-import { expect, expectAccessible, letterId, open, setTour, test } from "./helpers";
+import { expect, expectAccessible, letterId, open, settle, setTour, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -43,19 +43,28 @@ async function openTrace(page: Page, file: string): Promise<void> {
   await expect(page.getByRole("list", { name: "Steps of this reading" })).toBeVisible();
 }
 
-for (const width of [320, 390, 768, 1280, 1920]) {
-  test(`How it was read at ${width}px: every step inside its panel, opened ones too`, async ({ page }) => {
+/** The trace opened once at the first width, then the page resized in place: each width measured as it lays out on resize. */
+async function atEachWidth(page: Page, widths: number[], check: (width: number) => Promise<void>): Promise<void> {
+  for (const width of widths) {
     await page.setViewportSize({ width, height: 900 });
-    await openTrace(page, REMINDER);
-    const steps = page.getByRole("list", { name: "Steps of this reading" });
-    for (const name of [/^Claude reads the letter/, /^Quotes checked on the page/, /^Dates computed/, /^Thread, contract & payment/]) {
-      await steps.getByRole("button", { name }).first().click();
-    }
-    expect(await outOfBounds(page)).toEqual([]);
-    // phones and tablets leave the page images out on this tab; wide screens keep them beside it
-    await expect(page.getByRole("region", { name: "Letter pages" })).toBeVisible({ visible: width >= 1280 });
-  });
+    await settle(page);
+    await check(width);
+  }
 }
+
+test("How it was read at 320, 390, 768, 1280 and 1920 px: every step inside its panel, opened ones too", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 900 });
+  await openTrace(page, REMINDER);
+  const steps = page.getByRole("list", { name: "Steps of this reading" });
+  for (const name of [/^Claude reads the letter/, /^Quotes checked on the page/, /^Dates computed/, /^Thread, contract & payment/]) {
+    await steps.getByRole("button", { name }).first().click();
+  }
+  await atEachWidth(page, [320, 390, 768, 1280, 1920], async (width) => {
+    expect(await outOfBounds(page), `${width} px`).toEqual([]);
+    // phones and tablets leave the page images out on this tab; wide screens keep them beside it
+    await expect(page.getByRole("region", { name: "Letter pages" }), `${width} px`).toBeVisible({ visible: width >= 1280 });
+  });
+});
 
 test("a photo's reading shows its transcribed page; steps open with the keyboard", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -83,11 +92,11 @@ async function openEverything(page: Page): Promise<void> {
   }
 }
 
-for (const width of [320, 390, 1280, 1920]) {
-  test(`How it was read at ${width}px: opened steps read well and the figures line up`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 900 });
-    await openTrace(page, REMINDER);
-    await openEverything(page);
+test("How it was read at 320, 390, 1280 and 1920 px: opened steps read well and the figures line up", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 900 });
+  await openTrace(page, REMINDER);
+  await openEverything(page);
+  await atEachWidth(page, [320, 390, 1280, 1920], async (width) => {
     const problems = await page.evaluate(() => {
       const out: string[] = [];
       const list = document.querySelector<HTMLElement>('ol[aria-label="Steps of this reading"]')!;
@@ -114,10 +123,10 @@ for (const width of [320, 390, 1280, 1920]) {
       for (const tops of rows.values()) if (new Set(tops).size > 1) out.push(`the figures of one row sit at ${[...new Set(tops)].join(", ")} px`);
       return out;
     });
-    expect(problems).toEqual([]);
-    expect(await outOfBounds(page)).toEqual([]);
+    expect(problems, `${width} px`).toEqual([]);
+    expect(await outOfBounds(page), `${width} px`).toEqual([]);
   });
-}
+});
 
 test("“Read again and compare” never drops keyboard focus to the start of the page", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });

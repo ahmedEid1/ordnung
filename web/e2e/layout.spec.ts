@@ -96,7 +96,8 @@ test.describe("phone 320 px: no page scrolls sideways (WCAG 1.4.10 reflow)", () 
     // a swipe back along the row stays where the person left it
     await list.evaluate((el) => el.scrollTo({ left: 0 }));
     await expect(track).toHaveAttribute("data-overflow", "end");
-    await page.waitForTimeout(300);
+    // the old scroll-into-view ran right after that re-measure: two frames give it its chance
+    await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
     expect(await list.evaluate((el) => el.scrollLeft)).toBe(0);
     // keyboard: back to the first tab, which scrolls back into view; the ring is drawn inside the tab
     await page.keyboard.press("Home");
@@ -222,10 +223,11 @@ async function withToastOn(page: Page, path: string, h1: string | RegExp): Promi
 
 // while a toast (or an upload card) was up, Tab moved focus to
 // controls hidden behind it — the page's scroll-padding left the toast column out; it mirrors
-// `.room-for-overlays` now (phones: the taller of the tour bar and the toasts; from md: the toast column)
+// `.room-for-overlays` now (phones: the taller of the tour bar and the toasts; from md: the toast column).
+// 320 px holds the phones' rule (390 px follows it); md is held at 768 px and at 1280 px, where the sidebar
+// and the side cards put other controls under the toast column
 for (const [width, height, phone] of [
   [320, 640, true],
-  [390, 844, true],
   [768, 1024, false],
   [1280, 800, false],
 ] as const) {

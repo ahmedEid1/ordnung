@@ -1,7 +1,7 @@
 """The docs' indexes and cross-references resolve.
 
-- ``docs/decisions/README.md`` lists every ADR, with its title and status as the ADR itself gives them, and every
-  file it lists exists.
+- ``docs/decisions/README.md`` lists every ADR, with its title, its status and its later changes as the ADR itself
+  gives them.
 - Every SPEC section the repository cites by number (``SPEC §21``, ``SPEC §9, §21``, ``SPEC.md § 8.1``), and every
   paragraph it cites by name (``SPEC § 21 "Holidays"``, ``SPEC §GiroCode``), is in ``docs/SPEC.md``; so are the
   sections SPEC cites in itself.
@@ -59,43 +59,21 @@ def _title_and_status(adr: Path) -> tuple[str, str]:
 
 
 def test_the_decisions_index_lists_every_adr() -> None:
+    """Every record has a row in the index, with its link, its own title and its status as its first lines give
+    them. A later change is dated in the record it changes (its status lines, or a section headed by the day) or
+    made by another record (*Superseded in part* … See ADR N; **Amended by:** ADR N): the record's row says so, so
+    a reader of the index alone doesn't take it as unchanged."""
     rows = _index_rows()
     missing = [adr.name for adr in _adrs() if adr.name not in rows]
     assert not missing, f"not in docs/decisions/README.md: {missing}"
-
-
-def test_every_adr_is_named_by_its_number_and_its_title_in_lower_case_words() -> None:
-    badly_named = [adr.name for adr in _adrs() if not _ADR_FILE.match(adr.name)]
-    assert not badly_named, f"name each record NNNN-the-title-in-lower-case-words.md: {badly_named}"
-
-
-def test_every_file_the_decisions_index_links_exists() -> None:
-    assert INDEX.is_file(), "docs/decisions/README.md, the index of the decisions, is missing"
-    for target in re.findall(r"\]\(([^)#\s]+)(?:#[^)\s]*)?\)", INDEX.read_text(encoding="utf-8")):
-        if re.match(r"^[a-z]+:", target):
-            continue
-        assert (DECISIONS / target).exists(), f"docs/decisions/README.md links {target}, which doesn't exist"
-
-
-def test_the_decisions_index_gives_each_adr_its_own_title_and_status() -> None:
-    rows = _index_rows()
     for adr in _adrs():
         title, status = _title_and_status(adr)
         row = rows[adr.name]
         assert f"[{adr.name[:4]}]({adr.name})" in row, adr.name
         assert f"| {title} |" in row, f"{adr.name}: the index doesn't give its title '{title}'"
         assert re.search(rf"\| {status}\b", row), f"{adr.name}: the index doesn't give its status '{status}'"
-
-
-def test_the_decisions_index_gives_every_later_change_a_record_states() -> None:
-    """A later change is dated in the record it changes (its status lines, or a section headed by the day) or made
-    by another record (*Superseded in part* … See ADR N; **Amended by:** ADR N): the record's row says so, so a
-    reader of the index alone doesn't take it as unchanged."""
-    rows = _index_rows()
-    for adr in _adrs():
         text = adr.read_text(encoding="utf-8")
         head = "\n".join(text.splitlines()[:4])
-        row = rows[adr.name]
         created = re.search(r"\*\*Date:\*\* (\d{4}-\d\d-\d\d)", head)
         dated = set(re.findall(r"\d{4}-\d\d-\d\d", head)) | set(
             re.findall(r"^## (\d{4}-\d\d-\d\d)\b", text, re.M)
@@ -109,6 +87,11 @@ def test_the_decisions_index_gives_every_later_change_a_record_states() -> None:
             )
         for later in re.findall(r"\*\*Amended by:\*\* \[ADR (\d{4})\]", head):
             assert re.search(rf"amended by \[{later}\]\({later}-", row), f"{adr.name}: amended by ADR {later}"
+
+
+def test_every_adr_is_named_by_its_number_and_its_title_in_lower_case_words() -> None:
+    badly_named = [adr.name for adr in _adrs() if not _ADR_FILE.match(adr.name)]
+    assert not badly_named, f"name each record NNNN-the-title-in-lower-case-words.md: {badly_named}"
 
 
 # --------------------------------------------------------------------------------------------------

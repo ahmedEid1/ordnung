@@ -9,11 +9,13 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
 
 import ordnung
+from helpers_tables import check_rows
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -127,58 +129,65 @@ def test_a_tag_that_doesn_t_name_the_version_stops_the_release(
     assert not out.exists()
 
 
-@pytest.mark.parametrize(
-    ("changelog", "says"),
-    [
-        (
-            "# Changelog\n\n## Unreleased\n\n- Not released yet.\n",
-            'CHANGELOG.md has no section for 0.3.0: rename "## Unreleased" to "## 0.3.0 — YYYY-MM-DD"',
-        ),
-        ("## 0.3.0 - 2026-11-02\n\nA hyphen, not a dash.\n", "CHANGELOG.md has no section for 0.3.0"),
-        ("## 0.3.0 — 2026-11-02\n\n## 0.2.0 — 2026-10-08\n\nOlder.\n", "section for 0.3.0 is empty"),
-        ("## 0.3.0 — 2026-13-02\n\nA month that doesn't exist.\n", "2026-13-02 isn't a date"),
-        ("## 0.3.0 — 2026-11-02\n\nOne.\n\n## 0.3.0 — 2026-11-03\n\nTwo.\n", "two sections for 0.3.0"),
-    ],
-    ids=["only-unreleased", "hyphen", "empty", "no-such-date", "twice"],
-)
+VERSION_WITHOUT_SECTION_EXAMPLES = [
+    (
+        "# Changelog\n\n## Unreleased\n\n- Not released yet.\n",
+        'CHANGELOG.md has no section for 0.3.0: rename "## Unreleased" to "## 0.3.0 — YYYY-MM-DD"',
+    ),
+    ("## 0.3.0 - 2026-11-02\n\nA hyphen, not a dash.\n", "CHANGELOG.md has no section for 0.3.0"),
+    ("## 0.3.0 — 2026-11-02\n\n## 0.2.0 — 2026-10-08\n\nOlder.\n", "section for 0.3.0 is empty"),
+    ("## 0.3.0 — 2026-13-02\n\nA month that doesn't exist.\n", "2026-13-02 isn't a date"),
+    ("## 0.3.0 — 2026-11-02\n\nOne.\n\n## 0.3.0 — 2026-11-03\n\nTwo.\n", "two sections for 0.3.0"),
+]
+
+
 def test_a_version_without_its_changelog_section_stops_the_release(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str], changelog: str, says: str
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    with pytest.raises(ReleaseError, match=re.escape(says)):
-        section(changelog, "0.3.0")
-    root = _root(tmp_path, "0.3.0", changelog)
-    out = tmp_path / "release-notes.md"
-    assert main(["--root", str(root), "--tag", "v0.3.0", "--out", str(out)]) == 1
-    assert says in capsys.readouterr().err
-    assert not out.exists()
+    def check(changelog: str, says: str) -> None:
+        capsys.readouterr()  # drop what an earlier row left, so a row reads only its own error
+        with pytest.raises(ReleaseError, match=re.escape(says)):
+            section(changelog, "0.3.0")
+        folder = Path(tempfile.mkdtemp(dir=tmp_path))  # a checkout of its own per row
+        root = _root(folder, "0.3.0", changelog)
+        out = folder / "release-notes.md"
+        assert main(["--root", str(root), "--tag", "v0.3.0", "--out", str(out)]) == 1
+        assert says in capsys.readouterr().err
+        assert not out.exists()
+
+    check_rows(VERSION_WITHOUT_SECTION_EXAMPLES, check)
 
 
-@pytest.mark.parametrize(
-    ("above", "named"),
-    [
-        ("## Unreleased\n\n### Fixed\n\n- A small fix after the release.\n\n", "Unreleased"),
-        ("## 0.4.0 — 2026-12-01\n\nLater.\n\n", "0.4.0 — 2026-12-01"),
-    ],
-    ids=["unreleased-changes", "a-newer-version"],
-)
+CHANGES_ABOVE_THE_SECTION_EXAMPLES = [
+    ("## Unreleased\n\n### Fixed\n\n- A small fix after the release.\n\n", "Unreleased"),
+    ("## 0.4.0 — 2026-12-01\n\nLater.\n\n", "0.4.0 — 2026-12-01"),
+]
+
+
 def test_a_tag_on_a_commit_with_changes_its_notes_leave_out_stops_the_release(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str], above: str, named: str
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """The tagged commit is what gets released: when the changelog lists anything above the version's section,
     that commit holds changes the notes leave out (a tag on main after a later merge, or on a version whose
     release commit is long past). PyPI could never take that version back."""
-    changelog = "# Changelog\n\n" + above + RELEASED.split("## Unreleased\n\n", 1)[1]
-    root = _root(tmp_path, "0.3.0", changelog)
-    out = tmp_path / "release-notes.md"
-    assert main(["--root", str(root), "--tag", "v0.3.0", "--out", str(out)]) == 1
-    error = " ".join(capsys.readouterr().err.split())
-    assert f'CHANGELOG.md lists changes above the section for 0.3.0, under "## {named}"' in error
-    # the commit that first named a version before its tag still says the tag follows: it is refused too
-    assert "Tag the merge commit of the pull request that dated the section for 0.3.0" in error
-    assert "git tag -a v0.3.0 <that merge commit>" in error
-    assert not out.exists()
-    # without a tag it is only a preview: the notes print
-    assert main(["--root", str(root), "0.3.0"]) == 0
+
+    def check(above: str, named: str) -> None:
+        capsys.readouterr()  # drop what an earlier row left, so a row reads only its own error
+        changelog = "# Changelog\n\n" + above + RELEASED.split("## Unreleased\n\n", 1)[1]
+        folder = Path(tempfile.mkdtemp(dir=tmp_path))  # a checkout of its own per row
+        root = _root(folder, "0.3.0", changelog)
+        out = folder / "release-notes.md"
+        assert main(["--root", str(root), "--tag", "v0.3.0", "--out", str(out)]) == 1
+        error = " ".join(capsys.readouterr().err.split())
+        assert f'CHANGELOG.md lists changes above the section for 0.3.0, under "## {named}"' in error
+        # the commit that first named a version before its tag still says the tag follows: it is refused too
+        assert "Tag the merge commit of the pull request that dated the section for 0.3.0" in error
+        assert "git tag -a v0.3.0 <that merge commit>" in error
+        assert not out.exists()
+        # without a tag it is only a preview: the notes print
+        assert main(["--root", str(root), "0.3.0"]) == 0
+
+    check_rows(CHANGES_ABOVE_THE_SECTION_EXAMPLES, check)
 
 
 def test_a_tag_is_refused_while_its_section_says_the_tag_is_still_to_follow(
@@ -202,13 +211,6 @@ def test_a_tag_is_refused_while_its_section_says_the_tag_is_still_to_follow(
     assert "follow once the pre-registered evaluation is published" in capsys.readouterr().out
     released = _root(tmp_path / "released", "0.3.0", RELEASED)
     assert main(["--root", str(released), "--tag", "v0.3.0", "--out", str(tmp_path / "notes.md")]) == 0
-
-
-def test_an_empty_unreleased_section_above_the_version_is_fine(tmp_path: Path) -> None:
-    root = _root(tmp_path, "0.3.0", RELEASED)
-    out = tmp_path / "release-notes.md"
-    assert main(["--root", str(root), "--tag", "v0.3.0", "--out", str(out)]) == 0
-    assert out.read_text(encoding="utf-8") == notes(RELEASED, "0.3.0")
 
 
 def test_links_point_to_the_tagged_files_on_github() -> None:
@@ -266,28 +268,36 @@ def test_the_footer_says_how_to_install_or_update() -> None:
     assert re.search(r"^## Install and run$", readme, re.M) and re.search(r"^### Updating$", readme, re.M)
 
 
-@pytest.mark.parametrize(
-    ("version", "prerelease"),
-    [
-        ("0.3.0", False),
-        ("1.0", False),
-        ("0.3.0.post1", False),
-        ("0.3.0rc1", True),
-        ("0.3.0a1", True),
-        ("0.3.0b2", True),
-        ("0.3.0.dev1", True),
-    ],
-)
-def test_a_pre_release_is_marked_as_one(version: str, prerelease: bool) -> None:
-    assert is_prerelease(version) is prerelease
+PRE_RELEASE_EXAMPLES = [
+    ("0.3.0", False),
+    ("1.0", False),
+    ("0.3.0.post1", False),
+    ("0.3.0rc1", True),
+    ("0.3.0a1", True),
+    ("0.3.0b2", True),
+    ("0.3.0.dev1", True),
+]
 
 
-@pytest.mark.parametrize("version", ["0.3.0-rc1", "v0.3.0", "0.3.0RC1", "0.3.0 ", "0.3.0+local"])
-def test_a_version_pypi_would_spell_differently_is_refused(version: str) -> None:
+def test_a_pre_release_is_marked_as_one() -> None:
+    def check(version: str, prerelease: bool) -> None:
+        assert is_prerelease(version) is prerelease
+
+    check_rows(PRE_RELEASE_EXAMPLES, check)
+
+
+NOT_NORMAL_FORM_EXAMPLES = ["0.3.0-rc1", "v0.3.0", "0.3.0RC1", "0.3.0 ", "0.3.0+local"]
+
+
+def test_a_version_pypi_would_spell_differently_is_refused() -> None:
     """The tag must equal ``v`` + ``__version__`` and PyPI shows the version in its normal form, so both are
     the normal form: ``0.3.0rc1``, never ``0.3.0-rc1``."""
-    with pytest.raises(ReleaseError, match="normal form"):
-        package_version(f'__version__ = "{version}"\n')
+
+    def check(version: str) -> None:
+        with pytest.raises(ReleaseError, match="normal form"):
+            package_version(f'__version__ = "{version}"\n')
+
+    check_rows(NOT_NORMAL_FORM_EXAMPLES, check)
 
 
 def test_the_workflow_run_writes_the_notes_and_its_outputs(

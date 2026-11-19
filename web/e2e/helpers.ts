@@ -1,8 +1,8 @@
 /**
  * Shared steps for the e2e suite: talking to the demo API with the page's session, finding demo letters
  * by their sample's file name and demo contracts by their category, the New-mail tray, waiting for a page to
- * settle, the raw-enum guard, the axe scan, the real app put back as the specs share it, and a phone's browser
- * for the real app's phone access.
+ * settle, the raw-enum guard, the axe scan, light and dark on one page load, the real app put back as the specs
+ * share it, and a phone's browser for the real app's phone access.
  */
 import AxeBuilder from "@axe-core/playwright";
 import { test as base, devices, expect, request, type Browser, type BrowserContext, type BrowserContextOptions, type Locator, type Page, type TestInfo } from "@playwright/test";
@@ -293,6 +293,50 @@ export async function expectAccessible(page: Page, testInfo: TestInfo, name: str
     (v) => `${v.id} (${v.impact}): ${v.help}\n${v.nodes.map((n) => `    ${n.target.join(" ")} — ${n.failureSummary?.split("\n").slice(1).join(" ").trim()}`).join("\n")}`,
   );
   expect(summary, `${name}: serious/critical axe violations`).toEqual([]);
+}
+
+// ------------------------------------------------------------------------------------------------
+// Light and dark on one page load
+// ------------------------------------------------------------------------------------------------
+
+export type Theme = "light" | "dark";
+
+/**
+ * Switch the theme the way the app follows the system's (no theme chosen in Settings). Colour transitions
+ * are switched off for the moment of the switch, so the probes don't measure colours half-way.
+ */
+export async function setTheme(page: Page, theme: Theme): Promise<void> {
+  await page.evaluate(() => {
+    const style = document.createElement("style");
+    style.id = "__sweep_theme";
+    style.textContent = "*,*::before,*::after{transition:none!important}";
+    document.head.appendChild(style);
+  });
+  await page.emulateMedia({ colorScheme: theme });
+  const followed = theme === "dark" ? /\bdark\b/ : /^(?![\s\S]*\bdark\b)/;
+  try {
+    await expect(page.locator("html")).toHaveClass(followed, { timeout: 5_000 });
+  } catch {
+    // a busy machine can lose the change of the system's scheme: once more, from the other one
+    await page.emulateMedia({ colorScheme: theme === "dark" ? "light" : "dark" });
+    await page.emulateMedia({ colorScheme: theme });
+    await expect(page.locator("html")).toHaveClass(followed);
+  }
+  await page.evaluate(() => {
+    // a style read makes the new colours final before transitions come back
+    void getComputedStyle(document.body).color;
+    document.getElementById("__sweep_theme")?.remove();
+  });
+  await settle(page);
+}
+
+/** {@link expectAccessible} in light, then in dark, on the page as it is (no reload); ends in light. */
+export async function expectAccessibleInBothThemes(page: Page, testInfo: TestInfo, name: string): Promise<void> {
+  for (const theme of ["light", "dark"] as const) {
+    await setTheme(page, theme);
+    await expectAccessible(page, testInfo, `${name}-${theme}`);
+  }
+  await setTheme(page, "light");
 }
 
 // ------------------------------------------------------------------------------------------------

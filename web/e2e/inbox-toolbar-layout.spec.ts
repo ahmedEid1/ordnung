@@ -10,7 +10,7 @@
  * too (the demo has nobody in it), so filing changes nothing on the demo.
  */
 import type { Page } from "@playwright/test";
-import { apiGet, expect, expectAccessible, open, setTour, test } from "./helpers";
+import { apiGet, expect, expectAccessible, open, setTheme, setTour, test } from "./helpers";
 
 const TRAY = [
   { id: "ui_1", filename: "a.jpg", sender: "Finanzamt Musterstadt", subject: "Steuerbescheid 2025", kind_hint: "tax_assessment", photo: true, opened: false, doc_id: null },
@@ -172,91 +172,110 @@ async function withHousehold(page: Page): Promise<{ filings: Record<string, stri
   return { filings, reminders };
 }
 
-for (const scheme of ["light", "dark"] as const) {
-  for (const width of [320, 375, 390, 768, 1280]) {
-    test.describe(`${width} px, ${scheme}`, () => {
-      test.use({ viewport: { width, height: 900 }, colorScheme: scheme });
+// one page load per width; what the light and dark tests each measured is measured in both themes, switched in place
+// (dark changes layout: a danger button has a border only in dark). 375 px is in 390 px's class for every breakpoint here
+for (const width of [320, 390, 768, 1280]) {
+  test.describe(`${width} px`, () => {
+    test.use({ viewport: { width, height: 900 } });
 
-      test("the year select narrows the list and fits", async ({ page }, testInfo) => {
-        await open(page, "/inbox?year=2025", "Inbox");
-        const select = page.getByRole("combobox", { name: "Year, by the date on the letter" });
-        await expect(select).toHaveValue("2025");
-        await expect(page.getByRole("status").filter({ hasText: /^Showing \d+ of \d+ letters$/ })).toHaveCount(1);
-        // every month says its year while one year shows
-        const months = await page.locator("section[aria-labelledby^='grp-'] h3").evaluateAll((hs) => hs.map((h) => h.textContent ?? ""));
-        expect(months.length).toBeGreaterThan(0);
-        for (const m of months.filter((t) => !/^(Being read|Just read|Last 7 days)/.test(t))) expect(m).toMatch(/^[A-Z][a-z]+ \d{4}/);
-        await expect(page.getByRole("link", { name: "Letters for taxes" })).toHaveAttribute("href", /\/inbox\/taxes(\?year=2025)?$/);
-        expect(await sideways(page), "the page scrolls sideways").toBe(0);
+    test("the year select narrows the list and fits (axe in light and dark)", async ({ page }, testInfo) => {
+      await open(page, "/inbox?year=2025", "Inbox");
+      const select = page.getByRole("combobox", { name: "Year, by the date on the letter" });
+      await expect(select).toHaveValue("2025");
+      await expect(page.getByRole("status").filter({ hasText: /^Showing \d+ of \d+ letters$/ })).toHaveCount(1);
+      // every month says its year while one year shows
+      const months = await page.locator("section[aria-labelledby^='grp-'] h3").evaluateAll((hs) => hs.map((h) => h.textContent ?? ""));
+      expect(months.length).toBeGreaterThan(0);
+      for (const m of months.filter((t) => !/^(Being read|Just read|Last 7 days)/.test(t))) expect(m).toMatch(/^[A-Z][a-z]+ \d{4}/);
+      await expect(page.getByRole("link", { name: "Letters for taxes" })).toHaveAttribute("href", /\/inbox\/taxes(\?year=2025)?$/);
+      for (const theme of ["light", "dark"] as const) {
+        await setTheme(page, theme);
+        expect(await sideways(page), `the page scrolls sideways (${theme})`).toBe(0);
         const m = await toolbar(page);
-        expect(m.year.right).toBeLessThanOrEqual(m.column.right + 0.5);
-        await expectAccessible(page, testInfo, `inbox-year-${width}-${scheme}`);
+        expect(m.year.right, theme).toBeLessThanOrEqual(m.column.right + 0.5);
+        await expectAccessible(page, testInfo, `inbox-year-${width}-${theme}`);
+      }
+      await setTheme(page, "light");
 
-        // a year with no letters stays a choice, and the page says why it is empty
-        await open(page, "/inbox?year=2019", "Inbox");
-        await expect(page.getByRole("heading", { name: "No letters dated 2019" })).toBeVisible();
-        await expect(select.locator("option", { hasText: "2019 (0)" })).toHaveCount(1);
-        expect(await sideways(page)).toBe(0);
-      });
+      // a year with no letters stays a choice, and the page says why it is empty (in both themes)
+      await open(page, "/inbox?year=2019", "Inbox");
+      for (const theme of ["light", "dark"] as const) {
+        await setTheme(page, theme);
+        await expect(page.getByRole("heading", { name: "No letters dated 2019" }), theme).toBeVisible();
+        await expect(select.locator("option", { hasText: "2019 (0)" }), theme).toHaveCount(1);
+        expect(await sideways(page), `the empty year scrolls sideways (${theme})`).toBe(0);
+      }
+      await setTheme(page, "light");
+    });
 
-      test("For gets its own row on a phone and joins the pickers from sm; File these N fits and files what it lists", async ({ page }, testInfo) => {
-        const { filings, reminders } = await withHousehold(page);
-        await open(page, "/inbox", "Inbox");
-        const who = page.getByRole("combobox", { name: "Whose letters" });
-        await expect(who).toBeVisible();
+    test("For gets its own row on a phone and joins the pickers from sm; File these N fits and files what it lists (axe in light and dark)", async ({ page }, testInfo) => {
+      const { filings, reminders } = await withHousehold(page);
+      await open(page, "/inbox", "Inbox");
+      const who = page.getByRole("combobox", { name: "Whose letters" });
+      await expect(who).toBeVisible();
+      for (const theme of ["light", "dark"] as const) {
+        await setTheme(page, theme);
         const m = await toolbar(page);
-        expect(m.who).not.toBeNull();
+        expect(m.who, theme).not.toBeNull();
         const w = m.who!;
-        expect(Math.round(w.height)).toBe(Math.round(m.search.height));
-        expect(w.right).toBeLessThanOrEqual(m.column.right + 0.5);
+        expect(Math.round(w.height), theme).toBe(Math.round(m.search.height));
+        expect(w.right, theme).toBeLessThanOrEqual(m.column.right + 0.5);
         if (width < 640) {
           // phones: tabs, search, kind and year, then For on a row of its own
-          expect(sameRow(m.kind, m.year)).toBe(true);
-          expect(w.top).toBeGreaterThan(m.kind.bottom);
-          expect(Math.abs(w.width - m.column.width)).toBeLessThanOrEqual(1);
+          expect(sameRow(m.kind, m.year), theme).toBe(true);
+          expect(w.top, theme).toBeGreaterThan(m.kind.bottom);
+          expect(Math.abs(w.width - m.column.width), theme).toBeLessThanOrEqual(1);
         } else {
           // from sm: For stays with the kind and the year (beside the search, or under it when they don't fit)
-          expect(sameRow(w, m.kind) && sameRow(w, m.year), "For with the other pickers").toBe(true);
-          expect(w.left).toBeGreaterThan(m.year.right);
-          expect(m.search.width).toBeGreaterThanOrEqual(280);
+          expect(sameRow(w, m.kind) && sameRow(w, m.year), `For with the other pickers (${theme})`).toBe(true);
+          expect(w.left, theme).toBeGreaterThan(m.year.right);
+          expect(m.search.width, theme).toBeGreaterThanOrEqual(280);
         }
         // the Everyone view tags the letter filed for Alex
         await expect(page.locator("section[aria-labelledby^='grp-'] [data-person-tag]").filter({ visible: true })).toHaveCount(1);
-        expect(await sideways(page), "the page scrolls sideways").toBe(0);
+        expect(await sideways(page), `the page scrolls sideways (${theme})`).toBe(0);
+      }
+      await setTheme(page, "light");
 
-        await who.selectOption(ALEX);
-        await expect(page).toHaveURL(new RegExp(`[?&]for=${ALEX}`));
-        const card = page.getByRole("region", { name: new RegExp(`^Addressed to ${ALEX_NAME}, not filed yet`) });
-        await expect(card).toBeVisible();
-        const button = card.getByRole("button", { name: `File these ${reminders.length} for ${ALEX_NAME}` });
-        await expect(button).toBeVisible();
+      await who.selectOption(ALEX);
+      await expect(page).toHaveURL(new RegExp(`[?&]for=${ALEX}`));
+      const card = page.getByRole("region", { name: new RegExp(`^Addressed to ${ALEX_NAME}, not filed yet`) });
+      await expect(card).toBeVisible();
+      const button = card.getByRole("button", { name: `File these ${reminders.length} for ${ALEX_NAME}` });
+      await expect(button).toBeVisible();
+      for (const theme of ["light", "dark"] as const) {
+        await setTheme(page, theme);
         // the button's words are cut inside it, never spill out of the card or widen the page
         const fit = await button.evaluate((b) => {
           const r = b.getBoundingClientRect();
           const c = b.closest("section")!.getBoundingClientRect();
           return { inside: r.left >= c.left - 0.5 && r.right <= c.right + 0.5, height: Math.round(r.height) };
         });
-        expect(fit.inside, "File these N spills out of its card").toBe(true);
-        expect(fit.height).toBeGreaterThanOrEqual(24);
-        expect(await sideways(page), "the page scrolls sideways").toBe(0);
-        await expectAccessible(page, testInfo, `inbox-for-${width}-${scheme}`);
+        expect(fit.inside, `File these N spills out of its card (${theme})`).toBe(true);
+        expect(fit.height, theme).toBeGreaterThanOrEqual(24);
+        expect(await sideways(page), `the page scrolls sideways (${theme})`).toBe(0);
+        await expectAccessible(page, testInfo, `inbox-for-${width}-${theme}`);
+      }
+      await setTheme(page, "light");
 
-        // one press files exactly the letters listed; Undo puts them back as not answered
-        await button.click();
-        await expect.poll(() => filings.length).toBe(1);
-        expect(Object.keys(filings[0]!).sort()).toEqual([...reminders].sort());
-        expect(new Set(Object.values(filings[0]!))).toEqual(new Set([ALEX]));
-        await expect(card).toHaveCount(0);
-        const toast = page.locator("li[data-toast]").filter({ hasText: `Filed ${reminders.length} letters for ${ALEX_NAME}` });
-        await expect(toast).toBeVisible();
-        expect(await sideways(page), "the toast pushes the page sideways").toBe(0);
-        await toast.getByRole("button", { name: "Undo" }).click();
-        await expect.poll(() => filings.length).toBe(2);
-        expect(Object.values(filings[1]!).every((v) => v === null)).toBe(true);
-        await expect(card).toBeVisible();
-      });
+      // one press files exactly the letters listed; Undo puts them back as not answered
+      await button.click();
+      await expect.poll(() => filings.length).toBe(1);
+      expect(Object.keys(filings[0]!).sort()).toEqual([...reminders].sort());
+      expect(new Set(Object.values(filings[0]!))).toEqual(new Set([ALEX]));
+      await expect(card).toHaveCount(0);
+      const toast = page.locator("li[data-toast]").filter({ hasText: `Filed ${reminders.length} letters for ${ALEX_NAME}` });
+      for (const theme of ["dark", "light"] as const) {
+        await setTheme(page, theme);
+        await expect(toast, theme).toBeVisible();
+        expect(await sideways(page), `the toast pushes the page sideways (${theme})`).toBe(0);
+      }
+      await toast.getByRole("button", { name: "Undo" }).click();
+      await expect.poll(() => filings.length).toBe(2);
+      expect(Object.values(filings[1]!).every((v) => v === null)).toBe(true);
+      await expect(card).toBeVisible();
     });
-  }
+  });
 }
 
 test.describe("load states on a phone", () => {

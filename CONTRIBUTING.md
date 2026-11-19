@@ -38,14 +38,16 @@ signing in.
 
 ## Fast loop
 
-CI runs its jobs side by side, none waiting for another, and a whole run takes 20 to 23 minutes (its runs of
-19 November 2026; 40 to 50 before, with each suite in one process). The end-to-end job waits for no other job: its
-legs, one for each group of Playwright's projects, take 9 to 10 minutes, but the layout guards' 23, the longest of
-all. Beside them the backend's 3.12 leg, which measures the coverage, takes 13, the slow tests 12, the replayed
-benchmarks 11, the backend's other legs (Python 3.11, 3.13 and 3.14) 5 to 8, the lowest versions (and, weekly, the
-newest) 6 to 7, the frontend 6 to 7, and, on `main` and weekly, Windows 11 and macOS 4; lint and types, the wheel
-and the dependency audit take under a minute each. macOS and Windows have to pass too, as Linux does. While you
-work, run the tests near your change, and the fast suite in parallel processes before you push:
+CI runs its jobs side by side, none waiting for another, and a whole run takes 20 to 23 minutes (its runs of 19
+November 2026; 40 to 50 before, with each suite in one process). The end-to-end job waits for no other job: its
+legs, one for each group of Playwright's projects, take 9 to 10 minutes. The layout guards took 23 as one leg, the
+longest of all, so they run as two (Playwright's `--shard`, each half on a demo of its own: a layout file sets up
+what it needs and relies on no file before it). Beside them the backend's 3.12 leg, which measures the coverage,
+takes 13, the slow tests 12, the replayed benchmarks 11, the backend's other legs (Python 3.11, 3.13 and 3.14) 5 to
+8, the lowest versions (and, weekly, the newest) 6 to 7, the frontend 6 to 7, and, on `main` and weekly, Windows 11
+and macOS 4; lint and types, the wheel and the dependency audit take under a minute each. macOS and Windows have to
+pass too, as Linux does. While you work, run the tests near your change, and the fast suite in parallel processes
+before you push:
 
 ```bash
 .venv/bin/pytest tests/test_rules_deadlines.py -k weekend     # one file, only the tests whose names match

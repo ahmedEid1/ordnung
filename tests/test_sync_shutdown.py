@@ -185,6 +185,8 @@ async def test_stopping_waits_no_longer_than_the_shutdown_limit(
         try:
             async with lifespan(api.app):
                 await connect(api, folder, "desktop")
+                # a save due now must not be the call that hangs for good (the fake's hang never gives up)
+                engine.hang_calls = frozenset({"scan"})
                 engine.hang = hang
                 await eventually(lambda: agent.problem is not None)  # a look gave up; its call hangs
             assert agent._thread.busy

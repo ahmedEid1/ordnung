@@ -203,16 +203,21 @@ test("a letter read from New mail sits on top as 'Just read', New until its page
 });
 
 // Enter on a row once focused the letter page's stand-in heading while the
-// letter loaded; it was replaced when the letter came, and focus fell to <body>. The letter is made to come a
-// moment later, as on a busy machine, so the stand-in is always shown first.
+// letter loaded; it was replaced when the letter came, and focus fell to <body>. The letter is made to come only
+// once the stand-in is there, as on a busy machine, so the stand-in is always shown first.
 for (const width of [390, 1280]) {
   test(`at ${width} px, Enter on a row keeps the keyboard on the letter's heading once it has loaded`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await open(page, "/inbox", "Inbox");
+    // the first read of the letter is held until its stand-in heading is in the page; later reads go at once
+    let held = false;
     await page.route(
       (url) => /^\/api\/documents\/doc_[^/]+$/.test(url.pathname),
       async (route) => {
-        await new Promise((resolve) => setTimeout(resolve, 400));
+        if (!held) {
+          held = true;
+          await page.locator("main h1[data-loading]").waitFor({ state: "attached" });
+        }
         await route.fallback();
       },
     );

@@ -16,7 +16,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import type { Locator, Page } from "@playwright/test";
 import { BASE_URL, STORAGE_STATE, WEB_DIR } from "./env";
-import { apiGet, expect, expectAccessible, open, READ, setTour, settle, test } from "./helpers";
+import { apiGet, expect, expectAccessible, expectAccessibleInBothThemes, open, READ, setTour, settle, test } from "./helpers";
 
 const CLIENT = { "X-Ordnung-Client": "web" };
 const SAMPLES = resolve(WEB_DIR, "..", "src", "ordnung", "demo", "samples");
@@ -238,28 +238,26 @@ test("focus never falls to the page: a refused answer keeps it, and “Undo “K
   await expect.poll(async () => (await apiGet<{ waiting: number }>(page, "/api/folder")).waiting).toBe(3);
 });
 
-for (const scheme of ["light", "dark"] as const) {
-  test.describe(`without axe violations (${scheme})`, () => {
-    test.use({ colorScheme: scheme });
-    for (const [width, height] of [
-      [390, 844],
-      [1280, 800],
-    ]) {
-      test(`${width}×${height}: the Inbox's waiting letters, Settings → Watched folder, a waiting e-mail`, async ({ page }, testInfo) => {
-        await page.setViewportSize({ width, height });
-        await open(page, "/inbox", "Inbox");
-        await expectAccessible(page, testInfo, `inbox-waiting-${width}-${scheme}`);
-        await open(page, "/settings?section=folder", "Settings");
-        await expectAccessible(page, testInfo, `settings-folder-${width}-${scheme}`);
-        const mail = (await apiGet<{ id: string; mime: string }[]>(page, "/api/documents?status=held")).find((d) => d.mime === "message/rfc822")!;
-        await open(page, `/documents/${mail.id}`);
-        await expect(page.getByRole("region", { name: /Attachments/ })).toBeVisible();
-        await settle(page);
-        await expectAccessible(page, testInfo, `doc-waiting-email-${width}-${scheme}`);
-      });
-    }
-  });
-}
+// each page opened once and scanned in light, then in dark (switched in place)
+test.describe("without axe violations in light and dark", () => {
+  for (const [width, height] of [
+    [390, 844],
+    [1280, 800],
+  ]) {
+    test(`${width}×${height}: the Inbox's waiting letters, Settings → Watched folder, a waiting e-mail`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width, height });
+      await open(page, "/inbox", "Inbox");
+      await expectAccessibleInBothThemes(page, testInfo, `inbox-waiting-${width}`);
+      await open(page, "/settings?section=folder", "Settings");
+      await expectAccessibleInBothThemes(page, testInfo, `settings-folder-${width}`);
+      const mail = (await apiGet<{ id: string; mime: string }[]>(page, "/api/documents?status=held")).find((d) => d.mime === "message/rfc822")!;
+      await open(page, `/documents/${mail.id}`);
+      await expect(page.getByRole("region", { name: /Attachments/ })).toBeVisible();
+      await settle(page);
+      await expectAccessibleInBothThemes(page, testInfo, `doc-waiting-email-${width}`);
+    });
+  }
+});
 
 test("a folder that went missing: Settings' dot leads to its section, which is marked, and a phone's page stays put", async ({ page }) => {
   const put = (dir: string | null) => page.request.put("/api/settings", { data: { inbox_dir: dir }, headers: CLIENT });
