@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import functools
 import io
 from pathlib import Path
 from typing import cast
@@ -11,7 +12,8 @@ import pypdfium2 as pdfium
 import pytest
 from PIL import Image
 
-from helpers_docs import A4, eml_bytes, letter_pdf, make_pdf, photo, scanned_pdf, set_page_boxes
+from helpers_docs import A4, eml_bytes, make_pdf, photo, scanned_pdf, set_page_boxes
+from helpers_docs import letter_pdf as make_letter_pdf
 from helpers_tables import check_rows
 from ordnung.ingest import intake
 from ordnung.ingest.intake import (
@@ -31,6 +33,9 @@ from ordnung.ingest.intake import (
     sniff_mime,
     store_original,
 )
+
+#: The three-page letter is built once: every test reads its bytes, none changes them.
+letter_pdf = functools.cache(make_letter_pdf)
 
 
 def _image(data: bytes) -> Image.Image:
