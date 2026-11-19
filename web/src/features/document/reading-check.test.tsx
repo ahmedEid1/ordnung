@@ -1,6 +1,6 @@
 /**
  * The to-do Ordnung files itself when Claude's reading of a letter came back incomplete (`check:reading`,
- * `src/ordnung/ingest/gaps.py`): its "Please check" card says where its date came from — or, without one, why
+ * `src/ordnung/ingest/gaps/`): its "Please check" card says where its date came from — or, without one, why
  * there is none and how to give it one — instead of "doesn't match the sentence it came from" or "Couldn't find
  * this — please check". The letter's warning about the incomplete reading is no scam sign, and it goes once the
  * to-do no longer needs checking.
@@ -30,7 +30,7 @@ afterEach(() => {
 
 const NOTICE = "Gegen diesen Gebührenbescheid können Sie binnen eines Monats nach seiner Bekanntgabe Widerspruch einlegen.";
 
-/** The letter's warnings for an incomplete reading (`gap_warning` in `src/ordnung/ingest/gaps.py`). */
+/** The letter's warnings for an incomplete reading (`gap_warning` in `src/ordnung/ingest/gaps/`). */
 const GAP_DATED =
   "This letter explains how to object, but Claude's reading left out the deadline to object. Ordnung added the deadline from the letter's own instructions on how to object (Rechtsbehelfsbelehrung) — please check it against the letter before you rely on it.";
 const GAP_BLANK =
@@ -97,7 +97,7 @@ describe("the to-do Ordnung adds: its German remedy, and no quote", () => {
 
 describe("the to-do Ordnung adds for an incomplete reading", () => {
   it("is the backend's slot, spelled out", () => {
-    // `CHECK_SLOT` in src/ordnung/ingest/gaps.py — a rename there must be a rename here
+    // `CHECK_SLOT` in src/ordnung/ingest/gaps/ — a rename there must be a rename here
     expect(READING_CHECK_SLOT).toBe("check:reading");
   });
 

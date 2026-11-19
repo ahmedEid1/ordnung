@@ -403,7 +403,7 @@ async def test_no_letter_text_ever_reaches_a_span(ctx: AppContext) -> None:
 
 
 async def test_a_reading_that_came_back_incomplete_says_so_in_codes(ctx: AppContext, router: Router) -> None:
-    """``ingest/gaps.py``: the "Check quotes" step says why the reading was incomplete and which to-do code filed
+    """``ingest/gaps/``: the "Check quotes" step says why the reading was incomplete and which to-do code filed
     for it; the to-do's own quote step lists its reason — codes only, never the notice it was worked out from."""
     router.payloads[TAX_LETTER.marker] = {
         "kind": "other",

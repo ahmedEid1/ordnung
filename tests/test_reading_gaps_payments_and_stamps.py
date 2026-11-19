@@ -1,4 +1,4 @@
-"""False alarms and lost dates of the check for incomplete readings (``ingest/gaps.py``) — a paid invoice
+"""False alarms and lost dates of the check for incomplete readings (``ingest/gaps/``) — a paid invoice
 or a payout in other common words, a negated "erhalten"/"beglichen", a decision that decides itself while naming an
 open amount, a received stamp on page 1 of a letter dated at the foot of a later page. Invented letters only."""
 

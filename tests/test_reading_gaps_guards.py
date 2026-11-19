@@ -1,4 +1,4 @@
-"""The guards of the check for incomplete readings (``ingest/gaps.py``) that no test held before, the letter's
+"""The guards of the check for incomplete readings (``ingest/gaps/``) that no test held before, the letter's
 own date, which notices count and their false alarms, as synthetic regression tests, and a bounded fuzz of the
 letter's own date. The rule over all of them: the code's own date, and the date it sets beside a reading's, is
 never later than the letter allows — at worst undated.

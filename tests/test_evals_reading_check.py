@@ -1,4 +1,4 @@
-"""The benchmark's plumbing for the check for incomplete readings (``ingest/gaps.py``): the code's
+"""The benchmark's plumbing for the check for incomplete readings (``ingest/gaps/``): the code's
 own to-dos count apart from the reading's, the signal that the letter's notice replaced a reading's date is
 emitted, and the command line refuses only what it should. Replay only: no model call,
 nothing written to ``evals/results``."""

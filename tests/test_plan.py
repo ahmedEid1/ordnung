@@ -1057,7 +1057,7 @@ def test_a_rule_to_do_needs_checking_only_when_its_end_date_isnt_written(store: 
 
 
 def test_the_to_do_code_files_for_an_incomplete_reading_needs_checking_dated_or_not(store: Store) -> None:
-    """``ingest/gaps.py``: an incomplete reading's to-do keeps the letter "Please check" until the person acts on
+    """``ingest/gaps/``: an incomplete reading's to-do keeps the letter "Please check" until the person acts on
     it, even without a date; any other undated to-do of a reading still never does."""
     document = store.add_document(sha256="e" * 64, filename="x", mime="application/pdf", file_path="x")
     unfound = Evidence(doc_id=document.id, quote="", grounding="unverified", value_consistent=False)

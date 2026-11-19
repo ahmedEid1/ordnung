@@ -1,4 +1,4 @@
-"""Tightening the known limits of the check for incomplete readings (``ingest/gaps.py``, ADR 0015 "Review and known
+"""Tightening the known limits of the check for incomplete readings (``ingest/gaps/``, ADR 0015 "Review and known
 limits"): a letter served with a Postzustellungsurkunde asks for the date on the yellow envelope and counts from it;
 a reminder's "Hiergegen …" and a notice's bare "des Bescheides"; a Widerspruchsbescheid's reasoning; own-date forms read weakly or not at all; a
 planted line or an appointment's block while the letter's own date is unread; and a fixed date the letter sets

@@ -570,7 +570,7 @@ async def test_rules_engine_reproduces_the_labels_from_a_perfect_reading(tmp_pat
     assert results["metrics"]["ordnung"]["taxonomy"]["reading"] == 0
 
 
-#: The recorded reading that came back with only the four required fields (``ingest/gaps.py``).
+#: The recorded reading that came back with only the four required fields (``ingest/gaps/``).
 EMPTY_READING = "holdout2-adversarial-injection_visible-1"
 
 

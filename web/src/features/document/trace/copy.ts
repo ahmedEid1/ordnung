@@ -311,7 +311,7 @@ export function spanCopy(span: TraceSpan, today?: string, transfer?: boolean): S
           num(a, "unverified") ? `${num(a, "unverified")} not found` : null,
         ].filter(Boolean);
         const check = num(a, "needs_check") ?? 0;
-        // a reading that came back incomplete: Ordnung filed a to-do of its own (src/ordnung/ingest/gaps.py)
+        // a reading that came back incomplete: Ordnung filed a to-do of its own (src/ordnung/ingest/gaps/)
         const incomplete = str(a, "reading_gap") !== null;
         return {
           title: "Quotes checked on the page",

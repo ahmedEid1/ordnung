@@ -590,7 +590,7 @@ async def test_letters_use_the_person_s_country_and_only_a_chosen_region(
 
 
 # --------------------------------------------------------------------------------------------------
-# A reading that came back incomplete (ingest/gaps.py): one "Please check" to-do written by code
+# A reading that came back incomplete (ingest/gaps/): one "Please check" to-do written by code
 # --------------------------------------------------------------------------------------------------
 
 OWN_NOTE = REASON_TEXT[READING_INCOMPLETE]

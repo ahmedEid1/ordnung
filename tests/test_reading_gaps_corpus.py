@@ -1,4 +1,4 @@
-"""Synthetic letters for the reading check (``ingest/gaps.py``): ones it must stay silent on although they
+"""Synthetic letters for the reading check (``ingest/gaps/``): ones it must stay silent on although they
 mention a remedy and a period — their readings are complete and right — and real notices it must still date.
 
 All letters are synthetic, written for these tests (Stadt Beispielhausen, Paul Probe). Dated Mon 9 Nov 2026:

@@ -99,7 +99,7 @@ function withoutPleaseCheck(w: string): string {
 
 /**
  * The warning that Claude's reading came back incomplete and Ordnung added a to-do of its own
- * (`gap_warning` in `src/ordnung/ingest/gaps.py`). It is no scam sign, and it is said only while that to-do
+ * (`gap_warning` in `src/ordnung/ingest/gaps/`). It is no scam sign, and it is said only while that to-do
  * still needs checking: once the person confirmed, dated, finished or dismissed it, it is out of date.
  */
 const GAP_WARNING = /^(?:Claude's reading of this letter came back almost blank|This letter explains how to (?:object|challenge it in court), but Claude's reading)/;
@@ -118,7 +118,7 @@ export const CROSS_CHECK = /^Ordnung's first reading of this letter came back bl
 
 /**
  * The warning that Claude's reading left out a date the letter sets (pay by, send by) and Ordnung added it as a
- * to-do of its own (`deadline_warning` in `src/ordnung/ingest/gaps.py`): no scam sign, and said only while one of
+ * to-do of its own (`deadline_warning` in `src/ordnung/ingest/gaps/`): no scam sign, and said only while one of
  * those to-dos still needs checking.
  */
 const DEADLINE_WARNING = /^Claude's reading of this letter left out /;
@@ -356,7 +356,7 @@ function AdviceCard({ type, addressee }: { type: "klage" | "unclear"; addressee:
  * kind may be an authority's (a company, insurer, utility or employer), so a late arrival may not move
  * the date — the question says so, and the toast after saving says what the engine did.
  */
-/** How many days after the letter's own date an envelope date still counts (`LETTER_DATE_SPAN` in src/ordnung/ingest/gaps.py). */
+/** How many days after the letter's own date an envelope date still counts (`LETTER_DATE_SPAN` in src/ordnung/ingest/gaps/). */
 const ENVELOPE_SPAN_DAYS = 14;
 
 function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: Item[]; mayBePublic: boolean }) {
@@ -421,7 +421,7 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
     title?.scrollIntoView({ block: "start" });
     if (served) {
       // an authority's letter served with a Postzustellungsurkunde: a date more than two weeks after the letter's own
-      // is no envelope date of this letter's — the letter's date is kept (`envelope_start` in src/ordnung/ingest/gaps.py)
+      // is no envelope date of this letter's — the letter's date is kept (`envelope_start` in src/ordnung/ingest/gaps/)
       const far = sender === "the letter" && Boolean(doc.doc_date) && daysUntil(date, doc.doc_date!) > ENVELOPE_SPAN_DAYS;
       // a start the letter itself names counts when it is earlier (see "Why this date?")
       toast.success("Thanks — dates updated", {
@@ -568,14 +568,14 @@ function SenderLandCheck({ detail, party, suggestion }: { detail: DocumentDetail
 
 /**
  * The slot of the to-do Ordnung files itself when Claude's reading of a letter came back incomplete
- * (`CHECK_SLOT` in `src/ordnung/ingest/gaps.py`): the objection deadline worked out from the letter's own
+ * (`CHECK_SLOT` in `src/ordnung/ingest/gaps/`): the objection deadline worked out from the letter's own
  * instructions on how to object, or — without them — an undated "Read this letter yourself".
  */
 export const READING_CHECK_SLOT = "check:reading";
 
 /**
  * The slot of a to-do Ordnung files itself for a fixed date the letter sets for the person (pay by, send by) that
- * Claude's reading left out (`DEADLINE_SLOT` in `src/ordnung/ingest/gaps.py`): `check:deadline#2026-10-15-payment`, one per date and kind
+ * Claude's reading left out (`DEADLINE_SLOT` in `src/ordnung/ingest/gaps/`): `check:deadline#2026-10-15-payment`, one per date and kind
  */
 export const DEADLINE_CHECK_SLOT = "check:deadline";
 
