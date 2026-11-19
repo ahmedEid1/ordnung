@@ -12,6 +12,7 @@ from typing import Any
 import pytest
 from hypothesis import settings
 
+import helpers_store
 from ordnung import clock, durable
 from ordnung.assistant import ask
 from ordnung.config import OCR_SWITCH, Paths
@@ -102,9 +103,20 @@ def paths(data_dir: Path) -> Paths:
     return Paths(data_dir).ensure()
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _migrated_template(tmp_path_factory: pytest.TempPathFactory) -> Iterator[None]:
+    """One migrated, empty database per test process (``helpers_store``), built with the real ``Store.open`` before
+    any test runs; the ``store`` fixture and ``api_for`` start a test's data folder from a copy of it."""
+    helpers_store.TEMPLATE = helpers_store.build_template(tmp_path_factory.mktemp("migrated"))
+    yield
+    helpers_store.TEMPLATE = None
+
+
 @pytest.fixture
 def store(paths: Paths) -> Iterator[Store]:
-    """A migrated, empty store; closed after the test."""
+    """A migrated, empty store (a copy of the session's template database, opened for real); closed after the
+    test."""
+    helpers_store.seed_database(paths.data_dir)
     opened = Store.open(paths)
     yield opened
     opened.close()

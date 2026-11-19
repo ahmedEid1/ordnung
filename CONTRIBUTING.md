@@ -232,6 +232,11 @@ check shows in the numbers at once, and costs nothing.
   run), regenerates or re-reads a whole dataset, or builds the web app is marked `slow` (`make check` runs those
   too). The tests run in parallel processes, a file to a process (`-n auto --dist loadfile`): a test takes its
   files from `tmp_path` and a port for a server from `tests/helpers_net.py`, never a fixed one.
+- A test's store starts from a copy of one migrated, empty database (`tests/helpers_store.py`; the `store` fixture
+  and `api_for` copy it), because migrating a new one for every test cost more than the tests themselves. A test
+  about creating a database (a migration, the first start on an empty folder, the mode of a new file, a lock)
+  opens its own folder instead: `api_for(..., first_start=True)`, or `Store.open` on a path of its own. A test
+  that only reads the API's schema takes `api_schema()` from `tests/test_api_support.py`, built once per process.
 - A docs test pins a fact the page states (a flag exists, a number is the one its results file holds, a file it
   names is there), not the sentence that states it: rewording a page should not need a test change.
 

@@ -19,6 +19,10 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   tests caught still caught. Where tests rebuilt what none of them changes, they build it once: Ask's tests take
   under half the time (its largest file an eighth), the evaluation's about two thirds. The README's count of
   backend tests follows.
+- The backend tests are about a tenth faster again. A test's store starts from a copy of one migrated database
+  instead of migrating its own, tests that only read the API's schema share one build of it, and the app no
+  longer builds every route twice when it starts (`create_app` took a tenth of a second and now takes a few
+  milliseconds; the routes, the schema and what is asked of Claude are unchanged).
 - The end-to-end tests hold one behaviour each too. Tests that repeated one check per width or per theme are one
   test that resizes the page or switches the theme in place; fixed waits wait for the thing itself; and every
   layout file sets up what it needs instead of relying on a letter an earlier file left open, so the files run in

@@ -13,13 +13,13 @@ from fastapi.routing import APIRoute
 from starlette.routing import compile_path
 
 from helpers_tables import check_rows
-from ordnung.api.app import openapi_schema
 from ordnung.api.deps import require_computer
 from ordnung.api.routes import documents
 from ordnung.config import Paths
 from ordnung.ids import new_id
 from ordnung.phone import ERROR_STATUS, PhoneErrorCode, cookie_name, scope
 from ordnung.phone.scope import COMPUTER_ONLY, NEVER_ON_PHONE, OPENAPI_MARK, PHONE_ROUTES, classify
+from test_api_support import api_schema
 
 ROOT = Path(__file__).resolve().parents[1]
 OPENAPI_JSON = ROOT / "web" / "openapi.json"
@@ -28,7 +28,7 @@ _PARAM = re.compile(r"\{[^}]+\}")
 
 @pytest.fixture(scope="module")
 def schema() -> dict[str, Any]:
-    return openapi_schema()
+    return api_schema()
 
 
 def _marked(schema: dict[str, Any]) -> set[scope.Operation]:

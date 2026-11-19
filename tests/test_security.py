@@ -68,7 +68,7 @@ async def test_data_folder_and_letters_are_private_to_the_owner(tmp_path: Path) 
     data_dir = tmp_path / "shared"
     data_dir.mkdir(mode=0o755)
     data_dir.chmod(0o755)  # an existing folder with the usual umask: tightened on start
-    async with api_for(data_dir) as api:
+    async with api_for(data_dir, first_start=True) as api:
         await api.upload(("rechnung.pdf", INVOICE_LETTER.pdf()))
         paths = api.ctx.paths
         for folder in (paths.data_dir, paths.files, paths.derived, paths.drafts):

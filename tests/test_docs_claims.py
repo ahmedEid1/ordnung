@@ -34,7 +34,6 @@ from helpers_media import mp4_info
 from helpers_secretary import TODAY, seed_ledger
 from helpers_tables import check_rows
 from ordnung import clock, letters_zip, shortcut, sync
-from ordnung.api.app import openapi_schema
 from ordnung.api.deps import require_computer
 from ordnung.api.routes import export
 from ordnung.api.routes.documents import DocumentPatch
@@ -73,14 +72,11 @@ from ordnung.rules.postcodes import Home, suggest_land_why
 from ordnung.secretary import moving, triggers
 from ordnung.secretary.triggers import Ledger, letter_day, tax_documents
 from ordnung.tick import DailyTick
-from test_api_support import api_for
+from test_api_support import api_for, api_schema
 
 ROOT = Path(__file__).resolve().parents[1]
 
 NOW = "2026-09-25T10:00:00Z"
-
-#: The API's OpenAPI schema, built once: the tests here only read it.
-_openapi = functools.cache(openapi_schema)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -1625,7 +1621,7 @@ def _sync_doc(name: str) -> str:
 
 def _sync_operations() -> int:
     """How many operations hand-off sync has (``/api/sync`` and ``/api/sync/…``)."""
-    operations = phone_scope.schema_operations(_openapi())
+    operations = phone_scope.schema_operations(api_schema())
     return len({op for op in operations if op[1].split("/")[:3] == ["", "api", "sync"]})
 
 
@@ -3015,7 +3011,7 @@ def test_the_letter_list_and_the_records_copy_are_what_the_docs_say() -> None:
         "tax_choice",  # the person's own "For taxes" choice (SPEC § 4, checked below)
     }
     assert not hasattr(models, "DocumentListEntry") and not hasattr(models, "SearchFoundIn")
-    components = _openapi()["components"]["schemas"]
+    components = api_schema()["components"]["schemas"]
     assert "DocumentRow" in components and "DocumentListEntry" not in components
     operation = ("GET", "/api/documents.json")
     assert phone_scope.classify(*operation) == "computer"
@@ -3140,7 +3136,7 @@ async def test_the_adr_s_measurements_are_the_demo_s(tmp_path: Path) -> None:
             api.app.dependency_overrides[sync_routes.get_secrets] = lambda: MemorySecrets()
             listed = await api.client.get("/api/documents")
             whole = await api.client.get("/api/documents.json")
-            for path, operations in _openapi()["paths"].items():
+            for path, operations in api_schema()["paths"].items():
                 get = operations.get("get")
                 if get is None or "{" in path or path in {"/api/events", "/api/health"}:
                     continue
@@ -3578,7 +3574,7 @@ def test_the_spec_names_the_route_local_letter_models_and_routes() -> None:
         "picture_text_pages",  # ADR 0024
     }
     assert set(documents.LetterRecord.model_fields) == set(Document.model_fields) | {"tax_choice"}
-    paths = _openapi()["paths"]
+    paths = api_schema()["paths"]
 
     def answer(path: str) -> Any:
         return paths[path]["get"]["responses"]["200"]["content"]["application/json"]["schema"]
