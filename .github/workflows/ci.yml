@@ -48,7 +48,7 @@ jobs:
   backend:
     name: Backend (Python ${{ matrix.python }})
     if: github.event_name != 'schedule'
-    # pinned, as the slow tests' job is: the tests of every Linux leg run on one system, Tesseract's among them
+    # pinned, as the slow tests' jobs are: the tests of every Linux leg run on one system, Tesseract's among them
     runs-on: ubuntu-24.04
     # one process a file, as many as the runner has cores: about 6 to 9 minutes expected, 3.12's with coverage
     # about 13 (serial, the legs took 16 to 40 minutes with coverage and 26 without, 18 Nov 2026); a hung test is
@@ -99,9 +99,14 @@ jobs:
 
   slow-tests:
     name: Backend, slow tests (Python 3.12)
-    # the slow tests, once and without coverage, beside the backend's legs: serial they took 21 minutes (18 Nov
-    # 2026, before more tests were marked slow); a process a file, about 11 expected, but one test alone
-    # (test_sync_pull_process.py's kill during the apply) takes up to 10 on a 4-core computer
+    # the slow tests, once and without coverage, beside the backend's legs, in two jobs side by side: this one runs
+    # every slow test file but the longest, which slow-long runs. As one job they were about 2,000 s of work on 4
+    # processes: the step took 565 s on one runner and 908 on another, where every test was about 1.6 times slower
+    # (the kill during the apply 232 s against 376), on three runs of five (19 Nov 2026). That made the job 15
+    # minutes long in a run whose other jobs were done in 10 to 11. Split, each job has about half the work, and
+    # even a slow runner is done within those 10 minutes: on their first run this job took 4:30 and slow-long
+    # 5:49, the kill test 323 s of it (19 Nov 2026). The job keeps its id and name: a required check may be
+    # registered under them
     if: github.event_name != 'schedule'
     # pinned: the samples' byte-for-byte check needs Ubuntu 24.04's Python 3.12 (its zlib is the manifest's)
     runs-on: ubuntu-24.04
@@ -124,11 +129,64 @@ jobs:
         run: |
           uv venv .venv
           uv pip install -e ".[dev]" -c constraints.txt
-      - name: Slow tests (every recorded reading replayed, and the page timing; once, without coverage)
-        # the 15 slowest named at the end, as in the coverage leg
-        run: .venv/bin/pytest -m slow -n auto --dist loadfile --durations=15
+      - name: Slow tests but the longest (the page timing among them; once, without coverage)
+        # the 15 slowest named at the end, as in the coverage leg. Every slow test but those of the files slow-long
+        # names, each left out with an --ignore of its own (tests/test_ci_workflow.py holds the two lists the
+        # same): a new slow test file runs here without an edit to this file
+        run: >-
+          .venv/bin/pytest -m slow -n auto --dist loadfile --durations=15
+          --ignore=tests/test_sync_model.py
+          --ignore=tests/test_injection_invariance.py
+          --ignore=tests/test_generate_final.py
+          --ignore=tests/test_sync_pull_process.py
+          --ignore=tests/test_reading_gaps_census.py
+          --ignore=tests/test_request_lock.py
+          --ignore=tests/test_eval_dataset.py
       - name: Rules engine keeps 100 % line and branch coverage
         run: .venv/bin/pytest tests/test_rules_*.py --cov=ordnung.rules --cov-branch --cov-report=term-missing:skip-covered --cov-fail-under=100
+
+  slow-long:
+    name: Backend, longest slow tests (Python 3.12)
+    # the other half of the slow tests (slow-tests says why there are two jobs): the seven files with the longest
+    # ones, about 950 of the 2,000 s. On a fast runner: the kill during the apply 232 s, the two computers' many
+    # histories 154, the hidden instructions 131, the request lock 135 in three tests, the dataset's generation 88
+    # (and its 31 s set-up), the reading check's census 74 and the final generator 57. The kill test alone bounds
+    # the job at about 4 minutes, 6 on a slow runner, so the other processes take the rest beside it
+    if: github.event_name != 'schedule'
+    # pinned, as slow-tests is: the hidden instructions' letters and the dataset are re-rendered byte for byte with
+    # the libraries they were made with (the zlib among them is Ubuntu 24.04's); elsewhere the one check skips and
+    # the other generates the dataset twice
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      # the latest commit is enough: no test of these files reads the history (all of them pass in a clone of one
+      # commit), and none needs the samples' libraries or Tesseract
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: constraints.txt
+      - name: Install (the versions in constraints.txt)
+        run: |
+          uv venv .venv
+          uv pip install -e ".[dev]" -c constraints.txt
+      - name: Longest slow tests (every recorded reading and request replayed; once, without coverage)
+        # the 15 slowest named at the end, as in slow-tests. pytest-xdist hands each of the 4 processes one file in
+        # the order given here, then one more to each process with at most 2 tests waiting, in turn: so the first
+        # three files have 2 slow tests each, the kill test's file comes fourth and its process gets no second file,
+        # and the last three go beside the first three (about 240, 284 and 199 s against the kill test's 232).
+        # By default it would sort the files by their number of tests, and the kill test would wait behind two
+        # others (about 455 s)
+        run: >-
+          .venv/bin/pytest -m slow -n auto --dist loadfile --no-loadscope-reorder --durations=15
+          tests/test_sync_model.py
+          tests/test_injection_invariance.py
+          tests/test_generate_final.py
+          tests/test_sync_pull_process.py
+          tests/test_reading_gaps_census.py
+          tests/test_request_lock.py
+          tests/test_eval_dataset.py
 
   backend-slow:
     name: Benchmarks replayed (Python 3.12)

@@ -1,9 +1,9 @@
-""".github/workflows/ci.yml: lint and types run once, coverage on one backend leg, the slow tests and the replays
-each in a job of their own, the end-to-end groups beside the backend's legs, a push to main never cuts off a
-running run, macOS and Windows must pass, every published benchmark number is replayed with a gate at that
-number, coverage has floors, the weekly run checks the rules' age and the real Claude Code's flags, a real
-Tesseract is installed only where a test needs it (ADR 0024), and each job that runs the pre-registration's tests
-checks out the whole history."""
+""".github/workflows/ci.yml: lint and types run once, coverage on one backend leg, the slow tests (in two jobs that
+share their files) and the replays each in a job of their own, the end-to-end groups beside the backend's legs, a
+push to main never cuts off a running run, macOS and Windows must pass, every published benchmark number is
+replayed with a gate at that number, coverage has floors, the weekly run checks the rules' age and the real Claude
+Code's flags, a real Tesseract is installed only where a test needs it (ADR 0024), and each job that runs the
+pre-registration's tests checks out the whole history."""
 
 from __future__ import annotations
 
@@ -67,16 +67,17 @@ def _weekly(job: dict[str, Any]) -> bool:
 def test_each_check_runs_on_pull_requests_in_a_job_of_its_own() -> None:
     """A run's time is its longest job's. The slow tests and the replays took a backend leg to 36 of its 45
     minutes; in a job of their own (``backend-slow``) they took 27 to 41 (November 2026), the slow tests alone 21
-    of them, and ``make eval-reproduce`` took 6 of the replays' 12 to 13. So the slow tests, the gates' replays
-    (with ``demo --check``), ``make eval-reproduce`` and lint with the type check (the same on every Python:
-    pyproject.toml gives ruff and mypy 3.11 as their target) each have a job, all on pull requests, and every check
-    still runs. The gates' replays keep the job id ``backend-slow``: evals/reproduce.py reads the gates from it."""
+    of them, and ``make eval-reproduce`` took 6 of the replays' 12 to 13. So the slow tests (in two jobs, see
+    below), the gates' replays (with ``demo --check``), ``make eval-reproduce`` and lint with the type check (the
+    same on every Python: pyproject.toml gives ruff and mypy 3.11 as their target) each have a job, all on pull
+    requests, and every check still runs. The gates' replays keep the job id ``backend-slow``: evals/reproduce.py
+    reads the gates from it."""
     jobs = _jobs()
     lint, backend, tests, replays = jobs["lint"], jobs["backend"], jobs["slow-tests"], jobs["backend-slow"]
-    reproduce = jobs["reproduce"]
-    assert all(_on_pull_requests(job) for job in (lint, backend, tests, replays, reproduce))
-    assert {job["runs-on"] for job in (backend, tests, replays, reproduce)} == {"ubuntu-24.04"}
-    for job in (lint, tests, replays, reproduce):
+    reproduce, longest = jobs["reproduce"], jobs["slow-long"]
+    assert all(_on_pull_requests(job) for job in (lint, backend, tests, longest, replays, reproduce))
+    assert {job["runs-on"] for job in (backend, tests, longest, replays, reproduce)} == {"ubuntu-24.04"}
+    for job in (lint, tests, longest, replays, reproduce):
         assert any(step.get("with", {}).get("python-version") == "3.12" for step in job["steps"])
     where = {
         "ruff check": lint,
@@ -100,9 +101,9 @@ def test_each_check_runs_on_pull_requests_in_a_job_of_its_own() -> None:
 
 def test_the_samples_must_regenerate_byte_for_byte_in_the_job_that_runs_their_check() -> None:
     """The samples' byte-for-byte check (a slow test) skips where the libraries differ from the manifest's,
-    unless ``ORDNUNG_REQUIRE_SAMPLES=1``: then it fails. The job that runs the slow tests installs the
-    manifest's libraries (``-c constraints.txt`` on Ubuntu 24.04's Python 3.12) and sets it, so drifted
-    libraries fail CI instead of passing it with the check skipped. No other job sets it."""
+    unless ``ORDNUNG_REQUIRE_SAMPLES=1``: then it fails. The one job whose slow tests include it (of the two that
+    share the slow tests) installs the manifest's libraries (``-c constraints.txt`` on Ubuntu 24.04's Python 3.12)
+    and sets it, so drifted libraries fail CI instead of passing it with the check skipped. No other job sets it."""
     check = "tests/test_samples.py::test_committed_samples_match_regeneration"
     samples = (ROOT / "tests" / "test_samples.py").read_text(encoding="utf-8")
     assert (
@@ -111,7 +112,12 @@ def test_the_samples_must_regenerate_byte_for_byte_in_the_job_that_runs_their_ch
     )
     assert 'os.environ.get("ORDNUNG_REQUIRE_SAMPLES") == "1"' in samples
     jobs = _jobs()
-    (runner,) = [name for name, job in jobs.items() if "pytest -m slow " in _script(job)]
+    (runner,) = [
+        name
+        for name, job in jobs.items()
+        if any(_can_run(args, "tests/test_samples.py") for args in _slow_runs(job))
+    ]
+    assert runner in SLOW_JOBS
     job = jobs[runner]
     assert job["env"]["ORDNUNG_REQUIRE_SAMPLES"] == "1", check
     assert job["runs-on"] == "ubuntu-24.04"
@@ -374,11 +380,10 @@ def _is_test_path(arg: str) -> bool:
     return arg in (".", "tests") or arg.startswith(("tests/", "./")) or "::" in arg or arg.endswith(".py")
 
 
-def _can_run(args: list[str], test_file: str) -> bool:
-    """Whether a pytest run with ``args`` can include ``test_file``: one that names no test path runs the whole
-    suite, whatever its ``-m`` (the pre-registration's file has slow and not-slow tests); one that names paths runs
-    what they match; an ``--ignore`` that matches leaves it out. An argument that names no test (an option's value,
-    as in ``--durations 20``) is not read as a path."""
+def _paths(args: list[str]) -> tuple[list[str], list[str]]:
+    """The test paths a pytest run with ``args`` names (a node id read as its file), and the ones it ``--ignore``s,
+    each in the order given. An argument that names no test (an option's value, as in ``--durations 20``) is
+    neither."""
     paths, ignored = [], []
     rest = iter(args)
     for arg in rest:
@@ -390,6 +395,15 @@ def _can_run(args: list[str], test_file: str) -> bool:
             ignored.append(arg.split("=", 1)[1])
         elif not arg.startswith("-") and _is_test_path(arg):
             paths.append(arg.split("::", 1)[0].removeprefix("./").rstrip("/"))
+    return paths, ignored
+
+
+def _can_run(args: list[str], test_file: str) -> bool:
+    """Whether a pytest run with ``args`` can include ``test_file``: one that names no test path runs the whole
+    suite, whatever its ``-m`` (the pre-registration's file has slow and not-slow tests); one that names paths runs
+    what they match; an ``--ignore`` that matches leaves it out. An argument that names no test (an option's value,
+    as in ``--durations 20``) is not read as a path."""
+    paths, ignored = _paths(args)
     if any(fnmatch(test_file, pattern) for pattern in ignored):
         return False
     return not paths or any(path in (".", "", "tests") or fnmatch(test_file, path) for path in paths)
@@ -448,8 +462,8 @@ def test_every_job_that_runs_the_pre_registration_s_tests_checks_out_the_whole_h
     until a final result is published, and fails them from then on: CI's clone must hold the history.
     actions/checkout fetches one commit unless ``fetch-depth: 0`` asks for all of them, so each job whose pytest run
     can include that file asks for all: the backend's legs, the slow checks and the lowest and newest versions (and
-    any job that comes to run it). The macOS and Windows job and the end-to-end job name their tests, and it is not
-    among them today; the parser's cases above hold that reading."""
+    any job that comes to run it). The macOS and Windows job, the end-to-end job and the job of the longest slow
+    tests name their tests, and it is not among them today; the parser's cases above hold that reading."""
     jobs = _jobs()
     history = {
         name
@@ -462,6 +476,122 @@ def test_every_job_that_runs_the_pre_registration_s_tests_checks_out_the_whole_h
             step for step in jobs[name]["steps"] if step.get("uses", "").startswith("actions/checkout@")
         ]
         assert checkout.get("with", {}).get("fetch-depth") == 0, name
+
+
+#: the two jobs that share the slow tests: ``slow-tests`` runs every slow test file but those ``slow-long`` names
+SLOW_JOBS = ("slow-tests", "slow-long")
+#: the slow test that bounds the longest slow tests' job (232 s on a fast runner, 19 Nov 2026)
+KILL_TEST_FILE = "tests/test_sync_pull_process.py"
+_SLOW_MARK = "pytest.mark.slow"
+
+
+def _slow_runs(job: dict[str, Any]) -> list[list[str]]:
+    """The arguments of each pytest run of ``job`` that selects the slow tests (``-m slow``)."""
+    return [
+        args for args in _pytest_runs(job) if "-m" in args and args[args.index("-m") + 1 :][:1] == ["slow"]
+    ]
+
+
+def _slow_tests(path: Path) -> list[str]:
+    """The tests of ``path`` marked slow: a test function or class with the mark as its decorator, a test class
+    made with it (``TestX = pytest.mark.slow(...)``), or every test of a file whose ``pytestmark`` holds it."""
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+
+    def marked(node: ast.AST) -> bool:
+        return any(ast.unparse(part) == _SLOW_MARK for part in ast.walk(node))
+
+    def names(node: ast.Assign) -> list[str]:
+        return [target.id for target in node.targets if isinstance(target, ast.Name)]
+
+    tests = [
+        node
+        for node in tree.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+        and node.name.lower().startswith("test")
+    ]
+    assigned = [node for node in tree.body if isinstance(node, ast.Assign) and marked(node.value)]
+    if any("pytestmark" in names(node) for node in assigned):
+        return [node.name for node in tests]
+    return [node.name for node in tests if any(marked(mark) for mark in node.decorator_list)] + [
+        name for node in assigned for name in names(node) if name.startswith("Test")
+    ]
+
+
+def test_the_slow_tests_run_in_two_jobs_that_share_their_files() -> None:
+    """As one job the slow tests were about 2,000 s of work on a runner's 4 processes: 565 s on one runner, 908 on
+    another where every test was about 1.6 times slower (19 Nov 2026), and that job was the last of a run whose
+    other jobs were done in 10 to 11 minutes. So two jobs share them, each on a runner of its own: ``slow-long``
+    names the files of the longest slow tests, and ``slow-tests`` runs every other slow test, the files the first
+    names left out with an ``--ignore`` each. The two lists are the same files: no slow test is dropped, none runs
+    twice, and a new slow test file runs in ``slow-tests`` without an edit to the workflow (it names no path). So
+    ``slow-long`` names whole files (a node id would leave the file's other slow tests in neither job), and neither
+    job narrows its selection further (``-k``, ``--deselect``, ``--ignore-glob``, ``--lf``, a second ``-m``, which
+    pytest reads instead of the first, or any of them in ``PYTEST_ADDOPTS``) or only collects (``--co``). The
+    pre-registration's file stays in ``slow-tests``, where the whole history is checked out. ``slow-long`` keeps its files in the order
+    given (pytest-xdist would sort them by their number of tests), with the kill test's file fourth: of the 4
+    processes, each takes one file and then a second while it has at most 2 tests waiting, in turn, so with at
+    most 2 slow tests in each of the first three files and at most 7 files the kill test's process, the fourth,
+    gets no file after it."""
+    jobs = _jobs()
+    assert [name for name, job in jobs.items() if _slow_runs(job)] == list(SLOW_JOBS)
+    (rest,), (longest,) = (_slow_runs(jobs[name]) for name in SLOW_JOBS)
+    rest_paths, left_out = _paths(rest)
+    named, ignored = _paths(longest)
+    assert rest_paths == [] and ignored == []
+    values = {index + 1 for index, arg in enumerate(longest) if arg in _PYTEST_OPTION_VALUES}
+    arguments = [arg for index, arg in enumerate(longest) if index not in values and not arg.startswith("-")]
+    assert arguments == named, "slow-long names whole files"
+    for args in (rest, longest):
+        options = {arg.split("=", 1)[0] for arg in args if arg.startswith("-")}
+        narrowing = {"--deselect", "--ignore-glob", "--co", "--collect-only", "--lf", "--last-failed"}
+        assert not options & narrowing, options
+        assert not any(arg.startswith("-k") for arg in args), args
+        assert args.count("-m") == 1 and not any(a.startswith("-m") and a != "-m" for a in args), args
+    for name in SLOW_JOBS:
+        job = jobs[name]
+        assert "PYTEST_ADDOPTS" not in json.dumps(job.get("env", {})) + json.dumps(job["steps"]), name
+    assert "PYTEST_ADDOPTS" not in json.dumps(_workflow().get("env", {}))
+    assert len(named) == len(set(named)) and len(left_out) == len(set(left_out))
+    assert sorted(named) == sorted(left_out), "the files slow-long names are the files slow-tests leaves out"
+    assert all(re.fullmatch(r"tests/test_\w+\.py", name) for name in named), named
+    assert _can_run(rest, PREREGISTRATION_TESTS) and not _can_run(longest, PREREGISTRATION_TESTS)
+    assert "--no-loadscope-reorder" in longest and named.index(KILL_TEST_FILE) == 3
+    assert len(named) <= 7 and all(len(_slow_tests(ROOT / name)) <= 2 for name in named[:3]), named
+    assert (
+        ["--dist", "loadfile"] == longest[longest.index("--dist") :][:2] == rest[rest.index("--dist") :][:2]
+    )
+
+
+def test_each_file_of_the_longest_slow_tests_holds_a_slow_test() -> None:
+    """A file ``slow-long`` names runs only its slow tests (``-m slow``): one without any (renamed, or its tests no
+    longer slow) would leave the job running nothing of it, and ``slow-tests`` leaving it out as well."""
+    (longest,) = _slow_runs(_jobs()["slow-long"])
+    for name in _paths(longest)[0]:
+        path = ROOT / name
+        assert path.is_file(), f"{name} is no test file"
+        assert _slow_tests(path), f"{name} has no slow test"
+
+
+def test_both_jobs_of_slow_tests_run_on_the_same_events_and_name_their_slowest_tests() -> None:
+    """The two halves of the slow tests run where the one job ran (pull requests, main and by hand, not the weekly
+    run) on the same system, Python and pinned libraries, and each names its 15 slowest tests at the end, so a
+    slow runner or a test that grew shows in its log. ``slow-tests`` keeps the name it had as the one job: a
+    required check may be registered under that name."""
+    jobs = _jobs()
+    assert jobs["slow-tests"]["name"] == "Backend, slow tests (Python 3.12)"
+    rest, longest = (jobs[name] for name in SLOW_JOBS)
+    assert longest.get("if") == rest.get("if") == "github.event_name != 'schedule'"
+    assert longest["runs-on"] == rest["runs-on"] == "ubuntu-24.04"
+    for name in SLOW_JOBS:
+        job = jobs[name]
+        assert [
+            step["with"]["python-version"]
+            for step in job["steps"]
+            if "python-version" in step.get("with", {})
+        ] == ["3.12"], name
+        assert 'uv pip install -e ".[dev]" -c constraints.txt' in _script(job), name
+        (args,) = _slow_runs(job)
+        assert "--durations=15" in args, name
 
 
 def _final_gate(line: str) -> bool:
