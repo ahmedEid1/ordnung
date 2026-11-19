@@ -632,7 +632,7 @@ async def test_an_empty_reading_s_read_this_letter_placeholder_is_never_scored(t
 
 
 PREDICTION_CACHE_MODULES = [
-    "ingest/gaps.py",
+    "ingest/gaps/reading.py",
     "ingest/conflicts.py",
     "recurrence.py",  # a working day or day of the month: graded by plan
     "money/iban.py",  # the invalid-IBAN signal

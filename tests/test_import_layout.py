@@ -37,6 +37,8 @@ STAYS_LIGHT = [
     ("ordnung.calendar.ics", {"ordnung.tick", "ordnung.ingest.pipeline", "ordnung.secretary.triggers"}),
     # recurring dates need the postal buffer from the rules engine, not the trigger engine
     ("ordnung.recurrence", {"ordnung.secretary.triggers"}),
+    # the check for an incomplete reading sits below the plan that files its to-dos
+    ("ordnung.ingest.gaps", {"ordnung.ingest.plan"}),
 ]
 
 
