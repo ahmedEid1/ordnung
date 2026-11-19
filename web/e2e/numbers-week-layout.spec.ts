@@ -108,10 +108,12 @@ test("Weekly review at 320, 390, 768, 1280 and 1920 px: the steps fit, every ste
   for (const step of ["new", "check", "pay", "post", "waiting", "decide", "file"]) {
     await page.setViewportSize({ width: WIDTHS[0]!, height: 800 });
     await open(page, `/week?step=${step}`, "Weekly review");
-    await atEachWidth(page, async (width) => expect(await outOfBounds(page), `${step} at ${width} px`).toEqual([]));
+    await atEachWidth(page, async (width) => {
+      expect(await outOfBounds(page), `${step} at ${width} px`).toEqual([]);
+      // the days on the steps are computed: "Not legal advice" under them, at every width
+      await expect(page.getByRole("main").getByText(/Not legal advice\./), `${step} at ${width} px`).toBeVisible();
+    });
   }
-  // the days on the steps are computed: the law's date and "Not legal advice" under them
-  await expect(page.getByRole("main").getByText(/Not legal advice\./)).toBeVisible();
 });
 
 // The label as the letter prints it, and with the soft hyphens a PDF's text often carries: they are
