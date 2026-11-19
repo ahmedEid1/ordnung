@@ -96,7 +96,8 @@ test.describe("phone 320 px: no page scrolls sideways (WCAG 1.4.10 reflow)", () 
     // a swipe back along the row stays where the person left it
     await list.evaluate((el) => el.scrollTo({ left: 0 }));
     await expect(track).toHaveAttribute("data-overflow", "end");
-    await page.waitForTimeout(300);
+    // the old scroll-into-view ran right after that re-measure: two frames give it its chance
+    await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
     expect(await list.evaluate((el) => el.scrollLeft)).toBe(0);
     // keyboard: back to the first tab, which scrolls back into view; the ring is drawn inside the tab
     await page.keyboard.press("Home");

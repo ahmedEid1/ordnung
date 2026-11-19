@@ -147,7 +147,6 @@ for (const [width, height] of [
     await page.goto(`/letters?kind=cancellation&contract=${id}`);
     const dialog = page.getByRole("dialog", { name: "New letter" });
     await expect(dialog.getByRole("heading", { name: "Step 2: Which contract?" })).toBeVisible();
-    await page.waitForTimeout(200); // the composer scrolls to its second step after 60 ms
     await settle(page);
     const chosen = dialog.locator("label", { has: page.locator(`input[value="${id}"]`) });
     await expect(chosen.getByRole("radio")).toBeChecked();
