@@ -248,6 +248,36 @@ describe("search states", () => {
     expect(screen.getByRole("status")).toHaveTextContent("No letters match “Quittung 1999”");
   });
 
+  it("says it is still searching while the search for what you typed is paused, not that nothing matches", async () => {
+    // "Quittung" matched nothing. Then the browser goes offline: what is typed next has not been asked yet, and the
+    // empty list still shown is the answer to another question
+    const asked: string[] = [];
+    searchOverride = (q) => {
+      asked.push(q);
+      return json([]);
+    };
+    renderSearch();
+    const user = userEvent.setup();
+    await user.click(topField());
+    await user.type(topField(), "Quittung");
+    expect(await screen.findByText("No letters match “Quittung”.")).toBeInTheDocument();
+    onlineManager.setOnline(false);
+    try {
+      await user.type(topField(), " 1999");
+      await new Promise((r) => setTimeout(r, 400));
+      expect(asked).not.toContain("Quittung 1999");
+      expect(screen.queryByText(/No letters match/)).toBeNull();
+      expect(screen.getByText("Searching…")).toBeInTheDocument();
+      expect(screen.getByRole("status")).not.toHaveTextContent("No letters match");
+      // back online the search is asked, and its own answer is said
+      onlineManager.setOnline(true);
+      expect(await screen.findByText("No letters match “Quittung 1999”.")).toBeInTheDocument();
+      expect(asked).toContain("Quittung 1999");
+    } finally {
+      onlineManager.setOnline(true);
+    }
+  });
+
   it("on a new install, offers to add letters instead of 'no match'", async () => {
     searchOverride = () => json([]);
     listOverride = () => json([]);
