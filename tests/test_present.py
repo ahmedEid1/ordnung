@@ -104,8 +104,18 @@ def today_doc(today: Path, doc: dict[str, Any]) -> dict[str, Any]:
 
 
 @pytest.fixture(scope="module")
-def rendered() -> dict[str, str]:
-    return build.outputs(ROOT, RESULTS)
+def legacy() -> str:
+    """The history page's earlier runs, rendered once from the committed results (the slowest part of a render)."""
+    return build.legacy_page(RESULTS)
+
+
+@pytest.fixture(scope="module")
+def rendered(legacy: str) -> dict[str, str]:
+    """Every output, rendered from the committed results with the history page rendered once (``legacy``);
+    ``test_two_renders_are_byte_identical`` renders everything again for real."""
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(build, "legacy_page", lambda results_dir: legacy)
+        return build.outputs(ROOT, RESULTS)
 
 
 def _flat(value: str) -> str:
@@ -861,14 +871,20 @@ def test_check_passes_and_fails_after_a_one_character_edit_to_any_output(tmp_pat
         path.write_bytes(original)
 
 
-def test_check_finds_a_chart_nothing_renders_any_more(tmp_path: Path) -> None:
+def test_check_finds_a_chart_nothing_renders_any_more(
+    tmp_path: Path, legacy: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(build, "legacy_page", lambda results_dir: legacy)
     root = _tree(tmp_path)
     stale = root / "docs" / "assets" / "eval-due-date-accuracy.png"
     stale.write_bytes(b"old")
     assert build.check(root, RESULTS) == ["docs/assets/eval-due-date-accuracy.png"]
 
 
-def test_the_readme_outside_the_block_is_left_as_it_is(tmp_path: Path) -> None:
+def test_the_readme_outside_the_block_is_left_as_it_is(
+    tmp_path: Path, legacy: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(build, "legacy_page", lambda results_dir: legacy)
     root = _tree(tmp_path)
     readme = root / "README.md"
     before, rest = readme.read_text(encoding="utf-8").split(BEGIN, 1)
