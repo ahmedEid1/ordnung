@@ -70,8 +70,8 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - **Search: Enter right after typing opens a match of what you typed.** The list under the search field still
   showed the matches of what you had typed a moment before while the new search was on its way, and Enter opened
   the first of those: typing *Stadtwerke* quickly after a search for *Stadt* could open the wrong letter. Enter
-  now waits for the answer and opens its highlighted match; pressing Escape or leaving the field before it comes
-  opens nothing.
+  now waits for the answer and opens its highlighted match; pressing Escape, leaving the field or choosing again
+  with the arrow keys before it comes opens nothing.
 - **Finding your calendars no longer moves you while you are elsewhere.** After *Find my calendars* the card moved
   to the chosen calendar when the calendars came, wherever you were by then; if you had gone on to the choice of
   what the events show, your next arrow key changed which calendar Ordnung would write into. Closing what a

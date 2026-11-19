@@ -8,6 +8,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, screen, waitFor, within } from "@testing-library/react";
+import { onlineManager } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "@/test/render";
 import { createMockServer, type MockServer } from "@/mocks/server";
@@ -333,6 +334,34 @@ describe("Enter", () => {
     await release();
     await waitFor(() => expect(client.isFetching()).toBe(0));
     expect(router.state.location.pathname).toBe("/");
+  });
+
+  it("is dropped by the arrow keys: the person chooses again in the list they see", async () => {
+    const { asked, release } = holdStadtwerke();
+    const { router, client, user } = await typedOnPastAMatch();
+    await user.type(topField(), "werke{Enter}");
+    await waitFor(() => expect(asked).toContain("Stadtwerke"));
+    await user.keyboard("{ArrowDown}");
+    await release();
+    await waitFor(() => expect(client.isFetching()).toBe(0));
+    await screen.findByRole("option", { name: /Stadtwerke bill/ });
+    expect(router.state.location.pathname).toBe("/");
+  });
+
+  it("waits while the search is paused (the browser is offline), and never opens the match still listed", async () => {
+    searchOverride = (q) => json(q === "Stadtwerke" ? [power()] : [city()]);
+    const { router, user } = await typedOnPastAMatch();
+    onlineManager.setOnline(false);
+    try {
+      await user.type(topField(), "werke{Enter}");
+      await new Promise((r) => setTimeout(r, 400));
+      expect(router.state.location.pathname).toBe("/");
+      // back online, the paused search answers and the Enter that waited opens its match
+      onlineManager.setOnline(true);
+      await waitFor(() => expect(router.state.location.pathname).toBe("/documents/doc_power"));
+    } finally {
+      onlineManager.setOnline(true);
+    }
   });
 
   it("does nothing before two characters", async () => {

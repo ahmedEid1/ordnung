@@ -102,7 +102,9 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
   const matches: DocumentRow[] = dterm.length >= MIN_CHARS && searching ? (search.data ?? []) : [];
   const results = matches.slice(0, SEARCH_LIMIT);
   const hasMore = matches.length > SEARCH_LIMIT;
-  const settled = dterm === term && !search.isFetching;
+  // a paused search (the browser reports offline) is not fetching, yet still lists the previous term's
+  // matches as placeholder rows: it has not answered either
+  const settled = dterm === term && !search.isFetching && !search.isPlaceholderData;
   const noMatches = searching && settled && !search.isError && results.length === 0;
   const showRecent = Boolean(inline) && term.length === 0;
   // recent letters for the empty phone sheet; the same list tells "no letters match" from "no letters yet"
@@ -157,6 +159,8 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      // choosing again drops a waiting Enter: the person presses Enter on the row they see
+      enterWhenSettled.current = false;
       e.preventDefault();
       if (!options.length) return;
       revealActive.current = true;
@@ -203,7 +207,10 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
         aria-selected={isActive}
         title={title}
         onMouseMove={() => {
-          if (!isActive) setActive(i);
+          if (isActive) return;
+          // pointing at another row is choosing again, as the arrow keys are: a waiting Enter is dropped
+          enterWhenSettled.current = false;
+          setActive(i);
         }}
         onMouseDown={(e) => {
           e.preventDefault();
