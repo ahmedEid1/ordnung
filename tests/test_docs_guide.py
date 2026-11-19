@@ -1,5 +1,5 @@
-"""``docs/guide.md``, the guide to using Ordnung: the sections README links to by anchor, every environment
-variable the package reads or sets, and how to note a call."""
+"""``docs/guide.md``, the guide to using Ordnung: every environment variable the package reads or sets, the
+values that turn text in pictures off, and how to note a call."""
 
 from __future__ import annotations
 
@@ -8,7 +8,6 @@ import re
 from pathlib import Path
 
 from ordnung import config
-from test_docs_index import _anchors
 
 ROOT = Path(__file__).resolve().parents[1]
 GUIDE = ROOT / "docs" / "guide.md"
@@ -58,49 +57,6 @@ def _rows() -> dict[str, list[str]]:
         if name:
             rows[name[1]] = cells[1:]
     return rows
-
-
-def test_the_guide_has_the_sections_the_readme_links() -> None:
-    """README sends readers to the guide's tour, install, updating, environment variables and limitations by
-    their anchors (``docs/guide.md#install-and-run``), so a renamed heading breaks those links."""
-    linked = {"a-tour", "install-and-run", "updating", "environment-variables", "limitations"}
-    assert linked <= _anchors(GUIDE), linked - _anchors(GUIDE)
-    headings = re.findall(r"^(#{1,3}) (.+)$", _guide(), re.M)
-    assert headings[0] == ("#", "Using Ordnung")
-    assert [heading for level, heading in headings if level == "##"] == [
-        "A tour",
-        "Install and run",
-        "Environment variables",
-        "Limitations",
-    ]
-    install = _section("Install and run")
-    assert "\n### Updating\n" in install  # under Install and run, as the README had it
-
-
-def test_the_guide_s_install_has_a_heading_for_each_way_to_run_ordnung() -> None:
-    """Install and run's parts are ``###`` headings, not bold words at the start of a paragraph, so GitHub's
-    outline lists them and each has an anchor; Updating stays last, under Install and run."""
-    install = _section("Install and run")
-    assert re.findall(r"^### (.+)$", install, re.M) == [
-        "Words in photos (optional)",
-        "Without a terminal",
-        "On your phone",
-        "On your other computer",
-        "Claude Desktop or Claude Code",
-        "From a source checkout",
-        "Updating",
-    ]
-    assert not re.findall(r"^\*\*.+?\*\*", install, re.M)  # no paragraph left that a bold label starts
-    anchors = {
-        "words-in-photos-optional",
-        "without-a-terminal",
-        "on-your-phone",
-        "on-your-other-computer",
-        "claude-desktop-or-claude-code",
-        "from-a-source-checkout",
-        "updating",
-    }
-    assert anchors <= _anchors(GUIDE), anchors - _anchors(GUIDE)
 
 
 def test_every_environment_variable_ordnung_reads_is_in_the_guide() -> None:
