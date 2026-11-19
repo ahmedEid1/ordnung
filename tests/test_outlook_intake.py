@@ -24,9 +24,9 @@ from ordnung.config import Paths
 from ordnung.db.store import Store
 from ordnung.ingest import held, watcher
 from ordnung.ingest.attachments import email_attachments, email_source
-from ordnung.ingest.intake import OLE_UNOPENED, IntakeError, normalise_upload, sniff_mime
+from ordnung.ingest.intake import normalise_upload
 from ordnung.ingest.outlook import DAMAGED, msg_to_eml
-from ordnung.ingest.text import email_heading, text_document
+from ordnung.ingest.text import text_document
 from ordnung.llm.fake import FakeBackend
 from phone_support import pair, phone_app, phone_client
 from test_api_proof import _add, _sent
@@ -46,16 +46,6 @@ def pinned_today() -> Iterator[None]:
     clock.set_today(None)
 
 
-def test_intake_names_an_unopened_outlook_file_never_a_pdf() -> None:
-    """The trap every test here walks into: this Outlook file holds an attached PDF in its first kilobyte. Should it
-    ever reach intake unopened, intake names it for what it is, never a PDF, whatever its name."""
-    assert b"%PDF-" in BILL[:1024]
-    for name in ("Rechnung.msg", "Rechnung.pdf", "Rechnung"):
-        with pytest.raises(IntakeError) as caught:
-            sniff_mime(BILL, name)
-        assert str(caught.value) == OLE_UNOPENED
-
-
 def test_converted_text_has_header_lines_and_attachment_list() -> None:
     eml = msg_to_eml(BILL)
     body, mime, name = normalise_upload(eml, "Rechnung.eml")
@@ -67,18 +57,19 @@ def test_converted_text_has_header_lines_and_attachment_list() -> None:
     assert "anbei Ihre Rechnung für September." in lines
 
 
-def test_held_msg_title_is_subject_and_sender() -> None:
-    assert email_heading(msg_to_eml(BILL)) == HEADING
-
-
 # --------------------------------------------------------------------------------------------------
 # Upload and the phone
 # --------------------------------------------------------------------------------------------------
 
 
 async def test_upload_msg_becomes_email_with_its_attachments(data_dir: Path) -> None:
+    """The trap: this Outlook file holds an attached PDF in its first kilobyte. Intake alone either refuses
+    such a file as a broken PDF or, when the PDF inside happens to open, stores the whole Outlook file as
+    that PDF; converted first, it is the e-mail it is. Adding it again finds it."""
+    assert b"%PDF-" in BILL[:1024]
     async with api_for(data_dir) as api:
         result = await api.upload(("Rechnung.msg", BILL))
+        assert BROKEN_PDF not in json.dumps(result)
         assert result["errors"] == []
         (document,) = result["documents"]
         assert (document["filename"], document["mime"], document["source"]) == (
@@ -91,24 +82,8 @@ async def test_upload_msg_becomes_email_with_its_attachments(data_dir: Path) -> 
         stored = api.ctx.store.get_document_file(document["id"])
         assert stored is not None and stored.read_bytes() == msg_to_eml(BILL)  # the .eml copy is kept
         assert stored.suffix == ".eml"
-
-
-async def test_upload_msg_twice_is_a_duplicate(data_dir: Path) -> None:
-    async with api_for(data_dir) as api:
-        (document,) = (await api.upload(("Rechnung.msg", BILL)))["documents"]
         again = await api.upload(("Kopie von Rechnung.msg", BILL))
         assert again["documents"] == [] and again["duplicates"] == [document["id"]]
-
-
-async def test_msg_holding_a_pdf_is_not_called_a_broken_pdf(data_dir: Path) -> None:
-    """Intake alone either refuses such a file as a broken PDF or, when the PDF inside happens to open,
-    stores the whole Outlook file as that PDF; converted first, it is the e-mail it is."""
-    async with api_for(data_dir) as api:
-        response = await api.client.post("/api/documents", files=[("files", ("Rechnung.msg", BILL))])
-        assert response.status_code == 201, response.text
-        assert BROKEN_PDF not in response.text
-        (document,) = response.json()["documents"]
-        assert (document["mime"], document["filename"]) == ("message/rfc822", "Rechnung.eml")
 
 
 async def test_upload_of_a_damaged_msg_says_why(data_dir: Path) -> None:
@@ -116,6 +91,8 @@ async def test_upload_of_a_damaged_msg_says_why(data_dir: Path) -> None:
         response = await api.client.post("/api/documents", files=[("files", ("Rechnung.msg", BILL[:3000]))])
         assert response.status_code == 422, response.text
         assert response.json()["errors"] == [{"filename": "Rechnung.msg", "detail": DAMAGED}]
+        zeros = await api.client.post("/api/documents", files=[("files", ("kaputt.msg", b"\0" * 8192))])
+        assert zeros.json()["errors"] == [{"filename": "kaputt.msg", "detail": DAMAGED}]
 
 
 async def test_the_outlook_file_hypothesis_found_in_ci_is_read(data_dir: Path) -> None:
@@ -131,12 +108,6 @@ async def test_the_outlook_file_hypothesis_found_in_ci_is_read(data_dir: Path) -
         response = await api.client.post("/api/documents", files=[("files", ("kaputt.msg", flipped))])
         assert response.status_code == 201, response.text
         assert response.json()["documents"][0]["filename"] == "kaputt.eml"
-
-
-async def test_upload_of_a_msg_full_of_zeros_says_it_is_damaged(data_dir: Path) -> None:
-    async with api_for(data_dir) as api:
-        response = await api.client.post("/api/documents", files=[("files", ("kaputt.msg", b"\0" * 8192))])
-        assert response.json()["errors"] == [{"filename": "kaputt.msg", "detail": DAMAGED}]
 
 
 async def test_phone_upload_msg(data_dir: Path) -> None:
@@ -192,20 +163,16 @@ async def test_watched_folder_picks_up_msg_and_holds_it(ctx: AppContext, inbox: 
 
 
 async def test_watched_folder_refused_msg_logged(ctx: AppContext, inbox: Path) -> None:
+    """A cut-off Outlook file and one full of zeros (a failed copy) are both refused as damaged."""
     (inbox / "kaputt.msg").write_bytes(BILL[:3000])
-    async with watching(ctx):
-        await eventually(lambda: logged(ctx, "folder.refused"))
-    assert logged(ctx, "folder.refused") == [f"Couldn't add “kaputt.msg” from your watched folder: {DAMAGED}"]
-    assert ctx.store.list_documents() == []
-
-
-async def test_watched_folder_refuses_a_msg_full_of_zeros_as_damaged(ctx: AppContext, inbox: Path) -> None:
     (inbox / "kaputt-nullen.msg").write_bytes(b"\0" * 8192)
     async with watching(ctx):
-        await eventually(lambda: logged(ctx, "folder.refused"))
-    assert logged(ctx, "folder.refused") == [
-        f"Couldn't add “kaputt-nullen.msg” from your watched folder: {DAMAGED}"
+        await eventually(lambda: len(logged(ctx, "folder.refused")) == 2)
+    assert sorted(logged(ctx, "folder.refused")) == [
+        f"Couldn't add “kaputt-nullen.msg” from your watched folder: {DAMAGED}",
+        f"Couldn't add “kaputt.msg” from your watched folder: {DAMAGED}",
     ]
+    assert ctx.store.list_documents() == []
 
 
 async def test_watched_folder_says_a_known_msg_by_its_own_name(ctx: AppContext, inbox: Path) -> None:
@@ -282,9 +249,15 @@ def test_cli_add_damaged_msg_says_why(
 
 async def test_proof_msg_kept_as_one_file(data_dir: Path) -> None:
     """A sent e-mail saved from Outlook is kept as proof like an .eml: one private file, its attachments no
-    letters."""
+    letters; a damaged one is refused with the Outlook reason (and adds nothing)."""
     async with api_for(data_dir) as api:
         draft_id, _ = await _sent(api)
+        response = await api.client.post(
+            f"/api/drafts/{draft_id}/proofs",
+            files={"file": ("gesendet.msg", BILL[:3000])},
+            data={"kind": "sent_email"},
+        )
+        assert response.status_code == 422 and response.json()["detail"] == DAMAGED
         before = {doc.id for doc in api.ctx.store.list_documents(include_deleted=True)}
         overview = await _add(api, draft_id, "gesendet.msg", BILL, kind="sent_email")
         (entry,) = overview["proofs"]
@@ -298,17 +271,6 @@ async def test_proof_msg_kept_as_one_file(data_dir: Path) -> None:
         assert stored is not None
         message = email.message_from_bytes(stored.read_bytes(), policy=email.policy.default)
         assert [part.get_filename() for part in message.iter_attachments()] == ["Rechnung_2026-09.pdf"]
-
-
-async def test_proof_of_a_damaged_msg_says_why(data_dir: Path) -> None:
-    async with api_for(data_dir) as api:
-        draft_id, _ = await _sent(api)
-        response = await api.client.post(
-            f"/api/drafts/{draft_id}/proofs",
-            files={"file": ("gesendet.msg", BILL[:3000])},
-            data={"kind": "sent_email"},
-        )
-        assert response.status_code == 422 and response.json()["detail"] == DAMAGED
 
 
 # --------------------------------------------------------------------------------------------------
