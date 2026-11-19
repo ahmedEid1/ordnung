@@ -16,12 +16,15 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
 
 import pytest
 from scripts import prereg_published
+
+from helpers_tables import check_rows
 
 REPO = Path(__file__).resolve().parents[1]
 ISSUE = "https://github.com/example/repo/issues/54"
@@ -204,19 +207,21 @@ def test_the_record_is_strict(world: World) -> None:
     assert prereg_published.record_problems([], world.root, freeze=world.freeze, issue=ISSUE) != []
 
 
-@pytest.mark.parametrize(
-    "url",
-    [
-        f"{ISSUE}",
-        f"{ISSUE}#issuecomment-",
-        "https://github.com/example/repo/issues/55#issuecomment-123",
-        "https://github.com/example/repo/pull/54#issuecomment-123",
-        "http://github.com/example/repo/issues/54#issuecomment-123",
-        f"{AMENDMENT} ",
-    ],
-)
-def test_the_amendment_is_a_comment_on_the_pre_registration_issue(world: World, url: str) -> None:
-    assert any("amendment" in p for p in world.problems(world.record(amendment=url)))
+AMENDMENTS_THAT_ARE_NO_COMMENT_ON_THE_ISSUE = [
+    f"{ISSUE}",
+    f"{ISSUE}#issuecomment-",
+    "https://github.com/example/repo/issues/55#issuecomment-123",
+    "https://github.com/example/repo/pull/54#issuecomment-123",
+    "http://github.com/example/repo/issues/54#issuecomment-123",
+    f"{AMENDMENT} ",
+]
+
+
+def test_the_amendment_is_a_comment_on_the_pre_registration_issue(world: World) -> None:
+    def check(url: str) -> None:
+        assert any("amendment" in p for p in world.problems(world.record(amendment=url)))
+
+    check_rows(AMENDMENTS_THAT_ARE_NO_COMMENT_ON_THE_ISSUE, check)
 
 
 def test_without_the_issue_in_the_history_no_amendment_holds(world: World) -> None:
@@ -328,13 +333,15 @@ def test_the_version_is_read_from_the_package(world: World) -> None:
     assert prereg_published.version(world.root) is None
 
 
-@pytest.mark.parametrize(
-    "init",
-    ['__version__: str = "0.4.1"\n', "__version__: Final = '0.4.1'  # the release\n"],
-)
-def test_an_annotated_version_is_read_too(world: World, init: str) -> None:
-    _put(world.root, "src/ordnung/__init__.py", init)
-    assert prereg_published.version(world.root) == "0.4.1"
+ANNOTATED_VERSIONS = ['__version__: str = "0.4.1"\n', "__version__: Final = '0.4.1'  # the release\n"]
+
+
+def test_an_annotated_version_is_read_too(world: World) -> None:
+    def check(init: str) -> None:
+        _put(world.root, "src/ordnung/__init__.py", init)
+        assert prereg_published.version(world.root) == "0.4.1"
+
+    check_rows(ANNOTATED_VERSIONS, check)
 
 
 def test_a_version_pyproject_names_is_read_when_the_package_names_none(world: World) -> None:
@@ -954,27 +961,35 @@ def _recorded(world: World) -> dict[str, Any]:
     return first
 
 
-@pytest.mark.parametrize("gap", ["removed", "not JSON"])
+RECORD_HISTORY_GAPS = ["removed", "not JSON"]
+
+
 def test_a_gap_in_the_record_s_history_neither_passes_nor_resets_the_comparison(
-    world: World, gap: str
+    world_template: World, tmp_path: Path
 ) -> None:
     """Once written, the record stays: a commit without it, or with a file that is no JSON object, is reported, and the
     next version is compared with the last one that held, so a gap cannot carry a change of the checks past the
     amendment rule."""
-    first = _recorded(world)
-    if gap == "removed":
-        _git(world.root, "rm", "-q", prereg_published.RECORD)
-        gone = _commit(world.root, "the record removed")
-    else:
-        _put(world.root, prereg_published.RECORD, "{\n")
-        gone = _commit(world.root, "the record broken")
-    found = prereg_published.record_history_problems(world.root)
-    assert any(gone[:12] in p and "the record stays" in p for p in found), found
-    _put(world.root, prereg_published.CHECKED_BY[1], "# weakened after publication\n")
-    _write_record(world, dict(first, checked_by=prereg_published.checked_by(world.root)), "written again")
-    found = prereg_published.record_history_problems(world.root)
-    assert f"{prereg_published.RECORD}: its checked_by changed without a new amendment" in found, found
-    assert any(gone[:12] in p for p in found), found
+
+    def check(gap: str) -> None:
+        # each row commits, so each has its own copy of the world
+        world = world_template.copy_to(Path(tempfile.mkdtemp(dir=tmp_path)) / "repo")
+        first = _recorded(world)
+        if gap == "removed":
+            _git(world.root, "rm", "-q", prereg_published.RECORD)
+            gone = _commit(world.root, "the record removed")
+        else:
+            _put(world.root, prereg_published.RECORD, "{\n")
+            gone = _commit(world.root, "the record broken")
+        found = prereg_published.record_history_problems(world.root)
+        assert any(gone[:12] in p and "the record stays" in p for p in found), found
+        _put(world.root, prereg_published.CHECKED_BY[1], "# weakened after publication\n")
+        _write_record(world, dict(first, checked_by=prereg_published.checked_by(world.root)), "written again")
+        found = prereg_published.record_history_problems(world.root)
+        assert f"{prereg_published.RECORD}: its checked_by changed without a new amendment" in found, found
+        assert any(gone[:12] in p for p in found), found
+
+    check_rows(RECORD_HISTORY_GAPS, check)
 
 
 def test_a_change_names_an_amendment_no_earlier_version_named(world: World) -> None:
