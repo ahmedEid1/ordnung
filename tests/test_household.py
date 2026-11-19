@@ -12,6 +12,7 @@ from typing import Any
 
 import pytest
 
+from helpers_tables import check_rows
 from ordnung import clock
 from ordnung.config import Paths
 from ordnung.db.store import HOUSEHOLD_META_KEY, PERSON_META_KEY, Store
@@ -151,26 +152,43 @@ def test_two_members_the_addressee_could_name_get_no_suggestion() -> None:
     assert _suggested("Alex Rivera", _members("Alex Rivera", "Alexandra Rivera")) == members[0]
 
 
-@pytest.mark.parametrize(
-    "addressee",
-    ["ALEX RIVERA", "alex rivera", "Rivera, Alex", "Dr. Alex Rivera", "A. Rivera", "Herrn Prof. Alex Rivera"],
-)
-def test_umlauts_case_accents_titles_and_initials_do_not_count(addressee: str) -> None:
-    assert _suggested(addressee, _members(ALEX, "Jürgen Müller")) == _members(ALEX)[0]
-    juergen = _members(ALEX, "Jürgen Müller")[1]
-    for spelled in ("Juergen Mueller", "Jurgen Muller", "J. Müller", "Müller, Jürgen", "JÜRGEN MÜLLER"):
-        assert _suggested(spelled, _members(ALEX, "Jürgen Müller")) == juergen, spelled
-    assert _suggested("José Núñez", _members("Jose Nunez")) is not None
+ALEX_SPELLED_OTHERWISE = [
+    "ALEX RIVERA",
+    "alex rivera",
+    "Rivera, Alex",
+    "Dr. Alex Rivera",
+    "A. Rivera",
+    "Herrn Prof. Alex Rivera",
+]
 
 
-@pytest.mark.parametrize(
-    "addressee",
-    ["Alex und Mia Rivera", "Alex & Mia Rivera", "Familie Rivera", "Eheleute Rivera", "Alex u. Mia Rivera"],
-)
-def test_an_addressee_naming_several_people_names_no_member(addressee: str) -> None:
-    assert _suggested(addressee, _members(ALEX)) is None
-    stored = StoredHousehold(members=_members(ALEX))
-    assert household.answer("doc_x", addressee, SAM, stored) == LetterFor()  # and offers no one to add
+def test_umlauts_case_accents_titles_and_initials_do_not_count() -> None:
+    def check(addressee: str) -> None:
+        assert _suggested(addressee, _members(ALEX, "Jürgen Müller")) == _members(ALEX)[0]
+        juergen = _members(ALEX, "Jürgen Müller")[1]
+        for spelled in ("Juergen Mueller", "Jurgen Muller", "J. Müller", "Müller, Jürgen", "JÜRGEN MÜLLER"):
+            assert _suggested(spelled, _members(ALEX, "Jürgen Müller")) == juergen, spelled
+        assert _suggested("José Núñez", _members("Jose Nunez")) is not None
+
+    check_rows(ALEX_SPELLED_OTHERWISE, check)
+
+
+ADDRESSEES_NAMING_SEVERAL = [
+    "Alex und Mia Rivera",
+    "Alex & Mia Rivera",
+    "Familie Rivera",
+    "Eheleute Rivera",
+    "Alex u. Mia Rivera",
+]
+
+
+def test_an_addressee_naming_several_people_names_no_member() -> None:
+    def check(addressee: str) -> None:
+        assert _suggested(addressee, _members(ALEX)) is None
+        stored = StoredHousehold(members=_members(ALEX))
+        assert household.answer("doc_x", addressee, SAM, stored) == LetterFor()  # and offers no one to add
+
+    check_rows(ADDRESSEES_NAMING_SEVERAL, check)
 
 
 def test_nothing_is_suggested_for_the_person_or_without_a_profile_name(sam: Store) -> None:
@@ -252,21 +270,31 @@ def test_empty_long_and_letterless_names_are_refused(sam: Store, name: str, refu
     assert _save(sam, Person("A" * 120))["members"][0]["name"] == "A" * 120
 
 
-@pytest.mark.parametrize("name", ["Sam Rivera", "sam rivera", "Herrn Sam Rivera", "S. Rivera", "Rivera, Sam"])
-def test_your_own_name_is_refused(sam: Store, name: str) -> None:
-    with pytest.raises(HouseholdError) as refused:
-        _save(sam, Person(name))
-    assert _refused(refused) == (
-        422,
-        "That's your own name. Your household is the other people your letters come for.",
-    )
+YOUR_OWN_NAME = ["Sam Rivera", "sam rivera", "Herrn Sam Rivera", "S. Rivera", "Rivera, Sam"]
 
 
-@pytest.mark.parametrize("name", ["Alex und Mia Rivera", "Alex & Mia", "Familie Rivera", "Alex + Mia"])
-def test_several_people_in_one_name_are_refused(sam: Store, name: str) -> None:
-    with pytest.raises(HouseholdError) as refused:
-        _save(sam, Person(name))
-    assert _refused(refused) == (422, "Add one person at a time.")
+def test_your_own_name_is_refused(sam: Store) -> None:
+    def check(name: str) -> None:
+        with pytest.raises(HouseholdError) as refused:
+            _save(sam, Person(name))
+        assert _refused(refused) == (
+            422,
+            "That's your own name. Your household is the other people your letters come for.",
+        )
+
+    check_rows(YOUR_OWN_NAME, check)
+
+
+SEVERAL_PEOPLE_IN_ONE_NAME = ["Alex und Mia Rivera", "Alex & Mia", "Familie Rivera", "Alex + Mia"]
+
+
+def test_several_people_in_one_name_are_refused(sam: Store) -> None:
+    def check(name: str) -> None:
+        with pytest.raises(HouseholdError) as refused:
+            _save(sam, Person(name))
+        assert _refused(refused) == (422, "Add one person at a time.")
+
+    check_rows(SEVERAL_PEOPLE_IN_ONE_NAME, check)
 
 
 @pytest.mark.parametrize(
@@ -542,13 +570,16 @@ def test_a_household_from_a_newer_ordnung_is_never_overwritten(sam: Store) -> No
     assert sam.get_meta(HOUSEHOLD_META_KEY) == raw
 
 
-@pytest.mark.parametrize(
-    "raw", ["not json", "[]", '{"format": 1, "members": "Alex"}', '{"members": [{"id": 3}]}']
-)
-def test_an_unreadable_row_reads_as_an_empty_household(sam: Store, raw: str) -> None:
-    sam.set_meta(HOUSEHOLD_META_KEY, raw)
-    assert household.load(sam) == StoredHousehold()
-    assert household.view(sam)["members"] == []
+UNREADABLE_ROWS = ["not json", "[]", '{"format": 1, "members": "Alex"}', '{"members": [{"id": 3}]}']
+
+
+def test_an_unreadable_row_reads_as_an_empty_household(sam: Store) -> None:
+    def check(raw: str) -> None:
+        sam.set_meta(HOUSEHOLD_META_KEY, raw)
+        assert household.load(sam) == StoredHousehold()
+        assert household.view(sam)["members"] == []
+
+    check_rows(UNREADABLE_ROWS, check)
 
 
 def test_also_file_files_the_letter_for_the_one_new_person(sam: Store) -> None:
