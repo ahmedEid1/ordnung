@@ -3,19 +3,12 @@ law more than 90 days ago, and names the pending changes to re-check."""
 
 from __future__ import annotations
 
-import sys
 from datetime import date, timedelta
-from pathlib import Path
 
 import pytest
+from scripts.check_rules_age import MAX_AGE_DAYS, main, stale_warning
 
 from ordnung.rules.catalog import LAST_CHECKED, PENDING_CHANGES, PendingChange
-
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from scripts.check_rules_age import MAX_AGE_DAYS, main, stale_warning  # noqa: E402
 
 CHECKED = date.fromisoformat(LAST_CHECKED)
 

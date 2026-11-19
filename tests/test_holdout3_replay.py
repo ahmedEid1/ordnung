@@ -7,17 +7,13 @@ from __future__ import annotations
 
 import json
 import math
-import sys
 from pathlib import Path
 from typing import Any
 
 import pytest
+from evals import run as eval_run
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from evals import run as eval_run  # noqa: E402
 
 RECORDING = ROOT / "evals" / "results" / "2026-10-06-claude-sonnet-5-holdout3.json"
 #: Fields of a prediction that describe the run, not the answer: the calls' timings and backend, the code's fingerprint.

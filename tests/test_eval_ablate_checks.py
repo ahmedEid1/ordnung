@@ -6,12 +6,23 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-import sys
 from datetime import date
 from pathlib import Path
 from typing import Any
 
 import pytest
+from evals import conditions, harness, splits
+from evals.run import DEFAULT_MODEL, RESULTS_DIR
+from scripts import eval_ablate_checks
+from scripts.eval_ablate_checks import (
+    ABLATIONS,
+    SCHEMA,
+    ablated,
+    changed_items,
+    counts,
+    differences,
+    letters_acted,
+)
 
 from helpers_tables import check_rows
 from ordnung.ingest import extract as extract_mod
@@ -22,21 +33,6 @@ from ordnung.models import DocumentExtraction, ExtractedItem
 from ordnung.rules import RuleContext
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from evals import conditions, harness, splits  # noqa: E402
-from evals.run import DEFAULT_MODEL, RESULTS_DIR  # noqa: E402
-from scripts import eval_ablate_checks  # noqa: E402
-from scripts.eval_ablate_checks import (  # noqa: E402
-    ABLATIONS,
-    SCHEMA,
-    ablated,
-    changed_items,
-    counts,
-    differences,
-    letters_acted,
-)
 
 #: The published replay, the newest (``python -m scripts.eval_ablate_checks --date …``): an older one is superseded,
 #: and the results index checks it by its hash.

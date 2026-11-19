@@ -5,23 +5,14 @@ repeated runs. Every case is a hand-made answer with a known score."""
 
 from __future__ import annotations
 
-import sys
 from datetime import date
-from pathlib import Path
 from typing import Any
 
 import pytest
-
-from helpers_tables import check_rows
-
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from evals.ask.metrics import consistency, summarise, summarise_strict, summary_v2  # noqa: E402
-from evals.ask.questions import Gold, Question, all_questions, load_truth  # noqa: E402
-from evals.ask.score import Scored  # noqa: E402
-from evals.ask.strict import (  # noqa: E402
+from evals.ask.metrics import consistency, summarise, summarise_strict, summary_v2
+from evals.ask.questions import Gold, Question, all_questions, load_truth
+from evals.ask.score import Scored
+from evals.ask.strict import (
     Extras,
     ListGold,
     Strict,
@@ -36,6 +27,8 @@ from evals.ask.strict import (  # noqa: E402
     truth_items,
     window,
 )
+
+from helpers_tables import check_rows
 
 D = date
 

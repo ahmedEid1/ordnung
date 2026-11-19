@@ -10,12 +10,15 @@ calls a model.
 from __future__ import annotations
 
 import itertools
-import sys
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
 import pytest
+from evals import run as eval_run
+from evals.conditions import REASK_MISSING
+from evals.metrics import INJECTION_RE, SCAM_RE, UNCERTAINTY_RE
+from evals.records import Prediction
 
 from fixtures_llm import TODAY
 from helpers_tables import check_rows
@@ -42,15 +45,6 @@ from test_reading_reask import (
     ingest,
     pipeline_backend,
 )
-
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from evals import run as eval_run  # noqa: E402
-from evals.conditions import REASK_MISSING  # noqa: E402
-from evals.metrics import INJECTION_RE, SCAM_RE, UNCERTAINTY_RE  # noqa: E402
-from evals.records import Prediction  # noqa: E402
 
 
 @pytest.fixture(autouse=True)

@@ -17,25 +17,21 @@ import inspect
 import json
 import re
 import shutil
-import sys
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import pytest
+from evals import harness, reproduce
+from evals import run as eval_run
+from evals.records import Prediction, load_manifest
+
+from ordnung.config import OCR_SWITCH
+from ordnung.llm.base import ClaudeTimeout, LLMRequest
+from ordnung.llm.fake import FakeBackend
+from test_evals_run import Responder
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from evals import harness, reproduce  # noqa: E402
-from evals import run as eval_run  # noqa: E402
-from evals.records import Prediction, load_manifest  # noqa: E402
-
-from ordnung.config import OCR_SWITCH  # noqa: E402
-from ordnung.llm.base import ClaudeTimeout, LLMRequest  # noqa: E402
-from ordnung.llm.fake import FakeBackend  # noqa: E402
-from test_evals_run import Responder  # noqa: E402
 
 DATASET = ROOT / "evals" / "dataset"
 MANIFEST = DATASET / "manifest.json"

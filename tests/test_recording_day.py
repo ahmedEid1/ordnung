@@ -16,31 +16,27 @@ from __future__ import annotations
 
 import dataclasses
 import json
-import sys
 from collections.abc import AsyncIterator
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import pytest
+from evals import harness
+from evals import run as eval_run
+from evals.ask import heldout
+from evals.ask import ledger as ask_ledger
+from evals.ask.run import BenchmarkError, Config, run
+from evals.perturb import build as stress
+from evals.records import load_manifest
+
+from ordnung.llm.base import LLMError, LLMRequest, LLMResponse, StreamEvent, Usage
+from ordnung.llm.fake import FakeBackend
+from test_evals_ask import StandInAgent
+from test_evals_ask_heldout import VALID_QUESTIONS, _attack, _write
+from test_evals_run import Responder, make_config
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from evals import harness  # noqa: E402
-from evals import run as eval_run  # noqa: E402
-from evals.ask import heldout  # noqa: E402
-from evals.ask import ledger as ask_ledger  # noqa: E402
-from evals.ask.run import BenchmarkError, Config, run  # noqa: E402
-from evals.perturb import build as stress  # noqa: E402
-from evals.records import load_manifest  # noqa: E402
-
-from ordnung.llm.base import LLMError, LLMRequest, LLMResponse, StreamEvent, Usage  # noqa: E402
-from ordnung.llm.fake import FakeBackend  # noqa: E402
-from test_evals_ask import StandInAgent  # noqa: E402
-from test_evals_ask_heldout import VALID_QUESTIONS, _attack, _write  # noqa: E402
-from test_evals_run import Responder, make_config  # noqa: E402
 
 DAY = date(2026, 11, 20)
 

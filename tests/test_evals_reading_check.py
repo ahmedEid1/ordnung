@@ -6,24 +6,20 @@ nothing written to ``evals/results``."""
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 from typing import Any
 
 import pytest
+from evals import report
+from evals import run as eval_run
+from evals.conditions import CallLog, MeteredBackend, prepare_document, run_ordnung
+from evals.metrics import score_document, summarise_condition, taxonomy
+from evals.records import PredictedItem, Prediction, load_manifest
+
+from ordnung.llm.fake import FakeBackend
+from ordnung.llm.runtime import LLMService
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from evals import report  # noqa: E402
-from evals import run as eval_run  # noqa: E402
-from evals.conditions import CallLog, MeteredBackend, prepare_document, run_ordnung  # noqa: E402
-from evals.metrics import score_document, summarise_condition, taxonomy  # noqa: E402
-from evals.records import PredictedItem, Prediction, load_manifest  # noqa: E402
-
-from ordnung.llm.fake import FakeBackend  # noqa: E402
-from ordnung.llm.runtime import LLMService  # noqa: E402
 
 MANIFEST = ROOT / "evals" / "dataset" / "manifest.json"
 EMPTY_READING = "holdout2-adversarial-injection_visible-1"

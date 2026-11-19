@@ -22,17 +22,10 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
-from helpers_tables import check_rows
-
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from evals.ask import heldout, heldout_check  # noqa: E402
-from evals.ask.__main__ import gate_failures, main, parse_args  # noqa: E402
-from evals.ask.metrics import consistency, summarise, summarise_strict, summary_v2  # noqa: E402
-from evals.ask.report import (  # noqa: E402
+from evals.ask import heldout, heldout_check
+from evals.ask.__main__ import gate_failures, main, parse_args
+from evals.ask.metrics import consistency, summarise, summarise_strict, summary_v2
+from evals.ask.report import (
     latest_results,
     recorded_on,
     render,
@@ -42,7 +35,7 @@ from evals.ask.report import (  # noqa: E402
     write_docs,
     write_results,
 )
-from evals.ask.run import (  # noqa: E402
+from evals.ask.run import (
     DEFAULT_MODEL,
     RESULTS_DIR,
     BenchmarkError,
@@ -52,8 +45,11 @@ from evals.ask.run import (  # noqa: E402
     run,
 )
 
-from ordnung.llm.base import LLMRequest, StreamEvent  # noqa: E402
-from test_evals_ask import StandInAgent  # noqa: E402
+from helpers_tables import check_rows
+from ordnung.llm.base import LLMRequest, StreamEvent
+from test_evals_ask import StandInAgent
+
+ROOT = Path(__file__).resolve().parents[1]
 
 TAX = "steuerbescheid_2025"
 

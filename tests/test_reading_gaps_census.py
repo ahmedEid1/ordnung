@@ -19,27 +19,23 @@ recorded letter — or a recording the current prompts no longer match — fails
 from __future__ import annotations
 
 import asyncio
-import sys
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
 import pytest
+from evals import harness, splits
+from evals.conditions import CallLog, MeteredBackend, prepare_document, run_ordnung
+from evals.records import Entry, load_manifest
+from evals.run import RecordedFailures
+
+from ordnung.llm.replay import ReplayBackend
+from ordnung.llm.runtime import LLMService
+from test_final_gates import final_reads
+from test_final_labels_unused import unrecorded_final_splits
+from test_reading_reask import WithoutReask, as_first_recorded
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from evals import harness, splits  # noqa: E402
-from evals.conditions import CallLog, MeteredBackend, prepare_document, run_ordnung  # noqa: E402
-from evals.records import Entry, load_manifest  # noqa: E402
-from evals.run import RecordedFailures  # noqa: E402
-
-from ordnung.llm.replay import ReplayBackend  # noqa: E402
-from ordnung.llm.runtime import LLMService  # noqa: E402
-from test_final_gates import final_reads  # noqa: E402
-from test_final_labels_unused import unrecorded_final_splits  # noqa: E402
-from test_reading_reask import WithoutReask, as_first_recorded  # noqa: E402
 
 DATASET = ROOT / "evals" / "dataset"
 MODEL = "claude-sonnet-5"

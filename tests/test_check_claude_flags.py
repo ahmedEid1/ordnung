@@ -13,15 +13,10 @@ import sys
 from pathlib import Path
 
 import pytest
+from scripts.check_claude_flags import CANARY, main, ordnung_argv
 
 from helpers_tables import check_rows
 from ordnung.llm.claude_cli import ClaudeCLIBackend
-
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from scripts.check_claude_flags import CANARY, main, ordnung_argv  # noqa: E402
 
 pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="the fake claude is a script with a shebang")
 

@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import copy
 import itertools
-import sys
 from collections.abc import Iterator
 from dataclasses import replace
 from datetime import date
@@ -19,6 +18,14 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from evals import conditions
+from evals.conditions import (
+    CallLog,
+    MeteredBackend,
+    prepare_document,
+    run_ordnung,
+)
+from evals.records import load_manifest
 
 from fixtures_llm import TODAY, Letter
 from helpers_tables import check_rows, check_rows_async
@@ -60,17 +67,6 @@ from test_reading_reask_floor import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from evals import conditions  # noqa: E402
-from evals.conditions import (  # noqa: E402
-    CallLog,
-    MeteredBackend,
-    prepare_document,
-    run_ordnung,
-)
-from evals.records import load_manifest  # noqa: E402
 
 MANIFEST = ROOT / "evals" / "dataset" / "manifest.json"
 #: The benchmark letter whose recorded reading came back empty: the re-ask was written after it.

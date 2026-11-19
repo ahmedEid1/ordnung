@@ -7,26 +7,18 @@ from __future__ import annotations
 import contextlib
 import json
 import re
-import sys
 from collections.abc import AsyncIterator, Callable, Iterator
 from datetime import date
 from pathlib import Path
 from typing import Any
 
 import pytest
-
-from helpers_tables import check_rows
-
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from evals.ask.__main__ import gate_failures, main, parse_args  # noqa: E402
-from evals.ask.attacks import ATTACKS  # noqa: E402
-from evals.ask.ledger import TODAY  # noqa: E402
-from evals.ask.metrics import summarise  # noqa: E402
-from evals.ask.parse import mentions, stated  # noqa: E402
-from evals.ask.questions import (  # noqa: E402
+from evals.ask.__main__ import gate_failures, main, parse_args
+from evals.ask.attacks import ATTACKS
+from evals.ask.ledger import TODAY
+from evals.ask.metrics import summarise
+from evals.ask.parse import mentions, stated
+from evals.ask.questions import (
     CATEGORIES,
     PARAPHRASES,
     UNANSWERABLE,
@@ -36,7 +28,7 @@ from evals.ask.questions import (  # noqa: E402
     load_truth,
     truth_values,
 )
-from evals.ask.report import (  # noqa: E402
+from evals.ask.report import (
     latest_results,
     pct,
     render,
@@ -45,8 +37,8 @@ from evals.ask.report import (  # noqa: E402
     write_docs,
     write_results,
 )
-from evals.ask.run import DEFAULT_MODEL, Config, RunResult, run  # noqa: E402
-from evals.ask.score import (  # noqa: E402
+from evals.ask.run import DEFAULT_MODEL, Config, RunResult, run
+from evals.ask.score import (
     SUSPICION,
     Context,
     Scored,
@@ -61,12 +53,13 @@ from evals.ask.score import (  # noqa: E402
     unsupported_values,
 )
 
-from ordnung import clock, durable  # noqa: E402
-from ordnung.assistant import ask as ask_module  # noqa: E402
-from ordnung.assistant.mcp_server import LedgerTools, open_read_only, render_result  # noqa: E402
-from ordnung.config import OCR_SWITCH  # noqa: E402
-from ordnung.llm.base import LLMRequest, LLMResponse, StreamEvent, Usage  # noqa: E402
-from ordnung.llm.fake import FakeBackend  # noqa: E402
+from helpers_tables import check_rows
+from ordnung import clock, durable
+from ordnung.assistant import ask as ask_module
+from ordnung.assistant.mcp_server import LedgerTools, open_read_only, render_result
+from ordnung.config import OCR_SWITCH
+from ordnung.llm.base import LLMRequest, LLMResponse, StreamEvent, Usage
+from ordnung.llm.fake import FakeBackend
 
 TRUTH = load_truth()
 QUESTIONS = all_questions(TRUTH)

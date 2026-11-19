@@ -10,13 +10,24 @@ this file; the one benchmark letter used is named by its entry id only, and noth
 from __future__ import annotations
 
 import json
-import sys
 from collections.abc import Callable, Iterator
 from datetime import date
 from pathlib import Path
 from typing import Any
 
 import pytest
+from evals import conditions
+from evals.conditions import (
+    REASK_UNRECORDED,
+    CallLog,
+    MeteredBackend,
+    ordnung_prompt_hashes,
+    prepare_document,
+    reask_signals,
+    run_ordnung,
+)
+from evals.records import PERSONA_LANGUAGE, load_manifest
+from evals.run import RecordedFailures, load_prompts_lock, stale_prompts
 
 from fixtures_llm import TODAY, Letter
 from helpers_tables import check_rows, check_rows_async
@@ -50,21 +61,6 @@ from ordnung.models import DocumentExtraction, Page
 from ordnung.trace.view import document_trace
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from evals import conditions  # noqa: E402
-from evals.conditions import (  # noqa: E402
-    REASK_UNRECORDED,
-    CallLog,
-    MeteredBackend,
-    ordnung_prompt_hashes,
-    prepare_document,
-    reask_signals,
-    run_ordnung,
-)
-from evals.records import PERSONA_LANGUAGE, load_manifest  # noqa: E402
-from evals.run import RecordedFailures, load_prompts_lock, stale_prompts  # noqa: E402
 
 MANIFEST = ROOT / "evals" / "dataset" / "manifest.json"
 RECORDED = ROOT / "evals" / "recorded" / "claude-sonnet-5"

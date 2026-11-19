@@ -7,23 +7,19 @@ import hashlib
 import os
 import random
 import re
-import sys
 import tomllib
 import zipfile
 from datetime import datetime
 from pathlib import Path
 
 import pytest
+from scripts.make_postcode_table import BuildError, build, main
 
 from helpers_tables import check_rows
 from ordnung.rules.calendar_de import REGION_NAMES
 from ordnung.rules.postcodes import TABLE_PATH
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from scripts.make_postcode_table import BuildError, build, main  # noqa: E402
 
 DATED = (2026, 10, 8, 4, 17, 12)
 
