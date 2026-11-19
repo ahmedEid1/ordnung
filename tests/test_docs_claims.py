@@ -233,14 +233,6 @@ def _block() -> str:
     return BEGIN + readme.split(BEGIN, 1)[1].split(END, 1)[0] + END
 
 
-def test_the_readme_evaluation_block_is_what_the_presenter_renders() -> None:
-    """README's benchmark section is one generated block (``python -m evals.present``): rendered again from the
-    results files, it is the committed block, every number in it included."""
-    from evals.present import model, text
-
-    assert _block() + "\n" == text.readme_block(model.build()), "run python -m evals.present --write"
-
-
 def _benchmark_numbers() -> tuple[set[str], set[tuple[int, int]]]:
     """Every rate the results files hold, as a page writes it (one decimal and a %), and every k of n of them."""
     percents: set[str] = set()
@@ -554,18 +546,67 @@ def _held_out_runs() -> dict[str, dict[str, Any]]:
     return {split: _results(name) for split, name in HELD_OUT_FILES.items()}
 
 
-def test_the_evaluation_report_and_the_history_page_are_what_the_results_render() -> None:
+def test_the_evaluation_report_and_the_history_page_are_what_the_results_render(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """docs/evals.md and docs/evals-history.md say "do not edit by hand": rendered again by ``python -m
     evals.present`` from the results files, they are the committed pages; the history page's second part is the
-    page docs/evals.md was until 0.3.0, as ``evals.report`` renders it from the same files as then."""
+    page docs/evals.md was until 0.3.0, as ``evals.report`` renders it from the same files as then. README's
+    benchmark section is one generated block: rendered again, it is the committed block, every number in it
+    included. The history page's "Held-out splits pooled" is the three held-out recordings together, as recorded:
+    per condition, the exact dates and late dates their results files hold, added up, with intervals over all
+    their letters and the paired differences."""
+    from evals import report
     from evals.present import build, model, text
 
+    pooled_calls: list[tuple[list[Any], dict[str, Any]]] = []
+    pool = report.pooled_held_out
+
+    def pooled_held_out(runs: Any) -> dict[str, Any]:
+        """The real pooling, remembered: the history page's render pools the three held-out runs once."""
+        result = pool(runs)
+        pooled_calls.append((list(runs), result))
+        return result
+
+    monkeypatch.setattr(report, "pooled_held_out", pooled_held_out)
     doc = model.build()
     legacy = build.legacy_page(ROOT / "evals" / "results")
     assert (ROOT / "docs" / "evals.md").read_text(encoding="utf-8") == text.report(doc)
     assert _history_page() == text.history(doc, legacy)
     assert legacy.split("\n", 1)[1].strip() in _history_page()
     assert build.HISTORY_INPUTS["without_land"] == WITHOUT_LAND
+    assert _block() + "\n" == text.readme_block(doc), "run python -m evals.present --write"
+
+    runs = _held_out_runs()
+    ((pooled_runs, pooled),) = pooled_calls
+    assert pooled_runs == list(runs.values())
+    section = _evals_section(_history_page(), "Held-out splits pooled")
+    letters = sum(run["meta"]["entries"] for run in runs.values())
+    items = sum(run["meta"]["scored_items"] for run in runs.values())
+    assert (
+        f"{letters} letters ({sum(run['meta']['photos'] for run in runs.values())} phone photos, "
+        f"{sum(run['meta']['adversarial'] for run in runs.values())} adversarial), {items} required items with a "
+        "known date"
+    ) in _flat(section)
+    counts: dict[str, tuple[int, int]] = {}
+    for condition in report.CONDITIONS:
+        k = sum(int(run["metrics"][condition]["due_date_accuracy"]["k"]) for run in runs.values())
+        late = sum(int(run["metrics"][condition]["dangerous_late_rate"]["k"]) for run in runs.values())
+        metrics = pooled["metrics"][condition]
+        assert (metrics["due_date_accuracy"]["k"], metrics["due_date_accuracy"]["n"]) == (k, items)
+        assert metrics["dangerous_late_rate"]["k"] == late
+        assert (
+            f"| **{report._label(condition)}** | {report.rate(metrics['due_date_accuracy'])} | {k}/{items} | "
+            f"{report.rate(metrics['dangerous_late_rate'], ci=False, counts=True)} |"
+        ) in section
+        counts[condition] = (k, late)
+    for key, value in pooled["comparisons"].items():
+        first, second = (report._label(name) for name in key.split("-vs-", 1))
+        assert f"- {first} − {second}: accuracy {report.diff(value['due_date_accuracy_diff'])}" in section
+    assert counts["ordnung"] == (163, 2) and counts["llm_rules_tool"] == (167, 1)
+    # the first held-out run (the test split) isn't pooled, and there the rules-text prompt was ahead
+    first = _results("2026-09-25-sonnet-test.json")["metrics"]
+    assert first["llm_rules_text"]["due_date_accuracy"]["k"] > first["ordnung"]["due_date_accuracy"]["k"]
 
 
 def test_the_benchmark_method_names_every_held_out_split() -> None:
@@ -690,43 +731,6 @@ def test_only_held_out_runs_of_different_splits_bootstrapped_alike_are_pooled() 
     ):
         with pytest.raises(ValueError, match=why):
             report.pooled_held_out(bad)
-
-
-def test_the_pooled_held_out_table_adds_up_the_three_recordings() -> None:
-    """The history page's "Held-out splits pooled": the three held-out recordings together, as recorded — per
-    condition, the exact dates and late dates their results files hold, added up, with intervals over all their
-    letters and the paired differences."""
-    from evals import report
-
-    runs = _held_out_runs()
-    pooled = report.pooled_held_out(list(runs.values()))
-    section = _evals_section(_history_page(), "Held-out splits pooled")
-    letters = sum(run["meta"]["entries"] for run in runs.values())
-    items = sum(run["meta"]["scored_items"] for run in runs.values())
-    assert (
-        f"{letters} letters ({sum(run['meta']['photos'] for run in runs.values())} phone photos, "
-        f"{sum(run['meta']['adversarial'] for run in runs.values())} adversarial), {items} required items with a "
-        "known date"
-    ) in _flat(section)
-    counts: dict[str, tuple[int, int]] = {}
-    for condition in report.CONDITIONS:
-        k = sum(int(run["metrics"][condition]["due_date_accuracy"]["k"]) for run in runs.values())
-        late = sum(int(run["metrics"][condition]["dangerous_late_rate"]["k"]) for run in runs.values())
-        metrics = pooled["metrics"][condition]
-        assert (metrics["due_date_accuracy"]["k"], metrics["due_date_accuracy"]["n"]) == (k, items)
-        assert metrics["dangerous_late_rate"]["k"] == late
-        assert (
-            f"| **{report._label(condition)}** | {report.rate(metrics['due_date_accuracy'])} | {k}/{items} | "
-            f"{report.rate(metrics['dangerous_late_rate'], ci=False, counts=True)} |"
-        ) in section
-        counts[condition] = (k, late)
-    for key, value in pooled["comparisons"].items():
-        first, second = (report._label(name) for name in key.split("-vs-", 1))
-        assert f"- {first} − {second}: accuracy {report.diff(value['due_date_accuracy_diff'])}" in section
-    assert counts["ordnung"] == (163, 2) and counts["llm_rules_tool"] == (167, 1)
-    # the first held-out run (the test split) isn't pooled, and there the rules-text prompt was ahead
-    first = _results("2026-09-25-sonnet-test.json")["metrics"]
-    assert first["llm_rules_text"]["due_date_accuracy"]["k"] > first["ordnung"]["due_date_accuracy"]["k"]
 
 
 def test_scam_letters_are_also_scored_as_the_app_decides() -> None:
