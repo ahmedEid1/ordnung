@@ -10,6 +10,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -171,11 +172,35 @@ HANGING_MODES = [("silent", ("--version",)), ("hang", ("stdin", "stdout"))]
 
 
 def test_the_fake_can_hang_until_it_is_killed() -> None:
-    def check(mode: str, args: tuple[str, ...]) -> None:
-        with pytest.raises(subprocess.TimeoutExpired):
-            _fake(mode, *args, stdin=PNG_SIGNATURE, timeout=1.0)
+    """Each fake is started with its picture handed over and closed at once, and must still be running 1.0 s after
+    its own start; both are started first so the two waits overlap."""
+    started: dict[str, tuple[subprocess.Popen[bytes], float]] = {}
+    try:
+        for mode, args in HANGING_MODES:
+            process = subprocess.Popen(
+                [sys.executable, str(FAKE), *args],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                env={**os.environ, "FAKE_TESSERACT_MODE": mode},
+            )
+            began = time.monotonic()
+            assert process.stdin is not None
+            process.stdin.write(PNG_SIGNATURE)
+            process.stdin.close()
+            started[mode] = (process, began)
 
-    check_rows(HANGING_MODES, check)
+        def check(mode: str, args: tuple[str, ...]) -> None:
+            process, began = started[mode]
+            while (left := began + 1.0 - time.monotonic()) > 0:
+                time.sleep(left)
+            assert process.poll() is None, f"{mode} {args} ended within 1.0 s with {process.returncode}"
+
+        check_rows(HANGING_MODES, check)
+    finally:
+        for process, _ in started.values():
+            process.kill()
+            process.wait()
 
 
 def test_the_fake_knows_only_its_modes() -> None:
