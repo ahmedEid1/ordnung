@@ -290,15 +290,20 @@ def test_the_committed_reanalysis_is_what_the_results_render() -> None:
 
 
 def test_write_then_check_and_a_one_character_edit_fails(tmp_path: Path) -> None:
-    holdout3 = str(RESULTS / analysis.HELD_OUT_AS_RECORDED[2])  # one split keeps the test quick
-    assert analysis.main(["--write", "--date", "2030-01-02", "--out-dir", str(tmp_path), holdout3]) == 0
-    written = tmp_path / "2030-01-02-claude-sonnet-5-heldout-reanalysis.json"
+    # one small synthetic held-out split (the file's own ``_synthetic_run``) keeps the test quick
+    split = tmp_path / "2027-01-01-claude-sonnet-5-holdout3.json"
+    split.write_text(json.dumps(_synthetic_run("holdout3", 1)), encoding="utf-8")
+    holdout3 = str(split)
+    out = tmp_path / "out"
+    out.mkdir()
+    assert analysis.main(["--write", "--date", "2030-01-02", "--out-dir", str(out), holdout3]) == 0
+    written = out / "2030-01-02-claude-sonnet-5-heldout-reanalysis.json"
     assert written.is_file()
-    assert analysis.main(["--check", "--out-dir", str(tmp_path), holdout3]) == 0
+    assert analysis.main(["--check", "--out-dir", str(out), holdout3]) == 0
     text = written.read_text(encoding="utf-8")
-    index = text.index('"items": 56')
-    written.write_text(text[:index] + '"items": 57' + text[index + 11 :], encoding="utf-8")
-    assert analysis.main(["--check", "--out-dir", str(tmp_path), holdout3]) == 1
+    index = text.index('"items": 7')
+    written.write_text(text[:index] + '"items": 8' + text[index + 10 :], encoding="utf-8")
+    assert analysis.main(["--check", "--out-dir", str(out), holdout3]) == 1
 
 
 def test_check_without_a_committed_file_fails(tmp_path: Path) -> None:
