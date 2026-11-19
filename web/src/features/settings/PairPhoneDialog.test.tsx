@@ -30,9 +30,9 @@ afterEach(() => {
 });
 
 /** Phone access on (as turned on before), Settings → Phone open, "Pair a phone" pressed. */
-async function openPairing({ srv, calls }: ReturnType<typeof useMockApi>) {
+async function openPairing({ srv, calls }: ReturnType<typeof useMockApi>, userOptions?: Parameters<typeof userEvent.setup>[0]) {
   srv.phone.change({ enabled: true });
-  const user = userEvent.setup();
+  const user = userEvent.setup(userOptions);
   renderWithProviders(<SettingsPage />, { route: "/settings?section=phone" });
   await user.click(await screen.findByRole("button", { name: "Pair a phone" }));
   const dialog = await screen.findByRole("dialog", { name: "Pair a phone" });
@@ -42,14 +42,18 @@ async function openPairing({ srv, calls }: ReturnType<typeof useMockApi>) {
 
 describe("the pairing dialog over time", () => {
   it("asks again every 2 s while open, and no more once closed", async () => {
-    const { calls, user, dialog } = await openPairing(useMockApi());
+    // the poll's interval starts when the dialog opens, so the clock is faked before; it still runs on by itself
+    // so that findBy* and waitFor keep working
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { calls, user, dialog } = await openPairing(useMockApi(), { advanceTimers: vi.advanceTimersByTime });
     const asked = () => calls.filter((c) => c.method === "GET" && c.path === "/phone").length;
     const before = asked();
-    await waitFor(() => expect(asked()).toBeGreaterThan(before), { timeout: PHONE_POLL_MS + 1_500 });
+    await act(() => vi.advanceTimersByTimeAsync(PHONE_POLL_MS + 10));
+    expect(asked()).toBeGreaterThan(before);
     await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     const after = asked();
-    await new Promise((r) => setTimeout(r, PHONE_POLL_MS + 300));
+    await act(() => vi.advanceTimersByTimeAsync(PHONE_POLL_MS * 2));
     expect(asked()).toBe(after);
   });
 
