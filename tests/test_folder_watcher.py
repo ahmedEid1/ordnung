@@ -46,7 +46,7 @@ from ordnung.llm.base import LLMError
 from ordnung.llm.fake import FakeBackend
 from ordnung.models import Document
 
-FAST = {"settle_s": 0.25, "tick_ms": 50, "rescan_s": 0.4, "retry_s": 0.1}
+FAST = {"settle_s": 0.05, "tick_ms": 50, "rescan_s": 0.1, "retry_s": 0.1}
 
 
 @pytest.fixture(autouse=True)
