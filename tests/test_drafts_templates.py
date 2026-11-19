@@ -17,6 +17,7 @@ import pytest
 from pydantic import ValidationError
 
 from fixtures_llm import iban
+from helpers_tables import check_rows_async
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.drafts import templates
@@ -608,17 +609,23 @@ async def test_extension_request_defaults_to_the_letters_deadline(
     assert _check(draft, "has_reference")
 
 
-@pytest.mark.parametrize("letter", ["order", "enforcement", "dismissal"])
+STATUTORY_DEADLINE_LETTERS = ["order", "enforcement", "dismissal"]
+
+
 async def test_no_more_time_is_asked_for_a_deadline_the_law_sets(
-    ctx: AppContext, ids: dict[str, str], letter: str
+    ctx: AppContext, ids: dict[str, str]
 ) -> None:
     """A court order's two weeks and a dismissal's three weeks can't be extended by asking (§ 224 ZPO,
     § 4 KSchG): the letter is refused, and the refusal points to what helps."""
-    doc_id = ids.get(letter) or _doc(
-        ctx, "dismissal", kind="dismissal", title="Dismissal", doc_date="2026-09-24", party_id=ids["shop"]
-    )
-    with pytest.raises(DraftError, match=r"set by law|can't be extended"):
-        await compose(ctx, "extension_request", doc_id=doc_id, details=LetterDetails(until="2026-11-15"))
+
+    async def check(letter: str) -> None:
+        doc_id = ids.get(letter) or _doc(
+            ctx, "dismissal", kind="dismissal", title="Dismissal", doc_date="2026-09-24", party_id=ids["shop"]
+        )
+        with pytest.raises(DraftError, match=r"set by law|can't be extended"):
+            await compose(ctx, "extension_request", doc_id=doc_id, details=LetterDetails(until="2026-11-15"))
+
+    await check_rows_async(STATUTORY_DEADLINE_LETTERS, check)
 
 
 async def test_instalments_are_offered_to_the_claimant_not_the_court(
@@ -655,38 +662,8 @@ async def test_an_offer_to_the_claimant_stays_linked_to_the_order(
     assert "aus dem Mahnbescheid vom 21.09.2026" in offer.body and "Ihrem Schreiben" not in offer.body
     assert offer.doc_id == ids["order"] and offer.party_id is None
     assert ACKNOWLEDGES_CLAIM in offer.notes_for_user
-
-
-@pytest.mark.parametrize(
-    "court",
-    [
-        "Amtsgericht Hünfeld\nZentrales Mahngericht\n36088 Hünfeld",
-        "An das\nAmtsgericht Hünfeld\n36088 Hünfeld",
-        "AG Hagen\nHeinitzstr. 42\n58097 Hagen",
-    ],
-)
-async def test_typing_the_court_as_the_claimant_is_still_refused(
-    ctx: AppContext, ids: dict[str, str], court: str
-) -> None:
-    """Any typed recipient counted as the claimant, so typing the court addressed
-    an offer of instalments to the Amtsgericht and the refusal never fired."""
-    details = LetterDetails(instalment=20, first_instalment="2026-10-15", amount=111.88, recipient=court)
-    with pytest.raises(DraftError, match="the claimant does"):
-        await compose(ctx, "payment_plan", doc_id=ids["order"], details=details)
-
-
-async def test_an_offer_on_a_court_order_says_its_deadline_still_runs(
-    ctx: AppContext, ids: dict[str, str]
-) -> None:
-    """The offer's notes lost the refusal's key sentence — pay or object by the
-    court's deadline, or an enforcement order can follow."""
-    details = LetterDetails(
-        instalment=20,
-        first_instalment="2026-10-15",
-        amount=111.88,
-        recipient="Streamline Media GmbH\nHauptstr. 1\n10115 Berlin",
-    )
-    offer = await compose(ctx, "payment_plan", doc_id=ids["order"], details=details)
+    # the offer's notes keep the refusal's key sentence: pay or object by the court's deadline, or an
+    # enforcement order can follow
     [note] = [note for note in offer.notes_for_user if "doesn't stop the Mahnbescheid" in note]
     assert "pay or object by" in note and "Vollstreckungsbescheid" in note
     ctx.store.add_item(kind="deadline", title="Widerspruch", due_date="2026-10-05", doc_id=ids["order"])
@@ -697,6 +674,27 @@ async def test_an_offer_on_a_court_order_says_its_deadline_still_runs(
     # an offer on another letter gets no such note
     invoice = await compose(ctx, "payment_plan", party_id=ids["shop"], details=details)
     assert not any("doesn't stop" in note for note in invoice.notes_for_user)
+
+
+TYPED_COURTS = [
+    "Amtsgericht Hünfeld\nZentrales Mahngericht\n36088 Hünfeld",
+    "An das\nAmtsgericht Hünfeld\n36088 Hünfeld",
+    "AG Hagen\nHeinitzstr. 42\n58097 Hagen",
+]
+
+
+async def test_typing_the_court_as_the_claimant_is_still_refused(
+    ctx: AppContext, ids: dict[str, str]
+) -> None:
+    """Any typed recipient counted as the claimant, so typing the court addressed
+    an offer of instalments to the Amtsgericht and the refusal never fired."""
+
+    async def check(court: str) -> None:
+        details = LetterDetails(instalment=20, first_instalment="2026-10-15", amount=111.88, recipient=court)
+        with pytest.raises(DraftError, match="the claimant does"):
+            await compose(ctx, "payment_plan", doc_id=ids["order"], details=details)
+
+    await check_rows_async(TYPED_COURTS, check)
 
 
 async def test_an_objection_to_a_court_order_never_goes_to_a_sender_that_isnt_a_court(
@@ -728,16 +726,6 @@ async def test_an_objection_to_a_court_order_never_goes_to_a_sender_that_isnt_a_
     # an order whose sender is a court goes there as before
     court_order = await compose(ctx, "objection", doc_id=ids["order"])
     assert "Amtsgericht" in court_order.recipient_block
-
-
-async def test_a_tax_deferral_is_no_acknowledgement_note(ctx: AppContext, ids: dict[str, str]) -> None:
-    draft = await compose(
-        ctx,
-        "payment_plan",
-        doc_id=ids["tax"],
-        details=LetterDetails(instalment=200, first_instalment="2026-11-01"),
-    )
-    assert ACKNOWLEDGES_CLAIM not in draft.notes_for_user
 
 
 async def test_the_current_deadline_is_never_one_the_law_sets(ctx: AppContext, ids: dict[str, str]) -> None:
@@ -815,6 +803,8 @@ async def test_payment_plan_with_the_tax_office(ctx: AppContext, ids: dict[str, 
     assert draft.send_guidance is not None and draft.send_guidance.must_arrive_by == "2026-10-15"
     assert any("interest" in note for note in draft.notes_for_user)
     assert _check(draft, "citations_known")
+    # a deferral of tax acknowledges no claim, so it carries no such note
+    assert ACKNOWLEDGES_CLAIM not in draft.notes_for_user
 
 
 async def test_data_access_to_schufa_and_its_follow_up(ctx: AppContext, ids: dict[str, str]) -> None:
@@ -904,16 +894,23 @@ async def test_api_drafts_a_template_letter_and_explains_what_is_missing(data_di
         assert bad.status_code == 422
 
 
-@pytest.mark.parametrize("field", ["deadline", "until", "received_on", "moved_out_on", "fix_by"])
-async def test_a_date_that_isnt_iso_is_refused_not_a_server_error(data_dir: Path, field: str) -> None:
+DETAIL_DATE_FIELDS = ["deadline", "until", "received_on", "moved_out_on", "fix_by"]
+
+
+async def test_a_date_that_isnt_iso_is_refused_not_a_server_error(data_dir: Path) -> None:
     """A German date typed by an API or MCP caller ("31.10.2026") used to crash the extension request
     with a 500; every date in the details is now checked the same way."""
     async with api_for(data_dir) as api:
         party = api.ctx.store.add_party(name="Finanzamt Musterstadt", kind="tax_office").id
-        body = {"kind": "extension_request", "party_id": party, "details": {field: "31.10.2026"}}
-        response = await api.client.post("/api/drafts", json=body)
-        assert response.status_code == 422, response.text
-        assert "use the form YYYY-MM-DD" in response.text
+
+        async def check(field: str) -> None:
+            # a refused request changes nothing, so every row uses the same app and party
+            body = {"kind": "extension_request", "party_id": party, "details": {field: "31.10.2026"}}
+            response = await api.client.post("/api/drafts", json=body)
+            assert response.status_code == 422, response.text
+            assert "use the form YYYY-MM-DD" in response.text
+
+        await check_rows_async(DETAIL_DATE_FIELDS, check)
 
 
 async def test_profile_iban_is_validated_and_normalised(data_dir: Path) -> None:
@@ -1033,62 +1030,70 @@ async def test_a_template_letter_to_someone_not_in_ordnung_yet(ctx: AppContext, 
     assert known.recipient_block.startswith("Technik Versand GmbH")
 
 
-@pytest.mark.parametrize(
-    ("name", "kind", "court"),
-    [
-        ("LG Electronics Deutschland GmbH", "retailer", False),
-        ("LG Display", "company", False),
-        ("AG Hagen", "authority", True),
-    ],
-)
+COURT_LIKE_PARTIES = [
+    ("LG Electronics Deutschland GmbH", "retailer", False),
+    ("LG Display", "company", False),
+    ("AG Hagen", "authority", True),
+]
+
+
 async def test_a_withdrawal_to_a_company_named_like_a_court_may_go_by_email(
-    ctx: AppContext, ids: dict[str, str], name: str, kind: str, court: bool
+    ctx: AppContext, ids: dict[str, str]
 ) -> None:
     """The name "LG Electronics" is a retailer's, not a Landgericht: an e-mail withdrawal is valid, and
     no court's Aktenzeichen is asked for."""
-    party = ctx.store.add_party(name=name, kind=kind, address="Postfach 1, 65760 Eschborn").id
-    details = LetterDetails(subject_matter="Fernseher", received_on="2026-09-24")
-    draft = await compose(ctx, "withdrawal", party_id=party, details=details)
-    assert draft.send_guidance is not None
-    [email] = [channel for channel in draft.send_guidance.channels if channel.channel == "email"]
-    assert email.allowed is not court
+
+    async def check(name: str, kind: str, court: bool) -> None:
+        party = ctx.store.add_party(name=name, kind=kind, address="Postfach 1, 65760 Eschborn").id
+        details = LetterDetails(subject_matter="Fernseher", received_on="2026-09-24")
+        draft = await compose(ctx, "withdrawal", party_id=party, details=details)
+        assert draft.send_guidance is not None
+        [email] = [channel for channel in draft.send_guidance.channels if channel.channel == "email"]
+        assert email.allowed is not court
+
+    await check_rows_async(COURT_LIKE_PARTIES, check)
 
 
-@pytest.mark.parametrize(
-    "recipient", ["AG Hagen\nHeinitzstraße 42\n58097 Hagen", "LG Köln\nLuxemburger Str. 101"]
-)
+TYPED_COURT_ABBREVIATIONS = ["AG Hagen\nHeinitzstraße 42\n58097 Hagen", "LG Köln\nLuxemburger Str. 101"]
+
+
 async def test_a_request_for_more_time_to_a_court_typed_by_its_abbreviation_goes_in_writing(
-    ctx: AppContext, recipient: str
+    ctx: AppContext,
 ) -> None:
     """The name "AG Hagen" typed in may be a court's, where a plain e-mail doesn't count: the letter's
     sending advice leads with the signed letter and says e-mail is valid only if it isn't a court."""
-    details = LetterDetails(recipient=recipient, until="2026-11-15", subject_matter="Stellungnahme")
-    draft = await compose(ctx, "extension_request", details=details)
-    assert draft.send_guidance is not None
-    channels = draft.send_guidance.channels
-    assert channels[0].channel == "letter" and channels[0].recommended
-    [email] = [channel for channel in channels if channel.channel == "email"]
-    assert not email.recommended and (email.note or "").startswith("Not valid if this is a court")
+
+    async def check(recipient: str) -> None:
+        details = LetterDetails(recipient=recipient, until="2026-11-15", subject_matter="Stellungnahme")
+        draft = await compose(ctx, "extension_request", details=details)
+        assert draft.send_guidance is not None
+        channels = draft.send_guidance.channels
+        assert channels[0].channel == "letter" and channels[0].recommended
+        [email] = [channel for channel in channels if channel.channel == "email"]
+        assert not email.recommended and (email.note or "").startswith("Not valid if this is a court")
+
+    await check_rows_async(TYPED_COURT_ABBREVIATIONS, check)
 
 
-@pytest.mark.parametrize(
-    ("recipient", "court"),
-    [
-        ("LG Electronics\nPostfach 1\n65760 Eschborn", False),
-        ("OLG Immobilien\nHauptstr. 1\n10115 Berlin", False),
-        ("AG Hausverwaltung Müller\nHauptstr. 2\n10115 Berlin", False),
-        ("Amtsgericht Hagen\nHeinitzstraße 42\n58097 Hagen", True),
-    ],
-)
-async def test_a_typed_recipient_is_a_court_only_by_its_full_name(
-    ctx: AppContext, recipient: str, court: bool
-) -> None:
+TYPED_RECIPIENTS = [
+    ("LG Electronics\nPostfach 1\n65760 Eschborn", False),
+    ("OLG Immobilien\nHauptstr. 1\n10115 Berlin", False),
+    ("AG Hausverwaltung Müller\nHauptstr. 2\n10115 Berlin", False),
+    ("Amtsgericht Hagen\nHeinitzstraße 42\n58097 Hagen", True),
+]
+
+
+async def test_a_typed_recipient_is_a_court_only_by_its_full_name(ctx: AppContext) -> None:
     """A recipient typed in has no kind, so a court's abbreviation ("LG", "OLG", "AG") in a
     company's name doesn't give it a court's sending advice: e-mail stays valid, no Aktenzeichen is asked."""
-    details = LetterDetails(recipient=recipient, subject_matter="Fernseher", received_on="2026-09-24")
-    draft = await compose(ctx, "withdrawal", details=details)
-    assert draft.send_guidance is not None
-    [email] = [channel for channel in draft.send_guidance.channels if channel.channel == "email"]
-    assert email.allowed is not court
-    texts = " ".join(f"{channel.label} {channel.note}" for channel in draft.send_guidance.channels)
-    assert ("Rechtsantragstelle" in texts) is court
+
+    async def check(recipient: str, court: bool) -> None:
+        details = LetterDetails(recipient=recipient, subject_matter="Fernseher", received_on="2026-09-24")
+        draft = await compose(ctx, "withdrawal", details=details)
+        assert draft.send_guidance is not None
+        [email] = [channel for channel in draft.send_guidance.channels if channel.channel == "email"]
+        assert email.allowed is not court
+        texts = " ".join(f"{channel.label} {channel.note}" for channel in draft.send_guidance.channels)
+        assert ("Rechtsantragstelle" in texts) is court
+
+    await check_rows_async(TYPED_RECIPIENTS, check)
