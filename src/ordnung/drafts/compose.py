@@ -81,9 +81,9 @@ from ordnung.rules.routing import (
     may_be_court,
     objection_excluded,
 )
+from ordnung.secretary.ledger import Ledger, contract_area, contract_computation
 from ordnung.secretary.review import language_name, split_sentences, stable_hash, untrusted_json
 from ordnung.secretary.scam import ibans_in_text, normalize_iban
-from ordnung.secretary.triggers import Ledger, contract_area, contract_computation
 
 if TYPE_CHECKING:
     from ordnung.app_context import AppContext

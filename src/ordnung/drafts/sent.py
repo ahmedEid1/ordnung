@@ -78,7 +78,7 @@ from ordnung.ingest.attachments import email_source, is_email
 from ordnung.ingest.outlook import as_email
 from ordnung.ingest.pipeline import add_file, keep_held_private
 from ordnung.models import Document, Draft, Profile, Proof, ProofEntry, ProofOverview
-from ordnung.secretary.triggers import Ledger
+from ordnung.secretary.ledger import Ledger
 from ordnung.secretary.waiting import letter_entry
 
 if TYPE_CHECKING:

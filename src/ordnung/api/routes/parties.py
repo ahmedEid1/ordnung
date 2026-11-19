@@ -23,8 +23,8 @@ from ordnung.api.routes.regions import known_region
 from ordnung.db.store import Store
 from ordnung.ingest.pipeline import ledger_lock
 from ordnung.models import Party, PartyDetail
+from ordnung.secretary.ledger import Ledger
 from ordnung.secretary.sender_land import region_suggestion
-from ordnung.secretary.triggers import Ledger
 
 router = APIRouter(tags=["parties"])
 

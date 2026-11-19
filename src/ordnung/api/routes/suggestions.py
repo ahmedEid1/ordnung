@@ -18,8 +18,8 @@ from ordnung.app_context import AppContext
 from ordnung.db.store import Store
 from ordnung.llm.base import LLMError
 from ordnung.models import Suggestion, SuggestionStatus
+from ordnung.secretary.ledger import SCAM_RULE
 from ordnung.secretary.review import run_review
-from ordnung.secretary.triggers import SCAM_RULE
 from ordnung.tick import replay_miss_prone
 
 log = logging.getLogger(__name__)

@@ -139,7 +139,7 @@ from ordnung.models import (
 from ordnung.money.iban import grouped as iban_grouped
 from ordnung.money.iban import inspect_iban
 from ordnung.money.iban import normalize as iban_normalize
-from ordnung.secretary.triggers import (
+from ordnung.secretary.ledger import (
     IDENTITY_WINDOW_DAYS,
     PERMIT_WINDOW_DAYS,
     paid_at_appointment,

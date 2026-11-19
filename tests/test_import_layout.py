@@ -19,14 +19,6 @@ from ordnung.config import PACKAGE_DIR
 #: fails the test below; a refactor that ends one takes it out of this list.
 ALLOWED_CYCLES: dict[frozenset[str], str] = {
     frozenset(
-        {
-            "ordnung.calendar.ics",
-            "ordnung.secretary.moving",
-            "ordnung.secretary.sender_land",
-            "ordnung.secretary.triggers",
-        }
-    ): "triggers.py holds both the triggers (which call these modules lazily) and the helpers they import from it",
-    frozenset(
         {"ordnung.ingest.gaps", "ordnung.ingest.plan"}
     ): "ingest.plan builds on the reading checks, and gaps imports needs_check from it lazily",
     frozenset(

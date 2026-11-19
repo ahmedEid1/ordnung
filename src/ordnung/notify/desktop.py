@@ -65,7 +65,7 @@ from ordnung.models import AppSettings
 from ordnung.rules.deadlines import older_matter_switch
 from ordnung.rules.explain import fmt_date
 from ordnung.secretary.brief import Agenda, AgendaEntry, build_agenda
-from ordnung.secretary.triggers import Ledger, money
+from ordnung.secretary.ledger import Ledger, money
 
 When = Literal["today", "overdue", "upcoming"]
 

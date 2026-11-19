@@ -51,8 +51,8 @@ from ordnung.models import (
     SuggestionRef,
 )
 from ordnung.rules import list_rules
+from ordnung.secretary.ledger import Ledger, action_day, is_overdue
 from ordnung.secretary.tax_choice import for_taxes
-from ordnung.secretary.triggers import Ledger, action_day, is_overdue
 
 log = logging.getLogger(__name__)
 

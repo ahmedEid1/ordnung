@@ -48,8 +48,8 @@ from ordnung.db.store import Store
 from ordnung.ingest.held import is_held
 from ordnung.ingest.intake import TEXT_TYPES, download_name, strip_control
 from ordnung.models import PROOF_SOURCE, Document
+from ordnung.secretary.ledger import letter_day
 from ordnung.secretary.tax_choice import for_taxes
-from ordnung.secretary.triggers import letter_day
 
 SENDER_CHARS, SENDER_BYTES = 60, 80  # a sender's folder
 STEM_CHARS, STEM_BYTES = 90, 150  # "<date> <title>", before a " (2)" and the extension

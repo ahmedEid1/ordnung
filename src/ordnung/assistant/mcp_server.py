@@ -64,7 +64,7 @@ if TYPE_CHECKING:
         Party,
         TimelineEntry,
     )
-    from ordnung.secretary.triggers import Ledger, PriceIncreaseWindow
+    from ordnung.secretary.ledger import Ledger, PriceIncreaseWindow
 
 SERVER_NAME = "ordnung"
 #: Set to "1" in the server's environment for a question asked on a paired phone: the person's own
@@ -194,7 +194,7 @@ class LedgerTools:
 
     def ledger(self) -> Ledger:
         """A fresh snapshot of the ledger as of today."""
-        from ordnung.secretary.triggers import Ledger
+        from ordnung.secretary.ledger import Ledger
 
         return Ledger(self.store, self.current_day())
 
@@ -1026,7 +1026,7 @@ def _item_row(ledger: Ledger, item: Item, letters: LetterText) -> dict[str, Any]
     Title, action, consequence and location are the model's words from the letter; an amount read by
     AI from a photo or not found on the page is letter text too (``amount_unverified`` says so).
     """
-    from ordnung.secretary.triggers import is_overdue
+    from ordnung.secretary.ledger import is_overdue
 
     scam = _scam_signs(ledger, item)
     letters.add(
@@ -1143,7 +1143,7 @@ def paid_at_appointment(ledger: Ledger, item: Item) -> bool:
     Its send-by date is a bank transfer's, so Ask's record leaves it out — the model gave it as the day to
     cancel the appointment by. Letters read now store none for it; this covers those read before."""
     from ordnung.payments import pays_on_site
-    from ordnung.secretary.triggers import paid_at_appointment as in_person
+    from ordnung.secretary.ledger import paid_at_appointment as in_person
 
     return pays_on_site(item) or in_person(item, ledger.items)
 
@@ -1260,7 +1260,7 @@ def _contract_deadlines(
     :func:`_first_closing`), in one row per contract; a contract whose cancellation was sent or confirmed
     has none left (:meth:`~ordnung.secretary.triggers.Ledger.decided_contracts`)."""
     from ordnung.days import parse_day
-    from ordnung.secretary.triggers import is_decision
+    from ordnung.secretary.ledger import is_decision
 
     def in_range(*values: str | None) -> bool:
         days = [day for day in map(parse_day, values) if day is not None]

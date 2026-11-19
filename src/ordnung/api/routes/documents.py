@@ -113,8 +113,8 @@ from ordnung.rules.routing import (
 from ordnung.secretary.addressee import addressed_to
 from ordnung.secretary.girocode_gate import document_girocodes
 from ordnung.secretary.household import LetterFor, letter_for
+from ordnung.secretary.ledger import Ledger
 from ordnung.secretary.sender_land import region_suggestion
-from ordnung.secretary.triggers import Ledger
 
 router = APIRouter(tags=["documents"])
 
