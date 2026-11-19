@@ -20,24 +20,20 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  backend:
-    name: Backend (Python ${{ matrix.python }})
+  lint:
+    name: Lint and types (Python 3.12)
+    # once, not in every backend leg: pyproject.toml gives ruff and mypy Python 3.11 as their target, whichever
+    # Python runs them
     if: github.event_name != 'schedule'
-    # pinned: the samples' byte-for-byte check needs Ubuntu 24.04's Python 3.12 (its zlib is the manifest's)
-    runs-on: ubuntu-24.04
-    timeout-minutes: 75  # 17 to 47 minutes seen; a hung test is named at 10 (faulthandler_timeout)
-    strategy:
-      fail-fast: false
-      matrix:
-        python: ["3.11", "3.12", "3.13", "3.14"]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10  # under a minute: ruff 1 s and mypy 8 to 18 s in each leg (18 Nov 2026)
     steps:
       - uses: actions/checkout@v7
-        with:
-          # all of the history: the pre-registration's history checks need the freeze commit
-          fetch-depth: 0
       - uses: astral-sh/setup-uv@v7
         with:
-          python-version: ${{ matrix.python }}
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: constraints.txt
       - name: Install (the versions in constraints.txt)
         run: |
           uv venv .venv
@@ -48,30 +44,67 @@ jobs:
           .venv/bin/ruff format --check src tests scripts evals
       - name: Type check
         run: .venv/bin/mypy
+
+  backend:
+    name: Backend (Python ${{ matrix.python }})
+    if: github.event_name != 'schedule'
+    # pinned: the samples' byte-for-byte check needs Ubuntu 24.04's Python 3.12 (its zlib is the manifest's)
+    runs-on: ubuntu-24.04
+    # one process a file, as many as the runner has cores: about 6 to 9 minutes expected, 3.12's with coverage
+    # about 13 (serial, the legs took 16 to 40 minutes with coverage and 26 without, 18 Nov 2026); a hung test is
+    # named at 10 (faulthandler_timeout)
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13", "3.14"]
+        include:
+          # coverage is measured on one leg, 3.12's, which also runs the real Tesseract's and the samples' tests. On
+          # 3.14 (sys.monitoring) it costs less than half the time, but measured a little less: the lines only
+          # Python 3.12 and older reach, such as a link loop that Path.resolve raises on
+          - python: "3.12"
+            coverage: true
+    env:
+      # here the samples must regenerate byte for byte (elsewhere the test skips when a library differs)
+      ORDNUNG_REQUIRE_SAMPLES: ${{ matrix.python == '3.12' && '1' || '' }}
+      # and the tests of the real Tesseract must run (elsewhere they skip when it isn't installed)
+      ORDNUNG_REQUIRE_TESSERACT: ${{ matrix.python == '3.12' && '1' || '' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # all of the history: the pre-registration's history checks need the freeze commit
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python }}
+          enable-cache: true
+          cache-dependency-glob: constraints.txt
+      - name: Install (the versions in constraints.txt)
+        run: |
+          uv venv .venv
+          uv pip install -e ".[dev]" -c constraints.txt
       - name: Install Tesseract with German (text in pictures, ADR 0024; the other legs test it missing)
         if: matrix.python == '3.12'
         run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends tesseract-ocr tesseract-ocr-deu
-      - name: Tests (and pyproject.toml's coverage floor for the whole package)
-        env:
-          # here the samples must regenerate byte for byte (elsewhere the test skips when a library differs)
-          ORDNUNG_REQUIRE_SAMPLES: ${{ matrix.python == '3.12' && '1' || '' }}
-          # and the tests of the real Tesseract must run (elsewhere they skip when it isn't installed)
-          ORDNUNG_REQUIRE_TESSERACT: ${{ matrix.python == '3.12' && '1' || '' }}
-        run: .venv/bin/pytest -m "not slow" --cov=ordnung --cov-report=term-missing:skip-covered
+      - name: Tests
+        if: ${{ !matrix.coverage }}
+        run: .venv/bin/pytest -m "not slow" -n auto --dist loadfile
+      - name: Tests with coverage (and pyproject.toml's coverage floor for the whole package)
+        if: ${{ matrix.coverage }}
+        run: .venv/bin/pytest -m "not slow" -n auto --dist loadfile --cov=ordnung --cov-report=term-missing:skip-covered
       - name: Coverage floors of hand-off sync and phone access (read from the run above)
-        if: matrix.python == '3.12'
+        if: ${{ matrix.coverage }}
         run: |
           .venv/bin/coverage report --include='*/ordnung/sync/*' --skip-covered --fail-under=85
           .venv/bin/coverage report --include='*/ordnung/phone/*' --skip-covered --fail-under=89
 
-  backend-slow:
-    name: Backend, slow checks (Python 3.12)
-    # the slow tests, the replayed benchmarks and demo --check: in the 3.12 leg of "backend" they took the job
-    # to 36 of its then 45 minutes, so a slow runner could time it out. With the final run's replays it reached
-    # make eval-reproduce in 32 minutes on 17 Nov 2026, and the replay of every published number comes after it
+  slow-tests:
+    name: Backend, slow tests (Python 3.12)
+    # the slow tests, once and without coverage, beside the backend's legs: serial they took 21 minutes (18 Nov
+    # 2026, before more tests were marked slow); a process a file, about 11 expected
     if: github.event_name != 'schedule'
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
         with:
@@ -80,14 +113,36 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: constraints.txt
       - name: Install (the versions in constraints.txt)
         run: |
           uv venv .venv
           uv pip install -e ".[dev]" -c constraints.txt
       - name: Slow tests (every recorded reading replayed, and the page timing; once, without coverage)
-        run: .venv/bin/pytest -m slow
+        run: .venv/bin/pytest -m slow -n auto --dist loadfile
       - name: Rules engine keeps 100 % line and branch coverage
         run: .venv/bin/pytest tests/test_rules_*.py --cov=ordnung.rules --cov-branch --cov-report=term-missing:skip-covered --cov-fail-under=100
+
+  backend-slow:
+    name: Benchmarks replayed (Python 3.12)
+    # the replayed benchmarks with their gates, the presenter's check, every published number and demo --check:
+    # 12 to 13 minutes (18 Nov 2026). The job keeps its id: evals/reproduce.py reads the gates from it
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      # no test runs here, and no replay reads the history: the latest commit is enough
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: constraints.txt
+      - name: Install (the versions in constraints.txt)
+        run: |
+          uv venv .venv
+          uv pip install -e ".[dev]" -c constraints.txt
       - name: Benchmark (replayed, deterministic)
         # the gates of this step and the next ask for as many right dates as the published replay of the
         # current code gives on each split, and none dangerously late ("with_land" in the file the without-Land
@@ -149,7 +204,7 @@ jobs:
     name: Lowest direct versions (Python 3.11)
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30  # serial: 26 to 30 minutes (18 Nov 2026); a process a file: about 9 expected
     steps:
       - uses: actions/checkout@v7
         with:
@@ -164,7 +219,7 @@ jobs:
           uv pip install -e ".[dev]" --resolution lowest-direct
       - name: Tests
         # web/openapi.json is what the pinned FastAPI and pydantic print
-        run: .venv/bin/pytest -m "not slow" --deselect tests/test_openapi_contract.py::test_web_openapi_json_is_current
+        run: .venv/bin/pytest -m "not slow" -n auto --dist loadfile --deselect tests/test_openapi_contract.py::test_web_openapi_json_is_current
       - name: Demo rebuilds identically
         run: .venv/bin/ordnung demo --check
 
@@ -172,7 +227,7 @@ jobs:
     name: Newest versions of every dependency (Python 3.14)
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30  # serial: 26 to 30 minutes (18 Nov 2026); a process a file: about 9 expected
     steps:
       - uses: actions/checkout@v7
         with:
@@ -187,7 +242,7 @@ jobs:
           uv pip install -e ".[dev]"
       - name: Tests
         # web/openapi.json is what the pinned FastAPI and pydantic print
-        run: .venv/bin/pytest -m "not slow" --deselect tests/test_openapi_contract.py::test_web_openapi_json_is_current
+        run: .venv/bin/pytest -m "not slow" -n auto --dist loadfile --deselect tests/test_openapi_contract.py::test_web_openapi_json_is_current
       - name: Demo rebuilds identically
         run: .venv/bin/ordnung demo --check
 
@@ -354,6 +409,8 @@ jobs:
           EOF
       - name: Tests of the code that differs per system
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        # one process: these are the tests of locks held across processes, servers on real ports and child
+        # processes killed mid-write, and their parallel runs were proven on Linux only (4 to 11 minutes serial)
         run: |
           if [ -d .venv/Scripts ]; then venv=.venv/Scripts; else venv=.venv/bin; fi
           "$venv/python" -m pytest -m "not slow" tests/test_platform_smoke.py \
@@ -389,32 +446,49 @@ jobs:
       - run: npm run build
 
   e2e:
-    name: End-to-end (demo and real app)
+    name: End-to-end (${{ matrix.group }})
+    # each leg installs its own Python, Node and Chromium and builds the UI itself: it waits for no other job.
+    # The groups of Playwright's projects (E2E_GROUPS in web/e2e/env.ts) run side by side, each on fresh servers
+    # of its own. One run of them all took 39 minutes (18 Nov 2026); the longest leg, the layout guards, about 19
+    # expected. They stay one leg: a later layout file needs a letter an earlier one leaves to check
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-    # the web build only: this job installs its own Python, Node and Tesseract and builds the UI itself, so it runs
-    # beside the backend's legs instead of after the slowest of them
-    needs: [frontend]
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [demo, layout, real]
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: constraints.txt
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: web/package-lock.json
       - name: Install
+        id: install
         run: |
           uv venv .venv
           uv pip install -e ".[dev]" -c constraints.txt
-          cd web && npm ci && npx playwright install --with-deps chromium
+          cd web && npm ci
+          echo "playwright=$(node -p 'require("@playwright/test/package.json").version')" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright's Chromium (one per Playwright version)
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ steps.install.outputs.playwright }}
+      - name: Playwright's Chromium (downloaded unless the cache had it) and the system packages it needs
+        run: cd web && npx playwright install --with-deps chromium
       - name: Checks that need both toolchains (node + web/node_modules and the Python package)
         # the static demo's My numbers and weekly session match the Python code; the README's Vitest and
         # Playwright counts hold; a web build ships the licences of what it bundles. Only this job has both,
-        # so here they must run instead of skipping.
+        # so here they must run instead of skipping: once, on one leg
+        if: matrix.group == 'real'
         env:
           ORDNUNG_REQUIRE_MOCK_CHECK: "1"
         run: >-
@@ -424,22 +498,24 @@ jobs:
       - name: Build UI
         run: cd web && npm run build
       - name: Install Tesseract with German (the real app reads a private photo's words, ADR 0024)
+        if: matrix.group == 'real'
         run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends tesseract-ocr tesseract-ocr-deu
-      - name: Playwright (the demo; then the real app reading with a fake Claude)
-        # playwright.config.ts starts `ordnung demo --reset` and `ordnung serve` with tests/fake_claude.py from
-        # .venv, plus a second `ordnung serve` (hand-off sync's other computer; both real apps keep secrets in the
-        # file keyring of tests/e2e_support), and logs in to all three with their tokens; its projects run in
-        # order: tour, pages, sweep, layout, girocode, high-stakes, add-date (the demo), eval-report (the
+      - name: Playwright (one group of the projects, on servers of its own)
+        # playwright.config.ts starts what the group's projects use: `ordnung demo --reset`, or `ordnung serve` with
+        # tests/fake_claude.py from .venv and a second `ordnung serve` (hand-off sync's other computer; both real
+        # apps keep secrets in the file keyring of tests/e2e_support), and logs in to each with its token. demo:
+        # tour, pages, sweep, girocode, high-stakes, add-date; layout: the layout guards; real: eval-report (the
         # evaluation's report page, no server), then real-app (e2e/real-app-*.spec.ts). Text in pictures is on in
         # the first real app only (ORDNUNG_E2E_OCR), with the Tesseract installed above: its spec must run, not skip
         env:
+          E2E_GROUP: ${{ matrix.group }}
           ORDNUNG_E2E_OCR: "on"
           ORDNUNG_REQUIRE_TESSERACT: "1"
         run: cd web && npm run e2e
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.group }}
           path: |
             web/playwright-report
             web/test-results

@@ -7,6 +7,10 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ### Changed
 
+- CI on a pull request should take about 21 minutes instead of 40 to 50: the backend tests run in parallel
+  processes, coverage is measured on the Python 3.12 leg alone, lint and types run once, the slow tests and the
+  replayed benchmarks have a job each, and the end-to-end tests run in three groups side by side without waiting
+  for the frontend job. `make check` runs the backend tests in parallel too.
 - **The report of the final evaluation says more of what was registered.** Its statistics give the gap each power
   figure was computed at, with the registered caveat; each secondary endpoint (the replay without the sender's
   Land, the checks ablated, selective prediction, cost and latency) shows the final run first and the earlier

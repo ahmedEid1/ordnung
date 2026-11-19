@@ -1,8 +1,9 @@
-""".github/workflows/ci.yml: the slow checks have a job of their own, the end-to-end job runs beside the backend's,
-a push to main never cuts off a running run, macOS and Windows must pass, every published benchmark number is
-replayed with a gate at that number, coverage has floors, the weekly run checks the rules' age and the real Claude
-Code's flags, a real Tesseract is installed only where a test needs it (ADR 0024), and each job that runs the
-pre-registration's tests checks out the whole history."""
+""".github/workflows/ci.yml: lint and types run once, coverage on one backend leg, the slow tests and the replays
+each in a job of their own, the end-to-end groups beside the backend's legs, a push to main never cuts off a
+running run, macOS and Windows must pass, every published benchmark number is replayed with a gate at that
+number, coverage has floors, the weekly run checks the rules' age and the real Claude Code's flags, a real
+Tesseract is installed only where a test needs it (ADR 0024), and each job that runs the pre-registration's tests
+checks out the whole history."""
 
 from __future__ import annotations
 
@@ -50,40 +51,62 @@ def _weekly(job: dict[str, Any]) -> bool:
     return job.get("if") == "github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'"
 
 
-def test_the_slow_checks_run_in_a_job_of_their_own_and_every_check_still_runs() -> None:
-    """The 3.12 leg ran the suite with coverage, then the slow tests, the replays and ``demo --check``, in 36 of
-    its 45 minutes: a slow runner could time it out. Each check that ran there still runs on pull requests. The
-    job itself has 60 minutes: with the final run's replays it reached ``make eval-reproduce`` in 32 minutes
-    on a slow runner, and the replay of every published number comes after it."""
+def test_each_check_runs_on_pull_requests_in_a_job_of_its_own() -> None:
+    """A run's time is its longest job's. The slow tests and the replays took a backend leg to 36 of its 45
+    minutes; in a job of their own (``backend-slow``) they took 27 to 41 (November 2026), the slow tests alone 21
+    of them. So the slow tests, the replays (the gates, ``make eval-reproduce``, ``demo --check``) and lint with
+    the type check (the same on every Python: pyproject.toml gives ruff and mypy 3.11 as their target) each have
+    a job, all on pull requests, and every check still runs. The replays keep the job id ``backend-slow``:
+    evals/reproduce.py reads the gates from it."""
     jobs = _jobs()
-    backend, slow = jobs["backend"], jobs["backend-slow"]
-    assert _on_pull_requests(slow) and slow["runs-on"] == backend["runs-on"] == "ubuntu-24.04"
-    # (the backend legs' own limit: test_the_backend_legs_have_room_for_a_slow_runner)
-    assert slow["timeout-minutes"] <= 60
-    assert any(step.get("with", {}).get("python-version") == "3.12" for step in slow["steps"])
-    for moved in (
-        "pytest -m slow",
-        "--cov=ordnung.rules",
-        "ordnung eval",
-        "evals.ask",
-        "ordnung demo --check",
-    ):
-        assert moved in _script(slow) and moved not in _script(backend), moved
-    for kept in ("ruff check", "ruff format --check", "mypy", 'pytest -m "not slow" --cov=ordnung'):
-        assert kept in _script(backend), kept
-    assert "--cov-fail-under=100" in _script(slow)  # the rules engine's gate
+    lint, backend, tests, replays = jobs["lint"], jobs["backend"], jobs["slow-tests"], jobs["backend-slow"]
+    assert all(_on_pull_requests(job) for job in (lint, backend, tests, replays))
+    assert tests["runs-on"] == replays["runs-on"] == backend["runs-on"] == "ubuntu-24.04"
+    for job in (lint, tests, replays):
+        assert any(step.get("with", {}).get("python-version") == "3.12" for step in job["steps"])
+    where = {
+        "ruff check": lint,
+        "ruff format --check": lint,
+        "mypy": lint,
+        'pytest -m "not slow" -n auto --dist loadfile --cov=ordnung': backend,
+        "pytest -m slow -n auto --dist loadfile": tests,
+        "--cov=ordnung.rules": tests,
+        "--cov-fail-under=100": tests,  # the rules engine's gate
+        "ordnung eval": replays,
+        "evals.ask": replays,
+        "evals.present --check": replays,
+        "make eval-reproduce": replays,
+        "ordnung demo --check": replays,
+    }
+    for check, job in where.items():
+        assert check in _script(job), check
+        assert job is backend or check not in _script(backend), check  # once, not in each leg
+    assert "pytest" not in _script(replays)
 
 
-def test_the_end_to_end_job_waits_for_the_web_build_only() -> None:
-    """The end-to-end job installs its own Python, Node and Tesseract and builds the web app itself: it uses
-    nothing the backend legs make. Waiting for all four of them took a run from about 36 minutes to 70 (the
-    slowest leg, then Playwright). It waits for the frontend job alone, so a broken web build still stops it before
-    Playwright starts, and it runs beside the backend legs."""
+def _e2e_groups() -> list[str]:
+    """The groups of Playwright's projects one end-to-end run can take (``E2E_GROUPS`` in web/e2e/env.ts)."""
+    env_ts = (ROOT / "web" / "e2e" / "env.ts").read_text(encoding="utf-8")
+    groups = env_ts.split("export const E2E_GROUPS", 1)[1].split("\n};", 1)[0]
+    return re.findall(r'^  "?([\w-]+)"?: \[', groups, re.M)
+
+
+def test_the_end_to_end_groups_start_at_once_and_together_run_every_project() -> None:
+    """Each end-to-end leg installs its own Python, Node and Chromium and builds the web app itself: it uses
+    nothing another job makes, so it waits for none (waiting for the frontend job put 8 minutes before a 39-minute
+    Playwright run, 18 Nov 2026; a broken build still fails the leg's own build step). Its legs are the groups of
+    web/e2e/env.ts, each once: a group left out here would never run in CI. The checks that need both toolchains
+    run on one leg, not on each."""
     jobs = _jobs()
     e2e = jobs["e2e"]
-    assert e2e["needs"] in ("frontend", ["frontend"])
-    assert "download-artifact" not in json.dumps(e2e)
+    assert "needs" not in e2e and "download-artifact" not in json.dumps(e2e)
     assert _on_pull_requests(e2e) and _on_pull_requests(jobs["frontend"])
+    groups = e2e["strategy"]["matrix"]["group"]
+    assert sorted(groups) == sorted(set(groups)) == sorted(_e2e_groups())
+    _, playwright = _step(e2e, "npm run e2e")
+    assert playwright["env"]["E2E_GROUP"] == "${{ matrix.group }}"
+    (checks,) = [step for step in e2e["steps"] if "ORDNUNG_REQUIRE_MOCK_CHECK" in step.get("env", {})]
+    assert checks["if"] == "matrix.group == 'real'"
 
 
 def test_only_a_pull_request_s_older_run_is_cancelled() -> None:
@@ -159,7 +182,7 @@ def test_the_type_check_covers_the_scripts_each_under_one_name() -> None:
     assert re.search(r"^\s*from scripts\.eval_without_land import ", harness, re.M)
     published = (ROOT / "scripts" / "prereg_published.py").read_text(encoding="utf-8")
     assert re.search(r"^from scripts\.prereg_hashes import ", published, re.M)
-    assert [step["run"] for step in _jobs()["backend"]["steps"] if "mypy" in step.get("run", "")] == [
+    assert [step["run"] for step in _jobs()["lint"]["steps"] if "mypy" in step.get("run", "")] == [
         ".venv/bin/mypy"
     ]
 
@@ -174,14 +197,16 @@ def test_the_frontend_job_has_room_for_a_slow_runner() -> None:
 
 
 def test_the_backend_legs_have_room_for_a_slow_runner() -> None:
-    """The backend's legs on Python 3.11 to 3.14 (install, lint, the type check and the tests with coverage) took
-    17 to 47 minutes on hosted runners (the runs of 17 and 18 November 2026, CONTRIBUTING's Fast loop). A leg a
-    slow runner cancels fails the push run on main, which release.yml needs passed before it tags: the limit leaves
-    half as much again as the slowest leg seen. A hung test is still named after 10 minutes (faulthandler_timeout),
-    long before it."""
+    """The backend's legs on Python 3.11 to 3.14 run the tests in parallel processes, a file to each. Serial, the
+    slowest leg's tests took 39 minutes with coverage (3.12, run 44310555051 of 18 November 2026), 26 without
+    (3.11, the lowest versions' job); only 3.12 measures coverage now. A leg a slow runner cancels fails the push
+    run on main, which release.yml needs passed before it tags: the limit leaves half as much again as the slowest
+    leg, 39 minutes over 4 processes (what a hosted Linux runner has, at 3 times the speed: 4 processes ran the
+    suite 4.1 times as fast as one on a 4-core computer) plus install and Tesseract. A hung test is still named
+    after 10 minutes (faulthandler_timeout), long before it."""
     backend = _jobs()["backend"]
-    slowest_leg_seen = 47
-    assert backend["timeout-minutes"] >= 1.5 * slowest_leg_seen
+    slowest_leg = 39 / 3 + 3
+    assert backend["timeout-minutes"] >= 1.5 * slowest_leg
     assert backend["strategy"]["matrix"]["python"] == ["3.11", "3.12", "3.13", "3.14"]
     assert "pytest" in _script(backend)
 
@@ -339,7 +364,7 @@ def test_every_job_that_runs_the_pre_registration_s_tests_checks_out_the_whole_h
         for name, job in jobs.items()
         if any(_can_run(args, PREREGISTRATION_TESTS) for args in _pytest_runs(job))
     }
-    assert {"backend", "backend-slow", "lowest", "latest"} <= history
+    assert {"backend", "slow-tests", "lowest", "latest"} <= history
     for name in sorted(history):
         (checkout,) = [
             step for step in jobs[name]["steps"] if step.get("uses", "").startswith("actions/checkout@")
@@ -560,11 +585,16 @@ def _step(job: dict[str, Any], text: str) -> tuple[int, dict[str, Any]]:
     return found
 
 
+def _coverage_legs(backend: dict[str, Any]) -> list[str]:
+    """The backend legs that measure coverage (``coverage: true`` in the matrix)."""
+    return [leg["python"] for leg in backend["strategy"]["matrix"].get("include", []) if leg.get("coverage")]
+
+
 def test_tesseract_is_installed_only_where_a_real_binary_test_needs_it() -> None:
     """Text in pictures (ADR 0024): Tesseract is an optional program, never a dependency. A real one, with German,
     is installed only in the backend's 3.12 leg (the real-binary tests, which must run there instead of skipping)
-    and the end-to-end job (the real app reads a photo with OCR on). Every other job, the macOS and Windows runners
-    among them, tests the missing-binary path."""
+    and the end-to-end leg of the real app (it reads a photo with OCR on). Every other job, the macOS and Windows
+    runners among them, tests the missing-binary path."""
     jobs = _jobs()
     # the packages the doctor's Linux line names
     assert "sudo apt install tesseract-ocr tesseract-ocr-deu" in tesseract_install("linux")
@@ -572,17 +602,25 @@ def test_tesseract_is_installed_only_where_a_real_binary_test_needs_it() -> None
     backend = jobs["backend"]
     at, install = _step(backend, "tesseract")
     assert install["run"].strip() == APT_TESSERACT and install["if"] == "matrix.python == '3.12'"
-    tests_at, tests = _step(backend, 'pytest -m "not slow"')
-    assert at < tests_at
-    assert tests["env"]["ORDNUNG_REQUIRE_TESSERACT"] == "${{ matrix.python == '3.12' && '1' || '' }}"
-    assert tests["env"]["ORDNUNG_REQUIRE_TESSERACT"] == tests["env"]["ORDNUNG_REQUIRE_SAMPLES"]
+    runs = [
+        index for index, step in enumerate(backend["steps"]) if 'pytest -m "not slow"' in step.get("run", "")
+    ]
+    assert runs and at < min(runs)
+    # on every step of the job: whichever of its test steps runs on 3.12
+    assert backend["env"]["ORDNUNG_REQUIRE_TESSERACT"] == "${{ matrix.python == '3.12' && '1' || '' }}"
+    assert backend["env"]["ORDNUNG_REQUIRE_TESSERACT"] == backend["env"]["ORDNUNG_REQUIRE_SAMPLES"]
 
     e2e = jobs["e2e"]
     at, install = _step(e2e, "tesseract")
-    assert install["run"].strip() == APT_TESSERACT and "if" not in install
+    assert install["run"].strip() == APT_TESSERACT and install["if"] == "matrix.group == 'real'"
     playwright_at, playwright = _step(e2e, "npm run e2e")
     assert at < playwright_at
-    assert playwright["env"] == {"ORDNUNG_E2E_OCR": "on", "ORDNUNG_REQUIRE_TESSERACT": "1"}
+    assert "real" in e2e["strategy"]["matrix"]["group"]
+    assert playwright["env"] == {
+        "E2E_GROUP": "${{ matrix.group }}",
+        "ORDNUNG_E2E_OCR": "on",
+        "ORDNUNG_REQUIRE_TESSERACT": "1",
+    }
 
     for name, job in jobs.items():
         if name not in ("backend", "e2e"):
@@ -611,11 +649,21 @@ def test_the_installed_wheels_doctor_finds_text_in_pictures_optional_on_other_sy
 
 def test_coverage_counts_branches_and_has_floors_for_the_whole_package_sync_and_phone() -> None:
     """Only the rules engine had a coverage gate: the main test step reported coverage but never failed on
-    it. The floors read the coverage the test step measured, so they cost no second run."""
+    it. The floors read the coverage the test step measured, so they cost no second run. Coverage is measured
+    on one leg, the one with Tesseract and the samples' libraries (the most code runs there), and that leg runs
+    the whole fast suite with it: the floors are read where the coverage was measured."""
     coverage = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["coverage"]
     assert coverage["run"]["branch"] is True
     assert 90 <= coverage["report"]["fail_under"] < 100
-    script = _script(_jobs()["backend"])
+    backend = _jobs()["backend"]
+    assert _coverage_legs(backend) == ["3.12"]
+    (measured,) = [step for step in backend["steps"] if "--cov=ordnung" in step.get("run", "")]
+    assert _can_run(shlex.split(measured["run"].split("pytest", 1)[1]), "tests/test_sync_lineage.py")
+    script = ""
+    for step in backend["steps"]:
+        if "coverage report" in step.get("run", ""):
+            assert step["if"] == measured["if"] == "${{ matrix.coverage }}"
+            script += step["run"]
     for package in ("sync", "phone"):
         (line,) = [line for line in script.splitlines() if f"--include='*/ordnung/{package}/*'" in line]
         floor = float(line.split("--fail-under=", 1)[1].split()[0])
