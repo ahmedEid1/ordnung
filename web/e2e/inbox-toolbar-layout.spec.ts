@@ -197,11 +197,15 @@ for (const width of [320, 390, 768, 1280]) {
       }
       await setTheme(page, "light");
 
-      // a year with no letters stays a choice, and the page says why it is empty
+      // a year with no letters stays a choice, and the page says why it is empty (in both themes)
       await open(page, "/inbox?year=2019", "Inbox");
-      await expect(page.getByRole("heading", { name: "No letters dated 2019" })).toBeVisible();
-      await expect(select.locator("option", { hasText: "2019 (0)" })).toHaveCount(1);
-      expect(await sideways(page)).toBe(0);
+      for (const theme of ["light", "dark"] as const) {
+        await setTheme(page, theme);
+        await expect(page.getByRole("heading", { name: "No letters dated 2019" }), theme).toBeVisible();
+        await expect(select.locator("option", { hasText: "2019 (0)" }), theme).toHaveCount(1);
+        expect(await sideways(page), `the empty year scrolls sideways (${theme})`).toBe(0);
+      }
+      await setTheme(page, "light");
     });
 
     test("For gets its own row on a phone and joins the pickers from sm; File these N fits and files what it lists (axe in light and dark)", async ({ page }, testInfo) => {
@@ -261,8 +265,11 @@ for (const width of [320, 390, 768, 1280]) {
       expect(new Set(Object.values(filings[0]!))).toEqual(new Set([ALEX]));
       await expect(card).toHaveCount(0);
       const toast = page.locator("li[data-toast]").filter({ hasText: `Filed ${reminders.length} letters for ${ALEX_NAME}` });
-      await expect(toast).toBeVisible();
-      expect(await sideways(page), "the toast pushes the page sideways").toBe(0);
+      for (const theme of ["dark", "light"] as const) {
+        await setTheme(page, theme);
+        await expect(toast, theme).toBeVisible();
+        expect(await sideways(page), `the toast pushes the page sideways (${theme})`).toBe(0);
+      }
       await toast.getByRole("button", { name: "Undo" }).click();
       await expect.poll(() => filings.length).toBe(2);
       expect(Object.values(filings[1]!).every((v) => v === null)).toBe(true);
