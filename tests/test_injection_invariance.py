@@ -27,6 +27,7 @@ from typing import Any
 
 import pytest
 
+from helpers_tables import check_rows_async
 from ordnung.llm.base import LLMRequest, LLMResponse, ReplayMiss, StreamEvent
 from ordnung.llm.runtime import LLMService
 
@@ -276,11 +277,16 @@ async def test_the_check_sees_hidden_text_a_text_stage_lets_through(tmp_path: Pa
             _assert_invariant(entry_id, number, found)
 
 
-@pytest.mark.parametrize("entry_id", _sample())
-async def test_a_hidden_instruction_is_found_and_never_sent(entry_id: str, tmp_path: Path) -> None:
-    for number in range(len(INSTRUCTIONS)):
-        found = await _check(entry_id, number, tmp_path / str(number))
-        _assert_invariant(entry_id, number, found)
+SAMPLED_LETTERS = _sample()
+
+
+async def test_a_hidden_instruction_is_found_and_never_sent(tmp_path: Path) -> None:
+    async def check(entry_id: str) -> None:
+        for number in range(len(INSTRUCTIONS)):
+            found = await _check(entry_id, number, tmp_path / entry_id / str(number))
+            _assert_invariant(entry_id, number, found)
+
+    await check_rows_async(SAMPLED_LETTERS, check)
 
 
 @pytest.mark.slow
