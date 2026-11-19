@@ -44,14 +44,6 @@ def rows(index: dict[str, Any]) -> dict[str, dict[str, Any]]:
 # --------------------------------------------------------------------------------------------------
 
 
-def test_every_results_file_has_one_row_with_its_sha256(index: dict[str, Any]) -> None:
-    files = sorted(path.name for path in RESULTS_DIR.glob("*.json") if path.name != "INDEX.json")
-    assert [row["file"] for row in index["results"]] == files
-    for row in index["results"]:
-        assert row["sha256"] == reproduce.sha256_file(RESULTS_DIR / row["file"]), row["file"]
-    assert index["schema"] == reproduce.INDEX_SCHEMA and index["pinned_model"] == DEFAULT_MODEL
-
-
 def test_what_needs_no_replay_is_what_the_checkout_gives(index: dict[str, Any]) -> None:
     """The dataset's and the recordings' hashes, the CI gates, the cells and every row's hash, role, recording and
     check are computed from the checkout: a new results file, a changed recording or a moved gate is a visible
@@ -416,7 +408,9 @@ def test_a_held_out_ask_run_and_a_stress_run_are_replayed_on_the_day_they_were_b
     tmp_path: Path,
 ) -> None:
     """A recording after the freeze is built for the day it is recorded: its replay
-    must build the same ledger, prompt and letters, so reproduce passes that day on (``--today``)."""
+    must build the same ledger, prompt and letters, so reproduce passes that day on (``--today``). The held-out Ask
+    runs' replays also take their gate's thresholds from ``ci.yml`` (as CI runs them), so the scoreboard's tick for
+    each is its gate's."""
     results = tmp_path / "results"
     results.mkdir()
     live = _ask_payload("2026-11-20", backend="live", recorded="2026-11-20", today="2026-11-20")
@@ -430,6 +424,12 @@ def test_a_held_out_ask_run_and_a_stress_run_are_replayed_on_the_day_they_were_b
     tasks = {task.name: task.argv for task in reproduce.plan(static, results, tmp_path / "work")}
     ask = tasks["ask/heldout/r1"]
     assert ask[ask.index("--set") + 1] == "heldout" and ask[ask.index("--today") + 1] == "2026-11-20"
+    gate = static["gates"]["ask/heldout/r1"]["args"]
+    assert "--min-strict-accuracy" in gate and "--max-harmful" in gate
+    for flag in ("--min-strict-accuracy", "--max-harmful"):
+        assert ask[ask.index(flag) + 1] == gate[gate.index(flag) + 1]
+    assert ask.count("--today") == 1 and ask[ask.index("--today") + 1] == "2026-11-20"
+    assert ask.count("--set") == 1 and ask.count("--repeat") == 1
     assert tasks["stress"][tasks["stress"].index("--today") + 1] == "2026-11-21"
     # a file without a day of its own (the development set, a stress run built before item 8) is replayed as before
     dev = _ask_payload(
@@ -1397,22 +1397,3 @@ def test_the_scoreboard_holds_every_gate_ci_runs_and_says_what_it_checked(tmp_pa
     # a partial run (--only) holds only the gates it replayed, and says only those
     problems, parts = reproduce.gate_problems(index, {}, {})
     assert (problems, parts) == ([], [])
-
-
-def test_a_held_out_ask_run_is_replayed_with_its_ci_gate(tmp_path: Path) -> None:
-    """The held-out Ask runs' replays take their gate's thresholds from ``ci.yml`` (as CI runs them), on the day the
-    file was recorded for, so the scoreboard's tick for each is its gate's."""
-    results = tmp_path / "results"
-    results.mkdir()
-    live = _ask_payload("2026-11-20", backend="live", recorded="2026-11-20", today="2026-11-20")
-    (results / f"2026-11-20-{DEFAULT_MODEL}-ask-heldout.json").write_text(json.dumps(live), encoding="utf-8")
-    static = reproduce.static_index(results)
-    gate = static["gates"]["ask/heldout/r1"]["args"]
-    assert "--min-strict-accuracy" in gate and "--max-harmful" in gate
-    argv = {task.name: task.argv for task in reproduce.plan(static, results, tmp_path / "work")}[
-        "ask/heldout/r1"
-    ]
-    for flag in ("--min-strict-accuracy", "--max-harmful"):
-        assert argv[argv.index(flag) + 1] == gate[gate.index(flag) + 1]
-    assert argv.count("--today") == 1 and argv[argv.index("--today") + 1] == "2026-11-20"
-    assert argv.count("--set") == 1 and argv.count("--repeat") == 1
