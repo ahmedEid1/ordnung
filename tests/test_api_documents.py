@@ -685,11 +685,11 @@ async def test_delete_moves_to_trash_or_purges(data_dir: Path) -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-def _failing_route(app: FastAPI, exc: Exception) -> None:
+def _failing_route(app: FastAPI, exc: Exception, path: str = "/api/test-boom") -> None:
     async def boom() -> None:
         raise exc
 
-    app.add_api_route("/api/test-boom", boom, methods=["GET"])
+    app.add_api_route(path, boom, methods=["GET"])
     app.router.routes.insert(0, app.router.routes.pop())  # before the web app's catch-all
 
 
@@ -703,9 +703,8 @@ async def test_model_failures_become_503_with_a_code(data_dir: Path) -> None:
             "code": "claude_auth",
         }
 
-    async with api_for(data_dir) as api:
-        _failing_route(api.app, ClaudeRateLimited("Usage limit reached", reset_at="3pm"))
-        response = await api.client.get("/api/test-boom")
+        _failing_route(api.app, ClaudeRateLimited("Usage limit reached", reset_at="3pm"), "/api/test-limit")
+        response = await api.client.get("/api/test-limit")
         assert response.status_code == 503
         assert response.json()["code"] == "llm_paused" and response.headers["retry-after"]
 
