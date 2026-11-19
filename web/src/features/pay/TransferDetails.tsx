@@ -11,7 +11,7 @@ import { Check, CircleCheck, Copy, ShieldAlert, TriangleAlert } from "lucide-rea
 import type { GiroCode, PaymentDetails } from "@/api/types";
 import { Button } from "@/components/ui/Button";
 import { ibanFailsCheck, GIROCODE_MISMATCH_DETAILS } from "@/features/girocode/GiroCode";
-import { useClipboard } from "@/features/today/clipboard";
+import { useClipboard } from "@/lib/clipboard";
 import { formatIban, formatMoney } from "@/lib/format";
 import { protectRefs } from "@/lib/glue";
 import { paymentReference } from "@/lib/payments";

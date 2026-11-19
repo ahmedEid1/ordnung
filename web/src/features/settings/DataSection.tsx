@@ -14,7 +14,7 @@ import { isStaticDemo } from "@/mocks/mode";
 import { CopyCommand } from "@/features/onboarding/CopyCommand";
 import { DEMO_CMD } from "@/features/onboarding/options";
 import { EXPORT_IN_DEMO, ExportLettersDialog, NOT_ENCRYPTED } from "@/features/export/ExportLettersDialog";
-import { useClipboard } from "@/features/today/clipboard";
+import { useClipboard } from "@/lib/clipboard";
 import { useTodayISO } from "@/lib/today";
 import { plural } from "@/lib/utils";
 import { BackupCard } from "./BackupCard";

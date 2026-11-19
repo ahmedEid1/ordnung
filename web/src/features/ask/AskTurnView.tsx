@@ -6,7 +6,7 @@ import { LogoMark } from "@/components/shell/Logo";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
 import { useProfileLanguage } from "@/components/ui/ModelText";
-import { useClipboard } from "@/features/today/clipboard";
+import { useClipboard } from "@/lib/clipboard";
 import { looksGerman } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
 import { isStaticDemo } from "@/mocks/mode";

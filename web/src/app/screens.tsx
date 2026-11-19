@@ -10,7 +10,7 @@ import { technicalDetails } from "@/components/ui/LoadError";
 import { Page } from "@/components/shell/Page";
 import { CopyCommand } from "@/features/onboarding/CopyCommand";
 import { servedToPhone } from "@/features/phone/platform";
-import { useClipboard } from "@/features/today/clipboard";
+import { useClipboard } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
 
 /** The splash says "Starting Ordnung…" once loading takes longer than this (a fast start shows the logo only). */

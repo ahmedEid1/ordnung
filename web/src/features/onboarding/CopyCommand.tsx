@@ -1,7 +1,7 @@
 import { Fragment, type ReactNode } from "react";
 import { Check, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useClipboard } from "@/features/today/clipboard";
+import { useClipboard } from "@/lib/clipboard";
 
 /**
  * A terminal command with a copy button ("Copied" is announced to screen readers). A long command
