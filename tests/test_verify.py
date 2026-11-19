@@ -71,8 +71,16 @@ def _extract(directory: Path, data: bytes) -> tuple[list[RenderedPage], list[Pag
 
 
 @pytest.fixture(scope="module")
-def letter(tmp_path_factory: pytest.TempPathFactory) -> tuple[list[RenderedPage], list[PageText]]:
-    return _extract(tmp_path_factory.mktemp("letter"), letter_pdf())
+def letter_bytes() -> bytes:
+    """The test letter's PDF, built once: bytes cannot change, and every user extracts into its own folder."""
+    return letter_pdf()
+
+
+@pytest.fixture(scope="module")
+def letter(
+    tmp_path_factory: pytest.TempPathFactory, letter_bytes: bytes
+) -> tuple[list[RenderedPage], list[PageText]]:
+    return _extract(tmp_path_factory.mktemp("letter"), letter_bytes)
 
 
 def _ink(image_path: Path, box: Box) -> float:
@@ -224,11 +232,11 @@ def test_hyphenated_line_break_matches_the_joined_word(tmp_path: Path) -> None:
 LOCATED_BOXES_ON_ROTATED_CROPPED_PAGES = [90, 180, 270]
 
 
-def test_located_boxes_on_rotated_cropped_pages(tmp_path: Path) -> None:
+def test_located_boxes_on_rotated_cropped_pages(tmp_path: Path, letter_bytes: bytes) -> None:
     def check(rotation: int) -> None:
         cropbox = (30.0, 120.0, 580.0, 810.0)
         rendered, pages = _extract(
-            tmp_path / f"r{rotation}", set_page_boxes(letter_pdf(), 0, rotation=rotation, cropbox=cropbox)
+            tmp_path / f"r{rotation}", set_page_boxes(letter_bytes, 0, rotation=rotation, cropbox=cropbox)
         )
         located = locate_quote("Bitte zahlen Sie den Betrag bis zum 15.09.2026", pages)
         assert located is not None
