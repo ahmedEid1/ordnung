@@ -570,7 +570,7 @@ async def test_rules_engine_reproduces_the_labels_from_a_perfect_reading(tmp_pat
     assert results["metrics"]["ordnung"]["taxonomy"]["reading"] == 0
 
 
-#: The recorded reading that came back with only the four required fields (``ingest/gaps.py``).
+#: The recorded reading that came back with only the four required fields (``ingest/gaps/``).
 EMPTY_READING = "holdout2-adversarial-injection_visible-1"
 
 
@@ -632,7 +632,7 @@ async def test_an_empty_reading_s_read_this_letter_placeholder_is_never_scored(t
 
 
 PREDICTION_CACHE_MODULES = [
-    "ingest/gaps.py",
+    "ingest/gaps/reading.py",
     "ingest/conflicts.py",
     "recurrence.py",  # a working day or day of the month: graded by plan
     "money/iban.py",  # the invalid-IBAN signal

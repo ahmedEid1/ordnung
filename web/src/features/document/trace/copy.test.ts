@@ -189,7 +189,7 @@ describe("trace copy", () => {
     expect(candidates).toContainEqual({ label: "Compared with", value: "Stadt Musterstadt (67 %)" });
   });
 
-  it("says when a reading came back incomplete and Ordnung added a to-do of its own (ingest/gaps.py)", () => {
+  it("says when a reading came back incomplete and Ordnung added a to-do of its own (ingest/gaps/)", () => {
     const facts = { quotes: 1, verified: 1, model_read: 0, unverified: 0, needs_check: 1 };
     const checked = spanCopy(span({ kind: "verify", name: "Check quotes", attributes: { ...facts, reading_gap: "empty", check_item: "dated" } }));
     expect(checked.title).toBe("Quotes checked on the page");

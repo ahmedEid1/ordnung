@@ -1,4 +1,4 @@
-"""Guard: on every recorded reading of the benchmark, the check for incomplete readings (``ingest/gaps.py``)
+"""Guard: on every recorded reading of the benchmark, the check for incomplete readings (``ingest/gaps/``)
 fires on exactly one letter — the empty reading it was written after —, the letter's own notice is never
 set beside a reading's objection date (``gaps.notice_rival``: no recorded reading dates it weeks later), and no
 reading left out a fixed date the letter sets (``gaps.deadline_items``: no ``check:deadline`` to-do).

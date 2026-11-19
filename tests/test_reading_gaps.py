@@ -1,4 +1,4 @@
-"""A reading that came back incomplete gets one "Please check" to-do written by code (``ingest/gaps.py``).
+"""A reading that came back incomplete gets one "Please check" to-do written by code (``ingest/gaps/``).
 
 Every letter here is synthetic, written for these tests: a city's fee decision with its instructions on how to
 object (Rechtsbehelfsbelehrung), and the ordinary letters that rightly have no to-do or no objection. The

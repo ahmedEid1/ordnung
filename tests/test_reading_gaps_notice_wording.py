@@ -1,4 +1,4 @@
-"""How a letter is laid out and worded, for the check for incomplete readings (``ingest/gaps.py``): the letter's
+"""How a letter is laid out and worded, for the check for incomplete readings (``ingest/gaps/``): the letter's
 own date in a header whose columns the text layer ran together, periods that belong to a payment or to something
 else than lodging, and a restated notice, the court action's tie, a heading word inside a sentence and an
 appointment's time line. The rule

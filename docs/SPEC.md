@@ -620,7 +620,7 @@ the same). The deadlines the law adds to a high-stakes letter (§ 4 KSchG, § 69
 from the earlier of the letter's two dates for itself in the same way, with the same receipt step,
 warning and "Please check" (its evidence the page's line with the other date).
 
-**Incomplete reading** (`ingest/gaps.py`, code only). The extraction schema requires only a letter's kind,
+**Incomplete reading** (`ingest/gaps/`, code only). The extraction schema requires only a letter's kind,
 title, summary and explanation, so a valid answer can leave out everything a person acts on (a prompt
 injection's aim). At **verify**, after the quotes are grounded, code checks every reading against the
 letter's visible text only (`Page.text`, a photo's transcript; never `Page.hidden`) with two rules, the

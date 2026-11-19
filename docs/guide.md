@@ -101,8 +101,8 @@ the same way) and add your own dates (Timeline → Add a date, or on a letter's 
 letter added while Claude isn't installed, isn't signed in or is older than 2.1.0 waits (*Waiting for Claude*)
 instead of failing, and is read once Claude is ready, without a restart; meanwhile search finds it by the words
 in its PDF. CI tests Ordnung on Linux, with a real Tesseract for text in pictures. A CI job on macOS and
-Windows (on every pull request, on main and weekly, required to pass) installs Ordnung, checks the demo and
-`ordnung doctor`, and runs the tests of the code that differs there: the data-folder lock, durable writes,
+Windows (Windows on every pull request, both on main and weekly, required to pass) installs Ordnung, checks the
+demo and `ordnung doctor`, and runs the tests of the code that differs there: the data-folder lock, durable writes,
 hand-off sync, phone access's network lookups and certificates, autostart entries, app-menu shortcuts, backups and
 text in pictures (looking for Tesseract, which isn't installed there). The other tests, desktop notifications,
 starting at a real login, and phone access and sync between real devices are not tested on macOS or Windows.

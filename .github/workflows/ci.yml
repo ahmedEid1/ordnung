@@ -367,15 +367,17 @@ jobs:
     name: Other systems (${{ matrix.os }}, Python 3.12)
     # the lock, durable writes, sync's computer id, phone access's network lookups, autostart, the
     # app-menu shortcut (the Mac bundle opened, the Windows link read back and opened), the
-    # disk-encryption probe and text in pictures with Tesseract missing differ on macOS and Windows: on every
-    # pull request, on main, by hand and weekly, and a failure there fails the run. Windows took 8 minutes and macOS
-    # 3 to 4 (19 Nov 2026), under the longest Linux jobs, so a pull request's run waits no longer for them
+    # disk-encryption probe and text in pictures with Tesseract missing differ on macOS and Windows, and a failure
+    # there fails the run. Windows runs on every event, pull requests among them: it took 8 minutes (19 Nov 2026),
+    # under the longest Linux jobs. macOS runs on main, by hand and weekly, not on a pull request: the job takes
+    # 3 to 4 minutes, but on one pull request of three its runner was 10 minutes in coming and on another none
+    # came: after 15 minutes in the queue the job was cancelled, and a run failed whose other jobs had all passed
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest]
+        os: ${{ fromJSON(github.event_name == 'pull_request' && '["windows-latest"]' || '["macos-latest", "windows-latest"]') }}
     defaults:
       run:
         shell: bash

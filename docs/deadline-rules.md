@@ -425,7 +425,7 @@ A reading can come back without the deadline to object although the letter state
 to-do, sender, letter date, key fact, reference, contract, change, payment or remedy), or without any to-do
 that dates an objection on a letter whose visible text shows an administrative act, with a notice that
 speaks of a remedy against that letter (not a later decision's, one already lodged, a direct debit's or one
-the letter rules out). Code then reads the letter's own instructions on how to object (`ingest/gaps.py`, SPEC
+the letter rules out). Code then reads the letter's own instructions on how to object (`ingest/gaps/`, SPEC
 § 8; no model call) and files **one** to-do, always `low` and "Please check". Its date is never later than
 the letter allows when the letter's own date is read — but for an envelope date the person types for a letter
 served with a *Postzustellungsurkunde* (below) — and ADR 0015 lists the planted layouts that can defeat this:
@@ -535,7 +535,7 @@ served with a *Postzustellungsurkunde* (below) — and ADR 0015 lists the plante
 ### When the reading leaves out a date the letter sets
 
 A reading can keep the sender and still drop a fixed date the letter sets for the person to pay or send
-something by. Code reads the letter's visible text for such dates (`ingest/gaps.py`, `deadline_items`; no model
+something by. Code reads the letter's visible text for such dates (`ingest/gaps/dropped_dates.py`, `deadline_items`; no model
 call) and files a to-do for each — at most three, the earliest — in slot `check:deadline#<date>-<nature>`
 (one per date and kind, so reading the letter again never passes a to-do's status to another date), always `low`
 and "Please check", titled "Check this date in the letter" and worded as a cross-check ("The letter names a payment

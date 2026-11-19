@@ -12,9 +12,10 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   replayed benchmarks have a job each, and the end-to-end tests run in three groups side by side without waiting
   for the frontend job. The layout guards, the longest of the three, run as two legs. `make check` runs the
   backend tests in parallel too. Every published number is replayed in a job of its own (it made the benchmarks'
-  job the longest of a run), Windows and macOS run on every pull request and not only on `main`, and the
-  end-to-end legs drive the committed web build with Chromium's headless shell, installed without system
-  packages: a package mirror that hung could fail a run.
+  job the longest of a run), Windows runs on every pull request and not only on `main` (macOS stays on `main`
+  and the weekly run: on a pull request its runner was 10 minutes in coming once, and once none came and the run
+  failed for it), and the end-to-end legs drive the committed web build with Chromium's headless shell, installed
+  without system packages: a package mirror that hung could fail a run.
 - The backend tests hold one behaviour each. The examples of one rule are now the rows of one table test
   (`check_rows` in `tests/helpers_tables.py`, which names every failing row) instead of one collected test per
   example, and tests and rows that only repeated another were removed. That is now every family: the suite went
@@ -38,9 +39,11 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - The code's layers are tighter, with nothing a person, an API client or a file on disk can observe changing. In
   the backend, the helpers for the person's day live in a module of their own (`ordnung/days.py`), the replay key
   beside the request it keys, the postal buffer in the rules engine, the ledger's facts and the Idea helpers in
-  `secretary/ledger.py` (out of the 2,500-line `secretary/triggers.py`), and the evaluation no longer imports from
-  `scripts/`. Three circles of modules importing each other are gone, the largest of 13 modules;
-  `tests/test_import_layout.py` names the circles that remain and fails when a new one appears. In the web app,
+  `secretary/ledger.py` (out of the 2,500-line `secretary/triggers.py`), the check for incomplete readings in a
+  package of two files (`ingest/gaps/`, out of one 3,500-line file), the reading of e-mail and HTML in
+  `ingest/email_text.py`, and the evaluation no longer imports from `scripts/`. ISO dates in a reading are read by
+  one function where three copies did. Four circles of modules importing each other are gone, the largest of 13
+  modules; `tests/test_import_layout.py` names the three that remain and fails when a new one appears. In the web app,
   shared helpers moved out of feature folders into `lib/` and `components/ui`, an ESLint rule keeps the shared
   layers from importing a feature, a page or the mocks, and the letter composer's 1,551-line file is four files.
 - **The report of the final evaluation says more of what was registered.** Its statistics give the gap each power

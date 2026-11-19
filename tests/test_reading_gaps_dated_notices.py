@@ -1,4 +1,4 @@
-"""The check for incomplete readings (``ingest/gaps.py``) and the dates of a letter's notice: where its period
+"""The check for incomplete readings (``ingest/gaps/``) and the dates of a letter's notice: where its period
 starts, which notices count, and the notice set beside a reading's objection, as synthetic regression tests. The
 rule over all of them: the code's own date, and the date it sets beside a reading's, is never later than the
 letter allows — at worst undated.
