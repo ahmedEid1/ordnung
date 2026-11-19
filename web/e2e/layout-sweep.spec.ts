@@ -44,9 +44,8 @@
 import type { Browser, Page, TestInfo } from "@playwright/test";
 import { axeFindings, layoutFindings, type Finding } from "../scripts/ui-audit/probes.mjs";
 import { BASE_URL, STORAGE_STATE } from "./env";
-import { apiGet, expect, open, settle, test } from "./helpers";
+import { apiGet, expect, open, setTheme, settle, test, type Theme } from "./helpers";
 
-type Theme = "light" | "dark";
 type Device = "phone" | "desktop";
 
 const DEVICES: Record<Device, { sizes: [width: number, height: number][]; touch: boolean }> = {
@@ -133,35 +132,6 @@ const where = (f: Finding) => (f.rect ? ` at x ${f.rect.x}, y ${f.rect.y} (${f.r
 // ------------------------------------------------------------------------------------------------
 // Sweeping a state
 // ------------------------------------------------------------------------------------------------
-
-/**
- * Switch the theme the way the app follows the system's (no theme chosen in Settings). Colour transitions
- * are switched off for the moment of the switch, so the probes don't measure colours half-way.
- */
-async function setTheme(page: Page, theme: Theme): Promise<void> {
-  await page.evaluate(() => {
-    const style = document.createElement("style");
-    style.id = "__sweep_theme";
-    style.textContent = "*,*::before,*::after{transition:none!important}";
-    document.head.appendChild(style);
-  });
-  await page.emulateMedia({ colorScheme: theme });
-  const followed = theme === "dark" ? /\bdark\b/ : /^(?![\s\S]*\bdark\b)/;
-  try {
-    await expect(page.locator("html")).toHaveClass(followed, { timeout: 5_000 });
-  } catch {
-    // a busy machine can lose the change of the system's scheme: once more, from the other one
-    await page.emulateMedia({ colorScheme: theme === "dark" ? "light" : "dark" });
-    await page.emulateMedia({ colorScheme: theme });
-    await expect(page.locator("html")).toHaveClass(followed);
-  }
-  await page.evaluate(() => {
-    // a style read makes the new colours final before transitions come back
-    void getComputedStyle(document.body).color;
-    document.getElementById("__sweep_theme")?.remove();
-  });
-  await settle(page);
-}
 
 /** A step that didn't finish in time (see `within`). */
 class Stuck extends Error {}
