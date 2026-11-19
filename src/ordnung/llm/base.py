@@ -8,6 +8,7 @@ Backends:
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any, Literal, Protocol, runtime_checkable
@@ -54,6 +55,13 @@ class LLMRequest(BaseModel):
     prompt_version: str = "1"
     #: the prompt template the call is built from, for the usage log (default: the purpose)
     prompt_name: str | None = None
+
+
+def request_key(req: LLMRequest) -> str:
+    """Stable key for cache + replay. Callers set ``cache_key`` to identify the *input*."""
+    basis = req.cache_key if req.cache_key is not None else req.prompt
+    raw = f"{req.purpose}|{req.prompt_version}|{req.model}|{basis}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
 class Usage(BaseModel):

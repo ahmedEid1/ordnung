@@ -18,7 +18,15 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from ordnung.llm.base import LLMBackend, LLMError, LLMRequest, LLMResponse, ReplayMiss, StreamEvent
+from ordnung.llm.base import (
+    LLMBackend,
+    LLMError,
+    LLMRequest,
+    LLMResponse,
+    ReplayMiss,
+    StreamEvent,
+    request_key,
+)
 
 
 class ReplayCorrupt(ReplayMiss):
@@ -26,8 +34,6 @@ class ReplayCorrupt(ReplayMiss):
 
 
 def fixture_path(root: Path, req: LLMRequest) -> Path:
-    from ordnung.llm.runtime import request_key
-
     return root / req.purpose / f"{request_key(req)[:24]}.json"
 
 
