@@ -68,6 +68,9 @@ async def test_invoice_and_dunning_share_party_and_thread(ctx: AppContext) -> No
 
 
 async def test_dunning_flags_the_original_payment_but_never_closes_it(ctx: AppContext) -> None:
+    """A reminder takes over the invoice's payment, which stays open; the invoice's page says so."""
+    from ordnung.api.routes.documents import document_detail
+
     invoice = await read(ctx, INVOICE_LETTER)
     dunning = await read(ctx, DUNNING_LETTER)
 
@@ -81,13 +84,7 @@ async def test_dunning_flags_the_original_payment_but_never_closes_it(ctx: AppCo
     assert reminder.case_id == original.case_id
     assert not Ledger(ctx.store, clock.today()).is_superseded_by_reminder(reminder)
 
-
-async def test_the_invoice_page_notes_that_a_reminder_took_over_its_payment(ctx: AppContext) -> None:
-    from ordnung.api.routes.documents import document_detail
-
-    invoice = await read(ctx, INVOICE_LETTER)
-    await read(ctx, DUNNING_LETTER)
-
+    # the invoice's page notes that a reminder took over its payment
     [payment] = document_detail(ctx.store, invoice.id, clock.today()).items
     assert payment.description == DUNNING_ITEM_NOTE
 
