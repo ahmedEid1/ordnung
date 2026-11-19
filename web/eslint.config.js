@@ -49,7 +49,20 @@ export default defineConfig(
     },
   },
   {
+    // no-restricted-imports does not see import(): a dynamic import of the mocks is refused here, except in
+    // main.tsx, the one file that loads them
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/main.tsx", "src/mocks/**", "src/test/**", "**/*.test.{ts,tsx}"],
+    rules: {
+      "no-restricted-syntax": ["error", {
+        selector: "ImportExpression[source.value=/^(@|\\.|\\.\\.([\\u002f]\\.\\.)*)[\\u002f]mocks([\\u002f]|$)/]",
+        message: "Only main.tsx loads the mocks (lazily); mock mode is @/lib/mode.",
+      }],
+    },
+  },
+  {
     // layers: lib, api, components/ui and styles are shared pieces; they never import a screen, the app, its shell or the mocks
+    // (src/styles holds no code file yet: its entry guards the ones added later)
     files: ["src/lib/**/*.{ts,tsx}", "src/api/**/*.{ts,tsx}", "src/components/ui/**/*.{ts,tsx}", "src/styles/**/*.{ts,tsx}"],
     ignores: ["**/*.test.{ts,tsx}"],
     rules: {
