@@ -12,6 +12,8 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from ordnung.llm.base import DEFAULT_MODEL
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -48,8 +50,19 @@ def _recordings(benchmark: Path = BENCHMARK, demo: Path = DEMO) -> Iterator[tupl
             yield path, model, json.loads(path.read_text(encoding="utf-8"))
 
 
-def test_every_committed_recording_was_answered_by_the_pinned_model_with_usage() -> None:
-    found = list(_recordings())
+Recording = tuple[Path, str, dict[str, Any]]
+
+
+@pytest.fixture(scope="module")
+def committed() -> tuple[Recording, ...]:
+    """The committed recordings, read once for the module (the tests only read them)."""
+    return tuple(_recordings())
+
+
+def test_every_committed_recording_was_answered_by_the_pinned_model_with_usage(
+    committed: tuple[Recording, ...],
+) -> None:
+    found = list(committed)
     assert len(found) > 1000  # the benchmark's and the demo's
     wrong = [
         f"{path.relative_to(ROOT)}: {data['response'].get('model')!r}, not {model!r}"
@@ -104,12 +117,12 @@ def _broken_setup(result: str) -> bool:
     return text.startswith("Error") and not _ANSWERED_BAD_CALL.match(text)
 
 
-def test_no_recorded_turn_holds_a_tool_error() -> None:
+def test_no_recorded_turn_holds_a_tool_error(committed: tuple[Recording, ...]) -> None:
     """A recorded Ask turn with a tool call its server did not answer measured a broken setup, not Ask: it is
     recorded again, never committed. A call the model got wrong and the tool answered with how to correct it is
     Ask's own doing, and stays (the Ask benchmark's E2 recording: two takes of one attack were recorded before
     this distinction, and the first stands)."""
-    turns = [(path, data["stream"]) for path, _, data in _recordings() if data.get("stream")]
+    turns = [(path, data["stream"]) for path, _, data in committed if data.get("stream")]
     assert len(turns) >= 100  # the Ask benchmark's turns and the demo's answers
     failed = [
         str(path.relative_to(ROOT))
