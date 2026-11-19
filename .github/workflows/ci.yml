@@ -99,11 +99,12 @@ jobs:
   slow-tests:
     name: Backend, slow tests (Python 3.12)
     # the slow tests, once and without coverage, beside the backend's legs: serial they took 21 minutes (18 Nov
-    # 2026, before more tests were marked slow); a process a file, about 11 expected
+    # 2026, before more tests were marked slow); a process a file, about 11 expected, but one test alone
+    # (test_sync_pull_process.py's kill during the apply) takes up to 10 on a 4-core computer
     if: github.event_name != 'schedule'
     # pinned: the samples' byte-for-byte check needs Ubuntu 24.04's Python 3.12 (its zlib is the manifest's)
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 40
     env:
       # here, with the libraries of constraints.txt, the samples must regenerate byte for byte (elsewhere the
       # test skips when a library differs from the manifest's)
@@ -452,7 +453,7 @@ jobs:
     name: End-to-end (${{ matrix.group }})
     # each leg installs its own Python, Node and Chromium and builds the UI itself: it waits for no other job.
     # The groups of Playwright's projects (E2E_GROUPS in web/e2e/env.ts) run side by side, each on fresh servers
-    # of its own. One run of them all took 39 minutes (18 Nov 2026); the longest leg, the layout guards, about 19
+    # of its own. One run of them all took 39 minutes (18 Nov 2026); the longest leg, the layout guards, about 21
     # expected. They stay one leg: a later layout file needs a letter an earlier one leaves to check
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
