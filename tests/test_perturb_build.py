@@ -667,14 +667,18 @@ def test_template_strings_appear_in_no_prompt_file(
             "a template repeats the wording of a prompt file"
         )
     # the check finds a hit: a prompt folder that holds one template's wording (case and spacing aside), in a
-    # file of a subfolder (the folder itself is no prompt file and is passed over)
-    fake = tmp_path / "prompts"
-    (fake / "sub").mkdir(parents=True)
+    # file directly in the folder and, on its own, in a file of a subfolder (the subfolder itself is no prompt
+    # file and is passed over)
     one = fixture_templates.strings()[0].split("{")[0]
-    (fake / "sub" / "x.md").write_text(
-        "intro\n" + one.upper().replace(" ", "  ") + "\nmore", encoding="utf-8"
-    )
-    assert build.prompt_hits(fixture_templates, prompt_dirs=[fake]) >= 1
+    text = "intro\n" + one.upper().replace(" ", "  ") + "\nmore"
+    top = tmp_path / "top"
+    top.mkdir()
+    (top / "x.md").write_text(text, encoding="utf-8")
+    assert build.prompt_hits(fixture_templates, prompt_dirs=[top]) >= 1
+    nested = tmp_path / "nested"
+    (nested / "sub").mkdir(parents=True)
+    (nested / "sub" / "x.md").write_text(text, encoding="utf-8")
+    assert build.prompt_hits(fixture_templates, prompt_dirs=[nested]) >= 1
 
 
 # --------------------------------------------------------------------------------------------------
