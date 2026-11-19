@@ -10,14 +10,20 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - CI on a pull request takes 20 to 23 minutes instead of 40 to 50: the backend tests run in parallel
   processes, coverage is measured on the Python 3.12 leg alone, lint and types run once, the slow tests and the
   replayed benchmarks have a job each, and the end-to-end tests run in three groups side by side without waiting
-  for the frontend job. `make check` runs the backend tests in parallel too.
+  for the frontend job. The layout guards, the longest of the three, run as two legs. `make check` runs the
+  backend tests in parallel too.
 - The backend tests hold one behaviour each. The examples of one rule are now the rows of one table test
   (`check_rows` in `tests/helpers_tables.py`, which names every failing row) instead of one collected test per
-  example, and tests and rows that only repeated another were removed. That is now every family but the tests of
-  the documents and of the process: the suite went from 13,788 collected tests to 6,724, with every covered branch
-  still covered and every planted bug the old tests caught still caught. Where tests rebuilt what none of them
-  changes, they build it once: Ask's tests take under half the time (its largest file an eighth), the
-  evaluation's about two thirds. The README's count of backend tests follows.
+  example, and tests and rows that only repeated another were removed. That is now every family: the suite went
+  from 13,788 collected tests to 6,437, with every covered branch still covered and every planted bug the old
+  tests caught still caught. Where tests rebuilt what none of them changes, they build it once: Ask's tests take
+  under half the time (its largest file an eighth), the evaluation's about two thirds. The README's count of
+  backend tests follows.
+- The end-to-end tests hold one behaviour each too. Tests that repeated one check per width or per theme are one
+  test that resizes the page or switches the theme in place; fixed waits wait for the thing itself; and every
+  layout file sets up what it needs instead of relying on a letter an earlier file left open, so the files run in
+  any split. Playwright lists 479 tests where it listed 539, with every bug planted behind a merged or removed
+  test still caught. The README's count of Playwright tests follows.
 - **The report of the final evaluation says more of what was registered.** Its statistics give the gap each power
   figure was computed at, with the registered caveat; each secondary endpoint (the replay without the sender's
   Land, the checks ablated, selective prediction, cost and latency) shows the final run first and the earlier
