@@ -40,19 +40,21 @@ signing in.
 
 CI runs its jobs side by side, none waiting for another. A whole run took 40 to 50 minutes with each suite in one
 process and 13 to 16 once the suites ran in parallel; with every published number replayed in a job of its own, its
-Linux jobs are done in 10 (the run of 19 November 2026, on which these minutes were measured). The slow tests take
-10. The end-to-end job waits for no other job: its legs, one for each group of Playwright's projects, take 7 to 9;
-the layout guards took 23 as one leg, so they run as two (Playwright's `--shard`, each half on a demo of its own: a
-layout file sets up what it needs and relies on no file before it). The backend's 3.12 leg, which measures the
-coverage, takes 8, the backend's other legs (Python 3.11, 3.13 and 3.14) 4 to 5, the lowest versions (and, weekly,
-the newest) 7, the replayed benchmarks and the replay of every published number (`make eval-reproduce`) 5 to 6
-each, the frontend 5; lint and types, the wheel and the dependency audit take under a minute each. Windows (8
-minutes) runs on every pull request too, with the tests of the code that differs per system (`PER_SYSTEM_TESTS` in
-`tests/test_ci_workflow.py`), and has to pass, as Linux does. macOS (4 minutes) runs the same tests on `main`,
-weekly and when the workflow is started by hand, not on a pull request: on one pull request of three its runner
-was 10 minutes in coming, and on another none came in 15 minutes, the job was cancelled and the run failed with
-every other job passed. While you work, run the tests near your change, and the fast suite in parallel processes
-before you push:
+Linux jobs are done in 10 (the run of 19 November 2026, on which these minutes were measured). The slow tests took
+10 as one job, and 15 on a slower runner, where every test ran about 1.6 times as long (three runs of five that
+day): they run as two jobs side by side, each with about half the work, the seven files with the longest tests in
+one and every other slow test in the other. The end-to-end job waits for no other job: its legs, one for each group
+of Playwright's projects, take 7 to 9; the layout guards took 23 as one leg, so they run as two (Playwright's
+`--shard`, each half on a demo of its own: a layout file sets up what it needs and relies on no file before it). The
+backend's 3.12 leg, which measures the coverage, takes 8, the backend's other legs (Python 3.11, 3.13 and 3.14) 4 to
+5, the lowest versions (and, weekly, the newest) 7, the replayed benchmarks and the replay of every published number
+(`make eval-reproduce`) 5 to 6 each, the frontend 5; lint and types, the wheel and the dependency audit take under a
+minute each. Windows (8 minutes) runs on every pull request too, with the tests of the code that differs per system
+(`PER_SYSTEM_TESTS` in `tests/test_ci_workflow.py`), and has to pass, as Linux does. macOS (4 minutes) runs the same
+tests on `main`, weekly and when the workflow is started by hand, not on a pull request: on one pull request of
+three its runner was 10 minutes in coming, and on another none came in 15 minutes, the job was cancelled and the run
+failed with every other job passed. While you work, run the tests near your change, and the fast suite in parallel
+processes before you push:
 
 ```bash
 .venv/bin/pytest tests/test_rules_deadlines.py -k weekend     # one file, only the tests whose names match
