@@ -575,11 +575,11 @@ def test_a_land_decision_the_arithmetic_cannot_date_gives_nothing_back() -> None
     def check(land: str | None) -> None:
         entry = _land_entry(land, "2026-01-13")
         assert build.recompute_due(entry, entry.truth.items[0]) is None
-        late = _land_entry("MV", "2026-01-13", began="2025-12-10")  # a start after the posting is refused
-        with pytest.raises(ValueError, match="after the decision was posted"):
-            build.recompute_due(late, late.truth.items[0])
 
     check_rows(LAND_DECISION_EXAMPLES, check)
+    late = _land_entry("MV", "2026-01-13", began="2025-12-10")  # a start after the posting is refused
+    with pytest.raises(ValueError, match="after the decision was posted"):
+        build.recompute_due(late, late.truth.items[0])
 
 
 def test_every_relative_deadline_of_the_base_set_is_reproduced_by_the_label_arithmetic(
