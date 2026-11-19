@@ -378,9 +378,12 @@ async def test_the_live_calls_refuse_a_closed_unit_s_letter() -> None:
     assert len(inner.calls) == 1
 
 
-def test_retake_refuses_a_complete_unit_and_an_unknown_one(
+def test_retake_refuses_a_complete_unit_an_unknown_one_and_a_whole_run_of_the_benchmark(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
+    """Retake moves nothing aside for a complete unit, a letter without cassettes or a call without the
+    recordings' folder. ``--whole-run`` is an Ask run's or a stress invocation's: it names its folder, never with
+    --split, and never the benchmark's recordings (where the final splits' day index lives)."""
     manifest = final_split(tmp_path)
     record_two_days(tmp_path, monkeypatch, manifest)
     first = letters(manifest)[0]
@@ -393,6 +396,19 @@ def test_retake_refuses_a_complete_unit_and_an_unknown_one(
     assert "no cassette" in capsys.readouterr().err
     assert harness.main(["retake", "--repeat", "1", "--to", str(tmp_path / "aside"), "--ids", first]) == 2
     assert cassettes(root(tmp_path)) == before and not (tmp_path / "aside").exists()
+    capsys.readouterr()
+    aside = ["--to", str(tmp_path / "aside")]
+    folder = ["--recorded-dir", str(tmp_path / "recorded")]
+    assert harness.main(["retake", "--whole-run", "--repeat", "1", *aside, *folder]) == 2
+    assert "day index" in capsys.readouterr().err
+    assert (
+        harness.main(["retake", "--split", "newkinds", "--whole-run", "--repeat", "1", *aside, *folder]) == 2
+    )
+    assert "--split" in capsys.readouterr().err
+    assert harness.main(["retake", "--whole-run", "--repeat", "1", *aside]) == 2
+    assert "--recorded-dir" in capsys.readouterr().err
+    assert cassettes(root(tmp_path)) == before and len(units(tmp_path)) == 3
+    assert not (tmp_path / "aside").exists()
 
 
 def test_retake_moves_a_whole_run_of_one_repeat(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -794,28 +810,6 @@ def test_a_resume_with_nothing_left_to_record_keeps_the_read_s_day(
     assert data["meta"]["recording_day"] == D1.isoformat()
     assert data["meta"]["recording_days"] == [D1.isoformat()]
     reproduce._row(live, data, "run", "final")
-
-
-def test_a_whole_run_retake_never_touches_a_benchmark_s_recordings(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """``--whole-run`` is an Ask run's or a stress invocation's: it names its folder, never with --split, and never
-    the benchmark's recordings (where the final splits' day index lives)."""
-    manifest = final_split(tmp_path)
-    record_two_days(tmp_path, monkeypatch, manifest)
-    before = cassettes(root(tmp_path))
-    aside = ["--to", str(tmp_path / "aside")]
-    folder = ["--recorded-dir", str(tmp_path / "recorded")]
-    assert harness.main(["retake", "--whole-run", "--repeat", "1", *aside, *folder]) == 2
-    assert "day index" in capsys.readouterr().err
-    assert (
-        harness.main(["retake", "--split", "newkinds", "--whole-run", "--repeat", "1", *aside, *folder]) == 2
-    )
-    assert "--split" in capsys.readouterr().err
-    assert harness.main(["retake", "--whole-run", "--repeat", "1", *aside]) == 2
-    assert "--recorded-dir" in capsys.readouterr().err
-    assert cassettes(root(tmp_path)) == before and len(units(tmp_path)) == 3
-    assert not (tmp_path / "aside").exists()
 
 
 def test_the_ask_and_stress_stops_name_the_whole_retake_command() -> None:
