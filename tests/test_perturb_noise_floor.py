@@ -12,11 +12,14 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
+import tempfile
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import pytest
+
+from helpers_tables import check_rows
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -178,23 +181,27 @@ def test_the_reads_frozen_inputs_are_not_checked(tmp_path: Path) -> None:
     assert floor == {"ordnung": (2, 7), "llm_rules_tool": (1, 7)}
 
 
-@pytest.mark.parametrize(
-    ("docs", "said"),
-    [
-        ([results(1), results(2, split="holdout3")], "holdout3"),
-        ([results(1), results(2, model="another-model")], "another-model"),
-        ([results(1), results(2, partial=True)], "complete"),
-        ([results(1), results(1)], "read 1"),
-        ([results(1), results(2, conditions=("ordnung", "llm_only"))], "llm_rules_tool"),
-        ([results(1), results(2, letters=LETTERS[:-1])], "same items"),
-        ([results(1), results(2), results(3), results(4)], "read 4"),
-    ],
-)
-def test_reads_that_do_not_fit_are_refused(tmp_path: Path, docs: list[dict[str, Any]], said: str) -> None:
-    paths = [write(tmp_path, n + 1, doc, name=f"read-{n}.json") for n, doc in enumerate(docs)]
-    with pytest.raises(eval_perturb.StressError) as refused:
-        eval_perturb.noise_floor_from_runs(paths, model=MODEL)
-    assert said in str(refused.value)
+READS_THAT_DO_NOT_FIT = [
+    ([results(1), results(2, split="holdout3")], "holdout3"),
+    ([results(1), results(2, model="another-model")], "another-model"),
+    ([results(1), results(2, partial=True)], "complete"),
+    ([results(1), results(1)], "read 1"),
+    ([results(1), results(2, conditions=("ordnung", "llm_only"))], "llm_rules_tool"),
+    ([results(1), results(2, letters=LETTERS[:-1])], "same items"),
+    ([results(1), results(2), results(3), results(4)], "read 4"),
+]
+
+
+def test_reads_that_do_not_fit_are_refused(tmp_path: Path) -> None:
+    def check(docs: list[dict[str, Any]], said: str) -> None:
+        # each row its own folder, as each case had its own tmp_path
+        folder = Path(tempfile.mkdtemp(dir=tmp_path))
+        paths = [write(folder, n + 1, doc, name=f"read-{n}.json") for n, doc in enumerate(docs)]
+        with pytest.raises(eval_perturb.StressError) as refused:
+            eval_perturb.noise_floor_from_runs(paths, model=MODEL)
+        assert said in str(refused.value)
+
+    check_rows(READS_THAT_DO_NOT_FIT, check)
 
 
 def test_a_missing_read_is_refused_before_any_work(
