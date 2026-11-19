@@ -46,7 +46,8 @@ def held_out_runs() -> list[analysis.Run]:
 
 @pytest.fixture(scope="module")
 def reanalysis(held_out_runs: list[analysis.Run]) -> dict[str, Any]:
-    return analysis.reanalyse(held_out_runs, date="2026-10-29")
+    """The three held-out splits re-analysed, dated as the committed re-analysis is."""
+    return analysis.reanalyse(held_out_runs, date="2026-10-30")
 
 
 @pytest.fixture(scope="module")
@@ -280,14 +281,15 @@ def test_the_output_holds_no_letter_text(
 
 
 def test_the_render_is_deterministic(held_out_runs: list[analysis.Run], reanalysis: dict[str, Any]) -> None:
-    again = analysis.reanalyse(list(reversed(held_out_runs)), date="2026-10-29")
+    again = analysis.reanalyse(list(reversed(held_out_runs)), date=reanalysis["meta"]["date"])
     assert analysis.render(again) == analysis.render(reanalysis)
 
 
-def test_the_committed_reanalysis_is_what_the_results_render() -> None:
+def test_the_committed_reanalysis_is_what_the_results_render(reanalysis: dict[str, Any]) -> None:
     committed = sorted(RESULTS.glob(f"*-claude-sonnet-5-{analysis.REANALYSIS_KIND}.json"))
     assert len(committed) == 1, committed
-    assert analysis.main(["--check"]) == 0
+    assert committed[0].name[:10] == reanalysis["meta"]["date"]
+    assert analysis.render(reanalysis) == committed[0].read_text(encoding="utf-8")
 
 
 def test_write_then_check_and_a_one_character_edit_fails(tmp_path: Path) -> None:
