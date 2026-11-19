@@ -28,7 +28,7 @@ import ast
 import bisect
 import json
 import re
-from collections.abc import Iterator
+from collections.abc import Collection, Iterator
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -73,10 +73,12 @@ def _flat(text: str) -> tuple[str, list[int]]:
     return " ".join(parts), starts
 
 
-def _tags(text: str) -> Iterator[tuple[int, str, str]]:
-    """``(line, kind, tag)`` of every process tag in ``text`` (lines from 1)."""
+def _tags(text: str, kinds: Collection[str] = tuple(TAGS)) -> Iterator[tuple[int, str, str]]:
+    """``(line, kind, tag)`` of every process tag of the given kinds (all by default) in ``text`` (lines from 1)."""
     flat, starts = _flat(text)
     for kind, pattern in TAGS.items():
+        if kind not in kinds:
+            continue
         for match in pattern.finditer(flat):
             yield bisect.bisect_right(starts, match.start()), kind, match.group(0)
 
@@ -188,8 +190,7 @@ def test_no_test_points_to_the_plan_its_addendum_or_a_design_document() -> None:
     found = [
         f"{path.relative_to(ROOT).as_posix()}:{line}: {kind} ({tag})"
         for path in modules
-        for line, kind, tag in _tags(path.read_text(encoding="utf-8"))
-        if kind in TEST_KINDS
+        for line, kind, tag in _tags(path.read_text(encoding="utf-8"), TEST_KINDS)
     ]
     assert not found, "\n".join(found)
 
