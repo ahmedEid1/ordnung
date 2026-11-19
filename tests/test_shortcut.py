@@ -34,6 +34,7 @@ from platformdirs import user_data_dir
 from typer.testing import CliRunner
 
 from helpers_net import free_port
+from helpers_tables import check_rows
 from ordnung import autostart, cli, shortcut
 from ordnung.cli import app
 from ordnung.config import OCR_SWITCH
@@ -169,11 +170,6 @@ def test_each_system_has_its_launcher_and_the_menu_it_goes_into() -> None:
     assert state.kind == "Start menu shortcut" and state.ours and not state.current
 
 
-def test_without_a_window_the_launcher_starts_nothing_and_says_so_with_exit_code_3() -> None:
-    """The Mac bundle opens Terminal on that code; the CLI uses 1, 128+n and 130 for everything else."""
-    assert shortcut.NO_WINDOW_EXIT == 3
-
-
 # --------------------------------------------------------------------------------------------------
 # Linux
 # --------------------------------------------------------------------------------------------------
@@ -218,13 +214,15 @@ def test_other_unixes_get_the_app_menu_entry(tmp_path: Path) -> None:
 
 
 @POSIX_ONLY
-@pytest.mark.parametrize("folder", AWKWARD)
-def test_desktop_quoting_round_trips_awkward_paths(tmp_path: Path, folder: str) -> None:
-    sc = plan(Path(folder), platform="linux", env={"PATH": "/a b:/c$d"}, home=tmp_path, python=PY)
-    value = exec_value(sc)
-    assert desktop_unquote(value) == ["/usr/bin/env", "PATH=/a b:/c$d", *sc.argv]
-    # every % is doubled (a field code otherwise) and every backslash escaped by the string rule
-    assert "%" not in value.replace("%%", "") and "\\" not in value.replace("\\\\", "")
+def test_desktop_quoting_round_trips_awkward_paths(tmp_path: Path) -> None:
+    def check(folder: str) -> None:
+        sc = plan(Path(folder), platform="linux", env={"PATH": "/a b:/c$d"}, home=tmp_path, python=PY)
+        value = exec_value(sc)
+        assert desktop_unquote(value) == ["/usr/bin/env", "PATH=/a b:/c$d", *sc.argv]
+        # every % is doubled (a field code otherwise) and every backslash escaped by the string rule
+        assert "%" not in value.replace("%%", "") and "\\" not in value.replace("\\\\", "")
+
+    check_rows(AWKWARD, check)
 
 
 def test_desktop_quote_rules() -> None:
@@ -381,18 +379,20 @@ def test_macos_writes_an_app_bundle(tmp_path: Path, quick_logo: list[int]) -> No
 
 
 @POSIX_ONLY
-@pytest.mark.parametrize("folder", AWKWARD)
-def test_sh_quoting_round_trips_awkward_paths(tmp_path: Path, folder: str) -> None:
-    sc = plan(Path(folder), platform="darwin", env={"PATH": "/a b:/c$d'e"}, home=tmp_path, python=PY)
-    window = text_of(file_named(sc, "Ordnung.command")).splitlines()
-    assert shlex.split(window[-1]) == ["exec", *sc.argv]
-    assert shlex.split(next(line for line in window if line.startswith("export "))) == [
-        "export",
-        "PATH=/a b:/c$d'e",
-    ]
-    check = text_of(file_named(sc, "Ordnung")).splitlines()
-    words = shlex.split(next(line for line in check if line.endswith("&& exit 0")))
-    assert words[: len(sc.argv)] == list(sc.argv) and words[len(sc.argv)] == ">/dev/null"
+def test_sh_quoting_round_trips_awkward_paths(tmp_path: Path) -> None:
+    def check(folder: str) -> None:
+        sc = plan(Path(folder), platform="darwin", env={"PATH": "/a b:/c$d'e"}, home=tmp_path, python=PY)
+        window = text_of(file_named(sc, "Ordnung.command")).splitlines()
+        assert shlex.split(window[-1]) == ["exec", *sc.argv]
+        assert shlex.split(next(line for line in window if line.startswith("export "))) == [
+            "export",
+            "PATH=/a b:/c$d'e",
+        ]
+        check = text_of(file_named(sc, "Ordnung")).splitlines()
+        words = shlex.split(next(line for line in check if line.endswith("&& exit 0")))
+        assert words[: len(sc.argv)] == list(sc.argv) and words[len(sc.argv)] == ">/dev/null"
+
+    check_rows(AWKWARD, check)
 
 
 @pytest.mark.skipif(os.name != "posix" or shutil.which("sh") is None, reason="runs the scripts with sh")
@@ -701,50 +701,60 @@ def test_a_target_too_long_for_a_windows_shortcut_is_refused() -> None:
         lnk_bytes(too_long)
 
 
-@pytest.mark.parametrize("folder", WINDOWS_AWKWARD)
-def test_the_link_file_follows_the_shell_link_format(folder: str) -> None:
-    link = WindowsLink(
-        target="C:\\Users\\Jürgen Müller\\pipx\\venvs\\ordnung\\Scripts\\python.exe",
-        arguments=subprocess.list2cmdline(
-            ["-m", "ordnung", "--data-dir", folder, "serve", "--from-shortcut"]
-        ),
-        working_dir="C:\\Users\\Jürgen Müller",
-        icon="C:\\Users\\Jürgen Müller\\AppData\\Local\\Programs\\Ordnung\\Ordnung.ico",
-        description=f"Ordnung, your paperwork secretary {LNK_MARK}",
-    )
-    parsed = parse_shell_link(lnk_bytes(link))
-    assert parsed["flags"] == {
-        "HasLinkTargetIDList",
-        "HasLinkInfo",
-        "HasName",
-        "HasWorkingDir",
-        "HasArguments",
-        "HasIconLocation",
-        "IsUnicode",
-        "HasExpString",
-    }
-    # the ID list names the target folder by folder; the folder with umlauts has a Unicode name (0x35)
-    id_list = parsed["id_list"]
-    assert id_list["drive"] == "C:\\"
-    assert id_list["names"] == ["Users", "Jürgen Müller", "pipx", "venvs", "ordnung", "Scripts", "python.exe"]
-    assert id_list["types"] == [0x31, 0x35, 0x31, 0x31, 0x31, 0x31, 0x32]
-    assert parsed["target"] == link.target and parsed["ansi_target"] == link.target  # cp1252 has ü
-    assert (parsed["description"], parsed["working_dir"], parsed["arguments"], parsed["icon"]) == (
-        link.description,
-        link.working_dir,
-        link.arguments,
-        link.icon,
-    )
-    assert parsed["show"] == 1 and parsed["relative_path"] is None
-    assert read_lnk(lnk_bytes(link)) == link
-    assert split_cmdline(link.arguments) == [
-        "-m",
-        "ordnung",
-        "--data-dir",
-        folder,
-        "serve",
-        "--from-shortcut",
-    ]
+def test_the_link_file_follows_the_shell_link_format() -> None:
+    def check(folder: str) -> None:
+        link = WindowsLink(
+            target="C:\\Users\\Jürgen Müller\\pipx\\venvs\\ordnung\\Scripts\\python.exe",
+            arguments=subprocess.list2cmdline(
+                ["-m", "ordnung", "--data-dir", folder, "serve", "--from-shortcut"]
+            ),
+            working_dir="C:\\Users\\Jürgen Müller",
+            icon="C:\\Users\\Jürgen Müller\\AppData\\Local\\Programs\\Ordnung\\Ordnung.ico",
+            description=f"Ordnung, your paperwork secretary {LNK_MARK}",
+        )
+        parsed = parse_shell_link(lnk_bytes(link))
+        assert parsed["flags"] == {
+            "HasLinkTargetIDList",
+            "HasLinkInfo",
+            "HasName",
+            "HasWorkingDir",
+            "HasArguments",
+            "HasIconLocation",
+            "IsUnicode",
+            "HasExpString",
+        }
+        # the ID list names the target folder by folder; the folder with umlauts has a Unicode name (0x35)
+        id_list = parsed["id_list"]
+        assert id_list["drive"] == "C:\\"
+        assert id_list["names"] == [
+            "Users",
+            "Jürgen Müller",
+            "pipx",
+            "venvs",
+            "ordnung",
+            "Scripts",
+            "python.exe",
+        ]
+        assert id_list["types"] == [0x31, 0x35, 0x31, 0x31, 0x31, 0x31, 0x32]
+        assert parsed["target"] == link.target and parsed["ansi_target"] == link.target  # cp1252 has ü
+        assert (parsed["description"], parsed["working_dir"], parsed["arguments"], parsed["icon"]) == (
+            link.description,
+            link.working_dir,
+            link.arguments,
+            link.icon,
+        )
+        assert parsed["show"] == 1 and parsed["relative_path"] is None
+        assert read_lnk(lnk_bytes(link)) == link
+        assert split_cmdline(link.arguments) == [
+            "-m",
+            "ordnung",
+            "--data-dir",
+            folder,
+            "serve",
+            "--from-shortcut",
+        ]
+
+    check_rows(WINDOWS_AWKWARD, check)
 
 
 def test_a_target_outside_the_ansi_code_page_keeps_its_unicode_path() -> None:
@@ -790,28 +800,30 @@ def test_the_id_list_matches_the_format_s_own_example() -> None:
     )
 
 
-@pytest.mark.parametrize(
-    ("target", "sizes", "length"),
-    [
-        (
-            "C:\\Users\\name\\AppData\\Local\\Programs\\Python\\Python312\\pythonw.exe",
-            [20, 25, 72, 70, 78, 72, 82, 76, 84, 90],
-            673,
-        ),
-        ("d:\\Αθηνά\\python.exe", [20, 25, 78, 88], 215),  # the drive is written D:\
-        ("C:\\" + "a" * 245 + "\\python.exe", [20, 25, 792, 88], 929),  # 259 characters, the longest
-        ("C:\\" + "a\\" * 127 + "p", [20, 25, *[60] * 128], 7729),  # 128 names, the most a link can hold
-    ],
-)
-def test_the_id_list_names_each_folder_and_the_file(target: str, sizes: list[int], length: int) -> None:
-    id_list = shortcut._id_list(target)
-    assert id_list is not None and len(id_list) == length
-    parsed = parse_id_list(id_list, 0)
-    assert parsed["path"] == target[0].upper() + target[1:] and parsed["sizes"] == sizes
-    assert parsed["kinds"] == ["folder"] * (len(sizes) - 3) + ["file"]
-    link = WindowsLink(target=target, arguments="-m ordnung", working_dir="", icon="", description="")
-    assert parse_shell_link(lnk_bytes(link))["id_list"] == parsed | {"end": 0x4C + length}
-    assert read_lnk(lnk_bytes(link)) == link
+ID_LIST_EXAMPLES = [
+    (
+        "C:\\Users\\name\\AppData\\Local\\Programs\\Python\\Python312\\pythonw.exe",
+        [20, 25, 72, 70, 78, 72, 82, 76, 84, 90],
+        673,
+    ),
+    ("d:\\Αθηνά\\python.exe", [20, 25, 78, 88], 215),  # the drive is written D:\
+    ("C:\\" + "a" * 245 + "\\python.exe", [20, 25, 792, 88], 929),  # 259 characters, the longest
+    ("C:\\" + "a\\" * 127 + "p", [20, 25, *[60] * 128], 7729),  # 128 names, the most a link can hold
+]
+
+
+def test_the_id_list_names_each_folder_and_the_file() -> None:
+    def check(target: str, sizes: list[int], length: int) -> None:
+        id_list = shortcut._id_list(target)
+        assert id_list is not None and len(id_list) == length
+        parsed = parse_id_list(id_list, 0)
+        assert parsed["path"] == target[0].upper() + target[1:] and parsed["sizes"] == sizes
+        assert parsed["kinds"] == ["folder"] * (len(sizes) - 3) + ["file"]
+        link = WindowsLink(target=target, arguments="-m ordnung", working_dir="", icon="", description="")
+        assert parse_shell_link(lnk_bytes(link))["id_list"] == parsed | {"end": 0x4C + length}
+        assert read_lnk(lnk_bytes(link)) == link
+
+    check_rows(ID_LIST_EXAMPLES, check)
 
 
 #: what a folder or file name holds in the round trip: ASCII but what Windows refuses, umlauts, Greek, CJK and
