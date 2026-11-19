@@ -12,6 +12,7 @@ import pytest
 
 from fixtures_llm import iban as make_iban
 from helpers_secretary import add_doc, add_item
+from helpers_tables import check_rows
 from ordnung.api.routes.items import ItemPatch, _confirm, _update
 from ordnung.db.store import Store
 from ordnung.models import (
@@ -87,56 +88,63 @@ def test_a_payment_without_a_reference_gets_a_code_without_one() -> None:
     assert code.payload == f"BCD\n002\n1\nSCT\n\nMuster Telecom GmbH\n{KNOWN_IBAN}\nEUR49.99"
 
 
-@pytest.mark.parametrize(
-    ("changes", "reason", "message"),
-    [
-        ({"incoming": True}, "incoming", "No code: this is money coming to you."),
-        (
-            {"direct_debit": True},
-            "direct_debit",
-            "No code: Muster Telecom GmbH collects this by direct debit — there is nothing to transfer.",
-        ),
-        (
-            {"direct_debit": True, "party": None},
-            "direct_debit",
-            "No code: the sender collects this by direct debit — there is nothing to transfer.",
-        ),
-        (
-            {"debit_in_letter": True},
-            "direct_debit",
-            "No code: the letter says this is collected by direct debit (Lastschrift)",
-        ),
-        ({"trashed": True}, "settled", "No code: this letter is in the trash."),
-        ({"status": "done"}, "settled", "No code: you marked this as paid."),
-        ({"status": "dismissed"}, "settled", "No code: you set this to-do aside."),
-        (
-            {"replaced_by": "Zahlungserinnerung"},
-            "replaced",
-            "No code: the payment reminder “Zahlungserinnerung” took over this payment — pay once",
-        ),
-        (
-            {"attached_bill": "Rechnung September"},
-            "replaced",
-            "No code: the bill attached to this e-mail, “Rechnung September”, asks for this payment — pay once",
-        ),
-        ({"other_transfers": 1}, "several", "No code: this letter asks for more than one payment"),
-        ({"currency": "CHF"}, "currency", "No code: GiroCodes are for euro transfers, and this is in CHF."),
-        ({"amount": None}, "no_amount", "No code: the letter doesn't say how much to pay."),
-        ({"iban": None}, "no_iban", "No code: the letter gives no IBAN to transfer to."),
-        ({"payee": " \n"}, "no_payee", "No code: the letter doesn't name the account holder to pay."),
-        ({"payee": None}, "no_payee", "No code: the letter doesn't name the account holder to pay."),
-    ],
-)
-def test_each_reason_for_no_code(changes: dict[str, Any], reason: str, message: str) -> None:
-    code = blocked(ready_facts(**changes))
-    assert code.reason == reason
-    assert code.message.startswith(message)
-    assert code.to_check == [] and code.values is None
+REASONS_FOR_NO_CODE = [
+    ({"incoming": True}, "incoming", "No code: this is money coming to you."),
+    (
+        {"direct_debit": True},
+        "direct_debit",
+        "No code: Muster Telecom GmbH collects this by direct debit — there is nothing to transfer.",
+    ),
+    (
+        {"direct_debit": True, "party": None},
+        "direct_debit",
+        "No code: the sender collects this by direct debit — there is nothing to transfer.",
+    ),
+    (
+        {"debit_in_letter": True},
+        "direct_debit",
+        "No code: the letter says this is collected by direct debit (Lastschrift)",
+    ),
+    ({"trashed": True}, "settled", "No code: this letter is in the trash."),
+    ({"status": "done"}, "settled", "No code: you marked this as paid."),
+    ({"status": "dismissed"}, "settled", "No code: you set this to-do aside."),
+    (
+        {"replaced_by": "Zahlungserinnerung"},
+        "replaced",
+        "No code: the payment reminder “Zahlungserinnerung” took over this payment — pay once",
+    ),
+    (
+        {"attached_bill": "Rechnung September"},
+        "replaced",
+        "No code: the bill attached to this e-mail, “Rechnung September”, asks for this payment — pay once",
+    ),
+    ({"other_transfers": 1}, "several", "No code: this letter asks for more than one payment"),
+    ({"currency": "CHF"}, "currency", "No code: GiroCodes are for euro transfers, and this is in CHF."),
+    ({"amount": None}, "no_amount", "No code: the letter doesn't say how much to pay."),
+    ({"iban": None}, "no_iban", "No code: the letter gives no IBAN to transfer to."),
+    ({"payee": " \n"}, "no_payee", "No code: the letter doesn't name the account holder to pay."),
+    ({"payee": None}, "no_payee", "No code: the letter doesn't name the account holder to pay."),
+]
 
 
-@pytest.mark.parametrize("status", ["open", "snoozed", "missed"])
-def test_open_snoozed_and_missed_payments_are_still_to_pay(status: str) -> None:
-    assert isinstance(decide(ready_facts(status=status)), GiroCodeReady)
+def test_each_reason_for_no_code() -> None:
+    def check(changes: dict[str, Any], reason: str, message: str) -> None:
+        code = blocked(ready_facts(**changes))
+        assert code.reason == reason
+        assert code.message.startswith(message)
+        assert code.to_check == [] and code.values is None
+
+    check_rows(REASONS_FOR_NO_CODE, check)
+
+
+STATUSES_STILL_TO_PAY = ["open", "snoozed", "missed"]
+
+
+def test_open_snoozed_and_missed_payments_are_still_to_pay() -> None:
+    def check(status: str) -> None:
+        assert isinstance(decide(ready_facts(status=status)), GiroCodeReady)
+
+    check_rows(STATUSES_STILL_TO_PAY, check)
 
 
 def test_an_iban_failing_its_check_digits_says_why_and_what_to_do() -> None:
@@ -159,52 +167,54 @@ def test_the_standards_limits_are_reasons_too() -> None:
     assert isinstance(decide(ready_facts(reference="RF18 5390 0754 7034")), GiroCodeReady)
 
 
-@pytest.mark.parametrize(
-    ("changes", "message"),
-    [
-        ({"amount": 0.001}, "No code: a GiroCode carries amounts from €0.01 to €999,999,999.99."),
-        ({"reference": "x" * 141}, "No code: the reference is longer than the 140 characters"),
-        ({"payee": "x" * 71}, "No code: the payee's name is longer than the 70 characters"),
-        ({"reference": "RF19 5390 0754 7034"}, "No code: the reference RF19 5390 0754 7034 looks like"),
-    ],
-)
-def test_the_builders_refusals_read_on_after_no_code_and_say_what_to_do(
-    changes: dict[str, Any], message: str
-) -> None:
-    code = blocked(ready_facts(**changes))
-    assert code.reason == "invalid"
-    assert code.message.startswith(message)
-    assert code.message.endswith(" Copy the details by hand.")
+BUILDER_REFUSALS = [
+    ({"amount": 0.001}, "No code: a GiroCode carries amounts from €0.01 to €999,999,999.99."),
+    ({"reference": "x" * 141}, "No code: the reference is longer than the 140 characters"),
+    ({"payee": "x" * 71}, "No code: the payee's name is longer than the 70 characters"),
+    ({"reference": "RF19 5390 0754 7034"}, "No code: the reference RF19 5390 0754 7034 looks like"),
+]
 
 
-@pytest.mark.parametrize(
-    ("sign", "message"),
-    [
-        (
-            ScamSign("iban_changed", party="Beitragsservice Musterstadt"),
-            "No code: this IBAN is not the one Beitragsservice Musterstadt used before. Check with them "
-            "using contact details you already have, not the ones in this letter.",
+def test_the_builders_refusals_read_on_after_no_code_and_say_what_to_do() -> None:
+    def check(changes: dict[str, Any], message: str) -> None:
+        code = blocked(ready_facts(**changes))
+        assert code.reason == "invalid"
+        assert code.message.startswith(message)
+        assert code.message.endswith(" Copy the details by hand.")
+
+    check_rows(BUILDER_REFUSALS, check)
+
+
+SCAM_SIGNS_AND_THEIR_WORDS = [
+    (
+        ScamSign("iban_changed", party="Beitragsservice Musterstadt"),
+        "No code: this IBAN is not the one Beitragsservice Musterstadt used before. Check with them "
+        "using contact details you already have, not the ones in this letter.",
+    ),
+    (
+        ScamSign(
+            "similar_party_iban",
+            party="Rundfunk Zahlungszentrale",
+            look_alike="Beitragsservice Musterstadt",
         ),
-        (
-            ScamSign(
-                "similar_party_iban",
-                party="Rundfunk Zahlungszentrale",
-                look_alike="Beitragsservice Musterstadt",
-            ),
-            "No code: “Beitragsservice Musterstadt”, whose name is like this sender's, used another IBAN "
-            "before. Check who sent this letter first, using contact details you already have.",
-        ),
-        (
-            ScamSign("payee_changed", party="Muster Telecom GmbH", payee="M. Mustermann"),
-            "No code: the money would go to “M. Mustermann”, but payments to Muster Telecom GmbH went to "
-            "someone else before.",
-        ),
-        (ScamSign("other"), "No code: this letter shows signs of a scam."),
-    ],
-)
-def test_a_scam_sign_blocks_with_its_own_words(sign: ScamSign, message: str) -> None:
-    code = blocked(ready_facts(scam=sign))
-    assert code.reason == "scam" and code.message.startswith(message)
+        "No code: “Beitragsservice Musterstadt”, whose name is like this sender's, used another IBAN "
+        "before. Check who sent this letter first, using contact details you already have.",
+    ),
+    (
+        ScamSign("payee_changed", party="Muster Telecom GmbH", payee="M. Mustermann"),
+        "No code: the money would go to “M. Mustermann”, but payments to Muster Telecom GmbH went to "
+        "someone else before.",
+    ),
+    (ScamSign("other"), "No code: this letter shows signs of a scam."),
+]
+
+
+def test_a_scam_sign_blocks_with_its_own_words() -> None:
+    def check(sign: ScamSign, message: str) -> None:
+        code = blocked(ready_facts(scam=sign))
+        assert code.reason == "scam" and code.message.startswith(message)
+
+    check_rows(SCAM_SIGNS_AND_THEIR_WORDS, check)
 
 
 def test_scam_signs_come_before_every_other_reason_but_not_to_pay() -> None:
@@ -321,21 +331,23 @@ def test_a_reference_must_be_whole_words_of_the_page() -> None:
     assert value_grounding("zeichen 5126", [page(text)]) == "unverified"
 
 
-@pytest.mark.parametrize(
-    ("value", "text"),
-    [
-        ("2026-0815", "Rechnungsnummer 2026-0815-77 vom 01.09.2026"),  # cut at a dash
-        ("0815-77", "Rechnungsnummer 2026-0815-77 vom 01.09.2026"),  # its start missing
-        ("Kassenzeichen 5126", "Kassenzeichen: 5126 0184-5122 · Datum 2012"),  # another digit group follows
-        ("5126 0184", "Kassenzeichen: 5126 0184-5122 · Datum 2012"),
-        ("0184 5122", "Kassenzeichen: 5126 0184 5122"),
-        ("OA/VW/2026", "Aktenzeichen OA/VW/2026/55012"),  # cut at a slash
-        ("12.345", "Az. 12.345.678"),  # cut at a dot
-    ],
-)
-def test_a_reference_cut_short_is_not_found(value: str, text: str) -> None:
-    assert value_grounding(value, [page(text)]) == "unverified"
-    assert value_grounding(value, [page(text, "transcript")]) == "unverified"
+REFERENCES_CUT_SHORT = [
+    ("2026-0815", "Rechnungsnummer 2026-0815-77 vom 01.09.2026"),  # cut at a dash
+    ("0815-77", "Rechnungsnummer 2026-0815-77 vom 01.09.2026"),  # its start missing
+    ("Kassenzeichen 5126", "Kassenzeichen: 5126 0184-5122 · Datum 2012"),  # another digit group follows
+    ("5126 0184", "Kassenzeichen: 5126 0184-5122 · Datum 2012"),
+    ("0184 5122", "Kassenzeichen: 5126 0184 5122"),
+    ("OA/VW/2026", "Aktenzeichen OA/VW/2026/55012"),  # cut at a slash
+    ("12.345", "Az. 12.345.678"),  # cut at a dot
+]
+
+
+def test_a_reference_cut_short_is_not_found() -> None:
+    def check(value: str, text: str) -> None:
+        assert value_grounding(value, [page(text)]) == "unverified"
+        assert value_grounding(value, [page(text, "transcript")]) == "unverified"
+
+    check_rows(REFERENCES_CUT_SHORT, check)
 
 
 def test_a_whole_reference_next_to_other_words_is_found() -> None:
