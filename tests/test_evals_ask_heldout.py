@@ -11,6 +11,7 @@ import ast
 import copy
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -1148,7 +1149,8 @@ def _keys(value: Any) -> set[str]:
 
 def test_strip_gold_leaves_no_gold_field(tmp_path: Path) -> None:
     """The blind checker gets each question's id, ledger and words, and the to-dos that repeat: nothing that says
-    the answer (no gold, list, near miss, member values, group, category or fact)."""
+    the answer (no gold, list, near miss, member values, group, category or fact). Its reply instructions name the
+    answers' file, ``answers.json``, and no other."""
     member = _question(
         "ho-near-member",
         group="unanswerable",
@@ -1180,6 +1182,8 @@ def test_strip_gold_leaves_no_gold_field(tmp_path: Path) -> None:
     assert [row["id"] for row in blind["questions"]] == [row["id"] for row in questions]
     assert {tuple(sorted(row)) for row in blind["questions"]} == {("id", "ledger", "text")}
     assert blind["repeating"] == [todo] and blind["how_to_reply"]
+    assert heldout_check.ANSWERS_NAME == "answers.json"
+    assert set(re.findall(r"[\w.-]+\.json", blind["how_to_reply"])) == {heldout_check.ANSWERS_NAME}
     dumped = json.dumps(blind)
     for value in ("2026-10-21", "94.99", "M472059139", "mahnung_techmarkt"):
         assert value not in dumped, value
