@@ -18,6 +18,7 @@ from pathlib import Path
 import pytest
 
 from helpers_secretary import add_doc, seed_ledger
+from helpers_tables import check_rows
 from ordnung.config import Paths
 from ordnung.db.store import LEDGER_TABLES, Store
 from ordnung.demo.loader import canonical_dump
@@ -137,15 +138,23 @@ def _write_cases() -> dict[str, Callable[[Store, dict[str, str]], object]]:
     }
 
 
-@pytest.mark.parametrize("write", sorted(_write_cases()))
-def test_ledger_token_moves_on_every_input_write(seeded: Seeded, write: str) -> None:
-    store, ids = seeded
-    _pages(store, ids["doc_tax"])
-    before = store.ledger_token()
-    _write_cases()[write](store, ids)
-    after = store.ledger_token()
-    assert after is not None and after != before
-    assert store.ledger_token() == after  # and stays until the next change
+INPUT_WRITES = sorted(_write_cases())
+
+
+def test_ledger_token_moves_on_every_input_write(
+    seeded_template: tuple[Path, dict[str, str]], tmp_path: Path
+) -> None:
+    def check(write: str) -> None:
+        store, ids = _open_seeded(seeded_template, tmp_path / write)  # a seeded store of its own per row
+        with store:
+            _pages(store, ids["doc_tax"])
+            before = store.ledger_token()
+            _write_cases()[write](store, ids)
+            after = store.ledger_token()
+            assert after is not None and after != before
+            assert store.ledger_token() == after  # and stays until the next change
+
+    check_rows(INPUT_WRITES, check)
 
 
 def test_ledger_token_moves_when_a_case_is_deleted(seeded: Seeded) -> None:
