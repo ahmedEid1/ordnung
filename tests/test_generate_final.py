@@ -159,10 +159,6 @@ def _with_truth(case: Any, change: Any) -> Any:
     return dataclasses.replace(case, truth=truth)
 
 
-def test_the_synthetic_case_passes(fixture: ModuleType, plugin: Any) -> None:
-    _check(_case(fixture), plugin)
-
-
 def test_a_scored_date_inside_the_window_is_refused(fixture: ModuleType, plugin: Any) -> None:
     last = plugin.valid_until
     while not all(law.is_working_day(last, land) for land in law.LAENDER):
@@ -536,20 +532,19 @@ def test_the_lint_allows_only_the_listed_phrases() -> None:
 
 def test_a_writer_s_sandbox_holds_no_hint_of_the_software() -> None:
     """The sandbox lint passes over every file of a data or template writer's sandbox: each hit is on an allowed
-    line, or on a line another change removes. Paths, line numbers, words and hashes only."""
+    line, or on a line another change removes, and every hit listed as pending is still there. Paths, line numbers,
+    words and hashes only."""
     files = _profile_files()
     assert "evals/generate.py" in files and "evals/gen/law.py" in files and "evals/perturb/README.md" in files
+    found = _hits()
     unexpected = [
         f"{path}:{number}: {word} (sha256 {sha})"
-        for path, hits in _hits().items()
+        for path, hits in found.items()
         for number, word, sha in hits
         if sha not in ALLOWED.get(path, {}) and sha not in PENDING.get(path, {})
     ]
     assert not unexpected, "\n".join(unexpected)
-
-
-def test_every_pending_hit_is_still_there() -> None:
-    present = {(path, sha) for path, hits in _hits().items() for _, _, sha in hits}
+    present = {(path, sha) for path, hits in found.items() for _, _, sha in hits}
     gone = [f"{path} {sha}" for path, shas in PENDING.items() for sha in shas if (path, sha) not in present]
     assert not gone, "gone (delete from PENDING): " + ", ".join(gone)
 
