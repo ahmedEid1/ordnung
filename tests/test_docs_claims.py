@@ -28,8 +28,9 @@ from typing import Any
 
 import pytest
 from fastapi.routing import APIRoute
+from PIL import Image
 
-from helpers_media import gif_info, mp4_info
+from helpers_media import mp4_info
 from helpers_secretary import TODAY, seed_ledger
 from helpers_tables import check_rows
 from ordnung import clock, letters_zip, shortcut, sync
@@ -1048,7 +1049,9 @@ def test_readme_hero_shows_the_gif_as_made_and_the_video_s_length() -> None:
     assets = ROOT / "docs" / "assets"
     (hero,) = [tag for tag in re.findall(r"<img\b[^>]*>", _readme()) if 'src="docs/assets/demo.gif"' in tag]
     width = re.search(r'\bwidth="(\d+)"', hero)
-    assert width and int(width.group(1)) == gif_info(assets / "demo.gif").width
+    with Image.open(assets / "demo.gif") as gif:  # the size alone: no frame is decoded
+        assert gif.format == "GIF"
+        assert width and int(width.group(1)) == gif.size[0]
     alt = re.search(r'\balt="([^"]*)"', hero)
     assert alt and "arrives as new mail and is read;" in alt.group(1)
     assert "read live" not in alt.group(1)
