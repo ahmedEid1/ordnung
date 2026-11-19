@@ -9,9 +9,10 @@ Windows bundle other SQLite builds.
 
 from __future__ import annotations
 
+import shutil
 import sqlite3
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
@@ -34,6 +35,33 @@ def _pages(store: Store, doc_id: str) -> None:
     )
 
 
+Seeded = tuple[Store, dict[str, str]]
+
+
+@pytest.fixture(scope="module")
+def seeded_template(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, dict[str, str]]:
+    """A data folder with the ledger written once, closed (so no -wal file), with its ids by label.
+    No test writes to it: each copies it and opens its own store on the copy."""
+    folder = tmp_path_factory.mktemp("seeded")
+    with Store.open(Paths(folder).ensure()) as store:
+        ids = seed_ledger(store)
+    return folder, ids
+
+
+def _open_seeded(template: tuple[Path, dict[str, str]], folder: Path) -> Seeded:
+    """A store with the ledger, opened on a fresh copy of the template."""
+    shutil.copytree(template[0], folder)
+    return Store.open(Paths(folder)), dict(template[1])
+
+
+@pytest.fixture
+def seeded(seeded_template: tuple[Path, dict[str, str]], tmp_path: Path) -> Iterator[Seeded]:
+    """A store with the ledger written (and its ids by label), closed after the test."""
+    store, ids = _open_seeded(seeded_template, tmp_path / "seeded")
+    yield store, ids
+    store.close()
+
+
 def _ledger_objects(conn: sqlite3.Connection, schema: str) -> list[str]:
     rows = conn.execute(f"SELECT name FROM {schema}.sqlite_master WHERE name GLOB 'ordnung_ledger_*'")
     return sorted(row[0] for row in rows)
@@ -43,8 +71,8 @@ def test_the_watched_tables_are_what_the_fingerprint_reads_and_cases() -> None:
     assert LEDGER_TABLES == ("documents", "pages", "items", "contracts", "parties", "cases")
 
 
-def test_ledger_token_stays_while_nothing_changes(store: Store) -> None:
-    seed_ledger(store)
+def test_ledger_token_stays_while_nothing_changes(seeded: Seeded) -> None:
+    store, _ = seeded
     conn = store._conn()
     token, changes = store.change_token(), conn.total_changes
     first = store.ledger_token()
@@ -56,8 +84,8 @@ def test_ledger_token_stays_while_nothing_changes(store: Store) -> None:
     assert store.ledger_token() == first == store.ledger_token()
 
 
-def test_ledger_token_ignores_chat_activity_usage_and_settings(store: Store) -> None:
-    seed_ledger(store)
+def test_ledger_token_ignores_chat_activity_usage_and_settings(seeded: Seeded) -> None:
+    store, _ = seeded
     token, changes = store.ledger_token(), store.change_token()
     store.add_chat_message("thr_a", "user", "What is due?")
     store.add_chat_message("thr_a", "assistant", "Nothing.")
@@ -110,8 +138,8 @@ def _write_cases() -> dict[str, Callable[[Store, dict[str, str]], object]]:
 
 
 @pytest.mark.parametrize("write", sorted(_write_cases()))
-def test_ledger_token_moves_on_every_input_write(store: Store, write: str) -> None:
-    ids = seed_ledger(store)
+def test_ledger_token_moves_on_every_input_write(seeded: Seeded, write: str) -> None:
+    store, ids = seeded
     _pages(store, ids["doc_tax"])
     before = store.ledger_token()
     _write_cases()[write](store, ids)
@@ -120,8 +148,8 @@ def test_ledger_token_moves_on_every_input_write(store: Store, write: str) -> No
     assert store.ledger_token() == after  # and stays until the next change
 
 
-def test_ledger_token_moves_when_a_case_is_deleted(store: Store) -> None:
-    ids = seed_ledger(store)
+def test_ledger_token_moves_when_a_case_is_deleted(seeded: Seeded) -> None:
+    store, ids = seeded
     case = store.add_case(title="Phone", party_id=ids["funknetz"])
     store.update_document(ids["doc_phone"], case_id=case.id)
     store.update_item(ids["followup"], case_id=case.id)
@@ -132,8 +160,8 @@ def test_ledger_token_moves_when_a_case_is_deleted(store: Store) -> None:
     assert store.get_document(ids["doc_phone"]).case_id is None  # type: ignore[union-attr]
 
 
-def test_ledger_token_moves_on_another_connections_commit(store: Store) -> None:
-    ids = seed_ledger(store)
+def test_ledger_token_moves_on_another_connections_commit(seeded: Seeded) -> None:
+    store, ids = seeded
     before = store.ledger_token()
     with sqlite3.connect(store.db_path, isolation_level=None) as other:
         other.execute("UPDATE documents SET title = 'Changed elsewhere' WHERE id = ?", (ids["doc_tax"],))
@@ -147,8 +175,8 @@ def test_ledger_token_moves_on_another_connections_commit(store: Store) -> None:
     assert store.ledger_token() != after
 
 
-def test_ledger_token_ignores_a_rolled_back_write(store: Store) -> None:
-    ids = seed_ledger(store)
+def test_ledger_token_ignores_a_rolled_back_write(seeded: Seeded) -> None:
+    store, ids = seeded
     before = store.ledger_token()
 
     class Rollback(Exception):
@@ -160,8 +188,8 @@ def test_ledger_token_ignores_a_rolled_back_write(store: Store) -> None:
     assert store.ledger_token() == before
 
 
-def test_ledger_token_is_none_inside_a_transaction(store: Store) -> None:
-    seed_ledger(store)
+def test_ledger_token_is_none_inside_a_transaction(seeded: Seeded) -> None:
+    store, _ = seeded
     assert store.ledger_token() is not None
     with store.tx():
         assert store.ledger_token() is None
@@ -170,8 +198,8 @@ def test_ledger_token_is_none_inside_a_transaction(store: Store) -> None:
     assert store.ledger_token() is not None
 
 
-def test_ledger_token_survives_delete_everything(store: Store) -> None:
-    seed_ledger(store)
+def test_ledger_token_survives_delete_everything(seeded: Seeded) -> None:
+    store, _ = seeded
     elsewhere: list[tuple[int, int, int] | None] = []
     ready, wiped, done = threading.Event(), threading.Event(), threading.Event()
 
@@ -203,8 +231,8 @@ def test_ledger_token_survives_delete_everything(store: Store) -> None:
     assert first != after_wipe != after_write  # the other connection's watch keeps counting
 
 
-def test_ledger_token_reinstalls_a_watch_that_went_missing(store: Store) -> None:
-    ids = seed_ledger(store)
+def test_ledger_token_reinstalls_a_watch_that_went_missing(seeded: Seeded) -> None:
+    store, ids = seeded
     before = store.ledger_token()
     conn = store._conn()
     conn.execute("DROP TRIGGER temp.ordnung_ledger_items_update")
