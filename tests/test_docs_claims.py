@@ -4468,10 +4468,9 @@ def test_no_public_page_calls_the_new_ask_set_held_out() -> None:
         page for page in sorted((ROOT / "docs").glob("*.md")) if f"docs/{page.name}" not in _GENERATED_PAGES
     ]
     found = [
-        f"{page.relative_to(ROOT)}: …{match[0]}…"
+        f"{page.relative_to(ROOT)}: …{text[max(match.start() - 40, 0) : match.end() + 20]}…"
         for page in pages
-        for match in re.finditer(
-            r".{0,40}\bheld[- ]out Ask\b.{0,20}", _flat(page.read_text(encoding="utf-8")), re.I
-        )
+        for text in [_flat(page.read_text(encoding="utf-8"))]
+        for match in re.finditer(r"\bheld[- ]out Ask\b", text, re.I)
     ]
     assert found == [], found
