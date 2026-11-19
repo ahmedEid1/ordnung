@@ -14,6 +14,7 @@ from typing import Any
 import pytest
 
 from helpers_secretary import add_doc
+from helpers_tables import check_rows_async
 from ordnung import clock
 from ordnung.db.store import Store
 from test_api_support import TODAY, api_for
@@ -28,27 +29,28 @@ def pinned_today() -> Iterator[None]:
     clock.set_today(None)
 
 
-@pytest.mark.parametrize(
-    "params",
-    [
-        {"year": "1899"},
-        {"year": "2101"},
-        {"year": "last"},
-        {"until": "2026-05-31"},  # "until" goes with a year
-        {"year": "2025", "until": "2025-12-31"},  # … and is a day of the next year
-        {"year": "2025", "until": "2027-01-01"},
-        {"year": "2025", "until": "2026-02-30"},
-        {"tax": "maybe"},
-    ],
-)
-async def test_a_choice_outside_the_rules_is_refused(data_dir: Path, params: dict[str, str]) -> None:
-    async with api_for(data_dir) as api:
-        response = await api.client.get(ZIP, params=params)
-        assert response.status_code == 422, response.text
+CHOICES_OUTSIDE_THE_RULES = [
+    {"year": "1899"},
+    {"year": "2101"},
+    {"year": "last"},
+    {"until": "2026-05-31"},  # "until" goes with a year
+    {"year": "2025", "until": "2025-12-31"},  # … and is a day of the next year
+    {"year": "2025", "until": "2027-01-01"},
+    {"year": "2025", "until": "2026-02-30"},
+    {"tax": "maybe"},
+]
 
 
-async def test_until_says_what_it_needs(data_dir: Path) -> None:
+async def test_a_choice_outside_the_rules_is_refused(data_dir: Path) -> None:
     async with api_for(data_dir) as api:
+
+        async def check(params: dict[str, str]) -> None:
+            response = await api.client.get(ZIP, params=params)
+            assert response.status_code == 422, response.text
+
+        await check_rows_async(CHOICES_OUTSIDE_THE_RULES, check)
+
+        # "until" without a year says what it needs
         response = await api.client.get(ZIP, params={"until": "2026-05-31"})
         assert response.json()["detail"] == "“until” goes with “year” and must be a day of the next year."
 
