@@ -21,14 +21,14 @@ ALLOWED_CYCLES: dict[frozenset[str], str] = {
     frozenset(
         {
             "ordnung.calendar.ics",
-            "ordnung.ingest.gaps",
-            "ordnung.ingest.plan",
-            "ordnung.recurrence",
             "ordnung.secretary.moving",
             "ordnung.secretary.sender_land",
             "ordnung.secretary.triggers",
         }
     ): "triggers.py holds both the triggers (which call these modules lazily) and the helpers they import from it",
+    frozenset(
+        {"ordnung.ingest.gaps", "ordnung.ingest.plan"}
+    ): "ingest.plan builds on the reading checks, and gaps imports needs_check from it lazily",
     frozenset(
         {"ordnung.rules.deadlines", "ordnung.rules.letters"}
     ): "the letter rules build on the deadline receipts; deadlines imports them lazily where needed",
@@ -46,6 +46,8 @@ STAYS_LIGHT = [
     ("ordnung.days", {"ordnung.db.store", "ordnung.tick", "ordnung.secretary.triggers"}),
     # the calendar file needs today, not the daily tick or the reading pipeline
     ("ordnung.calendar.ics", {"ordnung.tick", "ordnung.ingest.pipeline"}),
+    # recurring dates need the postal buffer from the rules engine, not the trigger engine
+    ("ordnung.recurrence", {"ordnung.secretary.triggers"}),
 ]
 
 

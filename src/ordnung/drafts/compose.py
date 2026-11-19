@@ -72,6 +72,7 @@ from ordnung.models import (
 from ordnung.rules import LAST_CHECKED, RuleContext, compute_due, send_guidance
 from ordnung.rules.advice import ARREARS_CURE, HARDSHIP_EXCLUDED, billing_period_text
 from ordnung.rules.consumer import long_withdrawal_end
+from ordnung.rules.deadlines import postal_buffer
 from ordnung.rules.explain import fmt_date
 from ordnung.rules.routing import (
     extraordinary_notice,
@@ -82,7 +83,7 @@ from ordnung.rules.routing import (
 )
 from ordnung.secretary.review import language_name, split_sentences, stable_hash, untrusted_json
 from ordnung.secretary.scam import ibans_in_text, normalize_iban
-from ordnung.secretary.triggers import Ledger, contract_area, contract_computation, postal_buffer
+from ordnung.secretary.triggers import Ledger, contract_area, contract_computation
 
 if TYPE_CHECKING:
     from ordnung.app_context import AppContext

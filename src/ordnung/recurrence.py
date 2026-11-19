@@ -139,9 +139,8 @@ from ordnung.models import (
 )
 from ordnung.rules import RentDue, RuleContext, calendar_de, compute_due, get_rule
 from ordnung.rules.advice import RENT_INCREASE_PAYMENT_WARNING
-from ordnung.rules.deadlines import place_region
+from ordnung.rules.deadlines import place_region, postal_buffer
 from ordnung.rules.explain import ordinal
-from ordnung.secretary.triggers import postal_buffer
 
 log = logging.getLogger(__name__)
 

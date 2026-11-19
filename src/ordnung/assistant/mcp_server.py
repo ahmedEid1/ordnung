@@ -1080,7 +1080,7 @@ def _repeat_fields(ledger: Ledger, item: Item) -> dict[str, Any]:
     following date when this one is the last. Nothing for a to-do that doesn't repeat or whose series ended
     (done, dismissed); an undated one says only how it repeats."""
     from ordnung.recurrence import ROLLING_STATUSES, describe, moved_on, replacement, schedule_rule
-    from ordnung.secretary.triggers import postal_buffer
+    from ordnung.rules.deadlines import postal_buffer
 
     if item.recurrence is None or item.status not in ROLLING_STATUSES:
         return {}
