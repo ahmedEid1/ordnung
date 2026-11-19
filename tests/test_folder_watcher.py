@@ -22,6 +22,7 @@ import pytest
 
 from fixtures_llm import INVOICE_LETTER, TAX_LETTER, TODAY, Router, fake_backend, record_events
 from helpers_docs import Line, make_pdf
+from helpers_tables import check_rows
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.ingest import held, intake, watcher
@@ -130,34 +131,36 @@ def logged(ctx: AppContext, kind: str) -> list[str]:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("name", "picked_up"),
-    [
-        ("Scan_2026-09-28.pdf", True),
-        ("SCAN.PDF", True),
-        ("IMG_0042.HEIC", True),
-        ("foto.jpeg", True),
-        ("mail.eml", True),
-        ("notiz.txt", True),
-        ("scan.pdf.part", False),
-        ("scan.pdf.crdownload", False),
-        ("scan.pdf.download", False),
-        ("scan.pdf.partial", False),
-        ("scan.pdf.tmp", False),
-        ("scan.TEMP", False),
-        ("~$brief.pdf", False),
-        (".scan.pdf", False),
-        (".DS_Store", False),
-        ("scan.pdf~", False),
-        ("brief.docx", False),
-        ("Thumbs.db", False),
-        ("archiv.zip", False),
-        ("pdf", False),
-        ("", False),
-    ],
-)
-def test_which_files_are_picked_up(name: str, picked_up: bool) -> None:
-    assert is_candidate(name) is picked_up
+WHICH_FILES_ROWS = [
+    ("Scan_2026-09-28.pdf", True),
+    ("SCAN.PDF", True),
+    ("IMG_0042.HEIC", True),
+    ("foto.jpeg", True),
+    ("mail.eml", True),
+    ("notiz.txt", True),
+    ("scan.pdf.part", False),
+    ("scan.pdf.crdownload", False),
+    ("scan.pdf.download", False),
+    ("scan.pdf.partial", False),
+    ("scan.pdf.tmp", False),
+    ("scan.TEMP", False),
+    ("~$brief.pdf", False),
+    (".scan.pdf", False),
+    (".DS_Store", False),
+    ("scan.pdf~", False),
+    ("brief.docx", False),
+    ("Thumbs.db", False),
+    ("archiv.zip", False),
+    ("pdf", False),
+    ("", False),
+]
+
+
+def test_which_files_are_picked_up() -> None:
+    def check(name: str, picked_up: bool) -> None:
+        assert is_candidate(name) is picked_up
+
+    check_rows(WHICH_FILES_ROWS, check)
 
 
 def test_a_file_counts_once_it_stopped_changing_and_has_content() -> None:
@@ -317,17 +320,6 @@ async def test_files_wait_for_the_person_and_are_never_sent(ctx: AppContext, inb
     read = ctx.store.get_document(document.id)
     assert read is not None and read.status == "processed" and not read.ai_private
     assert read.kind == "tax_assessment" and backend(ctx).calls
-
-
-async def test_with_auto_read_files_are_read_at_once(ctx: AppContext, inbox: Path) -> None:
-    use_folder(ctx, inbox, inbox_auto_read=True)
-    async with watching(ctx):
-        (inbox / "bescheid.pdf").write_bytes(TAX_LETTER.pdf())
-        document = await eventually(picked(ctx, "bescheid.pdf"))
-    assert (document.status, document.ai_private) == ("queued", False)
-    await ctx.worker.run_until_idle()
-    read = ctx.store.get_document(document.id)
-    assert read is not None and read.status == "processed"
 
 
 async def test_where_nothing_can_be_read_files_always_wait(ctx: AppContext, inbox: Path) -> None:
@@ -522,6 +514,8 @@ async def test_with_auto_read_the_files_already_there_still_wait(ctx: AppContext
         later = await eventually(picked(ctx, "while-closed.pdf"))
     assert later.status == "queued"  # the folder was watched before: it arrived
     await ctx.worker.run_until_idle()
+    read = ctx.store.get_document(new.id)
+    assert read is not None and read.status == "processed"  # a file that arrived is read at once
     assert {doc.id for doc in held.waiting(ctx.store)} == {old_tax.id, old_bill.id}
 
 
