@@ -221,6 +221,11 @@ check shows in the numbers at once, and costs nothing.
   proved every bug and security finding with a failing test before fixing it; keep doing that.
 - Name a test by the behaviour it pins, the way the files around it do
   (`test_a_missing_asset_is_a_404_not_the_app_page`).
+- One test for one behaviour. The examples of one rule (thirty wordings that must all read as a deadline) are the
+  rows of one table test: `check_rows` in `tests/helpers_tables.py` runs the check on every row and names every
+  row that fails (`check_rows_async` where the check is awaited). Parametrise only when the cases are different
+  behaviours a reader wants to see fail apart (different routes, commands or file formats), or when each case
+  needs a fresh fixture that it changes.
 - A test that replays every recording, times pages or its own growth, explores at length (a long fuzz or model
   run), regenerates or re-reads a whole dataset, or builds the web app is marked `slow` (`make check` runs those
   too). The tests run in parallel processes, a file to a process (`-n auto --dist loadfile`): a test takes its

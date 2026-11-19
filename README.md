@@ -185,7 +185,7 @@ headless mode, stream-json in and out with JSON-schema output ([ADR 0001](docs/d
 
 ### Tested
 
-- **12,000+ backend tests** (Hypothesis property tests of the rules engine, a fake `claude`, API contracts),
+- **10,000+ backend tests** (Hypothesis property tests of the rules engine, a fake `claude`, API contracts),
   **2,200+ Vitest tests** and **500+ Playwright tests** (demo and real app, fake Claude, axe in light and dark mode).
 - **The rules engine** has 100 % line and branch coverage, enforced in CI, and `mypy` strict on it, as on the whole
   package and the benchmark code.
