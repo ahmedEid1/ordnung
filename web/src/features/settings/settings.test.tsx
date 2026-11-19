@@ -105,6 +105,28 @@ describe("Settings page", () => {
     assertNoRawEnumsInElement(container);
   });
 
+  it("moving to another section while the settings still load leaves focus on the link, then draws that section", async () => {
+    useMockApi();
+    const mocked = globalThis.fetch;
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes("/api/profile")) await held;
+      return mocked(input, init);
+    });
+    const user = userEvent.setup();
+    renderWithProviders(<SettingsPage />, { route: "/settings?section=profile" });
+    expect(screen.getByText("Loading your settings…")).toBeInTheDocument();
+    const link = screen.getByRole("link", { name: "Data" });
+    await user.click(link);
+    // the pane has no heading yet: nothing to focus, so the link keeps it
+    expect(link).toHaveAttribute("aria-current", "page");
+    expect(screen.getByText("Loading your settings…")).toBeInTheDocument();
+    expect(link).toHaveFocus();
+    release();
+    expect(await screen.findByRole("heading", { level: 2, name: "Data" })).toBeInTheDocument();
+  });
+
   it("Claude connection: status, version and the probe", async () => {
     const { calls } = useMockApi();
     const user = userEvent.setup();
