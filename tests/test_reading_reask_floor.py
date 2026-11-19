@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import copy
 import itertools
+import json
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -258,9 +259,20 @@ async def outcome(
     }
 
 
-async def baseline(data_dir: Path, case: Letter, first: dict[str, Any], **kwargs: Any) -> dict[str, Any]:
+#: Each baseline already run, by letter, first answer and received date: the same baseline is the comparison
+#: standard of many rows and only ever read, so it runs once per module (each caller gets its own copy).
+_BASELINES: dict[tuple[Any, ...], dict[str, Any]] = {}
+
+
+async def baseline(
+    data_dir: Path, case: Letter, first: dict[str, Any], *, received: str | None = None
+) -> dict[str, Any]:
     """The first reading with the check behind it: the re-ask's answer unusable."""
-    return await outcome(data_dir, case, first, ClaudeBadOutput("no structured output"), **kwargs)
+    key = (case.marker, case.pages, json.dumps(first, sort_keys=True), received)
+    if key not in _BASELINES:
+        unusable = ClaudeBadOutput("no structured output")
+        _BASELINES[key] = await outcome(data_dir, case, first, unusable, received=received)
+    return copy.deepcopy(_BASELINES[key])
 
 
 def same(result: dict[str, Any], base: dict[str, Any]) -> bool:
