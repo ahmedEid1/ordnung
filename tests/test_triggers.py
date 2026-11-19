@@ -4,6 +4,7 @@ plus fingerprints and reconciliation."""
 from __future__ import annotations
 
 import shutil
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -42,6 +43,21 @@ def ids(store: Store) -> dict[str, str]:
     return seed_ledger(store)
 
 
+Seeded = tuple[Store, dict[str, str]]
+
+
+@pytest.fixture(scope="module")
+def seeded(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Seeded]:
+    """The seeded ledger built once for the tests that only read it; a test that writes takes ``store``."""
+    data_dir = tmp_path_factory.mktemp("seeded") / "data"
+    data_dir.mkdir()
+    shared = Store.open(Paths(data_dir).ensure())
+    try:
+        yield shared, seed_ledger(shared)
+    finally:
+        shared.close()
+
+
 def ideas(store: Store, rule_id: str, today: date = TODAY) -> list[Suggestion]:
     return run_triggers(store, today)[rule_id]
 
@@ -55,7 +71,8 @@ def refs_of(idea: Suggestion) -> set[tuple[str, str]]:
 # --------------------------------------------------------------------------------------------------
 
 
-def test_every_idea_is_well_formed_and_points_at_real_records(store: Store, ids: dict[str, str]) -> None:
+def test_every_idea_is_well_formed_and_points_at_real_records(seeded: Seeded) -> None:
+    store = seeded[0]
     results = run_triggers(store, TODAY)
     assert set(results) == set(TRIGGERS)
     getters = {
@@ -79,7 +96,8 @@ def test_every_idea_is_well_formed_and_points_at_real_records(store: Store, ids:
             assert getters[idea.action.target_type](idea.action.target_id) is not None
 
 
-def test_triggers_are_deterministic(store: Store, ids: dict[str, str]) -> None:
+def test_triggers_are_deterministic(seeded: Seeded) -> None:
+    store = seeded[0]
     first = {rule: [i.fingerprint for i in batch] for rule, batch in run_triggers(store, TODAY).items()}
     second = {rule: [i.fingerprint for i in batch] for rule, batch in run_triggers(store, TODAY).items()}
     assert first == second
@@ -96,7 +114,8 @@ def test_fingerprint_hashes_the_triggering_values() -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-def test_deadline_soon_reports_items_within_their_reminder_window(store: Store, ids: dict[str, str]) -> None:
+def test_deadline_soon_reports_items_within_their_reminder_window(seeded: Seeded) -> None:
+    store, ids = seeded
     found = {idea.refs[0].id: idea for idea in ideas(store, "deadline_soon")}
     # objection: send-by 15 Oct is 17 days away (> 14); refund is incoming money; the reminder has its
     # own rule; the scam letter's "payment" must never be suggested
@@ -154,9 +173,8 @@ def test_a_returned_debit_or_a_first_rent_keeps_its_reminders(store: Store, ids:
     check_rows(RETURNED_DEBIT_OR_FIRST_RENT, check)
 
 
-def test_deadline_soon_offers_an_objection_draft_when_the_window_opens(
-    store: Store, ids: dict[str, str]
-) -> None:
+def test_deadline_soon_offers_an_objection_draft_when_the_window_opens(seeded: Seeded) -> None:
+    store, ids = seeded
     found = {idea.refs[0].id: idea for idea in ideas(store, "deadline_soon", date(2026, 10, 5))}
     objection = found[ids["tax_objection"]]
     assert objection.due_date == "2026-10-15"  # the send-by day, not the legal deadline
@@ -216,7 +234,8 @@ def test_overdue_is_computed_on_read_and_never_changes_the_item(store: Store, id
 # --------------------------------------------------------------------------------------------------
 
 
-def test_contract_cancel_window_uses_the_rules_engine(store: Store, ids: dict[str, str]) -> None:
+def test_contract_cancel_window_uses_the_rules_engine(seeded: Seeded) -> None:
+    store, ids = seeded
     found = ideas(store, "contract_cancel_window")
     assert [idea.refs[0].id for idea in found] == [ids["phone"]]
     phone = found[0]
@@ -367,7 +386,8 @@ def test_a_cancellation_marked_as_sent_is_no_decision_any_more(store: Store, ids
 # --------------------------------------------------------------------------------------------------
 
 
-def test_expiry_soon_flags_permit_at_90_days_and_passport_at_180(store: Store, ids: dict[str, str]) -> None:
+def test_expiry_soon_flags_permit_at_90_days_and_passport_at_180(seeded: Seeded) -> None:
+    store, ids = seeded
     found = {idea.refs[0].id: idea for idea in ideas(store, "expiry_soon")}
     assert set(found) == {ids["permit_expiry"], ids["passport_expiry"]}
     permit = found[ids["permit_expiry"]]
@@ -410,7 +430,8 @@ def test_student_permit_info_card(store: Store, ids: dict[str, str]) -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-def test_followup_due_after_a_sent_letter(store: Store, ids: dict[str, str]) -> None:
+def test_followup_due_after_a_sent_letter(seeded: Seeded) -> None:
+    store, ids = seeded
     found = ideas(store, "followup_due")
     assert len(found) == 1
     assert refs_of(found[0]) == {("item", ids["followup"]), ("draft", ids["draft_uni"])}
@@ -560,7 +581,8 @@ def test_an_invalid_iban_is_one_more_sign_next_to_others(store: Store, ids: dict
     assert ideas(store, "iban_misprint") == []
 
 
-def test_tax_documents_in_tax_season_only(store: Store, ids: dict[str, str]) -> None:
+def test_tax_documents_in_tax_season_only(seeded: Seeded) -> None:
+    store, ids = seeded
     assert ideas(store, "tax_documents") == []  # September
     found = ideas(store, "tax_documents", date(2026, 3, 1))
     assert len(found) == 1
