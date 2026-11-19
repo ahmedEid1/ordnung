@@ -439,6 +439,7 @@ def test_citations_support_when_they_belong_to_a_gold_letter() -> None:
 
 
 def test_removed_sentences_are_split_by_the_truth() -> None:
+    """The guard's removed and left-out values are split into true, letter, law, unreadable and other."""
     claims = [
         {"text": "Due 21 Oct 2026.", "verdict": "removed"},
         {"text": "Extended to 31.12.2027.", "verdict": "removed"},
@@ -447,10 +448,8 @@ def test_removed_sentences_are_split_by_the_truth() -> None:
     counts = removal_split(claims, _context())
     assert (counts["true"], counts["other"]) == (1, 1)
 
-
-def test_the_guard_split_sees_letter_values_digit_groups_laws_and_left_out_values() -> None:
-    """The split counted only removed sentences (8 true values left out of redacted
-    ones were not counted), and called a correct letter value or an apartment number "other"."""
+    # The split counted only removed sentences (8 true values left out of redacted
+    # ones were not counted), and called a correct letter value or an apartment number "other".
     letters = (frozenset({date(2027, 12, 31)}), frozenset({1000, 12300}))
     injected = (frozenset({date(2027, 12, 31)}), frozenset())
     claims = [
