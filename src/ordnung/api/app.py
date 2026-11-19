@@ -415,10 +415,11 @@ def create_app(ctx: AppContext, *, token: str | None, demo: bool = False) -> Fas
         redoc_url=None,
     )
     app.state.ordnung = state
-    api = APIRouter(prefix=API_PREFIX)
+    api = APIRouter()
     for router in ROUTERS:
         api.include_router(router)
-    app.include_router(api)
+    # the prefix on this include (not on ``api``) spares FastAPI a second walk that builds every route at start
+    app.include_router(api, prefix=API_PREFIX)
     _add_error_handlers(app)
     dist = web_dist_dir()
     _mount_web_app(app, dist)
