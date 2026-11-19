@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { FileUp, Lock } from "lucide-react";
 import { getOverlayRoot } from "@/components/ui/internal";
-import { isStaticDemo } from "@/mocks/mode";
+import { isStaticDemo } from "@/lib/mode";
 import { ACCEPTED_SHORT, useAddLetters } from "./AddLetters";
 
 const hasFiles = (e: DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes("Files");

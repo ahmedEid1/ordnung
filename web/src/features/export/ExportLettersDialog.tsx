@@ -13,7 +13,7 @@ import { Callout } from "@/components/ui/Callout";
 import { Dialog } from "@/components/ui/Dialog";
 import { Checkbox, Field, Select } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
-import { isStaticDemo } from "@/mocks/mode";
+import { isStaticDemo } from "@/lib/mode";
 import { useTodayISO } from "@/lib/today";
 import { plural } from "@/lib/utils";
 import { earlyUntil, exportQuery, exportable, letterYear, selectForExport, zipName, type ExportChoice } from "./selection";

@@ -12,7 +12,7 @@ import { CopyCommand } from "@/components/ui/CopyCommand";
 import { focusWhenReady } from "@/lib/focus";
 import { formatDate, formatFileSize } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { isStaticDemo } from "@/mocks/mode";
+import { isStaticDemo } from "@/lib/mode";
 import { backupContents, backupStrengthLine, backupSummary, failureSentence, lastBackupLine, leftOutSentence, MIN_PASSPHRASE, passphraseProblem, restoreCommand, restoreCommandPieces, saveBlob, syncCopyLine, type PassphraseProblem } from "./backup";
 import { suggestPassphrase } from "./passphrase";
 import { PassphraseFields } from "./PassphraseFields";

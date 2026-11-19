@@ -26,7 +26,7 @@ import { usePhoneCompanion } from "@/features/phone/client";
 import { formatMoney } from "@/lib/format";
 import { useIsTabletUp, useMediaQuery } from "@/lib/hooks";
 import { cn, prefersReducedMotion } from "@/lib/utils";
-import { isStaticDemo } from "@/mocks/mode";
+import { isStaticDemo } from "@/lib/mode";
 import { qrMatrix, qrPath, readPayload } from "./qr";
 import { GIROCODE_FILE, giroCodePicture, savePicture } from "./savePicture";
 

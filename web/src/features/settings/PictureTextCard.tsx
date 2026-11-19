@@ -5,7 +5,7 @@ import { qk, useHealth, useUpdateSettings } from "@/api/hooks";
 import type { AppSettings, Health, PictureTextStatus } from "@/api/types";
 import { Switch } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
-import { isStaticDemo } from "@/mocks/mode";
+import { isStaticDemo } from "@/lib/mode";
 import { cn } from "@/lib/utils";
 import { SaveBar, SettingsCard } from "./SettingsCard";
 

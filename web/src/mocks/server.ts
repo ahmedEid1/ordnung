@@ -109,7 +109,7 @@ import { doc as makeDoc, item as makeItem } from "./data/helpers";
 import { isOpenItem } from "@/features/document/verdict";
 import { compareBase } from "@/features/document/trace/copy";
 import { NOTICE_BASIS_COPY, documentKindLabel } from "@/lib/copy";
-import { DEMO_NOTE } from "./mode";
+import { DEMO_NOTE } from "@/lib/mode";
 import { confirmMockGiroCode, mockGiroCode } from "./girocode";
 import { checkTracking } from "@/lib/tracking";
 import { deliveredBefore, proofRoutes, resolveProofAsset, sentFollowup } from "./proof";

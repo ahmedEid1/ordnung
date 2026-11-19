@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FlaskConical } from "lucide-react";
-import { isStaticDemo, mockMode } from "@/mocks/mode";
+import { isStaticDemo, mockMode } from "@/lib/mode";
 import { cn } from "@/lib/utils";
 import { SHELL_GUTTERS, shellWidth } from "./layout";
 import { usePageMeta } from "./page-meta";

@@ -11,7 +11,7 @@ import { claudeState, type ClaudeState } from "@/features/onboarding/wizard";
 import { usePhoneCompanion } from "@/features/phone/client";
 import { filesStay, theComputer } from "@/features/phone/copy";
 import { isAbort, uploadWithProgress } from "@/features/phone/upload";
-import { isStaticDemo } from "@/mocks/mode";
+import { isStaticDemo } from "@/lib/mode";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button, IconButton, buttonVariants } from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toast";

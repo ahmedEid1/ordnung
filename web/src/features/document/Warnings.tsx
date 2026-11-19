@@ -31,7 +31,7 @@ import { HIGH_STAKES_KINDS } from "@/api/types";
 import { useItemActions } from "./actions";
 import { useEvidence } from "./EvidenceContext";
 import { LetterAdviceCard } from "./LetterAdvice";
-import { DEMO_NOTE } from "@/mocks/mode";
+import { DEMO_NOTE } from "@/lib/mode";
 import { usePartyDrawer } from "@/lib/party-drawer";
 import { SenderLandQuestion } from "@/features/party/SenderLandQuestion";
 import { LAND_WAIT_REASON, landWait } from "@/features/party/sender-land";

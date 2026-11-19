@@ -20,7 +20,7 @@ import { StepAddress, StepClaude } from "./Steps";
 import { JOIN_LINK, JOIN_PATH, WIZARD_STEPS, initialDraft } from "./wizard";
 
 const mode = vi.hoisted(() => ({ staticDemo: false }));
-vi.mock("@/mocks/mode", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/mocks/mode")>()), isStaticDemo: () => mode.staticDemo }));
+vi.mock("@/lib/mode", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/mode")>()), isStaticDemo: () => mode.staticDemo }));
 
 class RO {
   observe() {}

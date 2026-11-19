@@ -9,7 +9,7 @@ import { useNavigate, type NavigateFunction } from "react-router";
 import { api } from "@/api/endpoints";
 import { useHealth } from "@/api/hooks";
 import { useServerEvent } from "@/api/sse";
-import { isStaticDemo } from "@/mocks/mode";
+import { isStaticDemo } from "@/lib/mode";
 import {
   batchForDisplay,
   notYetShown,

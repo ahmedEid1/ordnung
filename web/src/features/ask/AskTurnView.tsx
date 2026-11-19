@@ -9,7 +9,7 @@ import { useProfileLanguage } from "@/components/ui/ModelText";
 import { useClipboard } from "@/lib/clipboard";
 import { looksGerman } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
-import { isStaticDemo } from "@/mocks/mode";
+import { isStaticDemo } from "@/lib/mode";
 import { citationIndex, numberCitations, stripAllMarkers } from "./citations";
 import { CitationChip, CitationMarker } from "./CitationChip";
 import { Markdown } from "./Markdown";

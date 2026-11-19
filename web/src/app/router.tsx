@@ -5,7 +5,7 @@
  * (`?party=pty_x`, see `lib/party-drawer.ts`) and works on every route.
  */
 import { createBrowserRouter, createHashRouter, type RouteObject } from "react-router";
-import { isStaticDemo } from "@/mocks/mode";
+import { isStaticDemo } from "@/lib/mode";
 import type { ComponentType } from "react";
 import { AppLayout } from "./Layout";
 import { BootScreen, NotFound, RouteError } from "./screens";

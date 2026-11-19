@@ -17,7 +17,7 @@ import type { MockServer } from "@/mocks/server";
 import TaxYearPage from "./TaxYearPage";
 
 const mode = vi.hoisted(() => ({ staticDemo: false }));
-vi.mock("@/mocks/mode", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/mocks/mode")>()), isStaticDemo: () => mode.staticDemo }));
+vi.mock("@/lib/mode", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/mode")>()), isStaticDemo: () => mode.staticDemo }));
 
 const tax = (id: string, fields: Partial<Document> = {}): Document =>
   makeDoc({ id, title: id, tax_relevant: true, doc_date: null, received_date: null, party_id: null, ...fields });

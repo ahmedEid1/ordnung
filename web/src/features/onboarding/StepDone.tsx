@@ -4,7 +4,7 @@ import { ArrowRight, FileUp, FlaskConical, Inbox, Lock } from "lucide-react";
 import { useHealth } from "@/api/hooks";
 import { ACCEPTED_SHORT, useAddLetters } from "@/components/shell/AddLetters";
 import { Button, buttonVariants } from "@/components/ui/Button";
-import { isStaticDemo } from "@/mocks/mode";
+import { isStaticDemo } from "@/lib/mode";
 import { cn } from "@/lib/utils";
 import { CopyCommand } from "@/components/ui/CopyCommand";
 import { DEMO_CMD } from "./options";

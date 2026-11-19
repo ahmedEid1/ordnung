@@ -26,7 +26,7 @@ import { CopyCommand } from "@/components/ui/CopyCommand";
 import { formatCompact, formatUsd } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
 import { cn, plural } from "@/lib/utils";
-import { isStaticDemo } from "@/mocks/mode";
+import { isStaticDemo } from "@/lib/mode";
 import { LetterTitle, NotReadYet, detailTitleSize } from "../HeldCard";
 import { changeText, compareBase, exportCommand, formatMs, runResult, runTitle } from "./copy";
 import { Waterfall } from "./Waterfall";

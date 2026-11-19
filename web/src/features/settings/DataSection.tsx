@@ -10,7 +10,7 @@ import { Callout } from "@/components/ui/Callout";
 import { Dialog } from "@/components/ui/Dialog";
 import { Checkbox, Field, Input } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
-import { isStaticDemo } from "@/mocks/mode";
+import { isStaticDemo } from "@/lib/mode";
 import { CopyCommand } from "@/components/ui/CopyCommand";
 import { DEMO_CMD } from "@/features/onboarding/options";
 import { EXPORT_IN_DEMO, ExportLettersDialog, NOT_ENCRYPTED } from "@/features/export/ExportLettersDialog";

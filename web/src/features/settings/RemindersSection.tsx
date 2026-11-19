@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Field, Select, Switch } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
 import { setBrowserNotifications, showNotification, useNotifyState } from "@/features/notifications/useBrowserNotifications";
-import { isStaticDemo } from "@/mocks/mode";
+import { isStaticDemo } from "@/lib/mode";
 import { DesktopNotificationsCard } from "./DesktopNotificationsCard";
 import { completeReminderDays, leadDaysError, leadLabel, normalizeLeadDays, REMINDER_KINDS, sameReminderDays } from "./logic";
 import { FIELD_WIDTH, SaveBar, SectionHeading, SettingsCard } from "./SettingsCard";
