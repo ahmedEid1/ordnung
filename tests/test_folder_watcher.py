@@ -788,7 +788,7 @@ def test_two_pdfs_made_at_once_are_both_remembered(ctx: AppContext, monkeypatch:
     from ordnung.ingest import own_files
 
     real = own_files._own_files
-    both_read = threading.Barrier(2, timeout=2)
+    both_read = threading.Barrier(2, timeout=1.0)
 
     def slow(store: Any) -> list[str]:
         found = real(store)
