@@ -656,15 +656,33 @@ async def test_a_locked_password_store_with_the_older_copy_uses_it_here_and_clai
 async def test_a_hanging_folder_is_unreachable_and_the_status_still_answers(
     tmp_path: Path, folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """CI once failed this test: a save fell due just as the folder began to hang (the first day's notes,
+    committed as the computer connected), the fake engine's save hung for good holding the lock, and no call
+    with a limit ever ran. The real engine's save gives up like any folder operation (``TimedFs``); the fake's
+    doesn't, so only looks hang here, and the test makes a save fall due as they begin to."""
+    # a look every 1.5 s: the save's own look and its summary give up (1 s each, swallowed) and leave the thread busy,
+    # so the next look must fall due in that same step (SCAN_S under twice the folder call's limit); the save's
+    # clean-up (gc) has none, but it ran at the first save as the computer connected (once a day)
+    fast_sync(monkeypatch, SCAN_S=1.5)
     short_folder_limit(monkeypatch)
     engine = FakeEngine()
     desk, _ = _dirs(tmp_path)
     async with computer(desk, engine=engine) as api:
         await connect(api, folder, "desktop")
+        agent = agent_of(api)
+        looks = engine.calls.count("scan")
+        await eventually(lambda: engine.calls.count("scan") > looks and not agent._lock_now().locked())
+        await eventually(lambda: not agent._lock_now().locked() and not agent._thread.busy)
+        before = len(engine.calls)
+        engine.hang_calls = frozenset({"scan"})
         engine.hang = threading.Event()
         try:
-            found = await eventually(lambda: agent_of(api).problem, within=15)
+            # a save falls due
+            await asyncio.to_thread(api.ctx.store.set_meta, "last_review_at", "2026-10-07")
+            found = await eventually(lambda: agent.problem, within=15)
             assert found.code == "folder_unreachable"
+            calls = engine.calls[before:]
+            assert "push:change" in calls[: calls.index("scan")], "a save ran first and did not hang"
             assert (await status(api))["problem"]["code"] == "folder_unreachable"  # from memory
             busy = await api.client.post("/api/sync/save", json={})
             assert busy.status_code == 409 and busy.json()["code"] == "folder_problem"
@@ -731,7 +749,10 @@ async def test_a_hanging_folder_never_holds_up_shutdown(
     started = 0.0
     async with computer(desk, engine=engine) as api:
         await connect(api, folder, "desktop")
+        before = len(engine.calls)
+        engine.hang_calls = frozenset({"scan"})  # a save due now must not be the call that hangs for good
         engine.hang = threading.Event()
+        await eventually(lambda: "scan" in engine.calls[before:])  # a look hangs as the app stops
         started = asyncio.get_running_loop().time()
     elapsed = asyncio.get_running_loop().time() - started
     engine.hang.set()
