@@ -7,6 +7,7 @@ checks out the whole history."""
 
 from __future__ import annotations
 
+import functools
 import json
 import re
 import shlex
@@ -31,9 +32,15 @@ ROOT = Path(__file__).resolve().parents[1]
 GATED_SPLITS = ("test", "holdout", "holdout2", "dev")
 
 
-def _workflow() -> dict[Any, Any]:
+@functools.cache
+def _parsed_workflow() -> dict[Any, Any]:
+    """ci.yml parsed once for the module: every test only reads it."""
     yaml = pytest.importorskip("yaml")  # PyYAML comes with uvicorn[standard]
     return dict(yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")))
+
+
+def _workflow() -> dict[Any, Any]:
+    return dict(_parsed_workflow())
 
 
 def _jobs() -> dict[str, Any]:
