@@ -21,7 +21,7 @@ from typing import Any
 import pytest
 
 from fixtures_llm import TODAY, Letter
-from helpers_tables import check_rows
+from helpers_tables import check_rows, check_rows_async
 from ordnung import clock
 from ordnung.app_context import build_context
 from ordnung.ingest import extract
@@ -257,21 +257,8 @@ async def test_a_sender_read_anew_never_moves_a_kept_to_do_later(tmp_path: Path)
         pytest.param(*sender.values, *item.values, id=f"{item.id}-{sender.id}")
         for sender, item in itertools.product(SENDERS_READ_ANEW, ADDED_OBJECTIONS)
     ]
-    raised: list[Exception | None] = []
-    for number, row in enumerate(rows):
-        try:
-            await check(tmp_path / str(number), *row.values)
-        except Exception as exc:
-            raised.append(exc)
-        else:
-            raised.append(None)
-    outcomes = iter(raised)
-
-    def settled(*_row: Any) -> None:
-        if (error := next(outcomes)) is not None:
-            raise error
-
-    check_rows(rows, settled)
+    folders = (tmp_path / str(number) for number in itertools.count())
+    await check_rows_async(rows, lambda *row: check(next(folders), *row))
 
 
 async def test_a_sender_read_as_a_firm_that_moves_nothing_later_is_used(tmp_path: Path) -> None:
@@ -284,21 +271,8 @@ async def test_a_sender_read_as_a_firm_that_moves_nothing_later_is_used(tmp_path
         }
         await assert_no_worse(where, PAY_LETTER, first, again, received="2026-10-01")
 
-    raised: list[Exception | None] = []
-    for number, row in enumerate(ADDED_OBJECTIONS):
-        try:
-            await check(tmp_path / str(number), *row.values)
-        except Exception as exc:
-            raised.append(exc)
-        else:
-            raised.append(None)
-    outcomes = iter(raised)
-
-    def settled(*_row: Any) -> None:
-        if (error := next(outcomes)) is not None:
-            raise error
-
-    check_rows(ADDED_OBJECTIONS, settled)
+    folders = (tmp_path / str(number) for number in itertools.count())
+    await check_rows_async(ADDED_OBJECTIONS, lambda *row: check(next(folders), *row))
 
 
 async def test_a_tax_office_s_correct_answer_is_not_used_when_it_ends_after_the_check_s_date(
@@ -415,21 +389,8 @@ async def test_a_remedy_filed_under_another_nature_never_ends_after_the_check_s_
     async def check(where: Path, items: list[dict[str, Any]]) -> None:
         await assert_baseline(where, PLANT, BLANK, {**HALF, "items": items}, "later")
 
-    raised: list[Exception | None] = []
-    for number, row in enumerate(PLANTED_OTHER_FILINGS):
-        try:
-            await check(tmp_path / str(number), *row.values)
-        except Exception as exc:
-            raised.append(exc)
-        else:
-            raised.append(None)
-    outcomes = iter(raised)
-
-    def settled(*_row: Any) -> None:
-        if (error := next(outcomes)) is not None:
-            raise error
-
-    check_rows(PLANTED_OTHER_FILINGS, settled)
+    folders = (tmp_path / str(number) for number in itertools.count())
+    await check_rows_async(PLANTED_OTHER_FILINGS, lambda *row: check(next(folders), *row))
 
 
 async def test_a_remedy_filed_under_another_nature_is_never_used_where_the_check_can_t_date_it(
@@ -735,21 +696,7 @@ async def test_on_an_allowed_letter_only_a_replay_miss_is_missing(
         pytest.param(*allowed.values, *case.values, id=f"{case.id}-{allowed.id}")
         for allowed, case in itertools.product(REASK_ALLOWED, REASK_ERRORS)
     ]
-    raised: list[Exception | None] = []
-    for row in rows:
-        try:
-            await check(*row.values)
-        except Exception as exc:
-            raised.append(exc)
-        else:
-            raised.append(None)
-    outcomes = iter(raised)
-
-    def settled(*_row: Any) -> None:
-        if (error := next(outcomes)) is not None:
-            raise error
-
-    check_rows(rows, settled)
+    await check_rows_async(rows, check)
 
 
 def test_the_check_s_floor_ignores_the_injection_flag_for_its_date() -> None:

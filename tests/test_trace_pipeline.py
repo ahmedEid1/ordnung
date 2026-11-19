@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterator
+from itertools import count
 from pathlib import Path
 from typing import Any
 
@@ -22,7 +23,7 @@ from fixtures_llm import (
     record_events,
 )
 from helpers_docs import photo
-from helpers_tables import check_rows
+from helpers_tables import check_rows_async
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.ingest.gaps import CHECK_SLOT
@@ -301,21 +302,8 @@ async def test_a_reading_waiting_for_claude_is_paused_never_failed(data_dir: Pat
             ctx.close()
 
     # each row reads the letter in a data folder of its own, awaited in turn
-    raised: list[Exception | None] = []
-    for number, row in enumerate(WAITING_FOR_CLAUDE):
-        try:
-            await check(data_dir / str(number), *row.values)
-        except Exception as exc:
-            raised.append(exc)
-        else:
-            raised.append(None)
-    outcomes = iter(raised)
-
-    def settled(*_row: Any) -> None:
-        if (error := next(outcomes)) is not None:
-            raise error
-
-    check_rows(WAITING_FOR_CLAUDE, settled)
+    folders = (data_dir / str(number) for number in count())
+    await check_rows_async(WAITING_FOR_CLAUDE, lambda *row: check(next(folders), *row))
 
 
 async def test_a_private_letter_has_no_model_step(ctx: AppContext) -> None:

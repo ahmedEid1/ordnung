@@ -13,13 +13,14 @@ import copy
 from collections.abc import Iterator
 from dataclasses import replace
 from datetime import date
+from itertools import count
 from pathlib import Path
 from typing import Any
 
 import pytest
 
 from fixtures_llm import Letter, Router
-from helpers_tables import check_rows
+from helpers_tables import check_rows_async
 from ordnung import clock
 from ordnung.api.routes import documents
 from ordnung.ingest import pipeline
@@ -1090,21 +1091,8 @@ async def test_letters_that_only_name_a_court_order_are_not_one(data_dir: Path) 
             assert detail["items"] == [] and detail["advice"] is None
 
     # each row reads its letter in a data folder of its own, awaited in turn
-    raised: list[Exception | None] = []
-    for number, row in enumerate(COURT_ORDER_MENTIONS):
-        try:
-            await check(data_dir / str(number), *row.values)
-        except Exception as exc:
-            raised.append(exc)
-        else:
-            raised.append(None)
-    outcomes = iter(raised)
-
-    def settled(*_row: Any) -> None:
-        if (error := next(outcomes)) is not None:
-            raise error
-
-    check_rows(COURT_ORDER_MENTIONS, settled)
+    folders = (data_dir / str(number) for number in count())
+    await check_rows_async(COURT_ORDER_MENTIONS, lambda *row: check(next(folders), *row))
 
 
 async def test_an_item_that_only_mentions_the_court_action_leaves_its_to_do(data_dir: Path) -> None:
@@ -1184,21 +1172,8 @@ async def test_a_notice_without_notice_period_gets_no_hardship_objection(data_di
                 )
 
     # each row reads its letter in a data folder of its own, awaited in turn
-    raised: list[Exception | None] = []
-    for number, row in enumerate(NOTICES_WITHOUT_NOTICE_PERIOD):
-        try:
-            await check(data_dir / str(number), *row.values)
-        except Exception as exc:
-            raised.append(exc)
-        else:
-            raised.append(None)
-    outcomes = iter(raised)
-
-    def settled(*_row: Any) -> None:
-        if (error := next(outcomes)) is not None:
-            raise error
-
-    check_rows(NOTICES_WITHOUT_NOTICE_PERIOD, settled)
+    folders = (data_dir / str(number) for number in count())
+    await check_rows_async(NOTICES_WITHOUT_NOTICE_PERIOD, lambda *row: check(next(folders), *row))
 
 
 NOTICES_WITHOUT_AN_END = [
@@ -1230,21 +1205,8 @@ async def test_a_notice_without_an_end_or_only_extraordinary_keeps_its_objection
             assert drafted.status_code != 422, drafted.text
 
     # each row reads its letter in a data folder of its own, awaited in turn
-    raised: list[Exception | None] = []
-    for number, row in enumerate(NOTICES_WITHOUT_AN_END):
-        try:
-            await check(data_dir / str(number), *row.values)
-        except Exception as exc:
-            raised.append(exc)
-        else:
-            raised.append(None)
-    outcomes = iter(raised)
-
-    def settled(*_row: Any) -> None:
-        if (error := next(outcomes)) is not None:
-            raise error
-
-    check_rows(NOTICES_WITHOUT_AN_END, settled)
+    folders = (data_dir / str(number) for number in count())
+    await check_rows_async(NOTICES_WITHOUT_AN_END, lambda *row: check(next(folders), *row))
 
 
 async def test_the_statutory_objection_hint_without_an_end_keeps_the_laws_objection(data_dir: Path) -> None:
@@ -1344,21 +1306,8 @@ async def test_the_objection_to_a_notice_is_only_as_sure_as_the_end_date_it_coun
                 assert doc["status"] == "processed"
 
     # each row reads its letter in a data folder of its own, awaited in turn
-    raised: list[Exception | None] = []
-    for number, row in enumerate(OBJECTION_END_DATES):
-        try:
-            await check(data_dir / str(number), *row.values)
-        except Exception as exc:
-            raised.append(exc)
-        else:
-            raised.append(None)
-    outcomes = iter(raised)
-
-    def settled(*_row: Any) -> None:
-        if (error := next(outcomes)) is not None:
-            raise error
-
-    check_rows(OBJECTION_END_DATES, settled)
+    folders = (data_dir / str(number) for number in count())
+    await check_rows_async(OBJECTION_END_DATES, lambda *row: check(next(folders), *row))
 
 
 async def test_an_operating_cost_statement_keeps_its_kind_and_gets_its_card_on_read(data_dir: Path) -> None:
@@ -1811,21 +1760,8 @@ async def test_a_card_settles_once_the_person_closed_every_to_do(data_dir: Path)
             assert reopened["urgent"] and not reopened["handled"]
 
     # each row reads its letter in a data folder of its own, awaited in turn
-    raised: list[Exception | None] = []
-    for number, row in enumerate(SETTLING_CARDS):
-        try:
-            await check(data_dir / str(number), *row.values)
-        except Exception as exc:
-            raised.append(exc)
-        else:
-            raised.append(None)
-    outcomes = iter(raised)
-
-    def settled(*_row: Any) -> None:
-        if (error := next(outcomes)) is not None:
-            raise error
-
-    check_rows(SETTLING_CARDS, settled)
+    folders = (data_dir / str(number) for number in count())
+    await check_rows_async(SETTLING_CARDS, lambda *row: check(next(folders), *row))
 
 
 async def test_paying_the_arrears_doesnt_settle_a_notice_without_notice_period(data_dir: Path) -> None:
@@ -1901,21 +1837,8 @@ async def test_a_statement_dated_9999_is_saved_not_an_error(data_dir: Path) -> N
             assert detail["advice"]["kind"] == "operating_costs"
 
     # each row reads its letter in a data folder of its own, awaited in turn
-    raised: list[Exception | None] = []
-    for number, row in enumerate(DATE_FIELDS_9999):
-        try:
-            await check(data_dir / str(number), row)
-        except Exception as exc:
-            raised.append(exc)
-        else:
-            raised.append(None)
-    outcomes = iter(raised)
-
-    def settled(*_row: Any) -> None:
-        if (error := next(outcomes)) is not None:
-            raise error
-
-    check_rows(DATE_FIELDS_9999, settled)
+    folders = (data_dir / str(number) for number in count())
+    await check_rows_async(DATE_FIELDS_9999, lambda *row: check(next(folders), *row))
 
 
 async def test_ask_never_presents_a_rent_increases_new_rent_as_just_another_payment(data_dir: Path) -> None:

@@ -14,7 +14,7 @@ from typing import Any
 import pytest
 
 from fixtures_llm import TODAY
-from helpers_tables import check_rows
+from helpers_tables import check_rows, check_rows_async
 from ordnung import clock
 from ordnung.ingest.extract import (
     extract_document,
@@ -108,21 +108,7 @@ async def test_the_re_ask_row_says_whether_its_answer_could_be_read() -> None:
             ("reading_gaps", outcome, 1),
         ]
 
-    raised: list[Exception | None] = []
-    for row in RE_ASK_ROW_OUTCOMES:
-        try:
-            await check(*row)
-        except Exception as exc:
-            raised.append(exc)
-        else:
-            raised.append(None)
-    outcomes = iter(raised)
-
-    def settled(*_row: Any) -> None:
-        if (error := next(outcomes)) is not None:
-            raise error
-
-    check_rows(RE_ASK_ROW_OUTCOMES, settled)
+    await check_rows_async(RE_ASK_ROW_OUTCOMES, check)
 
 
 async def test_reprocess_asks_the_re_ask_again_too() -> None:
@@ -197,21 +183,7 @@ async def test_a_notice_on_a_later_page_triggers_and_grounds_the_re_ask() -> Non
         assert [request.prompt_name for request in backend.calls] == ["extract", "reading_gaps"]
         assert result.completion is not None and result.completion.accepted
 
-    raised: list[Exception | None] = []
-    for row in LATER_PAGE_FIRST_READINGS:
-        try:
-            await check(row)
-        except Exception as exc:
-            raised.append(exc)
-        else:
-            raised.append(None)
-    outcomes = iter(raised)
-
-    def settled(*_row: Any) -> None:
-        if (error := next(outcomes)) is not None:
-            raise error
-
-    check_rows(LATER_PAGE_FIRST_READINGS, settled)
+    await check_rows_async(LATER_PAGE_FIRST_READINGS, check)
 
 
 # --------------------------------------------------------------------------------------------------

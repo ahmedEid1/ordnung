@@ -19,7 +19,7 @@ from typing import Any
 import pytest
 
 from fixtures_llm import TODAY, Letter
-from helpers_tables import check_rows
+from helpers_tables import check_rows, check_rows_async
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.ingest.extract import (
@@ -264,21 +264,7 @@ async def test_an_incomplete_reading_gets_one_re_ask() -> None:
             assert f"- {part}" in again.prompt
         assert again.schema_ == completion_schema()
 
-    raised: list[Exception | None] = []
-    for row in INCOMPLETE_READINGS:
-        try:
-            await check(*row)
-        except Exception as exc:
-            raised.append(exc)
-        else:
-            raised.append(None)
-    outcomes = iter(raised)
-
-    def settled(*_row: Any) -> None:
-        if (error := next(outcomes)) is not None:
-            raise error
-
-    check_rows(INCOMPLETE_READINGS, settled)
+    await check_rows_async(INCOMPLETE_READINGS, check)
 
 
 TRIGGER_READINGS = [BLANK, HALF, COMPLETE, {**BLANK, "sender": SENDER}]
@@ -434,21 +420,7 @@ async def test_the_second_answer_is_used_only_when_strictly_better() -> None:
         kept = second if kept_because is None else first
         assert result.extraction == reading(kept)
 
-    raised: list[Exception | None] = []
-    for row in SECOND_ANSWERS:
-        try:
-            await check(*row)
-        except Exception as exc:
-            raised.append(exc)
-        else:
-            raised.append(None)
-    outcomes = iter(raised)
-
-    def settled(*_row: Any) -> None:
-        if (error := next(outcomes)) is not None:
-            raise error
-
-    check_rows(SECOND_ANSWERS, settled)
+    await check_rows_async(SECOND_ANSWERS, check)
 
 
 def test_quotes_must_be_found_at_least_as_well_as_the_first_answer_s() -> None:
@@ -499,21 +471,7 @@ async def test_an_unusable_re_ask_answer_keeps_the_first_reading() -> None:
         assert result.extraction == reading(BLANK)
         assert len(backend.calls) == 2  # the re-ask is never repaired: one call, once
 
-    raised: list[Exception | None] = []
-    for row in UNUSABLE_ANSWERS:
-        try:
-            await check(row)
-        except Exception as exc:
-            raised.append(exc)
-        else:
-            raised.append(None)
-    outcomes = iter(raised)
-
-    def settled(*_row: Any) -> None:
-        if (error := next(outcomes)) is not None:
-            raise error
-
-    check_rows(UNUSABLE_ANSWERS, settled)
+    await check_rows_async(UNUSABLE_ANSWERS, check)
 
 
 PROPAGATED_ERRORS = [
@@ -528,21 +486,7 @@ async def test_every_other_re_ask_error_propagates() -> None:
         with pytest.raises(type(error)):
             await read(answering(BLANK, _raise(error)))
 
-    raised: list[Exception | None] = []
-    for row in PROPAGATED_ERRORS:
-        try:
-            await check(row)
-        except Exception as exc:
-            raised.append(exc)
-        else:
-            raised.append(None)
-    outcomes = iter(raised)
-
-    def settled(*_row: Any) -> None:
-        if (error := next(outcomes)) is not None:
-            raise error
-
-    check_rows(PROPAGATED_ERRORS, settled)
+    await check_rows_async(PROPAGATED_ERRORS, check)
 
 
 async def test_a_replay_miss_keeps_the_first_reading_only_where_the_caller_says_so() -> None:
@@ -833,18 +777,4 @@ async def test_the_benchmark_takes_the_same_path_and_says_how_the_re_ask_ended(t
             assert "reading_incomplete" in prediction.signals
             assert [item.origin for item in prediction.items] == ["code"]
 
-    raised: list[Exception | None] = []
-    for row in BENCHMARK_RE_ASK_ENDINGS:
-        try:
-            await check(*row)
-        except Exception as exc:
-            raised.append(exc)
-        else:
-            raised.append(None)
-    outcomes = iter(raised)
-
-    def settled(*_row: Any) -> None:
-        if (error := next(outcomes)) is not None:
-            raise error
-
-    check_rows(BENCHMARK_RE_ASK_ENDINGS, settled)
+    await check_rows_async(BENCHMARK_RE_ASK_ENDINGS, check)

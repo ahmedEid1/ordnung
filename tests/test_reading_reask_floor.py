@@ -18,7 +18,7 @@ from typing import Any
 import pytest
 
 from fixtures_llm import TODAY, Letter
-from helpers_tables import check_rows
+from helpers_tables import check_rows_async
 from ordnung import clock
 from ordnung.app_context import build_context
 from ordnung.ingest.extract import reask_warning
@@ -329,21 +329,8 @@ async def test_a_dated_to_do_of_the_first_answer_is_never_lost_or_moved_later(tm
         first = {**HALF, "items": [PAYMENT, PLAN]}
         await assert_baseline(where, PAY, first, again, "dropped")
 
-    raised: list[Exception | None] = []
-    for number, row in enumerate(DROPPED_OR_LATER_ANSWERS):
-        try:
-            await check(tmp_path / str(number), *row.values)
-        except Exception as exc:
-            raised.append(exc)
-        else:
-            raised.append(None)
-    outcomes = iter(raised)
-
-    def settled(*_row: Any) -> None:
-        if (error := next(outcomes)) is not None:
-            raise error
-
-    check_rows(DROPPED_OR_LATER_ANSWERS, settled)
+    folders = (tmp_path / str(number) for number in itertools.count())
+    await check_rows_async(DROPPED_OR_LATER_ANSWERS, lambda *row: check(next(folders), *row))
 
 
 # --------------------------------------------------------------------------------------------------
@@ -376,21 +363,8 @@ async def test_an_objection_date_later_than_the_check_s_is_never_used(tmp_path: 
         pytest.param(*case.values, *item.values, id=f"{item.id}-{case.id}")
         for case, item in itertools.product(LATER_OBJECTION_LETTERS, LATER_OBJECTIONS)
     ]
-    raised: list[Exception | None] = []
-    for number, row in enumerate(rows):
-        try:
-            await check(tmp_path / str(number), *row.values)
-        except Exception as exc:
-            raised.append(exc)
-        else:
-            raised.append(None)
-    outcomes = iter(raised)
-
-    def settled(*_row: Any) -> None:
-        if (error := next(outcomes)) is not None:
-            raise error
-
-    check_rows(rows, settled)
+    folders = (tmp_path / str(number) for number in itertools.count())
+    await check_rows_async(rows, lambda *row: check(next(folders), *row))
 
 
 async def test_a_planted_end_date_a_week_late_is_never_used(tmp_path: Path) -> None:
@@ -447,21 +421,8 @@ async def test_a_letter_date_the_letter_doesn_t_give_is_never_used(tmp_path: Pat
     async def check(where: Path, case: Letter, first: dict[str, Any], again: dict[str, Any]) -> None:
         await assert_baseline(where, case, first, again, "date", received="2026-09-25")
 
-    raised: list[Exception | None] = []
-    for number, row in enumerate(LETTER_DATES_NOT_GIVEN):
-        try:
-            await check(tmp_path / str(number), *row.values)
-        except Exception as exc:
-            raised.append(exc)
-        else:
-            raised.append(None)
-    outcomes = iter(raised)
-
-    def settled(*_row: Any) -> None:
-        if (error := next(outcomes)) is not None:
-            raise error
-
-    check_rows(LETTER_DATES_NOT_GIVEN, settled)
+    folders = (tmp_path / str(number) for number in itertools.count())
+    await check_rows_async(LETTER_DATES_NOT_GIVEN, lambda *row: check(next(folders), *row))
 
 
 # --------------------------------------------------------------------------------------------------
@@ -505,21 +466,8 @@ async def test_a_gap_closed_by_reading_the_letter_differently_is_no_gap_closed(t
     async def check(where: Path, case: Letter, first: dict[str, Any], again: dict[str, Any]) -> None:
         await assert_baseline(where, case, first, again, "not_better", received="2026-09-25")
 
-    raised: list[Exception | None] = []
-    for number, row in enumerate(OTHER_READINGS_OF_THE_LETTER):
-        try:
-            await check(tmp_path / str(number), *row.values)
-        except Exception as exc:
-            raised.append(exc)
-        else:
-            raised.append(None)
-    outcomes = iter(raised)
-
-    def settled(*_row: Any) -> None:
-        if (error := next(outcomes)) is not None:
-            raise error
-
-    check_rows(OTHER_READINGS_OF_THE_LETTER, settled)
+    folders = (tmp_path / str(number) for number in itertools.count())
+    await check_rows_async(OTHER_READINGS_OF_THE_LETTER, lambda *row: check(next(folders), *row))
 
 
 STUDY_SENDER = {"name": "Studierendenwerk Musterstadt", "kind": "authority"}
@@ -572,21 +520,8 @@ async def test_the_check_s_to_do_is_never_lifted_without_a_counterpart(tmp_path:
     ) -> None:
         await assert_baseline(where, case, first, again, reason)
 
-    raised: list[Exception | None] = []
-    for number, row in enumerate(ANSWERS_WITHOUT_A_COUNTERPART):
-        try:
-            await check(tmp_path / str(number), *row.values)
-        except Exception as exc:
-            raised.append(exc)
-        else:
-            raised.append(None)
-    outcomes = iter(raised)
-
-    def settled(*_row: Any) -> None:
-        if (error := next(outcomes)) is not None:
-            raise error
-
-    check_rows(ANSWERS_WITHOUT_A_COUNTERPART, settled)
+    folders = (tmp_path / str(number) for number in itertools.count())
+    await check_rows_async(ANSWERS_WITHOUT_A_COUNTERPART, lambda *row: check(next(folders), *row))
 
 
 async def test_a_sender_the_letter_doesn_t_name_is_never_used(tmp_path: Path) -> None:
@@ -624,21 +559,8 @@ async def test_a_re_ask_without_an_answer_leaves_the_baseline(tmp_path: Path) ->
         assert (result["accepted"], result["kept_because"]) == (False, "unanswered")
         assert same(result, base) and result["status"] == "needs_review"
 
-    raised: list[Exception | None] = []
-    for number, row in enumerate(UNANSWERED_ERRORS):
-        try:
-            await check(tmp_path / str(number), *row.values)
-        except Exception as exc:
-            raised.append(exc)
-        else:
-            raised.append(None)
-    outcomes = iter(raised)
-
-    def settled(*_row: Any) -> None:
-        if (error := next(outcomes)) is not None:
-            raise error
-
-    check_rows(UNANSWERED_ERRORS, settled)
+    folders = (tmp_path / str(number) for number in itertools.count())
+    await check_rows_async(UNANSWERED_ERRORS, lambda *row: check(next(folders), *row))
 
 
 # --------------------------------------------------------------------------------------------------
@@ -670,18 +592,5 @@ async def test_a_better_answer_is_used(tmp_path: Path) -> None:
         dates = {kind: due for _, kind, due, _, _ in base["items"] if due}
         assert all(not dates.get(kind) or due <= dates[kind] for _, kind, due, _, _ in result["items"] if due)
 
-    raised: list[Exception | None] = []
-    for number, row in enumerate(BETTER_ANSWERS):
-        try:
-            await check(tmp_path / str(number), *row.values)
-        except Exception as exc:
-            raised.append(exc)
-        else:
-            raised.append(None)
-    outcomes = iter(raised)
-
-    def settled(*_row: Any) -> None:
-        if (error := next(outcomes)) is not None:
-            raise error
-
-    check_rows(BETTER_ANSWERS, settled)
+    folders = (tmp_path / str(number) for number in itertools.count())
+    await check_rows_async(BETTER_ANSWERS, lambda *row: check(next(folders), *row))

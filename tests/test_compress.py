@@ -21,7 +21,7 @@ import pytest
 import helpers_proof
 from fakes import use_fast_keys
 from fixtures_llm import TAX_LETTER
-from helpers_tables import check_rows
+from helpers_tables import check_rows, check_rows_async
 from ordnung import clock, sync
 from ordnung.api import app as app_module
 from ordnung.api import compress
@@ -577,14 +577,7 @@ async def test_everything_else_passes_as_it_came() -> None:
         assert [m["body"] for m in bodies] == list(chunks)  # message by message, as the app sent them
         assert exchange.complete
 
-    # every row awaited, every failing row reported (as check_rows does for a check that needn't be awaited)
-    failed = []
-    for case in sorted(PASSED_AS_THEY_ARE):
-        try:
-            await check(case)
-        except Exception as exc:
-            failed.append(f"{case!r}: {type(exc).__name__}: {exc}")
-    assert not failed, "\n".join(failed)
+    await check_rows_async(sorted(PASSED_AS_THEY_ARE), check)
 
 
 NOT_A_GET = ["POST", "PUT", "PATCH", "DELETE", "HEAD"]
@@ -595,14 +588,7 @@ async def test_only_a_get_is_compressed() -> None:
         exchange = await _through(_answer(), method)
         assert "content-encoding" not in exchange.headers and exchange.body == BIG_JSON
 
-    # every row awaited, every failing row reported (as check_rows does for a check that needn't be awaited)
-    failed = []
-    for method in NOT_A_GET:
-        try:
-            await check(method)
-        except Exception as exc:
-            failed.append(f"{method!r}: {type(exc).__name__}: {exc}")
-    assert not failed, "\n".join(failed)
+    await check_rows_async(NOT_A_GET, check)
 
 
 async def test_vary_is_added_once_and_keeps_what_the_answer_said() -> None:

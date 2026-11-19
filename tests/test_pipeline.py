@@ -7,6 +7,7 @@ import copy
 import json
 from collections.abc import Iterator
 from datetime import date
+from itertools import count
 from pathlib import Path
 from typing import Any
 
@@ -23,7 +24,7 @@ from fixtures_llm import (
     record_events,
 )
 from helpers_docs import INJECTION, hidden_text_pdf, photo, scanned_pdf
-from helpers_tables import check_rows
+from helpers_tables import check_rows_async
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.ingest import pipeline
@@ -801,21 +802,8 @@ async def test_a_corrected_letter_date_never_moves_the_check_to_do_later(data_di
             assert earlier_note == (corrected > "2026-09-15")
 
     # each row reads its letter in a data folder of its own, awaited in turn
-    raised: list[Exception | None] = []
-    for number, row in enumerate(CORRECTED_LETTER_DATES):
-        try:
-            await check(data_dir / str(number), *row)
-        except Exception as exc:
-            raised.append(exc)
-        else:
-            raised.append(None)
-    outcomes = iter(raised)
-
-    def settled(*_row: Any) -> None:
-        if (error := next(outcomes)) is not None:
-            raise error
-
-    check_rows(CORRECTED_LETTER_DATES, settled)
+    folders = (data_dir / str(number) for number in count())
+    await check_rows_async(CORRECTED_LETTER_DATES, lambda *row: check(next(folders), *row))
 
 
 def _later_objection_router() -> ApiRouter:
@@ -1052,21 +1040,8 @@ async def test_the_letter_s_notice_never_overrides_the_service_date_the_person_e
             assert document is not None and (document.status == "needs_review") is flagged
 
     # each row reads its letter in a data folder of its own, awaited in turn
-    raised: list[Exception | None] = []
-    for number, row in enumerate(SERVICE_DATE_FINES):
-        try:
-            await check(data_dir / str(number), *row)
-        except Exception as exc:
-            raised.append(exc)
-        else:
-            raised.append(None)
-    outcomes = iter(raised)
-
-    def settled(*_row: Any) -> None:
-        if (error := next(outcomes)) is not None:
-            raise error
-
-    check_rows(SERVICE_DATE_FINES, settled)
+    folders = (data_dir / str(number) for number in count())
+    await check_rows_async(SERVICE_DATE_FINES, lambda *row: check(next(folders), *row))
 
 
 async def test_reading_again_completely_removes_the_untouched_check_to_do(

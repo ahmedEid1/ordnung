@@ -17,7 +17,7 @@ import pytest
 import pytest_asyncio
 
 from fake_caldav import MemorySecrets
-from helpers_tables import check_rows
+from helpers_tables import check_rows_async
 from ordnung import sync
 from ordnung.api.app import openapi_schema
 from ordnung.calendar.secrets import SecretsUnavailable
@@ -232,17 +232,13 @@ COMPUTER_NAMES_REFUSED = [("", "name"), ("   ", "name"), ("x" * 41, "name"), ("d
 
 @SHARED_LOOP
 async def test_a_computer_s_name_must_be_a_name(not_connected: Api, folder: Path) -> None:
-    answers: list[tuple[str, str, Any]] = []
-    for name, code in COMPUTER_NAMES_REFUSED:
+    async def check(name: str, code: str) -> None:
         refused = await not_connected.client.put(
             "/api/sync", json={"folder": str(folder), "name": name, "passphrase": PASSPHRASE}
         )
-        answers.append((name, code, refused))
-
-    def check(name: str, code: str, refused: Any) -> None:
         assert refused.status_code == 422 and refused.json()["code"] == code
 
-    check_rows(answers, check)
+    await check_rows_async(COMPUTER_NAMES_REFUSED, check)
 
 
 async def test_a_new_folder_s_passphrase_must_be_strong_and_is_never_echoed_or_logged(
@@ -276,21 +272,17 @@ FOLDERS_REFUSED = [("relative/folder", "full path"), ("/no/such/parent/Ordnung",
 
 @SHARED_LOOP
 async def test_a_folder_that_can_t_be_used_is_refused(not_connected: Api) -> None:
-    answers: list[tuple[str, str, Any, Any]] = []
-    for value, problem in FOLDERS_REFUSED:
+    async def check(value: str, problem: str) -> None:
         info = await not_connected.client.post("/api/sync/inspect", json={"folder": value})
         refused = await not_connected.client.put(
             "/api/sync", json={"folder": value, "name": "desk", "passphrase": PASSPHRASE}
         )
-        answers.append((value, problem, info, refused))
-
-    def check(value: str, problem: str, info: Any, refused: Any) -> None:
         assert (
             info.status_code == 200 and info.json()["kind"] == "refused" and problem in info.json()["problem"]
         )
         assert refused.status_code == 422 and refused.json()["code"] == "folder"
 
-    check_rows(answers, check)
+    await check_rows_async(FOLDERS_REFUSED, check)
 
 
 async def test_a_folder_with_other_files_names_some_of_them(data_dir: Path, folder: Path) -> None:
