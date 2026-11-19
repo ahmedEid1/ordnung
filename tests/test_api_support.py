@@ -15,6 +15,7 @@ import httpx
 from fastapi import FastAPI
 
 from fixtures_llm import ALL_LETTERS, Letter, Router
+from helpers_store import seed_database
 from ordnung.api.app import create_app
 from ordnung.app_context import AppContext, build_context
 from ordnung.llm.base import LLMRequest
@@ -141,11 +142,21 @@ def client_for(app: FastAPI, **headers: str) -> httpx.AsyncClient:
 
 @asynccontextmanager
 async def api_for(
-    data_dir: Path, *, token: str | None = None, demo: bool = False, router: Router | None = None
+    data_dir: Path,
+    *,
+    token: str | None = None,
+    demo: bool = False,
+    router: Router | None = None,
+    first_start: bool = False,
 ) -> AsyncIterator[Api]:
     """An :class:`Api` without the lifespan (tests drive the worker themselves). Its client lets the
     background Ideas refresh a request started finish before the response is handed over, so a test
-    reads the Ideas as they settle (the app itself answers without waiting for them)."""
+    reads the Ideas as they settle (the app itself answers without waiting for them).
+
+    A folder without a database starts from a copy of the migrated template (``helpers_store``);
+    ``first_start`` makes the app create and migrate its database itself, as on a first start."""
+    if not first_start:
+        seed_database(data_dir)
     ctx = build_context(data_dir, backend_obj=FakeBackend(router or ApiRouter()))
     app = create_app(ctx, token=token, demo=demo)
 
