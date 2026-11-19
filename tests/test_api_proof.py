@@ -30,6 +30,12 @@ def pinned_today() -> Iterator[None]:
     clock.set_today(None)
 
 
+@pytest.fixture(scope="module")
+def letter_bytes() -> bytes:
+    """One letter PDF for the module (read only: bytes; every test uploads it to its own data folder)."""
+    return letter_pdf()
+
+
 async def _sent(api: Api, **extra: Any) -> tuple[str, helpers_proof.Gym]:
     gym = helpers_proof.gym(api.ctx)
     created = await api.client.post("/api/drafts", json={"kind": "cancellation", "contract_id": gym.contract})
@@ -68,7 +74,7 @@ async def test_a_sent_e_mail_kept_as_proof_adds_no_letters_from_its_attachments(
 
 
 async def test_a_proof_file_is_never_shown_as_a_letter_being_read(
-    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch, letter_bytes: bytes
 ) -> None:
     """Adding a proof also put the upload corner's letter card on screen ("Filed —
     everything is on your timeline", "Open letter"), as every ``job.progress`` becomes a card there. A
@@ -104,7 +110,7 @@ async def test_a_proof_file_is_never_shown_as_a_letter_being_read(
         await api.read_all()
         assert not [data for kind, data in events if kind == "job.progress" and data.get("doc_id") == doc_id]
 
-        letter = await api.client.post("/api/documents", files={"files": ("brief.pdf", letter_pdf())})
+        letter = await api.client.post("/api/documents", files={"files": ("brief.pdf", letter_bytes)})
         letter_id = letter.json()["documents"][0]["id"]
         await api.read_all()
         assert [
@@ -230,10 +236,10 @@ async def test_the_demo_takes_proof_files(data_dir: Path) -> None:
         await _add(api, draft_id, "a.jpg", photo("JPEG"))
 
 
-async def test_correcting_and_removing_a_proof(data_dir: Path) -> None:
+async def test_correcting_and_removing_a_proof(data_dir: Path, letter_bytes: bytes) -> None:
     async with api_for(data_dir) as api:
         draft_id, _ = await _sent(api)
-        overview = await _add(api, draft_id, "a.pdf", letter_pdf(), on_date=SENT_ON)
+        overview = await _add(api, draft_id, "a.pdf", letter_bytes, on_date=SENT_ON)
         proof_id = overview["proofs"][0]["proof"]["id"]
         doc_id = overview["proofs"][0]["document"]["id"]
         patched = await api.client.patch(
@@ -488,10 +494,12 @@ async def test_a_known_unread_file_becomes_private_when_added_as_proof(data_dir:
         assert logged and "now kept private, not sent to Claude" in logged[0]
 
 
-async def test_a_known_file_ai_already_read_is_never_called_private(data_dir: Path) -> None:
+async def test_a_known_file_ai_already_read_is_never_called_private(
+    data_dir: Path, letter_bytes: bytes
+) -> None:
     async with api_for(data_dir) as api:
         draft_id, _ = await _sent(api)
-        data = letter_pdf()
+        data = letter_bytes
         await api.client.post("/api/documents", files={"files": ("letter.pdf", data)})
         await api.read_all()  # read by the model
         added = await _add(api, draft_id, "letter.pdf", data, kind="other")
@@ -545,10 +553,12 @@ async def test_a_file_paused_by_a_rate_limit_after_transcription_is_never_called
         assert "not sent to Claude" not in _logged_proof(api)
 
 
-async def test_a_letter_marked_private_after_ai_read_it_is_never_called_private(data_dir: Path) -> None:
+async def test_a_letter_marked_private_after_ai_read_it_is_never_called_private(
+    data_dir: Path, letter_bytes: bytes
+) -> None:
     async with api_for(data_dir) as api:
         draft_id, _ = await _sent(api)
-        data = letter_pdf()
+        data = letter_bytes
         uploaded = (await api.client.post("/api/documents", files={"files": ("letter.pdf", data)})).json()
         await api.read_all()
         doc_id = uploaded["documents"][0]["id"]
