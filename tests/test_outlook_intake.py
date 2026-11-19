@@ -62,7 +62,7 @@ def test_converted_text_has_header_lines_and_attachment_list() -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-async def test_upload_msg_becomes_email_with_its_attachments(data_dir: Path) -> None:
+async def test_an_uploaded_msg_is_stored_as_its_email_once_never_as_a_broken_pdf(data_dir: Path) -> None:
     """The trap: this Outlook file holds an attached PDF in its first kilobyte. Intake alone either refuses
     such a file as a broken PDF or, when the PDF inside happens to open, stores the whole Outlook file as
     that PDF; converted first, it is the e-mail it is. Adding it again finds it."""
@@ -247,7 +247,7 @@ def test_cli_add_damaged_msg_says_why(
     assert "This Outlook file can't be opened" in result.output and "Traceback" not in result.output
 
 
-async def test_proof_msg_kept_as_one_file(data_dir: Path) -> None:
+async def test_a_sent_msg_is_kept_as_one_proof_file_and_a_damaged_one_is_refused(data_dir: Path) -> None:
     """A sent e-mail saved from Outlook is kept as proof like an .eml: one private file, its attachments no
     letters; a damaged one is refused with the Outlook reason."""
     async with api_for(data_dir) as api:
