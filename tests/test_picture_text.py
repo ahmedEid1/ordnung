@@ -16,8 +16,9 @@ import pytest
 
 from fixtures_llm import TAX_LETTER
 from helpers_docs import photo, scanned_pdf
+from helpers_tables import check_rows
 from ordnung import clock
-from ordnung.config import OCR_SWITCH
+from ordnung.config import OCR_SWITCH, Paths
 from ordnung.db import store as store_module
 from ordnung.db.store import Store
 from ordnung.ingest import worker
@@ -210,29 +211,39 @@ DUE_CASES: dict[str, tuple[dict[str, Any], Callable[[Store, Document], None] | N
 }
 
 
-@pytest.mark.parametrize("case", DUE_CASES, ids=list(DUE_CASES))
-def test_only_letters_claude_isnt_reading_are_due(store: Store, case: str) -> None:
+def test_only_letters_claude_isnt_reading_are_due(tmp_path: Path) -> None:
     """Pages without text of their own of photos and PDFs Claude isn't reading — kept private, held, waiting for
     Claude (not ready, or a usage limit) or failed — and nothing else: not a letter queued to be read or read,
     one in the trash, a proof file, a text file, a page with its own or a scanner's text, or a PDF whose own text
     hasn't been looked for yet, nor one Claude has read (kept private or failed since). What is due is also what may
     be kept."""
-    fields, more, due = DUE_CASES[case]
-    fields = dict(fields)
-    mime, texts = fields.pop("mime", "image/jpeg"), fields.pop("texts", None)
-    source = fields.pop("source", None)
-    letter = add_letter(store, f"{case}.bin", mime=mime, texts=texts, **fields)
-    if source is not None:
-        with store.tx() as conn:
-            conn.execute("UPDATE documents SET source = ? WHERE id = ?", (source, letter.id))
-    if mime == "application/pdf":
-        store.write_scan_text(letter.id, {})  # its text stage ran (one case undoes that)
-    if more is not None:
-        more(store, letter)
-    assert store.picture_text_due() == ([(letter.id, 1)] if due else [])
-    assert store.write_picture_text(letter.id, 1, PICTURE_WORDS) is due
-    assert picture_file(store, letter.id).is_file() is due
-    assert store.picture_text_due() == []  # looked at: never read twice
+
+    def check(case: str) -> None:
+        # each case on a store of its own, as the ``store`` fixture opens one
+        data_dir = tmp_path / f"case-{list(DUE_CASES).index(case)}"
+        data_dir.mkdir()
+        store = Store.open(Paths(data_dir).ensure())
+        try:
+            fields, more, due = DUE_CASES[case]
+            fields = dict(fields)
+            mime, texts = fields.pop("mime", "image/jpeg"), fields.pop("texts", None)
+            source = fields.pop("source", None)
+            letter = add_letter(store, f"{case}.bin", mime=mime, texts=texts, **fields)
+            if source is not None:
+                with store.tx() as conn:
+                    conn.execute("UPDATE documents SET source = ? WHERE id = ?", (source, letter.id))
+            if mime == "application/pdf":
+                store.write_scan_text(letter.id, {})  # its text stage ran (one case undoes that)
+            if more is not None:
+                more(store, letter)
+            assert store.picture_text_due() == ([(letter.id, 1)] if due else [])
+            assert store.write_picture_text(letter.id, 1, PICTURE_WORDS) is due
+            assert picture_file(store, letter.id).is_file() is due
+            assert store.picture_text_due() == []  # looked at: never read twice
+        finally:
+            store.close()
+
+    check_rows(DUE_CASES, check)
 
 
 def test_the_waiting_reason_is_the_workers() -> None:
@@ -298,32 +309,33 @@ def test_a_file_that_cant_be_written_is_logged_without_its_words(
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "query",
-    [
-        "Kellerabteil",
-        "kellerabteil 7",
-        "Gebaude Sud",
-        "Gebäude",
-        "abteil",
-        "Musterstrasse",
-        "Hausverwaltung GmbH",
-    ],
-)
-def test_picture_text_matches_like_the_scanner_text(store: Store, query: str) -> None:
+QUERIES_THAT_MATCH = [
+    "Kellerabteil",
+    "kellerabteil 7",
+    "Gebaude Sud",
+    "Gebäude",
+    "abteil",
+    "Musterstrasse",
+    "Hausverwaltung GmbH",
+]
+QUERIES_THAT_DONT_MATCH = ["Dachboden", "Kellerabteil 789", "", "*", "ab"]
+
+
+def test_picture_text_matches_like_the_scanner_text(store: Store) -> None:
     """The very rules the indexes and the scanner text follow: whole words, and every term of three or more
-    letters as a substring in either spelling of its umlauts."""
+    letters as a substring in either spelling of its umlauts; it matches only what it says."""
     letter = private_photo(store)
     store.write_picture_text(letter.id, 1, PICTURE_WORDS)
-    assert store.picture_text_matches(query) == {letter.id}
-    assert store.scan_text_matches(query) == set()
 
+    def check(query: str) -> None:
+        assert store.picture_text_matches(query) == {letter.id}
+        assert store.scan_text_matches(query) == set()
 
-@pytest.mark.parametrize("query", ["Dachboden", "Kellerabteil 789", "", "*", "ab"])
-def test_picture_text_matches_only_what_it_says(store: Store, query: str) -> None:
-    letter = private_photo(store)
-    store.write_picture_text(letter.id, 1, PICTURE_WORDS)
-    assert store.picture_text_matches(query) == set()
+    def check_no_match(query: str) -> None:
+        assert store.picture_text_matches(query) == set()
+
+    check_rows(QUERIES_THAT_MATCH, check)
+    check_rows(QUERIES_THAT_DONT_MATCH, check_no_match)
 
 
 def test_picture_text_counts_only_on_pages_without_text_and_not_in_the_trash(store: Store) -> None:
