@@ -1,7 +1,7 @@
 """evals/reproduce.py and evals/results/INDEX.json: every published number replayed with no model call, and every
 results file in one index with its hash, role, how it is checked and what a replay at HEAD gives.
 
-The full replay runs in CI (``make eval-reproduce`` in backend-slow); these tests check what needs no replay — the
+The full replay runs in CI (``make eval-reproduce``, in the job reproduce); these tests check what needs no replay — the
 index's hashes, roles, cells and gates against the checkout, the declarations, and the comparison logic on
 hand-made results — and the command end to end on a small folder with a stand-in for the replays."""
 

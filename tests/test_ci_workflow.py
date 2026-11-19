@@ -67,15 +67,16 @@ def _weekly(job: dict[str, Any]) -> bool:
 def test_each_check_runs_on_pull_requests_in_a_job_of_its_own() -> None:
     """A run's time is its longest job's. The slow tests and the replays took a backend leg to 36 of its 45
     minutes; in a job of their own (``backend-slow``) they took 27 to 41 (November 2026), the slow tests alone 21
-    of them. So the slow tests, the replays (the gates, ``make eval-reproduce``, ``demo --check``) and lint with
-    the type check (the same on every Python: pyproject.toml gives ruff and mypy 3.11 as their target) each have
-    a job, all on pull requests, and every check still runs. The replays keep the job id ``backend-slow``:
-    evals/reproduce.py reads the gates from it."""
+    of them, and ``make eval-reproduce`` took 6 of the replays' 12 to 13. So the slow tests, the gates' replays
+    (with ``demo --check``), ``make eval-reproduce`` and lint with the type check (the same on every Python:
+    pyproject.toml gives ruff and mypy 3.11 as their target) each have a job, all on pull requests, and every check
+    still runs. The gates' replays keep the job id ``backend-slow``: evals/reproduce.py reads the gates from it."""
     jobs = _jobs()
     lint, backend, tests, replays = jobs["lint"], jobs["backend"], jobs["slow-tests"], jobs["backend-slow"]
-    assert all(_on_pull_requests(job) for job in (lint, backend, tests, replays))
-    assert tests["runs-on"] == replays["runs-on"] == backend["runs-on"] == "ubuntu-24.04"
-    for job in (lint, tests, replays):
+    reproduce = jobs["reproduce"]
+    assert all(_on_pull_requests(job) for job in (lint, backend, tests, replays, reproduce))
+    assert {job["runs-on"] for job in (backend, tests, replays, reproduce)} == {"ubuntu-24.04"}
+    for job in (lint, tests, replays, reproduce):
         assert any(step.get("with", {}).get("python-version") == "3.12" for step in job["steps"])
     where = {
         "ruff check": lint,
@@ -88,13 +89,13 @@ def test_each_check_runs_on_pull_requests_in_a_job_of_its_own() -> None:
         "ordnung eval": replays,
         "evals.ask": replays,
         "evals.present --check": replays,
-        "make eval-reproduce": replays,
+        "make eval-reproduce": reproduce,
         "ordnung demo --check": replays,
     }
     for check, job in where.items():
         assert check in _script(job), check
         assert job is backend or check not in _script(backend), check  # once, not in each leg
-    assert "pytest" not in _script(replays)
+    assert "pytest" not in _script(replays) and "pytest" not in _script(reproduce)
 
 
 def test_the_samples_must_regenerate_byte_for_byte_in_the_job_that_runs_their_check() -> None:
@@ -565,18 +566,19 @@ def test_the_without_land_replay_goes_to_a_temporary_folder_and_must_match_the_p
     assert "dev" in done.stderr
 
 
-def test_make_eval_reproduce_replays_every_published_number_in_the_slow_job() -> None:
+def test_make_eval_reproduce_replays_every_published_number_in_a_job_of_its_own() -> None:
     """One command reproduces every published number: every split, condition, Ask set, end-to-end,
     ablation and stress cell that exists replayed with no model call, the analysis and the presenter checked, all
-    compared with ``evals/results/INDEX.json``. It runs in backend-slow beside the gates, which stay; like them it
-    gets no ``claude`` and no secret (``evals/reproduce.py`` points any stray call at a path that doesn't exist)."""
-    slow = _jobs()["backend-slow"]
-    at, step = _step(slow, "make eval-reproduce")
+    compared with ``evals/results/INDEX.json``. It runs in a job of its own, beside backend-slow's gates, which
+    stay; like them it gets no ``claude`` and no secret (``evals/reproduce.py`` points any stray call at a path that
+    doesn't exist)."""
+    jobs = _jobs()
+    slow, reproduce = jobs["backend-slow"], jobs["reproduce"]
+    _, step = _step(reproduce, "make eval-reproduce")
     assert step["run"].strip() == "make eval-reproduce" and "env" not in step
-    gates_at, _ = _step(slow, "--split holdout2")
-    assert gates_at < at  # the gates say first what failed, then reproduce says everything that differs
+    assert [name for name, job in jobs.items() if "make eval-reproduce" in _script(job)] == ["reproduce"]
     assert set(_gates(_script(slow))) == set(GATED_SPLITS)  # the gates stay
-    workflow = json.dumps(slow)
+    workflow = json.dumps([slow, reproduce])
     assert "secrets." not in workflow and "ANTHROPIC_API_KEY" not in workflow and "install.sh" not in workflow
     makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
     assert "eval-reproduce" in makefile.split(".PHONY:", 1)[1].splitlines()[0]
