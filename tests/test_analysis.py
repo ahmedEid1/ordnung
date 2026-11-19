@@ -48,6 +48,12 @@ def reanalysis(held_out_runs: list[analysis.Run]) -> dict[str, Any]:
     return analysis.reanalyse(held_out_runs, date="2026-10-29")
 
 
+@pytest.fixture(scope="module")
+def published(held_out_runs: list[analysis.Run]) -> dict[str, Any]:
+    """What docs/evals.md publishes today for the pooled held-out splits (``report.pooled_held_out``), computed once."""
+    return report.pooled_held_out([run.results for run in held_out_runs])
+
+
 # --------------------------------------------------------------------------------------------------
 # The held-out splits as recorded
 # --------------------------------------------------------------------------------------------------
@@ -72,14 +78,13 @@ def test_the_reanalysis_reproduces_the_pooled_held_out_counts(reanalysis: dict[s
 
 
 def test_single_rates_get_exact_intervals_and_keep_the_published_ones(
-    reanalysis: dict[str, Any], held_out_runs: list[analysis.Run]
+    reanalysis: dict[str, Any], published: dict[str, Any]
 ) -> None:
     ordnung = reanalysis["conditions"]["ordnung"]
     assert reanalysis["meta"]["methods"]["single_rate"] == "clopper-pearson"  # one method, stated once
     assert ordnung["exact"]["ci"][0] == pytest.approx(0.9319, abs=5e-5)
     assert ordnung["exact"]["ci"][1] == pytest.approx(0.9903, abs=5e-5)
     # the interval docs/evals.md publishes today (cluster bootstrap, Wilson at 0 or 1) is reproduced beside it
-    published = report.pooled_held_out([run.results for run in held_out_runs])
     for condition in CONDITIONS:
         for ours, theirs in (("exact", "due_date_accuracy"), ("late", "dangerous_late_rate")):
             got = reanalysis["conditions"][condition][ours]["published_ci"]
@@ -131,12 +136,12 @@ def test_a_clear_verdict_needs_the_exact_and_the_clustered_test_after_holm(
 
 
 def test_paired_bootstraps_reproduce_the_published_differences(
-    reanalysis: dict[str, Any], held_out_runs: list[analysis.Run]
+    reanalysis: dict[str, Any], published: dict[str, Any]
 ) -> None:
-    published = report.pooled_held_out([run.results for run in held_out_runs])["comparisons"]
+    comparisons = published["comparisons"]
     for key, ours in reanalysis["paired"]["accuracy"].items():
         assert ours["published_bootstrap"]["ci"] == pytest.approx(
-            published[key]["due_date_accuracy_diff"]["ci"], rel=1e-9
+            comparisons[key]["due_date_accuracy_diff"]["ci"], rel=1e-9
         )
     text = reanalysis["paired"]["accuracy"]["ordnung-vs-llm_rules_text"]["published_bootstrap"]
     assert [round(x * 100, 1) for x in text["ci"]] == [0.6, 10.6]
