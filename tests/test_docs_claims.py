@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ast
 import fnmatch
+import functools
 import hashlib
 import importlib
 import inspect
@@ -76,6 +77,9 @@ from test_api_support import api_for
 ROOT = Path(__file__).resolve().parents[1]
 
 NOW = "2026-09-25T10:00:00Z"
+
+#: The API's OpenAPI schema, built once: the tests here only read it.
+_openapi = functools.cache(openapi_schema)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -1618,7 +1622,7 @@ def _sync_doc(name: str) -> str:
 
 def _sync_operations() -> int:
     """How many operations hand-off sync has (``/api/sync`` and ``/api/sync/…``)."""
-    operations = phone_scope.schema_operations(openapi_schema())
+    operations = phone_scope.schema_operations(_openapi())
     return len({op for op in operations if op[1].split("/")[:3] == ["", "api", "sync"]})
 
 
@@ -3008,7 +3012,7 @@ def test_the_letter_list_and_the_records_copy_are_what_the_docs_say() -> None:
         "tax_choice",  # the person's own "For taxes" choice (SPEC § 4, checked below)
     }
     assert not hasattr(models, "DocumentListEntry") and not hasattr(models, "SearchFoundIn")
-    components = openapi_schema()["components"]["schemas"]
+    components = _openapi()["components"]["schemas"]
     assert "DocumentRow" in components and "DocumentListEntry" not in components
     operation = ("GET", "/api/documents.json")
     assert phone_scope.classify(*operation) == "computer"
@@ -3133,7 +3137,7 @@ async def test_the_adr_s_measurements_are_the_demo_s(tmp_path: Path) -> None:
             api.app.dependency_overrides[sync_routes.get_secrets] = lambda: MemorySecrets()
             listed = await api.client.get("/api/documents")
             whole = await api.client.get("/api/documents.json")
-            for path, operations in openapi_schema()["paths"].items():
+            for path, operations in _openapi()["paths"].items():
                 get = operations.get("get")
                 if get is None or "{" in path or path in {"/api/events", "/api/health"}:
                     continue
@@ -3571,7 +3575,7 @@ def test_the_spec_names_the_route_local_letter_models_and_routes() -> None:
         "picture_text_pages",  # ADR 0024
     }
     assert set(documents.LetterRecord.model_fields) == set(Document.model_fields) | {"tax_choice"}
-    paths = openapi_schema()["paths"]
+    paths = _openapi()["paths"]
 
     def answer(path: str) -> Any:
         return paths[path]["get"]["responses"]["200"]["content"]["application/json"]["schema"]
@@ -3687,8 +3691,6 @@ async def test_a_tax_choice_is_kept_apart_and_followed_as_the_docs_say(data_dir:
     and never touches Claude's mark; the letter's page, its row and the records carry it; the tax-season Idea
     follows it; a letter waiting from the folder can't be marked; ``Ledger.tax_choices`` is lazy and the ZIP's
     selection takes the choices."""
-    import functools
-
     from helpers_secretary import add_doc
 
     assert isinstance(inspect.getattr_static(Ledger, "tax_choices"), functools.cached_property)
