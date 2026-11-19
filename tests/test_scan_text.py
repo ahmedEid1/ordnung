@@ -210,7 +210,9 @@ def test_only_the_store_and_the_text_stage_touch_the_scanner_text() -> None:
         if "scan_text" in source and (name.startswith(NEVER_NAMED_IN) or name in NEVER_NAMED_IN_FILES)
     }
     assert named == set()
-    # the guard sees every way of importing it
+
+
+def test_the_import_guard_sees_every_way_of_importing_it() -> None:
     for source in (
         "import ordnung.db.scan_text",
         "from ordnung.db import scan_text",
