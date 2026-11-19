@@ -20,6 +20,8 @@ from evals.ask import owner
 from evals.records import CONDITIONS
 from scripts import eval_power, owner_label_sample, prereg_calibration, prereg_hashes
 
+from helpers_tables import check_rows
+
 ROOT = Path(__file__).resolve().parents[1]
 SHA = "a" * 40
 COMMENT = "https://github.com/owner/repo/issues/7#issuecomment-123456"
@@ -278,22 +280,36 @@ def _deviation(**changes: Any) -> dict[str, Any]:
     return entry
 
 
-@pytest.mark.parametrize("shape", ["map", "nested", "list"])
-def test_the_table_of_deviation_kinds_is_read_in_each_shape(shape: str) -> None:
-    raw: Any = {
-        "map": TABLE,
-        "nested": {kind: {"consequence": text} for kind, text in TABLE.items()},
-        "list": [{"kind": kind, "consequence": text} for kind, text in TABLE.items()],
-    }[shape]
-    assert prereg_hashes.kinds_table(raw) == TABLE
+TABLE_SHAPES = ["map", "nested", "list"]
 
 
-@pytest.mark.parametrize(
-    "raw", [{"retake": 3}, {"retake": {"consequence": None}}, [{"kind": "retake"}], "retake", None]
-)
-def test_a_table_without_a_text_consequence_is_refused(raw: Any) -> None:
-    with pytest.raises(ValueError):
-        prereg_hashes.kinds_table(raw)
+def test_the_table_of_deviation_kinds_is_read_in_each_shape() -> None:
+    def check(shape: str) -> None:
+        raw: Any = {
+            "map": TABLE,
+            "nested": {kind: {"consequence": text} for kind, text in TABLE.items()},
+            "list": [{"kind": kind, "consequence": text} for kind, text in TABLE.items()],
+        }[shape]
+        assert prereg_hashes.kinds_table(raw) == TABLE
+
+    check_rows(TABLE_SHAPES, check)
+
+
+TABLES_WITHOUT_A_TEXT_CONSEQUENCE = [
+    {"retake": 3},
+    {"retake": {"consequence": None}},
+    [{"kind": "retake"}],
+    "retake",
+    None,
+]
+
+
+def test_a_table_without_a_text_consequence_is_refused() -> None:
+    def check(raw: Any) -> None:
+        with pytest.raises(ValueError):
+            prereg_hashes.kinds_table(raw)
+
+    check_rows(TABLES_WITHOUT_A_TEXT_CONSEQUENCE, check)
 
 
 def test_a_deviation_recorded_at_the_time_is_well_formed() -> None:
@@ -306,32 +322,32 @@ def test_a_deviation_recorded_at_the_time_is_well_formed() -> None:
     assert prereg_hashes.deviation_problems([], TABLE) == []
 
 
-@pytest.mark.parametrize(
-    ("changes", "problem"),
-    [
-        ({"issue_comment_url": None}, "D001: no comment on the pre-registration issue"),
-        (
-            {"issue_comment_url": "file:///tmp/issue.md#D001"},
-            "D001: no comment on the pre-registration issue",
-        ),
-        ({"created_at": None}, "D001: no time it was recorded"),
-        ({"created_at": "yesterday"}, "D001: no time it was recorded"),
-        ({"checkpoint_sha": None}, "D001: no checkpoint commit"),
-        ({"checkpoint_sha": "abc1234"}, "D001: no checkpoint commit"),
-        ({"consequence": "exclude the read"}, "D001: its consequence is not the registered one for retake"),
-        ({"kind": "label_fixed"}, "D001: kind 'label_fixed' is not in the pre-registration's table"),
-        ({"step": ""}, "D001: no step"),
-        ({"evidence": []}, "D001: no evidence"),
-        ({"note": "x"}, "D001: unknown key note"),
-        ({"what": "seen with " + "claude-" + "mini-1"}, "D001: names a model other than claude-sonnet-5"),
-        ({"applies_to": ["holdout4"]}, "D001: applies_to is not an object"),
-    ],
-)
-def test_a_deviation_that_was_not_recorded_at_the_time_is_refused(
-    changes: dict[str, Any], problem: str
-) -> None:
-    found = prereg_hashes.deviation_problems([_deviation(**changes)], TABLE)
-    assert any(line.startswith(problem) for line in found), found
+DEVIATIONS_NOT_RECORDED_AT_THE_TIME = [
+    ({"issue_comment_url": None}, "D001: no comment on the pre-registration issue"),
+    (
+        {"issue_comment_url": "file:///tmp/issue.md#D001"},
+        "D001: no comment on the pre-registration issue",
+    ),
+    ({"created_at": None}, "D001: no time it was recorded"),
+    ({"created_at": "yesterday"}, "D001: no time it was recorded"),
+    ({"checkpoint_sha": None}, "D001: no checkpoint commit"),
+    ({"checkpoint_sha": "abc1234"}, "D001: no checkpoint commit"),
+    ({"consequence": "exclude the read"}, "D001: its consequence is not the registered one for retake"),
+    ({"kind": "label_fixed"}, "D001: kind 'label_fixed' is not in the pre-registration's table"),
+    ({"step": ""}, "D001: no step"),
+    ({"evidence": []}, "D001: no evidence"),
+    ({"note": "x"}, "D001: unknown key note"),
+    ({"what": "seen with " + "claude-" + "mini-1"}, "D001: names a model other than claude-sonnet-5"),
+    ({"applies_to": ["holdout4"]}, "D001: applies_to is not an object"),
+]
+
+
+def test_a_deviation_that_was_not_recorded_at_the_time_is_refused() -> None:
+    def check(changes: dict[str, Any], problem: str) -> None:
+        found = prereg_hashes.deviation_problems([_deviation(**changes)], TABLE)
+        assert any(line.startswith(problem) for line in found), found
+
+    check_rows(DEVIATIONS_NOT_RECORDED_AT_THE_TIME, check)
 
 
 def test_the_deviations_file_is_a_list_of_entries_with_one_id_each() -> None:
@@ -473,23 +489,25 @@ def test_the_command_writes_the_phase2_record_and_checks_the_checkout_against_it
     assert "web/e2e/eval-report.spec.ts: differs" in capsys.readouterr().out
 
 
-@pytest.mark.parametrize(
-    ("path", "pattern", "hit"),
-    [
-        ("src/ordnung/llm/runtime.py", "src/ordnung/**", True),
-        ("src/ordnung/x.py", "src/ordnung/**", True),
-        ("evals/run.py", "evals/*.py", True),
-        ("evals/ask/score.py", "evals/*.py", False),
-        ("evals/recorded/claude-sonnet-5/extract/a.json", "evals/recorded/**", True),
-        ("evals/preregistration/deviations-0.4.0.json", "evals/preregistration/deviations-0.4.0.json", True),
-        ("tests/test_x.py", "tests/**", True),
-        ("README.md", "tests/**", False),
-        ("docs/evals-ask.md", "docs/evals*.md", True),
-        ("docs/assets/eval-cost-dark.svg", "docs/assets/eval-*", True),
-    ],
-)
-def test_a_path_matches_a_pattern_as_a_glob_with_double_star(path: str, pattern: str, hit: bool) -> None:
-    assert prereg_hashes.matches(path, pattern) is hit
+GLOB_MATCHES = [
+    ("src/ordnung/llm/runtime.py", "src/ordnung/**", True),
+    ("src/ordnung/x.py", "src/ordnung/**", True),
+    ("evals/run.py", "evals/*.py", True),
+    ("evals/ask/score.py", "evals/*.py", False),
+    ("evals/recorded/claude-sonnet-5/extract/a.json", "evals/recorded/**", True),
+    ("evals/preregistration/deviations-0.4.0.json", "evals/preregistration/deviations-0.4.0.json", True),
+    ("tests/test_x.py", "tests/**", True),
+    ("README.md", "tests/**", False),
+    ("docs/evals-ask.md", "docs/evals*.md", True),
+    ("docs/assets/eval-cost-dark.svg", "docs/assets/eval-*", True),
+]
+
+
+def test_a_path_matches_a_pattern_as_a_glob_with_double_star() -> None:
+    def check(path: str, pattern: str, hit: bool) -> None:
+        assert prereg_hashes.matches(path, pattern) is hit
+
+    check_rows(GLOB_MATCHES, check)
 
 
 def test_a_path_changed_since_the_freeze_must_be_allowed_and_never_an_identical_one() -> None:
@@ -1283,22 +1301,24 @@ def test_the_label_sample_waits_for_the_final_letters(tmp_path: Path) -> None:
         owner_label_sample.sample(manifest, seed=20261029)
 
 
-@pytest.mark.parametrize(
-    ("pairs", "kappa"),
-    [
-        ([(True, True), (False, False), (True, True), (False, False)], 1.0),
-        ([(True, True), (True, False), (False, True), (False, False)], 0.0),
-        # 50 items: both yes 20, yes/no 5, no/yes 10, both no 15: p_o 0.7, p_e 0.5
-        ([("y", "y")] * 20 + [("y", "n")] * 5 + [("n", "y")] * 10 + [("n", "n")] * 15, 0.4),
-        # three categories: p_o 0.6, p_e 0.42
-        (
-            [("a", "a")] * 4 + [("b", "b")] * 1 + [("c", "c")] * 1 + [("a", "b")] * 2 + [("c", "a")] * 2,
-            0.3103,
-        ),
-    ],
-)
-def test_cohen_s_kappa_on_textbook_tables(pairs: list[tuple[Any, Any]], kappa: float) -> None:
-    assert owner.cohen_kappa(pairs) == pytest.approx(kappa, abs=1e-4)
+KAPPA_TEXTBOOK_TABLES = [
+    ([(True, True), (False, False), (True, True), (False, False)], 1.0),
+    ([(True, True), (True, False), (False, True), (False, False)], 0.0),
+    # 50 items: both yes 20, yes/no 5, no/yes 10, both no 15: p_o 0.7, p_e 0.5
+    ([("y", "y")] * 20 + [("y", "n")] * 5 + [("n", "y")] * 10 + [("n", "n")] * 15, 0.4),
+    # three categories: p_o 0.6, p_e 0.42
+    (
+        [("a", "a")] * 4 + [("b", "b")] * 1 + [("c", "c")] * 1 + [("a", "b")] * 2 + [("c", "a")] * 2,
+        0.3103,
+    ),
+]
+
+
+def test_cohen_s_kappa_on_textbook_tables() -> None:
+    def check(pairs: list[tuple[Any, Any]], kappa: float) -> None:
+        assert owner.cohen_kappa(pairs) == pytest.approx(kappa, abs=1e-4)
+
+    check_rows(KAPPA_TEXTBOOK_TABLES, check)
 
 
 def test_kappa_is_undefined_without_pairs_or_with_one_category() -> None:
