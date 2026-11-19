@@ -45,8 +45,12 @@ def test_the_watched_tables_are_what_the_fingerprint_reads_and_cases() -> None:
 
 def test_ledger_token_stays_while_nothing_changes(store: Store) -> None:
     seed_ledger(store)
+    conn = store._conn()
+    token, changes = store.change_token(), conn.total_changes
     first = store.ledger_token()
     assert first is not None
+    assert store.change_token() == token  # the first read is not a write
+    assert conn.total_changes == changes
     store.list_documents()
     store.get_profile()
     assert store.ledger_token() == first == store.ledger_token()
@@ -73,6 +77,7 @@ def _write_cases() -> dict[str, Callable[[Store, dict[str, str]], object]]:
         return store.merge_parties(ids["beitrag"], ids["fake_beitrag"])
 
     return {
+        "add a letter": lambda s, ids: add_doc(s, "new-letter", title="A new letter"),
         "update_document warning": lambda s, ids: s.update_document(
             ids["doc_invoice"], warnings=["Check the IBAN"]
         ),
@@ -228,15 +233,6 @@ def test_ledger_token_leaves_the_database_file_alone(paths: Paths, tmp_path: Pat
     assert canonical_dump(paths.db) == dump
 
 
-def test_ledger_token_first_read_is_not_a_write(store: Store) -> None:
-    seed_ledger(store)
-    conn = store._conn()
-    token, changes = store.change_token(), conn.total_changes
-    assert store.ledger_token() is not None
-    assert store.change_token() == token
-    assert conn.total_changes == changes
-
-
 def test_ledger_token_of_a_read_only_store(paths: Paths) -> None:
     with Store.open(paths) as writer:
         ids = seed_ledger(writer)
@@ -245,10 +241,3 @@ def test_ledger_token_of_a_read_only_store(paths: Paths) -> None:
             assert before is not None and reader.ledger_token() == before
             writer.update_item(ids["dunning_payment"], status="done")
             assert reader.ledger_token() != before
-
-
-def test_a_new_letter_moves_the_token(store: Store) -> None:
-    seed_ledger(store)
-    before = store.ledger_token()
-    add_doc(store, "new-letter", title="A new letter")
-    assert store.ledger_token() != before
