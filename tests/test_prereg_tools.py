@@ -11,6 +11,7 @@ import hashlib
 import json
 import shutil
 import subprocess
+import tempfile
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -786,18 +787,26 @@ def _spoiled(root: Path, registered: dict[str, Any], spoil: str) -> Any:
     return deviations
 
 
-@pytest.mark.parametrize("spoil", SPOILS)
-def test_nothing_else_excuses_a_path(fixed: tuple[Path, dict[str, Any], str], spoil: str) -> None:
+def test_nothing_else_excuses_a_path(
+    fixed_template: tuple[Path, dict[str, Any], str], tmp_path: Path
+) -> None:
     """Only a ``runner-fix`` code_hash_changed deviation recorded at the time excuses a path: well formed with its
     whole file (ids, keys, an applies_to the analysis reads), a comment on the issue the first checkpoint names, a
     checkpoint commit of HEAD's history that holds it as it is and was made after it was written; and only by the
     exact line ``<path> sha256 <the sha256 of the file the checkout and HEAD hold>``."""
-    root, registered, freeze = fixed
-    deviations = _spoiled(root, registered, spoil)
-    assert TARGET not in prereg_hashes.excused_paths(deviations, TABLE, root, freeze=freeze)
-    found = _flagged(root, registered, freeze, deviations)
-    assert f"{TARGET}: differs from the code map (sha256)" in found
-    assert f"{TARGET}: not in any list of paths allowed to change after the freeze" in found
+
+    def check(spoil: str) -> None:
+        # each row spoils its own copy of the repository, as each case had its own ``fixed``
+        root, registered, freeze = _fixed_copy(
+            fixed_template, Path(tempfile.mkdtemp(dir=tmp_path)) / "checkout"
+        )
+        deviations = _spoiled(root, registered, spoil)
+        assert TARGET not in prereg_hashes.excused_paths(deviations, TABLE, root, freeze=freeze)
+        found = _flagged(root, registered, freeze, deviations)
+        assert f"{TARGET}: differs from the code map (sha256)" in found
+        assert f"{TARGET}: not in any list of paths allowed to change after the freeze" in found
+
+    check_rows(SPOILS, check)
 
 
 def test_no_deviation_excuses_a_code_digest_or_fingerprint_input_or_the_sentence_code(
@@ -854,21 +863,22 @@ def test_the_issue_is_the_one_the_first_checkpoint_names(fixed: tuple[Path, dict
     assert prereg_hashes.bound_issue(root, freeze) == ISSUE
 
 
-@pytest.mark.parametrize(
-    "message",
-    [
-        "Final run checkpoint: phase2 (0 calls, $0.00)",
-        f"Final run checkpoint: phase2\n\nPre-registration issue: {ISSUE}\nAlso: https://github.com/owner/repo/issues/8\n",
-    ],
-)
-def test_without_one_issue_named_by_the_first_checkpoint_nothing_is_excused(
-    tmp_path: Path, message: str
-) -> None:
-    root, registered, freeze = _fixed_repo(tmp_path / "checkout", message)
-    assert prereg_hashes.bound_issue(root, freeze) is None
-    deviations = _checkpoint(root, _runner_fix(root, *RUNNER_FIX))
-    assert prereg_hashes.excused_paths(deviations, TABLE, root, freeze=freeze) == set()
-    assert len(_flagged(root, registered, freeze, deviations)) == 2 * len(RUNNER_FIX)
+MESSAGES_WITHOUT_ONE_ISSUE = [
+    "Final run checkpoint: phase2 (0 calls, $0.00)",
+    f"Final run checkpoint: phase2\n\nPre-registration issue: {ISSUE}\nAlso: https://github.com/owner/repo/issues/8\n",
+]
+
+
+def test_without_one_issue_named_by_the_first_checkpoint_nothing_is_excused(tmp_path: Path) -> None:
+    def check(message: str) -> None:
+        # each row its own repository: the first checkpoint's message differs
+        root, registered, freeze = _fixed_repo(Path(tempfile.mkdtemp(dir=tmp_path)) / "checkout", message)
+        assert prereg_hashes.bound_issue(root, freeze) is None
+        deviations = _checkpoint(root, _runner_fix(root, *RUNNER_FIX))
+        assert prereg_hashes.excused_paths(deviations, TABLE, root, freeze=freeze) == set()
+        assert len(_flagged(root, registered, freeze, deviations)) == 2 * len(RUNNER_FIX)
+
+    check_rows(MESSAGES_WITHOUT_ONE_ISSUE, check)
 
 
 def test_a_path_named_but_not_in_the_checkout_is_not_excused(fixed: tuple[Path, dict[str, Any], str]) -> None:
