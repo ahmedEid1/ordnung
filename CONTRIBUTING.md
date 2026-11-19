@@ -56,7 +56,7 @@ tests near your change, and the fast suite in parallel processes before you push
 .venv/bin/pytest tests/test_rules_deadlines.py -k weekend     # one file, only the tests whose names match
 cd web && npx vitest run src/features/today                   # one folder or file of the web app's tests (-t "<name>")
 cd web && npx playwright test e2e/letter-layout.spec.ts       # one end-to-end spec (-g "<title>" for one test)
-.venv/bin/pytest -m "not slow" -n auto --dist loadfile         # the fast suite, a file to each process, one per core (11 minutes in two processes on a busy 4-core computer)
+.venv/bin/pytest -m "not slow" -n auto --dist loadfile         # the fast suite, a file to each process, one per core (about 10 to 11 minutes in two processes on a busy 4-core computer, measured in two halves)
 ```
 
 An end-to-end spec runs against the built web app in `src/ordnung/web/dist`, so after changing `web/` run

@@ -142,10 +142,11 @@ def test_the_end_to_end_groups_start_at_once_and_together_run_every_project() ->
     matches its sources: it uses nothing another job makes, so it waits for none (waiting for the frontend job put 8
     minutes before a 39-minute Playwright run, 18 Nov 2026; a stale build fails the leg's own check, and the
     frontend job's build proves the sources still build). Playwright drives the committed build, the one the wheel
-    ships, never one the leg builds. Its legs are the groups of
-    web/e2e/env.ts, each once: a group left out here would never run in CI. Only the layout group, the longest,
-    runs as two halves (Playwright's ``--shard``), and the two halves together are the whole group: every other
-    group has one leg that runs all of it. The checks that need both toolchains run on one leg, not on each."""
+    ships, never one the leg builds. Chromium comes as its headless shell, with no system packages (an apt mirror
+    once hung the install and failed a run), cached under a key of its own. Its legs are the groups of
+    web/e2e/env.ts, each once: a group left out here would never run in CI. Only the layout group, the longest, runs
+    as two halves (Playwright's ``--shard``), and the two halves together are the whole group: every other group has
+    one leg that runs all of it. The checks that need both toolchains run on one leg, not on each."""
     jobs = _jobs()
     e2e = jobs["e2e"]
     assert "needs" not in e2e and "download-artifact" not in json.dumps(e2e)
@@ -176,6 +177,10 @@ def test_the_end_to_end_groups_start_at_once_and_together_run_every_project() ->
     assert fresh["run"].endswith(" ../src/ordnung/web/dist/build-info.json")
     assert "npm run build" not in _script(e2e) and "npm run build" in _script(jobs["frontend"])
     assert fresh_at < _step(e2e, "npm run e2e")[0]
+    _, browser = _step(e2e, "npx playwright install")
+    assert browser["run"] == "cd web && npx playwright install --only-shell chromium"
+    (cache,) = [step for step in e2e["steps"] if "ms-playwright" in step.get("with", {}).get("path", "")]
+    assert cache["with"]["key"].startswith("playwright-shell-")
 
 
 def test_only_a_pull_request_s_older_run_is_cancelled() -> None:
@@ -201,9 +206,9 @@ def test_only_a_pull_request_s_older_run_is_cancelled() -> None:
 
 def test_a_failure_on_macos_or_windows_fails_the_run() -> None:
     """The release gate counts a run as passed when its macOS or Windows job failed while that job may fail. It
-    is required now, on every pull request as well; only the weekly check of Claude Code's flags, which installs whatever Anthropic released
-    last, still shows a failure without failing the run. The guide says so, and neither it nor README says
-    otherwise."""
+    is required now, on every pull request as well; only the weekly check of Claude Code's flags, which installs
+    whatever Anthropic released last, still shows a failure without failing the run. The guide says so, and neither
+    it nor README says otherwise."""
     jobs = _jobs()
     assert "continue-on-error" not in jobs["other-systems"]
     assert [name for name, job in jobs.items() if "continue-on-error" in job] == ["claude-code"]
@@ -582,6 +587,7 @@ def test_make_eval_reproduce_replays_every_published_number_in_a_job_of_its_own(
     doesn't exist)."""
     jobs = _jobs()
     slow, reproduce = jobs["backend-slow"], jobs["reproduce"]
+    assert reproduce["if"] == "github.event_name != 'schedule'"  # on pull requests and main, not weekly
     _, step = _step(reproduce, "make eval-reproduce")
     assert step["run"].strip() == "make eval-reproduce" and "env" not in step
     assert [name for name, job in jobs.items() if "make eval-reproduce" in _script(job)] == ["reproduce"]
