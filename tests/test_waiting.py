@@ -12,6 +12,7 @@ import pytest
 import helpers_proof
 from helpers_docs import photo
 from helpers_proof import DRAFT_ANSWER, SENT, TODAY, TRACKING, TRACKING_SHOWN, Gym, incoming, money_in
+from helpers_tables import check_rows
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.drafts import sent
@@ -386,26 +387,29 @@ def test_notes_without_a_dated_promise_are_only_notes(ctx: AppContext, gym: Gym)
     ]
 
 
-@pytest.mark.parametrize(
-    ("fields", "message"),
-    [
-        ({}, "Choose who you spoke to"),
-        ({"party_id": "pty_missing"}, "isn't in Ordnung"),
-        ({"case_id": "cas_missing"}, "thread isn't in Ordnung"),
-        ({"party": True, "called_on": "2026-10-01"}, "future"),
-        ({"party": True, "called_on": "someday"}, "not a date"),
-        ({"party": True, "summary": "   "}, "what was said"),
-        ({"party": True, "promise_due": "2026-10-01"}, "what they promised"),
-        ({"party": True, "promise_amount": 20.0}, "what they promised"),
-        ({"party": True, "promise": "Call back", "promise_due": "2026-09-01"}, "before the call"),
-    ],
-)
-def test_call_note_refusals(ctx: AppContext, gym: Gym, fields: dict[str, object], message: str) -> None:
-    args: dict[str, object] = {"called_on": "2026-09-20", "summary": "Called them"}
-    if fields.pop("party", False):
-        args["party_id"] = gym.party
-    with pytest.raises(calls.CallNoteError, match=message):
-        calls.add_call_note(ctx.store, today=TODAY, **(args | fields))  # type: ignore[arg-type]
+CALL_NOTE_REFUSALS = [
+    ({}, "Choose who you spoke to"),
+    ({"party_id": "pty_missing"}, "isn't in Ordnung"),
+    ({"case_id": "cas_missing"}, "thread isn't in Ordnung"),
+    ({"party": True, "called_on": "2026-10-01"}, "future"),
+    ({"party": True, "called_on": "someday"}, "not a date"),
+    ({"party": True, "summary": "   "}, "what was said"),
+    ({"party": True, "promise_due": "2026-10-01"}, "what they promised"),
+    ({"party": True, "promise_amount": 20.0}, "what they promised"),
+    ({"party": True, "promise": "Call back", "promise_due": "2026-09-01"}, "before the call"),
+]
+
+
+def test_call_note_refusals(ctx: AppContext, gym: Gym) -> None:
+    def check(fields: dict[str, object], message: str) -> None:
+        args: dict[str, object] = {"called_on": "2026-09-20", "summary": "Called them"}
+        fields = dict(fields)  # the row stays as written for the next run
+        if fields.pop("party", False):
+            args["party_id"] = gym.party
+        with pytest.raises(calls.CallNoteError, match=message):
+            calls.add_call_note(ctx.store, today=TODAY, **(args | fields))  # type: ignore[arg-type]
+
+    check_rows(CALL_NOTE_REFUSALS, check)
 
 
 def test_keeping_needs_a_promise(ctx: AppContext, gym: Gym) -> None:
