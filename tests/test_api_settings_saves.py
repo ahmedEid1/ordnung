@@ -9,13 +9,29 @@ from pathlib import Path
 
 import pytest
 
+from ordnung.api.routes import profile
 from ordnung.api.routes.profile import SettingsPatch, _merge_settings
 from ordnung.app_context import AppContext
 from ordnung.models import AppSettings
 from test_api_support import api_for
 
-#: How long the first save holds on while the second one could run (it can't once saves take turns).
+#: How long the first save holds on at most while the second one could run (it can't once saves take turns).
 HOLD_S = 1.0
+
+
+class TellsWhenWaiting:
+    """The save lock, setting ``waiting`` when a save finds it taken and has to wait its turn."""
+
+    def __init__(self, lock: threading.Lock, waiting: threading.Event) -> None:
+        self.lock, self.waiting = lock, waiting
+
+    def __enter__(self) -> None:
+        if not self.lock.acquire(blocking=False):
+            self.waiting.set()
+            self.lock.acquire()
+
+    def __exit__(self, *_exc: object) -> None:
+        self.lock.release()
 
 
 def save_together(
@@ -27,18 +43,18 @@ def save_together(
     hold_after_write: bool,
 ) -> None:
     """Save ``first`` and, while it holds at one read of the settings (its re-read after writing, or its read
-    before), ``second``. The first save goes on once the second is done, or after :data:`HOLD_S` when the second
-    waits its turn."""
+    before), ``second``. The first save goes on once the second is done or is waiting its turn at the save lock,
+    or after :data:`HOLD_S`."""
     store = ctx.store
     read, write = store.get_settings, store.save_settings
     first_thread: list[int] = []
-    wrote, held, second_done = threading.Event(), threading.Event(), threading.Event()
+    wrote, held, go_on = threading.Event(), threading.Event(), threading.Event()
 
     def get_settings() -> AppSettings:
         settings = read()
         if threading.get_ident() in first_thread and not held.is_set() and wrote.is_set() is hold_after_write:
             held.set()
-            second_done.wait(HOLD_S)
+            go_on.wait(HOLD_S)
         return settings
 
     def save_settings(settings: AppSettings) -> AppSettings:
@@ -54,8 +70,9 @@ def save_together(
         try:
             _merge_settings(ctx, second)
         finally:
-            second_done.set()
+            go_on.set()
 
+    monkeypatch.setattr(profile, "_SETTINGS_SAVE", TellsWhenWaiting(profile._SETTINGS_SAVE, go_on))
     monkeypatch.setattr(store, "get_settings", get_settings)
     monkeypatch.setattr(store, "save_settings", save_settings)
     one = threading.Thread(target=first_save)
