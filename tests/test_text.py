@@ -679,9 +679,6 @@ def test_text_drawn_invisibly_is_hidden_text_not_the_page_text(tmp_path: Path) -
     assert "DE02" not in page.text and all(word.text != "DE02" for word in page.words)
     assert INVISIBLE_IBAN in page.hidden_text
     assert result.scan_text == {}
-    (tmp_path / "plain").mkdir()
-    _, plain = _read(tmp_path / "plain", scanned_pdf())
-    assert plain.scan_text == {} and plain.pages[0].text == ""
 
 
 def _read(tmp_path: Path, data: bytes) -> tuple[list[RenderedPage], text_module.PdfText]:
@@ -698,7 +695,8 @@ def test_a_scans_ocr_layer_is_kept_apart_as_search_only_text(tmp_path: Path) -> 
 
     The scanner's own reading of the picture is no longer thrown away: it comes back apart from the
     page text (``scan_text``, for search only, ADR 0020) — the page itself is exactly as before, still
-    read from its picture, and :func:`extract_pdf_pages` gives exactly what it gave."""
+    read from its picture, and :func:`extract_pdf_pages` gives exactly what it gave. A scan without an
+    OCR layer gives no scanner text."""
     rendered, result = _read(tmp_path, scanned_pdf(ocr=True))
     [page] = result.pages
     assert (page.text, page.words, page.hidden_text, page.has_text_layer) == ("", [], "", False)
@@ -706,6 +704,9 @@ def test_a_scans_ocr_layer_is_kept_apart_as_search_only_text(tmp_path: Path) -> 
     assert set(result.scan_text) == {1}
     assert "Einkommensteuer" in result.scan_text[1] and "15.09.2026" in result.scan_text[1]
     assert extract_pdf_pages(tmp_path / "doc.pdf", rendered) == result.pages
+    (tmp_path / "plain").mkdir()
+    _, plain = _read(tmp_path / "plain", scanned_pdf())
+    assert plain.scan_text == {} and plain.pages[0].text == ""
 
 
 def test_scan_text_is_capped(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
