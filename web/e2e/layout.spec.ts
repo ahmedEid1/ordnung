@@ -223,12 +223,11 @@ async function withToastOn(page: Page, path: string, h1: string | RegExp): Promi
 
 // while a toast (or an upload card) was up, Tab moved focus to
 // controls hidden behind it — the page's scroll-padding left the toast column out; it mirrors
-// `.room-for-overlays` now (phones: the taller of the tour bar and the toasts; from md: the toast column)
+// `.room-for-overlays` now (phones: the taller of the tour bar and the toasts; from md: the toast column).
+// One width for each of the two rules, the tighter case of each (390 and 1280 px follow the same rules)
 for (const [width, height, phone] of [
   [320, 640, true],
-  [390, 844, true],
   [768, 1024, false],
-  [1280, 800, false],
 ] as const) {
   test.describe(`${width} px: focus stays clear of a toast`, () => {
     test.use({ viewport: { width, height }, isMobile: phone, hasTouch: phone });
