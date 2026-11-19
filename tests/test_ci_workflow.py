@@ -138,9 +138,11 @@ def _e2e_groups() -> list[str]:
 
 
 def test_the_end_to_end_groups_start_at_once_and_together_run_every_project() -> None:
-    """Each end-to-end leg installs its own Python, Node and Chromium and builds the web app itself: it uses
-    nothing another job makes, so it waits for none (waiting for the frontend job put 8 minutes before a 39-minute
-    Playwright run, 18 Nov 2026; a broken build still fails the leg's own build step). Its legs are the groups of
+    """Each end-to-end leg installs its own Python, Node and Chromium and checks that the committed web build
+    matches its sources: it uses nothing another job makes, so it waits for none (waiting for the frontend job put 8
+    minutes before a 39-minute Playwright run, 18 Nov 2026; a stale build fails the leg's own check, and the
+    frontend job's build proves the sources still build). Playwright drives the committed build, the one the wheel
+    ships, never one the leg builds. Its legs are the groups of
     web/e2e/env.ts, each once: a group left out here would never run in CI. Only the layout group, the longest,
     runs as two halves (Playwright's ``--shard``), and the two halves together are the whole group: every other
     group has one leg that runs all of it. The checks that need both toolchains run on one leg, not on each."""
@@ -170,6 +172,10 @@ def test_the_end_to_end_groups_start_at_once_and_together_run_every_project() ->
     assert upload["with"]["name"] == "playwright-report-${{ matrix.group }}-${{ matrix.shard }}"
     (checks,) = [step for step in e2e["steps"] if "ORDNUNG_REQUIRE_MOCK_CHECK" in step.get("env", {})]
     assert checks["if"] == "matrix.group == 'real'"
+    fresh_at, fresh = _step(e2e, "cd web && node scripts/source-hash.mjs --check")
+    assert fresh["run"].endswith(" ../src/ordnung/web/dist/build-info.json")
+    assert "npm run build" not in _script(e2e) and "npm run build" in _script(jobs["frontend"])
+    assert fresh_at < _step(e2e, "npm run e2e")[0]
 
 
 def test_only_a_pull_request_s_older_run_is_cancelled() -> None:

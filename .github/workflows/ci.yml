@@ -473,7 +473,10 @@ jobs:
 
   e2e:
     name: End-to-end (${{ matrix.group }}${{ matrix.group == 'layout' && format(' {0}/2', matrix.shard) || '' }})
-    # each leg installs its own Python, Node and Chromium and builds the UI itself: it waits for no other job.
+    # each leg installs its own Python, Node and Chromium and checks that the committed web build matches its
+    # sources (Playwright drives the build the wheel ships; the frontend job proves the sources still build): it
+    # waits for no other job. Chromium is its headless shell alone, without apt: the system packages
+    # --with-deps added are fonts, and one apt mirror hung a leg for 4 minutes (19 Nov 2026).
     # The groups of Playwright's projects (E2E_GROUPS in web/e2e/env.ts) run side by side, each on fresh servers
     # of its own. One run of them all took 39 minutes (18 Nov 2026), and the layout guards as one leg 23. So the
     # layout group runs in two halves (Playwright's --shard, which keeps whole files and their order), each on a
@@ -510,13 +513,13 @@ jobs:
           uv pip install -e ".[dev]" -c constraints.txt
           cd web && npm ci
           echo "playwright=$(node -p 'require("@playwright/test/package.json").version')" >> "$GITHUB_OUTPUT"
-      - name: Cache Playwright's Chromium (one per Playwright version)
+      - name: Cache Playwright's Chromium headless shell (one per Playwright version)
         uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-chromium-${{ runner.os }}-${{ steps.install.outputs.playwright }}
-      - name: Playwright's Chromium (downloaded unless the cache had it) and the system packages it needs
-        run: cd web && npx playwright install --with-deps chromium
+          key: playwright-shell-${{ runner.os }}-${{ steps.install.outputs.playwright }}
+      - name: Playwright's Chromium headless shell (downloaded unless the cache had it; no system packages)
+        run: cd web && npx playwright install --only-shell chromium
       - name: Checks that need both toolchains (node + web/node_modules and the Python package)
         # the static demo's My numbers and weekly session match the Python code; the README's Vitest and
         # Playwright counts hold; a web build ships the licences of what it bundles. Only this job has both,
@@ -528,8 +531,8 @@ jobs:
           .venv/bin/pytest -q tests/test_mock_numbers.py
           tests/test_docs_claims.py::test_readme_vitest_and_playwright_counts_hold
           tests/test_repo_hygiene.py::test_a_web_build_ships_the_licence_of_every_package_it_bundles
-      - name: Build UI
-        run: cd web && npm run build
+      - name: Committed web build is up to date (Playwright drives it as it ships)
+        run: cd web && node scripts/source-hash.mjs --check ../src/ordnung/web/dist/build-info.json
       - name: Install Tesseract with German (the real app reads a private photo's words, ADR 0024)
         if: matrix.group == 'real'
         run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends tesseract-ocr tesseract-ocr-deu
