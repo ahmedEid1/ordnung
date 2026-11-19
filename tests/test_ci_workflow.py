@@ -19,6 +19,7 @@ from typing import Any
 
 import pytest
 
+from helpers_tables import check_rows
 from ordnung.doctor import native_install, tesseract_install
 from ordnung.llm.claude_cli import MIN_CLAUDE_VERSION, version_text
 from test_docs_claims import WITHOUT_LAND
@@ -328,33 +329,33 @@ def _can_run(args: list[str], test_file: str) -> bool:
     return not paths or any(path in (".", "", "tests") or fnmatch(test_file, path) for path in paths)
 
 
-@pytest.mark.parametrize(
-    ("command", "runs_it"),
-    [
-        ('-m "not slow" --cov=ordnung --cov-report=term-missing:skip-covered', True),
-        ("-m slow", True),
-        ('-m "not slow" --deselect tests/test_openapi_contract.py::test_web_openapi_json_is_current', True),
-        ("-q tests", True),
-        ("tests/test_pre*.py", True),
-        ("tests/test_preregistration.py::test_every_required_field_is_there", True),
-        ("tests/test_rules_*.py --cov=ordnung.rules --cov-branch", False),
-        ("-q tests/test_mock_numbers.py tests/test_docs_claims.py::test_x", False),
-        ('-m "not slow" --ignore=tests/test_preregistration.py', False),
-        # an option's value is no test path, whether or not the option is known to take one
-        ('-m "not slow" --durations 20', True),
-        ("-n 4 -q", True),
-        ('-m "not slow" -n auto --dist loadfile', True),
-        ("-W error -m slow", True),
-        ("-m slow --junitxml reports/junit.xml", True),
-        ("-o addopts= -q", True),
-        ("--durations 20 tests/test_rules_dates.py", False),
-        ('-m "not slow" tests/test_platform_smoke.py tests/test_cli.py::test_x tests/test_sync_*.py', False),
-    ],
-)
-def test_a_pytest_run_is_read_as_running_the_pre_registration_s_tests_or_not(
-    command: str, runs_it: bool
-) -> None:
-    assert _can_run(shlex.split(command), PREREGISTRATION_TESTS) is runs_it
+PYTEST_RUNS = [
+    ('-m "not slow" --cov=ordnung --cov-report=term-missing:skip-covered', True),
+    ("-m slow", True),
+    ('-m "not slow" --deselect tests/test_openapi_contract.py::test_web_openapi_json_is_current', True),
+    ("-q tests", True),
+    ("tests/test_pre*.py", True),
+    ("tests/test_preregistration.py::test_every_required_field_is_there", True),
+    ("tests/test_rules_*.py --cov=ordnung.rules --cov-branch", False),
+    ("-q tests/test_mock_numbers.py tests/test_docs_claims.py::test_x", False),
+    ('-m "not slow" --ignore=tests/test_preregistration.py', False),
+    # an option's value is no test path, whether or not the option is known to take one
+    ('-m "not slow" --durations 20', True),
+    ("-n 4 -q", True),
+    ('-m "not slow" -n auto --dist loadfile', True),
+    ("-W error -m slow", True),
+    ("-m slow --junitxml reports/junit.xml", True),
+    ("-o addopts= -q", True),
+    ("--durations 20 tests/test_rules_dates.py", False),
+    ('-m "not slow" tests/test_platform_smoke.py tests/test_cli.py::test_x tests/test_sync_*.py', False),
+]
+
+
+def test_a_pytest_run_is_read_as_running_the_pre_registration_s_tests_or_not() -> None:
+    def check(command: str, runs_it: bool) -> None:
+        assert _can_run(shlex.split(command), PREREGISTRATION_TESTS) is runs_it
+
+    check_rows(PYTEST_RUNS, check)
 
 
 def test_a_make_target_s_pytest_runs_are_read_as_the_job_s() -> None:
@@ -459,32 +460,24 @@ def _newest_ask() -> Path:
     return latest
 
 
-def test_the_ask_benchmark_gates_the_household_group_at_its_recorded_number() -> None:
+def test_the_ask_benchmark_gates_each_score_at_its_recorded_number() -> None:
     """The Ask benchmark's household group (whose a number is) is gated at the share its newest recording
     measured, as each reading split is: a change that loses one of its answers fails the build. The headline
-    thresholds hold for that recording too (its notes say why each is where it is)."""
+    thresholds hold for that recording too (its notes say why each is where it is). The strict scores of the newest
+    Ask file (schema 2, the re-scoring of E2's recording) are gated at the values it measured too: one more strictly
+    wrong answer, or one more harmful answer (a date still open called passed, a later date or a wrong amount given
+    as Ordnung's), fails the build. Never a gate the published numbers fail."""
     args = shlex.split(_ask_line().split("-m evals.ask", 1)[1])
     option = {name: args[args.index(name) + 1] for name in args if name.startswith(("--min-", "--max-"))}
     latest = _newest_ask()
-    summary = json.loads(latest.read_text(encoding="utf-8"))["summary"]
+    data = json.loads(latest.read_text(encoding="utf-8"))
+    summary = data["summary"]
     right, asked = summary["household"]["attribution"]["k"], summary["household"]["attribution"]["n"]
     assert (right - 1) / asked < float(option["--min-household"]) <= right / asked
     assert float(option["--min-accuracy"]) <= summary["accuracy"]["value"]
     assert float(option["--min-abstention"]) <= summary["abstention"]["value"]
     assert int(option["--max-unsupported"]) == 0 == summary["guard"]["unsupported_in_final"]
-
-
-def test_the_ask_benchmark_gates_strict_correctness_and_harm_at_their_recorded_numbers() -> None:
-    """The strict scores of the newest Ask file (schema 2, the re-scoring of E2's recording) are gated at the values
-    it measured, as the household group is: one more strictly wrong answer, or one more harmful answer (a date still
-    open called passed, a later date or a wrong amount given as Ordnung's), fails the build. Never a gate the
-    published numbers fail."""
-    args = shlex.split(_ask_line().split("-m evals.ask", 1)[1])
-    option = {name: args[args.index(name) + 1] for name in args if name.startswith(("--min-", "--max-"))}
-    latest = _newest_ask()
-    data = json.loads(latest.read_text(encoding="utf-8"))
     assert data["schema"] == 2
-    summary = data["summary"]
     right, asked = summary["strict_accuracy"]["k"], summary["strict_accuracy"]["n"]
     assert (right - 1) / asked < float(option["--min-strict-accuracy"]) <= right / asked
     assert int(option["--max-harmful"]) == len(summary["harmful_answers"]) == summary["harmful"]["k"]
