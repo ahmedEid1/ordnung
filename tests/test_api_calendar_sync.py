@@ -9,12 +9,12 @@ takes Ordnung's events and the app password out of the calendar and the keyring 
 
 from __future__ import annotations
 
-import asyncio
 import json
 import threading
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 
 import httpx
 import pytest
@@ -327,7 +327,9 @@ async def test_delete_everything_takes_ordnungs_events_and_password_out_of_the_c
         assert again.status_code == 200 and again.json()["calendar_events_removed"] is None
 
 
-async def test_a_sync_running_while_everything_is_deleted_cant_write_its_record_back(data_dir: Path) -> None:
+async def test_a_sync_running_while_everything_is_deleted_cant_write_its_record_back(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     server, secrets = FakeCalDav(), MemorySecrets()
     async with calendar_api(data_dir, server, secrets) as api:
         store = api.ctx.store
@@ -344,9 +346,26 @@ async def test_a_sync_running_while_everything_is_deleted_cant_write_its_record_
         syncing = threading.Thread(target=slow_sync)
         syncing.start()
         assert started.wait(10)
+        # the wipe takes calendar sync's own lock; this tells when it finds the lock held and waits
+        blocked = threading.Event()
+        exclusive = caldav.exclusive
+
+        class TellsWhenBlocked:
+            def __init__(self) -> None:
+                self.lock: Any = exclusive()
+
+            def __enter__(self) -> None:
+                if not self.lock.acquire(blocking=False):
+                    blocked.set()
+                    self.lock.acquire()
+
+            def __exit__(self, *exc: object) -> None:
+                self.lock.release()
+
+        monkeypatch.setattr(caldav, "exclusive", TellsWhenBlocked)
         wiping = threading.Thread(target=wipe_data_dir, args=(api.ctx, secrets, server.transport()))
         wiping.start()
-        await asyncio.sleep(0.3)
+        assert blocked.wait(10)
         assert wiping.is_alive()  # it waits for the sync
         release.set()
         syncing.join(10)
