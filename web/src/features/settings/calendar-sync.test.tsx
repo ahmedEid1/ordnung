@@ -202,6 +202,33 @@ describe("calendar sync card", () => {
     await waitFor(() => expect(within(connected).getByText(/^Connected to Ordnung$/).closest("p")).toHaveFocus());
   });
 
+  it.each([
+    ["the events' wording", (card: HTMLElement) => within(card).getByRole("radio", { name: "With details" })],
+    ["the address", (card: HTMLElement) => within(card).getByLabelText("Calendar or server address")],
+  ])("leaves focus on %s when the person went there while the calendars were looked for", async (_, elsewhere) => {
+    const { srv } = useMockApi();
+    const handle = srv.handle.bind(srv);
+    let release: () => void = () => {};
+    srv.handle = (method, path, query, body, signal) =>
+      method === "POST" && path === "/calendar/sync/discover"
+        ? new Promise((resolve) => (release = () => resolve(handle(method, path, query, body, signal))))
+        : handle(method, path, query, body, signal);
+    const user = userEvent.setup();
+    const card = await openCard();
+    await user.type(within(card).getByLabelText("Calendar or server address"), NEXTCLOUD);
+    await user.type(within(card).getByLabelText("User name"), "sam");
+    await user.type(within(card).getByLabelText("App password"), "abcd-efgh-ijkl-mnop");
+    await user.click(within(card).getByRole("button", { name: "Find my calendars" }));
+    await user.click(elsewhere(card));
+    await act(async () => release());
+    const choices = await within(card).findByRole("group", { name: "Which calendar should Ordnung write into?" });
+    await act(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    expect(elsewhere(card)).toHaveFocus();
+    // the keys go on doing what they did there: the chosen calendar stays the one Ordnung picked
+    await user.keyboard("{ArrowLeft}");
+    expect(within(choices).getByRole("radio", { name: /^Ordnung/ })).toBeChecked();
+  });
+
   it("shows the form's own error next to the button, and moves focus to it", async () => {
     const { srv } = useMockApi();
     const handle = srv.handle.bind(srv);

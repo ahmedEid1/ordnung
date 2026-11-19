@@ -14,7 +14,7 @@ import { toast } from "@/components/ui/Toast";
 import { daysUntil, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { collapseOut, fadeUp } from "./motion";
-import { focusAfterLeaving, focusWhenReady } from "@/lib/focus";
+import { focusAfterLeaving, focusOrigin, focusWhenReady } from "@/lib/focus";
 import { ideaActionLabel, ideaHref, payActionFor } from "./helpers";
 import { ReadMore } from "./ReadMore";
 import { ideaFigure, isFreshIdea, type TodayAction } from "./selection";
@@ -219,7 +219,7 @@ export function IdeasSection({
     if (!expanded) {
       // on to the first new Idea (its heading), once it is there
       const first = more[0]?.id;
-      if (first) focusWhenReady(() => document.getElementById(headingId(first)), 1000, { always: true });
+      if (first) focusWhenReady(() => document.getElementById(headingId(first)), 1000, { from: focusOrigin() });
       setSaid(`${ideasCount(more.length, "more ")} shown`);
     } else {
       // the button keeps focus; once the extra cards have left, it is brought back into view

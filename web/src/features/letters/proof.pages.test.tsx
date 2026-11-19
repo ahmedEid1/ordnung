@@ -283,3 +283,28 @@ describe("the proof card", () => {
     expect(box.querySelector("svg.lucide-hourglass")).toBeNull();
   });
 });
+
+describe("the Waiting-for box", () => {
+  it("leaves focus where the person went on to type while “close this” was saved", async () => {
+    const { srv } = useMockApi();
+    const handle = srv.handle.bind(srv);
+    let release: () => void = () => {};
+    srv.handle = (method, path, query, body, signal) =>
+      method === "POST" && path.endsWith("/answered")
+        ? new Promise((resolve) => (release = () => resolve(handle(method, path, query, body, signal))))
+        : handle(method, path, query, body, signal);
+    const user = userEvent.setup();
+    const proof = await openLetter();
+    await user.click(await within(proof).findByRole("button", { name: /close this$/ }));
+    // while it is saved: on to the tracking number
+    await user.click(within(proof).getByRole("button", { name: /^Change$/ }));
+    const field = within(proof).getByRole("textbox", { name: "Tracking number" });
+    await waitFor(() => expect(field).toHaveFocus());
+    await act(async () => release());
+    expect(await screen.findByText("Marked as answered")).toBeInTheDocument();
+    await act(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    await user.keyboard("X");
+    expect(field).toHaveFocus();
+    expect(field).toHaveValue("RT 123 456 785 DEX");
+  });
+});

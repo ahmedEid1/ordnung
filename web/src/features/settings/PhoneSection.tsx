@@ -28,7 +28,7 @@ import { LoadError } from "@/components/ui/LoadError";
 import { LoadingLabel, SkeletonText } from "@/components/ui/Skeleton";
 import { toast } from "@/components/ui/Toast";
 import { copyText } from "@/features/document/actions";
-import { focusWhenReady } from "@/lib/focus";
+import { focusOrigin, focusWhenReady } from "@/lib/focus";
 import { cn } from "@/lib/utils";
 import { PairPhoneDialog } from "./PairPhoneDialog";
 import { PhoneCertificateCard, StartOverDialog } from "./PhoneCertificateCard";
@@ -382,9 +382,10 @@ function PhoneAccess({ status }: { status: PhoneStatus }) {
     if (after.listening) toast.success(mode === "on" ? "Phone access is on" : "Phone access moved", { description: `Phones on your home network reach Ordnung at ${after.url}.` });
   };
 
-  // the answer to "Start over" is in: the advice takes the focus the gone "Start over…" button had
+  // the answer to "Start over" is in: the advice takes the focus the dialog handed back to "Start over…" (which
+  // goes with the certificate)
   useEffect(() => {
-    if (advice === "reset") focusWhenReady(() => document.getElementById(ADVICE_ID), 5000, { always: true });
+    if (advice === "reset") focusWhenReady(() => document.getElementById(ADVICE_ID), 5000, { from: focusOrigin() });
   }, [advice]);
 
   return (

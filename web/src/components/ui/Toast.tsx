@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, typ
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { CircleCheck, Info, TriangleAlert, CircleX, X, Undo2 } from "lucide-react";
+import { setToastHandBack } from "@/lib/focus";
 import { useHotkey, useMediaQuery } from "@/lib/hooks";
 import { cn, IS_APPLE } from "@/lib/utils";
 import { getOverlayRoot, useModalOpen } from "./internal";
@@ -115,8 +116,15 @@ const actionCls =
 /** Where focus was before Alt+N moved it into a toast: it goes back there when that toast closes. */
 let focusBeforeToasts: HTMLElement | null = null;
 
+/** Where focus goes when the toast that holds it closes: back where it was, else the page's main. */
+const handBack = (): HTMLElement | null =>
+  focusBeforeToasts?.isConnected && !focusBeforeToasts.closest("[inert]") ? focusBeforeToasts : document.querySelector<HTMLElement>("main");
+
+// an action started from a toast (its Undo) counts as started from there (`focusOrigin` in lib/focus)
+setToastHandBack(handBack);
+
 function restoreFocus() {
-  const back = focusBeforeToasts?.isConnected && !focusBeforeToasts.closest("[inert]") ? focusBeforeToasts : document.querySelector<HTMLElement>("main");
+  const back = handBack();
   focusBeforeToasts = null;
   back?.focus({ preventScroll: true });
 }

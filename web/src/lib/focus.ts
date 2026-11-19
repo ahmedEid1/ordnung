@@ -14,10 +14,11 @@ export function focusIsLost(): boolean {
 
 /**
  * Once `find` returns an element (checked every frame for up to `ms`), focus it — but only when
- * focus is lost by then, so someone who has moved on is not pulled back (unless `always`: the
- * person asked for it, e.g. "Show more" moves on to the first new card). `from`: focus also moves
- * while it is still where the person asked from (the button they pressed), but not once they have
- * gone on to type somewhere else.
+ * focus is lost by then, so someone who has moved on is not pulled back. `from` (read with
+ * {@link focusOrigin} as the action starts): focus also moves while it is still there (the button
+ * they pressed), but not once they have gone on to type or choose somewhere else while the answer
+ * was on its way. `always`: focus moves wherever it is — only for a failed action's error, which
+ * needs reading before anything else (as a refused form's field takes focus).
  */
 export function focusWhenReady(
   find: () => HTMLElement | null,
@@ -36,6 +37,23 @@ export function focusWhenReady(
     el.focus();
   };
   requestAnimationFrame(tick);
+}
+
+/** Where a toast that holds focus hands it back when it closes (told by `components/ui/Toast`). */
+let toastHandsFocusTo: () => Element | null = () => null;
+
+/** For `components/ui/Toast` only: how to find where a closing toast hands focus back. */
+export function setToastHandBack(find: () => Element | null): void {
+  toastHandsFocusTo = find;
+}
+
+/**
+ * Where focus is as an action starts, to pass as `from` to {@link focusWhenReady}. An Undo pressed in a
+ * toast: the toast closes and hands focus back before the answer is in, so that place is the origin.
+ */
+export function focusOrigin(): Element | null {
+  const a = document.activeElement;
+  return a?.closest("[data-toast]") ? toastHandsFocusTo() : a;
 }
 
 /**
