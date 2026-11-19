@@ -450,11 +450,12 @@ jobs:
       - run: npm run build
 
   e2e:
-    name: End-to-end (${{ matrix.group }})
+    name: End-to-end (${{ matrix.group }}${{ matrix.group == 'layout' && format(' {0}/2', matrix.shard) || '' }})
     # each leg installs its own Python, Node and Chromium and builds the UI itself: it waits for no other job.
     # The groups of Playwright's projects (E2E_GROUPS in web/e2e/env.ts) run side by side, each on fresh servers
-    # of its own. One run of them all took 39 minutes (18 Nov 2026); the longest leg, the layout guards, about 21
-    # expected. They stay one leg: a later layout file needs a letter an earlier one leaves to check
+    # of its own. One run of them all took 39 minutes (18 Nov 2026), and the layout guards as one leg 23. So the
+    # layout group runs in two halves (Playwright's --shard, which keeps whole files and their order), each on a
+    # fresh demo of its own: every layout file sets up what it needs. The other groups run whole (--shard=1/1)
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 40
@@ -462,6 +463,12 @@ jobs:
       fail-fast: false
       matrix:
         group: [demo, layout, real]
+        shard: [1, 2]
+        exclude:
+          - group: demo
+            shard: 2
+          - group: real
+            shard: 2
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
@@ -515,11 +522,11 @@ jobs:
           E2E_GROUP: ${{ matrix.group }}
           ORDNUNG_E2E_OCR: "on"
           ORDNUNG_REQUIRE_TESSERACT: "1"
-        run: cd web && npm run e2e
+        run: cd web && npm run e2e -- --shard=${{ matrix.shard }}/${{ matrix.group == 'layout' && 2 || 1 }}
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: playwright-report-${{ matrix.group }}
+          name: playwright-report-${{ matrix.group }}-${{ matrix.shard }}
           path: |
             web/playwright-report
             web/test-results

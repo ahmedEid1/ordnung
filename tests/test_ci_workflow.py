@@ -139,16 +139,33 @@ def test_the_end_to_end_groups_start_at_once_and_together_run_every_project() ->
     """Each end-to-end leg installs its own Python, Node and Chromium and builds the web app itself: it uses
     nothing another job makes, so it waits for none (waiting for the frontend job put 8 minutes before a 39-minute
     Playwright run, 18 Nov 2026; a broken build still fails the leg's own build step). Its legs are the groups of
-    web/e2e/env.ts, each once: a group left out here would never run in CI. The checks that need both toolchains
-    run on one leg, not on each."""
+    web/e2e/env.ts, each once: a group left out here would never run in CI. Only the layout group, the longest,
+    runs as two halves (Playwright's ``--shard``), and the two halves together are the whole group: every other
+    group has one leg that runs all of it. The checks that need both toolchains run on one leg, not on each."""
     jobs = _jobs()
     e2e = jobs["e2e"]
     assert "needs" not in e2e and "download-artifact" not in json.dumps(e2e)
     assert _on_pull_requests(e2e) and _on_pull_requests(jobs["frontend"])
-    groups = e2e["strategy"]["matrix"]["group"]
+    matrix = e2e["strategy"]["matrix"]
+    groups = matrix["group"]
     assert sorted(groups) == sorted(set(groups)) == sorted(_e2e_groups())
+    assert set(matrix) == {"group", "shard", "exclude"} and matrix["shard"] == [1, 2]
+    legs = [
+        (group, shard)
+        for group in groups
+        for shard in matrix["shard"]
+        if {"group": group, "shard": shard} not in matrix["exclude"]
+    ]
+    assert sorted(legs) == sorted([(group, 1) for group in groups] + [("layout", 2)])
     _, playwright = _step(e2e, "npm run e2e")
     assert playwright["env"]["E2E_GROUP"] == "${{ matrix.group }}"
+    # a leg runs its shard of as many as its group has legs: 1/1 is the whole group, 1/2 and 2/2 the layout's
+    assert playwright["run"] == (
+        "cd web && npm run e2e -- --shard=${{ matrix.shard }}/${{ matrix.group == 'layout' && 2 || 1 }}"
+    )
+    assert "format(' {0}/2', matrix.shard)" in e2e["name"]
+    (upload,) = [step for step in e2e["steps"] if "upload-artifact" in step.get("uses", "")]
+    assert upload["with"]["name"] == "playwright-report-${{ matrix.group }}-${{ matrix.shard }}"
     (checks,) = [step for step in e2e["steps"] if "ORDNUNG_REQUIRE_MOCK_CHECK" in step.get("env", {})]
     assert checks["if"] == "matrix.group == 'real'"
 
