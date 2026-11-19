@@ -38,4 +38,25 @@ export default defineConfig(
       "no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
     },
   },
+  {
+    // the app's code never reaches into the mock backend: only main.tsx installs it, with a dynamic import
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/mocks/**", "src/test/**", "**/*.test.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": ["error", { patterns: [
+        { regex: "^(@/|\\./|(\\.\\./)+)mocks(/|$)", caseSensitive: true, message: "Only main.tsx loads the mocks (lazily); mock mode is @/lib/mode." },
+      ] }],
+    },
+  },
+  {
+    // layers: lib, api, components/ui and styles are shared pieces; they never import a screen, the app, its shell or the mocks
+    files: ["src/lib/**/*.{ts,tsx}", "src/api/**/*.{ts,tsx}", "src/components/ui/**/*.{ts,tsx}", "src/styles/**/*.{ts,tsx}"],
+    ignores: ["**/*.test.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": ["error", { patterns: [
+        { regex: "^@/(features|pages|app|components/shell|mocks)(/|$)", caseSensitive: true, message: "A shared piece never imports a feature, a page, the app or its shell, or the mocks." },
+        { regex: "^(\\.\\./)+(features|pages|app|mocks|shell|components/shell)(/|$)", caseSensitive: true, message: "A shared piece never imports a feature, a page, the app or its shell, or the mocks." },
+      ] }],
+    },
+  },
 );
