@@ -132,7 +132,7 @@ jobs:
 
   backend-slow:
     name: Benchmarks replayed (Python 3.12)
-    # the replayed benchmarks with their gates, the presenter's check and demo --check: about 6 minutes expected.
+    # the replayed benchmarks with their gates, the presenter's check and demo --check: 5 to 6 minutes (19 Nov 2026).
     # With every published number replayed as well it took 12 to 13 (18 Nov 2026), that step 6 of them (19 Nov):
     # the step has a job of its own now, "reproduce". The job keeps its id: evals/reproduce.py reads the gates here
     if: github.event_name != 'schedule'
@@ -204,7 +204,7 @@ jobs:
   reproduce:
     name: Every published number replayed (Python 3.12)
     # beside the gates' job, not after them in it: the replay took 6 of that job's 12 to 13 minutes and made it the
-    # longest of a run (19 Nov 2026); here about 6.5 expected. It reads the gates from backend-slow's steps, and
+    # longest of a run (19 Nov 2026); here it takes 6. It reads the gates from backend-slow's steps, and
     # needs nothing the steps there write (it works in a temporary folder of its own)
     if: github.event_name != 'schedule'
     runs-on: ubuntu-24.04

@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
 import { RefText } from "@/features/ask/RefText";
-import { focusAfterLeaving, focusWhenReady } from "@/lib/focus";
+import { focusAfterLeaving, focusOrigin, focusWhenReady } from "@/lib/focus";
 import { ideaHref } from "./helpers";
 import { collapseOut, fadeUp } from "./motion";
 import { MOVING_CHECKLIST_ID, MOVING_SHOWN, openDraftFor } from "./moving";
@@ -52,7 +52,8 @@ function ChecklistCard({ rows }: { rows: Suggestion[] }) {
   useEffect(() => {
     if (hash !== `#${MOVING_CHECKLIST_ID}` || !section.current) return;
     section.current.scrollIntoView?.({ block: "start" });
-    focusWhenReady(() => document.getElementById(TITLE_ID), 1000, { always: true });
+    // the origin is read on landing on purpose: the person just followed the link here, so focus has not moved on
+    focusWhenReady(() => document.getElementById(TITLE_ID), 1000, { from: focusOrigin() });
   }, [hash]);
 
   const shown = expanded ? rows : rows.slice(0, MOVING_SHOWN);
@@ -68,11 +69,12 @@ function ChecklistCard({ rows }: { rows: Suggestion[] }) {
     });
 
   const undo = (row: Suggestion) => async () => {
+    const from = focusOrigin();
     await update.mutateAsync({ id: row.id, patch: { status: "new" } });
     mark(row.id, false);
     // the row asked back takes focus — also from the toast's Undo pressed by keyboard, which would hand focus
     // back to the row after it
-    focusWhenReady(() => document.getElementById(checkId(row.id)), 3000, { always: true });
+    focusWhenReady(() => document.getElementById(checkId(row.id)), 3000, { from });
   };
 
   // focus is watched from the click, while the row is in its place, and the toast follows the call's promise

@@ -202,6 +202,33 @@ describe("calendar sync card", () => {
     await waitFor(() => expect(within(connected).getByText(/^Connected to Ordnung$/).closest("p")).toHaveFocus());
   });
 
+  it.each([
+    ["the events' wording", (card: HTMLElement) => within(card).getByRole("radio", { name: "With details" })],
+    ["the address", (card: HTMLElement) => within(card).getByLabelText("Calendar or server address")],
+  ])("leaves focus on %s when the person went there while the calendars were looked for", async (_, elsewhere) => {
+    const { srv } = useMockApi();
+    const handle = srv.handle.bind(srv);
+    let release: () => void = () => {};
+    srv.handle = (method, path, query, body, signal) =>
+      method === "POST" && path === "/calendar/sync/discover"
+        ? new Promise((resolve) => (release = () => resolve(handle(method, path, query, body, signal))))
+        : handle(method, path, query, body, signal);
+    const user = userEvent.setup();
+    const card = await openCard();
+    await user.type(within(card).getByLabelText("Calendar or server address"), NEXTCLOUD);
+    await user.type(within(card).getByLabelText("User name"), "sam");
+    await user.type(within(card).getByLabelText("App password"), "abcd-efgh-ijkl-mnop");
+    await user.click(within(card).getByRole("button", { name: "Find my calendars" }));
+    await user.click(elsewhere(card));
+    await act(async () => release());
+    const choices = await within(card).findByRole("group", { name: "Which calendar should Ordnung write into?" });
+    await act(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    expect(elsewhere(card)).toHaveFocus();
+    // the keys go on doing what they did there: the chosen calendar stays the one Ordnung picked
+    await user.keyboard("{ArrowLeft}");
+    expect(within(choices).getByRole("radio", { name: /^Ordnung/ })).toBeChecked();
+  });
+
   it("shows the form's own error next to the button, and moves focus to it", async () => {
     const { srv } = useMockApi();
     const handle = srv.handle.bind(srv);
@@ -306,6 +333,25 @@ describe("calendar sync card", () => {
     expect(await screen.findByRole("button", { name: "Find my calendars" })).toBeInTheDocument();
     // "Disconnect…" is gone: the card's heading has the focus
     await waitFor(() => expect(screen.getByRole("heading", { name: "Sync with your own calendar" })).toHaveFocus());
+  });
+
+  it("takes the focus to the reason a disconnect failed, from the Disconnect button still holding it", async () => {
+    const { srv } = useMockApi();
+    await srv.handle("PUT", "/calendar/sync", new URLSearchParams(), { url: CALENDAR, username: "sam", password: "abcd-efgh-ijkl-mnop", mode: "discreet" }, null);
+    const handle = srv.handle.bind(srv);
+    srv.handle = async (method, path, query, body, signal) =>
+      method === "POST" && path === "/calendar/sync/disconnect"
+        ? new Response(JSON.stringify({ detail: "The calendar server refused." }), { status: 502, headers: { "Content-Type": "application/json" } })
+        : handle(method, path, query, body, signal);
+    const user = userEvent.setup();
+    const card = await openCard();
+    await within(card).findByText(/^Connected to Ordnung$/);
+    await user.click(within(card).getByRole("button", { name: "Disconnect…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Disconnect Ordnung?" });
+    const disconnect = within(dialog).getByRole("button", { name: "Disconnect" });
+    await user.click(disconnect);
+    expect(await within(dialog).findByText(/The calendar server refused/)).toBeInTheDocument();
+    await waitFor(() => expect(dialog.querySelector("#cal-sync-disconnect-error")).toHaveFocus());
   });
 
   it("keeps the calendar file next to its guide, calendar sync after them", async () => {

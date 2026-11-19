@@ -13,7 +13,7 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "@/components/ui/Toast";
 import { CopyCommand } from "@/components/ui/CopyCommand";
-import { focusWhenReady } from "@/lib/focus";
+import { focusOrigin, focusWhenReady } from "@/lib/focus";
 import { useTodayISO } from "@/lib/today";
 import { cn } from "@/lib/utils";
 import { BreakablePath } from "./DataSection";
@@ -273,6 +273,8 @@ function Connect({ status }: { status: CalendarSyncStatus }) {
     }
     setErrors({});
     if (!calendars || !chosen) {
+      // finding can take seconds: someone who meanwhile went on to another field or choice stays there
+      const from = focusOrigin();
       discover.mutate(
         { url: url.trim(), username: username.trim(), password },
         {
@@ -281,7 +283,7 @@ function Connect({ status }: { status: CalendarSyncStatus }) {
             setChosen(preferredCalendar(list));
             setFound(foundLine(list));
             // on to the choice (it scrolls into view): the next step is there, not at the button
-            focusWhenReady(() => document.querySelector<HTMLElement>('input[name="calendar-sync-calendar"]:checked'), 5000, { always: true });
+            focusWhenReady(() => document.querySelector<HTMLElement>('input[name="calendar-sync-calendar"]:checked'), 5000, { from });
           },
           onError: (err) => {
             const next = errorsFrom(err);
@@ -440,7 +442,7 @@ function DisconnectDialog({ open, onClose, status }: { open: boolean; onClose: (
       },
       onError: (err) => {
         setError(err instanceof ApiError ? err.message : "Ordnung didn't answer. Is it still running?");
-        focusWhenReady(() => document.getElementById("cal-sync-disconnect-error"));
+        focusWhenReady(() => document.getElementById("cal-sync-disconnect-error"), 5000, { always: true });
       },
     });
   return (

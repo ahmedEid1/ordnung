@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { focusAfterLeaving } from "./focus";
+import { focusAfterLeaving, focusOrigin, focusWhenReady, setToastHandBack } from "./focus";
 
 describe("focusAfterLeaving", () => {
   beforeEach(() => {
@@ -60,5 +60,49 @@ describe("focusAfterLeaving", () => {
     document.getElementById("card-a")?.remove();
     vi.advanceTimersByTime(50);
     expect(document.activeElement?.id).toBe("top3");
+  });
+});
+
+describe("focusWhenReady from where the action started", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame", "performance", "setTimeout", "Date"] });
+    document.body.innerHTML = `<button id="find">Find</button><input id="name"><input id="choice"><ul><li data-toast="t1"><button id="undo">Undo</button></li></ul>`;
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    setToastHandBack(() => null);
+    document.body.innerHTML = "";
+  });
+  const el = (id: string) => document.getElementById(id)!;
+
+  it.each([
+    ["moves focus while it is still on the control that was used", null, "choice"],
+    ["leaves someone who went on to type elsewhere where they are", "name", "name"],
+  ])("%s", (_, movedTo, focused) => {
+    el("find").focus();
+    const from = focusOrigin();
+    if (movedTo) el(movedTo).focus();
+    focusWhenReady(() => el("choice"), 5000, { from });
+    vi.advanceTimersByTime(50);
+    expect(document.activeElement?.id).toBe(focused);
+  });
+
+  it("starts an Undo pressed in a toast from where the closing toast hands focus back", () => {
+    setToastHandBack(() => el("name"));
+    el("undo").focus();
+    const from = focusOrigin();
+    expect(from).toBe(el("name"));
+    // the toast closes and hands focus back before the answer is in
+    el("name").focus();
+    focusWhenReady(() => el("choice"), 5000, { from });
+    vi.advanceTimersByTime(50);
+    expect(el("choice")).toHaveFocus();
+  });
+
+  it("moves focus to a failed action's error wherever it is (`always`)", () => {
+    el("name").focus();
+    focusWhenReady(() => el("choice"), 5000, { always: true });
+    vi.advanceTimersByTime(50);
+    expect(el("choice")).toHaveFocus();
   });
 });

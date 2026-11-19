@@ -17,7 +17,7 @@ import { usePartyDrawer } from "@/lib/party-drawer";
 import { displayTracking } from "@/lib/tracking";
 import { cn } from "@/lib/utils";
 import { composerHref } from "@/features/today/selection";
-import { focusWhenReady } from "@/lib/focus";
+import { focusOrigin, focusWhenReady } from "@/lib/focus";
 import { WRAPPING_BUTTON, asksForACall, closeLabel } from "@/features/waiting/model";
 import { usePhoneCompanion } from "@/features/phone/client";
 import { OnYourComputer } from "@/features/phone/ComputerOnly";
@@ -41,9 +41,9 @@ const TRACKING_CHANGE = "proof-tracking-change";
 /** The proof row menu's item — and the words the "days don't match" callout points to. */
 const CHANGE_PROOF = "Change kind or day";
 
-/** Focus an element by id once it's there (the control that was used has just gone); `always`: even if focus
- * is still on the control that was used (it stays, but what it does changed). */
-const focusId = (id: string, always = false) => focusWhenReady(() => document.getElementById(id), 5000, { always });
+/** Focus an element by id once it's there (the control that was used has just gone); `from`: also while focus
+ * is still where the action started (the control stays, but what it does changed). */
+const focusId = (id: string, from: Element | null = null) => focusWhenReady(() => document.getElementById(id), 5000, { from });
 
 /**
  * What the letter waits for, and the way to close it: the letter that came is the answer, or it was
@@ -55,14 +55,19 @@ function WaitingBox({ entry, draft }: { entry: WaitingEntry; draft: Draft }) {
   const title = waitingTitle(entry);
   const set = (value: boolean) => {
     const docId = entry.status === "answered" ? (entry.answered_by?.id ?? null) : null;
-    // the box changes once saved (its buttons go): the toast follows the promise, focus the box
+    // the box changes once saved (its buttons go): the toast follows the promise, focus the box — unless the
+    // person went on to something else while it was saved
+    const from = focusOrigin();
     answered.mutateAsync({ id: draft.id, answered: value, docId }).then(
       () => {
-        focusId(BOX_ID, true);
+        focusId(BOX_ID, from);
         if (value)
           toast.success("Marked as answered", {
             description: "The follow-up is closed — Ordnung won't remind you about this letter.",
-            undo: () => answered.mutateAsync({ id: draft.id, answered: false }).then(() => focusId(BOX_ID, true)),
+            undo: () => {
+              const back = focusOrigin();
+              return answered.mutateAsync({ id: draft.id, answered: false }).then(() => focusId(BOX_ID, back));
+            },
           });
         else
           toast.success("Waiting for an answer again", {

@@ -85,6 +85,8 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
   const inputRef = useRef<HTMLInputElement>(null);
   /** Set by the arrow keys: the new active option is scrolled into view (not on mouse hover). */
   const revealActive = useRef(false);
+  /** Enter was pressed before the search of what is typed had answered: it opens that answer's match. */
+  const enterWhenSettled = useRef(false);
   const debounced = useDebounced(q, 160);
   const term = q.trim();
   const dterm = debounced.trim();
@@ -100,7 +102,9 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
   const matches: DocumentRow[] = dterm.length >= MIN_CHARS && searching ? (search.data ?? []) : [];
   const results = matches.slice(0, SEARCH_LIMIT);
   const hasMore = matches.length > SEARCH_LIMIT;
-  const settled = dterm === term && !search.isFetching;
+  // a paused search (the browser reports offline) is not fetching, yet still lists the previous term's
+  // matches as placeholder rows: it has not answered either
+  const settled = dterm === term && !search.isFetching && !search.isPlaceholderData;
   const noMatches = searching && settled && !search.isError && results.length === 0;
   const showRecent = Boolean(inline) && term.length === 0;
   // recent letters for the empty phone sheet; the same list tells "no letters match" from "no letters yet"
@@ -125,6 +129,7 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
   }, [activeId]);
 
   const reset = () => {
+    enterWhenSettled.current = false;
     setQ("");
     setActive(-1);
   };
@@ -136,13 +141,37 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
     onNavigate?.();
   };
 
+  // the Enter that waited: once the search of what was typed has answered, its highlighted match opens
+  // (nothing when none matches); the panel closing (Escape, leaving the field) drops it
+  useEffect(() => {
+    if (!enterWhenSettled.current) return;
+    if (!open) {
+      enterWhenSettled.current = false;
+      return;
+    }
+    if (!settled) return;
+    enterWhenSettled.current = false;
+    const d = options[activeIndex];
+    // going to the letter (which empties the field) is what the Enter asked for: it only had to wait for the answer
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (d) go(d);
+  });
+
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      // choosing again drops a waiting Enter: the person presses Enter on the row they see
+      enterWhenSettled.current = false;
       e.preventDefault();
       if (!options.length) return;
       revealActive.current = true;
       setActive(e.key === "ArrowDown" ? Math.min(activeIndex + 1, options.length - 1) : Math.max(activeIndex - 1, 0));
     } else if (e.key === "Enter") {
+      if (open && searching && !settled) {
+        // the list still shows the matches of what was typed before: wait for the answer to what is typed now
+        e.preventDefault();
+        enterWhenSettled.current = true;
+        return;
+      }
       const d = options[activeIndex];
       if (open && d) {
         e.preventDefault();
@@ -178,7 +207,10 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
         aria-selected={isActive}
         title={title}
         onMouseMove={() => {
-          if (!isActive) setActive(i);
+          if (isActive) return;
+          // pointing at another row is choosing again, as the arrow keys are: a waiting Enter is dropped
+          enterWhenSettled.current = false;
+          setActive(i);
         }}
         onMouseDown={(e) => {
           e.preventDefault();
@@ -386,11 +418,15 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
           autoFocus={autoFocus}
           value={q}
           onChange={(e) => {
+            enterWhenSettled.current = false;
             setQ(e.target.value);
             // the best match is ready for Enter
             setActive(e.target.value.trim() ? 0 : -1);
           }}
           onKeyDown={onKeyDown}
+          onBlur={() => {
+            enterWhenSettled.current = false;
+          }}
           className={cn(
             "h-9 w-full rounded-lg border border-line bg-surface/70 pl-9 pr-10 text-base text-ink shadow-[inset_0_1px_1px_rgb(0_0_0/0.03)] outline-none transition-[border-color,box-shadow,background-color]",
             "placeholder:text-muted hover:border-line-strong focus:border-accent focus:bg-surface focus:ring-2 focus:ring-accent/60 [&::-webkit-search-cancel-button]:hidden",

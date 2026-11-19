@@ -24,7 +24,7 @@ import { Field, Input } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
 import { CopyCommand } from "@/components/ui/CopyCommand";
 import { SideOption } from "@/features/sync/ChoiceDialog";
-import { focusWhenReady } from "@/lib/focus";
+import { focusOrigin, focusWhenReady } from "@/lib/focus";
 import { cn } from "@/lib/utils";
 import type { PassphraseProblem } from "./backup";
 import { PassphraseFields } from "./PassphraseFields";
@@ -207,6 +207,7 @@ export function SyncSetupCard({ status, join = false, onConnected }: { status: S
   };
 
   const send = (keep: "this" | "folder" | null, found: SyncFolderInfo) => {
+    const from = focusOrigin();
     connect.mutate(
       { folder: found.folder, name: name.trim(), passphrase, keep },
       {
@@ -214,7 +215,7 @@ export function SyncSetupCard({ status, join = false, onConnected }: { status: S
           if (result.choice) {
             setChoice(result.choice);
             setPicked(null);
-            focusWhenReady(() => document.getElementById(CHOICE_ID), 5000, { always: true });
+            focusWhenReady(() => document.getElementById(CHOICE_ID), 5000, { from });
             return;
           }
           setPassphrase("");
@@ -236,7 +237,7 @@ export function SyncSetupCard({ status, join = false, onConnected }: { status: S
     if (!kind || !info) {
       // first the folder: what it is decides the passphrase fields (then on to the next empty one) —
       // unless the person has gone on to type elsewhere (the name) while it was looked at
-      const from = document.activeElement;
+      const from = focusOrigin();
       look((found) => focusWhenReady(() => document.getElementById(found.kind === "existing" || join ? "sync-passphrase" : name.trim() ? "sync-passphrase" : "sync-name"), 5000, { from }));
       return;
     }
