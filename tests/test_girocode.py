@@ -11,6 +11,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from fixtures_llm import iban as make_iban
+from helpers_tables import check_rows
 from ordnung.girocode import (
     MAX_PAYLOAD_BYTES,
     GiroCodeError,
@@ -98,42 +99,46 @@ def test_trailing_empty_elements_are_dropped_and_inner_ones_kept() -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("amount", "text"),
-    [
-        ("12.30", "EUR12.3"),
-        (Decimal("30"), "EUR30"),
-        (30.0, "EUR30"),
-        (184.3, "EUR184.3"),
-        (94.99, "EUR94.99"),
-        ("0.01", "EUR0.01"),
-        ("999999999.99", "EUR999999999.99"),
-        (Decimal("1E+2"), "EUR100"),
-        (1234.5, "EUR1234.5"),
-    ],
-)
-def test_amounts_are_written_like_the_standards_examples(amount: object, text: str) -> None:
-    assert amount_text(amount) == text  # type: ignore[arg-type]
+AMOUNTS_AND_HOW_THEY_ARE_WRITTEN = [
+    ("12.30", "EUR12.3"),
+    (Decimal("30"), "EUR30"),
+    (30.0, "EUR30"),
+    (184.3, "EUR184.3"),
+    (94.99, "EUR94.99"),
+    ("0.01", "EUR0.01"),
+    ("999999999.99", "EUR999999999.99"),
+    (Decimal("1E+2"), "EUR100"),
+    (1234.5, "EUR1234.5"),
+]
 
 
-@pytest.mark.parametrize(
-    ("amount", "why"),
-    [
-        ("0", "from €0.01"),
-        ("-5", "from €0.01"),
-        ("0.001", "from €0.01"),
-        ("1000000000", "from €0.01"),
-        ("12.345", "more than two decimals"),
-        (0.1 + 0.2, "more than two decimals"),
-        ("NaN", "not an amount"),
-        ("Infinity", "not an amount"),
-        ("zwölf", "not an amount"),
-        ("12,30", "not an amount"),
-    ],
-)
-def test_amounts_out_of_range_or_with_more_decimals_are_refused(amount: object, why: str) -> None:
-    with pytest.raises(GiroCodeError, match=why):
-        epc_payload(Transfer(name="A", iban=GERMAN_IBAN, amount=amount))  # type: ignore[arg-type]
+def test_amounts_are_written_like_the_standards_examples() -> None:
+    def check(amount: object, text: str) -> None:
+        assert amount_text(amount) == text  # type: ignore[arg-type]
+
+    check_rows(AMOUNTS_AND_HOW_THEY_ARE_WRITTEN, check)
+
+
+AMOUNTS_REFUSED_AND_WHY = [
+    ("0", "from €0.01"),
+    ("-5", "from €0.01"),
+    ("0.001", "from €0.01"),
+    ("1000000000", "from €0.01"),
+    ("12.345", "more than two decimals"),
+    (0.1 + 0.2, "more than two decimals"),
+    ("NaN", "not an amount"),
+    ("Infinity", "not an amount"),
+    ("zwölf", "not an amount"),
+    ("12,30", "not an amount"),
+]
+
+
+def test_amounts_out_of_range_or_with_more_decimals_are_refused() -> None:
+    def check(amount: object, why: str) -> None:
+        with pytest.raises(GiroCodeError, match=why):
+            epc_payload(Transfer(name="A", iban=GERMAN_IBAN, amount=amount))  # type: ignore[arg-type]
+
+    check_rows(AMOUNTS_REFUSED_AND_WHY, check)
 
 
 def test_the_iban_is_written_compact_and_must_be_well_formed() -> None:
