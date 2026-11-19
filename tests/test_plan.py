@@ -1349,6 +1349,24 @@ def test_amount_stated_elsewhere_in_the_letter_is_not_flagged() -> None:
     assert verification.items[0].evidence.value_consistent
 
 
+def test_amount_missing_from_the_whole_letter_is_still_flagged() -> None:
+    from ordnung.ingest.plan import verify_extraction
+    from ordnung.models import DateSpec, DocumentExtraction, ExtractedItem
+
+    page = (1, "Zahlbar innerhalb von 14 Tagen nach Rechnungsdatum.", [], "text")
+    item = ExtractedItem(
+        kind="payment",
+        title="Pay",
+        date=DateSpec(type="relative", anchor="document_date", amount=14, unit="days", nature="payment"),
+        amount=120.0,
+        quote="Zahlbar innerhalb von 14 Tagen nach Rechnungsdatum.",
+    )
+    extraction = DocumentExtraction(
+        kind="invoice", title="Invoice", summary="s", explanation="e", items=[item]
+    )
+    assert verify_extraction("doc_x", extraction, [page]).needs_review
+
+
 def test_fixed_date_stated_elsewhere_and_recurring_schedules_are_not_flagged() -> None:
     from ordnung.ingest.plan import verify_extraction
     from ordnung.models import DateSpec, DocumentExtraction, ExtractedItem, Recurrence
