@@ -15,6 +15,7 @@ from pathlib import Path
 
 import pytest
 
+from helpers_tables import check_rows
 from ordnung.rules.calendar_de import REGION_NAMES
 from ordnung.rules.postcodes import TABLE_PATH
 
@@ -127,35 +128,31 @@ def test_an_unzipped_de_txt_with_its_date_gives_the_same_table_as_the_zip(tmp_pa
     assert build(text) == build(geonames_zip(tmp_path / "DE.zip"))
 
 
-@pytest.mark.parametrize(
-    ("bad", "message"),
-    [
-        pytest.param(
-            row("80331", "München", "Bayern", "17"), "unknown admin1 code '17'", id="unknown-number"
-        ),
-        pytest.param(
-            row("80331", "München", "Bayern", "XX"), "unknown admin1 code 'XX'", id="unknown-letters"
-        ),
-        pytest.param(
-            row("60311", "Frankfurt am Main", "Bayern", "05"),
-            "'Bayern' is BY, but its code '05' is HE",
-            id="name",
-        ),
-        pytest.param(
-            row("14467", "Potsdam", "Land Berlin", "11"),
-            "'Land Berlin' is BE, but its code '11' is BB",
-            id="land",
-        ),
-        pytest.param(
-            row("8033", "München", "Bayern", "BY"), "postcode '8033' is not 5 digits", id="4-digits"
-        ),
-        pytest.param("DE\t80331\tMünchen\n", "expected 12 tab-separated fields", id="short-row"),
-    ],
-)
-def test_a_row_it_cannot_map_stops_the_build(tmp_path: Path, bad: str, message: str) -> None:
-    with pytest.raises(BuildError, match=re.escape(message)) as raised:
-        build(geonames_zip(tmp_path / "DE.zip", [*ROWS, bad]))
-    assert "DE.txt line 18" in str(raised.value)
+UNMAPPABLE_ROWS = [
+    pytest.param(row("80331", "München", "Bayern", "17"), "unknown admin1 code '17'", id="unknown-number"),
+    pytest.param(row("80331", "München", "Bayern", "XX"), "unknown admin1 code 'XX'", id="unknown-letters"),
+    pytest.param(
+        row("60311", "Frankfurt am Main", "Bayern", "05"),
+        "'Bayern' is BY, but its code '05' is HE",
+        id="name",
+    ),
+    pytest.param(
+        row("14467", "Potsdam", "Land Berlin", "11"),
+        "'Land Berlin' is BE, but its code '11' is BB",
+        id="land",
+    ),
+    pytest.param(row("8033", "München", "Bayern", "BY"), "postcode '8033' is not 5 digits", id="4-digits"),
+    pytest.param("DE\t80331\tMünchen\n", "expected 12 tab-separated fields", id="short-row"),
+]
+
+
+def test_a_row_it_cannot_map_stops_the_build(tmp_path: Path) -> None:
+    def check(bad: str, message: str) -> None:
+        with pytest.raises(BuildError, match=re.escape(message)) as raised:
+            build(geonames_zip(tmp_path / "DE.zip", [*ROWS, bad]))
+        assert "DE.txt line 18" in str(raised.value)
+
+    check_rows(UNMAPPABLE_ROWS, check)
 
 
 # ------------------------------------------------------------------------------------ the command
