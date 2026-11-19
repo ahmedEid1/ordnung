@@ -130,7 +130,10 @@ def _skip_reasons() -> Iterator[tuple[str, int, str]]:
     """``(file, line, reason)`` of every skip, skip mark and expected failure in ``tests/``."""
     calls = {"pytest.skip", "pytest.mark.skip", "pytest.mark.skipif", "pytest.xfail", "pytest.mark.xfail"}
     for path in sorted((ROOT / "tests").glob("*.py")):
-        tree = ast.parse(path.read_text(encoding="utf-8"))
+        source = path.read_text(encoding="utf-8")
+        if "skip" not in source and "xfail" not in source:
+            continue  # every call above names one of the two, so parsing this file finds none
+        tree = ast.parse(source)
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call) or ast.unparse(node.func) not in calls:
                 continue
