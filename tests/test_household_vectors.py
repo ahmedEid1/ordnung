@@ -11,6 +11,7 @@ from typing import Any
 
 import pytest
 
+from helpers_tables import check_rows
 from ordnung.secretary import household
 from ordnung.secretary.household import MINE, HouseholdError, HouseholdMember, StoredHousehold
 
@@ -81,9 +82,14 @@ def test_the_vectors_cover_every_kind() -> None:
     assert len({vector["case"] for vector in VECTORS}) == len(VECTORS)
 
 
-@pytest.mark.parametrize("vector", VECTORS, ids=[vector["case"] for vector in VECTORS])
-def test_the_api_meets_every_vector(vector: dict[str, Any]) -> None:
-    check = {"letter": _letter, "name": _added, "version": _version, "possessive": _possessive}[
-        vector["kind"]
-    ]
-    assert check(vector) == vector["expect"]
+VECTOR_ROWS = [pytest.param(vector, id=vector["case"]) for vector in VECTORS]
+
+
+def test_the_api_meets_every_vector() -> None:
+    def check(vector: dict[str, Any]) -> None:
+        answer = {"letter": _letter, "name": _added, "version": _version, "possessive": _possessive}[
+            vector["kind"]
+        ]
+        assert answer(vector) == vector["expect"]
+
+    check_rows(VECTOR_ROWS, check)
