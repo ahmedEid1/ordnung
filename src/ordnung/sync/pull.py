@@ -58,7 +58,7 @@ from ordnung.sync import (
 )
 from ordnung.sync.crypto import Damaged, sealed_size_of
 from ordnung.sync.folder import FsOps, RealFs
-from ordnung.sync.local import Local
+from ordnung.sync.local import Local, now_iso
 from ordnung.sync.model import BaseInfo, FileEntry, FilesCacheEntry, Journal, Manifest, VersionRef
 from ordnung.sync.scrub import PersonChanged, document_ids, is_demo, merge_local, referenced_paths
 
@@ -555,8 +555,6 @@ def _give_up(local: Local) -> None:
 def _commit(
     paths: Paths, local: Local, journal: Journal, person: int | None, cache: dict[str, FilesCacheEntry] | None
 ) -> None:
-    from ordnung.sync.engine import now_iso
-
     state = local.load()
     if state is not None:
         state.base = BaseInfo(

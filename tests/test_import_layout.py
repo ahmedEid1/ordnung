@@ -24,9 +24,6 @@ ALLOWED_CYCLES: dict[frozenset[str], str] = {
     frozenset(
         {"ordnung.assistant.citations", "ordnung.assistant.support"}
     ): "support reads the citation markers; citations imports support lazily to read values as shown",
-    frozenset(
-        {"ordnung.sync.engine", "ordnung.sync.pull"}
-    ): "pull stamps local times with the engine's now_iso, imported lazily",
 }
 
 #: (module, modules that importing it must not load): a low layer stays light.

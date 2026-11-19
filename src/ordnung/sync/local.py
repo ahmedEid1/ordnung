@@ -36,6 +36,7 @@ import sys
 import threading
 import unicodedata
 from collections.abc import Iterator
+from datetime import datetime
 from functools import partial
 from pathlib import Path
 from typing import Any
@@ -162,6 +163,10 @@ def _stored_machine_id() -> str:
 def machine_id() -> str:
     """This computer's id: the operating system's, else a random one stored once."""
     return _read_machine_id() or _stored_machine_id()
+
+
+def now_iso() -> str:
+    return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
 # --------------------------------------------------------------------------------------------------

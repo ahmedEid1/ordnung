@@ -105,6 +105,7 @@ from ordnung.sync.local import (
     unique_name,
     writes_refused,
 )
+from ordnung.sync.local import now_iso as now_iso
 from ordnung.sync.model import (
     BaseInfo,
     BucketRef,
@@ -161,10 +162,6 @@ NOT_STARTED_MESSAGE = (
     "This computer's changes wait here."
 )
 STOPPED_MESSAGE = "This computer has to be sorted out first (Settings → Your computers)."
-
-
-def now_iso() -> str:
-    return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
 @dataclass
