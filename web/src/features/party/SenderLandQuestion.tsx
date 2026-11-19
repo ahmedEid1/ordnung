@@ -21,7 +21,7 @@ import type { Party, RegionSuggestion } from "@/api/types";
 import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toast";
 import { AnswerButton } from "@/features/inbox/AnswerButton";
-import { focusWhenReady } from "@/features/today/focus";
+import { focusWhenReady } from "@/lib/focus";
 import { cn } from "@/lib/utils";
 import { savedStateLine } from "./sender-land";
 import { regionName } from "./timeline";

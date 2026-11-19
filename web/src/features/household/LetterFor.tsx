@@ -25,7 +25,7 @@ import { Checkbox, Field, Input } from "@/components/ui/Field";
 import { Popover } from "@/components/ui/Popover";
 import { toast } from "@/components/ui/Toast";
 import { usePhoneCompanion } from "@/features/phone/client";
-import { focusWhenReady } from "@/features/today/focus";
+import { focusWhenReady } from "@/lib/focus";
 import { cn } from "@/lib/utils";
 import { answerOf, memberById, MINE } from "./logic";
 import { HOUSEHOLD_CHANGE_TOAST, MANAGE_HOUSEHOLD_HREF, MAX_PEOPLE, membersOf, nameProblem, oneLine, refusal, useChangeHousehold } from "./save";

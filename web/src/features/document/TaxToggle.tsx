@@ -16,7 +16,7 @@ import { useUpdateDocument } from "@/api/hooks";
 import { toast } from "@/components/ui/Toast";
 import { forTaxes, letterYear } from "@/features/export/selection";
 import { AnswerButton } from "@/features/inbox/AnswerButton";
-import { focusWhenReady } from "@/features/today/focus";
+import { focusWhenReady } from "@/lib/focus";
 
 /** The toggle's id, and its line's (`aria-describedby`). */
 const toggleId = (docId: string) => `tax-toggle-${docId}`;

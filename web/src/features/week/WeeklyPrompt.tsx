@@ -10,7 +10,7 @@ import { CalendarCheck, ChevronRight } from "lucide-react";
 import { useWeek, useWeekDismiss } from "@/api/hooks";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toast";
-import { focusWhenReady } from "@/features/today/focus";
+import { focusWhenReady } from "@/lib/focus";
 import { fadeUp } from "@/features/today/motion";
 import { useFormatDate } from "@/lib/today";
 import { cn } from "@/lib/utils";

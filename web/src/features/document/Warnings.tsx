@@ -24,7 +24,7 @@ import { Glossary } from "@/components/ui/Glossary";
 import { Input } from "@/components/ui/Field";
 import { quoteLanguage } from "@/components/ui/Receipt";
 import { toast } from "@/components/ui/Toast";
-import { focusAfterLeaving } from "@/features/today/focus";
+import { focusAfterLeaving } from "@/lib/focus";
 import { useLetterLanguage } from "./WhyThisDate";
 import { actionDate, arrivalSavedNote, isCourtServed, isOpenItem, isServed, MAY_BE_PUBLIC_KINDS, needsArrivalDate, needsCheck, scamSuggestion } from "./verdict";
 import { HIGH_STAKES_KINDS } from "@/api/types";

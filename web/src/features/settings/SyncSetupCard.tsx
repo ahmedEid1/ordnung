@@ -24,7 +24,7 @@ import { Field, Input } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
 import { CopyCommand } from "@/features/onboarding/CopyCommand";
 import { SideOption } from "@/features/sync/ChoiceDialog";
-import { focusWhenReady } from "@/features/today/focus";
+import { focusWhenReady } from "@/lib/focus";
 import { cn } from "@/lib/utils";
 import type { PassphraseProblem } from "./backup";
 import { PassphraseFields } from "./PassphraseFields";

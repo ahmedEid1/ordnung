@@ -16,7 +16,7 @@ import { Countdown } from "@/components/ui/Countdown";
 import { KindIcon, type KindSource } from "@/components/ui/KindBadge";
 import { Money } from "@/components/ui/Money";
 import { toast } from "@/components/ui/Toast";
-import { focusAfterLeaving, focusWhenReady } from "@/features/today/focus";
+import { focusAfterLeaving, focusWhenReady } from "@/lib/focus";
 import { actionFromItem } from "@/features/today/selection";
 import { PayFocusProvider, PayPopover, type TopFocus } from "@/features/today/TopThree";
 import { glueText } from "@/lib/format";

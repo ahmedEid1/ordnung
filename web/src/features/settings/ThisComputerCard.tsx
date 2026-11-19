@@ -19,7 +19,7 @@ import { Checkbox, Field, Input } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
 import { ChoiceDialog } from "@/features/sync/ChoiceDialog";
 import { ArrivingNote, ProgressLine, SyncProblemCallout } from "@/features/sync/parts";
-import { focusWhenReady } from "@/features/today/focus";
+import { focusWhenReady } from "@/lib/focus";
 import { cn } from "@/lib/utils";
 import { BreakablePath } from "./DataSection";
 import { SettingsCard } from "./SettingsCard";

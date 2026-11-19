@@ -24,7 +24,7 @@ import { RefText } from "@/features/ask/RefText";
 import { contractHref } from "@/features/contracts/links";
 import { isRollingContract } from "@/features/contracts/model";
 import { protectRefs } from "@/lib/glue";
-import { focusAfterLeaving, focusWhenReady } from "@/features/today/focus";
+import { focusAfterLeaving, focusWhenReady } from "@/lib/focus";
 import { ideaActionLabel, ideaHref } from "@/features/today/helpers";
 import { ideasForLetter, onThisLetter } from "./letter-ideas";
 

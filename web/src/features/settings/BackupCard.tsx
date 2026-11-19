@@ -9,7 +9,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { LoadError } from "@/components/ui/LoadError";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { CopyCommand } from "@/features/onboarding/CopyCommand";
-import { focusWhenReady } from "@/features/today/focus";
+import { focusWhenReady } from "@/lib/focus";
 import { formatDate, formatFileSize } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { isStaticDemo } from "@/mocks/mode";

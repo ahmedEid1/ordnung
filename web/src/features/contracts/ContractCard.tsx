@@ -31,7 +31,7 @@ import {
 import { composerHrefFor, endingLetterLabel, offersEndingLetter } from "./links";
 import { NoticePeriodForm } from "./NoticePeriodForm";
 import { dayNumber } from "@/features/lanes/scale";
-import { focusWhenReady } from "@/features/today/focus";
+import { focusWhenReady } from "@/lib/focus";
 
 /**
  * A label and its value on one line; when both don't fit (a narrow card, a long label) the value

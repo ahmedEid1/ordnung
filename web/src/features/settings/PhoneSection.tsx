@@ -28,7 +28,7 @@ import { LoadError } from "@/components/ui/LoadError";
 import { LoadingLabel, SkeletonText } from "@/components/ui/Skeleton";
 import { toast } from "@/components/ui/Toast";
 import { copyText } from "@/features/document/actions";
-import { focusWhenReady } from "@/features/today/focus";
+import { focusWhenReady } from "@/lib/focus";
 import { cn } from "@/lib/utils";
 import { PairPhoneDialog } from "./PairPhoneDialog";
 import { PhoneCertificateCard, StartOverDialog } from "./PhoneCertificateCard";

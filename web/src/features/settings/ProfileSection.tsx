@@ -8,7 +8,7 @@ import { Checkbox, Field, Input, Textarea } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
 import { formatIban, ibanLooksValid, normalizeIban } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
-import { focusWhenReady } from "@/features/today/focus";
+import { focusWhenReady } from "@/lib/focus";
 import { MOVING_CHECKLIST_ID, moveDayError, moveDayRange, movedLine, movingRows, moveStanding } from "@/features/today/moving";
 import { HouseholdCard } from "@/features/household/HouseholdCard";
 import { SaveBar, SectionHeading, SettingsCard } from "./SettingsCard";

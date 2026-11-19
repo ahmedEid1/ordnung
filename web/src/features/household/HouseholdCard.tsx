@@ -19,7 +19,7 @@ import { SkeletonText } from "@/components/ui/Skeleton";
 import { toast } from "@/components/ui/Toast";
 import { useReportDirty } from "@/features/settings/dirty";
 import { SettingsCard } from "@/features/settings/SettingsCard";
-import { focusWhenReady } from "@/features/today/focus";
+import { focusWhenReady } from "@/lib/focus";
 import { backToYours, HOUSEHOLD_CHANGE_TOAST, lettersLabel, membersOf, nameProblem, oneLine, refusal, useChangeHousehold } from "./save";
 
 /** The card's title id: `/settings?section=profile#set-household` opens Settings at it. */

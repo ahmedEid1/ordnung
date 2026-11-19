@@ -52,7 +52,7 @@ import { ProofPanel } from "./ProofPanel";
 import { SendGuidancePanel } from "./SendGuidancePanel";
 import { contractHref } from "@/features/contracts/links";
 import { hasLongWord } from "@/features/document/verdict";
-import { focusWhenReady } from "@/features/today/focus";
+import { focusWhenReady } from "@/lib/focus";
 
 /** The "Sent by … on …" banner: where focus goes once a letter is marked as sent (its button is gone). */
 const SENT_BANNER = "letter-sent";

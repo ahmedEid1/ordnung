@@ -13,7 +13,7 @@ import { toast } from "@/components/ui/Toast";
 import { useNoteCallRequest } from "@/lib/party-drawer";
 import { useFormatDate, useTodayISO } from "@/lib/today";
 import { cn } from "@/lib/utils";
-import { focusWhenReady } from "@/features/today/focus";
+import { focusWhenReady } from "@/lib/focus";
 import { ComputerOnly } from "@/features/phone/ComputerOnly";
 import { CALL_FIELDS, callNoteProblems, clearCallDraft, draftHasText, keepCallDraft, loadCallDraft, promisedAmount, type CallNoteDraft as Draft } from "./calls";
 

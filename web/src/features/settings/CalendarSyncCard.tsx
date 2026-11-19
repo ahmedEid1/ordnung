@@ -13,7 +13,7 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "@/components/ui/Toast";
 import { CopyCommand } from "@/features/onboarding/CopyCommand";
-import { focusWhenReady } from "@/features/today/focus";
+import { focusWhenReady } from "@/lib/focus";
 import { useTodayISO } from "@/lib/today";
 import { cn } from "@/lib/utils";
 import { BreakablePath } from "./DataSection";
