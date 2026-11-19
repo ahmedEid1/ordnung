@@ -463,7 +463,7 @@ BACKUP_FIX = (
 def _is_demo(data_dir: Path, conn: sqlite3.Connection) -> bool:
     """A demo folder: its marker, or the demo setting in its database."""
     from ordnung.db.store import SETTINGS_META_KEY
-    from ordnung.demo.loader import is_demo_dir
+    from ordnung.demo.marker import is_demo_dir
 
     if is_demo_dir(data_dir):
         return True

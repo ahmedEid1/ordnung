@@ -240,7 +240,7 @@ def open_context(data_dir: Path) -> AppContext:
     Tests replace this function to inject a fake model.
     """
     from ordnung.app_context import build_context
-    from ordnung.demo.loader import is_demo_dir
+    from ordnung.demo.marker import is_demo_dir
 
     return build_context(data_dir, backend="replay" if is_demo_dir(data_dir) else None)
 
@@ -786,7 +786,7 @@ def serve(
                     reset=False,
                 )
                 return
-            from ordnung.demo.loader import is_demo_dir
+            from ordnung.demo.marker import is_demo_dir
 
             folder = resolve_paths(_chosen(ctx, data_dir)).data_dir
             demo_folder = is_demo_dir(folder)
@@ -1017,7 +1017,7 @@ def add(
     data_dir: DataDirOption = None,
 ) -> None:
     """Add letters: Ordnung reads them and files every date, amount and contract."""
-    from ordnung.demo.loader import is_demo_dir
+    from ordnung.demo.marker import is_demo_dir
 
     with _friendly():
         paths = resolve_paths(_chosen(ctx, data_dir))
@@ -1787,7 +1787,7 @@ def autostart_enable(
 ) -> None:
     """Start Ordnung (without opening the browser) every time you log in."""
     from ordnung import autostart, shortcut
-    from ordnung.demo.loader import is_demo_dir
+    from ordnung.demo.marker import is_demo_dir
 
     with _friendly():
         folder = _folder(ctx, data_dir)
@@ -1936,7 +1936,7 @@ def shortcut(
 ) -> None:
     """Put Ordnung in your app menu (Start menu, Applications folder), to open it without a terminal."""
     from ordnung import shortcut as launcher
-    from ordnung.demo.loader import is_demo_dir
+    from ordnung.demo.marker import is_demo_dir
 
     with _friendly():
         if remove:
@@ -2051,7 +2051,7 @@ SYNC_WAIT_POLL_S = 2.0
 
 def _sync_folder(ctx: typer.Context, data_dir: Path | None) -> Path:
     """The data folder of a ``sync`` command (the demo never syncs)."""
-    from ordnung.demo.loader import is_demo_dir
+    from ordnung.demo.marker import is_demo_dir
     from ordnung.sync import DEMO_MESSAGE
 
     folder = _folder(ctx, data_dir)

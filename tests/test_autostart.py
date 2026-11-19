@@ -536,9 +536,9 @@ def test_enable_carries_the_off_switch_for_text_in_pictures_of_this_terminal(
 def test_the_demo_does_not_start_at_login(
     fake_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import ordnung.demo.loader as loader
+    import ordnung.demo.marker as marker
 
-    monkeypatch.setattr(loader, "is_demo_dir", lambda _folder: True)
+    monkeypatch.setattr(marker, "is_demo_dir", lambda _folder: True)
     result = invoke("autostart", "enable", "--data-dir", str(tmp_path / "demo"))
     assert result.exit_code == 1 and "demo doesn't start at login" in result.output
 

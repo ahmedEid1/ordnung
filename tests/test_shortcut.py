@@ -1546,9 +1546,9 @@ def test_the_command_on_windows(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
 
 
 def test_the_demo_gets_no_shortcut(fake_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    import ordnung.demo.loader as loader
+    import ordnung.demo.marker as marker
 
-    monkeypatch.setattr(loader, "is_demo_dir", lambda _folder: True)
+    monkeypatch.setattr(marker, "is_demo_dir", lambda _folder: True)
     result = invoke("shortcut", "--data-dir", str(tmp_path / "demo"))
     assert result.exit_code == 1 and "The demo isn't added to your app menu." in result.output
     assert "ordnung demo" in result.output

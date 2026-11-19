@@ -47,7 +47,7 @@ from typing import TYPE_CHECKING, Literal
 
 from ordnung import __version__
 from ordnung.backup.archive import database_copy, iter_data_files, serialized, table_counts
-from ordnung.demo.loader import is_demo_dir
+from ordnung.demo.marker import is_demo_dir
 from ordnung.sync import (
     DB_SLICE,
     FOLDER_FORMAT,

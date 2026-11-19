@@ -47,7 +47,7 @@ from ordnung.calendar.secrets import SecretsLocked, SecretStore, SecretsUnavaila
 from ordnung.config import Paths
 from ordnung.db.migrate import latest_version
 from ordnung.db.store import PERSON_META_KEY, PERSON_WRITE, Store
-from ordnung.demo.loader import is_demo_dir
+from ordnung.demo.marker import is_demo_dir
 from ordnung.models import AppSettings, CalendarSyncState
 from ordnung.sync import (
     DEMO_MESSAGE,

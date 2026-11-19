@@ -36,6 +36,8 @@ STAYS_LIGHT = [
     ("ordnung.recurrence", {"ordnung.secretary.triggers"}),
     # the check for an incomplete reading sits below the plan that files its to-dos
     ("ordnung.ingest.gaps", {"ordnung.ingest.plan"}),
+    # the sync engine reads the demo folder's marker, not the demo loader
+    ("ordnung.sync.engine", {"ordnung.demo.loader"}),
 ]
 
 
