@@ -3,8 +3,7 @@ checksum and the bank code — tested on the SWIFT registry's example IBANs and 
 
 from __future__ import annotations
 
-import pytest
-
+from helpers_tables import check_rows
 from ordnung.money.iban import IBAN_COUNTRIES, checksum_ok, grouped, inspect_iban, normalize
 
 #: The registry's example IBAN of each country with a bank code position (and what it must yield).
@@ -21,19 +20,19 @@ REGISTRY_EXAMPLES = [
 ]
 
 
-@pytest.mark.parametrize(("text", "country", "bank", "branch", "account"), REGISTRY_EXAMPLES)
-def test_registry_examples_are_valid_with_their_bank_codes(
-    text: str, country: str, bank: str, branch: str | None, account: str | None
-) -> None:
-    check = inspect_iban(text)
-    assert check.valid and check.problems == []
-    assert (check.country, check.bank_code, check.branch_code, check.account_number) == (
-        country,
-        bank,
-        branch,
-        account,
-    )
-    assert check.length_ok is True and check.bank_label
+def test_registry_examples_are_valid_with_their_bank_codes() -> None:
+    def check(text: str, country: str, bank: str, branch: str | None, account: str | None) -> None:
+        check = inspect_iban(text)
+        assert check.valid and check.problems == []
+        assert (check.country, check.bank_code, check.branch_code, check.account_number) == (
+            country,
+            bank,
+            branch,
+            account,
+        )
+        assert check.length_ok is True and check.bank_label
+
+    check_rows(REGISTRY_EXAMPLES, check)
 
 
 def test_printed_noise_is_ignored_and_grouping_restores_it() -> None:
@@ -64,36 +63,47 @@ def test_every_registry_country_has_its_length() -> None:
     assert check.valid and check.country == "Brazil" and check.length_ok is True and check.bank_code is None
 
 
-@pytest.mark.parametrize("text", ["ZZ22 3704 0044 0532 0130 00", "US88 3704 0044 0532 0130 00"])
-def test_two_letters_that_are_no_iban_country_are_not_an_iban(text: str) -> None:
+NO_IBAN_COUNTRIES = ["ZZ22 3704 0044 0532 0130 00", "US88 3704 0044 0532 0130 00"]
+
+
+def test_two_letters_that_are_no_iban_country_are_not_an_iban() -> None:
     """The checksum adds up, but neither ZZ nor the US issue IBANs: not well-formed, no country guessed."""
-    check = inspect_iban(text)
-    assert check.shape_ok and check.checksum_ok and not check.valid
-    assert (check.country_code, check.country, check.length_ok) == (None, None, None)
-    assert check.problems == [f"{text[:2]} is not a country that issues IBANs, so this is not an IBAN."]
+
+    def check(text: str) -> None:
+        check = inspect_iban(text)
+        assert check.shape_ok and check.checksum_ok and not check.valid
+        assert (check.country_code, check.country, check.length_ok) == (None, None, None)
+        assert check.problems == [f"{text[:2]} is not a country that issues IBANs, so this is not an IBAN."]
+
+    check_rows(NO_IBAN_COUNTRIES, check)
 
 
-@pytest.mark.parametrize(
-    "text",
-    [
-        "IBAN: DE89 3704 0044 0532 0130 00",  # as German letters print it
-        "iban DE89 3704 0044 0532 0130 00",
-        "DE89 3704 0044 0532 0130 00\u200b",  # a zero-width space copied from a PDF
-        "\ufeffDE89\u00a03704 0044\u20600532 0130 00",  # a byte-order mark, a no-break space, a word joiner
-    ],
-)
-def test_labels_and_invisible_characters_are_ignored(text: str) -> None:
-    check = inspect_iban(text)
-    assert check.valid and check.iban == "DE89370400440532013000" and check.country_code == "DE"
+IBANS_WITH_LABELS_OR_INVISIBLE_CHARACTERS = [
+    "IBAN: DE89 3704 0044 0532 0130 00",  # as German letters print it
+    "iban DE89 3704 0044 0532 0130 00",
+    "DE89 3704 0044 0532 0130 00\u200b",  # a zero-width space copied from a PDF
+    "\ufeffDE89\u00a03704 0044\u20600532 0130 00",  # a byte-order mark, a no-break space, a word joiner
+]
 
 
-@pytest.mark.parametrize(
-    "text", ["", "12345", "DE", "DE89", "D€89370400440532013000", "DEXX370400440532013000", "X" * 40]
-)
-def test_things_that_are_not_ibans(text: str) -> None:
-    check = inspect_iban(text)
-    assert not check.valid and not check.shape_ok and not check.checksum_ok
-    assert check.problems and check.problems[0].startswith("It is not shaped like an IBAN")
+def test_labels_and_invisible_characters_are_ignored() -> None:
+    def check(text: str) -> None:
+        check = inspect_iban(text)
+        assert check.valid and check.iban == "DE89370400440532013000" and check.country_code == "DE"
+
+    check_rows(IBANS_WITH_LABELS_OR_INVISIBLE_CHARACTERS, check)
+
+
+NOT_IBANS = ["", "12345", "DE", "DE89", "D€89370400440532013000", "DEXX370400440532013000", "X" * 40]
+
+
+def test_things_that_are_not_ibans() -> None:
+    def check(text: str) -> None:
+        check = inspect_iban(text)
+        assert not check.valid and not check.shape_ok and not check.checksum_ok
+        assert check.problems and check.problems[0].startswith("It is not shaped like an IBAN")
+
+    check_rows(NOT_IBANS, check)
 
 
 def test_lithuanian_scam_iban_is_well_formed() -> None:
@@ -102,24 +112,27 @@ def test_lithuanian_scam_iban_is_well_formed() -> None:
     assert check.valid and check.country == "Lithuania" and check.bank_code is None
 
 
-@pytest.mark.parametrize(
-    "value",
-    [
-        "DE89 3704 0044 0532 0130 00",
-        "LT08 3999 0000 0543 9871",
-        "BR15 0000 0000 0000 1093 2840 814P 2",
-        "US88 3704 0044 0532 0130 00",  # a checksum that adds up, but no IBAN country
-        "ZZ22 3704 0044 0532 0130 00",
-        "MT84 MALT 0110 0001 2345 MTLC AST0 01",  # a registry country the old scam table lacked
-        "MT84 MALT 0110 0001 2345 MTLC AST0 0",
-        "DE89 3704 0044 0532 0130 01",
-    ],
-)
-def test_the_scam_checks_and_the_rules_tool_agree(value: str) -> None:
-    """One written policy for "is this an IBAN" (ADR 0007): the app's scam checks use this module."""
-    from ordnung.secretary.scam import iban_valid
+VALUES_BOTH_IBAN_CHECKS_JUDGE = [
+    "DE89 3704 0044 0532 0130 00",
+    "LT08 3999 0000 0543 9871",
+    "BR15 0000 0000 0000 1093 2840 814P 2",
+    "US88 3704 0044 0532 0130 00",  # a checksum that adds up, but no IBAN country
+    "ZZ22 3704 0044 0532 0130 00",
+    "MT84 MALT 0110 0001 2345 MTLC AST0 01",  # a registry country the old scam table lacked
+    "MT84 MALT 0110 0001 2345 MTLC AST0 0",
+    "DE89 3704 0044 0532 0130 01",
+]
 
-    assert iban_valid(value) == inspect_iban(value).valid
+
+def test_the_scam_checks_and_the_rules_tool_agree() -> None:
+    """One written policy for "is this an IBAN" (ADR 0007): the app's scam checks use this module."""
+
+    def check(value: str) -> None:
+        from ordnung.secretary.scam import iban_valid
+
+        assert iban_valid(value) == inspect_iban(value).valid
+
+    check_rows(VALUES_BOTH_IBAN_CHECKS_JUDGE, check)
 
 
 def test_bank_code_spans_fit_inside_their_country_length() -> None:
