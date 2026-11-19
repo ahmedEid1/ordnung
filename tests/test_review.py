@@ -10,6 +10,7 @@ from typing import Any
 import pytest
 
 from helpers_secretary import TODAY, seed_ledger
+from helpers_tables import check_rows
 from ordnung.db.store import Store
 from ordnung.llm.base import LLMRequest
 from ordnung.llm.fake import FakeBackend
@@ -280,23 +281,26 @@ async def test_run_review_ignores_malformed_output(store: Store, ids: dict[str, 
     assert ideas == []
 
 
-@pytest.mark.parametrize(
-    ("text", "expected"),
-    [
-        ("Return the books by Thu 2 Oct 2026.", "Return the books by Fri 2 Oct 2026."),
-        ("Thursday, 2 October 2026 is the day.", "Friday, 2 October 2026 is the day."),
-        ("Bis Do., 2. Oktober 2026 zahlen.", "Bis Fr., 2. Oktober 2026 zahlen."),
-        ("Due Thu 2026-10-02.", "Due Fri 2026-10-02."),
-        ("Due Thu 2 Oct.", "Due Fri 2 Oct."),  # no year: the one closest to today
-        ("Pay by Wed 30 Sep 2026.", "Pay by Wed 30 Sep 2026."),  # already right
-        ("Do 5 things on Sat, then rest.", "Do 5 things on Sat, then rest."),  # no date follows
-        ("Monday was busy; 2 Oct 2026 is next.", "Monday was busy; 2 Oct 2026 is next."),
-    ],
-)
-def test_weekday_names_next_to_a_date_are_corrected(text: str, expected: str) -> None:
+WEEKDAY_NEXT_TO_A_DATE = [
+    ("Return the books by Thu 2 Oct 2026.", "Return the books by Fri 2 Oct 2026."),
+    ("Thursday, 2 October 2026 is the day.", "Friday, 2 October 2026 is the day."),
+    ("Bis Do., 2. Oktober 2026 zahlen.", "Bis Fr., 2. Oktober 2026 zahlen."),
+    ("Due Thu 2026-10-02.", "Due Fri 2026-10-02."),
+    ("Due Thu 2 Oct.", "Due Fri 2 Oct."),  # no year: the one closest to today
+    ("Pay by Wed 30 Sep 2026.", "Pay by Wed 30 Sep 2026."),  # already right
+    ("Do 5 things on Sat, then rest.", "Do 5 things on Sat, then rest."),  # no date follows
+    ("Monday was busy; 2 Oct 2026 is next.", "Monday was busy; 2 Oct 2026 is next."),
+]
+
+
+def test_weekday_names_next_to_a_date_are_corrected() -> None:
     """In the demo, recorded Ask answers said "Thu 2 Oct 2026" for a Friday. The model adds weekday
     names itself; code knows the calendar."""
-    assert correct_weekdays(text, date(2026, 9, 28)) == expected
+
+    def check(text: str, expected: str) -> None:
+        assert correct_weekdays(text, date(2026, 9, 28)) == expected
+
+    check_rows(WEEKDAY_NEXT_TO_A_DATE, check)
 
 
 def test_a_weekday_without_a_year_is_read_in_the_year_closest_to_today() -> None:
@@ -304,53 +308,58 @@ def test_a_weekday_without_a_year_is_read_in_the_year_closest_to_today() -> None
     assert correct_weekdays("Tue 20 Dec", date(2027, 1, 5)) == "Sun 20 Dec"  # 20 Dec 2026
 
 
-@pytest.mark.parametrize(
-    ("text", "expected"),
-    [
-        # in bold, as Ask's lists write it
-        ("Due **Thu** 2 Oct 2026.", "Due **Fri** 2 Oct 2026."),
-        ("Due *Thursday*, 2 October 2026.", "Due *Friday*, 2 October 2026."),
-        # a no-break space between the name and the date
-        ("Due Thu\u00a02 Oct 2026.", "Due Fri\u00a02 Oct 2026."),
-        # the month first, or "the" between
-        ("Due Thursday, October 2, 2026.", "Due Friday, October 2, 2026."),
-        ("Due Thursday the 2nd of October 2026.", "Due Friday the 2nd of October 2026."),
-        # after the date
-        ("Due 2 Oct 2026 (Thu).", "Due 2 Oct 2026 (Fri)."),
-        ("Due **2 October 2026** (Thursday).", "Due **2 October 2026** (Friday)."),
-        ("Due 2 Oct 2026, a Thursday.", "Due 2 Oct 2026, a Friday."),
-        # German: "den" between the name and the date, the name after the date
-        ("Bis Donnerstag, den 2. Oktober 2026 zahlen.", "Bis Freitag, den 2. Oktober 2026 zahlen."),
-        ("Bis Do., den 2.10.2026 zahlen.", "Bis Fr., den 2.10.2026 zahlen."),
-        # "dem" and "der" as well
-        ("Am Donnerstag, dem 2. Oktober 2026 zahlen.", "Am Freitag, dem 2. Oktober 2026 zahlen."),
-        ("Bis Mittwoch, dem 5. November 2026.", "Bis Donnerstag, dem 5. November 2026."),
-        ("Fristende ist Donnerstag, der 2. Oktober 2026.", "Fristende ist Freitag, der 2. Oktober 2026."),
-        ("Bis 2.10.2026 (Donnerstag) zahlen.", "Bis 2.10.2026 (Freitag) zahlen."),
-        ("Bis 2.10.2026 (Do.) zahlen.", "Bis 2.10.2026 (Fr.) zahlen."),
-        ("Bis 2. Oktober 2026, einem Donnerstag, zahlen.", "Bis 2. Oktober 2026, einem Freitag, zahlen."),
-        # a date the answer check put in quotation marks keeps the name next to it right too
-        ("Bis Do, den „2.10.2026“ zahlen.", "Bis Fr, den „2.10.2026“ zahlen."),
-        ("Due “2 Oct 2026” (Thu).", "Due “2 Oct 2026” (Fri)."),
-    ],
-)
-def test_weekday_names_on_either_side_of_a_date_are_corrected(text: str, expected: str) -> None:
+WEEKDAY_ON_EITHER_SIDE_OF_A_DATE = [
+    # in bold, as Ask's lists write it
+    ("Due **Thu** 2 Oct 2026.", "Due **Fri** 2 Oct 2026."),
+    ("Due *Thursday*, 2 October 2026.", "Due *Friday*, 2 October 2026."),
+    # a no-break space between the name and the date
+    ("Due Thu\u00a02 Oct 2026.", "Due Fri\u00a02 Oct 2026."),
+    # the month first, or "the" between
+    ("Due Thursday, October 2, 2026.", "Due Friday, October 2, 2026."),
+    ("Due Thursday the 2nd of October 2026.", "Due Friday the 2nd of October 2026."),
+    # after the date
+    ("Due 2 Oct 2026 (Thu).", "Due 2 Oct 2026 (Fri)."),
+    ("Due **2 October 2026** (Thursday).", "Due **2 October 2026** (Friday)."),
+    ("Due 2 Oct 2026, a Thursday.", "Due 2 Oct 2026, a Friday."),
+    # German: "den" between the name and the date, the name after the date
+    ("Bis Donnerstag, den 2. Oktober 2026 zahlen.", "Bis Freitag, den 2. Oktober 2026 zahlen."),
+    ("Bis Do., den 2.10.2026 zahlen.", "Bis Fr., den 2.10.2026 zahlen."),
+    # "dem" and "der" as well
+    ("Am Donnerstag, dem 2. Oktober 2026 zahlen.", "Am Freitag, dem 2. Oktober 2026 zahlen."),
+    ("Bis Mittwoch, dem 5. November 2026.", "Bis Donnerstag, dem 5. November 2026."),
+    ("Fristende ist Donnerstag, der 2. Oktober 2026.", "Fristende ist Freitag, der 2. Oktober 2026."),
+    ("Bis 2.10.2026 (Donnerstag) zahlen.", "Bis 2.10.2026 (Freitag) zahlen."),
+    ("Bis 2.10.2026 (Do.) zahlen.", "Bis 2.10.2026 (Fr.) zahlen."),
+    ("Bis 2. Oktober 2026, einem Donnerstag, zahlen.", "Bis 2. Oktober 2026, einem Freitag, zahlen."),
+    # a date the answer check put in quotation marks keeps the name next to it right too
+    ("Bis Do, den „2.10.2026“ zahlen.", "Bis Fr, den „2.10.2026“ zahlen."),
+    ("Due “2 Oct 2026” (Thu).", "Due “2 Oct 2026” (Fri)."),
+]
+
+
+def test_weekday_names_on_either_side_of_a_date_are_corrected() -> None:
     """A weekday name next to a date, whichever side and however the answer writes it, is that date's
     weekday: in bold, after the date in brackets or as "a Thursday", with "the" or "den" between."""
-    assert correct_weekdays(text, date(2026, 9, 28)) == expected
+
+    def check(text: str, expected: str) -> None:
+        assert correct_weekdays(text, date(2026, 9, 28)) == expected
+
+    check_rows(WEEKDAY_ON_EITHER_SIDE_OF_A_DATE, check)
 
 
-@pytest.mark.parametrize(
-    "text",
-    [
-        "Due 2 Oct 2026 (Thursday is a holiday).",  # a bracket that says more than the name
-        "Due 2 Oct 2026, a Thursday payment run follows.",  # right weekday? no: it names another thing
-        "So October 2, 2026 is the day.",  # "So" is German only before a day, never before a month
-        "Due 2 Oct 2026 and Thu 8 Oct 2026 (Thu).",  # already right
-        "Thursday's letter is due 2 Oct 2026.",  # not next to the date
-        "Due Thursday der 2 Oct 2026.",  # "der" goes with a German name only
-        "Am Donnerstag the 2nd of October 2026.",  # and "the" with an English one
-    ],
-)
-def test_weekday_names_not_next_to_a_date_stay(text: str) -> None:
-    assert correct_weekdays(text, date(2026, 9, 28)) == text
+WEEKDAY_NOT_NEXT_TO_A_DATE = [
+    "Due 2 Oct 2026 (Thursday is a holiday).",  # a bracket that says more than the name
+    "Due 2 Oct 2026, a Thursday payment run follows.",  # right weekday? no: it names another thing
+    "So October 2, 2026 is the day.",  # "So" is German only before a day, never before a month
+    "Due 2 Oct 2026 and Thu 8 Oct 2026 (Thu).",  # already right
+    "Thursday's letter is due 2 Oct 2026.",  # not next to the date
+    "Due Thursday der 2 Oct 2026.",  # "der" goes with a German name only
+    "Am Donnerstag the 2nd of October 2026.",  # and "the" with an English one
+]
+
+
+def test_weekday_names_not_next_to_a_date_stay() -> None:
+    def check(text: str) -> None:
+        assert correct_weekdays(text, date(2026, 9, 28)) == text
+
+    check_rows(WEEKDAY_NOT_NEXT_TO_A_DATE, check)
