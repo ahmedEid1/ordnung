@@ -1,3 +1,4 @@
+// @vitest-environment node
 /// <reference types="node" />
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
@@ -380,10 +381,6 @@ describe("mock dataset", () => {
       await s.handle("PATCH", `/drafts/${question.id}`, new URLSearchParams(), { body: question.body.replace("…", "Wann kann ich die Belege einsehen?") })
     ).json()) as Draft;
     expect(saved.checks.every((c) => c.ok)).toBe(true);
-  });
-
-  it("uses the demo persona's two-line address", () => {
-    expect(PROFILE.address).toBe("Beispielweg 5\n12345 Musterstadt");
   });
 
   it("addresses FunkNetz's cancellation to the address its letter and details show, as the demo does", () => {

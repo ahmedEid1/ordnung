@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { TOUR_STEPS, stepCopy } from "./steps";
 import { SPOT_PAD, spotlightBox, wantsPart } from "./useSpotlight";

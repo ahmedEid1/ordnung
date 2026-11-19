@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { BUNDESLAENDER, LANGUAGES, PRIVACY_STATEMENT } from "./options";
 import {

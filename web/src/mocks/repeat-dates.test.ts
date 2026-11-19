@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Dates you add yourself that repeat, in the mock database as `POST`/`PATCH /api/items` file them
  * (tests/test_api_items_repeat.py is the API's side): placed by their rule at once, moved on when marked done (Undo

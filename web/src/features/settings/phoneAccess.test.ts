@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Settings → Phone's small rules: the code as people read it, the countdown, the line under the switch, when a new
  * certificate is news, the firewall's narrowest rules, and the phones the trust step is offered on.

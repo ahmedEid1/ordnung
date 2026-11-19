@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { DOMESTIC_NOTE, NOT_A_NUMBER, NOT_REGISTERED, ONLINE_STAMP_NOTE, WRONG_CHECK_DIGIT, asciiDigits, checkTracking, displayTracking, normaliseTracking, s10CheckDigit, trackingComplete } from "./tracking";
 

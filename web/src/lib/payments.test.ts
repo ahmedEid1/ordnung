@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * `payments.ts` mirrors `ordnung/payments.py` (tests/test_payments.py has the same cases): a to-do
  * naming a direct debit in German or English — unless its debit failed or its action asks for a transfer

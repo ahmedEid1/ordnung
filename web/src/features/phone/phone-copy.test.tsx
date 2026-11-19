@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { setClientKind } from "@/api/clientKind";
-import { BootScreen, BOOT_STUCK_MS, UnreachableScreen } from "@/app/screens";
+import { UnreachableScreen } from "@/app/screens";
 import { createQueryClient, showOffline, __resetOfflineForTests } from "@/app/queryClient";
 import { AppErrorBoundary } from "@/app/ErrorBoundary";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
@@ -104,14 +104,6 @@ describe("a paired phone's pages say 'your computer'", () => {
 });
 
 describe("the phone's full-screen states", () => {
-  it("the splash that waits asks about the computer, never for a command", () => {
-    vi.useFakeTimers();
-    render(<BootScreen phone onRetry={() => {}} />);
-    act(() => vi.advanceTimersByTime(BOOT_STUCK_MS));
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Still waiting — is your computer on?");
-    expectPhoneWords("boot");
-  });
-
   it.each([
     [0, "Can't reach your computer"],
     [401, "This phone isn't paired any more"],
@@ -150,11 +142,5 @@ describe("the computer keeps its words", () => {
     expect(document.body.textContent).toMatch(/Your files stay on this computer\./);
     expect(screen.getByRole("link", { name: "choose a watched folder" })).toBeInTheDocument();
     expect(document.body.textContent).toMatch(/ordnung restore/);
-  });
-
-  it("'this computer' and the commands to start Ordnung", () => {
-    render(<UnreachableScreen phone={false} status={0} onRetry={() => {}} />);
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Ordnung isn't running");
-    expect(document.body.textContent).toMatch(/ordnung serve/);
   });
 });

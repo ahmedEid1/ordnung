@@ -1,3 +1,4 @@
+// @vitest-environment node
 /** Answers for many waiting letters go in requests of at most 500 ids (the API's limit), merged into one result. */
 import { describe, expect, it } from "vitest";
 import type { Document, HeldResult } from "./types";

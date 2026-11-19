@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { plainText } from "@/lib/glue";
 import { bracketed, englishInline, factLabel, factValue, isGermanText, sameNumber, unbrokenNumber } from "./fact-text";

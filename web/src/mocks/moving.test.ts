@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * The static demo's moving checklist (`./moving.ts`): the same rows as `secretary/moving.py` on the shared
  * cases (`moving-cases.json`, which tests/test_moving.py reads too), and the mock API's "I moved", "Stop the

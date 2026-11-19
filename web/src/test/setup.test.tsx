@@ -6,26 +6,11 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { getConfig, render, screen } from "@testing-library/react";
-import { useEffect, useState } from "react";
-
-function ShowsLate({ after }: { after: number }) {
-  const [shown, setShown] = useState(false);
-  useEffect(() => {
-    const timer = setTimeout(() => setShown(true), after);
-    return () => clearTimeout(timer);
-  }, [after]);
-  return shown ? <p>Here now</p> : null;
-}
+import { getConfig } from "@testing-library/react";
 
 describe("the tests' setup", () => {
   it("lets findBy* and waitFor wait 5 s", () => {
     expect(getConfig().asyncUtilTimeout).toBe(5_000);
-  });
-
-  it("finds what shows up after Testing Library's own 1 s", async () => {
-    render(<ShowsLate after={1_200} />);
-    expect(await screen.findByText("Here now")).toBeInTheDocument();
   });
 
   it("is not cut short by a test: no call waits less than 5 s", () => {

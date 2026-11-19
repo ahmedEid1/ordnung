@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Whose an Idea, a calendar entry and the full notification are about in the mock backend (ADR 0023), as the API
  * words them (`secretary/triggers.py`, `calendar/ics.py`, `notify/desktop.py`): only a letter the visitor filed for

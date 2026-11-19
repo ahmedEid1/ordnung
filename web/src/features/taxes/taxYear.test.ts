@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import type { Document } from "@/api/types";
 import { makeDoc, makeRow } from "@/features/document/fixtures";

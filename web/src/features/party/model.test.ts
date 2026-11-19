@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import type { Item } from "@/api/types";
 import { item } from "@/mocks/data/helpers";

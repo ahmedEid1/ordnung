@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import type { MailTrayItem, Suggestion } from "@/api/types";
 import { ideasFromNewMail, isHeadlineIdea, openedTrayDocIds } from "./newMail";

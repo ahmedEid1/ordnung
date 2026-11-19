@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { Clock, Hourglass } from "lucide-react";
 import { HIGH_STAKES_KINDS } from "@/api/types";

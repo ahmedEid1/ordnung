@@ -35,6 +35,7 @@ beforeEach(() => {
   vi.stubGlobal("scrollTo", () => {});
 });
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   act(() => __clearToasts());
 });
@@ -129,12 +130,18 @@ describe("settings helpers", () => {
 
 describe("the save bar", () => {
   it("is only a status while nothing changed, stays in view while there are edits and confirms a save in place", async () => {
-    useMockApi();
-    const user = userEvent.setup();
+    // the clock is faked from the start (the bar's unpin timer is set while findByText still polls); it still runs
+    // on by itself so that findBy* and waitFor keep working. Only the timeouts: with every timer faked, later tests'
+    // dialogs here stayed mid-animation
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ["setTimeout", "clearTimeout"] });
+    const { calls } = useMockApi();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderWithProviders(<SettingsPage />, {
       route: "/settings?section=profile",
     });
     const phone = await screen.findByLabelText(/^Phone/);
+    const name = screen.getByLabelText("Full name");
+    expect(name).toHaveValue("Sam Rivera");
     const status = screen.getByText("All changes saved").closest("p")!;
     // the status on the left; a footer's lone action (Data → "Download JSON") stays on the right
     expect(status.className).toMatch(/\bmr-auto\b/);
@@ -145,7 +152,10 @@ describe("the save bar", () => {
     ).not.toBeInTheDocument();
     expect(pinnedBar()).toBeNull();
 
+    const phoneBefore = (phone as HTMLInputElement).value;
     await user.type(phone, "1");
+    await user.clear(name);
+    await user.type(name, "Sam R. Rivera");
     expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
     const bar = pinnedBar()!;
     expect(bar).not.toBeNull();
@@ -162,11 +172,15 @@ describe("the save bar", () => {
     expect(
       await screen.findByText("New letters use this name and address."),
     ).toBeInTheDocument();
+    expect(
+      calls.find((c) => c.method === "PUT" && c.path === "/profile")?.body,
+    ).toMatchObject({ name: "Sam R. Rivera", phone: `${phoneBefore}1` });
     // readable in place a moment, then the bar goes back to the end of its card
     expect(pinnedBar()).not.toBeNull();
-    await waitFor(() => expect(pinnedBar()).toBeNull(), {
-      timeout: SAVED_PIN_MS + 2000,
-    });
+    await act(() => vi.advanceTimersByTimeAsync(SAVED_PIN_MS - 100));
+    expect(pinnedBar()).not.toBeNull();
+    await act(() => vi.advanceTimersByTimeAsync(100));
+    expect(pinnedBar()).toBeNull();
     expect(screen.getByText("Saved.")).toBeInTheDocument();
   });
 
@@ -394,7 +408,7 @@ describe("Profile", () => {
 
 describe("Reminders", () => {
   it("the chips are the list and “+ Add” follows it; Enter and Escape hand focus back to “+ Add”", async () => {
-    useMockApi();
+    const { calls } = useMockApi();
     const user = userEvent.setup();
     renderWithProviders(<SettingsPage />, {
       route: "/settings?section=reminders",
@@ -402,6 +416,16 @@ describe("Reminders", () => {
     const deadlines = await screen.findByRole("list", {
       name: "Reminders for deadlines",
     });
+    expect(
+      within(deadlines)
+        .getAllByRole("listitem")
+        .map((li) => li.textContent),
+    ).toEqual([
+      "2 weeks before",
+      "1 week before",
+      "3 days before",
+      "1 day before",
+    ]);
     for (const child of Array.from(deadlines.children))
       expect(child.tagName).toBe("LI");
     expect(
@@ -456,6 +480,24 @@ describe("Reminders", () => {
     expect(
       screen.getByText("Added: 5 days before, for deadlines"),
     ).toBeInTheDocument();
+
+    // a chip removed and the list saved: what is left, largest first
+    await user.click(
+      within(deadlines).getByRole("button", {
+        name: "Remove reminder 1 day before for deadlines",
+      }),
+    );
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() =>
+      expect(calls.some((c) => c.method === "PUT")).toBe(true),
+    );
+    expect(
+      (
+        calls.find((c) => c.method === "PUT")?.body as {
+          reminder_days: Record<string, number[]>;
+        }
+      ).reminder_days.deadline,
+    ).toEqual([14, 7, 5, 3]);
   });
 
   it("removing a chip moves focus to the next one (the last: to the one before, none left: to “+ Add”)", async () => {
@@ -824,13 +866,17 @@ describe("switching sections", () => {
   it("moves focus to the new section's heading, without a focus box around it", async () => {
     useMockApi();
     const user = userEvent.setup();
-    renderWithProviders(<SettingsPage />, {
-      route: "/settings?section=profile",
+    const { router } = renderWithProviders(<SettingsPage />, {
+      route: "/settings",
     });
     const nav = await screen.findByRole("navigation", {
       name: "Settings sections",
     });
+    expect(
+      within(nav).getByRole("link", { name: "Profile & address" }),
+    ).toHaveAttribute("aria-current", "page");
     await user.click(within(nav).getByRole("link", { name: "Calendar" }));
+    expect(router.state.location.search).toBe("?section=calendar");
     const heading = await screen.findByRole("heading", {
       level: 2,
       name: "Calendar",

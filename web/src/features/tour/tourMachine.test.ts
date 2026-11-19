@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import type { TourState } from "@/api/types";
 import { isTourVisible, normalizeTour, reduceTour, type TourEvent } from "./tourMachine";

@@ -210,12 +210,9 @@ describe("Inbox", () => {
     // another "See all letters matching …" while the Inbox is open takes over the field
     await act(() => router.navigate("/inbox?q=Parking"));
     await waitFor(() => expect(field).toHaveValue("Parking"));
-  });
-
-  it("asks for one more letter instead of ignoring a 1-character search", async () => {
-    renderInbox();
-    const field = await screen.findByRole("searchbox", { name: "Search letters" });
-    await userEvent.setup().type(field, "P");
+    // one character is not a search: it asks for one more instead of being ignored
+    await user.clear(field);
+    await user.type(field, "P");
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Type one more letter to search."));
   });
 

@@ -187,6 +187,10 @@ describe("How dates are computed", () => {
     expect(within(jump).getAllByRole("button")).toHaveLength(topics.length);
     for (const t of topics) expect(screen.getByRole("heading", { level: 3, name: t })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 4, name: "Tax objection: one month" })).toBeInTheDocument();
+    // a rule's own words and its citation, and the disclaimer
+    expect(await screen.findByText("Tax letters count as delivered 4 days after posting")).toBeInTheDocument();
+    expect(screen.getByText("§ 122 Abs. 2 Nr. 1 AO")).toBeInTheDocument();
+    expect(screen.getByText(/Not legal advice/)).toBeInTheDocument();
 
     const links = screen.getAllByRole("link", { name: /^Read the law on “/ });
     expect(links).toHaveLength(RULES.filter((r) => r.url).length);
@@ -253,6 +257,8 @@ describe("How dates are computed", () => {
     expect(status).toHaveTextContent("");
 
     await user.type(input, "TKG");
+    expect(screen.getByText("Phone & internet contracts")).toBeInTheDocument();
+    expect(screen.queryByText("Tax objection: one month")).toBeNull();
     const hits = RULES.filter((r) => matchesRule(r, "TKG")).length;
     expect(status).toHaveTextContent(`${hits} of ${RULES.length} rules match “TKG”`);
     expect(screen.getByText(`${hits} of ${RULES.length} rules`)).toBeInTheDocument();
