@@ -729,6 +729,24 @@ def recorded_four(
     return agent, live, recorded
 
 
+@pytest.fixture(scope="module")
+def _base_built(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Callable[[], None]]:
+    from evals.ask.ledger import SampleLife, build_base
+
+    with _as_in_a_test():
+        base = build_base(tmp_path_factory.mktemp("base-ledger") / "base", SampleLife.load())
+        put_back = _clock_left()
+    return base, put_back
+
+
+@pytest.fixture
+def base_ledger(_base_built: tuple[Path, Callable[[], None]]) -> Path:
+    """The benchmark's base ledger, built once per module. Read only: a test opens it or copies it."""
+    base, put_back = _base_built
+    put_back()
+    return base
+
+
 def test_a_run_records_then_replays_exactly(
     tmp_path: Path, recorded_four: tuple[StandInAgent, RunResult, Path]
 ) -> None:
@@ -862,7 +880,7 @@ def _mrz_consistent(text: str) -> bool:
     )
 
 
-def test_the_household_ledger_files_two_letters_addressed_to_alex(tmp_path: Path) -> None:
+def test_the_household_ledger_files_two_letters_addressed_to_alex(tmp_path: Path, base_ledger: Path) -> None:
     """The household ledger is the base ledger with Alex Rivera in the household and two letters that are his
     filed for him, by the household code itself: the health insurer's notice and the passport, re-addressed to
     him with his own numbers (:data:`MEMBER_NUMBERS`) in place of the person's — on every page, in Ordnung's
@@ -879,7 +897,7 @@ def test_the_household_ledger_files_two_letters_addressed_to_alex(tmp_path: Path
         MEMBER_NUMBERS,
         build_household,
     )
-    from evals.ask.ledger import SampleLife, build_base
+    from evals.ask.ledger import SampleLife
 
     from ordnung.assistant.ask import ledger_fingerprint
     from ordnung.config import Paths
@@ -891,7 +909,7 @@ def test_the_household_ledger_files_two_letters_addressed_to_alex(tmp_path: Path
         return re.sub(r"\s", "", text)
 
     life = SampleLife.load()
-    base = build_base(tmp_path / "base", life)
+    base = base_ledger
     built = build_household(base, tmp_path / "household", life)
     again = build_household(base, tmp_path / "again", life)
     filed = {life.doc_ids[slug] for slug in FILED}
@@ -1204,19 +1222,18 @@ def test_a_replay_fails_when_the_tools_would_answer_differently(tmp_path: Path) 
     assert not path.exists()
 
 
-def test_the_price_increase_window_is_in_the_record_of_its_letter(tmp_path: Path) -> None:
+def test_the_price_increase_window_is_in_the_record_of_its_letter(base_ledger: Path) -> None:
     """Verification of Ask's ledger gaps: the electricity price increase's special right to cancel (must
     arrive by Sat 31 Oct 2026) was only an Idea, so its deadline question and the attack on it were scored
     as not in Ordnung's record. The contract's record carries the window now, and it is the price letter's
     too: a question that asks for dates alone (a deadline's, or October's deadlines over several letters)
     looks at the gold letters' contracts as well as their to-dos."""
-    from evals.ask.ledger import SampleLife, build_base
+    from evals.ask.ledger import SampleLife
     from evals.ask.run import scoring_context
     from evals.ask.score import Turn, score_attack, score_question
 
     life = SampleLife.load()
-    base = build_base(tmp_path / "base", life)
-    ctx = scoring_context(base, life, {})
+    ctx = scoring_context(base_ledger, life, {})
     question = next(q for q in QUESTIONS if q.id == "deadline-stadtwerke_preisanpassung-0")
     assert question.gold is not None and question.gold.dates == (date(2026, 10, 31),)
     assert not in_record(question.gold, ctx)  # no to-do holds it
