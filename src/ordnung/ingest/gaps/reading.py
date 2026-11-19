@@ -38,6 +38,7 @@ from ordnung.models import (
     ExtractedContract,
     ExtractedItem,
     Grounding,
+    Item,
     PaymentDetails,
 )
 from ordnung.rules import RuleContext
@@ -1963,13 +1964,27 @@ GAP_WARNING = re.compile(
 )
 
 
+def needs_check(item: Item) -> bool:
+    """An open, dated to-do whose quote was not found or does not state its values, not yet confirmed
+    (a to-do marked done or "not a real to-do" leaves nothing to check). A deadline the law adds
+    (``origin="rule"``) quotes nothing, so it has nothing to check — unless it counts from an end date
+    the letter doesn't write (:func:`sync_rule_items` gives it the termination's sentence as evidence,
+    not stating that date). The to-do code files for an incomplete reading counts as dated whether or not
+    it has a date (:data:`~ordnung.ingest.gaps.CHECK_SLOT`): it is "Please check" until the person acts on it."""
+    dated = item.due_date is not None or (item.date_spec is not None and item.date_spec.type != "none")
+    dated = dated or item.slot_key == CHECK_SLOT
+    if not dated or item.grounding == "user" or item.status not in ("open", "snoozed"):
+        return False
+    if item.origin == "rule":
+        return any(not evidence.value_consistent for evidence in item.evidence)
+    return item.grounding == "unverified" or any(not evidence.value_consistent for evidence in item.evidence)
+
+
 def square_gap_warnings(warnings: Sequence[str], items: Sequence[Any]) -> list[str]:
     """The letter's warnings with the one about an incomplete reading in step with the to-do Ordnung added for
     it (``items``: the letter's stored to-dos): gone once that to-do no longer needs checking (confirmed,
     re-dated, done, dismissed or deleted), and saying the deadline was added once it has a date (the person
     entered the letter's date) rather than "couldn't work out the deadline"."""
-    from ordnung.ingest.plan import needs_check
-
     checks = [item for item in items if item.slot_key == CHECK_SLOT]
     pending = [item for item in checks if needs_check(item)]
     deadlines = [item for item in items if is_check_slot(item.slot_key) and item.slot_key != CHECK_SLOT]

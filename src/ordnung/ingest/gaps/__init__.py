@@ -83,6 +83,7 @@ from ordnung.ingest.gaps.reading import formally_served as formally_served
 from ordnung.ingest.gaps.reading import gap_warning as gap_warning
 from ordnung.ingest.gaps.reading import is_check_slot as is_check_slot
 from ordnung.ingest.gaps.reading import letter_date as letter_date
+from ordnung.ingest.gaps.reading import needs_check as needs_check
 from ordnung.ingest.gaps.reading import notice_rival as notice_rival
 from ordnung.ingest.gaps.reading import reading_gap as reading_gap
 from ordnung.ingest.gaps.reading import remedy_notices as remedy_notices

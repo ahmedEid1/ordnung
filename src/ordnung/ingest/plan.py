@@ -57,6 +57,7 @@ from ordnung.ingest.gaps import (
     square_gap_warnings,
     start_variants,
 )
+from ordnung.ingest.gaps import needs_check as needs_check
 from ordnung.ingest.link import LinkResult
 from ordnung.ingest.normalize import normalise_with_map
 from ordnung.ingest.verify import (
@@ -217,22 +218,6 @@ class VerifiedItem:
         to-do code files for an incomplete reading, dated or not (:data:`~ordnung.ingest.gaps.CHECK_SLOT`)."""
         dated = self.dated or self.slot_key == CHECK_SLOT
         return dated and (self.evidence.grounding == "unverified" or bool(self.reasons))
-
-
-def needs_check(item: Item) -> bool:
-    """An open, dated to-do whose quote was not found or does not state its values, not yet confirmed
-    (a to-do marked done or "not a real to-do" leaves nothing to check). A deadline the law adds
-    (``origin="rule"``) quotes nothing, so it has nothing to check — unless it counts from an end date
-    the letter doesn't write (:func:`sync_rule_items` gives it the termination's sentence as evidence,
-    not stating that date). The to-do code files for an incomplete reading counts as dated whether or not
-    it has a date (:data:`~ordnung.ingest.gaps.CHECK_SLOT`): it is "Please check" until the person acts on it."""
-    dated = item.due_date is not None or (item.date_spec is not None and item.date_spec.type != "none")
-    dated = dated or item.slot_key == CHECK_SLOT
-    if not dated or item.grounding == "user" or item.status not in ("open", "snoozed"):
-        return False
-    if item.origin == "rule":
-        return any(not evidence.value_consistent for evidence in item.evidence)
-    return item.grounding == "unverified" or any(not evidence.value_consistent for evidence in item.evidence)
 
 
 @dataclass
