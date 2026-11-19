@@ -87,7 +87,7 @@ function resolveDoc(d: Document): Document {
 
 const daysFrom = (a: string, b: string) => differenceInCalendarDays(parseISO(a), parseISO(b));
 /**
- * A real renewal decision, as the API's `is_decision` (`src/ordnung/secretary/triggers.py`): a cancellation
+ * A real renewal decision, as the API's `is_decision` (`src/ordnung/secretary/ledger.py`): a cancellation
  * deadline guarding a term that would otherwise continue. A contract you can end any month (the
  * Deutschlandticket, a job its contract lets you leave earlier) has no next renewal, so it is none.
  */
