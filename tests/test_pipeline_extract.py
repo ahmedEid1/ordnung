@@ -11,6 +11,7 @@ from typing import Any
 import pytest
 
 from fixtures_llm import TAX_LETTER, TODAY, Router, fake_backend
+from helpers_tables import check_rows
 from ordnung import clock
 from ordnung.app_context import SIMULATED_TODAY_KEY, build_context
 from ordnung.config import Paths
@@ -288,6 +289,11 @@ def test_build_context_wires_services(data_dir: Path) -> None:
         assert ctx.settings == ctx.store.get_settings()
     finally:
         ctx.close()
+    ctx = build_context(data_dir, backend="replay")  # a backend by name is the one make_backend gives
+    try:
+        assert ctx.backend_name == make_backend("replay").name
+    finally:
+        ctx.close()
 
 
 def test_simulated_today_from_meta_or_settings(data_dir: Path) -> None:
@@ -300,14 +306,6 @@ def test_simulated_today_from_meta_or_settings(data_dir: Path) -> None:
         ctx.store.save_settings(ctx.settings.model_copy(update={"simulated_today": "2027-01-02"}))
         assert ctx.reload_settings().simulated_today == "2027-01-02"
         assert clock.today().isoformat() == "2027-01-02"
-    finally:
-        ctx.close()
-
-
-def test_backend_by_name_is_the_same_as_make_backend(data_dir: Path) -> None:
-    ctx = build_context(data_dir, backend="replay")
-    try:
-        assert ctx.backend_name == make_backend("replay").name
     finally:
         ctx.close()
 
@@ -412,54 +410,59 @@ def test_a_statements_new_rent_is_read_as_the_series_the_ledger_needs() -> None:
     assert parse_extraction(cents, "").items[-1].title == "New monthly total rent €670.50"
 
 
-@pytest.mark.parametrize(
-    "case",
-    [
-        {"high_stakes_kind": "rent_increase"},  # § 558b BGB: owed once agreed; the reading's own item says so
-        {"contract": None},
-        {
-            "contract": {
-                "name": "Strom",
-                "category": "energy",
-                "cost_amount": 70.0,
-                "cost_interval": "monthly",
-            }
-        },
-        {"change": None},
-        {"change": {**_STATEMENT["change"], "type": "price_decrease"}},
-        {"change": {**_STATEMENT["change"], "cost_interval": "yearly"}},
-        {"change": {**_STATEMENT["change"], "effective_date": None}},
-        {"change": {**_STATEMENT["change"], "effective_date": "November 2026"}},
-        {"change": {**_STATEMENT["change"], "new_amount": None}},
-        {
-            "items": [
-                *_STATEMENT["items"],
-                {
-                    "kind": "payment",
-                    "title": "New monthly total rent €670",
-                    "date": {"type": "fixed", "date": "2026-11-01", "nature": "payment"},
-                    "amount": 670.0,
-                    "recurrence": {"interval": 1, "unit": "months"},
-                    "quote": "Ihre Gesamtmiete beträgt ab dem 01.11.2026 somit 670,00 € (bisher 640,00 €).",
-                },
-            ]
-        },
-    ],
-    ids=[
-        "consent-needed",
-        "no-contract",
-        "not-a-rent",
-        "no-change",
-        "a-decrease",
-        "yearly",
-        "no-day",
-        "no-iso-day",
-        "no-amount",
-        "series-read-already",
-    ],
-)
-def test_no_rent_series_is_added_where_none_is_owed_or_one_is_read(case: dict[str, Any]) -> None:
-    given = {**_STATEMENT, **case}
-    reading = parse_extraction(given, "")
-    assert len(reading.items) == len(given["items"])
-    assert sum(1 for item in reading.items if item.recurrence) == (1 if "items" in case else 0)
+NO_RENT_SERIES_CASES = [
+    {"high_stakes_kind": "rent_increase"},  # § 558b BGB: owed once agreed; the reading's own item says so
+    {"contract": None},
+    {
+        "contract": {
+            "name": "Strom",
+            "category": "energy",
+            "cost_amount": 70.0,
+            "cost_interval": "monthly",
+        }
+    },
+    {"change": None},
+    {"change": {**_STATEMENT["change"], "type": "price_decrease"}},
+    {"change": {**_STATEMENT["change"], "cost_interval": "yearly"}},
+    {"change": {**_STATEMENT["change"], "effective_date": None}},
+    {"change": {**_STATEMENT["change"], "effective_date": "November 2026"}},
+    {"change": {**_STATEMENT["change"], "new_amount": None}},
+    {
+        "items": [
+            *_STATEMENT["items"],
+            {
+                "kind": "payment",
+                "title": "New monthly total rent €670",
+                "date": {"type": "fixed", "date": "2026-11-01", "nature": "payment"},
+                "amount": 670.0,
+                "recurrence": {"interval": 1, "unit": "months"},
+                "quote": "Ihre Gesamtmiete beträgt ab dem 01.11.2026 somit 670,00 € (bisher 640,00 €).",
+            },
+        ]
+    },
+]
+NO_RENT_SERIES_IDS = [
+    "consent-needed",
+    "no-contract",
+    "not-a-rent",
+    "no-change",
+    "a-decrease",
+    "yearly",
+    "no-day",
+    "no-iso-day",
+    "no-amount",
+    "series-read-already",
+]
+NO_RENT_SERIES = [
+    pytest.param(case, id=name) for case, name in zip(NO_RENT_SERIES_CASES, NO_RENT_SERIES_IDS, strict=True)
+]
+
+
+def test_no_rent_series_is_added_where_none_is_owed_or_one_is_read() -> None:
+    def check(case: dict[str, Any]) -> None:
+        given = {**_STATEMENT, **case}
+        reading = parse_extraction(given, "")
+        assert len(reading.items) == len(given["items"])
+        assert sum(1 for item in reading.items if item.recurrence) == (1 if "items" in case else 0)
+
+    check_rows(NO_RENT_SERIES, check)
