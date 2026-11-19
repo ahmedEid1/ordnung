@@ -221,6 +221,8 @@ async def test_delete_everything_stops_watching(data_dir: Path, tmp_path: Path) 
     scans = tmp_path / "Scans"
     scans.mkdir()
     async with api_for(data_dir) as api, lifespan(api.app):
+        api.app.state.ordnung.folder.settle_s = 0.2
+        api.app.state.ordnung.folder.tick_ms = 50
         await api.client.put("/api/settings", json={"inbox_dir": str(scans)})
         await eventually_json(api, "/api/folder", lambda body: body["state"] == "watching")
         response = await api.client.request("DELETE", "/api/data", json={"confirm": "DELETE"})
@@ -242,6 +244,8 @@ async def test_when_delete_everything_fails_the_folder_is_watched_again(
         raise OSError("a file is locked")
 
     async with api_for(data_dir) as api, lifespan(api.app):
+        api.app.state.ordnung.folder.settle_s = 0.2
+        api.app.state.ordnung.folder.tick_ms = 50
         await api.client.put("/api/settings", json={"inbox_dir": str(scans)})
         await eventually_json(api, "/api/folder", lambda body: body["state"] == "watching")
         monkeypatch.setattr(data_routes, "wipe_data_dir", locked)
@@ -263,6 +267,8 @@ async def test_when_the_calendar_keeps_everything_the_folder_is_watched_again(
         raise data_routes.CalendarNotCleared("The calendar couldn't be reached, so nothing was deleted.")
 
     async with api_for(data_dir) as api, lifespan(api.app):
+        api.app.state.ordnung.folder.settle_s = 0.2
+        api.app.state.ordnung.folder.tick_ms = 50
         await api.client.put("/api/settings", json={"inbox_dir": str(scans)})
         await eventually_json(api, "/api/folder", lambda body: body["state"] == "watching")
         monkeypatch.setattr(data_routes, "wipe_data_dir", calendar_unreachable)
