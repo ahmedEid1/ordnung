@@ -7,7 +7,7 @@ from datetime import date
 
 import pytest
 
-from helpers_secretary import TODAY, add_item
+from helpers_secretary import TODAY, add_item, seed_ledger
 from ordnung import clock
 from ordnung.db.store import Store
 from ordnung.models import Recurrence
@@ -28,6 +28,25 @@ def pinned_today(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     clock.set_today(TODAY)
     yield
     clock.set_today(None)
+
+
+def test_due_this_month_counts_only_euros(store: Store, pinned_today: None) -> None:
+    """The dashboard's "due this month" is a sum in euros, so a dollar invoice must not be added to it as if
+    it were euros."""
+    seed_ledger(store)
+    before = dashboard(store, TODAY).money.due_this_month
+    saas = add_item(
+        store,
+        kind="payment",
+        title="Pay the hosting invoice",
+        due_date="2026-09-30",
+        amount=50.0,
+        currency="USD",
+        direction="out",
+    )
+    money = dashboard(store, TODAY).money
+    assert money.due_this_month == before  # not before + 50
+    assert saas in [item.id for item in money.upcoming_payments]  # still listed, with its currency
 
 
 def test_the_agenda_payment_total_counts_only_euros(store: Store, pinned_today: None) -> None:
