@@ -21,6 +21,7 @@ import pytest
 
 from fake_caldav import CALENDAR_PATH, PASSWORD, USERNAME, FakeCalDav, MemorySecrets
 from helpers_secretary import TODAY, seed_ledger
+from helpers_tables import check_rows_async
 from ordnung import clock
 from ordnung.api.routes import calendar_sync
 from ordnung.api.routes.data import wipe_data_dir
@@ -52,7 +53,7 @@ async def calendar_api(
 
 
 async def test_status_before_and_after_connecting(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    server, secrets = FakeCalDav(), MemorySecrets()
+    server, secrets = FakeCalDav(), CountingSecrets()
     async with calendar_api(data_dir, server, secrets) as api:
         events = len((await api.client.get("/api/calendar/sync/preview")).json()["events"])
         built: list[str] = []
@@ -76,6 +77,14 @@ async def test_status_before_and_after_connecting(data_dir: Path, monkeypatch: p
         assert PASSWORD not in connected.text
         assert (await api.client.get("/api/calendar/sync")).json() == body
 
+        # opening settings never reads the keyring: a locked keyring would ask to be unlocked each time
+        # Settings → Calendar or the "Delete everything" dialog asks for the status
+        before_reads = secrets.reads
+        for _ in range(3):
+            body = (await api.client.get("/api/calendar/sync")).json()
+            assert body["connected"] and body["password_saved"]
+        assert secrets.reads == before_reads
+
 
 async def test_the_preview_shows_each_event_in_the_chosen_mode(data_dir: Path) -> None:
     async with calendar_api(data_dir, FakeCalDav(), MemorySecrets()) as api:
@@ -98,28 +107,33 @@ async def test_the_preview_shows_each_event_in_the_chosen_mode(data_dir: Path) -
         ).status_code == 422
 
 
-@pytest.mark.parametrize(
-    ("change", "server_change", "status", "code"),
-    [
-        ({"url": "http://cal.example.org/dav/"}, {}, 422, "address"),
-        ({"url": "not a url"}, {}, 422, "address"),
-        ({"username": "  "}, {}, 422, "auth"),
-        ({"password": "wrong"}, {}, 422, "auth"),
-        ({"password": ""}, {}, 422, "auth"),
-        ({}, {"calendar": False}, 422, "not_calendar"),
-        ({}, {"path": "/elsewhere/"}, 422, "not_found"),
-        ({}, {"override": (503, {}, b"")}, 502, "server"),
-    ],
-)
-async def test_refusals_carry_a_code_for_the_field_and_store_nothing(
-    data_dir: Path, change: dict[str, str], server_change: dict[str, object], status: int, code: str
-) -> None:
-    server, secrets = FakeCalDav(**server_change), MemorySecrets()  # type: ignore[arg-type]
-    async with calendar_api(data_dir, server, secrets) as api:
-        refused = await api.client.put("/api/calendar/sync", json={**CONNECT, **change})
-        assert refused.status_code == status and refused.json()["code"] == code, refused.text
-        assert PASSWORD not in refused.text and "wrong" not in refused.text
-        assert caldav.load_state(api.ctx.store) is None and secrets.saved == {}
+REFUSALS_CARRY_A_CODE_FOR_THE_FIELD_AND_STORE_NOTHING = [
+    ({"url": "http://cal.example.org/dav/"}, {}, 422, "address"),
+    ({"url": "not a url"}, {}, 422, "address"),
+    ({"username": "  "}, {}, 422, "auth"),
+    ({"password": "wrong"}, {}, 422, "auth"),
+    ({"password": ""}, {}, 422, "auth"),
+    ({}, {"calendar": False}, 422, "not_calendar"),
+    ({}, {"path": "/elsewhere/"}, 422, "not_found"),
+    ({}, {"override": (503, {}, b"")}, 502, "server"),
+]
+
+
+async def test_refusals_carry_a_code_for_the_field_and_store_nothing(data_dir: Path) -> None:
+    async with calendar_api(data_dir, FakeCalDav(), MemorySecrets()) as api:
+
+        async def check(
+            change: dict[str, str], server_change: dict[str, object], status: int, code: str
+        ) -> None:
+            server, secrets = FakeCalDav(**server_change), MemorySecrets()  # type: ignore[arg-type]
+            api.app.dependency_overrides[calendar_sync.get_secrets] = lambda: secrets
+            api.app.dependency_overrides[calendar_sync.get_transport] = server.transport
+            refused = await api.client.put("/api/calendar/sync", json={**CONNECT, **change})
+            assert refused.status_code == status and refused.json()["code"] == code, refused.text
+            assert PASSWORD not in refused.text and "wrong" not in refused.text
+            assert caldav.load_state(api.ctx.store) is None and secrets.saved == {}
+
+        await check_rows_async(REFUSALS_CARRY_A_CODE_FOR_THE_FIELD_AND_STORE_NOTHING, check)
 
 
 async def test_finding_the_calendars_of_an_account(data_dir: Path) -> None:
@@ -189,19 +203,13 @@ async def test_disconnecting_with_and_without_removing_the_events(data_dir: Path
         assert not (await api.client.get("/api/calendar/sync")).json()["connected"]
 
         await api.client.put("/api/calendar/sync", json=CONNECT)
-        kept = await api.client.post("/api/calendar/sync/disconnect", json={"remove_events": False})
-        assert kept.json() == {"removed": 0} and len(server.resources) == count
-
-
-async def test_a_calendar_that_cant_be_reached_keeps_the_connection_on_disconnect(data_dir: Path) -> None:
-    server, secrets = FakeCalDav(), MemorySecrets()
-    async with calendar_api(data_dir, server, secrets) as api:
-        await api.client.put("/api/calendar/sync", json=CONNECT)
+        # a calendar that can't be reached keeps the connection
         server.raises = httpx.ConnectError("down")
         refused = await api.client.post("/api/calendar/sync/disconnect", json={"remove_events": True})
         assert refused.status_code == 502 and refused.json()["code"] == "network"
         assert (await api.client.get("/api/calendar/sync")).json()["connected"]
         kept = await api.client.post("/api/calendar/sync/disconnect", json={"remove_events": False})
+        assert kept.json() == {"removed": 0} and len(server.resources) == count
         assert kept.status_code == 200 and secrets.saved == {}
 
 
@@ -241,19 +249,6 @@ async def test_a_password_not_on_this_computer_is_shown(data_dir: Path) -> None:
         # entering it again brings it back
         again = (await api.client.put("/api/calendar/sync", json=CONNECT)).json()
         assert again["password_saved"] and not again["paused"]
-
-
-async def test_opening_settings_never_reads_the_keyring(data_dir: Path) -> None:
-    """A locked keyring would ask to be unlocked each time Settings → Calendar or the "Delete
-    everything" dialog asks for the status."""
-    server, secrets = FakeCalDav(), CountingSecrets()
-    async with calendar_api(data_dir, server, secrets) as api:
-        await api.client.put("/api/calendar/sync", json=CONNECT)
-        before = secrets.reads
-        for _ in range(3):
-            body = (await api.client.get("/api/calendar/sync")).json()
-            assert body["connected"] and body["password_saved"]
-        assert secrets.reads == before
 
 
 async def test_the_demo_never_connects(data_dir: Path) -> None:
