@@ -8,9 +8,11 @@ registration, a publish commit and a later commit) so that they run anywhere, wi
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -137,10 +139,23 @@ class World:
             self.root, commit, FINAL_PATTERN, {"file": PREREG, "sha256": self.prereg_sha}
         )
 
+    def copy_to(self, root: Path) -> World:
+        """The same world in a copy of its repository at ``root``: the same commits, its own history from here on."""
+        shutil.copytree(self.root, root, symlinks=True)
+        world = copy.copy(self)
+        world.root = root
+        return world
+
+
+@pytest.fixture(scope="module")
+def world_template(tmp_path_factory: pytest.TempPathFactory) -> World:
+    """One World per module; never handed to a test, only copied (most tests commit)."""
+    return World(tmp_path_factory.mktemp("world") / "repo")
+
 
 @pytest.fixture()
-def world(tmp_path: Path) -> World:
-    return World(tmp_path / "repo")
+def world(world_template: World, tmp_path: Path) -> World:
+    return world_template.copy_to(tmp_path / "repo")
 
 
 # --------------------------------------------------------------------------------------------------
