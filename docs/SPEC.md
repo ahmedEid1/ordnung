@@ -452,9 +452,9 @@ claude -p --input-format stream-json --output-format stream-json --verbose
   (`model_pinned`) so Settings → Claude connection can say the saved model waits while the variable is set.
 - **Lanes**: interactive (ask, draft, brief, doctor; semaphore 1) and background (transcribe,
   extract, review; semaphore `settings.concurrency`, default 2).
-- **Keys**: `llm_key(req) = f"{purpose}:{prompt_version}:{model}:{sha256(canonical(stable_inputs))}"`
+- **Keys**: `request_key(req)` (`llm/base.py`) = `sha256(f"{purpose}|{prompt_version}|{model}|{cache_key or prompt}")`
   — callers pass `cache_key` = canonical stable inputs (e.g. extract: file sha + page modes + language +
-  region + simulated today). Used for `llm_cache` and fixture paths `<fixtures>/<purpose>/<sha256(key)[:24]>.json`.
+  region + simulated today). Used for `llm_cache` and fixture paths `<fixtures>/<purpose>/<key[:24]>.json`.
 - **Usage log** (`llm_calls`, one row per call): accounting (tokens, cost, latency, cache hit) plus
   the replay/cache key, the prompt template and version, the model the CLI says answered, and — when
   the caller passes its trace step — job, pipeline stage and span; `repair_of` links a repair to the

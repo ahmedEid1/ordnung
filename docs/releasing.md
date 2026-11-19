@@ -52,7 +52,8 @@ change to the README also changes what that page links to.
    the day of the release. `python3 scripts/release_notes.py` prints the notes as the release will show them
    (`python3 scripts/release_notes.py Unreleased` shows them before the rename).
 3. **Open a pull request** and merge it once CI passes. Wait until CI has passed on `main` too. If its run
-   there was cancelled because another merge followed, run it again (*Re-run jobs*).
+   there was cancelled because another merge followed, run it again (*Re-run jobs*); if it failed only because
+   its macOS job was cancelled while no runner came, run that job again (*Re-run failed jobs*).
 4. **Tag the merge commit by its hash and push the tag.** Tag that commit, not `main`'s newest one: a pull
    request merged after it holds changes the notes don't list, and the check in step 1 refuses that.
 
