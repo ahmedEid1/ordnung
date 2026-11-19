@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from helpers_tables import check_rows
 from ordnung import clock
 from ordnung.api.routes.common import (
     BROADCASTING_FEE_HINT,
@@ -41,26 +42,28 @@ def _party(kind: str, name: str = "Someone") -> Party:
     )
 
 
-@pytest.mark.parametrize(
-    ("contract", "party", "expected"),
-    [
-        (_contract("FunkNetz Allnet L", "mobile"), _party("telecom"), (True, None)),
-        (_contract("Gym", "gym"), None, (True, None)),
-        (_contract("Krankenkasse", "insurance"), _party("health_insurer"), (True, None)),
-        (_contract("Beitrag"), _party("public_broadcaster"), (False, BROADCASTING_FEE_HINT)),
-        (_contract("Rundfunkbeitrag"), None, (False, BROADCASTING_FEE_HINT)),
-        (
-            _contract("Household fee"),
-            _party("other", "ARD ZDF Deutschlandradio Beitragsservice"),
-            (False, BROADCASTING_FEE_HINT),
-        ),
-        (_contract("Dog tax"), _party("authority"), (False, STATUTORY_HINT)),
-        (_contract("Church tax"), _party("tax_office"), (False, STATUTORY_HINT)),
-        (_contract("Werkstudent", "employment"), _party("employer"), (False, EMPLOYMENT_HINT)),
-    ],
-)
-def test_cancellability(contract: Contract, party: Party | None, expected: tuple[bool, str | None]) -> None:
-    assert cancellability(contract, party) == expected
+CANCELLABILITY_EXAMPLES = [
+    (_contract("FunkNetz Allnet L", "mobile"), _party("telecom"), (True, None)),
+    (_contract("Gym", "gym"), None, (True, None)),
+    (_contract("Krankenkasse", "insurance"), _party("health_insurer"), (True, None)),
+    (_contract("Beitrag"), _party("public_broadcaster"), (False, BROADCASTING_FEE_HINT)),
+    (_contract("Rundfunkbeitrag"), None, (False, BROADCASTING_FEE_HINT)),
+    (
+        _contract("Household fee"),
+        _party("other", "ARD ZDF Deutschlandradio Beitragsservice"),
+        (False, BROADCASTING_FEE_HINT),
+    ),
+    (_contract("Dog tax"), _party("authority"), (False, STATUTORY_HINT)),
+    (_contract("Church tax"), _party("tax_office"), (False, STATUTORY_HINT)),
+    (_contract("Werkstudent", "employment"), _party("employer"), (False, EMPLOYMENT_HINT)),
+]
+
+
+def test_cancellability() -> None:
+    def check(contract: Contract, party: Party | None, expected: tuple[bool, str | None]) -> None:
+        assert cancellability(contract, party) == expected
+
+    check_rows(CANCELLABILITY_EXAMPLES, check)
 
 
 def test_hints_say_why_in_plain_words() -> None:
