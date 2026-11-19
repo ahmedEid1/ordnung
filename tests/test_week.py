@@ -11,6 +11,7 @@ from typing import Any
 import pytest
 
 from helpers_secretary import TODAY, add_doc, add_item, seed_ledger
+from helpers_tables import check_rows
 from ordnung import clock
 from ordnung.db.store import Store
 from ordnung.drafts.proof import MISSING_TRACKING
@@ -91,42 +92,45 @@ def _ago(days: int, today: date = TODAY) -> Moment:
     return _moment(today - timedelta(days=days))
 
 
-@pytest.mark.parametrize(
-    ("state", "today", "due"),
-    [
-        (SessionState(), TODAY, True),  # never done
-        (SessionState(last_session=_ago(6)), TODAY, False),
-        (SessionState(last_session=_ago(7)), TODAY, True),  # a week on
-        (SessionState(last_session=_ago(30)), TODAY, True),
-        (SessionState(last_session=_ago(4, SUNDAY)), SUNDAY, True),  # Sundays: 4 days after
-        (SessionState(last_session=_ago(3, SUNDAY)), SUNDAY, False),
-        (SessionState(last_session=_ago(0, SUNDAY)), SUNDAY, False),
-        (SessionState(last_session=_ago(10), dismissed=_ago(2)), TODAY, False),  # "Not now" counts
-        (SessionState(dismissed=_ago(7)), TODAY, True),
-        (SessionState(last_session=_moment(TODAY + timedelta(days=3))), TODAY, False),  # the clock went back
-    ],
-)
-def test_prompt_policy(state: SessionState, today: date, due: bool) -> None:
-    assert prompt_due(state, today) is due
+PROMPT_POLICY_EXAMPLES = [
+    (SessionState(), TODAY, True),  # never done
+    (SessionState(last_session=_ago(6)), TODAY, False),
+    (SessionState(last_session=_ago(7)), TODAY, True),  # a week on
+    (SessionState(last_session=_ago(30)), TODAY, True),
+    (SessionState(last_session=_ago(4, SUNDAY)), SUNDAY, True),  # Sundays: 4 days after
+    (SessionState(last_session=_ago(3, SUNDAY)), SUNDAY, False),
+    (SessionState(last_session=_ago(0, SUNDAY)), SUNDAY, False),
+    (SessionState(last_session=_ago(10), dismissed=_ago(2)), TODAY, False),  # "Not now" counts
+    (SessionState(dismissed=_ago(7)), TODAY, True),
+    (SessionState(last_session=_moment(TODAY + timedelta(days=3))), TODAY, False),  # the clock went back
+]
 
 
-@pytest.mark.parametrize(
-    ("state", "today", "upcoming"),
-    [
-        (SessionState(), TODAY, None),  # due now
-        (SessionState(last_session=_moment(TODAY)), TODAY, SUNDAY),  # Monday → the Sunday after (6 days)
-        (SessionState(last_session=_moment(date(2026, 9, 30))), date(2026, 9, 30), SUNDAY),  # Wed → Sun (4)
-        (SessionState(last_session=_moment(date(2026, 10, 1))), date(2026, 10, 1), date(2026, 10, 8)),
-        (SessionState(dismissed=_moment(TODAY)), date(2026, 9, 29), SUNDAY),
-    ],
-)
-def test_the_session_says_when_today_suggests_it_next(
-    state: SessionState, today: date, upcoming: date | None
-) -> None:
+def test_prompt_policy() -> None:
+    def check(state: SessionState, today: date, due: bool) -> None:
+        assert prompt_due(state, today) is due
+
+    check_rows(PROMPT_POLICY_EXAMPLES, check)
+
+
+NEXT_PROMPT_DAY_EXAMPLES = [
+    (SessionState(), TODAY, None),  # due now
+    (SessionState(last_session=_moment(TODAY)), TODAY, SUNDAY),  # Monday → the Sunday after (6 days)
+    (SessionState(last_session=_moment(date(2026, 9, 30))), date(2026, 9, 30), SUNDAY),  # Wed → Sun (4)
+    (SessionState(last_session=_moment(date(2026, 10, 1))), date(2026, 10, 1), date(2026, 10, 8)),
+    (SessionState(dismissed=_moment(TODAY)), date(2026, 9, 29), SUNDAY),
+]
+
+
+def test_the_session_says_when_today_suggests_it_next() -> None:
     """ "Session saved — Today suggests the next one on …": the day the policy names, not "in a week"."""
-    assert next_prompt_day(state, today) == upcoming
-    if upcoming is not None:
-        assert prompt_due(state, upcoming) and not prompt_due(state, upcoming - timedelta(days=1))
+
+    def check(state: SessionState, today: date, upcoming: date | None) -> None:
+        assert next_prompt_day(state, today) == upcoming
+        if upcoming is not None:
+            assert prompt_due(state, upcoming) and not prompt_due(state, upcoming - timedelta(days=1))
+
+    check_rows(NEXT_PROMPT_DAY_EXAMPLES, check)
 
 
 def test_an_unreadable_stored_moment_counts_as_never(store: Store) -> None:
@@ -913,13 +917,7 @@ def test_filing_what_was_done_and_archiving_year_old_letters(store: Store, ids: 
     assert rows[birthday].note == "A year old with nothing open — move the paper to your archive."
     assert file.summary.startswith("2 to-dos done · ")
 
-
-def test_keep_it_with_your_tax_papers_follows_the_persons_choice(store: Store, ids: dict[str, str]) -> None:
-    """The person's own "For taxes" choice over Claude's mark, both ways (``secretary.tax_choice``)."""
-    store.set_meta(SESSION_KEY, _stored(TODAY - timedelta(days=7)))
-    store.update_item(ids["tax_objection"], status="done", completed_at=_stamp(TODAY - timedelta(days=1)))
-    store.update_item(ids["tax_refund"], status="done", completed_at=_stamp(TODAY - timedelta(days=1)))
-    birthday = add_doc(store, "year-old", kind="receipt", title="Receipt", doc_date="2025-09-24")
+    # the person's own "For taxes" choice over Claude's mark, both ways (``secretary.tax_choice``)
     store.set_tax_choice(ids["doc_tax"], False)
     store.set_tax_choice(birthday, True)
     rows = {entry.ref.id: entry for entry in _step(weekly_session(store, TODAY), "file").entries}
