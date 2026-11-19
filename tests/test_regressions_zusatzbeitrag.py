@@ -15,6 +15,7 @@ from datetime import date
 import pytest
 
 from helpers_secretary import add_doc
+from helpers_tables import check_rows
 from ordnung.db.store import Store
 from ordnung.models import DocumentExtraction, ExtractedChange
 from ordnung.secretary.triggers import contribution_rate, run_triggers, zusatzbeitrag_raised
@@ -34,39 +35,48 @@ def _change(old: str | None, new: str | None, **fields: object) -> ExtractedChan
     )
 
 
-@pytest.mark.parametrize(
-    ("old", "new"),
-    [
-        ("2,5 %", "2,9 %"),
-        ("2.5%", "2.9%"),
-        ("2,50 Prozent", "2,90 Prozent"),
-        ("Zusatzbeitrag 2,69 %", "Zusatzbeitrag 2,99 %"),
-        ("1.7 percent", "2.5 percent"),
-    ],
-)
-def test_a_higher_rate_stated_as_numbers_is_a_raise(old: str, new: str) -> None:
-    assert zusatzbeitrag_raised(_change(old, new))
+HIGHER_RATES = [
+    ("2,5 %", "2,9 %"),
+    ("2.5%", "2.9%"),
+    ("2,50 Prozent", "2,90 Prozent"),
+    ("Zusatzbeitrag 2,69 %", "Zusatzbeitrag 2,99 %"),
+    ("1.7 percent", "2.5 percent"),
+]
 
 
-@pytest.mark.parametrize(("old", "new"), [("2,5 %", "2,5 %"), ("2,50 %", "2.5%"), ("2,9 %", "2,5 %")])
-def test_an_unchanged_or_lower_rate_is_not_a_raise(old: str, new: str) -> None:
-    assert not zusatzbeitrag_raised(_change(old, new))
+def test_a_higher_rate_stated_as_numbers_is_a_raise() -> None:
+    def check(old: str, new: str) -> None:
+        assert zusatzbeitrag_raised(_change(old, new))
+
+    check_rows(HIGHER_RATES, check)
 
 
-@pytest.mark.parametrize(
-    ("old", "new"),
-    [
-        (None, "2,9 %"),
-        ("2,5 %", None),
-        (None, None),
-        ("", ""),
-        ("2,5", "2,9"),  # no percentage: which number is this?
-        ("146,29 €", "156,55 €"),  # amounts, not rates
-        ("+0,4 Prozentpunkte", "2,9 %"),
-    ],
-)
-def test_missing_rates_are_not_a_raise(old: str | None, new: str | None) -> None:
-    assert not zusatzbeitrag_raised(_change(old, new))
+UNCHANGED_OR_LOWER_RATES = [("2,5 %", "2,5 %"), ("2,50 %", "2.5%"), ("2,9 %", "2,5 %")]
+
+
+def test_an_unchanged_or_lower_rate_is_not_a_raise() -> None:
+    def check(old: str, new: str) -> None:
+        assert not zusatzbeitrag_raised(_change(old, new))
+
+    check_rows(UNCHANGED_OR_LOWER_RATES, check)
+
+
+MISSING_RATES = [
+    (None, "2,9 %"),
+    ("2,5 %", None),
+    (None, None),
+    ("", ""),
+    ("2,5", "2,9"),  # no percentage: which number is this?
+    ("146,29 €", "156,55 €"),  # amounts, not rates
+    ("+0,4 Prozentpunkte", "2,9 %"),
+]
+
+
+def test_missing_rates_are_not_a_raise() -> None:
+    def check(old: str | None, new: str | None) -> None:
+        assert not zusatzbeitrag_raised(_change(old, new))
+
+    check_rows(MISSING_RATES, check)
 
 
 def test_several_percentages_are_not_read_as_one_rate() -> None:
