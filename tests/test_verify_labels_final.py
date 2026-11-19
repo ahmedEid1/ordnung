@@ -11,6 +11,7 @@ Every manifest here is synthetic: no test reads a final split's labels.
 
 from __future__ import annotations
 
+import itertools
 import json
 import re
 from datetime import date
@@ -20,6 +21,8 @@ from typing import Any
 import pytest
 from evals import verify_labels as vl
 from fpdf import FPDF
+
+from helpers_tables import check_rows
 
 ROOT = Path(__file__).resolve().parents[1]
 DATASET = ROOT / "evals" / "dataset"
@@ -49,79 +52,79 @@ def derive(start: str, steps: list[dict[str, Any]], land: str | None = None) -> 
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("start", "steps", "land", "want"),
-    [
-        # Thu 04.03.2027 + 2 days = Sat 06.03.; the end shift moves it to Mon 08.03.
-        ("2027-03-04", [step("forward", 2, "days", shift=False)], None, D(2027, 3, 6)),
-        ("2027-03-04", [step("forward", 2, "days", shift=True)], None, D(2027, 3, 8)),
-        # Wed 23.12.2026 + 2 weeks = Wed 06.01.2027, Heilige Drei Könige in BW, BY and ST only
-        ("2026-12-23", [step("forward", 2, "weeks", shift=True)], "BW", D(2027, 1, 7)),
-        ("2026-12-23", [step("forward", 2, "weeks", shift=True)], "NW", D(2027, 1, 6)),
-        ("2026-12-23", [step("forward", 2, "weeks", shift=False)], "BW", D(2027, 1, 6)),
-        # months: the same day number, else the month's last day (Sun 28.02.2027; shifted to Mon 01.03.)
-        ("2027-01-31", [step("forward", 1, "months", shift=False)], None, D(2027, 2, 28)),
-        ("2027-01-31", [step("forward", 1, "months", shift=True)], None, D(2027, 3, 1)),
-        ("2027-05-31", [step("forward", 1, "months", shift=True)], None, D(2027, 6, 30)),
-        ("2028-01-31", [step("forward", 1, "months", shift=False)], None, D(2028, 2, 29)),
-        # back: the latest day from which the same step forward ends on or before the event
-        ("2027-04-30", [step("back", 1, "months", shift=False)], None, D(2027, 3, 31)),
-        ("2027-02-28", [step("back", 1, "months", shift=False)], None, D(2027, 1, 31)),
-        ("2027-03-15", [step("back", 2, "weeks", shift=False)], None, D(2027, 3, 1)),
-        ("2027-03-01", [step("back", 1, "days", shift=False)], None, D(2027, 2, 28)),
-        # back onto Sat 06.03.2027; the shift of a step back moves to the working day before, Fri 05.03.
-        ("2027-03-08", [step("back", 2, "days", shift=False)], None, D(2027, 3, 6)),
-        ("2027-03-08", [step("back", 2, "days", shift=True)], None, D(2027, 3, 5)),
-        # the end of the n-th calendar month after the event (n = 0: its own month)
-        ("2026-12-15", [step("month_end", 0, shift=False)], None, D(2026, 12, 31)),
-        ("2026-12-15", [step("month_end", 2, shift=False)], None, D(2027, 2, 28)),
-        ("2026-12-15", [step("month_end", 2, shift=True)], None, D(2027, 3, 1)),
-        ("2027-03-10", [step("month_end", 1, shift=True)], None, D(2027, 4, 30)),
-        ("2027-01-10", [step("month_end", 0, shift=True)], None, D(2027, 2, 1)),
-        # Arbeitstage (Mon–Fri) and Werktage (Mon–Sat) skip the Land's holidays; the start day is not counted
-        ("2027-01-04", [step("forward", 3, "arbeitstage", shift=False)], "BW", D(2027, 1, 8)),
-        ("2027-01-04", [step("forward", 3, "arbeitstage", shift=False)], "NW", D(2027, 1, 7)),
-        ("2027-01-04", [step("forward", 5, "werktage", shift=False)], "NW", D(2027, 1, 9)),
-        ("2027-01-04", [step("forward", 5, "werktage", shift=False)], "BY", D(2027, 1, 11)),
-        # a stated date: no step
-        ("2027-02-05", [], None, D(2027, 2, 5)),
-        # steps chain: posted Thu 25.03.2027, the 4th day is Easter Monday; shifted (Tue 30.03.) or not, then a
-        # month with the end shift
-        (
-            "2027-03-25",
-            [step("forward", 4, "days", shift=True), step("forward", 1, "months", shift=True)],
-            None,
-            D(2027, 4, 30),
-        ),
-        (
-            "2027-03-25",
-            [step("forward", 4, "days", shift=False), step("forward", 1, "months", shift=True)],
-            None,
-            D(2027, 4, 29),
-        ),
-        # a term of 12 months from 01.03.2027 ends 29.02.2028; a month's notice must arrive by 31.01.2028
-        (
-            "2027-03-01",
-            [step("forward", 12, "months", shift=False), step("back", 1, "days", shift=False)],
-            None,
-            D(2028, 2, 29),
-        ),
-        (
-            "2027-03-01",
-            [
-                step("forward", 12, "months", shift=False),
-                step("back", 1, "days", shift=False),
-                step("back", 1, "months", shift=False),
-            ],
-            None,
-            D(2028, 1, 31),
-        ),
-    ],
-)
-def test_each_operation_of_the_grammar(
-    start: str, steps: list[dict[str, Any]], land: str | None, want: date
-) -> None:
-    assert derive(start, steps, land) == want
+GRAMMAR_EXAMPLES = [
+    # Thu 04.03.2027 + 2 days = Sat 06.03.; the end shift moves it to Mon 08.03.
+    ("2027-03-04", [step("forward", 2, "days", shift=False)], None, D(2027, 3, 6)),
+    ("2027-03-04", [step("forward", 2, "days", shift=True)], None, D(2027, 3, 8)),
+    # Wed 23.12.2026 + 2 weeks = Wed 06.01.2027, Heilige Drei Könige in BW, BY and ST only
+    ("2026-12-23", [step("forward", 2, "weeks", shift=True)], "BW", D(2027, 1, 7)),
+    ("2026-12-23", [step("forward", 2, "weeks", shift=True)], "NW", D(2027, 1, 6)),
+    ("2026-12-23", [step("forward", 2, "weeks", shift=False)], "BW", D(2027, 1, 6)),
+    # months: the same day number, else the month's last day (Sun 28.02.2027; shifted to Mon 01.03.)
+    ("2027-01-31", [step("forward", 1, "months", shift=False)], None, D(2027, 2, 28)),
+    ("2027-01-31", [step("forward", 1, "months", shift=True)], None, D(2027, 3, 1)),
+    ("2027-05-31", [step("forward", 1, "months", shift=True)], None, D(2027, 6, 30)),
+    ("2028-01-31", [step("forward", 1, "months", shift=False)], None, D(2028, 2, 29)),
+    # back: the latest day from which the same step forward ends on or before the event
+    ("2027-04-30", [step("back", 1, "months", shift=False)], None, D(2027, 3, 31)),
+    ("2027-02-28", [step("back", 1, "months", shift=False)], None, D(2027, 1, 31)),
+    ("2027-03-15", [step("back", 2, "weeks", shift=False)], None, D(2027, 3, 1)),
+    ("2027-03-01", [step("back", 1, "days", shift=False)], None, D(2027, 2, 28)),
+    # back onto Sat 06.03.2027; the shift of a step back moves to the working day before, Fri 05.03.
+    ("2027-03-08", [step("back", 2, "days", shift=False)], None, D(2027, 3, 6)),
+    ("2027-03-08", [step("back", 2, "days", shift=True)], None, D(2027, 3, 5)),
+    # the end of the n-th calendar month after the event (n = 0: its own month)
+    ("2026-12-15", [step("month_end", 0, shift=False)], None, D(2026, 12, 31)),
+    ("2026-12-15", [step("month_end", 2, shift=False)], None, D(2027, 2, 28)),
+    ("2026-12-15", [step("month_end", 2, shift=True)], None, D(2027, 3, 1)),
+    ("2027-03-10", [step("month_end", 1, shift=True)], None, D(2027, 4, 30)),
+    ("2027-01-10", [step("month_end", 0, shift=True)], None, D(2027, 2, 1)),
+    # Arbeitstage (Mon–Fri) and Werktage (Mon–Sat) skip the Land's holidays; the start day is not counted
+    ("2027-01-04", [step("forward", 3, "arbeitstage", shift=False)], "BW", D(2027, 1, 8)),
+    ("2027-01-04", [step("forward", 3, "arbeitstage", shift=False)], "NW", D(2027, 1, 7)),
+    ("2027-01-04", [step("forward", 5, "werktage", shift=False)], "NW", D(2027, 1, 9)),
+    ("2027-01-04", [step("forward", 5, "werktage", shift=False)], "BY", D(2027, 1, 11)),
+    # a stated date: no step
+    ("2027-02-05", [], None, D(2027, 2, 5)),
+    # steps chain: posted Thu 25.03.2027, the 4th day is Easter Monday; shifted (Tue 30.03.) or not, then a
+    # month with the end shift
+    (
+        "2027-03-25",
+        [step("forward", 4, "days", shift=True), step("forward", 1, "months", shift=True)],
+        None,
+        D(2027, 4, 30),
+    ),
+    (
+        "2027-03-25",
+        [step("forward", 4, "days", shift=False), step("forward", 1, "months", shift=True)],
+        None,
+        D(2027, 4, 29),
+    ),
+    # a term of 12 months from 01.03.2027 ends 29.02.2028; a month's notice must arrive by 31.01.2028
+    (
+        "2027-03-01",
+        [step("forward", 12, "months", shift=False), step("back", 1, "days", shift=False)],
+        None,
+        D(2028, 2, 29),
+    ),
+    (
+        "2027-03-01",
+        [
+            step("forward", 12, "months", shift=False),
+            step("back", 1, "days", shift=False),
+            step("back", 1, "months", shift=False),
+        ],
+        None,
+        D(2028, 1, 31),
+    ),
+]
+
+
+def test_each_operation_of_the_grammar() -> None:
+    def check(start: str, steps: list[dict[str, Any]], land: str | None, want: date) -> None:
+        assert derive(start, steps, land) == want
+
+    check_rows(GRAMMAR_EXAMPLES, check)
 
 
 def _as_grammar(fn: Any, args: tuple[Any, ...]) -> tuple[date, list[dict[str, Any]]]:
@@ -188,44 +191,42 @@ def write_facts(root: Path, split: str, letters: dict[str, Any]) -> Path:
 GOOD = {"holdout4-x-K1": {"slots": {"i0": dated("2027-03-11", [step("forward", 2, "days", shift=True)])}}}
 
 
-def test_a_well_formed_file_loads(tmp_path: Path) -> None:
-    letters = vl.load_facts(write_facts(tmp_path, "holdout4", GOOD))
-    assert set(letters) == {"holdout4-x-K1"}
+GRAMMAR_REFUSALS = [
+    ("due", dated("2027-03-04", []), "slot"),  # an unknown slot name
+    ("i0", dated("2027-03-04", [], source="A2"), "source"),  # an unknown source
+    ("i0", {"land": None, "from": "2027-03-04", "steps": []}, "source"),  # no source
+    ("i0", dated("2027-03-04", [step("sideways", 2, "days", shift=True)]), "op"),
+    ("i0", dated("2027-03-04", [step("forward", 2, "fortnights", shift=True)]), "unit"),
+    ("i0", dated("2027-03-04", [{"op": "forward", "n": 2, "unit": "days"}]), "shift"),
+    ("i0", dated("2027-03-04", [step("forward", 0, "days", shift=True)]), "n"),
+    ("i0", dated("2027-03-04", [step("forward", True, "days", shift=True)]), "n"),  # a bool is no count
+    ("i0", dated("2027-03-04", [step("month_end", 1, "days", shift=True)]), "unit"),
+    ("i0", dated("2027-02-30", []), "date"),
+    ("i0", dated("2027-03-04", [], land="XX"), "Land"),
+    ("i0", {"source": "A1", "from": "2027-03-04", "steps": []}, "land"),  # the Land is always stated
+    ("i0", dated("2027-03-04", [], note="extra"), "note"),  # an unknown key
+    ("i0", {"source": "A1", "undatable": False}, "undatable"),
+    (
+        "i0",
+        {"source": "A1", "land": None, "ambiguous": [{"from": "2027-03-04", "steps": []}]},
+        "ambiguous",
+    ),
+    ("i0", dated("2027-03-04", [], conventions="c02"), "conventions"),
+]
 
 
-@pytest.mark.parametrize(
-    ("slot", "fact", "refusal"),
-    [
-        ("due", dated("2027-03-04", []), "slot"),  # an unknown slot name
-        ("i0", dated("2027-03-04", [], source="A2"), "source"),  # an unknown source
-        ("i0", {"land": None, "from": "2027-03-04", "steps": []}, "source"),  # no source
-        ("i0", dated("2027-03-04", [step("sideways", 2, "days", shift=True)]), "op"),
-        ("i0", dated("2027-03-04", [step("forward", 2, "fortnights", shift=True)]), "unit"),
-        ("i0", dated("2027-03-04", [{"op": "forward", "n": 2, "unit": "days"}]), "shift"),
-        ("i0", dated("2027-03-04", [step("forward", 0, "days", shift=True)]), "n"),
-        ("i0", dated("2027-03-04", [step("forward", True, "days", shift=True)]), "n"),  # a bool is no count
-        ("i0", dated("2027-03-04", [step("month_end", 1, "days", shift=True)]), "unit"),
-        ("i0", dated("2027-02-30", []), "date"),
-        ("i0", dated("2027-03-04", [], land="XX"), "Land"),
-        ("i0", {"source": "A1", "from": "2027-03-04", "steps": []}, "land"),  # the Land is always stated
-        ("i0", dated("2027-03-04", [], note="extra"), "note"),  # an unknown key
-        ("i0", {"source": "A1", "undatable": False}, "undatable"),
-        (
-            "i0",
-            {"source": "A1", "land": None, "ambiguous": [{"from": "2027-03-04", "steps": []}]},
-            "ambiguous",
-        ),
-        ("i0", dated("2027-03-04", [], conventions="c02"), "conventions"),
-    ],
-)
-def test_the_grammar_refuses(tmp_path: Path, slot: str, fact: dict[str, Any], refusal: str) -> None:
-    path = write_facts(tmp_path, "holdout4", {"holdout4-x-K1": {"slots": {slot: fact}}})
-    with pytest.raises(vl.FactsError, match=refusal):
-        vl.load_facts(path)
+def test_the_grammar_refuses(tmp_path: Path) -> None:
+    def check(slot: str, fact: dict[str, Any], refusal: str) -> None:
+        path = write_facts(tmp_path, "holdout4", {"holdout4-x-K1": {"slots": {slot: fact}}})
+        with pytest.raises(vl.FactsError, match=refusal):
+            vl.load_facts(path)
+
+    check_rows(GRAMMAR_REFUSALS, check)
 
 
 def test_a_file_names_its_own_split(tmp_path: Path) -> None:
     path = write_facts(tmp_path, "holdout4", GOOD)
+    assert set(vl.load_facts(path)) == {"holdout4-x-K1"}
     path.write_text(json.dumps({"split": "newkinds", "letters": GOOD}), encoding="utf-8")
     with pytest.raises(vl.FactsError, match="split"):
         vl.load_facts(path)
@@ -524,72 +525,80 @@ def land_rules(root: Path, entries: list[dict[str, Any]]) -> list[str]:
     return vl.check_land_rules(entries, vl.gather_facts(root, entries).began)
 
 
-@pytest.mark.parametrize(
-    ("land", "due", "ok"),
-    [
-        ("HE", ON_THE_3RD, True),  # § 41 Abs. 2 HVwVfG: the 3rd day
-        ("HE", ON_THE_4TH, False),
-        ("NW", ON_THE_4TH, True),
-        ("NW", ON_THE_3RD, False),  # NW keeps no older rule: the posting decides
-        # neither the label nor a fact states when the matter began: a procedure begun on or after the switch (c03)
-        ("MV", ON_THE_4TH, True),
-        ("MV", ON_THE_3RD, False),
-        ("BW", ON_THE_4TH, True),
-        ("BW", ON_THE_3RD, False),
-        ("BY", ON_THE_4TH, True),
-        ("BY", ON_THE_3RD, False),
-    ],
-)
-def test_a_land_authority_s_label_counts_its_land_s_day(
-    tmp_path: Path, land: str, due: str, ok: bool
-) -> None:
-    problems = land_rules(tmp_path, [entry("holdout4-x-K1", region=land, items=[land_item(due)])])
-    assert (problems == []) == ok, problems
-    if not ok:
-        assert problems[0].startswith(f"holdout4-x-K1 i0: label {due}, {land}'s own delivery day gives ")
+LAND_LABEL_DAYS = [
+    ("HE", ON_THE_3RD, True),  # § 41 Abs. 2 HVwVfG: the 3rd day
+    ("HE", ON_THE_4TH, False),
+    ("NW", ON_THE_4TH, True),
+    ("NW", ON_THE_3RD, False),  # NW keeps no older rule: the posting decides
+    # neither the label nor a fact states when the matter began: a procedure begun on or after the switch (c03)
+    ("MV", ON_THE_4TH, True),
+    ("MV", ON_THE_3RD, False),
+    ("BW", ON_THE_4TH, True),
+    ("BW", ON_THE_3RD, False),
+    ("BY", ON_THE_4TH, True),
+    ("BY", ON_THE_3RD, False),
+]
 
 
-@pytest.mark.parametrize(
-    ("land", "began"), [("MV", "2024-11-01"), ("BY", "2024-12-31"), ("BW", "2025-02-06")]
-)
-def test_a_matter_begun_before_the_switch_keeps_the_3rd_day(tmp_path: Path, land: str, began: str) -> None:
+def test_a_land_authority_s_label_counts_its_land_s_day(tmp_path: Path) -> None:
+    def check(land: str, due: str, ok: bool) -> None:
+        problems = land_rules(tmp_path, [entry("holdout4-x-K1", region=land, items=[land_item(due)])])
+        assert (problems == []) == ok, problems
+        if not ok:
+            assert problems[0].startswith(f"holdout4-x-K1 i0: label {due}, {land}'s own delivery day gives ")
+
+    check_rows(LAND_LABEL_DAYS, check)
+
+
+OLDER_MATTERS = [("MV", "2024-11-01"), ("BY", "2024-12-31"), ("BW", "2025-02-06")]
+
+
+def test_a_matter_begun_before_the_switch_keeps_the_3rd_day(tmp_path: Path) -> None:
     """§ 120a VwVfG M-V, Art. 98 BayVwVfG, § 102b LVwVfG: a fact that states a procedure begun before the Land's
     switch must carry the 3rd day; one begun later, the 4th."""
-    entries = [entry("holdout4-x-K1", region=land, items=[land_item(ON_THE_4TH)])]
-    steps = [step("forward", 4, "days", shift=False), step("forward", 1, "months", shift=True)]
-    fact = dated(POSTED, steps, land=land, conventions=[], procedure_began=began)
-    write_facts(tmp_path, "holdout4", {"holdout4-x-K1": {"slots": {"i0": fact}}})
-    assert land_rules(tmp_path, entries) == [
-        f"holdout4-x-K1 i0: label {ON_THE_4TH}, {land}'s own delivery day gives {ON_THE_3RD} (day 3)"
-    ]
-    entries[0]["truth"]["items"] = [land_item(ON_THE_3RD)]
-    assert land_rules(tmp_path, entries) == []
-    write_facts(
-        tmp_path, "holdout4", {"holdout4-x-K1": {"slots": {"i0": {**fact, "procedure_began": "2025-03-01"}}}}
-    )
-    assert land_rules(tmp_path, entries) == [
-        f"holdout4-x-K1 i0: label {ON_THE_3RD}, {land}'s own delivery day gives {ON_THE_4TH} (day 4)"
-    ]
+
+    def check(land: str, began: str) -> None:
+        root = tmp_path / land  # a folder of the row's own
+        entries = [entry("holdout4-x-K1", region=land, items=[land_item(ON_THE_4TH)])]
+        steps = [step("forward", 4, "days", shift=False), step("forward", 1, "months", shift=True)]
+        fact = dated(POSTED, steps, land=land, conventions=[], procedure_began=began)
+        write_facts(root, "holdout4", {"holdout4-x-K1": {"slots": {"i0": fact}}})
+        assert land_rules(root, entries) == [
+            f"holdout4-x-K1 i0: label {ON_THE_4TH}, {land}'s own delivery day gives {ON_THE_3RD} (day 3)"
+        ]
+        entries[0]["truth"]["items"] = [land_item(ON_THE_3RD)]
+        assert land_rules(root, entries) == []
+        write_facts(
+            root, "holdout4", {"holdout4-x-K1": {"slots": {"i0": {**fact, "procedure_began": "2025-03-01"}}}}
+        )
+        assert land_rules(root, entries) == [
+            f"holdout4-x-K1 i0: label {ON_THE_3RD}, {land}'s own delivery day gives {ON_THE_4TH} (day 4)"
+        ]
+
+    check_rows(OLDER_MATTERS, check)
 
 
-@pytest.mark.parametrize(
-    ("land", "early", "late"), [("MV", "2024-11-01", "2025-03-01"), ("BW", "2025-02-06", "2025-02-07")]
-)
-def test_the_label_s_own_procedure_start_comes_before_the_facts(
-    tmp_path: Path, land: str, early: str, late: str
-) -> None:
+LABEL_AND_FACT_STARTS = [("MV", "2024-11-01", "2025-03-01"), ("BW", "2025-02-06", "2025-02-07")]
+
+
+def test_the_label_s_own_procedure_start_comes_before_the_facts(tmp_path: Path) -> None:
     """The start the label rests on (its ``procedure_began``, which the generator writes) decides its day; a fact's
     start counts only where the label states none."""
-    older = [entry("holdout4-x-K1", region=land, items=[land_item(ON_THE_3RD, began=early)])]
-    assert land_rules(tmp_path, older) == []
-    steps = [step("forward", 4, "days", shift=False), step("forward", 1, "months", shift=True)]
-    fact = dated(POSTED, steps, land=land, conventions=[], procedure_began=late)
-    write_facts(tmp_path, "holdout4", {"holdout4-x-K1": {"slots": {"i0": fact}}})
-    assert land_rules(tmp_path, older) == []
-    newer = [entry("holdout4-x-K1", region=land, items=[land_item(ON_THE_3RD, began=late)])]
-    assert land_rules(tmp_path, newer) == [
-        f"holdout4-x-K1 i0: label {ON_THE_3RD}, {land}'s own delivery day gives {ON_THE_4TH} (day 4)"
-    ]
+
+    def check(land: str, early: str, late: str) -> None:
+        root = tmp_path / land  # a folder of the row's own
+        older = [entry("holdout4-x-K1", region=land, items=[land_item(ON_THE_3RD, began=early)])]
+        assert land_rules(root, older) == []
+        steps = [step("forward", 4, "days", shift=False), step("forward", 1, "months", shift=True)]
+        fact = dated(POSTED, steps, land=land, conventions=[], procedure_began=late)
+        write_facts(root, "holdout4", {"holdout4-x-K1": {"slots": {"i0": fact}}})
+        assert land_rules(root, older) == []
+        newer = [entry("holdout4-x-K1", region=land, items=[land_item(ON_THE_3RD, began=late)])]
+        assert land_rules(root, newer) == [
+            f"holdout4-x-K1 i0: label {ON_THE_3RD}, {land}'s own delivery day gives {ON_THE_4TH} (day 4)"
+        ]
+
+    check_rows(LABEL_AND_FACT_STARTS, check)
 
 
 def letter_text(land: str | None, text: str, *, began: str | None = None) -> list[str]:
@@ -600,18 +609,25 @@ def letter_text(land: str | None, text: str, *, began: str | None = None) -> lis
     return vl.check_land_rules(entries, {}, {"holdout4-x-K1": text})
 
 
-@pytest.mark.parametrize("land", ["BW", "BY", "MV"])
-@pytest.mark.parametrize(
-    "named",
-    ["Ihr Antrag vom 14.10.2024", "Ihr Antrag vom 3. Dezember 2024", "Ihr Antrag aus dem November 2024"],
-)
-def test_a_letter_that_names_an_earlier_day_states_its_procedure_start(land: str, named: str) -> None:
+LANDS_WITH_AN_OLDER_RULE = ["BW", "BY", "MV"]
+EARLIER_DAYS_NAMED = [
+    "Ihr Antrag vom 14.10.2024",
+    "Ihr Antrag vom 3. Dezember 2024",
+    "Ihr Antrag aus dem November 2024",
+]
+
+
+def test_a_letter_that_names_an_earlier_day_states_its_procedure_start() -> None:
     """A BW, BY or MV letter that names a day before its Land's switch rests on a procedure start the label must
     state (``procedure_began``): without one its label counts the 4th day while the letter may name an older
     matter, the 3rd."""
-    problems = letter_text(land, f"Bescheid vom 01.12.2026. {named}.")
-    assert len(problems) == 1 and problems[0].startswith("holdout4-x-K1 i0: the letter names "), problems
-    assert f"before {land}'s switch" in problems[0] and "procedure_began" in problems[0]
+
+    def check(land: str, named: str) -> None:
+        problems = letter_text(land, f"Bescheid vom 01.12.2026. {named}.")
+        assert len(problems) == 1 and problems[0].startswith("holdout4-x-K1 i0: the letter names "), problems
+        assert f"before {land}'s switch" in problems[0] and "procedure_began" in problems[0]
+
+    check_rows(itertools.product(LANDS_WITH_AN_OLDER_RULE, EARLIER_DAYS_NAMED), check)
 
 
 def test_a_letter_that_names_no_earlier_day_or_states_its_start_passes() -> None:
@@ -624,11 +640,18 @@ def test_a_letter_that_names_no_earlier_day_or_states_its_start_passes() -> None
     assert letter_text("MV", "Bescheid vom 01.12.2026. Ihr Antrag vom 01.11.2024.", began="2024-11-01") == []
 
 
-@pytest.mark.parametrize("land", ["HB", "RP", "SL", "ST", None])
-def test_no_land_authority_s_letter_from_a_land_without_a_text(tmp_path: Path, land: str | None) -> None:
-    problems = land_rules(tmp_path, [entry("holdout4-x-K1", region=land, items=[land_item(ON_THE_4TH)])])
-    assert len(problems) == 1 and problems[0].startswith("holdout4-x-K1 i0: "), problems
-    assert ("names no Land" if land is None else f"no verified text of {land}'s delivery rule") in problems[0]
+LANDS_WITHOUT_TEXT = ["HB", "RP", "SL", "ST", None]
+
+
+def test_no_land_authority_s_letter_from_a_land_without_a_text(tmp_path: Path) -> None:
+    def check(land: str | None) -> None:
+        problems = land_rules(tmp_path, [entry("holdout4-x-K1", region=land, items=[land_item(ON_THE_4TH)])])
+        assert len(problems) == 1 and problems[0].startswith("holdout4-x-K1 i0: "), problems
+        assert (
+            "names no Land" if land is None else f"no verified text of {land}'s delivery rule"
+        ) in problems[0]
+
+    check_rows(LANDS_WITHOUT_TEXT, check)
 
 
 def test_a_procedure_start_is_a_date_of_a_dated_fact(tmp_path: Path) -> None:
