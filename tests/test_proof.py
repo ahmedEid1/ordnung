@@ -44,6 +44,12 @@ def gym(ctx: AppContext) -> Gym:
     return helpers_proof.gym(ctx)
 
 
+@pytest.fixture(scope="module")
+def letter_bytes() -> bytes:
+    """One letter PDF for the module (read only: bytes; every test stores it in its own data folder)."""
+    return letter_pdf()
+
+
 async def _sent_letter(
     ctx: AppContext, where: Gym, channel: str = "registered_letter", **kwargs: Any
 ) -> Draft:
@@ -474,10 +480,12 @@ async def test_a_proof_attached_to_a_kept_private_email_stays_private_when_the_e
     assert document is not None and (document.status, document.ai_private) == ("processed", True)
 
 
-async def test_proof_files_are_no_letters_of_the_ledger(ctx: AppContext, gym: Gym) -> None:
+async def test_proof_files_are_no_letters_of_the_ledger(
+    ctx: AppContext, gym: Gym, letter_bytes: bytes
+) -> None:
     letter = await _sent_letter(ctx, gym)
     added = await sent.add_proof(
-        ctx, letter.id, letter_pdf(), "beleg.pdf", kind="delivery_record", today=TODAY
+        ctx, letter.id, letter_bytes, "beleg.pdf", kind="delivery_record", today=TODAY
     )
     ledger = Ledger(ctx.store, TODAY)
     assert added.doc_id not in ledger.documents
@@ -572,9 +580,11 @@ async def test_removing_a_proof_deletes_its_file_for_good(ctx: AppContext, gym: 
     assert ctx.store.list_proofs(letter.id) == []
 
 
-async def test_a_letter_already_in_ordnung_is_linked_and_kept(ctx: AppContext, gym: Gym) -> None:
+async def test_a_letter_already_in_ordnung_is_linked_and_kept(
+    ctx: AppContext, gym: Gym, letter_bytes: bytes
+) -> None:
     letter = await _sent_letter(ctx, gym)
-    data = letter_pdf()
+    data = letter_bytes
     known = await add_file(ctx, data, "sent-copy.pdf", private=True)
     added = await sent.add_proof(ctx, letter.id, data, "sent-copy.pdf", kind="other", today=TODAY)
     assert added.doc_id == known.id
@@ -582,10 +592,12 @@ async def test_a_letter_already_in_ordnung_is_linked_and_kept(ctx: AppContext, g
     assert ctx.store.get_document(known.id) is not None
 
 
-async def test_deleting_a_letter_deletes_its_proofs_and_their_files(ctx: AppContext, gym: Gym) -> None:
+async def test_deleting_a_letter_deletes_its_proofs_and_their_files(
+    ctx: AppContext, gym: Gym, letter_bytes: bytes
+) -> None:
     letter = await _sent_letter(ctx, gym)
     one = await sent.add_proof(ctx, letter.id, photo("JPEG"), "a.jpg", kind="posting_receipt", today=TODAY)
-    two = await sent.add_proof(ctx, letter.id, letter_pdf(), "b.pdf", kind="delivery_record", today=TODAY)
+    two = await sent.add_proof(ctx, letter.id, letter_bytes, "b.pdf", kind="delivery_record", today=TODAY)
     sent.delete_letter(ctx.store, letter.id)
     assert ctx.store.get_draft(letter.id) is None
     assert ctx.store.list_proofs() == []
@@ -642,7 +654,7 @@ async def test_an_unsent_letter_has_an_empty_overview_and_no_nachweis(ctx: AppCo
 
 
 async def test_the_nachweis_holds_the_timeline_the_letter_and_the_proof_files(
-    ctx: AppContext, gym: Gym
+    ctx: AppContext, gym: Gym, letter_bytes: bytes
 ) -> None:
     letter = await _sent_letter(ctx, gym, tracking_number=TRACKING)
     await sent.add_proof(
@@ -657,7 +669,7 @@ async def test_the_nachweis_holds_the_timeline_the_letter_and_the_proof_files(
     await sent.add_proof(
         ctx,
         letter.id,
-        letter_pdf(),
+        letter_bytes,
         "zustellung.pdf",
         kind="delivery_record",
         on_date="2026-09-03",
