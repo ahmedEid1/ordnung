@@ -67,6 +67,16 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   you had gone straight on to the name, the rest of what you typed landed in the passphrase field, and with the
   name left empty *Bring it here* only showed the name's error. A slow folder (a NAS, a network drive) made it
   likelier. The form now moves on only if you are still where you pressed Next.
+- **Search: Enter right after typing opens a match of what you typed.** The list under the search field still
+  showed the matches of what you had typed a moment before while the new search was on its way, and Enter opened
+  the first of those: typing *Stadtwerke* quickly after a search for *Stadt* could open the wrong letter. Enter
+  now waits for the answer and opens its highlighted match; pressing Escape or leaving the field before it comes
+  opens nothing.
+- **Finding your calendars no longer moves you while you are elsewhere.** After *Find my calendars* the card moved
+  to the chosen calendar when the calendars came, wherever you were by then; if you had gone on to the choice of
+  what the events show, your next arrow key changed which calendar Ordnung would write into. Closing what a
+  letter waits for did the same to a tracking number you were typing. These now move on only if you are still
+  where you pressed the button. An error after a failed action still takes you to its reason.
 - **A day left out follows a pinned day.** Judging the answer to a completeness re-ask, the check for a fixed date a
   reading left out, the daily note Ordnung writes without Claude and the check of the days Claude's daily note calls due
   fell back to the computer's date when they were given no day, even where the day is pinned (`ORDNUNG_TODAY`, the
