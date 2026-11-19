@@ -7,6 +7,7 @@ an older reading's key facts are not named after the newest one's."""
 from __future__ import annotations
 
 import asyncio
+import shutil
 import threading
 from collections.abc import Iterator
 from pathlib import Path
@@ -14,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from fixtures_llm import APPOINTMENT_LETTER, TAX_LETTER, TODAY, Router
+from helpers_tables import check_rows
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.ingest import pipeline
@@ -186,35 +188,51 @@ def _store_a_reading(ctx: AppContext, doc_id: str) -> None:
     assert finish_trace(ctx.store, tracer)
 
 
-@pytest.mark.parametrize("moment", range(1, 9))
+MOMENTS = range(1, 9)
+
+
 async def test_a_reading_stored_while_the_trace_is_shown_is_wholly_in_the_view_or_not_at_all(
-    ctx: AppContext, moment: int
+    data_dir: Path, router: Router, tmp_path: Path
 ) -> None:
-    doc_id = await read(ctx)
-    for _ in range(KEPT_READINGS - 1):
-        await read_again(ctx, doc_id)  # five kept: the next one pushes the first out
-    before = document_trace(ctx.store, doc_id)
-    selects = 0
-
-    def another_reading_ends(sql: str) -> None:
-        # at the view's ``moment``-th query, another thread (its own connection) stores a reading
-        nonlocal selects
-        if sql.lstrip().upper().startswith("SELECT"):
-            selects += 1
-            if selects == moment:
-                meanwhile = threading.Thread(target=_store_a_reading, args=(ctx, doc_id))
-                meanwhile.start()
-                meanwhile.join()
-
-    conn = ctx.store._conn()
-    conn.set_trace_callback(another_reading_ends)
+    template = build_context(data_dir, backend_obj=FakeBackend(router))
     try:
-        shown = document_trace(ctx.store, doc_id)
+        doc_id = await read(template)
+        for _ in range(KEPT_READINGS - 1):
+            await read_again(template, doc_id)  # five kept: the next one pushes the first out
     finally:
-        conn.set_trace_callback(None)
-    after = document_trace(ctx.store, doc_id)
-    assert selects >= moment and [run.reading for run in after.runs] == [6, 5, 4, 3, 2]
-    assert shown in (before, after)
+        template.close()
+
+    def check(moment: int) -> None:
+        # each moment stores its reading in its own copy of the letter's data folder
+        folder = shutil.copytree(data_dir, tmp_path / f"moment-{moment}")
+        ctx = build_context(folder, backend_obj=FakeBackend(router))
+        try:
+            before = document_trace(ctx.store, doc_id)
+            selects = 0
+
+            def another_reading_ends(sql: str) -> None:
+                # at the view's ``moment``-th query, another thread (its own connection) stores a reading
+                nonlocal selects
+                if sql.lstrip().upper().startswith("SELECT"):
+                    selects += 1
+                    if selects == moment:
+                        meanwhile = threading.Thread(target=_store_a_reading, args=(ctx, doc_id))
+                        meanwhile.start()
+                        meanwhile.join()
+
+            conn = ctx.store._conn()
+            conn.set_trace_callback(another_reading_ends)
+            try:
+                shown = document_trace(ctx.store, doc_id)
+            finally:
+                conn.set_trace_callback(None)
+            after = document_trace(ctx.store, doc_id)
+            assert selects >= moment and [run.reading for run in after.runs] == [6, 5, 4, 3, 2]
+            assert shown in (before, after)
+        finally:
+            ctx.close()
+
+    check_rows(MOMENTS, check)
 
 
 # --------------------------------------------------------------------------------------------------
