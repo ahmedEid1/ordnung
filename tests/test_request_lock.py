@@ -24,6 +24,7 @@ if str(ROOT) not in sys.path:
 from evals import conditions, harness  # noqa: E402
 from evals import run as eval_run  # noqa: E402
 
+from helpers_tables import check_rows  # noqa: E402
 from ordnung.assistant.mcp_server import server_config  # noqa: E402
 from ordnung.assistant.rules_tools import rules_server_config  # noqa: E402
 from ordnung.llm.base import Attachment, LLMRequest  # noqa: E402
@@ -153,29 +154,30 @@ INTERPRETERS = (
 )
 
 
-@pytest.mark.parametrize("interpreter", INTERPRETERS[1:])
-def test_two_venvs_give_the_same_lock_entry(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, interpreter: str
-) -> None:
+def test_two_venvs_give_the_same_lock_entry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """The rules-tool condition's ``--mcp-config`` starts the server with ``sys.executable``, and Ask's with it too:
     a path of the machine and the venv, in what the CLI gets but in no replay key. The lock's entry (its content hash
     and every part's hash) is the same whichever interpreter made it, so a lock built on one machine checks on
     another (E2's recording found it: its request dumps differed in every rules-tool cell between two venvs)."""
-    monkeypatch.setattr(sys, "executable", INTERPRETERS[0])
-    here = [
-        _request(tmp_path, mcp_config=rules_server_config(today="2026-10-01")),
-        _request(tmp_path, purpose="ask", mcp_config=server_config(tmp_path / "one", rules_tools=False)),
-    ]
-    monkeypatch.setattr(sys, "executable", interpreter)
-    there = [
-        _request(tmp_path, mcp_config=rules_server_config(today="2026-10-01")),
-        _request(tmp_path, purpose="ask", mcp_config=server_config(tmp_path / "two", rules_tools=False)),
-    ]
-    for one, two in zip(here, there, strict=True):
-        assert one.mcp_config != two.mcp_config
-        assert harness.lock_entry(one) == harness.lock_entry(two)
-        assert harness.lock_entry(one, repeat=2) == harness.lock_entry(two, repeat=2)
-        assert harness.request_content(one) == harness.request_content(two)
+
+    def check(interpreter: str) -> None:
+        monkeypatch.setattr(sys, "executable", INTERPRETERS[0])
+        here = [
+            _request(tmp_path, mcp_config=rules_server_config(today="2026-10-01")),
+            _request(tmp_path, purpose="ask", mcp_config=server_config(tmp_path / "one", rules_tools=False)),
+        ]
+        monkeypatch.setattr(sys, "executable", interpreter)
+        there = [
+            _request(tmp_path, mcp_config=rules_server_config(today="2026-10-01")),
+            _request(tmp_path, purpose="ask", mcp_config=server_config(tmp_path / "two", rules_tools=False)),
+        ]
+        for one, two in zip(here, there, strict=True):
+            assert one.mcp_config != two.mcp_config
+            assert harness.lock_entry(one) == harness.lock_entry(two)
+            assert harness.lock_entry(one, repeat=2) == harness.lock_entry(two, repeat=2)
+            assert harness.request_content(one) == harness.request_content(two)
+
+    check_rows(INTERPRETERS[1:], check)
 
 
 def test_a_server_that_is_not_python_keeps_its_command(tmp_path: Path) -> None:
