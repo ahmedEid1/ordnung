@@ -19,17 +19,21 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from evals.present.build import HISTORY_INPUTS
 
 from helpers_tables import check_rows
 from ordnung.doctor import native_install, tesseract_install
 from ordnung.llm.claude_cli import MIN_CLAUDE_VERSION, version_text
-from test_docs_claims import WITHOUT_LAND
 from test_final_gates import FINAL, workflow_gates
 
 ROOT = Path(__file__).resolve().parents[1]
 #: The splits whose numbers the README and docs/evals.md publish as replayed on the current code (holdout3 is
 #: replayed letter by letter in tests/test_holdout3_replay.py).
 GATED_SPLITS = ("test", "holdout", "holdout2", "dev")
+#: The published without-Land results file: the report's input, which tests/test_docs_claims.py holds to be the
+#: file the docs cite.
+WITHOUT_LAND = HISTORY_INPUTS["without_land"]
+assert isinstance(WITHOUT_LAND, str)
 
 
 @functools.cache
