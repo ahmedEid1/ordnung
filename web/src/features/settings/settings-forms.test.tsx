@@ -35,6 +35,7 @@ beforeEach(() => {
   vi.stubGlobal("scrollTo", () => {});
 });
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   act(() => __clearToasts());
 });
@@ -129,8 +130,12 @@ describe("settings helpers", () => {
 
 describe("the save bar", () => {
   it("is only a status while nothing changed, stays in view while there are edits and confirms a save in place", async () => {
+    // the clock is faked from the start (the bar's unpin timer is set while findByText still polls); it still runs
+    // on by itself so that findBy* and waitFor keep working. Only the timeouts: with every timer faked, later tests'
+    // dialogs here stayed mid-animation
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ["setTimeout", "clearTimeout"] });
     useMockApi();
-    const user = userEvent.setup();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderWithProviders(<SettingsPage />, {
       route: "/settings?section=profile",
     });
@@ -164,9 +169,10 @@ describe("the save bar", () => {
     ).toBeInTheDocument();
     // readable in place a moment, then the bar goes back to the end of its card
     expect(pinnedBar()).not.toBeNull();
-    await waitFor(() => expect(pinnedBar()).toBeNull(), {
-      timeout: SAVED_PIN_MS + 2000,
-    });
+    await act(() => vi.advanceTimersByTimeAsync(SAVED_PIN_MS - 100));
+    expect(pinnedBar()).not.toBeNull();
+    await act(() => vi.advanceTimersByTimeAsync(100));
+    expect(pinnedBar()).toBeNull();
     expect(screen.getByText("Saved.")).toBeInTheDocument();
   });
 
