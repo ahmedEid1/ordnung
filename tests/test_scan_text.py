@@ -4,6 +4,7 @@ store and the text stage ever touch it — so no prompt, evidence check or Ask t
 from __future__ import annotations
 
 import ast
+import functools
 import itertools
 import json
 import os
@@ -173,12 +174,14 @@ NEVER_NAMED_IN_FILES = {
 }
 
 
-def _modules() -> list[tuple[str, ast.Module, str]]:
+@functools.cache
+def _modules() -> tuple[tuple[str, ast.Module, str], ...]:
+    """Every module of the package, parsed once for the tests of this file (they only read the trees)."""
     found = []
     for path in sorted(PACKAGE_DIR.rglob("*.py")):
         source = path.read_text("utf-8")
         found.append((path.relative_to(PACKAGE_DIR).as_posix(), ast.parse(source), source))
-    return found
+    return tuple(found)
 
 
 def _imports_scan_text(tree: ast.Module) -> bool:
