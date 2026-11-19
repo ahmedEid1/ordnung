@@ -33,6 +33,7 @@ from evals.records import Entry, TruthItem, load_manifest  # noqa: E402
 
 from helpers_tables import check_rows, check_rows_async  # noqa: E402
 from ordnung.assistant.rules_tools import RulesTools, render  # noqa: E402
+from ordnung.config import OCR_SWITCH  # noqa: E402
 from ordnung.llm.base import (  # noqa: E402
     ClaudeBadOutput,
     LLMError,
@@ -1314,6 +1315,10 @@ def _held_out_runs_once(tmp_path_factory: pytest.TempPathFactory) -> dict[str, d
         return runs  # type: ignore[return-value]
 
     with pytest.MonkeyPatch.context() as patch:
+        # a module fixture is set up before tests/conftest.py's autouse fixtures: it gives itself what they give
+        patch.setenv(OCR_SWITCH, "off")
+        patch.delenv("ORDNUNG_CLAUDE_BIN", raising=False)
+        patch.delenv("ORDNUNG_BACKEND", raising=False)
         return asyncio.run(make(patch))
 
 
@@ -1429,7 +1434,7 @@ async def test_a_holdout_run_never_rewrites_the_published_page(
 ) -> None:
     """Every held-out split is recorded once with every condition: the results file is written under the split's
     name, docs/evals.md never is — not by a complete live run, and not when asked for with --docs (the refusal
-    names the split's own option where it has one). The held-out runs below run on the holdout letters and are
+    names the split's own option where it has one); each is one of the runner's and the page's held-out splits. The held-out runs below run on the holdout letters and are
     labelled with the split (``_holdout2_run``, ``_holdout3_run``)."""
     runs = {"holdout": _holdout_run, "holdout2": _holdout2_run, "holdout3": _holdout3_run}
 
@@ -1444,6 +1449,7 @@ async def test_a_holdout_run_never_rewrites_the_published_page(
         assert set(run.results["metrics"]) == set(eval_run.CONDITIONS)
         assert outcome.docs_path is None and not docs.exists()
         assert eval_run.build_parser().parse_args(["--split", split]).split == split
+        assert split in eval_run.SPLITS and split in report.HELD_OUT_SPLITS
         with pytest.raises(SystemExit):
             eval_run.run_cli(["--split", split, "--docs", "--quiet"])
         err = capsys.readouterr().err
@@ -1452,13 +1458,18 @@ async def test_a_holdout_run_never_rewrites_the_published_page(
             assert docs_hint in err
 
     await check_rows_async(HELD_OUT_SPLITS_AND_DOCS_HINTS, check)
-    assert "holdout3" in eval_run.SPLITS and "holdout3" in report.HELD_OUT_SPLITS
-    # a replay on the day of the holdout3 recording never overwrites it: the recording is the held-out number
-    recorded = tmp_path / "holdout3" / "results" / "2026-09-25-claude-sonnet-5-holdout3.json"
-    assert recorded.exists()
+
+
+async def test_a_replay_never_overwrites_the_holdout3_live_recording(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A replay on the day of the holdout3 recording never overwrites it: the recording is the held-out number."""
+    outcome = await _holdout3_run(tmp_path, monkeypatch, live=True, write_docs=False)
+    recorded = outcome.runs[0].results_path
+    assert recorded is not None and recorded.name == "2026-09-25-claude-sonnet-5-holdout3.json"
     recorded.write_text(json.dumps({"meta": {"backend": "live", "split": "holdout3"}}), encoding="utf-8")
     with pytest.raises(ValueError, match="holds a live recording"):
-        await _holdout3_run(tmp_path / "holdout3", monkeypatch, write_docs=False)
+        await _holdout3_run(tmp_path, monkeypatch, write_docs=False)
     assert json.loads(recorded.read_text(encoding="utf-8"))["meta"]["backend"] == "live"
 
 
