@@ -14,6 +14,7 @@ from fixtures_llm import Letter as _EmailLetter
 from fixtures_llm import Router as _EmailRouter
 from fixtures_llm import fake_backend as _email_fake_backend
 from fixtures_llm import iban as _email_iban
+from helpers_tables import check_rows
 
 # ==================================================================================================
 # HTML e-mails: realistic mails whose bill disappears or turns into a scam alarm
@@ -161,18 +162,28 @@ async def test_email_a_bills_preview_text_is_no_scam_sign(data_dir: _EmailPath) 
         clock.set_today(None)
 
 
-@pytest.mark.parametrize("plain", ["", "\r\n", " \n"], ids=["empty", "crlf", "blank-line"])
-def test_email_an_empty_text_part_does_not_hide_the_html_bill(plain: str) -> None:
+EMPTY_TEXT_PARTS = [
+    pytest.param("", id="empty"),
+    pytest.param("\r\n", id="crlf"),
+    pytest.param(" \n", id="blank-line"),
+]
+
+
+def test_email_an_empty_text_part_does_not_hide_the_html_bill() -> None:
     """``_email_body`` takes the text/plain alternative whenever there is one (``get_body(("plain",
     "html"))``). Senders whose plain-text version is left empty — Spring's ``setText("", html)``,
     Python's ``set_content("")`` + ``add_alternative(html)``, an ESP campaign whose text version was
     cleared — still show the full bill in every mail client (they prefer the HTML part), but Ordnung
     reads only the headers: amount, due date and IBAN are gone from the page and from extraction."""
-    from ordnung.ingest.text import text_document
 
-    text = " ".join(text_document(_email_shop_invoice(plain), "message/rfc822").text.split())
-    assert "Subject: Ihre Rechnung RE-2026-0915" in text  # the headers are read
-    assert "89,97 €" in text and "04.10.2026" in text and _EMAIL_SHOP_IBAN in text, text
+    def check(plain: str) -> None:
+        from ordnung.ingest.text import text_document
+
+        text = " ".join(text_document(_email_shop_invoice(plain), "message/rfc822").text.split())
+        assert "Subject: Ihre Rechnung RE-2026-0915" in text  # the headers are read
+        assert "89,97 €" in text and "04.10.2026" in text and _EMAIL_SHOP_IBAN in text, text
+
+    check_rows(EMPTY_TEXT_PARTS, check)
 
 
 def test_email_an_empty_text_part_without_an_html_part_reads_the_headers() -> None:
