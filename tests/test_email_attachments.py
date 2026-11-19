@@ -30,6 +30,7 @@ from fixtures_llm import (
     fake_backend,
 )
 from helpers_docs import Line, make_pdf, photo
+from helpers_msg import simple_pdf
 from helpers_secretary import add_doc, add_item
 from ordnung import clock
 from ordnung.api.routes.common import item_aside
@@ -161,6 +162,9 @@ def nested_email(depth: int) -> bytes:
 
 
 def pdf_with(text: str, pages: int = 1) -> bytes:
+    """A PDF whose pages read ``text · Seite n``: one page written by hand (``simple_pdf``, fast), more by fpdf."""
+    if pages == 1:
+        return simple_pdf([f"{text} · Seite 1"])
     return make_pdf([[Line(72, 90, f"{text} · Seite {number + 1}")] for number in range(pages)])
 
 
@@ -922,7 +926,18 @@ async def test_a_letter_ordnung_drafted_attached_to_an_email_is_never_a_letter_r
     and not added — so neither "Read these" nor auto-read ever sends it to Claude."""
     from ordnung.ingest.own_files import OWN_LETTER, remember_own_file
 
-    drafted = pdf_with("Kündigung meines Vertrags · Musterweg 5 · IBAN DE89 3704 0044 0532 0130 00")
+    # made by fpdf with an embedded font, as Ordnung makes its letters
+    drafted = make_pdf(
+        [
+            [
+                Line(
+                    72,
+                    90,
+                    "Kündigung meines Vertrags · Musterweg 5 · IBAN DE89 3704 0044 0532 0130 00 · Seite 1",
+                )
+            ]
+        ]
+    )
     remember_own_file(ctx.store, drafted)
     message = email(subject=f"Ihre {EMAIL_MARKER} (gesendet)")
     attach(message, drafted, "application/pdf", "Kuendigung.pdf")
