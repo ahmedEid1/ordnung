@@ -18,7 +18,7 @@ from ordnung.models import Item
 from ordnung.rules import normalize_region
 from ordnung.rules.calendar_de import NATIONWIDE_LABEL, REGION_NAMES
 from ordnung.rules.deadlines import REGION_UNKNOWN
-from ordnung.secretary import triggers
+from ordnung.secretary import ledger
 from ordnung.secretary.sender_land import idea_id
 from test_api_support import Api, ApiRouter, api_for
 
@@ -153,7 +153,7 @@ def test_to_dos_of_a_letter_with_scam_signs_are_set_aside(
         doc_id=letter,
     )
     monkeypatch.setattr(
-        triggers, "_scam_reasons", lambda _store, doc, _party: ["new IBAN"] if doc.id == letter else []
+        ledger, "_scam_reasons", lambda _store, doc, _party: ["new IBAN"] if doc.id == letter else []
     )
 
     assert [(a.item_id, a.reason) for a in get_party(party, store, TODAY).set_aside] == [(pay, "suspicious")]
