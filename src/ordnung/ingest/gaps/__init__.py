@@ -46,14 +46,21 @@ Nothing here calls a model; the reading itself (its sender, date and remedy) sta
 
 from __future__ import annotations
 
-from ordnung.ingest.gaps.reading import _OPTION_ASKED as _OPTION_ASKED
-from ordnung.ingest.gaps.reading import _W_QUESTION as _W_QUESTION
+from ordnung.ingest.gaps.dropped_dates import _OPTION_ASKED as _OPTION_ASKED
+from ordnung.ingest.gaps.dropped_dates import _W_QUESTION as _W_QUESTION
+from ordnung.ingest.gaps.dropped_dates import DEADLINE_REACH as DEADLINE_REACH
+from ordnung.ingest.gaps.dropped_dates import DEADLINE_TITLE as DEADLINE_TITLE
+from ordnung.ingest.gaps.dropped_dates import _label_kind as _label_kind
+from ordnung.ingest.gaps.dropped_dates import _noun_kind as _noun_kind
+from ordnung.ingest.gaps.dropped_dates import _nouns_kind as _nouns_kind
+from ordnung.ingest.gaps.dropped_dates import _offers_option as _offers_option
+from ordnung.ingest.gaps.dropped_dates import deadline_items as deadline_items
+from ordnung.ingest.gaps.dropped_dates import deadline_slots as deadline_slots
+from ordnung.ingest.gaps.dropped_dates import deadline_warning as deadline_warning
 from ordnung.ingest.gaps.reading import CHECK_SLOT as CHECK_SLOT
 from ordnung.ingest.gaps.reading import DEADLINE_ACTION as DEADLINE_ACTION
 from ordnung.ingest.gaps.reading import DEADLINE_CONSEQUENCE as DEADLINE_CONSEQUENCE
-from ordnung.ingest.gaps.reading import DEADLINE_REACH as DEADLINE_REACH
 from ordnung.ingest.gaps.reading import DEADLINE_SLOT as DEADLINE_SLOT
-from ordnung.ingest.gaps.reading import DEADLINE_TITLE as DEADLINE_TITLE
 from ordnung.ingest.gaps.reading import GAP_WARNING as GAP_WARNING
 from ordnung.ingest.gaps.reading import KLAGE_ACTION as KLAGE_ACTION
 from ordnung.ingest.gaps.reading import KLAGE_CONSEQUENCE as KLAGE_CONSEQUENCE
@@ -67,17 +74,10 @@ from ordnung.ingest.gaps.reading import Check as Check
 from ordnung.ingest.gaps.reading import CheckKind as CheckKind
 from ordnung.ingest.gaps.reading import Gap as Gap
 from ordnung.ingest.gaps.reading import RemedyNotice as RemedyNotice
-from ordnung.ingest.gaps.reading import _label_kind as _label_kind
-from ordnung.ingest.gaps.reading import _noun_kind as _noun_kind
-from ordnung.ingest.gaps.reading import _nouns_kind as _nouns_kind
-from ordnung.ingest.gaps.reading import _offers_option as _offers_option
 from ordnung.ingest.gaps.reading import _own_start as _own_start
 from ordnung.ingest.gaps.reading import check_item as check_item
 from ordnung.ingest.gaps.reading import check_reasons as check_reasons
 from ordnung.ingest.gaps.reading import dates_the_objection as dates_the_objection
-from ordnung.ingest.gaps.reading import deadline_items as deadline_items
-from ordnung.ingest.gaps.reading import deadline_slots as deadline_slots
-from ordnung.ingest.gaps.reading import deadline_warning as deadline_warning
 from ordnung.ingest.gaps.reading import envelope_start as envelope_start
 from ordnung.ingest.gaps.reading import formally_served as formally_served
 from ordnung.ingest.gaps.reading import gap_warning as gap_warning
