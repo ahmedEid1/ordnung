@@ -169,6 +169,7 @@ def test_inline_styles_that_certainly_hide(markup: str, where: str) -> None:
         (f'<td background="hero.jpg"><p style="color:#fff">{SECRET}</p></td>', "visible"),
         (f'<td style="background:var(--brand)"><p style="color:#fff">{SECRET}</p></td>', "visible"),
         (f'<td style="background-color:#0000ff80"><p style="color:#fff">{SECRET}</p></td>', "visible"),
+        (f'<p style="color:rgb(255px, 255px, 255px)">{SECRET}</p>', "visible"),  # a unit rgb() can't take
         (f'<div style="color:#fff"><a href="https://example.org">{SECRET}</a></div>', "visible"),
     ],
 )
