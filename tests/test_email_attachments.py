@@ -356,16 +356,10 @@ def test_an_attached_bill_takes_over_the_payment_its_email_repeats() -> None:
     assert not attachment_repeats(mail, asked, bill, [item(bill, kind="deadline")])
     assert not attachment_repeats(mail, item(mail, kind="deadline"), bill, [item(bill, **same)])
     assert not attachment_repeats(mail, asked, mail, [asked])  # never the e-mail itself
-
-
-def test_a_different_amount_is_never_the_same_payment() -> None:
-    """A reminder e-mail with its invoice attached names the same invoice number and asks for more
-    (fees): the invoice never takes the reminder's payment over."""
-    mail = document("doc_mail", references=("R-1",))
-    invoice = document("doc_bill", source=email_source("doc_mail"), references=("R-1",))
+    # a reminder e-mail with its invoice attached names the same invoice number and asks for more (fees):
+    # the invoice never takes the reminder's payment over
     reminder = item(mail, amount=54.99, currency="EUR", direction="out", due_date="2026-09-30")
-    invoice_payment = item(invoice, amount=49.99, currency="EUR", direction="out", due_date="2026-09-15")
-    assert not attachment_repeats(mail, reminder, invoice, [invoice_payment])
+    assert not attachment_repeats(mail, reminder, bill, [item(bill, **same)])
 
 
 def emailed_bill_and_its_reminder(store: Store, *, mahnung_attached: bool = False) -> dict[str, str]:
