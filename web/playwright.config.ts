@@ -45,6 +45,8 @@ import {
  *
  * `E2E_GROUP=<name>` (e2e/env.ts) runs one group of the projects below, in the same order, on fresh servers of its
  * own and only those its projects use, so CI can run the groups as jobs side by side. Unset, everything runs, as described.
+ * CI runs the layout group in two halves with `--shard`; each layout file sets up what it needs, so any split by whole
+ * files works.
  *
  * Local: `npm run build && PW_CHROMIUM_PATH=/path/to/chrome npm run e2e`. See `e2e/env.ts` for
  * the knobs (ports, data folders, reuse running servers, groups).
