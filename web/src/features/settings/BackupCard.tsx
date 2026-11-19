@@ -8,7 +8,7 @@ import { Callout } from "@/components/ui/Callout";
 import { Dialog } from "@/components/ui/Dialog";
 import { LoadError } from "@/components/ui/LoadError";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { CopyCommand } from "@/features/onboarding/CopyCommand";
+import { CopyCommand } from "@/components/ui/CopyCommand";
 import { focusWhenReady } from "@/lib/focus";
 import { formatDate, formatFileSize } from "@/lib/format";
 import { cn } from "@/lib/utils";

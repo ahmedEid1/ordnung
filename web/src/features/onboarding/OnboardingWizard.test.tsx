@@ -12,7 +12,7 @@ import type { ClaudeStatus, Health } from "@/api/types";
 import { __clearToasts } from "@/components/ui/Toast";
 import { useMockApi } from "@/test/mockFetch";
 import { makeTestQueryClient, renderWithProviders, TEST_HEALTH } from "@/test/render";
-import { CopyCommand } from "./CopyCommand";
+import { CopyCommand } from "@/components/ui/CopyCommand";
 import { OnboardingWizard } from "./OnboardingWizard";
 import { CLAUDE_INSTALL, CLAUDE_NPM_INSTALL } from "./options";
 import { ProgressDots } from "./ProgressDots";

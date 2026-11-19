@@ -28,7 +28,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Spinner } from "@/components/ui/Spinner";
 import { Tabs } from "@/components/ui/Tabs";
 import { QrCode } from "@/features/girocode/GiroCode";
-import { CopyCommand } from "@/features/onboarding/CopyCommand";
+import { CopyCommand } from "@/components/ui/CopyCommand";
 import { plural } from "@/lib/utils";
 import {
   accessUrl,

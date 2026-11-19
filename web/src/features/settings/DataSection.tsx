@@ -11,7 +11,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Checkbox, Field, Input } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
 import { isStaticDemo } from "@/mocks/mode";
-import { CopyCommand } from "@/features/onboarding/CopyCommand";
+import { CopyCommand } from "@/components/ui/CopyCommand";
 import { DEMO_CMD } from "@/features/onboarding/options";
 import { EXPORT_IN_DEMO, ExportLettersDialog, NOT_ENCRYPTED } from "@/features/export/ExportLettersDialog";
 import { useClipboard } from "@/lib/clipboard";

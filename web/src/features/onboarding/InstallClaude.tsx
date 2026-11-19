@@ -1,7 +1,7 @@
 import { useId, useState } from "react";
 import { Tabs } from "@/components/ui/Tabs";
 import { COMPUTER_OS_LABELS, computerOs, type ComputerOs } from "@/features/settings/phoneAccess";
-import { CopyCommand } from "./CopyCommand";
+import { CopyCommand } from "@/components/ui/CopyCommand";
 import { CLAUDE_INSTALL, CLAUDE_NPM_INSTALL, CLAUDE_NPM_NEEDS, CLAUDE_UPDATE_CMD, CLAUDE_UPDATE_OTHER } from "./options";
 
 const OS_ORDER: ComputerOs[] = ["mac", "windows", "linux"];

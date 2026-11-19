@@ -8,7 +8,7 @@ import type { AppSettings, DoctorCheck, Health, SettingsPatch } from "@/api/type
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
-import { CopyCommand } from "@/features/onboarding/CopyCommand";
+import { CopyCommand } from "@/components/ui/CopyCommand";
 import { InstallClaude, UpdateClaude } from "@/features/onboarding/InstallClaude";
 import { CLAUDE_LOGIN_CMD, CLAUDE_PLAN_NOTE } from "@/features/onboarding/options";
 import { claudeState, type ClaudeState } from "@/features/onboarding/wizard";

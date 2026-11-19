@@ -8,7 +8,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState, EmptyArt } from "@/components/ui/EmptyState";
 import { technicalDetails } from "@/components/ui/LoadError";
 import { Page } from "@/components/shell/Page";
-import { CopyCommand } from "@/features/onboarding/CopyCommand";
+import { CopyCommand } from "@/components/ui/CopyCommand";
 import { servedToPhone } from "@/features/phone/platform";
 import { useClipboard } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";

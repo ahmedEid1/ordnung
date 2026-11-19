@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
 import { Dialog } from "@/components/ui/Dialog";
 import { toast } from "@/components/ui/Toast";
-import { CopyCommand } from "@/features/onboarding/CopyCommand";
+import { CopyCommand } from "@/components/ui/CopyCommand";
 import { saveBlob } from "./backup";
 import { SettingsCard } from "./SettingsCard";
 import { keptLine, keptRestoreCommand } from "./sync";

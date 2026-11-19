@@ -6,7 +6,7 @@ import { ACCEPTED_SHORT, useAddLetters } from "@/components/shell/AddLetters";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { isStaticDemo } from "@/mocks/mode";
 import { cn } from "@/lib/utils";
-import { CopyCommand } from "./CopyCommand";
+import { CopyCommand } from "@/components/ui/CopyCommand";
 import { DEMO_CMD } from "./options";
 import { StepHeading } from "./Steps";
 

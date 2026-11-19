@@ -11,7 +11,7 @@ import { LoadError } from "@/components/ui/LoadError";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "@/components/ui/Toast";
-import { CopyCommand } from "@/features/onboarding/CopyCommand";
+import { CopyCommand } from "@/components/ui/CopyCommand";
 import { cn } from "@/lib/utils";
 import { isStaticDemo } from "@/mocks/mode";
 import { BreakablePath } from "./DataSection";

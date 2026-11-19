@@ -22,7 +22,7 @@ import { KindBadge } from "@/components/ui/KindBadge";
 import { LoadError } from "@/components/ui/LoadError";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { LoadingLabel, SkeletonCard } from "@/components/ui/Skeleton";
-import { CopyCommand } from "@/features/onboarding/CopyCommand";
+import { CopyCommand } from "@/components/ui/CopyCommand";
 import { formatCompact, formatUsd } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
 import { cn, plural } from "@/lib/utils";

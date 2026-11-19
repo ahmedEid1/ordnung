@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
 import { Field, Input } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
-import { CopyCommand } from "@/features/onboarding/CopyCommand";
+import { CopyCommand } from "@/components/ui/CopyCommand";
 import { SideOption } from "@/features/sync/ChoiceDialog";
 import { focusWhenReady } from "@/lib/focus";
 import { cn } from "@/lib/utils";
