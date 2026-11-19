@@ -249,7 +249,7 @@ def test_cli_add_damaged_msg_says_why(
 
 async def test_proof_msg_kept_as_one_file(data_dir: Path) -> None:
     """A sent e-mail saved from Outlook is kept as proof like an .eml: one private file, its attachments no
-    letters; a damaged one is refused with the Outlook reason (and adds nothing)."""
+    letters; a damaged one is refused with the Outlook reason."""
     async with api_for(data_dir) as api:
         draft_id, _ = await _sent(api)
         response = await api.client.post(
