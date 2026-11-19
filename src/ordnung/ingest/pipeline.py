@@ -26,7 +26,7 @@ stage, a PDF whose every page has its own text no "transcribe".
   its privacy choice (:mod:`ordnung.ingest.attachments`); what became of each is logged on the e-mail.
 * Letters moved to the trash while they waited in the queue (or while being read) are never sent to
   the model: the job fails with :data:`TRASHED_ERROR`; uploading the file again restores and reads it.
-* "Today" is the person's (profile time zone or the pinned demo date, :func:`ordnung.tick.local_today`),
+* "Today" is the person's (profile time zone or the pinned demo date, :func:`ordnung.days.local_today`),
   never the computer's clock.
 """
 

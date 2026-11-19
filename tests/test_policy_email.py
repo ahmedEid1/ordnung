@@ -1,4 +1,4 @@
-"""HTML e-mail text (ingest/text.py ``html_to_text``): cases where the redesign broke a numbered point
+"""HTML e-mail text (ingest/email_text.py ``html_to_text``): cases where the redesign broke a numbered point
 of the policy in its docstring, found by verifying it; each test pins the fix."""
 
 from __future__ import annotations

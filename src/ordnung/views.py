@@ -624,7 +624,7 @@ def timeline(store: Store, start: date, end: date, *, today: date | None = None)
     """Everything dated between ``start`` and ``end`` (inclusive): letters by their date, to-dos by
     due date, contract milestones (send-by, must-arrive-by, term end) and sent letters.
 
-    ``past`` is relative to ``today`` (default: the person's today, :func:`ordnung.tick.local_today`).
+    ``past`` is relative to ``today`` (default: the person's today, :func:`ordnung.days.local_today`).
     """
     day = today or local_today(store)
     ledger = Ledger(store, day)

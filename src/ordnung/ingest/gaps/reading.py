@@ -49,9 +49,10 @@ from ordnung.rules.routing import letter_kind, special_rule
 #: Slot of the to-do code files for an incomplete reading (one per letter).
 CHECK_SLOT = "check:reading"
 #: Slot of a to-do code files for a fixed date the letter's own words set for the person (pay by, send by) that the
-#: reading left out: ``check:deadline#<date>-<nature>``, one per date and kind (:func:`deadline_slots`).
+#: reading left out: ``check:deadline#<date>-<nature>``, one per date and kind
+#: (:func:`~ordnung.ingest.gaps.dropped_dates.deadline_slots`).
 DEADLINE_SLOT = "check:deadline"
-#: How the letter's warning for such to-dos starts (:func:`deadline_warning`).
+#: How the letter's warning for such to-dos starts (:func:`~ordnung.ingest.gaps.dropped_dates.deadline_warning`).
 DEADLINE_WARNING_PREFIX = "Claude's reading of this letter left out"
 #: The kinds of letter whose deadlines the law files itself (``routing.derived_deadlines``, through
 #: ``plan.law_deadlines``): a court payment order read as "pay" still gets "pay or object".
@@ -1965,12 +1966,12 @@ GAP_WARNING = re.compile(
 
 
 def needs_check(item: Item) -> bool:
-    """An open, dated to-do whose quote was not found or does not state its values, not yet confirmed
-    (a to-do marked done or "not a real to-do" leaves nothing to check). A deadline the law adds
-    (``origin="rule"``) quotes nothing, so it has nothing to check — unless it counts from an end date
-    the letter doesn't write (:func:`sync_rule_items` gives it the termination's sentence as evidence,
-    not stating that date). The to-do code files for an incomplete reading counts as dated whether or not
-    it has a date (:data:`~ordnung.ingest.gaps.CHECK_SLOT`): it is "Please check" until the person acts on it."""
+    """An open, dated to-do whose quote was not found or does not state its values, not yet confirmed (a to-do
+    marked done or "not a real to-do" leaves nothing to check). A deadline the law adds (``origin="rule"``)
+    quotes nothing, so it has nothing to check — unless it counts from an end date the letter doesn't write
+    (:func:`~ordnung.ingest.plan.sync_rule_items` gives it the termination's sentence as evidence, not stating
+    that date). The to-do code files for an incomplete reading counts as dated whether or not it has a date
+    (:data:`~ordnung.ingest.gaps.CHECK_SLOT`): it is "Please check" until the person acts on it."""
     dated = item.due_date is not None or (item.date_spec is not None and item.date_spec.type != "none")
     dated = dated or item.slot_key == CHECK_SLOT
     if not dated or item.grounding == "user" or item.status not in ("open", "snoozed"):

@@ -18,7 +18,10 @@ def read_demo_version(data_dir: Path) -> str | None:
 
 
 def is_demo_dir(data_dir: Path) -> bool:
-    """Whether ``data_dir`` is a demo folder (made by :func:`build_demo` or :func:`prepare_demo`)."""
+    """Whether ``data_dir`` is a demo folder.
+
+    Made by :func:`~ordnung.demo.loader.build_demo` or :func:`~ordnung.demo.loader.prepare_demo`.
+    """
     return read_demo_version(data_dir) is not None
 
 
