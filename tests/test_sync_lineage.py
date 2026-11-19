@@ -524,6 +524,7 @@ TestHistories.settings = settings(
 )
 
 
+@pytest.mark.slow  # every history of five steps: 16,807 of them
 def test_background_only_histories_never_ask() -> None:
     """Exhaustive for short histories: two computers, background work and switches only."""
     for steps in itertools.product(

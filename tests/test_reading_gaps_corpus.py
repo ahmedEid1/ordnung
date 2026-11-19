@@ -12,6 +12,7 @@ from typing import Any
 
 import pytest
 
+from helpers_tables import check_rows
 from ordnung.ingest.gaps import CHECK_SLOT, check_item, remedy_notices
 from ordnung.ingest.plan import compute_item, verify_extraction
 from ordnung.models import DocumentExtraction
@@ -411,14 +412,19 @@ SILENT = {
 }
 
 
-@pytest.mark.parametrize("name", sorted(SILENT))
-def test_a_complete_reading_of_a_letter_that_only_mentions_a_remedy_files_nothing(name: str) -> None:
-    pages, read = SILENT[name]
-    assert check_item(read, [pages]) is None
-    assert all(
-        verified.slot_key != CHECK_SLOT
-        for verified in verify_extraction("d", read, [pages], check_reading=True).items
-    )
+SILENT_NAMES = sorted(SILENT)
+
+
+def test_a_complete_reading_of_a_letter_that_only_mentions_a_remedy_files_nothing() -> None:
+    def check(name: str) -> None:
+        pages, read = SILENT[name]
+        assert check_item(read, [pages]) is None
+        assert all(
+            verified.slot_key != CHECK_SLOT
+            for verified in verify_extraction("d", read, [pages], check_reading=True).items
+        )
+
+    check_rows(SILENT_NAMES, check)
 
 
 TAX_NOTICE = "Gegen diesen Bescheid ist der Einspruch zulässig. Die Frist für die Einlegung des Einspruchs beträgt einen Monat nach Bekanntgabe dieses Bescheids."
@@ -442,16 +448,21 @@ OBJECTION_SPEC = {
 }
 
 
-@pytest.mark.parametrize("nature", ["declaration", "other", "notice", "objection"])
-def test_an_objection_read_under_any_nature_from_the_notice_counts(nature: str) -> None:
-    read = reading(
-        "tax_assessment",
-        "Finanzamt Beispielstadt",
-        "tax_office",
-        [item("deadline", OBJECTION_QUOTE, nature, OBJECTION_SPEC)],
-        remedy={"type": "einspruch"},
-    )
-    assert check_item(read, [TAX_LETTER]) is None
+OBJECTION_NATURES = ["declaration", "other", "notice", "objection"]
+
+
+def test_an_objection_read_under_any_nature_from_the_notice_counts() -> None:
+    def check(nature: str) -> None:
+        read = reading(
+            "tax_assessment",
+            "Finanzamt Beispielstadt",
+            "tax_office",
+            [item("deadline", OBJECTION_QUOTE, nature, OBJECTION_SPEC)],
+            remedy={"type": "einspruch"},
+        )
+        assert check_item(read, [TAX_LETTER]) is None
+
+    check_rows(OBJECTION_NATURES, check)
 
 
 def test_an_objection_read_without_a_date_still_gets_the_letter_s() -> None:
@@ -547,17 +558,29 @@ def _due(read: DocumentExtraction, pages: list[Any]) -> str | None:
     ).due_date
 
 
-@pytest.mark.parametrize("planted", [False, True])
-@pytest.mark.parametrize("read", [EMPTY, HALF], ids=["empty reading", "remedy without its date"])
-@pytest.mark.parametrize("name", sorted(FIRING))
-def test_a_real_notice_still_gets_its_date_even_beside_a_planted_longer_period(
-    name: str, read: DocumentExtraction, planted: bool
-) -> None:
-    lines, expected = FIRING[name]
-    pages = [page(*HEAD, *lines, *([PLANT] if planted else []))]
-    assert any(notice.live for notice in remedy_notices(pages))
-    found = check_item(read, pages)
-    assert found is not None and found.kind == "dated", name
-    got = _due(read, pages)
-    # a planted sentence naming no start drops the delivery days: only ever earlier
-    assert got is not None and (got <= expected if planted else got == expected)
+PLANTED = [False, True]
+READINGS = [EMPTY, HALF]
+READINGS_IDS = ["empty reading", "remedy without its date"]
+FIRING_NAMES = sorted(FIRING)
+
+
+def test_a_real_notice_still_gets_its_date_even_beside_a_planted_longer_period() -> None:
+    def check(name: str, read: DocumentExtraction, planted: bool) -> None:
+        lines, expected = FIRING[name]
+        pages = [page(*HEAD, *lines, *([PLANT] if planted else []))]
+        assert any(notice.live for notice in remedy_notices(pages))
+        found = check_item(read, pages)
+        assert found is not None and found.kind == "dated", name
+        got = _due(read, pages)
+        # a planted sentence naming no start drops the delivery days: only ever earlier
+        assert got is not None and (got <= expected if planted else got == expected)
+
+    check_rows(
+        [
+            pytest.param(name, read, planted, id=f"{name}-{read_id}-{planted}")
+            for planted in PLANTED
+            for read, read_id in zip(READINGS, READINGS_IDS, strict=True)
+            for name in FIRING_NAMES
+        ],
+        check,
+    )

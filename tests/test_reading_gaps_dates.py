@@ -5,8 +5,7 @@ from __future__ import annotations
 
 from datetime import date
 
-import pytest
-
+from helpers_tables import check_rows
 from ordnung.ingest.gaps import formally_served, letter_date
 from test_reading_gaps import blank, page
 from test_reading_gaps_known_limits import computed
@@ -34,23 +33,23 @@ def town_letter(sender_town: str, place: str) -> list:
     ]
 
 
-@pytest.mark.parametrize(
-    ("sender_town", "place"),
-    [
-        ("60275 Frankfurt am Main", "Frankfurt a. M."),
-        ("60275 Frankfurt am Main", "Frankfurt a.M."),
-        ("60275 Frankfurt am Main", "Frankfurt-Höchst"),
-        ("60326 Frankfurt/Main", "Frankfurt am Main"),
-        ("79098 Freiburg im Breisgau", "Freiburg i. Br."),
-        ("06108 Halle/Saale", "Halle (Saale)"),
-        ("45468 Mülheim an der Ruhr", "Mülheim a. d. Ruhr"),
-        ("61348 Bad Homburg", "Bad Homburg v. d. Höhe"),
-    ],
-)
-def test_a_town_written_short_or_with_its_district_is_the_letter_s_own_place(
-    sender_town: str, place: str
-) -> None:
-    assert letter_date(blank(), town_letter(sender_town, place), today=date(2026, 11, 20)) == LETTER_DAY
+TOWN_FORMS = [
+    ("60275 Frankfurt am Main", "Frankfurt a. M."),
+    ("60275 Frankfurt am Main", "Frankfurt a.M."),
+    ("60275 Frankfurt am Main", "Frankfurt-Höchst"),
+    ("60326 Frankfurt/Main", "Frankfurt am Main"),
+    ("79098 Freiburg im Breisgau", "Freiburg i. Br."),
+    ("06108 Halle/Saale", "Halle (Saale)"),
+    ("45468 Mülheim an der Ruhr", "Mülheim a. d. Ruhr"),
+    ("61348 Bad Homburg", "Bad Homburg v. d. Höhe"),
+]
+
+
+def test_a_town_written_short_or_with_its_district_is_the_letter_s_own_place() -> None:
+    def check(sender_town: str, place: str) -> None:
+        assert letter_date(blank(), town_letter(sender_town, place), today=date(2026, 11, 20)) == LETTER_DAY
+
+    check_rows(TOWN_FORMS, check)
 
 
 def test_a_town_over_the_recipient_s_name_is_that_town_alone() -> None:
@@ -121,35 +120,37 @@ def test_a_received_stamp_on_the_first_line_never_starts_a_letter_dated_at_its_f
     assert start is None or start <= LETTER_DAY
 
 
-@pytest.mark.parametrize(
-    "notice",
-    [
-        "Hiergegen kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.",
-        "Gegen den Bescheid vom 27.10.2026 kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.",
-    ],
-)
-def test_the_envelope_never_starts_another_decision_s_notice(notice: str) -> None:
-    pages = [
-        page(
-            "Stadt Beispielhausen · Kasse · Rathausplatz 1 · 12345 Beispielhausen",
-            "Mit Postzustellungsurkunde",
-            "Frau Mara Probe",
-            "Probeweg 2",
-            "12345 Beispielhausen",
-            "",
-            "Datum: 06.11.2026",
-            "",
-            "Zahlungserinnerung",
-            "Sehr geehrte Frau Probe,",
-            "mit Gebührenbescheid vom 27.10.2026 wurde eine Gebühr von 85,00 EUR festgesetzt, die noch offen ist.",
-            "Rechtsbehelfsbelehrung",
-            notice,
-        )
-    ]
-    assert not formally_served(pages)
-    [(_verified, result)] = computed(blank(), pages, "2026-11-09")
-    # the 27.10 decision, notified on the 30th at the earliest: 30 Nov at the latest
-    assert result.due_date is not None and result.due_date <= "2026-11-30"
+OTHER_DECISION_NOTICES = [
+    "Hiergegen kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.",
+    "Gegen den Bescheid vom 27.10.2026 kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.",
+]
+
+
+def test_the_envelope_never_starts_another_decision_s_notice() -> None:
+    def check(notice: str) -> None:
+        pages = [
+            page(
+                "Stadt Beispielhausen · Kasse · Rathausplatz 1 · 12345 Beispielhausen",
+                "Mit Postzustellungsurkunde",
+                "Frau Mara Probe",
+                "Probeweg 2",
+                "12345 Beispielhausen",
+                "",
+                "Datum: 06.11.2026",
+                "",
+                "Zahlungserinnerung",
+                "Sehr geehrte Frau Probe,",
+                "mit Gebührenbescheid vom 27.10.2026 wurde eine Gebühr von 85,00 EUR festgesetzt, die noch offen ist.",
+                "Rechtsbehelfsbelehrung",
+                notice,
+            )
+        ]
+        assert not formally_served(pages)
+        [(_verified, result)] = computed(blank(), pages, "2026-11-09")
+        # the 27.10 decision, notified on the 30th at the earliest: 30 Nov at the latest
+        assert result.due_date is not None and result.due_date <= "2026-11-30"
+
+    check_rows(OTHER_DECISION_NOTICES, check)
 
 
 def test_a_served_decision_naming_its_own_noun_stays_served() -> None:

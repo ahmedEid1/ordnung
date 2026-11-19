@@ -38,28 +38,35 @@ signing in.
 
 ## Fast loop
 
-CI runs its jobs side by side, and a whole run takes 40 to 50 minutes (its runs of 17 and 18 November 2026).
-The end-to-end job starts once the frontend has passed, 4 to 7 minutes in, and takes 32 to 43 minutes. Beside it
-the backend's legs on Python 3.11 to 3.14 take 17 to 47 minutes (3.14 the fastest), its slow checks 27 to 41, the
-lowest versions (and, weekly, the newest) 19 to 29, and, on `main` and weekly, Windows 10 to 14 and macOS 4 to 7;
-the wheel and the dependency audit take under a minute. macOS and Windows have to pass too, as Linux does. While
-you work, run the tests near your change:
+CI runs its jobs side by side, none waiting for another, and a whole run should take about 21 minutes: its runs of
+17 and 18 November 2026 took 40 to 50 with each suite in one process, and the times here are theirs divided by what
+parallel processes, and Playwright's groups run apart, gave on a 4-core computer. The end-to-end job waits for no
+other job: its legs, one for each group of Playwright's projects, take 8 to 10 minutes, but the layout guards'
+about 21, the longest of all. Beside them the backend's 3.12 leg, which measures the coverage, takes about 13, the
+replayed benchmarks 12 to 13, the slow tests about 11, the backend's other legs (Python 3.11, 3.13 and 3.14) 6 to
+9, the lowest versions (and, weekly, the newest) about 9, the frontend 5 to 9, and, on `main` and weekly, Windows
+10 to 14 and macOS 4 to 7; lint and types, the wheel and the dependency audit take about a minute each. macOS and
+Windows have to pass too, as Linux does. While you work, run the tests near your change, and the fast suite in
+parallel processes before you push:
 
 ```bash
 .venv/bin/pytest tests/test_rules_deadlines.py -k weekend     # one file, only the tests whose names match
 cd web && npx vitest run src/features/today                   # one folder or file of the web app's tests (-t "<name>")
 cd web && npx playwright test e2e/letter-layout.spec.ts       # one end-to-end spec (-g "<title>" for one test)
+.venv/bin/pytest -m "not slow" -n auto --dist loadfile         # the fast suite, a file to each process (9 to 18 minutes on 4 cores)
 ```
 
 An end-to-end spec runs against the built web app in `src/ordnung/web/dist`, so after changing `web/` run
 `make build-web` first, and `make browser` once for Playwright's Chromium. It starts the demo and two real apps
 of its own on ports 8799 to 8802, with throwaway data folders; `web/e2e/env.ts` says how to move both.
+`E2E_GROUP=<name>` runs one group of its projects (`E2E_GROUPS` in `web/e2e/env.ts`) on fresh servers of its own,
+only the ones that group uses; CI runs the groups side by side.
 
 ## Checks
 
 `make check` runs what most changes need: ruff (lint and format) and mypy (strict, over the package,
-`evals/` and `scripts/`), the backend tests (the fast ones with coverage, then the slow ones), and the
-web app's ESLint, type check and Vitest tests. CI runs more; run the ones near your change before you open
+`evals/` and `scripts/`), the backend tests in parallel processes (the fast ones with coverage, then the slow
+ones), and the web app's ESLint, type check and Vitest tests. CI runs more; run the ones near your change before you open
 a pull request:
 
 ```bash
@@ -214,8 +221,15 @@ check shows in the numbers at once, and costs nothing.
   proved every bug and security finding with a failing test before fixing it; keep doing that.
 - Name a test by the behaviour it pins, the way the files around it do
   (`test_a_missing_asset_is_a_404_not_the_app_page`).
-- A test that replays every recording, times pages or builds the web app is marked `slow`
-  (`make check` runs those too).
+- One test for one behaviour. The examples of one rule (thirty wordings that must all read as a deadline) are the
+  rows of one table test: `check_rows` in `tests/helpers_tables.py` runs the check on every row and names every
+  row that fails (`check_rows_async` where the check is awaited). Parametrise only when the cases are different
+  behaviours a reader wants to see fail apart (different routes, commands or file formats), or when each case
+  needs a fresh fixture that it changes.
+- A test that replays every recording, times pages or its own growth, explores at length (a long fuzz or model
+  run), regenerates or re-reads a whole dataset, or builds the web app is marked `slow` (`make check` runs those
+  too). The tests run in parallel processes, a file to a process (`-n auto --dist loadfile`): a test takes its
+  files from `tmp_path` and a port for a server from `tests/helpers_net.py`, never a fixed one.
 - A docs test pins a fact the page states (a flag exists, a number is the one its results file holds, a file it
   names is there), not the sentence that states it: rewording a page should not need a test change.
 

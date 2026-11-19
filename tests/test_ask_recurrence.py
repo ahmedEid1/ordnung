@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import sys
+import tempfile
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -18,12 +19,14 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from evals.ask import heldout, heldout_check, recurrence  # noqa: E402
+from evals.ask import heldout, heldout_check, ledger, recurrence  # noqa: E402
 from evals.ask.ledger import LedgerError, SampleLife, build_base, pinned_today  # noqa: E402
 
+from helpers_tables import check_rows  # noqa: E402
 from ordnung.assistant.ask import ledger_fingerprint  # noqa: E402
 from ordnung.config import Paths  # noqa: E402
 from ordnung.db.store import Store  # noqa: E402
+from ordnung.demo.loader import copy_data  # noqa: E402
 
 DAY = date(2026, 12, 8)
 DENTIST = "zahnarzt_terminkarte"  # its truth item 0: an appointment on 2026-10-08
@@ -115,30 +118,35 @@ def test_a_rules_file_makes_sample_life_to_dos_repeat(base: tuple[Path, SampleLi
     }
 
 
-@pytest.mark.parametrize(
-    ("todos", "problem"),
-    [
-        ([_todo("ho-rec-x", "no_such_letter", 0, "2026-10-08", interval=1, unit="months")], "no_such_letter"),
-        ([_todo("ho-rec-x", DENTIST, 7, "2026-10-08", interval=1, unit="months")], "ho-rec-x"),
-        ([_todo("ho-rec-x", RENT, 0, "2026-10-05", interval=1, unit="months")], "repeats already"),
-        ([_todo("ho-rec-x", DENTIST, 0, "2026-10-08", interval=0, unit="months")], "ho-rec-x"),
-        ([_todo("ho-rec-x", DENTIST, 0, "2026-10-08", interval=1, unit="fortnights")], "unit"),
-        (
-            [
-                _todo("ho-rec-x", DENTIST, 0, "2026-10-08", interval=1, unit="months"),
-                _todo("ho-rec-x", REMINDER, 0, "2026-09-30", interval=1, unit="months"),
-            ],
-            "used twice",
-        ),
-    ],
-)
+BUILDER_REFUSALS = [
+    ([_todo("ho-rec-x", "no_such_letter", 0, "2026-10-08", interval=1, unit="months")], "no_such_letter"),
+    ([_todo("ho-rec-x", DENTIST, 7, "2026-10-08", interval=1, unit="months")], "ho-rec-x"),
+    ([_todo("ho-rec-x", RENT, 0, "2026-10-05", interval=1, unit="months")], "repeats already"),
+    ([_todo("ho-rec-x", DENTIST, 0, "2026-10-08", interval=0, unit="months")], "ho-rec-x"),
+    ([_todo("ho-rec-x", DENTIST, 0, "2026-10-08", interval=1, unit="fortnights")], "unit"),
+    (
+        [
+            _todo("ho-rec-x", DENTIST, 0, "2026-10-08", interval=1, unit="months"),
+            _todo("ho-rec-x", REMINDER, 0, "2026-09-30", interval=1, unit="months"),
+        ],
+        "used twice",
+    ),
+]
+
+
 def test_the_builder_refuses_what_the_ledger_cannot_hold(
-    base: tuple[Path, SampleLife], tmp_path: Path, todos: list[dict[str, Any]], problem: str
+    base: tuple[Path, SampleLife], tmp_path: Path
 ) -> None:
     folder, life = base
-    rules = _rules(tmp_path / "heldout", todos)
-    with pinned_today(DAY), pytest.raises(LedgerError, match=problem):
-        recurrence.build_recurrence(folder, tmp_path / "out", life, rules=rules)
+
+    def check(todos: list[dict[str, Any]], problem: str) -> None:
+        # a fresh folder per row: the builder copies the base into "out" before it refuses
+        row = Path(tempfile.mkdtemp(dir=tmp_path))
+        rules = _rules(row / "heldout", todos)
+        with pinned_today(DAY), pytest.raises(LedgerError, match=problem):
+            recurrence.build_recurrence(folder, row / "out", life, rules=rules)
+
+    check_rows(BUILDER_REFUSALS, check)
 
 
 def test_a_rules_file_of_another_schema_or_none_is_refused(
@@ -280,6 +288,34 @@ def test_a_recurrence_question_without_its_gold_is_refused(tmp_path: Path, setup
         heldout.load_questions(path, today=DAY)
 
 
+@pytest.fixture
+def bases_built_once(base: tuple[Path, SampleLife], tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """``build_base`` built once per day for one test: ``validate_window`` builds the ledger for every day of the
+    window on every call, and the base of a day is the same each time (its stamps are settled). The base of a day
+    is built by the real ``build_base`` (``DAY``'s is the module's) and copied into every target asked for; a call
+    with a snapshot, or without a day, goes to the real one. The sample life is loaded once too."""
+    folder, life = base
+    built: dict[date, Path] = {DAY: folder}
+    real_build, real_load = ledger.build_base, SampleLife.load
+
+    def build_base_once(
+        target: Path, life: SampleLife, *, snapshot: Path | None = None, day: date | None = None
+    ) -> Path:
+        if snapshot is not None or day is None:
+            return real_build(target, life, snapshot=snapshot, day=day)
+        if day not in built:
+            built[day] = real_build(tmp_path / f"base-{day.isoformat()}", life, day=day)
+        copy_data(built[day], target)
+        return target
+
+    def load_once(samples: Path | None = None) -> SampleLife:
+        return life if samples is None else real_load(samples)
+
+    monkeypatch.setattr(ledger, "build_base", build_base_once)
+    monkeypatch.setattr(SampleLife, "load", staticmethod(load_once))
+
+
+@pytest.mark.usefixtures("bases_built_once")
 def test_validate_window_holds_the_ledger_to_the_recurrence_gold(tmp_path: Path) -> None:
     """--validate builds the recurrence ledger on each day of the window and compares every to-do's next date in it
     with the blind gold's: a gold that moves a date the ledger does not (or the other way round) is named by id."""

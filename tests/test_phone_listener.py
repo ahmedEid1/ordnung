@@ -21,6 +21,7 @@ import pytest
 import uvicorn
 from sse_starlette.sse import AppStatus
 
+from helpers_net import free_port
 from ordnung.api.app import create_app
 from ordnung.api.sse import PING_SECONDS
 from ordnung.app_context import build_context
@@ -36,12 +37,6 @@ STREAM_ENDS_S = PING_SECONDS / 3
 #: What a slow runner may add to a stop that waits for uvicorn's graceful shutdown
 SLOW_RUNNER_S = 3.0
 LOOPBACK = "127.0.0.1"
-
-
-def _free_port() -> int:
-    with socket.socket() as sock:
-        sock.bind((LOOPBACK, 0))
-        return int(sock.getsockname()[1])
 
 
 @asynccontextmanager
@@ -61,7 +56,7 @@ async def _serving(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> AsyncIter
         await start()
 
     monkeypatch.setattr(ctx.worker, "start", counted)
-    port = _free_port()
+    port = free_port()
     config = uvicorn.Config(app, host=LOOPBACK, port=port, log_level="warning", loop="asyncio")
     config.load()
     computer = uvicorn.Server(config)
@@ -93,13 +88,29 @@ async def _pair(pc: httpx.AsyncClient, phone: httpx.AsyncClient, port: int) -> s
     return token
 
 
-async def _read_events(phone: httpx.AsyncClient) -> int:
+async def _read_events(phone: httpx.AsyncClient, opened: asyncio.Event) -> int:
     lines = 0
     async with phone.stream("GET", "/api/events") as stream:
         assert stream.status_code == 200
+        opened.set()
         async for _line in stream.aiter_lines():
             lines += 1
     return lines
+
+
+async def _open_stream(phone: httpx.AsyncClient, within: float = 10.0) -> asyncio.Task[int]:
+    """The phone's live stream, reading, once its answer has begun, however slow the runner. The gate counts the
+    request as the phone's live stream a moment before that: a removal or a stop in between refuses the request
+    (401, 409) instead of ending a stream."""
+    opened = asyncio.Event()
+    reader = asyncio.create_task(_read_events(phone, opened))
+    waiting = asyncio.ensure_future(opened.wait())
+    await asyncio.wait({reader, waiting}, timeout=within, return_when=asyncio.FIRST_COMPLETED)
+    waiting.cancel()
+    if reader.done():
+        reader.result()  # what failed, if the request did
+    assert opened.is_set(), "the phone's live stream never opened"
+    return reader
 
 
 async def _streaming(pc: httpx.AsyncClient, within: float = 10.0) -> dict[str, Any]:
@@ -121,7 +132,7 @@ async def test_a_phone_listener_runs_next_to_the_computer_s(
     async with _serving(data_dir, monkeypatch) as served:
         pc: httpx.AsyncClient = served["pc"]
         access: PhoneAccess = served["access"]
-        port = _free_port()
+        port = free_port()
         status = (await pc.put("/api/phone", json={"enabled": True, "port": port})).json()
         assert status["listening"] is True and status["url"] == f"https://{LOOPBACK}:{port}", status
         server = access._server
@@ -136,7 +147,7 @@ async def test_a_phone_listener_runs_next_to_the_computer_s(
             await _pair(pc, phone, port)
             assert (await phone.get("/api/health")).json()["client"] == "phone"
 
-            reader = asyncio.create_task(_read_events(phone))
+            reader = await _open_stream(phone)
             device = await _streaming(pc)
             assert not reader.done()
             assert (await pc.delete(f"/api/phone/devices/{device['id']}")).status_code == 200
@@ -145,7 +156,7 @@ async def test_a_phone_listener_runs_next_to_the_computer_s(
             assert (await pc.get("/api/health")).json()["client"] == "computer"
 
             await _pair(pc, phone, port)
-            reader = asyncio.create_task(_read_events(phone))
+            reader = await _open_stream(phone)
             await _streaming(pc)
             off_at = asyncio.get_running_loop().time()
             assert (await pc.put("/api/phone", json={"enabled": False})).json()["listening"] is False
@@ -174,7 +185,7 @@ async def test_a_busy_port_and_a_missing_address_are_problems(
             assert status["enabled"] is True and status["listening"] is False
             assert status["problem"]["code"] == "port_busy"
             assert (await pc.get("/api/health")).status_code == 200  # no exit
-        port = _free_port()
+        port = free_port()
         assert (await pc.put("/api/phone", json={"enabled": True, "port": port})).json()["listening"] is True
         monkeypatch.setattr(access.network, "is_local", lambda _address: False)
         await access.check()

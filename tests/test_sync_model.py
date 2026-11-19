@@ -241,7 +241,7 @@ class TwoComputers(RuleBasedStateMachine):
         assert not (self.a.mode == "in_use" and self.b.mode == "in_use")
 
 
-TestTwoComputers = TwoComputers.TestCase
+TestTwoComputers = pytest.mark.slow(TwoComputers.TestCase)  # 40 histories of 25 steps over real data folders
 TestTwoComputers.settings = settings(
     max_examples=40, stateful_step_count=25, deadline=None, suppress_health_check=list(HealthCheck)
 )

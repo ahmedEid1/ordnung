@@ -603,6 +603,7 @@ def _repeating_to_dos(store: Store, count: int) -> None:
         )
 
 
+@pytest.mark.slow  # times its own growth (helpers_timing): a wall-clock ratio
 def test_ask_lists_200_repeating_to_dos_quickly(tmp_path: Path) -> None:
     """Every repeating to-do in Ask's list says how it repeats and where it moves on to once done,
     which the dates engine works out per to-do: four times the to-dos take about four times the time, never

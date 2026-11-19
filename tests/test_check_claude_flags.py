@@ -14,6 +14,7 @@ from pathlib import Path
 
 import pytest
 
+from helpers_tables import check_rows
 from ordnung.llm.claude_cli import ClaudeCLIBackend
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -141,13 +142,18 @@ def test_a_claude_that_never_refuses_an_option_fails_the_check(
     assert f"didn't refuse the made-up flag {CANARY}" in capsys.readouterr().err
 
 
-@pytest.mark.parametrize("version", ["2.0.99 (Claude Code)", "Claude Code"])
+TOO_OLD_OR_UNREADABLE_VERSIONS = ["2.0.99 (Claude Code)", "Claude Code"]
+
+
 def test_a_claude_older_than_ordnung_needs_or_without_a_version_fails(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str], version: str
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    claude, _ = _fake(tmp_path, version=version)
-    assert main(["--claude", str(claude)]) == 1
-    assert "2.1.0" in capsys.readouterr().err
+    def check(version: str) -> None:
+        claude, _ = _fake(tmp_path, version=version)
+        assert main(["--claude", str(claude)]) == 1
+        assert "2.1.0" in capsys.readouterr().err
+
+    check_rows(TOO_OLD_OR_UNREADABLE_VERSIONS, check)
 
 
 def test_a_flag_missing_from_help_is_only_a_warning(

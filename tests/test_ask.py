@@ -17,6 +17,7 @@ from typing import Any
 import pytest
 
 from helpers_secretary import TODAY, add_doc, seed_ledger
+from helpers_tables import check_rows
 from ordnung import clock
 from ordnung.app_context import build_context
 from ordnung.assistant import ask as ask_module
@@ -530,53 +531,56 @@ WEEKDAYS_NOTE = "Corrected weekday names to match their dates."
 WEEKDAYS_NOTE_DE = "Wochentage an ihre Daten angepasst."
 
 
-@pytest.mark.parametrize(
-    ("answer", "expected", "note"),
-    [
-        # the demo's recorded answers: the date in bold at the head of a list line ("**Thu 2 Oct 2026**"
-        # for a Friday, "**Tue 30 Sep 2026**" for a Wednesday)
-        (
-            "- **Thu 21 Oct 2026** – Object to the tax assessment [item:{item}].",
-            "- **Wed 21 Oct 2026** – Object to the tax assessment [item:{item}].",
-            WEEKDAYS_NOTE,
-        ),
-        (
-            "Your objection deadline is **Thu** 21 Oct 2026 [item:{item}].",
-            "Your objection deadline is **Wed** 21 Oct 2026 [item:{item}].",
-            WEEKDAYS_NOTE,
-        ),
-        (
-            "Your objection deadline is 21 Oct 2026 (Thu) [item:{item}].",
-            "Your objection deadline is 21 Oct 2026 (Wed) [item:{item}].",
-            WEEKDAYS_NOTE,
-        ),
-        (
-            "Your objection deadline is 21 October 2026, a Thursday [item:{item}].",
-            "Your objection deadline is 21 October 2026, a Wednesday [item:{item}].",
-            WEEKDAYS_NOTE,
-        ),
-        (
-            "Ihre Einspruchsfrist endet am Donnerstag, den 21. Oktober 2026 [item:{item}].",
-            "Ihre Einspruchsfrist endet am Mittwoch, den 21. Oktober 2026 [item:{item}].",
-            WEEKDAYS_NOTE_DE,
-        ),
-        (
-            "Ihre Einspruchsfrist endet am 21.10.2026 (Do.) [item:{item}].",
-            "Ihre Einspruchsfrist endet am 21.10.2026 (Mi.) [item:{item}].",
-            WEEKDAYS_NOTE_DE,
-        ),
-    ],
-)
+WEEKDAY_EXAMPLES = [
+    # the demo's recorded answers: the date in bold at the head of a list line ("**Thu 2 Oct 2026**"
+    # for a Friday, "**Tue 30 Sep 2026**" for a Wednesday)
+    (
+        "- **Thu 21 Oct 2026** – Object to the tax assessment [item:{item}].",
+        "- **Wed 21 Oct 2026** – Object to the tax assessment [item:{item}].",
+        WEEKDAYS_NOTE,
+    ),
+    (
+        "Your objection deadline is **Thu** 21 Oct 2026 [item:{item}].",
+        "Your objection deadline is **Wed** 21 Oct 2026 [item:{item}].",
+        WEEKDAYS_NOTE,
+    ),
+    (
+        "Your objection deadline is 21 Oct 2026 (Thu) [item:{item}].",
+        "Your objection deadline is 21 Oct 2026 (Wed) [item:{item}].",
+        WEEKDAYS_NOTE,
+    ),
+    (
+        "Your objection deadline is 21 October 2026, a Thursday [item:{item}].",
+        "Your objection deadline is 21 October 2026, a Wednesday [item:{item}].",
+        WEEKDAYS_NOTE,
+    ),
+    (
+        "Ihre Einspruchsfrist endet am Donnerstag, den 21. Oktober 2026 [item:{item}].",
+        "Ihre Einspruchsfrist endet am Mittwoch, den 21. Oktober 2026 [item:{item}].",
+        WEEKDAYS_NOTE_DE,
+    ),
+    (
+        "Ihre Einspruchsfrist endet am 21.10.2026 (Do.) [item:{item}].",
+        "Ihre Einspruchsfrist endet am 21.10.2026 (Mi.) [item:{item}].",
+        WEEKDAYS_NOTE_DE,
+    ),
+]
+
+
 def test_the_final_answer_gives_each_date_its_own_weekday(
-    store: Store, ids: dict[str, str], tools: LedgerTools, answer: str, expected: str, note: str
+    store: Store, ids: dict[str, str], tools: LedgerTools
 ) -> None:
     """A weekday name next to a date is that date's weekday in the final answer, in English and German,
     on either side of the date; the note says so."""
-    item = ids["tax_objection"]
-    results = [render_result(tools.list_items())]
-    checked = check_turn(store, answer.format(item=item), results, question="When?", today=TODAY)
-    assert checked.body == expected.format(item=item)
-    assert checked.note == note
+
+    def check(answer: str, expected: str, note: str) -> None:
+        item = ids["tax_objection"]
+        results = [render_result(tools.list_items())]
+        checked = check_turn(store, answer.format(item=item), results, question="When?", today=TODAY)
+        assert checked.body == expected.format(item=item)
+        assert checked.note == note
+
+    check_rows(WEEKDAY_EXAMPLES, check)
 
 
 def test_a_citation_that_names_no_record_is_dropped_from_the_final_answer(
@@ -1068,33 +1072,6 @@ def test_what_ask_sees_of_the_household_moves_the_fingerprint_and_the_token(
     moved(fingerprint=True)
 
 
-async def test_a_recording_goes_stale_once_a_letter_is_filed_for_someone(
-    paths: Paths, store: Store, ids: dict[str, str], tools: LedgerTools, tmp_path: Path
-) -> None:
-    """A recorded answer replays only on the ledger it was made on: once a letter is filed for someone of the
-    household (what Ask's tools then say of it changes), the same question is a new request, and the demo's
-    replay has no answer for it."""
-    from ordnung.secretary import household
-
-    answer = f"Your TechMarkt reminder is due on 30 Sep [item:{ids['dunning_payment']}]."
-    live = ScriptedBackend(turn(tools, answer, ("list_items", {"kind": "payment"})))
-    await collect(make_ctx(paths, store, live), "What do I owe TechMarkt?")
-    (recorded,) = live.calls
-    fixtures = tmp_path / "fixtures"
-    path = fixture_path(fixtures, recorded)
-    path.parent.mkdir(parents=True)
-    stream = [event.model_dump(exclude_none=True) for event in live.script(recorded)]
-    path.write_text(json.dumps({"response": stream[-1]["response"], "stream": stream}), encoding="utf-8")
-    replayed = done_event(
-        await collect(make_ctx(paths, store, ReplayBackend(fixtures)), "What do I owe TechMarkt?")
-    )
-    assert replayed.text == answer
-    (alex,) = _people(store, _Member("Alex Rivera"))
-    household.file(store, {ids["doc_invoice"]: alex})
-    events = await collect(make_ctx(paths, store, ReplayBackend(fixtures)), "What do I owe TechMarkt?")
-    assert [(event.type, getattr(event, "error_code", None)) for event in events] == [("error", "demo_miss")]
-
-
 def test_a_household_in_the_demo_makes_its_suggested_questions_say_it_changed(tmp_path: Path) -> None:
     """The demo's answers were recorded without a household: once the visitor adds someone, Ask's tools
     would answer otherwise, so the suggested questions are no longer offered and asking one says the demo
@@ -1381,9 +1358,14 @@ async def test_works_with_the_real_app_context(data_dir: Path, store: Store, ids
 # --------------------------------------------------------------------------------------------------
 
 
-async def test_recorded_answer_replays(
+async def test_a_recorded_answer_replays_until_the_ledger_changes(
     paths: Paths, store: Store, ids: dict[str, str], tools: LedgerTools, tmp_path: Path
 ) -> None:
+    """A recorded answer replays, also when asked again in its thread, but only on the ledger it was made
+    on: once a letter is filed for someone of the household (what Ask's tools then say of it changes), the
+    same question is a new request, and the demo's replay has no answer for it."""
+    from ordnung.secretary import household
+
     answer = f"Your TechMarkt reminder is due on 30 Sep [item:{ids['dunning_payment']}]."
     live = ScriptedBackend(turn(tools, answer, ("list_items", {"kind": "payment"})))
     await collect(make_ctx(paths, store, live), "What do I owe TechMarkt?")
@@ -1408,6 +1390,10 @@ async def test_recorded_answer_replays(
     )
     assert again.text == answer and again.thread_id == replayed.thread_id
     assert len(store.list_chat_messages(replayed.thread_id or "")) == 4
+    (alex,) = _people(store, _Member("Alex Rivera"))
+    household.file(store, {ids["doc_invoice"]: alex})
+    events = await collect(make_ctx(paths, store, ReplayBackend(fixtures)), "What do I owe TechMarkt?")
+    assert [(event.type, getattr(event, "error_code", None)) for event in events] == [("error", "demo_miss")]
 
 
 async def test_the_live_demo_fallback_reads_the_conversation(

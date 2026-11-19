@@ -187,8 +187,9 @@ def test_the_fake_knows_only_its_modes() -> None:
 
 
 def _servers(config_ts: str) -> list[str]:
-    """The ``webServer`` entries of ``web/playwright.config.ts``, in order: the demo, real app A, real app B."""
-    block = config_ts.split("webServer: [", 1)[1].split("\n  ],", 1)[0]
+    """The ``webServer`` entries of ``web/playwright.config.ts``, in order: the demo, real app A, real app B (a run
+    of one ``E2E_GROUP`` starts those its projects use, in this order)."""
+    block = config_ts.split("webServer: serversOfThisRun([", 1)[1].split("\n  ]),", 1)[0]
     return block.split("\n    {")[1:]
 
 
@@ -200,7 +201,7 @@ def test_the_e2e_servers_read_no_picture_unless_the_run_asks() -> None:
     assert 'export const E2E_OCR = process.env.ORDNUNG_E2E_OCR === "on";' in env_ts
     config_ts = (ROOT / "web" / "playwright.config.ts").read_text(encoding="utf-8")
     demo, real, real_b = _servers(config_ts)
-    assert " demo --serve " in demo and 'ORDNUNG_OCR: "off"' in demo
+    assert 'name: "demo"' in demo and " demo --serve " in demo and 'ORDNUNG_OCR: "off"' in demo
     assert "${REAL_PORT}" in real and 'ORDNUNG_OCR: E2E_OCR ? "on" : "off"' in real
     assert "${REAL_B_PORT}" in real_b and 'ORDNUNG_OCR: "off"' in real_b
     assert config_ts.count("ORDNUNG_OCR: ") == 3  # no other server, no other value

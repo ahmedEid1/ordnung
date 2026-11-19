@@ -22,8 +22,8 @@ web-dev:            ## run the Vite dev server (proxies /api to :8765)
 	cd web && npm run dev
 
 test:               ## backend tests + frontend unit tests
-	$(PY) -m pytest -m "not slow" --cov=ordnung --cov-report=term-missing:skip-covered
-	$(PY) -m pytest -m slow
+	$(PY) -m pytest -m "not slow" -n auto --dist loadfile --cov=ordnung --cov-report=term-missing:skip-covered
+	$(PY) -m pytest -m slow -n auto --dist loadfile
 	cd web && npm test
 
 lint:               ## ruff (lint, and the format check) over src, tests, scripts and evals; the web app's ESLint

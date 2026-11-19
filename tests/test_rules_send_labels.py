@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import functools
 import itertools
 import re
 from datetime import date
@@ -17,7 +18,9 @@ COPY = Path(__file__).resolve().parents[1] / "web" / "src" / "lib" / "copy.ts"
 TODAY = date(2026, 9, 28)
 
 
-def _every_guidance() -> list[SendGuidance]:
+@functools.cache
+def _every_guidance() -> tuple[SendGuidance, ...]:
+    """Built once for the module; both tests only read it."""
     found = []
     for kind, category, party, letter in itertools.product(
         get_args(DraftKind),
@@ -32,7 +35,7 @@ def _every_guidance() -> list[SendGuidance]:
         found.append(
             send_guidance("general_reply", court=court, labour_court=labour, court_unsure=unsure, today=TODAY)
         )
-    return found
+    return tuple(found)
 
 
 def _web_label(channel: str) -> str:

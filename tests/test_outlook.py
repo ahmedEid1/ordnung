@@ -617,6 +617,7 @@ def test_too_many_entries_refused_before_they_are_built(monkeypatch: pytest.Monk
     assert built  # (the count works)
 
 
+@pytest.mark.slow  # times its own growth (helpers_timing): a wall-clock ratio
 def test_lookups_stay_linear_with_many_entries() -> None:
     """Finding a stream doesn't scan every entry of its storage: reading a message with 4× the entries
     takes about 4× the time (olefile's own lookup is linear per stream, quadratic per file)."""

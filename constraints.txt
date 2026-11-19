@@ -17,6 +17,7 @@ coverage==7.17.3
 cryptography==50.0.2
 cycler==0.12.1
 defusedxml==0.7.1
+execnet==2.1.2
 fastapi==0.163.2
 fonttools==4.66.0
 fpdf2==2.8.8
@@ -74,6 +75,7 @@ pypdfium2==5.13.0
 pytest==9.2.0
 pytest-asyncio==1.5.0
 pytest-cov==7.1.0
+pytest-xdist==3.8.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.4
 python-multipart==0.0.34

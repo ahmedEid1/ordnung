@@ -97,6 +97,27 @@ def test_standing_by_acknowledges_what_arrived(pair: Pair) -> None:  # "Saved ·
     assert others_have(view, b.s.state.base.ref)  # type: ignore[union-attr]
 
 
+@pytest.mark.parametrize("saved_first", [False, True], ids=["unsaved-change", "already-saved"])
+def test_save_and_hand_over_says_closed_and_stands_by(pair: Pair, saved_first: bool) -> None:
+    """Save now pushes at once and stays in use; save and hand over also says ``closed`` (in the head
+    alone when nothing new was left to push) and stands by, so the other computer takes over with the
+    change. A computer standing by can't save: refused as ``standby``."""
+    a, b = pair.a, pair.b
+    pair.joined()
+    with pytest.raises(SyncError) as refused:
+        a.s.save_now(a.db)
+    assert refused.value.kind == "standby"
+    b.person_edit("saved at once")
+    if saved_first:
+        assert b.s.save_now(b.db).outcome == "pushed" and b.mode == "in_use"
+    handed = b.s.save_now(b.db, hand_over=True)
+    assert handed.outcome == ("unchanged" if saved_first else "pushed") and b.mode == "standing_by"
+    pair.settle()
+    head = a.s.scan().by_computer(b.s.state.computer)
+    assert head is not None and head.head.state == "closed"
+    assert a.use_here().replaced and "saved at once" in a.notes()
+
+
 def test_joining_with_letters_on_both_sides_asks(pair: Pair) -> None:
     a, b = pair.a, pair.b
     a.add_letter("A's letter")

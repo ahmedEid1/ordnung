@@ -511,6 +511,7 @@ def pdf_reads(manifest: dict[str, Any]) -> dict[str, PdfRead]:
     return reads
 
 
+@pytest.mark.slow  # reads every letter of the dataset
 def test_text_pdfs_contain_their_key_date_phrases(
     manifest: dict[str, Any], pdf_reads: dict[str, PdfRead]
 ) -> None:
@@ -528,6 +529,7 @@ def test_text_pdfs_contain_their_key_date_phrases(
             assert f"{d.day:02d}.{d.month:02d}.{d.year}" in text, entry["id"]
 
 
+@pytest.mark.slow  # reads every letter of the dataset
 def test_invisible_text_only_where_expected(manifest: dict[str, Any], pdf_reads: dict[str, PdfRead]) -> None:
     """Text under 3 pt, off the page, or white and not on a dark fill: no reader sees it."""
     for entry in _entries(manifest):
@@ -538,6 +540,7 @@ def test_invisible_text_only_where_expected(manifest: dict[str, Any], pdf_reads:
         assert (hidden_chars > 0) == expected, f"{entry['id']}: {hidden_chars} invisible characters"
 
 
+@pytest.mark.slow  # re-derives every label of the dataset
 def test_labels_survive_the_independent_recheck() -> None:
     """``evals/verify_labels.py`` re-derives every dated label from facts read off each letter, with its own
     calculator (datetime + holidays package; no code shared with evals/gen or ordnung.rules), checks that the
@@ -786,6 +789,7 @@ def test_c03_and_c07_say_what_the_land_table_counts(manifest: dict[str, Any]) ->
     assert "evals/gen/law.py" in c07
 
 
+@pytest.mark.slow  # generates the whole dataset
 def test_generation_is_byte_identical(tmp_path: Path, manifest: dict[str, Any]) -> None:
     def generate(out: Path) -> dict[str, Any]:
         made = _generate(out)

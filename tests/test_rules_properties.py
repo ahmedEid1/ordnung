@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 from unittest.mock import patch
 
-from hypothesis import given, settings
+from hypothesis import given
 from hypothesis import strategies as st
 
 from ordnung.models import ContractTerms, DateSpec
@@ -29,9 +29,6 @@ regions = st.one_of(st.none(), st.sampled_from(sorted(REGION_NAMES)))
 positive_units = st.sampled_from(["days", "weeks", "months", "years", "business_days", "werktage"])
 scopes = st.sampled_from(["ao", "vwvfg", "sgbx"])
 natures = st.sampled_from(["objection", "payment", "declaration", "notice", "appointment", "other"])
-
-settings.register_profile("rules", max_examples=150, deadline=None, database=None)
-settings.load_profile("rules")
 
 
 @given(dates, st.integers(min_value=0, max_value=120))

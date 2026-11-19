@@ -6,8 +6,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import pytest
-
+from helpers_tables import check_rows
 from ordnung.llm import prompts
 
 PROMPT_DIR = Path(prompts.__file__).parent
@@ -18,22 +17,18 @@ def test_the_core_templates_exist() -> None:
     assert {"extract", "extract_system", "transcribe_system"} <= set(TEMPLATES)
 
 
-@pytest.mark.parametrize("name", TEMPLATES)
-def test_template_is_versioned_and_substantial(name: str) -> None:
-    prompts.load.cache_clear()
-    version, body = prompts.load(name)
-    assert re.fullmatch(r"\d+", version), f"{name}: missing '<!-- version: N -->' header"
-    assert len(body.strip()) >= 40, f"{name}: template is (nearly) empty"
+def test_every_template_is_versioned_substantial_and_renders() -> None:
+    def check(name: str) -> None:
+        prompts.load.cache_clear()
+        version, body = prompts.load(name)
+        assert re.fullmatch(r"\d+", version), f"{name}: missing '<!-- version: N -->' header"
+        assert len(body.strip()) >= 40, f"{name}: template is (nearly) empty"
+        names = set(re.findall(r"\{\{(\w+)\}\}", body))
+        _, rendered = prompts.render(name, **{key: f"<{key}>" for key in names})
+        for key in names:
+            assert f"<{key}>" in rendered
 
-
-@pytest.mark.parametrize("name", TEMPLATES)
-def test_template_renders_with_all_placeholders(name: str) -> None:
-    prompts.load.cache_clear()
-    _, body = prompts.load(name)
-    names = set(re.findall(r"\{\{(\w+)\}\}", body))
-    _, rendered = prompts.render(name, **{key: f"<{key}>" for key in names})
-    for key in names:
-        assert f"<{key}>" in rendered
+    check_rows(TEMPLATES, check)
 
 
 def test_extract_template_carries_the_document() -> None:

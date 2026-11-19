@@ -7,8 +7,7 @@ from __future__ import annotations
 import time
 from datetime import date, timedelta
 
-import pytest
-
+from helpers_tables import check_rows
 from ordnung.ingest.gaps import deadline_items, deadline_warning, formally_served, letter_date
 from ordnung.ingest.plan import compute_item, verify_extraction
 from ordnung.models import DocumentExtraction
@@ -60,30 +59,32 @@ PARTIAL = dict(
 )
 
 
-@pytest.mark.parametrize(
-    ("notice", "due"),
-    [
-        (
-            "Dieser Bußgeldbescheid wird rechtskräftig und vollstreckbar, wenn nicht innerhalb von zwei Wochen nach "
-            "Zustellung Einspruch eingelegt worden ist.",
-            "2026-11-20",
-        ),
-        (
-            "Ist innerhalb eines Monats nach Bekanntgabe dieses Bescheides kein Widerspruch erhoben worden, wird er "
-            "bestandskräftig.",
-            "2026-12-09",
-        ),
-        (
-            "Der Bescheid wird bestandskräftig, wenn nicht innerhalb eines Monats nach seiner Bekanntgabe Widerspruch "
-            "erhoben wurde.",
-            "2026-12-09",
-        ),
-    ],
-)
-def test_f1_a_conditional_notice_in_the_perfect_still_dates_the_check(notice: str, due: str) -> None:
-    pages = [page(*TOWN, "Datum: 06.11.2026", *BODY, "Rechtsbehelfsbelehrung", notice)]
-    assert check_due(pages) == due
-    assert check_due(pages, blank(**PARTIAL)) == due
+CONDITIONAL_NOTICES_IN_THE_PERFECT = [
+    (
+        "Dieser Bußgeldbescheid wird rechtskräftig und vollstreckbar, wenn nicht innerhalb von zwei Wochen nach "
+        "Zustellung Einspruch eingelegt worden ist.",
+        "2026-11-20",
+    ),
+    (
+        "Ist innerhalb eines Monats nach Bekanntgabe dieses Bescheides kein Widerspruch erhoben worden, wird er "
+        "bestandskräftig.",
+        "2026-12-09",
+    ),
+    (
+        "Der Bescheid wird bestandskräftig, wenn nicht innerhalb eines Monats nach seiner Bekanntgabe Widerspruch "
+        "erhoben wurde.",
+        "2026-12-09",
+    ),
+]
+
+
+def test_f1_a_conditional_notice_in_the_perfect_still_dates_the_check() -> None:
+    def check(notice: str, due: str) -> None:
+        pages = [page(*TOWN, "Datum: 06.11.2026", *BODY, "Rechtsbehelfsbelehrung", notice)]
+        assert check_due(pages) == due
+        assert check_due(pages, blank(**PARTIAL)) == due
+
+    check_rows(CONDITIONAL_NOTICES_IN_THE_PERFECT, check)
 
 
 GRUND = [
@@ -135,20 +136,22 @@ INKASSO = [
 SENDER_INKASSO = {"name": "Inkasso Schnell und Partner", "kind": "company"}
 
 
-@pytest.mark.parametrize(
-    "warning",
-    [
-        "The payee account is a Lithuanian IBAN although the creditor is German.",
-        "Check whether you really owe this money before paying.",
-    ],
-)
-def test_f3_a_payment_the_reading_doubts_is_never_brought_back(warning: str) -> None:
-    reading = blank(kind="dunning", document_date="2026-09-24", sender=SENDER_INKASSO, warnings=[warning])
-    assert deadline_items(reading, [page(*INKASSO)], today=date(2026, 9, 25)) == []
-    plain = blank(kind="dunning", document_date="2026-09-24", sender=SENDER_INKASSO)
-    assert [i.date.date for i in deadline_items(plain, [page(*INKASSO)], today=date(2026, 9, 25))] == [
-        "2026-10-08"
-    ]
+WARNINGS_THAT_DOUBT_THE_PAYMENT = [
+    "The payee account is a Lithuanian IBAN although the creditor is German.",
+    "Check whether you really owe this money before paying.",
+]
+
+
+def test_f3_a_payment_the_reading_doubts_is_never_brought_back() -> None:
+    def check(warning: str) -> None:
+        reading = blank(kind="dunning", document_date="2026-09-24", sender=SENDER_INKASSO, warnings=[warning])
+        assert deadline_items(reading, [page(*INKASSO)], today=date(2026, 9, 25)) == []
+        plain = blank(kind="dunning", document_date="2026-09-24", sender=SENDER_INKASSO)
+        assert [i.date.date for i in deadline_items(plain, [page(*INKASSO)], today=date(2026, 9, 25))] == [
+            "2026-10-08"
+        ]
+
+    check_rows(WARNINGS_THAT_DOUBT_THE_PAYMENT, check)
 
 
 def test_f4_f5_many_send_by_lines_are_capped_and_fast() -> None:
@@ -177,15 +180,20 @@ def test_f4_f5_many_send_by_lines_are_capped_and_fast() -> None:
     assert time.process_time() - started < 5
 
 
-@pytest.mark.parametrize("top", ["20.11.2026", "13.11.2026", "06.12.2026", "20.11.26"])
-def test_f6_a_date_written_at_the_top_never_starts_the_check_after_the_closing_date(top: str) -> None:
-    notice = [
-        "Rechtsbehelfsbelehrung",
-        "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.",
-    ]
-    pages = [page(top, *TOWN, *BODY, *notice, "Beispielhausen, den 06.11.2026", "Im Auftrag", "Meier")]
-    start = letter_date(blank(), pages)
-    assert start is None or start <= date(2026, 11, 6)
+DATES_WRITTEN_AT_THE_TOP = ["20.11.2026", "13.11.2026", "06.12.2026", "20.11.26"]
+
+
+def test_f6_a_date_written_at_the_top_never_starts_the_check_after_the_closing_date() -> None:
+    def check(top: str) -> None:
+        notice = [
+            "Rechtsbehelfsbelehrung",
+            "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.",
+        ]
+        pages = [page(top, *TOWN, *BODY, *notice, "Beispielhausen, den 06.11.2026", "Im Auftrag", "Meier")]
+        start = letter_date(blank(), pages)
+        assert start is None or start <= date(2026, 11, 6)
+
+    check_rows(DATES_WRITTEN_AT_THE_TOP, check)
 
 
 def test_f7_a_letter_that_is_not_served_so_is_not_marked() -> None:

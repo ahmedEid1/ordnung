@@ -531,7 +531,8 @@ The app in `web/` is React and TypeScript, built with Vite; `ordnung serve` serv
 - **End to end.** `web/playwright.config.ts` runs its projects in order, in one worker: first those against
   `ordnung demo` (the tour, every page, the layout sweep, the layout guards and a few more), one on the evaluation
   report's page, then `real-app` (`web/e2e/real-app-*.spec.ts`) against `ordnung serve` with the fake `claude` of
-  `tests/fake_claude.py`. `web/scripts/ui-audit.mjs` (`make ui-audit`) screenshots every state in its catalog at five
+  `tests/fake_claude.py`. `E2E_GROUP` (`web/e2e/env.ts`) runs one group of those projects, in the same order, on
+  fresh servers of its own; CI runs the groups side by side. `web/scripts/ui-audit.mjs` (`make ui-audit`) screenshots every state in its catalog at five
   widths in both themes and probes each capture (sideways scrolling, clipped text, small or covered targets, focus;
   axe at two of the widths).
 

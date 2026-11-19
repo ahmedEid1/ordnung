@@ -26,6 +26,7 @@ from typing import Any
 
 import pytest
 
+from helpers_tables import check_rows_async
 from ordnung.llm import claude_cli
 from ordnung.llm.base import (
     Attachment,
@@ -143,6 +144,8 @@ async def _gone(*pids: int) -> bool:
 
 
 async def test_the_letter_goes_on_stdin_never_on_argv(fake: FakeClaude, letter: LLMRequest) -> None:
+    """The letter goes on stdin, never on argv, and the answer is read back whole: a call without tools has
+    no tool calls."""
     fake.play({"transcript": "extract_structured.jsonl"})
     response = await ClaudeCLIBackend(max_retries=0).complete(letter)
 
@@ -172,6 +175,7 @@ async def test_the_letter_goes_on_stdin_never_on_argv(fake: FakeClaude, letter: 
     assert response.text == "Done."
     assert response.model == "claude-family-x-1"  # the model that answered, from modelUsage
     assert response.backend == "claude"
+    assert response.tool_calls == []  # a call without tools
     usage = response.usage
     assert (usage.input_tokens, usage.output_tokens, usage.cache_read_tokens) == (6, 70, 2311)
     assert (usage.cost_usd, usage.duration_ms, usage.turns) == (0.01234, 5123, 2)
@@ -182,13 +186,6 @@ async def test_an_explicit_binary_path_is_used(fake: FakeClaude, letter: LLMRequ
     backend = ClaudeCLIBackend(binary=str(fake.path), max_retries=0)
     assert backend.binary == str(fake.path)
     assert (await backend.complete(letter)).data == ANSWER
-
-
-async def test_no_claude_on_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, letter: LLMRequest) -> None:
-    monkeypatch.setenv("PATH", str(tmp_path / "empty"))
-    monkeypatch.delenv("ORDNUNG_CLAUDE_BIN", raising=False)
-    with pytest.raises(ClaudeNotInstalled):
-        await ClaudeCLIBackend(max_retries=0).complete(letter)
 
 
 async def test_an_old_claude_is_asked_nothing_until_it_is_updated(
@@ -369,25 +366,26 @@ async def test_a_server_error_is_retried(
     assert len(fake.calls) == 2 and waits == [2.0]
 
 
-@pytest.mark.parametrize(
-    ("subtype", "message"),
-    [
-        ("error_max_turns", "too many steps"),
-        ("error_max_budget_usd", "cost cap"),
-        ("error_during_execution", ""),
-    ],
-)
-async def test_a_stopped_run_is_an_error(
-    fake: FakeClaude, letter: LLMRequest, subtype: str, message: str
-) -> None:
-    result = {"type": "result", "subtype": subtype, "is_error": True, "num_turns": 9}
-    fake.play({"lines": [json.dumps(result)], "exit": 1})
-    with pytest.raises(LLMError, match=message or subtype) as caught:
-        await ClaudeCLIBackend(max_retries=2).complete(letter.model_copy(update={"max_budget_usd": 0.5}))
-    assert type(caught.value) is LLMError  # not retried, not a pause
-    argv = fake.calls[0]["argv"]
-    assert argv[argv.index("--max-budget-usd") + 1] == "0.50"
-    assert len(fake.calls) == 1
+STOPPED_RUNS = [
+    ("error_max_turns", "too many steps"),
+    ("error_max_budget_usd", "cost cap"),
+    ("error_during_execution", ""),
+]
+
+
+async def test_a_stopped_run_is_an_error(fake: FakeClaude, letter: LLMRequest) -> None:
+    async def check(subtype: str, message: str) -> None:
+        fake.log.unlink(missing_ok=True)  # each row sees only its own call
+        result = {"type": "result", "subtype": subtype, "is_error": True, "num_turns": 9}
+        fake.play({"lines": [json.dumps(result)], "exit": 1})
+        with pytest.raises(LLMError, match=message or subtype) as caught:
+            await ClaudeCLIBackend(max_retries=2).complete(letter.model_copy(update={"max_budget_usd": 0.5}))
+        assert type(caught.value) is LLMError  # not retried, not a pause
+        argv = fake.calls[0]["argv"]
+        assert argv[argv.index("--max-budget-usd") + 1] == "0.50"
+        assert len(fake.calls) == 1
+
+    await check_rows_async(STOPPED_RUNS, check)
 
 
 async def test_a_crash_without_a_result_reports_stderr(fake: FakeClaude, letter: LLMRequest) -> None:
@@ -429,7 +427,15 @@ async def test_a_cli_gone_before_the_request_is_written_reports_stderr(
     assert len(fake.calls) == 2
 
 
-async def _probes_of_a_cli_that_exits_before_reading(fake: FakeClaude, runs: int) -> None:
+async def _probes_of_a_cli_that_exits_before_reading(
+    fake: FakeClaude, monkeypatch: pytest.MonkeyPatch, runs: int
+) -> None:
+    async def recent(binary: str | None = None, timeout_s: float = 15) -> str:
+        return "2.1.5 (Claude Code)"
+
+    # every probe makes a new backend, which would first start ``claude --version``: the race under test is
+    # the ``-p`` call's, so the version is taken as read (the version gate has its own tests above)
+    monkeypatch.setattr(claude_cli, "version", recent)
     fake.play(EXITS_AT_ONCE)
     found = [await claude_cli.probe() for _ in range(runs)]
     assert found == [(False, "env: node: No such file or directory", "haiku", True)] * runs
@@ -442,7 +448,7 @@ async def test_the_doctor_probe_of_a_cli_that_exits_before_reading(
     """Settings' *Run check* and ``ordnung doctor --probe`` get a failed probe with the CLI's words, 20 times
     out of 20, however the race between the CLI's exit and the request goes."""
     monkeypatch.delenv("ORDNUNG_CLAUDE_MODEL", raising=False)
-    await _probes_of_a_cli_that_exits_before_reading(fake, 20)
+    await _probes_of_a_cli_that_exits_before_reading(fake, monkeypatch, 20)
 
 
 async def test_the_doctor_probe_of_a_cli_gone_before_the_request(
@@ -450,7 +456,7 @@ async def test_the_doctor_probe_of_a_cli_gone_before_the_request(
 ) -> None:
     """The same when the CLI has always exited before the request is written (it raised "Connection lost")."""
     monkeypatch.delenv("ORDNUNG_CLAUDE_MODEL", raising=False)
-    await _probes_of_a_cli_that_exits_before_reading(fake, 5)
+    await _probes_of_a_cli_that_exits_before_reading(fake, monkeypatch, 5)
 
 
 async def test_a_stream_reports_errors_as_an_event(fake: FakeClaude) -> None:
@@ -657,11 +663,6 @@ async def test_complete_returns_the_tool_calls_paired_by_id(fake: FakeClaude) ->
     assert iban.name == "mcp__ordnung_rules__check_iban" and json.loads(iban.result or "")["valid"] is True
 
 
-async def test_complete_without_tools_has_no_tool_calls(fake: FakeClaude, letter: LLMRequest) -> None:
-    fake.play({"transcript": "extract_structured.jsonl"})
-    assert (await ClaudeCLIBackend(max_retries=0).complete(letter)).tool_calls == []
-
-
 def test_translate_keeps_the_tool_use_ids() -> None:
     events = claude_cli.translate(
         {
@@ -719,23 +720,13 @@ def test_tool_trace_pairs_by_id_and_falls_back_to_order() -> None:
     assert [(c.name, c.result) for c in legacy.calls] == [("a", "first"), ("b", "second")]
 
 
-def test_the_environment_can_pin_the_model(fake: FakeClaude, monkeypatch: pytest.MonkeyPatch) -> None:
-    """ORDNUNG_CLAUDE_MODEL names the id every call uses, whatever alias the request carries (an
-    alias moves with releases)."""
-    request = LLMRequest(purpose="ask", prompt="Anything due?", system="Answer.")
-    monkeypatch.delenv("ORDNUNG_CLAUDE_MODEL", raising=False)
-    argv = ClaudeCLIBackend().build_args(request)
-    assert argv[argv.index("--model") + 1] == "claude-sonnet-5"  # ordnung.llm.base.DEFAULT_MODEL
-    monkeypatch.setenv("ORDNUNG_CLAUDE_MODEL", "claude-sonnet-5-5")
-    argv = ClaudeCLIBackend().build_args(request)
-    assert argv[argv.index("--model") + 1] == "claude-sonnet-5-5"
-
-
 def test_the_chosen_model_beats_the_request_and_yields_to_the_environment(
     fake: FakeClaude, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The model the person chose (Settings → Claude) is read when the call is made, so a new choice
-    counts from the next call; it beats the request's alias, and only ORDNUNG_CLAUDE_MODEL beats it."""
+    counts from the next call; it beats the request's alias, and only ORDNUNG_CLAUDE_MODEL beats it.
+    ORDNUNG_CLAUDE_MODEL names the id every call uses, whatever alias the request carries (an alias moves
+    with releases)."""
     request = LLMRequest(purpose="brief", prompt="Today?", system="Answer.", model="haiku")
     monkeypatch.delenv("ORDNUNG_CLAUDE_MODEL", raising=False)
     chosen = {"model": "claude-opus-5-5"}
@@ -750,6 +741,13 @@ def test_the_chosen_model_beats_the_request_and_yields_to_the_environment(
     monkeypatch.delenv("ORDNUNG_CLAUDE_MODEL")
     # no setting at all (the doctor probe, the benchmarks): the request's own model
     assert ClaudeCLIBackend().model_for(request) == "haiku"
+
+    default = LLMRequest(purpose="ask", prompt="Anything due?", system="Answer.")
+    argv = ClaudeCLIBackend().build_args(default)
+    assert argv[argv.index("--model") + 1] == "claude-sonnet-5"  # ordnung.llm.base.DEFAULT_MODEL
+    monkeypatch.setenv("ORDNUNG_CLAUDE_MODEL", "claude-sonnet-5-5")
+    argv = ClaudeCLIBackend().build_args(default)
+    assert argv[argv.index("--model") + 1] == "claude-sonnet-5-5"
 
 
 async def test_a_wrapper_that_clears_the_environment_still_gets_argv_stdin_and_is_killed(

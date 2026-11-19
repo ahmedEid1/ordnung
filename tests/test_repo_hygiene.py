@@ -661,7 +661,7 @@ def test_every_path_contributing_names_is_in_the_repository() -> None:
 
 def test_the_fast_loop_runs_tests_that_exist() -> None:
     """CONTRIBUTING's fast loop: one test file by name (pytest `-k`), one web folder (Vitest) and one end-to-end
-    spec (Playwright), each of which exists."""
+    spec (Playwright), each of which exists (and the whole fast suite, which names no file)."""
     commands = _commands(_section(_text("CONTRIBUTING.md"), "Fast loop"))
     runs = {
         tool: [command for command in commands if marker in command]
@@ -672,7 +672,9 @@ def test_the_fast_loop_runs_tests_that_exist() -> None:
         )
     }
     assert all(runs.values()), runs
-    for command in runs["pytest"]:
+    files = [command for command in runs["pytest"] if command.split()[1].startswith("tests/")]
+    assert files, runs["pytest"]
+    for command in files:
         words = command.split()
         path = ROOT / words[1]
         keyword = words[words.index("-k") + 1]
@@ -689,14 +691,19 @@ def test_the_fast_loop_runs_tests_that_exist() -> None:
 
 def test_the_fast_loop_says_which_jobs_the_end_to_end_job_waits_for() -> None:
     """The fast loop's sentence on when CI's end-to-end job starts names exactly the jobs its ``needs:`` lists
-    (ci.yml's job ids): a workflow that starts it sooner or later fails here until the sentence follows."""
+    (ci.yml's job ids), or says it waits for none: a workflow that starts it sooner or later fails here until the
+    sentence follows."""
     yaml = pytest.importorskip("yaml")  # PyYAML comes with uvicorn[standard]
     jobs = yaml.safe_load(_text(".github/workflows/ci.yml"))["jobs"]
-    needs = jobs["e2e"]["needs"]
+    needs = jobs["e2e"].get("needs", [])
     needs = {needs} if isinstance(needs, str) else set(needs)
     fast_loop = " ".join(_section(_text("CONTRIBUTING.md"), "Fast loop").split())
-    (sentence,) = [part for part in re.split(r"(?<=\.) ", fast_loop) if "end-to-end job" in part]
-    assert "starts once" in sentence, sentence
+    (sentence,) = [
+        part
+        for part in re.split(r"(?<=\.) ", fast_loop)
+        if "end-to-end job" in part and re.search(r"\b(starts|waits)\b", part)
+    ]
+    assert ("starts once" if needs else "waits for no other job") in sentence, sentence
     named = {
         job for job in jobs if job != "e2e" and re.search(rf"(?<![\w-]){re.escape(job)}(?![\w-])", sentence)
     }

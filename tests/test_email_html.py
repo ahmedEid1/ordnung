@@ -169,6 +169,7 @@ def test_inline_styles_that_certainly_hide(markup: str, where: str) -> None:
         (f'<td background="hero.jpg"><p style="color:#fff">{SECRET}</p></td>', "visible"),
         (f'<td style="background:var(--brand)"><p style="color:#fff">{SECRET}</p></td>', "visible"),
         (f'<td style="background-color:#0000ff80"><p style="color:#fff">{SECRET}</p></td>', "visible"),
+        (f'<p style="color:rgb(255px, 255px, 255px)">{SECRET}</p>', "visible"),  # a unit rgb() can't take
         (f'<div style="color:#fff"><a href="https://example.org">{SECRET}</a></div>', "visible"),
     ],
 )
@@ -466,6 +467,7 @@ BIG_EMAILS: dict[str, Callable[[int], str]] = {
 
 
 @pytest.mark.parametrize("name", BIG_EMAILS)
+@pytest.mark.slow  # times its own growth (helpers_timing): a wall-clock ratio
 def test_a_one_megabyte_e_mail_is_read_in_linear_time(name: str) -> None:
     """A realistic 1 MB newsletter takes about 0.2 s on a laptop, and shapes built to stall a parser
     (deep nesting, stray end tags, CSS that never ends a comment, string or block) under a second.

@@ -15,6 +15,7 @@
  * - `PW_CHROMIUM_PATH`: a Chromium executable to use instead of Playwright's download
  * - `ORDNUNG_E2E_OCR=on`: the real app reads the words in pictures with the Tesseract installed here (ADR 0024;
  *   CI's end-to-end job, with Tesseract and its German data); without it every server runs with `ORDNUNG_OCR=off`
+ * - `E2E_GROUP=<name>`: run one group of projects ({@link E2E_GROUPS}) on fresh servers of its own, only those it uses
  */
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -135,3 +136,46 @@ export const PHONE_PORT = PORT + 2;
 export const PHONE_BASE_URL = `https://${PHONE_ADDRESS}:${PHONE_PORT}`;
 /** A phone's sign-in cookie: `__Host-` (Secure, `Path=/`, no Domain), named after the phone listener's port. */
 export const phoneCookie = (baseUrl: string = PHONE_BASE_URL): string => `__Host-ordnung_phone_${new URL(baseUrl).port}`;
+
+// ------------------------------------------------------------------------------------------------
+// Groups: the projects one run takes (`E2E_GROUP`), so CI can run them as jobs side by side
+// ------------------------------------------------------------------------------------------------
+
+/** The projects against the demo server (`ordnung demo --reset`), in the order one worker runs them. */
+export const DEMO_PROJECTS = ["tour", "pages", "sweep", "layout", "girocode", "high-stakes", "add-date"] as const;
+/** The projects against the real app and the second computer (`ordnung serve`, twice). */
+export const REAL_APP_PROJECTS = ["real-app", "pictures"] as const;
+
+/**
+ * `E2E_GROUP=<name>` runs one group's projects, in the order of the whole run, on servers of its own: each group
+ * starts a fresh demo (`--reset`) and fresh real apps (the global setup deletes their data), and only the servers
+ * its projects use. A group never needs what another group's projects leave behind: the demo's projects that
+ * need its recorded Ask answers (the tour, the pages, the sweep, the layout guards) run before those that change
+ * the ledger (the GiroCode guards, the high-stakes letters, dates of the person's own) in whichever group holds
+ * them, as in the whole run, and every project copes with a demo no earlier project touched. Unset: every project,
+ * every server, as before. Together the groups hold every project exactly once (playwright.config.ts checks it).
+ */
+export const E2E_GROUPS: Readonly<Record<string, readonly string[]>> = {
+  // the layout guards (37 files) take as long as the rest of the demo's projects together, so they run apart
+  demo: ["tour", "pages", "sweep", "girocode", "high-stakes", "add-date"],
+  layout: ["layout"],
+  // the evaluation report's page needs no server: it goes with the real apps, the shortest of the three
+  real: ["eval-report", "real-app", "pictures"],
+};
+
+function groupProjects(): readonly string[] | null {
+  const name = process.env.E2E_GROUP;
+  if (!name) return null;
+  const projects = E2E_GROUPS[name];
+  if (!projects) throw new Error(`E2E_GROUP=${name}: no such group (there are ${Object.keys(E2E_GROUPS).join(", ")})`);
+  return projects;
+}
+
+/** The projects this run takes: a group's (`E2E_GROUP`), or `null` for all of them. */
+export const GROUP_PROJECTS = groupProjects();
+/** Whether this run takes the project `name`. */
+export const runsProject = (name: string): boolean => GROUP_PROJECTS === null || GROUP_PROJECTS.includes(name);
+/** Whether this run starts the demo server (and logs in to it). */
+export const RUNS_DEMO = DEMO_PROJECTS.some(runsProject);
+/** Whether this run starts the real app and the second computer (and sets them up). */
+export const RUNS_REAL_APPS = REAL_APP_PROJECTS.some(runsProject);

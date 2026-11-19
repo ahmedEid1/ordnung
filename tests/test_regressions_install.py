@@ -11,7 +11,6 @@ import importlib.metadata
 import json
 import re
 import shutil
-import socket
 import subprocess
 import tomllib
 from pathlib import Path
@@ -23,6 +22,7 @@ from packaging.version import Version
 from typer.testing import CliRunner
 
 import ordnung
+from helpers_net import free_port
 from ordnung import cli, config, doctor
 from ordnung.api import app as app_module
 from ordnung.cli import app
@@ -74,9 +74,7 @@ def test_serve_says_when_the_web_app_is_missing(
 
     monkeypatch.setattr(cli, "_create_app", lambda context, token, demo: object())
     monkeypatch.setattr(uvicorn.Server, "run", lambda self: None)
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        port = probe.getsockname()[1]
+    port = free_port()
     result = runner.invoke(app, ["serve", "--no-browser", "--port", str(port), "--data-dir", str(data_dir)])
     assert result.exit_code == 0, result.output
     assert "web app" in result.output.lower(), result.output
@@ -92,9 +90,7 @@ def test_serve_opens_no_browser_on_the_missing_web_app(
     monkeypatch.setattr(cli, "_create_app", lambda context, token, demo: object())
     monkeypatch.setattr(cli, "_open_browser_when_ready", lambda info: opened.append(info))
     monkeypatch.setattr(uvicorn.Server, "run", lambda self: None)
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        port = probe.getsockname()[1]
+    port = free_port()
     result = runner.invoke(app, ["serve", "--port", str(port), "--data-dir", str(data_dir)])
     assert result.exit_code == 0, result.output
     assert "Reinstall Ordnung" in result.output and opened == []

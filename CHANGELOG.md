@@ -7,6 +7,17 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ### Changed
 
+- CI on a pull request should take about 21 minutes instead of 40 to 50: the backend tests run in parallel
+  processes, coverage is measured on the Python 3.12 leg alone, lint and types run once, the slow tests and the
+  replayed benchmarks have a job each, and the end-to-end tests run in three groups side by side without waiting
+  for the frontend job. `make check` runs the backend tests in parallel too.
+- The backend tests hold one behaviour each. The examples of one rule are now the rows of one table test
+  (`check_rows` in `tests/helpers_tables.py`, which names every failing row) instead of one collected test per
+  example, and tests and rows that only repeated another were removed. The tests of the rules engine, of the
+  reading check and of Ask went from about 4,800 collected tests to about 1,450, with every covered branch still
+  covered and every planted bug the old tests caught still caught; Ask's tests take under half the time (its
+  largest file an eighth), because they build their ledger once instead of once per test. The README's count of
+  backend tests follows.
 - **The report of the final evaluation says more of what was registered.** Its statistics give the gap each power
   figure was computed at, with the registered caveat; each secondary endpoint (the replay without the sender's
   Land, the checks ablated, selective prediction, cost and latency) shows the final run first and the earlier

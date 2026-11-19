@@ -6,6 +6,7 @@ from datetime import date
 
 import pytest
 
+from helpers_tables import check_rows
 from ordnung.ingest.gaps import deadline_items
 from ordnung.models import ExtractedItem
 from test_reading_gaps import blank, page
@@ -21,78 +22,80 @@ HEAD = (
 READING = {"sender": {"name": "Telefonica Probe GmbH", "kind": "company"}, "document_date": "2026-10-01"}
 
 
-@pytest.mark.parametrize(
-    ("lines", "due"),
-    [
-        (
-            [
-                "Den Rechnungsbetrag buchen wir per SEPA-Lastschrift von Ihrem Konto ab.",
-                "Rechnungsbetrag: 39,99 EUR",
-                "Fällig am: 15.10.2026",
-            ],
-            [],
-        ),
-        (
-            [
-                "Den Rechnungsbetrag buchen wir per SEPA-Lastschrift von Ihrem Konto ab.",
-                "Eine Überweisung ist nicht erforderlich.",
-                "Fälligkeitsdatum: 15.10.2026",
-            ],
-            [],
-        ),
-        (["Mandatsreferenz: MR-12345", "Rechnungsbetrag: 39,99 EUR", "Fällig am: 15.10.2026"], []),
-        (
-            [
-                "Leider konnten wir den Betrag nicht von Ihrem Konto abbuchen.",
-                "Bitte überweisen Sie den offenen Betrag von 39,99 EUR bis zum 15.10.2026.",
-            ],
-            ["2026-10-15"],
-        ),
-        (
-            [
-                "Die Lastschrift war nicht möglich.",
-                "Bitte überweisen Sie den offenen Betrag von 39,99 EUR bis zum 15.10.2026.",
-            ],
-            ["2026-10-15"],
-        ),
-        (
-            [
-                "Bitte überweisen Sie den Betrag von 39,99 EUR bis zum 15.10.2026.",
-                "Tipp: Zahlen Sie künftig bequem per SEPA-Lastschrift.",
-            ],
-            ["2026-10-15"],
-        ),
-        (
-            [
-                "Die monatlichen Vorauszahlungen ziehen wir weiterhin per Lastschrift ein.",
-                "Bitte überweisen Sie die Nachzahlung von 245,00 EUR bis zum 15.11.2026.",
-            ],
-            ["2026-11-15"],
-        ),
-        (
-            [
-                "Bitte zahlen Sie den Betrag bis zum 15.10.2026.",
-                "Tipp: Mit einem SEPA-Lastschriftmandat buchen wir künftig automatisch ab.",
-            ],
-            ["2026-10-15"],
-        ),
-    ],
-    ids=[
-        "sepa-box",
-        "sepa-no-transfer",
-        "mandate",
-        "debit-failed",
-        "debit-impossible",
-        "sepa-tip",
-        "advance-debit-back-payment",
-        "pay-verb-beside-debit",
-    ],
-)
-def test_a_debit_letter_files_no_payment_box_but_a_transfer_it_asks_for_stays(
-    lines: list[str], due: list[str]
-) -> None:
-    items = deadline_items(blank(**READING), [page(*HEAD, *lines)], today=date(2026, 10, 3))
-    assert [item.date.date for item in items] == due
+DEBIT_LETTERS = [
+    (
+        [
+            "Den Rechnungsbetrag buchen wir per SEPA-Lastschrift von Ihrem Konto ab.",
+            "Rechnungsbetrag: 39,99 EUR",
+            "Fällig am: 15.10.2026",
+        ],
+        [],
+    ),
+    (
+        [
+            "Den Rechnungsbetrag buchen wir per SEPA-Lastschrift von Ihrem Konto ab.",
+            "Eine Überweisung ist nicht erforderlich.",
+            "Fälligkeitsdatum: 15.10.2026",
+        ],
+        [],
+    ),
+    (["Mandatsreferenz: MR-12345", "Rechnungsbetrag: 39,99 EUR", "Fällig am: 15.10.2026"], []),
+    (
+        [
+            "Leider konnten wir den Betrag nicht von Ihrem Konto abbuchen.",
+            "Bitte überweisen Sie den offenen Betrag von 39,99 EUR bis zum 15.10.2026.",
+        ],
+        ["2026-10-15"],
+    ),
+    (
+        [
+            "Die Lastschrift war nicht möglich.",
+            "Bitte überweisen Sie den offenen Betrag von 39,99 EUR bis zum 15.10.2026.",
+        ],
+        ["2026-10-15"],
+    ),
+    (
+        [
+            "Bitte überweisen Sie den Betrag von 39,99 EUR bis zum 15.10.2026.",
+            "Tipp: Zahlen Sie künftig bequem per SEPA-Lastschrift.",
+        ],
+        ["2026-10-15"],
+    ),
+    (
+        [
+            "Die monatlichen Vorauszahlungen ziehen wir weiterhin per Lastschrift ein.",
+            "Bitte überweisen Sie die Nachzahlung von 245,00 EUR bis zum 15.11.2026.",
+        ],
+        ["2026-11-15"],
+    ),
+    (
+        [
+            "Bitte zahlen Sie den Betrag bis zum 15.10.2026.",
+            "Tipp: Mit einem SEPA-Lastschriftmandat buchen wir künftig automatisch ab.",
+        ],
+        ["2026-10-15"],
+    ),
+]
+DEBIT_LETTERS_IDS = [
+    "sepa-box",
+    "sepa-no-transfer",
+    "mandate",
+    "debit-failed",
+    "debit-impossible",
+    "sepa-tip",
+    "advance-debit-back-payment",
+    "pay-verb-beside-debit",
+]
+
+
+def test_a_debit_letter_files_no_payment_box_but_a_transfer_it_asks_for_stays() -> None:
+    def check(lines: list[str], due: list[str]) -> None:
+        items = deadline_items(blank(**READING), [page(*HEAD, *lines)], today=date(2026, 10, 3))
+        assert [item.date.date for item in items] == due
+
+    check_rows(
+        [pytest.param(*row, id=i) for row, i in zip(DEBIT_LETTERS, DEBIT_LETTERS_IDS, strict=True)], check
+    )
 
 
 def _monthly(first: str) -> ExtractedItem:
@@ -147,23 +150,25 @@ TOWN = (
 )
 
 
-@pytest.mark.parametrize(
-    ("line", "start"),
-    [
-        ("Termine nach Vereinbarung", date(2026, 11, 6)),
-        ("Termine nur nach Vereinbarung", date(2026, 11, 6)),
-        ("Terminvereinbarung unter 0123-4567", date(2026, 11, 6)),
-        ("Termin online buchen", date(2026, 11, 6)),
-        ("Vorsprache nur mit Termin", date(2026, 11, 6)),
-        ("Vorsprachen nur nach Terminvereinbarung", date(2026, 11, 6)),
-        ("Termin", None),
-        ("Ihr Termin", None),
-        ("Einladung zum Gespräch", None),
-    ],
-)
-def test_an_info_block_s_rule_for_visits_is_no_appointment_heading(line: str, start: date | None) -> None:
-    from ordnung.ingest.gaps import _own_start, letter_date
+INFO_BLOCK_LINES = [
+    ("Termine nach Vereinbarung", date(2026, 11, 6)),
+    ("Termine nur nach Vereinbarung", date(2026, 11, 6)),
+    ("Terminvereinbarung unter 0123-4567", date(2026, 11, 6)),
+    ("Termin online buchen", date(2026, 11, 6)),
+    ("Vorsprache nur mit Termin", date(2026, 11, 6)),
+    ("Vorsprachen nur nach Terminvereinbarung", date(2026, 11, 6)),
+    ("Termin", None),
+    ("Ihr Termin", None),
+    ("Einladung zum Gespräch", None),
+]
 
-    pages = [page(*TOWN, line, "Datum: 06.11.2026", *FEE)]
-    assert letter_date(blank(), pages) == start
-    assert _own_start(pages) == start
+
+def test_an_info_block_s_rule_for_visits_is_no_appointment_heading() -> None:
+    def check(line: str, start: date | None) -> None:
+        from ordnung.ingest.gaps import _own_start, letter_date
+
+        pages = [page(*TOWN, line, "Datum: 06.11.2026", *FEE)]
+        assert letter_date(blank(), pages) == start
+        assert _own_start(pages) == start
+
+    check_rows(INFO_BLOCK_LINES, check)

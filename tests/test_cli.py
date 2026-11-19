@@ -22,6 +22,7 @@ import pytest
 from typer.testing import CliRunner
 
 from fixtures_llm import TAX_LETTER, TODAY, Router, fake_backend
+from helpers_net import free_port
 from ordnung import cli, clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.cli import app, reachable_server
@@ -452,11 +453,11 @@ def test_a_stale_server_json_is_ignored(data_dir: Path) -> None:
     )
     write_server_info(data_dir, ServerInfo(port=9, pid=int(dead.stdout)))
     assert reachable_server(data_dir) is None
-    with socket.socket() as unused:
+    with socket.socket() as unused:  # held, never listening: no other process can start a server on it
         unused.bind(("127.0.0.1", 0))
         port = unused.getsockname()[1]
-    write_server_info(data_dir, ServerInfo(port=port, pid=os.getpid()))
-    assert reachable_server(data_dir) is None  # alive, but nothing answers
+        write_server_info(data_dir, ServerInfo(port=port, pid=os.getpid()))
+        assert reachable_server(data_dir) is None  # alive, but nothing answers
 
 
 def test_a_server_for_another_folder_is_not_used(api: FakeServer, tmp_path: Path) -> None:
@@ -540,9 +541,7 @@ def test_serve_holds_the_folder_and_writes_server_json(
             DataDirLock(data_dir).acquire()
 
     monkeypatch.setattr(uvicorn.Server, "run", fake_run)
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        port = probe.getsockname()[1]
+    port = free_port()
     result = invoke("serve", "--no-browser", "--port", str(port), "--data-dir", str(data_dir))
     assert result.exit_code == 0, result.output
     info = seen["info"]
@@ -675,9 +674,7 @@ def test_demo_serves_the_demo_folder_with_replay(demo_env: Path, monkeypatch: py
 
     monkeypatch.setattr(cli, "_create_app", create)
     monkeypatch.setattr(uvicorn.Server, "run", lambda self: seen.update(loop=self.config.loop))
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        port = probe.getsockname()[1]
+    port = free_port()
     result = invoke("demo", "--no-browser", "--port", str(port), "--reset")
     assert result.exit_code == 0, result.output
     assert seen == {"backend": "replay", "demo": True, "today": TODAY, "loop": "asyncio"}
