@@ -70,19 +70,19 @@ def test_text_in_pictures_warns_without_german() -> None:
 
     def check(platform: str) -> None:
         english = Tesseract("/usr/bin/tesseract", (5, 3, 4), ("eng",))
-        check = doctor.text_in_pictures_check(platform=platform, env=ON, find=_found(english))
-        assert (check.id, check.status) == ("ocr", "warn")
-        assert check.detail == (
+        row = doctor.text_in_pictures_check(platform=platform, env=ON, find=_found(english))
+        assert (row.id, row.status) == ("ocr", "warn")
+        assert row.detail == (
             "Tesseract 5.3.4 has no German language data: words with ä, ö, ü or ß are often misread"
         )
-        assert check.fix == GERMAN[platform]
+        assert row.fix == GERMAN[platform]
         neither = Tesseract("/usr/bin/tesseract", (5, 3, 4), ())
-        check = doctor.text_in_pictures_check(platform=platform, env=ON, find=_found(neither))
-        assert check.status == "warn"
-        assert check.detail == (
+        row = doctor.text_in_pictures_check(platform=platform, env=ON, find=_found(neither))
+        assert row.status == "warn"
+        assert row.detail == (
             "Tesseract 5.3.4 has neither German nor English language data, so Ordnung reads no pictures"
         )
-        assert check.fix == GERMAN[platform]
+        assert row.fix == GERMAN[platform]
 
     check_rows(SYSTEMS, check)
 
@@ -90,12 +90,10 @@ def test_text_in_pictures_warns_without_german() -> None:
 def test_text_in_pictures_warns_when_older_than_4_1() -> None:
     def check(platform: str) -> None:
         old = Tesseract("/usr/bin/tesseract", (4, 0, 0), ("deu", "eng"))
-        check = doctor.text_in_pictures_check(platform=platform, env=ON, find=_found(old))
-        assert check.status == "warn"
-        assert (
-            check.detail == "Tesseract 4.0.0 is too old: Ordnung needs 4.1 or newer, so it reads no pictures"
-        )
-        assert check.fix == f"Install a newer one: {INSTALL[platform]}"
+        row = doctor.text_in_pictures_check(platform=platform, env=ON, find=_found(old))
+        assert row.status == "warn"
+        assert row.detail == "Tesseract 4.0.0 is too old: Ordnung needs 4.1 or newer, so it reads no pictures"
+        assert row.fix == f"Install a newer one: {INSTALL[platform]}"
 
     check_rows(SYSTEMS, check)
 
@@ -105,12 +103,12 @@ def test_text_in_pictures_warns_when_tesseract_doesnt_answer() -> None:
 
     def check(platform: str) -> None:
         silent = Tesseract(r"C:\Program Files\Tesseract-OCR\tesseract.exe", None, ())
-        check = doctor.text_in_pictures_check(platform=platform, env=ON, find=_found(silent))
-        assert check.status == "warn"
-        assert check.detail == (
+        row = doctor.text_in_pictures_check(platform=platform, env=ON, find=_found(silent))
+        assert row.status == "warn"
+        assert row.detail == (
             r"Tesseract at C:\Program Files\Tesseract-OCR\tesseract.exe didn't answer, so Ordnung reads no pictures"
         )
-        assert check.fix == f"Install it again: {INSTALL[platform]}"
+        assert row.fix == f"Install it again: {INSTALL[platform]}"
 
     check_rows(SYSTEMS, check)
 
@@ -119,10 +117,10 @@ def test_text_in_pictures_is_optional_when_not_installed() -> None:
     """Info, not a warning: Ordnung works the same without it. The fix says what it would add, and how."""
 
     def check(platform: str) -> None:
-        check = doctor.text_in_pictures_check(platform=platform, env=ON, find=_found(None))
-        assert (check.id, check.label, check.status) == ("ocr", "Text in pictures", "info")
-        assert check.detail == "Not installed (optional)"
-        assert check.fix == (
+        row = doctor.text_in_pictures_check(platform=platform, env=ON, find=_found(None))
+        assert (row.id, row.label, row.status) == ("ocr", "Text in pictures", "info")
+        assert row.detail == "Not installed (optional)"
+        assert row.fix == (
             f"To find photos and scans Claude doesn't read by their words, install Tesseract: {INSTALL[platform]}"
         )
         assert doctor.tesseract_install(platform) == INSTALL[platform]
@@ -139,9 +137,9 @@ def test_text_in_pictures_says_when_turned_off(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(ocr, "find", lambda **_: _never())
 
     def check(value: str) -> None:
-        check = doctor.text_in_pictures_check(env={OCR_SWITCH: value}, find=_never)
-        assert (check.id, check.status, check.fix) == ("ocr", "info", None)
-        assert check.detail == "Turned off (ORDNUNG_OCR=off)"
+        row = doctor.text_in_pictures_check(env={OCR_SWITCH: value}, find=_never)
+        assert (row.id, row.status, row.fix) == ("ocr", "info", None)
+        assert row.detail == "Turned off (ORDNUNG_OCR=off)"
         # the process environment by default (the tests' own switch is off)
         monkeypatch.setenv(OCR_SWITCH, value)
         assert doctor.text_in_pictures_check().detail == "Turned off (ORDNUNG_OCR=off)"

@@ -388,8 +388,8 @@ def test_sh_quoting_round_trips_awkward_paths(tmp_path: Path) -> None:
             "export",
             "PATH=/a b:/c$d'e",
         ]
-        check = text_of(file_named(sc, "Ordnung")).splitlines()
-        words = shlex.split(next(line for line in check if line.endswith("&& exit 0")))
+        launcher = text_of(file_named(sc, "Ordnung")).splitlines()
+        words = shlex.split(next(line for line in launcher if line.endswith("&& exit 0")))
         assert words[: len(sc.argv)] == list(sc.argv) and words[len(sc.argv)] == ">/dev/null"
 
     check_rows(AWKWARD, check)

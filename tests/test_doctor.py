@@ -514,7 +514,7 @@ def _connected(monkeypatch: pytest.MonkeyPatch, mode: str, saved_at: str | None)
     monkeypatch.setattr(agent, "load_engine", lambda: SimpleNamespace(local_summary=lambda paths: summary))
 
 
-def test_hand_off_syncs_recent_save_counts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_the_backup_row_reads_hand_off_syncs_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     data_dir = _folder_with_a_letter(tmp_path)
     _connected(monkeypatch, "in_use", datetime.now().astimezone().isoformat(timespec="seconds"))
     check = doctor.backup_check(data_dir)
@@ -585,13 +585,13 @@ DISK_ENCRYPTION_ROWS = [
 
 def test_disk_encryption_only_ever_warns(tmp_path: Path) -> None:
     def check(found: Encryption, status: str, detail: str, fix: str | None) -> None:
-        check = doctor.disk_encryption_check(tmp_path, probe=lambda path: found)
-        assert check is not None and check.id == "disk_encryption" and check.label == "Disk encryption"
-        assert check.status == status and check.detail == detail
+        row = doctor.disk_encryption_check(tmp_path, probe=lambda path: found)
+        assert row is not None and row.id == "disk_encryption" and row.label == "Disk encryption"
+        assert row.status == status and row.detail == detail
         if fix is None:
-            assert check.fix is None
+            assert row.fix is None
         else:
-            assert check.fix is not None and fix in check.fix
+            assert row.fix is not None and fix in row.fix
 
     check_rows(DISK_ENCRYPTION_ROWS, check)
 
