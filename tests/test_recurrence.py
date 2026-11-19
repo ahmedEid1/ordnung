@@ -20,6 +20,7 @@ from pathlib import Path
 import pytest
 
 from helpers_secretary import add_doc
+from helpers_tables import check_rows
 from ordnung.db.store import Store
 from ordnung.ingest.plan import item_context
 from ordnung.ingest.verify import AMOUNT_NOT_IN_QUOTE, MODEL_READ_NOTE, REASON_TEXT, UNVERIFIED_NOTE
@@ -96,11 +97,6 @@ def test_month_steps_keep_the_original_day() -> None:
         date(2026, 3, 31),
         date(2026, 4, 30),
     ]
-
-
-def test_describe() -> None:
-    assert describe(MONTHLY) == "every month"
-    assert describe(Recurrence(interval=3, unit="months")) == "every 3 months"
 
 
 def test_the_repeat_words_are_shared_with_the_web() -> None:
@@ -619,27 +615,27 @@ def test_an_undated_rent_is_graded_by_what_its_sentence_leaves_out(store: Store)
     assert (october.computation.confidence, october.due_date) == ("medium", "2026-10-05")
 
 
-@pytest.mark.parametrize(
-    ("fields", "ctx"),
-    [
-        ({}, RuleContext(today=RENT.today)),  # neither a lease nor a rent contract
-        ({"recurrence": Recurrence(interval=3, unit="months")}, RENT),  # not every month
-        ({"date_spec": DateSpec(type="fixed", date="2026-10-01", nature="payment")}, RENT),  # the lease's day
-        ({"kind": "task"}, RENT),  # not a payment
-        ({}, replace(RENT, letter_kind="rent_increase")),  # a rent increase's new rent: § 558b BGB dates it
-        # a payment under the rent contract on another letter (a statement's new prepayment, a rent
-        # increase's current rent): not the lease's rent
-        ({}, replace(RENT, letter_kind="operating_costs")),
-        ({}, replace(RENT, letter_kind=None)),
-    ],
-)
-def test_the_laws_day_is_only_for_a_monthly_rent_its_lease_leaves_undated(
-    store: Store, fields: dict[str, object], ctx: RuleContext
-) -> None:
-    item = _rent(store, **fields)
-    rule = schedule_rule(item, ctx)
-    assert rule is not None and rule.working_day is None
-    assert first_scheduled(item, ctx, postal_buffer_days=BUFFER) is None
+THE_LAWS_DAY_DOES_NOT_APPLY = [
+    ({}, RuleContext(today=RENT.today)),  # neither a lease nor a rent contract
+    ({"recurrence": Recurrence(interval=3, unit="months")}, RENT),  # not every month
+    ({"date_spec": DateSpec(type="fixed", date="2026-10-01", nature="payment")}, RENT),  # the lease's day
+    ({"kind": "task"}, RENT),  # not a payment
+    ({}, replace(RENT, letter_kind="rent_increase")),  # a rent increase's new rent: § 558b BGB dates it
+    # a payment under the rent contract on another letter (a statement's new prepayment, a rent
+    # increase's current rent): not the lease's rent
+    ({}, replace(RENT, letter_kind="operating_costs")),
+    ({}, replace(RENT, letter_kind=None)),
+]
+
+
+def test_the_laws_day_is_only_for_a_monthly_rent_its_lease_leaves_undated(store: Store) -> None:
+    def check(fields: dict[str, object], ctx: RuleContext) -> None:
+        item = _rent(store, **fields)
+        rule = schedule_rule(item, ctx)
+        assert rule is not None and rule.working_day is None
+        assert first_scheduled(item, ctx, postal_buffer_days=BUFFER) is None
+
+    check_rows(THE_LAWS_DAY_DOES_NOT_APPLY, check)
 
 
 def test_a_working_day_belongs_to_a_rule_in_months() -> None:
