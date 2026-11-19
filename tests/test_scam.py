@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from fixtures_llm import iban
+from helpers_secretary import TODAY, seed_ledger
 from helpers_tables import check_rows
 from ordnung.db.store import Store
 from ordnung.models import PaymentDetails
@@ -15,6 +16,7 @@ from ordnung.secretary.scam import (
     payment_history,
     payment_mismatch,
 )
+from ordnung.secretary.triggers import Ledger, run_triggers
 
 KNOWN = iban("DE", "200200200987654321")
 OTHER = iban("DE", "300300300111222333")
@@ -186,3 +188,60 @@ def test_iban_from_page_needs_the_same_country_and_a_close_match() -> None:
     assert scam.iban_from_page("AT89370400440532013300", page) is None
     assert scam.iban_from_page("DE11222233334444555566", page) is None
     assert scam.iban_from_page("DE89370400440532013300", "") is None
+
+
+# Scam signs after "an invalid IBAN alone is a misprint": ``_scam_reasons`` drops the ``invalid_iban`` finding
+# and only lists the checksum "next to other signs". ``scam.payment_mismatch`` used to return ``invalid_iban``
+# *first* and never ran the look-alike / changed-IBAN / changed-payee checks for such an IBAN, so those other
+# signs were never found.
+
+VALID_ABROAD = "LT121000011101001000"  # valid checksum, not the look-alike's known DE02… account
+INVALID_ABROAD = "LT717300010000000000"  # fails its checksum, equally unlike DE02…
+MISREAD_KNOWN = "DE02440100460123456788"  # the known DE02 4401 0046 0123 4567 89 with its last digit misread
+
+
+def _scam_letter(store: Store, ids: dict[str, str], account: str) -> None:
+    """The seeded letter from "Rundfunk Beitragsservice Zahlungszentrale" (a look-alike of the
+    Beitragsservice that used DE02 4401 0046 0123 4567 89) with no hidden text and no model warning."""
+    store.update_document(
+        ids["doc_scam"],
+        hidden_text=False,
+        warnings=[],
+        payment={"iban": account, "payee": "Beitragsservice Zahlungszentrale"},
+    )
+
+
+def test_an_invalid_iban_does_not_hide_a_look_alike_sender(store: Store) -> None:
+    """An invalid IBAN masked the look-alike-sender check: payment_mismatch returned 'invalid_iban'
+    before comparing with the similar organisation's known account, _scam_reasons then dropped that
+    finding, so the letter got a calm 'looks misprinted' Info Idea and its payment stayed 'to pay'
+    instead of a scam warning."""
+    ids = seed_ledger(store)
+    # The control: a valid foreign IBAN from the look-alike is a scam sign.
+    _scam_letter(store, ids, VALID_ABROAD)
+    assert [idea.kind for idea in run_triggers(store, TODAY)["scam_warning"]] == ["scam"]
+
+    _scam_letter(store, ids, INVALID_ABROAD)
+    document = store.get_document(ids["doc_scam"])
+    assert document is not None
+
+    reasons = Ledger(store, TODAY).scam_reasons(document)
+    assert any("similar name" in reason for reason in reasons), reasons
+    results = run_triggers(store, TODAY)
+    assert [idea.kind for idea in results["scam_warning"]] == ["scam"]
+    assert results["iban_misprint"] == []
+
+
+def test_a_misread_known_iban_stays_a_misprint(store: Store) -> None:
+    """The other checks now run for an invalid IBAN too — but one digit off an account the sender (or
+    the organisation it resembles) is known to use is that account misread, not a new account."""
+    ids = seed_ledger(store)
+    _scam_letter(store, ids, MISREAD_KNOWN)
+    results = run_triggers(store, TODAY)
+    assert results["scam_warning"] == []
+    assert [idea.kind for idea in results["iban_misprint"]] == ["info"]
+
+    party = store.get_party(ids["beitrag"])
+    assert party is not None
+    finding = payment_mismatch(store, party, PaymentDetails(iban=MISREAD_KNOWN))
+    assert finding is not None and finding.kind == "invalid_iban"  # not "iban_changed"
