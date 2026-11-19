@@ -28,6 +28,14 @@ async function openDrawer(page: Page, party: PartyRow) {
   return drawer;
 }
 
+/** Go to `to` inside the app, without a page load (the router follows the history). */
+async function goInPlace(page: Page, to: string): Promise<void> {
+  await page.evaluate((path) => {
+    window.history.pushState({}, "", path);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  }, to);
+}
+
 /** Layout faults inside the open drawer, over its whole scroll height. */
 function drawerFaults(page: Page) {
   return page.evaluate(() => {
@@ -67,8 +75,12 @@ for (const width of [320, 1280]) {
     await open(page, "/");
     const parties = await apiGet<PartyRow[]>(page, "/api/parties");
     expect(parties.length).toBeGreaterThan(5);
+    // one page load: each drawer is opened and closed in place, so the next one mounts fresh (folds closed, at its top)
     for (const party of parties) {
-      const drawer = await openDrawer(page, party);
+      await goInPlace(page, `/?party=${party.id}`);
+      const drawer = page.getByRole("dialog", { name: party.name });
+      await expect(drawer.getByRole("heading", { level: 3 }).first()).toBeVisible();
+      await settle(page);
       // as it opens, then with every fold open ("Their own numbers", "Older or replaced")
       for (const folds of ["closed", "open"]) {
         if (folds === "open") await drawer.locator("details").evaluateAll((all) => all.forEach((d) => ((d as HTMLDetailsElement).open = true)));
@@ -79,6 +91,8 @@ for (const width of [320, 1280]) {
         expect(await drawerFaults(page), `${party.name} (folds ${folds})`).toEqual([]);
         await page.setViewportSize({ width, height: 800 });
       }
+      await goInPlace(page, "/");
+      await expect(page.getByRole("dialog")).toHaveCount(0);
     }
   });
 }
