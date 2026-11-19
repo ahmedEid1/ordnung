@@ -70,7 +70,8 @@ from ordnung.models import (
 )
 from ordnung.payments import is_collected_or_incoming, is_direct_debit
 from ordnung.rules import RuleContext, compute_contract, get_rule, price_increase_window
-from ordnung.rules.deadlines import POSTAL_BUFFER_DAYS, sending_time_passed
+from ordnung.rules.deadlines import postal_buffer as postal_buffer
+from ordnung.rules.deadlines import sending_time_passed
 from ordnung.rules.explain import fmt_date
 from ordnung.secretary.tax_choice import for_taxes
 
@@ -360,11 +361,6 @@ def is_overdue(item: Item, today: date) -> bool:
         and is_active(item, today)
         and not was_history_when_filed(item)
     )
-
-
-def postal_buffer(profile: Profile) -> int:
-    """Business days a letter needs: the person's setting, never less than the §21 default."""
-    return max(profile.postal_buffer_days, POSTAL_BUFFER_DAYS)
 
 
 def contract_computation(

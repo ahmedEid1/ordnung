@@ -19,7 +19,7 @@ from typing import Any
 import pytest
 
 from helpers_tables import check_rows
-from ordnung.models import DateSpec
+from ordnung.models import DateSpec, Profile
 from ordnung.rules.calendar_de import REGION_NAMES
 from ordnung.rules.deadlines import (
     ASSUMED_RECEIPT_WARNING,
@@ -27,6 +27,7 @@ from ordnung.rules.deadlines import (
     DECLARATION_DATED_WARNING,
     NEEDS_ARRIVAL_WARNING,
     OLDER_MATTER_RULE,
+    POSTAL_BUFFER_DAYS,
     PRIVATE_SENDER_DATED_WARNING,
     PRIVATE_SENDER_WARNING,
     RuleContext,
@@ -37,6 +38,7 @@ from ordnung.rules.deadlines import (
     older_matter_switch,
     parse_date,
     period_problem,
+    postal_buffer,
     sending_time_passed,
     statute_rule,
 )
@@ -1225,6 +1227,8 @@ def test_send_by_none_when_date_has_passed() -> None:
 def test_custom_postal_buffer() -> None:
     spec = DateSpec(type="fixed", date="2026-10-21", nature="objection")
     assert compute_due(spec, ctx(region="NW"), postal_buffer_days=2).send_by == "2026-10-19"
+    assert postal_buffer(Profile(postal_buffer_days=2)) == POSTAL_BUFFER_DAYS
+    assert postal_buffer(Profile(postal_buffer_days=6)) == 6
 
 
 # ------------------------------------------------------------------------- one-year fallback
