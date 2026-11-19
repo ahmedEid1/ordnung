@@ -17,6 +17,8 @@ from pathlib import Path
 
 import pytest
 
+from helpers_tables import check_rows
+
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -50,15 +52,21 @@ def test_clopper_pearson_closed_forms_at_the_edges() -> None:
         assert stats.clopper_pearson(0, n)[1] == pytest.approx(1 - 0.025 ** (1 / n), rel=1e-12)
 
 
-@pytest.mark.parametrize("n", [1, 2, 5, 13, 56, 112])
-def test_a_better_score_never_gets_a_lower_bound(n: int) -> None:
+MONOTONE_SIZES = [1, 2, 5, 13, 56, 112]
+
+
+def test_a_better_score_never_gets_a_lower_bound() -> None:
     """The published flaw: 55/56 got [94.5–100] while 56/56 got [91.8–100]. Exact intervals are monotone in k."""
-    bounds = [stats.clopper_pearson(k, n) for k in range(n + 1)]
-    for k in range(n):
-        assert bounds[k + 1][0] >= bounds[k][0]
-        assert bounds[k + 1][1] >= bounds[k][1]
-    for k, (lo, hi) in enumerate(bounds):
-        assert lo <= k / n <= hi
+
+    def check(n: int) -> None:
+        bounds = [stats.clopper_pearson(k, n) for k in range(n + 1)]
+        for k in range(n):
+            assert bounds[k + 1][0] >= bounds[k][0]
+            assert bounds[k + 1][1] >= bounds[k][1]
+        for k, (lo, hi) in enumerate(bounds):
+            assert lo <= k / n <= hi
+
+    check_rows(MONOTONE_SIZES, check)
 
 
 def test_clopper_pearson_refuses_impossible_counts() -> None:
