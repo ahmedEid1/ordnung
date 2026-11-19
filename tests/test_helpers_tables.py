@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from helpers_tables import check_rows
+from helpers_tables import check_rows, check_rows_async
 
 
 def test_a_table_whose_rows_all_hold_passes() -> None:
@@ -74,3 +74,19 @@ def test_a_row_with_marks_is_refused() -> None:
     rows = [pytest.param(1, marks=pytest.mark.xfail), pytest.param(2)]
     with pytest.raises(AssertionError, match="carries marks"):
         check_rows(rows, lambda n: None)
+
+
+async def test_a_check_that_is_awaited_runs_every_row_and_names_the_failing_ones() -> None:
+    seen: list[int] = []
+
+    async def even(n: int) -> None:
+        seen.append(n)
+        assert n % 2 == 0, f"{n} is odd"
+
+    await check_rows_async([2, 4], even)
+    with pytest.raises(AssertionError) as failure:
+        await check_rows_async([pytest.param(6, id="six"), 7, 8], even)
+    assert seen == [2, 4, 6, 7, 8]
+    assert str(failure.value).startswith("1 of 3 rows failed\nrow 2: 7\n    7 is odd")
+    with pytest.raises(AssertionError, match="1 row"):
+        await check_rows_async([2], even)
