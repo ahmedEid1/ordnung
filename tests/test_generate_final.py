@@ -144,8 +144,7 @@ def test_each_final_entry_carries_its_day_and_window(
         assert entry["valid_until"] == plugin.valid_until.isoformat()
         assert list(entry).index("final_day") == list(entry).index("today") + 1
         assert (tmp_path / entry["file"]).is_file()
-    # an earlier split's case without a phone photo: one file to write
-    (earlier,) = [c for c in cases_without_plugin if c.id == "test-tax_assessment-C1"]
+    (earlier,) = [c for c in cases_without_plugin if c.id == "test-dunning_fixed-C1"]
     (plain, *_rest) = generate.write_case(earlier, tmp_path, plugin)
     assert "final_day" not in plain and "valid_until" not in plain
 
