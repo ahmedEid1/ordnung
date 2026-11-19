@@ -8,6 +8,7 @@ import asyncio
 import hashlib
 import json
 import threading
+import time
 from pathlib import Path
 from typing import Any
 
@@ -659,30 +660,45 @@ async def test_a_hanging_folder_is_unreachable_and_the_status_still_answers(
     """CI once failed this test: a save fell due just as the folder began to hang (the first day's notes,
     committed as the computer connected), the fake engine's save hung for good holding the lock, and no call
     with a limit ever ran. The real engine's save gives up like any folder operation (``TimedFs``); the fake's
-    doesn't, so only looks hang here, and the test makes a save fall due as they begin to."""
-    # a look every 1.5 s: the save's own look and its summary give up (1 s each, swallowed) and leave the thread busy,
-    # so the next look must fall due in that same step (SCAN_S under twice the folder call's limit); the save's
-    # clean-up (gc) has none, but it ran at the first save as the computer connected (once a day)
-    fast_sync(monkeypatch, SCAN_S=1.5)
+    doesn't, so only looks hang here, and the test makes a save the first folder work after the hang begins."""
     short_folder_limit(monkeypatch)
     engine = FakeEngine()
     desk, _ = _dirs(tmp_path)
     async with computer(desk, engine=engine) as api:
         await connect(api, folder, "desktop")
         agent = agent_of(api)
+
+        def idle() -> bool:
+            return not agent._lock_now().locked() and not agent._thread.busy
+
+        # a look after connecting: the agent has read the database's version since, so a commit is seen as one
         looks = engine.calls.count("scan")
-        await eventually(lambda: engine.calls.count("scan") > looks and not agent._lock_now().locked())
-        await eventually(lambda: not agent._lock_now().locked() and not agent._thread.busy)
+        await eventually(lambda: engine.calls.count("scan") > looks and idle())
+        # no step runs and no engine call runs or waits, and none starts before the next await (every call from
+        # here on sees the hang): hold the next look back, so however late the commit lands, the save it makes due
+        # is the first folder work
+        agent._next_scan = time.monotonic() + 3600
+        # the first save cleaned up (once a day), so the save below makes no call without a limit
+        assert agent._last_gc is not None
         before = len(engine.calls)
         engine.hang_calls = frozenset({"scan"})
         engine.hang = threading.Event()
         try:
-            # a save falls due
-            await asyncio.to_thread(api.ctx.store.set_meta, "last_review_at", "2026-10-07")
+            # a save falls due, however late the commit lands (no look can come first); it is watched for while the
+            # commit is on its way, so a save that another commit made due is followed just the same
+            committing = asyncio.ensure_future(
+                asyncio.to_thread(api.ctx.store.set_meta, "last_review_at", "2026-10-07")
+            )
+            await eventually(lambda: "push:change" in engine.calls[before:])
+            assert engine.calls[before] == "push:change", "a save was the first folder work"
+            # the save's own look and summary give up after it (a limit each, swallowed) and leave the thread busy, so
+            # only the save's step can still look: it now waits out that first limit, a timer on this loop that comes
+            # due long after eventually's last 0.02 s one (however slow the runner), so the look is due when the step
+            # gets to it, and its scan gives up in turn (a save that hung would never get there)
+            agent._next_scan = 0.0
+            await committing
             found = await eventually(lambda: agent.problem, within=15)
             assert found.code == "folder_unreachable"
-            calls = engine.calls[before:]
-            assert "push:change" in calls[: calls.index("scan")], "a save ran first and did not hang"
             assert (await status(api))["problem"]["code"] == "folder_unreachable"  # from memory
             busy = await api.client.post("/api/sync/save", json={})
             assert busy.status_code == 409 and busy.json()["code"] == "folder_problem"
@@ -749,6 +765,9 @@ async def test_a_hanging_folder_never_holds_up_shutdown(
     started = 0.0
     async with computer(desk, engine=engine) as api:
         await connect(api, folder, "desktop")
+        # no engine call runs or waits, and none starts before the next await: every call from here on sees the
+        # hang (a scan already running as it began would hang unseen, listed before ``before``)
+        await eventually(lambda: not agent_of(api)._thread.busy)
         before = len(engine.calls)
         engine.hang_calls = frozenset({"scan"})  # a save due now must not be the call that hangs for good
         engine.hang = threading.Event()
