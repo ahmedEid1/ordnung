@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
+import functools
 import json
 import sys
 from collections.abc import Iterator
@@ -35,6 +36,12 @@ from ordnung.llm.fake import FakeBackend  # noqa: E402
 from test_evals_run import IDS, Responder, make_config  # noqa: E402
 
 TEXT_LETTER = "dev-tax_assessment-A1"
+
+
+@functools.cache
+def _responder() -> Responder:
+    """One fake model for the module's runs: its only state is a cache of the letters' texts."""
+    return Responder()
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -218,7 +225,7 @@ def test_a_server_that_is_not_python_keeps_its_command(tmp_path: Path) -> None:
 
 
 async def test_a_live_recording_locks_every_request_it_records(tmp_path: Path) -> None:
-    fake = FakeBackend(Responder())
+    fake = FakeBackend(_responder())
     assert (
         await eval_run.run_benchmark(make_config(tmp_path, live=True, write_docs=False, live_backend=fake))
     ).ok
@@ -239,7 +246,7 @@ async def test_a_live_recording_locks_every_request_it_records(tmp_path: Path) -
 async def test_a_request_that_changed_under_its_key_is_a_stale_recording(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    fake = FakeBackend(Responder())
+    fake = FakeBackend(_responder())
     live = make_config(tmp_path, ids=[TEXT_LETTER], conditions=["llm_only"], live=True, write_docs=False)
     live.live_backend = fake
     assert (await eval_run.run_benchmark(live)).ok
@@ -284,7 +291,7 @@ async def test_a_request_that_changed_under_its_key_is_a_stale_recording(
 async def test_a_recording_the_lock_does_not_know_is_refused(tmp_path: Path) -> None:
     ids = [TEXT_LETTER]
     live = make_config(tmp_path, ids=ids, conditions=["llm_only"], live=True, write_docs=False)
-    live.live_backend = FakeBackend(Responder())
+    live.live_backend = FakeBackend(_responder())
     assert (await eval_run.run_benchmark(live)).ok
     lock_path = _root(tmp_path) / harness.LOCK_FILE
     (key,) = _lock(tmp_path)
@@ -327,7 +334,7 @@ async def test_diff_requests_against_a_ref(
 ) -> None:
     root = tmp_path / "recorded"
     live = make_config(tmp_path, ids=[TEXT_LETTER], live=True, write_docs=False)
-    live.live_backend = FakeBackend(Responder())
+    live.live_backend = FakeBackend(_responder())
     assert (await eval_run.run_benchmark(live)).ok
     committed = (_root(tmp_path) / harness.LOCK_FILE).read_text(encoding="utf-8")
     asked: list[tuple[str, str]] = []
