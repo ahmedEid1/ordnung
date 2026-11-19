@@ -22,6 +22,7 @@ from fixtures_llm import (
     record_events,
 )
 from helpers_docs import photo
+from helpers_tables import check_rows
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.ingest.gaps import CHECK_SLOT
@@ -33,6 +34,7 @@ from ordnung.llm.base import (
     ClaudeOutdated,
     ClaudeRateLimited,
     LLMRequest,
+    LLMResponse,
 )
 from ordnung.llm.fake import FakeBackend
 from ordnung.models import DocumentTrace, TraceSpan
@@ -79,7 +81,11 @@ def top_level(trace: DocumentTrace) -> list[str]:
 # --------------------------------------------------------------------------------------------------
 
 
-async def test_a_text_letter_has_every_step_in_the_order_it_ran(ctx: AppContext) -> None:
+async def test_a_text_letter_s_trace_has_every_step_its_model_call_and_what_code_decided(
+    ctx: AppContext,
+) -> None:
+    """One reading of a text letter: every step in the order it ran, the model step joined with its usage
+    log row, and the quote, date, link and plan steps describing what code decided."""
     doc_id = await read(ctx, TAX_LETTER.pdf(), "bescheid.pdf")
     trace = document_trace(ctx.store, doc_id)
     assert trace.run is not None and trace.run.reading == 1 and trace.run.trigger == "read"
@@ -103,10 +109,7 @@ async def test_a_text_letter_has_every_step_in_the_order_it_ran(ctx: AppContext)
     for span in trace.spans:
         assert 0 <= span.start_ms and span.start_ms + span.duration_ms <= root.duration_ms + 0.01
 
-
-async def test_a_model_step_is_joined_with_its_usage_log_row(ctx: AppContext) -> None:
-    doc_id = await read(ctx, TAX_LETTER.pdf(), "bescheid.pdf")
-    trace = document_trace(ctx.store, doc_id)
+    # the model step is joined with its usage log row
     extract = steps(trace)["run/model:extract"]
     call = extract.call
     assert call is not None and call.span_id == extract.id
@@ -124,10 +127,7 @@ async def test_a_model_step_is_joined_with_its_usage_log_row(ctx: AppContext) ->
         trace.run is not None and trace.run.model_calls == 1 and trace.run.input_tokens == call.input_tokens
     )
 
-
-async def test_quotes_dates_links_and_plan_describe_what_code_decided(ctx: AppContext) -> None:
-    doc_id = await read(ctx, TAX_LETTER.pdf(), "bescheid.pdf")
-    trace = document_trace(ctx.store, doc_id)
+    # quotes, dates, links and plan describe what code decided
     items = {item.kind: item for item in ctx.store.list_items(doc_id=doc_id)}
     objection, payment = items["deadline"], items["payment"]
     by_key = steps(trace)
@@ -194,6 +194,8 @@ async def test_a_photo_letter_is_transcribed_page_by_page_in_parallel(ctx: AppCo
     assert trace.run is not None and trace.run.model_calls == 3
     quotes = [s for s in trace.spans if s.kind == "verify" and s.attributes.get("target") == "item"]
     assert quotes and {s.attributes["grounding"] for s in quotes} == {"model_read"}
+    # the fake backend reports 5 ms a call; measured, the calls took less than the whole reading
+    assert 0 < trace.run.model_ms <= trace.run.duration_ms
 
 
 # --------------------------------------------------------------------------------------------------
@@ -264,32 +266,54 @@ async def test_a_paused_reading_says_so(ctx: AppContext, router: Router) -> None
     assert steps(trace)["run/model:extract"].attributes["outcome"] == "failed"
 
 
-@pytest.mark.parametrize(
-    ("error", "code"),
-    [
-        (ClaudeNotInstalled("The “claude” command was not found."), "paused_not_installed"),
-        (ClaudeAuthError("Claude Code is not signed in."), "paused_not_signed_in"),
-        (ClaudeOutdated("Claude Code 2.0.9 is too old."), "paused_outdated"),
-    ],
-    ids=["not-installed", "signed-out", "outdated"],
-)
-async def test_a_reading_waiting_for_claude_is_paused_never_failed(
-    ctx: AppContext, router: Router, error: Exception, code: str
-) -> None:
+WAITING_FOR_CLAUDE = [
+    (ClaudeNotInstalled("The “claude” command was not found."), "paused_not_installed"),
+    (ClaudeAuthError("Claude Code is not signed in."), "paused_not_signed_in"),
+    (ClaudeOutdated("Claude Code 2.0.9 is too old."), "paused_outdated"),
+]
+
+
+async def test_a_reading_waiting_for_claude_is_paused_never_failed(data_dir: Path) -> None:
     """Claude not installed, not signed in or too old pauses the reading like a usage limit: the pipeline puts the
     letter back (``queued``, no error), announces no failure, and the trace ends ``paused`` with why — so the
     letter is never shown as failed while it waits."""
-    router.errors["extract"] = lambda: error
-    events = record_events(ctx.bus)
-    document = await add_file(ctx, TAX_LETTER.pdf(), "bescheid.pdf")
-    with pytest.raises(type(error)):
-        await ingest_document(ctx, document.id)
-    stored = ctx.store.get_document(document.id)
-    assert stored is not None and (stored.status, stored.error) == ("queued", None)
-    assert not [data for kind, data in events if kind == "job.progress" and data.get("status") == "failed"]
-    trace = document_trace(ctx.store, document.id)
-    assert trace.run is not None and trace.run.ended == "paused" and steps(trace)["run"].error == code
-    assert trace.run.error == INTERRUPTIONS[code] and "read once Claude is ready" in trace.run.error
+
+    async def check(folder: Path, error: Exception, code: str) -> None:
+        router = Router(transcript=APPOINTMENT_LETTER.transcript())
+        ctx = build_context(folder, backend_obj=FakeBackend(router))
+        try:
+            router.errors["extract"] = lambda: error
+            events = record_events(ctx.bus)
+            document = await add_file(ctx, TAX_LETTER.pdf(), "bescheid.pdf")
+            with pytest.raises(type(error)):
+                await ingest_document(ctx, document.id)
+            stored = ctx.store.get_document(document.id)
+            assert stored is not None and (stored.status, stored.error) == ("queued", None)
+            assert not [
+                data for kind, data in events if kind == "job.progress" and data.get("status") == "failed"
+            ]
+            trace = document_trace(ctx.store, document.id)
+            assert trace.run is not None and trace.run.ended == "paused" and steps(trace)["run"].error == code
+            assert trace.run.error == INTERRUPTIONS[code] and "read once Claude is ready" in trace.run.error
+        finally:
+            ctx.close()
+
+    # each row reads the letter in a data folder of its own, awaited in turn
+    raised: list[Exception | None] = []
+    for number, row in enumerate(WAITING_FOR_CLAUDE):
+        try:
+            await check(data_dir / str(number), *row)
+        except Exception as exc:
+            raised.append(exc)
+        else:
+            raised.append(None)
+    outcomes = iter(raised)
+
+    def settled(*_row: Any) -> None:
+        if (error := next(outcomes)) is not None:
+            raise error
+
+    check_rows(WAITING_FOR_CLAUDE, settled)
 
 
 async def test_a_private_letter_has_no_model_step(ctx: AppContext) -> None:
@@ -439,3 +463,10 @@ async def test_a_trashed_letter_keeps_its_trace_until_it_is_deleted(ctx: AppCont
     assert document_trace(ctx.store, doc_id).run is not None
     spans, _ = ctx.store.export_traces()
     assert spans == [], "the export leaves out letters in the trash"
+    # a letter in the trash is not gone: its calls keep their key and its answers can be cached
+    call = ctx.store.log_llm_call(
+        "extract", "sonnet", "fake", LLMResponse().usage, doc_ids=[doc_id], request_key="k"
+    )
+    assert ctx.store.cache_put("k", "extract", "sonnet", {}, doc_ids=[doc_id])
+    [row] = [row for row in ctx.store.usage_stats(recent=10).recent if row.id == call]
+    assert (row.doc_ids, row.request_key) == ([doc_id], "k")
