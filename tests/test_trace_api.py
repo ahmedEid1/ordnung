@@ -378,7 +378,7 @@ async def test_ordnung_trace_asks_the_running_server(
     with Store.open(Paths(data_dir)) as store:
         trace = document_trace(store, doc_id)
     server = _TraceServer(trace)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     try:
         info = ServerInfo(port=server.server_address[1], pid=1, token="t")
