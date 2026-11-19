@@ -88,6 +88,7 @@ def test_a_household_member_s_numbers_are_masked_too(store: Store) -> None:
     alex, page = _filed_for_alex(store)
     (person,) = page.household
     assert person.id == alex and [n.value for n in person.about] == ["86095742719", "65 140300 R 004"]
+    assert page.filed_for and page.also_for
     masked = mask_numbers(page)
     (shown,) = masked.household
     assert (shown.id, shown.name) == (alex, "Alex Rivera")
@@ -99,12 +100,7 @@ def test_a_household_member_s_numbers_are_masked_too(store: Store) -> None:
     for document in (d for p in masked.household for d in p.documents):
         assert document.number is None or document.number.value.startswith("••••")
     assert "86095742719" not in masked.model_dump_json()
-
-
-def test_the_household_maps_follow_the_masked_keys(store: Store) -> None:
-    alex, page = _filed_for_alex(store)
-    assert page.filed_for and page.also_for
-    masked = mask_numbers(page)
+    # the household's maps follow the masked keys
     numbers = {
         n.key
         for n in (
