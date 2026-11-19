@@ -102,8 +102,8 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
   const matches: DocumentRow[] = dterm.length >= MIN_CHARS && searching ? (search.data ?? []) : [];
   const results = matches.slice(0, SEARCH_LIMIT);
   const hasMore = matches.length > SEARCH_LIMIT;
-  // a paused search (the browser reports offline) is not fetching, yet still lists the previous term's
-  // matches as placeholder rows: it has not answered either
+  // a paused search (a second try held while the page is hidden) is not fetching, yet still lists the previous
+  // term's matches as placeholder rows: it has not answered either
   const settled = dterm === term && !search.isFetching && !search.isPlaceholderData;
   const noMatches = searching && settled && !search.isError && results.length === 0;
   const showRecent = Boolean(inline) && term.length === 0;

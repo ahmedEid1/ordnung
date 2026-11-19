@@ -8,7 +8,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, screen, waitFor, within } from "@testing-library/react";
-import { onlineManager } from "@tanstack/react-query";
+import { focusManager, onlineManager } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "@/test/render";
 import { createMockServer, type MockServer } from "@/mocks/server";
@@ -248,33 +248,70 @@ describe("search states", () => {
     expect(screen.getByRole("status")).toHaveTextContent("No letters match “Quittung 1999”");
   });
 
-  it("says it is still searching while the search for what you typed is paused, not that nothing matches", async () => {
-    // "Quittung" matched nothing. Then the browser goes offline: what is typed next has not been asked yet, and the
-    // empty list still shown is the answer to another question
-    const asked: string[] = [];
-    searchOverride = (q) => {
-      asked.push(q);
-      return json([]);
-    };
+  it("says it is still searching while the answer to what you typed is on its way, not that nothing matches", async () => {
+    // "Quittung" matched nothing. The answer to what is typed next is held back: the empty list still shown is the
+    // answer to another question
+    let answer: () => void = () => {};
+    searchOverride = (q) => (q === "Quittung 1999" ? new Promise<Response>((resolve) => (answer = () => resolve(json([])))) : json([]));
     renderSearch();
     const user = userEvent.setup();
     await user.click(topField());
     await user.type(topField(), "Quittung");
     expect(await screen.findByText("No letters match “Quittung”.")).toBeInTheDocument();
+    await user.type(topField(), " 1999");
+    await new Promise((r) => setTimeout(r, 400));
+    expect(screen.queryByText(/No letters match/)).toBeNull();
+    expect(screen.getByText("Searching…")).toBeInTheDocument();
+    expect(screen.getByRole("status")).not.toHaveTextContent("No letters match");
+    // the answer comes, and its own answer is said
+    await act(async () => answer());
+    expect(await screen.findByText("No letters match “Quittung 1999”.")).toBeInTheDocument();
+  });
+
+  it("is asked while the browser says it is offline, and its answer shown: Ordnung runs on this computer", async () => {
+    const asked: string[] = [];
+    searchOverride = (q) => {
+      asked.push(q);
+      return json([]);
+    };
     onlineManager.setOnline(false);
     try {
-      await user.type(topField(), " 1999");
-      await new Promise((r) => setTimeout(r, 400));
-      expect(asked).not.toContain("Quittung 1999");
-      expect(screen.queryByText(/No letters match/)).toBeNull();
-      expect(screen.getByText("Searching…")).toBeInTheDocument();
-      expect(screen.getByRole("status")).not.toHaveTextContent("No letters match");
-      // back online the search is asked, and its own answer is said
-      onlineManager.setOnline(true);
-      expect(await screen.findByText("No letters match “Quittung 1999”.")).toBeInTheDocument();
-      expect(asked).toContain("Quittung 1999");
+      renderSearch();
+      const user = userEvent.setup();
+      await user.click(topField());
+      await user.type(topField(), "Quittung");
+      expect(await screen.findByText("No letters match “Quittung”.")).toBeInTheDocument();
+      expect(asked).toContain("Quittung");
     } finally {
       onlineManager.setOnline(true);
+    }
+  });
+
+  it("says it is still searching while a second try waits for the page to be shown again, not that nothing matches", async () => {
+    // the one state where the list is not fetching yet has not answered: the first try failed, and the library holds
+    // the next one while the page is hidden (another tab in front). The list still shows the answer to "Quittung"
+    // as placeholder rows: that is not an answer to what is typed now
+    let tries = 0;
+    searchOverride = (q) => (q === "Quittung 1999" && ++tries === 1 ? json({ detail: "Busy" }, 503) : json([]));
+    const { client } = renderSearch();
+    client.setQueryDefaults(["documents"], { retry: 1, retryDelay: 0 });
+    const user = userEvent.setup();
+    await user.click(topField());
+    await user.type(topField(), "Quittung");
+    expect(await screen.findByText("No letters match “Quittung”.")).toBeInTheDocument();
+    focusManager.setFocused(false);
+    try {
+      await user.type(topField(), " 1999");
+      await waitFor(() => expect(client.getQueryCache().find({ queryKey: ["documents", "list", { q: "Quittung 1999", limit: SEARCH_LIMIT + 1 }] })?.state.fetchStatus).toBe("paused"));
+      expect(tries).toBe(1);
+      expect(screen.queryByText(/No letters match/)).toBeNull();
+      expect(screen.getByText("Searching…")).toBeInTheDocument();
+      // shown again: the second try is asked, and its own answer said
+      act(() => focusManager.setFocused(true));
+      expect(await screen.findByText("No letters match “Quittung 1999”.")).toBeInTheDocument();
+      expect(tries).toBe(2);
+    } finally {
+      focusManager.setFocused(undefined);
     }
   });
 
@@ -378,20 +415,16 @@ describe("Enter", () => {
     expect(router.state.location.pathname).toBe("/");
   });
 
-  it("waits while the search is paused (the browser is offline), and never opens the match still listed", async () => {
-    searchOverride = (q) => json(q === "Stadtwerke" ? [power()] : [city()]);
+  it("waits while the answer to what was typed is on its way, and never opens the match still listed", async () => {
+    const { asked, release } = holdStadtwerke();
     const { router, user } = await typedOnPastAMatch();
-    onlineManager.setOnline(false);
-    try {
-      await user.type(topField(), "werke{Enter}");
-      await new Promise((r) => setTimeout(r, 400));
-      expect(router.state.location.pathname).toBe("/");
-      // back online, the paused search answers and the Enter that waited opens its match
-      onlineManager.setOnline(true);
-      await waitFor(() => expect(router.state.location.pathname).toBe("/documents/doc_power"));
-    } finally {
-      onlineManager.setOnline(true);
-    }
+    await user.type(topField(), "werke{Enter}");
+    await waitFor(() => expect(asked).toContain("Stadtwerke"));
+    await new Promise((r) => setTimeout(r, 400));
+    expect(router.state.location.pathname).toBe("/");
+    // the answer comes, and the Enter that waited opens its match
+    await release();
+    await waitFor(() => expect(router.state.location.pathname).toBe("/documents/doc_power"));
   });
 
   it("does nothing before two characters", async () => {

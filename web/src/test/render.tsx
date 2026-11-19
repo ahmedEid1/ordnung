@@ -14,6 +14,7 @@ import type { ClientKind, Health } from "@/api/types";
 import { qk } from "@/api/hooks";
 import { clientKind, setClientKind } from "@/api/clientKind";
 import { phoneHealth } from "@/mocks/phone";
+import { NETWORK_DEFAULTS } from "@/app/queryClient";
 
 export const TEST_TODAY = "2026-09-28";
 
@@ -38,10 +39,13 @@ export const PHONE_TEST_HEALTH: Health = phoneHealth(TEST_HEALTH);
 /**
  * A QueryClient for one test, with health seeded: the computer's ({@link TEST_HEALTH}), or a phone's
  * ({@link PHONE_TEST_HEALTH}) when `client` is "phone" — by default whatever the tab is now (`clientKind()`,
- * which `useMockApi({ client })` sets).
+ * which `useMockApi({ client })` sets). Requests are tried while the browser says it is offline, as in the app
+ * ({@link NETWORK_DEFAULTS}).
  */
 export function makeTestQueryClient({ client = clientKind() }: { client?: ClientKind } = {}): QueryClient {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } } });
+  const qc = new QueryClient({
+    defaultOptions: { queries: { ...NETWORK_DEFAULTS.queries, retry: false, staleTime: Infinity }, mutations: { ...NETWORK_DEFAULTS.mutations, retry: false } },
+  });
   setClientKind(client);
   qc.setQueryData(qk.health, client === "phone" ? PHONE_TEST_HEALTH : TEST_HEALTH);
   return qc;
