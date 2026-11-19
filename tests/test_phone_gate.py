@@ -8,12 +8,13 @@ import asyncio
 import json
 import re
 import threading
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 from typing import Any
 
 import httpx
 import pytest
+import pytest_asyncio
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 
@@ -341,20 +342,34 @@ async def test_pairing_sets_the_phone_s_own_cookie(data_dir: Path) -> None:
         assert PHONE_URL.startswith("https://")
 
 
-COMPUTER_ONLY_OPERATIONS = sorted(COMPUTER_ONLY)
+# A paired phone that is only refused is built once for the module: a refused request never reaches its
+# handler, so no test changes the app. The tests that use it run in the module's event loop.
+SHARED_LOOP = pytest.mark.asyncio(loop_scope="module")
 
 
-async def test_every_computer_only_operation_is_refused_to_a_phone(data_dir: Path) -> None:
-    def check(method: str, template: str, response: httpx.Response) -> None:
-        assert response.status_code == 403, response.text
-        assert response.json() == {"detail": "This works on your computer only.", "code": "computer_only"}
+@pytest_asyncio.fixture(scope="module", loop_scope="module")
+async def refused_phone(tmp_path_factory: pytest.TempPathFactory) -> AsyncIterator[httpx.AsyncClient]:
+    root = tmp_path_factory.mktemp("refused_phone")
+    built = fake_web_dist(root)
+    (built / "build-info.json").write_text('{"sourceHash": "abc"}', encoding="utf-8")
+    data_dir = root / "data"
+    data_dir.mkdir()
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(app_module, "web_dist_dir", lambda: built)
+        async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
+            await pair(api, phone)
+            yield phone
 
-    answers = []
-    async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
-        await pair(api, phone)
-        for method, template in COMPUTER_ONLY_OPERATIONS:
-            answers.append((method, template, await phone.request(method, _example(template))))
-    check_rows(answers, check)
+
+@SHARED_LOOP
+@pytest.mark.parametrize("operation", sorted(COMPUTER_ONLY))
+async def test_every_computer_only_operation_is_refused_to_a_phone(
+    refused_phone: httpx.AsyncClient, operation: tuple[str, str]
+) -> None:
+    method, template = operation
+    response = await refused_phone.request(method, _example(template))
+    assert response.status_code == 403, response.text
+    assert response.json() == {"detail": "This works on your computer only.", "code": "computer_only"}
 
 
 async def test_a_phone_downloads_no_calendar_file(data_dir: Path) -> None:
