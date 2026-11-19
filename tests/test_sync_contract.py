@@ -13,12 +13,11 @@ import pytest
 from fake_caldav import MemorySecrets
 from helpers_tables import check_rows
 from ordnung import sync
-from ordnung.api.app import openapi_schema
 from ordnung.api.routes import sync as sync_routes
 from ordnung.backup.container import MAX_SCRYPT_BYTES, KdfParams
 from ordnung.models import AppSettings
 from ordnung.phone import scope
-from test_api_support import api_for
+from test_api_support import api_for, api_schema
 
 
 class _NeverRead(MemorySecrets):
@@ -146,7 +145,7 @@ def test_kept_copy_names() -> None:
 
 @pytest.fixture(scope="module")
 def schema() -> dict[str, Any]:
-    return openapi_schema()
+    return api_schema()
 
 
 def test_the_gate_s_lists_name_real_operations(schema: dict[str, Any]) -> None:

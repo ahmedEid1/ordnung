@@ -19,7 +19,6 @@ import pytest_asyncio
 from fake_caldav import MemorySecrets
 from helpers_tables import check_rows_async
 from ordnung import sync
-from ordnung.api.app import openapi_schema
 from ordnung.calendar.secrets import SecretsUnavailable
 from ordnung.phone import scope
 from sync_fake_engine import (
@@ -36,7 +35,7 @@ from sync_fake_engine import (
     head_of,
 )
 from sync_support import PASSPHRASE, agent_of, computer, connect, eventually, fast_sync, status
-from test_api_support import Api
+from test_api_support import Api, api_schema
 
 pytestmark = pytest.mark.usefixtures("fast")
 
@@ -56,7 +55,7 @@ def folder(tmp_path: Path) -> Path:
 
 @pytest.fixture(scope="module")
 def schema() -> dict[str, Any]:
-    return openapi_schema()
+    return api_schema()
 
 
 # Apps that only refuse are built once per module: a refused write never reaches its handler, so no test
@@ -363,7 +362,7 @@ def _writes(schema: dict[str, Any]) -> list[tuple[str, str]]:
 
 def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
     if "write" in metafunc.fixturenames:
-        metafunc.parametrize("write", _writes(openapi_schema()), ids=lambda op: f"{op[0]} {op[1]}")
+        metafunc.parametrize("write", _writes(api_schema()), ids=lambda op: f"{op[0]} {op[1]}")
 
 
 @SHARED_LOOP
