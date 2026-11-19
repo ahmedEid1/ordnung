@@ -1246,14 +1246,15 @@ def _grid_bounds(
 ) -> tuple[Fraction, Fraction]:
     """The smallest and largest δ on a grid that the registered test does not reject at 5 % (brute force: the
     sign-flip test of the centred cluster totals d − δ·n, run at every grid point)."""
-    # on integers: δ = k / scale and every total times scale (a common positive scale changes no sign-flip p-value)
+    # δ = k / scale; the Monte Carlo sums run on every total times scale, as integers (a common positive scale
+    # changes no sign-flip p-value); the exact test is given the centred totals themselves, as fractions
     assert step.numerator == 1, step
     scale = step.denominator
     kept = []
     for k in range(-scale, scale + 1):
         centred = [d * scale - k * n for d, n in clusters]
         if exact_max >= len(clusters):
-            p = stats.cluster_signflip(centred, exact_max=exact_max).p
+            p = stats.cluster_signflip([Fraction(x, scale) for x in centred], exact_max=exact_max).p
         else:  # the same random sign patterns as the inversion: every cluster flipped by its bit
             rng = random.Random(seed)
             total = sum(centred)
