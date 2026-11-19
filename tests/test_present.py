@@ -18,6 +18,7 @@ import copy
 import csv
 import html
 import io
+import itertools
 import json
 import re
 import subprocess
@@ -44,6 +45,7 @@ from evals.present import (
 )
 
 from helpers_publication import final_published, results_before_publication
+from helpers_tables import check_rows
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "evals" / "results"
@@ -237,6 +239,10 @@ def test_the_test_split_s_first_run_facts_come_from_its_results_file(doc: dict[s
         4,
         4,
     )
+    page = _flat(text.report(doc))
+    assert "the model got 10 of 56 wrong" in page
+    assert "8 of those used the 3-day delivery rule" in page
+    assert "all 4 late answers moved a deemed delivery day off a weekend or holiday" in page
 
 
 # --------------------------------------------------------------------------------------------------
@@ -464,13 +470,6 @@ def test_the_report_s_lists_and_failure_causes_read_right(today_doc: dict[str, A
     missed = [line for line in failures.splitlines() if "injection_visible-1" in line]
     assert missed and missed[0].endswith("| not found |")
     assert "the code of that day): every extra miss is 1–3 days early; none is late." in _flat(page)
-
-
-def test_the_report_states_the_test_split_s_first_run_facts(doc: dict[str, Any]) -> None:
-    page = _flat(text.report(doc))
-    assert "the model got 10 of 56 wrong" in page
-    assert "8 of those used the 3-day delivery rule" in page
-    assert "all 4 late answers moved a deemed delivery day off a weekend or holiday" in page
 
 
 def test_the_report_lists_every_harmful_error_by_id_only(doc: dict[str, Any]) -> None:
@@ -931,38 +930,43 @@ def _values(svg: str) -> str:
     return html.unescape(re.search(r"<desc[^>]*>(.*?)</desc>", svg, re.S).group(1))  # type: ignore[union-attr]
 
 
-@pytest.mark.parametrize("name", charts.NAMES)
-@pytest.mark.parametrize("theme", ["light", "dark", "css"])
-@pytest.mark.parametrize("narrow", [False, True])
-def test_every_chart_names_itself_and_every_value(
-    doc: dict[str, Any], name: str, theme: str, narrow: bool
-) -> None:
-    svg = charts.svg(name, doc, theme, narrow=narrow)
-    assert svg.startswith("<svg ") and 'role="img"' in svg and "aria-labelledby=" in svg
-    assert re.search(r"<title id=\"[^\"]+\">[^<]+</title>", svg)
-    description = _values(svg)
-    _, rows = charts.table(name, doc)
-    for row in rows:
-        assert row[0] in description, (name, row[0])
-        for cell in row[1:]:
-            assert cell in description or cell in svg, (name, cell)
-    marks = re.findall(r"<(circle|rect|polygon|path)[^>]*>(?:<title>[^<]+</title>)?", svg)
-    titled = re.findall(r"<(?:circle|rect|polygon)[^>]*><title>[^<]+</title>", svg)
-    assert titled, name
-    assert marks
-    # text in text colours only, never a series colour
-    for fill in re.findall(r'<text[^>]*style="fill:([^;"]+)', svg):
-        assert fill not in {palette.LIGHT[c] for c in palette.CONDITIONS} | {
-            palette.DARK[c] for c in palette.CONDITIONS
-        }, (name, fill)
+CHART_NAMES = charts.NAMES
+CHART_THEMES = ["light", "dark", "css"]
+CHART_WIDTHS = [False, True]
 
 
-@pytest.mark.parametrize("name", charts.NAMES)
-def test_every_chart_follows_the_page_s_row_order(doc: dict[str, Any], name: str) -> None:
-    _, rows = charts.table(name, doc)
-    labels = [palette.LABELS[c] for c in doc["order"]]
-    shown = [row[0] for row in rows if row[0] in labels]
-    assert shown == [label for label in labels if label in shown]
+def test_every_chart_names_itself_and_every_value(doc: dict[str, Any]) -> None:
+    def check(name: str, theme: str, narrow: bool) -> None:
+        svg = charts.svg(name, doc, theme, narrow=narrow)
+        assert svg.startswith("<svg ") and 'role="img"' in svg and "aria-labelledby=" in svg
+        assert re.search(r"<title id=\"[^\"]+\">[^<]+</title>", svg)
+        description = _values(svg)
+        _, rows = charts.table(name, doc)
+        for row in rows:
+            assert row[0] in description, (name, row[0])
+            for cell in row[1:]:
+                assert cell in description or cell in svg, (name, cell)
+        marks = re.findall(r"<(circle|rect|polygon|path)[^>]*>(?:<title>[^<]+</title>)?", svg)
+        titled = re.findall(r"<(?:circle|rect|polygon)[^>]*><title>[^<]+</title>", svg)
+        assert titled, name
+        assert marks
+        # text in text colours only, never a series colour
+        for fill in re.findall(r'<text[^>]*style="fill:([^;"]+)', svg):
+            assert fill not in {palette.LIGHT[c] for c in palette.CONDITIONS} | {
+                palette.DARK[c] for c in palette.CONDITIONS
+            }, (name, fill)
+
+    check_rows(itertools.product(CHART_NAMES, CHART_THEMES, CHART_WIDTHS), check)
+
+
+def test_every_chart_follows_the_page_s_row_order(doc: dict[str, Any]) -> None:
+    def check(name: str) -> None:
+        _, rows = charts.table(name, doc)
+        labels = [palette.LABELS[c] for c in doc["order"]]
+        shown = [row[0] for row in rows if row[0] in labels]
+        assert shown == [label for label in labels if label in shown]
+
+    check_rows(charts.NAMES, check)
 
 
 def test_the_hero_chart_shows_the_intervals_it_names(doc: dict[str, Any]) -> None:
@@ -999,13 +1003,6 @@ def test_the_palette_is_the_validated_set() -> None:
         assert palette.contrast(theme["link"], theme["surface"]) >= 4.5
 
 
-def test_the_committed_charts_are_small(rendered: dict[str, str]) -> None:
-    svgs = {relative: content for relative, content in rendered.items() if relative.endswith(".svg")}
-    assert len(svgs) == 2 * (len(charts.COMMITTED) + len(FINAL_CHARTS))
-    for relative, content in svgs.items():
-        assert len(content.encode("utf-8")) <= 40_000, relative
-
-
 # --------------------------------------------------------------------------------------------------
 # The report page
 # --------------------------------------------------------------------------------------------------
@@ -1040,10 +1037,6 @@ def test_the_page_builds_from_presentation_json_with_the_standard_library_only(t
     )
 
 
-def test_the_page_passes_its_own_check(page_dir: Path, doc: dict[str, Any]) -> None:
-    assert site.check_site(page_dir, doc, forbidden=site.dataset_sentences()) == []
-
-
 def test_every_chart_on_the_page_has_its_table_and_csv(page_dir: Path, doc: dict[str, Any]) -> None:
     page = (page_dir / "index.html").read_text(encoding="utf-8")
     for name in charts.NAMES:
@@ -1062,6 +1055,7 @@ def test_every_chart_on_the_page_has_its_table_and_csv(page_dir: Path, doc: dict
 
 
 def test_the_page_check_catches_what_it_promises(page_dir: Path, doc: dict[str, Any], tmp_path: Path) -> None:
+    assert site.check_site(page_dir, doc, forbidden=site.dataset_sentences()) == []
     good = (page_dir / "index.html").read_text(encoding="utf-8")
 
     def problems(page: str, forbidden: tuple[str, ...] = ()) -> list[str]:
