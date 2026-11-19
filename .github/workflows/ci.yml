@@ -104,8 +104,9 @@ jobs:
     # processes: the step took 565 s on one runner and 908 on another, where every test was about 1.6 times slower
     # (the kill during the apply 232 s against 376), on three runs of five (19 Nov 2026). That made the job 15
     # minutes long in a run whose other jobs were done in 10 to 11. Split, each job has about half the work, and
-    # even a slow runner is done within those 10 minutes. The job keeps its id and name: a required check may
-    # be registered under them
+    # even a slow runner is done within those 10 minutes: on their first run this job took 4:30 and slow-long
+    # 5:49, the kill test 323 s of it (19 Nov 2026). The job keeps its id and name: a required check may be
+    # registered under them
     if: github.event_name != 'schedule'
     # pinned: the samples' byte-for-byte check needs Ubuntu 24.04's Python 3.12 (its zlib is the manifest's)
     runs-on: ubuntu-24.04
