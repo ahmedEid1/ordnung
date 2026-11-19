@@ -11,6 +11,7 @@ its registered consequence.
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import itertools
 import json
@@ -627,10 +628,22 @@ def world(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> World:
     return found
 
 
-def test_the_final_run_families_by_hand(world: World) -> None:
+@pytest.fixture(scope="module")
+def _default_final_once(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
+    return World(tmp_path_factory.mktemp("default-final")).final()
+
+
+@pytest.fixture()
+def default_final(_default_final_once: dict[str, Any]) -> dict[str, Any]:
+    """The final analysis of the synthetic final run as built, with nothing changed (the same for every
+    :class:`World`: it names no path), analysed once; each test gets its own copy."""
+    return copy.deepcopy(_default_final_once)
+
+
+def test_the_final_run_families_by_hand(default_final: dict[str, Any]) -> None:
     """Over three reads, Ordnung minus the model alone, per letter cluster (×3 to integers): accuracy 3, 3, −1, 1
     (sign-flip exact p 6/16), harm −3, 1, −1 (6/8). Unstable items: Ordnung's L3, the model alone's L4."""
-    result = world.final()
+    result = default_final
     primary = result["primary"]
     assert (
         primary["split"],
@@ -666,8 +679,8 @@ def test_the_final_run_families_by_hand(world: World) -> None:
     assert (sensitivity["b"], sensitivity["c"], sensitivity["exact_p"]) == (3, 0, 0.25)
 
 
-def test_the_final_run_stability_and_secondary_numbers(world: World) -> None:
-    primary = world.final()["primary"]
+def test_the_final_run_stability_and_secondary_numbers(default_final: dict[str, Any]) -> None:
+    primary = default_final["primary"]
     ordnung, llm_only = primary["conditions"]["ordnung"], primary["conditions"]["llm_only"]
     assert [r["k"] for r in ordnung["exact_per_read"]] == [7, 6, 7]
     assert (ordnung["pass_all"]["k"], ordnung["pass_any"]["k"]) == (6, 7)
@@ -718,7 +731,7 @@ def test_the_final_run_stability_and_secondary_numbers(world: World) -> None:
     }
     assert ordnung["selective"]["please_check"]["recall_wrong"]["n"] == 0  # L3 is wrong in read 2 only
     assert ordnung["flags_over_reads"]["wrong_dates"] == 1
-    result = world.final()
+    result = default_final
     newkinds = result["secondary"]["newkinds"]
     assert newkinds["conditions"]["ordnung"]["exact"]["k"] == 3
     assert newkinds["conditions"]["ordnung"]["kind_recognised"]["k"] == 1  # L1's kind is not recognised
@@ -1056,7 +1069,9 @@ def test_a_units_day_is_the_day_index_s_and_the_letters_today(world: World) -> N
         )
 
 
-def test_another_claude_version_is_included_with_a_deviation_and_f3_within_one_version(world: World) -> None:
+def test_another_claude_version_is_included_with_a_deviation_and_f3_within_one_version(
+    world: World, default_final: dict[str, Any]
+) -> None:
     """A unit recorded by another ``claude`` version: refused without a ``cli_version`` deviation; with one, the read
     is included, each read's versions are listed, and F3 is also given over the items whose reads share a version."""
     for letter in ("L1", "L2", "L3"):
@@ -1076,7 +1091,7 @@ def test_another_claude_version_is_included_with_a_deviation_and_f3_within_one_v
     assert same_cli["versions"] == [CLI, "2.1.9"] and same_cli["items"] == 3  # L4, L5, L6
     assert same_cli["F3_stability"]["ordnung-vs-llm_only"]["n"] == 3
     # one version everywhere: nothing to compare apart
-    clean = World(world.root / "clean").final()
+    clean = default_final
     assert clean["sensitivities"]["same_cli_f3"] == {"versions": [CLI], "same_as_primary": True}
 
 
@@ -1299,8 +1314,10 @@ def test_the_agent_is_higher_only_when_the_whole_bound_is_below_zero() -> None:
     assert decide(-0.2, -0.1, 0.05, "llm_rules_text") == "baseline_higher"
 
 
-def test_non_inferiority_uses_the_inverted_test_and_keeps_the_bootstrap_descriptive(world: World) -> None:
-    primary = world.final()["primary"]
+def test_non_inferiority_uses_the_inverted_test_and_keeps_the_bootstrap_descriptive(
+    default_final: dict[str, Any],
+) -> None:
+    primary = default_final["primary"]
     block = primary["noninferiority"]["ordnung-vs-llm_rules_tool"]
     assert block["margin"] == 0.05 and block["decision"] == primary["decisions"]["vs_llm_rules_tool"]
     assert block["bound"]["method"] == "exact" and (block["bound"]["lo"], block["bound"]["hi"]) == (-1.0, 1.0)
@@ -1322,7 +1339,9 @@ def _baselines_late(condition: str, read: int, letter: str, index: int) -> str:
     return "right" if condition == "ordnung" else "late"
 
 
-def test_f2_has_its_codes_and_one_decision_is_confirmatory(tmp_path: Path) -> None:
+def test_f2_has_its_codes_and_one_decision_is_confirmatory(
+    tmp_path: Path, default_final: dict[str, Any]
+) -> None:
     worse = World(tmp_path / "worse", letters=EIGHT, outcome=_ordnung_late).final()["primary"]
     better = World(tmp_path / "better", letters=EIGHT, outcome=_baselines_late).final()["primary"]
     for baseline in ("llm_only", "llm_rules_text"):
@@ -1350,7 +1369,7 @@ def test_f2_has_its_codes_and_one_decision_is_confirmatory(tmp_path: Path) -> No
         "pair": "ordnung-vs-llm_only",
         "code": "clear",
     }
-    neutral = World(tmp_path / "neutral").final()["primary"]["decisions"]
+    neutral = default_final["primary"]["decisions"]
     assert neutral["f2_vs_llm_only"] == "no_clear_difference"
 
 
@@ -1393,10 +1412,12 @@ def test_the_rules_the_analysis_implements_are_named_in_the_preregistration(worl
 # --------------------------------------------------------------------------------------------------
 
 
-def test_s_conv_accepts_a_disputed_conventions_other_date(world: World) -> None:
+def test_s_conv_accepts_a_disputed_conventions_other_date(
+    world: World, default_final: dict[str, Any]
+) -> None:
     """L4's label rests on a disputed convention whose other reading gives the late date: the model alone's late
     date in read 1 counts as right under S-conv, and the primary does not move."""
-    plain = world.final()
+    plain = default_final
     world.alternatives[("holdout4-L4", 0)] = [LATE_DATE]
     result = world.final()
     assert result["primary"] == plain["primary"]
@@ -1417,12 +1438,14 @@ def test_s_conv_accepts_a_disputed_conventions_other_date(world: World) -> None:
     }
 
 
-def test_the_slots_left_open_are_counted_by_kind_from_the_registered_manifest(world: World) -> None:
+def test_the_slots_left_open_are_counted_by_kind_from_the_registered_manifest(
+    world: World, default_final: dict[str, Any]
+) -> None:
     """A label slot the letter or the law leaves open between two or more dates ("ambiguous") is no scored item,
     and an ambiguous offered date or contract date is scored by no condition: the final analysis counts such slots
     from the registered manifest, deadlines (an item the letter requires), offered dates (an item it offers) and
     contract dates apart, per analysed split and in all. The primary does not move."""
-    plain = world.final()
+    plain = default_final
     zero = {"deadline": 0, "offered": 0, "contract": 0}
     assert plain["labels"] == {"ambiguous_slots": {**zero, "by_split": {"holdout4": zero, "newkinds": zero}}}
     both = {
@@ -1487,8 +1510,10 @@ def test_the_slots_left_open_are_counted_once_per_letter_with_offered_dates_apar
     )
 
 
-def test_the_label_corrected_sensitivity_applies_label_errors_to_all_four_conditions(world: World) -> None:
-    plain = world.final()
+def test_the_label_corrected_sensitivity_applies_label_errors_to_all_four_conditions(
+    world: World, default_final: dict[str, Any]
+) -> None:
+    plain = default_final
     world.deviate(
         "label_error",
         {"split": "holdout4", "items": [{"entry_id": "holdout4-L1", "item": 0, "date": EARLY_DATE}]},
@@ -1503,8 +1528,10 @@ def test_the_label_corrected_sensitivity_applies_label_errors_to_all_four_condit
     assert corrected["conditions"]["llm_rules_text"]["harmful_item_reads"] == 3
 
 
-def test_the_first_attempt_sensitivity_scores_a_timed_out_first_attempt_as_missed(world: World) -> None:
-    plain = world.final()
+def test_the_first_attempt_sensitivity_scores_a_timed_out_first_attempt_as_missed(
+    world: World, default_final: dict[str, Any]
+) -> None:
+    plain = default_final
     world.deviate(
         "retake",
         {
@@ -1525,8 +1552,10 @@ def test_the_first_attempt_sensitivity_scores_a_timed_out_first_attempt_as_misse
     assert first["conditions"]["ordnung"]["harmful_item_reads"] == 3
 
 
-def test_same_day_f3_uses_the_items_whose_reads_share_one_day(tmp_path: Path) -> None:
-    every_read_apart = World(tmp_path / "apart").final()["sensitivities"]["same_day_f3"]
+def test_same_day_f3_uses_the_items_whose_reads_share_one_day(
+    tmp_path: Path, default_final: dict[str, Any]
+) -> None:
+    every_read_apart = default_final["sensitivities"]["same_day_f3"]
     assert every_read_apart["items"] == 0 and every_read_apart["F3_stability"] is None
     world = World(tmp_path / "some")
     for read in (1, 2, 3):
