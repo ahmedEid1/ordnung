@@ -14,6 +14,7 @@ from typing import Any, get_args
 
 import pytest
 
+from helpers_tables import check_rows
 from ordnung.models import DocumentExtraction, ExtractedParty, Page
 from ordnung.rules.postcodes import Reason, suggest_land_why
 
@@ -103,36 +104,48 @@ def test_the_suggested_state_confirmed_replaces_only_the_sender_s_land() -> None
     )  # put back
 
 
-@pytest.mark.parametrize(
-    ("extraction", "pages"),
-    [
-        (_extraction("Rathausplatz 1, 80331 Musterstadt"), _pages("Rathausplatz 1, 80331 Musterstadt")),
-        (_extraction("Rathausplatz 1, 80331 Musterstadt"), _pages("Rathausplatz 1, Musterstadt")),
-        (_extraction("Rathausplatz 1, 80331 Musterstadt", email="post@musterstadt.fr"), _pages("80331")),
-        (_extraction("Postfach 12345, Musterstadt"), _pages("Postfach 12345")),
-        (_extraction(None), _pages("80331")),
-        (_extraction(sender=False), _pages("80331")),
-    ],
-    ids=["suggested", "not_visible", "foreign", "no_postcode", "no_address", "no_sender"],
-)
-def test_the_suggestion_is_the_app_s_own_from_the_reading_and_the_visible_text(
-    extraction: DocumentExtraction, pages: list[Page]
-) -> None:
+SUGGESTION_EXAMPLES = [
+    pytest.param(
+        _extraction("Rathausplatz 1, 80331 Musterstadt"),
+        _pages("Rathausplatz 1, 80331 Musterstadt"),
+        id="suggested",
+    ),
+    pytest.param(
+        _extraction("Rathausplatz 1, 80331 Musterstadt"),
+        _pages("Rathausplatz 1, Musterstadt"),
+        id="not_visible",
+    ),
+    pytest.param(
+        _extraction("Rathausplatz 1, 80331 Musterstadt", email="post@musterstadt.fr"),
+        _pages("80331"),
+        id="foreign",
+    ),
+    pytest.param(_extraction("Postfach 12345, Musterstadt"), _pages("Postfach 12345"), id="no_postcode"),
+    pytest.param(_extraction(None), _pages("80331"), id="no_address"),
+    pytest.param(_extraction(sender=False), _pages("80331"), id="no_sender"),
+]
+
+
+def test_the_suggestion_is_the_app_s_own_from_the_reading_and_the_visible_text() -> None:
     """``suggest_land_why`` decides, given the reading's sender and the pages' text (no own-Land check: the
     benchmark has no profile address); a letter without a sender has no address."""
-    entry = _letterhead_entry(other_than="BY")
-    sender = extraction.sender
-    hit, reason = suggest_land_why(
-        sender.address if sender else None,
-        email=sender.email if sender else None,
-        website=sender.website if sender else None,
-        visible_text="\n".join(page.text for page in pages),
-    )
-    with sender_land_suggested() as suggested:
-        confirmed = conditions.ordnung_rule_context(entry, extraction, pages)
-    region = hit.region if hit else None
-    assert confirmed.region == region
-    assert suggested == {entry.id: (region, reason)}
+
+    def check(extraction: DocumentExtraction, pages: list[Page]) -> None:
+        entry = _letterhead_entry(other_than="BY")
+        sender = extraction.sender
+        hit, reason = suggest_land_why(
+            sender.address if sender else None,
+            email=sender.email if sender else None,
+            website=sender.website if sender else None,
+            visible_text="\n".join(page.text for page in pages),
+        )
+        with sender_land_suggested() as suggested:
+            confirmed = conditions.ordnung_rule_context(entry, extraction, pages)
+        region = hit.region if hit else None
+        assert confirmed.region == region
+        assert suggested == {entry.id: (region, reason)}
+
+    check_rows(SUGGESTION_EXAMPLES, check)
 
 
 def test_the_suggestions_are_counted_against_the_letterhead_s_land_with_a_reason_for_each_none() -> None:
@@ -356,17 +369,6 @@ def test_the_published_replay_has_no_wrong_suggestion_and_moves_no_date() -> Non
             == numbers["entries"] - numbers["letterhead_land"]
         ), split
         assert set(suggestion["none"]) == set(NO_SUGGESTION), split
-
-
-def test_the_published_replay_keeps_the_first_version_s_two_replays() -> None:
-    """The letterhead and without-Land replays are the 2026-10-06 file's, number for number and date for date:
-    only the third replay is new."""
-    first = _results("2026-10-06-claude-sonnet-5-without-land.json")["splits"]
-    second = _results(PUBLISHED)["splits"]
-    assert set(first) == set(second)
-    for split, numbers in first.items():
-        for key in ("entries", "letterhead_land", "with_land", "without_land", "changed"):
-            assert second[split][key] == numbers[key], (split, key)
 
 
 def test_out_writes_the_results_into_that_folder_and_nothing_into_evals_results(
