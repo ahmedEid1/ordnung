@@ -137,6 +137,13 @@ async def test_keep_private_and_ids_that_no_longer_wait(data_dir: Path) -> None:
         assert api.backend.calls == []
         assert (await api.client.get("/api/folder")).json()["waiting"] == 0
 
+        undone = await api.client.post("/api/documents/held/wait", json={"doc_ids": [doc_id]})
+        assert undone.status_code == 200
+        assert [(doc["id"], doc["status"]) for doc in undone.json()["documents"]] == [(doc_id, "held")]
+        assert (await api.client.get("/api/folder")).json()["waiting"] == 1
+        again = (await api.client.post("/api/documents/held/wait", json={"doc_ids": [doc_id]})).json()
+        assert again == {"documents": [], "jobs": [], "skipped": [doc_id]}  # it waits already
+
 
 async def test_answers_need_ids(data_dir: Path) -> None:
     async with api_for(data_dir) as api:
@@ -263,18 +270,6 @@ async def test_when_the_calendar_keeps_everything_the_folder_is_watched_again(
         assert refused.status_code == 409 and "nothing was deleted" in refused.json()["detail"]
         status = await eventually_json(api, "/api/folder", lambda body: body["state"] == "watching")
         assert status["folder"] == str(scans.resolve())
-
-
-async def test_keep_private_can_be_undone(data_dir: Path) -> None:
-    async with api_for(data_dir) as api:
-        doc_id = await waiting_letter(api, INVOICE_LETTER.pdf(), "rechnung.pdf")
-        await api.client.post("/api/documents/held/keep-private", json={"doc_ids": [doc_id]})
-        undone = await api.client.post("/api/documents/held/wait", json={"doc_ids": [doc_id]})
-        assert undone.status_code == 200
-        assert [(doc["id"], doc["status"]) for doc in undone.json()["documents"]] == [(doc_id, "held")]
-        assert (await api.client.get("/api/folder")).json()["waiting"] == 1
-        again = (await api.client.post("/api/documents/held/wait", json={"doc_ids": [doc_id]})).json()
-        assert again == {"documents": [], "jobs": [], "skipped": [doc_id]}  # it waits already
 
 
 async def test_today_says_letters_wait_and_files_them_nowhere_else(data_dir: Path) -> None:
