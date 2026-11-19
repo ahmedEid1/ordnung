@@ -126,7 +126,8 @@ src/ordnung/            (the main modules; the package itself is the complete li
            held.py, watcher.py, attachments.py, own_files.py, expansion.py, normalize.py, ocr.py)
   secretary/ (triggers.py, review.py, brief.py, week.py, waiting.py, scam.py, calls.py, girocode_gate.py,
               addressee.py)
-  assistant/ (mcp_server.py, ask.py, citations.py, support.py, channels.py, rules_tools.py, mcp_install.py)
+  assistant/ (mcp_server.py, ask.py, citations.py, tool_steps.py, support.py, channels.py, rules_tools.py,
+              mcp_install.py)
   drafts/ (compose.py, checks.py, pdf.py, templates.py, template_letters.py, proof.py, sent.py, tracking.py, fonts/)
   calendar/ (ics.py, caldav.py, secrets.py)  trace/ (spans.py, runs.py, view.py, facts.py, compare.py, otel.py)
   notify/desktop.py  autostart.py  shortcut.py  money/iban.py  backup/ (container.py, archive.py, restore.py, reminder.py)
