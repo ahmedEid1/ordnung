@@ -1932,7 +1932,8 @@ def test_settings_stored_by_an_older_version_still_load(store: Store) -> None:
     settings = store.get_settings()
     assert settings.model_dump() == AppSettings().model_dump()
     assert "ocr" not in settings.model_dump() and "capture" not in settings.models.model_dump()
-    # Settings are one JSON row: a folder from before the model field existed loads with Sonnet 5.
+    # Settings are one JSON row: a folder from before the model field existed loads with the default
+    # model (DEFAULT_MODEL).
     old = AppSettings(concurrency=3).model_dump()
     del old["model"]
     store.set_meta("settings", json.dumps(old))
