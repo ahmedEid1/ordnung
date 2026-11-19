@@ -528,8 +528,11 @@ async def test_a_letter_that_waited_before_a_restart_ends_the_wait_once_read(
     assert read is not None and read.status == "processed"
 
 
-async def test_the_worker_looks_for_claude_while_letters_wait(ctx: AppContext, router: Router) -> None:
+async def test_the_worker_looks_for_claude_while_letters_wait(
+    ctx: AppContext, router: Router, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Nobody has to open the app: the running worker asks its Claude check again by itself."""
+    monkeypatch.setattr(IngestWorker, "POLL_SECONDS", 0.05)  # the idle poll is not what is held here
     ctx.worker.claude_recheck_s = 0.0
     router.errors["extract"] = lambda: ClaudeAuthError("Claude Code is not signed in.")
     answers = [False, True]
