@@ -19,6 +19,7 @@ import httpx
 import pytest
 
 import helpers_proof
+from fakes import use_fast_keys
 from fixtures_llm import TAX_LETTER
 from helpers_tables import check_rows
 from ordnung import clock, sync
@@ -260,7 +261,8 @@ async def test_ask_stream_is_never_compressed(data_dir: Path) -> None:
         assert b"data:" in body
 
 
-async def test_file_downloads_are_never_compressed(data_dir: Path) -> None:
+async def test_file_downloads_are_never_compressed(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    use_fast_keys(monkeypatch)  # the backup's key derivation is not what this holds
     async with api_for(data_dir) as api:
         assert (await api.client.put("/api/profile", json=PROFILE)).status_code == 200
         doc_id = await _read_tax_letter(api)
