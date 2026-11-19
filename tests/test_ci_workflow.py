@@ -1,10 +1,9 @@
 """.github/workflows/ci.yml: lint and types run once, coverage on one backend leg, the slow tests (in two jobs that
 share their files) and the replays each in a job of their own, the end-to-end groups beside the backend's legs, a
-push to main never cuts off a
-running run, macOS and Windows must pass, every published benchmark number is replayed with a gate at that
-number, coverage has floors, the weekly run checks the rules' age and the real Claude Code's flags, a real
-Tesseract is installed only where a test needs it (ADR 0024), and each job that runs the pre-registration's tests
-checks out the whole history."""
+push to main never cuts off a running run, macOS and Windows must pass, every published benchmark number is
+replayed with a gate at that number, coverage has floors, the weekly run checks the rules' age and the real Claude
+Code's flags, a real Tesseract is installed only where a test needs it (ADR 0024), and each job that runs the
+pre-registration's tests checks out the whole history."""
 
 from __future__ import annotations
 
@@ -524,22 +523,33 @@ def test_the_slow_tests_run_in_two_jobs_that_share_their_files() -> None:
     other jobs were done in 10 to 11 minutes. So two jobs share them, each on a runner of its own: ``slow-long``
     names the files of the longest slow tests, and ``slow-tests`` runs every other slow test, the files the first
     names left out with an ``--ignore`` each. The two lists are the same files: no slow test is dropped, none runs
-    twice, and a new slow test file runs in ``slow-tests`` without an edit to the workflow (it names no path). The
-    pre-registration's file stays there, where the whole history is checked out. ``slow-long`` keeps its files in
-    the order given (pytest-xdist would sort them by their number of tests), with the kill test's file fourth: of
-    the 4 processes, each takes one file and then a second while it has at most 2 tests waiting, in turn, so the
-    kill test's process, the fourth, gets no file after it."""
+    twice, and a new slow test file runs in ``slow-tests`` without an edit to the workflow (it names no path). So
+    ``slow-long`` names whole files (a node id would leave the file's other slow tests in neither job), and neither
+    job narrows its selection further (``-k``, ``--deselect``, ``--ignore-glob``). The pre-registration's file
+    stays in ``slow-tests``, where the whole history is checked out. ``slow-long`` keeps its files in the order
+    given (pytest-xdist would sort them by their number of tests), with the kill test's file fourth: of the 4
+    processes, each takes one file and then a second while it has at most 2 tests waiting, in turn, so with at
+    most 2 slow tests in each of the first three files and at most 7 files the kill test's process, the fourth,
+    gets no file after it."""
     jobs = _jobs()
     assert [name for name, job in jobs.items() if _slow_runs(job)] == list(SLOW_JOBS)
     (rest,), (longest,) = (_slow_runs(jobs[name]) for name in SLOW_JOBS)
     rest_paths, left_out = _paths(rest)
     named, ignored = _paths(longest)
     assert rest_paths == [] and ignored == []
+    values = {index + 1 for index, arg in enumerate(longest) if arg in _PYTEST_OPTION_VALUES}
+    arguments = [arg for index, arg in enumerate(longest) if index not in values and not arg.startswith("-")]
+    assert arguments == named, "slow-long names whole files"
+    for args in (rest, longest):
+        options = {arg.split("=", 1)[0] for arg in args if arg.startswith("-")}
+        assert not options & {"--deselect", "--ignore-glob"}, options
+        assert not any(arg.startswith("-k") for arg in args), args
     assert len(named) == len(set(named)) and len(left_out) == len(set(left_out))
     assert sorted(named) == sorted(left_out), "the files slow-long names are the files slow-tests leaves out"
     assert all(re.fullmatch(r"tests/test_\w+\.py", name) for name in named), named
     assert _can_run(rest, PREREGISTRATION_TESTS) and not _can_run(longest, PREREGISTRATION_TESTS)
     assert "--no-loadscope-reorder" in longest and named.index(KILL_TEST_FILE) == 3
+    assert len(named) <= 7 and all(len(_slow_tests(ROOT / name)) <= 2 for name in named[:3]), named
     assert (
         ["--dist", "loadfile"] == longest[longest.index("--dist") :][:2] == rest[rest.index("--dist") :][:2]
     )
@@ -558,8 +568,10 @@ def test_each_file_of_the_longest_slow_tests_holds_a_slow_test() -> None:
 def test_both_jobs_of_slow_tests_run_on_the_same_events_and_name_their_slowest_tests() -> None:
     """The two halves of the slow tests run where the one job ran (pull requests, main and by hand, not the weekly
     run) on the same system, Python and pinned libraries, and each names its 15 slowest tests at the end, so a
-    slow runner or a test that grew shows in its log."""
+    slow runner or a test that grew shows in its log. ``slow-tests`` keeps the name it had as the one job: a
+    required check may be registered under that name."""
     jobs = _jobs()
+    assert jobs["slow-tests"]["name"] == "Backend, slow tests (Python 3.12)"
     rest, longest = (jobs[name] for name in SLOW_JOBS)
     assert longest.get("if") == rest.get("if") == "github.event_name != 'schedule'"
     assert longest["runs-on"] == rest["runs-on"] == "ubuntu-24.04"
