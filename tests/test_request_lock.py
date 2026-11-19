@@ -10,8 +10,10 @@ attachments' bytes), so a replay of a request that changed under the same key fa
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import json
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +25,7 @@ if str(ROOT) not in sys.path:
 
 from evals import conditions, harness  # noqa: E402
 from evals import run as eval_run  # noqa: E402
+from evals.records import Entry  # noqa: E402
 
 from helpers_tables import check_rows  # noqa: E402
 from ordnung.assistant.mcp_server import server_config  # noqa: E402
@@ -32,6 +35,24 @@ from ordnung.llm.fake import FakeBackend  # noqa: E402
 from test_evals_run import IDS, Responder, make_config  # noqa: E402
 
 TEXT_LETTER = "dev-tax_assessment-A1"
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _letters_prepared_once(tmp_path_factory: pytest.TempPathFactory) -> Iterator[None]:
+    """Each letter's pages are rendered and read once per module: the runs here hold what the lock records and
+    refuses, not the rendering, and the same bytes make the same requests."""
+    prepared: dict[tuple[str, str, Path], conditions.PreparedDocument] = {}
+    real = eval_run.prepare_document
+
+    def prepare(entry: Entry, dataset_dir: Path, work_dir: Path) -> conditions.PreparedDocument:
+        key = (entry.id, entry.sha256, Path(dataset_dir))
+        if key not in prepared:
+            prepared[key] = real(entry, dataset_dir, tmp_path_factory.mktemp("pages"))
+        return dataclasses.replace(prepared[key], entry=entry)
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(eval_run, "prepare_document", prepare)
+        yield
 
 
 def _request(tmp_path: Path, **overrides: Any) -> LLMRequest:
