@@ -58,6 +58,11 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ### Fixed
 
+- **Setting up sync: the computer's name typed right after pressing Next is kept.** Next first looks at the
+  folder, and when the folder answered, the form moved on to the passphrase field wherever you were by then. If
+  you had gone straight on to the name, the rest of what you typed landed in the passphrase field, and with the
+  name left empty *Bring it here* only showed the name's error. A slow folder (a NAS, a network drive) made it
+  likelier. The form now moves on only if you are still where you pressed Next.
 - **A day left out follows a pinned day.** Judging the answer to a completeness re-ask, the check for a fixed date a
   reading left out, the daily note Ordnung writes without Claude and the check of the days Claude's daily note calls due
   fell back to the computer's date when they were given no day, even where the day is pinned (`ORDNUNG_TODAY`, the

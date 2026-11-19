@@ -234,8 +234,10 @@ export function SyncSetupCard({ status, join = false, onConnected }: { status: S
     e?.preventDefault();
     if (busy || !status.available) return;
     if (!kind || !info) {
-      // first the folder: what it is decides the passphrase fields (then on to the next empty one)
-      look((found) => focusWhenReady(() => document.getElementById(found.kind === "existing" || join ? "sync-passphrase" : name.trim() ? "sync-passphrase" : "sync-name"), 5000, { always: true }));
+      // first the folder: what it is decides the passphrase fields (then on to the next empty one) —
+      // unless the person has gone on to type elsewhere (the name) while it was looked at
+      const from = document.activeElement;
+      look((found) => focusWhenReady(() => document.getElementById(found.kind === "existing" || join ? "sync-passphrase" : name.trim() ? "sync-passphrase" : "sync-name"), 5000, { from }));
       return;
     }
     const problem = syncFormProblem({ folder, name, passphrase, repeat }, kind);

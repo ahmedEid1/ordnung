@@ -492,6 +492,38 @@ describe("Settings → Your computers: setting up", () => {
     expect(name).toHaveValue("desk");
   });
 
+  it("after Next, the name typed while the folder is looked at keeps the keys: focus moves on only from where Next was pressed", async () => {
+    useMockApi();
+    const mocked = globalThis.fetch;
+    let asked = false;
+    let release!: () => void;
+    const held = new Promise<void>((done) => (release = done));
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes("/api/sync/inspect")) {
+        asked = true;
+        await held;
+      }
+      return mocked(input, init);
+    });
+    const user = userEvent.setup();
+    openSection();
+    const card = await screen.findByRole("region", { name: "Use Ordnung on more than one computer" }, WAIT);
+    await user.type(within(card).getByLabelText("Sync folder"), SYNC_EXISTING_FOLDER);
+    await user.click(within(card).getByRole("button", { name: "Next" }));
+    await waitFor(() => expect(asked).toBe(true), WAIT);
+    const name = within(card).getByLabelText("This computer's name");
+    await user.clear(name);
+    await user.type(name, "sam-");
+    release();
+    const passphrase = await within(card).findByLabelText("The sync passphrase", {}, WAIT);
+    // the card looks for the passphrase field once a frame: two frames after it is there, that look is done
+    await act(() => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))));
+    expect(name).toHaveFocus();
+    await user.keyboard("desktop");
+    expect(name).toHaveValue(SYNC_OTHER_NAME);
+    expect(passphrase).toHaveValue("");
+  });
+
   it("warns when Ordnung's data folder itself is inside a synced folder", async () => {
     const { srv } = useMockApi();
     srv.sync.dataFolderSynced = true;
