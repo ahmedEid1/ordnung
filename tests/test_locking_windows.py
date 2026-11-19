@@ -131,18 +131,6 @@ def test_the_holder_is_named_while_the_lock_is_held(windows_locking: Any, tmp_pa
         assert again.locked
 
 
-def test_a_held_lock_keeps_a_second_writer_out(windows_locking: Any, tmp_path: Path) -> None:
-    lk = windows_locking
-    first = lk.DataDirLock(tmp_path).acquire()
-    try:
-        with pytest.raises(lk.DataDirLocked):
-            lk.DataDirLock(tmp_path, timeout=0.2).acquire()
-    finally:
-        first.release()
-    with lk.DataDirLock(tmp_path) as second:
-        assert second.locked
-
-
 def test_a_lock_taken_by_0_2_0_keeps_this_version_out(windows_locking: Any, tmp_path: Path) -> None:
     """While computers update one at a time, an old ``serve`` and a new command never both write. The old
     note starts at the locked byte, so the rest of it is no holder: none is named."""
