@@ -144,8 +144,8 @@ def _letters(ledger: Ledger, party: Party) -> list[Document]:
 
 
 def _flagged(ledger: Ledger, doc: Document) -> bool:
-    """The letter shows the signs of its scam warning (:meth:`~ordnung.secretary.triggers.Ledger.scam_signs`) and
-    the person hasn't checked it (:meth:`~ordnung.secretary.triggers.Ledger.shows_scam_signs`)."""
+    """The letter shows the signs of its scam warning (:meth:`~ordnung.secretary.ledger.Ledger.scam_signs`) and
+    the person hasn't checked it (:meth:`~ordnung.secretary.ledger.Ledger.shows_scam_signs`)."""
     return bool(ledger.scam_signs(doc)) and ledger.shows_scam_signs(doc)
 
 

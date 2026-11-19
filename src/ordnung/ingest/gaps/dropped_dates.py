@@ -1220,17 +1220,17 @@ def deadline_items(
     """The to-dos for fixed dates the letter's visible text sets for the person and the reading left out.
 
     Strict words (as before 2026-10-07, unchanged): a date with its year that a payment's label ("Zahlbar bis", "Fällig
-    am:", "Due date:") or a second-person or imperative verb sets ("Bitte überweisen Sie … bis zum …", "… ist bis zum
-    … zu zahlen", "ist am … fällig", "Bitte reichen Sie … bis zum … ein", "… bis spätestens … vorzulegen", "please pay
-    / submit … by …": :func:`_deadline_kind`) — never in a sentence that names a remedy (the check of
-    :func:`check_item` is for those), a condition, something past or already done, the sender's own act or a direct
-    debit, an appointment, a discount or a preference, a validity, or an option the person may take (:data:`_NOT_OWED`,
-    a request right after a question offering one: :data:`_OPTION_ASKED`); never a period's end (:data:`_PERIOD_END`);
-    never the letter's own date or one before it, nor one already past on ``today`` (the day the letter arrived or is
-    read: never an overdue to-do from code); and only when no dated to-do of the reading falls within
-    :data:`DEADLINE_REACH` days of it, none quotes a sentence with that date (the reading read it), and it is no later
-    occurrence of a recurring to-do of the reading (:func:`_series_days`, :func:`_undated_series`). A payment's label
-    or "fällig" sets none on a letter that collects by direct debit, is paid or a credit note, or pays out
+    am:", "Due date:") or a second-person or imperative verb sets ("Bitte überweisen Sie … bis zum …", "… ist bis zum …
+    zu zahlen", "ist am … fällig", "Bitte reichen Sie … bis zum … ein", "… bis spätestens … vorzulegen", "please pay /
+    submit … by …": :func:`_deadline_kind`) — never in a sentence that names a remedy (the check of
+    :func:`~ordnung.ingest.gaps.reading.check_item` is for those), a condition, something past or already done, the
+    sender's own act or a direct debit, an appointment, a discount or a preference, a validity, or an option the person
+    may take (:data:`_NOT_OWED`, a request right after a question offering one: :data:`_OPTION_ASKED`); never a period's
+    end (:data:`_PERIOD_END`); never the letter's own date or one before it, nor one already past on ``today`` (the day
+    the letter arrived or is read: never an overdue to-do from code); and only when no dated to-do of the reading falls
+    within :data:`DEADLINE_REACH` days of it, none quotes a sentence with that date (the reading read it), and it is no
+    later occurrence of a recurring to-do of the reading (:func:`_series_days`, :func:`_undated_series`). A payment's
+    label or "fällig" sets none on a letter that collects by direct debit, is paid or a credit note, or pays out
     (:func:`_not_owed_by_label`), nor does the full price beside a reading's payment dated by its discount
     (:data:`_FULL_PRICE`); and no payment comes back that a reading's warning doubts (:data:`_PAY_DOUBT`).
 
@@ -1242,8 +1242,8 @@ def deadline_items(
     At most :data:`DEADLINE_MAX`, the strict ones first, the earliest. Each is ``low`` and "Please check"
     (:data:`~ordnung.ingest.verify.DEADLINE_LEFT_OUT`), worded as a cross-check of the letter, its quote the letter's
     own line or sentence, its date the one the letter writes (never moved: ``shift_rule="none"``). None for an almost
-    blank reading (its own to-do sends the person to the letter: :func:`check_item`) or one that calls the letter a
-    scam (a payment it rightly left out is never brought back)."""
+    blank reading (its own to-do sends the person to the letter: :func:`~ordnung.ingest.gaps.reading.check_item`) or
+    one that calls the letter a scam (a payment it rightly left out is never brought back)."""
     if _empty(extraction) or any(_SCAM.search(warning) for warning in extraction.warnings):
         return []
     start = letter_date(extraction, pages, today=today) or _iso(extraction.document_date)

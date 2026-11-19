@@ -22,6 +22,7 @@ MESSAGE_MODULES = [
     SRC / "demo" / "tour.py",
     SRC / "assistant" / "ask.py",
     SRC / "assistant" / "citations.py",
+    SRC / "assistant" / "tool_steps.py",
 ]
 MARKDOWN_CODE = re.compile(r"(?<!`)`[^`\n]+`(?!`)")
 

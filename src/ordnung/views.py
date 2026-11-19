@@ -1,6 +1,6 @@
 """Read models for the API: Today dashboard, timeline and life lanes (SPEC §13, §14).
 
-Pure reads over a :class:`~ordnung.secretary.triggers.Ledger`: nothing here writes to the store.
+Pure reads over a :class:`~ordnung.secretary.ledger.Ledger`: nothing here writes to the store.
 Overdue is computed on read, contract dates are recomputed by the rules engine for ``today`` and
 every list is sorted by stable keys so the same ledger always renders the same way.
 """
@@ -122,7 +122,7 @@ _TYPE_RANK = {"deadline": 0, "payment": 1, "expiry": 2, "appointment": 3, "contr
 #: Letters about the home: the lease, the landlord's letters and statements, running costs and the
 #: broadcasting fee (one per flat). The model sometimes reads them under "residence" — the
 #: residence-permit area — so the read models show them and their to-dos under "home" (contracts:
-#: :func:`~ordnung.secretary.triggers.contract_area`).
+#: :func:`~ordnung.secretary.ledger.contract_area`).
 HOME_LETTER_KINDS = frozenset(
     {"rent_lease", "utility_bill", "landlord_notice", "rent_increase", "operating_costs", "broadcasting_fee"}
 )
@@ -624,7 +624,7 @@ def timeline(store: Store, start: date, end: date, *, today: date | None = None)
     """Everything dated between ``start`` and ``end`` (inclusive): letters by their date, to-dos by
     due date, contract milestones (send-by, must-arrive-by, term end) and sent letters.
 
-    ``past`` is relative to ``today`` (default: the person's today, :func:`ordnung.tick.local_today`).
+    ``past`` is relative to ``today`` (default: the person's today, :func:`ordnung.days.local_today`).
     """
     day = today or local_today(store)
     ledger = Ledger(store, day)

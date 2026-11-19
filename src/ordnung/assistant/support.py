@@ -19,7 +19,7 @@ computed, the person confirmed or the pipeline filed with verified evidence) and
    the line before it when a value stands across the soft break (``21.10.`` / ``2027``). A line that
    starts with a day (``21. Oktober 2026``) is read whole, as the web shows it. A sentence *states*
 
-   - a date: what :func:`~ordnung.ingest.verify.parse_dates` finds; day, month (digits or Roman) and
+   - a date: what :func:`~ordnung.ingest.written_dates.parse_dates` finds; day, month (digits or Roman) and
      year apart by spaces, dots or middle dots (``31 12 2027``, ``31·XII·2027``) or in the other order
      (``2027 12 31``); a month name joined to digit groups by one mark or none (``31-Dec-27``,
      ``Dec-31-2027``, ``31Dec2027``, ``December the 31st, 2027``); eight digits that are a date
@@ -509,7 +509,7 @@ passed as checked)."""
 _APOSTROPHE_YEAR = re.compile(
     r"(?<![\w.,/-])(?P<d>\d{1,2})(?P<s>[./-])(?P<m>\d{1,2})(?P=s)['’](?P<y>\d{2})(?![\w]|[.,]\d)"
 )
-"""``31.12.'27``, ``31/12/'27``: :func:`~ordnung.ingest.verify.parse_dates` reads only ``31.12.``."""
+"""``31.12.'27``, ``31/12/'27``: :func:`~ordnung.ingest.written_dates.parse_dates` reads only ``31.12.``."""
 _ANY_WORD = r"[^\s\d!-/:-@\[-`{-~]+"
 """A word of any script, with its marks: no space, digit or ASCII punctuation."""
 _OTHER_NAMED_DATE = re.compile(
@@ -1145,7 +1145,7 @@ def _cents(value: float) -> int | None:
 
 
 def dates_in(text: str) -> list[DateMention]:
-    """:func:`~ordnung.ingest.verify.parse_dates` plus the dates of :data:`_RUN` (``31-12-2027``,
+    """:func:`~ordnung.ingest.written_dates.parse_dates` plus the dates of :data:`_RUN` (``31-12-2027``,
     ``2027/12/31``, ``31|12|2027``), the named, loose and compact forms (``31-Dec-27``, ``31 12 2027``,
     ``20271231``) and the parts of a month (``Ende Oktober 2026``)."""
     mentions = parse_dates(text)
@@ -1459,11 +1459,11 @@ _DATE_FORMS: tuple[tuple[re.Pattern[str], Callable[[re.Match[str]], list[DateMen
     (_LOOSE_YMD, _ymd_reading),
     (_MARKED_DAY_MONTH, _marked_day_month_reading),
 )
-"""Date forms read besides :func:`~ordnung.ingest.verify.parse_dates` and :data:`_RUN`: a reading is
+"""Date forms read besides :func:`~ordnung.ingest.written_dates.parse_dates` and :data:`_RUN`: a reading is
 ``None`` when the match is no date at all, empty when it is shaped like one but none (*unreadable*)."""
 _FIRST_FORMS = 3
 """The first forms of :data:`_DATE_FORMS` are read before
-:func:`~ordnung.ingest.verify.parse_dates`: it would read only their day and month (``31 Dec 27``,
+:func:`~ordnung.ingest.written_dates.parse_dates`: it would read only their day and month (``31 Dec 27``,
 ``31.12.'27``) or a part of them."""
 
 
@@ -1612,7 +1612,7 @@ def _other_calendar(first: str, second: str, third: str) -> bool:
 
 
 def _year(group: str) -> int:
-    """A year as written: two digits are read as :func:`~ordnung.ingest.verify.parse_dates` does."""
+    """A year as written: two digits are read as :func:`~ordnung.ingest.written_dates.parse_dates` does."""
     year = int(group)
     if len(group) != 2:
         return year
@@ -2197,7 +2197,7 @@ def _german_am(plain: str, end: int) -> bool:
 
 
 def _date_values(plain: str) -> list[Value]:
-    """:func:`~ordnung.ingest.verify.parse_dates` with where each date stands (a slash date may have
+    """:func:`~ordnung.ingest.written_dates.parse_dates` with where each date stands (a slash date may have
     two readings, which stay one value; a time right after a date belongs to it)."""
     groups: list[list[DateMention]] = []
     for mention in parse_dates(plain):

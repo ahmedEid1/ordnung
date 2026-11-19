@@ -2,7 +2,7 @@
  * The visible tool trace of an Ask answer: a past-tense, human chip per tool call
  * ("Searched your letters for "Kündigung"", "Opened “Phone contract”", "Listed your open to-dos").
  * The backend sends these labels; this is the fallback (demo recordings, older messages) and it
- * mirrors `ordnung/assistant/citations.py::tool_label`.
+ * mirrors `ordnung/assistant/tool_steps.py::tool_label`.
  */
 import {
   CalendarDays,
@@ -80,7 +80,7 @@ function statusWord(v: unknown): string {
   }
 }
 
-/** `list_items(kind=…)` in a label, as `citations.py::_ITEM_KINDS` says it. */
+/** `list_items(kind=…)` in a label, as `tool_steps.py::_ITEM_KINDS` says it. */
 const ITEM_KINDS: Record<string, string> = {
   deadline: "deadlines",
   payment: "payments",

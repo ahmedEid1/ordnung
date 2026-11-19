@@ -26,7 +26,7 @@ Policy:
    the wait but shows nothing about arrival, and its day is the day they said so: a registered letter
    still wants its delivery record while Deutsche Post issues it, and the Nachweis says "marked as
    answered". A later letter that is merely in the same thread
-   (:meth:`ordnung.secretary.triggers.Ledger.reply_to`) is only a *possible* answer: it is shown to
+   (:meth:`ordnung.secretary.ledger.Ledger.reply_to`) is only a *possible* answer: it is shown to
    the person as one, never counted as arrival and never written into the Nachweis.
 4. **The timeline lists only what the person recorded**: drafted, sent (channel), tracking number,
    each proof on the day it shows, the confirmed answer. A proof without a day is never put on a

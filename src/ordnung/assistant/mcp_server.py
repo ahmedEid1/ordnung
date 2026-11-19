@@ -980,7 +980,7 @@ def _document_head(doc: Document, letters: LetterText, ledger: Ledger) -> dict[s
     else Claude's mark (:func:`~ordnung.secretary.tax_choice.for_taxes`), and a choice says itself
     (``tax_choice``); Claude's ``tax_note`` is left out of the letter text only when the person took the letter
     off — without a choice the head is as it always was. A letter filed for someone of the household says for
-    whom (``filed_for``, :attr:`~ordnung.secretary.triggers.Ledger.household_filed`)."""
+    whom (``filed_for``, :attr:`~ordnung.secretary.ledger.Ledger.household_filed`)."""
     from ordnung.secretary.tax_choice import for_taxes
 
     choice = ledger.tax_choices.get(doc.id)
@@ -1130,7 +1130,7 @@ def _scam_signs(ledger: Ledger, item: Item) -> list[str]:
 
 def _letter_scam(ledger: Ledger, doc: Document) -> list[str]:
     """The scam signs of a letter that shows them (``scam_warning``; the signs are letter text) — none once the
-    person checked it (*I checked — it's genuine*, :meth:`~ordnung.secretary.triggers.Ledger.shows_scam_signs`):
+    person checked it (*I checked — it's genuine*, :meth:`~ordnung.secretary.ledger.Ledger.shows_scam_signs`):
     its to-dos and money rows then read as any other, and the answer check adds no scam note. Only
     ``get_document`` keeps a checked letter's signs, beside ``scam_checked``."""
     return ledger.scam_reasons(doc) if ledger.shows_scam_signs(doc) else []
@@ -1139,7 +1139,7 @@ def _letter_scam(ledger: Ledger, doc: Document) -> list[str]:
 def paid_at_appointment(ledger: Ledger, item: Item) -> bool:
     """A payment made in person — its words say so (:func:`ordnung.payments.pays_on_site`, as the app's
     views and the web read it: card or cash at the appointment, the desk, a machine), or it has a clock time
-    and its letter sets an appointment that day (:func:`ordnung.secretary.triggers.paid_at_appointment`).
+    and its letter sets an appointment that day (:func:`ordnung.secretary.ledger.paid_at_appointment`).
     Its send-by date is a bank transfer's, so Ask's record leaves it out — the model gave it as the day to
     cancel the appointment by. Letters read now store none for it; this covers those read before."""
     from ordnung.payments import pays_on_site
@@ -1258,7 +1258,7 @@ def _contract_deadlines(
     day is in the range: the ordinary one (``cancel_by``, ``send_by``) and the special one a price increase
     opened (``special_cancellation``; of several letters' windows in the range, the one that closes first,
     :func:`_first_closing`), in one row per contract; a contract whose cancellation was sent or confirmed
-    has none left (:meth:`~ordnung.secretary.triggers.Ledger.decided_contracts`)."""
+    has none left (:meth:`~ordnung.secretary.ledger.Ledger.decided_contracts`)."""
     from ordnung.days import parse_day
     from ordnung.secretary.ledger import is_decision
 
@@ -1303,8 +1303,8 @@ def _first_deadline(row: Mapping[str, Any]) -> tuple[str, str]:
 
 def _price_windows(ledger: Ledger) -> list[PriceIncreaseWindow]:
     """The special cancellation windows price increases opened that Ask's record gives: those the app's
-    Idea shows (:meth:`~ordnung.secretary.triggers.Ledger.price_increase_windows`), but none for a contract
-    whose cancellation was sent or confirmed (:meth:`~ordnung.secretary.triggers.Ledger.decided_contracts`),
+    Idea shows (:meth:`~ordnung.secretary.ledger.Ledger.price_increase_windows`), but none for a contract
+    whose cancellation was sent or confirmed (:meth:`~ordnung.secretary.ledger.Ledger.decided_contracts`),
     as for its ordinary deadline."""
     windows = ledger.price_increase_windows()
     decided = ledger.decided_contracts() if windows else set()

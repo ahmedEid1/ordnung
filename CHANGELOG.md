@@ -19,10 +19,10 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - The backend tests hold one behaviour each. The examples of one rule are now the rows of one table test
   (`check_rows` in `tests/helpers_tables.py`, which names every failing row) instead of one collected test per
   example, and tests and rows that only repeated another were removed. That is now every family: the suite went
-  from 13,788 collected tests to 6,437, with every covered branch still covered and every planted bug the old
-  tests caught still caught. Where tests rebuilt what none of them changes, they build it once: Ask's tests take
-  under half the time (its largest file an eighth), the evaluation's about two thirds. The README's count of
-  backend tests follows.
+  from 13,788 collected tests to about 6,440, with every covered branch still covered and every planted bug the
+  old tests caught still caught. Where tests rebuilt what none of them changes, they build it once: Ask's tests
+  take under half the time (its largest file an eighth), the evaluation's about two thirds. The README's count
+  of backend tests follows.
 - The backend tests are about a tenth faster again. A test's store starts from a copy of one migrated database
   instead of migrating its own, tests that only read the API's schema share one build of it, and the app no
   longer builds every route twice when it starts (`create_app` took a tenth of a second and now takes a few
@@ -35,22 +35,24 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - The web app's unit tests are about a tenth faster: the 47 files that touch no DOM run in node instead of jsdom,
   two tests move the clock instead of waiting seconds, and nine tests that repeated another are gone or merged
   into it, each with a planted bug to show the remaining test still fails for it. One test is new: moving to
-  another Settings section while the settings still load. Vitest runs 2,845 tests where it ran 2,853.
-- The code's layers are tighter, with nothing a person, an API client or a file on disk can observe changing. In
-  the backend, the helpers for the person's day live in a module of their own (`ordnung/days.py`), the replay key
-  beside the request it keys, the postal buffer in the rules engine, the ledger's facts and the Idea helpers in
+  another Settings section while the settings still load. Vitest runs 2,861 tests where it ran 2,853, with the
+  new tests of the fixes below.
+- The code's layers are tighter, with nothing a person, an API client or a file on disk can observe changing. In the
+  backend, the helpers for the person's day live in a module of their own (`ordnung/days.py`), the replay key beside
+  the request it keys, the postal buffer in the rules engine, the ledger's facts and the Idea helpers in
   `secretary/ledger.py` (out of the 2,500-line `secretary/triggers.py`), the check for incomplete readings in a
   package of two files (`ingest/gaps/`, out of one 3,500-line file), the reading of e-mail and HTML in
-  `ingest/email_text.py`, and the evaluation no longer imports from `scripts/`. The reader of written dates is a
-  leaf of its own (`ingest/written_dates.py`), so the rules engine no longer loads the PDF libraries (importing it
-  loads 555 modules where it loaded 761); sync's local timestamp lives in `sync/local.py` and the demo folder's
-  marker in `demo/marker.py`, so the sync engine no longer loads the demo and the assistant (101 of Ordnung's
-  modules where it loaded 114). ISO dates are read by two functions where six copies did. Five circles of modules
-  importing each other are gone, the largest of 13 modules; `tests/test_import_layout.py` names the two that
-  remain and fails when a new one appears, and holds each lower layer free of the heavier one above it. In the web
-  app, shared helpers moved out of feature folders into `lib/` and `components/ui`, an ESLint rule keeps the
-  shared layers from importing a feature, a page or the mocks, and the letter composer's 1,551-line file is four
-  files.
+  `ingest/email_text.py`, and the evaluation no longer imports from `scripts/`. The reader of written dates is a leaf
+  of its own (`ingest/written_dates.py`), so the rules engine no longer loads the PDF libraries (importing it loads
+  555 modules where it loaded 761); sync's local timestamp lives in `sync/local.py` and the demo folder's marker in
+  `demo/marker.py`, so the sync engine no longer loads the demo and the assistant (102 of Ordnung's modules where it
+  loaded 109); the labels of Ask's tool steps live in `assistant/tool_steps.py`, so the citation markers no longer
+  import the answer check (importing them loads 220 modules where it loaded 563). ISO dates are read by two functions
+  where six copies did. Six circles of modules importing each other are gone, the largest of 13 modules;
+  `tests/test_import_layout.py` names the one that remains and fails when a new one appears, and holds each lower
+  layer free of the heavier one above it. In the web app, shared helpers moved out of feature folders into `lib/` and
+  `components/ui`, an ESLint rule keeps the shared layers from importing a feature, a page or the mocks, and the
+  letter composer's 1,551-line file is four files.
 - **The report of the final evaluation says more of what was registered.** Its statistics give the gap each power
   figure was computed at, with the registered caveat; each secondary endpoint (the replay without the sender's
   Land, the checks ablated, selective prediction, cost and latency) shows the final run first and the earlier

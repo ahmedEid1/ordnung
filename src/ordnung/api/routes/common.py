@@ -95,7 +95,7 @@ def with_computation(
 
 def contracts_with_computations(store: Store, contracts: list[Contract], today: date) -> list[Contract]:
     """Contracts with fresh computations (parties looked up once each) and the cancellations marked as
-    sent (:func:`ordnung.secretary.triggers.cancellations_sent`)."""
+    sent (:func:`ordnung.secretary.ledger.cancellations_sent`)."""
     profile = store.get_profile()
     parties: dict[str, Party | None] = {}
     sent = cancellations_sent(store.list_drafts(status="sent"))
@@ -112,7 +112,7 @@ def contracts_with_computations(store: Store, contracts: list[Contract], today: 
 def item_aside(ledger: Ledger, item: Item) -> ItemAside | None:
     """Why an open to-do is not one to act on (the same rules as Today), or ``None``: its letter shows
     scam signs the person hasn't checked (*I checked — it's genuine* takes the aside away,
-    :meth:`~ordnung.secretary.triggers.Ledger.shows_scam_signs`), a payment reminder took over its invoice
+    :meth:`~ordnung.secretary.ledger.Ledger.shows_scam_signs`), a payment reminder took over its invoice
     payment, an e-mail repeats the payment of the bill attached to it, or its date had long passed when the
     letter was read (a one-off; a schedule shows its next date)."""
     if item.status in ("done", "dismissed"):

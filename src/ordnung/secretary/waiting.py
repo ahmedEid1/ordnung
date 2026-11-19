@@ -1,5 +1,5 @@
 """What the person is waiting for: replies to letters they sent, money a letter promised them and
-promises made on the phone — worked out on read from a :class:`~ordnung.secretary.triggers.Ledger`.
+promises made on the phone — worked out on read from a :class:`~ordnung.secretary.ledger.Ledger`.
 
 Policy (ADR 0006, 0007):
 
@@ -8,7 +8,7 @@ Policy (ADR 0006, 0007):
    the acknowledgement — the decision often takes months), expected by the date of its follow-up to-do
    (the person may move it). It is *closed* once the person said it was
    answered (``Draft.answered_on``) or closed or deleted the follow-up, *answered* while
-   :meth:`~ordnung.secretary.triggers.Ledger.reply_to` finds a letter that may answer it (same thread,
+   :meth:`~ordnung.secretary.ledger.Ledger.reply_to` finds a letter that may answer it (same thread,
    or a confirmation of the cancelled contract) — for the person to check —, *overdue* after the
    expected day, else *waiting*. A kind whose own wait is longer than the follow-up (a deposit: the
    landlord may take months to settle it; an authority deciding an objection) waits for an answer on

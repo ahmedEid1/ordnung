@@ -2,7 +2,7 @@
 household (:func:`~ordnung.secretary.household.filed`), what Ask may see of the household
 (:func:`~ordnung.secretary.household.ask_view`), the possessive the Ideas use
 (:func:`~ordnung.secretary.household.possessive`, vectors in ``test_household_vectors.py``) and the two cached
-parts of a :class:`~ordnung.secretary.triggers.Ledger` the household and the repeating dates share."""
+parts of a :class:`~ordnung.secretary.ledger.Ledger` the household and the repeating dates share."""
 
 from __future__ import annotations
 

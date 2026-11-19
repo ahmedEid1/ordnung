@@ -26,7 +26,7 @@ stage, a PDF whose every page has its own text no "transcribe".
   its privacy choice (:mod:`ordnung.ingest.attachments`); what became of each is logged on the e-mail.
 * Letters moved to the trash while they waited in the queue (or while being read) are never sent to
   the model: the job fails with :data:`TRASHED_ERROR`; uploading the file again restores and reads it.
-* "Today" is the person's (profile time zone or the pinned demo date, :func:`ordnung.tick.local_today`),
+* "Today" is the person's (profile time zone or the pinned demo date, :func:`ordnung.days.local_today`),
   never the computer's clock.
 """
 
@@ -996,7 +996,7 @@ async def _finish_private(
 ) -> Document:
     """Private and held documents: keep the text layer (and a scanner's text, search only) for search; no
     model ever sees them. An
-    e-mail is titled by its subject and sender (:func:`~ordnung.ingest.text.email_heading`).
+    e-mail is titled by its subject and sender (:func:`~ordnung.ingest.email_text.email_heading`).
 
     The letter is read again first, so an answer the person gave while this ran stands: one they let
     Claude read is left to its reading job, one they kept private ends private.

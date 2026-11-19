@@ -1,7 +1,7 @@
 """The weekly admin session: about ten minutes, seven steps, one gentle prompt (SPEC §9).
 
 Everything a weekly review needs already exists on five pages (Inbox, Today, the Pay panel, Letters,
-Contracts). This module arranges one snapshot of the ledger (:class:`~ordnung.secretary.triggers.Ledger`,
+Contracts). This module arranges one snapshot of the ledger (:class:`~ordnung.secretary.ledger.Ledger`,
 the agenda of :func:`~ordnung.secretary.brief.build_agenda` and the money summary) as steps. It never
 closes, pays or sends anything (ADR 0006): each row links to where the person acts, and the only things
 it stores are the moments of the last session and of a dismissed prompt (two ``meta`` keys, no table),
@@ -14,7 +14,7 @@ the day it expires; anything else its due date. Once a send-by day has passed bu
 the day is *today* ("act today"), with the due date beside it: the money or letter can still arrive by
 another way. A row is *overdue* only when its due date has passed, counted from that date — for a letter
 you wrote, the day it must arrive by (``must_arrive_by``), else its send-by day. A fee paid in person at
-an appointment (:func:`~ordnung.secretary.triggers.paid_at_appointment`) is paid on the appointment's
+an appointment (:func:`~ordnung.secretary.ledger.paid_at_appointment`) is paid on the appointment's
 day — never a transfer. Money coming in is *expected* on its day, never paid.
 
 **Snoozed to-dos.** Snoozing puts off Today's reminder, not the date: a to-do snoozed until a later day
@@ -33,7 +33,7 @@ how many it left out:
    signs the person hasn't checked, not read yet — being read, waiting for the person's answer from the watched folder, couldn't be
    read, or kept private and never read, which is never "nothing to do"), then newest first.
 2. *Compare with the letter* — to-dos whose date Ordnung could not confirm against the letter
-   (:func:`~ordnung.secretary.triggers.unconfirmed_reason`: not found in the letter, read by AI from a
+   (:func:`~ordnung.secretary.ledger.unconfirmed_reason`: not found in the letter, read by AI from a
    photo, or not matching its sentence — never once the person confirmed it) with a day to compare (a
    due date or a send-by day, :func:`has_day_to_compare`) that has not passed, and letters marked *Please
    check* with no such to-do (an undated to-do's letter included). The person's "The date looks right"
@@ -294,7 +294,7 @@ def when(item: Item, today: date, *, in_person: bool = False) -> When:
 
 
 def is_past_due(item: Item, today: date) -> bool:
-    """:func:`~ordnung.secretary.triggers.is_overdue`, also for a to-do snoozed until a later day: snoozing
+    """:func:`~ordnung.secretary.ledger.is_overdue`, also for a to-do snoozed until a later day: snoozing
     puts off the reminder, not the due date. Money coming in is never overdue: it is not the person's to
     pay."""
     if item.kind == "payment" and item.direction == "in":
@@ -428,7 +428,7 @@ def _count(count: int, one: str, many: str | None = None) -> str:
 
 def pending_items(ledger: Ledger) -> list[Item]:
     """Open or snoozed (however long) to-dos worth acting on — none set aside
-    (:meth:`~ordnung.secretary.triggers.Ledger.is_set_aside`: a letter with scam signs the person hasn't
+    (:meth:`~ordnung.secretary.ledger.Ledger.is_set_aside`: a letter with scam signs the person hasn't
     checked, an invoice a payment reminder took over, an e-mail's payment its attached bill repeats). A snoozed
     to-do is still the person's (module policy, "Snoozed to-dos")."""
     return [

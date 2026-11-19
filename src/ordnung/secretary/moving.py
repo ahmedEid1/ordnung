@@ -7,7 +7,7 @@ profile or sends anything. :func:`moving_ideas` is the ``moved_house`` Idea rule
 checklist, which Today shows as its own card:
 
 - register the new home at the citizens' office within two weeks of moving in (§ 17 Abs. 1 BMG,
-  :data:`~ordnung.secretary.triggers.REGISTRATION_LAW`). The day comes from the rules engine
+  :data:`~ordnung.secretary.ledger.REGISTRATION_LAW`). The day comes from the rules engine
   (:func:`~ordnung.rules.periods.add_period`) and is never moved off a weekend or holiday: whether that
   applies to this duty is not settled, so the checklist shows the earlier, safe day;
 - "Tell X your new address" for each organisation with the old address on record (:func:`who_to_tell`):

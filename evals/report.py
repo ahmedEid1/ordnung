@@ -1848,9 +1848,9 @@ dates are also checked against their quote (`spec_consistency`) and computed by 
 def app_scam_sign(prediction: Mapping[str, Any] | None) -> bool:
     """Whether the app would show the letter of this reading as one with scam signs.
 
-    The app's rule (``_scam_reasons`` in :mod:`ordnung.secretary.triggers`), for a sender with no earlier
+    The app's rule (``_scam_reasons`` in :mod:`ordnung.secretary.ledger`), for a sender with no earlier
     letters — as every benchmark letter is: hidden text, or a warning the app's own test calls a scam sign
-    (:func:`~ordnung.secretary.triggers.is_scam_warning`). A warning that only says an IBAN fails its checksum is
+    (:func:`~ordnung.secretary.ledger.is_scam_warning`). A warning that only says an IBAN fails its checksum is
     none: such an IBAN is almost always a misprint or a misread digit, and the app says so calmly. Looser than the
     benchmark's rule in one way (the app's test has no negations: "no sign of a scam" counts) and stricter in the
     other (the benchmark also counts Ordnung's ``invalid_iban`` finding). A letter without an answer shows only

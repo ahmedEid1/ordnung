@@ -126,7 +126,8 @@ src/ordnung/            (the main modules; the package itself is the complete li
            held.py, watcher.py, attachments.py, own_files.py, expansion.py, normalize.py, ocr.py)
   secretary/ (triggers.py, review.py, brief.py, week.py, waiting.py, scam.py, calls.py, girocode_gate.py,
               addressee.py)
-  assistant/ (mcp_server.py, ask.py, citations.py, support.py, channels.py, rules_tools.py, mcp_install.py)
+  assistant/ (mcp_server.py, ask.py, citations.py, tool_steps.py, support.py, channels.py, rules_tools.py,
+              mcp_install.py)
   drafts/ (compose.py, checks.py, pdf.py, templates.py, template_letters.py, proof.py, sent.py, tracking.py, fonts/)
   calendar/ (ics.py, caldav.py, secrets.py)  trace/ (spans.py, runs.py, view.py, facts.py, compare.py, otel.py)
   notify/desktop.py  autostart.py  shortcut.py  money/iban.py  backup/ (container.py, archive.py, restore.py, reminder.py)
@@ -451,9 +452,9 @@ claude -p --input-format stream-json --output-format stream-json --verbose
   (`model_pinned`) so Settings → Claude connection can say the saved model waits while the variable is set.
 - **Lanes**: interactive (ask, draft, brief, doctor; semaphore 1) and background (transcribe,
   extract, review; semaphore `settings.concurrency`, default 2).
-- **Keys**: `llm_key(req) = f"{purpose}:{prompt_version}:{model}:{sha256(canonical(stable_inputs))}"`
+- **Keys**: `request_key(req)` (`llm/base.py`) = `sha256(f"{purpose}|{prompt_version}|{model}|{cache_key or prompt}")`
   — callers pass `cache_key` = canonical stable inputs (e.g. extract: file sha + page modes + language +
-  region + simulated today). Used for `llm_cache` and fixture paths `<fixtures>/<purpose>/<sha256(key)[:24]>.json`.
+  region + simulated today). Used for `llm_cache` and fixture paths `<fixtures>/<purpose>/<key[:24]>.json`.
 - **Usage log** (`llm_calls`, one row per call): accounting (tokens, cost, latency, cache hit) plus
   the replay/cache key, the prompt template and version, the model the CLI says answered, and — when
   the caller passes its trace step — job, pipeline stage and span; `repair_of` links a repair to the
