@@ -17,7 +17,6 @@ import copy
 import hashlib
 import html
 import json
-import os
 import re
 import shutil
 import subprocess
@@ -48,7 +47,7 @@ from evals.present import (
     views,
 )
 from evals.present.__main__ import main
-from scripts import prereg_hashes, prereg_published
+from scripts import prereg_hashes
 
 import helpers_final as hf
 import test_present_final as builders
@@ -981,24 +980,6 @@ def test_two_final_renders_are_byte_identical_and_hold_no_machine_path(
         ):  # the page of 0.3.0 shows `--results-dir /tmp/holdout` as it was
             for mark in PATH_MARKS:
                 assert mark not in content, (relative, mark)
-
-
-def test_the_page_with_a_final_draws_its_chart_and_passes_its_check(
-    made: Callable[[str], Made], tmp_path: Path
-) -> None:
-    """The report page of a final run holds the final chart with its table and CSV, keeps the pooled chart under
-    6.2, writes the README's final SVGs for PyPI, shows no marker line, and passes its own check."""
-    _, doc, outputs = made("good")
-    out = tmp_path / "site"
-    site.build_site(doc, out)
-    assert site.check_site(out, doc, forbidden=site.dataset_sentences()) == []
-    page = (out / "index.html").read_text(encoding="utf-8")
-    assert '<figure id="final">' in page and (out / "final.csv").is_file()
-    for theme in ("light", "dark"):
-        assert (out / f"eval-final-{theme}.svg").read_text(encoding="utf-8") == outputs[
-            f"docs/assets/eval-final-{theme}.svg"
-        ]
-    assert final.PAGE_BEGIN not in page and final.PAGE_END not in page
 
 
 # --------------------------------------------------------------------------------------------------
@@ -2223,7 +2204,8 @@ def test_the_final_page_holds_every_sentence_chart_gallery_deviations_and_proven
     """The report page of a final run: its tiles, lede and description are the final run's (view templates filled
     with its numbers), every registered page sentence is there as a reader sees it, every final chart has its table
     and CSV (the stability over the reads only with two reads or more), the gallery, the deviations and the
-    provenance follow with sections 16 and 17 in the contents, and the footer names ``presentation.json``'s hash."""
+    provenance follow with sections 16 and 17 in the contents, and the footer names ``presentation.json``'s hash. The
+    page writes the README's final SVGs for PyPI, shows no marker line, and passes its own check."""
 
     def check(name: str) -> None:
         _, doc, outputs = made(name)
@@ -2233,6 +2215,13 @@ def test_the_final_page_holds_every_sentence_chart_gallery_deviations_and_proven
         assert site.check_site(out, doc, forbidden=site.dataset_sentences()) == []
         page = (out / "index.html").read_text(encoding="utf-8")
         seen = _seen(page)
+        assert '<figure id="final">' in page and (out / "final.csv").is_file()
+        # the README's final SVGs, written beside the page for PyPI; no marker line shows
+        for theme in ("light", "dark"):
+            assert (out / f"eval-final-{theme}.svg").read_text(encoding="utf-8") == outputs[
+                f"docs/assets/eval-final-{theme}.svg"
+            ]
+        assert final.PAGE_BEGIN not in page and final.PAGE_END not in page
 
         # every registered page sentence, decided or not, in the page's text
         for i, sentence in enumerate(shown["sentences"]["page"], 1):
@@ -2425,7 +2414,7 @@ def test_the_report_page_s_end_to_end_cases_build_a_synthetic_final_in_their_own
 
 
 # --------------------------------------------------------------------------------------------------
-# End to end, on every synthetic final; the page with no final; the phase-2 record
+# End to end, on every synthetic final; the phase-2 record
 # --------------------------------------------------------------------------------------------------
 
 #: Every synthetic final: the hand-built ones, a real analysis of synthetic reads, and the calibration's (the pooled
@@ -2597,61 +2586,8 @@ def test_no_output_of_a_final_prints_the_analysis_s_decision_codes_or_within_noi
     check_rows(EVERY_FINAL, check)
 
 
-#: The code at the freeze for the pre-registered final evaluation.
-FREEZE = "f2cacf64771a8736262f52a535d29b79032969c9"
-
-
 def _git(*args: str) -> subprocess.CompletedProcess[bytes]:
     return subprocess.run(["git", "-C", str(hf.ROOT), *args], capture_output=True, check=False)
-
-
-@pytest.mark.slow
-def test_the_site_with_no_final_is_the_freeze_s_byte_for_byte(tmp_path: Path) -> None:
-    """With no final run the report page this presenter builds is the freeze's, file for file and byte for byte: the
-    freeze's ``evals/present`` (from git) and this checkout's each build it from their own ``presentation.json``, in
-    folders of their own. Once the final run is published, this checkout's ``presentation.json`` holds it: this
-    checkout's side then builds from the presentation with no final run, rendered from the results as they were
-    before the publish PR. It holds the presenter to the freeze, so it ends with it: once the publish record names
-    the publish commit, the presenter may change (the README's generated block stays: tests/test_preregistration.py)."""
-    if (hf.ROOT / prereg_published.RECORD).is_file():
-        pytest.skip(
-            f"after publication: {prereg_published.RECORD} ends the freeze, and the presenter may change"
-        )
-    if shutil.which("git") is None or _git("cat-file", "-e", f"{FREEZE}^{{commit}}").returncode != 0:
-        pytest.skip("the freeze commit is not in this clone (a shallow checkout)")
-    frozen, here = tmp_path / "freeze", tmp_path / "head"
-    archive = _git("archive", FREEZE, "evals/__init__.py", "evals/present")
-    assert archive.returncode == 0, archive.stderr
-    frozen.mkdir()
-    subprocess.run(["tar", "-x", "-C", str(frozen)], input=archive.stdout, check=True)
-    (here / "evals").mkdir(parents=True)
-    shutil.copyfile(hf.ROOT / "evals" / "__init__.py", here / "evals" / "__init__.py")
-    shutil.copytree(
-        hf.ROOT / "evals" / "present",
-        here / "evals" / "present",
-        ignore=shutil.ignore_patterns("__pycache__"),
-    )
-    if final_published():
-        no_final = model.build(hf.RESULTS)
-        assert no_final["final"] is None
-        (here / build.PRESENTATION).write_text(model.dumps(no_final), encoding="utf-8")
-    environment = {key: value for key, value in os.environ.items() if key != "PYTHONPATH"}
-    built = {}
-    for side in (frozen, here):
-        out = tmp_path / f"site-{side.name}"
-        result = subprocess.run(
-            [sys.executable, "-B", "-m", "evals.present", "--site", str(out)],
-            cwd=side,
-            env=environment,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        assert result.returncode == 0, result.stderr
-        built[side.name] = {path.name: path.read_bytes() for path in sorted(out.iterdir())}
-    assert sorted(built["head"]) == sorted(built["freeze"])
-    for name, content in built["freeze"].items():
-        assert built["head"][name] == content, name
 
 
 def test_the_phase2_record_of_this_tree_checks_clean_and_names_an_edit(tmp_path: Path) -> None:
