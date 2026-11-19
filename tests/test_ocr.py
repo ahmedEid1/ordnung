@@ -12,6 +12,7 @@ missing Tesseract fails it.
 from __future__ import annotations
 
 import io
+import itertools
 import json
 import logging
 import math
@@ -29,6 +30,7 @@ import pytest
 from PIL import Image
 
 from helpers_docs import A4, Line, make_pdf, photo, scanned_pdf, scanned_photo
+from helpers_tables import check_rows
 from ordnung.ingest import ocr
 
 FAKE = Path(__file__).resolve().parent / "fake_tesseract.py"
@@ -132,14 +134,19 @@ def _is_program_in(places: set[str]) -> Callable[[str], bool]:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("value", ["off", "OFF", " Off ", "0", "false", "FALSE", "no", "No"])
-def test_the_off_switch_reads_off_0_false_and_no(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
-    assert ocr.turned_off({"ORDNUNG_OCR": value})
-    assert not ocr.turned_off({"ORDNUNG_OCR": "on"}) and not ocr.turned_off({})
-    monkeypatch.setenv("ORDNUNG_OCR", value)
-    assert ocr.turned_off()
-    monkeypatch.delenv("ORDNUNG_OCR")
-    assert not ocr.turned_off()
+OFF_SWITCH_VALUES = ["off", "OFF", " Off ", "0", "false", "FALSE", "no", "No"]
+
+
+def test_the_off_switch_reads_off_0_false_and_no(monkeypatch: pytest.MonkeyPatch) -> None:
+    def check(value: str) -> None:
+        assert ocr.turned_off({"ORDNUNG_OCR": value})
+        assert not ocr.turned_off({"ORDNUNG_OCR": "on"}) and not ocr.turned_off({})
+        monkeypatch.setenv("ORDNUNG_OCR", value)
+        assert ocr.turned_off()
+        monkeypatch.delenv("ORDNUNG_OCR")
+        assert not ocr.turned_off()
+
+    check_rows(OFF_SWITCH_VALUES, check)
 
 
 def test_recognise_never_starts_tesseract_while_turned_off(report: Path) -> None:
@@ -161,58 +168,58 @@ _WINDOWS_ENV = {
 }
 
 
-@pytest.mark.parametrize(
-    ("platform", "env", "expected"),
-    [
-        (
-            "linux",
-            {"PATH": "/opt/werkzeuge/bin:/usr/bin"},
-            ["/opt/werkzeuge/bin/tesseract", "/usr/bin/tesseract", "/usr/local/bin/tesseract"],
-        ),
-        (
-            "darwin",
-            {"PATH": "/usr/bin:/bin"},  # what a launchd start has: no Homebrew on it
-            [
-                "/usr/bin/tesseract",
-                "/opt/homebrew/bin/tesseract",
-                "/usr/local/bin/tesseract",
-                "/opt/local/bin/tesseract",
-            ],
-        ),
-        (
-            "win32",
-            _WINDOWS_ENV,  # the UB Mannheim installer doesn't put itself on the PATH
-            [
-                r"D:\Werkzeuge\tesseract.exe",
-                r"C:\Program Files\Tesseract-OCR\tesseract.exe",
-                r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
-                r"C:\Users\Ada\AppData\Local\Programs\Tesseract-OCR\tesseract.exe",
-            ],
-        ),
-        (
-            "win32",
-            {key.upper(): value for key, value in _WINDOWS_ENV.items()},  # Windows' names ignore case
-            [
-                r"D:\Werkzeuge\tesseract.exe",
-                r"C:\Program Files\Tesseract-OCR\tesseract.exe",
-                r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
-                r"C:\Users\Ada\AppData\Local\Programs\Tesseract-OCR\tesseract.exe",
-            ],
-        ),
-    ],
-)
-def test_candidates_put_the_path_first_then_each_systems_places(
-    platform: str, env: dict[str, str], expected: list[str]
-) -> None:
-    every = {
-        *expected,
-        "/opt/elsewhere/tesseract",
-        r"C:\Windows\system32\tesseract.cmd",  # Windows runs only tesseract.exe, never a script
-    }
-    assert ocr.candidates(platform, env, is_file=_is_program_in(every)) == expected
-    # only the programs that are there
-    assert ocr.candidates(platform, env, is_file=_is_program_in({expected[-1]})) == [expected[-1]]
-    assert ocr.candidates(platform, env, is_file=_is_program_in(set())) == []
+CANDIDATES_PER_SYSTEM = [
+    (
+        "linux",
+        {"PATH": "/opt/werkzeuge/bin:/usr/bin"},
+        ["/opt/werkzeuge/bin/tesseract", "/usr/bin/tesseract", "/usr/local/bin/tesseract"],
+    ),
+    (
+        "darwin",
+        {"PATH": "/usr/bin:/bin"},  # what a launchd start has: no Homebrew on it
+        [
+            "/usr/bin/tesseract",
+            "/opt/homebrew/bin/tesseract",
+            "/usr/local/bin/tesseract",
+            "/opt/local/bin/tesseract",
+        ],
+    ),
+    (
+        "win32",
+        _WINDOWS_ENV,  # the UB Mannheim installer doesn't put itself on the PATH
+        [
+            r"D:\Werkzeuge\tesseract.exe",
+            r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+            r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+            r"C:\Users\Ada\AppData\Local\Programs\Tesseract-OCR\tesseract.exe",
+        ],
+    ),
+    (
+        "win32",
+        {key.upper(): value for key, value in _WINDOWS_ENV.items()},  # Windows' names ignore case
+        [
+            r"D:\Werkzeuge\tesseract.exe",
+            r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+            r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+            r"C:\Users\Ada\AppData\Local\Programs\Tesseract-OCR\tesseract.exe",
+        ],
+    ),
+]
+
+
+def test_candidates_put_the_path_first_then_each_systems_places() -> None:
+    def check(platform: str, env: dict[str, str], expected: list[str]) -> None:
+        every = {
+            *expected,
+            "/opt/elsewhere/tesseract",
+            r"C:\Windows\system32\tesseract.cmd",  # Windows runs only tesseract.exe, never a script
+        }
+        assert ocr.candidates(platform, env, is_file=_is_program_in(every)) == expected
+        # only the programs that are there
+        assert ocr.candidates(platform, env, is_file=_is_program_in({expected[-1]})) == [expected[-1]]
+        assert ocr.candidates(platform, env, is_file=_is_program_in(set())) == []
+
+    check_rows(CANDIDATES_PER_SYSTEM, check)
 
 
 def test_candidates_read_the_process_environment_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -221,30 +228,31 @@ def test_candidates_read_the_process_environment_by_default(monkeypatch: pytest.
     assert found == ["/opt/eins/tesseract", "/opt/zwei/tesseract"]
 
 
-@pytest.mark.parametrize(
-    ("platform", "path", "kept"),
-    [
-        ("linux", ":.:bin:./bin:../bin:~/bin:/opt/a", ["/opt/a/tesseract"]),
-        ("darwin", "::.:/opt/a:", ["/opt/a/tesseract"]),
-        (
-            "win32",
-            r";.;bin;.\bin;C:rel;\ohne-laufwerk;" + '"C:\\Mit Leerzeichen"' + r";D:\a;\\server\share\tools",
-            [
-                r"C:\Mit Leerzeichen\tesseract.exe",
-                r"D:\a\tesseract.exe",
-                r"\\server\share\tools\tesseract.exe",
-            ],
-        ),
-    ],
-)
-def test_the_path_lookup_skips_the_current_folder_and_relative_entries(
-    platform: str, path: str, kept: list[str]
-) -> None:
+RELATIVE_PATH_ENTRIES = [
+    ("linux", ":.:bin:./bin:../bin:~/bin:/opt/a", ["/opt/a/tesseract"]),
+    ("darwin", "::.:/opt/a:", ["/opt/a/tesseract"]),
+    (
+        "win32",
+        r";.;bin;.\bin;C:rel;\ohne-laufwerk;" + '"C:\\Mit Leerzeichen"' + r";D:\a;\\server\share\tools",
+        [
+            r"C:\Mit Leerzeichen\tesseract.exe",
+            r"D:\a\tesseract.exe",
+            r"\\server\share\tools\tesseract.exe",
+        ],
+    ),
+]
+
+
+def test_the_path_lookup_skips_the_current_folder_and_relative_entries() -> None:
     """An empty, ``.`` or relative entry would run a ``tesseract`` from Ordnung's current folder (Windows'
     ``shutil.which`` even looks there first), so only absolute entries are looked in."""
-    every = ocr.candidates(platform, {"PATH": path}, is_file=lambda candidate: True)
-    fixed = ocr.candidates(platform, {"PATH": ""}, is_file=lambda candidate: True)
-    assert every == kept + fixed
+
+    def check(platform: str, path: str, kept: list[str]) -> None:
+        every = ocr.candidates(platform, {"PATH": path}, is_file=lambda candidate: True)
+        fixed = ocr.candidates(platform, {"PATH": ""}, is_file=lambda candidate: True)
+        assert every == kept + fixed
+
+    check_rows(RELATIVE_PATH_ENTRIES, check)
 
 
 def test_a_tesseract_in_the_current_folder_is_never_a_candidate(
@@ -314,72 +322,78 @@ def _answering(tmp_path: Path, version: str, stream: str = "stdout", langs: str 
     return (PYTHON, str(script))
 
 
-@pytest.mark.parametrize(
-    ("answer", "stream", "version"),
-    [
-        ("tesseract 5.3.4\n leptonica-1.82.0\n", "stdout", (5, 3, 4)),
-        ("tesseract v5.4.0.20240606\n leptonica-1.84.1\n", "stdout", (5, 4, 0)),  # UB Mannheim's build
-        ("tesseract 4.1.1\n leptonica-1.79.0\n", "stdout", (4, 1, 1)),
-        ("tesseract 3.05.02\n leptonica-1.74.4\n", "stderr", (3, 5, 2)),  # 3.x answered on stderr
-        ("Tesseract 5.0\n", "stdout", (5, 0, 0)),
-        ("leptonica-1.82.0\n", "stdout", None),
-        ("Segmentation fault\n", "stderr", None),
-        ("", "stdout", None),
-    ],
-)
-def test_versions_are_read_from_every_known_answer(
-    tmp_path: Path, answer: str, stream: str, version: tuple[int, int, int] | None
-) -> None:
-    launcher = _answering(tmp_path, answer, stream)
-    found = ocr.look("/usr/bin/tesseract", launcher=launcher)
-    assert found.path == "/usr/bin/tesseract" and found.launcher == launcher
-    assert found.version == version
-    # a Tesseract that names no version didn't answer: its languages aren't asked for
-    assert found.languages == (("deu", "eng") if version else ())
+VERSION_ANSWERS = [
+    ("tesseract 5.3.4\n leptonica-1.82.0\n", "stdout", (5, 3, 4)),
+    ("tesseract v5.4.0.20240606\n leptonica-1.84.1\n", "stdout", (5, 4, 0)),  # UB Mannheim's build
+    ("tesseract 4.1.1\n leptonica-1.79.0\n", "stdout", (4, 1, 1)),
+    ("tesseract 3.05.02\n leptonica-1.74.4\n", "stderr", (3, 5, 2)),  # 3.x answered on stderr
+    ("Tesseract 5.0\n", "stdout", (5, 0, 0)),
+    ("leptonica-1.82.0\n", "stdout", None),
+    ("Segmentation fault\n", "stderr", None),
+    ("", "stdout", None),
+]
 
 
-@pytest.mark.parametrize(
-    ("listed", "languages"),
-    [
-        (_LIST, ("deu", "eng")),
-        (
-            'List of available languages in "C:\\Tess\\tessdata/" (4):\neng\nosd\nscript/Latin\ndeu\n',
-            ("deu", "eng"),
-        ),
-        ("List of available languages (2):\r\neng\r\nfra\r\n", ("eng",)),  # Windows line ends; 3.x's head
-        ('List of available languages in "/x/" (1):\nosd\n', ()),
-        ("deu\neng\n", ()),  # no list: nothing to trust
-        ('Error opening data file /x/eng.traineddata\nList of available languages in "/x/" (0):\n', ()),
-        ('List of available languages in "/x/" (2):\n  deu  \nDEU\n', ("deu",)),
-    ],
-)
-def test_languages_are_read_from_the_list_and_kept_in_order(
-    tmp_path: Path, listed: str, languages: tuple[str, ...]
-) -> None:
-    found = ocr.look("/usr/bin/tesseract", launcher=_answering(tmp_path, "tesseract 5.3.4\n", langs=listed))
-    assert found.version == (5, 3, 4) and found.languages == languages
-    assert found.usable is bool(languages)
+def test_versions_are_read_from_every_known_answer(tmp_path: Path) -> None:
+    folders = itertools.count(1)
+
+    def check(answer: str, stream: str, version: tuple[int, int, int] | None) -> None:
+        folder = tmp_path / str(next(folders))
+        folder.mkdir()
+        launcher = _answering(folder, answer, stream)
+        found = ocr.look("/usr/bin/tesseract", launcher=launcher)
+        assert found.path == "/usr/bin/tesseract" and found.launcher == launcher
+        assert found.version == version
+        # a Tesseract that names no version didn't answer: its languages aren't asked for
+        assert found.languages == (("deu", "eng") if version else ())
+
+    check_rows(VERSION_ANSWERS, check)
 
 
-@pytest.mark.parametrize(
-    ("fake_mode", "version", "languages", "usable"),
-    [
-        ("ok", (5, 3, 4), ("deu", "eng"), True),
-        ("old", (4, 0, 0), ("deu", "eng"), False),
-        ("no-deu", (5, 3, 4), ("eng",), True),
-        ("no-langs", (5, 3, 4), (), False),
-    ],
-)
-def test_look_asks_the_fake_like_a_real_tesseract(
-    mode: Callable[[str], None],
-    fake_mode: str,
-    version: tuple[int, int, int],
-    languages: tuple[str, ...],
-    usable: bool,
-) -> None:
-    mode(fake_mode)
-    found = ocr.look(str(FAKE), launcher=(PYTHON, str(FAKE)))
-    assert (found.version, found.languages, found.usable) == (version, languages, usable)
+LANGUAGE_LISTS = [
+    (_LIST, ("deu", "eng")),
+    (
+        'List of available languages in "C:\\Tess\\tessdata/" (4):\neng\nosd\nscript/Latin\ndeu\n',
+        ("deu", "eng"),
+    ),
+    ("List of available languages (2):\r\neng\r\nfra\r\n", ("eng",)),  # Windows line ends; 3.x's head
+    ('List of available languages in "/x/" (1):\nosd\n', ()),
+    ("deu\neng\n", ()),  # no list: nothing to trust
+    ('Error opening data file /x/eng.traineddata\nList of available languages in "/x/" (0):\n', ()),
+    ('List of available languages in "/x/" (2):\n  deu  \nDEU\n', ("deu",)),
+]
+
+
+def test_languages_are_read_from_the_list_and_kept_in_order(tmp_path: Path) -> None:
+    folders = itertools.count(1)
+
+    def check(listed: str, languages: tuple[str, ...]) -> None:
+        folder = tmp_path / str(next(folders))
+        folder.mkdir()
+        found = ocr.look("/usr/bin/tesseract", launcher=_answering(folder, "tesseract 5.3.4\n", langs=listed))
+        assert found.version == (5, 3, 4) and found.languages == languages
+        assert found.usable is bool(languages)
+
+    check_rows(LANGUAGE_LISTS, check)
+
+
+FAKE_MODES = [
+    ("ok", (5, 3, 4), ("deu", "eng"), True),
+    ("old", (4, 0, 0), ("deu", "eng"), False),
+    ("no-deu", (5, 3, 4), ("eng",), True),
+    ("no-langs", (5, 3, 4), (), False),
+]
+
+
+def test_look_asks_the_fake_like_a_real_tesseract(mode: Callable[[str], None]) -> None:
+    def check(
+        fake_mode: str, version: tuple[int, int, int], languages: tuple[str, ...], usable: bool
+    ) -> None:
+        mode(fake_mode)
+        found = ocr.look(str(FAKE), launcher=(PYTHON, str(FAKE)))
+        assert (found.version, found.languages, found.usable) == (version, languages, usable)
+
+    check_rows(FAKE_MODES, check)
 
 
 def test_a_tesseract_that_doesnt_answer_its_version_is_not_usable(
@@ -771,25 +785,21 @@ def test_page_picture_refuses_a_picture_too_large_to_decode_safely(tmp_path: Pat
     assert raised.value.__cause__ is None
 
 
-@pytest.mark.parametrize(
-    ("name", "content", "mime", "page"),
-    [
-        ("one.pdf", "pdf", "application/pdf", 2),
-        ("one.pdf", "pdf", "application/pdf", 0),
-        ("one.pdf", "pdf", "application/pdf", -1),
-        ("photo.jpg", "photo", "image/jpeg", 2),
-        ("photo.jpg", "photo", "image/jpeg", 0),
-        ("broken.pdf", "broken-pdf", "application/pdf", 1),
-        ("broken.jpg", "broken-photo", "image/jpeg", 1),
-        ("missing.pdf", None, "application/pdf", 1),
-        ("missing.jpg", None, "image/jpeg", 1),
-        ("note.txt", "text", "text/plain", 1),
-    ],
-)
-def test_page_picture_of_a_page_that_isnt_there_is_an_error(
-    tmp_path: Path, name: str, content: str | None, mime: str, page: int
-) -> None:
-    original = tmp_path / name
+PAGES_THAT_ARENT_THERE = [
+    ("one.pdf", "pdf", "application/pdf", 2),
+    ("one.pdf", "pdf", "application/pdf", 0),
+    ("one.pdf", "pdf", "application/pdf", -1),
+    ("photo.jpg", "photo", "image/jpeg", 2),
+    ("photo.jpg", "photo", "image/jpeg", 0),
+    ("broken.pdf", "broken-pdf", "application/pdf", 1),
+    ("broken.jpg", "broken-photo", "image/jpeg", 1),
+    ("missing.pdf", None, "application/pdf", 1),
+    ("missing.jpg", None, "image/jpeg", 1),
+    ("note.txt", "text", "text/plain", 1),
+]
+
+
+def test_page_picture_of_a_page_that_isnt_there_is_an_error(tmp_path: Path) -> None:
     data = {
         "pdf": make_pdf([[Line(72, 100, "Eine Seite")]]),
         "photo": photo("JPEG"),
@@ -797,11 +807,19 @@ def test_page_picture_of_a_page_that_isnt_there_is_an_error(
         "broken-photo": b"\xff\xd8\xff\xe0" + b"\x00" * 40,
         "text": b"Nur Text",
     }
-    if content is not None:
-        original.write_bytes(data[content])
-    with pytest.raises(ocr.RecognitionError, match=rf"^page {page} couldn't be drawn$") as raised:
-        ocr.page_picture(original, mime, page)
-    assert raised.value.__cause__ is None
+    folders = itertools.count(1)
+
+    def check(name: str, content: str | None, mime: str, page: int) -> None:
+        folder = tmp_path / str(next(folders))
+        folder.mkdir()
+        original = folder / name
+        if content is not None:
+            original.write_bytes(data[content])
+        with pytest.raises(ocr.RecognitionError, match=rf"^page {page} couldn't be drawn$") as raised:
+            ocr.page_picture(original, mime, page)
+        assert raised.value.__cause__ is None
+
+    check_rows(PAGES_THAT_ARENT_THERE, check)
 
 
 # --------------------------------------------------------------------------------------------------
