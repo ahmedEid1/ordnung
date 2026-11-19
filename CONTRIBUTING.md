@@ -46,12 +46,11 @@ its own: a layout file sets up what it needs and relies on no file before it), o
 Beside them the replayed benchmarks took 11 to 16 with every published number replayed in the same job; that
 replay (`make eval-reproduce`) took 6 of them and has a job of its own now, so each is about 6 to 7 expected. The
 backend's 3.12 leg, which measures the coverage, takes 10 to 12, the slow tests 10, the backend's other legs (Python
-3.11, 3.13 and 3.14) 4 to 5, the lowest versions (and, weekly, the newest) 6, the frontend 5 to 7, and, on `main`
-and weekly, Windows 8 and macOS 4; lint and types, the wheel and the dependency audit take under a minute each.
-Windows and macOS run on `main`, weekly and when the workflow is started by hand, not on a pull request: after a
-change to code or tests that differ per system (`PER_SYSTEM_TESTS` in `tests/test_ci_workflow.py`), start the
-workflow on your branch before merging (Actions → CI → Run workflow). macOS and Windows have to pass too, as Linux
-does. While you work, run the tests near your change, and the fast suite in parallel processes before you push:
+3.11, 3.13 and 3.14) 4 to 5, the lowest versions (and, weekly, the newest) 6, the frontend 5 to 7, Windows 8 and
+macOS 4 (measured on `main`); lint and types, the wheel and the dependency audit take under a minute each.
+Windows and macOS run on every pull request too, with the tests of the code that differs per system
+(`PER_SYSTEM_TESTS` in `tests/test_ci_workflow.py`), and have to pass, as Linux does. While you work, run the
+tests near your change, and the fast suite in parallel processes before you push:
 
 ```bash
 .venv/bin/pytest tests/test_rules_deadlines.py -k weekend     # one file, only the tests whose names match

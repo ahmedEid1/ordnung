@@ -195,7 +195,7 @@ def test_only_a_pull_request_s_older_run_is_cancelled() -> None:
 
 def test_a_failure_on_macos_or_windows_fails_the_run() -> None:
     """The release gate counts a run as passed when its macOS or Windows job failed while that job may fail. It
-    is required now; only the weekly check of Claude Code's flags, which installs whatever Anthropic released
+    is required now, on every pull request as well; only the weekly check of Claude Code's flags, which installs whatever Anthropic released
     last, still shows a failure without failing the run. The guide says so, and neither it nor README says
     otherwise."""
     jobs = _jobs()
@@ -209,7 +209,7 @@ def test_a_failure_on_macos_or_windows_fails_the_run() -> None:
     comment = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8").split("  other-systems:", 1)[1]
     assert "without failing the run" not in comment.split("    steps:", 1)[0]
     guide = " ".join((ROOT / "docs/guide.md").read_text(encoding="utf-8").split())
-    assert "(weekly and on main, required to pass)" in guide
+    assert "(on every pull request, on main and weekly, required to pass)" in guide
     for name in ("README.md", "docs/guide.md"):
         text = " ".join((ROOT / name).read_text(encoding="utf-8").split())
         assert "not yet required to pass" not in text and "Not yet a gate: weekly and on main" not in text, (
@@ -639,8 +639,9 @@ PER_SYSTEM_TESTS = (
 
 def test_the_other_systems_job_runs_the_tests_whose_subject_differs_per_system() -> None:
     """Every job ran on Ubuntu, so the data-folder lock's, the durable writes', sync's
-    computer id and phone access's macOS and Windows code never ran. One job runs their tests there,
-    outside pull requests, and a failure there fails the run; every test it names exists."""
+    computer id and phone access's macOS and Windows code never ran. One job runs their tests there on every
+    event, pull requests and the weekly run among them (it has no ``if``), and a failure there fails the run; every
+    test it names exists."""
     job = _jobs()["other-systems"]
     (step,) = [step for step in job["steps"] if "pytest" in step.get("run", "")]
     named = step["run"].replace("\\\n", " ").split()
@@ -648,7 +649,7 @@ def test_the_other_systems_job_runs_the_tests_whose_subject_differs_per_system()
         assert name in named, name
     assert job["strategy"]["matrix"]["os"] == ["macos-latest", "windows-latest"]
     assert job["runs-on"] == "${{ matrix.os }}"
-    assert job["if"] == "github.event_name != 'pull_request'"
+    assert "if" not in job
     assert "continue-on-error" not in job and all("continue-on-error" not in step for step in job["steps"])
     tests = "\n".join(step.get("run", "") for step in job["steps"] if "pytest" in step.get("run", ""))
     named = re.findall(r"tests/[\w*]+\.py(?:::\w+)?", tests)

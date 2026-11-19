@@ -365,9 +365,9 @@ jobs:
     name: Other systems (${{ matrix.os }}, Python 3.12)
     # the lock, durable writes, sync's computer id, phone access's network lookups, autostart, the
     # app-menu shortcut (the Mac bundle opened, the Windows link read back and opened), the
-    # disk-encryption probe and text in pictures with Tesseract missing differ on macOS and Windows: on
-    # main, by hand and weekly (not on pull requests), and a failure there fails the run
-    if: github.event_name != 'pull_request'
+    # disk-encryption probe and text in pictures with Tesseract missing differ on macOS and Windows: on every
+    # pull request, on main, by hand and weekly, and a failure there fails the run. Windows took 8 minutes and macOS
+    # 3 to 4 (19 Nov 2026), under the longest Linux jobs, so a pull request's run waits no longer for them
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:
