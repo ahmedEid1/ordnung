@@ -3,12 +3,14 @@ in, rollback, refusals, and what each shipped migration adds."""
 
 from __future__ import annotations
 
+import itertools
 import sqlite3
 from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 
+from helpers_tables import check_rows
 from ordnung.db.migrate import (
     LEDGER,
     MIGRATIONS_DIR,
@@ -89,14 +91,6 @@ def test_migrate_is_idempotent(conn: sqlite3.Connection) -> None:
     assert conn.execute("SELECT value FROM meta WHERE key = 'k'").fetchone() == ("v",)
 
 
-def test_shipped_migrations_are_discovered() -> None:
-    found = discover(MIGRATIONS_DIR)
-    versions = [m.version for m in found]
-    assert versions == sorted(set(versions)) and versions[0] == 1
-    assert found[0] == Migration(1, "initial", MIGRATIONS_DIR / "0001_initial.sql")
-    assert latest_version() == found[-1].version
-
-
 def test_refuses_to_run_inside_a_transaction(conn: sqlite3.Connection) -> None:
     conn.execute("BEGIN")
     with pytest.raises(RuntimeError, match="transaction"):
@@ -163,19 +157,23 @@ def test_empty_directory_means_version_zero(tmp_path: Path, conn: sqlite3.Connec
     assert latest_version(empty) == 0
 
 
-@pytest.mark.parametrize(
-    "files",
-    [
-        {"0002_b.sql": ""},  # does not start at 1
-        {"0001_a.sql": "", "0001_b.sql": ""},  # duplicate
-        {"0001_a.sql": "", "0003_c.sql": "", "0003_d.sql": ""},  # duplicate after a gap
-        {"1_a.sql": ""},  # bad name
-        {"0001_Bad-Name.sql": ""},  # bad name
-    ],
-)
-def test_discover_rejects_bad_numbering(tmp_path: Path, files: dict[str, str]) -> None:
-    with pytest.raises(ValueError):
-        discover(_write(tmp_path / "m", files))
+BAD_NUMBERINGS = [
+    {"0002_b.sql": ""},  # does not start at 1
+    {"0001_a.sql": "", "0001_b.sql": ""},  # duplicate
+    {"0001_a.sql": "", "0003_c.sql": "", "0003_d.sql": ""},  # duplicate after a gap
+    {"1_a.sql": ""},  # bad name
+    {"0001_Bad-Name.sql": ""},  # bad name
+]
+
+
+def test_discover_rejects_bad_numbering(tmp_path: Path) -> None:
+    folders = itertools.count()
+
+    def check(files: dict[str, str]) -> None:
+        with pytest.raises(ValueError):
+            discover(_write(tmp_path / f"m{next(folders)}", files))  # a folder of its own per row
+
+    check_rows(BAD_NUMBERINGS, check)
 
 
 def test_a_gap_in_the_numbering_is_allowed(tmp_path: Path, conn: sqlite3.Connection) -> None:
@@ -321,6 +319,10 @@ def test_the_shipped_migrations_are_numbered_without_a_gap() -> None:
     """Numbers may be handed out ahead on branches, but what ships runs 0001, 0002, 0003, … (the
     runner's policy); proof became 0002 and traces 0003 when both were merged."""
     found = discover(MIGRATIONS_DIR)
+    versions = [m.version for m in found]
+    assert versions == sorted(set(versions)) and versions[0] == 1
+    assert found[0] == Migration(1, "initial", MIGRATIONS_DIR / "0001_initial.sql")
+    assert latest_version() == found[-1].version
     assert [m.version for m in found] == list(range(1, len(found) + 1))
     assert [m.name for m in found[:5]] == [
         "initial",
@@ -407,29 +409,36 @@ def test_0002_adds_proofs_call_notes_and_the_tracking_number(conn: sqlite3.Conne
     )
 
 
-@pytest.mark.parametrize(
-    "second",
-    [
-        None,  # nothing between 0001 and it
-        "CREATE TABLE inbox_watch (path TEXT);",  # a new table
-        "ALTER TABLE documents ADD COLUMN held INTEGER NOT NULL DEFAULT 0;",  # a new column elsewhere
-        "ALTER TABLE drafts ADD COLUMN reminder_at TEXT; CREATE INDEX drafts_status ON drafts(status);",
-    ],
-)
-def test_0002_applies_after_any_other_migration(
-    tmp_path: Path, conn: sqlite3.Connection, second: str | None
-) -> None:
+OTHER_MIGRATIONS_BEFORE_0002 = [
+    None,  # nothing between 0001 and it
+    "CREATE TABLE inbox_watch (path TEXT);",  # a new table
+    "ALTER TABLE documents ADD COLUMN held INTEGER NOT NULL DEFAULT 0;",  # a new column elsewhere
+    "ALTER TABLE drafts ADD COLUMN reminder_at TEXT; CREATE INDEX drafts_status ON drafts(status);",
+]
+
+
+def test_0002_applies_after_any_other_migration(tmp_path: Path) -> None:
     """It only adds: numbered after whatever another piece of work adds (or nothing), it still applies."""
-    directory = tmp_path / "m"
-    _shipped(directory, "0001_initial.sql")
-    (directory / "0003_proof_and_calls.sql").write_text(
-        (MIGRATIONS_DIR / PROOF_MIGRATION).read_text(encoding="utf-8"), encoding="utf-8"
-    )
-    if second is not None:
-        (directory / "0002_other.sql").write_text(second, encoding="utf-8")
-    assert migrate(conn, directory=directory) == 3
-    assert "tracking_number" in _columns(conn, "drafts")
-    assert {"proofs", "call_notes"} <= _tables(conn)
+    folders = itertools.count()
+
+    def check(second: str | None) -> None:
+        row = tmp_path / f"row{next(folders)}"  # a folder and a database of its own per row
+        directory = row / "m"
+        _shipped(directory, "0001_initial.sql")
+        (directory / "0003_proof_and_calls.sql").write_text(
+            (MIGRATIONS_DIR / PROOF_MIGRATION).read_text(encoding="utf-8"), encoding="utf-8"
+        )
+        if second is not None:
+            (directory / "0002_other.sql").write_text(second, encoding="utf-8")
+        conn = sqlite3.connect(row / "test.db", isolation_level=None)
+        try:
+            assert migrate(conn, directory=directory) == 3
+            assert "tracking_number" in _columns(conn, "drafts")
+            assert {"proofs", "call_notes"} <= _tables(conn)
+        finally:
+            conn.close()
+
+    check_rows(OTHER_MIGRATIONS_BEFORE_0002, check)
 
 
 def test_0002_keeps_existing_letters_and_deletes_proofs_with_their_letter(
