@@ -145,6 +145,7 @@ def test_a_version_without_its_changelog_section_stops_the_release(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     def check(changelog: str, says: str) -> None:
+        capsys.readouterr()  # drop what an earlier row left, so a row reads only its own error
         with pytest.raises(ReleaseError, match=re.escape(says)):
             section(changelog, "0.3.0")
         folder = Path(tempfile.mkdtemp(dir=tmp_path))  # a checkout of its own per row
@@ -171,6 +172,7 @@ def test_a_tag_on_a_commit_with_changes_its_notes_leave_out_stops_the_release(
     release commit is long past). PyPI could never take that version back."""
 
     def check(above: str, named: str) -> None:
+        capsys.readouterr()  # drop what an earlier row left, so a row reads only its own error
         changelog = "# Changelog\n\n" + above + RELEASED.split("## Unreleased\n\n", 1)[1]
         folder = Path(tempfile.mkdtemp(dir=tmp_path))  # a checkout of its own per row
         root = _root(folder, "0.3.0", changelog)
