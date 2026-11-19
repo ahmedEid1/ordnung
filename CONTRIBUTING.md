@@ -50,10 +50,10 @@ waits for no other job: its legs, one for each group of Playwright's projects, t
 took 23 as one leg, so they run as two (Playwright's `--shard`, each half on a demo of its own: a layout file
 sets up what it needs and relies on no file before it). The backend's 3.12 leg, which measures the coverage,
 takes 7 to 12, the backend's other legs (Python 3.11, 3.13 and 3.14) 4 to 6, the lowest versions (and, weekly,
-the newest) 5 to 7, the replayed benchmarks 5 to 7, the replay of every published number (`make eval-reproduce`)
+the newest) 5 to 8, the replayed benchmarks 5 to 8, the replay of every published number (`make eval-reproduce`)
 6 to 9, the frontend 4 to 7; lint and types, the wheel and the dependency audit take under a minute each. Windows
 (7 to 9 minutes) runs on every pull request too, with the tests of the code that differs per system
-(`PER_SYSTEM_TESTS` in `tests/test_ci_workflow.py`), and has to pass, as Linux does. macOS (4 minutes) runs the
+(`PER_SYSTEM_TESTS` in `tests/test_ci_workflow.py`), and has to pass, as Linux does. macOS (3 to 6 minutes) runs the
 same tests on `main`, weekly and when the workflow is started by hand, not on a pull request: on one pull request
 of three its runner was 10 minutes in coming, and on another none came in 15 minutes, the job was cancelled and
 the run failed with every other job passed. While you work, run the tests near your change, and the fast suite in

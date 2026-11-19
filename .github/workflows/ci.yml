@@ -190,7 +190,7 @@ jobs:
 
   backend-slow:
     name: Benchmarks replayed (Python 3.12)
-    # the replayed benchmarks with their gates, the presenter's check and demo --check: 5 to 6 minutes (19 Nov 2026).
+    # the replayed benchmarks with their gates, the presenter's check and demo --check: 5 to 8 minutes (19 Nov 2026).
     # With every published number replayed as well it took 12 to 13 (18 Nov 2026), that step 6 of them (19 Nov):
     # the step has a job of its own now, "reproduce". The job keeps its id: evals/reproduce.py reads the gates here
     if: github.event_name != 'schedule'
@@ -290,7 +290,7 @@ jobs:
     name: Lowest direct versions (Python 3.11)
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
-    timeout-minutes: 30  # serial: 26 to 30 minutes (18 Nov 2026); a process a file: 6 to 7 (19 Nov 2026)
+    timeout-minutes: 30  # serial: 26 to 30 minutes (18 Nov 2026); a process a file: 5 to 8 (19 Nov 2026)
     steps:
       - uses: actions/checkout@v7
         with:
@@ -498,8 +498,8 @@ jobs:
       - name: Tests of the code that differs per system
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         # one process: these are the tests of locks held across processes, servers on real ports and child
-        # processes killed mid-write, and their parallel runs were proven on Linux only (the whole job 3 to 4 minutes
-        # on macOS, 8 to 9 on Windows, 19 Nov 2026)
+        # processes killed mid-write, and their parallel runs were proven on Linux only (the whole job 3 to 6 minutes
+        # on macOS, 7 to 9 on Windows, 19 Nov 2026)
         run: |
           if [ -d .venv/Scripts ]; then venv=.venv/Scripts; else venv=.venv/bin; fi
           "$venv/python" -m pytest -m "not slow" tests/test_platform_smoke.py \
