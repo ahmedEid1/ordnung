@@ -384,14 +384,23 @@ async def test_a_watcher_outside_the_server_does_not_follow_the_setting(ctx: App
 
 
 async def test_a_missing_folder_is_reported_and_watched_once_it_exists(
-    ctx: AppContext, tmp_path: Path
+    ctx: AppContext, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     later = tmp_path / "not-yet"
     use_folder(ctx, later)
+    checks = 0
+
+    def counted(folder: Path) -> str | None:
+        nonlocal checks
+        checks += 1
+        return folder_problem(folder)
+
+    monkeypatch.setattr(watcher, "folder_problem", counted)
     async with watching(ctx) as folder_watcher:
         await eventually(lambda: folder_watcher.state == "problem")
         assert folder_watcher.problem == MISSING
-        await asyncio.sleep(0.4)  # several retries: reported once
+        retried = checks + 3
+        await eventually(lambda: checks >= retried)  # several retries: reported once
         assert logged(ctx, "folder.problem") == [f"Can't watch your folder: {MISSING}"]
         later.mkdir()
         (later / "brief.pdf").write_bytes(pdf("later"))
