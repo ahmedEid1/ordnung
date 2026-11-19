@@ -12,6 +12,7 @@ from dataclasses import dataclass
 import pytest
 
 from helpers_secretary import TODAY, seed_ledger
+from helpers_tables import check_rows
 from ordnung.db.store import HOUSEHOLD_META_KEY, Store
 from ordnung.ingest.plan import item_context
 from ordnung.secretary import household
@@ -122,18 +123,20 @@ def test_a_letter_in_the_trash_leaves_ask_s_view_and_comes_back_with_it(store: S
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("name", "expected"),
-    [
-        ("Alex Rivera", "Alex Rivera's"),
-        ("Hans", "Hans's"),
-        ("Kim 2", None),
-        ("Alex (Sohn)", None),
-        ("", None),
-    ],
-)
-def test_possessive_adds_s_after_a_letter_only(name: str, expected: str | None) -> None:
-    assert possessive(name) == expected
+POSSESSIVES = [
+    ("Alex Rivera", "Alex Rivera's"),
+    ("Hans", "Hans's"),
+    ("Kim 2", None),
+    ("Alex (Sohn)", None),
+    ("", None),
+]
+
+
+def test_possessive_adds_s_after_a_letter_only() -> None:
+    def check(name: str, expected: str | None) -> None:
+        assert possessive(name) == expected
+
+    check_rows(POSSESSIVES, check)
 
 
 # --------------------------------------------------------------------------------------------------
