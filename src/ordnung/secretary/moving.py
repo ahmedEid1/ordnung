@@ -37,7 +37,7 @@ from typing import Final
 from ordnung.days import parse_day
 from ordnung.models import Contract, Document, Party, Suggestion, SuggestionAction, SuggestionRef
 from ordnung.rules.periods import add_period
-from ordnung.secretary.triggers import REGISTRATION_LAW, IdeaText, Ledger, day_label, letter_day, make_idea
+from ordnung.secretary.ledger import REGISTRATION_LAW, IdeaText, Ledger, day_label, letter_day, make_idea
 
 RULE_ID: Final = "moved_house"
 #: The checklist ends this many days after the move (six months).

@@ -41,7 +41,7 @@ from ordnung.models import (
 from ordnung.rules.calendar_de import REGION_NAMES
 from ordnung.rules.deadlines import LAND_WAIT_REASONS, LandWaitReason, place_region, waits_for_sender_land
 from ordnung.rules.postcodes import Home, PostcodeLand, suggest_land
-from ordnung.secretary.triggers import (
+from ordnung.secretary.ledger import (
     IdeaText,
     Ledger,
     action_day,

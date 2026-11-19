@@ -19,14 +19,6 @@ from ordnung.config import PACKAGE_DIR
 #: fails the test below; a refactor that ends one takes it out of this list.
 ALLOWED_CYCLES: dict[frozenset[str], str] = {
     frozenset(
-        {
-            "ordnung.calendar.ics",
-            "ordnung.secretary.moving",
-            "ordnung.secretary.sender_land",
-            "ordnung.secretary.triggers",
-        }
-    ): "triggers.py holds both the triggers (which call these modules lazily) and the helpers they import from it",
-    frozenset(
         {"ordnung.ingest.gaps", "ordnung.ingest.plan"}
     ): "ingest.plan builds on the reading checks, and gaps imports needs_check from it lazily",
     frozenset(
@@ -44,8 +36,8 @@ ALLOWED_CYCLES: dict[frozenset[str], str] = {
 STAYS_LIGHT = [
     # the person's today and the day parsers: a leaf, below the store, the tick and the triggers
     ("ordnung.days", {"ordnung.db.store", "ordnung.tick", "ordnung.secretary.triggers"}),
-    # the calendar file needs today, not the daily tick or the reading pipeline
-    ("ordnung.calendar.ics", {"ordnung.tick", "ordnung.ingest.pipeline"}),
+    # the calendar file needs today and the ledger's facts, not the daily tick, the reading pipeline or the triggers
+    ("ordnung.calendar.ics", {"ordnung.tick", "ordnung.ingest.pipeline", "ordnung.secretary.triggers"}),
     # recurring dates need the postal buffer from the rules engine, not the trigger engine
     ("ordnung.recurrence", {"ordnung.secretary.triggers"}),
 ]

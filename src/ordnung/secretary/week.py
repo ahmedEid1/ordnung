@@ -112,8 +112,7 @@ from ordnung.payments import is_direct_debit
 from ordnung.rules.send import same_day_channels, send_guidance
 from ordnung.secretary.brief import Agenda, AgendaEntry, is_unread
 from ordnung.secretary.girocode_gate import amount_confirmed
-from ordnung.secretary.tax_choice import for_taxes
-from ordnung.secretary.triggers import (
+from ordnung.secretary.ledger import (
     Ledger,
     action_day,
     day_label,
@@ -122,6 +121,7 @@ from ordnung.secretary.triggers import (
     paid_at_appointment,
     unconfirmed_reason,
 )
+from ordnung.secretary.tax_choice import for_taxes
 from ordnung.secretary.waiting import delivered_on, waiting_for
 
 SESSION_KEY = "weekly_session_at"

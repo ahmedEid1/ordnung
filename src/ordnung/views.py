@@ -42,7 +42,7 @@ from ordnung.rules.deadlines import sending_time_passed
 from ordnung.rules.explain import fmt_date
 from ordnung.secretary import household
 from ordnung.secretary.brief import build_agenda, is_unread
-from ordnung.secretary.triggers import (
+from ordnung.secretary.ledger import (
     Ledger,
     action_day,
     contract_area,

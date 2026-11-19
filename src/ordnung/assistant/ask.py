@@ -78,8 +78,8 @@ from ordnung.llm.prompts import render
 from ordnung.llm.runtime import LLMService
 from ordnung.models import AppSettings, ChatMessage
 from ordnung.secretary.household import ask_view
+from ordnung.secretary.ledger import IDEA_LAWS, Ledger
 from ordnung.secretary.review import catalog_texts, correct_weekdays, language_name, stable_hash
-from ordnung.secretary.triggers import IDEA_LAWS, Ledger
 
 #: Ask keeps to the ledger (ADR 0011): its server is started ``--ledger-only`` and the CLI may call only
 #: Ordnung's ledger tools, by name — never the ledger-free rules tools, which compute a new date from a

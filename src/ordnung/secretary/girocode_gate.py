@@ -98,8 +98,8 @@ from ordnung.models import (
 )
 from ordnung.money.iban import INVALID_IBAN_ADVICE, inspect_iban
 from ordnung.payments import debit_in_sentence, is_direct_debit, payment_reference
+from ordnung.secretary.ledger import Ledger
 from ordnung.secretary.scam import format_iban, normalize_iban, payment_mismatch
-from ordnung.secretary.triggers import Ledger
 
 #: The activity entry that records the transfer details the person compared with the paper letter
 #: (``ref_type="item"``; ``data`` holds the :class:`~ordnung.models.TransferValues` they confirmed).
