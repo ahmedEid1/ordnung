@@ -165,7 +165,7 @@ def _pdf_with_stream(raw: bytes, filters: bytes, extra: bytes = b"") -> bytes:
 
 
 def test_pdf_decompression_bomb_is_rejected_at_upload() -> None:
-    bomb = zlib.compress(b"\0" * (300 * 1024 * 1024), 9)  # ~300 KB that expand to 300 MB
+    bomb = _zeros_deflated(300)  # ~300 KB that expand to 300 MB
     assert len(bomb) < 400_000
     # CPU seconds, not the wall clock: on a busy machine the scheduler's pauses would count
     started = time.process_time()
@@ -173,7 +173,7 @@ def test_pdf_decompression_bomb_is_rejected_at_upload() -> None:
         normalise_upload(_pdf_with_stream(bomb, b"/FlateDecode"), "bomb.pdf")
     assert time.process_time() - started < 10
 
-    nested = zlib.compress(zlib.compress(b"\0" * (300 * 1024 * 1024), 9), 9)
+    nested = _nested_bomb()
     with pytest.raises(IntakeError, match="expands to far more data"):
         normalise_upload(_pdf_with_stream(nested, b"[/FlateDecode /FlateDecode]"), "nested.pdf")
 
@@ -187,8 +187,10 @@ def test_pdf_decompression_bomb_is_rejected_at_upload() -> None:
 ENCRYPTIONS = [EncryptionMethod.RC4, EncryptionMethod.AES_128, EncryptionMethod.AES_256]
 
 
+@functools.cache
 def _zeros_deflated(megabytes: int, wbits: int = zlib.MAX_WBITS) -> bytes:
-    """Deflated zero bytes (zlib format; raw deflate with ``wbits=-15``), compressed piece by piece."""
+    """Deflated zero bytes (zlib format; raw deflate with ``wbits=-15``), compressed piece by piece: the same
+    bytes as ``zlib.compress(bytes(megabytes MB), 9)`` without holding the zeros at once."""
     compressor = zlib.compressobj(9, zlib.DEFLATED, wbits)
     chunk = bytes(1024 * 1024)
     return b"".join(compressor.compress(chunk) for _ in range(megabytes)) + compressor.flush()
