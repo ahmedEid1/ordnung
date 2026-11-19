@@ -9,6 +9,8 @@ assessment, a phone photo of an invoice and a contract confirmation) and check t
 
 from __future__ import annotations
 
+import asyncio
+import copy
 import functools
 import json
 import sys
@@ -1291,16 +1293,40 @@ def test_the_ci_gate_fails_when_a_published_baseline_no_longer_replays(
     check_rows(PUBLISHED_BASELINES, check)
 
 
-async def test_rescored_run_is_shown_next_to_the_held_out_one(tmp_path: Path) -> None:
-    held_out = (
-        (
-            await eval_run.run_benchmark(
-                make_config(tmp_path, write_docs=False, allow_errors=True), backend=Flaky()
-            )
+@pytest.fixture(scope="module")
+def _held_out_runs_once(tmp_path_factory: pytest.TempPathFactory) -> dict[str, dict[str, Any]]:
+    """The published run (with a crashed letter) and a run labelled with each held-out split, made once for the
+    tests that only render them; each test gets its own copy (``held_out_runs``)."""
+    folder = tmp_path_factory.mktemp("held-out-runs")
+
+    async def make(patch: pytest.MonkeyPatch) -> dict[str, dict[str, Any]]:
+        published = await eval_run.run_benchmark(
+            make_config(folder / "test", write_docs=False, allow_errors=True), backend=Flaky()
         )
-        .runs[0]
-        .results
-    )
+        runs = {"published": published.runs[0].results}
+        for split, held_out_run in (
+            ("holdout", _holdout_run),
+            ("holdout2", _holdout2_run),
+            ("holdout3", _holdout3_run),
+        ):
+            runs[split] = (await held_out_run(folder / split, patch, write_docs=False)).runs[0].results
+        assert all(results is not None for results in runs.values())
+        return runs  # type: ignore[return-value]
+
+    with pytest.MonkeyPatch.context() as patch:
+        return asyncio.run(make(patch))
+
+
+@pytest.fixture
+def held_out_runs(_held_out_runs_once: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """A copy of the shared runs: a test that changes its dicts cannot change its neighbours'."""
+    return copy.deepcopy(_held_out_runs_once)
+
+
+async def test_rescored_run_is_shown_next_to_the_held_out_one(
+    tmp_path: Path, held_out_runs: dict[str, dict[str, Any]]
+) -> None:
+    held_out = held_out_runs["published"]
     assert held_out is not None
     rescored = {
         **held_out,
@@ -1324,16 +1350,10 @@ async def test_rescored_run_is_shown_next_to_the_held_out_one(tmp_path: Path) ->
     assert "(commit `abc1234`, a commit from before the history was squashed)" in noted
 
 
-async def test_prompt_now_is_shown_beside_the_published_run(tmp_path: Path) -> None:
-    held_out = (
-        (
-            await eval_run.run_benchmark(
-                make_config(tmp_path, write_docs=False, allow_errors=True), backend=Flaky()
-            )
-        )
-        .runs[0]
-        .results
-    )
+async def test_prompt_now_is_shown_beside_the_published_run(
+    tmp_path: Path, held_out_runs: dict[str, dict[str, Any]]
+) -> None:
+    held_out = held_out_runs["published"]
     assert held_out is not None
     later = {**held_out, "meta": {**held_out["meta"], "date": "2026-09-29", "commit": "def5678"}}
     practice = {
@@ -1443,20 +1463,12 @@ async def test_a_holdout_run_never_rewrites_the_published_page(
 
 
 async def test_a_holdout_note_is_stored_in_its_results_file_and_shown_with_it(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, held_out_runs: dict[str, dict[str, Any]], capsys: pytest.CaptureFixture[str]
 ) -> None:
     """``--holdout-note`` (a second model, an interruption) is kept in the holdout run's file, like
     ``--prompt-note``, and opens the held-out section; it goes with ``--holdout-run``."""
-    published = (
-        (
-            await eval_run.run_benchmark(
-                make_config(tmp_path / "test", write_docs=False, allow_errors=True), backend=Flaky()
-            )
-        )
-        .runs[0]
-        .results
-    )
-    holdout = (await _holdout_run(tmp_path / "holdout", monkeypatch, write_docs=False)).runs[0].results
+    published = held_out_runs["published"]
+    holdout = held_out_runs["holdout"]
     assert published is not None and holdout is not None
     published_path, holdout_path = tmp_path / "published.json", tmp_path / "holdout.json"
     report.write_json(published_path, published)
@@ -1481,18 +1493,10 @@ async def test_a_holdout_note_is_stored_in_its_results_file_and_shown_with_it(
 
 
 async def test_the_holdout_run_is_shown_beside_the_published_run(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, held_out_runs: dict[str, dict[str, Any]]
 ) -> None:
-    published = (
-        (
-            await eval_run.run_benchmark(
-                make_config(tmp_path / "test", write_docs=False, allow_errors=True), backend=Flaky()
-            )
-        )
-        .runs[0]
-        .results
-    )
-    holdout = (await _holdout_run(tmp_path / "holdout", monkeypatch, write_docs=False)).runs[0].results
+    published = held_out_runs["published"]
+    holdout = held_out_runs["holdout"]
     assert published is not None and holdout is not None
     assert "## Held-out run: the holdout split" not in report.render_markdown([published])
     page = report.render_markdown([published], holdout_run=holdout)
@@ -1571,21 +1575,13 @@ async def test_the_holdout_run_is_shown_beside_the_published_run(
 
 
 async def test_a_rescored_holdout_run_is_one_more_row_labelled_not_held_out(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, held_out_runs: dict[str, dict[str, Any]], capsys: pytest.CaptureFixture[str]
 ) -> None:
     """``--holdout-rescored``: the holdout recordings replayed with later code — a check written after the
     held-out run and informed by its late dates — is one more row of the held-out table, labelled re-scored
     and not held-out, with a sentence saying so; the held-out rows stay as recorded."""
-    published = (
-        (
-            await eval_run.run_benchmark(
-                make_config(tmp_path / "test", write_docs=False, allow_errors=True), backend=Flaky()
-            )
-        )
-        .runs[0]
-        .results
-    )
-    recorded = (await _holdout_run(tmp_path / "holdout", monkeypatch, write_docs=False)).runs[0].results
+    published = held_out_runs["published"]
+    recorded = held_out_runs["holdout"]
     assert published is not None and recorded is not None
     # the held-out run gave one letter a late date; the re-scored run (a replay on later code) did not
     entries = json.loads(json.dumps(recorded["entries"]))
@@ -1699,19 +1695,11 @@ async def test_a_replay_never_overwrites_a_live_recording(
 
 
 async def test_the_holdout2_run_is_shown_in_a_section_of_its_own(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, held_out_runs: dict[str, dict[str, Any]], capsys: pytest.CaptureFixture[str]
 ) -> None:
-    published = (
-        (
-            await eval_run.run_benchmark(
-                make_config(tmp_path / "test", write_docs=False, allow_errors=True), backend=Flaky()
-            )
-        )
-        .runs[0]
-        .results
-    )
-    holdout = (await _holdout_run(tmp_path / "holdout", monkeypatch, write_docs=False)).runs[0].results
-    holdout2 = (await _holdout2_run(tmp_path / "holdout2", monkeypatch, write_docs=False)).runs[0].results
+    published = held_out_runs["published"]
+    holdout = held_out_runs["holdout"]
+    holdout2 = held_out_runs["holdout2"]
     assert published is not None and holdout is not None and holdout2 is not None
     heading, holdout_heading = "## Held-out run: the holdout2 split", "## Held-out run: the holdout split"
 
@@ -1871,20 +1859,12 @@ async def _holdout3_run(
 
 
 async def test_the_holdout3_run_is_shown_in_a_section_of_its_own(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, held_out_runs: dict[str, dict[str, Any]], capsys: pytest.CaptureFixture[str]
 ) -> None:
-    published = (
-        (
-            await eval_run.run_benchmark(
-                make_config(tmp_path / "test", write_docs=False, allow_errors=True), backend=Flaky()
-            )
-        )
-        .runs[0]
-        .results
-    )
-    holdout = (await _holdout_run(tmp_path / "holdout", monkeypatch, write_docs=False)).runs[0].results
-    holdout2 = (await _holdout2_run(tmp_path / "holdout2", monkeypatch, write_docs=False)).runs[0].results
-    holdout3 = (await _holdout3_run(tmp_path / "holdout3", monkeypatch, write_docs=False)).runs[0].results
+    published = held_out_runs["published"]
+    holdout = held_out_runs["holdout"]
+    holdout2 = held_out_runs["holdout2"]
+    holdout3 = held_out_runs["holdout3"]
     assert published is not None and holdout is not None and holdout2 is not None and holdout3 is not None
     heading = "## Held-out run: the holdout3 split"
     holdout_heading, holdout2_heading = (
