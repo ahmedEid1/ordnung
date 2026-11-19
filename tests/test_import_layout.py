@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 
+from helpers_tables import check_rows
 from ordnung.config import PACKAGE_DIR
 
 #: Every circle of modules that import each other, with why it is there. A new import that closes a circle
@@ -38,6 +39,14 @@ ALLOWED_CYCLES: dict[frozenset[str], str] = {
         {"ordnung.sync.engine", "ordnung.sync.pull"}
     ): "pull stamps local times with the engine's now_iso, imported lazily",
 }
+
+#: (module, modules that importing it must not load): a low layer stays light.
+STAYS_LIGHT = [
+    # the person's today and the day parsers: a leaf, below the store, the tick and the triggers
+    ("ordnung.days", {"ordnung.db.store", "ordnung.tick", "ordnung.secretary.triggers"}),
+    # the calendar file needs today, not the daily tick or the reading pipeline
+    ("ordnung.calendar.ics", {"ordnung.tick", "ordnung.ingest.pipeline"}),
+]
 
 
 Graph = dict[str, dict[str, str]]
@@ -154,3 +163,27 @@ def test_the_only_import_cycles_are_the_named_ones(graph: Graph) -> None:
     assert len(graph) > 100
     cycles = _cycles(graph)
     assert {tuple(sorted(c)) for c in cycles} == {tuple(sorted(c)) for c in ALLOWED_CYCLES}
+
+
+def _loaded_by(graph: Graph, module: str) -> set[str]:
+    """The package modules ``import module`` loads: its imports at import time, theirs, and so on, with the
+    parent packages of each (importing ``a.b.c`` runs ``a/__init__`` and ``a/b/__init__`` first)."""
+    seen: set[str] = set()
+    todo = [module]
+    while todo:
+        name = todo.pop()
+        if name in seen:
+            continue
+        seen.add(name)
+        parts = name.split(".")
+        todo.extend(".".join(parts[:i]) for i in range(1, len(parts)) if ".".join(parts[:i]) in graph)
+        todo.extend(target for target, kind in graph[name].items() if kind == "top")
+    return seen
+
+
+def test_importing_these_modules_leaves_those_out(graph: Graph) -> None:
+    def check(module: str, never: set[str]) -> None:
+        assert module in graph
+        assert _loaded_by(graph, module) & never == set()
+
+    check_rows(STAYS_LIGHT, check)
