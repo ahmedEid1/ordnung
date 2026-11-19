@@ -637,7 +637,8 @@ PREDICTION_CACHE_MODULES = [
     "recurrence.py",  # a working day or day of the month: graded by plan
     "money/iban.py",  # the invalid-IBAN signal
     "llm/claude_cli.py",  # parses every condition's answer
-    "llm/runtime.py",  # the replay key itself: outside the hand-written list the digest had until 0.4.0
+    "llm/runtime.py",  # the model service (the replay key now lives in llm/base.py)
+    "llm/base.py",  # the replay key itself: outside the hand-written list the digest had until 0.4.0
     "payments.py",
     "brand_new_module.py",  # a file added anywhere under src/ordnung/
 ]
