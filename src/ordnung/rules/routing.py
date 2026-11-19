@@ -162,7 +162,7 @@ from dataclasses import dataclass, replace
 from datetime import date
 from typing import Literal
 
-from ordnung.ingest.verify import parse_dates
+from ordnung.ingest.written_dates import parse_dates
 from ordnung.models import (
     DateNature,
     DateSpec,
