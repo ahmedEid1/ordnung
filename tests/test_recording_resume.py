@@ -9,6 +9,7 @@ by a live run; every live call leaves one line in ``ledger.jsonl``.
 from __future__ import annotations
 
 import dataclasses
+import functools
 import json
 import subprocess
 import sys
@@ -47,6 +48,12 @@ LEDGER_FIELDS = {
     "served_model",
     "cli_version",
 }
+
+
+@functools.cache
+def _responder() -> Responder:
+    """One fake model for the module's runs: its only state is a cache of the letters' texts."""
+    return Responder()
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -116,7 +123,7 @@ class Limited:
         clock: Clock | None = None,
         until: datetime | None = None,
     ) -> None:
-        self.inner = FakeBackend(Responder())
+        self.inner = FakeBackend(_responder())
         self.after = after
         self.reset_at = reset_at
         self.clock = clock
@@ -143,7 +150,7 @@ class Limited:
 
 async def _clean_run(tmp_path: Path) -> int:
     """How many calls a recording of the test letters makes when nothing goes wrong."""
-    fake = FakeBackend(Responder())
+    fake = FakeBackend(_responder())
     clean = make_config(tmp_path / "clean", live=True, write_docs=False, live_backend=fake)
     assert (await eval_run.run_benchmark(clean)).ok
     return len(fake.calls)
@@ -432,7 +439,7 @@ async def test_a_live_run_takes_the_lock_and_frees_it(tmp_path: Path) -> None:
             seen.append(lock.exists())
             return await super().complete(req)
 
-    config = make_config(tmp_path, live=True, write_docs=False, live_backend=Watching(Responder()))
+    config = make_config(tmp_path, live=True, write_docs=False, live_backend=Watching(_responder()))
     assert config.recorder_lock is None  # beside the recordings unless the CLI names the shared one
     assert (await eval_run.run_benchmark(config)).ok
     assert seen and all(seen) and not lock.exists()
@@ -464,7 +471,7 @@ async def test_a_crash_before_the_rename_leaves_no_half_cassette(
 
 
 async def test_a_half_cassette_is_named_on_replay_and_recorded_again_live(tmp_path: Path) -> None:
-    fake = FakeBackend(Responder())
+    fake = FakeBackend(_responder())
     ids = ["dev-tax_assessment-A1"]
     live = make_config(
         tmp_path, ids=ids, conditions=["llm_only"], live=True, write_docs=False, live_backend=fake
@@ -503,7 +510,7 @@ async def test_a_half_cassette_is_named_on_replay_and_recorded_again_live(tmp_pa
 
 
 async def test_every_live_call_writes_one_ledger_line(tmp_path: Path) -> None:
-    fake = FakeBackend(Responder())
+    fake = FakeBackend(_responder())
     config = make_config(tmp_path, live=True, write_docs=False, live_backend=fake)
     assert (await eval_run.run_benchmark(config)).ok
     lines = _ledger(tmp_path)
@@ -517,7 +524,7 @@ async def test_every_live_call_writes_one_ledger_line(tmp_path: Path) -> None:
         sum(call.cost_usd for runs in config_calls(config) for call in runs)
     )
     # a resume replays what is recorded: no call, no line
-    again = make_config(tmp_path, live=True, write_docs=False, live_backend=FakeBackend(Responder()))
+    again = make_config(tmp_path, live=True, write_docs=False, live_backend=FakeBackend(_responder()))
     assert (await eval_run.run_benchmark(again)).ok
     assert len(_ledger(tmp_path)) == len(lines)
 
