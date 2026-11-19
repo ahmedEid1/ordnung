@@ -72,7 +72,6 @@ from evals.records import CONDITIONS
 from evals.run import DATASET_DIR, DEFAULT_MODEL, RECORDED_DIR, RESULTS_DIR, ROOT
 
 INDEX_NAME = "INDEX.json"
-INDEX_PATH = RESULTS_DIR / INDEX_NAME
 INDEX_SCHEMA = "ordnung-eval-index/1"
 CI_PATH = ROOT / ".github" / "workflows" / "ci.yml"
 ABOUT = (
