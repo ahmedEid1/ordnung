@@ -247,6 +247,34 @@ def test_exchange_recipient_keeps_name_only() -> None:
     assert to.display_name == "Sam Rivera" and "EXCHANGELABS" not in str(message["To"])
 
 
+def test_an_smtp_address_held_only_as_the_email_address_is_used() -> None:
+    """A writer that leaves out the SMTP-address property but says the address type is SMTP: the plain
+    e-mail-address property is the address, for the sender and for a recipient."""
+
+    def utf16(text: str) -> bytes:
+        return text.encode("utf-16-le") + b"\0\0"
+
+    recipient = storage(
+        "__recip_version1.0_#00000000",
+        stream("__substg1.0_3001001F", utf16("Sam Rivera")),
+        stream("__substg1.0_3002001F", utf16("smtp ")),
+        stream("__substg1.0_3003001F", utf16("sam@example.org")),
+        stream("__properties_version1.0", b"\0" * 8),
+    )
+    sender = [
+        stream("__substg1.0_0C1E001F", utf16(" SMTP")),
+        stream("__substg1.0_0C1F001F", utf16("rechnung@stadtwerke-musterstadt.example")),
+    ]
+    message = parsed(Message(sender_smtp=None, recipients=[], extra=[*sender, recipient]))
+    (sender_address,) = message["From"].addresses
+    assert (sender_address.display_name, sender_address.addr_spec) == (
+        "Stadtwerke Musterstadt",
+        "rechnung@stadtwerke-musterstadt.example",
+    )
+    (to,) = message["To"].addresses
+    assert (to.display_name, to.addr_spec) == ("Sam Rivera", "sam@example.org")
+
+
 def test_names_with_commas_and_quotes_stay_one_address() -> None:
     message = parsed(
         bill(
@@ -303,7 +331,8 @@ def test_html_in_its_internet_code_page_or_utf8() -> None:
     latin = parsed(Message(body=None, html="<p>Grüße</p>".encode("cp1252"), html_cpid=1252))
     utf8 = parsed(Message(body=None, html="<p>Grüße</p>".encode()))
     as_text = parsed(Message(body=None, html_as_text="<p>Grüße</p>"))
-    for message in (latin, utf8, as_text):
+    no_code_page_not_utf8 = parsed(Message(body=None, html="<p>Grüße</p>".encode("cp1252")))  # Windows-1252
+    for message in (latin, utf8, as_text, no_code_page_not_utf8):
         body = message.get_body()
         assert body is not None and "Grüße" in body.get_content()
 
