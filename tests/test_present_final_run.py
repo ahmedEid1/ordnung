@@ -138,20 +138,27 @@ def no_final_outputs() -> dict[str, str]:
     return rendered
 
 
-#: The calibration's final analysis, the sources it renders with and its reads (``hf.calibration``).
-Calibration = tuple[dict[str, Any], dict[str, Any], list[tuple[str, str]]]
+#: A final analysis, the sources it renders with and its reads (``hf.calibration``, ``hf.realistic``).
+Analysed = tuple[dict[str, Any], dict[str, Any], list[tuple[str, str]]]
 
 
 @pytest.fixture(scope="module")
-def calibration(_results_before_publication: None) -> Callable[[], Calibration]:
+def calibration(_results_before_publication: None) -> Callable[[], Analysed]:
     """The calibration's final analysis (the real ``evals.analysis`` over the earlier held-out splits), run once when
     first asked for: every checkout of it writes its own copy (``hf.final_root``), so the checkouts share it read-only."""
     return functools.cache(hf.calibration)
 
 
 @pytest.fixture(scope="module")
+def realistic(_results_before_publication: None) -> Analysed:
+    """``hf.realistic()``, analysed once: the real final analysis of synthetic reads, its sources and its reads, which
+    the tests that write a checkout of it share read-only (``hf.final_root`` copies the analysis)."""
+    return hf.realistic()
+
+
+@pytest.fixture(scope="module")
 def made(
-    tmp_path_factory: pytest.TempPathFactory, calibration: Callable[[], Calibration]
+    tmp_path_factory: pytest.TempPathFactory, calibration: Callable[[], Analysed]
 ) -> Callable[[str], Made]:
     """A checkout per final, built once: its root, ``model.build`` of it and every output it renders."""
     cache: dict[str, Made] = {}
@@ -435,13 +442,15 @@ def test_a_final_in_pending_is_never_read(tmp_path: Path) -> None:
     assert build.check(root) == [FINAL_SVGS[0]]
 
 
-def test_the_results_before_publication_leave_out_the_final_run_s_files_only(tmp_path: Path) -> None:
+def test_the_results_before_publication_leave_out_the_final_run_s_files_only(
+    tmp_path: Path, realistic: Analysed
+) -> None:
     """Once the final run is published, the presenter's tests read the results folder as it was before the publish
     PR (``tests/helpers_publication.py``): every results file but the final run's own. Shown on a checkout with a
     synthetic final run beside the results with none: its analysis, its reads, the files it names (the held-out Ask
     set's file, the stress test, its end-to-end replay), a re-scored read and a replay without the sender's Land of a
     final split are left out, and nothing else."""
-    doc, src, reads = hf.realistic()
+    doc, src, reads = realistic
     rescored = json.loads(reads[0][1])
     rescored["meta"]["backend"] = "replay"
     without_land = next(
@@ -600,10 +609,10 @@ def test_every_final_companion_file_has_one_kind_and_role(tmp_path: Path) -> Non
     assert text.ask_line(built) == text.ask_line(pooled)
 
 
-def test_a_read_the_final_analysis_does_not_read_is_refused(tmp_path: Path) -> None:
+def test_a_read_the_final_analysis_does_not_read_is_refused(tmp_path: Path, realistic: Analysed) -> None:
     """A read of a final split is shown only through the analysis that reads it: one more read beside it, or an
     analysis that reads a file that is not there, is refused by name."""
-    doc, src, reads = hf.realistic()
+    doc, src, reads = realistic
     more = ("2027-01-04-claude-sonnet-5-holdout4-r4.json", hf._text(hf.synthetic_read("holdout4", 4, 12)))
     prereg = hf.complete_prereg(builders.prereg())
     root = hf.final_root(tmp_path / "a", doc, sources=src, prereg=prereg, reads=[*reads, more])
@@ -618,8 +627,8 @@ def test_a_read_the_final_analysis_does_not_read_is_refused(tmp_path: Path) -> N
         model.build(root / "evals" / "results")
 
 
-def test_an_input_whose_bytes_changed_is_refused_for_the_final(tmp_path: Path) -> None:
-    doc, src, reads = hf.realistic()
+def test_an_input_whose_bytes_changed_is_refused_for_the_final(tmp_path: Path, realistic: Analysed) -> None:
+    doc, src, reads = realistic
     name, body = reads[1]
     changed = [*reads[:1], (name, body + "\n"), *reads[2:]]
     root = hf.final_root(
@@ -888,11 +897,11 @@ def test_the_owner_sentence_is_pending_until_the_files_say_done(tmp_path: Path) 
     check_rows(OWNER_STATES, check)
 
 
-def test_a_rescored_final_split_file_is_a_history_row_only(tmp_path: Path) -> None:
+def test_a_rescored_final_split_file_is_a_history_row_only(tmp_path: Path, realistic: Analysed) -> None:
     """A read of a final split replayed with later code (a fix after the run) is a re-scored row of the history page,
     not held out; the final run, its order and its report stay as they are (but for the provenance's hash of
     presentation.json, which lists every results file)."""
-    doc, src, reads = hf.realistic()
+    doc, src, reads = realistic
     prereg = hf.complete_prereg(builders.prereg())
     rescored = json.loads(reads[0][1])
     rescored["meta"]["backend"] = "replay"
@@ -1735,12 +1744,14 @@ def _recorded(doc: dict[str, Any]) -> set[str]:
     return values
 
 
-def test_every_provenance_value_is_a_recorded_field(made: Callable[[str], Made], tmp_path: Path) -> None:
+def test_every_provenance_value_is_a_recorded_field(
+    made: Callable[[str], Made], tmp_path: Path, realistic: Analysed
+) -> None:
     """Section 17's values are recorded fields only (the pre-registration and its hash, the freeze, the commit that
     added the letters, the days, the data's and the blind writing's hashes, the final analysis and its reads, the
     named files, the presenter's posted tree when there is one) and presentation.json's hash as rendered; no hash is
     typed into a template."""
-    doc, src, reads = hf.realistic()
+    doc, src, reads = realistic
     record = {"head": "c" * 40, "tree_sha256": "d" * 64}
     root = hf.final_root(
         tmp_path,
@@ -2440,7 +2451,7 @@ EVERY_FINAL = [*hf.SCENARIO_IDS, "realistic", "calibration"]
 README_MAX_LINES, PUBLISH_ROOM = 250, 2
 
 
-def _final_root(tmp_path: Path, name: str, calibration: Callable[[], Calibration]) -> Path:
+def _final_root(tmp_path: Path, name: str, calibration: Callable[[], Analysed]) -> Path:
     if name == "realistic":
         return hf.realistic_root(tmp_path)
     if name == "calibration":  # hf.calibration_root, with the analysis run once
@@ -2452,7 +2463,7 @@ def _final_root(tmp_path: Path, name: str, calibration: Callable[[], Calibration
 
 
 def test_every_synthetic_final_renders_through_the_whole_presenter(
-    tmp_path: Path, calibration: Callable[[], Calibration]
+    tmp_path: Path, calibration: Callable[[], Analysed]
 ) -> None:
     """Each synthetic final goes through the presenter as the publish PR's will: ``--write``, then ``--check`` finds
     nothing; the README's block is the registered layout of the registered README sentences and the report's final
