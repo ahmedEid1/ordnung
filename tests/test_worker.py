@@ -20,6 +20,7 @@ import pytest
 
 from fixtures_llm import INVOICE_LETTER, TAX_LETTER, TODAY, Router, fake_backend, record_events
 from helpers_docs import scanned_pdf
+from helpers_tables import check_rows
 from ordnung import clock
 from ordnung.api import deps
 from ordnung.api.app import create_app
@@ -61,22 +62,24 @@ def ctx(data_dir: Path, router: Router) -> Iterator[AppContext]:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("hint", "expected"),
-    [
-        ("2026-09-25T15:00:00+00:00", datetime(2026, 9, 25, 15, 0, tzinfo=UTC)),
-        ("2026-09-25T15:00:00Z", datetime(2026, 9, 25, 15, 0, tzinfo=UTC)),
-        ("1790341200", datetime.fromtimestamp(1790341200, UTC)),
-        ("2 hours", NOW + timedelta(hours=2)),
-        ("30 minutes", NOW + timedelta(minutes=30)),
-        ("3pm (UTC)", datetime(2026, 9, 25, 15, 0, tzinfo=UTC)),
-        ("11am (UTC)", datetime(2026, 9, 26, 11, 0, tzinfo=UTC)),  # already past today → tomorrow
-        ("soon", None),
-        (None, None),
-    ],
-)
-def test_parse_reset(hint: str | None, expected: datetime | None) -> None:
-    assert parse_reset(hint, NOW) == expected
+PARSE_RESET_EXAMPLES = [
+    ("2026-09-25T15:00:00+00:00", datetime(2026, 9, 25, 15, 0, tzinfo=UTC)),
+    ("2026-09-25T15:00:00Z", datetime(2026, 9, 25, 15, 0, tzinfo=UTC)),
+    ("1790341200", datetime.fromtimestamp(1790341200, UTC)),
+    ("2 hours", NOW + timedelta(hours=2)),
+    ("30 minutes", NOW + timedelta(minutes=30)),
+    ("3pm (UTC)", datetime(2026, 9, 25, 15, 0, tzinfo=UTC)),
+    ("11am (UTC)", datetime(2026, 9, 26, 11, 0, tzinfo=UTC)),  # already past today → tomorrow
+    ("soon", None),
+    (None, None),
+]
+
+
+def test_parse_reset() -> None:
+    def check(hint: str | None, expected: datetime | None) -> None:
+        assert parse_reset(hint, NOW) == expected
+
+    check_rows(PARSE_RESET_EXAMPLES, check)
 
 
 def test_pause_until_falls_back_to_fifteen_minutes() -> None:
@@ -525,8 +528,11 @@ async def test_a_letter_that_waited_before_a_restart_ends_the_wait_once_read(
     assert read is not None and read.status == "processed"
 
 
-async def test_the_worker_looks_for_claude_while_letters_wait(ctx: AppContext, router: Router) -> None:
+async def test_the_worker_looks_for_claude_while_letters_wait(
+    ctx: AppContext, router: Router, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Nobody has to open the app: the running worker asks its Claude check again by itself."""
+    monkeypatch.setattr(IngestWorker, "POLL_SECONDS", 0.05)  # the idle poll is not what is held here
     ctx.worker.claude_recheck_s = 0.0
     router.errors["extract"] = lambda: ClaudeAuthError("Claude Code is not signed in.")
     answers = [False, True]

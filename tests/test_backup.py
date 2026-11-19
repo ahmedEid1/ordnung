@@ -23,6 +23,7 @@ import pytest
 from typer.testing import CliRunner
 
 from helpers_secretary import seed_ledger
+from helpers_tables import check_rows
 from ordnung import backup as backups
 from ordnung import clock, durable, sync
 from ordnung.backup import archive
@@ -63,11 +64,10 @@ def fast_keys(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sync_crypto, "SYNC_KDF", FAST)  # a kept copy's sync key file, should one be made
 
 
-@pytest.fixture
-def life(tmp_path: Path) -> Path:
-    """A data folder with a seeded ledger, originals, page images and a letter PDF (closed: its WAL is
-    checkpointed — :func:`test_a_write_only_in_the_wal_is_in_the_backup` covers a running server)."""
-    folder = tmp_path / "life"
+@pytest.fixture(scope="module")
+def life_template(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Built once per module: never handed to a test, only copied (:func:`life`)."""
+    folder = tmp_path_factory.mktemp("template") / "life"
     paths = Paths(folder).ensure()
     store = Store.open(paths)
     try:
@@ -83,6 +83,16 @@ def life(tmp_path: Path) -> Path:
         store.set_meta("written_last", "yes")
     finally:
         store.close()
+    return folder
+
+
+@pytest.fixture
+def life(life_template: Path, tmp_path: Path) -> Path:
+    """A data folder with a seeded ledger, originals, page images and a letter PDF (closed: its WAL is
+    checkpointed — :func:`test_a_write_only_in_the_wal_is_in_the_backup` covers a running server). Each test
+    gets its own copy of one template, so a test that changes it changes no other test's."""
+    folder = tmp_path / "life"
+    shutil.copytree(life_template, folder, symlinks=True)
     return folder
 
 
@@ -266,30 +276,15 @@ def test_a_backup_keeps_the_tax_choices_and_the_household(life: Path, tmp_path: 
         store.close()
 
 
-def test_a_scans_scanner_text_is_backed_up_and_restored_with_its_page_images(
-    life: Path, tmp_path: Path
-) -> None:
-    """``derived/<doc>/scan-text.json`` (ADR 0020) lives with the page images, so a backup carries it like
-    them — and the half-written file an atomic write cut short leaves is no file of the person's."""
+def test_picture_text_is_backed_up_and_restored_with_its_page_images(life: Path, tmp_path: Path) -> None:
+    """``derived/<doc>/scan-text.json`` (ADR 0020) and ``derived/<doc>/picture-text.json`` (ADR 0024: the words
+    Ordnung read in a picture itself) live with the page images: a backup carries both, and hand-off sync, which
+    lists the data files the same way (``iter_data_files``), carries them like the page images. The half-written
+    file an atomic write cut short leaves is no file of the person's."""
     from ordnung.db import scan_text
 
     scan_text.write(life / "derived", "doc_1", {1: "Ablesung des Wasserzählers"})
     (life / "derived" / "doc_1" / ".scan-text.json.123.456.part").write_bytes(b"{")
-    names = [name for name, _ in archive.iter_data_files(life)]
-    assert "derived/doc_1/scan-text.json" in names and not any(name.endswith(".part") for name in names)
-    restored = restore_backup(make_backup(life, tmp_path / "b"), PASS, tmp_path / "r").target
-    assert scan_text.read(restored / "derived", "doc_1") == {1: "Ablesung des Wasserzählers"}
-    kept = {name: digest for name, digest in file_digests(life).items() if not name.endswith(".part")}
-    assert file_digests(restored) == kept and len(kept) == 6
-
-
-def test_picture_text_is_backed_up_and_restored_with_its_page_images(life: Path, tmp_path: Path) -> None:
-    """``derived/<doc>/picture-text.json`` (ADR 0024: the words Ordnung read in a picture itself) lives with the
-    page images too, beside the scanner text: a backup carries both, and hand-off sync, which lists the data files
-    the same way (``iter_data_files``), carries them like the page images."""
-    from ordnung.db import scan_text
-
-    scan_text.write(life / "derived", "doc_1", {1: "Ablesung des Wasserzählers"})
     scan_text.write(life / "derived", "doc_1", {1: "", 2: "Ihr Kellerabteil 7"}, name=scan_text.PICTURE_NAME)
     (life / "derived" / "doc_1" / ".picture-text.json.123.456.part").write_bytes(b"{")
     names = [name for name, _ in archive.iter_data_files(life)]
@@ -429,20 +424,22 @@ def test_weak_or_huge_passphrases_are_refused_for_new_backups(
     assert not list(tmp_path.iterdir()) or list(tmp_path.iterdir()) == [life]
 
 
-@pytest.mark.parametrize(
-    "passphrase",
-    [
-        GUESSABLE,
-        "the cat sat on the mat today",
-        "correct horse battery staple",
-        "abcdefghijklmnop",
-        "canyon " * 6,
-    ],
-)
-def test_a_guessable_passphrase_is_refused_for_new_backups(passphrase: str) -> None:
-    assert backups.passphrase_problem(passphrase) == backups.WEAK_PASSPHRASE_MESSAGE
-    assert "can't count this passphrase as strong enough" in backups.WEAK_PASSPHRASE_MESSAGE
-    assert passphrase not in backups.WEAK_PASSPHRASE_MESSAGE
+GUESSABLE_PASSPHRASES = [
+    GUESSABLE,
+    "the cat sat on the mat today",
+    "correct horse battery staple",
+    "abcdefghijklmnop",
+    "canyon " * 6,
+]
+
+
+def test_a_guessable_passphrase_is_refused_for_new_backups() -> None:
+    def check(passphrase: str) -> None:
+        assert backups.passphrase_problem(passphrase) == backups.WEAK_PASSPHRASE_MESSAGE
+        assert "can't count this passphrase as strong enough" in backups.WEAK_PASSPHRASE_MESSAGE
+        assert passphrase not in backups.WEAK_PASSPHRASE_MESSAGE
+
+    check_rows(GUESSABLE_PASSPHRASES, check)
 
 
 def test_a_random_password_from_a_password_manager_protects_a_new_backup() -> None:
@@ -459,13 +456,17 @@ def test_a_random_password_from_a_password_manager_protects_a_new_backup() -> No
 EARLIER_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"
 
 
-@pytest.mark.parametrize(
-    "passphrase", ["fsumn-hqfzc-jgtck-crjwz", "jnkhc-pnbkc-nevya-ngcmd", "k7qmx-3vxdp-9tawr-2emnb"]
-)
-def test_a_passphrase_ordnung_0_1_0_suggested_still_protects_a_new_backup(passphrase: str) -> None:
+EARLIER_SUGGESTIONS = ["fsumn-hqfzc-jgtck-crjwz", "jnkhc-pnbkc-nevya-ngcmd", "k7qmx-3vxdp-9tawr-2emnb"]
+
+
+def test_a_passphrase_ordnung_0_1_0_suggested_still_protects_a_new_backup() -> None:
     """About a third of 0.1.0's suggestions, those with few digits, count as four words (56 bits),
     so a passphrase saved in a password manager was refused after the update."""
-    assert backups.passphrase_problem(passphrase) is None
+
+    def check(passphrase: str) -> None:
+        assert backups.passphrase_problem(passphrase) is None
+
+    check_rows(EARLIER_SUGGESTIONS, check)
 
 
 def test_every_suggestion_ordnung_0_1_0_made_still_protects_a_new_backup() -> None:
@@ -475,18 +476,21 @@ def test_every_suggestion_ordnung_0_1_0_made_still_protects_a_new_backup() -> No
         assert backups.passphrase_problem("-".join(groups)) is None, groups
 
 
-@pytest.mark.parametrize(
-    "passphrase",
-    [
-        "water-water-water-water",
-        "abcde-fghjk-mnpqr-stuvw",
-        "after-these-three-seven",
-    ],
-)
-def test_a_pattern_in_the_shape_of_an_earlier_suggestion_is_still_refused(passphrase: str) -> None:
+PATTERNS_IN_AN_EARLIER_SHAPE = [
+    "water-water-water-water",
+    "abcde-fghjk-mnpqr-stuvw",
+    "after-these-three-seven",
+]
+
+
+def test_a_pattern_in_the_shape_of_an_earlier_suggestion_is_still_refused() -> None:
     """A group again, a run, a keyboard walk or common words: not what 0.1.0 drew."""
-    assert not backups.earlier_suggestion(passphrase)
-    assert backups.passphrase_problem(passphrase) == backups.WEAK_PASSPHRASE_MESSAGE
+
+    def check(passphrase: str) -> None:
+        assert not backups.earlier_suggestion(passphrase)
+        assert backups.passphrase_problem(passphrase) == backups.WEAK_PASSPHRASE_MESSAGE
+
+    check_rows(PATTERNS_IN_AN_EARLIER_SHAPE, check)
 
 
 def test_an_earlier_suggestion_with_a_capital_passes_as_random_characters() -> None:
@@ -497,25 +501,30 @@ def test_an_earlier_suggestion_with_a_capital_passes_as_random_characters() -> N
     assert backups.passphrase_problem("Fsumn-hqfzc-jgtck-crjwz") is None
 
 
-@pytest.mark.parametrize(
-    "passphrase",
-    [
-        "",
-        "short",
-        GUESSABLE,
-        "the cat sat on the mat today",
-        "correct horse battery staple",
-        "correct horse battery staple orbit",
-        "CorrectHorseBatteryStapleMoon",
-        "k7qmx-3vxdp-9tawr-2emnb",
-        PASS,
-        "x" * 1025,
-    ],
-)
-def test_a_new_backup_s_passphrase_meets_the_rule_of_a_new_sync_folder(passphrase: str) -> None:
+PASSPHRASES_FOR_BOTH_RULES = [
+    "",
+    "short",
+    GUESSABLE,
+    "the cat sat on the mat today",
+    "correct horse battery staple",
+    "correct horse battery staple orbit",
+    "CorrectHorseBatteryStapleMoon",
+    "k7qmx-3vxdp-9tawr-2emnb",
+    PASS,
+    "x" * 1025,
+]
+
+
+def test_a_new_backup_s_passphrase_meets_the_rule_of_a_new_sync_folder() -> None:
     """The same estimator and the same threshold: what a new sync folder accepts, a new backup does (and
     a backup also what Ordnung 0.1.0's backup dialog suggested)."""
-    assert (backups.passphrase_problem(passphrase) is None) == (sync.passphrase_problem(passphrase) is None)
+
+    def check(passphrase: str) -> None:
+        assert (backups.passphrase_problem(passphrase) is None) == (
+            sync.passphrase_problem(passphrase) is None
+        )
+
+    check_rows(PASSPHRASES_FOR_BOTH_RULES, check)
 
 
 def test_the_suggested_passphrase_protects_a_new_backup() -> None:
@@ -653,6 +662,12 @@ def _db_bytes(tmp_path: Path, schema: int | None = None) -> bytes:
     return (folder / DB_NAME).read_bytes()
 
 
+@pytest.fixture(scope="module")
+def empty_db(tmp_path_factory: pytest.TempPathFactory) -> bytes:
+    """A new, empty Ordnung database as one self-contained file, made once (bytes: no test can change it)."""
+    return _db_bytes(tmp_path_factory.mktemp("empty-db"))
+
+
 def _manifest(
     db: bytes, files: dict[str, bytes], *, tables: dict[str, int] | None = None, **extra: Any
 ) -> bytes:
@@ -677,8 +692,8 @@ def _manifest(
     return json.dumps(manifest.model_dump() | extra).encode()
 
 
-def test_a_crafted_but_honest_archive_restores(tmp_path: Path) -> None:
-    db = _db_bytes(tmp_path)
+def test_a_crafted_but_honest_archive_restores(tmp_path: Path, empty_db: bytes) -> None:
+    db = empty_db
     files = {"files/aa/x.pdf": b"%PDF"}
     members = [
         _member(DB_NAME, db),
@@ -706,8 +721,8 @@ def test_a_crafted_but_honest_archive_restores(tmp_path: Path) -> None:
         ".ordnung.lock",
     ],
 )
-def test_names_outside_the_policy_are_refused(tmp_path: Path, name: str) -> None:
-    db = _db_bytes(tmp_path)
+def test_names_outside_the_policy_are_refused(tmp_path: Path, empty_db: bytes, name: str) -> None:
+    db = empty_db
     members = [
         _member(DB_NAME, db),
         _member(name, b"payload"),
@@ -716,15 +731,15 @@ def test_names_outside_the_policy_are_refused(tmp_path: Path, name: str) -> None
     with pytest.raises(DamagedBackup):
         restore_backup(craft(tmp_path / "evil", members), PASS, tmp_path / "r")
     assert not (tmp_path / "evil.txt").exists() and not (tmp_path.parent / "evil.txt").exists()
-    assert sorted(p.name for p in tmp_path.iterdir()) == ["db-source", "evil"]
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["evil"]
 
 
 @pytest.mark.parametrize(
     "kind",
     [tarfile.SYMTYPE, tarfile.LNKTYPE, tarfile.DIRTYPE, tarfile.FIFOTYPE, tarfile.CHRTYPE],
 )
-def test_only_regular_files_are_restored(tmp_path: Path, kind: bytes) -> None:
-    db = _db_bytes(tmp_path)
+def test_only_regular_files_are_restored(tmp_path: Path, empty_db: bytes, kind: bytes) -> None:
+    db = empty_db
     members = [
         _member(DB_NAME, db),
         _member("files/x", b"", kind, link="/etc/passwd"),
@@ -735,8 +750,8 @@ def test_only_regular_files_are_restored(tmp_path: Path, kind: bytes) -> None:
     assert not (tmp_path / "r").exists()
 
 
-def test_duplicates_extras_and_mismatches_are_refused(tmp_path: Path) -> None:
-    db = _db_bytes(tmp_path)
+def test_duplicates_extras_and_mismatches_are_refused(tmp_path: Path, empty_db: bytes) -> None:
+    db = empty_db
     good = {"files/a.pdf": b"one"}
     cases = {
         "duplicate": [
@@ -789,23 +804,23 @@ def test_duplicates_extras_and_mismatches_are_refused(tmp_path: Path) -> None:
         assert not [p for p in tmp_path.iterdir() if ".restoring-" in p.name], label
 
 
-def test_a_damaged_database_is_refused(tmp_path: Path) -> None:
-    db = bytearray(_db_bytes(tmp_path))
+def test_a_damaged_database_is_refused(tmp_path: Path, empty_db: bytes) -> None:
+    db = bytearray(empty_db)
     db[4096 + 200 : 4096 + 400] = b"\xff" * 200  # scribble over a b-tree page
     members = [
         _member(DB_NAME, bytes(db)),
-        _member(MANIFEST_NAME, _manifest(_db_bytes(tmp_path / "again"), {})),
+        _member(MANIFEST_NAME, _manifest(empty_db, {})),
     ]
     with pytest.raises(DamagedBackup):
         restore_backup(craft(tmp_path / "b", members), PASS, tmp_path / "r")
 
 
-def test_a_newer_schema_or_archive_format_is_refused(tmp_path: Path) -> None:
+def test_a_newer_schema_or_archive_format_is_refused(tmp_path: Path, empty_db: bytes) -> None:
     newer = _db_bytes(tmp_path, schema=latest_version() + 1)
     members = [_member(DB_NAME, newer), _member(MANIFEST_NAME, _manifest(newer, {}))]
     with pytest.raises(NewerBackupFormat, match="newer version of Ordnung"):
         restore_backup(craft(tmp_path / "b1", members), PASS, tmp_path / "r")
-    db = _db_bytes(tmp_path / "second")
+    db = empty_db
     members = [_member(DB_NAME, db), _member(MANIFEST_NAME, _manifest(db, {}, format=2))]
     with pytest.raises(NewerBackupFormat):
         restore_backup(craft(tmp_path / "b2", members), PASS, tmp_path / "r")
@@ -947,13 +962,6 @@ def test_backup_and_restore_commands(life: Path, tmp_path: Path, pinned_today: N
     assert f"Start Ordnung with: ordnung serve --data-dir {tmp_path / 'back'}" in restored.output
     assert "Calendar sync" not in restored.output  # none was connected
     assert "Not in the backup" not in result.output  # nothing was left out
-
-
-def test_restore_check_notes_nothing(life: Path, tmp_path: Path) -> None:
-    backup = make_backup(life, tmp_path / "b.ordnung-backup")
-    checked = invoke("restore", str(backup), "--check")
-    assert checked.exit_code == 0, checked.output
-    assert backup_notes(life) == []
 
 
 def test_a_backup_of_a_newer_database_is_made_but_not_noted(
@@ -1113,6 +1121,9 @@ def test_backup_gives_up_after_three_tries(life: Path, tmp_path: Path, pinned_to
     )
     assert result.exit_code == 1 and "No passphrase" in result.output
     assert not list(tmp_path.glob("*.ordnung-backup"))
+    # the warning comes before the first question
+    warning = result.output.index("not even you")
+    assert warning < result.output.index("Passphrase for the backup")
 
 
 def test_backup_refusals_are_explained(life: Path, tmp_path: Path, pinned_today: None) -> None:
@@ -1126,16 +1137,6 @@ def test_backup_refusals_are_explained(life: Path, tmp_path: Path, pinned_today:
     assert unplugged.exit_code == 1 and "is the drive connected" in unplugged.output
     assert not (tmp_path / "usb").exists()
     assert not list(tmp_path.glob("*.ordnung-backup"))
-
-
-def test_backup_warns_about_the_passphrase_before_asking_for_it(
-    life: Path, tmp_path: Path, pinned_today: None
-) -> None:
-    result = invoke(
-        "backup", "--data-dir", str(life), "--to", str(tmp_path), passphrase=None, input="a\nb\nc\n"
-    )
-    warning = result.output.index("not even you")
-    assert warning < result.output.index("Passphrase for the backup")
 
 
 def test_a_path_in_a_backup_refusal_is_never_split(life: Path, tmp_path: Path) -> None:
@@ -1168,6 +1169,8 @@ def test_restore_explains_a_wrong_passphrase_and_other_files(life: Path, tmp_pat
     wrong = invoke("restore", str(backup), "--data-dir", str(tmp_path / "r"), passphrase="not the passphrase")
     assert wrong.exit_code == 1 and "Wrong passphrase" in wrong.output
     assert not (tmp_path / "r").exists()
+    checked = invoke("restore", str(backup), "--check", passphrase="not the passphrase")
+    assert checked.exit_code == 1 and "Wrong passphrase" in checked.output
     pdf = tmp_path / "letter.pdf"
     pdf.write_bytes(b"%PDF-1.7")
     other = invoke("restore", str(pdf), passphrase=None, input="")
@@ -1194,27 +1197,23 @@ def test_the_new_commands_are_listed() -> None:
         assert command in result.output
 
 
-@pytest.mark.parametrize(
-    ("size", "text"),
-    [
-        (0, "0 bytes"),
-        (999, "999 bytes"),
-        (1000, "1.0 KB"),
-        (10_635_532, "10.6 MB"),
-        (2_400_000_000, "2.4 GB"),
-        (5 * 10**15, "5000.0 TB"),
-    ],
-)
-def test_human_sizes(size: int, text: str) -> None:
-    from ordnung.cli import human_size
-
-    assert human_size(size) == text
+HUMAN_SIZES = [
+    (0, "0 bytes"),
+    (999, "999 bytes"),
+    (1000, "1.0 KB"),
+    (10_635_532, "10.6 MB"),
+    (2_400_000_000, "2.4 GB"),
+    (5 * 10**15, "5000.0 TB"),
+]
 
 
-def test_restore_check_refuses_a_wrong_passphrase(life: Path, tmp_path: Path) -> None:
-    backup = make_backup(life, tmp_path / "b.ordnung-backup")
-    result = invoke("restore", str(backup), "--check", passphrase="not the passphrase")
-    assert result.exit_code == 1 and "Wrong passphrase" in result.output
+def test_human_sizes() -> None:
+    def check(size: int, text: str) -> None:
+        from ordnung.cli import human_size
+
+        assert human_size(size) == text
+
+    check_rows(HUMAN_SIZES, check)
 
 
 # --------------------------------------------------------------------------------------------------

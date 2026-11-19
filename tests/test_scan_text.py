@@ -4,6 +4,8 @@ store and the text stage ever touch it — so no prompt, evidence check or Ask t
 from __future__ import annotations
 
 import ast
+import functools
+import itertools
 import json
 import os
 import stat
@@ -12,6 +14,7 @@ from pathlib import Path
 
 import pytest
 
+from helpers_tables import check_rows
 from ordnung.config import PACKAGE_DIR
 from ordnung.db import scan_text
 
@@ -35,28 +38,37 @@ def test_an_empty_map_means_looked_and_found_nothing(tmp_path: Path) -> None:
 
 
 def test_each_page_is_capped(tmp_path: Path) -> None:
+    """The scanner text's pages are cut at :data:`scan_text.MAX_PAGE_CHARS`, and so are picture text's."""
     scan_text.write(tmp_path, "doc_a", {1: "x" * (scan_text.MAX_PAGE_CHARS + 50)})
     assert len(scan_text.read(tmp_path, "doc_a")[1]) == scan_text.MAX_PAGE_CHARS
+    long = "x" * (scan_text.MAX_PAGE_CHARS + 50)
+    scan_text.write(tmp_path, "doc_a", {1: long}, name=scan_text.PICTURE_NAME)
+    assert len(scan_text.read(tmp_path, "doc_a", name=scan_text.PICTURE_NAME)[1]) == scan_text.MAX_PAGE_CHARS
 
 
-@pytest.mark.parametrize(
-    "content",
-    [
-        b"not json",
-        b"\xff\xfe",
-        b"[]",
-        b'{"version": 2, "pages": {"1": "neuer"}}',
-        b'{"version": 1}',
-        b'{"version": 1, "pages": []}',
-        b'{"version": 1, "pages": {"eins": "x"}}',
-        b'{"version": 1, "pages": {"1": 5}}',
-    ],
-)
-def test_a_garbage_or_other_version_file_reads_as_nothing(tmp_path: Path, content: bytes) -> None:
-    target = scan_text.path(tmp_path, "doc_a")
-    target.parent.mkdir()
-    target.write_bytes(content)
-    assert scan_text.read(tmp_path, "doc_a") == {}
+GARBAGE_FILES = [
+    b"not json",
+    b"\xff\xfe",
+    b"[]",
+    b'{"version": 2, "pages": {"1": "neuer"}}',
+    b'{"version": 1}',
+    b'{"version": 1, "pages": []}',
+    b'{"version": 1, "pages": {"eins": "x"}}',
+    b'{"version": 1, "pages": {"1": 5}}',
+]
+
+
+def test_a_garbage_or_other_version_file_reads_as_nothing(tmp_path: Path) -> None:
+    folders = itertools.count(1)
+
+    def check(content: bytes) -> None:
+        derived = tmp_path / str(next(folders))
+        target = scan_text.path(derived, "doc_a")
+        target.parent.mkdir(parents=True)
+        target.write_bytes(content)
+        assert scan_text.read(derived, "doc_a") == {}
+
+    check_rows(GARBAGE_FILES, check)
 
 
 def test_a_missing_file_reads_as_nothing(tmp_path: Path) -> None:
@@ -66,12 +78,20 @@ def test_a_missing_file_reads_as_nothing(tmp_path: Path) -> None:
 
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX file modes")
 def test_the_file_is_private_and_written_atomically(tmp_path: Path) -> None:
+    """The scanner text's file, and picture text's (here in a letter of its own)."""
     scan_text.write(tmp_path, "doc_a", {1: "Text"})
     target = scan_text.path(tmp_path, "doc_a")
     assert stat.S_IMODE(os.stat(target).st_mode) == 0o600
     assert stat.S_IMODE(os.stat(target.parent).st_mode) == 0o700
     scan_text.write(tmp_path, "doc_a", {1: "Neu"})
     assert sorted(path.name for path in target.parent.iterdir()) == ["scan-text.json"]  # no .part left
+
+    scan_text.write(tmp_path, "doc_b", {1: "Text"}, name=scan_text.PICTURE_NAME)
+    target = scan_text.path(tmp_path, "doc_b", name=scan_text.PICTURE_NAME)
+    assert stat.S_IMODE(os.stat(target).st_mode) == 0o600
+    assert stat.S_IMODE(os.stat(target.parent).st_mode) == 0o700
+    scan_text.write(tmp_path, "doc_b", {1: "Neu"}, name=scan_text.PICTURE_NAME)
+    assert sorted(path.name for path in target.parent.iterdir()) == ["picture-text.json"]  # no .part left
 
 
 def test_a_doc_id_never_names_a_file_outside_its_folder(tmp_path: Path) -> None:
@@ -114,35 +134,30 @@ def test_a_page_of_picture_text_without_words_means_looked_and_found_none(tmp_pa
     assert scan_text.read(tmp_path, "doc_a", name=scan_text.PICTURE_NAME) == {1: "", 2: "Seite zwei"}
 
 
-def test_picture_text_is_capped_like_the_scanner_text(tmp_path: Path) -> None:
-    long = "x" * (scan_text.MAX_PAGE_CHARS + 50)
-    scan_text.write(tmp_path, "doc_a", {1: long}, name=scan_text.PICTURE_NAME)
-    assert len(scan_text.read(tmp_path, "doc_a", name=scan_text.PICTURE_NAME)[1]) == scan_text.MAX_PAGE_CHARS
+NAMES_OF_OTHER_FILES = [
+    "",
+    "other.json",
+    "page-1.png",
+    "../scan-text.json",
+    "doc_a/scan-text.json",
+    "Picture-Text.json",
+]
 
 
-@pytest.mark.skipif(sys.platform == "win32", reason="POSIX file modes")
-def test_picture_text_is_private_and_written_atomically(tmp_path: Path) -> None:
-    scan_text.write(tmp_path, "doc_a", {1: "Text"}, name=scan_text.PICTURE_NAME)
-    target = scan_text.path(tmp_path, "doc_a", name=scan_text.PICTURE_NAME)
-    assert stat.S_IMODE(os.stat(target).st_mode) == 0o600
-    assert stat.S_IMODE(os.stat(target.parent).st_mode) == 0o700
-    scan_text.write(tmp_path, "doc_a", {1: "Neu"}, name=scan_text.PICTURE_NAME)
-    assert sorted(path.name for path in target.parent.iterdir()) == ["picture-text.json"]  # no .part left
-
-
-@pytest.mark.parametrize(
-    "name", ["", "other.json", "page-1.png", "../scan-text.json", "doc_a/scan-text.json", "Picture-Text.json"]
-)
-def test_no_other_file_can_be_named(tmp_path: Path, name: str) -> None:
+def test_no_other_file_can_be_named(tmp_path: Path) -> None:
     """Only the two files are ever named: a caller can't reach a page image or anything else with these."""
-    with pytest.raises(ValueError):
-        scan_text.path(tmp_path, "doc_a", name=name)
-    for touch in (scan_text.read, scan_text.remove, scan_text.present):
+
+    def check(name: str) -> None:
         with pytest.raises(ValueError):
-            touch(tmp_path, "doc_a", name=name)
-    with pytest.raises(ValueError):
-        scan_text.write(tmp_path, "doc_a", {1: "x"}, name=name)
-    assert not (tmp_path / "doc_a").exists()
+            scan_text.path(tmp_path, "doc_a", name=name)
+        for touch in (scan_text.read, scan_text.remove, scan_text.present):
+            with pytest.raises(ValueError):
+                touch(tmp_path, "doc_a", name=name)
+        with pytest.raises(ValueError):
+            scan_text.write(tmp_path, "doc_a", {1: "x"}, name=name)
+        assert not (tmp_path / "doc_a").exists()
+
+    check_rows(NAMES_OF_OTHER_FILES, check)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -159,12 +174,14 @@ NEVER_NAMED_IN_FILES = {
 }
 
 
-def _modules() -> list[tuple[str, ast.Module, str]]:
+@functools.cache
+def _modules() -> tuple[tuple[str, ast.Module, str], ...]:
+    """Every module of the package, parsed once for the tests of this file (they only read the trees)."""
     found = []
     for path in sorted(PACKAGE_DIR.rglob("*.py")):
         source = path.read_text("utf-8")
         found.append((path.relative_to(PACKAGE_DIR).as_posix(), ast.parse(source), source))
-    return found
+    return tuple(found)
 
 
 def _imports_scan_text(tree: ast.Module) -> bool:
@@ -193,6 +210,18 @@ def test_only_the_store_and_the_text_stage_touch_the_scanner_text() -> None:
         if "scan_text" in source and (name.startswith(NEVER_NAMED_IN) or name in NEVER_NAMED_IN_FILES)
     }
     assert named == set()
+
+
+def test_the_import_guard_sees_every_way_of_importing_it() -> None:
+    for source in (
+        "import ordnung.db.scan_text",
+        "from ordnung.db import scan_text",
+        "from ordnung.db.scan_text import read",
+        "from . import scan_text",
+        "from .scan_text import read",
+    ):
+        assert _imports_scan_text(ast.parse(source)), source
+    assert not _imports_scan_text(ast.parse("from ordnung.db import store"))
 
 
 #: Words that name the text Ordnung read in a picture, or the engine that reads it (ADR 0024).
@@ -245,15 +274,3 @@ def test_only_the_worker_and_the_doctor_run_tesseract() -> None:
     ):
         assert _imports_ocr(ast.parse(source)), source
     assert not _imports_ocr(ast.parse("from ordnung.ingest import pipeline"))
-
-
-def test_the_import_guard_sees_every_way_of_importing_it() -> None:
-    for source in (
-        "import ordnung.db.scan_text",
-        "from ordnung.db import scan_text",
-        "from ordnung.db.scan_text import read",
-        "from . import scan_text",
-        "from .scan_text import read",
-    ):
-        assert _imports_scan_text(ast.parse(source)), source
-    assert not _imports_scan_text(ast.parse("from ordnung.db import store"))

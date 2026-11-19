@@ -1,5 +1,5 @@
 """The sync core's guarantees, at least one test each; the test names keep the numbers the problems were
-first listed under (blockers 1-4, highs 6-8, findings 9-12, 14-18, 20-21, 25-26, 30 and 34). Several are also
+first listed under (blockers 1, 2 and 4, high 6, findings 9, 12, 15, 18, 20-21, 25-26 and 30). Several are also
 covered in depth elsewhere (named in each docstring); these pin the guarantee itself."""
 
 from __future__ import annotations
@@ -14,21 +14,14 @@ from typing import Any
 import pytest
 
 from fakes import use_fast_keys
-from ordnung import durable
 from ordnung.db.store import Store, person_write
 from ordnung.models import CalendarSyncState
 from ordnung.sync import (
-    DAMAGED_AFTER_S,
-    KEY_FILE_BYTES,
     SLICE_CHURN_LIMIT_BYTES,
-    SYNC_KDF,
     SyncError,
-    passphrase_problem,
 )
 from ordnung.sync import lineage as lin
-from ordnung.sync.crypto import padme, sealed_size
 from ordnung.sync.decide import BringIn, Choice, Pull
-from ordnung.sync.model import Lineage
 from sync_harness import Computer
 from sync_sim import SyncToolSim, listing
 
@@ -36,6 +29,8 @@ from sync_sim import SyncToolSim, listing
 @pytest.fixture(autouse=True)
 def _fast(monkeypatch: pytest.MonkeyPatch) -> None:
     use_fast_keys(monkeypatch)
+    # no real disk flush: every line that asks for one still runs, only the system call is skipped
+    monkeypatch.setattr(os, "fsync", lambda fd: None)
 
 
 class Shared:
@@ -148,14 +143,6 @@ def test_blocker_2_leave_pushes_and_a_left_head_still_counts(shared: Shared) -> 
     assert isinstance(outcome.decision, Pull) and "last words" in a.notes()  # … not out of the content
 
 
-def test_blocker_3_behind_uses_covers() -> None:
-    a, b = "a" * 32, "b" * 32
-    winner = lin.keep_this(lin.make({a: [(1, 2)]}), [lin.make({a: [(1, 1)], b: [(1, 1)]})])
-    loser = lin.make({a: [(1, 1)], b: [(1, 1)]})
-    assert lin.relation(winner, loser) == "behind"
-    assert lin.relation(loser, winner) == "decided"
-
-
 def test_blocker_4_counters_are_raised_to_what_the_folder_shows(shared: Shared, tmp_path: Path) -> None:
     a = shared.a
     a.use_here()
@@ -208,32 +195,6 @@ def test_finding_6_has_is_written_only_for_a_verified_version(tmp_path: Path) ->
         b.close()
 
 
-def test_finding_7_wants_reach_the_other_head(shared: Shared) -> None:
-    a, b = shared.a, shared.b
-    b.person_edit("x")
-    b.round()
-    manifest = b.s.scanner.manifest(b.s.state.base.ref)  # type: ignore[union-attr]
-    assert manifest is not None
-    name = a.s.vault.object_name("d", manifest.db.slices[0].sha256)
-    path = a.folder / "o" / name[:2] / name[2:]
-    path.write_bytes(b"\x00" * path.stat().st_size)
-    a.use_here()  # waits: the slice doesn't verify
-    a.clock.advance(DAMAGED_AFTER_S + 1)
-    a.round()
-    assert name in a.s.state.wants
-    view = b.s.scan()
-    assert name in view.wants
-    b.round()  # a new version, the slice written again (forced)
-    assert a.round().replaced or a.use_here().replaced
-
-
-def test_finding_8_sizes() -> None:
-    assert padme(1_000_000) == 1_015_808
-    assert sealed_size(4096) == 23 + 4096 + 16
-    assert sealed_size(1 << 20) == 23 + (1 << 20) + 16
-    assert sealed_size((1 << 20) + 1) == 23 + (1 << 20) + 1 + 32
-
-
 # --------------------------------------------------------------------------------------------------
 # mediums
 # --------------------------------------------------------------------------------------------------
@@ -251,41 +212,6 @@ def test_finding_9_every_head_is_read_on_every_scan(shared: Shared) -> None:
     assert other is not None and other.head.version == b.s.state.base.ref  # type: ignore[union-attr]
     cached = json.loads((a.paths.data_dir / "sync" / "heads.json").read_text())
     assert b.s.head_file in cached  # the last good copy (GC)
-
-
-def test_finding_10_both_sides_check_the_files_the_database_names(shared: Shared) -> None:
-    from ordnung.sync.push import TryAgain
-
-    b = shared.b
-    letter = b.add_letter("half gone")
-    (b.paths.derived / letter / "thumb.jpg").unlink()
-    b.db._conn().execute(
-        "UPDATE pages SET image_path = ? WHERE doc_id = ?", (f"derived/{letter}/thumb.jpg", letter)
-    )
-    with pytest.raises(TryAgain):
-        b.s.push(b.db)
-
-
-def test_finding_11_durable_while_syncing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from ordnung.config import Paths
-
-    store = Store.open(Paths(tmp_path / "d").ensure(), durable=True)
-    try:
-        with store.tx() as conn:
-            assert conn.execute("PRAGMA synchronous").fetchone()[0] == 2  # FULL
-        store.set_durable(False)
-        with store.tx() as conn:
-            assert conn.execute("PRAGMA synchronous").fetchone()[0] == 1  # NORMAL, at its next transaction
-        store.set_durable(True)
-        calls: list[int] = []
-        monkeypatch.setattr(durable, "fsync", lambda fd: calls.append(fd))
-        from ordnung.ingest import intake
-
-        intake._write_atomic(tmp_path / "d" / "files" / "x.bin", b"original")
-        assert calls  # the file reached the disk before a row could name it
-    finally:
-        store.set_durable(False)
-        store.close()
 
 
 def test_finding_12_a_failed_database_step_can_be_given_up(
@@ -312,16 +238,6 @@ def test_finding_12_a_failed_database_step_can_be_given_up(
     assert unfinished(a.paths) is None and "x" not in a.notes()
 
 
-def test_finding_14_no_version_for_nothing(shared: Shared) -> None:
-    b = shared.b
-    b.round()  # whatever was pending is saved
-    seq = b.s.state.seq
-    with person_write():
-        b.db.set_meta("desktop_notified_on", "2026-10-07")
-    assert b.round().pushed.outcome == "accounted"  # type: ignore[union-attr]
-    assert b.s.state.seq == seq
-
-
 def test_finding_15_the_last_hand_over_is_sent_on(shared: Shared) -> None:
     a, b = shared.a, shared.b
     a.use_here()
@@ -338,28 +254,6 @@ def test_finding_15_the_last_hand_over_is_sent_on(shared: Shared) -> None:
     assert (
         manifest is not None and manifest.calendar is not None and manifest.calendar.events == {"e.ics": "h"}
     )
-
-
-def test_finding_16_a_shared_watched_folder(tmp_path: Path) -> None:
-    from ordnung.ingest import watcher
-
-    store = Store.open(__import__("ordnung.config").config.Paths(tmp_path / "d").ensure())
-    try:
-        data = b"%PDF a scan"
-        assert not watcher.was_taken(store, data)
-        watcher.remember_taken(store, data)
-        assert watcher.was_taken(store, data)  # skipped while sync is connected (test_sync_agent)
-        assert hashlib.sha256(data).hexdigest() in json.loads(
-            store.get_meta(watcher.FOLDER_TAKEN_META_KEY) or "[]"
-        )
-    finally:
-        store.close()
-
-
-def test_finding_17_the_key_file_is_expensive_to_guess() -> None:
-    assert SYNC_KDF.log2_n == 18 and SYNC_KDF.r == 8 and KEY_FILE_BYTES == 92
-    assert passphrase_problem("orbit velvet canyon maple thunder") is None
-    assert passphrase_problem("a perfectly long sentence") is not None
 
 
 def test_finding_18_a_lineage_that_claims_too_much_is_refused(shared: Shared) -> None:
@@ -472,27 +366,6 @@ def test_finding_30_the_machine_id_fallback_is_stored_once(
     assert first == local.machine_id() and len(first) == 32
 
 
-def test_finding_34_an_interrupted_setup_is_recognised(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from ordnung.sync import engine as engine_module
-
-    a = Computer("a", tmp_path / "a", tmp_path / "sync")
-    try:
-        real_push = engine_module.Session.push
-        monkeypatch.setattr(
-            engine_module.Session, "push", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("cut"))
-        )
-        with pytest.raises(RuntimeError):
-            a.connect()
-        state = json.loads((a.paths.data_dir / "sync" / "state.json").read_text())
-        assert state["complete"] is False and len(bytes.fromhex(state["key_file_bytes"])) == KEY_FILE_BYTES
-        monkeypatch.setattr(engine_module.Session, "push", real_push)
-        assert a.connect("lantern pebble violin harbor quiet").connected
-    finally:
-        a.close()
-
-
 def test_r5_brings_in_quietly_and_r4_asks(shared: Shared) -> None:
     a, b = shared.a, shared.b
     a.use_here()
@@ -507,7 +380,3 @@ def test_r5_brings_in_quietly_and_r4_asks(shared: Shared) -> None:
     b.person_edit("later still")
     b.s.push(b.db, head_state="standing_by")
     assert isinstance(a.round().decision, Choice)
-
-
-def test_lineage_empty_is_behind_everything() -> None:
-    assert lin.relation(Lineage(), lin.make({"a" * 32: [(1, 1)]})) == "ahead"

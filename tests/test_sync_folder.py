@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import errno
 import io
+import json
 import os
 import sys
 import threading
@@ -16,7 +17,7 @@ import pytest
 from fakes import use_fast_keys
 from ordnung.config import Paths
 from ordnung.models import AppSettings
-from ordnung.sync import KEY_FILE_RE, SyncError
+from ordnung.sync import KEY_FILE_BYTES, KEY_FILE_RE, SyncError
 from ordnung.sync.folder import (
     MAX_STUCK,
     FileInfo,
@@ -36,6 +37,8 @@ from sync_harness import PASSPHRASE, Computer
 @pytest.fixture(autouse=True)
 def _fast(monkeypatch: pytest.MonkeyPatch) -> None:
     use_fast_keys(monkeypatch)
+    # no real disk flush: every line that asks for one still runs, only the system call is skipped
+    monkeypatch.setattr(os, "fsync", lambda fd: None)
 
 
 @pytest.fixture
@@ -220,6 +223,8 @@ def test_an_interrupted_setup_can_be_retried_with_another_passphrase(
     monkeypatch.setattr(engine_module.Session, "push", crash)
     with pytest.raises(RuntimeError):
         anna.connect()
+    state = json.loads((anna.paths.data_dir / "sync" / "state.json").read_text())
+    assert state["complete"] is False and len(bytes.fromhex(state["key_file_bytes"])) == KEY_FILE_BYTES
     monkeypatch.undo()
     use_fast_keys(monkeypatch)
     assert any(KEY_FILE_RE.match(p.name) for p in anna.folder.iterdir())

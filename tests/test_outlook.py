@@ -45,6 +45,7 @@ from helpers_msg import (
     storage,
     stream,
 )
+from helpers_tables import check_rows
 from helpers_timing import assert_linear
 from ordnung.ingest import intake, outlook
 from ordnung.ingest.attachments import email_attachments
@@ -246,6 +247,34 @@ def test_exchange_recipient_keeps_name_only() -> None:
     assert to.display_name == "Sam Rivera" and "EXCHANGELABS" not in str(message["To"])
 
 
+def test_an_smtp_address_held_only_as_the_email_address_is_used() -> None:
+    """A writer that leaves out the SMTP-address property but says the address type is SMTP: the plain
+    e-mail-address property is the address, for the sender and for a recipient."""
+
+    def utf16(text: str) -> bytes:
+        return text.encode("utf-16-le") + b"\0\0"
+
+    recipient = storage(
+        "__recip_version1.0_#00000000",
+        stream("__substg1.0_3001001F", utf16("Sam Rivera")),
+        stream("__substg1.0_3002001F", utf16("smtp ")),
+        stream("__substg1.0_3003001F", utf16("sam@example.org")),
+        stream("__properties_version1.0", b"\0" * 8),
+    )
+    sender = [
+        stream("__substg1.0_0C1E001F", utf16(" SMTP")),
+        stream("__substg1.0_0C1F001F", utf16("rechnung@stadtwerke-musterstadt.example")),
+    ]
+    message = parsed(Message(sender_smtp=None, recipients=[], extra=[*sender, recipient]))
+    (sender_address,) = message["From"].addresses
+    assert (sender_address.display_name, sender_address.addr_spec) == (
+        "Stadtwerke Musterstadt",
+        "rechnung@stadtwerke-musterstadt.example",
+    )
+    (to,) = message["To"].addresses
+    assert (to.display_name, to.addr_spec) == ("Sam Rivera", "sam@example.org")
+
+
 def test_names_with_commas_and_quotes_stay_one_address() -> None:
     message = parsed(
         bill(
@@ -302,7 +331,8 @@ def test_html_in_its_internet_code_page_or_utf8() -> None:
     latin = parsed(Message(body=None, html="<p>Grüße</p>".encode("cp1252"), html_cpid=1252))
     utf8 = parsed(Message(body=None, html="<p>Grüße</p>".encode()))
     as_text = parsed(Message(body=None, html_as_text="<p>Grüße</p>"))
-    for message in (latin, utf8, as_text):
+    no_code_page_not_utf8 = parsed(Message(body=None, html="<p>Grüße</p>".encode("cp1252")))  # Windows-1252
+    for message in (latin, utf8, as_text, no_code_page_not_utf8):
         body = message.get_body()
         assert body is not None and "Grüße" in body.get_content()
 
@@ -374,10 +404,15 @@ def test_text_typed_attachment_never_a_body() -> None:
     ]
 
 
-@pytest.mark.parametrize("declared", ["message/rfc822", "multipart/mixed", "nonsense", "application/x y", ""])
-def test_odd_declared_types_become_octet_stream(declared: str) -> None:
-    message = parsed(bill(attachments=[Attachment("a.bin", b"data", declared or None)]))
-    assert attachments_of(message)[0][1] == "application/octet-stream"
+ODD_DECLARED_TYPES = ["message/rfc822", "multipart/mixed", "nonsense", "application/x y", ""]
+
+
+def test_odd_declared_types_become_octet_stream() -> None:
+    def check(declared: str) -> None:
+        message = parsed(bill(attachments=[Attachment("a.bin", b"data", declared or None)]))
+        assert attachments_of(message)[0][1] == "application/octet-stream"
+
+    check_rows(ODD_DECLARED_TYPES, check)
 
 
 def test_attached_email_listed_never_opened() -> None:
@@ -466,39 +501,53 @@ def test_recipients_are_bounded() -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "message_class", ["IPM.Note.SMIME", "IPM.Note.SMIME.MultipartSigned", "ipm.note.smime"]
-)
-def test_encrypted_refused(message_class: str) -> None:
-    assert refusal(build_msg(bill(message_class=message_class))) == ENCRYPTED
+ENCRYPTED_CLASSES = ["IPM.Note.SMIME", "IPM.Note.SMIME.MultipartSigned", "ipm.note.smime"]
 
 
-@pytest.mark.parametrize(
-    "message_class", ["IPM.Appointment", "IPM.Contact", "IPM.Task", "IPM.Schedule.Meeting.Request"]
-)
-def test_calendar_entry_refused(message_class: str) -> None:
+def test_encrypted_refused() -> None:
+    def check(message_class: str) -> None:
+        assert refusal(build_msg(bill(message_class=message_class))) == ENCRYPTED
+
+    check_rows(ENCRYPTED_CLASSES, check)
+
+
+CALENDAR_CLASSES = ["IPM.Appointment", "IPM.Contact", "IPM.Task", "IPM.Schedule.Meeting.Request"]
+
+
+def test_calendar_entry_refused() -> None:
     """Said what it is (a meeting invitation came to the person as an e-mail) and what to do instead."""
-    assert refusal(build_msg(bill(message_class=message_class))) == NOT_AN_EMAIL
-    assert NOT_AN_EMAIL == (
-        "This Outlook file is a meeting invitation, calendar entry, contact or task, which Ordnung doesn't "
-        "open. Save its attachments, or print it as a PDF, and add those."
-    )
+
+    def check(message_class: str) -> None:
+        assert refusal(build_msg(bill(message_class=message_class))) == NOT_AN_EMAIL
+        assert NOT_AN_EMAIL == (
+            "This Outlook file is a meeting invitation, calendar entry, contact or task, which Ordnung doesn't "
+            "open. Save its attachments, or print it as a PDF, and add those."
+        )
+
+    check_rows(CALENDAR_CLASSES, check)
 
 
-@pytest.mark.parametrize("message_class", ["IPM.Note", "ipm.note", "IPM.Note.Microsoft.Voicemail"])
-def test_every_kind_of_note_is_an_email(message_class: str) -> None:
-    assert parsed(bill(message_class=message_class))["Subject"] == "Ihre Rechnung September 2026"
+NOTE_CLASSES = ["IPM.Note", "ipm.note", "IPM.Note.Microsoft.Voicemail"]
 
 
-@pytest.mark.parametrize("main", ["WordDocument", "Workbook", "Book", "PowerPoint Document"])
-def test_office_file_refused(main: str) -> None:
-    assert (
-        refusal(build([stream(main, b"x" * 100), stream("\x05SummaryInformation", b"y" * 10)])) == OFFICE_FILE
-    )
+def test_every_kind_of_note_is_an_email() -> None:
+    def check(message_class: str) -> None:
+        assert parsed(bill(message_class=message_class))["Subject"] == "Ihre Rechnung September 2026"
+
+    check_rows(NOTE_CLASSES, check)
 
 
-def test_other_ole_file_refused() -> None:
-    assert refusal(build([stream("Contents", b"x" * 100)])) == NOT_OUTLOOK
+OFFICE_MAIN_STREAMS = ["WordDocument", "Workbook", "Book", "PowerPoint Document"]
+
+
+def test_office_file_refused() -> None:
+    def check(main: str) -> None:
+        assert (
+            refusal(build([stream(main, b"x" * 100), stream("\x05SummaryInformation", b"y" * 10)]))
+            == OFFICE_FILE
+        )
+
+    check_rows(OFFICE_MAIN_STREAMS, check)
 
 
 def test_not_outlook_is_intakes_own_message() -> None:
@@ -512,6 +561,7 @@ def test_other_ole_file_named_msg_is_a_damaged_outlook_file() -> None:
     """Named ``.msg``, an OLE file without a message is an Outlook file that can't be opened: “this type is
     not supported” would contradict the list of types that names ``.msg``."""
     other = build([stream("Contents", b"x" * 100)])
+    assert refusal(other) == NOT_OUTLOOK  # msg_to_eml: an OLE file that is no message is not supported
     with pytest.raises(IntakeError, match="It may be damaged"):
         as_email(other, "Rechnung.msg")
     with pytest.raises(IntakeError) as caught:
@@ -533,10 +583,15 @@ def test_outlook_item_without_a_class_is_damaged() -> None:
     assert refusal(build_msg(bill(message_class=None))) == DAMAGED
 
 
-@pytest.mark.parametrize("cut", [100, 600, 3000, -700])
-def test_truncated_refused(cut: int) -> None:
-    raw = build_msg(bill())
-    assert refusal(raw[:cut]) == DAMAGED
+CUTS = [100, 600, 3000, -700]
+
+
+def test_truncated_refused() -> None:
+    def check(cut: int) -> None:
+        raw = build_msg(bill())
+        assert refusal(raw[:cut]) == DAMAGED
+
+    check_rows(CUTS, check)
 
 
 def test_short_input_never_opened_as_a_path(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -673,22 +728,25 @@ def refused_quickly_in_a_thread(data: bytes) -> None:
         raise failed[0]
 
 
-@pytest.mark.parametrize(
-    "shape",
-    [
-        pytest.param({"fat_sectors": 10_000}, id="1.5 KB, a DIFAT sector naming itself, 10,000 FAT sectors"),
-        pytest.param({"fat_sectors": 4_000_000_000}, id="1.5 KB claiming 4 billion FAT sectors"),
-        pytest.param(
-            {"fat_sectors": 109 + 127 * 127, "difat_sectors": 127, "loop": False, "size": 8 * 1024**2},
-            id="8 MB, 127 DIFAT sectors naming one FAT sector 16,238 times",
-        ),
-    ],
-)
-def test_fat_claims_are_bounded_by_the_file(shape: dict[str, Any]) -> None:
+FAT_CLAIMS = [
+    pytest.param({"fat_sectors": 10_000}, id="1.5 KB, a DIFAT sector naming itself, 10,000 FAT sectors"),
+    pytest.param({"fat_sectors": 4_000_000_000}, id="1.5 KB claiming 4 billion FAT sectors"),
+    pytest.param(
+        {"fat_sectors": 109 + 127 * 127, "difat_sectors": 127, "loop": False, "size": 8 * 1024**2},
+        id="8 MB, 127 DIFAT sectors naming one FAT sector 16,238 times",
+    ),
+]
+
+
+def test_fat_claims_are_bounded_by_the_file() -> None:
     """The header says how many FAT sectors there are and the DIFAT lists them; olefile believes both, and
     follows a DIFAT sector that points at itself as often as the header says. Every FAT and DIFAT sector is
     a sector of the file, and the FAT is read only until it covers the file: refused at once."""
-    refused_quickly_in_a_thread(difat_file(**shape))
+
+    def check(shape: dict[str, Any]) -> None:
+        refused_quickly_in_a_thread(difat_file(**shape))
+
+    check_rows(FAT_CLAIMS, check)
 
 
 def test_attachments_beyond_a_few_hundred_are_not_kept() -> None:
@@ -787,51 +845,61 @@ def assert_quick_refusal(data: bytes) -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("data", "name"),
-    [
-        (PDF, "Rechnung.pdf"),
-        (b"From: a@example.org\r\nSubject: x\r\n\r\nHallo", "mail.eml"),
-        (b"Notiz", "notiz.txt"),
-        (b"\xd0\xcf\x11", "kurz.pdf"),  # shorter than the magic: intake says what it is
-        (b"", "leer.msg"),  # intake says it is empty
-        (b"From: a@example.org\r\nSubject: x\r\n\r\nHallo", "mail.msg"),  # an e-mail as text, named .msg
-    ],
-)
-def test_as_email_leaves_other_files_alone(data: bytes, name: str) -> None:
-    assert as_email(data, name) == (data, name)
-    assert not is_ole(data)
+OTHER_FILES = [
+    (PDF, "Rechnung.pdf"),
+    (b"From: a@example.org\r\nSubject: x\r\n\r\nHallo", "mail.eml"),
+    (b"Notiz", "notiz.txt"),
+    (b"\xd0\xcf\x11", "kurz.pdf"),  # shorter than the magic: intake says what it is
+    (b"", "leer.msg"),  # intake says it is empty
+    (b"From: a@example.org\r\nSubject: x\r\n\r\nHallo", "mail.msg"),  # an e-mail as text, named .msg
+]
 
 
-@pytest.mark.parametrize(
-    "data",
-    [b"\xd0\xcf\x11", b"\0" * 8192, b"\xd0\xcf\x11\xe0\xa1\xb1"],
-    ids=["cut before its first 8 bytes", "zeros after a failed copy", "cut inside the magic"],
-)
-def test_a_msg_that_is_no_file_intake_reads_is_damaged(data: bytes) -> None:
+def test_as_email_leaves_other_files_alone() -> None:
+    def check(data: bytes, name: str) -> None:
+        assert as_email(data, name) == (data, name)
+        assert not is_ole(data)
+
+    check_rows(OTHER_FILES, check)
+
+
+NOT_A_FILE_INTAKE_READS = [
+    pytest.param(b"\xd0\xcf\x11", id="cut before its first 8 bytes"),
+    pytest.param(b"\0" * 8192, id="zeros after a failed copy"),
+    pytest.param(b"\xd0\xcf\x11\xe0\xa1\xb1", id="cut inside the magic"),
+]
+
+
+def test_a_msg_that_is_no_file_intake_reads_is_damaged() -> None:
     """Named ``.msg`` but neither an OLE file nor a type intake reads: an Outlook file that can't be opened,
     with the advice to save it again (not “this file type is not supported”)."""
-    with pytest.raises(IntakeError) as caught:
-        as_email(data, "kaputt.msg")
-    assert str(caught.value) == DAMAGED
+
+    def check(data: bytes) -> None:
+        with pytest.raises(IntakeError) as caught:
+            as_email(data, "kaputt.msg")
+        assert str(caught.value) == DAMAGED
+
+    check_rows(NOT_A_FILE_INTAKE_READS, check)
 
 
-@pytest.mark.parametrize(
-    ("name", "stored"),
-    [
-        ("Rechnung Sept.msg", "Rechnung Sept.eml"),
-        ("C:\\Users\\sam\\Desktop\\Mail.MSG", "Mail.eml"),
-        ("/home/sam/Mail.msg", "Mail.eml"),
-        ("Mail", "Mail.eml"),
-        (".msg", "e-mail.eml"),
-        ("", "e-mail.eml"),
-    ],
-)
-def test_as_email_names_from_windows_paths(name: str, stored: str) -> None:
-    raw = build_msg(bill())
-    assert is_ole(raw) and OLE_MAGIC == MAGIC
-    eml, filename = as_email(raw, name)
-    assert filename == stored and eml == msg_to_eml(raw)
+MSG_NAMES = [
+    ("Rechnung Sept.msg", "Rechnung Sept.eml"),
+    ("C:\\Users\\sam\\Desktop\\Mail.MSG", "Mail.eml"),
+    ("/home/sam/Mail.msg", "Mail.eml"),
+    ("Mail", "Mail.eml"),
+    (".msg", "e-mail.eml"),
+    ("", "e-mail.eml"),
+]
+
+
+def test_as_email_names_from_windows_paths() -> None:
+    def check(name: str, stored: str) -> None:
+        raw = build_msg(bill())
+        assert is_ole(raw) and OLE_MAGIC == MAGIC
+        eml, filename = as_email(raw, name)
+        assert filename == stored and eml == msg_to_eml(raw)
+
+    check_rows(MSG_NAMES, check)
 
 
 # --------------------------------------------------------------------------------------------------

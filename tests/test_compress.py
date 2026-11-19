@@ -19,7 +19,9 @@ import httpx
 import pytest
 
 import helpers_proof
+from fakes import use_fast_keys
 from fixtures_llm import TAX_LETTER
+from helpers_tables import check_rows, check_rows_async
 from ordnung import clock, sync
 from ordnung.api import app as app_module
 from ordnung.api import compress
@@ -97,28 +99,30 @@ async def _read_tax_letter(api: Api) -> str:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("header", "allowed"),
-    [
-        ("gzip", True),
-        ("GZip", True),
-        ("gzip, deflate, br, zstd", True),
-        ("deflate, gzip;q=0.5", True),
-        ("br, *;q=0.1", True),
-        ("*", True),
-        ("*;q=0, gzip", True),  # named outranks the wildcard
-        ("gzip;q=0", False),
-        ("gzip; q=0.000", False),
-        ("gzip;q=0, *", False),
-        ("*;q=0", False),
-        ("identity", False),
-        ("deflate, br", False),
-        ("gzip;q=lots", False),
-        ("", False),
-    ],
-)
-def test_gzip_q0_and_identity_only_are_respected(header: str, allowed: bool) -> None:
-    assert accepts_gzip(header) is allowed
+ACCEPT_ENCODINGS = [
+    ("gzip", True),
+    ("GZip", True),
+    ("gzip, deflate, br, zstd", True),
+    ("deflate, gzip;q=0.5", True),
+    ("br, *;q=0.1", True),
+    ("*", True),
+    ("*;q=0, gzip", True),  # named outranks the wildcard
+    ("gzip;q=0", False),
+    ("gzip; q=0.000", False),
+    ("gzip;q=0, *", False),
+    ("*;q=0", False),
+    ("identity", False),
+    ("deflate, br", False),
+    ("gzip;q=lots", False),
+    ("", False),
+]
+
+
+def test_gzip_q0_and_identity_only_are_respected() -> None:
+    def check(header: str, allowed: bool) -> None:
+        assert accepts_gzip(header) is allowed
+
+    check_rows(ACCEPT_ENCODINGS, check)
 
 
 async def test_gzip_q0_on_the_wire_gets_plain_bytes(data_dir: Path) -> None:
@@ -257,7 +261,8 @@ async def test_ask_stream_is_never_compressed(data_dir: Path) -> None:
         assert b"data:" in body
 
 
-async def test_file_downloads_are_never_compressed(data_dir: Path) -> None:
+async def test_file_downloads_are_never_compressed(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    use_fast_keys(monkeypatch)  # the backup's key derivation is not what this holds
     async with api_for(data_dir) as api:
         assert (await api.client.put("/api/profile", json=PROFILE)).status_code == 200
         doc_id = await _read_tax_letter(api)
@@ -561,22 +566,29 @@ PASSED_AS_THEY_ARE: dict[str, dict[str, Any]] = {
 }  # fmt: skip
 
 
-@pytest.mark.parametrize("case", sorted(PASSED_AS_THEY_ARE))
-async def test_everything_else_passes_as_it_came(case: str) -> None:
-    answer = PASSED_AS_THEY_ARE[case]
-    exchange = await _through(_answer(**answer))
-    assert exchange.status == answer.get("status", 200)
-    assert exchange.headers.get("content-encoding") == answer.get("headers", {}).get("content-encoding")
-    chunks = answer.get("chunks", (BIG_JSON,))
-    bodies = [m for m in exchange.messages if m["type"] == "http.response.body"]
-    assert [m["body"] for m in bodies] == list(chunks)  # message by message, as the app sent them
-    assert exchange.complete
+async def test_everything_else_passes_as_it_came() -> None:
+    async def check(case: str) -> None:
+        answer = PASSED_AS_THEY_ARE[case]
+        exchange = await _through(_answer(**answer))
+        assert exchange.status == answer.get("status", 200)
+        assert exchange.headers.get("content-encoding") == answer.get("headers", {}).get("content-encoding")
+        chunks = answer.get("chunks", (BIG_JSON,))
+        bodies = [m for m in exchange.messages if m["type"] == "http.response.body"]
+        assert [m["body"] for m in bodies] == list(chunks)  # message by message, as the app sent them
+        assert exchange.complete
+
+    await check_rows_async(sorted(PASSED_AS_THEY_ARE), check)
 
 
-@pytest.mark.parametrize("method", ["POST", "PUT", "PATCH", "DELETE", "HEAD"])
-async def test_only_a_get_is_compressed(method: str) -> None:
-    exchange = await _through(_answer(), method)
-    assert "content-encoding" not in exchange.headers and exchange.body == BIG_JSON
+NOT_A_GET = ["POST", "PUT", "PATCH", "DELETE", "HEAD"]
+
+
+async def test_only_a_get_is_compressed() -> None:
+    async def check(method: str) -> None:
+        exchange = await _through(_answer(), method)
+        assert "content-encoding" not in exchange.headers and exchange.body == BIG_JSON
+
+    await check_rows_async(NOT_A_GET, check)
 
 
 async def test_vary_is_added_once_and_keeps_what_the_answer_said() -> None:

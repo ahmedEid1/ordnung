@@ -19,20 +19,23 @@ from typing import Any
 import pytest
 
 from fixtures_llm import TODAY, Letter
+from helpers_tables import check_rows, check_rows_async
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.ingest.extract import (
     MISSING_PARTS,
+    REASK_WARNING,
     Completion,
     ExtractionInput,
     completion_request,
-    extract_document,
     extraction_cache_key,
     extraction_request,
     judge_completion,
     located,
+    missing_parts,
     read_document,
     reading_gap_of,
+    reask_warning,
 )
 from ordnung.ingest.gaps import CHECK_SLOT, check_item, gap_warning, remedy_notices
 from ordnung.ingest.pipeline import add_file
@@ -70,6 +73,13 @@ EMPTY_READING = "holdout2-adversarial-injection_visible-1"
 #: The day the tests read on. ``judge_completion`` takes the real date when it is given no ``today`` (it does
 #: not read :mod:`ordnung.clock`, which the fixture below pins), so every call of it here is given this day.
 DAY = date.fromisoformat(TODAY)
+
+
+@pytest.fixture(scope="module")
+def empty_reading(tmp_path_factory: pytest.TempPathFactory) -> tuple[Any, Any]:
+    """The benchmark's empty reading (its entry and its prepared pages), made once: the tests only read it."""
+    entry = {e.id: e for e in load_manifest(MANIFEST)}[EMPTY_READING]
+    return entry, prepare_document(entry, MANIFEST.parent, tmp_path_factory.mktemp("empty_reading"))
 
 
 @pytest.fixture(autouse=True)
@@ -235,23 +245,41 @@ async def test_a_complete_reading_is_asked_nothing_more() -> None:
     assert len(backend.calls) == 1
 
 
-@pytest.mark.parametrize(("payload", "gap"), [(BLANK, "empty"), (HALF, "remedy_left_out")])
-async def test_an_incomplete_reading_gets_one_re_ask(payload: dict[str, Any], gap: str) -> None:
-    backend = answering(payload, payload)
-    result = await read(backend)
-    assert result.completion == Completion(gap, accepted=False, kept_because="not_better")
-    first, again = backend.calls
-    assert (first.prompt_name, again.prompt_name) == ("extract", "reading_gaps")
-    assert again.purpose == "extract" and again.doc_ids == first.doc_ids and again.system == first.system
+INCOMPLETE_READINGS = [(BLANK, "empty"), (HALF, "remedy_left_out")]
 
 
-@pytest.mark.parametrize("payload", [BLANK, HALF, COMPLETE, {**BLANK, "sender": SENDER}])
-def test_the_trigger_is_the_reading_check_s_own_gap(payload: dict[str, Any]) -> None:
+async def test_an_incomplete_reading_gets_one_re_ask() -> None:
+    async def check(payload: dict[str, Any], gap: str) -> None:
+        backend = answering(payload, payload)
+        result = await read(backend)
+        assert result.completion == Completion(gap, accepted=False, kept_because="not_better")
+        first, again = backend.calls
+        assert (first.prompt_name, again.prompt_name) == ("extract", "reading_gaps")
+        assert again.purpose == "extract" and again.doc_ids == first.doc_ids and again.system == first.system
+        # the re-ask sent is keyed and worded for its gap
+        assert json.loads(again.cache_key or "")["complete"] == [gap]
+        _, note = prompts.render("reading_gaps", missing=missing_parts([gap]))
+        assert again.prompt == f"{first.prompt}\n\n{note}"  # the assembly is model-facing too, and not locked
+        for part in MISSING_PARTS[gap]:
+            assert f"- {part}" in again.prompt
+        assert again.schema_ == completion_schema()
+
+    await check_rows_async(INCOMPLETE_READINGS, check)
+
+
+TRIGGER_READINGS = [BLANK, HALF, COMPLETE, {**BLANK, "sender": SENDER}]
+
+
+def test_the_trigger_is_the_reading_check_s_own_gap() -> None:
     """The gap is computed on the pages exactly as the check computes it: the re-ask fires where the check would
     file its to-do, and only there."""
-    extraction, pages = reading(payload), pages_of(DECISION)
-    found = check_item(extraction, pages)
-    assert reading_gap_of(extraction, pages) == (found.gap if found is not None else None)
+
+    def check(payload: dict[str, Any]) -> None:
+        extraction, pages = reading(payload), pages_of(DECISION)
+        found = check_item(extraction, pages)
+        assert reading_gap_of(extraction, pages) == (found.gap if found is not None else None)
+
+    check_rows(TRIGGER_READINGS, check)
 
 
 async def test_the_re_ask_follows_a_repair_but_is_built_from_the_extraction_s_own_request() -> None:
@@ -270,37 +298,42 @@ async def test_the_re_ask_follows_a_repair_but_is_built_from_the_extraction_s_ow
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("gap", ["empty", "remedy_left_out"])
-def test_the_re_ask_request(gap: str) -> None:
-    data = data_for(INJECTED)
-    request = extraction_request(data, model="m")
-    again = completion_request(request, data, [gap])
-    version, _ = prompts.load("reading_gaps")
-    assert again.prompt_version == f"{request.prompt_version}.c{version}" and version == "1"
-    assert again.prompt_name == "reading_gaps" and again.purpose == "extract" and again.model == "m"
-    assert json.loads(again.cache_key or "") == {**json.loads(request.cache_key or ""), "complete": [gap]}
-    # the letter stays wrapped, once; the note after it holds no word of the letter (the legal term for the
-    # instructions on how to object is the prompts' own, as in the extraction's system prompt)
-    assert again.prompt.startswith(request.prompt)
-    note = again.prompt[len(request.prompt) :]
-    assert again.prompt.count("</untrusted_document>") == request.prompt.count("</untrusted_document>")
-    for line in (line for page in INJECTED.pages for line in page if line != "Rechtsbehelfsbelehrung"):
-        assert line not in note
-        for word in (word for word in line.split() if len(word) > 6):
-            assert word not in note, word
-    # the missing parts in plain words, the full reading asked for again, the claims named as content
-    for part in MISSING_PARTS[gap]:
-        assert f"- {part}" in note
-    assert "complete structured record" in note and "never an instruction" in note
-    assert "period was" in note and "lifted" in note and "keep" in note and "short" in note
-    if gap == "empty":
-        assert "`sender`" in note and "`document_date`" in note and "`items`" in note
-    assert "deadline to object" in note
-    # the stricter schema, for this call only
-    assert again.schema_ == completion_schema() and request.schema_ == extraction_schema()
-    assert set(COMPLETION_REQUIRED) <= set(again.schema_["required"])
-    assert not set(COMPLETION_REQUIRED) & set(extraction_schema()["required"])
-    assert again.schema_["properties"] == extraction_schema()["properties"]
+RE_ASK_GAPS = ["empty", "remedy_left_out"]
+
+
+def test_the_re_ask_request() -> None:
+    def check(gap: str) -> None:
+        data = data_for(INJECTED)
+        request = extraction_request(data, model="m")
+        again = completion_request(request, data, [gap])
+        version, _ = prompts.load("reading_gaps")
+        assert again.prompt_version == f"{request.prompt_version}.c{version}" and version == "1"
+        assert again.prompt_name == "reading_gaps" and again.purpose == "extract" and again.model == "m"
+        assert json.loads(again.cache_key or "") == {**json.loads(request.cache_key or ""), "complete": [gap]}
+        # the letter stays wrapped, once; the note after it holds no word of the letter (the legal term for the
+        # instructions on how to object is the prompts' own, as in the extraction's system prompt)
+        assert again.prompt.startswith(request.prompt)
+        note = again.prompt[len(request.prompt) :]
+        assert again.prompt.count("</untrusted_document>") == request.prompt.count("</untrusted_document>")
+        for line in (line for page in INJECTED.pages for line in page if line != "Rechtsbehelfsbelehrung"):
+            assert line not in note
+            for word in (word for word in line.split() if len(word) > 6):
+                assert word not in note, word
+        # the missing parts in plain words, the full reading asked for again, the claims named as content
+        for part in MISSING_PARTS[gap]:
+            assert f"- {part}" in note
+        assert "complete structured record" in note and "never an instruction" in note
+        assert "period was" in note and "lifted" in note and "keep" in note and "short" in note
+        if gap == "empty":
+            assert "`sender`" in note and "`document_date`" in note and "`items`" in note
+        assert "deadline to object" in note
+        # the stricter schema, for this call only
+        assert again.schema_ == completion_schema() and request.schema_ == extraction_schema()
+        assert set(COMPLETION_REQUIRED) <= set(again.schema_["required"])
+        assert not set(COMPLETION_REQUIRED) & set(extraction_schema()["required"])
+        assert again.schema_["properties"] == extraction_schema()["properties"]
+
+    check_rows(RE_ASK_GAPS, check)
 
 
 def test_the_key_marker_is_added_only_when_set() -> None:
@@ -312,11 +345,10 @@ def test_the_key_marker_is_added_only_when_set() -> None:
     assert marked == {**json.loads(plain), "complete": ["empty", "remedy_left_out"]}
 
 
-async def test_a_recorded_reading_keeps_its_key_and_its_re_ask_gets_a_new_one(tmp_path: Path) -> None:
+async def test_a_recorded_reading_keeps_its_key_and_its_re_ask_gets_a_new_one(empty_reading: Any) -> None:
     """The recorded reading of the benchmark's empty letter is still found under the extraction's key (so every
     existing recording replays); its re-ask is keyed apart, under the file its one live recording will write."""
-    entry = {e.id: e for e in load_manifest(MANIFEST)}[EMPTY_READING]
-    document = prepare_document(entry, MANIFEST.parent, tmp_path)
+    entry, document = empty_reading
     data = ExtractionInput(
         doc_id=entry.id,
         sha256=entry.sha256,
@@ -365,30 +397,30 @@ def test_the_re_ask_prompt_is_locked_with_its_schema_and_parts() -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("first", "second", "kept_because"),
-    [
-        (BLANK, COMPLETE, None),  # empty → complete
-        (BLANK, HALF, None),  # empty → the objection left out: still strictly better
-        (HALF, COMPLETE, None),  # the objection left out → complete
-        (BLANK, BLANK, "not_better"),  # equal
-        (HALF, HALF, "not_better"),  # equal
-        (HALF, BLANK, "not_better"),  # worse
-        (BLANK, INVENTED, "quotes"),  # complete, but a quote the letter doesn't hold
-    ],
-)
-async def test_the_second_answer_is_used_only_when_strictly_better(
-    first: dict[str, Any], second: dict[str, Any], kept_because: str | None
-) -> None:
-    result = await read(answering(first, second))
-    assert result.completion is not None
-    assert (result.completion.accepted, result.completion.kept_because) == (
-        kept_because is None,
-        kept_because,
-    )
-    assert result.completion.outcome == ("accepted" if kept_because is None else "rejected")
-    kept = second if kept_because is None else first
-    assert result.extraction == reading(kept)
+SECOND_ANSWERS = [
+    (BLANK, COMPLETE, None),  # empty → complete
+    (BLANK, HALF, None),  # empty → the objection left out: still strictly better
+    (HALF, COMPLETE, None),  # the objection left out → complete
+    (BLANK, BLANK, "not_better"),  # equal
+    (HALF, HALF, "not_better"),  # equal
+    (HALF, BLANK, "not_better"),  # worse
+    (BLANK, INVENTED, "quotes"),  # complete, but a quote the letter doesn't hold
+]
+
+
+async def test_the_second_answer_is_used_only_when_strictly_better() -> None:
+    async def check(first: dict[str, Any], second: dict[str, Any], kept_because: str | None) -> None:
+        result = await read(answering(first, second))
+        assert result.completion is not None
+        assert (result.completion.accepted, result.completion.kept_because) == (
+            kept_because is None,
+            kept_because,
+        )
+        assert result.completion.outcome == ("accepted" if kept_because is None else "rejected")
+        kept = second if kept_because is None else first
+        assert result.extraction == reading(kept)
+
+    await check_rows_async(SECOND_ANSWERS, check)
 
 
 def test_quotes_must_be_found_at_least_as_well_as_the_first_answer_s() -> None:
@@ -424,29 +456,37 @@ def _raise(error: Exception) -> Callable[[], Any]:
     return answer
 
 
-@pytest.mark.parametrize(
-    "second",
-    [{"kind": 42, "items": "not a list"}, "no json at all", _raise(ClaudeBadOutput("no structured output"))],
-)
-async def test_an_unusable_re_ask_answer_keeps_the_first_reading(second: Answer) -> None:
-    backend = answering(BLANK, second)
-    result = await read(backend)
-    assert result.completion == Completion("empty", accepted=False, kept_because="unusable")
-    assert result.extraction == reading(BLANK)
-    assert len(backend.calls) == 2  # the re-ask is never repaired: one call, once
+UNUSABLE_ANSWERS = [
+    {"kind": 42, "items": "not a list"},
+    "no json at all",
+    _raise(ClaudeBadOutput("no structured output")),
+]
 
 
-@pytest.mark.parametrize(
-    "error",
-    [
-        ClaudeRateLimited("Usage limit reached", reset_at=None),
-        ReplayMiss("no recorded response for extract"),
-        LLMError("the CLI broke"),
-    ],
-)
-async def test_every_other_re_ask_error_propagates(error: LLMError) -> None:
-    with pytest.raises(type(error)):
-        await read(answering(BLANK, _raise(error)))
+async def test_an_unusable_re_ask_answer_keeps_the_first_reading() -> None:
+    async def check(second: Answer) -> None:
+        backend = answering(BLANK, second)
+        result = await read(backend)
+        assert result.completion == Completion("empty", accepted=False, kept_because="unusable")
+        assert result.extraction == reading(BLANK)
+        assert len(backend.calls) == 2  # the re-ask is never repaired: one call, once
+
+    await check_rows_async(UNUSABLE_ANSWERS, check)
+
+
+PROPAGATED_ERRORS = [
+    ClaudeRateLimited("Usage limit reached", reset_at=None),
+    ReplayMiss("no recorded response for extract"),
+    LLMError("the CLI broke"),
+]
+
+
+async def test_every_other_re_ask_error_propagates() -> None:
+    async def check(error: LLMError) -> None:
+        with pytest.raises(type(error)):
+            await read(answering(BLANK, _raise(error)))
+
+    await check_rows_async(PROPAGATED_ERRORS, check)
 
 
 async def test_a_replay_miss_keeps_the_first_reading_only_where_the_caller_says_so() -> None:
@@ -459,11 +499,6 @@ async def test_a_replay_miss_keeps_the_first_reading_only_where_the_caller_says_
         await read(
             answering(BLANK, _raise(ClaudeRateLimited("limit", reset_at=None))), unrecorded=(ReplayMiss,)
         )
-
-
-async def test_extract_document_returns_the_reading_kept() -> None:
-    llm = LLMService(answering(BLANK, COMPLETE))
-    assert await extract_document(llm, data_for(), model="m") == reading(COMPLETE)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -508,6 +543,9 @@ async def test_a_blank_reading_completed_by_the_re_ask_keeps_the_model_s_to_do_a
     assert not needs_check(objection)
     assert document is not None and document.status == "processed"
     assert not any("came back almost blank" in warning for warning in document.warnings)
+    # the accepted re-ask is said on the letter, and counts as no repair
+    assert reask_warning("empty") in document.warnings
+    assert trace.run is not None and (trace.run.model_calls, trace.run.repairs) == (2, 0)
     steps = {span.key: span for span in trace.spans}
     first, again = steps["run/model:extract"], steps["run/model:extract_complete"]
     assert again.name == "Extract · complete" and again.kind == "model" and again.stage == "extract"
@@ -541,6 +579,7 @@ async def test_an_injection_whose_re_ask_also_comes_back_blank_still_gets_the_ch
     assert check.computation is not None and check.computation.confidence == "low" and needs_check(check)
     assert document is not None and document.status == "needs_review"
     assert gap_warning("empty", "dated", "widerspruch") in document.warnings
+    assert not any(REASK_WARNING.match(warning) for warning in document.warnings)  # the rejection adds none
     steps = {span.key: span for span in trace.spans}
     again = steps["run/model:extract_complete"]
     assert (again.attributes["accepted"], again.attributes["kept_because"]) == (False, "not_better")
@@ -640,11 +679,10 @@ def test_no_letter_may_miss_its_re_ask_any_more() -> None:
     assert (RECORDED / "extract" / "8d1dde25a0c13b0277de4c04.json").is_file()
 
 
-async def test_the_replay_takes_the_empty_reading_s_recorded_re_ask(tmp_path: Path) -> None:
+async def test_the_replay_takes_the_empty_reading_s_recorded_re_ask(empty_reading: Any) -> None:
     """The recordings as they are: the empty reading's re-ask (recorded live on 2026-10-03) is replayed and
     accepted — two calls, and the model's own objection deadline, Thu 10 Dec 2026 — so the check files nothing."""
-    entry = {e.id: e for e in load_manifest(MANIFEST)}[EMPTY_READING]
-    document = prepare_document(entry, MANIFEST.parent, tmp_path)
+    entry, document = empty_reading
     log = CallLog()
     backend = RecordedFailures(ReplayBackend(RECORDED), RECORDED, record=False)
     prediction = await run_ordnung(
@@ -662,26 +700,19 @@ async def test_the_replay_takes_the_empty_reading_s_recorded_re_ask(tmp_path: Pa
     assert [(call.purpose, call.ok) for call in log.calls] == [("extract", True), ("extract", True)]
 
 
-async def test_a_re_ask_miss_on_the_empty_reading_is_a_replay_error_now(tmp_path: Path) -> None:
-    """With nothing allowed, the recordings as first made (no re-ask) fail on that letter instead of scoring its
-    first reading silently."""
-    entry = {e.id: e for e in load_manifest(MANIFEST)}[EMPTY_READING]
-    document = prepare_document(entry, MANIFEST.parent, tmp_path)
+async def test_a_replay_without_the_re_ask_s_recording_keeps_the_recorded_run(
+    empty_reading: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The recorded empty reading, as first recorded: the re-ask has no recording, so the first reading is kept
+    and the check runs as before — the same to-do, and the same single call accounted (a replay miss is no
+    call). With nothing allowed, as now, the same replay fails on that letter instead of scoring its first
+    reading silently."""
+    entry, document = empty_reading
     backend = WithoutReask(RecordedFailures(ReplayBackend(RECORDED), RECORDED, record=False))
     llm = LLMService(MeteredBackend(backend, CallLog(), timeout_s=60))
     with pytest.raises(ReplayMiss):
         await run_ordnung(entry, document, llm, model="claude-sonnet-5")
-
-
-async def test_a_replay_without_the_re_ask_s_recording_keeps_the_recorded_run(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """The recorded empty reading, as first recorded: the re-ask has no recording, so the first reading is kept
-    and the check runs as before — the same to-do, and the same single call accounted (a replay miss is no
-    call)."""
     as_first_recorded(monkeypatch)
-    entry = {e.id: e for e in load_manifest(MANIFEST)}[EMPTY_READING]
-    document = prepare_document(entry, MANIFEST.parent, tmp_path)
     log = CallLog()
     backend = WithoutReask(RecordedFailures(ReplayBackend(RECORDED), RECORDED, record=False))
     llm = LLMService(MeteredBackend(backend, log, timeout_s=60))
@@ -706,12 +737,10 @@ async def test_a_metered_replay_miss_is_no_call_but_a_recorded_failure_is(tmp_pa
     assert [(call.purpose, call.ok) for call in log.calls] == [("extract", False)]
 
 
-@pytest.mark.parametrize(
-    ("complete", "signal"), [(True, "reading_reask:accepted"), (False, "reading_reask:rejected")]
-)
-async def test_the_benchmark_takes_the_same_path_and_says_how_the_re_ask_ended(
-    tmp_path: Path, complete: bool, signal: str
-) -> None:
+BENCHMARK_RE_ASK_ENDINGS = [(True, "reading_reask:accepted"), (False, "reading_reask:rejected")]
+
+
+async def test_the_benchmark_takes_the_same_path_and_says_how_the_re_ask_ended(tmp_path: Path) -> None:
     """A recorded decision answered blank, then — by the re-ask — blank again or completed. The completed reading
     is built at run time from what code finds on the letter's page (its notice) and the entry's date, so no
     letter text is written here."""
@@ -728,21 +757,24 @@ async def test_the_benchmark_takes_the_same_path_and_says_how_the_re_ask_ended(
         "items": [item],
     }
 
-    def respond(request: LLMRequest) -> Any:
-        if request.purpose == "extract" and request.prompt_name == "reading_gaps" and complete:
-            return completed
-        return dict(BLANK)
+    async def check(complete: bool, signal: str) -> None:
+        def respond(request: LLMRequest) -> Any:
+            if request.purpose == "extract" and request.prompt_name == "reading_gaps" and complete:
+                return completed
+            return dict(BLANK)
 
-    backend = FakeBackend(respond)
-    log = CallLog()
-    llm = LLMService(MeteredBackend(backend, log, timeout_s=60))
-    prediction = await run_ordnung(entry, document, llm, model="claude-sonnet-5")
-    assert [request.prompt_name for request in backend.calls] == ["extract", "reading_gaps"]
-    assert signal in prediction.signals and "reading_reask_missing" not in prediction.signals
-    assert len(log.calls) == 2  # both calls accounted
-    if complete:  # the model's own objection to-do, and nothing for the check to add
-        assert "reading_incomplete" not in prediction.signals
-        assert [item.origin for item in prediction.items] == ["model"]
-    else:  # the first reading kept: the check files its to-do as before
-        assert "reading_incomplete" in prediction.signals
-        assert [item.origin for item in prediction.items] == ["code"]
+        backend = FakeBackend(respond)
+        log = CallLog()
+        llm = LLMService(MeteredBackend(backend, log, timeout_s=60))
+        prediction = await run_ordnung(entry, document, llm, model="claude-sonnet-5")
+        assert [request.prompt_name for request in backend.calls] == ["extract", "reading_gaps"]
+        assert signal in prediction.signals and "reading_reask_missing" not in prediction.signals
+        assert len(log.calls) == 2  # both calls accounted
+        if complete:  # the model's own objection to-do, and nothing for the check to add
+            assert "reading_incomplete" not in prediction.signals
+            assert [item.origin for item in prediction.items] == ["model"]
+        else:  # the first reading kept: the check files its to-do as before
+            assert "reading_incomplete" in prediction.signals
+            assert [item.origin for item in prediction.items] == ["code"]
+
+    await check_rows_async(BENCHMARK_RE_ASK_ENDINGS, check)

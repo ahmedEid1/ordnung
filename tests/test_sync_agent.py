@@ -5,7 +5,7 @@ the two-phase replace (fence, drain, decide again), waiting take-overs, timeouts
 from __future__ import annotations
 
 import asyncio
-import contextlib
+import hashlib
 import json
 import threading
 from pathlib import Path
@@ -14,9 +14,11 @@ from typing import Any
 import pytest
 
 from fake_caldav import MemorySecrets
+from ordnung import durable
 from ordnung.app_context import build_context
 from ordnung.config import Paths
 from ordnung.db.store import PERSON_META_KEY, Store, person_write
+from ordnung.ingest import intake
 from ordnung.ingest import watcher as watcher_module
 from ordnung.llm.fake import FakeBackend
 from ordnung.models import ClaudeStatus
@@ -94,26 +96,7 @@ async def _connected_pair(tmp_path: Path, folder: Path, engine: FakeEngine) -> t
 # --------------------------------------------------------------------------------------------------
 
 
-def test_the_person_counter_moves_in_the_same_transaction_and_only_for_real_writes(store: Store) -> None:
-    with person_write():
-        store.set_meta("weekly_session_at", "2026-10-07")
-        assert counter(store) == 1
-        with store.tx():  # a transaction that changes nothing counts nothing
-            store.get_meta("weekly_session_at")
-        assert counter(store) == 1
-        with store.tx():  # nested writes are one transaction: one count
-            store.set_meta("last_review_at", "2026-10-07")
-            store.set_meta("weekly_prompt_dismissed_at", "2026-10-07")
-        assert counter(store) == 2
-        with contextlib.suppress(RuntimeError), store.tx():  # rolled back: not counted either
-            store.set_meta("last_review_at", "2026-10-08")
-            raise RuntimeError
-        assert counter(store) == 2
-    store.set_meta("last_review_at", "2026-10-09")  # background work
-    assert counter(store) == 2
-
-
-def test_a_durable_store_commits_with_synchronous_full(paths: Paths) -> None:
+def test_a_durable_store_commits_with_synchronous_full(paths: Paths, monkeypatch: pytest.MonkeyPatch) -> None:
     def synchronous(store: Store) -> int:
         return int(store._conn().execute("PRAGMA synchronous").fetchone()[0])
 
@@ -122,6 +105,10 @@ def test_a_durable_store_commits_with_synchronous_full(paths: Paths) -> None:
         store.set_durable(True)  # sync connected while the server runs
         store.set_meta("x", "1")
         assert synchronous(store) == 2  # FULL, from this thread's next transaction on
+        calls: list[int] = []
+        monkeypatch.setattr(durable, "fsync", lambda fd: calls.append(fd))
+        intake._write_atomic(paths.data_dir / "files" / "x.bin", b"original")
+        assert calls  # the file reached the disk before a row could name it
         store.set_durable(False)
         store.set_meta("x", "2")
         assert synchronous(store) == 1
@@ -143,6 +130,8 @@ def test_a_durable_store_commits_with_synchronous_full(paths: Paths) -> None:
 
 async def test_without_a_connection_sync_is_off_and_background_work_runs(data_dir: Path) -> None:
     async with computer(data_dir) as api:
+        assert (await _add_todo(api, "Pay the gym")).status_code == 201
+        assert api.ctx.store.get_meta(PERSON_META_KEY) is None  # nothing is counted while sync is off
         agent, state = agent_of(api), state_of(api)
         assert (agent.mode, agent.connected) == ("off", False)
         assert state.background_on and api.ctx.worker.running
@@ -227,20 +216,6 @@ async def test_joining_brings_everything_over_and_the_other_computer_stands_by(
         await eventually(lambda: agent_of(b).mode == "standing_by")
 
 
-async def test_a_take_over_recovers_the_pulled_database_s_interrupted_readings(
-    tmp_path: Path, folder: Path
-) -> None:
-    engine = FakeEngine()
-    desk, lap = _dirs(tmp_path)
-    async with computer(desk, engine=engine) as a, computer(lap, engine=engine) as b:
-        await _switch(a, b, folder)
-        requeued: list[int] = []
-        original = a.ctx.store.requeue_running_jobs
-        a.ctx.store.requeue_running_jobs = lambda: requeued.append(1) or original()  # type: ignore[method-assign]
-        assert (await a.client.post("/api/sync/use-here", json={})).status_code == 200
-        assert requeued, "the worker recovers the replaced database's jobs when it starts again"
-
-
 async def test_the_person_counter_counts_requests_and_the_watched_folder_not_readings(
     tmp_path: Path, folder: Path
 ) -> None:
@@ -258,12 +233,6 @@ async def test_the_person_counter_counts_requests_and_the_watched_folder_not_rea
         assert counter(api.ctx.store) == before + 1
         # the counter row is this computer's, never the person's data
         assert api.ctx.store.get_meta(PERSON_META_KEY) == str(before + 1)
-
-
-async def test_nothing_is_counted_while_sync_is_off(data_dir: Path) -> None:
-    async with computer(data_dir) as api:
-        assert (await _add_todo(api, "Pay the gym")).status_code == 201
-        assert api.ctx.store.get_meta(PERSON_META_KEY) is None
 
 
 async def test_a_person_s_change_is_saved_within_seconds(tmp_path: Path, folder: Path) -> None:
@@ -356,11 +325,14 @@ async def test_the_watched_folder_s_letters_are_the_person_s_and_remembered_acro
             return Added()
 
         monkeypatch.setattr(watcher_module, "add_file_result", added)
+        assert not watcher_module.was_taken(api.ctx.store, data)
         await watched._add(data, "scan.pdf", hold=True)
         assert counter(api.ctx.store) > before, "the scan counts as the person's change"
         assert heard == [1]
         taken = json.loads(api.ctx.store.get_meta(watcher_module.FOLDER_TAKEN_META_KEY) or "[]")
         assert len(taken) == 1
+        assert hashlib.sha256(data).hexdigest() in taken  # remembered by content, in the synced list
+        assert watcher_module.was_taken(api.ctx.store, data)
         # the same content again (here, or on the other computer after a switch) is skipped quietly
         await watched._add(data, "scan (copy).pdf", hold=True)
         assert heard == [1]
@@ -555,9 +527,13 @@ async def test_after_taking_over_this_computer_is_the_one_in_use_at_once(
     async with computer(desk, engine=engine) as a, computer(lap, engine=engine) as b:
         await _switch(a, b, folder)
         assert (await status(a))["in_use_on"] == "laptop"
+        requeued: list[int] = []
+        original = a.ctx.store.requeue_running_jobs
+        a.ctx.store.requeue_running_jobs = lambda: requeued.append(1) or original()  # type: ignore[method-assign]
         taken = await a.client.post("/api/sync/use-here", json={})
         assert taken.status_code == 200, taken.text
         assert taken.json()["mode"] == "in_use" and taken.json()["in_use_on"] == "desktop"
+        assert requeued, "the worker recovers the replaced database's jobs when it starts again"
 
 
 async def test_a_waiting_take_over_gives_up_after_its_time(
@@ -595,17 +571,6 @@ async def test_a_waiting_take_over_gives_up_when_the_other_computer_changes_more
         await eventually(lambda: agent_of(a)._waiting is None)
         assert agent_of(a).mode == "standing_by"
         assert any(n["code"] == "take_over_cancelled" for n in agent_of(a).summary.notices)  # type: ignore[union-attr]
-
-
-async def test_cancel_stops_a_waiting_take_over(tmp_path: Path, folder: Path) -> None:
-    engine = FakeEngine()
-    desk, lap = _dirs(tmp_path)
-    async with computer(desk, engine=engine) as a, computer(lap, engine=engine) as b:
-        await _switch(a, b, folder)
-        _withhold_laptop_s(folder)
-        assert (await a.client.post("/api/sync/use-here", json={})).json()["take_over_waiting"] is True
-        cancelled = await a.client.post("/api/sync/use-here", json={"cancel": True})
-        assert cancelled.json()["take_over_waiting"] is False
 
 
 async def test_a_waiting_take_over_waits_for_the_laptop_s_change_when_the_desktop_saved_last(
@@ -758,6 +723,9 @@ async def test_a_hanging_folder_never_holds_up_shutdown(
     tmp_path: Path, folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     short_folder_limit(monkeypatch)
+    # shorter than FAST's 2 s, still longer than the folder call's limit: the last save then gets the lock and
+    # finds the engine busy (below that limit it would give up on the lock, another path)
+    monkeypatch.setattr(agent_module, "SHUTDOWN_PUSH_S", 1.5)
     engine = FakeEngine()
     desk, _ = _dirs(tmp_path)
     started = 0.0

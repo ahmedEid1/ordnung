@@ -13,12 +13,14 @@ import copy
 from collections.abc import Iterator
 from dataclasses import replace
 from datetime import date
+from itertools import count
 from pathlib import Path
 from typing import Any
 
 import pytest
 
 from fixtures_llm import Letter, Router
+from helpers_tables import check_rows_async
 from ordnung import clock
 from ordnung.api.routes import documents
 from ordnung.ingest import pipeline
@@ -1074,15 +1076,23 @@ async def test_rule_to_dos_survive_re_reading_and_leave_when_the_kind_is_correct
         assert [item.slot_key for item in left] == ["rule:sgb3_38"]  # done: kept; open: removed
 
 
-@pytest.mark.parametrize("letter", [BAILIFF, CLAIMANT], ids=["bailiff", "claimant"])
-async def test_letters_that_only_name_a_court_order_are_not_one(data_dir: Path, letter: Letter) -> None:
+COURT_ORDER_MENTIONS = [pytest.param(BAILIFF, id="bailiff"), pytest.param(CLAIMANT, id="claimant")]
+
+
+async def test_letters_that_only_name_a_court_order_are_not_one(data_dir: Path) -> None:
     """A bailiff's letter (headed with the court's name) and the court's notice to the claimant name an
     order without asking the person to answer it: no court order, no two-week to-do, no urgent card."""
-    async with api_for(data_dir, router=_router()) as api:
-        doc_id = await _read(api, letter)
-        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
-        assert detail["document"]["kind"] == "authority_letter"
-        assert detail["items"] == [] and detail["advice"] is None
+
+    async def check(folder: Path, letter: Letter) -> None:
+        async with api_for(folder, router=_router()) as api:
+            doc_id = await _read(api, letter)
+            detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+            assert detail["document"]["kind"] == "authority_letter"
+            assert detail["items"] == [] and detail["advice"] is None
+
+    # each row reads its letter in a data folder of its own, awaited in turn
+    folders = (data_dir / str(number) for number in count())
+    await check_rows_async(COURT_ORDER_MENTIONS, lambda *row: check(next(folders), *row))
 
 
 async def test_an_item_that_only_mentions_the_court_action_leaves_its_to_do(data_dir: Path) -> None:
@@ -1132,57 +1142,71 @@ async def test_a_chosen_kind_reroutes_even_with_an_unconfirmed_arrival_day(data_
         assert any(entry["kind"] == "document.kind" for entry in activity)
 
 
-@pytest.mark.parametrize(
-    ("letter", "objection"), [(FRISTLOS, False), (HILFSWEISE, True)], ids=["fristlos", "hilfsweise"]
-)
-async def test_a_notice_without_notice_period_gets_no_hardship_objection(
-    data_dir: Path, letter: Letter, objection: bool
-) -> None:
+NOTICES_WITHOUT_NOTICE_PERIOD = [
+    pytest.param(FRISTLOS, False, id="fristlos"),
+    pytest.param(HILFSWEISE, True, id="hilfsweise"),
+]
+
+
+async def test_a_notice_without_notice_period_gets_no_hardship_objection(data_dir: Path) -> None:
     """The hardship objection doesn't apply to a notice without notice period (§ 574 Abs. 1 S. 2 BGB):
     no to-do and no letter to draft — unless it also gives notice with a notice period (hilfsweise)."""
-    async with api_for(data_dir, router=_router()) as api:
-        doc_id = await _read(api, letter)
-        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
-        assert detail["document"]["kind"] == "landlord_notice"
-        advice = detail["advice"]
-        assert advice["facts"][0]["title"].startswith("This reads as a notice without notice period")
-        assert advice["draft"] == ("objection" if objection else None)
-        rules = [item["due_date"] for item in detail["items"] if item["origin"] == "rule"]
-        assert rules == (["2027-01-31"] if objection else [])  # two months before 31 Mar 2027
-        if not objection:
-            # the composer refuses the hardship objection the card doesn't offer (§ 574 Abs. 1 S. 2 BGB)
-            refused = await api.client.post("/api/drafts", json={"kind": "objection", "doc_id": doc_id})
-            assert refused.status_code == 422
-            assert (
-                "doesn't apply" in refused.json()["detail"]
-                and "§ 569 Abs. 3 Nr. 2" in refused.json()["detail"]
-            )
+
+    async def check(folder: Path, letter: Letter, objection: bool) -> None:
+        async with api_for(folder, router=_router()) as api:
+            doc_id = await _read(api, letter)
+            detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+            assert detail["document"]["kind"] == "landlord_notice"
+            advice = detail["advice"]
+            assert advice["facts"][0]["title"].startswith("This reads as a notice without notice period")
+            assert advice["draft"] == ("objection" if objection else None)
+            rules = [item["due_date"] for item in detail["items"] if item["origin"] == "rule"]
+            assert rules == (["2027-01-31"] if objection else [])  # two months before 31 Mar 2027
+            if not objection:
+                # the composer refuses the hardship objection the card doesn't offer (§ 574 Abs. 1 S. 2 BGB)
+                refused = await api.client.post("/api/drafts", json={"kind": "objection", "doc_id": doc_id})
+                assert refused.status_code == 422
+                assert (
+                    "doesn't apply" in refused.json()["detail"]
+                    and "§ 569 Abs. 3 Nr. 2" in refused.json()["detail"]
+                )
+
+    # each row reads its letter in a data folder of its own, awaited in turn
+    folders = (data_dir / str(number) for number in count())
+    await check_rows_async(NOTICES_WITHOUT_NOTICE_PERIOD, lambda *row: check(next(folders), *row))
 
 
-@pytest.mark.parametrize(
-    "letter", [NEXT_POSSIBLE, ONLY_EXTRAORDINARY], ids=["next-possible", "außerordentlich"]
-)
-async def test_a_notice_without_an_end_or_only_extraordinary_keeps_its_objection(
-    data_dir: Path, letter: Letter
-) -> None:
+NOTICES_WITHOUT_AN_END = [
+    pytest.param(NEXT_POSSIBLE, id="next-possible"),
+    pytest.param(ONLY_EXTRAORDINARY, id="außerordentlich"),
+]
+
+
+async def test_a_notice_without_an_end_or_only_extraordinary_keeps_its_objection(data_dir: Path) -> None:
     """A notice "zum nächstmöglichen Termin" got no objection to-do (its card asked
     for an end the notice doesn't write), and "außerordentlich" alone lost the to-do and the letter. The
     objection counts back from the earliest end (arrived 24 Sep 2026: 31 Dec 2026, objection by 31 Oct)."""
-    async with api_for(data_dir, router=_router()) as api:
-        doc_id = await _read(api, letter)
-        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
-        assert detail["document"]["kind"] == "landlord_notice"
-        [rule] = [item for item in detail["items"] if item["origin"] == "rule"]
-        assert rule["due_date"] == "2026-10-31" and "bgb_573c_landlord" in rule["computation"]["rule_ids"]
-        advice = detail["advice"]
-        assert advice["draft"] == "objection"
-        assert not any("there is no to-do" in step for step in advice["steps"])
-        if letter is ONLY_EXTRAORDINARY:
-            assert advice["facts"][0]["title"] == "This may be a notice without notice period"
-        else:
-            assert advice["facts"] == [] and not advice["urgent"]
-        drafted = await api.client.post("/api/drafts", json={"kind": "objection", "doc_id": doc_id})
-        assert drafted.status_code != 422, drafted.text
+
+    async def check(folder: Path, letter: Letter) -> None:
+        async with api_for(folder, router=_router()) as api:
+            doc_id = await _read(api, letter)
+            detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+            assert detail["document"]["kind"] == "landlord_notice"
+            [rule] = [item for item in detail["items"] if item["origin"] == "rule"]
+            assert rule["due_date"] == "2026-10-31" and "bgb_573c_landlord" in rule["computation"]["rule_ids"]
+            advice = detail["advice"]
+            assert advice["draft"] == "objection"
+            assert not any("there is no to-do" in step for step in advice["steps"])
+            if letter is ONLY_EXTRAORDINARY:
+                assert advice["facts"][0]["title"] == "This may be a notice without notice period"
+            else:
+                assert advice["facts"] == [] and not advice["urgent"]
+            drafted = await api.client.post("/api/drafts", json={"kind": "objection", "doc_id": doc_id})
+            assert drafted.status_code != 422, drafted.text
+
+    # each row reads its letter in a data folder of its own, awaited in turn
+    folders = (data_dir / str(number) for number in count())
+    await check_rows_async(NOTICES_WITHOUT_AN_END, lambda *row: check(next(folders), *row))
 
 
 async def test_the_statutory_objection_hint_without_an_end_keeps_the_laws_objection(data_dir: Path) -> None:
@@ -1245,38 +1269,45 @@ async def test_a_payment_order_read_as_pay_still_gets_pay_or_object(data_dir: Pa
         assert objection.title.startswith("Pay or object") and objection.due_date == "2026-10-05"
 
 
-@pytest.mark.parametrize(
-    ("letter", "due", "confidence", "check"),
-    [
-        (ON_TIME_NOTICE, "2027-01-31", "high", False),  # the end is written in the notice's sentence
-        (END_IN_HEADING, "2027-01-31", "medium", False),  # only in the heading: worth a second look
-        (MISREAD_END, "2027-03-31", "low", True),  # the letter says 31.03.2027: "Please check"
-    ],
-    ids=["stated", "elsewhere", "misread"],
-)
+OBJECTION_END_DATES = [
+    # the end is written in the notice's sentence
+    pytest.param(ON_TIME_NOTICE, "2027-01-31", "high", False, id="stated"),
+    # only in the heading: worth a second look
+    pytest.param(END_IN_HEADING, "2027-01-31", "medium", False, id="elsewhere"),
+    # the letter says 31.03.2027: "Please check"
+    pytest.param(MISREAD_END, "2027-03-31", "low", True, id="misread"),
+]
+
+
 async def test_the_objection_to_a_notice_is_only_as_sure_as_the_end_date_it_counts_from(
-    data_dir: Path, letter: Letter, due: str, confidence: str, check: bool
+    data_dir: Path,
 ) -> None:
     """§ 574b Abs. 2 BGB counts back from the end the model read; nothing else in the letter states the
     objection date, so the end date is checked against the letter like an item's date (SPEC § 21)."""
-    async with api_for(data_dir, router=_router()) as api:
-        doc_id = await _read(api, letter)
-        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
-        assert detail["document"]["kind"] == "landlord_notice"
-        [objection] = _by_origin(api, doc_id)["rule"]
-        assert objection.computation is not None
-        assert objection.due_date == due and objection.computation.confidence == confidence
-        assert needs_check(objection) is check
-        assert (detail["document"]["status"] == "needs_review") is check
-        if check:
-            assert any("isn't written in the letter" in w for w in objection.computation.warnings)
-            [evidence] = objection.evidence
-            assert "31.03.2027" in evidence.quote and not evidence.value_consistent
-            # confirming the date (or setting it by hand) settles it, as for any "Please check"
-            response = await api.client.post(f"/api/items/{objection.id}/confirm")
-            assert response.status_code == 200
-            doc = (await api.client.get(f"/api/documents/{doc_id}")).json()["document"]
-            assert doc["status"] == "processed"
+
+    async def check(folder: Path, letter: Letter, due: str, confidence: str, check: bool) -> None:
+        async with api_for(folder, router=_router()) as api:
+            doc_id = await _read(api, letter)
+            detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+            assert detail["document"]["kind"] == "landlord_notice"
+            [objection] = _by_origin(api, doc_id)["rule"]
+            assert objection.computation is not None
+            assert objection.due_date == due and objection.computation.confidence == confidence
+            assert needs_check(objection) is check
+            assert (detail["document"]["status"] == "needs_review") is check
+            if check:
+                assert any("isn't written in the letter" in w for w in objection.computation.warnings)
+                [evidence] = objection.evidence
+                assert "31.03.2027" in evidence.quote and not evidence.value_consistent
+                # confirming the date (or setting it by hand) settles it, as for any "Please check"
+                response = await api.client.post(f"/api/items/{objection.id}/confirm")
+                assert response.status_code == 200
+                doc = (await api.client.get(f"/api/documents/{doc_id}")).json()["document"]
+                assert doc["status"] == "processed"
+
+    # each row reads its letter in a data folder of its own, awaited in turn
+    folders = (data_dir / str(number) for number in count())
+    await check_rows_async(OBJECTION_END_DATES, lambda *row: check(next(folders), *row))
 
 
 async def test_an_operating_cost_statement_keeps_its_kind_and_gets_its_card_on_read(data_dir: Path) -> None:
@@ -1293,6 +1324,8 @@ async def test_an_operating_cost_statement_keeps_its_kind_and_gets_its_card_on_r
 async def test_a_late_statements_back_payment_says_it_may_not_be_owed(data_dir: Path) -> None:
     """The card says the statement came too late; its "Pay" to-do says so too (and the
     card comes first), but stays open — the landlord may not be responsible for the delay (ADR 0006)."""
+    from ordnung.assistant.mcp_server import DECIDE_BEFORE_PAYING, LedgerTools
+
     async with api_for(data_dir, router=_router()) as api:
         doc_id = await _read(api, LATE_STATEMENT)
         detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
@@ -1304,6 +1337,12 @@ async def test_a_late_statements_back_payment_says_it_may_not_be_owed(data_dir: 
         assert payment["status"] == "open" and payment["due_date"] == "2026-09-30"
         assert LATE_STATEMENT_WARNING in payment["computation"]["warnings"]
         assert "bgb_556_3" in payment["computation"]["rule_ids"]
+        # Ask lists the back payment apart, with its note, and leaves it out of the totals
+        record = LedgerTools(api.ctx.store, today=date(2026, 9, 25)).money_summary().record
+        [decide] = record[DECIDE_BEFORE_PAYING]
+        assert decide["id"] == payment["id"] and decide["payment_note"] == LATE_STATEMENT_WARNING
+        assert all(row["id"] != payment["id"] for row in record["upcoming_payments"])
+        assert record["due_this_month"] == 0
         # a recompute (the arrival day entered) keeps the warning, once
         await api.client.patch(f"/api/documents/{doc_id}", json={"received_date": "2026-09-12"})
         item = api.ctx.store.get_item(payment["id"])
@@ -1695,26 +1734,34 @@ async def test_the_letters_own_objection_date_carries_the_notice(data_dir: Path)
         assert not (await api.client.get(f"/api/documents/{doc_id}")).json()["advice"]["urgent"]
 
 
-@pytest.mark.parametrize("letter", [MAHNBESCHEID, DISMISSAL], ids=["mahnbescheid", "dismissal"])
-async def test_a_card_settles_once_the_person_closed_every_to_do(data_dir: Path, letter: Letter) -> None:
+SETTLING_CARDS = [pytest.param(MAHNBESCHEID, id="mahnbescheid"), pytest.param(DISMISSAL, id="dismissal")]
+
+
+async def test_a_card_settles_once_the_person_closed_every_to_do(data_dir: Path) -> None:
     """After the person objected (or went to court and registered) and marked the to-dos
     done, the card is no longer urgent; it comes back when a to-do is reopened."""
-    async with api_for(data_dir, router=_router()) as api:
-        doc_id = await _read(api, letter)
-        items = api.ctx.store.list_items(doc_id=doc_id)
-        assert items and (await api.client.get(f"/api/documents/{doc_id}")).json()["advice"]["urgent"]
-        for item in items:
-            response = await api.client.patch(f"/api/items/{item.id}", json={"status": "done"})
-            assert response.status_code == 200
-        settled = (await api.client.get(f"/api/documents/{doc_id}")).json()["advice"]
-        assert not settled["urgent"] and settled["handled"]
-        # it doesn't ask for the delivery day any more
-        assert not any(
-            step.startswith(("Find the delivery date", "Enter the day")) for step in settled["steps"]
-        )
-        await api.client.patch(f"/api/items/{items[0].id}", json={"status": "open"})
-        reopened = (await api.client.get(f"/api/documents/{doc_id}")).json()["advice"]
-        assert reopened["urgent"] and not reopened["handled"]
+
+    async def check(folder: Path, letter: Letter) -> None:
+        async with api_for(folder, router=_router()) as api:
+            doc_id = await _read(api, letter)
+            items = api.ctx.store.list_items(doc_id=doc_id)
+            assert items and (await api.client.get(f"/api/documents/{doc_id}")).json()["advice"]["urgent"]
+            for item in items:
+                response = await api.client.patch(f"/api/items/{item.id}", json={"status": "done"})
+                assert response.status_code == 200
+            settled = (await api.client.get(f"/api/documents/{doc_id}")).json()["advice"]
+            assert not settled["urgent"] and settled["handled"]
+            # it doesn't ask for the delivery day any more
+            assert not any(
+                step.startswith(("Find the delivery date", "Enter the day")) for step in settled["steps"]
+            )
+            await api.client.patch(f"/api/items/{items[0].id}", json={"status": "open"})
+            reopened = (await api.client.get(f"/api/documents/{doc_id}")).json()["advice"]
+            assert reopened["urgent"] and not reopened["handled"]
+
+    # each row reads its letter in a data folder of its own, awaited in turn
+    folders = (data_dir / str(number) for number in count())
+    await check_rows_async(SETTLING_CARDS, lambda *row: check(next(folders), *row))
 
 
 async def test_paying_the_arrears_doesnt_settle_a_notice_without_notice_period(data_dir: Path) -> None:
@@ -1772,18 +1819,26 @@ async def test_any_court_letter_asks_for_the_delivery_date(data_dir: Path) -> No
         assert request["computation"]["confidence"] == "low"
 
 
-@pytest.mark.parametrize("field", ["doc_date", "received_date"])
-async def test_a_statement_dated_9999_is_saved_not_an_error(data_dir: Path, field: str) -> None:
+DATE_FIELDS_9999 = ["doc_date", "received_date"]
+
+
+async def test_a_statement_dated_9999_is_saved_not_an_error(data_dir: Path) -> None:
     """Filing a letter as an operating-cost statement with a date of 31 Dec 9999 made PATCH
     answer 500 (the statement's twelve months ran past the calendar)."""
-    async with api_for(data_dir, router=_router()) as api:
-        doc_id = await _read(api, LATE_STATEMENT)
-        response = await api.client.patch(
-            f"/api/documents/{doc_id}", json={"kind": "operating_costs", field: "9999-12-31"}
-        )
-        assert response.status_code == 200
-        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
-        assert detail["advice"]["kind"] == "operating_costs"
+
+    async def check(folder: Path, field: str) -> None:
+        async with api_for(folder, router=_router()) as api:
+            doc_id = await _read(api, LATE_STATEMENT)
+            response = await api.client.patch(
+                f"/api/documents/{doc_id}", json={"kind": "operating_costs", field: "9999-12-31"}
+            )
+            assert response.status_code == 200
+            detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+            assert detail["advice"]["kind"] == "operating_costs"
+
+    # each row reads its letter in a data folder of its own, awaited in turn
+    folders = (data_dir / str(number) for number in count())
+    await check_rows_async(DATE_FIELDS_9999, lambda *row: check(next(folders), *row))
 
 
 async def test_ask_never_presents_a_rent_increases_new_rent_as_just_another_payment(data_dir: Path) -> None:
@@ -1881,16 +1936,3 @@ async def test_a_hand_set_date_keeps_the_new_rents_note(data_dir: Path) -> None:
         cleared = api.ctx.store.get_item(payment.id)
         assert cleared is not None and cleared.computation is not None
         assert cleared.computation.warnings == [RENT_INCREASE_PAYMENT_WARNING]
-
-
-async def test_a_late_statements_back_payment_is_listed_apart_with_its_note(data_dir: Path) -> None:
-    from ordnung.assistant.mcp_server import DECIDE_BEFORE_PAYING, LedgerTools
-
-    async with api_for(data_dir, router=_router()) as api:
-        doc_id = await _read(api, LATE_STATEMENT)
-        [payment] = _by_origin(api, doc_id)["extracted"]
-        record = LedgerTools(api.ctx.store, today=date(2026, 9, 25)).money_summary().record
-        [decide] = record[DECIDE_BEFORE_PAYING]
-        assert decide["id"] == payment.id and decide["payment_note"] == LATE_STATEMENT_WARNING
-        assert all(row["id"] != payment.id for row in record["upcoming_payments"])
-        assert record["due_this_month"] == 0

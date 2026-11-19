@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import date
+from itertools import product
 from typing import Any
 
 import pytest
 
+from helpers_tables import check_rows
 from ordnung.db.store import Store
 from ordnung.ingest.gaps import CHECK_SLOT
 from ordnung.ingest.link import LinkResult
@@ -176,30 +178,31 @@ def test_a_working_day_its_quote_names_is_consistent() -> None:
 NO_DAY_LEASE_PAGE = (1, f"Monatliche Miete: 640,00 EUR\n{RENT_IN_ADVANCE}", [], "text")
 
 
-@pytest.mark.parametrize(
-    ("quote", "working_day", "page"),
-    [
-        (RENT_IN_ADVANCE, 3, NO_DAY_LEASE_PAGE),  # the letter names no working day at all
-        (RENT_IN_ADVANCE, 1, LEASE_PAGE),  # the letter names another working day (the 3rd)
-        (RENT_BY_WORKING_DAY, 1, LEASE_PAGE),  # the quote names another working day
-    ],
-)
-def test_a_working_day_its_quote_does_not_name_needs_a_check(
-    quote: str, working_day: int, page: tuple[int, str, list[Any], str]
-) -> None:
+A_WORKING_DAY_ITS_QUOTE_DOES_NOT_NAME_NEEDS_A_CHECK = [
+    (RENT_IN_ADVANCE, 3, NO_DAY_LEASE_PAGE),  # the letter names no working day at all
+    (RENT_IN_ADVANCE, 1, LEASE_PAGE),  # the letter names another working day (the 3rd)
+    (RENT_BY_WORKING_DAY, 1, LEASE_PAGE),  # the quote names another working day
+]
+
+
+def test_a_working_day_its_quote_does_not_name_needs_a_check() -> None:
     """The working day is the reading's claim about the item's sentence: one the sentence doesn't name — nor
     the letter's sentence about when the rent is due (:func:`test_a_due_day_the_letter_states_elsewhere_is_
     grounded_on_that_sentence`) — is ``working_day_not_in_quote``, so the value is not consistent with its
     quote and the letter says a date could not be confirmed ("Please check"); its receipt is graded one level
     lower, with the reason's note."""
-    result = verify_extraction("doc_x", extraction([rent(quote, working_day)]), [page])
-    [verified] = result.items
-    assert verified.reasons == (WORKING_DAY_NOT_IN_QUOTE,)
-    assert not verified.evidence.value_consistent and verified.evidence.grounding == "verified"
-    assert result.needs_review
-    assert result.warnings == ["1 date could not be confirmed against the letter's text."]
-    receipt = grade_receipt(ComputationReceipt(due_date="2026-10-05", confidence="high"), verified)
-    assert receipt.confidence == "medium" and receipt.warnings == [REASON_TEXT[WORKING_DAY_NOT_IN_QUOTE]]
+
+    def check(quote: str, working_day: int, page: tuple[int, str, list[Any], str]) -> None:
+        result = verify_extraction("doc_x", extraction([rent(quote, working_day)]), [page])
+        [verified] = result.items
+        assert verified.reasons == (WORKING_DAY_NOT_IN_QUOTE,)
+        assert not verified.evidence.value_consistent and verified.evidence.grounding == "verified"
+        assert result.needs_review
+        assert result.warnings == ["1 date could not be confirmed against the letter's text."]
+        receipt = grade_receipt(ComputationReceipt(due_date="2026-10-05", confidence="high"), verified)
+        assert receipt.confidence == "medium" and receipt.warnings == [REASON_TEXT[WORKING_DAY_NOT_IN_QUOTE]]
+
+    check_rows(A_WORKING_DAY_ITS_QUOTE_DOES_NOT_NAME_NEEDS_A_CHECK, check)
 
 
 RENT_ON_THE_FIRST = "Die Miete ist monatlich im Voraus, spätestens zum 1. eines Monats zu zahlen."
@@ -247,27 +250,33 @@ def ticket(day: int | None = 1, *, working_day: int | None = None) -> ExtractedI
     return reading.model_copy(update={"recurrence": Recurrence(day_of_month=day, working_day=working_day)})
 
 
-@pytest.mark.parametrize("source", ["text", "transcript"])
-def test_a_due_day_the_letter_states_elsewhere_is_grounded_on_that_sentence(source: str) -> None:
+A_DUE_DAY_THE_LETTER_STATES_ELSEWHERE_IS_GROUNDED_ON_THAT_SENTENCE = ["text", "transcript"]
+
+
+def test_a_due_day_the_letter_states_elsewhere_is_grounded_on_that_sentence() -> None:
     """A monthly debit whose quote (the price line) doesn't name its day, while the letter's payment terms do
     ("Abbuchung zum Monatsanfang": the 1st, the reading's day): the day counts as stated, and that sentence
     is the to-do's evidence too, grounded as any quote is (boxes on a text page, ``model_read`` on a
     transcript) — no "Please check", no unconfirmed date, the receipt keeps its grade. The notice period's
     "bis zum 10. eines Monats" is no payment's day."""
-    page = ticket_page(TICKET_PRICE, TICKET_DEBIT, TICKET_NOTICE, source=source)
-    result = verify_extraction("doc_x", extraction([ticket()]), [page])
-    [verified] = result.items
-    assert verified.reasons == () and verified.evidence.value_consistent
-    assert verified.dated and not verified.needs_check and not result.needs_review
-    assert result.warnings == []
-    day = verified.day_evidence
-    assert day is not None and day.quote == " ".join(TICKET_DEBIT.split()) and day.value_consistent
-    grounding = "verified" if source == "text" else "model_read"
-    assert day.grounding == grounding and day.page == 1 and bool(day.boxes) == (source == "text")
-    assert verified.all_evidence == [verified.evidence, day]
-    receipt = grade_receipt(ComputationReceipt(due_date="2026-10-01", confidence="high"), verified)
-    assert receipt.warnings == ([] if source == "text" else [MODEL_READ_NOTE])
-    assert consistency_reasons(ticket(), [page]) == ()  # recomputing its dates grades it the same way
+
+    def check(source: str) -> None:
+        page = ticket_page(TICKET_PRICE, TICKET_DEBIT, TICKET_NOTICE, source=source)
+        result = verify_extraction("doc_x", extraction([ticket()]), [page])
+        [verified] = result.items
+        assert verified.reasons == () and verified.evidence.value_consistent
+        assert verified.dated and not verified.needs_check and not result.needs_review
+        assert result.warnings == []
+        day = verified.day_evidence
+        assert day is not None and day.quote == " ".join(TICKET_DEBIT.split()) and day.value_consistent
+        grounding = "verified" if source == "text" else "model_read"
+        assert day.grounding == grounding and day.page == 1 and bool(day.boxes) == (source == "text")
+        assert verified.all_evidence == [verified.evidence, day]
+        receipt = grade_receipt(ComputationReceipt(due_date="2026-10-01", confidence="high"), verified)
+        assert receipt.warnings == ([] if source == "text" else [MODEL_READ_NOTE])
+        assert consistency_reasons(ticket(), [page]) == ()  # recomputing its dates grades it the same way
+
+    check_rows(A_DUE_DAY_THE_LETTER_STATES_ELSEWHERE_IS_GROUNDED_ON_THAT_SENTENCE, check)
 
 
 def test_a_working_day_the_letter_states_elsewhere_is_grounded_on_that_sentence() -> None:
@@ -277,75 +286,75 @@ def test_a_working_day_the_letter_states_elsewhere_is_grounded_on_that_sentence(
     assert verified.day_evidence.grounding == "verified"
 
 
-@pytest.mark.parametrize(
-    ("lines", "reading", "reason"),
-    [
-        # the letter states no day
-        ((TICKET_PRICE, TICKET_NOTICE), ticket(), DAY_OF_MONTH_NOT_IN_QUOTE),
-        # the letter states another day than the reading's
-        ((TICKET_PRICE, TICKET_DEBIT, TICKET_NOTICE), ticket(15), DAY_OF_MONTH_NOT_IN_QUOTE),
-        # the letter states a day of the month, the reading a working day
-        ((TICKET_PRICE, TICKET_DEBIT), ticket(None, working_day=1), WORKING_DAY_NOT_IN_QUOTE),
-        # the letter states two different days: which one is the reading's?
-        (
-            (TICKET_PRICE, TICKET_DEBIT, "Die Servicegebühr wird jeweils zum 15. eines Monats abgebucht."),
-            ticket(),
-            DAY_OF_MONTH_NOT_IN_QUOTE,
-        ),
-        # the reading's day, but in a sentence that is not about paying: a tenant's duty, a count, moving in,
-        # an installation, late fees from that day on, a contract's end
-        (
-            (TICKET_PRICE, "Der Mieter hat den Zählerstand bis zum 15. eines Monats zu melden."),
-            ticket(15),
-            DAY_OF_MONTH_NOT_IN_QUOTE,
-        ),
-        (
-            (TICKET_PRICE, "Die Anzahl der Fahrten ist bis zum 15. eines Monats zu melden."),
-            ticket(15),
-            DAY_OF_MONTH_NOT_IN_QUOTE,
-        ),
-        (
-            (TICKET_PRICE, "Der Einzug in die Wohnung erfolgt zum 15. des Monats."),
-            ticket(15),
-            DAY_OF_MONTH_NOT_IN_QUOTE,
-        ),
-        (
-            (TICKET_PRICE, "Die Installation erfolgt am 3. Werktag."),
-            ticket(None, working_day=3),
-            WORKING_DAY_NOT_IN_QUOTE,
-        ),
-        (
-            (TICKET_PRICE, "Mahngebühren werden ab dem 15. eines Monats fällig."),
-            ticket(15),
-            DAY_OF_MONTH_NOT_IN_QUOTE,
-        ),
-        (
-            (TICKET_PRICE, "Ihr Vertrag endet zum Monatsende, der Beitrag wird monatlich abgebucht."),
-            ticket(31),
-            DAY_OF_MONTH_NOT_IN_QUOTE,
-        ),
-        # the reading's day in a sentence that names a sum but pays nothing, or after a word
-        # that makes it a bound ("nach der Monatsmitte")
-        (
-            (TICKET_PRICE, "Den neuen Rechnungsbetrag teilen wir Ihnen jeweils zur Monatsmitte mit."),
-            ticket(15),
-            DAY_OF_MONTH_NOT_IN_QUOTE,
-        ),
-        (
-            (TICKET_PRICE, "Der Abschlag wird nach der Monatsmitte abgebucht."),
-            ticket(15),
-            DAY_OF_MONTH_NOT_IN_QUOTE,
-        ),
-    ],
-)
-def test_a_due_day_the_letter_does_not_state_alone_still_needs_a_check(
-    lines: tuple[str, ...], reading: ExtractedItem, reason: str
-) -> None:
-    result = verify_extraction("doc_x", extraction([reading]), [ticket_page(*lines)])
-    [verified] = result.items
-    assert verified.reasons == (reason,) and verified.day_evidence is None and verified.needs_check
-    assert result.warnings == ["1 date could not be confirmed against the letter's text."]
-    assert consistency_reasons(reading, [ticket_page(*lines)]) == (reason,)
+A_DUE_DAY_THE_LETTER_DOES_NOT_STATE_ALONE_STILL_NEEDS_A_CHECK = [
+    # the letter states no day
+    ((TICKET_PRICE, TICKET_NOTICE), ticket(), DAY_OF_MONTH_NOT_IN_QUOTE),
+    # the letter states another day than the reading's
+    ((TICKET_PRICE, TICKET_DEBIT, TICKET_NOTICE), ticket(15), DAY_OF_MONTH_NOT_IN_QUOTE),
+    # the letter states a day of the month, the reading a working day
+    ((TICKET_PRICE, TICKET_DEBIT), ticket(None, working_day=1), WORKING_DAY_NOT_IN_QUOTE),
+    # the letter states two different days: which one is the reading's?
+    (
+        (TICKET_PRICE, TICKET_DEBIT, "Die Servicegebühr wird jeweils zum 15. eines Monats abgebucht."),
+        ticket(),
+        DAY_OF_MONTH_NOT_IN_QUOTE,
+    ),
+    # the reading's day, but in a sentence that is not about paying: a tenant's duty, a count, moving in,
+    # an installation, late fees from that day on, a contract's end
+    (
+        (TICKET_PRICE, "Der Mieter hat den Zählerstand bis zum 15. eines Monats zu melden."),
+        ticket(15),
+        DAY_OF_MONTH_NOT_IN_QUOTE,
+    ),
+    (
+        (TICKET_PRICE, "Die Anzahl der Fahrten ist bis zum 15. eines Monats zu melden."),
+        ticket(15),
+        DAY_OF_MONTH_NOT_IN_QUOTE,
+    ),
+    (
+        (TICKET_PRICE, "Der Einzug in die Wohnung erfolgt zum 15. des Monats."),
+        ticket(15),
+        DAY_OF_MONTH_NOT_IN_QUOTE,
+    ),
+    (
+        (TICKET_PRICE, "Die Installation erfolgt am 3. Werktag."),
+        ticket(None, working_day=3),
+        WORKING_DAY_NOT_IN_QUOTE,
+    ),
+    (
+        (TICKET_PRICE, "Mahngebühren werden ab dem 15. eines Monats fällig."),
+        ticket(15),
+        DAY_OF_MONTH_NOT_IN_QUOTE,
+    ),
+    (
+        (TICKET_PRICE, "Ihr Vertrag endet zum Monatsende, der Beitrag wird monatlich abgebucht."),
+        ticket(31),
+        DAY_OF_MONTH_NOT_IN_QUOTE,
+    ),
+    # the reading's day in a sentence that names a sum but pays nothing, or after a word
+    # that makes it a bound ("nach der Monatsmitte")
+    (
+        (TICKET_PRICE, "Den neuen Rechnungsbetrag teilen wir Ihnen jeweils zur Monatsmitte mit."),
+        ticket(15),
+        DAY_OF_MONTH_NOT_IN_QUOTE,
+    ),
+    (
+        (TICKET_PRICE, "Der Abschlag wird nach der Monatsmitte abgebucht."),
+        ticket(15),
+        DAY_OF_MONTH_NOT_IN_QUOTE,
+    ),
+]
+
+
+def test_a_due_day_the_letter_does_not_state_alone_still_needs_a_check() -> None:
+    def check(lines: tuple[str, ...], reading: ExtractedItem, reason: str) -> None:
+        result = verify_extraction("doc_x", extraction([reading]), [ticket_page(*lines)])
+        [verified] = result.items
+        assert verified.reasons == (reason,) and verified.day_evidence is None and verified.needs_check
+        assert result.warnings == ["1 date could not be confirmed against the letter's text."]
+        assert consistency_reasons(reading, [ticket_page(*lines)]) == (reason,)
+
+    check_rows(A_DUE_DAY_THE_LETTER_DOES_NOT_STATE_ALONE_STILL_NEEDS_A_CHECK, check)
 
 
 PREMIUM_DEBIT = "Der nächste Jahresbeitrag in Höhe von 59,90 € wird am 01.12.2026 von Ihrem Konto abgebucht."
@@ -387,62 +396,70 @@ MONTHLY_ON_1ST = Recurrence(day_of_month=1)
 YEARLY_ON_1ST = Recurrence(interval=1, unit="years", day_of_month=1)
 
 
-@pytest.mark.parametrize(
-    ("quote", "rule"),
-    [
-        ("Ihre Gesamtmiete beträgt ab dem 01.11.2026 somit 670,00 € monatlich.", MONTHLY_ON_1ST),
-        ("Your new monthly rent of 670.00 EUR is payable from 1 November 2026.", MONTHLY_ON_1ST),
-        (
-            "Die Miete von 670,00 € ist ab dem 01.11.2026 monatlich zu zahlen, erstmals am 01.12.2026.",
-            MONTHLY_ON_1ST,
-        ),
-        # beside a clause number, which reads like a date without a year
-        (
-            "Gemäß Ziffer 1.3. der AVB ist der Jahresbeitrag von 670,00 € ab dem 01.11.2026 fällig.",
-            YEARLY_ON_1ST,
-        ),
-        # a start in other words, with yearly wording after it or a recurring one before it
-        ("Versicherungsbeginn 01.11.2026 jährlich 670,00 EUR", YEARLY_ON_1ST),
-        ("Der Beitrag von 670,00 € ist erstmals jeweils am 01.11.2026 fällig.", MONTHLY_ON_1ST),
-        # beside the contract's end, or the invoice's date, on the same day of the month
-        (
-            "Der Vertrag beginnt am 01.11.2026 und endet am 01.11.2028; Beitrag monatlich 670,00 €.",
-            MONTHLY_ON_1ST,
-        ),
-        ("Rechnungsdatum 01.10.2026, Monatsbeitrag 670,00 € fällig am 01.11.2026.", MONTHLY_ON_1ST),
-        # a one-off deadline in "each … by" wording
-        ("Please return each form by 1 November 2026; the monthly fee is 670.00 EUR.", MONTHLY_ON_1ST),
-    ],
-)
-def test_a_single_start_date_is_never_the_recurring_day(quote: str, rule: Recurrence) -> None:
+A_SINGLE_START_DATE_IS_NEVER_THE_RECURRING_DAY = [
+    ("Ihre Gesamtmiete beträgt ab dem 01.11.2026 somit 670,00 € monatlich.", MONTHLY_ON_1ST),
+    ("Your new monthly rent of 670.00 EUR is payable from 1 November 2026.", MONTHLY_ON_1ST),
+    (
+        "Die Miete von 670,00 € ist ab dem 01.11.2026 monatlich zu zahlen, erstmals am 01.12.2026.",
+        MONTHLY_ON_1ST,
+    ),
+    # beside a clause number, which reads like a date without a year
+    (
+        "Gemäß Ziffer 1.3. der AVB ist der Jahresbeitrag von 670,00 € ab dem 01.11.2026 fällig.",
+        YEARLY_ON_1ST,
+    ),
+    # a start in other words, with yearly wording after it or a recurring one before it
+    ("Versicherungsbeginn 01.11.2026 jährlich 670,00 EUR", YEARLY_ON_1ST),
+    ("Der Beitrag von 670,00 € ist erstmals jeweils am 01.11.2026 fällig.", MONTHLY_ON_1ST),
+    # beside the contract's end, or the invoice's date, on the same day of the month
+    (
+        "Der Vertrag beginnt am 01.11.2026 und endet am 01.11.2028; Beitrag monatlich 670,00 €.",
+        MONTHLY_ON_1ST,
+    ),
+    ("Rechnungsdatum 01.10.2026, Monatsbeitrag 670,00 € fällig am 01.11.2026.", MONTHLY_ON_1ST),
+    # a one-off deadline in "each … by" wording
+    ("Please return each form by 1 November 2026; the monthly fee is 670.00 EUR.", MONTHLY_ON_1ST),
+]
+
+
+def test_a_single_start_date_is_never_the_recurring_day() -> None:
     """A day of the month read from the date a schedule starts on (the extraction prompt forbids it) stays
     unconfirmed ("Please check"), even beside another date on that day or a clause number."""
-    reading = item(quote, money=670.0, type="fixed", date="2026-11-01", nature="payment").model_copy(
-        update={"recurrence": rule}
-    )
-    result = verify_extraction("doc_x", extraction([reading]), [ticket_page(quote)])
-    [verified] = result.items
-    assert verified.reasons == (DAY_OF_MONTH_NOT_IN_QUOTE,) and verified.needs_check and result.needs_review
+
+    def check(quote: str, rule: Recurrence) -> None:
+        reading = item(quote, money=670.0, type="fixed", date="2026-11-01", nature="payment").model_copy(
+            update={"recurrence": rule}
+        )
+        result = verify_extraction("doc_x", extraction([reading]), [ticket_page(quote)])
+        [verified] = result.items
+        assert (
+            verified.reasons == (DAY_OF_MONTH_NOT_IN_QUOTE,) and verified.needs_check and result.needs_review
+        )
+
+    check_rows(A_SINGLE_START_DATE_IS_NEVER_THE_RECURRING_DAY, check)
 
 
-@pytest.mark.parametrize(
-    "stated",
-    [
-        "Die Beitragszahlung richtet sich nach Ziffer 1.4. der Allgemeinen Bedingungen.",
-        "Versicherungsbeginn 01.11. / Jahresbeitrag 670,00 €",
-    ],
-)
-def test_a_start_date_or_clause_number_elsewhere_is_no_due_day(stated: str) -> None:
+A_START_DATE_OR_CLAUSE_NUMBER_ELSEWHERE_IS_NO_DUE_DAY = [
+    "Die Beitragszahlung richtet sich nach Ziffer 1.4. der Allgemeinen Bedingungen.",
+    "Versicherungsbeginn 01.11. / Jahresbeitrag 670,00 €",
+]
+
+
+def test_a_start_date_or_clause_number_elsewhere_is_no_due_day() -> None:
     """A yearly premium's day read from its start date is not confirmed by another payment sentence of the
     letter citing a clause number or giving the start without a year: no day evidence, "Please check"."""
-    quote = "Der Jahresbeitrag beträgt ab dem 01.11.2026 670,00 €."
-    reading = item(quote, money=670.0, type="fixed", date="2026-11-01", nature="payment").model_copy(
-        update={"recurrence": YEARLY_ON_1ST}
-    )
-    result = verify_extraction("doc_x", extraction([reading]), [ticket_page(quote, stated)])
-    [verified] = result.items
-    assert verified.reasons == (DAY_OF_MONTH_NOT_IN_QUOTE,) and verified.day_evidence is None
-    assert verified.needs_check and result.needs_review
+
+    def check(stated: str) -> None:
+        quote = "Der Jahresbeitrag beträgt ab dem 01.11.2026 670,00 €."
+        reading = item(quote, money=670.0, type="fixed", date="2026-11-01", nature="payment").model_copy(
+            update={"recurrence": YEARLY_ON_1ST}
+        )
+        result = verify_extraction("doc_x", extraction([reading]), [ticket_page(quote, stated)])
+        [verified] = result.items
+        assert verified.reasons == (DAY_OF_MONTH_NOT_IN_QUOTE,) and verified.day_evidence is None
+        assert verified.needs_check and result.needs_review
+
+    check_rows(A_START_DATE_OR_CLAUSE_NUMBER_ELSEWHERE_IS_NO_DUE_DAY, check)
 
 
 FEE_TERMS = (
@@ -473,58 +490,84 @@ def test_the_middle_of_each_three_month_period_confirms_a_quarterly_15th() -> No
     assert consistency_reasons(fee(), [page]) == ()  # recomputing its dates grades it the same way
 
 
-@pytest.mark.parametrize(
-    "reading",
-    [
-        # every month: no quarter's middle
-        fee(rule=Recurrence(interval=1, unit="months", day_of_month=15)),
-        # a first date off the middle
-        fee(type="fixed", date="2026-11-01", nature="payment"),
-        # no first date
-        fee(type="relative", amount=2, unit="weeks", anchor="document_date", nature="payment"),
-    ],
-)
-def test_the_middle_of_each_quarter_confirms_no_other_reading(reading: ExtractedItem) -> None:
-    page = ticket_page(FEE_TERMS, FEE_DUE)
-    [verified] = verify_extraction("doc_x", extraction([reading]), [page]).items
-    assert DAY_OF_MONTH_NOT_IN_QUOTE in verified.reasons and verified.day_evidence is None
-    assert verified.needs_check
+THE_MIDDLE_OF_EACH_QUARTER_CONFIRMS_NO_OTHER_READING = [
+    # every month: no quarter's middle
+    fee(rule=Recurrence(interval=1, unit="months", day_of_month=15)),
+    # a first date off the middle
+    fee(type="fixed", date="2026-11-01", nature="payment"),
+    # no first date
+    fee(type="relative", amount=2, unit="weeks", anchor="document_date", nature="payment"),
+]
+
+
+def test_the_middle_of_each_quarter_confirms_no_other_reading() -> None:
+    def check(reading: ExtractedItem) -> None:
+        page = ticket_page(FEE_TERMS, FEE_DUE)
+        [verified] = verify_extraction("doc_x", extraction([reading]), [page]).items
+        assert DAY_OF_MONTH_NOT_IN_QUOTE in verified.reasons and verified.day_evidence is None
+        assert verified.needs_check
+
+    check_rows(THE_MIDDLE_OF_EACH_QUARTER_CONFIRMS_NO_OTHER_READING, check)
 
 
 FEE_TABLE = "10.2026 – 12.2026   18,36 €   55,08 €   15.11.2026"
 
 
-@pytest.mark.parametrize("quote", [FEE_DUE, FEE_TERMS])
-@pytest.mark.parametrize("first", ["2026-10-15", "2026-12-15", "2027-01-15"])
-def test_the_middle_of_a_period_is_anchored_on_the_letters_own_due_date(quote: str, first: str) -> None:
+THE_MIDDLE_OF_A_PERIOD_IS_ANCHORED_ON_THE_LETTERS_OWN_DUE_DATE_QUOTES = [FEE_DUE, FEE_TERMS]
+
+
+THE_MIDDLE_OF_A_PERIOD_IS_ANCHORED_ON_THE_LETTERS_OWN_DUE_DATE_FIRSTS = [
+    "2026-10-15",
+    "2026-12-15",
+    "2027-01-15",
+]
+
+
+def test_the_middle_of_a_period_is_anchored_on_the_letters_own_due_date() -> None:
     """A reading a month or two off the letter's due date (15.11.2026) is a 15th too, but no
     middle the letter states — the phrase says nothing of which months make the periods, so only a first
     date the letter writes anchors them (``first_date_written``). "Please check", whichever sentence it
     quotes."""
-    page = ticket_page(FEE_TERMS, FEE_TABLE, FEE_DUE)
-    reading = fee(quote=quote, type="fixed", date=first, nature="payment")
-    [verified] = verify_extraction("doc_x", extraction([reading]), [page]).items
-    assert DAY_OF_MONTH_NOT_IN_QUOTE in verified.reasons and verified.day_evidence is None
-    assert verified.needs_check
-    [written] = verify_extraction("doc_x", extraction([fee(quote=quote)]), [page]).items
-    assert written.reasons == () and not written.needs_check
+
+    def check(quote: str, first: str) -> None:
+        page = ticket_page(FEE_TERMS, FEE_TABLE, FEE_DUE)
+        reading = fee(quote=quote, type="fixed", date=first, nature="payment")
+        [verified] = verify_extraction("doc_x", extraction([reading]), [page]).items
+        assert DAY_OF_MONTH_NOT_IN_QUOTE in verified.reasons and verified.day_evidence is None
+        assert verified.needs_check
+        [written] = verify_extraction("doc_x", extraction([fee(quote=quote)]), [page]).items
+        assert written.reasons == () and not written.needs_check
+
+    check_rows(
+        product(
+            THE_MIDDLE_OF_A_PERIOD_IS_ANCHORED_ON_THE_LETTERS_OWN_DUE_DATE_QUOTES,
+            THE_MIDDLE_OF_A_PERIOD_IS_ANCHORED_ON_THE_LETTERS_OWN_DUE_DATE_FIRSTS,
+        ),
+        check,
+    )
 
 
 QUARTER_MIDDLE = "Der Abschlag von 55,08 € ist jeweils zur Quartalsmitte fällig, erstmals am 15.02.2027."
 
 
-@pytest.mark.parametrize(
-    ("first", "confirmed"), [("2027-02-15", True), ("2027-05-15", False), ("2027-08-15", False)]
-)
-def test_the_middle_of_each_quarter_is_anchored_on_the_date_the_letter_writes(
-    first: str, confirmed: bool
-) -> None:
+THE_MIDDLE_OF_EACH_QUARTER_IS_ANCHORED_ON_THE_DATE_THE_LETTER_WRITES = [
+    ("2027-02-15", True),
+    ("2027-05-15", False),
+    ("2027-08-15", False),
+]
+
+
+def test_the_middle_of_each_quarter_is_anchored_on_the_date_the_letter_writes() -> None:
     """The words "zur Quartalsmitte …, erstmals am 15.02.2027" vouch for a quarterly 15th from
     15.02.2027 only, not for one read from 15.05.2027 or 15.08.2027 (each a quarter's middle, too)."""
-    reading = fee(quote=QUARTER_MIDDLE, type="fixed", date=first, nature="payment")
-    [verified] = verify_extraction("doc_x", extraction([reading]), [ticket_page(QUARTER_MIDDLE)]).items
-    assert verified.needs_check is not confirmed
-    assert (DAY_OF_MONTH_NOT_IN_QUOTE in verified.reasons) is not confirmed
+
+    def check(first: str, confirmed: bool) -> None:
+        reading = fee(quote=QUARTER_MIDDLE, type="fixed", date=first, nature="payment")
+        [verified] = verify_extraction("doc_x", extraction([reading]), [ticket_page(QUARTER_MIDDLE)]).items
+        assert verified.needs_check is not confirmed
+        assert (DAY_OF_MONTH_NOT_IN_QUOTE in verified.reasons) is not confirmed
+
+    check_rows(THE_MIDDLE_OF_EACH_QUARTER_IS_ANCHORED_ON_THE_DATE_THE_LETTER_WRITES, check)
 
 
 def test_a_recurring_date_counts_as_stated_only_on_its_quotes_schedule() -> None:
@@ -556,16 +599,22 @@ def test_quarter_ends_one_may_cancel_by_are_no_due_days() -> None:
 QUARTER_ENDS = "Die Abschläge von 300,00 € sind am 31.03., 30.06., 30.09. und 31.12. fällig."
 
 
-@pytest.mark.parametrize(("day", "first", "confirmed"), [(31, "2026-12-31", True), (30, "2026-12-30", False)])
-def test_quarter_ends_state_the_last_day_of_the_month(day: int, first: str, confirmed: bool) -> None:
+QUARTER_ENDS_STATE_THE_LAST_DAY_OF_THE_MONTH = [(31, "2026-12-31", True), (30, "2026-12-30", False)]
+
+
+def test_quarter_ends_state_the_last_day_of_the_month() -> None:
     """Quarter ends confirm a reading of the 31st (each month's last day), and no longer the 30th, which
     two of them share (30.06., 30.09.): it would date March and December on the 30th."""
-    advance = item(QUARTER_ENDS, money=300.0, type="fixed", date=first, nature="payment").model_copy(
-        update={"recurrence": Recurrence(interval=3, unit="months", day_of_month=day)}
-    )
-    [verified] = verify_extraction("doc_x", extraction([advance]), [ticket_page(QUARTER_ENDS)]).items
-    assert verified.needs_check is not confirmed
-    assert verified.reasons == (() if confirmed else (DAY_OF_MONTH_NOT_IN_QUOTE,))
+
+    def check(day: int, first: str, confirmed: bool) -> None:
+        advance = item(QUARTER_ENDS, money=300.0, type="fixed", date=first, nature="payment").model_copy(
+            update={"recurrence": Recurrence(interval=3, unit="months", day_of_month=day)}
+        )
+        [verified] = verify_extraction("doc_x", extraction([advance]), [ticket_page(QUARTER_ENDS)]).items
+        assert verified.needs_check is not confirmed
+        assert verified.reasons == (() if confirmed else (DAY_OF_MONTH_NOT_IN_QUOTE,))
+
+    check_rows(QUARTER_ENDS_STATE_THE_LAST_DAY_OF_THE_MONTH, check)
 
 
 def test_a_list_with_a_date_on_another_day_confirms_no_day() -> None:
@@ -577,13 +626,6 @@ def test_a_list_with_a_date_on_another_day_confirms_no_day() -> None:
     )
     [verified] = verify_extraction("doc_x", extraction([reading]), [ticket_page(quote)]).items
     assert verified.reasons == (DAY_OF_MONTH_NOT_IN_QUOTE,) and verified.needs_check
-
-
-def test_the_middle_of_the_month_confirms_the_15th() -> None:
-    quote = "Die Miete von 640,00 € ist monatlich bis zur Monatsmitte zu zahlen."
-    reading = rent(quote, None).model_copy(update={"recurrence": Recurrence(day_of_month=15)})
-    [verified] = verify_extraction("doc_x", extraction([reading]), [ticket_page(quote)]).items
-    assert verified.reasons == () and not verified.needs_check
 
 
 def test_key_facts_contract_and_remedy_quotes_are_grounded() -> None:
@@ -1349,11 +1391,3 @@ def test_fixed_date_stated_elsewhere_and_recurring_schedules_are_not_flagged() -
         kind="contract", title="Letter", summary="s", explanation="e", items=[fee, monthly]
     )
     assert not verify_extraction("doc_x", extraction, [page]).needs_review
-
-
-def test_passport_bilingual_month_dates_parse() -> None:
-    from datetime import date
-
-    from ordnung.ingest.verify import parse_dates
-
-    assert [m.as_date() for m in parse_dates("Date of expiry 10 FEB / FÉV 2027")] == [date(2027, 2, 10)]

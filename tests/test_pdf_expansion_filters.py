@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import itertools
 import random
 import zlib
 from collections.abc import Iterator
@@ -21,6 +22,7 @@ from pdfminer.ascii85 import ascii85decode
 from pdfminer.lzw import lzwdecode
 from pdfminer.runlength import rldecode
 
+from helpers_tables import check_rows
 from ordnung.ingest import expansion
 from ordnung.ingest.text import PDFIUM_LOCK
 
@@ -316,89 +318,101 @@ def _ascii_decoded(data: bytes, name: bytes) -> bytes:
     return b"".join(stage.feed(data[lead.end() if lead else 0 :])) + b"".join(stage.close())
 
 
-@pytest.mark.parametrize(
-    ("filters", "data"),
-    [
-        pytest.param(b"/ASCII85Decode", A85 + b"~>", id="ascii85"),
-        pytest.param(b"/A85", base64.a85encode(bytes(64) + LETTER) + b"\n~>", id="ascii85 with z for zeros"),
-        pytest.param(
-            b"/A85", A85[:500] + b"v" + A85[500:] + b"~>", id="ascii85 up to a character outside it"
-        ),
-        pytest.param(b"/A85", A85[:500] + b"\x0c" + A85[500:] + b"~>", id="ascii85 up to a form feed"),
-        pytest.param(b"/A85", A85[:500] + b"~" + A85[500:] + b"~>", id="ascii85 up to a lone tilde"),
-        pytest.param(b"/A85", A85[:7] + b"z" + A85[7:] + b"~>", id="ascii85 with z inside a group"),
-        pytest.param(b"/A85", b"uuuuu" + A85 + b"~>", id="ascii85 with a group above 32 bits"),
-        pytest.param(b"/A85", base64.a85encode(LETTER[:-2]), id="ascii85 without its end"),
-        pytest.param(b"/ASCIIHexDecode", binascii.hexlify(LETTER, b" ", 30) + b">", id="hex"),
-        pytest.param(b"/AHx", binascii.hexlify(LETTER).upper() + b"g q\x0c<", id="hex past other characters"),
-        pytest.param(b"/AHx", b"4142434>4445", id="hex with an odd number of digits, then its end"),
-    ],
-)
-def test_ascii85_and_asciihex_data_is_decoded_as_pdfium_decodes_it(filters: bytes, data: bytes) -> None:
+ASCII_DATA = [
+    pytest.param(b"/ASCII85Decode", A85 + b"~>", id="ascii85"),
+    pytest.param(b"/A85", base64.a85encode(bytes(64) + LETTER) + b"\n~>", id="ascii85 with z for zeros"),
+    pytest.param(b"/A85", A85[:500] + b"v" + A85[500:] + b"~>", id="ascii85 up to a character outside it"),
+    pytest.param(b"/A85", A85[:500] + b"\x0c" + A85[500:] + b"~>", id="ascii85 up to a form feed"),
+    pytest.param(b"/A85", A85[:500] + b"~" + A85[500:] + b"~>", id="ascii85 up to a lone tilde"),
+    pytest.param(b"/A85", A85[:7] + b"z" + A85[7:] + b"~>", id="ascii85 with z inside a group"),
+    pytest.param(b"/A85", b"uuuuu" + A85 + b"~>", id="ascii85 with a group above 32 bits"),
+    pytest.param(b"/A85", base64.a85encode(LETTER[:-2]), id="ascii85 without its end"),
+    pytest.param(b"/ASCIIHexDecode", binascii.hexlify(LETTER, b" ", 30) + b">", id="hex"),
+    pytest.param(b"/AHx", binascii.hexlify(LETTER).upper() + b"g q\x0c<", id="hex past other characters"),
+    pytest.param(b"/AHx", b"4142434>4445", id="hex with an odd number of digits, then its end"),
+]
+
+
+def test_ascii85_and_asciihex_data_is_decoded_as_pdfium_decodes_it() -> None:
     """PDFium stops ASCII85 at the first character that can't be part of it and skips any character that
     isn't a hex digit, where Python's decoders refuse the data (so it once counted as nothing)."""
-    name = filters.removeprefix(b"/")
-    assert _ascii_decoded(data, name) == _pdfium_decodes(filters, data)
+
+    def check(filters: bytes, data: bytes) -> None:
+        name = filters.removeprefix(b"/")
+        assert _ascii_decoded(data, name) == _pdfium_decodes(filters, data)
+
+    check_rows(ASCII_DATA, check)
 
 
-@pytest.mark.parametrize("size", [1, 3, 7, 4096])
-@pytest.mark.parametrize(
-    ("name", "data"),
-    [
-        pytest.param(b"A85", A85[:7] + b"z" + A85[7:] + b"~>", id="ascii85 with z inside a group"),
-        pytest.param(b"A85", A85[:500] + b"v" + A85[500:], id="ascii85 up to a character outside it"),
-        pytest.param(b"A85", b"uuuuu" + base64.a85encode(bytes(64) + LETTER), id="ascii85 without its end"),
-        pytest.param(b"A85", A85[:-3], id="ascii85 ending in a short group"),
-        pytest.param(b"AHx", binascii.hexlify(LETTER, b" ", 31) + b"g>", id="hex"),
-        pytest.param(b"AHx", b"4142434", id="hex with an odd number of digits, without its end"),
-    ],
-)
-def test_ascii_data_fed_in_pieces_decodes_as_it_does_whole(size: int, name: bytes, data: bytes) -> None:
+PIECE_SIZES = [1, 3, 7, 4096]
+ASCII_DATA_IN_PIECES = [
+    pytest.param(b"A85", A85[:7] + b"z" + A85[7:] + b"~>", id="ascii85 with z inside a group"),
+    pytest.param(b"A85", A85[:500] + b"v" + A85[500:], id="ascii85 up to a character outside it"),
+    pytest.param(b"A85", b"uuuuu" + base64.a85encode(bytes(64) + LETTER), id="ascii85 without its end"),
+    pytest.param(b"A85", A85[:-3], id="ascii85 ending in a short group"),
+    pytest.param(b"AHx", binascii.hexlify(LETTER, b" ", 31) + b"g>", id="hex"),
+    pytest.param(b"AHx", b"4142434", id="hex with an odd number of digits, without its end"),
+]
+#: every data in pieces of every size, named by both
+ASCII_DATA_BY_PIECE_SIZE = [
+    pytest.param(size, *row.values, id=f"{row.id}, pieces of {size}")
+    for size, row in itertools.product(PIECE_SIZES, ASCII_DATA_IN_PIECES)
+]
+
+
+def test_ascii_data_fed_in_pieces_decodes_as_it_does_whole() -> None:
     """The check decodes ASCII85 and ASCIIHex as the filter behind it reads, a piece at a time: a group
     split between pieces, a z after it, the end in a piece of its own decode as the whole data does."""
-    stage = expansion._ascii_stage(name)
-    assert stage is not None
-    out = b"".join(b"".join(stage.feed(data[at : at + size])) for at in range(0, len(data), size))
-    out += b"".join(stage.close())
-    assert out == _ascii_decoded(data, name) == _pdfium_decodes(b"/" + name, data)
+
+    def check(size: int, name: bytes, data: bytes) -> None:
+        stage = expansion._ascii_stage(name)
+        assert stage is not None
+        out = b"".join(b"".join(stage.feed(data[at : at + size])) for at in range(0, len(data), size))
+        out += b"".join(stage.close())
+        assert out == _ascii_decoded(data, name) == _pdfium_decodes(b"/" + name, data)
+
+    check_rows(ASCII_DATA_BY_PIECE_SIZE, check)
 
 
-@pytest.mark.parametrize(
-    "data",
-    [
-        pytest.param(b"<~" + A85 + b"~>", id="a leading <~"),
-        pytest.param(b" ~" + A85 + b"~>", id="a leading ~"),
-        pytest.param(A85[:500] + b"\x0b" + A85[500:] + b"~>", id="a vertical tab"),
-    ],
-)
-def test_ascii85_that_pdfminer_reads_further_than_pdfium_counts_what_pdfminer_reads(data: bytes) -> None:
+ASCII85_PDFMINER_READS_FURTHER = [
+    pytest.param(b"<~" + A85 + b"~>", id="a leading <~"),
+    pytest.param(b" ~" + A85 + b"~>", id="a leading ~"),
+    pytest.param(A85[:500] + b"\x0b" + A85[500:] + b"~>", id="a vertical tab"),
+]
+
+
+def test_ascii85_that_pdfminer_reads_further_than_pdfium_counts_what_pdfminer_reads() -> None:
     """PDFium stops at the ``~`` and at the vertical tab; pdfminer skips both."""
-    assert _ascii_decoded(data, b"A85") == ascii85decode(data) == LETTER
+
+    def check(data: bytes) -> None:
+        assert _ascii_decoded(data, b"A85") == ascii85decode(data) == LETTER
+
+    check_rows(ASCII85_PDFMINER_READS_FURTHER, check)
 
 
-@pytest.mark.parametrize(
-    ("filters", "data"),
-    [
-        pytest.param(
-            [b"ASCII85Decode", b"FlateDecode"],
-            base64.a85encode(zlib.compress(LETTER)) + b"~>",
-            id="A85 Flate",
-        ),
-        pytest.param([b"A85", b"LZW"], base64.a85encode(_lzw(LETTER), wrapcol=60) + b"~>", id="A85 LZW"),
-        pytest.param([b"AHx", b"RL"], binascii.hexlify(_run_length(LETTER), b"\n", 40) + b">", id="AHx RL"),
-        pytest.param(
-            [b"ASCIIHexDecode", b"LZWDecode", b"RunLengthDecode"],
-            binascii.hexlify(_lzw(_run_length(LETTER))) + b">",
-            id="AHx LZW RL",
-        ),
-    ],
-)
-def test_ascii_data_is_decoded_before_the_expanding_filters_behind_it(
-    filters: list[bytes], data: bytes
-) -> None:
-    assert expansion.expanded_size(data + b"\nendstream", 0, filters)[0] == len(LETTER)
-    chain = b"[" + b" ".join(b"/" + name for name in filters) + b"]"
-    assert _pdfium_decodes(chain, data) == LETTER
+ASCII_BEFORE_EXPANDING_FILTERS = [
+    pytest.param(
+        [b"ASCII85Decode", b"FlateDecode"],
+        base64.a85encode(zlib.compress(LETTER)) + b"~>",
+        id="A85 Flate",
+    ),
+    pytest.param([b"A85", b"LZW"], base64.a85encode(_lzw(LETTER), wrapcol=60) + b"~>", id="A85 LZW"),
+    pytest.param([b"AHx", b"RL"], binascii.hexlify(_run_length(LETTER), b"\n", 40) + b">", id="AHx RL"),
+    pytest.param(
+        [b"ASCIIHexDecode", b"LZWDecode", b"RunLengthDecode"],
+        binascii.hexlify(_lzw(_run_length(LETTER))) + b">",
+        id="AHx LZW RL",
+    ),
+]
+
+
+def test_ascii_data_is_decoded_before_the_expanding_filters_behind_it() -> None:
+    def check(filters: list[bytes], data: bytes) -> None:
+        assert expansion.expanded_size(data + b"\nendstream", 0, filters)[0] == len(LETTER)
+        chain = b"[" + b" ".join(b"/" + name for name in filters) + b"]"
+        assert _pdfium_decodes(chain, data) == LETTER
+
+    check_rows(ASCII_BEFORE_EXPANDING_FILTERS, check)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -430,32 +444,35 @@ def _bombs() -> list[object]:
     ]
 
 
-@pytest.mark.parametrize(("filters", "data"), _bombs())
-def test_a_bomb_behind_each_filter_and_chain_is_rejected(
-    small_limits: None, filters: bytes, data: bytes
-) -> None:
-    with pytest.raises(expansion.ExpansionError, match="expands to far more data"):
-        expansion.check_pdf_expansion(_page(filters, data))
+BOMBS = _bombs()
 
 
-@pytest.mark.parametrize(
-    ("filters", "data", "parameters"),
-    [
-        pytest.param(b"/LZWDecode", _lzw(LETTER), b"", id="LZW"),
-        pytest.param(
-            b"/LZWDecode", _lzw(LETTER, 0), b"/DecodeParms << /EarlyChange 0 >>", id="LZW EarlyChange 0"
-        ),
-        pytest.param(b"/RunLengthDecode", _run_length(LETTER), b"", id="RunLength"),
-        pytest.param(
-            b"[/A85 /Fl]", base64.a85encode(zlib.compress(LETTER), wrapcol=72) + b"~>", b"", id="A85 Flate"
-        ),
-        pytest.param(b"[/AHx /LZW]", binascii.hexlify(_lzw(LETTER)) + b">", b"", id="AHx LZW"),
-        pytest.param(b"[/Fl /RL]", zlib.compress(_run_length(LETTER)), b"", id="Flate RunLength"),
-    ],
-)
-def test_a_letter_written_with_each_filter_and_chain_passes(
-    small_limits: None, filters: bytes, data: bytes, parameters: bytes
-) -> None:
-    pdf = _page(filters, data, parameters)
-    expansion.check_pdf_expansion(pdf)
-    assert "Widerspruch" in _pdfium_text(pdf)  # PDFium reads the page as written
+def test_a_bomb_behind_each_filter_and_chain_is_rejected(small_limits: None) -> None:
+    def check(filters: bytes, data: bytes) -> None:
+        with pytest.raises(expansion.ExpansionError, match="expands to far more data"):
+            expansion.check_pdf_expansion(_page(filters, data))
+
+    check_rows(BOMBS, check)
+
+
+LETTERS_WITH_EACH_FILTER = [
+    pytest.param(b"/LZWDecode", _lzw(LETTER), b"", id="LZW"),
+    pytest.param(
+        b"/LZWDecode", _lzw(LETTER, 0), b"/DecodeParms << /EarlyChange 0 >>", id="LZW EarlyChange 0"
+    ),
+    pytest.param(b"/RunLengthDecode", _run_length(LETTER), b"", id="RunLength"),
+    pytest.param(
+        b"[/A85 /Fl]", base64.a85encode(zlib.compress(LETTER), wrapcol=72) + b"~>", b"", id="A85 Flate"
+    ),
+    pytest.param(b"[/AHx /LZW]", binascii.hexlify(_lzw(LETTER)) + b">", b"", id="AHx LZW"),
+    pytest.param(b"[/Fl /RL]", zlib.compress(_run_length(LETTER)), b"", id="Flate RunLength"),
+]
+
+
+def test_a_letter_written_with_each_filter_and_chain_passes(small_limits: None) -> None:
+    def check(filters: bytes, data: bytes, parameters: bytes) -> None:
+        pdf = _page(filters, data, parameters)
+        expansion.check_pdf_expansion(pdf)
+        assert "Widerspruch" in _pdfium_text(pdf)  # PDFium reads the page as written
+
+    check_rows(LETTERS_WITH_EACH_FILTER, check)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import functools
 import io
 from pathlib import Path
 from typing import cast
@@ -11,7 +12,9 @@ import pypdfium2 as pdfium
 import pytest
 from PIL import Image
 
-from helpers_docs import A4, eml_bytes, letter_pdf, make_pdf, photo, scanned_pdf, set_page_boxes
+from helpers_docs import A4, eml_bytes, make_pdf, photo, scanned_pdf, set_page_boxes
+from helpers_docs import letter_pdf as make_letter_pdf
+from helpers_tables import check_rows
 from ordnung.ingest import intake
 from ordnung.ingest.intake import (
     MAX_BYTES,
@@ -30,6 +33,9 @@ from ordnung.ingest.intake import (
     sniff_mime,
     store_original,
 )
+
+#: The three-page letter is built once: every test reads its bytes, none changes them.
+letter_pdf = functools.cache(make_letter_pdf)
 
 
 def _image(data: bytes) -> Image.Image:
@@ -59,27 +65,29 @@ def _pdf_pages(data: bytes) -> list[tuple[float, float]]:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("data", "filename", "expected"),
-    [
-        (b"%PDF-1.7\n%...", "x.bin", "application/pdf"),
-        (b"\n\n   %PDF-1.4 junk before header", "", "application/pdf"),
-        (b"\xff\xd8\xff\xe0\x00\x10JFIF", "photo.png", "image/jpeg"),
-        (b"\x89PNG\r\n\x1a\n\x00\x00", "", "image/png"),
-        (b"RIFF\x10\x00\x00\x00WEBPVP8 ", "", "image/webp"),
-        (b"\x00\x00\x00\x18ftypheic\x00\x00\x00\x00mif1heic", "", "image/heic"),
-        (b"\x00\x00\x00\x18ftypmif1\x00\x00\x00\x00mif1heic", "", "image/heic"),
-        (b"\x00\x00\x00\x14ftypmif1\x00\x00\x00\x00mif1", "", "image/heif"),
-        (b"Hallo, bitte zahlen Sie bis zum 15.10.2026.\n", "note.txt", "text/plain"),
-        ("Grüße aus Musterstadt".encode("cp1252"), "", "text/plain"),
-        ("Grüße".encode("utf-16"), "", "text/plain"),
-        (b"From: a@example.org\nTo: b@example.org\nSubject: Hi\n\nBody", "", "message/rfc822"),
-        (b"From: a@example.org\nTo: b@example.org\n\nBody", "mail.txt", "text/plain"),
-        (b"Just a note", "mail.eml", "message/rfc822"),
-    ],
-)
-def test_sniff_mime_by_magic_bytes(data: bytes, filename: str, expected: str) -> None:
-    assert sniff_mime(data, filename) == expected
+SNIFF_MIME_EXAMPLES = [
+    (b"%PDF-1.7\n%...", "x.bin", "application/pdf"),
+    (b"\n\n   %PDF-1.4 junk before header", "", "application/pdf"),
+    (b"\xff\xd8\xff\xe0\x00\x10JFIF", "photo.png", "image/jpeg"),
+    (b"\x89PNG\r\n\x1a\n\x00\x00", "", "image/png"),
+    (b"RIFF\x10\x00\x00\x00WEBPVP8 ", "", "image/webp"),
+    (b"\x00\x00\x00\x18ftypheic\x00\x00\x00\x00mif1heic", "", "image/heic"),
+    (b"\x00\x00\x00\x18ftypmif1\x00\x00\x00\x00mif1heic", "", "image/heic"),
+    (b"\x00\x00\x00\x14ftypmif1\x00\x00\x00\x00mif1", "", "image/heif"),
+    (b"Hallo, bitte zahlen Sie bis zum 15.10.2026.\n", "note.txt", "text/plain"),
+    ("Grüße aus Musterstadt".encode("cp1252"), "", "text/plain"),
+    ("Grüße".encode("utf-16"), "", "text/plain"),
+    (b"From: a@example.org\nTo: b@example.org\nSubject: Hi\n\nBody", "", "message/rfc822"),
+    (b"From: a@example.org\nTo: b@example.org\n\nBody", "mail.txt", "text/plain"),
+    (b"Just a note", "mail.eml", "message/rfc822"),
+]
+
+
+def test_sniff_mime_by_magic_bytes() -> None:
+    def check(data: bytes, filename: str, expected: str) -> None:
+        assert sniff_mime(data, filename) == expected
+
+    check_rows(SNIFF_MIME_EXAMPLES, check)
 
 
 def test_sniff_mime_real_files() -> None:
@@ -92,19 +100,21 @@ def test_sniff_mime_real_files() -> None:
     assert sniff_mime(eml_bytes()) == "message/rfc822"  # recognised by its headers
 
 
-@pytest.mark.parametrize(
-    "data",
-    [
-        b"PK\x03\x04\x14\x00\x00\x00\x08\x00",  # zip / docx
-        b"\x00\x01\x02\x03\x04\x05binary\x00\xff",
-        b"GIF89a\x01\x00\x01\x00",
-        b"\x00\x00\x00\x1cftypavif\x00\x00\x00\x00avifmif1miaf",  # AVIF is not supported
-        b"\x00\x00\x00\x18ftypisom\x00\x00\x02\x00isomiso2",  # MP4 video
-    ],
-)
-def test_sniff_mime_rejects_unsupported(data: bytes) -> None:
-    with pytest.raises(IntakeError, match="not supported"):
-        sniff_mime(data, "file.bin")
+UNSUPPORTED_FILES = [
+    b"PK\x03\x04\x14\x00\x00\x00\x08\x00",  # zip / docx
+    b"\x00\x01\x02\x03\x04\x05binary\x00\xff",
+    b"GIF89a\x01\x00\x01\x00",
+    b"\x00\x00\x00\x1cftypavif\x00\x00\x00\x00avifmif1miaf",  # AVIF is not supported
+    b"\x00\x00\x00\x18ftypisom\x00\x00\x02\x00isomiso2",  # MP4 video
+]
+
+
+def test_sniff_mime_rejects_unsupported() -> None:
+    def check(data: bytes) -> None:
+        with pytest.raises(IntakeError, match="not supported"):
+            sniff_mime(data, "file.bin")
+
+    check_rows(UNSUPPORTED_FILES, check)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -113,37 +123,33 @@ def test_sniff_mime_rejects_unsupported(data: bytes) -> None:
 
 
 def test_check_size_limits(monkeypatch: pytest.MonkeyPatch) -> None:
+    # 50 MB is documented (docs/SPEC.md) and named in the Outlook reader's message
+    assert MAX_BYTES == 50 * 1024 * 1024
     with pytest.raises(IntakeError, match="empty"):
         check_size(b"")
     check_size(b"x" * 10)
     monkeypatch.setattr(intake, "MAX_BYTES", 10)
     with pytest.raises(IntakeError, match="larger than"):
         check_size(b"x" * 11)
-
-
-def test_max_bytes_is_50_mb() -> None:
-    assert MAX_BYTES == 50 * 1024 * 1024
-
-
-def test_oversized_upload_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(intake, "MAX_BYTES", 1000)
-    with pytest.raises(IntakeError):
+    with pytest.raises(IntakeError, match="larger than"):  # an upload is held to the same limit
         normalise_upload(letter_pdf(), "big.pdf")
 
 
-@pytest.mark.parametrize(
-    ("raw", "expected"),
-    [
-        ("letter.pdf", "letter.pdf"),
-        ("../../etc/passwd", "passwd"),
-        ("C:\\Users\\sam\\Scan 1.PDF", "Scan 1.PDF"),
-        ("", "document"),
-        ("..", "document"),
-        ("dir/", "document"),
-    ],
-)
-def test_safe_filename(raw: str, expected: str) -> None:
-    assert safe_filename(raw) == expected
+SAFE_FILENAME_EXAMPLES = [
+    ("letter.pdf", "letter.pdf"),
+    ("../../etc/passwd", "passwd"),
+    ("C:\\Users\\sam\\Scan 1.PDF", "Scan 1.PDF"),
+    ("", "document"),
+    ("..", "document"),
+    ("dir/", "document"),
+]
+
+
+def test_safe_filename() -> None:
+    def check(raw: str, expected: str) -> None:
+        assert safe_filename(raw) == expected
+
+    check_rows(SAFE_FILENAME_EXAMPLES, check)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -174,22 +180,22 @@ def test_store_original_repairs_a_truncated_file(tmp_path: Path) -> None:
     assert store_original(tmp_path, data, "a.pdf").path.read_bytes() == data
 
 
-@pytest.mark.parametrize(
-    ("data", "filename", "extension"),
-    [
-        (photo("JPEG"), "a.jpg", "jpg"),
-        (photo("PNG"), "a.png", "png"),
-        (photo("WEBP"), "a.webp", "webp"),
-        (photo("HEIF"), "a.heic", "heic"),
-        (b"plain text body", "a.txt", "txt"),
-        (b"From: x@example.org\nSubject: y\n\nz", "a.eml", "eml"),
-    ],
-)
-def test_store_original_extension_follows_content(
-    tmp_path: Path, data: bytes, filename: str, extension: str
-) -> None:
-    stored = store_original(tmp_path, data, filename)
-    assert stored.path.suffix == f".{extension}"
+STORED_EXTENSIONS = [
+    (photo("JPEG"), "a.jpg", "jpg"),
+    (photo("PNG"), "a.png", "png"),
+    (photo("WEBP"), "a.webp", "webp"),
+    (photo("HEIF"), "a.heic", "heic"),
+    (b"plain text body", "a.txt", "txt"),
+    (b"From: x@example.org\nSubject: y\n\nz", "a.eml", "eml"),
+]
+
+
+def test_store_original_extension_follows_content(tmp_path: Path) -> None:
+    def check(data: bytes, filename: str, extension: str) -> None:
+        stored = store_original(tmp_path, data, filename)
+        assert stored.path.suffix == f".{extension}"
+
+    check_rows(STORED_EXTENSIONS, check)
 
 
 def test_store_original_rejects_empty_and_unknown(tmp_path: Path) -> None:
@@ -215,19 +221,22 @@ def test_pdf_jpeg_and_text_uploads_are_kept_byte_for_byte() -> None:
     assert normalise_upload(mail, "mail.eml") == (mail, "message/rfc822", "mail.eml")
 
 
-@pytest.mark.parametrize(
-    ("fmt", "name"), [("PNG", "scan.png"), ("WEBP", "scan.webp"), ("HEIF", "IMG_0001.HEIC")]
-)
-def test_photos_become_upright_jpegs(fmt: str, name: str) -> None:
-    data, mime, filename = normalise_upload(photo(fmt, orientation=6), f"uploads/{name}")
-    assert mime == "image/jpeg"
-    assert filename == name.rsplit(".", 1)[0] + ".jpg"
-    image = _image(data)
-    assert image.format == "JPEG"
-    assert image.size == (100, 200)  # rotated upright
-    assert _is_red(image, (50, 10))  # the red band is now at the top
-    assert not _is_red(image, (50, 190))
-    assert image.getexif().get(0x0112) in (None, 1)  # no orientation left to apply twice
+UPRIGHT_PHOTOS = [("PNG", "scan.png"), ("WEBP", "scan.webp"), ("HEIF", "IMG_0001.HEIC")]
+
+
+def test_photos_become_upright_jpegs() -> None:
+    def check(fmt: str, name: str) -> None:
+        data, mime, filename = normalise_upload(photo(fmt, orientation=6), f"uploads/{name}")
+        assert mime == "image/jpeg"
+        assert filename == name.rsplit(".", 1)[0] + ".jpg"
+        image = _image(data)
+        assert image.format == "JPEG"
+        assert image.size == (100, 200)  # rotated upright
+        assert _is_red(image, (50, 10))  # the red band is now at the top
+        assert not _is_red(image, (50, 190))
+        assert image.getexif().get(0x0112) in (None, 1)  # no orientation left to apply twice
+
+    check_rows(UPRIGHT_PHOTOS, check)
 
 
 def test_large_photos_are_downscaled_to_2400_px() -> None:
@@ -248,17 +257,19 @@ def test_pdf_with_too_many_pages_is_rejected(monkeypatch: pytest.MonkeyPatch) ->
         normalise_upload(letter_pdf(), "letter.pdf")
 
 
-@pytest.mark.parametrize(
-    ("data", "message"),
-    [
-        (b"%PDF-1.4\nthis is not really a pdf", "could not be opened"),
-        (b"\xff\xd8\xff\xe0" + b"\x00" * 40, "could not be read"),
-        (b"\x89PNG\r\n\x1a\n" + b"\x00" * 40, "could not be read"),
-    ],
-)
-def test_damaged_files_are_rejected(data: bytes, message: str) -> None:
-    with pytest.raises(IntakeError, match=message):
-        normalise_upload(data, "broken")
+DAMAGED_FILES = [
+    (b"%PDF-1.4\nthis is not really a pdf", "could not be opened"),
+    (b"\xff\xd8\xff\xe0" + b"\x00" * 40, "could not be read"),
+    (b"\x89PNG\r\n\x1a\n" + b"\x00" * 40, "could not be read"),
+]
+
+
+def test_damaged_files_are_rejected() -> None:
+    def check(data: bytes, message: str) -> None:
+        with pytest.raises(IntakeError, match=message):
+            normalise_upload(data, "broken")
+
+    check_rows(DAMAGED_FILES, check)
 
 
 def test_decompression_bomb_guard_stays_active(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -336,12 +347,19 @@ def test_render_pdf_pages_and_thumbnail(tmp_path: Path) -> None:
         assert thumb.height == pytest.approx(THUMBNAIL_WIDTH * pages[0].height / pages[0].width, abs=1)
 
 
-@pytest.mark.parametrize("rotation", [90, 270])
-def test_render_respects_page_rotation(tmp_path: Path, rotation: int) -> None:
-    data = set_page_boxes(letter_pdf(), 1, rotation=rotation)
-    pages = _render(tmp_path, data, "application/pdf")
-    assert pages[0].height > pages[0].width
-    assert pages[1].width == PAGE_LONG_SIDE and pages[1].width > pages[1].height
+PAGE_ROTATIONS = [90, 270]
+
+
+def test_render_respects_page_rotation(tmp_path: Path) -> None:
+    def check(rotation: int) -> None:
+        folder = tmp_path / str(rotation)  # each row renders into its own folder
+        folder.mkdir()
+        data = set_page_boxes(letter_pdf(), 1, rotation=rotation)
+        pages = _render(folder, data, "application/pdf")
+        assert pages[0].height > pages[0].width
+        assert pages[1].width == PAGE_LONG_SIDE and pages[1].width > pages[1].height
+
+    check_rows(PAGE_ROTATIONS, check)
 
 
 def test_render_respects_cropbox(tmp_path: Path) -> None:
@@ -455,25 +473,31 @@ def test_the_unsupported_message_names_outlook_files(tmp_path: Path) -> None:
     assert str(caught.value) == intake.UNSUPPORTED
 
 
-@pytest.mark.parametrize("name", ["Rechnung.msg", "Rechnung.pdf", "Bericht.doc", "scan"])
-def test_an_ole_file_is_named_before_any_pdf_test(name: str) -> None:
+OLE_NAMES = ["Rechnung.msg", "Rechnung.pdf", "Bericht.doc", "scan"]
+
+
+def test_an_ole_file_is_named_before_any_pdf_test() -> None:
     """An Outlook e-mail or older Office file that reaches intake unopened (every way in opens Outlook files first,
     so none does today) is named for what it is — never taken for a PDF because an attached one sits in its first
     kilobyte, never stored."""
-    holds_a_pdf = OLE + b"\0" * 504 + b"%PDF-1.7\n" + b"\0" * 2000
-    assert b"%PDF-" in holds_a_pdf[:1024]
-    for data in (holds_a_pdf, OLE + b"\0" * 1000):
-        with pytest.raises(IntakeError) as caught:
-            sniff_mime(data, name)
-        assert str(caught.value) == intake.OLE_UNOPENED
-        with pytest.raises(IntakeError) as caught:
-            normalise_upload(data, name)
-        assert str(caught.value) == intake.OLE_UNOPENED
-    assert intake.OLE_MAGIC == OLE
-    assert intake.OLE_UNOPENED == (
-        "This is an Outlook e-mail or an older Office file, and it wasn't opened on its way in. Add it with Add "
-        "letters or the watched folder, or save it as a PDF and add that."
-    )
+
+    def check(name: str) -> None:
+        holds_a_pdf = OLE + b"\0" * 504 + b"%PDF-1.7\n" + b"\0" * 2000
+        assert b"%PDF-" in holds_a_pdf[:1024]
+        for data in (holds_a_pdf, OLE + b"\0" * 1000):
+            with pytest.raises(IntakeError) as caught:
+                sniff_mime(data, name)
+            assert str(caught.value) == intake.OLE_UNOPENED
+            with pytest.raises(IntakeError) as caught:
+                normalise_upload(data, name)
+            assert str(caught.value) == intake.OLE_UNOPENED
+        assert intake.OLE_MAGIC == OLE
+        assert intake.OLE_UNOPENED == (
+            "This is an Outlook e-mail or an older Office file, and it wasn't opened on its way in. Add it with Add "
+            "letters or the watched folder, or save it as a PDF and add that."
+        )
+
+    check_rows(OLE_NAMES, check)
 
 
 #: Production callers of intake that don't open an Outlook file first, each with why that is right.
@@ -539,8 +563,11 @@ def _ways_in() -> dict[str, tuple[list[int], list[int]]]:
         (REPO_DIR / "scripts", REPO_DIR),
     ):
         for path in sorted(root.rglob("*.py")):
+            text = path.read_text(encoding="utf-8")
+            if not any(call in text for call in INTAKE_CALLS):
+                continue  # a call by name spells the name: this file hands intake nothing
             visitor = _Calls()
-            visitor.visit(ast.parse(path.read_text(encoding="utf-8")))
+            visitor.visit(ast.parse(text))
             openers = {"as_email"} | {
                 name for name, calls in visitor.calls.items() if any(call == "as_email" for call, _ in calls)
             }

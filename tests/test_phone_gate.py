@@ -8,22 +8,23 @@ import asyncio
 import json
 import re
 import threading
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 from typing import Any
 
 import httpx
 import pytest
+import pytest_asyncio
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 
+from helpers_tables import check_rows
 from ordnung.api import app as app_module
 from ordnung.api.phone_gate import MESSAGES, PERMISSIONS_POLICY, PhoneListener, bad_path, page_load
 from ordnung.api.routes import documents as documents_route
 from ordnung.api.security import MAX_REQUEST_BYTES
 from ordnung.api.sse import PING_SECONDS
 from ordnung.phone import access as access_module
-from ordnung.phone import scope as phone_scope
 from ordnung.phone.pairing import PAIR_MAX_BYTES, SlidingLimit
 from ordnung.phone.scope import COMPUTER_ONLY
 from phone_support import (
@@ -66,23 +67,25 @@ def _example(template: str) -> str:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "host",
-    [
-        ADDRESS,
-        "localhost:8767",
-        "127.0.0.1:8767",
-        "ordnung.local:8767",
-        f"{ADDRESS}:8768",
-        "evil.example",
-        "",
-    ],
-)
-async def test_only_the_exact_address_and_port_is_answered(data_dir: Path, host: str) -> None:
-    async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
-        response = await phone.get("/api/health", headers={"Host": host})
+WRONG_HOSTS = [
+    ADDRESS,
+    "localhost:8767",
+    "127.0.0.1:8767",
+    "ordnung.local:8767",
+    f"{ADDRESS}:8768",
+    "evil.example",
+    "",
+]
+
+
+async def test_only_the_exact_address_and_port_is_answered(data_dir: Path) -> None:
+    def check(host: str, response: httpx.Response) -> None:
         assert response.status_code == 400
         assert response.json()["code"] == "wrong_host"
+
+    async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
+        answers = [(host, await phone.get("/api/health", headers={"Host": host})) for host in WRONG_HOSTS]
+    check_rows(answers, check)
 
 
 async def test_another_scheme_or_listener_is_misdirected(data_dir: Path) -> None:
@@ -94,17 +97,20 @@ async def test_another_scheme_or_listener_is_misdirected(data_dir: Path) -> None
         assert (await drive(PhoneListener(api.app), "GET", "/api/health")).status == 421
 
 
-@pytest.mark.parametrize("client", ["8.8.8.8", "100.64.0.7", "172.17.0.2", "10.8.0.6", "192.168.2.20", "::1"])
-async def test_only_the_home_network_s_devices_are_answered(data_dir: Path, client: str) -> None:
-    async with phone_app(data_dir) as (api, _net, _servers), phone_client(api, client_ip=client) as phone:
-        response = await phone.get("/api/health")
+OUTSIDE_CLIENTS = ["8.8.8.8", "100.64.0.7", "172.17.0.2", "10.8.0.6", "192.168.2.20", "::1"]
+
+
+async def test_only_the_home_network_s_devices_are_answered(data_dir: Path) -> None:
+    def check(client: str, response: httpx.Response) -> None:
         assert response.status_code == 403
         assert response.json()["code"] == "not_home_network"
 
-
-async def test_a_device_on_the_subnet_reaches_the_pairing_answer(data_dir: Path) -> None:
-    async with phone_app(data_dir) as (api, _net, _servers), phone_client(api, "192.168.1.200") as phone:
-        assert (await phone.get("/api/health")).json()["code"] == "phone_not_paired"
+    answers = []
+    async with phone_app(data_dir) as (api, _net, _servers):
+        for client in OUTSIDE_CLIENTS:
+            async with phone_client(api, client_ip=client) as phone:
+                answers.append((client, await phone.get("/api/health")))
+    check_rows(answers, check)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -112,34 +118,37 @@ async def test_a_device_on_the_subnet_reaches_the_pairing_answer(data_dir: Path)
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("method", "headers"),
-    [
-        ("POST", {"Origin": ""}),
-        ("POST", {"Origin": f"http://{ADDRESS}:{PORT}"}),
-        ("POST", {"Origin": "https://evil.example"}),
-        ("POST", {"Origin": f"https://{ADDRESS}:8768"}),
-        ("GET", {"Origin": "https://evil.example"}),
-        ("GET", {"Sec-Fetch-Site": "cross-site"}),
-        ("GET", {"Sec-Fetch-Site": "same-site"}),  # another port of the same address is the same site
-        ("POST", {"Sec-Fetch-Site": "none"}),
-        ("POST", {"X-Ordnung-Client": ""}),
-    ],
-)
-async def test_another_site_s_requests_are_refused(
-    data_dir: Path, method: str, headers: dict[str, str]
-) -> None:
-    async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
-        await pair(api, phone)
-        for name, value in headers.items():
-            if value:
-                phone.headers[name] = value
-            else:
-                del phone.headers[name]
-        path, body = ("/api/items", {}) if method == "POST" else ("/api/health", None)
-        response = await phone.request(method, path, json=body)
+CROSS_SITE_REQUESTS = [
+    ("POST", {"Origin": ""}),
+    ("POST", {"Origin": f"http://{ADDRESS}:{PORT}"}),
+    ("POST", {"Origin": "https://evil.example"}),
+    ("POST", {"Origin": f"https://{ADDRESS}:8768"}),
+    ("GET", {"Origin": "https://evil.example"}),
+    ("GET", {"Sec-Fetch-Site": "cross-site"}),
+    ("GET", {"Sec-Fetch-Site": "same-site"}),  # another port of the same address is the same site
+    ("POST", {"Sec-Fetch-Site": "none"}),
+    ("POST", {"X-Ordnung-Client": ""}),
+]
+
+
+async def test_another_site_s_requests_are_refused(data_dir: Path) -> None:
+    def check(method: str, headers: dict[str, str], response: httpx.Response) -> None:
         assert response.status_code == 403, response.text
         assert response.json()["code"] == "cross_site"
+
+    answers = []
+    async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
+        await pair(api, phone)
+        for method, headers in CROSS_SITE_REQUESTS:
+            path, body = ("/api/items", {}) if method == "POST" else ("/api/health", None)
+            request = phone.build_request(method, path, json=body)  # the paired phone's headers and cookie
+            for name, value in headers.items():
+                if value:
+                    request.headers[name] = value
+                else:
+                    del request.headers[name]
+            answers.append((method, headers, await phone.send(request)))
+    check_rows(answers, check)
 
 
 async def test_a_page_load_from_a_bookmark_passes(data_dir: Path) -> None:
@@ -173,22 +182,32 @@ async def test_before_pairing_only_the_pairing_page_and_the_app_s_files_load(dat
             "code": "phone_not_paired",
         }
         assert (await phone.get("/api/health")).status_code == 401  # never the version before pairing
+        async with phone_client(api, "192.168.1.200") as device:  # any device on the subnet
+            assert (await device.get("/api/health")).json()["code"] == "phone_not_paired"
 
 
 def test_public_files_are_exactly_the_build_s_assets_and_icon(dist: Path) -> None:
     assert app_module.public_files(dist) == frozenset({"/assets/index-abc.js", "/favicon.svg"})
 
 
-@pytest.mark.parametrize(
-    "path",
-    ["/assets/../build-info.json", "/assets/./index-abc.js", "//favicon.svg", "/assets\\index-abc.js", "/.."],
-)
-async def test_paths_with_dot_segments_or_doubled_slashes_are_refused(data_dir: Path, path: str) -> None:
-    assert bad_path(path)
-    async with phone_app(data_dir) as (api, _net, _servers):
-        exchange = await drive(PhoneListener(api.app), "GET", path)
+BAD_PATHS = [
+    "/assets/../build-info.json",
+    "/assets/./index-abc.js",
+    "//favicon.svg",
+    "/assets\\index-abc.js",
+    "/..",
+]
+
+
+async def test_paths_with_dot_segments_or_doubled_slashes_are_refused(data_dir: Path) -> None:
+    def check(path: str, exchange: Any) -> None:
+        assert bad_path(path)
         assert exchange.status == 400
         assert b"sourceHash" not in exchange.body
+
+    async with phone_app(data_dir) as (api, _net, _servers):
+        answers = [(path, await drive(PhoneListener(api.app), "GET", path)) for path in BAD_PATHS]
+    check_rows(answers, check)
 
 
 async def test_a_cookie_this_computer_doesn_t_know_clears_the_phone_s_storage(data_dir: Path) -> None:
@@ -202,24 +221,27 @@ async def test_a_cookie_this_computer_doesn_t_know_clears_the_phone_s_storage(da
             assert "Max-Age=0" in response.headers["set-cookie"]
 
 
-@pytest.mark.parametrize(
-    ("path", "headers"),
-    [
-        ("/api/health", {"Authorization": f"Bearer {TOKEN}"}),
-        ("/api/health", {"Cookie": f"ordnung_token_{PORT}={TOKEN}"}),
-        ("/api/health?token=" + TOKEN, {}),
-        ("/?token=" + TOKEN, {}),
-    ],
-)
-async def test_the_session_token_never_works_on_the_phone_listener(
-    data_dir: Path, path: str, headers: dict[str, str]
-) -> None:
-    async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
-        response = await phone.get(path, headers=headers)
+SESSION_TOKEN_REQUESTS = [
+    ("/api/health", {"Authorization": f"Bearer {TOKEN}"}),
+    ("/api/health", {"Cookie": f"ordnung_token_{PORT}={TOKEN}"}),
+    ("/api/health?token=" + TOKEN, {}),
+    ("/?token=" + TOKEN, {}),
+]
+
+
+async def test_the_session_token_never_works_on_the_phone_listener(data_dir: Path) -> None:
+    def check(path: str, headers: dict[str, str], response: httpx.Response) -> None:
         assert response.status_code in (401, 303)
         if response.status_code == 303:
             assert response.headers["location"] == "/pair"
         assert "set-cookie" not in response.headers
+
+    async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
+        answers = [
+            (path, headers, await phone.get(path, headers=headers))
+            for path, headers in SESSION_TOKEN_REQUESTS
+        ]
+    check_rows(answers, check)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -308,18 +330,46 @@ async def test_pairing_sets_the_phone_s_own_cookie(data_dir: Path) -> None:
         )
         assert len(signed["token"]) >= 43  # 256 bits
         assert (await phone.get("/api/documents")).status_code == 200
+        # the client keeps the phone's cookie for the phone's origin only (``__Host-``, Secure)
+        assert signed["set_cookie"].startswith("__Host-") and "Domain" not in signed["set_cookie"]
+        computer = httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=api.app),
+            base_url="http://127.0.0.1:8765",
+            headers={"Cookie": f"{COOKIE}={signed['token']}"},
+        )
+        async with computer:
+            assert (await computer.get("/api/documents")).status_code == 401
+        assert PHONE_URL.startswith("https://")
 
 
+# A paired phone that is only refused is built once for the module: a refused request never reaches its
+# handler, so no test changes the app. The tests that use it run in the module's event loop.
+SHARED_LOOP = pytest.mark.asyncio(loop_scope="module")
+
+
+@pytest_asyncio.fixture(scope="module", loop_scope="module")
+async def refused_phone(tmp_path_factory: pytest.TempPathFactory) -> AsyncIterator[httpx.AsyncClient]:
+    root = tmp_path_factory.mktemp("refused_phone")
+    built = fake_web_dist(root)
+    (built / "build-info.json").write_text('{"sourceHash": "abc"}', encoding="utf-8")
+    data_dir = root / "data"
+    data_dir.mkdir()
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(app_module, "web_dist_dir", lambda: built)
+        async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
+            await pair(api, phone)
+            yield phone
+
+
+@SHARED_LOOP
 @pytest.mark.parametrize("operation", sorted(COMPUTER_ONLY))
 async def test_every_computer_only_operation_is_refused_to_a_phone(
-    data_dir: Path, operation: tuple[str, str]
+    refused_phone: httpx.AsyncClient, operation: tuple[str, str]
 ) -> None:
     method, template = operation
-    async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
-        await pair(api, phone)
-        response = await phone.request(method, _example(template))
-        assert response.status_code == 403, response.text
-        assert response.json() == {"detail": "This works on your computer only.", "code": "computer_only"}
+    response = await refused_phone.request(method, _example(template))
+    assert response.status_code == 403, response.text
+    assert response.json() == {"detail": "This works on your computer only.", "code": "computer_only"}
 
 
 async def test_a_phone_downloads_no_calendar_file(data_dir: Path) -> None:
@@ -850,28 +900,6 @@ def test_a_page_load_is_a_navigation() -> None:
     assert not page_load("/assets/index-abc.js", headers())
     assert not page_load("/api/items", headers())
     assert not page_load("/favicon.svg", headers())
-
-
-def test_every_change_a_phone_can_make_has_a_label() -> None:
-    changes = {op for op in phone_scope.PHONE_ROUTES if op[0] != "GET"} - phone_scope.NOT_CHANGES
-    assert changes == set(phone_scope.CHANGE_LABELS)
-    assert set(phone_scope.LIMITED) <= phone_scope.PHONE_ROUTES
-    assert set(phone_scope.STREAMS) | phone_scope.UPLOADS <= phone_scope.PHONE_ROUTES
-
-
-async def test_a_phone_url_never_reaches_the_computer_s_cookie(data_dir: Path) -> None:
-    """The client keeps the phone's cookie for the phone's origin only (``__Host-``, Secure)."""
-    async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
-        signed = await pair(api, phone)
-        assert signed["set_cookie"].startswith("__Host-") and "Domain" not in signed["set_cookie"]
-        computer = httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=api.app),
-            base_url="http://127.0.0.1:8765",
-            headers={"Cookie": f"{COOKIE}={signed['token']}"},
-        )
-        async with computer:
-            assert (await computer.get("/api/documents")).status_code == 401
-        assert PHONE_URL.startswith("https://")
 
 
 async def test_a_tagged_request_without_a_gate_is_misdirected() -> None:

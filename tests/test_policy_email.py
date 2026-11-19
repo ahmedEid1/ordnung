@@ -7,6 +7,7 @@ from collections.abc import Callable
 
 import pytest
 
+from helpers_tables import check_rows
 from helpers_timing import assert_linear
 from ordnung.ingest.text import html_to_text
 
@@ -48,18 +49,25 @@ SPACER_CELL = (
 SPACER_PARAGRAPH = f'<p style="font-size:1px;line-height:1px">&nbsp;<p>{AMOUNT}</p>'
 
 
-@pytest.mark.parametrize(
-    "body",
-    [HEADER_CELL, DIVIDER_ROW, SPACER_CELL, SPACER_PARAGRAPH],
-    ids=["header-cell-colour", "divider-row", "spacer-cell", "spacer-paragraph"],
-)
-def test_text_after_an_element_whose_end_tag_is_left_out_is_visible(body: str) -> None:
+LEFT_OUT_END_TAGS = [
+    pytest.param(HEADER_CELL, id="header-cell-colour"),
+    pytest.param(DIVIDER_ROW, id="divider-row"),
+    pytest.param(SPACER_CELL, id="spacer-cell"),
+    pytest.param(SPACER_PARAGRAPH, id="spacer-paragraph"),
+]
+
+
+def test_text_after_an_element_whose_end_tag_is_left_out_is_visible() -> None:
     """Every mail client shows the amount (black on white, 15px): it is not text Ordnung is certain no
     reader sees (point 1). Read as nested in the open cell, row or paragraph it went to hidden text:
     the model never read the amount and due date, and an ordinary bill got the hidden-text warning and
     scam sign."""
-    visible, hidden = html_to_text(_mail(body))
-    assert AMOUNT in visible and hidden == "", (visible, hidden)
+
+    def check(body: str) -> None:
+        visible, hidden = html_to_text(_mail(body))
+        assert AMOUNT in visible and hidden == "", (visible, hidden)
+
+    check_rows(LEFT_OUT_END_TAGS, check)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -67,22 +75,30 @@ def test_text_after_an_element_whose_end_tag_is_left_out_is_visible(body: str) -
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "column",
-    [
+COLUMNS_SIZED_BY_FONT = [
+    pytest.param(
         f'<div style="display:inline-block;width:50%;font:15px/20px Arial,sans-serif">{AMOUNT}</div>',
+        id="font-shorthand",
+    ),
+    pytest.param(
         f'<div style="display:inline-block;width:50%"><font face="Arial" size="2">{AMOUNT}</font></div>',
-    ],
-    ids=["font-shorthand", "font-size-attribute"],
-)
-def test_a_column_sized_by_the_font_shorthand_or_a_font_tag_is_visible(column: str) -> None:
+        id="font-size-attribute",
+    ),
+]
+
+
+def test_a_column_sized_by_the_font_shorthand_or_a_font_tag_is_visible() -> None:
     """Hybrid columns sit in a ``font-size:0`` wrapper (it removes the gaps between inline-block
     columns) and each column sets its own size. ``font: 15px/20px Arial`` and ``<font size="2">`` (13px)
     set it as surely as ``font-size:15px`` does, which the docstring's "the nearest one set counts"
     keeps visible."""
-    body = f'<table width="100%"><tr><td style="font-size:0">{column}</td></tr></table>'
-    visible, hidden = html_to_text(_mail(body))
-    assert AMOUNT in visible and hidden == "", (visible, hidden)
+
+    def check(column: str) -> None:
+        body = f'<table width="100%"><tr><td style="font-size:0">{column}</td></tr></table>'
+        visible, hidden = html_to_text(_mail(body))
+        assert AMOUNT in visible and hidden == "", (visible, hidden)
+
+    check_rows(COLUMNS_SIZED_BY_FONT, check)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -164,22 +180,40 @@ def test_a_background_shorthand_after_background_color_is_the_background() -> No
     assert "Rechnung ansehen (fällig am 15.10.2026)" in visible and hidden == "", (visible, hidden)
 
 
-@pytest.mark.parametrize(
-    ("style", "shown"),
-    [
-        ("background-color: #1a5276; background: #ffffff; color: #ffffff", False),  # white on white
-        ("background: #ffffff; background-color: #1a5276; color: #ffffff", True),  # the later colour
-        ("background: url(bg.png) #000000; background-color: #ffffff; color: #ffffff", True),
-        ("background-image: url(bg.png); background: #ffffff; color: #ffffff", False),
-    ],
-    ids=["shorthand-last", "colour-last", "image-in-shorthand", "image-before-shorthand"],
-)
-def test_background_declarations_count_in_the_order_written(style: str, shown: bool) -> None:
+BACKGROUND_DECLARATIONS = [
+    pytest.param(
+        "background-color: #1a5276; background: #ffffff; color: #ffffff",
+        False,
+        id="shorthand-last",  # white on white
+    ),
+    pytest.param(
+        "background: #ffffff; background-color: #1a5276; color: #ffffff",
+        True,
+        id="colour-last",  # the later colour
+    ),
+    pytest.param(
+        "background: url(bg.png) #000000; background-color: #ffffff; color: #ffffff",
+        True,
+        id="image-in-shorthand",
+    ),
+    pytest.param(
+        "background-image: url(bg.png); background: #ffffff; color: #ffffff",
+        False,
+        id="image-before-shorthand",
+    ),
+]
+
+
+def test_background_declarations_count_in_the_order_written() -> None:
     """Of an element's background declarations the later one counts (point 4): a ``background``
     shorthand resets the colour and image before it, a ``background-color`` after it sets only the
     colour, and an image in the shorthand makes the background unknown (the text is visible)."""
-    visible, hidden = html_to_text(_mail(f'<p style="{style}">{AMOUNT}</p>'))
-    assert (AMOUNT in visible, AMOUNT in hidden) == (shown, not shown), (visible, hidden)
+
+    def check(style: str, shown: bool) -> None:
+        visible, hidden = html_to_text(_mail(f'<p style="{style}">{AMOUNT}</p>'))
+        assert (AMOUNT in visible, AMOUNT in hidden) == (shown, not shown), (visible, hidden)
+
+    check_rows(BACKGROUND_DECLARATIONS, check)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -316,27 +350,31 @@ def test_a_rule_that_shows_a_class_and_starts_it_transparent_makes_it_uncertain(
 PHONE_COPY = "Sonderkündigungsrecht bis 31.01.2027 – jetzt anrufen: 0800 111 2233"
 
 
-@pytest.mark.parametrize(
-    ("css", "element"),
-    [
-        (
-            ".mobile-only { display: none; @media (max-width: 600px) { display: block !important; } }",
-            "<div class='mobile-only'>",
-        ),
-        (
-            ".mobile-only { @media (max-width: 600px) { display: block !important; } }",
-            "<div class='mobile-only' style='display:none'>",
-        ),
-    ],
-    ids=["hidden-by-the-rule", "hidden-inline"],
-)
-def test_a_media_query_nested_in_a_style_rule_shows_the_class(css: str, element: str) -> None:
+NESTED_MEDIA_QUERIES = [
+    pytest.param(
+        ".mobile-only { display: none; @media (max-width: 600px) { display: block !important; } }",
+        "<div class='mobile-only'>",
+        id="hidden-by-the-rule",
+    ),
+    pytest.param(
+        ".mobile-only { @media (max-width: 600px) { display: block !important; } }",
+        "<div class='mobile-only' style='display:none'>",
+        id="hidden-inline",
+    ),
+]
+
+
+def test_a_media_query_nested_in_a_style_rule_shows_the_class() -> None:
     """With CSS Nesting (Apple Mail, current browsers) ``.x { @media (…) { display: block } }`` is
     ``@media (…) { .x { display: block } }``: Chromium at 375px shows the phone copy. Nested style
     rules (``.x { .y { … } }``, ``& { … }``) counted; bare declarations in a nested at-rule were
     once dropped, so the phone-only sentence became hidden text."""
-    visible, hidden = html_to_text(_mail(f"{element}{PHONE_COPY}</div>", f"<style>{css}</style>"))
-    assert PHONE_COPY in visible and hidden == "", (visible, hidden)
+
+    def check(css: str, element: str) -> None:
+        visible, hidden = html_to_text(_mail(f"{element}{PHONE_COPY}</div>", f"<style>{css}</style>"))
+        assert PHONE_COPY in visible and hidden == "", (visible, hidden)
+
+    check_rows(NESTED_MEDIA_QUERIES, check)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -344,37 +382,48 @@ def test_a_media_query_nested_in_a_style_rule_shows_the_class(css: str, element:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "style",
-    ["font-size:100%", "font-size:1em", "font-size:inherit", "font:100% Arial,sans-serif"],
-)
-def test_a_relative_font_size_inside_a_font_size_0_wrapper_stays_hidden(style: str) -> None:
+RELATIVE_SIZES_IN_A_0_WRAPPER = [
+    "font-size:100%",
+    "font-size:1em",
+    "font-size:inherit",
+    "font:100% Arial,sans-serif",
+]
+
+
+def test_a_relative_font_size_inside_a_font_size_0_wrapper_stays_hidden() -> None:
     """ "The nearest one set counts" is right for a size of its own (14px, 1rem, small), but 100% of 0
     is 0 in every client (Chromium: 0px). Read as a size of its own, the line reached the model as
     letter text and the letter lost the hidden-text warning and scam sign."""
-    body = f'<table width="100%"><tr><td style="font-size:0"><span style="{style}">{INJECTED}</span></td></tr></table>'
-    visible, hidden = html_to_text(_mail(body))
-    assert INJECTED not in visible and hidden == INJECTED, (visible, hidden)
+
+    def check(style: str) -> None:
+        body = f'<table width="100%"><tr><td style="font-size:0"><span style="{style}">{INJECTED}</span></td></tr></table>'
+        visible, hidden = html_to_text(_mail(body))
+        assert INJECTED not in visible and hidden == INJECTED, (visible, hidden)
+
+    check_rows(RELATIVE_SIZES_IN_A_0_WRAPPER, check)
 
 
-@pytest.mark.parametrize(
-    ("wrapper", "style", "shown"),
-    [
-        ("font-size:0", "font-size:larger", False),  # any factor of 0 is 0
-        ("font-size:0", "font-size:250%", False),
-        ("font-size:0", "font-size:15px", True),  # a size of its own (a hybrid column)
-        ("font-size:1px", "font-size:100%", False),  # no larger than a tiny size: tiny
-        ("font-size:1px", "font-size:smaller", False),
-        ("font-size:1px", "font-size:1500%", True),  # 15px
-        ("font-size:1px", "font-size:2em", True),
-    ],
-)
-def test_a_relative_font_size_is_counted_from_the_parents(wrapper: str, style: str, shown: bool) -> None:
+RELATIVE_SIZES = [
+    ("font-size:0", "font-size:larger", False),  # any factor of 0 is 0
+    ("font-size:0", "font-size:250%", False),
+    ("font-size:0", "font-size:15px", True),  # a size of its own (a hybrid column)
+    ("font-size:1px", "font-size:100%", False),  # no larger than a tiny size: tiny
+    ("font-size:1px", "font-size:smaller", False),
+    ("font-size:1px", "font-size:1500%", True),  # 15px
+    ("font-size:1px", "font-size:2em", True),
+]
+
+
+def test_a_relative_font_size_is_counted_from_the_parents() -> None:
     """Point 4: a size relative to the parent's is 0 in a 0, and tiny in a tiny one when it is no
     larger; a larger one inside a 1px wrapper may be readable, so it is visible (point 2)."""
-    body = f'<div style="{wrapper}"><span style="{style}">{AMOUNT}</span></div>'
-    visible, hidden = html_to_text(_mail(body))
-    assert (AMOUNT in visible, AMOUNT in hidden) == (shown, not shown), (visible, hidden)
+
+    def check(wrapper: str, style: str, shown: bool) -> None:
+        body = f'<div style="{wrapper}"><span style="{style}">{AMOUNT}</span></div>'
+        visible, hidden = html_to_text(_mail(body))
+        assert (AMOUNT in visible, AMOUNT in hidden) == (shown, not shown), (visible, hidden)
+
+    check_rows(RELATIVE_SIZES, check)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -382,21 +431,24 @@ def test_a_relative_font_size_is_counted_from_the_parents(wrapper: str, style: s
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "style",
-    [
-        "display:none ! important",
-        "display:none !/**/important",
-        "font-size:0 ! important",
-        "opacity:0 ! important",
-    ],
-)
-def test_important_written_with_a_space_or_comment_still_hides(style: str) -> None:
+SPACED_IMPORTANT = [
+    "display:none ! important",
+    "display:none !/**/important",
+    "font-size:0 ! important",
+    "opacity:0 ! important",
+]
+
+
+def test_important_written_with_a_space_or_comment_still_hides() -> None:
     """CSS allows whitespace and comments between "!" and "important" (Chromium: display none, font
     size 0px, opacity 0 for all four), and _declarations means to drop the flag: the value it once
     read was "none ! important", so the attacker's line was visible letter text without the warning."""
-    visible, hidden = html_to_text(_mail(f'<div style="{style}">{INJECTED}</div>'))
-    assert INJECTED not in visible and hidden == INJECTED, (visible, hidden)
+
+    def check(style: str) -> None:
+        visible, hidden = html_to_text(_mail(f'<div style="{style}">{INJECTED}</div>'))
+        assert INJECTED not in visible and hidden == INJECTED, (visible, hidden)
+
+    check_rows(SPACED_IMPORTANT, check)
 
 
 # --------------------------------------------------------------------------------------------------

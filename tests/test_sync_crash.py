@@ -32,6 +32,13 @@ from sync_sim import SyncToolSim, listing
 @pytest.fixture(autouse=True)
 def _fast(monkeypatch: pytest.MonkeyPatch) -> None:
     use_fast_keys(monkeypatch)
+    no_disk_flush(monkeypatch)
+
+
+def no_disk_flush(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every line that asks for a flush still runs, only the system call is skipped: what reaches the disk
+    in a power cut is decided by :class:`sync_faults.PowerCutFs` at the ``FsOps`` seam, not by a real flush."""
+    monkeypatch.setattr(os, "fsync", lambda fd: None)
 
 
 class Scene:
@@ -62,8 +69,7 @@ class Scene:
         shutil.copytree(self.work, self.template, symlinks=True)
 
     def fresh(self, template: Path | None = None, **fs: FsOps) -> tuple[Computer, Computer, SyncToolSim]:
-        shutil.rmtree(self.work)
-        shutil.copytree(template or self.template, self.work, symlinks=True)
+        put_back(template or self.template, self.work)
 
         computers = []
         for key, name in (("a", "anna-laptop"), ("b", "desktop")):
@@ -82,6 +88,34 @@ class Scene:
         sim = SyncToolSim(computers[0].folder, computers[1].folder, random.Random(0))
         sim.known = {"a": listing(computers[0].folder), "b": listing(computers[1].folder)}
         return computers[0], computers[1], sim
+
+
+def put_back(template: Path, work: Path) -> None:
+    """Make ``work`` a copy of ``template`` again, as ``rmtree`` + ``copytree`` did, but keep the folders both
+    have: everything the template lacks goes, every file is unlinked and copied anew (a new inode, never
+    written over in place: a crashed case may still hold a handle on the old one), and each folder gets
+    the template's times and mode back once its contents are in place (deepest first)."""
+    for entry in os.scandir(work):
+        source = template / entry.name
+        keep = entry.is_dir(follow_symlinks=False) and source.is_dir() and not source.is_symlink()
+        if keep:
+            continue
+        if entry.is_dir(follow_symlinks=False):
+            shutil.rmtree(entry.path)
+        else:
+            os.unlink(entry.path)
+    for entry in os.scandir(template):
+        target = work / entry.name
+        if entry.is_symlink():
+            os.symlink(os.readlink(entry.path), target)
+        elif entry.is_dir():
+            if target.is_dir():
+                put_back(Path(entry.path), target)
+            else:
+                shutil.copytree(entry.path, target, symlinks=True)
+        else:
+            shutil.copy2(entry.path, target)
+    shutil.copystat(template, work)
 
 
 def use(computer: Computer, fs: FsOps) -> None:
@@ -117,6 +151,7 @@ def check_i4(computer: Computer) -> None:
 def scene(tmp_path_factory: pytest.TempPathFactory) -> Scene:
     patch = pytest.MonkeyPatch()
     use_fast_keys(patch)
+    no_disk_flush(patch)
     made = Scene(tmp_path_factory.mktemp("crash"))
     patch.undo()
     return made

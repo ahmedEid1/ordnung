@@ -19,6 +19,7 @@ from typing import Any
 
 import pytest
 
+from helpers_tables import check_rows
 from ordnung import backup as backups
 from ordnung import passphrase, sync
 from ordnung.passphrase import MIN_PASSPHRASE_BITS, passphrase_bits
@@ -117,29 +118,41 @@ SIXTEEN: dict[str, tuple[str, ...]] = {
 }
 
 
-@pytest.mark.parametrize("name", list(GENERATORS))
-def test_a_password_manager_s_random_password_protects_a_new_backup_and_sync_folder(name: str) -> None:
+PASSWORD_MANAGERS = list(GENERATORS)
+
+
+def test_a_password_manager_s_random_password_protects_a_new_backup_and_sync_folder() -> None:
     """The estimator counted words only — symbols nothing, case nothing, a run of
     letters one word at most — so a strong password from a password manager was refused for a new backup
     and a new sync folder. Nearly all of each generator's passwords pass now (PASSING; the rest show by
     chance a pattern people make: a word-like run of letters, a common word, a year, digits in order)."""
-    passwords = corpus(name)
-    refused = [p for p in passwords if passphrase_bits(p) < MIN_PASSPHRASE_BITS]
-    assert len(refused) <= (1 - PASSING[name]) * SAMPLES, refused[:10]
-    for password in [p for p in passwords if p not in refused][:100]:
-        assert sync.passphrase_problem(password) is None, password
-        assert backups.passphrase_problem(password) is None, password
+
+    def check(name: str) -> None:
+        passwords = corpus(name)
+        refused = [p for p in passwords if passphrase_bits(p) < MIN_PASSPHRASE_BITS]
+        assert len(refused) <= (1 - PASSING[name]) * SAMPLES, refused[:10]
+        for password in [p for p in passwords if p not in refused][:100]:
+            assert sync.passphrase_problem(password) is None, password
+            assert backups.passphrase_problem(password) is None, password
+
+    check_rows(PASSWORD_MANAGERS, check)
 
 
-@pytest.mark.parametrize("sets", list(SIXTEEN))
-def test_sixteen_random_capital_and_small_letters_pass_as_the_refusal_says(sets: str) -> None:
+SIXTEEN_SETS = list(SIXTEEN)
+
+
+def test_sixteen_random_capital_and_small_letters_pass_as_the_refusal_says() -> None:
     """The refusal of a new backup's passphrase suggests "a password manager's random password of 16
     characters or more with capital and small letters": nearly all such passwords pass (SIXTEEN_PASSING)."""
-    chosen = random.Random(f"sixteen {sets}")
-    passwords = [_random_characters(chosen, 16, *SIXTEEN[sets]) for _ in range(SAMPLES)]
-    refused = [p for p in passwords if passphrase_bits(p) < MIN_PASSPHRASE_BITS]
-    assert len(refused) <= (1 - SIXTEEN_PASSING[sets]) * SAMPLES, refused[:10]
-    assert "16 characters or more with capital and small letters" in backups.WEAK_PASSPHRASE_MESSAGE
+
+    def check(sets: str) -> None:
+        chosen = random.Random(f"sixteen {sets}")
+        passwords = [_random_characters(chosen, 16, *SIXTEEN[sets]) for _ in range(SAMPLES)]
+        refused = [p for p in passwords if passphrase_bits(p) < MIN_PASSPHRASE_BITS]
+        assert len(refused) <= (1 - SIXTEEN_PASSING[sets]) * SAMPLES, refused[:10]
+        assert "16 characters or more with capital and small letters" in backups.WEAK_PASSPHRASE_MESSAGE
+
+    check_rows(SIXTEEN_SETS, check)
 
 
 def test_random_small_letters_alone_count_as_words() -> None:
@@ -153,34 +166,47 @@ def test_random_small_letters_alone_count_as_words() -> None:
     assert "capital and small letters" in backups.WEAK_PASSPHRASE_MESSAGE
 
 
-@pytest.mark.parametrize("vector", VECTORS["weak"], ids=[v["passphrase"] for v in VECTORS["weak"]])
-def test_what_people_make_up_is_still_refused(vector: dict[str, Any]) -> None:
+WEAK_VECTORS = VECTORS["weak"]
+
+
+def test_what_people_make_up_is_still_refused() -> None:
     """Dates, names and years, names or words with digits and symbols, leetspeak of common words, words in
     capitals, caps lock or alternating case, keyboard walks also typed with Shift, repeats, a few words with
     a digit or a symbol added: none reaches the bits a new backup or sync folder needs."""
-    weak = vector["passphrase"]
-    assert passphrase_bits(weak) < MIN_PASSPHRASE_BITS
-    assert sync.passphrase_problem(weak) is not None
-    assert backups.passphrase_problem(weak) is not None
+
+    def check(vector: dict[str, Any]) -> None:
+        weak = vector["passphrase"]
+        assert passphrase_bits(weak) < MIN_PASSPHRASE_BITS
+        assert sync.passphrase_problem(weak) is not None
+        assert backups.passphrase_problem(weak) is not None
+
+    check_rows(WEAK_VECTORS, check)
 
 
-@pytest.mark.parametrize("vector", VECTORS["strong"], ids=[v["passphrase"] for v in VECTORS["strong"]])
-def test_a_password_manager_s_password_is_counted_as_random_characters(vector: dict[str, Any]) -> None:
-    strong = vector["passphrase"]
-    assert passphrase_bits(strong) >= MIN_PASSPHRASE_BITS
-    assert sync.passphrase_problem(strong) is None
-    assert backups.passphrase_problem(strong) is None
+STRONG_VECTORS = VECTORS["strong"]
 
 
-@pytest.mark.parametrize(
-    "vector",
-    VECTORS["weak"] + VECTORS["strong"],
-    ids=[v["passphrase"] for v in VECTORS["weak"] + VECTORS["strong"]],
-)
-def test_each_vector_counts_what_the_web_app_counts_too(vector: dict[str, Any]) -> None:
+def test_a_password_manager_s_password_is_counted_as_random_characters() -> None:
+    def check(vector: dict[str, Any]) -> None:
+        strong = vector["passphrase"]
+        assert passphrase_bits(strong) >= MIN_PASSPHRASE_BITS
+        assert sync.passphrase_problem(strong) is None
+        assert backups.passphrase_problem(strong) is None
+
+    check_rows(STRONG_VECTORS, check)
+
+
+ALL_VECTORS = VECTORS["weak"] + VECTORS["strong"]
+
+
+def test_each_vector_counts_what_the_web_app_counts_too() -> None:
     """The web app's test holds its estimator to these same bits and patterns, so the two can't drift."""
-    assert passphrase_bits(vector["passphrase"]) == pytest.approx(vector["bits"], abs=1e-6)
-    assert passphrase.human_pattern(vector["passphrase"]) == vector["pattern"]
+
+    def check(vector: dict[str, Any]) -> None:
+        assert passphrase_bits(vector["passphrase"]) == pytest.approx(vector["bits"], abs=1e-6)
+        assert passphrase.human_pattern(vector["passphrase"]) == vector["pattern"]
+
+    check_rows(ALL_VECTORS, check)
 
 
 def test_random_characters_count_their_length_times_the_alphabet_they_use() -> None:
@@ -196,39 +222,41 @@ def test_random_characters_count_their_length_times_the_alphabet_they_use() -> N
     assert passphrase.random_bits("kT9xVbq 2MzRw7p") == 0
 
 
-@pytest.mark.parametrize(
-    ("made_up", "pattern"),
-    [
-        ("k7Lovej2QxZ9", "a very common word"),
-        ("k7L0vej2QxZ9", "a very common word"),  # leetspeak undone
-        ("xT1985kQ9vWz", "a year or a date"),
-        ("xT3.7.85kQ9v", "a year or a date"),
-        ("Laura#28_05_81&", "a year or a date"),  # any separator that isn't a letter or a digit
-        ("Anna24x12x88!", "a year or a date"),  # the same letter twice between two-digit groups
-        ("xT73829kQ9vW", "five digits in a row"),
-        ("xTqwerkQ9vW7", "a run or a keyboard walk"),
-        ("xTaaaakQ9vW7", "a run or a keyboard walk"),
-        ("x1T2k3Q4v9Wz", "a run or a keyboard walk"),  # the digits alone: 1234
-        ("!QAZ@WSX#EDC", "a run or a keyboard walk"),  # with Shift: 1qaz
-        ('!"§$%&/()=?`', "a run or a keyboard walk"),  # with Shift on a German keyboard: 1234
-        ("Q!W@E#R$T%Y^", "a run or a keyboard walk"),  # the letters alone: qwerty
-        ("xT9kQ2xT9kQ2", "a repeat"),
-        ("Ab1!Ab1?Ab1#", "a repeat"),  # three characters again, as typed
-        ("Tiger7#Horse", "words"),
-        ("Anna+Ben+Leo!7", "words"),
-        ("Ferienhaus!!", "words"),
-        ("BUNDESKANZLERIN", "words"),  # in capitals
-        ("sCHMETTERLING1!", "words"),  # with caps lock
-        ("pASSWORT#88!x", "a very common word"),
-        ("PaSsWoRd!2#4", "a very common word"),  # in alternating case
-        ("fUsSbAlL#Xq7", "words"),
-        ("ПарольМосква1", "words"),  # Cyrillic: no vowels from a-z
-        ("كلمةالسرمحمد1", "words"),  # Arabic: no case
-    ],
-)
-def test_a_pattern_people_make_takes_the_count_of_random_characters_away(made_up: str, pattern: str) -> None:
-    assert passphrase.human_pattern(made_up) == pattern
-    assert passphrase.random_bits(made_up) == 0
+PATTERNS_PEOPLE_MAKE = [
+    ("k7Lovej2QxZ9", "a very common word"),
+    ("k7L0vej2QxZ9", "a very common word"),  # leetspeak undone
+    ("xT1985kQ9vWz", "a year or a date"),
+    ("xT3.7.85kQ9v", "a year or a date"),
+    ("Laura#28_05_81&", "a year or a date"),  # any separator that isn't a letter or a digit
+    ("Anna24x12x88!", "a year or a date"),  # the same letter twice between two-digit groups
+    ("xT73829kQ9vW", "five digits in a row"),
+    ("xTqwerkQ9vW7", "a run or a keyboard walk"),
+    ("xTaaaakQ9vW7", "a run or a keyboard walk"),
+    ("x1T2k3Q4v9Wz", "a run or a keyboard walk"),  # the digits alone: 1234
+    ("!QAZ@WSX#EDC", "a run or a keyboard walk"),  # with Shift: 1qaz
+    ('!"§$%&/()=?`', "a run or a keyboard walk"),  # with Shift on a German keyboard: 1234
+    ("Q!W@E#R$T%Y^", "a run or a keyboard walk"),  # the letters alone: qwerty
+    ("xT9kQ2xT9kQ2", "a repeat"),
+    ("Ab1!Ab1?Ab1#", "a repeat"),  # three characters again, as typed
+    ("Tiger7#Horse", "words"),
+    ("Anna+Ben+Leo!7", "words"),
+    ("Ferienhaus!!", "words"),
+    ("BUNDESKANZLERIN", "words"),  # in capitals
+    ("sCHMETTERLING1!", "words"),  # with caps lock
+    ("pASSWORT#88!x", "a very common word"),
+    ("PaSsWoRd!2#4", "a very common word"),  # in alternating case
+    ("fUsSbAlL#Xq7", "words"),
+    ("ПарольМосква1", "words"),  # Cyrillic: no vowels from a-z
+    ("كلمةالسرمحمد1", "words"),  # Arabic: no case
+]
+
+
+def test_a_pattern_people_make_takes_the_count_of_random_characters_away() -> None:
+    def check(made_up: str, pattern: str) -> None:
+        assert passphrase.human_pattern(made_up) == pattern
+        assert passphrase.random_bits(made_up) == 0
+
+    check_rows(PATTERNS_PEOPLE_MAKE, check)
 
 
 def test_words_with_digits_and_symbols_count_as_words_not_random_characters() -> None:
@@ -344,8 +372,10 @@ _CLAIMS: list[tuple[str, str]] = [
 ]
 
 
-@pytest.mark.parametrize(("document", "sentence"), _CLAIMS)
-def test_the_docs_state_the_estimator_s_numbers(document: str, sentence: str) -> None:
-    stated = sentence.format(**{name: count() for name, count in _NUMBERS.items()})
-    text = " ".join((ROOT / document).read_text(encoding="utf-8").split())
-    assert stated in text
+def test_the_docs_state_the_estimator_s_numbers() -> None:
+    def check(document: str, sentence: str) -> None:
+        stated = sentence.format(**{name: count() for name, count in _NUMBERS.items()})
+        text = " ".join((ROOT / document).read_text(encoding="utf-8").split())
+        assert stated in text
+
+    check_rows(_CLAIMS, check)

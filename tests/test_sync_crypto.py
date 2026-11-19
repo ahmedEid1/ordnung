@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import hashlib
 import io
+import itertools
 import os
 
 import pytest
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from fakes import use_fast_keys
-from ordnung.backup.container import KeyedWriter
+from helpers_tables import check_rows
+from ordnung.backup.container import MAX_SCRYPT_BYTES, KeyedWriter
 from ordnung.sync import (
     CHUNK,
     KEY_FILE_BYTES,
@@ -75,12 +77,17 @@ def test_the_key_file_name_is_its_salt() -> None:
         open_key_file(renamed, made.data, PASS)
 
 
-@pytest.mark.parametrize("size", [0, 1, 91, 93, 200])
-def test_a_key_file_of_another_size_has_not_arrived(size: int) -> None:
-    made = new_key_file(PASS)
-    data = (made.data * 3)[:size]
-    with pytest.raises(NotArrived):
-        open_key_file(made.name, data, PASS)
+KEY_FILE_SIZES_NOT_ARRIVED = [0, 1, 91, 93, 200]
+
+
+def test_a_key_file_of_another_size_has_not_arrived() -> None:
+    def check(size: int) -> None:
+        made = new_key_file(PASS)
+        data = (made.data * 3)[:size]
+        with pytest.raises(NotArrived):
+            open_key_file(made.name, data, PASS)
+
+    check_rows(KEY_FILE_SIZES_NOT_ARRIVED, check)
 
 
 def test_a_newer_folder_format_says_update() -> None:
@@ -96,7 +103,7 @@ def test_a_newer_folder_format_says_update() -> None:
 
 def test_the_kdf_is_scrypt_2_18_r_8_within_the_readers_cap() -> None:
     assert (SYNC_KDF.log2_n, SYNC_KDF.r, SYNC_KDF.p) == (18, 8, 1)
-    assert SYNC_KDF.memory == 256 * 1024 * 1024
+    assert SYNC_KDF.memory == 256 * 1024 * 1024 == MAX_SCRYPT_BYTES
     SYNC_KDF.check()
 
 
@@ -125,34 +132,47 @@ def test_padme_clears_the_low_bits() -> None:
         previous = padded
 
 
-@pytest.mark.parametrize("k", [1, 2, 3])
-@pytest.mark.parametrize("delta", [-1, 0, 1])
-def test_sealed_size_counts_a_full_last_chunk_once(k: int, delta: int) -> None:
-    plain = k * CHUNK + delta
-    out = io.BytesIO()
-    writer = KeyedWriter(out, os.urandom(32), prefix=os.urandom(7), aad=b"")
-    writer.write(bytes(plain))
-    writer.close()
-    assert 23 + len(out.getvalue()) == sealed_size(plain)
-    assert sealed_size(plain) == 23 + plain + 16 * max(1, -(-plain // CHUNK))
+FULL_CHUNK_COUNTS = [1, 2, 3]
+FULL_CHUNK_DELTAS = [-1, 0, 1]
 
 
-@pytest.mark.parametrize("plain", [0, 1])
-def test_sealed_size_of_tiny(plain: int) -> None:
-    assert sealed_size(plain) == 23 + plain + 16
+def test_sealed_size_counts_a_full_last_chunk_once() -> None:
+    def check(k: int, delta: int) -> None:
+        plain = k * CHUNK + delta
+        out = io.BytesIO()
+        writer = KeyedWriter(out, os.urandom(32), prefix=os.urandom(7), aad=b"")
+        writer.write(bytes(plain))
+        writer.close()
+        assert 23 + len(out.getvalue()) == sealed_size(plain)
+        assert sealed_size(plain) == 23 + plain + 16 * max(1, -(-plain // CHUNK))
+
+    check_rows(itertools.product(FULL_CHUNK_COUNTS, FULL_CHUNK_DELTAS), check)
 
 
-@pytest.mark.parametrize(
-    "length", [0, 1, 4087, 4088, 4089, CHUNK - 9, CHUNK - 8, CHUNK - 7, CHUNK, CHUNK + 1, 3 * CHUNK]
-)
-def test_seal_and_open_round_trip_at_every_boundary(length: int) -> None:
-    keys = vault()
-    data = os.urandom(length)
-    name = keys.object_name("f", hashlib.sha256(data).hexdigest())
-    sealed = keys.seal("f", name, data)
-    assert len(sealed) == sealed_size_of(length)
-    assert keys.open("f", name, sealed) == data
-    assert data[:64] not in sealed or length < 16
+TINY_SIZES = [0, 1]
+
+
+def test_sealed_size_of_tiny() -> None:
+    def check(plain: int) -> None:
+        assert sealed_size(plain) == 23 + plain + 16
+
+    check_rows(TINY_SIZES, check)
+
+
+BOUNDARY_LENGTHS = [0, 1, 4087, 4088, 4089, CHUNK - 9, CHUNK - 8, CHUNK - 7, CHUNK, CHUNK + 1, 3 * CHUNK]
+
+
+def test_seal_and_open_round_trip_at_every_boundary() -> None:
+    def check(length: int) -> None:
+        keys = vault()
+        data = os.urandom(length)
+        name = keys.object_name("f", hashlib.sha256(data).hexdigest())
+        sealed = keys.seal("f", name, data)
+        assert len(sealed) == sealed_size_of(length)
+        assert keys.open("f", name, sealed) == data
+        assert data[:64] not in sealed or length < 16
+
+    check_rows(BOUNDARY_LENGTHS, check)
 
 
 # --------------------------------------------------------------------------------------------------

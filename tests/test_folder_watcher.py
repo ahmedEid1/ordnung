@@ -22,6 +22,7 @@ import pytest
 
 from fixtures_llm import INVOICE_LETTER, TAX_LETTER, TODAY, Router, fake_backend, record_events
 from helpers_docs import Line, make_pdf
+from helpers_tables import check_rows
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.ingest import held, intake, watcher
@@ -45,7 +46,7 @@ from ordnung.llm.base import LLMError
 from ordnung.llm.fake import FakeBackend
 from ordnung.models import Document
 
-FAST = {"settle_s": 0.25, "tick_ms": 50, "rescan_s": 0.4, "retry_s": 0.1}
+FAST = {"settle_s": 0.05, "tick_ms": 50, "rescan_s": 0.1, "retry_s": 0.1}
 
 
 @pytest.fixture(autouse=True)
@@ -107,6 +108,30 @@ async def watching(ctx: AppContext, **options: Any) -> AsyncIterator[FolderWatch
         await folder_watcher.stop()
 
 
+class Listings:
+    """Counts the watcher's listings of the folder. A pickup is awaited before the next listing starts,
+    so once ``more(n)`` returns, every file that ``n - 1`` whole listings found has been handled."""
+
+    def __init__(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        self.started = 0
+        real = watcher.list_folder
+
+        def counted(folder: Path) -> Any:
+            self.started += 1
+            return real(folder)
+
+        monkeypatch.setattr(watcher, "list_folder", counted)
+
+    async def more(self, count: int = 3) -> None:
+        target = self.started + count
+        await eventually(lambda: self.started >= target)
+
+
+@pytest.fixture
+def listings(monkeypatch: pytest.MonkeyPatch) -> Listings:
+    return Listings(monkeypatch)
+
+
 def by_name(ctx: AppContext, filename: str) -> Document | None:
     return next(
         (doc for doc in ctx.store.list_documents(include_deleted=True) if doc.filename == filename), None
@@ -130,34 +155,36 @@ def logged(ctx: AppContext, kind: str) -> list[str]:
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("name", "picked_up"),
-    [
-        ("Scan_2026-09-28.pdf", True),
-        ("SCAN.PDF", True),
-        ("IMG_0042.HEIC", True),
-        ("foto.jpeg", True),
-        ("mail.eml", True),
-        ("notiz.txt", True),
-        ("scan.pdf.part", False),
-        ("scan.pdf.crdownload", False),
-        ("scan.pdf.download", False),
-        ("scan.pdf.partial", False),
-        ("scan.pdf.tmp", False),
-        ("scan.TEMP", False),
-        ("~$brief.pdf", False),
-        (".scan.pdf", False),
-        (".DS_Store", False),
-        ("scan.pdf~", False),
-        ("brief.docx", False),
-        ("Thumbs.db", False),
-        ("archiv.zip", False),
-        ("pdf", False),
-        ("", False),
-    ],
-)
-def test_which_files_are_picked_up(name: str, picked_up: bool) -> None:
-    assert is_candidate(name) is picked_up
+WHICH_FILES_ROWS = [
+    ("Scan_2026-09-28.pdf", True),
+    ("SCAN.PDF", True),
+    ("IMG_0042.HEIC", True),
+    ("foto.jpeg", True),
+    ("mail.eml", True),
+    ("notiz.txt", True),
+    ("scan.pdf.part", False),
+    ("scan.pdf.crdownload", False),
+    ("scan.pdf.download", False),
+    ("scan.pdf.partial", False),
+    ("scan.pdf.tmp", False),
+    ("scan.TEMP", False),
+    ("~$brief.pdf", False),
+    (".scan.pdf", False),
+    (".DS_Store", False),
+    ("scan.pdf~", False),
+    ("brief.docx", False),
+    ("Thumbs.db", False),
+    ("archiv.zip", False),
+    ("pdf", False),
+    ("", False),
+]
+
+
+def test_which_files_are_picked_up() -> None:
+    def check(name: str, picked_up: bool) -> None:
+        assert is_candidate(name) is picked_up
+
+    check_rows(WHICH_FILES_ROWS, check)
 
 
 def test_a_file_counts_once_it_stopped_changing_and_has_content() -> None:
@@ -240,7 +267,7 @@ async def test_a_file_is_picked_up_once_it_stopped_changing(ctx: AppContext, inb
 
 
 async def test_partial_temporary_linked_and_nested_files_are_ignored(
-    ctx: AppContext, inbox: Path, tmp_path: Path
+    ctx: AppContext, inbox: Path, tmp_path: Path, listings: Listings
 ) -> None:
     async with watching(ctx):
         for number, name in enumerate(
@@ -251,27 +278,29 @@ async def test_partial_temporary_linked_and_nested_files_are_ignored(
         (inbox / "sub" / "nested.pdf").write_bytes(pdf("nested"))
         (tmp_path / "outside.pdf").write_bytes(pdf("outside"))
         (inbox / "link.pdf").symlink_to(tmp_path / "outside.pdf")
-        await asyncio.sleep(0.6)
+        await listings.more()
         (inbox / "real.pdf").write_bytes(pdf("real"))
         await eventually(picked(ctx, "real.pdf"))
-        await asyncio.sleep(0.5)  # a few more listings
+        await listings.more()  # a few more listings
     assert [doc.filename for doc in ctx.store.list_documents()] == ["real.pdf"]
 
 
-async def test_files_already_there_are_picked_up_once(ctx: AppContext, inbox: Path) -> None:
+async def test_files_already_there_are_picked_up_once(
+    ctx: AppContext, inbox: Path, listings: Listings
+) -> None:
     (inbox / "while-closed.pdf").write_bytes(pdf("while closed"))
     async with watching(ctx):
         await eventually(picked(ctx, "while-closed.pdf"))
     async with watching(ctx):  # Ordnung restarts
         (inbox / "next.pdf").write_bytes(pdf("next"))
         await eventually(picked(ctx, "next.pdf"))
-        await asyncio.sleep(0.5)
+        await listings.more()
     assert len(ctx.store.list_documents()) == 2
     assert logged(ctx, "folder.known") == []
     assert len(logged(ctx, "document.added")) == 2
 
 
-async def test_a_deleted_letter_does_not_come_back(ctx: AppContext, inbox: Path) -> None:
+async def test_a_deleted_letter_does_not_come_back(ctx: AppContext, inbox: Path, listings: Listings) -> None:
     (inbox / "brief.pdf").write_bytes(pdf("brief"))
     async with watching(ctx):
         document = await eventually(picked(ctx, "brief.pdf"))
@@ -279,7 +308,7 @@ async def test_a_deleted_letter_does_not_come_back(ctx: AppContext, inbox: Path)
     async with watching(ctx):
         (inbox / "marker.pdf").write_bytes(pdf("marker"))
         await eventually(picked(ctx, "marker.pdf"))
-        await asyncio.sleep(0.5)
+        await listings.more()
     assert by_name(ctx, "brief.pdf") is None
 
 
@@ -319,17 +348,6 @@ async def test_files_wait_for_the_person_and_are_never_sent(ctx: AppContext, inb
     assert read.kind == "tax_assessment" and backend(ctx).calls
 
 
-async def test_with_auto_read_files_are_read_at_once(ctx: AppContext, inbox: Path) -> None:
-    use_folder(ctx, inbox, inbox_auto_read=True)
-    async with watching(ctx):
-        (inbox / "bescheid.pdf").write_bytes(TAX_LETTER.pdf())
-        document = await eventually(picked(ctx, "bescheid.pdf"))
-    assert (document.status, document.ai_private) == ("queued", False)
-    await ctx.worker.run_until_idle()
-    read = ctx.store.get_document(document.id)
-    assert read is not None and read.status == "processed"
-
-
 async def test_where_nothing_can_be_read_files_always_wait(ctx: AppContext, inbox: Path) -> None:
     use_folder(ctx, inbox, inbox_auto_read=True)
     async with watching(ctx, can_read=False):  # the zero-token demo
@@ -338,7 +356,9 @@ async def test_where_nothing_can_be_read_files_always_wait(ctx: AppContext, inbo
     assert document.status == "held"
 
 
-async def test_the_watcher_follows_the_setting(ctx: AppContext, inbox: Path, tmp_path: Path) -> None:
+async def test_the_watcher_follows_the_setting(
+    ctx: AppContext, inbox: Path, tmp_path: Path, listings: Listings
+) -> None:
     other = tmp_path / "downloads"
     other.mkdir()
     async with watching(ctx) as folder_watcher:
@@ -349,7 +369,7 @@ async def test_the_watcher_follows_the_setting(ctx: AppContext, inbox: Path, tmp
         (inbox / "old-folder.pdf").write_bytes(pdf("old"))
         (other / "new-folder.pdf").write_bytes(pdf("new"))
         await eventually(picked(ctx, "new-folder.pdf"))
-        await asyncio.sleep(0.5)
+        await listings.more()
         assert by_name(ctx, "old-folder.pdf") is None
 
         use_folder(ctx, None)
@@ -364,14 +384,24 @@ async def test_a_watcher_outside_the_server_does_not_follow_the_setting(ctx: App
 
 
 async def test_a_missing_folder_is_reported_and_watched_once_it_exists(
-    ctx: AppContext, tmp_path: Path
+    ctx: AppContext, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     later = tmp_path / "not-yet"
     use_folder(ctx, later)
+    checks = 0
+
+    def counted(folder: Path) -> str | None:
+        nonlocal checks
+        checks += 1
+        problem: str | None = folder_problem(folder)
+        return problem
+
+    monkeypatch.setattr(watcher, "folder_problem", counted)
     async with watching(ctx) as folder_watcher:
         await eventually(lambda: folder_watcher.state == "problem")
         assert folder_watcher.problem == MISSING
-        await asyncio.sleep(0.4)  # several retries: reported once
+        retried = checks + 3
+        await eventually(lambda: checks >= retried)  # several retries: reported once
         assert logged(ctx, "folder.problem") == [f"Can't watch your folder: {MISSING}"]
         later.mkdir()
         (later / "brief.pdf").write_bytes(pdf("later"))
@@ -522,6 +552,8 @@ async def test_with_auto_read_the_files_already_there_still_wait(ctx: AppContext
         later = await eventually(picked(ctx, "while-closed.pdf"))
     assert later.status == "queued"  # the folder was watched before: it arrived
     await ctx.worker.run_until_idle()
+    read = ctx.store.get_document(new.id)
+    assert read is not None and read.status == "processed"  # a file that arrived is read at once
     assert {doc.id for doc in held.waiting(ctx.store)} == {old_tax.id, old_bill.id}
 
 
@@ -653,7 +685,7 @@ def test_reading_a_file_ordnung_may_not_read_says_so(tmp_path: Path, monkeypatch
 
 
 async def test_a_file_ordnung_may_not_read_is_reported_once(
-    ctx: AppContext, inbox: Path, monkeypatch: pytest.MonkeyPatch
+    ctx: AppContext, inbox: Path, monkeypatch: pytest.MonkeyPatch, listings: Listings
 ) -> None:
     real = watcher.read_file
     tries = 0
@@ -669,14 +701,16 @@ async def test_a_file_ordnung_may_not_read_is_reported_once(
     async with watching(ctx):
         (inbox / "locked.pdf").write_bytes(pdf("locked"))
         await eventually(lambda: logged(ctx, "folder.refused"))
-        await asyncio.sleep(1.0)  # several rescans
+        await listings.more()  # several rescans
     assert tries == 1
     assert logged(ctx, "folder.refused") == [
         f"Couldn't add “locked.pdf” from your watched folder: {watcher.NOT_READABLE}"
     ]
 
 
-async def test_what_is_remembered_follows_the_folder(ctx: AppContext, inbox: Path) -> None:
+async def test_what_is_remembered_follows_the_folder(
+    ctx: AppContext, inbox: Path, listings: Listings
+) -> None:
     """Files that left the folder are forgotten (it stays as small as the folder); one that comes
     back is picked up again and adds nothing."""
     async with watching(ctx):
@@ -690,7 +724,7 @@ async def test_what_is_remembered_follows_the_folder(ctx: AppContext, inbox: Pat
         await eventually(lambda: key not in (ctx.store.get_meta(SEEN_META_KEY) or ""))
         (inbox / "a.pdf").write_bytes(moved)
         await eventually(lambda: logged(ctx, "folder.known"))
-        await asyncio.sleep(1.0)  # several rescans: known once
+        await listings.more()  # several rescans: known once
     assert logged(ctx, "folder.known") == ["“a.pdf” in your watched folder is already in Ordnung"]
     assert len(ctx.store.list_documents()) == 2
 
@@ -764,7 +798,7 @@ def test_two_pdfs_made_at_once_are_both_remembered(ctx: AppContext, monkeypatch:
     from ordnung.ingest import own_files
 
     real = own_files._own_files
-    both_read = threading.Barrier(2, timeout=2)
+    both_read = threading.Barrier(2, timeout=1.0)
 
     def slow(store: Any) -> list[str]:
         found = real(store)
