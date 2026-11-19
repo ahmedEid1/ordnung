@@ -300,16 +300,27 @@ async def assert_baseline(
 
 
 DROPPED_OR_LATER_ANSWERS = [
-    {**HALF, "items": [OBJECTION]},  # the payment left out
-    {
-        **HALF,
-        "items": [OBJECTION, {**PAYMENT, "date": {**PAYMENT["date"], "date": "2026-11-15"}}],
-    },  # later
-    {
-        **HALF,
-        "items": [OBJECTION, {**PAYMENT, "date": {**PAYMENT["date"], "date": "15.11.2026"}}],
-    },  # unreadable
-    {**HALF, "items": [OBJECTION, PAYMENT, {**PLAN, "date": {**PLAN["date"], "date": "2026-10-08"}}]},
+    pytest.param({**HALF, "items": [OBJECTION]}, id="dropped"),  # the payment left out
+    # later
+    pytest.param(
+        {
+            **HALF,
+            "items": [OBJECTION, {**PAYMENT, "date": {**PAYMENT["date"], "date": "2026-11-15"}}],
+        },
+        id="later",
+    ),
+    # unreadable
+    pytest.param(
+        {
+            **HALF,
+            "items": [OBJECTION, {**PAYMENT, "date": {**PAYMENT["date"], "date": "15.11.2026"}}],
+        },
+        id="unreadable",
+    ),
+    pytest.param(
+        {**HALF, "items": [OBJECTION, PAYMENT, {**PLAN, "date": {**PLAN["date"], "date": "2026-10-08"}}]},
+        id="plan-later",
+    ),
 ]
 
 
@@ -321,7 +332,7 @@ async def test_a_dated_to_do_of_the_first_answer_is_never_lost_or_moved_later(tm
     raised: list[Exception | None] = []
     for number, row in enumerate(DROPPED_OR_LATER_ANSWERS):
         try:
-            await check(tmp_path / str(number), row)
+            await check(tmp_path / str(number), *row.values)
         except Exception as exc:
             raised.append(exc)
         else:
@@ -340,17 +351,20 @@ async def test_a_dated_to_do_of_the_first_answer_is_never_lost_or_moved_later(tm
 # --------------------------------------------------------------------------------------------------
 
 
-LATER_OBJECTION_LETTERS = [PAY, BARE]
+LATER_OBJECTION_LETTERS = [pytest.param(PAY, id="dated"), pytest.param(BARE, id="bare")]
 LATER_OBJECTIONS = [
-    fixed("2026-10-25"),
-    fixed("2026-10-26"),
-    fixed("2026-11-18"),
-    objection({"anchor": "receipt", "delivery_rule": "none"}),
-    objection({"anchor": "today", "delivery_rule": "none"}),
-    objection({"anchor": "explicit_date", "anchor_date": "2026-09-21"}),
-    objection({"anchor": "explicit_date", "anchor_date": "2026-09-21", "delivery_rule": "none"}),
-    objection({"amount": 5, "unit": "weeks"}),
-    objection({"amount": 2}),
+    pytest.param(fixed("2026-10-25"), id="fixed+6"),
+    pytest.param(fixed("2026-10-26"), id="fixed+7"),
+    pytest.param(fixed("2026-11-18"), id="fixed+30"),
+    pytest.param(objection({"anchor": "receipt", "delivery_rule": "none"}), id="receipt"),
+    pytest.param(objection({"anchor": "today", "delivery_rule": "none"}), id="today"),
+    pytest.param(objection({"anchor": "explicit_date", "anchor_date": "2026-09-21"}), id="explicit"),
+    pytest.param(
+        objection({"anchor": "explicit_date", "anchor_date": "2026-09-21", "delivery_rule": "none"}),
+        id="explicit-nodelivery",
+    ),
+    pytest.param(objection({"amount": 5, "unit": "weeks"}), id="5weeks"),
+    pytest.param(objection({"amount": 2}), id="2months"),
 ]
 
 
@@ -358,11 +372,14 @@ async def test_an_objection_date_later_than_the_check_s_is_never_used(tmp_path: 
     async def check(where: Path, case: Letter, item: dict[str, Any]) -> None:
         await assert_baseline(where, case, HALF, {**HALF, "items": [item]}, "later", received="2026-09-25")
 
-    rows = list(itertools.product(LATER_OBJECTION_LETTERS, LATER_OBJECTIONS))
+    rows = [
+        pytest.param(*case.values, *item.values, id=f"{item.id}-{case.id}")
+        for case, item in itertools.product(LATER_OBJECTION_LETTERS, LATER_OBJECTIONS)
+    ]
     raised: list[Exception | None] = []
     for number, row in enumerate(rows):
         try:
-            await check(tmp_path / str(number), *row)
+            await check(tmp_path / str(number), *row.values)
         except Exception as exc:
             raised.append(exc)
         else:
@@ -398,13 +415,21 @@ async def test_an_objection_quote_not_on_the_letter_with_a_longer_period_is_neve
 
 
 LETTER_DATES_NOT_GIVEN = [
-    (PAY, HALF, {**COMPLETE, "document_date": "2026-09-20"}),  # later than the first answer's
-    (PAY, HALF, {**COMPLETE, "document_date": "2026-09-21"}),
-    (PAY, BLANK, {**HALF, "document_date": "2026-10-05", "items": [PAYMENT, PLAN]}),  # 20 days late
-    (PAY, BLANK, {**COMPLETE, "document_date": "2026-09-21"}),  # not the letter's own date
-    (APPLIED, BLANK, {**COMPLETE, "document_date": "2026-08-01"}),  # the application's date
-    (APPLIED, BLANK, {**BLANK, "sender": SENDER, "document_date": "2026-08-01"}),
-    (
+    # later than the first answer's
+    pytest.param(PAY, HALF, {**COMPLETE, "document_date": "2026-09-20"}, id="later-5"),
+    pytest.param(PAY, HALF, {**COMPLETE, "document_date": "2026-09-21"}, id="later-6"),
+    # 20 days late
+    pytest.param(
+        PAY, BLANK, {**HALF, "document_date": "2026-10-05", "items": [PAYMENT, PLAN]}, id="voids-start"
+    ),
+    # not the letter's own date
+    pytest.param(PAY, BLANK, {**COMPLETE, "document_date": "2026-09-21"}, id="not-own"),
+    # the application's date
+    pytest.param(APPLIED, BLANK, {**COMPLETE, "document_date": "2026-08-01"}, id="application"),
+    pytest.param(
+        APPLIED, BLANK, {**BLANK, "sender": SENDER, "document_date": "2026-08-01"}, id="application-only"
+    ),
+    pytest.param(
         BARE,
         BLANK,
         {
@@ -412,8 +437,9 @@ LETTER_DATES_NOT_GIVEN = [
             "sender": {"name": "Landesamt Irgendwo", "kind": "authority"},
             "document_date": "2026-09-22",
         },
+        id="made-up",
     ),
-    (PAY, BLANK, {**BLANK, "document_date": "2026-09-24"}),
+    pytest.param(PAY, BLANK, {**BLANK, "document_date": "2026-09-24"}, id="date-only"),
 ]
 
 
@@ -424,7 +450,7 @@ async def test_a_letter_date_the_letter_doesn_t_give_is_never_used(tmp_path: Pat
     raised: list[Exception | None] = []
     for number, row in enumerate(LETTER_DATES_NOT_GIVEN):
         try:
-            await check(tmp_path / str(number), *row)
+            await check(tmp_path / str(number), *row.values)
         except Exception as exc:
             raised.append(exc)
         else:
@@ -447,16 +473,31 @@ FEST_FIRST = {**HALF, "remedy": {"type": "widerspruch", "quote": FEST_NOTICE}}
 
 
 OTHER_READINGS_OF_THE_LETTER = [
-    (FEST, FEST_FIRST, {**FEST_FIRST, "sender": {"name": "Stadtwerke Musterhausen", "kind": "company"}}),
-    (FEST, FEST_FIRST, {**FEST_FIRST, "sender": {"name": "Stadtwerke Musterhausen", "kind": "other"}}),
-    (FEST, FEST_FIRST, {**FEST_FIRST, "sender": {"name": "Stadtwerke Musterhausen", "kind": "utility"}}),
-    (FEST, FEST_FIRST, {**FEST_FIRST, "sender": None}),
-    (PAY, HALF, {**HALF, "high_stakes_kind": "dismissal"}),
-    (PAY, HALF, {**HALF, "high_stakes_kind": "court_payment_order"}),
-    (PAY, HALF, {**HALF, "high_stakes_kind": "enforcement_order"}),
-    (FEST, FEST_FIRST, {**FEST_FIRST, "high_stakes_kind": "dismissal"}),
-    (PAY, HALF, {**HALF, "remedy": {"type": "none"}}),
-    (PAY, HALF, {**HALF, "kind": "invoice"}),
+    pytest.param(
+        FEST,
+        FEST_FIRST,
+        {**FEST_FIRST, "sender": {"name": "Stadtwerke Musterhausen", "kind": "company"}},
+        id="company",
+    ),
+    pytest.param(
+        FEST,
+        FEST_FIRST,
+        {**FEST_FIRST, "sender": {"name": "Stadtwerke Musterhausen", "kind": "other"}},
+        id="other",
+    ),
+    pytest.param(
+        FEST,
+        FEST_FIRST,
+        {**FEST_FIRST, "sender": {"name": "Stadtwerke Musterhausen", "kind": "utility"}},
+        id="utility",
+    ),
+    pytest.param(FEST, FEST_FIRST, {**FEST_FIRST, "sender": None}, id="no-sender"),
+    pytest.param(PAY, HALF, {**HALF, "high_stakes_kind": "dismissal"}, id="dismissal"),
+    pytest.param(PAY, HALF, {**HALF, "high_stakes_kind": "court_payment_order"}, id="court-order"),
+    pytest.param(PAY, HALF, {**HALF, "high_stakes_kind": "enforcement_order"}, id="enforcement"),
+    pytest.param(FEST, FEST_FIRST, {**FEST_FIRST, "high_stakes_kind": "dismissal"}, id="fest-dismissal"),
+    pytest.param(PAY, HALF, {**HALF, "remedy": {"type": "none"}}, id="remedy-none"),
+    pytest.param(PAY, HALF, {**HALF, "kind": "invoice"}, id="invoice"),
 ]
 
 
@@ -467,7 +508,7 @@ async def test_a_gap_closed_by_reading_the_letter_differently_is_no_gap_closed(t
     raised: list[Exception | None] = []
     for number, row in enumerate(OTHER_READINGS_OF_THE_LETTER):
         try:
-            await check(tmp_path / str(number), *row)
+            await check(tmp_path / str(number), *row.values)
         except Exception as exc:
             raised.append(exc)
         else:
@@ -486,23 +527,31 @@ STUDY_SENDER = {"name": "Studierendenwerk Musterstadt", "kind": "authority"}
 
 ANSWERS_WITHOUT_A_COUNTERPART = [
     # blank, then the sender read as a firm, a date, no to-do: the check's deadline would vanish
-    (
+    pytest.param(
         STUDY,
         BLANK,
         {**BLANK, "sender": {**STUDY_SENDER, "kind": "company"}, "document_date": "2026-09-15"},
         "uncovered",
+        id="firm",
     ),
     # the first reads an authority, the second a firm
-    (
+    pytest.param(
         STUDY,
         {**BLANK, "sender": STUDY_SENDER, "document_date": "2026-09-15"},
         {**BLANK, "sender": {**STUDY_SENDER, "kind": "company"}, "document_date": "2026-09-15"},
         "not_better",
+        id="authority-to-firm",
     ),
     # no notice: "read this letter yourself" is not lifted by a sender and a date
-    (PLAIN, BLANK, {**BLANK, "sender": SENDER, "document_date": "2026-09-15"}, "uncovered"),
+    pytest.param(
+        PLAIN,
+        BLANK,
+        {**BLANK, "sender": SENDER, "document_date": "2026-09-15"},
+        "uncovered",
+        id="read-yourself",
+    ),
     # an undated to-do is no dated one found on the letter
-    (
+    pytest.param(
         PLAIN,
         BLANK,
         {
@@ -512,6 +561,7 @@ ANSWERS_WITHOUT_A_COUNTERPART = [
             "items": [{**PLAN, "date": {"type": "none"}}],
         },
         "uncovered",
+        id="read-yourself-undated",
     ),
 ]
 
@@ -525,7 +575,7 @@ async def test_the_check_s_to_do_is_never_lifted_without_a_counterpart(tmp_path:
     raised: list[Exception | None] = []
     for number, row in enumerate(ANSWERS_WITHOUT_A_COUNTERPART):
         try:
-            await check(tmp_path / str(number), *row)
+            await check(tmp_path / str(number), *row.values)
         except Exception as exc:
             raised.append(exc)
         else:
@@ -559,11 +609,11 @@ async def test_an_objection_date_where_the_check_can_t_date_it_is_never_used(tmp
 
 
 UNANSWERED_ERRORS = [
-    ClaudeTimeout("no answer"),
-    ClaudeRateLimited("Usage limit reached", reset_at=None),
-    ClaudeAuthError("not signed in"),
-    ClaudeNotInstalled("not installed"),
-    LLMError("the CLI broke"),
+    pytest.param(ClaudeTimeout("no answer"), id="timeout"),
+    pytest.param(ClaudeRateLimited("Usage limit reached", reset_at=None), id="rate-limit"),
+    pytest.param(ClaudeAuthError("not signed in"), id="auth"),
+    pytest.param(ClaudeNotInstalled("not installed"), id="not-installed"),
+    pytest.param(LLMError("the CLI broke"), id="generic"),
 ]
 
 
@@ -577,7 +627,7 @@ async def test_a_re_ask_without_an_answer_leaves_the_baseline(tmp_path: Path) ->
     raised: list[Exception | None] = []
     for number, row in enumerate(UNANSWERED_ERRORS):
         try:
-            await check(tmp_path / str(number), row)
+            await check(tmp_path / str(number), *row.values)
         except Exception as exc:
             raised.append(exc)
         else:
@@ -597,12 +647,16 @@ async def test_a_re_ask_without_an_answer_leaves_the_baseline(tmp_path: Path) ->
 
 
 BETTER_ANSWERS = [
-    (BLANK, COMPLETE),
-    (HALF, COMPLETE),
-    ({**HALF, "items": [PAYMENT, PLAN]}, {**HALF, "items": [PAYMENT, PLAN, OBJECTION]}),
-    (BLANK, {**HALF, "items": [objection({"anchor": "document_date"})]}),
-    (BLANK, HALF),  # the objection still left out: the check files its to-do for the second reading
-    (BLANK, {**HALF, "items": [fixed("2026-10-15")]}),  # a fixed date no later than the check's
+    pytest.param(BLANK, COMPLETE, id="blank-complete"),
+    pytest.param(HALF, COMPLETE, id="half-complete"),
+    pytest.param(
+        {**HALF, "items": [PAYMENT, PLAN]}, {**HALF, "items": [PAYMENT, PLAN, OBJECTION]}, id="keeps-dated"
+    ),
+    pytest.param(BLANK, {**HALF, "items": [objection({"anchor": "document_date"})]}, id="from-letter-date"),
+    # the objection still left out: the check files its to-do for the second reading
+    pytest.param(BLANK, HALF, id="blank-half"),
+    # a fixed date no later than the check's
+    pytest.param(BLANK, {**HALF, "items": [fixed("2026-10-15")]}, id="fixed-earlier"),
 ]
 
 
@@ -619,7 +673,7 @@ async def test_a_better_answer_is_used(tmp_path: Path) -> None:
     raised: list[Exception | None] = []
     for number, row in enumerate(BETTER_ANSWERS):
         try:
-            await check(tmp_path / str(number), *row)
+            await check(tmp_path / str(number), *row.values)
         except Exception as exc:
             raised.append(exc)
         else:

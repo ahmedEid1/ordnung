@@ -267,9 +267,11 @@ async def test_a_paused_reading_says_so(ctx: AppContext, router: Router) -> None
 
 
 WAITING_FOR_CLAUDE = [
-    (ClaudeNotInstalled("The “claude” command was not found."), "paused_not_installed"),
-    (ClaudeAuthError("Claude Code is not signed in."), "paused_not_signed_in"),
-    (ClaudeOutdated("Claude Code 2.0.9 is too old."), "paused_outdated"),
+    pytest.param(
+        ClaudeNotInstalled("The “claude” command was not found."), "paused_not_installed", id="not-installed"
+    ),
+    pytest.param(ClaudeAuthError("Claude Code is not signed in."), "paused_not_signed_in", id="signed-out"),
+    pytest.param(ClaudeOutdated("Claude Code 2.0.9 is too old."), "paused_outdated", id="outdated"),
 ]
 
 
@@ -302,7 +304,7 @@ async def test_a_reading_waiting_for_claude_is_paused_never_failed(data_dir: Pat
     raised: list[Exception | None] = []
     for number, row in enumerate(WAITING_FOR_CLAUDE):
         try:
-            await check(data_dir / str(number), *row)
+            await check(data_dir / str(number), *row.values)
         except Exception as exc:
             raised.append(exc)
         else:

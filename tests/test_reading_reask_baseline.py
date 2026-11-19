@@ -226,18 +226,21 @@ INJECTED = letter(
 
 
 SENDERS_READ_ANEW = [
-    {"name": "Stadt Musterhausen", "kind": "tax_office"},
-    {"name": "Stadt Musterhausen", "kind": "health_insurer"},
-    {"name": "Amtsgericht Musterhausen", "kind": "other"},
+    pytest.param({"name": "Stadt Musterhausen", "kind": "tax_office"}, id="tax_office"),
+    pytest.param({"name": "Stadt Musterhausen", "kind": "health_insurer"}, id="health_insurer"),
+    pytest.param({"name": "Amtsgericht Musterhausen", "kind": "other"}, id="court-name"),
 ]
 #: The objection the answer adds beside the kept payment: dated from the letter's date, fixed, and deemed.
 ADDED_OBJECTIONS = [
-    objection({"anchor": "document_date", "delivery_rule": "none"}),
-    {
-        **objection({}),
-        "date": {"type": "fixed", "date": "2026-10-15", "nature": "objection", "text": "bis"},
-    },
-    objection({}),
+    pytest.param(objection({"anchor": "document_date", "delivery_rule": "none"}), id="document-date"),
+    pytest.param(
+        {
+            **objection({}),
+            "date": {"type": "fixed", "date": "2026-10-15", "nature": "objection", "text": "bis"},
+        },
+        id="fixed",
+    ),
+    pytest.param(objection({}), id="deemed"),
 ]
 
 
@@ -250,11 +253,14 @@ async def test_a_sender_read_anew_never_moves_a_kept_to_do_later(tmp_path: Path)
         again = {**first, "sender": sender, "items": [PAY_RELATIVE, item]}
         await assert_baseline(where, PAY_LETTER, first, again, "dropped", received="2026-10-01")
 
-    rows = list(itertools.product(SENDERS_READ_ANEW, ADDED_OBJECTIONS))
+    rows = [
+        pytest.param(*sender.values, *item.values, id=f"{item.id}-{sender.id}")
+        for sender, item in itertools.product(SENDERS_READ_ANEW, ADDED_OBJECTIONS)
+    ]
     raised: list[Exception | None] = []
     for number, row in enumerate(rows):
         try:
-            await check(tmp_path / str(number), *row)
+            await check(tmp_path / str(number), *row.values)
         except Exception as exc:
             raised.append(exc)
         else:
@@ -281,7 +287,7 @@ async def test_a_sender_read_as_a_firm_that_moves_nothing_later_is_used(tmp_path
     raised: list[Exception | None] = []
     for number, row in enumerate(ADDED_OBJECTIONS):
         try:
-            await check(tmp_path / str(number), row)
+            await check(tmp_path / str(number), *row.values)
         except Exception as exc:
             raised.append(exc)
         else:
@@ -399,7 +405,10 @@ async def test_the_first_answer_s_sender_named_again_needs_no_looking_up(tmp_pat
 # --------------------------------------------------------------------------------------------------
 
 
-PLANTED_OTHER_FILINGS = [[PLANTED_OTHER], [objection({}), PLANTED_OTHER]]  # alone, and beside the objection
+PLANTED_OTHER_FILINGS = [
+    pytest.param([PLANTED_OTHER], id="alone"),
+    pytest.param([objection({}), PLANTED_OTHER], id="beside"),
+]
 
 
 async def test_a_remedy_filed_under_another_nature_never_ends_after_the_check_s_date(tmp_path: Path) -> None:
@@ -409,7 +418,7 @@ async def test_a_remedy_filed_under_another_nature_never_ends_after_the_check_s_
     raised: list[Exception | None] = []
     for number, row in enumerate(PLANTED_OTHER_FILINGS):
         try:
-            await check(tmp_path / str(number), row)
+            await check(tmp_path / str(number), *row.values)
         except Exception as exc:
             raised.append(exc)
         else:
@@ -589,14 +598,18 @@ SECOND = reading(COMPLETE)
 
 
 OBJECTION_DATE_SHAPES = [
-    ({"type": "fixed", "date": "2026-10-15"}, True),  # the floor's start plus its period
-    ({"type": "fixed", "date": "2026-10-16"}, False),  # one day later
-    ({**OBJ_DATE, "amount": 1}, True),
-    ({**OBJ_DATE, "amount": 2}, False),  # a longer period
-    ({**OBJ_DATE, "amount": 5, "unit": "weeks"}, False),  # another unit
-    ({**OBJ_DATE, "anchor": "receipt"}, False),
-    ({**OBJ_DATE, "anchor": "document_date", "delivery_rule": "none"}, True),
-    ({**OBJ_DATE, "anchor": "explicit_date", "anchor_date": "2026-09-16"}, False),  # a later start
+    # the floor's start plus its period
+    pytest.param({"type": "fixed", "date": "2026-10-15"}, True, id="fixed"),
+    pytest.param({"type": "fixed", "date": "2026-10-16"}, False, id="fixed+1"),  # one day later
+    pytest.param({**OBJ_DATE, "amount": 1}, True, id="same"),
+    pytest.param({**OBJ_DATE, "amount": 2}, False, id="longer"),  # a longer period
+    pytest.param({**OBJ_DATE, "amount": 5, "unit": "weeks"}, False, id="unit"),  # another unit
+    pytest.param({**OBJ_DATE, "anchor": "receipt"}, False, id="receipt"),
+    pytest.param({**OBJ_DATE, "anchor": "document_date", "delivery_rule": "none"}, True, id="document-date"),
+    # a later start
+    pytest.param(
+        {**OBJ_DATE, "anchor": "explicit_date", "anchor_date": "2026-09-16"}, False, id="later-start"
+    ),
 ]
 
 
@@ -608,7 +621,10 @@ def test_the_shape_of_an_objection_date() -> None:
     check_rows(OBJECTION_DATE_SHAPES, check)
 
 
-SENDERS_WITHOUT_DEEMED_DELIVERY = [{"private_sender": True}, {"court": True}]
+SENDERS_WITHOUT_DEEMED_DELIVERY = [
+    pytest.param({"private_sender": True}, id="private"),
+    pytest.param({"court": True}, id="court"),
+]
 
 
 def test_deemed_delivery_never_counts_for_a_sender_without_it() -> None:
@@ -676,11 +692,11 @@ def test_a_second_reading_s_own_check_less_dated_than_the_floor_never_covers_it(
 # --------------------------------------------------------------------------------------------------
 
 
-REASK_ALLOWED = [True, False]  # allowed, and as now
+REASK_ALLOWED = [pytest.param(True, id="allowed"), pytest.param(False, id="as-now")]
 REASK_ERRORS = [
-    (ReplayMiss("no recorded response for extract"), "reading_reask_missing"),
-    (ClaudeBadOutput("no structured output"), "reading_reask:rejected"),
-    (ClaudeTimeout("timed out"), None),
+    pytest.param(ReplayMiss("no recorded response for extract"), "reading_reask_missing", id="replay-miss"),
+    pytest.param(ClaudeBadOutput("no structured output"), "reading_reask:rejected", id="bad-output"),
+    pytest.param(ClaudeTimeout("timed out"), None, id="timeout"),
 ]
 
 
@@ -715,11 +731,14 @@ async def test_on_an_allowed_letter_only_a_replay_miss_is_missing(
             reask = [s for s in prediction.signals if s.startswith("reading_reask")]
             assert reask == [signal]
 
-    rows = [(allowed, *case) for allowed, case in itertools.product(REASK_ALLOWED, REASK_ERRORS)]
+    rows = [
+        pytest.param(*allowed.values, *case.values, id=f"{case.id}-{allowed.id}")
+        for allowed, case in itertools.product(REASK_ALLOWED, REASK_ERRORS)
+    ]
     raised: list[Exception | None] = []
     for row in rows:
         try:
-            await check(*row)
+            await check(*row.values)
         except Exception as exc:
             raised.append(exc)
         else:
