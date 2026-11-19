@@ -14,6 +14,7 @@ import pytest
 import helpers_proof
 from helpers_docs import letter_pdf, photo
 from helpers_proof import DRAFT_ANSWER, SENT, TODAY, TRACKING, TRACKING_SHOWN, Gym, incoming
+from helpers_tables import check_rows
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.drafts import proof, sent
@@ -170,43 +171,55 @@ def test_an_einschreiben_bought_online_wants_the_printout_of_its_stamp() -> None
     assert "square code of an online stamp" in proof.MISSING_TRACKING
 
 
-@pytest.mark.parametrize("kind", sorted(proof.SENDING_DAY_KINDS))
-def test_a_sending_proof_on_another_day_than_the_sending_is_pointed_out(kind: str) -> None:
-    draft = _draft()  # sent 2026-09-01
-    assert proof.conflicts(draft, _had(kind, day="2026-09-01")) == []
-    assert proof.conflicts(draft, _had(kind)) == []  # no day: nothing to compare
-    (said,) = proof.conflicts(draft, _had(kind, day="2026-09-03"))
-    assert "Thu 3 Sep 2026" in said and "Tue 1 Sep 2026" in said and "correct one of them" in said
-    assert proof.conflicts(draft, _had("delivery_record", day="2026-09-03")) == []
-    assert proof.conflicts(_draft(status="draft", sent_at=None), _had(kind, day="2026-09-03")) == []
+SENDING_DAY_KINDS = sorted(proof.SENDING_DAY_KINDS)
 
 
-@pytest.mark.parametrize("kind", sorted(proof.DELIVERY_DAY_KINDS))
-def test_a_delivery_before_the_sending_day_is_pointed_out(kind: str) -> None:
-    draft = _draft(sent_at="2026-09-10")
-    (said,) = proof.conflicts(draft, _had(kind, day="2026-09-03"))
-    assert "delivered on Thu 3 Sep 2026, before" in said and "Thu 10 Sep 2026" in said
-    assert proof.conflicts(draft, _had(kind, day="2026-09-10")) == []
-    assert proof.conflicts(draft, _had(kind, day="2026-09-12")) == []
+def test_a_sending_proof_on_another_day_than_the_sending_is_pointed_out() -> None:
+    def check(kind: str) -> None:
+        draft = _draft()  # sent 2026-09-01
+        assert proof.conflicts(draft, _had(kind, day="2026-09-01")) == []
+        assert proof.conflicts(draft, _had(kind)) == []  # no day: nothing to compare
+        (said,) = proof.conflicts(draft, _had(kind, day="2026-09-03"))
+        assert "Thu 3 Sep 2026" in said and "Tue 1 Sep 2026" in said and "correct one of them" in said
+        assert proof.conflicts(draft, _had("delivery_record", day="2026-09-03")) == []
+        assert proof.conflicts(_draft(status="draft", sent_at=None), _had(kind, day="2026-09-03")) == []
+
+    check_rows(SENDING_DAY_KINDS, check)
 
 
-@pytest.mark.parametrize(
-    ("channel", "have", "expected"),
-    [
-        ("fax", [], [proof.MISSING_FAX]),
-        ("fax", ["fax_report"], []),
-        ("email", [], [proof.MISSING_EMAIL]),
-        ("email", ["sent_email"], []),
-        ("online_button", [], [proof.MISSING_BUTTON]),
-        ("online_button", ["cancel_confirmation"], []),
-        ("letter", [], [proof.MISSING_LETTER]),
-        ("letter", ["other"], []),
-        ("in_person", [], [proof.MISSING_IN_PERSON]),
-        ("portal", [], [proof.MISSING_PORTAL]),
-    ],
-)
-def test_what_is_missing_follows_the_channel(channel: str, have: list[str], expected: list[str]) -> None:
-    assert _missing(_draft(sent_channel=channel), have, answered=False) == expected
+DELIVERY_DAY_KINDS = sorted(proof.DELIVERY_DAY_KINDS)
+
+
+def test_a_delivery_before_the_sending_day_is_pointed_out() -> None:
+    def check(kind: str) -> None:
+        draft = _draft(sent_at="2026-09-10")
+        (said,) = proof.conflicts(draft, _had(kind, day="2026-09-03"))
+        assert "delivered on Thu 3 Sep 2026, before" in said and "Thu 10 Sep 2026" in said
+        assert proof.conflicts(draft, _had(kind, day="2026-09-10")) == []
+        assert proof.conflicts(draft, _had(kind, day="2026-09-12")) == []
+
+    check_rows(DELIVERY_DAY_KINDS, check)
+
+
+MISSING_BY_CHANNEL = [
+    ("fax", [], [proof.MISSING_FAX]),
+    ("fax", ["fax_report"], []),
+    ("email", [], [proof.MISSING_EMAIL]),
+    ("email", ["sent_email"], []),
+    ("online_button", [], [proof.MISSING_BUTTON]),
+    ("online_button", ["cancel_confirmation"], []),
+    ("letter", [], [proof.MISSING_LETTER]),
+    ("letter", ["other"], []),
+    ("in_person", [], [proof.MISSING_IN_PERSON]),
+    ("portal", [], [proof.MISSING_PORTAL]),
+]
+
+
+def test_what_is_missing_follows_the_channel() -> None:
+    def check(channel: str, have: list[str], expected: list[str]) -> None:
+        assert _missing(_draft(sent_channel=channel), have, answered=False) == expected
+
+    check_rows(MISSING_BY_CHANNEL, check)
 
 
 def test_a_letter_not_yet_sent_misses_nothing() -> None:
