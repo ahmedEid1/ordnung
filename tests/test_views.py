@@ -52,7 +52,8 @@ def test_dashboard_attention_and_upcoming(store: Store, ids: dict[str, str]) -> 
 
 
 def test_a_sent_cancellation_leaves_the_decisions_and_life_areas(store: Store, ids: dict[str, str]) -> None:
-    """Today still said "Decide on FunkNetz Smart M" after its cancellation was sent."""
+    """Today still said "Decide on FunkNetz Smart M" after its cancellation was sent, and the Timeline still
+    drew the phone's "Send by" window."""
     board = dashboard(store, TODAY)
     assert [c.id for c in board.decisions] == [ids["phone"]]
     store.add_draft(
@@ -61,6 +62,12 @@ def test_a_sent_cancellation_leaves_the_decisions_and_life_areas(store: Store, i
     board = dashboard(store, TODAY)
     assert board.decisions == []
     assert not any("Decide on" in area.headline for area in board.areas)
+    contracts = next(
+        lane for lane in lanes(store, date(2026, 9, 1), date(2027, 8, 31)) if lane.id == "contracts"
+    )
+    bars = {bar.id: bar for bar in contracts.bars}
+    assert f"{ids['phone']}:notice" not in bars
+    assert (bars[ids["phone"]].end, bars[ids["phone"]].status) == ("2026-11-14", "ok")
 
 
 def test_dashboard_decisions_money_and_stats(store: Store, ids: dict[str, str]) -> None:
@@ -415,19 +422,6 @@ def test_contracts_lane_has_notice_windows(store: Store, ids: dict[str, str]) ->
         ("cancel_by", "2026-10-14"),
     ]
     assert bars[ids["power"]].end == "2027-08-31"  # any-time contract: runs to the end of the range
-
-
-def test_a_sent_cancellation_has_no_notice_window_left(store: Store, ids: dict[str, str]) -> None:
-    """The Timeline still drew the phone's "Send by" window after its cancellation was sent."""
-    store.add_draft(
-        kind="cancellation", contract_id=ids["phone"], status="sent", sent_at="2026-09-28T09:00:00Z"
-    )
-    contracts = next(
-        lane for lane in lanes(store, date(2026, 9, 1), date(2027, 8, 31)) if lane.id == "contracts"
-    )
-    bars = {bar.id: bar for bar in contracts.bars}
-    assert f"{ids['phone']}:notice" not in bars
-    assert (bars[ids["phone"]].end, bars[ids["phone"]].status) == ("2026-11-14", "ok")
 
 
 def test_tax_work_and_money_lanes(store: Store, ids: dict[str, str]) -> None:
