@@ -390,7 +390,7 @@ async def test_cancellation_finds_the_contract_of_a_letter(ctx: AppContext, ids:
     assert draft.contract_id == ids["phone"] and draft.doc_id == letter
 
 
-async def test_compose_without_model_uses_fixed_text(data_dir: Path) -> None:
+async def test_without_a_model_the_fixed_text_is_used_and_signed_by_the_chosen_name(data_dir: Path) -> None:
     clock.set_today(TODAY)
     failing = FailingBackend()
     context = build_context(data_dir, backend_obj=failing)
@@ -477,7 +477,7 @@ async def test_a_letter_in_someone_elses_name_is_signed_by_them(ctx: AppContext,
     assert letter_profile(ctx.store, draft).name == "Alex Rivera"
 
 
-async def test_marking_sent_keeps_the_name_and_takes_the_contact_lines_of_that_day(
+async def test_until_sent_a_letter_takes_todays_contact_lines_and_marking_sent_keeps_them(
     ctx: AppContext, ids: dict[str, str]
 ) -> None:
     draft = await compose(ctx, "objection", doc_id=ids["tax"], sender_name="Alex Rivera")

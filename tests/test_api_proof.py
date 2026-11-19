@@ -162,7 +162,7 @@ async def test_a_mistyped_tracking_number_is_refused_with_the_reason(data_dir: P
         assert too_long.status_code == 422
 
 
-async def test_a_proof_upload_stays_private_and_out_of_the_inbox(data_dir: Path) -> None:
+async def test_a_proof_upload_stays_private_out_of_the_inbox_and_knows_its_letter(data_dir: Path) -> None:
     async with api_for(data_dir) as api:
         draft_id, _ = await _sent(api)
         calls_before = len(api.backend.calls)
