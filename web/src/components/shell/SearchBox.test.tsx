@@ -288,6 +288,71 @@ describe("Escape", () => {
   });
 });
 
+describe("Enter", () => {
+  const city = () => ({ ...srv.db.state.documents[0]!, id: "doc_city", title: "Stadt fine" });
+  const power = () => ({ ...srv.db.state.documents[0]!, id: "doc_power", title: "Stadtwerke bill" });
+  /** "Stadt" answers at once; "Stadtwerke" answers when the test says so. */
+  function holdStadtwerke() {
+    const asked: string[] = [];
+    let answer: () => void = () => {};
+    searchOverride = (q) => {
+      asked.push(q);
+      if (q !== "Stadtwerke") return json([city()]);
+      return new Promise<Response>((resolve) => (answer = () => resolve(json([power()]))));
+    };
+    return { asked, release: () => act(async () => answer()) };
+  }
+
+  /** The top bar after "Stadt" was searched and "werke" typed on: the list still shows "Stadt"'s match. */
+  async function typedOnPastAMatch() {
+    const view = renderSearch();
+    const user = userEvent.setup();
+    await user.click(topField());
+    await user.type(topField(), "Stadt");
+    await screen.findByRole("option", { name: /Stadt fine/ });
+    return { ...view, user };
+  }
+
+  it("right after the last keystroke opens the match of what was typed, not the one still listed", async () => {
+    searchOverride = (q) => json(q === "Stadtwerke" ? [power()] : [city()]);
+    const { router, user } = await typedOnPastAMatch();
+    await user.type(topField(), "werke{Enter}");
+    await waitFor(() => expect(router.state.location.pathname).toBe("/documents/doc_power"));
+  });
+
+  it.each([
+    ["Escape clears the field", "{Escape}"],
+    ["Tab leaves it", "{Tab}"],
+  ])("waits for the answer, and opens nothing when %s before it comes", async (_, leave) => {
+    const { asked, release } = holdStadtwerke();
+    const { router, client, user } = await typedOnPastAMatch();
+    await user.type(topField(), "werke{Enter}");
+    await waitFor(() => expect(asked).toContain("Stadtwerke"));
+    expect(router.state.location.pathname).toBe("/");
+    await user.keyboard(leave);
+    await release();
+    await waitFor(() => expect(client.isFetching()).toBe(0));
+    expect(router.state.location.pathname).toBe("/");
+  });
+
+  it("does nothing before two characters", async () => {
+    const { router } = renderSearch();
+    const user = userEvent.setup();
+    await user.click(topField());
+    await user.type(topField(), "S{Enter}");
+    expect(screen.getByText(/Keep typing/)).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/");
+    expect(topField()).toHaveValue("S");
+  });
+
+  it("after the answer opens the highlighted match", async () => {
+    searchOverride = () => json([city(), power()]);
+    const { router, user } = await typedOnPastAMatch();
+    await user.keyboard("{ArrowDown}{Enter}");
+    expect(router.state.location.pathname).toBe("/documents/doc_power");
+  });
+});
+
 describe("the empty phone sheet", () => {
   it("shows the hint and the recent letters (none highlighted until the arrow keys)", async () => {
     renderSearch();
