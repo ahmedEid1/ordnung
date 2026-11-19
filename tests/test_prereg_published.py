@@ -449,7 +449,7 @@ def test_a_run_that_does_not_end_is_stopped_and_its_worktree_removed(tmp_path: P
     root, published = _inner_repo(tmp_path, "import time\n\n\ndef test_hangs():\n    time.sleep(120)\n")
     before = _worktrees(root)
     with pytest.raises(subprocess.TimeoutExpired):
-        prereg_published.run_frozen_tests(root, published, tmp_path / "scratch", timeout=3)
+        prereg_published.run_frozen_tests(root, published, tmp_path / "scratch", timeout=1)
     assert _worktrees(root) == before
     assert not (tmp_path / "scratch" / "published").exists()
 
