@@ -88,21 +88,17 @@ async def test_a_move_is_told_from_six_months_back_to_three_ahead(data_dir: Path
     async with api_for(data_dir) as api:
 
         async def check(moved_on: str, allowed: bool) -> None:
-            try:
-                response = await api.client.put(
-                    "/api/profile", json={"moved_on": moved_on, "old_address": OLD_ADDRESS}
-                )
-                assert (response.status_code == 200) is allowed, response.text
-                if not allowed:
-                    assert response.json()["detail"] == WINDOW
-                    profile = (await api.client.get("/api/profile")).json()
-                    assert (profile["moved_on"], profile["old_address"]) == (
-                        None,
-                        "",
-                    )  # nothing of it is saved
-            finally:  # every row starts from a profile with no move, as on its own app
-                cleared = await api.client.put("/api/profile", json={"moved_on": "", "old_address": ""})
-                assert cleared.status_code == 200, cleared.text
+            # every row starts from a profile with no move, as on its own app
+            cleared = await api.client.put("/api/profile", json={"moved_on": "", "old_address": ""})
+            assert cleared.status_code == 200, cleared.text
+            response = await api.client.put(
+                "/api/profile", json={"moved_on": moved_on, "old_address": OLD_ADDRESS}
+            )
+            assert (response.status_code == 200) is allowed, response.text
+            if not allowed:
+                assert response.json()["detail"] == WINDOW
+                profile = (await api.client.get("/api/profile")).json()
+                assert (profile["moved_on"], profile["old_address"]) == (None, "")  # nothing of it is saved
 
         await check_rows_async(MOVE_WINDOW_BOUNDARIES, check)
 
