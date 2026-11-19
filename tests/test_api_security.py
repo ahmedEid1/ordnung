@@ -22,6 +22,7 @@ from ordnung import __version__, clock
 from ordnung.api import app as app_module
 from ordnung.api.deps import ClaudeStatusCache, probe_claude_cli
 from ordnung.api.security import content_security_policy, host_allowed, inline_script_hashes
+from ordnung.cli import launch_browser
 from ordnung.models import ClaudeStatus
 from ordnung.server import (
     ServerInfo,
@@ -209,12 +210,19 @@ def _path(url: str) -> str:
     return url.removeprefix(BASE_URL)
 
 
-async def test_a_one_time_link_signs_in_once(data_dir: Path, web_dist: Path) -> None:
-    """What Ordnung opens the browser with: a code made with the token, never the token itself (a browser's
-    command line can be read by other accounts), good for one sign-in within a minute."""
+async def test_a_one_time_link_signs_in_once(
+    data_dir: Path, web_dist: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """What Ordnung opens the browser with (the link launch_browser opens): a code made with the token, never
+    the token itself (a browser's command line can be read by other accounts), good for one sign-in within a
+    minute."""
     info = ServerInfo(port=8765, token=TOKEN, pid=os.getpid())
+    opened: list[str] = []
+    monkeypatch.setattr("ordnung.cli.webbrowser.open", lambda url: opened.append(url))
     async with api_for(data_dir, token=TOKEN) as api:
-        link = _path(info.open_url())
+        launch_browser(info)
+        [url] = opened
+        link = _path(url)
         assert link.startswith("/?open=") and TOKEN not in link
         assert info.open_url() != info.open_url()  # a new code each time
 
