@@ -48,7 +48,7 @@ jobs:
   backend:
     name: Backend (Python ${{ matrix.python }})
     if: github.event_name != 'schedule'
-    # pinned: the samples' byte-for-byte check needs Ubuntu 24.04's Python 3.12 (its zlib is the manifest's)
+    # pinned, as the slow tests' job is: the tests of every Linux leg run on one system, Tesseract's among them
     runs-on: ubuntu-24.04
     # one process a file, as many as the runner has cores: about 6 to 9 minutes expected, 3.12's with coverage
     # about 13 (serial, the legs took 16 to 40 minutes with coverage and 26 without, 18 Nov 2026); a hung test is
@@ -65,9 +65,7 @@ jobs:
           - python: "3.12"
             coverage: true
     env:
-      # here the samples must regenerate byte for byte (elsewhere the test skips when a library differs)
-      ORDNUNG_REQUIRE_SAMPLES: ${{ matrix.python == '3.12' && '1' || '' }}
-      # and the tests of the real Tesseract must run (elsewhere they skip when it isn't installed)
+      # on 3.12 the tests of the real Tesseract must run (elsewhere they skip when it isn't installed)
       ORDNUNG_REQUIRE_TESSERACT: ${{ matrix.python == '3.12' && '1' || '' }}
     steps:
       - uses: actions/checkout@v7
@@ -103,8 +101,13 @@ jobs:
     # the slow tests, once and without coverage, beside the backend's legs: serial they took 21 minutes (18 Nov
     # 2026, before more tests were marked slow); a process a file, about 11 expected
     if: github.event_name != 'schedule'
+    # pinned: the samples' byte-for-byte check needs Ubuntu 24.04's Python 3.12 (its zlib is the manifest's)
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    env:
+      # here, with the libraries of constraints.txt, the samples must regenerate byte for byte (elsewhere the
+      # test skips when a library differs from the manifest's)
+      ORDNUNG_REQUIRE_SAMPLES: "1"
     steps:
       - uses: actions/checkout@v7
         with:

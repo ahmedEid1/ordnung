@@ -84,6 +84,29 @@ def test_each_check_runs_on_pull_requests_in_a_job_of_its_own() -> None:
     assert "pytest" not in _script(replays)
 
 
+def test_the_samples_must_regenerate_byte_for_byte_in_the_job_that_runs_their_check() -> None:
+    """The samples' byte-for-byte check (a slow test) skips where the libraries differ from the manifest's,
+    unless ``ORDNUNG_REQUIRE_SAMPLES=1``: then it fails. The job that runs the slow tests installs the
+    manifest's libraries (``-c constraints.txt`` on Ubuntu 24.04's Python 3.12) and sets it, so drifted
+    libraries fail CI instead of passing it with the check skipped. No other job sets it."""
+    check = "tests/test_samples.py::test_committed_samples_match_regeneration"
+    samples = (ROOT / "tests" / "test_samples.py").read_text(encoding="utf-8")
+    assert (
+        "@pytest.mark.slow  # regenerates the samples\ndef test_committed_samples_match_regeneration("
+        in samples
+    )
+    assert 'os.environ.get("ORDNUNG_REQUIRE_SAMPLES") == "1"' in samples
+    jobs = _jobs()
+    (runner,) = [name for name, job in jobs.items() if "pytest -m slow " in _script(job)]
+    job = jobs[runner]
+    assert job["env"]["ORDNUNG_REQUIRE_SAMPLES"] == "1", check
+    assert job["runs-on"] == "ubuntu-24.04"
+    assert any(step.get("with", {}).get("python-version") == "3.12" for step in job["steps"])
+    assert "-c constraints.txt" in _script(job)
+    for name, other in jobs.items():
+        assert name == runner or "ORDNUNG_REQUIRE_SAMPLES" not in json.dumps(other), name
+
+
 def _e2e_groups() -> list[str]:
     """The groups of Playwright's projects one end-to-end run can take (``E2E_GROUPS`` in web/e2e/env.ts)."""
     env_ts = (ROOT / "web" / "e2e" / "env.ts").read_text(encoding="utf-8")
@@ -608,7 +631,6 @@ def test_tesseract_is_installed_only_where_a_real_binary_test_needs_it() -> None
     assert runs and at < min(runs)
     # on every step of the job: whichever of its test steps runs on 3.12
     assert backend["env"]["ORDNUNG_REQUIRE_TESSERACT"] == "${{ matrix.python == '3.12' && '1' || '' }}"
-    assert backend["env"]["ORDNUNG_REQUIRE_TESSERACT"] == backend["env"]["ORDNUNG_REQUIRE_SAMPLES"]
 
     e2e = jobs["e2e"]
     at, install = _step(e2e, "tesseract")
@@ -650,7 +672,7 @@ def test_the_installed_wheels_doctor_finds_text_in_pictures_optional_on_other_sy
 def test_coverage_counts_branches_and_has_floors_for_the_whole_package_sync_and_phone() -> None:
     """Only the rules engine had a coverage gate: the main test step reported coverage but never failed on
     it. The floors read the coverage the test step measured, so they cost no second run. Coverage is measured
-    on one leg, the one with Tesseract and the samples' libraries (the most code runs there), and that leg runs
+    on one leg, the one with Tesseract (the most code runs there), and that leg runs
     the whole fast suite with it: the floors are read where the coverage was measured."""
     coverage = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["coverage"]
     assert coverage["run"]["branch"] is True
