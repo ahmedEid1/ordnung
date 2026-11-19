@@ -442,7 +442,7 @@ function DisconnectDialog({ open, onClose, status }: { open: boolean; onClose: (
       },
       onError: (err) => {
         setError(err instanceof ApiError ? err.message : "Ordnung didn't answer. Is it still running?");
-        focusWhenReady(() => document.getElementById("cal-sync-disconnect-error"));
+        focusWhenReady(() => document.getElementById("cal-sync-disconnect-error"), 5000, { always: true });
       },
     });
   return (

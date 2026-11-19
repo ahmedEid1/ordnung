@@ -335,6 +335,25 @@ describe("calendar sync card", () => {
     await waitFor(() => expect(screen.getByRole("heading", { name: "Sync with your own calendar" })).toHaveFocus());
   });
 
+  it("takes the focus to the reason a disconnect failed, from the Disconnect button still holding it", async () => {
+    const { srv } = useMockApi();
+    await srv.handle("PUT", "/calendar/sync", new URLSearchParams(), { url: CALENDAR, username: "sam", password: "abcd-efgh-ijkl-mnop", mode: "discreet" }, null);
+    const handle = srv.handle.bind(srv);
+    srv.handle = async (method, path, query, body, signal) =>
+      method === "POST" && path === "/calendar/sync/disconnect"
+        ? new Response(JSON.stringify({ detail: "The calendar server refused." }), { status: 502, headers: { "Content-Type": "application/json" } })
+        : handle(method, path, query, body, signal);
+    const user = userEvent.setup();
+    const card = await openCard();
+    await within(card).findByText(/^Connected to Ordnung$/);
+    await user.click(within(card).getByRole("button", { name: "Disconnect…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Disconnect Ordnung?" });
+    const disconnect = within(dialog).getByRole("button", { name: "Disconnect" });
+    await user.click(disconnect);
+    expect(await within(dialog).findByText(/The calendar server refused/)).toBeInTheDocument();
+    await waitFor(() => expect(dialog.querySelector("#cal-sync-disconnect-error")).toHaveFocus());
+  });
+
   it("keeps the calendar file next to its guide, calendar sync after them", async () => {
     useMockApi();
     renderWithProviders(<SettingsPage />, { route: "/settings?section=calendar" });

@@ -52,6 +52,7 @@ function ChecklistCard({ rows }: { rows: Suggestion[] }) {
   useEffect(() => {
     if (hash !== `#${MOVING_CHECKLIST_ID}` || !section.current) return;
     section.current.scrollIntoView?.({ block: "start" });
+    // the origin is read on landing on purpose: the person just followed the link here, so focus has not moved on
     focusWhenReady(() => document.getElementById(TITLE_ID), 1000, { from: focusOrigin() });
   }, [hash]);
 

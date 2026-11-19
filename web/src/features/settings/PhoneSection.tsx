@@ -383,7 +383,8 @@ function PhoneAccess({ status }: { status: PhoneStatus }) {
   };
 
   // the answer to "Start over" is in: the advice takes the focus the dialog handed back to "Start over…" (which
-  // goes with the certificate)
+  // goes with the certificate). The origin is read on landing on purpose: the dialog cannot be dismissed while
+  // the request runs, so focus cannot have moved on; this is where it is, and the move happens there.
   useEffect(() => {
     if (advice === "reset") focusWhenReady(() => document.getElementById(ADVICE_ID), 5000, { from: focusOrigin() });
   }, [advice]);
