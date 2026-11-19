@@ -19,8 +19,8 @@ from ordnung.config import PACKAGE_DIR
 #: fails the test below; a refactor that ends one takes it out of this list.
 ALLOWED_CYCLES: dict[frozenset[str], str] = {
     frozenset(
-        {"ordnung.ingest.gaps", "ordnung.ingest.plan"}
-    ): "ingest.plan builds on the reading checks, and gaps imports needs_check from it lazily",
+        {"ordnung.ingest.gaps", "ordnung.ingest.gaps.reading", "ordnung.ingest.plan"}
+    ): "ingest.plan builds on the reading checks, and gaps.reading imports needs_check from it lazily",
     frozenset(
         {"ordnung.rules.deadlines", "ordnung.rules.letters"}
     ): "the letter rules build on the deadline receipts; deadlines imports them lazily where needed",

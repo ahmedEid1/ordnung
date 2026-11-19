@@ -168,9 +168,9 @@ def test_no_other_file_can_be_named(tmp_path: Path) -> None:
 #: text stage (asks the store to write it).
 ALLOWED_IMPORTERS = {"db/store.py", "ingest/pipeline.py"}
 #: Modules that read letters for a model, check evidence or answer Ask: they may not even name it.
-NEVER_NAMED_IN = ("assistant/", "secretary/", "llm/", "drafts/")
+NEVER_NAMED_IN = ("assistant/", "secretary/", "llm/", "drafts/", "ingest/gaps/")
 NEVER_NAMED_IN_FILES = {
-    f"ingest/{name}.py" for name in ("verify", "conflicts", "gaps", "extract", "transcribe", "plan", "link")
+    f"ingest/{name}.py" for name in ("verify", "conflicts", "extract", "transcribe", "plan", "link")
 }
 
 
