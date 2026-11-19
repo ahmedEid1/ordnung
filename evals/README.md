@@ -31,6 +31,7 @@ What is measured:
 | `law/` | the sections of the federal statutes the labels' periods rest on, word for word as Gesetze im Internet gives them, the Länder's delivery rules (`laender.txt`), each from the Land's legal portal or law gazette (for Bremen, Rheinland-Pfalz, Saarland and Sachsen-Anhalt no text could be retrieved, and their blocks say so), and `law/SOURCES.md`: where each comes from, the day it was fetched and its sha256 |
 | `splits.py` | the splits: their role, their letters' variants, and which are recorded yet |
 | `conditions.py`, `prompts/` | the four conditions, and the prompts of the three that are not Ordnung's pipeline (Ordnung's own are in `src/ordnung/llm/prompts/`) |
+| `sender_land.py` | the sender's-Land hooks of the replays: Ordnung without the sender's Land, or with the state the postcode suggests (`scripts/eval_without_land.py`, the end-to-end run's parity reference) |
 | `run.py`, `records.py`, `metrics.py`, `report.py` | the runner, the manifest's and the answers' types, the scoring, and the results files |
 | `stats.py`, `analysis.py` | the statistics, and the analysis of the held-out splits and of the pre-registered final run |
 | `preregistration/` | the pre-registered final run: `preregistration/brief-templates/`, the briefs of its blind sessions (writing the new letters, Ask questions and stress sentences; reading letters and deriving their dates; deciding between two derivations or answers), and, as they are made, the pre-registration, its deviations and the files it rests on |

@@ -357,7 +357,7 @@ async def benchmark_dates(
 ) -> dict[str, dict[int, str | None]]:
     """The date the benchmark's Ordnung condition gives each required labelled item (by index) when replayed
     without the sender's Land, by entry id — the parity reference (nothing is written; no model is called)."""
-    from scripts.eval_without_land import sender_land_unknown
+    from evals.sender_land import sender_land_unknown
 
     by_split: dict[str, list[str]] = {}
     for entry in entries:

@@ -29,8 +29,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import contextlib
-import dataclasses
 import sys
 import tempfile
 from collections.abc import Iterator, Mapping, Sequence
@@ -42,10 +40,9 @@ from evals import conditions, harness, report
 from evals import splits as registry
 from evals.records import Entry, load_manifest, select_entries
 from evals.run import DEFAULT_MODEL, MANIFEST_PATH, RESULTS_DIR, RunConfig, _commit, run_benchmark
+from evals.sender_land import sender_land_suggested, sender_land_unknown
 
-from ordnung.models import DocumentExtraction, Page
-from ordnung.rules import RuleContext
-from ordnung.rules.postcodes import Reason, suggest_land_why
+from ordnung.rules.postcodes import Reason
 
 #: Every split the benchmark declares (:mod:`evals.splits`); one whose letters don't exist yet is refused.
 SPLITS = registry.names()
@@ -63,48 +60,6 @@ NOTE = (
     "address and the letter's visible text; no own-Land check, as the benchmark has no profile address). The "
     "person's own Land is kept. No model was called."
 )
-
-
-@contextlib.contextmanager
-def sender_land_unknown() -> Iterator[None]:
-    """Within the block, the Ordnung condition's rules engine never learns the sender's Land."""
-    original = conditions.ordnung_rule_context
-
-    def unknown(entry: Entry, extraction: DocumentExtraction, pages: Sequence[Page] = ()) -> RuleContext:
-        return dataclasses.replace(original(entry, extraction, pages), region=None)
-
-    conditions.ordnung_rule_context = unknown
-    try:
-        yield
-    finally:
-        conditions.ordnung_rule_context = original
-
-
-@contextlib.contextmanager
-def sender_land_suggested() -> Iterator[dict[str, tuple[str | None, Reason]]]:
-    """Within the block, the Ordnung condition's rules engine is given the state the postcode on the sender's
-    letter suggests as the sender's Land (none: nationwide holidays), as if the person said Yes to every
-    suggestion. Yields each letter's suggested Land and the reason, by entry id, as the replay fills them in."""
-    original = conditions.ordnung_rule_context
-    suggested: dict[str, tuple[str | None, Reason]] = {}
-
-    def confirmed(entry: Entry, extraction: DocumentExtraction, pages: Sequence[Page] = ()) -> RuleContext:
-        sender = extraction.sender
-        hit, reason = suggest_land_why(  # no own-Land check: the benchmark has no profile address
-            sender.address if sender else None,
-            email=sender.email if sender else None,
-            website=sender.website if sender else None,
-            visible_text="\n".join(page.text for page in pages),
-        )
-        region = hit.region if hit else None
-        suggested[entry.id] = (region, reason)
-        return dataclasses.replace(original(entry, extraction, pages), region=region)
-
-    conditions.ordnung_rule_context = confirmed
-    try:
-        yield suggested
-    finally:
-        conditions.ordnung_rule_context = original
 
 
 async def replay(split: str, model: str, work: Path, *, repeat: int = 1) -> dict[str, Any]:
