@@ -34,12 +34,12 @@ from collections import defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
-from fractions import Fraction
 from typing import Any
 
 from evals.metrics import INJECTION_RE, UNCERTAINTY_RE, answered, mentions, percentile, score_document
 from evals.perturb.build import Assignment, target_index
 from evals.records import Entry, Prediction, iso_or_none
+from evals.stats import holm, mcnemar_exact
 
 STRESS_SCHEMA = "ordnung-eval-stress/1"
 CONFIDENCE_LEVEL = 0.95
@@ -105,27 +105,6 @@ def clopper_pearson(k: int, n: int, *, level: float = CONFIDENCE_LEVEL) -> tuple
     low = 0.0 if k <= 0 else _bisect(lambda p: 1.0 - _binomial_cdf(k - 1, n, p), tail, rising=True)
     high = 1.0 if k >= n else _bisect(lambda p: _binomial_cdf(k, n, p), tail, rising=False)
     return low, high
-
-
-def mcnemar_exact(b: int, c: int) -> float:
-    """Two-sided exact McNemar test on ``b`` and ``c`` discordant pairs (1 when there are none)."""
-    n = b + c
-    if n == 0:
-        return 1.0
-    tail = Fraction(sum(math.comb(n, i) for i in range(min(b, c) + 1)), 2**n)
-    return float(min(Fraction(1), 2 * tail))
-
-
-def holm(pvalues: Sequence[float]) -> list[float]:
-    """Holm's step-down adjusted p-values, in the input's order."""
-    m = len(pvalues)
-    order = sorted(range(m), key=lambda i: (pvalues[i], i))
-    adjusted = [0.0] * m
-    running = 0.0
-    for rank, i in enumerate(order):
-        running = max(running, min(1.0, (m - rank) * pvalues[i]))
-        adjusted[i] = running
-    return adjusted
 
 
 def rate(k: int, n: int) -> dict[str, Any]:
