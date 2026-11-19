@@ -290,6 +290,8 @@ def test_the_committed_reanalysis_is_what_the_results_render(reanalysis: dict[st
     assert len(committed) == 1, committed
     assert committed[0].name[:10] == reanalysis["meta"]["date"]
     assert analysis.render(reanalysis) == committed[0].read_text(encoding="utf-8")
+    # the command's own entry point, as ``make eval-reproduce`` runs it
+    assert analysis.main(["--check"]) == 0
 
 
 def test_write_then_check_and_a_one_character_edit_fails(tmp_path: Path) -> None:
