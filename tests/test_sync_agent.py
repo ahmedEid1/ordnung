@@ -661,7 +661,6 @@ async def test_a_hanging_folder_is_unreachable_and_the_status_still_answers(
     committed as the computer connected), the fake engine's save hung for good holding the lock, and no call
     with a limit ever ran. The real engine's save gives up like any folder operation (``TimedFs``); the fake's
     doesn't, so only looks hang here, and the test makes a save the first folder work after the hang begins."""
-    short_folder_limit(monkeypatch)
     engine = FakeEngine()
     desk, _ = _dirs(tmp_path)
     async with computer(desk, engine=engine) as api:
@@ -674,6 +673,9 @@ async def test_a_hanging_folder_is_unreachable_and_the_status_still_answers(
         # a look after connecting: the agent has read the database's version since, so a commit is seen as one
         looks = engine.calls.count("scan")
         await eventually(lambda: engine.calls.count("scan") > looks and idle())
+        # only the calls after the hang get the short limit (each call reads it as it starts): connecting and the looks
+        # before, slow on a loaded runner, would otherwise give up and could set the problem without the hang
+        short_folder_limit(monkeypatch)
         # no step runs and no engine call runs or waits, and none starts before the next await (every call from
         # here on sees the hang): hold the next look back, so however late the commit lands, the save it makes due
         # is the first folder work
@@ -699,10 +701,16 @@ async def test_a_hanging_folder_is_unreachable_and_the_status_still_answers(
             await committing
             found = await eventually(lambda: agent.problem, within=15)
             assert found.code == "folder_unreachable"
-            assert (await status(api))["problem"]["code"] == "folder_unreachable"  # from memory
-            busy = await api.client.post("/api/sync/save", json={})
+            # each answer within a bound of its own: one that asked the hung folder would fail here, not hang the run
+            async with asyncio.timeout(5):
+                answered = await status(api)
+            assert answered["problem"]["code"] == "folder_unreachable"  # from memory
+            async with asyncio.timeout(5):
+                busy = await api.client.post("/api/sync/save", json={})
             assert busy.status_code == 409 and busy.json()["code"] == "folder_problem"
-            assert (await _add_todo(api, "Still works")).status_code == 201
+            async with asyncio.timeout(5):
+                added = await _add_todo(api, "Still works")
+            assert added.status_code == 201
         finally:
             engine.hang.set()
             engine.hang = None
@@ -756,9 +764,8 @@ async def test_shutdown_saves_and_says_the_computer_was_closed(tmp_path: Path, f
 async def test_a_hanging_folder_never_holds_up_shutdown(
     tmp_path: Path, folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    short_folder_limit(monkeypatch)
-    # shorter than FAST's 2 s, still longer than the folder call's limit: the last save then gets the lock and
-    # finds the engine busy (below that limit it would give up on the lock, another path)
+    # shorter than FAST's 2 s, still longer than the folder call's limit (short, set below): the last save then gets
+    # the lock and finds the engine busy (below that limit it would give up on the lock, another path)
     monkeypatch.setattr(agent_module, "SHUTDOWN_PUSH_S", 1.5)
     engine = FakeEngine()
     desk, _ = _dirs(tmp_path)
@@ -768,6 +775,7 @@ async def test_a_hanging_folder_never_holds_up_shutdown(
         # no engine call runs or waits, and none starts before the next await: every call from here on sees the
         # hang (a scan already running as it began would hang unseen, listed before ``before``)
         await eventually(lambda: not agent_of(api)._thread.busy)
+        short_folder_limit(monkeypatch)  # for the calls after the hang only (each reads it as it starts)
         before = len(engine.calls)
         engine.hang_calls = frozenset({"scan"})  # a save due now must not be the call that hangs for good
         engine.hang = threading.Event()

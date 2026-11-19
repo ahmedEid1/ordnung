@@ -166,7 +166,6 @@ async def test_stopping_waits_no_longer_than_the_shutdown_limit(
 ) -> None:
     """A folder that hangs for good never holds up the stop: it waits at most ``SHUTDOWN_PUSH_S``, says
     so in the log and leaves the hung call to its thread (a daemon: it never keeps Ordnung running)."""
-    short_folder_limit(monkeypatch)
     caplog.set_level(logging.WARNING, logger="ordnung.sync")
     engine = FakeEngine()
     desk = tmp_path / "desk"
@@ -185,6 +184,11 @@ async def test_stopping_waits_no_longer_than_the_shutdown_limit(
         try:
             async with lifespan(api.app):
                 await connect(api, folder, "desktop")
+                # no engine call runs or waits, and none starts before the next await: every call from here on sees
+                # the hang and the short limit (each reads it as it starts), and none before it (connecting, slow on a
+                # loaded runner, would otherwise give up and could set the problem without the hang)
+                await eventually(lambda: not agent._thread.busy)
+                short_folder_limit(monkeypatch)
                 # a save due now must not be the call that hangs for good (the fake's hang never gives up)
                 engine.hang_calls = frozenset({"scan"})
                 engine.hang = hang
