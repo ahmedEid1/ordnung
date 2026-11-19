@@ -125,6 +125,7 @@ from datetime import date, timedelta
 
 from ordnung.clock import now_iso
 from ordnung.db.store import Store
+from ordnung.ingest.verify import _iso_date as _parse
 from ordnung.ingest.verify import grade_reading, regrade
 from ordnung.models import (
     LAST_WORKING_DAY,
@@ -317,13 +318,6 @@ def _lookback(rule: Recurrence) -> int:
 
 def _day(value: date) -> str:
     return f"{value:%a} {value.day} {value:%b %Y}"
-
-
-def _parse(value: str | None) -> date | None:
-    try:
-        return date.fromisoformat(value) if value else None
-    except ValueError:
-        return None
 
 
 def _given(item: Item, ctx: RuleContext) -> date | None:

@@ -41,11 +41,16 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   beside the request it keys, the postal buffer in the rules engine, the ledger's facts and the Idea helpers in
   `secretary/ledger.py` (out of the 2,500-line `secretary/triggers.py`), the check for incomplete readings in a
   package of two files (`ingest/gaps/`, out of one 3,500-line file), the reading of e-mail and HTML in
-  `ingest/email_text.py`, and the evaluation no longer imports from `scripts/`. ISO dates in a reading are read by
-  one function where three copies did. Four circles of modules importing each other are gone, the largest of 13
-  modules; `tests/test_import_layout.py` names the three that remain and fails when a new one appears. In the web app,
-  shared helpers moved out of feature folders into `lib/` and `components/ui`, an ESLint rule keeps the shared
-  layers from importing a feature, a page or the mocks, and the letter composer's 1,551-line file is four files.
+  `ingest/email_text.py`, and the evaluation no longer imports from `scripts/`. The reader of written dates is a
+  leaf of its own (`ingest/written_dates.py`), so the rules engine no longer loads the PDF libraries (importing it
+  loads 555 modules where it loaded 761); sync's local timestamp lives in `sync/local.py` and the demo folder's
+  marker in `demo/marker.py`, so the sync engine no longer loads the demo and the assistant (101 of Ordnung's
+  modules where it loaded 114). ISO dates are read by two functions where six copies did. Five circles of modules
+  importing each other are gone, the largest of 13 modules; `tests/test_import_layout.py` names the two that
+  remain and fails when a new one appears, and holds each lower layer free of the heavier one above it. In the web
+  app, shared helpers moved out of feature folders into `lib/` and `components/ui`, an ESLint rule keeps the
+  shared layers from importing a feature, a page or the mocks, and the letter composer's 1,551-line file is four
+  files.
 - **The report of the final evaluation says more of what was registered.** Its statistics give the gap each power
   figure was computed at, with the registered caveat; each secondary endpoint (the replay without the sender's
   Land, the checks ablated, selective prediction, cost and latency) shows the final run first and the earlier

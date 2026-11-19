@@ -24,9 +24,6 @@ ALLOWED_CYCLES: dict[frozenset[str], str] = {
     frozenset(
         {"ordnung.assistant.citations", "ordnung.assistant.support"}
     ): "support reads the citation markers; citations imports support lazily to read values as shown",
-    frozenset(
-        {"ordnung.sync.engine", "ordnung.sync.pull"}
-    ): "pull stamps local times with the engine's now_iso, imported lazily",
 }
 
 #: (module, modules that importing it must not load): a low layer stays light.
@@ -39,6 +36,16 @@ STAYS_LIGHT = [
     ("ordnung.recurrence", {"ordnung.secretary.triggers"}),
     # the check for an incomplete reading sits below the plan that files its to-dos
     ("ordnung.ingest.gaps", {"ordnung.ingest.plan"}),
+    # the sync engine reads the demo folder's marker, not the demo loader
+    ("ordnung.sync.engine", {"ordnung.demo.loader"}),
+    # the rules engine reads written dates from the leaf, not from the verification and the page reader below it;
+    # one row for the package and one for each of its modules, since the package does not load them all
+    ("ordnung.rules", {"ordnung.ingest.verify", "ordnung.ingest.text"}),
+    *(
+        (f"ordnung.rules.{path.stem}", {"ordnung.ingest.verify", "ordnung.ingest.text"})
+        for path in sorted((PACKAGE_DIR / "rules").glob("*.py"))
+        if path.stem != "__init__"
+    ),
 ]
 
 

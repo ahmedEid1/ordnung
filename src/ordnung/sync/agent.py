@@ -91,7 +91,7 @@ from ordnung.calendar import caldav
 from ordnung.calendar.secrets import KeyringSecrets, SecretStore, SecretsUnavailable
 from ordnung.config import Paths
 from ordnung.db.store import background_context
-from ordnung.demo.loader import is_demo_dir
+from ordnung.demo.marker import is_demo_dir
 from ordnung.ingest.pipeline import ledger_lock
 from ordnung.models import AppSettings
 from ordnung.sync import (
