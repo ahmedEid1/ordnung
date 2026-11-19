@@ -41,7 +41,12 @@ def _variables_in_the_package() -> set[str]:
     the ones it sets for a program it starts."""
     found: set[str] = set()
     for path in PACKAGE.rglob("*.py"):
-        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+        text = path.read_text(encoding="utf-8")
+        # parse only the files that can hold a name: a plain substring test, which also keeps a name written as
+        # implicitly joined literals ("ORDNUNG_" "HOME") that a search for the whole name would miss
+        if not any(prefix in text for prefix in ("ORDNUNG_", "ANTHROPIC_", "CLAUDE_CODE_")):
+            continue
+        for node in ast.walk(ast.parse(text)):
             value = node.value if isinstance(node, ast.Constant) else None
             if isinstance(value, str) and _VARIABLE.fullmatch(value):
                 found.add(value)
