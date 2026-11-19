@@ -12,12 +12,15 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import tempfile
 from pathlib import Path
 from typing import Any
 
 import pytest
 from evals import verify_labels as vl
 from scripts import build_final_facts as build
+
+from helpers_tables import check_rows
 
 SPLIT = "holdout4"
 K1, K2, K1_PHOTO = "holdout4-x-K1", "holdout4-x-K2", "holdout4-x-K1-photo"
@@ -313,22 +316,26 @@ def test_a_ruled_slot_without_the_adjudicators_fact_is_refused(
     _refused(audit, capsys, f"{K2} term_end: no fact")
 
 
-@pytest.mark.parametrize(
-    ("change", "words"),
-    [
-        (lambda a: a.map["items"][0].update(id="holdout4-x-K9"), "unknown entry id holdout4-x-K9"),
-        (lambda a: a.a1["letters"].update(L009={"slots": {}, "facts": []}), "unknown letter L009"),
-        (lambda a: a.key["cases"]["D001"].update(id="holdout4-x-K9"), "unknown entry id holdout4-x-K9"),
-        (lambda a: a.adjudication["cases"].update(D002=a.adjudication["cases"]["D001"]), "unknown case D002"),
-        (lambda a: a.key["cases"]["D001"].update(slot="i7"), "unknown slot i7"),
-    ],
-    ids=["map", "reading", "key", "verdict", "slot"],
-)
-def test_an_unknown_id_is_refused(
-    audit: Audit, capsys: pytest.CaptureFixture[str], change: Any, words: str
-) -> None:
-    change(audit)
-    _refused(audit, capsys, words)
+UNKNOWN_IDS = [
+    (lambda a: a.map["items"][0].update(id="holdout4-x-K9"), "unknown entry id holdout4-x-K9"),
+    (lambda a: a.a1["letters"].update(L009={"slots": {}, "facts": []}), "unknown letter L009"),
+    (lambda a: a.key["cases"]["D001"].update(id="holdout4-x-K9"), "unknown entry id holdout4-x-K9"),
+    (lambda a: a.adjudication["cases"].update(D002=a.adjudication["cases"]["D001"]), "unknown case D002"),
+    (lambda a: a.key["cases"]["D001"].update(slot="i7"), "unknown slot i7"),
+]
+UNKNOWN_IDS_IDS = ["map", "reading", "key", "verdict", "slot"]
+
+
+def test_an_unknown_id_is_refused(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    def check(change: Any, words: str) -> None:
+        audit = Audit(Path(tempfile.mkdtemp(dir=tmp_path)) / "audit")  # a folder of the row's own
+        capsys.readouterr()  # and its own output
+        change(audit)
+        _refused(audit, capsys, words)
+
+    check_rows(
+        [pytest.param(*row, id=name) for row, name in zip(UNKNOWN_IDS, UNKNOWN_IDS_IDS, strict=True)], check
+    )
 
 
 def test_an_ambiguous_ruling_names_only_candidates_of_its_pack(
@@ -549,26 +556,37 @@ def test_a_letter_and_its_photo_whose_sides_were_drawn_apart_agree_when_they_uph
     assert audit.verified()["date_problems"] == []
 
 
-@pytest.mark.parametrize(
-    ("verdict", "fact"),
-    [
-        ("X_right", {"from": "2027-03-16"}),
-        ("X_right", {}),
-        ("Y_right", {"conventions": []}),
-    ],
-    ids=["other-side-upheld", "other-side-upheld-with-the-labels-date", "conventions-differ"],
-)
+DIFFERENT_MEANINGS = [
+    ("X_right", {"from": "2027-03-16"}),
+    ("X_right", {}),
+    ("Y_right", {"conventions": []}),
+]
+DIFFERENT_MEANINGS_IDS = ["other-side-upheld", "other-side-upheld-with-the-labels-date", "conventions-differ"]
+
+
 def test_a_letter_and_its_photo_that_mean_different_things_are_refused(
-    audit: Audit, capsys: pytest.CaptureFixture[str], verdict: str, fact: dict[str, Any]
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """The letter's case drew the second reading as X. ``X_right`` there upholds the second reading, the opposite of
     the photo's ``X_right`` (with the second reading's date, or even with the label's); and a ruling for the same
     side and date that applies other conventions tags the label differently. Each is refused."""
-    _photo_case(audit, copy.deepcopy(UPHELD))
-    ruling = copy.deepcopy(UPHELD) | {"verdict": verdict}
-    ruling["fact"] = ruling["fact"] | fact
-    _letter_case(audit, ruling, label_is_x=False)
-    _refused(audit, capsys, f"{K1} i0: ruled differently on the letter and its photo (D002, D003)")
+
+    def check(verdict: str, fact: dict[str, Any]) -> None:
+        audit = Audit(Path(tempfile.mkdtemp(dir=tmp_path)) / "audit")  # a folder of the row's own
+        capsys.readouterr()  # and its own output
+        _photo_case(audit, copy.deepcopy(UPHELD))
+        ruling = copy.deepcopy(UPHELD) | {"verdict": verdict}
+        ruling["fact"] = ruling["fact"] | fact
+        _letter_case(audit, ruling, label_is_x=False)
+        _refused(audit, capsys, f"{K1} i0: ruled differently on the letter and its photo (D002, D003)")
+
+    check_rows(
+        [
+            pytest.param(*row, id=name)
+            for row, name in zip(DIFFERENT_MEANINGS, DIFFERENT_MEANINGS_IDS, strict=True)
+        ],
+        check,
+    )
 
 
 def _decision(audit: Audit, spec: dict[str, Any], land: str | None) -> None:
@@ -590,29 +608,40 @@ LAND_DECISION = {
 }
 
 
-@pytest.mark.parametrize(
-    ("photo_began", "letter_began"),
-    [(None, "2024-11-01"), ("2024-11-01", None), ("2024-11-01", "2024-10-15")],
-    ids=["only-the-letter-states-a-start", "only-the-photo-states-a-start", "two-start-days"],
-)
+DIFFERENT_STARTS = [(None, "2024-11-01"), ("2024-11-01", None), ("2024-11-01", "2024-10-15")]
+DIFFERENT_STARTS_IDS = ["only-the-letter-states-a-start", "only-the-photo-states-a-start", "two-start-days"]
+
+
 def test_a_letter_and_its_photo_that_state_another_procedure_start_are_refused(
-    audit: Audit, capsys: pytest.CaptureFixture[str], photo_began: str | None, letter_began: str | None
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """The label check takes a slot's procedure start from its fact where the label states none, and for a BW, BY
     or MV letter that start decides the 3rd or the 4th day: two rulings for the same side and date that state the
     start differently, or only one of them states it, mean different things and are refused."""
-    _decision(audit, LAND_DECISION, "BY")
 
-    def began(day: str | None) -> dict[str, Any]:
-        """Both sides wrong, with the label's date and the start the ruling finds in the letter, or none."""
-        ruling = copy.deepcopy(UPHELD) | {"verdict": "both_wrong", "date": "2027-03-15"}
-        if day is not None:
-            ruling["fact"] = ruling["fact"] | {"procedure_began": day}
-        return ruling
+    def check(photo_began: str | None, letter_began: str | None) -> None:
+        audit = Audit(Path(tempfile.mkdtemp(dir=tmp_path)) / "audit")  # a folder of the row's own
+        capsys.readouterr()  # and its own output
+        _decision(audit, LAND_DECISION, "BY")
 
-    _photo_case(audit, began(photo_began))
-    _letter_case(audit, began(letter_began), label_is_x=True)
-    _refused(audit, capsys, f"{K1} i0: ruled differently on the letter and its photo (D002, D003)")
+        def began(day: str | None) -> dict[str, Any]:
+            """Both sides wrong, with the label's date and the start the ruling finds in the letter, or none."""
+            ruling = copy.deepcopy(UPHELD) | {"verdict": "both_wrong", "date": "2027-03-15"}
+            if day is not None:
+                ruling["fact"] = ruling["fact"] | {"procedure_began": day}
+            return ruling
+
+        _photo_case(audit, began(photo_began))
+        _letter_case(audit, began(letter_began), label_is_x=True)
+        _refused(audit, capsys, f"{K1} i0: ruled differently on the letter and its photo (D002, D003)")
+
+    check_rows(
+        [
+            pytest.param(*row, id=name)
+            for row, name in zip(DIFFERENT_STARTS, DIFFERENT_STARTS_IDS, strict=True)
+        ],
+        check,
+    )
 
 
 def test_a_ruling_upholds_a_side_with_its_procedure_start(
@@ -645,49 +674,67 @@ def test_a_ruling_upholds_a_side_with_its_procedure_start(
     _refused(audit, capsys, "D002: an ambiguous verdict names two or more candidates")
 
 
-@pytest.mark.parametrize(
-    ("spec", "land"),
-    [
-        (
-            {"anchor": "deemed_delivery", "delivery_scope": "ao", "posted_on": "2027-02-11", "shift": True},
-            "BY",
-        ),
-        (
-            {"anchor": "deemed_delivery", "delivery_scope": "sgbx", "posted_on": "2027-02-11", "shift": True},
-            "BY",
-        ),
-        (LAND_DECISION, "NW"),
-        ({"type": "fixed", "date": "2027-03-15"}, "BY"),
-    ],
-    ids=["tax-office", "social-law", "a-land-without-the-older-rule", "a-date-the-decision-fixes"],
-)
+SLOTS_NO_START_CHANGES = [
+    (
+        {"anchor": "deemed_delivery", "delivery_scope": "ao", "posted_on": "2027-02-11", "shift": True},
+        "BY",
+    ),
+    (
+        {"anchor": "deemed_delivery", "delivery_scope": "sgbx", "posted_on": "2027-02-11", "shift": True},
+        "BY",
+    ),
+    (LAND_DECISION, "NW"),
+    ({"type": "fixed", "date": "2027-03-15"}, "BY"),
+]
+SLOTS_NO_START_CHANGES_IDS = [
+    "tax-office",
+    "social-law",
+    "a-land-without-the-older-rule",
+    "a-date-the-decision-fixes",
+]
+
+
 def test_a_slot_whose_date_no_procedure_start_can_change_keeps_none(
-    audit: Audit, capsys: pytest.CaptureFixture[str], spec: dict[str, Any], land: str
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """A tax office's decision whose letter names the day the return was filed (and a social-law decision, another
     Land's, or a payment date a Land's decision fixes): the day its procedure began cannot change its date, so it is
     no fact of the slot. The second reading may state it anyway and the adjudicator's fact may too, while the label,
     which ``law.py`` gives no start there, states none; the side that says "not stated" is then upheld as it is, never
     refused, and the start is left out of the facts (counted), from a ruling and from a reading alike."""
-    _decision(audit, spec, land)
-    filed = "2026-03-12"
-    for name in ("L001", "L003"):
-        audit.a1c["letters"][name]["facts"][0]["procedure_began"] = filed
-    assert build.main(audit.write()) == 0  # from the conventions reading
-    assert "procedure_began" not in audit.facts()["letters"][K1]["slots"]["i0"]
-    assert "1 procedure start(s) left out where no start changes the date" in capsys.readouterr().out
-    (audit.path("dataset") / SPLIT / "facts.json").unlink()
-    ruled = copy.deepcopy(UPHELD)
-    ruled["fact"] = ruled["fact"] | {"procedure_began": filed}
-    _photo_case(audit, ruled)  # the label's side, "not stated", upheld with a fact that states the filing day
-    audit.case_dates["D002"] = {"X": "2027-03-15", "Y": "2027-03-15"}
-    audit.case_began["D002"] = {"X": "not stated", "Y": filed}
-    assert build.main(audit.write()) == 0
-    slot = audit.facts()["letters"][K1]["slots"]["i0"]
-    assert slot["source"] == "A1p" and "procedure_began" not in slot
-    assert "1 procedure start(s) left out where no start changes the date" in capsys.readouterr().out
-    assert audit.verified()["date_problems"] == []
-    assert not build.start_counts(next(e for e in audit.manifest["entries"] if e["id"] == K1), "i0")
+
+    def check(spec: dict[str, Any], land: str) -> None:
+        audit = Audit(Path(tempfile.mkdtemp(dir=tmp_path)) / "audit")  # a folder of the row's own
+        capsys.readouterr()  # and its own output
+        _decision(audit, spec, land)
+        filed = "2026-03-12"
+        for name in ("L001", "L003"):
+            audit.a1c["letters"][name]["facts"][0]["procedure_began"] = filed
+        assert build.main(audit.write()) == 0  # from the conventions reading
+        assert "procedure_began" not in audit.facts()["letters"][K1]["slots"]["i0"]
+        assert "1 procedure start(s) left out where no start changes the date" in capsys.readouterr().out
+        (audit.path("dataset") / SPLIT / "facts.json").unlink()
+        ruled = copy.deepcopy(UPHELD)
+        ruled["fact"] = ruled["fact"] | {"procedure_began": filed}
+        _photo_case(
+            audit, ruled
+        )  # the label's side, "not stated", upheld with a fact that states the filing day
+        audit.case_dates["D002"] = {"X": "2027-03-15", "Y": "2027-03-15"}
+        audit.case_began["D002"] = {"X": "not stated", "Y": filed}
+        assert build.main(audit.write()) == 0
+        slot = audit.facts()["letters"][K1]["slots"]["i0"]
+        assert slot["source"] == "A1p" and "procedure_began" not in slot
+        assert "1 procedure start(s) left out where no start changes the date" in capsys.readouterr().out
+        assert audit.verified()["date_problems"] == []
+        assert not build.start_counts(next(e for e in audit.manifest["entries"] if e["id"] == K1), "i0")
+
+    check_rows(
+        [
+            pytest.param(*row, id=name)
+            for row, name in zip(SLOTS_NO_START_CHANGES, SLOTS_NO_START_CHANGES_IDS, strict=True)
+        ],
+        check,
+    )
 
 
 def test_only_a_land_decision_counted_from_its_delivery_in_bw_by_or_mv_takes_a_procedure_start() -> None:
