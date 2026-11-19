@@ -1,8 +1,8 @@
-import { Fragment, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
-import { Building2, Check, FileX, Languages, Mail, Plus, Scale, Search, Sparkles, type LucideIcon } from "lucide-react";
+import { Languages, Mail, Plus, Search, Sparkles } from "lucide-react";
 import { useContracts, useCreateDraft, useDocument, useDocuments, useHousehold, useParties, useProfile, useSuggestions } from "@/api/hooks";
-import type { Contract, DraftKind, HouseholdMember, ListedLetter, Party } from "@/api/types";
+import type { DraftKind, HouseholdMember, ListedLetter } from "@/api/types";
 import { useOptionalAddLetters } from "@/components/shell/AddLetters";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
@@ -12,36 +12,29 @@ import { Dialog } from "@/components/ui/Dialog";
 import { AdviceLinks, Disclaimer } from "@/components/ui/Disclaimer";
 import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui/Field";
 import { Glossary } from "@/components/ui/Glossary";
-import { KindIcon } from "@/components/ui/KindBadge";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "@/components/ui/Toast";
 import { Avatar } from "@/components/ui/Avatar";
-import { CONTRACT_CATEGORY_COPY, copyFor, documentKindLabel, partyKindLabel } from "@/lib/copy";
+import { partyKindLabel } from "@/lib/copy";
 import { useTodayISO } from "@/lib/today";
-import { keepCitations, protectRefs } from "@/lib/glue";
+import { keepCitations } from "@/lib/glue";
 import { cn, prefersReducedMotion } from "@/lib/utils";
 import { offersEndingLetter } from "@/features/contracts/links";
-import { isRollingContract } from "@/features/contracts/model";
 import { moveStanding } from "@/features/today/moving";
 import { filedMember } from "@/features/household/logic";
 import {
   canSuspend,
   cancellableContracts,
-  letterDate,
   mayBeCourt,
   needsTypedCourt,
   objectionCheck,
   objectionDeadline,
   objectionDocuments,
-  namesHousehold,
   sameName,
   usableDocuments,
   type ComposerPrefill,
 } from "./logic";
 import {
-  SCHUFA_ADDRESS,
-  TEMPLATES,
   TEMPLATE_BY_KIND,
   detailsPayload,
   fieldError,
@@ -49,37 +42,16 @@ import {
   joinAnd,
   letterDefaults,
   missingFields,
-  sortForTemplate,
   statutoryDeadlines,
   templateRefusal,
   type DetailValues,
-  type TemplateConfig,
   CLAIMANT_NOTE,
 } from "./templates";
 import { TemplateFields } from "./TemplateFields";
 import { scamLetterIds } from "@/features/document/verdict";
-
-interface KindOption {
-  kind: DraftKind;
-  title: string;
-  description: ReactNode;
-  icon: LucideIcon;
-}
-
-const KIND_OPTIONS: KindOption[] = [
-  { kind: "cancellation", title: "Cancel a contract", description: <>End a contract — <Glossary term="Kündigung" translate={false} plain />: phone, gym, electricity…</>, icon: FileX },
-  {
-    kind: "objection",
-    title: "Object to a decision",
-    description: (
-      <>
-        <Glossary term="Einspruch" translate={false} plain /> or <Glossary term="Widerspruch" translate={false} plain /> against a decision or court order
-      </>
-    ),
-    icon: Scale,
-  },
-  { kind: "general_reply", title: "Reply to a letter", description: "Answer, ask a question or send a document", icon: Mail },
-];
+import { ChoiceList, ChosenLetter, ContractOption, DocOption, KindChooser, LIST_PREVIEW, ListSkeleton, OptionRow, PossiblePill, StepLabel, scrollParent } from "./ComposerOptions";
+import { TemplateRecipient } from "./TemplateRecipient";
+import { SignerField } from "./SignerField";
 
 const PLACEHOLDER: Record<"cancellation" | "objection" | "general_reply", string> = {
   cancellation: "e.g. Please confirm by email. I'm moving abroad at the end of the year.",
@@ -98,256 +70,6 @@ function wishesPlaceholder(kind: DraftKind, letterKind?: ListedLetter["kind"] | 
   if (isTemplateKind(kind)) return TEMPLATE_BY_KIND[kind].wishes;
   if (kind === "objection" && letterKind) return OBJECTION_PLACEHOLDER[letterKind] ?? PLACEHOLDER.objection;
   return PLACEHOLDER[kind];
-}
-
-/** A choice's radio circle — every way to choose in the composer shows one (a tick once chosen). */
-function RadioDot({ selected, className }: { selected: boolean; className?: string }) {
-  return (
-    <span
-      className={cn(
-        "grid size-5 shrink-0 place-items-center rounded-full border transition-colors",
-        selected ? "border-accent bg-accent text-on-accent" : "border-line-strong bg-surface",
-        className,
-      )}
-      aria-hidden
-      data-radio-dot
-    >
-      {selected ? <Check className="size-3" strokeWidth={3} /> : null}
-    </span>
-  );
-}
-
-/** The focus ring of a card that holds a visually hidden radio: only the radio's own keyboard focus rings it. */
-const CARD_FOCUS = "has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-accent";
-const CARD_STATE = (selected: boolean) =>
-  selected ? "border-accent/60 bg-accent-soft/50 shadow-[0_0_0_1px_var(--color-accent)]" : "border-line bg-surface hover:border-line-strong";
-
-function OptionRow({
-  selected,
-  disabled,
-  onSelect,
-  children,
-  name,
-  value,
-}: {
-  selected: boolean;
-  disabled?: boolean;
-  onSelect: () => void;
-  children: ReactNode;
-  name: string;
-  value: string;
-}) {
-  return (
-    <label
-      className={cn(
-        "group relative flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition-[border-color,background-color,box-shadow]",
-        CARD_FOCUS,
-        CARD_STATE(selected),
-        disabled && "cursor-not-allowed opacity-55 hover:border-line",
-      )}
-    >
-      <input type="radio" name={name} value={value} checked={selected} disabled={disabled} onChange={onSelect} className="sr-only" />
-      {children}
-      <RadioDot selected={selected} />
-    </label>
-  );
-}
-
-function StepLabel({ n, children, id }: { n: number; children: ReactNode; id?: string }) {
-  return (
-    <h3 id={id} className="mb-2.5 flex items-center gap-2 text-[13px] font-semibold text-ink">
-      {/* read as "Step 1: What do you want to do?", never "1What do you…" */}
-      <span aria-hidden className="grid size-5 shrink-0 place-items-center rounded-full bg-surface-3 text-[11px] font-bold text-muted">
-        {n}
-      </span>
-      <span className="sr-only">Step {n}: </span>
-      {children}
-    </h3>
-  );
-}
-
-function ListSkeleton() {
-  return (
-    <div className="space-y-2" aria-hidden>
-      {[0, 1, 2].map((i) => (
-        <Skeleton key={i} className="h-14 w-full rounded-xl" />
-      ))}
-    </div>
-  );
-}
-
-/**
- * A choice's words: its name on up to two lines (the whole of it on hover and for screen readers — two
- * statements for two years differ only at the end), then the facts that tell it apart, one separator
- * style, wrapping rather than cut off.
- */
-function OptionText({ title, meta, below }: { title: string; meta: ReactNode[]; below?: ReactNode }) {
-  const parts = meta.filter((p) => p !== null && p !== undefined && p !== false && p !== "");
-  return (
-    <span className="min-w-0 flex-1">
-      {/* a phone's narrow row gets a third line ("Gesetzliche Kranken- und Pflegeversicherung bei Muster BKK") */}
-      {/* a reference stays whole ("TM-2026-0048213", never "TM- / 2026-…"); the title keeps it plain */}
-      <span title={title} className="line-clamp-3 break-words text-[14px] font-medium leading-snug text-ink sm:line-clamp-2">
-        {protectRefs(title)}
-      </span>
-      {parts.length ? (
-        <span className="mt-0.5 block text-[12.5px] leading-snug text-muted [overflow-wrap:anywhere]">
-          {parts.map((p, i) => (
-            <Fragment key={i}>
-              {i ? (
-                <>
-                  {" "}
-                  <span aria-hidden>·</span>{" "}
-                </>
-              ) : null}
-              {p}
-            </Fragment>
-          ))}
-        </span>
-      ) : null}
-      {below}
-    </span>
-  );
-}
-
-/** A contract that can be cancelled any month: no countdown, nothing runs out (as on its card and in People). */
-function AnyMonthPill({ className }: { className?: string }) {
-  return (
-    <span data-any-month className={cn("whitespace-nowrap rounded-full bg-surface-3 px-2 py-[3px] text-xs font-medium leading-4 text-muted", className)}>
-      Cancel any month
-    </span>
-  );
-}
-
-function ContractOption({ c, party }: { c: Contract; party?: Party }) {
-  // a contract you can cancel any month has no window that closes: its "send by" only says when it
-  // would end, so it never counts down in red
-  const rolling = isRollingContract(c);
-  const sendBy = rolling ? null : c.computed?.send_by;
-  return (
-    <>
-      <KindIcon category={c.category} size="md" />
-      <OptionText
-        title={c.name}
-        meta={[party?.name, copyFor(CONTRACT_CATEGORY_COPY, c.category).label]}
-        // phones: the send-by date as a line of its own (a pill beside the name from 640 px)
-        below={
-          sendBy ? (
-            <Countdown date={sendBy} prefix="Send by" className="mt-0.5 block text-[12.5px] leading-snug sm:hidden" />
-          ) : rolling ? (
-            <span className="mt-0.5 block text-[12.5px] font-medium leading-snug text-muted sm:hidden">Cancel any month</span>
-          ) : null
-        }
-      />
-      {sendBy ? <Countdown date={sendBy} prefix="Send by" variant="pill" className="hidden sm:inline-flex" /> : null}
-      {rolling ? <AnyMonthPill className="hidden sm:inline-flex" /> : null}
-    </>
-  );
-}
-
-function DocOption({ d, party, pill }: { d: ListedLetter; party?: Party; pill?: ReactNode }) {
-  const date = letterDate(d);
-  return (
-    <>
-      <KindIcon docKind={d.kind} size="md" />
-      <OptionText
-        title={d.title ?? d.filename}
-        meta={[party?.name ?? documentKindLabel(d.kind), date ? <DateText key="date" date={date} style="day" /> : null]}
-        below={pill ? <span className="mt-1 flex sm:hidden">{pill}</span> : null}
-      />
-      {pill ? <span className="hidden shrink-0 sm:inline-flex">{pill}</span> : null}
-    </>
-  );
-}
-
-/** "Widerspruch possible": said on phones too (under the letter's name), not only beside it from 640 px. */
-function PossiblePill({ term }: { term: string }) {
-  return <span className="whitespace-nowrap rounded-full bg-k-expiry-soft px-2 py-0.5 text-[12px] font-medium text-k-expiry-ink">{term} possible</span>;
-}
-
-/** The box `el` scrolls in (the dialog's body), if any. */
-function scrollParent(el: HTMLElement): HTMLElement | null {
-  for (let p = el.parentElement; p; p = p.parentElement) {
-    const y = getComputedStyle(p).overflowY;
-    if ((y === "auto" || y === "scroll") && p.scrollHeight > p.clientHeight) return p;
-  }
-  return null;
-}
-
-/** Rows a list shows before "Show all": the chosen one is always among them. */
-const LIST_PREVIEW = 5;
-/** Rows a list shows at most — searching finds the others. */
-const LIST_CAP = 30;
-
-/**
- * The choices of step 2, in the dialog's own scroll (no second scrolling box inside it, where a chosen
- * contract sat out of view): the one the composer was opened with first — right under the step's heading,
- * where the composer scrolls to — then the first few, the chosen one always among them, and "Show all"
- * for the rest.
- */
-function ChoiceList<T extends { id: string }>({
-  items,
-  selectedId,
-  labelledBy,
-  noun,
-  render,
-  emptyText,
-}: {
-  items: readonly T[];
-  selectedId: string | null;
-  labelledBy: string;
-  /** "contracts", "letters", "decisions" — for "Show all 9 contracts". */
-  noun: string;
-  render: (item: T) => ReactNode;
-  emptyText?: string | null;
-}) {
-  const listId = useId();
-  const [expanded, setExpanded] = useState(false);
-  // what was chosen when the list appeared came with the link that opened the composer; it stays first
-  // (a later choice never moves under the pointer)
-  const [pinned] = useState(selectedId);
-  const ordered = useMemo(() => {
-    const first = pinned ? items.find((i) => i.id === pinned) : undefined;
-    return first ? [first, ...items.filter((i) => i !== first)] : items;
-  }, [items, pinned]);
-  const capped = ordered.slice(0, LIST_CAP);
-  const foldable = capped.length > LIST_PREVIEW + 1;
-  let shown: readonly T[] = foldable && !expanded ? capped.slice(0, LIST_PREVIEW) : capped;
-  const chosen = selectedId ? items.find((i) => i.id === selectedId) : undefined;
-  if (chosen && !shown.includes(chosen)) shown = [chosen, ...(foldable && !expanded ? shown.slice(0, LIST_PREVIEW - 1) : shown)];
-  const more = items.length - capped.length;
-  return (
-    <div>
-      <div role="radiogroup" id={listId} aria-labelledby={labelledBy} className="space-y-2" data-choice-list>
-        {shown.map(render)}
-        {!items.length && emptyText ? <p className="px-1 py-2 text-base text-muted">{emptyText}</p> : null}
-      </div>
-      {foldable || more > 0 ? (
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 px-1">
-          {foldable ? (
-            <Button variant="link" size="sm" aria-expanded={expanded} aria-controls={listId} onClick={() => setExpanded((v) => !v)}>
-              {expanded ? "Show fewer" : more > 0 ? `Show ${capped.length} of ${items.length} ${noun}` : `Show all ${capped.length} ${noun}`}
-            </Button>
-          ) : null}
-          {more > 0 && (expanded || !foldable) ? (
-            <p className="text-[12.5px] leading-5 text-muted">
-              Showing {capped.length} of {items.length} — search to find another.
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-/** The letter chosen for an objection that can't be objected to — shown as chosen, not as a choice. */
-function ChosenLetter({ d, party }: { d: ListedLetter; party?: Party }) {
-  return (
-    <div className="mb-2 flex items-center gap-3 rounded-xl border border-warn/40 bg-surface px-3 py-2.5" data-chosen-letter>
-      <span className="sr-only">The letter you chose: </span>
-      <DocOption d={d} party={party} />
-    </div>
-  );
 }
 
 /** Step 2 with nothing to choose (an empty install): why, and the way on — never a dead end. */
@@ -434,74 +156,6 @@ function StatutoryNote({ kind, term }: { kind: ListedLetter["kind"]; term: "Eins
   );
 }
 
-/**
- * Step 1: the three everyday letters as cards, then the template letters as compact tiles. A card with
- * nothing to act on (no contracts, no decision to object to, no letters) is disabled with the reason
- * instead of its description — unless it is the chosen one (opened by a link), where step 2 says why.
- */
-function KindChooser({ kind, onPick, unavailable }: { kind: DraftKind | null; onPick: (k: DraftKind) => void; unavailable: Partial<Record<DraftKind, string>> }) {
-  return (
-    <fieldset className="min-w-0">
-      <legend className="sr-only">What do you want to do?</legend>
-      <div className="grid gap-2 sm:grid-cols-3">
-        {KIND_OPTIONS.map((o) => {
-          const selected = kind === o.kind;
-          const reason = selected ? undefined : unavailable[o.kind];
-          const disabled = Boolean(reason);
-          return (
-            <label
-              key={o.kind}
-              className={cn(
-                "relative grid cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 rounded-xl border p-3 transition-[border-color,background-color,box-shadow] sm:flex sm:flex-col sm:items-start sm:gap-2 sm:p-3.5",
-                CARD_FOCUS,
-                CARD_STATE(selected),
-                disabled && "cursor-not-allowed bg-surface-2/40 hover:border-line",
-              )}
-            >
-              <input type="radio" name="letter-kind" value={o.kind} checked={selected} disabled={disabled} onChange={() => onPick(o.kind)} className="sr-only" />
-              {/* a disabled card fades its icon, name and circle — never the reason, which must stay readable */}
-              <span className={cn("row-span-2 grid size-8 place-items-center rounded-lg", selected ? "bg-accent text-on-accent" : "bg-surface-2 text-muted", disabled && "opacity-55")}>
-                <o.icon className="size-4" aria-hidden />
-              </span>
-              <span className={cn("text-[14px] font-semibold", disabled ? "text-muted" : "text-ink")}>{o.title}</span>
-              <span className="col-start-2 text-[12.5px] leading-snug text-muted">{reason ?? o.description}</span>
-              <RadioDot selected={selected} className={cn("col-start-3 row-span-2 row-start-1 sm:absolute sm:right-3 sm:top-3", disabled && "opacity-40")} />
-            </label>
-          );
-        })}
-      </div>
-      <p id="cmp-more" className="eyebrow mb-2 mt-4">
-        More letters from templates
-      </p>
-      <div role="group" aria-labelledby="cmp-more" className="grid gap-2 min-[480px]:grid-cols-2">
-        {TEMPLATES.map((t) => {
-          const selected = kind === t.kind;
-          return (
-            <label
-              key={t.kind}
-              className={cn(
-                "relative flex cursor-pointer items-start gap-2.5 rounded-xl border px-3 py-2.5 transition-[border-color,background-color,box-shadow]",
-                CARD_FOCUS,
-                CARD_STATE(selected),
-              )}
-            >
-              <input type="radio" name="letter-kind" value={t.kind} checked={selected} onChange={() => onPick(t.kind)} className="sr-only" />
-              <span className={cn("mt-px grid size-7 shrink-0 place-items-center rounded-lg", selected ? "bg-accent text-on-accent" : "bg-surface-2 text-muted")}>
-                <t.icon className="size-3.5" aria-hidden />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[13.5px] font-semibold leading-5 text-ink">{t.title}</span>
-                <span className="block text-[12px] leading-snug text-muted">{t.blurb}</span>
-              </span>
-              <RadioDot selected={selected} className="mt-1" />
-            </label>
-          );
-        })}
-      </div>
-    </fieldset>
-  );
-}
-
 export interface LetterComposerProps {
   open: boolean;
   onClose: () => void;
@@ -521,310 +175,6 @@ export function LetterComposer({ open, onClose, prefill }: LetterComposerProps) 
   const [session, setSession] = useState({ sig, prefill, n: 0 });
   if (sig !== null && sig !== session.sig) setSession({ sig, prefill, n: session.n + 1 });
   return <ComposerDialog key={session.n} open={open && sig !== null} onClose={onClose} prefill={session.prefill} />;
-}
-
-/** `docs` with the letters of `kinds` first, each group in its own order. */
-function fittingFirst(docs: ListedLetter[], kinds: readonly ListedLetter["kind"][] | undefined): ListedLetter[] {
-  if (!kinds?.length) return docs;
-  const fits = (d: ListedLetter) => kinds.includes(d.kind);
-  return [...docs.filter(fits), ...docs.filter((d) => !fits(d))];
-}
-
-/** Recipient step of a template letter: a letter it answers, a person or organisation, or a typed address. */
-function TemplateRecipient({
-  config,
-  docs,
-  docId,
-  setDocId,
-  partyId,
-  setPartyId,
-  parties,
-  loading,
-  typed,
-  setTyped,
-  notice,
-  claimant = false,
-}: {
-  config: TemplateConfig;
-  docs: ListedLetter[];
-  docId: string | null;
-  setDocId: (id: string | null) => void;
-  partyId: string | null;
-  setPartyId: (id: string | null) => void;
-  parties: Party[];
-  loading: boolean;
-  typed: string;
-  setTyped: (v: string) => void;
-  /** Why the chosen letter can't be answered this way — shown right under the letters, where it was chosen. */
-  notice?: ReactNode;
-  /** The letter goes to a court order's claimant, typed in (the court is the order's sender). */
-  claimant?: boolean;
-}) {
-  const [filter, setFilter] = useState("");
-  const byId = useMemo(() => new Map(parties.map((p) => [p.id, p])), [parties]);
-  // the letters whose kind fits the template come first (a withdrawal's orders and contracts, a statement's
-  // statements), the rest after them: any letter can still be chosen; the letter
-  // the composer was opened for is always shown (ChoiceList)
-  const incoming = useMemo(
-    () =>
-      fittingFirst(
-        docs.filter((d) => d.direction !== "outgoing"),
-        config.letterKinds,
-      ),
-    [docs, config.letterKinds],
-  );
-  const shown = useMemo(() => {
-    const q = filter.trim().toLowerCase();
-    if (!q) return incoming;
-    return incoming.filter((d) => [d.title, d.filename, byId.get(d.party_id ?? "")?.name].some((s) => s?.toLowerCase().includes(q)));
-  }, [incoming, filter, byId]);
-  const noticeRef = useRef<HTMLDivElement>(null);
-  const hasNotice = Boolean(notice);
-  useEffect(() => {
-    // a refusal is the reason the button stays disabled: bring it into view where the letter was chosen
-    if (hasNotice) noticeRef.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
-  }, [hasNotice, docId]);
-  const sorted = useMemo(() => sortForTemplate(parties, config), [parties, config]);
-  const letters = config.target === "letter-or-party";
-  // a letter whose sender isn't in Ordnung: the person types who it goes to (the server needs a recipient)
-  const chosen = letters && docId ? (docs.find((d) => d.id === docId) ?? null) : null;
-  const unknownSender = Boolean(chosen && !chosen.party_id);
-
-  // no search box and no list for an install without letters, no picker without people
-  const hasLetters = letters && incoming.length > 0;
-  return (
-    <div className="space-y-3">
-      {letters ? (
-        <>
-          {hasLetters && (incoming.length > LIST_PREVIEW + 1 || filter) ? (
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden />
-              <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Find a letter…" aria-label="Find a letter" className="pl-9" />
-            </div>
-          ) : null}
-          {hasLetters && config.letterHint ? <p className="text-[12.5px] leading-5 text-muted">{config.letterHint}</p> : null}
-          {loading ? (
-            <ListSkeleton />
-          ) : hasLetters ? (
-            <ChoiceList
-              items={shown}
-              selectedId={docId}
-              labelledBy="cmp-which"
-              noun="letters"
-              emptyText={filter ? `No letters match “${filter}”.` : null}
-              render={(d) => (
-                <OptionRow
-                  key={d.id}
-                  name="letter-about"
-                  value={d.id}
-                  selected={docId === d.id}
-                  onSelect={() => {
-                    setDocId(d.id);
-                    setPartyId(null);
-                  }}
-                >
-                  <DocOption d={d} party={byId.get(d.party_id ?? "")} />
-                </OptionRow>
-              )}
-            />
-          ) : null}
-          {notice ? (
-            <div ref={noticeRef} className="scroll-mb-4">
-              {notice}
-            </div>
-          ) : null}
-          {claimant ? (
-            <Field
-              label="The claimant (Antragsteller)"
-              hint="The court order names who claims the money — type their name and address as the order shows them. The letter goes to them, not to the court."
-              // the court is no claimant: the server refuses an offer to it
-              error={mayBeCourt(typed) ? "That's a court — type the claimant the order names as the Antragsteller." : undefined}
-            >
-              <Textarea
-                data-claimant-recipient
-                value={typed}
-                onChange={(e) => setTyped(e.target.value)}
-                rows={4}
-                className="min-h-24"
-                placeholder={"Claimant's name\nStreet and number\nPostcode and town"}
-              />
-            </Field>
-          ) : null}
-          {/* only when the letter can be answered this way, and never next to the claimant's box (both would
-              write the same text) */}
-          {unknownSender && !claimant && !notice ? (
-            <Field label="Who is it for?" hint="This letter's sender isn't in Ordnung — type their name and address as the letter shows them.">
-              <Textarea
-                value={typed}
-                onChange={(e) => setTyped(e.target.value)}
-                rows={4}
-                className="min-h-24"
-                placeholder={"Company name\nStreet and number\nPostcode and town"}
-              />
-            </Field>
-          ) : null}
-        </>
-      ) : null}
-      {sorted.length ? (
-        <Field label={hasLetters ? "Or write to someone without a letter" : "Recipient"} optional={hasLetters}>
-          <Select
-            value={docId && letters ? "" : (partyId ?? "")}
-            onChange={(e) => {
-              setPartyId(e.target.value || null);
-              if (e.target.value) {
-                setDocId(null);
-                setTyped("");
-              }
-            }}
-          >
-            <option value="">Choose a person or organisation…</option>
-            {sorted.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} — {partyKindLabel(p.kind)}
-              </option>
-            ))}
-          </Select>
-        </Field>
-      ) : null}
-      {config.target === "party-or-typed" ? (
-        <div className="rounded-xl border border-dashed border-line-strong/80 p-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-[13px] font-medium text-ink">Not in Ordnung yet?</p>
-            <Button
-              size="sm"
-              icon={Building2}
-              onClick={() => {
-                setTyped(SCHUFA_ADDRESS);
-                setPartyId(null);
-                setDocId(null);
-              }}
-            >
-              Use SCHUFA's address
-            </Button>
-          </div>
-          <p className="mt-1.5 text-[12.5px] leading-5 text-muted">SCHUFA, Germany's main credit agency, must send you a free copy of the data and scores it holds about you.</p>
-          <Field label="Or type their name and address" hint="Every company or office must send you a free first copy of your data (Art. 15(3) GDPR)." className="mt-2">
-            <Textarea
-              value={typed}
-              onChange={(e) => {
-                setTyped(e.target.value);
-                if (e.target.value.trim()) {
-                  setPartyId(null);
-                  setDocId(null);
-                }
-              }}
-              rows={4}
-              className="min-h-24"
-              placeholder={"Company name\nStreet and number\nPostcode and town"}
-            />
-          </Field>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-/**
- * The From field's hint for a letter filed for someone of the household: who it is filed for and, when the field holds
- * another name than the person's own (`otherName`), that it goes out in that name.
- */
-function filedLine(name: string, signs: boolean, otherName: string | null): string {
-  if (otherName) return `This letter is filed for ${name}. It goes out in the name of ${otherName}, who signs it.`;
-  return signs ? `This letter is filed for ${name}.` : `This letter is filed for ${name}, who doesn't sign letters, so it goes out in your name.`;
-}
-
-/**
- * The From field of a letter answering one addressed to someone else (`DocumentDetail.addressed_to`). It starts with
- * the person's own name: the addressee's is one press away, and "Use my name" goes back — offered, never set (a
- * child's letter answered in the child's name would be the worse mistake). A household ("Familie Rivera") has no
- * one-press name: the person is among the people named and signs as themselves. A press keeps the keyboard in place
- * (focus moves to the button that took the pressed one's place) and a status line says whose name it now is. Code
- * never adds the name to the draft request (the related letter's title and summary, sent as read, may still name the
- * addressee).
- *
- * A letter the person filed for someone of their household (`member`, ADR 0023) says so instead, still starting with
- * the person's own name: someone who signs their own letters is offered by the name typed in Settings (never as read
- * from the letter); someone who doesn't (a child) is offered not at all — the letter goes out in the person's name,
- * unless they type another. Without `member` the field is exactly the one above.
- */
-function SignerField({
-  addressee,
-  member,
-  ownName,
-  value,
-  onChange,
-  othersName,
-}: {
-  /** Who the answered letter was addressed to, when that isn't the person (`addressed_to`). */
-  addressee: string | null;
-  /** The person of the household the answered letter is filed for. */
-  member?: Pick<HouseholdMember, "name" | "signs"> | null;
-  ownName: string;
-  value: string;
-  onChange: (name: string) => void;
-  /** The field holds a name that isn't the person's own. */
-  othersName: boolean;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const theirsRef = useRef<HTMLButtonElement>(null);
-  const mineRef = useRef<HTMLButtonElement>(null);
-  // after a press, the button that took the pressed one's place (else the field) gets the focus
-  const focusNext = useRef<"theirs" | "mine" | null>(null);
-  const [said, setSaid] = useState("");
-  useEffect(() => {
-    const next = focusNext.current;
-    if (!next) return;
-    focusNext.current = null;
-    ((next === "theirs" ? theirsRef.current : mineRef.current) ?? inputRef.current)?.focus();
-  }, [value]);
-  const press = (name: string, next: "theirs" | "mine", line: string) => {
-    focusNext.current = next;
-    setSaid(line);
-    onChange(name);
-  };
-  // the one-press name: a member's who signs as typed in Settings; else the addressee's, unless it names a household
-  const theirs = member ? (member.signs ? member.name : null) : addressee && !namesHousehold(addressee) ? addressee : null;
-  return (
-    <div className="mt-4" data-signer>
-      <Field
-        label="From"
-        hint={
-          <span className="[overflow-wrap:anywhere]">
-            {member ? (
-              filedLine(member.name, member.signs, othersName ? value.trim() : null)
-            ) : (
-              <>
-                This letter was addressed to {addressee}.{othersName ? <> It goes out in the name of {value.trim()}, who signs it.</> : null}
-              </>
-            )}
-          </span>
-        }
-      >
-        <Input ref={inputRef} value={value} onChange={(e) => onChange(e.target.value)} maxLength={120} autoComplete="off" spellCheck={false} />
-      </Field>
-      <div className="mt-2 flex flex-wrap gap-2">
-        {theirs && !sameName(value, theirs) ? (
-          // an element, not a string: the Button truncates a string label, and a long name wraps at 320 px instead
-          <Button
-            ref={theirsRef}
-            size="sm"
-            className="h-auto min-h-8 max-w-full whitespace-normal py-1 text-left"
-            onClick={() => press(theirs, "mine", `The letter now goes out in the name of ${theirs}.`)}
-          >
-            <span className="min-w-0 whitespace-normal [overflow-wrap:anywhere]">Reply in {theirs}'s name</span>
-          </Button>
-        ) : null}
-        {ownName && !sameName(value, ownName) ? (
-          <Button ref={mineRef} size="sm" variant="ghost" onClick={() => press(ownName, "theirs", "The letter now goes out in your name.")}>
-            Use my name
-          </Button>
-        ) : null}
-      </div>
-      <p role="status" className="sr-only">
-        {said}
-      </p>
-    </div>
-  );
 }
 
 function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: ComposerPrefill | null; onClose: () => void }) {
