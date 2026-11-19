@@ -8,10 +8,11 @@ by a live run; every live call leaves one line in ``ledger.jsonl``.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import subprocess
 import sys
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -22,8 +23,9 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from evals import harness  # noqa: E402
+from evals import conditions, harness  # noqa: E402
 from evals import run as eval_run  # noqa: E402
+from evals.records import Entry  # noqa: E402
 
 from helpers_tables import check_rows  # noqa: E402
 from ordnung.llm import replay as replay_module  # noqa: E402
@@ -45,6 +47,24 @@ LEDGER_FIELDS = {
     "served_model",
     "cli_version",
 }
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _letters_prepared_once(tmp_path_factory: pytest.TempPathFactory) -> Iterator[None]:
+    """Each letter's pages are rendered and read once per module: the runs here hold what the recorder writes,
+    resumes and refuses, not the rendering, and the same bytes make the same requests."""
+    prepared: dict[tuple[str, str, Path], conditions.PreparedDocument] = {}
+    real = eval_run.prepare_document
+
+    def prepare(entry: Entry, dataset_dir: Path, work_dir: Path) -> conditions.PreparedDocument:
+        key = (entry.id, entry.sha256, Path(dataset_dir))
+        if key not in prepared:
+            prepared[key] = real(entry, dataset_dir, tmp_path_factory.mktemp("pages"))
+        return dataclasses.replace(prepared[key], entry=entry)
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(eval_run, "prepare_document", prepare)
+        yield
 
 
 def _root(tmp_path: Path) -> Path:
