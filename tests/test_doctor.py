@@ -147,6 +147,7 @@ async def test_the_app_holds_claude_to_the_doctors_minimum(isolated_path: Path) 
         for status in (app, doctors):
             assert status.installed and status.ok is ready and deps.claude_ready(status) is ready
             assert status.needs_version == (None if ready else "2.1.0")
+        assert doctors.version == version.removesuffix(" (Claude Code)")
         if not ready:
             assert app.detail is not None
             assert (
