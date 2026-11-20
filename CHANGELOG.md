@@ -7,6 +7,17 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ### Changed
 
+- **The README's pictures and its recording are new.** Every picture has twice the pixels (2880×1800 for the desktop
+  window), so it stays sharp on a high-density screen. The animation at the top is now a story of 29 seconds, in two
+  columns with the photographed letter beside what Ordnung made of it: a letter arrives, Ordnung says what it is,
+  what to do and by when, shows the sentence the date came from, and each step behind the date with its law. It is
+  an animated WebP (1280×960), with the GIF kept for a browser without WebP. The whole tour (MP4, 1920×1440, 1 min
+  28 s) goes on to the weekly review, paying by GiroCode, the timeline, Ask, contracts with a cancellation's proof
+  of sending, a scam letter, a court payment order (a sample letter) and how a letter was read. `make capture`
+  records the page's own frames instead of a compressed screen video, holds each caption for its reading time and
+  keeps every movement at its real length, so the recording is as long on a busy machine as on a quiet one, and it
+  takes the pictures and the film on a fresh demo each. The README's media are 22 MB in a checkout (they were 9 MB);
+  they are not part of the Python package.
 - CI on a pull request takes 10 to 12 minutes instead of 40 to 50: the backend tests run in parallel
   processes, coverage is measured on the Python 3.12 leg alone, lint and types run once, the slow tests have two
   jobs and the replayed benchmarks one, and the end-to-end tests run in three groups side by side without waiting
