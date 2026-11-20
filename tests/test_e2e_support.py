@@ -214,6 +214,10 @@ def test_make_capture_makes_the_readme_pictures_of_the_real_app() -> None:
     assert re.search(r'^test\.skip\(!OUT, "[^"]+"\);$', spec, re.M)
     assert "address: PHONE_ADDRESS" in spec
     assert '"the pictures asked no model"' in spec
+    # the sync folder is looked for where it really is: the app shows that path, and a temporary folder is often
+    # reached through a link (macOS's /var), where the picture's own path was never found
+    assert "const folder = realpathSync(FOLDERS.b);" in spec
+    assert spec.count("[folder, SHOWN_FOLDER] as const") == 1 and "[FOLDERS.b, SHOWN_FOLDER]" not in spec
 
 
 def _ts_names(text: str) -> list[str]:

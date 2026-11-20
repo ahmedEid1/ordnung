@@ -14,7 +14,7 @@
  * The setup goes through the API: the stories (real-app-phone.spec.ts, real-app-sync.spec.ts) test the same flows
  * through the screens. The pairing code, the two words and "just now" change on every capture.
  */
-import { existsSync, mkdirSync, readFileSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { Browser, Page } from "@playwright/test";
 import type { components } from "@/api/schema";
@@ -259,7 +259,10 @@ test("your-computers.png: this computer in use, the other standing by with its l
     await b.mouse.move(120, 600); // the sidebar's empty space: no hover on the picture
     await ready(b);
     const text = await b.getByRole("main").innerText();
-    expect(text, "the folder shown is the throwaway one").toContain(FOLDERS.b);
+    // the app shows the folder where it really is, and a temporary folder is often reached through a link (macOS's
+    // /var, a TMPDIR that is one)
+    const folder = realpathSync(FOLDERS.b);
+    expect(text, "the folder shown is the throwaway one").toContain(folder);
     // the throwaway folder's temporary path says nothing to a reader: the picture shows a typical one in its place
     // (the path is drawn in pieces that may break at any slash, so the whole <code> that holds it is replaced)
     await b.evaluate(
@@ -268,11 +271,11 @@ test("your-computers.png: this computer in use, the other standing by with its l
           if (code.textContent === from) code.textContent = to;
         }
       },
-      [FOLDERS.b, SHOWN_FOLDER] as const,
+      [folder, SHOWN_FOLDER] as const,
     );
     const shownText = await b.getByRole("main").innerText();
     expect(shownText).toContain(SHOWN_FOLDER);
-    expect(shownText.includes(FOLDERS.b), "the throwaway folder's path is not in the picture").toBe(false);
+    expect(shownText.includes(folder), "the throwaway folder's path is not in the picture").toBe(false);
     // the picture as it is, but for the typical folder put there, which is made up ("/home/…" starts this computer's
     // own paths on Linux)
     const picture = (await b.locator("body").innerText()).replaceAll(SHOWN_FOLDER, "");
