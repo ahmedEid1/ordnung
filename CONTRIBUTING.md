@@ -152,7 +152,7 @@ commit what it writes. The last column is what fails while one is stale.
 | `evals/dataset/*/facts.json` (a final split's facts, which `evals/verify_labels.py` re-derives its labels from) | `.venv/bin/python -m scripts.build_final_facts` (`scripts/build_final_facts.py`), from the sealed blind audit: the readings, the opaque-name map and the adjudications, which stay outside the repository (its `--help` names them) | `.venv/bin/python -m scripts.build_final_facts --check` with the same files (not in CI, which has none of them), and `.venv/bin/python -m evals.verify_labels --require-facts`, which re-derives every label of a final split from them |
 | `web/e2e/fixtures/outlook-bill.msg` | `python scripts/make_msg_fixture.py` | `tests/test_outlook.py::test_e2e_fixture_is_rebuilt_byte_for_byte` |
 | `web/e2e/fixtures/private-photo.jpg` | `python scripts/make_photo_fixture.py` | `tests/test_photo_fixture.py::test_the_e2e_photo_is_what_the_script_draws` |
-| `docs/assets/*.png`, `docs/assets/demo.gif`, `docs/assets/demo.mp4` (the README's pictures and video) | `make capture` (it needs ffmpeg) | nothing: look at them, and commit them as said below |
+| `docs/assets/*.png`, `docs/assets/demo.webp`, `docs/assets/demo.gif`, `docs/assets/demo.mp4` (the README's pictures at twice their window (a desktop's 2880×1800, a phone's 780×1688), its animation as WebP with the GIF for browsers without it, and the video at 1920×1440) | `make capture` (it needs ffmpeg) | `tests/test_media_budget.py` checks their sizes, settings, lengths and budgets; look at them, and commit them as said below |
 | `constraints.txt` | `make constraints` | nothing compares it with `pyproject.toml`: run it after changing a dependency ([Dependencies](#dependencies)) |
 
 **The online demo** is the web app built for the browser alone, on the mock world in `web/src/mocks` (no
@@ -167,7 +167,7 @@ npx vite preview --outDir /tmp/ordnung-static-demo     # then open the address i
 **The README's pictures and video** stay in the history, every version of them. To look at a capture, write it
 into a folder of your own (`CAPTURE_OUT=$(mktemp -d) make capture`). Commit media once per release, after the
 last fix round: the pictures only of screens that changed (`scripts/capture.sh --only shots` takes the pictures
-alone, after `make build-web browser`), and the tour's video and GIF only when the tour changed.
+alone, after `make build-web browser`), and the tour's video, WebP and GIF only when the tour changed.
 
 ## Benchmarks and recorded answers
 

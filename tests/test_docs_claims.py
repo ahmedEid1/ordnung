@@ -1029,32 +1029,47 @@ def _tour() -> str:
     return _section(_guide(), "## A tour")
 
 
-def test_the_tour_s_pictures_from_the_real_app_are_1440_by_900_pngs() -> None:
-    """The two pictures from the real app are PNGs of 1440×900 like the rest of the tour, and small (each about
-    120 KB when they were first made)."""
+def test_the_tour_s_pictures_from_the_real_app_are_2880_by_1800_pngs() -> None:
+    """The two pictures from the real app are PNGs of 2880×1800 like the rest of the tour (a 1440×900 window at 2
+    device pixels to the CSS pixel), and small (295 and 327 KB when they were made at that size, so 420 KB is about
+    a quarter more than the larger)."""
     for name in _REAL_APP_PICTURES:
         data = (ROOT / "docs" / "assets" / name).read_bytes()
         assert data[:8] == b"\x89PNG\r\n\x1a\n", name
-        assert struct.unpack(">II", data[16:24]) == (1440, 900), name
-        assert len(data) <= 400_000, name
+        assert struct.unpack(">II", data[16:24]) == (2880, 1800), name
+        assert len(data) <= 420_000, name
 
 
-def test_readme_hero_shows_the_gif_as_made_and_the_video_s_length() -> None:
-    """The README's first picture is ``demo.gif`` at the width ``make capture`` makes it, its alt text doesn't
-    say "live" (every answer in it is a recording), and the link to the whole tour states the MP4's length."""
+def test_readme_hero_shows_the_loop_880_px_wide_and_says_what_the_video_adds() -> None:
+    """The README's first picture is ``demo.webp`` (1280×960) where the browser shows WebP, else ``demo.gif``, shown
+    880 px wide, about as wide as GitHub shows a README (the GIF is made at that width, the WebP scaled down to it);
+    its alt text says what the loop shows and not "live" (every answer in it is a recording). The line under it
+    states the MP4's length and that the court order, a sample letter of the online demo, is only in the video."""
     assets = ROOT / "docs" / "assets"
-    (hero,) = [tag for tag in re.findall(r"<img\b[^>]*>", _readme()) if 'src="docs/assets/demo.gif"' in tag]
+    pictures = [p for p in re.findall(r"<picture>.*?</picture>", _readme(), re.S) if "docs/assets/demo." in p]
+    (picture,) = pictures
+    webp = '<picture><source type="image/webp" srcset="docs/assets/demo.webp"><img '
+    assert picture.startswith(webp), picture
+    assert re.search(r"<p align=\"center\"><picture>", _readme())  # README's first picture
+    with Image.open(assets / "demo.webp") as webp:
+        assert webp.format == "WEBP" and webp.size == (1280, 960)
+    (hero,) = [tag for tag in re.findall(r"<img\b[^>]*>", picture) if 'src="docs/assets/demo.gif"' in tag]
     width = re.search(r'\bwidth="(\d+)"', hero)
+    assert width and width.group(1) == "880"
     with Image.open(assets / "demo.gif") as gif:  # the size alone: no frame is decoded
-        assert gif.format == "GIF"
-        assert width and int(width.group(1)) == gif.size[0]
+        assert gif.format == "GIF" and gif.size == (880, 660)
     alt = re.search(r'\balt="([^"]*)"', hero)
     assert alt and "arrives as new mail and is read;" in alt.group(1)
+    assert "by when" in alt.group(1) and "court" not in alt.group(1)
     assert "read live" not in alt.group(1)
     minutes, seconds = divmod(round(mp4_info(assets / "demo.mp4").seconds), 60)
     assert (
         f'<a href="docs/assets/demo.mp4">Watch the whole tour (MP4, {minutes} min {seconds} s)</a>'
         in _readme()
+    )
+    assert (
+        "<sub>The court order in the video (not in the animation) is a sample letter written for the online demo, "
+        "not one Claude read; its date and advice card come from the rules engine.</sub>" in _readme()
     )
 
 

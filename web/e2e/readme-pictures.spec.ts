@@ -29,8 +29,13 @@ type SyncStatus = components["schemas"]["SyncStatus"];
 
 /** Where the pictures go: `docs/assets`, beside the other screenshots, when `make capture` runs this. */
 const OUT = process.env.ORDNUNG_CAPTURE_OUT ? resolve(process.env.ORDNUNG_CAPTURE_OUT) : "";
-/** The size of the guide's tour pictures: 1440×900 at device scale 1, like the rest. */
+/** The size of the guide's tour pictures: 1440×900, like the rest. */
 const CANVAS = { width: 1440, height: 900 };
+/**
+ * Device pixels to a CSS pixel, like the rest (scripts/capture.sh exports CAPTURE_SCALE): 2, so the pictures are sharp
+ * on a high-density screen (2880×1800).
+ */
+const SCALE = Number(process.env.CAPTURE_SCALE || 2);
 const PHONE_NAME = "Sam's Pixel";
 const COMPUTERS = { a: "sam-laptop", b: "sam-desktop" } as const;
 /** The throwaway sync folder's passphrase: five unrelated words, as the setup asks. */
@@ -51,6 +56,7 @@ const CLAUDE_CALLS = `${REAL_DATA_DIR}-claude-calls.jsonl`;
 const CLIENT = { "X-Ordnung-Client": "web" };
 
 test.describe.configure({ mode: "serial" });
+test.use({ deviceScaleFactor: SCALE });
 test.skip(!OUT, "makes the guide's pictures of phone access and hand-off sync: make capture");
 
 const claudeCalls = () => (existsSync(CLAUDE_CALLS) ? readFileSync(CLAUDE_CALLS, "utf8").split("\n").filter(Boolean).length : 0);
@@ -102,15 +108,19 @@ function saved(name: string, path: string): void {
 }
 
 /**
- * Lay out a picture's parts (`data-part` elements in `html`) on the app's own background, 1440×900, and save it. A part
- * that doesn't fit fails the run, so a longer dialog is never cut off unseen.
+ * Lay out a picture's parts (`data-part` elements in `html`) on the app's own background, 1440×900, and save it. Each
+ * image part is a screenshot at SCALE, shown at its size in CSS pixels, so it keeps every device pixel. A part that
+ * doesn't fit fails the run, so a longer dialog is never cut off unseen.
  */
 async function compose(browser: Browser, name: string, background: string, html: string): Promise<void> {
-  const context = await browser.newContext({ viewport: CANVAS, deviceScaleFactor: 1, colorScheme: "light" });
+  const context = await browser.newContext({ viewport: CANVAS, deviceScaleFactor: SCALE, colorScheme: "light" });
   try {
     const page = await context.newPage();
     await page.setContent(`<!doctype html><body style="margin:0;background:${background}">${html}</body>`);
     await page.waitForFunction(() => [...document.images].every((img) => img.complete && img.naturalWidth > 0));
+    await page.evaluate((scale) => {
+      for (const img of document.images) img.style.width = `${img.naturalWidth / scale}px`;
+    }, SCALE);
     const outside = await page.evaluate(
       ({ width, height }) =>
         [...document.querySelectorAll("[data-part]")]
@@ -134,7 +144,7 @@ test("pair-phone.png: the QR code, the phone's two words, the computer's same tw
   // loopback only: a server without ORDNUNG_PHONE_TEST_ADDRESS refuses this address (422), and the run fails
   const on = await apiSend<PhoneStatus>(page, "PUT", "/api/phone", { enabled: true, address: PHONE_ADDRESS, port: PHONE_PORT });
   expect(on.problem, `phone access couldn't start: ${on.problem?.detail}`).toBeNull();
-  const phone = await phoneContext(browser, { deviceScaleFactor: 1, colorScheme: "light" });
+  const phone = await phoneContext(browser, { deviceScaleFactor: SCALE, colorScheme: "light" });
   try {
     await open(page, "/settings?section=phone", "Settings");
     await page.getByRole("region", { name: "Pair a phone" }).getByRole("button", { name: "Pair a phone" }).click();
@@ -224,7 +234,7 @@ test("your-computers.png: this computer in use, the other standing by with its l
     baseURL: REAL_B_BASE_URL,
     storageState: REAL_B_STORAGE_STATE,
     viewport: CANVAS,
-    deviceScaleFactor: 1,
+    deviceScaleFactor: SCALE,
     colorScheme: "light",
     locale: "en-GB",
     timezoneId: "Europe/Berlin",
