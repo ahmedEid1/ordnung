@@ -370,4 +370,6 @@ def test_the_readme_plugin_is_pinned_and_the_sdist_leaves_out_the_readme_s_pictu
     assert re.fullmatch(r"hatch-fancy-pypi-readme==\d+\.\d+\.\d+", plugin), plugin
     sdist = pyproject["tool"]["hatch"]["build"]["targets"]["sdist"]
     assert sdist["exclude"] == ["docs/assets"]
-    assert {"src/ordnung", "README.md", "CHANGELOG.md", "LICENSE", "docs"} <= set(sdist["include"])
+    # git's patterns, anchored by the leading slash: a bare "README.md" also takes every README below the top
+    # (evals/README.md, evals/perturb/README.md), and a bare "docs" every folder of that name
+    assert sdist["include"] == ["/src/ordnung", "/README.md", "/CHANGELOG.md", "/LICENSE", "/docs"]
