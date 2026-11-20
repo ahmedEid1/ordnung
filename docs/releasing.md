@@ -5,11 +5,11 @@ makes releases; nothing here is needed to use Ordnung or to change it.
 
 ## What a release does
 
-Pushing a version tag such as `v0.3.0` runs [`.github/workflows/release.yml`](../.github/workflows/release.yml):
+Pushing a version tag such as `vX.Y.Z` runs [`.github/workflows/release.yml`](../.github/workflows/release.yml):
 
 1. **It checks the tag.** The tag must be `v` + `__version__` from `src/ordnung/__init__.py`, written the way
-   PyPI shows versions (`0.3.0`, `0.3.0rc1`). CHANGELOG.md must have one section for that version, headed
-   `## 0.3.0 — YYYY-MM-DD`, and it must be the newest: above it there may be only an empty `## Unreleased`.
+   PyPI shows versions (`X.Y.Z`, `X.Y.Zrc1`). CHANGELOG.md must have one section for that version, headed
+   `## X.Y.Z — YYYY-MM-DD`, and it must be the newest: above it there may be only an empty `## Unreleased`.
    Anything else there means the tagged commit holds changes the notes leave out. The tagged commit must be on
    `main`, and CI must have passed on it there. `scripts/release_notes.py` does the first checks. The tests
    don't run again: CI ran them on `main`.
@@ -18,8 +18,8 @@ Pushing a version tag such as `v0.3.0` runs [`.github/workflows/release.yml`](..
    The wheel is installed into a clean venv outside the checkout, where it must report the version and rebuild
    the demo identically (`ordnung demo --check`). `twine check --strict` checks that the description renders on
    PyPI.
-3. **It publishes a GitHub Release** named "Ordnung 0.3.0", with the changelog's section as its notes and both
-   files attached. A version like `0.3.0rc1` is marked as a pre-release.
+3. **It publishes a GitHub Release** named "Ordnung X.Y.Z", with the changelog's section as its notes and both
+   files attached. A version like `X.Y.Zrc1` is marked as a pre-release.
 4. **It uploads the same two files to PyPI**, but only once you have turned that on (below). The upload uses
    Trusted Publishing: PyPI trusts this workflow, so no token is stored in the repository or anywhere else.
 
@@ -64,9 +64,21 @@ change to the README also changes what that page links to.
    git push origin vX.Y.Z
    ```
 
-5. **Watch Actions → Release.** If a check stops it, fix the cause on `main`, delete the tag
-   (`git push origin :refs/tags/vX.Y.Z`, then `git tag -d vX.Y.Z`) and tag again. PyPI never takes the same
-   version twice: once the upload has worked, a mistake is fixed in the next version.
+5. **Watch Actions → Release.** If a check stops the build job, nothing is published yet: delete the tag
+   (`git push origin :refs/tags/vX.Y.Z`, then `git tag -d vX.Y.Z`), remove the cause and tag again. A fix that
+   needs a commit is merged into `main` and its merge commit tagged, as in step 4, but only while `main` lists
+   nothing under `## Unreleased`; once it does, the tag can go back only on the same commit, which mends only a
+   cause outside that commit (CI not yet passed there, say).
+
+   Once the GitHub Release exists, keep the tag: deleting it turns the Release into a draft without a tag, and
+   a new run would try to create the Release again and fail. If only the PyPI job failed, was skipped because
+   PyPI wasn't turned on yet, or its review was rejected, fix that and run it again on the same run: *Re-run
+   failed jobs*, or, for a skipped job, the re-run button beside it. It uploads the two files the build job
+   made, and the jobs before it don't run again. A review still waiting is given on the run's page (GitHub
+   fails the job after 30 days). GitHub re-runs a run only within 30 days of its start, though it keeps the
+   run's files longer (90 days unless the repository says otherwise); after that, the version reaches PyPI
+   only as the next one. PyPI never takes the same version twice: once the upload has worked, a mistake is
+   fixed in the next version.
 
 The next change goes under a new `## Unreleased` heading again (CONTRIBUTING.md).
 
@@ -91,7 +103,9 @@ checks need the publish commit on `main`'s first-parent line. If a push ever mov
 pushed as a fast-forward; the record and the amendment stay as they are.
 
 A pre-release works the same way, with a version such as `X.Y.Zrc1`, its own changelog section and the tag
-`vX.Y.Zrc1`. `pipx install ordnung` skips it; `pipx install "ordnung==X.Y.Zrc1"` installs it.
+`vX.Y.Zrc1`. Once PyPI is on (below), `pipx install ordnung` skips it and `pipx install "ordnung==X.Y.Zrc1"`
+installs it; until then it is installed by its tag, as any release is
+([the guide's *Updating*](guide.md#updating)).
 
 ## The online demo (turned on once, by the owner)
 
