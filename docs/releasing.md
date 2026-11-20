@@ -64,21 +64,24 @@ change to the README also changes what that page links to.
    git push origin vX.Y.Z
    ```
 
-5. **Watch Actions → Release.** If a check stops the build job, nothing is published yet: delete the tag
-   (`git push origin :refs/tags/vX.Y.Z`, then `git tag -d vX.Y.Z`), remove the cause and tag again. A fix that
-   needs a commit is merged into `main` and its merge commit tagged, as in step 4, but only while `main` lists
-   nothing under `## Unreleased`; once it does, the tag can go back only on the same commit, which mends only a
-   cause outside that commit (CI not yet passed there, say).
+5. **Watch Actions → Release.** If the build job stops, or the GitHub Release job fails before the Release
+   exists, nothing is published yet: delete the tag (`git push origin :refs/tags/vX.Y.Z`, then
+   `git tag -d vX.Y.Z`), remove the cause and tag again. A fix that needs a commit is merged into `main` and its
+   merge commit tagged, as in step 4 (the fix's changelog line goes in the version's section, not under
+   `## Unreleased`), but only while `main` lists nothing under `## Unreleased`; once it does, the tag can go back
+   only on the same commit, which mends only a cause outside that commit (CI not yet passed there, say). For
+   that case the run itself can also be run again (*Re-run all jobs*) once CI has passed, as its message says.
 
-   Once the GitHub Release exists, keep the tag: deleting it turns the Release into a draft without a tag, and
-   a new run would try to create the Release again and fail. If only the PyPI job failed, was skipped because
-   PyPI wasn't turned on yet, or its review was rejected, fix that and run it again on the same run: *Re-run
-   failed jobs*, or, for a skipped job, the re-run button beside it. It uploads the two files the build job
-   made, and the jobs before it don't run again. A review still waiting is given on the run's page (GitHub
-   fails the job after 30 days). GitHub re-runs a run only within 30 days of its start, though it keeps the
-   run's files longer (90 days unless the repository says otherwise); after that, the version reaches PyPI
-   only as the next one. PyPI never takes the same version twice: once the upload has worked, a mistake is
-   fixed in the next version.
+   Once the GitHub Release exists, keep the tag: the Release belongs to it (deleting the tag turns a published
+   Release into a draft), and the PyPI job is run again on the same run, not from a new tag. If only the PyPI
+   job failed or its review was rejected, fix the cause and run it again on the same run (*Re-run failed
+   jobs*). A re-run uploads the artifact `dist` the build job stored, and the jobs before it don't run again. A
+   review still waiting is given on the run's page (GitHub fails the job after 30 days). GitHub re-runs a run
+   only within 30 days of its start, and keeps that artifact 90 days unless the repository or organisation
+   keeps artifacts for less. After either limit the version reaches PyPI only as the next one. A version tagged
+   while PyPI was off stays on GitHub only (its PyPI job is skipped, and the run counts as passed): turn PyPI
+   on before you tag a version meant for PyPI. PyPI never takes the same version twice: once the upload has
+   worked, a mistake is fixed in the next version.
 
 The next change goes under a new `## Unreleased` heading again (CONTRIBUTING.md).
 
