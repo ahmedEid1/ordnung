@@ -10,7 +10,7 @@
   <img alt="Demo costs zero tokens" src="https://img.shields.io/badge/demo-zero%20tokens-8a6d3b"> <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-lightgrey"></a></p>
 
 <p align="center"><picture><source type="image/webp" srcset="docs/assets/demo.webp"><img src="docs/assets/demo.gif" width="880" alt="Ordnung demo: a photographed tax assessment arrives as new mail and is read; Ordnung says what it is, what to do and by when, shows the sentence the objection deadline came from, and each legal step behind the date"></picture><br>
-  <a href="https://ahmedeid1.github.io/ordnung/"><b>Open the online demo</b></a> (nothing to install) · <a href="docs/assets/demo.mp4">Watch the whole tour (MP4, 1 min 55 s)</a><br>
+  <a href="https://ahmedeid1.github.io/ordnung/"><b>Open the online demo</b></a> (nothing to install) · <a href="docs/assets/demo.mp4">Watch the whole tour (MP4, 1 min 28 s)</a><br>
   <sub>The court order in the video (not in the animation) is a sample letter written for the online demo, not one Claude read; its date and advice card come from the rules engine.</sub></p>
 
 <p align="center"><a href="#what-it-does">What it does</a> · <a href="#install-and-run">Install</a> · <a href="#evaluation">Evaluation</a> · <a href="#engineering">Engineering</a> · <a href="#documentation">Docs</a> · <a href="docs/README.md">Every document, by reader</a></p>

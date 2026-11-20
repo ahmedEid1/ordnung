@@ -361,7 +361,7 @@ def test_the_pypi_page_is_the_readme_with_every_link_and_picture_pointing_to_git
 
 
 def test_the_readme_plugin_is_pinned_and_the_sdist_leaves_out_the_readme_s_pictures() -> None:
-    """The plugin writes what PyPI shows, so a release builds it with one known version. The pictures (26 MB)
+    """The plugin writes what PyPI shows, so a release builds it with one known version. The pictures (22 MB)
     stay on GitHub, where the PyPI page loads them from."""
     pyproject = _pyproject()
     requires = pyproject["build-system"]["requires"]

@@ -31,23 +31,23 @@ CAPTURE_GUARD = ROOT / "web" / "scripts" / "capture-guard.mjs"
 PICTURES_SPEC = ROOT / "web" / "e2e" / "readme-pictures.spec.ts"
 
 # Each budget is what ``make capture`` made when the media were last redone, with about a quarter more for a page
-# that shows more (measured then, over two runs: the GIF 4.1 and 4.2 MB, the WebP 3.6 and 4.0 MB, the MP4 7.6 and
-# 8.0 MB; the largest picture 1.7 MB and all of ``docs/assets`` 27.6 MB).
-#: README's fallback GIF for a browser without WebP: 880×660, 8 frames a second, 128 colours, 4.2 MB
-GIF_BYTES = 5_300_000
-#: README's animation, 1280×960 at 15 frames a second, 4.0 MB
-WEBP_BYTES = 5_000_000
-#: the whole tour at 1920×1440: about 0.8 Mbit/s for sharp text, 8.0 MB
-MP4_BYTES = 10_000_000
+# that shows more (measured then, over three runs: the GIF 2.1 to 2.2 MB, the WebP 2.1 to 2.3 MB, the MP4 6.2 to
+# 6.8 MB; the largest picture 1.7 MB and all of ``docs/assets`` 22.2 MB).
+#: README's fallback GIF for a browser without WebP: 880×660, 8 frames a second, 128 colours, 2.2 MB
+GIF_BYTES = 2_750_000
+#: README's animation, 1280×960 at 15 frames a second, 2.1 MB
+WEBP_BYTES = 2_750_000
+#: the whole tour at 1920×1440: about 0.6 Mbit/s for sharp text, 6.6 MB
+MP4_BYTES = 8_500_000
 #: each picture's budget: a page at 2880×1800 with a photographed letter on it is the largest
 PNG_BYTES = 2_200_000
 #: everything in ``docs/assets``
-ASSETS_BYTES = 35_000_000
-#: README's loop (the WebP and the GIF), from Today to the date's receipt: 27.5 and 27.6 s over two runs, the same
-#: from run to run since a still page is held for its planned time, whatever the computer's load. A visitor gives it
-#: about half a minute: a beat added to it must make room, not stretch it
+ASSETS_BYTES = 28_000_000
+#: README's loop (the WebP and the GIF), from Today to the date's receipt: 29.4 s, the same from run to run since a
+#: still page is held for its planned time and a motion for the time the browser gave it, whatever the computer's
+#: load. A visitor gives it about half a minute: a beat added to it must make room, not stretch it
 LOOP_SECONDS = (20, 30)
-#: the whole tour (the MP4): 83.6 and 83.8 s over two runs; a visitor who clicks gives it about a minute and a half
+#: the whole tour (the MP4): 88.3 s; a visitor who clicks gives it about a minute and a half
 TOUR_SECONDS = (70, 95)
 #: mean luma (0 black, 255 white): a picture in the light theme is at least this bright, one in the dark theme at
 #: most :data:`DARK`
@@ -1031,7 +1031,7 @@ def test_the_tour_video_is_1920_by_1440_starts_at_once_and_fits_its_budget() -> 
 
 def test_the_length_limits_hold_the_loop_under_30_s_and_the_tour_under_95_s() -> None:
     """The limits themselves: a loop of 30.5 s or a tour of 95.5 s fails, as one of 19 s or 69 s does."""
-    assert _within(27.5, LOOP_SECONDS) and _within(83.7, TOUR_SECONDS)
+    assert _within(29.4, LOOP_SECONDS) and _within(88.3, TOUR_SECONDS)
     for seconds in (19.0, 30.5):
         assert not _within(seconds, LOOP_SECONDS), seconds
     for seconds in (69.0, 95.5):
