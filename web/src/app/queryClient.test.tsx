@@ -1,5 +1,6 @@
 /**
- * Offline and error feedback: a lost connection is one warning
+ * Offline and error feedback: requests are tried while the browser says it is offline (Ordnung runs on
+ * this computer), and coming back online refetches what is stale; a lost connection is one warning
  * that stays (with "Try again") until Ordnung answers again, then "Back online"; a live connection
  * that stays lost asks `/health` so the warning shows even when nothing else refetches; `/health`
  * can't hang the splash forever; and a failed change says what failed ("Couldn't save your
@@ -8,7 +9,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import { act, render, renderHook, screen, waitFor, within } from "@testing-library/react";
-import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
+import { onlineManager, QueryClientProvider, useMutation, useQuery, type QueryClient } from "@tanstack/react-query";
 import { ApiError, PHONE_UNREACHABLE, request, SERVER_PROBLEM } from "@/api/client";
 import { setClientKind } from "@/api/clientKind";
 import { qk, useHealth } from "@/api/hooks";
@@ -64,6 +65,88 @@ describe("offline", () => {
     const refetch = vi.spyOn(client, "refetchQueries").mockResolvedValue();
     act(() => screen.getByRole("button", { name: "Try again" }).click());
     expect(refetch).toHaveBeenCalledWith({ type: "active" });
+  });
+});
+
+describe("when the browser says it is offline", () => {
+  // Ordnung runs on this computer (or, for a phone, on the home network): it can answer while the internet is down,
+  // so every request is still tried
+  const answer = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
+  const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  const offlineWhile = async (body: () => Promise<void>) => {
+    onlineManager.setOnline(false);
+    try {
+      await body();
+    } finally {
+      onlineManager.setOnline(true);
+    }
+  };
+
+  function Letter() {
+    const letter = useQuery({ queryKey: ["letter"], queryFn: () => request<{ title: string }>("/documents/doc_power") });
+    return <p>{letter.data ? letter.data.title : "Loading…"}</p>;
+  }
+
+  function SaveNote() {
+    const save = useMutation({ mutationFn: () => request<{ text: string }>("/notes", { method: "POST", body: { text: "Paid" } }), meta: { errorTitle: "Couldn't save the note" } });
+    return (
+      <>
+        <button onClick={() => save.mutate()}>Save</button>
+        {save.data ? <p>Saved: {save.data.text}</p> : null}
+      </>
+    );
+  }
+
+  it("still asks for what is not loaded yet, and shows the answer", async () => {
+    const fetch = vi.fn(async () => answer({ title: "Stadtwerke bill" }));
+    vi.stubGlobal("fetch", fetch);
+    await offlineWhile(async () => {
+      render(<Letter />, { wrapper });
+      expect(await screen.findByText("Stadtwerke bill")).toBeInTheDocument();
+      expect(fetch).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("still sends a save, and shows its result", async () => {
+    const fetch = vi.fn(async () => answer({ text: "Paid" }));
+    vi.stubGlobal("fetch", fetch);
+    await offlineWhile(async () => {
+      render(<SaveNote />, { wrapper });
+      act(() => screen.getByRole("button", { name: "Save" }).click());
+      expect(await screen.findByText("Saved: Paid")).toBeInTheDocument();
+      expect(fetch).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("says once, in its own words, when Ordnung truly doesn't answer — after trying again as usual", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const fetch = vi.fn(async () => {
+      throw new TypeError("Failed to fetch");
+    });
+    vi.stubGlobal("fetch", fetch);
+    client.setQueryData(["dashboard"], { ok: 1 });
+    client.setQueryData(["items"], { ok: 1 });
+    await offlineWhile(async () => {
+      for (const key of ["dashboard", "items"]) void client.query({ queryKey: [key], queryFn: () => request(`/${key}`), staleTime: 0 }).catch(() => {});
+      await act(() => vi.advanceTimersByTimeAsync(10_000));
+      // each was tried, then tried twice more (the app's own rule), not held until the browser is back online
+      expect(fetch).toHaveBeenCalledTimes(6);
+      expect(screen.getAllByText("Can't reach Ordnung")).toHaveLength(1);
+      expect(screen.getByText(/Is Ordnung still running on this computer/)).toBeInTheDocument();
+    });
+  });
+
+  it("refetches what is stale when the browser is back online", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    let n = 0;
+    vi.stubGlobal("fetch", async () => answer({ title: `Stadtwerke bill ${++n}` }));
+    render(<Letter />, { wrapper });
+    expect(await screen.findByText("Stadtwerke bill 1")).toBeInTheDocument();
+    // older than the client's staleTime (30 s); a fresh answer would not be asked again
+    vi.setSystemTime(Date.now() + 60_000);
+    act(() => onlineManager.setOnline(false));
+    act(() => onlineManager.setOnline(true));
+    expect(await screen.findByText("Stadtwerke bill 2")).toBeInTheDocument();
   });
 });
 

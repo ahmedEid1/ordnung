@@ -117,6 +117,19 @@ export function __resetOfflineForTests(): void {
   leaving = false;
 }
 
+/**
+ * Every request is tried, whatever the browser says about the internet: Ordnung runs on this computer (a phone
+ * reaches it on the home network), so it can answer while the internet is down. The library's default holds
+ * queries and saves while the browser reports offline, which left spinners and saves that did nothing; a request
+ * Ordnung doesn't answer fails instead and says so ("Can't reach Ordnung"), retried as {@link createQueryClient}
+ * says. In this mode the library no longer refetches when the browser is back online unless asked: it still
+ * refetches what is stale then (a phone back on the home network). The tests' client uses the same.
+ */
+export const NETWORK_DEFAULTS = {
+  queries: { networkMode: "always", refetchOnReconnect: true },
+  mutations: { networkMode: "always" },
+} as const;
+
 /** Shared QueryClient: local API → short retries, no refetch storms, friendly error toasts. */
 export function createQueryClient(): QueryClient {
   const client: QueryClient = new QueryClient({
@@ -155,11 +168,12 @@ export function createQueryClient(): QueryClient {
     }),
     defaultOptions: {
       queries: {
+        ...NETWORK_DEFAULTS.queries,
         retry: (count, err) => (err instanceof ApiError && err.status >= 400 && err.status < 500 ? false : count < 2),
         refetchOnWindowFocus: false,
         staleTime: 30_000,
       },
-      mutations: { retry: false },
+      mutations: { ...NETWORK_DEFAULTS.mutations, retry: false },
     },
   });
   return client;

@@ -516,7 +516,9 @@ The app in `web/` is React and TypeScript, built with Vite; `ordnung serve` serv
   `web/src/api/schema.d.ts`, which `make openapi` generates from the FastAPI app through `web/openapi.json`, so a
   route the backend renames fails `tsc`. Components read through the TanStack Query hooks of
   `web/src/api/hooks.ts`, keyed by `qk`; a change refreshes what it affects (`invalidateLedger` for anything in the
-  ledger). One `EventSource` on `/api/events` (`web/src/api/sse.ts`, `useEventsConnection` in the shell) refreshes the
+  ledger). Every request is tried even while the browser says it is offline, since Ordnung runs on the computer or the
+  home network (`networkMode: "always"` in `web/src/app/queryClient.ts`); coming back online refetches what is
+  stale. One `EventSource` on `/api/events` (`web/src/api/sse.ts`, `useEventsConnection` in the shell) refreshes the
   same keys when the server reports a change, and everything ledger-related after a reconnect.
 - **Mocks.** `web/src/mocks/` answers `/api/*` in the browser (`createMockServer` in `web/src/mocks/server.ts`),
   in memory, from a sample life of the same person written by hand in `web/src/mocks/data/`: not the recorded
