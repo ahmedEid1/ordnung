@@ -80,6 +80,10 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - An operating-cost statement (Betriebskostenabrechnung) has a new icon: lucide-react no longer supports the one it
   had. `npm run lint` now fails on anything in the web app's TypeScript a library or the browser marks deprecated,
   so the next one is caught before the library drops it.
+- The source package (sdist) no longer carries `evals/README.md` and `evals/perturb/README.md`: its include
+  patterns now match only the top-level README, changelog and licence, `docs/` and `src/ordnung`. The wheel is
+  unchanged. `docs/releasing.md` says what to do when a release's run stops after the GitHub Release exists
+  (keep the tag and run the PyPI job again), and that a version tagged while PyPI is off stays on GitHub only.
 
 ### Fixed
 

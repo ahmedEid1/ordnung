@@ -153,8 +153,9 @@ artifacts = ["src/ordnung/web/dist/**", "src/ordnung/demo/demo_db/**"]
 
 [tool.hatch.build.targets.sdist]
 # no tests: they need the whole checkout (evals/, scripts/, web/); no README pictures (22 MB): PyPI loads
-# them from GitHub
-include = ["src/ordnung", "README.md", "CHANGELOG.md", "LICENSE", "docs"]
+# them from GitHub. The patterns are git's: the leading slash keeps each to the top of the checkout, where
+# "README.md" alone would also take evals/README.md and the other READMEs below it
+include = ["/src/ordnung", "/README.md", "/CHANGELOG.md", "/LICENSE", "/docs"]
 exclude = ["docs/assets"]
 artifacts = ["src/ordnung/web/dist/**", "src/ordnung/demo/demo_db/**"]
 
