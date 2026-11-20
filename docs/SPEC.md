@@ -2350,8 +2350,10 @@ Three documents, each for its reader; their numeric claims are checked by `tests
 
 **README**, for a first-time user and a hiring manager. It is also the project page on PyPI (`pyproject.toml`,
 `[tool.hatch.metadata.hooks.fancy-pypi-readme]`), so it stays under 250 lines and draws no Mermaid. In this order:
-the pitch (Claude reads, tested code computes); the GIF of the golden path (the first part of the tour video), with
-links to the online demo and the tour video; the problem in one paragraph; what Ordnung does, in a few bullets
+the pitch (Claude reads, tested code computes); the animation of the golden path (demo.webp, with the GIF for
+browsers without WebP; the first part of the tour video: a letter arrives, what it is, what to do and by when, the
+sentence the date came from and how it was worked out), with links to the online demo and the tour video; the
+problem in one paragraph; what Ordnung does, in a few bullets
 and screenshots; install and run (the online demo, `ordnung demo` with zero tokens, the three commands) and
 *Updating*, each pointing to the guide; the evaluation: the question it answers, the block `python -m evals.present`
 writes (never edited by hand) and why its numbers can be checked; engineering: "the model reads, code computes" (a
@@ -2365,9 +2367,16 @@ legal worked examples, evals); links to the docs; disclaimer.
 **The doc map** (`docs/README.md`): every document, by its reader (using Ordnung, checking the AI, how it is
 built, working on it). PyPI's *Documentation* link opens it.
 
-Screenshots, the tour video and the GIF come from `make capture` (`scripts/capture.sh`, `web/scripts/capture.mjs`),
-small by design (GIF 720 px, 6 fps, 64 colours; MP4 CRF 32; `tests/test_media_budget.py` keeps them in
-budget), from replay only, on a fresh demo; the court order comes from the mock data (`?mock=full`), since
+Screenshots, the tour video, its WebP and the GIF come from `make capture` (`scripts/capture.sh`,
+`web/scripts/capture.mjs`), at 2 device pixels to the CSS pixel (pictures 2880×1800; the video recorded in a
+1280×960 window, the narrowest in which a letter's page shows the photographed letter beside its explanation, as the
+page's own 2560×1920 frames; MP4 1920×1440 at CRF 23; WebP 1280×960, 15 fps; GIF 880 px, 8 fps, 128 colours;
+`tests/test_media_budget.py` keeps each within its budget and length), from replay only, the pictures and the video
+each on a fresh demo of their own. The tour is a list of captioned beats, each caption in a band along the bottom of
+the main column and on screen at least 2.5 s and 0.25 s a word: README's loop (WebP and GIF, 20 to 30 s) is its first
+six, from Today to the date's receipt, and the MP4 the whole tour (70 to 95 s). A still page is held for its planned
+time, whatever the capturing computer's load, the pointer, scrolling and a click's answer are kept for the time the
+browser gives them, and page loads and readings are cut, so the lengths are the same from run to run. The court order, shown only in the video, comes from the mock data (`?mock=full`), since
 the recorded demo has none, and the phone pairing and Your computers pictures from the real app
 (`web/e2e/readme-pictures.spec.ts`), since the demo has neither, and the guide says so. `docs/`:
 architecture, deadline-rules (with citations), privacy (data-flow table), evals, evals-ask, decisions/ADRs.

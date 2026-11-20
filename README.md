@@ -9,9 +9,9 @@
 <p align="center"><a href="https://github.com/ahmedEid1/ordnung/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ahmedEid1/ordnung/actions/workflows/ci.yml/badge.svg?branch=main&amp;event=push"></a> <img alt="Python 3.11–3.14" src="https://img.shields.io/badge/python-3.11%E2%80%933.14-3776ab">
   <img alt="Demo costs zero tokens" src="https://img.shields.io/badge/demo-zero%20tokens-8a6d3b"> <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-lightgrey"></a></p>
 
-<p align="center"><img src="docs/assets/demo.gif" width="720" alt="Ordnung demo: a photographed tax assessment arrives as new mail and is read; the objection deadline is shown with the sentence it came from and each legal step behind it; a court payment order gets its two-week deadline and a get-advice card"><br>
-  <a href="https://ahmedeid1.github.io/ordnung/"><b>Open the online demo</b></a> (nothing to install) · <a href="docs/assets/demo.mp4">Watch the whole tour (MP4, 1 min 34 s)</a><br>
-  <sub>The court order in the GIF and the video is a sample letter written for the online demo, not one Claude read; its date and advice card come from the rules engine.</sub></p>
+<p align="center"><picture><source type="image/webp" srcset="docs/assets/demo.webp"><img src="docs/assets/demo.gif" width="880" alt="Ordnung demo: a photographed tax assessment arrives as new mail and is read; Ordnung says what it is, what to do and by when, shows the sentence the objection deadline came from, and each legal step behind the date"></picture><br>
+  <a href="https://ahmedeid1.github.io/ordnung/"><b>Open the online demo</b></a> (nothing to install) · <a href="docs/assets/demo.mp4">Watch the whole tour (MP4, 1 min 28 s)</a><br>
+  <sub>The court order in the video (not in the animation) is a sample letter written for the online demo, not one Claude read; its date and advice card come from the rules engine.</sub></p>
 
 <p align="center"><a href="#what-it-does">What it does</a> · <a href="#install-and-run">Install</a> · <a href="#evaluation">Evaluation</a> · <a href="#engineering">Engineering</a> · <a href="#documentation">Docs</a> · <a href="docs/README.md">Every document, by reader</a></p>
 

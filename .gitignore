@@ -34,7 +34,7 @@ web/.vite/
 .env
 .DS_Store
 
-# make capture's recording, before it becomes demo.mp4 (scripts/capture.sh removes it)
+# make capture's recording, before it becomes demo.mp4, demo.webp and demo.gif (scripts/capture.sh removes it)
 /docs/assets/video/
 
 # Claude Code's own settings for this computer and its worktrees (nested checkouts); .claude/settings.json

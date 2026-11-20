@@ -341,12 +341,16 @@ def test_the_pypi_page_is_the_readme_with_every_link_and_picture_pointing_to_git
     assert hook["fragments"] == [{"path": "README.md"}]
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     description = _pypi_description()
-    left = re.findall(r'(?:src|href)="(?!https?://)[^"]*"|\]\((?![a-z][a-z0-9+.-]*:)[^)\s]+\)', description)
+    left = re.findall(
+        r'(?:src|srcset|href)="(?!https?://)[^"]*"|\]\((?![a-z][a-z0-9+.-]*:)[^)\s]+\)', description
+    )
     assert not left, left
     for page in re.findall(rf"{re.escape(BLOB)}([^)\"#\s]+)", description):
         assert (ROOT / page).exists(), page
     pictures = re.findall(rf"{re.escape(RAW)}([^)\"\s]+)", description)
     assert len(pictures) >= 8 and all((ROOT / picture).is_file() for picture in pictures)
+    # the animation's own source, not only its fallback
+    assert f'srcset="{RAW}docs/assets/demo.webp"' in description
     assert re.search(rf'href="{re.escape(GITHUB)}#install-and-run"', description)
     # nothing else changed: taking the prefixes away (and the evaluation charts' copy on the report page, which PyPI
     # loads instead of GitHub's raw SVG) gives the README back
@@ -357,7 +361,7 @@ def test_the_pypi_page_is_the_readme_with_every_link_and_picture_pointing_to_git
 
 
 def test_the_readme_plugin_is_pinned_and_the_sdist_leaves_out_the_readme_s_pictures() -> None:
-    """The plugin writes what PyPI shows, so a release builds it with one known version. The pictures (15 MB)
+    """The plugin writes what PyPI shows, so a release builds it with one known version. The pictures (22 MB)
     stay on GitHub, where the PyPI page loads them from."""
     pyproject = _pyproject()
     requires = pyproject["build-system"]["requires"]

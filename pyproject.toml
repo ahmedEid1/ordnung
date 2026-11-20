@@ -128,8 +128,8 @@ pattern = '(src|srcset)="docs/assets/(eval-[a-z-]+-(?:light|dark)\.svg)"'
 replacement = '\1="https://ahmedeid1.github.io/ordnung/evals/\2"'
 
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
-pattern = 'src="(?![a-z][a-z0-9+.-]*:)([^"]+)"'
-replacement = 'src="https://raw.githubusercontent.com/ahmedEid1/ordnung/main/\1"'
+pattern = '(src|srcset)="(?![a-z][a-z0-9+.-]*:)([^"]+)"'
+replacement = '\1="https://raw.githubusercontent.com/ahmedEid1/ordnung/main/\2"'
 
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
 pattern = '!\[([^\]]*)\]\((?![a-z][a-z0-9+.-]*:)([^)\s]+)\)'
@@ -152,7 +152,7 @@ packages = ["src/ordnung"]
 artifacts = ["src/ordnung/web/dist/**", "src/ordnung/demo/demo_db/**"]
 
 [tool.hatch.build.targets.sdist]
-# no tests: they need the whole checkout (evals/, scripts/, web/); no README pictures (15 MB): PyPI loads
+# no tests: they need the whole checkout (evals/, scripts/, web/); no README pictures (22 MB): PyPI loads
 # them from GitHub
 include = ["src/ordnung", "README.md", "CHANGELOG.md", "LICENSE", "docs"]
 exclude = ["docs/assets"]

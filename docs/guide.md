@@ -241,7 +241,7 @@ make install     # Python venv (the versions CI pins in constraints.txt) + web d
 make check       # lint, types, tests
 make serve       # backend; `make web-dev` for the Vite dev server
 make e2e         # Playwright over the demo and the real app with a fake Claude (installs Playwright's Chromium first: make browser)
-make capture     # these screenshots, the tour video and the GIF (needs ffmpeg)
+make capture     # these screenshots, the tour video, its WebP and the GIF (needs ffmpeg)
 ```
 
 `make check` runs one check after another: lint and types, the backend's tests as a backend leg of CI runs them,
