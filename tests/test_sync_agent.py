@@ -742,10 +742,17 @@ async def test_a_folder_that_doesn_t_answer_is_looked_at_less_often_until_it_doe
         assert agent_module.UNREACHABLE_SCAN_S > 5 * agent_module.SCAN_S
 
         monkeypatch.setattr(FakeSession, "scan", answering)
-        await eventually(lambda: agent_of(api).problem is None, within=4 * agent_module.UNREACHABLE_SCAN_S)
+        agent = agent_of(api)
+        # the round that found the folder answering is over, so the next look is the one it set: due within SCAN_S.
+        # Not a count of looks in a window of wall-clock time: a slow runner once gave one look in the 0.5 s that
+        # should have held five, which says nothing about the pace (the clock only moves on after the round set it)
+        await eventually(
+            lambda: agent.problem is None and not agent._lock_now().locked(),
+            within=4 * agent_module.UNREACHABLE_SCAN_S,
+        )
+        assert agent._next_scan <= time.monotonic() + agent_module.SCAN_S, "every SCAN_S again"
         before = looks()
-        await asyncio.sleep(5 * agent_module.SCAN_S)
-        assert looks() >= before + 2, "every SCAN_S again"
+        await eventually(lambda: looks() >= before + 2)  # and it keeps looking
 
 
 async def test_shutdown_saves_and_says_the_computer_was_closed(tmp_path: Path, folder: Path) -> None:
