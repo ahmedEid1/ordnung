@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="431" viewBox="0 0 400 431" role="img" aria-labelledby="pipeline-light-title pipeline-light-desc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif">
+<title id="pipeline-light-title">How Ordnung handles a letter</title>
+<desc id="pipeline-light-desc">How Ordnung handles a letter, in four steps. Your letters: a PDF, a phone photo, an e-mail or a watched folder. Claude reads them (the model), in your own Claude Code with no tools, and answers in JSON; it never computes a date. Ordnung’s code computes (tested, deterministic): it finds each quote on the page and works out each date and its receipt with the rules engine. You decide, in the web app, the CLI or on your phone; Ask is Claude again, on read-only MCP tools, with every value checked before you see it.</desc>
+<rect x="1" y="1" width="398" height="72" rx="10" fill="#ffffff" stroke="#d1d9e0"/>
+<text x="17" y="31" font-size="16" font-weight="600" fill="#1f2328">Your letters</text>
+<text x="17" y="53" font-size="13" fill="#59636e">PDF · phone photo · e-mail · watched folder</text>
+<path d="M33 78V95M28 90.5L33 96L38 90.5" fill="none" stroke="#818b98" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="1" y="101" width="398" height="91" rx="10" fill="#ffffff" stroke="#d1d9e0"/>
+<rect x="275" y="90" width="108" height="22" rx="11" fill="#f6f8fa" stroke="#d1d9e0"/>
+<text x="329" y="105.5" font-size="13" font-weight="600" fill="#59636e" text-anchor="middle">the model</text>
+<text x="17" y="131" font-size="16" font-weight="600" fill="#1f2328">Claude reads them</text>
+<text x="17" y="153" font-size="13" fill="#59636e">In your own Claude Code, with no tools.</text>
+<text x="17" y="172" font-size="13" fill="#59636e">Answers in JSON; never computes a date.</text>
+<path d="M33 197V214M28 209.5L33 215L38 209.5" fill="none" stroke="#818b98" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="1" y="220" width="398" height="91" rx="10" fill="#eef6f4" stroke="#0f6e66" stroke-width="1.5"/>
+<rect x="185" y="209" width="198" height="22" rx="11" fill="#0f6e66"/>
+<text x="284" y="224.5" font-size="13" font-weight="600" fill="#ffffff" text-anchor="middle">tested, deterministic</text>
+<text x="17" y="250" font-size="16" font-weight="600" fill="#1f2328">Ordnung’s code computes</text>
+<text x="17" y="272" font-size="13" fill="#59636e">Finds each quote on the page; works out each</text>
+<text x="17" y="291" font-size="13" fill="#59636e">date and its receipt with the rules engine.</text>
+<path d="M33 316V333M28 328.5L33 334L38 328.5" fill="none" stroke="#818b98" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="1" y="339" width="398" height="91" rx="10" fill="#ffffff" stroke="#d1d9e0"/>
+<text x="17" y="369" font-size="16" font-weight="600" fill="#1f2328">You decide</text>
+<text x="383" y="369" font-size="13" fill="#59636e" text-anchor="end">web app · CLI · phone</text>
+<text x="17" y="391" font-size="13" fill="#59636e">Ask: Claude again, on read-only MCP tools,</text>
+<text x="17" y="410" font-size="13" fill="#59636e">every value checked before you see it.</text>
+</svg>

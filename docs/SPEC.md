@@ -145,8 +145,8 @@ scripts/        generated data: make_sample_life.py (+ samplelife/; the demo's s
                 deadline_check_ablation.py, build_final_facts.py, export_household_facts.py, owner_label_sample.py,
                 prereg_*.py
 evals/          the benchmarks: letters, runner, recordings, results and presenter (evals/README.md#layout)
-docs/           every document, by its reader in docs/README.md; decisions/ (the ADRs), assets/ (the README's pictures
-                and the evaluation's charts)
+docs/           every document, by its reader in docs/README.md; decisions/ (the ADRs), assets/ (the README's pictures,
+                its diagram and the evaluation's charts)
 tests/          pytest; fake_claude.py (the fake claude CLI), fake_tesseract.py, fake_caldav.py, helpers_*.py,
                 e2e_support/
 ```
@@ -2349,17 +2349,23 @@ tsc/eslint/vitest; Playwright tour e2e with axe; commit history in small, meanin
 Three documents, each for its reader; their numeric claims are checked by `tests/test_docs_claims.py`.
 
 **README**, for a first-time user and a hiring manager. It is also the project page on PyPI (`pyproject.toml`,
-`[tool.hatch.metadata.hooks.fancy-pypi-readme]`), so it stays under 250 lines and draws no Mermaid. In this order:
-the pitch (Claude reads, tested code computes); the animation of the golden path (demo.webp, with the GIF for
-browsers without WebP; the first part of the tour video: a letter arrives, what it is, what to do and by when, the
-sentence the date came from and how it was worked out), with links to the online demo and the tour video; the
-problem in one paragraph; what Ordnung does, in a few bullets
-and screenshots; install and run (the online demo, `ordnung demo` with zero tokens, the three commands) and
-*Updating*, each pointing to the guide; the evaluation: the question it answers, the block `python -m evals.present`
-writes (never edited by hand) and why its numbers can be checked; engineering: "the model reads, code computes" (a
-recorded `DateSpec` and its receipt), the trust boundaries, the architecture as a text diagram, and how it is
-tested; privacy; the main limitations; how it was built (Claude Code as pair programmer; correctness via tests,
-legal worked examples, evals); links to the docs; disclaimer.
+`[tool.hatch.metadata.hooks.fancy-pypi-readme]`), so it stays under 250 lines and draws no Mermaid. It reads in two
+parts: what Ordnung is and how to try it, then how it works and how it is measured. In this order: the pitch (Claude
+reads, tested code computes) with one line of links (the online demo, the tour video, Install, Privacy); the
+animation of the golden path (demo.webp, with the GIF for browsers without WebP; the first part of the tour video: a
+letter arrives, what it is, what to do and by when, the sentence the date came from and how it was worked out);
+*The model reads, code computes*: one worked example (the demo's tax assessment, its sentence and the receipt from
+the letter's date to the deadline, each step with its law), with the recorded `DateSpec` and the in-doubt rule
+folded; *Install and run* (the online demo, `ordnung demo` for free, your own letters, then the three commands)
+and *Updating*, each pointing to the guide; *What it does*, in four screenshots, a few one-line points and the two
+phone pictures; *Privacy*, SPEC §1's statement; *Limitations*, the main ones; a line saying the rest is for readers
+who want to check the work; *How it works*: the pipeline drawn as an SVG in light and dark
+(`docs/assets/pipeline-light.svg`, `pipeline-dark.svg`, kept by hand), the trust boundaries (a summary, the table
+folded) and how it is tested (the counts, the details folded); *Evaluation*: the question it answers, the block
+`python -m evals.present` writes (never edited by hand, never folded) and why its numbers can be checked; *How it
+was built* (Claude Code as pair programmer; correctness from outside the model); *Documentation*, one line of links;
+*Disclaimer*, with the licence credits in small print, never folded. A fold (`<details>`) holds only depth a reader
+can do without: PyPI shows every fold closed.
 
 **The guide** (`docs/guide.md`), for someone using Ordnung: a tour in screenshots, install and run (incl.
 `ordnung mcp install` and autostart), updating, the environment variables Ordnung reads, and every limitation.

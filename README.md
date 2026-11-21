@@ -6,81 +6,179 @@
   Claude reads your letters; tested code works out each deadline and shows the law behind it. Ordnung
   reminds you before things matter, drafts the replies and runs on your own computer.</p>
 
-<p align="center"><a href="https://github.com/ahmedEid1/ordnung/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ahmedEid1/ordnung/actions/workflows/ci.yml/badge.svg?branch=main&amp;event=push"></a> <img alt="Python 3.11–3.14" src="https://img.shields.io/badge/python-3.11%E2%80%933.14-3776ab">
-  <img alt="Demo costs zero tokens" src="https://img.shields.io/badge/demo-zero%20tokens-8a6d3b"> <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-lightgrey"></a></p>
+<p align="center"><a href="https://ahmedeid1.github.io/ordnung/"><b>Open the online demo</b></a> (nothing to install) · <a href="docs/assets/demo.mp4">Watch the whole tour (MP4, 1 min 28 s)</a> · <a href="#install-and-run">Install</a> · <a href="#privacy">Privacy</a></p>
 
 <p align="center"><picture><source type="image/webp" srcset="docs/assets/demo.webp"><img src="docs/assets/demo.gif" width="880" alt="Ordnung demo: a photographed tax assessment arrives as new mail and is read; Ordnung says what it is, what to do and by when, shows the sentence the objection deadline came from, and each legal step behind the date"></picture><br>
-  <a href="https://ahmedeid1.github.io/ordnung/"><b>Open the online demo</b></a> (nothing to install) · <a href="docs/assets/demo.mp4">Watch the whole tour (MP4, 1 min 28 s)</a><br>
   <sub>The court order in the video (not in the animation) is a sample letter written for the online demo, not one Claude read; its date and advice card come from the rules engine.</sub></p>
 
-<p align="center"><a href="#what-it-does">What it does</a> · <a href="#install-and-run">Install</a> · <a href="#evaluation">Evaluation</a> · <a href="#engineering">Engineering</a> · <a href="#documentation">Docs</a> · <a href="docs/README.md">Every document, by reader</a></p>
+## The model reads, code computes
 
-Everyone living in Germany gets letters with deadlines: tax assessments, fines, rent increases, contract changes,
-reminders, court orders. The deadline is rarely a date on the page. It is *"one month after this notice is announced
-to you"*, and working it out means knowing that a posted notice counts as delivered on the fourth day (since 2025),
-that tax law moves that day off a weekend but administrative law does not, and that holidays depend on the federal
-state. **Ordnung** lets Claude read the letter and say what it says; deterministic, tested code turns that into the
-date, shows its working with citations, and keeps a ledger you can ask about. Nothing is ever paid, sent or cancelled
-for you. Whether that beats asking the model is [measured](#evaluation), and every number replays with no API key.
+A German letter rarely gives its deadline as a date. It says *"one month after this notice is announced to you"*,
+and the law decides the day.
 
-## What it does
+> *„Die Frist für die Einlegung des Einspruchs beträgt einen Monat.“*<br>
+> <sub>A photographed tax assessment in the demo, dated Tue 15 Sep 2026: one month to object.</sub>
 
-- **Reads your letters** from a PDF, a phone photo or a saved e-mail (`.eml`, or Outlook's `.msg`): what each one is,
-  what to do, by when and what happens if you ignore it, each fact linked to its sentence and explained in your
-  language (English, German, Arabic, Turkish, Ukrainian, Spanish or French).
-- **Computes the real deadline** with a tested rules engine (deemed delivery, §§ 187–193 BGB, federal-state holidays,
-  notice periods) and shows every step with its legal source under *Why this date?*.
-- **Reminds you in time:** Today's three things that matter this week, a ten-minute weekly review, and a calendar file
-  with alarms (or CalDAV sync) and a morning notification that work while the browser is closed.
-- **Helps you act, never acts for you:** bilingual drafts and DIN 5008 PDFs whose legally operative sentences come from
-  fixed templates, proof of sending, and a GiroCode your banking app scans.
-- **Answers with citations, and resists tricks:** *Ask* checks every date and amount against the record it cites;
-  scam signs flag a letter; text hidden in a PDF or written to steer an AI is shown, never followed.
-- **Goes where you are**, once you turn it on: your phone over your home Wi-Fi, and your other computer through a
-  folder your own sync tool keeps in step, with only encrypted files in it.
-- **And more** in [the guide's tour](docs/guide.md#a-tour): Timeline, Contracts, My numbers, your household and backups.
+One month from when? Claude quotes the sentence; the rules engine works out the date, step by step:
 
-<table><tr>
-<td width="50%"><img src="docs/assets/today.png" alt="Today page"><br><b>Today.</b> A secretary's note, the three things that matter this week with countdowns, and Ideas with reasons.</td>
-<td width="50%"><img src="docs/assets/document.png" alt="A photographed tax assessment with the objection sentence highlighted"><br><b>Every letter.</b> What to do and by when, each fact linked to the sentence it came from. This one was read from a phone photo.</td>
-</tr><tr>
-<td><img src="docs/assets/ask.png" alt="Ask with a checked answer"><br><b>Ask.</b> Answers about your letters, every date and amount checked against the record it cites.</td>
-<td><img src="docs/assets/scam.png" alt="A scam letter flagged"><br><b>Scam and injection defence.</b> Scam signs such as pressure or a payee account abroad flag a letter. Its dates still show on its page and in the warning, but stay off Today, the calendar and the notification until you choose <i>I checked — it's genuine</i>; it never gets a GiroCode.</td>
-</tr></table>
+| Date | Step, and its law |
+|---|---|
+| Tue&nbsp;15&nbsp;Sep | Posting day: the letter's date (the real posting day can only be later)<br><sub>§ 122 (2) AO</sub> |
+| Sat&nbsp;19&nbsp;Sep | Counts as delivered on the 4th day after posting<br><sub>§ 122 (2) no. 1 AO, four days since 2025 (PostModG)</sub> |
+| Mon&nbsp;21&nbsp;Sep | The 19th is a Saturday, so delivery moves to the next working day<br><sub>BFH IX R 68/98, § 108 (3) AO</sub> |
+| **Wed&nbsp;21&nbsp;Oct** | **One month later: the deadline**<br><sub>§§ 187, 188 BGB</sub> |
+| Thu&nbsp;15&nbsp;Oct | Send by: four working days earlier, for the post<br><sub>safety margin</sub> |
 
-<p align="center"><img src="docs/assets/mobile.png" width="30%" alt="Today on a phone"> &nbsp; <img src="docs/assets/mobile-dark.png" width="30%" alt="The tax assessment on a phone in dark mode"><br><b>Light and dark.</b> Both themes have no serious or critical violations of axe 4.14's WCAG 2.2 AA rules, with one exemption (the page image's highlight buttons, under WCAG 2.5.8's "equivalent" exception), and every page works from 320 px wide up; CI checks both.</p>
+From a city office the same sentence gives **Mon 19 Oct**: § 41 VwVfG does not move delivery off a Saturday.
+
+Ordnung reminds you in time. It never pays, sends or cancels anything for you.
+
+<details>
+<summary>What Claude returned, and what the engine does when in doubt</summary>
+
+Part of Claude's recorded answer for this letter. Code finds the quote in the letter's text (here, Claude's
+transcript of the photo) before the engine turns the reading into the date above:
+
+```json
+{ "kind": "deadline",
+  "title": "Decide whether to file an objection (Einspruch) against the assessment",
+  "date": { "type": "relative", "anchor": "deemed_delivery", "amount": 1,
+    "unit": "months", "delivery_rule": "de_admin_post",
+    "nature": "objection", "shift_rule": "auto",
+    "text": "Die Frist für die Einlegung des Einspruchs beträgt einen Monat." },
+  "quote": "Die Frist für die Einlegung des Einspruchs beträgt einen Monat." }
+```
+
+The engine also covers social-law delivery, consumer contracts, rent, employment, fines and the rare letters
+that are costly to miss, such as a court payment order or a dismissal; in doubt it picks the earliest plausible
+date, except where a fact only you know decides (when a matter in Baden-Württemberg, Bavaria or
+Mecklenburg-Vorpommern began): a warning names the earlier date.
+[docs/deadline-rules.md](docs/deadline-rules.md) gives every rule with its source.
+
+</details>
 
 ## Install and run
 
-**Nothing to install:** the [online demo](https://ahmedeid1.github.io/ordnung/) runs the same interface in your browser
-on hand-written sample letters, with no server behind it; it keeps nothing once you reload.
+- **In your browser:** the [online demo](https://ahmedeid1.github.io/ordnung/) runs the same interface on
+  hand-written sample letters, with no server behind it; it keeps nothing once you reload.
+- **On your computer, free:** `ordnung demo` opens a sample life in fictional Musterstadt: 25 letters, with
+  three unopened letters in *New mail*. Its model answers are recordings of real runs: no Claude account needed.
+- **Your own letters:** Claude Code 2.1.0 or newer, with a paid Claude plan or an Anthropic Console account
+  ([the guide](docs/guide.md#install-and-run) sets it up).
 
-**On your computer, with zero tokens:** `ordnung demo` opens the sample life of *Sam Rivera*, an international
-student in the fictional town of Musterstadt: 25 letters, contracts, a residence permit, a scam, and
-three unopened letters in the *New mail* tray. Every model answer in it is a recording of a real Claude run, so it
-needs no Claude account. You need Git, Python 3.11 or newer, and [uv](https://docs.astral.sh/uv/) or pipx:
+You need Git, Python 3.11 or newer, and [uv](https://docs.astral.sh/uv/) or pipx:
 
 ```bash
-uv tool install git+https://github.com/ahmedEid1/ordnung # or: pipx install git+https://github.com/ahmedEid1/ordnung
-ordnung demo                                             # opens http://127.0.0.1:8766 with a guided tour
-ordnung serve                                            # your own letters, on http://127.0.0.1:8765
+uv tool install git+https://github.com/ahmedEid1/ordnung
+# or: pipx install git+https://github.com/ahmedEid1/ordnung
+ordnung demo     # opens http://127.0.0.1:8766 with a guided tour
+ordnung serve    # your own letters, on http://127.0.0.1:8765
 ```
-
-Reading your own letters needs Claude Code 2.1.0 or newer, signed in with a paid Claude plan or an Anthropic Console
-account. [The guide](docs/guide.md#install-and-run) sets it up and covers words in photos, the app-menu shortcut, your
-phone, your other computer, Claude Desktop and [the environment variables](docs/guide.md#environment-variables).
 
 ### Updating
 
-`ordnung --version` shows yours, [CHANGELOG.md](CHANGELOG.md) what changed and [the guide](docs/guide.md#updating) how to update, and how to go back.
+`ordnung --version` shows yours. How to update or go back: [the guide](docs/guide.md#updating); what changed: [CHANGELOG.md](CHANGELOG.md).
+
+## What it does
+
+<table><tr>
+<td width="50%" valign="top"><img src="docs/assets/document.png" alt="A photographed tax assessment with the objection sentence highlighted"><br><b>Every letter.</b> What to do and by when.</td>
+<td width="50%" valign="top"><img src="docs/assets/today.png" alt="The Today page: a secretary's note on what is due, and the three things that matter this week"><br><b>Today.</b> What matters this week.</td>
+</tr><tr>
+<td valign="top"><img src="docs/assets/pay.png" alt="A heating cost back payment with its GiroCode, ready to scan with a banking app"><br><b>Pay by scan.</b> A GiroCode pre-fills a transfer you confirm in your banking app.</td>
+<td valign="top"><img src="docs/assets/scam.png" alt="A letter demanding payment within 48 hours, flagged as a likely scam: don't pay, check with the real sender first"><br><b>A scam, flagged.</b> Its dates still show on its page and in the warning, but stay off Today, the calendar and the notification until you choose <i>I checked — it's genuine</i>; it never gets a GiroCode.</td>
+</tr></table>
+
+- **Answers your questions:** *Ask* checks every date and amount against the record it cites before you see it.
+- **Helps you act, never acts for you:** draft replies, letters in the German layout (DIN 5008), proof of sending.
+- **Goes where you are, once you turn it on:** your phone over your home Wi-Fi, your other computer through your
+  own sync folder, with only encrypted files in it.
+
+<p align="center"><img src="docs/assets/mobile.png" width="120" alt="Today on a phone"> &nbsp; <img src="docs/assets/mobile-dark.png" width="120" alt="The tax assessment on a phone in dark mode"><br><sub><b>Light and dark.</b> Both themes have no serious or critical violations of axe 4.14's WCAG 2.2 AA rules, with one exemption (the page image's highlight buttons, under WCAG 2.5.8's "equivalent" exception). <a href="docs/guide.md#a-tour">The tour</a> shows more.</sub></p>
+
+## Privacy
+
+**Your files and your database stay on this computer. When Claude reads a letter, that letter's text or image is
+sent to Anthropic through your own Claude account** (Claude Code, the Claude program you installed and signed in
+to). Ordnung has no server, no telemetry and never sees your credentials. Phone access, calendar sync and sync
+between your computers stay off until you turn them on. [docs/privacy.md](docs/privacy.md) says what each feature
+sends, and [what to do](docs/privacy.md#if-your-computer-is-lost-or-stolen) if your computer is lost or stolen.
+
+## Limitations
+
+- **Built for Germany:** letters from other countries are read and filed, but their dates are taken as written.
+- **Not legal advice:** the rules were researched against statutes and case law and checked against worked
+  examples, but not reviewed by a lawyer. Court deadlines always come with a "get advice" warning.
+- **English interface:** the app's own text is in English; what Claude writes follows the language you choose
+  (English, German, Arabic, Turkish, Ukrainian, Spanish or French).
+- **Synthetic benchmark letters:** real post is messier.
+- **Phone access and hand-off sync:** tested in emulation and with a simulated sync tool, not yet on physical
+  phones or two physical computers.
+- **More:** [every limitation](docs/guide.md#limitations) and [the evaluation's limitations](docs/evals.md#14-limitations).
+
+*That is all you need to start; the rest is for readers who want to check the work.*
+
+## How it works
+
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/pipeline-dark.svg"><img src="docs/assets/pipeline-light.svg" width="400" alt="How Ordnung handles a letter, in four steps. Your letters: a PDF, a phone photo, an e-mail or a watched folder. Claude reads them (the model), in your own Claude Code with no tools, and answers in JSON; it never computes a date. Ordnung’s code computes (tested, deterministic): it finds each quote on the page and works out each date and its receipt with the rules engine. You decide, in the web app, the CLI or on your phone; Ask is Claude again, on read-only MCP tools, with every value checked before you see it."></picture></p>
+
+Built with Python, FastAPI and SQLite, and a React and TypeScript web app. Ordnung handles no API key: the model
+runs in your own Claude Code ([ADR 0001](docs/decisions/0001-claude-cli-as-the-model-runtime.md)). Every part:
+[docs/architecture.md](docs/architecture.md).
+
+### Trust boundaries
+
+A letter is untrusted data, read with no tools. The model never computes a date, Ask only reads, and Ordnung never
+pays, sends or cancels anything.
+
+<details>
+<summary>All seven boundaries and what guards each</summary>
+
+| Boundary | What guards it |
+|---|---|
+| Letter → Claude | Wrapped as untrusted data, read with no tools, the answer held to a JSON schema; text hidden in a PDF is shown, never followed. |
+| Claude → your records | A fact is `verified` only when its sentence is on the page with the same digits; a date without its sentence is marked *Please check* ([ADR 0003](docs/decisions/0003-grounding-levels.md)). |
+| Your records → Ask | Read-only MCP tools on a read-only connection, no date calculator; every date, time or amount must cite a record that holds it, checked before you see it ([ADR 0008](docs/decisions/0008-two-channels-and-claim-level-citations.md), [ADR 0011](docs/decisions/0011-ask-keeps-to-the-ledger.md)). |
+| Ordnung → the world | A GiroCode only pre-fills a transfer you confirm in your banking app; legally operative sentences come from fixed templates ([ADR 0006](docs/decisions/0006-read-only-agent-and-humble-automation.md), [ADR 0012](docs/decisions/0012-girocode-only-for-grounded-transfers.md)). Calendar sync sends dates, times and alarms, with no letter's title, name or amount unless you choose *With details*; hand-off sync writes only encrypted files to your sync folder. |
+| Your computer → Anthropic | Through your own Claude Code: a letter's text or page images, and what Ask and the other writing features need ([what each sends](docs/privacy.md#what-is-sent-to-claude-per-feature)). |
+| Browser → Ordnung on your computer | `127.0.0.1` only, a one-time sign-in link and a session cookie, Fetch-Metadata and Origin checks, a strict CSP. |
+| Phone → Ordnung (opt-in) | Adds a second listener: HTTPS on one home-network address, answering only phones you paired with a one-time code (anything else gets only the pairing page), and never their requests for settings, backups or deletion ([ADR 0017](docs/decisions/0017-phone-access-over-the-home-network.md)). |
+
+</details>
+
+### Tested
+
+<a href="https://github.com/ahmedEid1/ordnung/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ahmedEid1/ordnung/actions/workflows/ci.yml/badge.svg?branch=main&amp;event=push"></a> <img alt="Python 3.11–3.14" src="https://img.shields.io/badge/python-3.11%E2%80%933.14-3776ab"><br>
+**6,000+ backend tests**, **2,200+ Vitest tests** and **450+ Playwright tests**; the rules engine has 100 % line and
+branch coverage, enforced in CI.
+
+<details>
+<summary>What the tests cover, and every CI job</summary>
+
+- **The rules engine:** Hypothesis property tests, and `mypy` strict on it, as on the whole package and the
+  benchmark code.
+- **Fakes, never the model:** a fake `claude` in the backend tests and in Playwright's real-app project; Playwright
+  also runs over the demo, with axe in light and dark mode; Vitest covers the web app's units.
+- **A typed API contract:** `make openapi` writes the FastAPI schema and the web app's types; a test fails when
+  either is stale, and Vitest checks every API call and mock response against the schema.
+- **MCP and tracing:** the deadline engine is an MCP server of its own (`ordnung mcp install`); `ordnung trace
+  --otel` exports how a letter was read as OpenTelemetry, without letter text or names.
+- **CI on every pull request:** ruff, mypy, ESLint and `tsc`; the backend tests on Python 3.11, 3.12, 3.13 and 3.14;
+  Vitest and Playwright; the wheel installed and run outside the checkout; a dependency audit.
+- **And on every pull request:** the web build checked against its sources; both benchmarks replayed with no model
+  call; `ordnung demo --check`, which rebuilds the demo twice and requires identical contents
+  ([ADR 0004](docs/decisions/0004-replay-fixtures-and-deterministic-ids.md)).
+
+</details>
 
 ## Evaluation
 
-Is it better to let code do the date arithmetic than to ask the model? Ordnung is measured against the same pinned
-model run three other ways: alone (*LLM only*), with the rules pasted in (*LLM + rules text*), and as an agent using
-Ordnung's engine as a tool (*LLM + rules tool*). A deadline is right only on its exact date, harmful if late or
-missed. Every comparison is paired: a sign-flip test over letter clusters with Holm within each family and a
-bootstrap interval, a non-inferiority bound against the agent, and McNemar's mid-p for how steady the dates are.
+**Does letting code do the date arithmetic beat asking the model?** Ordnung is measured against the same pinned
+model alone (*LLM only*), with the rules pasted in (*LLM + rules text*) and as an agent using Ordnung's engine as a
+tool (*LLM + rules tool*). A deadline is right only on its exact date, harmful if late or missed.
+
+Paired tests: a sign-flip test over letter clusters with Holm within each family and a bootstrap interval, a
+non-inferiority bound against the agent, and McNemar's mid-p for how steady the dates are.
 
 <!-- evals:begin: generated by `python -m evals.present`; do not edit -->
 **Final run, pre-registered.** On 112 deadlines in 126 synthetic letters written after the code freeze, each read 3
@@ -108,139 +206,41 @@ The letters and their labels were written and audited by a Claude model, run thr
 **[Full evaluation report →](https://ahmedeid1.github.io/ordnung/evals/)** every pre-registered sentence, decided or not, with the statistics, baselines, safety, failures and cost · [as Markdown](docs/evals.md) · [reproduce it with no API key](docs/evals.md#15-reproduce)
 <!-- evals:end -->
 
-Why these numbers can be checked:
+### Why these numbers can be checked
 
 - **Held out (written after the results).** The final run's letters were written after the code freeze by agents
-  that saw neither the reading code, the prompts nor any result; nothing was tuned on them. The block counts the
-  letters of new kinds end to end but does not give their benchmark result ([§ 6.1](docs/evals.md#61-the-final-run)), nor why the deadlines it does not put down to a scam got no reminder ([§ 13](docs/evals.md#13-from-a-letter-to-a-reminder)).
-- **Generated, never typed.** `python -m evals.present` writes the block above from the results files. CI fails when
-  one character of it differs, and a test fails when this README types a results file's rate or "k of n" outside it.
-- **Replayable at zero tokens.** `make eval-reproduce` replays every published number from the recorded answers, with
-  no API key, and checks each against a hashed index ([`INDEX.json`](evals/results/INDEX.json)); where today's code
-  gives another value, the index pins it and names the change. CI runs it on every pull request.
-- **Baselines, stated plainly.** One is an agent with Ordnung's own engine as a tool, which decides when to call it
-  and whether to trust it. Ordnung got more tuning ([§ 4](docs/evals.md#4-conditions-and-baselines)), and the report
-  turns each of Ordnung's code checks, and Ask's answer check, off in turn ([§ 8](docs/evals.md#8-ablations)).
+  that saw neither the reading code, the prompts nor any result; nothing was tuned on them.
+- **Not in the block (written after the results).** The block counts the letters of new kinds end to end but does not give their benchmark result ([§ 6.1](docs/evals.md#61-the-final-run)), nor why the deadlines it does not put down to a scam got no reminder ([§ 13](docs/evals.md#13-from-a-letter-to-a-reminder)).
+- **Generated, never typed.** `python -m evals.present` writes the block above from the results files; CI fails when
+  one character differs.
+- **Replayable at zero tokens.** `make eval-reproduce` replays every published number with no API key, on every pull
+  request; where today's code gives another value, the [index](evals/results/INDEX.json) pins it and names the change.
+- **Baselines, stated plainly.** The agent decides when to call Ordnung's engine and whether to trust it; Ordnung got
+  more tuning ([§ 4](docs/evals.md#4-conditions-and-baselines)); [§ 8](docs/evals.md#8-ablations) measures Ordnung
+  with each of its checks switched off in turn.
 - **Pre-registered (written after the results).** Its tests and rules were fixed before recording, in
   [#54](https://github.com/ahmedEid1/ordnung/issues/54). Recorded on real 17 Nov 2026 with the clock 7 days ahead
   (K29): recording and analysis dates are the day the model was told; deviation times, commits and PRs are real.
 
-## Engineering
-
-### The model reads, code computes
-
-For the photographed tax assessment above, Claude returns only what the letter says. Part of its recorded answer:
-
-```json
-{ "kind": "deadline",
-  "title": "Decide whether to file an objection (Einspruch) against the assessment",
-  "date": { "type": "relative", "anchor": "deemed_delivery", "amount": 1, "unit": "months",
-            "delivery_rule": "de_admin_post", "nature": "objection", "shift_rule": "auto",
-            "text": "Die Frist für die Einlegung des Einspruchs beträgt einen Monat." },
-  "quote": "Die Frist für die Einlegung des Einspruchs beträgt einen Monat." }
-```
-
-Code finds the quote in the letter's text (here, Claude's transcript of the photo), then the rules
-engine turns the reading into a date and a receipt, shown in the app under *Why this date?*:
-
-| Step | Date | Rule |
-|---|---|---|
-| Posting day: the letter's date (the real posting day can only be later) | Tue 15 Sep 2026 | § 122 (2) AO |
-| Counts as delivered on the 4th day after posting | Sat 19 Sep | § 122 (2) no. 1 AO, four days since 2025 (PostModG) |
-| A Saturday, so delivery moves to the next working day | Mon 21 Sep | BFH IX R 68/98, § 108 (3) AO |
-| One month later | **Wed 21 Oct 2026** | §§ 187, 188 BGB |
-| Post it by, allowing four working days for the letter to arrive | Thu 15 Oct | safety margin |
-
-The same sentence from a city office gives Mon 19 Oct: under § 41 VwVfG the deemed delivery day does not move off a
-Saturday. The engine also covers social-law delivery, consumer contracts, rent, employment, fines and the rare letters
-that are costly to miss, such as a court payment order or a dismissal; in doubt it picks the earliest plausible date,
-except where a fact only you know decides (when a matter in Baden-Württemberg, Bavaria or Mecklenburg-Vorpommern began):
-a warning names the earlier date. [docs/deadline-rules.md](docs/deadline-rules.md) gives every rule with its source.
-
-### Trust boundaries
-
-| Boundary | What guards it |
-|---|---|
-| Letter → Claude | The letter is wrapped as untrusted data, the reading runs with no tools, and its answer must fit a JSON schema. Text hidden in a PDF is detected and shown, never followed. |
-| Claude → your records | A fact is `verified` only when its sentence is on the page with the same digits, and a date whose sentence isn't there is marked *Please check* ([ADR 0003](docs/decisions/0003-grounding-levels.md)). The model never computes a date. |
-| Your records → Ask | Ask reads only through read-only MCP tools on a read-only connection, and has no date calculator. Every date, time or amount in an answer must cite a record that holds it, and that check runs before you see the answer ([ADR 0008](docs/decisions/0008-two-channels-and-claim-level-citations.md), [ADR 0011](docs/decisions/0011-ask-keeps-to-the-ledger.md)). |
-| Ordnung → the world | It never pays, sends or cancels anything. A GiroCode only pre-fills a transfer you confirm in your banking app, and the legally operative sentences in letters come from fixed templates ([ADR 0006](docs/decisions/0006-read-only-agent-and-humble-automation.md), [ADR 0012](docs/decisions/0012-girocode-only-for-grounded-transfers.md)). Calendar sync, once you connect a calendar, sends your provider dates, times and alarms, with no letter's title, name or amount unless you choose *With details*; hand-off sync writes only encrypted files to your sync folder. |
-| Your computer → Anthropic | Through your own Claude Code: a letter's text or page images when it is read, and what Ask, *Weekly Ideas*, the secretary's note and *Letters* each need ([what each sends](docs/privacy.md#what-is-sent-to-claude-per-feature)). |
-| Browser → Ordnung on your computer | `127.0.0.1` only, a one-time sign-in link and a session cookie, Fetch-Metadata and Origin checks, a strict CSP. |
-| Phone → Ordnung (opt-in) | Phone access adds a second listener: HTTPS on one home-network address, answering only phones you paired with a one-time code (anything else gets only the pairing page), and never their requests for settings, backups or deletion ([ADR 0017](docs/decisions/0017-phone-access-over-the-home-network.md)). |
-
-### Architecture
-
-```text
-your letters      ──▶  Claude, through your own   ──▶  Ordnung's code            ──▶  you
-PDF · photo ·          Claude Code: reads each         finds each quote on the        web app · CLI · phone ·
-e-mail · folder        letter with no tools and        page, computes each date       Ask: Claude again, on read-only
-                       answers in JSON                 with the rules engine and      MCP tools, every value checked
-                                                       files it in SQLite             before you see it
-```
-
-Python 3.11+ with FastAPI, Typer, Pydantic and SQLite (WAL, FTS5 full-text search); a React 19, TypeScript, Vite,
-Tailwind CSS v4 and TanStack Query web app. Ordnung handles no API key: the model runtime is your own Claude Code in
-headless mode, stream-json in and out with JSON-schema output ([ADR 0001](docs/decisions/0001-claude-cli-as-the-model-runtime.md)).
-
-### Tested
-
-- **6,000+ backend tests** (Hypothesis property tests of the rules engine, a fake `claude`, API contracts),
-  **2,200+ Vitest tests** and **450+ Playwright tests** (demo and real app, fake Claude, axe in light and dark mode).
-- **The rules engine** has 100 % line and branch coverage, enforced in CI, and `mypy` strict on it, as on the whole
-  package and the benchmark code.
-- **A typed API contract:** `make openapi` writes the FastAPI schema and the web app's TypeScript types; a backend test
-  fails when either is stale, and Vitest checks every API call and mock response against the schema, strictly.
-- **Agents, MCP and tracing:** Ask is an agent over read-only ledger tools; the deadline engine is an MCP server of
-  its own (`ordnung mcp install` sets it up for Claude Desktop or Claude Code); `ordnung trace --otel` exports how a
-  letter was read as OpenTelemetry with the GenAI conventions, without letter text or names.
-- **CI on every pull request:** ruff, mypy, ESLint and `tsc`; the backend tests on Python 3.11, 3.12, 3.13 and 3.14;
-  Vitest and Playwright; the wheel installed and run outside the checkout; a dependency audit; the web build checked
-  against its sources; both benchmarks replayed with no model call; and `ordnung demo --check`, which rebuilds the
-  demo twice and requires identical contents ([ADR 0004](docs/decisions/0004-replay-fixtures-and-deterministic-ids.md)).
-
-## Privacy
-
-Your files and your database stay on this computer. When Claude reads a letter, that letter's text or image is sent
-to Anthropic through your own Claude account (Claude Code, the Claude program you installed and signed in to).
-Ordnung has no server, no telemetry and never sees your credentials. Phone access, calendar sync and sync between your
-computers stay off until you turn them on. [docs/privacy.md](docs/privacy.md) says what each feature sends, and
-[what to do](docs/privacy.md#if-your-computer-is-lost-or-stolen) if your computer is lost or stolen.
-
-## Limitations
-
-- Built for Germany: letters from other countries are read and filed, but their dates are taken as written.
-- Not legal advice: the rules were researched against statutes and case law and checked against worked examples, but
-  not reviewed by a lawyer. Court deadlines always come with a "get advice" warning.
-- The app's own text is in English; what Claude writes for you follows the language you choose.
-- The benchmark letters are synthetic and real post is messier; phone access and hand-off sync were tested in
-  emulation and with a simulated sync tool, not yet on physical phones or two physical computers.
-- **And more** in [the guide](docs/guide.md#limitations), which lists every limitation; the evaluation report has [its own](docs/evals.md#14-limitations).
-
 ## How it was built
 
-Ahmed Hobeishy built Ordnung in Claude Code sessions, with Claude Code as a pair programmer that ran parallel agents
-for research, implementation and review. Correctness came from outside the model: the law was researched against
-statutes, court decisions and administrative guidance; the engine is unit- and property-tested with full branch
-coverage; the reading was measured on a held-out benchmark against baselines; and every model answer the demo shows is
-a recording of a real run. Where reviewer agents kept finding new cases in a heuristic, it was replaced by a short
-written policy ([ADR 0007](docs/decisions/0007-short-written-policies-over-growing-heuristics.md)).
+Ahmed Hobeishy built it with Claude Code as a pair programmer, with parallel agents for research, implementation
+and review. Correctness came from outside the model: researched law and tests; a held-out benchmark measured the reading.
 
 ## Documentation
 
-- **Using it:** [the guide](docs/guide.md) ([a tour](docs/guide.md#a-tour), [install and run](docs/guide.md#install-and-run), [updating](docs/guide.md#updating), [environment variables](docs/guide.md#environment-variables), [limitations](docs/guide.md#limitations)) and [privacy](docs/privacy.md)
-- **How it works:** [architecture](docs/architecture.md), [deadline rules](docs/deadline-rules.md), [design decisions](docs/decisions/README.md), [the specification](docs/SPEC.md)
-- **The evaluation:** [the report](docs/evals.md), [the Ask benchmark](docs/evals-ask.md), [the benchmark code](evals/README.md), [the pre-registration of the final run](evals/preregistration/final-0.4.0.md)
-- **Working on it:** [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), [CHANGELOG.md](CHANGELOG.md)
+[Guide](docs/guide.md) · [Privacy](docs/privacy.md) · [Architecture](docs/architecture.md) ·
+[Deadline rules](docs/deadline-rules.md) · [Decisions](docs/decisions/README.md) · [Evaluation](docs/evals.md) ·
+[Contributing](CONTRIBUTING.md) · **[All documents](docs/README.md)**
 
 ## Disclaimer
 
-Ordnung is not a law firm and gives no legal advice. Deadlines it computes are estimates with the reasoning shown so
-you can check them. All organisations, people and letters in the demo are fictional and marked SPECIMEN.
+Ordnung is not a law firm and gives no legal advice: its deadlines are estimates, with the reasoning shown so you
+can check them. The demo's organisations, people and letters are fictional and marked SPECIMEN.
 
-MIT licensed. See [LICENSE](LICENSE). Postcode data © [GeoNames](https://www.geonames.org/),
+<sub>MIT licensed ([LICENSE](LICENSE)). Postcode data © [GeoNames](https://www.geonames.org/),
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), reduced to the states of each postcode
 ([`LICENSE-GeoNames.txt`](src/ordnung/rules/data/LICENSE-GeoNames.txt)). The web app bundles open-source packages and
 the Inter and Fraunces fonts under their own licences (MIT, ISC, BSD-3-Clause and the SIL Open Font License 1.1);
 their notices ship with it in [`THIRD-PARTY-NOTICES.txt`](src/ordnung/web/dist/THIRD-PARTY-NOTICES.txt), written when
-the web app is built. The Python packages Ordnung runs on are not bundled: pip installs each with its own licence.
+the web app is built. The Python packages Ordnung runs on are not bundled: pip installs each with its own licence.</sub>

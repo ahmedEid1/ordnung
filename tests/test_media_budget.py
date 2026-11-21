@@ -98,8 +98,12 @@ EVAL_CHARTS = eval_charts()
 EVAL_CHART_BYTES = 40_000
 #: what a path of the capturing computer starts with, in any file's bytes
 PATH_MARKS = (b"/home/", b"/Users/", b"/root/", b"/tmp/", b"\\Users\\")
-#: everything else ``docs/assets`` holds: the README's video, its WebP and GIF, and the logo
-OTHER_MEDIA = frozenset({"demo.webp", "demo.gif", "demo.mp4", "logo.svg"})
+#: README's drawn diagram of how a letter is handled, light and dark: two SVG files kept by hand (no script writes
+#: them; tests/test_readme.py keeps their words the same), each about 3.2 KB
+PIPELINE_SVGS = frozenset({"pipeline-light.svg", "pipeline-dark.svg"})
+PIPELINE_SVG_BYTES = 8_000
+#: everything else ``docs/assets`` holds: the README's video, its WebP and GIF, the logo and the diagram
+OTHER_MEDIA = frozenset({"demo.webp", "demo.gif", "demo.mp4", "logo.svg"}) | PIPELINE_SVGS
 
 _needs_node = pytest.mark.skipif(shutil.which("node") is None, reason="needs node")
 
@@ -944,8 +948,8 @@ def test_the_tour_cuts_the_letter_as_it_was_while_being_read() -> None:
 
 
 def test_docs_assets_holds_the_readme_media_only() -> None:
-    """``docs/assets`` holds README's pictures, the benchmark chart, the video, its WebP and GIF and the logo, and nothing else:
-    no folder (a stopped capture's ``video``) and no recording."""
+    """``docs/assets`` holds README's pictures, the benchmark chart, the video, its WebP and GIF, the logo and the
+    diagram, and nothing else: no folder (a stopped capture's ``video``) and no recording."""
     entries = {path.name: path for path in ASSETS.iterdir()}
     assert not [name for name, path in entries.items() if path.is_dir()]
     assert set(entries) == set(PICTURES) | EVAL_CHARTS | OTHER_MEDIA, set(entries) ^ (
@@ -961,6 +965,8 @@ def test_the_readme_pictures_are_2880_by_1800_within_budget_and_in_their_theme()
     assert found == set(PICTURES), found ^ set(PICTURES)
     for name in EVAL_CHARTS:
         assert (ASSETS / name).stat().st_size <= EVAL_CHART_BYTES, name
+    for name in PIPELINE_SVGS:
+        assert (ASSETS / name).stat().st_size <= PIPELINE_SVG_BYTES, name
     for name, size in PICTURES.items():
         path = ASSETS / name
         assert path.stat().st_size <= PNG_BYTES, name

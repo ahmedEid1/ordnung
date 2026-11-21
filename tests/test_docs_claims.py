@@ -4358,15 +4358,16 @@ def test_contributing_says_when_a_recording_is_needed_and_how_to_record() -> Non
 
 
 def test_the_demo_port_in_the_docs_is_the_one_ordnung_demo_uses() -> None:
-    """README's demo line and SPEC §15's lines for ``serve`` and ``demo`` name ``ordnung demo``'s own port
-    (``server.DEMO_PORT``), so the demo runs beside Ordnung, which keeps ``server.DEFAULT_PORT``."""
+    """README's demo and serve lines and SPEC §15's lines for ``serve`` and ``demo`` name ``ordnung demo``'s own
+    port (``server.DEMO_PORT``), so the demo runs beside Ordnung, which keeps ``server.DEFAULT_PORT``."""
     from ordnung.server import DEFAULT_PORT, DEMO_PORT
 
     assert DEMO_PORT != DEFAULT_PORT
-    assert (
-        f"ordnung demo                                             # opens http://127.0.0.1:{DEMO_PORT} "
-        in _readme()
-    )
+    lines = _readme().splitlines()
+    (demo_line,) = [line for line in lines if line.startswith("ordnung demo ")]
+    assert re.fullmatch(rf"ordnung demo +# opens http://127\.0\.0\.1:{DEMO_PORT} .+", demo_line), demo_line
+    (serve_line,) = [line for line in lines if line.startswith("ordnung serve ")]
+    assert re.fullmatch(rf"ordnung serve +# .*http://127\.0\.0\.1:{DEFAULT_PORT}", serve_line), serve_line
     commands = _spec().split("## 15. CLI", 1)[1].split(" ## ", 1)[0]
     serve = commands.split("- `serve` — ", 1)[1].split(" - `", 1)[0]
     demo = commands.split("- `demo` — ", 1)[1].split(" - `", 1)[0]

@@ -169,6 +169,12 @@ into a folder of your own (`CAPTURE_OUT=$(mktemp -d) make capture`). Commit medi
 last fix round: the pictures only of screens that changed (`scripts/capture.sh --only shots` takes the pictures
 alone, after `make build-web browser`), and the tour's video, WebP and GIF only when the tour changed.
 
+**The README's diagram** (`docs/assets/pipeline-light.svg` and `pipeline-dark.svg`) is two SVG files kept by hand;
+no script writes them. Change both the same way: they differ only in their colours and ids, and
+`tests/test_readme.py` checks that they carry the same words and that the README's alt text is their description.
+They are shown as pictures, so they load no font: leave each line of text room to spare in its box, and keep the
+smallest text at 13 of the 400 units wide, which is about 10 px on a phone.
+
 ## Benchmarks and recorded answers
 
 The model answers the demo and both benchmarks show are recordings of real runs (`evals/recorded/`,
