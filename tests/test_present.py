@@ -1167,8 +1167,8 @@ def test_ci_checks_the_outputs_with_no_model_call() -> None:
 
 
 def test_pypi_shows_the_readme_charts_from_the_pages_copy() -> None:
-    """PyPI's page can't show a picture GitHub's raw files serve as text: the README's charts load from the report
-    page's copy, which the site build writes next to the page."""
+    """On PyPI's page the README's charts load from the report page's copy, which the site build writes next to
+    the page."""
     import tomllib
 
     hook = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["hatch"]["metadata"][
