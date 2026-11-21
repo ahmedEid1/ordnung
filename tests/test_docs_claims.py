@@ -1000,12 +1000,18 @@ def test_the_guide_lists_every_template_letter() -> None:
 
 
 def test_readme_demo_has_25_letters_three_in_new_mail() -> None:
-    """README: the demo is 25 letters, three of them unopened in the New-mail tray."""
+    """README and the guide's Install and run: the demo is 25 letters, three of them unopened in the New-mail
+    tray."""
     documents = json.loads((ROOT / "src/ordnung/demo/samples/manifest.json").read_text(encoding="utf-8"))[
         "documents"
     ]
     assert "Musterstadt: 25 letters" in _readme() and len(documents) == 25
     assert "three unopened letters" in _readme() and sum(1 for d in documents if d.get("tray")) == 3
+    install = _flat(_section(_guide(), "## Install and run"))
+    assert (
+        "Musterstadt: 25 letters, contracts, a residence permit, a scam, and three unopened letters"
+        in install
+    )
 
 
 #: The tour's two pictures that come from the real app, not the demo: the demo never opens itself to a network
@@ -4352,15 +4358,16 @@ def test_contributing_says_when_a_recording_is_needed_and_how_to_record() -> Non
 
 
 def test_the_demo_port_in_the_docs_is_the_one_ordnung_demo_uses() -> None:
-    """README's demo line and SPEC §15's lines for ``serve`` and ``demo`` name ``ordnung demo``'s own port
-    (``server.DEMO_PORT``), so the demo runs beside Ordnung, which keeps ``server.DEFAULT_PORT``."""
+    """README's demo and serve lines and SPEC §15's lines for ``serve`` and ``demo`` name ``ordnung demo``'s own
+    port (``server.DEMO_PORT``), so the demo runs beside Ordnung, which keeps ``server.DEFAULT_PORT``."""
     from ordnung.server import DEFAULT_PORT, DEMO_PORT
 
     assert DEMO_PORT != DEFAULT_PORT
-    assert (
-        f"ordnung demo                                             # opens http://127.0.0.1:{DEMO_PORT} "
-        in _readme()
-    )
+    lines = _readme().splitlines()
+    (demo_line,) = [line for line in lines if line.startswith("ordnung demo ")]
+    assert re.fullmatch(rf"ordnung demo +# opens http://127\.0\.0\.1:{DEMO_PORT} .+", demo_line), demo_line
+    (serve_line,) = [line for line in lines if line.startswith("ordnung serve ")]
+    assert re.fullmatch(rf"ordnung serve +# .*http://127\.0\.0\.1:{DEFAULT_PORT}", serve_line), serve_line
     commands = _spec().split("## 15. CLI", 1)[1].split(" ## ", 1)[0]
     serve = commands.split("- `serve` — ", 1)[1].split(" - `", 1)[0]
     demo = commands.split("- `demo` — ", 1)[1].split(" - `", 1)[0]

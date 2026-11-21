@@ -169,6 +169,12 @@ into a folder of your own (`CAPTURE_OUT=$(mktemp -d) make capture`). Commit medi
 last fix round: the pictures only of screens that changed (`scripts/capture.sh --only shots` takes the pictures
 alone, after `make build-web browser`), and the tour's video, WebP and GIF only when the tour changed.
 
+**The README's diagram** (`docs/assets/pipeline-light.svg` and `pipeline-dark.svg`) is two SVG files kept by hand;
+no script writes them. Change both the same way: they differ only in their colours and ids, and
+`tests/test_readme.py` checks that they carry the same words and that the README's alt text is their description.
+They are shown as pictures, so they load no font: leave each line of text room to spare in its box, and keep the
+smallest text at 13 of the 400 units wide, which is about 10 px on a phone.
+
 ## Benchmarks and recorded answers
 
 The model answers the demo and both benchmarks show are recordings of real runs (`evals/recorded/`,
@@ -179,7 +185,9 @@ replay scores the recorded answers with the checked-out code, so a change to the
 check shows in the numbers at once, and costs nothing.
 
 - The numbers in the README and in `docs/` come from the results files a run or replay writes
-  (`evals/results/`), never typed by hand; tests compare the docs with those files.
+  (`evals/results/`), never typed by hand; tests compare the docs with those files. Outside its generated block
+  the README types no rate or "k of n" of a results file:
+  `tests/test_docs_claims.py::test_the_readme_types_no_benchmark_number_by_hand` fails when it does.
 - Recording new answers calls Claude with your own account and costs tokens. It is done on purpose,
   when a prompt or what is sent to Claude changes, never as part of an ordinary change. If a replay
   misses a recording after your change, say so in the pull request instead of recording.

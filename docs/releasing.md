@@ -182,8 +182,9 @@ above: the workflow's file name and the environment's name must match exactly.
 
 Then the README and the guide (`docs/guide.md`) can install from PyPI, in a commit of its own:
 
-- the install lines become `uv tool install ordnung   # or: pipx install ordnung`: the first of the README's
-  three lines, and those of the guide's *Install and run*;
+- the README's first two code lines become `uv tool install ordnung` and `# or: pipx install ordnung`, and the
+  guide's *Install and run* line becomes `uv tool install ordnung   # or: pipx install ordnung`, with its note on
+  the built web app;
 - the guide's *Updating* says that `pipx upgrade ordnung` (or `uv tool upgrade ordnung`) installs the newest
   release from PyPI, and going back becomes `pipx install --force "ordnung==X.Y.Z"`;
 - the test of *Updating* in `tests/test_regressions_install.py` then expects `pipx upgrade ordnung`.

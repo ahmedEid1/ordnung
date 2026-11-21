@@ -7,6 +7,19 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ### Changed
 
+- **The README is shorter and in the order a visitor asks.** Under the animation it opens with one worked example:
+  a sentence of the demo's tax assessment and the steps from it to the date, each with its law. Then come three
+  ways to try it and the install commands, what it does in four pictures, privacy and the limitations. How it
+  works, how it is tested and the evaluation follow, for readers who want to check the work. The text outside the
+  generated evaluation block went from about 2,540 words to about 1,390 (about 1,960 with every fold open), the
+  page from about ten desktop screens to eight, and the install commands from the fourth screen to the third. The
+  architecture is a drawn diagram (two SVG files, light and dark) instead of a text diagram that GitHub cut off at
+  its column, and no line of the install block runs past the column any more. The seven trust boundaries, what the
+  tests cover and Claude's recorded answer for the example are one click away, behind folds. What left the page is
+  in the documents it links: the guide now says what the demo holds, and CONTRIBUTING.md that the README types no
+  result outside the generated block. That block is unchanged. Tests hold the order of the sections, the width of
+  code lines, the diagram's two files, and that the phone pictures, the recording-clock note and the licence
+  credits stay outside any fold.
 - **The README's pictures and its recording are new.** Every picture has twice the pixels (2880×1800 for the desktop
   window), so it stays sharp on a high-density screen. The animation at the top is now a story of 29 seconds, in two
   columns with the photographed letter beside what Ordnung made of it: a letter arrives, Ordnung says what it is,

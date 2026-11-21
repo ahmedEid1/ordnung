@@ -1,8 +1,9 @@
-"""README.md, which is also the PyPI page: short, no Mermaid, a CI badge that shows ``main``, the Python versions
-CI tests and pyproject.toml allows, an install that says what it needs and names no tag, a scam caption that says
-what SPEC §21 says, a trust table that names the phone's listener, a pre-registration bullet that says what the
-evaluation card says, a lead into the evaluation block that names the pre-registration's paired tests, the privacy
-statement SPEC §1 asks for.
+"""README.md, which is also the PyPI page: short, its sections in their order, no Mermaid but its drawn diagram,
+code lines that fit GitHub's column, nothing folded that a reader must see, a CI badge that shows ``main``, the
+Python versions CI tests and pyproject.toml allows, an install that says what it needs and names no tag, a scam
+caption that says what SPEC §21 says, a trust table that names the phone's listener, a pre-registration bullet that
+says what the evaluation card says, a lead into the evaluation block that names the pre-registration's paired tests,
+the privacy statement SPEC §1 asks for.
 
 Most of the rest of what README states is pinned where the fact lives (``tests/test_docs_claims.py``,
 ``test_present.py``, ``test_release_workflow.py`` and the others that read it).
@@ -43,6 +44,11 @@ def _plain(text: str) -> str:
     return _flat(re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text))
 
 
+def _unbold(text: str) -> str:
+    """``text`` with its Markdown bold (``**words**``) as the words alone; nothing else changes."""
+    return re.sub(r"\*\*(.+?)\*\*", r"\1", text)
+
+
 def _card_row(name: str) -> str:
     """The evaluation card's row ``| name | … |`` in docs/evals.md, flat."""
     card = (ROOT / "docs" / "evals.md").read_text(encoding="utf-8")
@@ -81,12 +87,41 @@ def test_the_readme_has_room_for_the_largest_final_block() -> None:
     )
 
 
-def test_the_readme_draws_no_mermaid() -> None:
+#: README's drawn diagram of how a letter is handled: two SVG files kept by hand, the same but for their colours
+PIPELINE = {theme: ROOT / "docs" / "assets" / f"pipeline-{theme}.svg" for theme in ("light", "dark")}
+#: an SVG's text, title and description: what a reader sees, or hears from a screen reader
+_SVG_WORDS = re.compile(r"<(text|title|desc)\b[^>]*>([^<]*)</\1>")
+
+
+def _without_colours(svg: str) -> str:
+    """An SVG of README's diagram with its colours and its ids' theme taken out."""
+    return re.sub(r"#[0-9a-f]{6}\b", "#", re.sub(r"pipeline-(?:light|dark)-", "pipeline-", svg))
+
+
+def test_the_readme_draws_no_mermaid_but_its_drawn_diagram() -> None:
     """PyPI shows README.md as its project page and draws no Mermaid; the architecture's diagram is in
-    docs/architecture.md, and README draws its own in plain text."""
+    docs/architecture.md. README shows its own, drawn: one ``<picture>`` with the dark file for a dark theme and
+    the light one for everyone else (PyPI shows only the light ``<img>``), an alt text that says what the diagram
+    says (its description, word for word), and the same words in both files, which differ only in colours and ids."""
     readme = _readme()
     assert "```mermaid" not in readme
-    assert "```text\n" in readme
+    pictures = [
+        p for p in re.findall(r"<picture>.*?</picture>", readme, re.S) if "docs/assets/pipeline-" in p
+    ]
+    (picture,) = pictures
+    assert picture.startswith(
+        '<picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/pipeline-dark.svg">'
+        '<img src="docs/assets/pipeline-light.svg" '
+    ), picture
+    svgs = {theme: path.read_text(encoding="utf-8") for theme, path in PIPELINE.items()}
+    words = {theme: [_flat(match[1]) for match in _SVG_WORDS.findall(svg)] for theme, svg in svgs.items()}
+    assert words["light"] == words["dark"] and len(words["light"]) >= 10, words
+    (desc,) = [_flat(match[1]) for match in _SVG_WORDS.findall(svgs["light"]) if match[0] == "desc"]
+    alt = re.search(r'\balt="([^"]*)"', picture)
+    assert alt and _flat(alt.group(1)) == desc
+    assert _without_colours(svgs["light"]) == _without_colours(svgs["dark"])
+    for svg in svgs.values():  # shown as an image: nothing to run, nothing to fetch
+        assert not re.search(r"<(?:script|image|foreignObject|style)\b|@import|href=", svg)
 
 
 def test_the_readme_s_ci_badge_counts_pushes_to_main_only() -> None:
@@ -220,7 +255,7 @@ def test_the_readme_names_the_paired_tests_the_pre_registration_uses() -> None:
 def test_the_readme_s_privacy_says_spec_s_statement_and_what_stays_off() -> None:
     """SPEC §1's honest privacy statement ("use this wording everywhere"), then the features that send anything
     beyond Claude, each off until it is turned on, as docs/privacy.md's table says."""
-    privacy = _plain(_section("Privacy"))
+    privacy = _unbold(_plain(_section("Privacy")))
     spec = _flat((ROOT / "docs" / "SPEC.md").read_text(encoding="utf-8"))
     statement = spec.split(SPEC_PRIVACY, 1)[1].split("*", 1)[0]
     assert privacy.startswith(statement)
@@ -234,3 +269,83 @@ def test_the_readme_s_privacy_says_spec_s_statement_and_what_stays_off() -> None
     ):
         assert row in table, row
     assert "(docs/privacy.md#if-your-computer-is-lost-or-stolen)" in _section("Privacy")
+
+
+#: README's headings in their order: what Ordnung is and how to try it first (the example, install, what it does,
+#: privacy and limits), then how it works and how it is measured for a reader who wants to check the work.
+#: docs/SPEC.md §19 gives the same order; release notes link *Install and run* and *Updating*.
+SECTIONS = [
+    "## The model reads, code computes",
+    "## Install and run",
+    "### Updating",
+    "## What it does",
+    "## Privacy",
+    "## Limitations",
+    "## How it works",
+    "### Trust boundaries",
+    "### Tested",
+    "## Evaluation",
+    "### Why these numbers can be checked",
+    "## How it was built",
+    "## Documentation",
+    "## Disclaimer",
+]
+
+
+def _outside_code(text: str) -> str:
+    """``text`` without its fenced code blocks."""
+    return re.sub(r"^```.*?^```", "", text, flags=re.M | re.S)
+
+
+def test_the_readme_s_sections_keep_their_order() -> None:
+    """The order is the page's design: a visitor reads what Ordnung is, how to try it and whether to trust it with
+    their letters before the engineering and the evaluation."""
+    headings = [line for line in _outside_code(_readme()).splitlines() if re.match(r"#{1,6} ", line)]
+    assert headings == SECTIONS
+    spec = _flat((ROOT / "docs" / "SPEC.md").read_text(encoding="utf-8"))
+    contract = spec.split("## 19. Docs contract", 1)[1].split("**The guide**", 1)[0]
+    names = [heading.lstrip("# ").lower() for heading in SECTIONS if heading.startswith("## ")]
+    found = [contract.lower().find(f"*{name}*") for name in names]
+    assert -1 not in found and found == sorted(found), list(zip(names, found))
+
+
+#: The widest line a README code block may have, in characters. GitHub shows a README in a column 830 px wide on a
+#: desktop (a 1280 px window); a code block has 16 px of padding each side and a monospace font at 13.6 px whose
+#: characters are at most 8.2 px wide (SF Mono, Menlo and Liberation Mono at 0.6 em; Consolas is narrower): 97 fit.
+#: A line beyond that is cut off and scrolls sideways.
+CODE_LINE_MAX = 90
+
+
+def test_no_readme_code_line_is_wider_than_github_s_column() -> None:
+    """Every line of a fenced code block fits GitHub's desktop column, with room to spare for the widest font."""
+    blocks = re.findall(r"^```[a-z]*\n(.*?)^```", _readme(), re.M | re.S)
+    assert blocks
+    wide = [line for block in blocks for line in block.splitlines() if len(line) > CODE_LINE_MAX]
+    assert not wide, wide
+
+
+def _unfolded(text: str) -> str:
+    """``text`` without what its ``<details>`` fold away: what a reader sees before opening anything, and all a
+    PyPI reader gets (PyPI shows every fold closed)."""
+    return re.sub(r"<details>.*?</details>", "", text, flags=re.S)
+
+
+def test_the_readme_shows_the_phones_the_recording_clock_and_the_credits_unfolded() -> None:
+    """Some things a fold must never hide: the two phone pictures (light and dark), the final run's recording
+    clock, an honesty note on its dates, under its "(written after the results)" heading, and the licence
+    credits GeoNames' CC BY licence asks for."""
+    visible = _flat(_unfolded(_readme()))
+    for words in (
+        'src="docs/assets/mobile.png"',
+        'src="docs/assets/mobile-dark.png"',
+        "**Pre-registered (written after the results).**",
+        "Recorded on real 17 Nov 2026 with the clock 7 days ahead (K29): recording and analysis dates are the day "
+        "the model was told; deviation times, commits and PRs are real.",
+        "Postcode data © [GeoNames](https://www.geonames.org/)",
+        "under their own licences (MIT, ISC, BSD-3-Clause and the SIL Open Font License 1.1)",
+        "MIT licensed",
+        "<b>Light and dark.</b>",
+    ):
+        assert words in visible, words
+    side_by_side = r'<img src="docs/assets/mobile\.png"[^>]*> &nbsp; <img src="docs/assets/mobile-dark\.png"'
+    assert re.search(side_by_side, _readme()), "the phone pictures stand side by side"
