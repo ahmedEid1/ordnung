@@ -179,7 +179,9 @@ replay scores the recorded answers with the checked-out code, so a change to the
 check shows in the numbers at once, and costs nothing.
 
 - The numbers in the README and in `docs/` come from the results files a run or replay writes
-  (`evals/results/`), never typed by hand; tests compare the docs with those files.
+  (`evals/results/`), never typed by hand; tests compare the docs with those files. Outside its generated block
+  the README types no rate or "k of n" of a results file:
+  `tests/test_docs_claims.py::test_the_readme_types_no_benchmark_number_by_hand` fails when it does.
 - Recording new answers calls Claude with your own account and costs tokens. It is done on purpose,
   when a prompt or what is sent to Claude changes, never as part of an ordinary change. If a replay
   misses a recording after your change, say so in the pull request instead of recording.

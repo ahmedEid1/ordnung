@@ -1000,12 +1000,18 @@ def test_the_guide_lists_every_template_letter() -> None:
 
 
 def test_readme_demo_has_25_letters_three_in_new_mail() -> None:
-    """README: the demo is 25 letters, three of them unopened in the New-mail tray."""
+    """README and the guide's Install and run: the demo is 25 letters, three of them unopened in the New-mail
+    tray."""
     documents = json.loads((ROOT / "src/ordnung/demo/samples/manifest.json").read_text(encoding="utf-8"))[
         "documents"
     ]
     assert "Musterstadt: 25 letters" in _readme() and len(documents) == 25
     assert "three unopened letters" in _readme() and sum(1 for d in documents if d.get("tray")) == 3
+    install = _flat(_section(_guide(), "## Install and run"))
+    assert (
+        "Musterstadt: 25 letters, contracts, a residence permit, a scam, and three unopened letters"
+        in install
+    )
 
 
 #: The tour's two pictures that come from the real app, not the demo: the demo never opens itself to a network

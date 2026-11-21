@@ -119,6 +119,10 @@ ordnung autostart enable        # start at login; then switch on the morning not
 ordnung backup --to /media/usb  # everything in one encrypted file; `ordnung restore FILE` brings it back
 ```
 
+`ordnung demo` opens the sample life of Sam Rivera, an international student in the fictional town of
+Musterstadt: 25 letters, contracts, a residence permit, a scam, and three unopened letters in the *New mail* tray.
+Every model answer in it is a recording of a real Claude run, so it needs no Claude account.
+
 `ordnung add` exits with 1 when a letter couldn't be read, or waits for Claude: to be installed, signed
 in or updated, or for its usage limit to pass (it is stored and read once Claude is ready).
 
