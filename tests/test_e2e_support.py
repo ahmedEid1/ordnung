@@ -387,3 +387,29 @@ def test_the_e2e_reads_retry_a_connection_the_server_dropped() -> None:
         assert retried == [], "changes that pass READ"
 
     check_rows(E2E_FILES, check)
+
+
+def test_the_e2e_settle_counts_its_calm_frames_from_its_own_call() -> None:
+    """``settle()`` (web/e2e/helpers.ts) waits for a few calm frames before a scan or a measurement. The count
+    belongs to the call, and only frames count: a theme switch shows on the next frame or the one after, when the
+    app sets its ``dark`` class and the colour transitions start. A count kept on the page from an earlier call,
+    or a first check made at once (``waitForFunction`` checks before any frame), finds the page still and returns
+    before the switch: axe then measured a button's label mid-transition, 4.4:1 instead of 7:1."""
+    helpers = (E2E / "helpers.ts").read_text(encoding="utf-8")
+    head = "export async function settle(page: Page): Promise<void> {"
+    assert head in helpers
+    body = helpers.split(head, 1)[1].split("\n}\n", 1)[0]
+    assert "getAnimations()" in body
+    assert "requestAnimationFrame(" in body, "calm frames are counted in frames"
+    assert "waitForFunction" not in body, "its first check runs at once, before the change shows"
+    kept = re.findall(r"\b(?:window|globalThis|self|localStorage|sessionStorage)\b|__\w+", body)
+    assert kept == [], "the count of calm frames is the call's own, never kept on the page"
+    needed = [int(n) for n in re.findall(r">=\s*(\d+)", body)]
+    assert needed and min(needed) >= 3, "a switch can take two frames to show: three calm frames see it"
+    accessible = helpers.split("export async function expectAccessible(", 1)[1].split("\n}\n", 1)[0]
+    assert accessible.index("await settle(page);") < accessible.index("new AxeBuilder(")
+
+    def own_count(name: str) -> None:
+        assert "__e2eCalmFrames" not in (E2E / name).read_text(encoding="utf-8")
+
+    check_rows(E2E_FILES, own_count)
