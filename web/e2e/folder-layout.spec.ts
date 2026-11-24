@@ -12,10 +12,9 @@
  * Runs in the "layout" project (its name ends in `layout.spec.ts`).
  */
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import type { Locator, Page } from "@playwright/test";
-import { BASE_URL, STORAGE_STATE, WEB_DIR } from "./env";
+import { BASE_URL, STORAGE_STATE, TMP_DIR, WEB_DIR } from "./env";
 import { apiGet, expect, expectAccessible, expectAccessibleInBothThemes, open, READ, setTour, settle, test } from "./helpers";
 
 const CLIENT = { "X-Ordnung-Client": "web" };
@@ -52,7 +51,8 @@ function emailWithPdf(pdf: Buffer): string {
 /** Once per run: the folder with its files, set in Settings, and the watcher's three waiting letters. */
 async function watchedFolder(page: Page): Promise<void> {
   if (!folder) {
-    folder = mkdtempSync(join(tmpdir(), "ordnung-e2e-scans-"));
+    // in the temporary folder where it really is: Settings shows the path the app resolved
+    folder = mkdtempSync(join(TMP_DIR, "ordnung-e2e-scans-"));
     writeFileSync(join(folder, SCAN), fresh("17_auslaenderbehoerde_termin.pdf", "scan"));
     writeFileSync(join(folder, "Ihre Rechnung September 2026.eml"), emailWithPdf(fresh("08_rechnung_techmarkt.pdf", "mail")));
     const res = await page.request.put("/api/settings", { data: { inbox_dir: folder }, headers: CLIENT });
