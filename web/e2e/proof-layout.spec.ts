@@ -12,8 +12,8 @@ const CLIENT = { "X-Ordnung-Client": "web" };
 const TRACKING = "RT 123 456 785 DE";
 
 /**
- * A toast, by its title. Its buttons are found inside it, never page-wide: the toast of an Undo just used can
- * still be on its way out (that Undo disabled) when the next action's toast shows with an Undo of its own.
+ * A toast, by its title. Its buttons are found inside it, never page-wide: more than one toast can be up at
+ * once, each with its own Undo (a closing toast is inert, but scoping keeps a test from depending on that).
  */
 const toast = (page: Page, title: string) => page.locator("li[data-toast]").filter({ hasText: title });
 
@@ -268,6 +268,76 @@ for (const width of [320, 1280]) {
     await expect(page.locator("#letter-sent")).toContainText("Sent by Einschreiben");
   });
 }
+
+test("a toast on its way out has no buttons: one Undo on the page, and it works", async ({ page }) => {
+  const { draftId } = setup!;
+  await open(page, `/letters/${draftId}`);
+  const proof = page.getByRole("region", { name: "Proof of sending" });
+  await proof.getByRole("button", { name: "Remove", exact: true }).click();
+  const removed = toast(page, "Tracking number removed");
+  await expect(removed.getByRole("button", { name: "Undo" })).toBeEnabled();
+  // the browser's animations 100 times slower: a closed toast takes 15 s instead of 150 ms to leave
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Animation.enable");
+  await cdp.send("Animation.setPlaybackRate", { playbackRate: 0.01 });
+  try {
+    await removed.getByRole("button", { name: "Undo" }).click();
+    await expect(proof.getByRole("button", { name: "Change", exact: true })).toBeFocused();
+    await proof.getByRole("button", { name: "I got an answer — close this" }).click();
+    await expect(toast(page, "Marked as answered")).toHaveCount(1);
+    // the closed toast is still on the page (before and after the checks), but only the new toast's Undo is a
+    // button, and the closed toast's buttons can't take focus
+    expect(await removed.count()).toBe(1);
+    expect(await page.getByRole("button", { name: "Undo", exact: true }).count()).toBe(1);
+    const dismiss = removed.locator('button[aria-label="Dismiss notification"]');
+    await dismiss.focus();
+    await expect(dismiss).not.toBeFocused();
+    expect(await removed.count()).toBe(1);
+    await page.getByRole("button", { name: "Undo", exact: true }).click();
+    await expect(proof.getByRole("button", { name: "I got an answer — close this" })).toBeVisible();
+  } finally {
+    await cdp.send("Animation.setPlaybackRate", { playbackRate: 1 });
+    await cdp.detach();
+  }
+});
+
+test("a double click on a toast's X closes it, and the second click goes nowhere: not to the page beneath", async ({ page }) => {
+  const { draftId } = setup!;
+  await open(page, `/letters/${draftId}`);
+  const proof = page.getByRole("region", { name: "Proof of sending" });
+  await proof.getByRole("button", { name: "Remove", exact: true }).click();
+  const removed = toast(page, "Tracking number removed");
+  const dismiss = removed.getByRole("button", { name: "Dismiss notification" });
+  await expect(dismiss).toBeEnabled();
+  // every click that reaches the page outside the toast corner (a page control can lie under a toast)
+  await page.evaluate(() => {
+    const w = window as unknown as { pageClicks: string[] };
+    w.pageClicks = [];
+    document.addEventListener("click", (e) => {
+      const el = e.target as Element;
+      if (!el.closest("[data-testid=toaster]")) w.pageClicks.push(el.tagName.toLowerCase());
+    }, true);
+  });
+  // the closed toast stays 15 s instead of 150 ms, so the second click meets it however long the test runner
+  // takes between the two clicks
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Animation.enable");
+  await cdp.send("Animation.setPlaybackRate", { playbackRate: 0.01 });
+  try {
+    await dismiss.dblclick();
+  } finally {
+    await cdp.send("Animation.setPlaybackRate", { playbackRate: 1 });
+    await cdp.detach();
+  }
+  await expect(removed).toHaveCount(0);
+  expect(await page.evaluate(() => (window as unknown as { pageClicks: string[] }).pageClicks)).toEqual([]);
+  // nor does it take away the focus the first click handed back
+  expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe("BODY");
+  // put the number back for the other tests
+  await proof.getByLabel("Tracking number").fill(TRACKING);
+  await proof.getByRole("button", { name: "Save number" }).click();
+  await expect(proof.getByRole("button", { name: "Change", exact: true })).toBeFocused();
+});
 
 test("“Note a call” on an overdue promise opens the drawer with the form, on its first field", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });

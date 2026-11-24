@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { ApiError } from "@/api/client";
 import { renderWithProviders } from "@/test/render";
 import { Dialog } from "./Dialog";
 import { TOAST_DURATION, TOAST_SPACE_VAR, Toaster, __clearToasts, toast, toastDuration } from "./Toast";
@@ -15,6 +16,8 @@ function viewport(px: number) {
 
 const region = () => screen.getByRole("region", { name: /^Notifications/ });
 const item = (text: string) => screen.getByText(text).closest("li") as HTMLElement;
+/** What a closing toast makes inert: everything inside the li (the li itself stays to take a stray click). */
+const contents = (li: HTMLElement) => li.firstElementChild as HTMLElement;
 
 beforeEach(() => {
   viewport(1280);
@@ -142,6 +145,126 @@ describe("Toast actions and keyboard", () => {
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByText("Marked as paid")).not.toBeInTheDocument());
     expect(trigger).toHaveFocus();
+  });
+});
+
+describe("A toast on its way out", () => {
+  it("is marked inert and hidden while it slides away: its buttons are gone from role queries; the others are untouched", async () => {
+    renderWithProviders(<Toaster />);
+    act(() => {
+      toast({ title: "Tracking number removed", undo: () => {}, action: { label: "Open", onClick() {} } });
+      toast({ title: "Marked as answered", undo: () => {} });
+    });
+    const leaving = item("Tracking number removed");
+    const staying = item("Marked as answered");
+    fireEvent.click(within(leaving).getByRole("button", { name: "Dismiss notification" }));
+    // still drawn for its exit animation, but its contents inert, and hidden from screen readers (and from role
+    // queries); the li is no longer focusable, yet not inert itself, so a second click stops there
+    expect(leaving).toBeInTheDocument();
+    expect(contents(leaving)).toHaveAttribute("inert");
+    expect(leaving).not.toHaveAttribute("inert");
+    expect(leaving).not.toHaveAttribute("tabindex");
+    expect(leaving).toHaveAttribute("aria-hidden", "true");
+    expect(fireEvent.mouseDown(leaving)).toBe(false); // a second click keeps the focus where it is
+    expect(within(leaving).queryAllByRole("button")).toHaveLength(0);
+    expect(screen.getAllByRole("button", { name: "Undo" })).toEqual([within(staying).getByRole("button", { name: "Undo" })]);
+    expect(screen.queryByRole("button", { name: "Open" })).not.toBeInTheDocument();
+    expect(contents(staying)).not.toHaveAttribute("inert");
+    expect(staying).toHaveAttribute("tabindex", "-1");
+    expect(staying).not.toHaveAttribute("aria-hidden");
+    expect(fireEvent.mouseDown(staying)).toBe(true);
+    await waitFor(() => expect(leaving).not.toBeInTheDocument());
+  });
+
+  it("stays in reach while its Undo runs, then hands focus back as it goes", async () => {
+    const user = userEvent.setup();
+    let done = () => {};
+    renderWithProviders(
+      <>
+        <button type="button">Remove</button>
+        <Toaster />
+      </>,
+    );
+    act(() => void toast({ title: "Tracking number removed", undo: () => new Promise<void>((resolve) => (done = resolve)) }));
+    const trigger = screen.getByRole("button", { name: "Remove" });
+    trigger.focus();
+    fireEvent.keyDown(window, { key: "n", code: "KeyN", altKey: true });
+    await user.tab();
+    await user.keyboard("{Enter}");
+    // busy, not leaving: its Undo is disabled but still there to be read
+    const toastItem = item("Tracking number removed");
+    expect(screen.getByRole("button", { name: "Undo" })).toBeDisabled();
+    expect(contents(toastItem)).not.toHaveAttribute("inert");
+    await act(async () => done());
+    expect(toastItem).toBeInTheDocument();
+    expect(contents(toastItem)).toHaveAttribute("inert");
+    expect(trigger).toHaveFocus();
+    expect(screen.queryByRole("button", { name: "Undo" })).not.toBeInTheDocument();
+    await waitFor(() => expect(toastItem).not.toBeInTheDocument());
+  });
+
+  it("closes after an Undo that fails, hands focus back as after one that works, and lets no rejection escape", async () => {
+    // (an escaped rejection fails the run: Vitest reports unhandled rejections as errors)
+    const user = userEvent.setup();
+    renderWithProviders(
+      <>
+        <button type="button">Remove</button>
+        <Toaster />
+      </>,
+    );
+    act(() => void toast({ title: "Tracking number removed", undo: () => Promise.reject(new ApiError(0, "Ordnung isn't reachable.")) }));
+    const trigger = screen.getByRole("button", { name: "Remove" });
+    trigger.focus();
+    fireEvent.keyDown(window, { key: "n", code: "KeyN", altKey: true });
+    await user.tab();
+    await user.keyboard("{Enter}");
+    const toastItem = item("Tracking number removed");
+    await waitFor(() => expect(contents(toastItem)).toHaveAttribute("inert"));
+    expect(trigger).toHaveFocus();
+    await waitFor(() => expect(toastItem).not.toBeInTheDocument());
+  });
+
+  it("closes after an Undo that breaks, and reports the error instead of hiding it", async () => {
+    // a bug in an Undo is not a failed request, which has already said so: it must still be seen
+    const reported: unknown[] = [];
+    const onError = (e: ErrorEvent) => {
+      e.preventDefault();
+      reported.push(e.error);
+    };
+    window.addEventListener("error", onError);
+    try {
+      renderWithProviders(<Toaster />);
+      act(
+        () =>
+          void toast({
+            title: "Marked as answered",
+            undo: async () => {
+              const box = undefined as unknown as HTMLElement;
+              box.focus();
+            },
+          }),
+      );
+      const toastItem = item("Marked as answered");
+      fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+      await waitFor(() => expect(contents(toastItem)).toHaveAttribute("inert"));
+      expect(reported).toHaveLength(1);
+      expect(reported[0]).toBeInstanceOf(TypeError);
+      await waitFor(() => expect(toastItem).not.toBeInTheDocument());
+    } finally {
+      window.removeEventListener("error", onError);
+    }
+  });
+
+  it("is out of reach on phones too, when a newer toast takes its place", () => {
+    viewport(390);
+    renderWithProviders(<Toaster />);
+    act(() => void toast({ title: "Tracking number removed", undo: () => {} }));
+    const older = item("Tracking number removed");
+    act(() => void toast({ title: "Marked as answered", undo: () => {} }));
+    // only the newest is shown: the older one slides away (it waits its turn behind "+1 more")
+    expect(older).toBeInTheDocument();
+    expect(contents(older)).toHaveAttribute("inert");
+    expect(screen.getAllByRole("button", { name: "Undo" })).toHaveLength(1);
   });
 });
 

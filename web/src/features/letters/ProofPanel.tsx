@@ -136,23 +136,23 @@ function Tracking({ draft, overview }: { draft: Draft; overview: ProofOverview }
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState("");
   const [tried, setTried] = useState(false);
-  const store = (text: string | null, then?: () => void) =>
-    save.mutate(
-      { id: draft.id, trackingNumber: text },
-      {
-        onSuccess: (next) => {
-          setEditing(false);
-          setValue("");
-          setTried(false);
-          then?.();
-          if (text) {
-            focusId(TRACKING_CHANGE);
-            toast.success("Tracking number saved", {
-              description: next.tracking ? displayTracking(next.tracking.number) : undefined,
-            });
-          }
-        },
+  // a promise, so the Undo that puts a removed number back waits for it (its toast stays, busy, until then);
+  // `from`: where focus was as it started (focusOrigin), so Change takes focus from there too
+  const store = (text: string | null, then?: () => void, from: Element | null = null) =>
+    save.mutateAsync({ id: draft.id, trackingNumber: text }).then(
+      (next) => {
+        setEditing(false);
+        setValue("");
+        setTried(false);
+        then?.();
+        if (text) {
+          focusId(TRACKING_CHANGE, from);
+          toast.success("Tracking number saved", {
+            description: next.tracking ? displayTracking(next.tracking.number) : undefined,
+          });
+        }
       },
+      () => undefined, // the hook's toast says it couldn't be saved
     );
   const remove = () => {
     if (!saved) return;
@@ -161,7 +161,9 @@ function Tracking({ draft, overview }: { draft: Draft; overview: ProofOverview }
       focusId(TRACKING_INPUT);
       toast.success("Tracking number removed", {
         description: displayTracking(previous),
-        undo: () => store(previous),
+        // pressed from the keyboard (Alt+N, Enter), the closing toast hands focus back where it was before Alt+N:
+        // Change takes it from there, as after "Marked as answered"'s Undo
+        undo: () => store(previous, undefined, focusOrigin()),
       });
     });
   };

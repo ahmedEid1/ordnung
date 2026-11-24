@@ -106,7 +106,6 @@ export function HeldCard({ detail, className, onAnswered }: HeldCardProps) {
                 wait
                   .mutateAsync(ids)
                   .then(() => void toast({ title: "It's back with the letters not read yet", tone: "info" }))
-                  .catch(() => undefined)
             : undefined,
         });
         if (answeredFor(res, doc.id)) onAnswered?.(doc.status);

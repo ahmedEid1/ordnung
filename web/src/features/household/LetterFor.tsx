@@ -235,7 +235,7 @@ export function useLetterFor(detail: DocumentDetail, editable: boolean): LetterF
         focusWhenReady(() => changeRef.current);
         toast({
           title: next === MINE ? "Filed as yours" : `Filed for ${name ?? ""}`,
-          undo: () => file.mutateAsync({ letters: { [doc.id]: before } }).then(backToAnswer, () => undefined),
+          undo: () => file.mutateAsync({ letters: { [doc.id]: before } }).then(backToAnswer),
         });
       },
       () => undefined, // the mutation's error toast says what went wrong

@@ -88,10 +88,7 @@ export function SenderLandQuestion({
     const moved = afterYes ? await afterYes() : null;
     toast.success(`Saved: ${saved.name} is in ${state}`, {
       description: [savedStateLine(state, suggestion.reason), moved].filter(Boolean).join(" "),
-      undo: () => update.mutateAsync({ id: party.id, patch: { region: null } }).then(
-        () => undefined,
-        () => undefined,
-      ),
+      undo: () => update.mutateAsync({ id: party.id, patch: { region: null } }).then(() => undefined),
     });
   };
 
@@ -107,10 +104,7 @@ export function SenderLandQuestion({
           description: `${
             suggestion.may_be_late ? "A holiday in their state could make a date earlier: act a working day before it." : "Their dates stay the earlier ones."
           } You can choose their state any time in their details.`,
-          undo: () => idea.mutateAsync({ id: ideaId, patch: { status: "new" } }).then(
-            () => undefined,
-            () => undefined,
-          ),
+          undo: () => idea.mutateAsync({ id: ideaId, patch: { status: "new" } }).then(() => undefined),
         });
         if (focusAfterDontKnow) focusWhenReady(() => (document.getElementById(dontKnowId) ? null : focusAfterDontKnow()));
       },
