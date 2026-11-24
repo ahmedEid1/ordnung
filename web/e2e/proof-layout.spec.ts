@@ -11,6 +11,12 @@ import { apiGet, contractOf, expect, expectNoRawEnums, open, setTheme, setTour, 
 const CLIENT = { "X-Ordnung-Client": "web" };
 const TRACKING = "RT 123 456 785 DE";
 
+/**
+ * A toast, by its title. Its buttons are found inside it, never page-wide: the toast of an Undo just used can
+ * still be on its way out (that Undo disabled) when the next action's toast shows with an Undo of its own.
+ */
+const toast = (page: Page, title: string) => page.locator("li[data-toast]").filter({ hasText: title });
+
 interface Setup {
   draftId: string;
   partyId: string;
@@ -185,7 +191,7 @@ test("keyboard focus never falls to <body> after the proof, Waiting-for and call
   const proof = page.getByRole("region", { name: "Proof of sending" });
   await proof.getByRole("button", { name: "Remove", exact: true }).click();
   await expect(proof.getByRole("textbox", { name: "Tracking number" })).toBeFocused();
-  await page.getByRole("button", { name: "Undo" }).click();
+  await toast(page, "Tracking number removed").getByRole("button", { name: "Undo" }).click();
   await expect(proof.getByRole("button", { name: "Change", exact: true })).toBeFocused();
   // the number never breaks inside: plain spaces in a no-wrap element, no-break spaces in running text
   expect(await proof.getByText(TRACKING, { exact: true }).evaluate((el) => getComputedStyle(el).whiteSpace)).toBe("nowrap");
@@ -194,7 +200,7 @@ test("keyboard focus never falls to <body> after the proof, Waiting-for and call
   // "I got an answer" on the letter's box: the box keeps focus; Undo brings the button back
   await proof.getByRole("button", { name: "I got an answer — close this" }).click();
   await expect(page.locator("#proof-waiting")).toBeFocused();
-  await page.getByRole("button", { name: "Undo" }).click();
+  await toast(page, "Marked as answered").getByRole("button", { name: "Undo" }).click();
   await expect(proof.getByRole("button", { name: "I got an answer — close this" })).toBeVisible();
 
   // Waiting for: a closed row hands focus to the row now in its place; Undo puts it back on the row
@@ -203,7 +209,7 @@ test("keyboard focus never falls to <body> after the proof, Waiting-for and call
   await letterRow.getByRole("button", { name: "I got an answer — close this" }).click();
   await expect(letterRow).toHaveCount(0);
   await expect(page.locator("[data-waiting-heading]:focus, main h1:focus")).toHaveCount(1);
-  await page.getByRole("button", { name: "Undo" }).click();
+  await toast(page, "Marked as answered").getByRole("button", { name: "Undo" }).click();
   await expect(page.getByRole("heading", { name: "A written confirmation of the end date" })).toBeFocused();
 
   // Calls: the form opens on its first field, a failed save focuses what's missing, Save and Cancel
