@@ -163,10 +163,14 @@ export function shownAs(text: string, { whole = false }: { whole?: boolean } = {
  * would measure washed-out text.
  *
  * The calm frames are counted by this call alone, from its first frame on, and only in frames. A change just
- * made (`page.emulateMedia`, a click) shows on the next frame: the app hears of a new colour scheme there and
- * sets its `dark` class, and the transitions start in that frame's style update. A count kept from an earlier
- * call, or a check made before that frame, finds the page still and returns while the colours are still old,
- * and the scan then runs mid-transition (a 4.4:1 button label in dark mode, now and then).
+ * made (`page.emulateMedia`, a click) shows within the next two frames: the app hears of a new colour scheme
+ * there and sets its `dark` class, and the transitions start in that frame's style update. A count kept from an
+ * earlier call, or a check made before that frame, finds the page still and returns while the colours are still
+ * old, and the scan then runs mid-transition (a 4.4:1 button label in dark mode, now and then).
+ *
+ * settle() cannot see a change that starts later, such as one waiting for a server answer or a timer: wait for
+ * its result first, as the specs do with toHaveClass or toBeVisible. Call it on a loaded page: a navigation
+ * during the call ends it with an error (wait for the load first).
  */
 export async function settle(page: Page): Promise<void> {
   await page.evaluate(
