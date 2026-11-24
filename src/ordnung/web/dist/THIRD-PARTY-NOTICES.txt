@@ -246,7 +246,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-@tanstack/query-core 5.108.0
+@tanstack/query-core 5.108.1
 Licence: MIT
 
 MIT License
@@ -272,7 +272,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-@tanstack/react-query 5.108.0
+@tanstack/react-query 5.108.1
 Licence: MIT
 
 MIT License
@@ -631,7 +631,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-lucide-react 1.74.0
+lucide-react 1.76.0
 Licence: ISC
 
 ISC License
@@ -835,7 +835,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-react-router 8.5.1
+react-router 8.5.2
 Licence: MIT
 
 MIT License
@@ -1049,7 +1049,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-tailwind-merge 3.7.0
+tailwind-merge 3.7.1
 Licence: MIT
 
 MIT License
