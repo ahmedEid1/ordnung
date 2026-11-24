@@ -67,7 +67,8 @@ export function KindBadge({ size = "sm", noIcon, label, className, ...src }: Kin
   return (
     <span
       className={cn(
-        "inline-flex max-w-full items-center gap-1 whitespace-nowrap rounded-full font-medium leading-none",
+        // no leading-none: the text sits in a `truncate` box, and a line height of 1 cuts off the bottom of g, p and y
+        "inline-flex max-w-full items-center gap-1 whitespace-nowrap rounded-full font-medium",
         size === "sm" ? "h-[22px] px-2 text-[12px]" : "h-7 px-2.5 text-[13px]",
         t.soft,
         t.text,

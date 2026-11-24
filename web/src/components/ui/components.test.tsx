@@ -17,7 +17,7 @@ import { Glossary } from "./Glossary";
 import { Button, buttonVariants } from "./Button";
 import { Checkbox, Field, Input, Select, Switch } from "./Field";
 import { SegmentedControl } from "./SegmentedControl";
-import { CountBadge } from "./Badge";
+import { Badge, CountBadge } from "./Badge";
 import { LetterText } from "./LetterText";
 import { EmptyState } from "./EmptyState";
 import { Toaster, toast, __clearToasts } from "./Toast";
@@ -183,6 +183,27 @@ describe("CountBadge", () => {
     expect(bubble).toHaveClass("text-2xs", "h-4", "bg-warn", "text-white");
     expect(big).toHaveTextContent("99+");
     expect(container.querySelectorAll("span")).toHaveLength(4);
+  });
+});
+
+describe("Badge and KindBadge", () => {
+  // Their text is cut off at the box (`truncate`): with a line height of 1 the bottom of g, p and y was cut too,
+  // once tailwind-merge 3.7.1 stopped letting the font size drop an earlier leading-* class.
+  it("keep the line height of their font size, so letters below the line are not cut off", () => {
+    const { container } = renderWithProviders(
+      <div>
+        <Badge tone="warn">Heads-up</Badge>
+        <Badge size="md" variant="outline">Paying</Badge>
+        <KindBadge kind="payment" />
+        <KindBadge docKind="tax_assessment" size="md" />
+      </div>,
+    );
+    const chips = [...container.querySelectorAll<HTMLElement>("div > span")];
+    expect(chips).toHaveLength(4);
+    for (const chip of chips) {
+      expect(chip).toHaveClass("rounded-full");
+      expect(chip.className).not.toMatch(/\bleading-/);
+    }
   });
 });
 
