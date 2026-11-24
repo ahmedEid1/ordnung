@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useIsPresent } from "motion/react";
 import { CircleCheck, Info, TriangleAlert, CircleX, X, Undo2 } from "lucide-react";
+import { ApiError } from "@/api/client";
 import { setToastHandBack } from "@/lib/focus";
 import { useHotkey, useMediaQuery } from "@/lib/hooks";
 import { cn, IS_APPLE } from "@/lib/utils";
@@ -132,6 +133,8 @@ function restoreFocus() {
 function ToastItem({ t, paused }: { t: ToastRecord; paused: boolean }) {
   const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLLIElement>(null);
+  /** False once it is closed and only its exit animation keeps it on the page. */
+  const present = useIsPresent();
   const lifetime = toastDuration(t);
   /** Time left of the current showing (`seq`): a toast shown again (a progress update) starts over. */
   const remaining = useRef<{ seq: number; ms: number } | null>(null);
@@ -165,7 +168,15 @@ function ToastItem({ t, paused }: { t: ToastRecord; paused: boolean }) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, x: 24, transition: { duration: 0.15 } }}
       transition={{ type: "spring", stiffness: 460, damping: 36 }}
-      tabIndex={-1}
+      // A closed toast stays drawn while it slides away: out of reach until it is gone, so a second click or a
+      // screen reader never meets its dead buttons. Its contents turn inert (out of focus, clicks and the
+      // browser's accessibility tree) but the li does not: it still takes a second click, which then does
+      // nothing, instead of letting it through to the page beneath (nor taking away the focus the first click
+      // handed back). aria-hidden as well, because test tools (Playwright's and Testing Library's role queries)
+      // and older screen readers read only that.
+      tabIndex={present ? -1 : undefined}
+      aria-hidden={present ? undefined : true}
+      onMouseDown={present ? undefined : (e) => e.preventDefault()}
       data-toast={t.id}
       onKeyDown={(e) => {
         if (e.key !== "Escape" || e.defaultPrevented) return;
@@ -174,55 +185,63 @@ function ToastItem({ t, paused }: { t: ToastRecord; paused: boolean }) {
       }}
       className="pointer-events-auto flex w-full items-start gap-3 rounded-xl border border-line bg-surface p-3.5 pr-2.5 text-base shadow-[var(--shadow-pop)] dark:border-line-strong outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
-      <Icon className={cn("mt-0.5 size-[18px] shrink-0", cls)} aria-hidden />
-      <div className="min-w-0 flex-1">
-        <div className="font-medium leading-5 text-ink">{t.title}</div>
-        {t.description ? <div className="mt-0.5 leading-5 text-muted">{t.description}</div> : null}
-        {t.action || t.undo ? (
-          <div className="-ml-2 mt-1.5 flex flex-wrap items-center gap-1">
-            {t.undo ? (
-              <button
-                type="button"
-                disabled={busy}
-                className={actionCls}
-                onClick={async () => {
-                  // (read before the busy button is disabled and loses focus)
-                  const hadFocus = hasFocus();
-                  setBusy(true);
-                  try {
-                    await t.undo?.();
-                  } finally {
-                    close(hadFocus);
-                  }
-                }}
-              >
-                <Undo2 className="size-3.5" aria-hidden />
-                Undo
-              </button>
-            ) : null}
-            {t.action ? (
-              <button
-                type="button"
-                className={actionCls}
-                onClick={() => {
-                  t.action?.onClick();
-                  dismissToast(t.id);
-                }}
-              >
-                {t.action.label}
-              </button>
-            ) : null}
-          </div>
-        ) : null}
+      <div inert={!present} className="flex min-w-0 flex-1 items-start gap-3">
+        <Icon className={cn("mt-0.5 size-[18px] shrink-0", cls)} aria-hidden />
+        <div className="min-w-0 flex-1">
+          <div className="font-medium leading-5 text-ink">{t.title}</div>
+          {t.description ? <div className="mt-0.5 leading-5 text-muted">{t.description}</div> : null}
+          {t.action || t.undo ? (
+            <div className="-ml-2 mt-1.5 flex flex-wrap items-center gap-1">
+              {t.undo ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  className={actionCls}
+                  onClick={async () => {
+                    // (read before the busy button is disabled and loses focus)
+                    const hadFocus = hasFocus();
+                    setBusy(true);
+                    try {
+                      await t.undo?.();
+                    } catch (err) {
+                      // A failed request has said so itself (the query client's error toast; a household change,
+                      // which is quiet, with its own): nothing is left to tell, and nothing awaits this click to
+                      // catch it, so it would escape as a page error. Anything else is a bug: report it, so the
+                      // console, the end-to-end tests and Vitest still see it.
+                      if (!(err instanceof ApiError)) reportError(err);
+                    } finally {
+                      close(hadFocus);
+                    }
+                  }}
+                >
+                  <Undo2 className="size-3.5" aria-hidden />
+                  Undo
+                </button>
+              ) : null}
+              {t.action ? (
+                <button
+                  type="button"
+                  className={actionCls}
+                  onClick={() => {
+                    t.action?.onClick();
+                    dismissToast(t.id);
+                  }}
+                >
+                  {t.action.label}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          onClick={() => close()}
+          className="grid size-7 shrink-0 place-items-center rounded-md text-muted hover:bg-surface-2 hover:text-ink"
+          aria-label="Dismiss notification"
+        >
+          <X className="size-4" aria-hidden />
+        </button>
       </div>
-      <button
-        type="button"
-        onClick={() => close()}
-        className="grid size-7 shrink-0 place-items-center rounded-md text-muted hover:bg-surface-2 hover:text-ink"
-        aria-label="Dismiss notification"
-      >
-        <X className="size-4" aria-hidden />
-      </button>
     </motion.li>
   );
 }

@@ -100,6 +100,14 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ### Fixed
 
+- **A message that is closing can no longer be used.** The small messages that confirm an action (*Marked as
+  answered*, with *Undo*) take a moment to fade out, and for that moment their buttons could still be clicked,
+  reached with Tab or read by a screen reader: a page could briefly offer two *Undo* buttons, one of them dead. Now
+  nothing in a closing message can be reached, and a quick second click on its close button does nothing instead of
+  landing on the page beneath it. *Undo* for a removed tracking number waits until the number is really back, as
+  every other Undo does, and then puts you on *Change*, also when you reached the message from the keyboard (Alt+N,
+  Option+N on a Mac). An Undo whose request fails is reported once, by its error message, and no longer also throws
+  an error in the page.
 - **Ordnung keeps working when your internet drops.** When the browser said it was offline (a laptop losing Wi-Fi,
   for example), pages that had not loaded yet kept spinning and saves did nothing until the internet came back,
   although Ordnung runs on your computer (or, for the phone, on your home network) and could still answer. Every

@@ -93,7 +93,6 @@ export function TaxToggle({ detail }: { detail: DocumentDetail }) {
                   const el = document.getElementById(toggleId(doc.id));
                   return el instanceof HTMLButtonElement && !el.disabled ? el : null;
                 }),
-              () => undefined, // the hook's toast says it couldn't be saved
             ),
         }),
       () => undefined, // the hook's toast says it couldn't be saved

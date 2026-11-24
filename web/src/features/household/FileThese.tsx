@@ -56,8 +56,7 @@ export function FileThese({
     const undo = (filed: readonly string[]) => () =>
       file
         .mutateAsync({ letters: Object.fromEntries(filed.map((id) => [id, before[id] ?? null])) })
-        .then(() => focusWhenReady(() => document.getElementById(FILE_THESE_BUTTON_ID)))
-        .catch(() => undefined);
+        .then(() => focusWhenReady(() => document.getElementById(FILE_THESE_BUTTON_ID)));
     file
       .mutateAsync({ letters: Object.fromEntries(ids.map((id) => [id, member.id])) })
       .then(() => {

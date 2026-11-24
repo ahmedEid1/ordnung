@@ -92,7 +92,6 @@ export function WaitingFromFolder({
                 wait
                   .mutateAsync(kept)
                   .then((back) => void toast({ title: back.documents.length === 1 ? "It's back with the letters not read yet" : "They're back with the letters not read yet", tone: "info" }))
-                  .catch(() => undefined)
             : undefined,
         });
         onAnswered?.();

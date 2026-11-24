@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { useState, type ReactElement } from "react";
 import userEvent from "@testing-library/user-event";
 import type { Draft } from "@/api/types";
-import { makeTestQueryClient } from "@/test/render";
+import { TEST_HEALTH, makeTestQueryClient } from "@/test/render";
+import { createQueryClient } from "@/app/queryClient";
+import { qk } from "@/api/hooks";
 import { useMockApi } from "@/test/mockFetch";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
@@ -17,8 +19,7 @@ import { TrackingField } from "./TrackingField";
 import { startDay } from "./AddProofDialog";
 import { WAITING_TONE, hasPicture, nachweisFileName, proofKindsFor, startWith, suggestedKind, takesTrackingNumber, waitingTitle } from "./proof";
 
-function renderLetter(route: string, extra?: ReactElement) {
-  const client = makeTestQueryClient();
+function renderLetter(route: string, extra?: ReactElement, client = makeTestQueryClient()) {
   const router = createMemoryRouter(
     [
       {
@@ -400,6 +401,65 @@ describe("Proof of sending", () => {
     expect(await screen.findByText("Tracking number saved")).toBeInTheDocument();
   });
 
+  /** Hold back the PUT that puts the number back (Undo's request) until the test lets it answer, or fail it. */
+  function holdUndo(answer: "ok" | "fail") {
+    let release = () => {};
+    const held = new Promise<void>((resolve) => (release = resolve));
+    const sent = { yes: false };
+    const mock = globalThis.fetch;
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "PUT" && typeof init.body === "string" && JSON.parse(init.body).tracking_number) {
+        sent.yes = true;
+        await held;
+        if (answer === "fail") return new Response(JSON.stringify({ detail: "Ordnung isn't reachable." }), { status: 500, headers: { "Content-Type": "application/json" } });
+      }
+      return mock(input, init);
+    });
+    return { release, sent };
+  }
+
+  it("keeps the tracking number's Undo busy until the number is back, then focuses Change", async () => {
+    useMockApi();
+    const { release, sent } = holdUndo("ok");
+    const user = userEvent.setup();
+    renderLetter("/letters/drf_gym");
+    const proof = await screen.findByRole("region", { name: "Proof of sending" });
+    await user.click(await within(proof).findByRole("button", { name: "Remove" }));
+    await waitFor(() => expect(within(proof).getByLabelText("Tracking number")).toHaveFocus());
+    const removed = screen.getByText("Tracking number removed").closest("li")!;
+    await user.click(within(removed).getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(sent.yes).toBe(true));
+    // the request is on its way: the toast stays (not on its way out), its Undo busy, like every other Undo
+    expect(removed).not.toHaveAttribute("aria-hidden");
+    expect(within(removed).getByRole("button", { name: "Undo" })).toBeDisabled();
+    expect(screen.queryByText("Tracking number saved")).not.toBeInTheDocument();
+    release();
+    await waitFor(() => expect(within(proof).getByRole("button", { name: "Change" })).toHaveFocus());
+    expect(await screen.findByText("Tracking number saved")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText("Tracking number removed")).not.toBeInTheDocument());
+  });
+
+  it("closes the tracking number's Undo when its request fails, and leaves the field to type it again", async () => {
+    useMockApi();
+    const { release, sent } = holdUndo("fail");
+    const user = userEvent.setup();
+    // the app's query client, whose error toast says what went wrong
+    const client = createQueryClient();
+    client.setQueryData(qk.health, TEST_HEALTH);
+    renderLetter("/letters/drf_gym", undefined, client);
+    const proof = await screen.findByRole("region", { name: "Proof of sending" });
+    await user.click(await within(proof).findByRole("button", { name: "Remove" }));
+    const removed = (await screen.findByText("Tracking number removed")).closest("li")!;
+    await user.click(within(removed).getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(sent.yes).toBe(true));
+    release();
+    // the toast goes and the app's error toast says why; no rejection escapes
+    await waitFor(() => expect(screen.queryByText("Tracking number removed")).not.toBeInTheDocument());
+    expect(await screen.findByText("Couldn't save the tracking number")).toBeInTheDocument();
+    expect(within(proof).getByLabelText("Tracking number")).toBeInTheDocument();
+    expect(screen.queryByText("Tracking number saved")).not.toBeInTheDocument();
+  });
+
   it("closes the letter when it was answered another way — with Undo", async () => {
     const { calls } = useMockApi();
     const user = userEvent.setup();
@@ -411,6 +471,51 @@ describe("Proof of sending", () => {
     await user.click(await screen.findByRole("button", { name: "Undo" }));
     await waitFor(() => expect(calls.some((c) => c.method === "DELETE" && c.path === "/drafts/drf_gym/answered")).toBe(true));
     expect(await within(proof).findByRole("button", { name: "I got an answer — close this" })).toBeInTheDocument();
+  });
+
+  it("says a failed Undo once, with the request's own error toast, and lets no rejection escape", async () => {
+    // (an escaped rejection fails the run: Vitest reports unhandled rejections as errors)
+    useMockApi();
+    const mock = globalThis.fetch;
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) =>
+      init?.method?.toUpperCase() === "DELETE" && String(input).endsWith("/answered")
+        ? new Response(JSON.stringify({ detail: "Ordnung isn't reachable." }), { status: 500, headers: { "Content-Type": "application/json" } })
+        : mock(input, init),
+    );
+    const user = userEvent.setup();
+    // the app's query client, whose error toast says what went wrong
+    const client = createQueryClient();
+    client.setQueryData(qk.health, TEST_HEALTH);
+    renderLetter("/letters/drf_gym", undefined, client);
+    const proof = await screen.findByRole("region", { name: "Proof of sending" });
+    await user.click(await within(proof).findByRole("button", { name: "I got an answer — close this" }));
+    const marked = (await screen.findByText("Marked as answered")).closest("li")!;
+    await user.click(within(marked).getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(screen.queryByText("Marked as answered")).not.toBeInTheDocument());
+    expect(await screen.findByText("Couldn't save that")).toBeInTheDocument();
+    expect(screen.getAllByText("Couldn't save that")).toHaveLength(1);
+    // and no second error toast from the Undo itself
+    expect(document.querySelectorAll('[aria-live="assertive"] li[data-toast]')).toHaveLength(1);
+    expect(within(proof).getByText(/You marked it as answered on/)).toBeInTheDocument();
+  });
+
+  it("puts focus on Change after the tracking number's Undo pressed from the keyboard (Alt+N, Enter)", async () => {
+    useMockApi();
+    const user = userEvent.setup();
+    renderLetter("/letters/drf_gym");
+    const proof = await screen.findByRole("region", { name: "Proof of sending" });
+    await user.click(await within(proof).findByRole("button", { name: "Remove" }));
+    await screen.findByText("Tracking number removed");
+    // the person went on elsewhere before Alt+N: that is where the closing toast hands focus back
+    const elsewhere = within(proof).getByRole("button", { name: "I got an answer — close this" });
+    elsewhere.focus();
+    fireEvent.keyDown(window, { key: "n", code: "KeyN", altKey: true });
+    await user.tab();
+    expect(screen.getByRole("button", { name: "Undo" })).toHaveFocus();
+    await user.keyboard("{Enter}");
+    // the number is back, and the keyboard goes on from its Change (as after "Marked as answered"'s Undo)
+    await waitFor(() => expect(within(proof).getByRole("button", { name: "Change" })).toHaveFocus());
+    expect(await screen.findByText("Tracking number saved")).toBeInTheDocument();
   });
 
   it("lists a proof without a day apart — never on the day it was added", async () => {
