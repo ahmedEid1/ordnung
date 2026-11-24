@@ -4,7 +4,8 @@
  * real app, the other computer of hand-off sync (port + 3). Shared by `playwright.config.ts`, the global setup
  * and the tests.
  *
- * - `ORDNUNG_E2E_PORT` (default 8799) and `ORDNUNG_E2E_DATA` (default `<tmp>/ordnung-e2e`); the real app
+ * - `ORDNUNG_E2E_PORT` (default 8799) and `ORDNUNG_E2E_DATA` (default `<tmp>/ordnung-e2e`, taken where it really
+ *   is: {@link realPath}); the real app
  *   uses the next port and `<data>-real`, its phone access (e2e/real-app-phone.spec.ts) the port after that, and
  *   hand-off sync's second computer (e2e/real-app-sync.spec.ts) the port after that with `<data>-real-b`; the two
  *   computers' copies of the synced folder are `<data>-sync-a` and `<data>-sync-b`
@@ -17,9 +18,9 @@
  *   CI's end-to-end job, with Tesseract and its German data); without it every server runs with `ORDNUNG_OCR=off`
  * - `E2E_GROUP=<name>`: run one group of projects ({@link E2E_GROUPS}) on fresh servers of its own, only those it uses
  */
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { delimiter, dirname, join, resolve } from "node:path";
+import { basename, delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -27,7 +28,21 @@ const here = dirname(fileURLToPath(import.meta.url));
 export const WEB_DIR = resolve(here, "..");
 export const PORT = Number(process.env.ORDNUNG_E2E_PORT ?? 8799);
 export const BASE_URL = `http://127.0.0.1:${PORT}`;
-export const DATA_DIR = resolve(process.env.ORDNUNG_E2E_DATA ?? join(tmpdir(), "ordnung-e2e"));
+/**
+ * `path` where it really is, links followed, also when it doesn't exist yet: the app resolves every folder it is
+ * given (Python's `Path.resolve()`) and shows that path, while the temporary folder is often reached through a link
+ * (macOS's /var is /private/var; a TMPDIR that is one). A test that looks for a folder's path on a page or in an
+ * answer looks for this one.
+ */
+export function realPath(path: string): string {
+  if (existsSync(path)) return realpathSync(path);
+  const parent = dirname(path);
+  return parent === path ? path : join(realPath(parent), basename(path));
+}
+
+/** The temporary folder where it really is (see {@link realPath}): the tests make their folders in it. */
+export const TMP_DIR = realPath(tmpdir());
+export const DATA_DIR = realPath(resolve(process.env.ORDNUNG_E2E_DATA ?? join(TMP_DIR, "ordnung-e2e")));
 /**
  * Where a run keeps its own files: next to its data folder when one is given, so two runs on two ports never
  * share a session or a results folder (a second run once overwrote the first one's session token);

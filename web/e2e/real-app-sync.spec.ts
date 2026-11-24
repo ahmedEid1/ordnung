@@ -251,6 +251,7 @@ test("the laptop starts syncing with a suggested passphrase, and its letter is s
     await expect(card.getByLabel(REPEAT_FIELD)).toHaveValue(passphrase);
     await card.getByRole("button", { name: START }).click();
     const on = await until(page, "the laptop is in use and syncs", (s) => s.connected && s.mode === "in_use");
+    // the folder as the app keeps it, resolved: A.folder is already where it really is (e2e/env.ts's realPath)
     expect([on.this_computer, on.folder]).toEqual([A.name, A.folder]);
     expect(JSON.stringify(on), "the status never carries the passphrase").not.toContain(passphrase);
   });

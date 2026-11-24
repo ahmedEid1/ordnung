@@ -220,6 +220,39 @@ def test_make_capture_makes_the_readme_pictures_of_the_real_app() -> None:
     assert spec.count("[folder, SHOWN_FOLDER] as const") == 1 and "[FOLDERS.b, SHOWN_FOLDER]" not in spec
 
 
+#: Specs that may take the temporary folder as it is named: the evaluation report's page is built into a folder and
+#: opened as a file, and nothing there looks for that folder's path on the page.
+_TMPDIR_AS_NAMED = {"eval-report.spec.ts"}
+
+
+def test_the_e2e_specs_make_their_folders_where_the_temporary_folder_really_is() -> None:
+    """The app resolves every folder it is given (the watched folder, the sync folder, its data folder) and shows
+    that path; a temporary folder is often reached through a link (macOS's /var is /private/var; a TMPDIR that is
+    one). So the specs take the temporary folder, and the data folder every other path is built from, once, where
+    they really are (``realPath`` in ``web/e2e/env.ts``), and make their folders there: a path they look for on a
+    page or in an answer is then the one the app shows."""
+    env_ts = (E2E / "env.ts").read_text(encoding="utf-8")
+    assert "export function realPath(path: string): string {" in env_ts
+    real_path = env_ts.split("export function realPath(path: string): string {", 1)[1].split("\n}\n", 1)[0]
+    assert "realpathSync(path)" in real_path and "join(realPath(parent), basename(path))" in real_path
+    assert re.search(r"^export const TMP_DIR = realPath\(tmpdir\(\)\);$", env_ts, re.M)
+    data_dir = re.search(r"^export const DATA_DIR = (.+);$", env_ts, re.M)
+    assert data_dir and data_dir[1].startswith("realPath(") and "tmpdir()" not in data_dir[1], data_dir
+    for spec in sorted(E2E.glob("*.ts")):
+        if spec.name in _TMPDIR_AS_NAMED:
+            continue
+        text = spec.read_text(encoding="utf-8")
+        # the temporary folder as named: only to resolve it, once
+        calls = re.findall(r"(.{0,9})tmpdir\(\)", text)
+        assert all(before == "realPath(" for before in calls), (spec.name, calls)
+        assert len(calls) == (1 if spec.name == "env.ts" else 0), (spec.name, calls)
+        assert not re.search(r"process\.env\.TMPDIR|[\"'`]/(tmp|var/folders)\b", text), spec.name
+        # a temporary folder of a spec's own is made inside one of the real ones
+        real = r"join\((TMP_DIR|DATA_DIR|REAL_DATA_DIR|REAL_B_DATA_DIR)\b"
+        for base in re.findall(r"mkdtempSync\(\s*([^,)]+)", text):
+            assert re.match(real, base), (spec.name, base)
+
+
 def _ts_names(text: str) -> list[str]:
     return re.findall(r'"([\w-]+)"', text)
 
