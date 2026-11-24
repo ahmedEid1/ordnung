@@ -387,3 +387,45 @@ def test_the_e2e_reads_retry_a_connection_the_server_dropped() -> None:
         assert retried == [], "changes that pass READ"
 
     check_rows(E2E_FILES, check)
+
+
+def test_the_e2e_settle_counts_its_calm_frames_from_its_own_call() -> None:
+    """``settle()`` (web/e2e/helpers.ts) waits for a few calm frames before a scan or a measurement. The count
+    belongs to the call, and only frames count: a theme switch shows on the next frame or the one after, when the
+    app sets its ``dark`` class and the colour transitions start. A count kept on the page from an earlier call
+    (on ``window``, in a ``data-`` attribute, ...), or a first check made at once (``waitForFunction`` checks
+    before any frame, and so does a direct call of the check), finds the page still and returns
+    before the switch: axe then measured a button's label mid-transition, 4.4:1 instead of 7:1."""
+    helpers = (E2E / "helpers.ts").read_text(encoding="utf-8")
+    head = "export async function settle(page: Page): Promise<void> {"
+    assert head in helpers
+    body = helpers.split(head, 1)[1].split("\n}\n", 1)[0]
+    assert "getAnimations()" in body
+    assert "waitForFunction" not in body, "its first check runs at once, before the change shows"
+    # The check is one named callback; every use of it other than its definition hands it to the next frame, so
+    # no check runs at once (a direct call, a microtask or a timer would)
+    check = re.search(r"const (\w+) = \(\) =>", body)
+    assert check, "the check is a named callback"
+    uses = len(re.findall(rf"(?<![\w.]){check.group(1)}\b", body))
+    in_frames = body.count(f"requestAnimationFrame({check.group(1)})")
+    assert in_frames >= 2 and uses == in_frames + 1, (
+        "calm frames are counted in frames: every check runs in one"
+    )
+    kept = re.findall(
+        r"\b(?:window|globalThis|self|localStorage|sessionStorage|dataset|setAttribute)\b|__\w+|document\.[\w.]+\s*=(?!=)",
+        body,
+    )
+    assert kept == [], "the count of calm frames is the call's own, never kept on the page"
+    count = re.search(r"let (\w+) = 0;", body)
+    assert count, "the count starts at nought in each call"
+    calm = count.group(1)
+    assert re.search(rf"\b{calm} = busy \? 0 : {calm} \+ 1;", body), "the count is a local of the call"
+    needed = [int(n) for n in re.findall(rf"\b{calm} >=\s*(\d+)", body)]
+    assert needed and min(needed) >= 3, "a switch can take two frames to show: three calm frames see it"
+    accessible = helpers.split("export async function expectAccessible(", 1)[1].split("\n}\n", 1)[0]
+    assert accessible.index("await settle(page);") < accessible.index("new AxeBuilder(")
+
+    def own_count(name: str) -> None:
+        assert "__e2eCalmFrames" not in (E2E / name).read_text(encoding="utf-8")
+
+    check_rows(E2E_FILES, own_count)

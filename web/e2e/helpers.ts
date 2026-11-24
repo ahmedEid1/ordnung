@@ -159,18 +159,33 @@ export function shownAs(text: string, { whole = false }: { whole?: boolean } = {
 
 /**
  * Wait until no (finite) animation is running for a few frames. With reduced motion the app still
- * fades content in (opacity only); a scan in the middle of a fade would measure washed-out text.
+ * fades content in (opacity only), and a theme switch moves every colour for 150 ms; a scan in the middle
+ * would measure washed-out text.
+ *
+ * The calm frames are counted by this call alone, from its first frame on, and only in frames. A change just
+ * made (`page.emulateMedia`, a click) shows within the next two frames: the app hears of a new colour scheme
+ * there and sets its `dark` class, and the transitions start in that frame's style update. A count kept from an
+ * earlier call, or a check made before that frame, finds the page still and returns while the colours are still
+ * old, and the scan then runs mid-transition (a 4.4:1 button label in dark mode, now and then).
+ *
+ * settle() cannot see a change that starts later, such as one waiting for a server answer or a timer: wait for
+ * its result first, as the specs do with toHaveClass or toBeVisible. Call it on a loaded page: a navigation
+ * during the call ends it with an error (wait for the load first).
  */
 export async function settle(page: Page): Promise<void> {
-  await page.waitForFunction(
-    () => {
-      const w = window as unknown as { __e2eCalmFrames?: number };
-      const busy = document.getAnimations().some((a) => a.playState === "running" && a.effect?.getTiming().iterations !== Infinity);
-      w.__e2eCalmFrames = busy ? 0 : (w.__e2eCalmFrames ?? 0) + 1;
-      return w.__e2eCalmFrames >= 3;
-    },
-    undefined,
-    { polling: "raf" },
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        let calm = 0;
+        const frame = () => {
+          // getAnimations() brings styles up to date first, so a transition due to start is already in the list
+          const busy = document.getAnimations().some((a) => a.playState === "running" && a.effect?.getTiming().iterations !== Infinity);
+          calm = busy ? 0 : calm + 1;
+          if (calm >= 3) resolve();
+          else requestAnimationFrame(frame);
+        };
+        requestAnimationFrame(frame);
+      }),
   );
 }
 
