@@ -19,7 +19,7 @@ from ordnung.drafts import sent
 from ordnung.drafts.compose import compose, mark_sent
 from ordnung.drafts.proof import followup_item_id
 from ordnung.llm.fake import FakeBackend
-from ordnung.models import LetterDetails, Recurrence, Suggestion, WaitingEntry
+from ordnung.models import Item, LetterDetails, Recurrence, Suggestion, WaitingEntry
 from ordnung.secretary import calls
 from ordnung.secretary.triggers import Ledger, run_and_reconcile, run_triggers
 from ordnung.secretary.waiting import waiting_for
@@ -204,6 +204,37 @@ async def test_a_closed_letter_s_answer_is_not_looked_for(
     looked.clear()
     assert _entries(ctx) == [] and looked == []
     assert [entry.status for entry in _entries(ctx, include_closed=True)] == ["closed"] and len(looked) == 1
+
+
+class _CountedItems(list[Item]):
+    """A ledger's to-dos that count how often they are walked."""
+
+    walks = 0
+
+    def __iter__(self) -> Iterator[Item]:
+        type(self).walks += 1
+        return super().__iter__()
+
+
+async def test_a_sent_letter_s_follow_up_is_found_without_walking_every_to_do(
+    ctx: AppContext, gym: Gym, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Each sent letter's follow-up was found by walking every to-do, for each of the years of sent letters: the
+    list walks the to-dos as often for one sent letter as for six, the follow-ups found through the ledger's
+    index of to-dos by id."""
+
+    def walks() -> int:
+        ledger = Ledger(ctx.store, TODAY)
+        monkeypatch.setattr(ledger, "items", _CountedItems(ledger.items))
+        monkeypatch.setattr(_CountedItems, "walks", 0)
+        assert len(waiting_for(ledger)) == len(ctx.store.list_drafts(status="sent"))
+        return _CountedItems.walks
+
+    await helpers_proof.sent_letter(ctx, gym)
+    one = walks()
+    for _ in range(5):
+        await helpers_proof.sent_letter(ctx, gym)
+    assert walks() == one
 
 
 async def test_answered_in_the_persons_words_closes_the_entry_and_undo_reopens_it(
