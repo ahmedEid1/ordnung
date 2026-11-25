@@ -875,7 +875,29 @@ def test_no_token_is_refused_off_loopback(data_dir: Path) -> None:
         app, ["serve", "--data-dir", str(data_dir), "--host", "0.0.0.0", "--no-token", "--no-browser"]
     )
     assert result.exit_code == 1
-    assert "--no-token is only allowed" in result.output
+    assert "is not this computer's own address" in result.output
+
+
+@pytest.mark.parametrize("host", ["0.0.0.0", "192.168.1.5", "::"])
+def test_serve_refuses_a_network_address(data_dir: Path, host: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The computer's listener is plain HTTP and takes the session token: on a network address a
+    device that tried it would send the token in clear, so serve and demo refuse to start there."""
+    from typer.testing import CliRunner
+
+    from ordnung import cli
+    from ordnung.cli import app
+
+    def never(server: object) -> None:
+        raise AssertionError("a server was started")
+
+    monkeypatch.setattr(cli, "_run_server", never)
+
+    for command in (["serve", "--data-dir", str(data_dir)], ["demo", "--data-dir", str(data_dir / "demo")]):
+        result = CliRunner().invoke(app, [*command, "--host", host, "--no-browser"])
+        assert result.exit_code == 1, command
+        assert "is not this computer's own address" in result.output, command
+        assert "phone access" in result.output, command
+    assert not (data_dir / "server.json").exists()
 
 
 def test_a_recording_is_refused_when_ask_read_a_personal_document(tmp_path: Path) -> None:
