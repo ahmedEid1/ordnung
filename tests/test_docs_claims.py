@@ -4541,3 +4541,27 @@ def test_the_hidden_text_check_is_documented_as_one_layer_with_what_its_tests_ho
         assert set(constructions) <= cases, constructions
     for absolute in ("always removed", "however it is hidden", "every hidden text"):
         assert absolute not in privacy and absolute not in module, absolute
+
+
+def test_no_page_promises_that_hidden_text_in_a_pdf_is_always_found() -> None:
+    """The README's trust boundaries, the guide, the spec and the text layer's docstring speak of the hidden
+    text Ordnung *finds*, as one layer: text the check misses is read as printed, so it is neither shown nor
+    kept from the model. No page says text hidden in a PDF is shown, never followed."""
+    readme, guide, spec = _doc("README.md"), _doc("docs/guide.md"), _doc("docs/SPEC.md")
+    assert (
+        "hidden text Ordnung finds in a PDF is kept from Claude and shown to you as a scam sign (one layer, not"
+        " a guarantee)"
+    ) in readme
+    assert (
+        "Hidden text Ordnung finds in a PDF is kept from the AI and shown; instructions aimed at an AI"
+        in guide
+    )
+    assert (
+        "hidden text it finds is excluded from the prompt and raises a red banner; one layer, not a guarantee"
+        in spec
+    )
+    module = _flat(inspect.getdoc(importlib.import_module("ordnung.ingest.text")) or "")
+    assert "the ink the page shows there (fake bold)" in module
+    for name in ("README.md", "SECURITY.md", "docs/guide.md", "docs/privacy.md", "docs/architecture.md"):
+        assert "hidden in a PDF is shown" not in _doc(name), name
+    assert "invisible text is excluded from the prompt" not in spec

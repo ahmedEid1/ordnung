@@ -34,7 +34,7 @@ and no tokens, open the [online demo](https://ahmedeid1.github.io/ordnung/), or 
 <td><img src="assets/trace.png" alt="How it was read: the steps of reading a letter"><br><b>How it was read.</b> Every step of a letter's reading: what Claude was asked, what it cost, and what code checked and computed. Exports to OpenTelemetry.</td>
 </tr>
 <tr>
-<td><img src="assets/scam.png" alt="A scam letter flagged"><br><b>Scam and injection defence.</b> Scam signs such as pressure or a payee account abroad flag a letter. Its dates still show on its page and in the warning, but stay off Today, the calendar and the notification until you choose <i>I checked — it's genuine</i>; it never gets a GiroCode. Text hidden in a PDF and instructions aimed at an AI are shown, never followed.</td>
+<td><img src="assets/scam.png" alt="A scam letter flagged"><br><b>Scam and injection defence.</b> Scam signs such as pressure or a payee account abroad flag a letter. Its dates still show on its page and in the warning, but stay off Today, the calendar and the notification until you choose <i>I checked — it's genuine</i>; it never gets a GiroCode. Hidden text Ordnung finds in a PDF is kept from the AI and shown; instructions aimed at an AI are shown, never followed.</td>
 <td><img src="assets/today-dark.png" alt="Today in dark mode"><br><b>Light and dark.</b> Both themes have no serious or critical violations of axe 4.14's WCAG 2.2 AA rules, with one documented exemption (the page image's highlight buttons: WCAG 2.5.8's "equivalent" exception), and every page works from 320 px wide up (below); CI checks both.</td>
 </tr>
 <tr>

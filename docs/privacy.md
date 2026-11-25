@@ -730,11 +730,11 @@ you set up before: a copy kept somewhere else, and an encrypted disk.
   is compared with the paper; the OCR text is kept only for your letter search, [above](#searchable-scans)),
   and every extracted fact is checked against the page before it is shown as "found in the letter".
 - Hidden (invisible) text that Ordnung finds in a PDF is removed before it reaches the model and counts as a
-  scam sign: text that is white, tiny, off the page or drawn invisibly (a PDF's text render mode 3), text
-  that leaves no ink of its own on the rendered page (covered, transparent, clipped away, in a layer that is
-  off), and text that shows less than half of each glyph (a cover or clip that leaves a sliver of it). This
-  check compares renders of the page; it is one layer, not a guarantee. A sender who works at it can still
-  hide text from it, and such text is then read as if it were printed.
+  scam sign: text that is white on a light ground, tiny, off the page or drawn invisibly (a PDF's text render
+  mode 3), text that leaves no ink of its own on the rendered page (covered, transparent, clipped away, in a
+  layer that is off), and text that shows less than half of each glyph (a cover or clip that leaves a sliver
+  of it). This check compares renders of the page; it is one layer, not a guarantee. A sender who works at it
+  can still hide text from it, and such text is then read as if it were printed.
 - *Ask* can only call Ordnung's **read-only** ledger tools; there are no write tools for a
   prompt-injected document to abuse, and no date calculator: the rules tools other clients can install
   are not on Ask's server ([ADR 0011](decisions/0011-ask-keeps-to-the-ledger.md)).

@@ -18,8 +18,9 @@
   with its text objects removed, which shows the ink text leaves on the page, and the page's text
   alone, on white (and on black where text shows more on the page than on white: light text on a dark
   ground), which is the ink each glyph draws by itself. A character shows when at least
-  :data:`INK_SHARE` of its own ink shows in its box, and a letter or digit only when its own ink also
-  spans that share of its glyph's box (so a clip leaves no strip of it either). Where another text
+  :data:`INK_SHARE` of its own ink shows in its box, and a letter or digit only when ink spans that
+  share of its glyph's box: its own, or, where text objects overlap, the ink the page shows there (fake
+  bold); so a clip leaves no strip of it either. Where another text
   object can paint in a character's box too (a visible line drawn over the cover of a hidden one), the
   character is judged by its own text object alone: the page and its text alone are rendered once more
   without just that object, or without a batch of objects that can't paint in each other's characters'

@@ -2638,8 +2638,9 @@ ones, or a quote naming another day keep the reason (`plan.day_evidence`). UI ne
 
 **Injection defences.** Extraction has no tools (content blocks via stdin). All document-derived
 text in any prompt (including earlier summaries) is wrapped in `<untrusted_document>` tags. Hidden-
-text detector (pdfplumber char colour/size/position): invisible text is excluded from the prompt and
-raises a red banner. HTML e-mails follow the short written policy of `html_to_text` (ADR 0007): only
+text detector (pdfplumber colour/size/position, text render mode, and PDFium renders with and without
+the text: text that leaves no ink of its own, or only a sliver, `ingest/text.py`): hidden text it
+finds is excluded from the prompt and raises a red banner; one layer, not a guarantee (privacy.md). HTML e-mails follow the short written policy of `html_to_text` (ADR 0007): only
 text that is certainly hidden is excluded; when in doubt it stays visible. Brief/review free text is checked: every date, amount and § must exist in
 the agenda/ledger/catalog, else it is removed (fallback to code-generated text). Ask's tool results
 separate Ordnung's record from letter text, and each date or amount of an Ask answer must be in the
