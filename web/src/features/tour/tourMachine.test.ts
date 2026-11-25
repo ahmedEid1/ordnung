@@ -18,7 +18,9 @@ describe("tour state machine", () => {
   it("walks forward and completes after the last step", () => {
     expect(run([{ type: "next" }])).toEqual({ active: true, step: 1, completed: false });
     expect(run([{ type: "next" }, { type: "next" }, { type: "next" }])).toEqual({ active: true, step: 3, completed: false });
-    expect(run([{ type: "next" }, { type: "next" }, { type: "next" }, { type: "next" }])).toEqual({ active: false, step: 3, completed: true });
+    // finished: back at step 0, so nothing offers to resume it (an ended tour keeps its step for Resume)
+    expect(run([{ type: "next" }, { type: "next" }, { type: "next" }, { type: "next" }])).toEqual({ active: false, step: 0, completed: true });
+    expect(run([{ type: "next" }, { type: "finish" }])).toEqual({ active: false, step: 0, completed: true });
   });
 
   it("goes back but never below the first step", () => {

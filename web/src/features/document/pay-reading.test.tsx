@@ -282,10 +282,12 @@ describe("reading a letter again", () => {
 
   // a broken claude program failed every letter alike, and the card offered only "Try again"
   it("a failure of Claude Code itself also leads to Settings → Claude connection", () => {
-    const exited = "Claude exited without an answer. Run `ordnung doctor` to check Claude.";
+    const exited = "Claude exited without an answer. Run `ordnung doctor --probe` to check Claude.";
     renderWithProviders(<ProcessingCard doc={makeDoc({ title: null, kind: null, status: "failed", error: exited })} />, { client: client() });
     const card = screen.getByRole("alert");
-    expect(card).toHaveTextContent(`${exited} Your file is safe.`);
+    // the command is set as code, as Settings → Claude connection sets the check's commands: no literal backticks
+    expect(card).toHaveTextContent("Claude exited without an answer. Run ordnung doctor --probe to check Claude. Your file is safe.");
+    expect(within(card).getByText("ordnung doctor --probe").tagName).toBe("CODE");
     expect(within(card).getByRole("button", { name: "Try again" })).toBeInTheDocument();
     expect(within(card).getByRole("link", { name: "Claude connection" })).toHaveAttribute("href", "/settings?section=claude");
   });

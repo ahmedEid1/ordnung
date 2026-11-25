@@ -1,4 +1,4 @@
-import { Fragment, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, CircleAlert, CircleCheck, FlaskConical, RotateCw, Terminal } from "lucide-react";
 import { api } from "@/api/endpoints";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
 import { CopyCommand } from "@/components/ui/CopyCommand";
+import { WithCode, inlineCode as code } from "@/components/ui/WithCode";
 import { InstallClaude, UpdateClaude } from "@/features/onboarding/InstallClaude";
 import { CLAUDE_LOGIN_CMD, CLAUDE_PLAN_NOTE } from "@/features/onboarding/options";
 import { claudeState, type ClaudeState } from "@/features/onboarding/wizard";
@@ -22,25 +23,6 @@ export const DEFAULT_MODEL = "claude-sonnet-5";
 /** "2.1.4 (Claude Code)" → "2.1.4" (the row is already called "Claude Code"). */
 export function bareVersion(version: string | null | undefined): string | null {
   return version?.replace(/\s*\(Claude Code\)\s*$/i, "").trim() || null;
-}
-
-const code = "rounded bg-surface-2 px-1 py-px font-mono text-[12px] text-ink";
-
-/** A message from the check with its `commands` set as code (never literal backticks). */
-function WithCode({ text }: { text: string }) {
-  return (
-    <>
-      {text.split(/`([^`]+)`/).map((part, i) =>
-        i % 2 ? (
-          <code key={i} className={cn(code, "whitespace-nowrap")}>
-            {part}
-          </code>
-        ) : (
-          <Fragment key={i}>{part}</Fragment>
-        ),
-      )}
-    </>
-  );
 }
 
 /** A failed check in words: what was found (for the live call, the program's own words), then the fix. */

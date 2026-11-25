@@ -74,7 +74,7 @@ const jobKey = (ev: JobProgressEvent) => ev.doc_id ?? ev.job_id ?? "job";
 export const WAITING_FOR_CLAUDE = "Waiting for Claude";
 
 /** How a letter's failure ends when the `claude` program itself failed (`CHECK_CLAUDE` in `llm/base.py`). */
-export const CHECK_CLAUDE = "Run `ordnung doctor` to check Claude.";
+export const CHECK_CLAUDE = "Run `ordnung doctor --probe` to check Claude.";
 
 /**
  * Why a letter waits for Claude — not installed or not signed in, or its usage limit — from its job's

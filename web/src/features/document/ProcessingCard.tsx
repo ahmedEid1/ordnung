@@ -10,6 +10,7 @@ import { FileNameText } from "@/components/ui/FileNameText";
 import { JOB_STAGE_COPY, PIPELINE_STEPS, copyFor, stageToStep } from "@/lib/copy";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { Stepper } from "@/components/ui/Stepper";
+import { WithCode } from "@/components/ui/WithCode";
 
 /**
  * The letter was read before: its verdict — the earlier reading — stays on the page below this card
@@ -102,7 +103,7 @@ export function ProcessingCard({ doc }: { doc: Document }) {
           <p className="mt-1 text-[13.5px] leading-5 text-muted wrap-break-word">
             {/* the verdict below still shows what the earlier reading found */}
             {again ? "What's shown below is from the earlier reading. " : ""}
-            {reason} Your file is safe.
+            <WithCode text={reason} /> Your file is safe.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <Button

@@ -1,7 +1,7 @@
 /**
  * Demo-tour state machine (pure; the state itself lives in `/api/demo/tour` as `TourState`).
  *
- *   inactive ──restart──▶ step 0 ──next──▶ 1 ──next──▶ 2 ──next──▶ 3 ──next/finish──▶ completed
+ *   inactive ──restart──▶ step 0 ──next──▶ 1 ──next──▶ 2 ──next──▶ 3 ──next/finish──▶ completed (at step 0)
  *                           ▲  ◀──back──    ◀──back──    ◀──back──
  *   any active step ──skip──▶ completed (hidden until restarted: from the Demo badge, the Finish
  *   toast, or the Skip toast's Undo — which restarts at the step it was skipped at)
@@ -22,6 +22,12 @@ export type TourEvent =
 
 const clamp = (n: number, total: number) => Math.max(0, Math.min(total - 1, Math.floor(Number.isFinite(n) ? n : 0)));
 
+/**
+ * A finished tour goes back to its first step: Settings and the Demo badge offer to resume an ended one at its
+ * step, and a finished one has nothing left to resume.
+ */
+const FINISHED: TourState = { active: false, step: 0, completed: true };
+
 /** Repair a state from the server (step out of range, active and completed at once). */
 export function normalizeTour(s: TourState, total = TOUR_STEPS.length): TourState {
   const step = clamp(s.step, total);
@@ -36,14 +42,15 @@ export function reduceTour(state: TourState, ev: TourEvent, total = TOUR_STEPS.l
   if (!s.active) return s;
   switch (ev.type) {
     case "next":
-      return s.step >= total - 1 ? { active: false, step: s.step, completed: true } : { ...s, step: s.step + 1 };
+      return s.step >= total - 1 ? FINISHED : { ...s, step: s.step + 1 };
     case "back":
       return { ...s, step: Math.max(0, s.step - 1) };
     case "goto":
       return { ...s, step: clamp(ev.step, total) };
     case "skip":
-    case "finish":
       return { active: false, step: s.step, completed: true };
+    case "finish":
+      return FINISHED;
     case "idea-arrived":
       return s.step === 0 ? { ...s, step: 1 } : s;
   }

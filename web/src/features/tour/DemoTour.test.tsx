@@ -440,6 +440,22 @@ describe("keyboard and screen readers", () => {
     await waitFor(() => expect(within(back).getByRole("heading", { name: "Ask anything" })).toHaveFocus());
   });
 
+  it("End the tour at its first step: the toast promises only a restart (there is no step to resume at)", async () => {
+    const { srv } = useMockApi();
+    srv.db.state.tour = { active: true, step: 0, completed: false };
+    viewport(1440, 900);
+    renderWithProviders(
+      <>
+        <main id="main" tabIndex={-1} />
+        <DemoTour />
+        <Toaster />
+      </>,
+    );
+    fireEvent.click(within(await tourRegion()).getByRole("button", { name: "End the tour" }));
+    expect(await screen.findByText("You can restart it any time in Settings → Data.")).toBeInTheDocument();
+    expect(screen.queryByText(/resume/i)).toBeNull();
+  });
+
   it("the Finish toast offers to restart the tour", async () => {
     const { srv } = useMockApi();
     srv.db.state.tour = { active: true, step: 3, completed: false };
@@ -454,6 +470,8 @@ describe("keyboard and screen readers", () => {
     );
     fireEvent.click(within(await tourRegion()).getByRole("button", { name: "Finish" }));
     expect(await screen.findByText("That's the tour")).toBeInTheDocument();
+    // finished, not ended: nothing is left to resume (Settings and the Demo badge offer Resume past step 1)
+    await waitFor(() => expect(srv.db.state.tour).toEqual({ active: false, step: 0, completed: true }));
     expect(document.getElementById("main")).toHaveFocus();
     fireEvent.click(screen.getByRole("button", { name: "Restart the tour" }));
     expect(within(await tourRegion()).getByRole("heading", { name: "You have new mail" })).toBeInTheDocument();
