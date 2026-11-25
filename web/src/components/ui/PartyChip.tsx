@@ -60,6 +60,7 @@ export function PartyChip({ party, id, name, kind, size = "sm", showKind, classN
     <button
       type="button"
       onClick={() => drawer.open(pid)}
+      data-party-chip={pid}
       title={title}
       className={cn(cls, "transition-[color,background-color,border-color] hover:border-line-strong hover:bg-surface-2")}
     >
@@ -67,4 +68,9 @@ export function PartyChip({ party, id, name, kind, size = "sm", showKind, classN
       {inner} <span className="sr-only">— open details</span>
     </button>
   );
+}
+
+/** A chip on the page (not in a drawer) that opens this party's details, or null: the control about that sender. */
+export function partyChipOnPage(id: string): HTMLElement | null {
+  return Array.from(document.querySelectorAll<HTMLElement>("main [data-party-chip]")).find((el) => el.dataset.partyChip === id) ?? null;
 }

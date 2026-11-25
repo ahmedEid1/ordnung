@@ -153,12 +153,22 @@ function focusFirst(places: (HTMLElement | null | undefined)[]): boolean {
 }
 
 /**
+ * The page's heading, made able to take focus: a page's h1 has no tabindex, and without one focus() does nothing.
+ * Asked for only when the two places before it are gone, so the -1 is set only when focus really goes there.
+ */
+function pageHeading(): HTMLElement | null {
+  const h1 = document.querySelector<HTMLElement>("main h1");
+  if (h1 && !h1.hasAttribute("tabindex")) h1.tabIndex = -1;
+  return h1;
+}
+
+/**
  * After a failed Undo the change still stands, and the person is one step from trying again: focus goes to the
  * control the change was about, else back where it was before the toast took it, else the page's heading — not to
  * <main>, which drops a keyboard or screen-reader user at the top of the page.
  */
 function focusAfterFailedUndo(t: ToastRecord) {
-  const placed = focusFirst([t.focusIfUndoFails?.(), focusOutsideToasts, document.querySelector<HTMLElement>("main h1")]);
+  const placed = focusFirst([t.focusIfUndoFails?.(), focusOutsideToasts]) || focusFirst([pageHeading()]);
   if (placed) focusBeforeToasts = null;
   else restoreFocus();
 }

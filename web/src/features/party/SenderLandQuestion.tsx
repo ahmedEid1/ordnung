@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toast";
 import { AnswerButton } from "@/features/inbox/AnswerButton";
 import { focusWhenReady } from "@/lib/focus";
+import { partyChipOnPage } from "@/components/ui/PartyChip";
 import { cn } from "@/lib/utils";
 import { savedStateLine } from "./sender-land";
 import { regionName } from "./timeline";
@@ -91,8 +92,9 @@ export function SenderLandQuestion({
     toast.success(`Saved: ${saved.name} is in ${state}`, {
       description: [savedStateLine(state, suggestion.reason), moved].filter(Boolean).join(" "),
       undo: () => update.mutateAsync({ id: party.id, patch: { region: null } }).then(() => undefined),
-      // still saved, the question gone: where Yes left the keyboard
-      focusIfUndoFails: () => focusAfterYes?.() ?? null,
+      // still saved, the question gone: where Yes left the keyboard; with its drawer closed since, this sender's chip
+      // on the page (none: the Toaster goes on to where focus was, then the page's heading)
+      focusIfUndoFails: () => (focusAfterYes ? (focusAfterYes() ?? partyChipOnPage(party.id)) : null),
     });
   };
 

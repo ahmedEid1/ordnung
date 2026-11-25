@@ -255,12 +255,12 @@ describe("A toast on its way out", () => {
     }
   });
 
-  /** A page with a heading and two controls, and the toasts. */
+  /** A page with a heading and two controls, and the toasts. The heading has no tabindex, as on a real page. */
   function page() {
     renderWithProviders(
       <>
         <main tabIndex={-1}>
-          <h1 tabIndex={-1}>Today</h1>
+          <h1>Today</h1>
           <button type="button">For taxes</button>
           <button type="button">Next card</button>
         </main>
@@ -281,6 +281,8 @@ describe("A toast on its way out", () => {
     await waitFor(() => expect(contents(toastItem)).toHaveAttribute("inert"));
     expect(toggle).toHaveFocus();
     await waitFor(() => expect(toastItem).not.toBeInTheDocument());
+    // the heading is made focusable only when focus goes there
+    expect(screen.getByRole("heading", { name: "Today" })).not.toHaveAttribute("tabindex");
   });
 
   it("without that control, puts focus back where it was before it moved into the toast", async () => {
@@ -302,7 +304,9 @@ describe("A toast on its way out", () => {
     next.remove();
     await user.click(screen.getByRole("button", { name: "Undo" }));
     await waitFor(() => expect(screen.queryByText("Marked for taxes")).not.toBeInTheDocument());
+    // a page's h1 cannot take focus by itself: it is given tabindex -1 first, as focusWhenReady does
     expect(screen.getByRole("heading", { name: "Today" })).toHaveFocus();
+    expect(screen.getByRole("heading", { name: "Today" })).toHaveAttribute("tabindex", "-1");
   });
 
   it("counts an Undo that resolves false as failed (it said why itself)", async () => {

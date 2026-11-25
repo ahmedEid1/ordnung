@@ -197,6 +197,43 @@ test("Yes saves Berlin on the demo and the State heading takes the keyboard; the
   }
 });
 
+for (const by of ["mouse", "keyboard"] as const) {
+  test(`a failed Undo of Yes, the drawer closed, leaves the keyboard on the page's heading, never at <main> (${by})`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await open(page, "/");
+    const { party, suggestion } = await asked(page, "FunkNetz Mobil GmbH");
+    try {
+      await page.goto(`/?party=${party.id}`);
+      const drawer = page.getByRole("dialog", { name: party.name });
+      await drawer.getByRole("group", { name: question("FunkNetz Mobil GmbH", suggestion.postcode) }).getByRole("button", { name: "Yes" }).click();
+      await expect(drawer.getByRole("heading", { name: "State" })).toBeFocused();
+      await page.keyboard.press("Escape");
+      await expect(drawer).toBeHidden();
+      // the Undo's request fails, as a broken server would: their state stays Berlin
+      await page.route(`**/api/parties/${party.id}`, (route) =>
+        route.request().method() === "PATCH"
+          ? route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ detail: "Failed on purpose." }) })
+          : route.fallback(),
+      );
+      const saved = page.locator("li[data-toast]").filter({ hasText: `Saved: ${party.name} is in Berlin` });
+      if (by === "mouse") await saved.getByRole("button", { name: "Undo" }).click();
+      else {
+        await page.keyboard.press("Alt+KeyN");
+        await page.keyboard.press("Tab");
+        await expect(saved.getByRole("button", { name: "Undo" })).toBeFocused();
+        await page.keyboard.press("Enter");
+      }
+      await expect(page.locator('[aria-live="assertive"] li[data-toast]').filter({ hasText: "Couldn't save their state" })).toHaveCount(1);
+      await expect(saved).toHaveCount(0);
+      // the State heading went with the drawer, and Today shows no chip of theirs: the page's heading takes it
+      await expect(page.locator("main h1")).toBeFocused();
+    } finally {
+      await page.unroute(`**/api/parties/${party.id}`);
+      await apiPatch(page, `/api/parties/${party.id}`, { region: null });
+    }
+  });
+}
+
 test("a letter one of whose dates may change asks on a “Please check” card: Yes takes the keyboard to the verdict, Other state… to their picker", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 320, height: 800 });
   await open(page, "/");
