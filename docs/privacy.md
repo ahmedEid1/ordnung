@@ -504,6 +504,12 @@ activity log in your database (they are what the letter says), so the code stays
 letter is read differently; deleting the letter deletes that entry too (also when you deleted the
 to-do first).
 
+That entry is also how Ordnung knows you have compared a payment to a payee and IBAN before. The first
+code to an account always waits for your comparison, because a PDF's text can say something its page
+doesn't show; later letters from the same sender to the same payee and IBAN get their code at once.
+Ordnung keeps no other list of accounts, so once that letter is deleted for good, the account counts as
+new again.
+
 Scanning the code hands its text to your banking app on your phone, like typing it would. On a
 [paired phone](#phone-access-optional), which can't scan its own screen, the block offers to copy the details or to save the code as a picture
 that many banking apps can read: the picture is drawn on the phone, shared with your banking app or
@@ -893,7 +899,10 @@ you set up before: a copy kept somewhere else, and an encrypted disk.
   mode 3), text that leaves no ink of its own on the rendered page (covered, transparent, clipped away, in a
   layer that is off), and text that shows less than half of each glyph (a cover or clip that leaves a sliver
   of it). This check compares renders of the page; it is one layer, not a guarantee. A sender who works at it
-  can still hide text from it, and such text is then read as if it were printed.
+  can still hide text from it, and such text is then read as if it were printed. For payments there is a
+  second layer: the first [GiroCode](#girocode-payment-qr-codes) to a payee and IBAN waits until you have
+  compared its details with the letter, so a text layer that names another IBAN than the page shows can't
+  fill a code on its own.
 - *Ask* can only call Ordnung's **read-only** ledger tools; there are no write tools for a
   prompt-injected document to abuse, and no date calculator: the rules tools other clients can install
   are not on Ask's server ([ADR 0011](decisions/0011-ask-keeps-to-the-ledger.md)).

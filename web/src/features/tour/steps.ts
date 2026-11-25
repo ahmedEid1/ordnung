@@ -50,7 +50,7 @@ export interface TourStep {
 
 /** What the tour's last step points to besides its own (the tour never visited them before). */
 export const MORE_TO_TRY: readonly { label: string; hint: string; to: string }[] = [
-  { label: "Pay by GiroCode", hint: "open a bill and press Pay — scan the code with your banking app", to: "/inbox" },
+  { label: "Pay by GiroCode", hint: "open a bill and press Pay — compare it with the letter once, then scan the code with your banking app", to: "/inbox" },
   { label: "My numbers", hint: "your tax ID, insurance and customer numbers, checked", to: "/numbers" },
   { label: "Weekly review", hint: "ten minutes a week, step by step", to: "/week" },
   { label: "Letters", hint: "write one, send it with proof, see what you're waiting for", to: "/letters" },

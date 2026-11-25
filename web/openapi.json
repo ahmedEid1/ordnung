@@ -10680,6 +10680,11 @@
                 "type": "null"
               }
             ]
+          },
+          "first_payment": {
+            "type": "boolean",
+            "title": "First Payment",
+            "default": false
           }
         },
         "type": "object",
@@ -10689,10 +10694,11 @@
           "reason",
           "message",
           "to_check",
-          "values"
+          "values",
+          "first_payment"
         ],
         "title": "GiroCodeBlocked",
-        "description": "Why a payment has no GiroCode, in plain words (``message``). For ``check_letter``, ``to_check``\nnames the details to compare with the paper letter and ``values`` are the ones to confirm."
+        "description": "Why a payment has no GiroCode, in plain words (``message``). For ``check_letter``, ``to_check``\nnames the details not found in the letter's text, ``values`` are the ones to confirm, and\n``first_payment`` says this is the first comparison for the account: the person has not compared a\npayment to this payee and IBAN before, so every value is compared, found in the text or not."
       },
       "GiroCodeConfirm": {
         "properties": {

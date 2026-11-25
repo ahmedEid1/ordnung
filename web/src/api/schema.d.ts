@@ -3836,7 +3836,9 @@ export interface components {
         /**
          * GiroCodeBlocked
          * @description Why a payment has no GiroCode, in plain words (``message``). For ``check_letter``, ``to_check``
-         *     names the details to compare with the paper letter and ``values`` are the ones to confirm.
+         *     names the details not found in the letter's text, ``values`` are the ones to confirm, and
+         *     ``first_payment`` says this is the first comparison for the account: the person has not compared a
+         *     payment to this payee and IBAN before, so every value is compared, found in the text or not.
          */
         GiroCodeBlocked: {
             /**
@@ -3856,6 +3858,11 @@ export interface components {
             /** To Check */
             to_check: ("amount" | "iban" | "reference")[];
             values: components["schemas"]["TransferValues"] | null;
+            /**
+             * First Payment
+             * @default false
+             */
+            first_payment: boolean;
         };
         /**
          * GiroCodeConfirm

@@ -1,6 +1,7 @@
 /**
- * The GiroCode (EPC-QR) in the Pay panels on the real demo, where jsdom can't look: the code is a
- * square of black modules on white with its quiet zone in both themes, big enough to scan and
+ * The GiroCode (EPC-QR) in the Pay panels on the real demo, where jsdom can't look: the first payment to
+ * a payee and IBAN asks to compare its details with the letter once, laid out and accessible at 320 and 1280 px in
+ * both themes; the code is a square of black modules on white with its quiet zone in both themes, big enough to scan and
  * wholly on screen from 320 px up, the panel's actions stay in view, phones fold it behind
  * "Show code" and say what to do instead, a photographed letter asks to compare with the paper
  * first — and once compared, the code and its confirmation line scroll clear of the panel's sticky
@@ -8,7 +9,7 @@
  * "Read the letter again" say why in the panel, clear of its footer, with focus kept.
  */
 import type { Locator, Page } from "@playwright/test";
-import { apiPatch, expect, expectAccessible, letterId, letterItem, open, setTour, settle, shownAs, test } from "./helpers";
+import { apiGet, apiPatch, apiSend, expect, expectAccessible, letterId, letterItem, open, setTour, settle, shownAs, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -25,9 +26,30 @@ const VIEWPORTS = [
   [1280, 800],
 ] as const;
 
+interface BlockedCode {
+  status: "blocked" | "ready";
+  item_id: string;
+  reason?: string;
+  first_payment?: boolean;
+  values?: Record<string, unknown> | null;
+}
+
+/**
+ * The statement's payment compared with its letter, as the person does once for the first payment to its account
+ * ("These match the letter", through the API: the tests below are about the code, not about the comparison).
+ */
+async function statementCompared(page: Page): Promise<string> {
+  const id = await letterId(page, STATEMENT);
+  const { girocodes } = await apiGet<{ girocodes: BlockedCode[] }>(page, `/api/documents/${id}`);
+  for (const code of girocodes) {
+    if (code.status === "blocked" && code.reason === "check_letter") await apiSend(page, "POST", `/api/items/${code.item_id}/girocode/confirm`, code.values);
+  }
+  return id;
+}
+
 /** The utility statement's Pay panel, with the code unfolded (phones fold it). */
 async function openStatementCode(page: Page): Promise<{ panel: Locator; code: Locator }> {
-  const id = await letterId(page, STATEMENT);
+  const id = await statementCompared(page);
   await open(page, `/documents/${id}`);
   await page.getByRole("main").getByRole("article").first().getByRole("button", { name: /^Pay €184\.30/ }).click();
   const panel = page.getByRole("dialog").filter({ has: page.getByRole("region", { name: "GiroCode (EPC-QR)" }) });
@@ -47,6 +69,45 @@ async function reachable(l: Locator): Promise<boolean> {
     return r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth && Boolean(hit && el.contains(hit));
   });
 }
+
+// First in the file: the demo's statement is a first payment to its account until a test below compares it
+// (and the comparison stays in the shared demo). Run in another order, the precondition fails and says so: a
+// skip would let these four checks disappear without anyone noticing.
+test.describe("the first payment to an account", () => {
+  for (const scheme of ["light", "dark"] as const) {
+    for (const [width, height] of [
+      [320, 640],
+      [1280, 800],
+    ] as const) {
+      test(`${scheme}, ${width}×${height}: asks to compare once, says why, keeps the actions in view and passes axe`, async ({ page }, testInfo) => {
+        await page.emulateMedia({ colorScheme: scheme });
+        await page.setViewportSize({ width, height });
+        const id = await letterId(page, STATEMENT);
+        const { girocodes } = await apiGet<{ girocodes: BlockedCode[] }>(page, `/api/documents/${id}`);
+        const first = girocodes.some((c) => c.status === "blocked" && c.reason === "check_letter" && c.first_payment);
+        expect(first, "the statement's payment was compared before this test (statementCompared, or a project that ran earlier): this needs a demo where nobody has").toBe(true);
+        await open(page, `/documents/${id}`);
+        await page.getByRole("main").getByRole("article").first().getByRole("button", { name: /^Pay €184\.30/ }).click();
+        const panel = page.getByRole("dialog");
+        const section = panel.getByRole("region", { name: "GiroCode (EPC-QR)" });
+        await expect(section.getByText("New account: compare once")).toBeVisible();
+        await expect(section).toContainText("you haven't compared a payment to this payee and IBAN with a letter from this sender before");
+        await expect(section.getByRole("img")).toHaveCount(0);
+        await expect(section.getByRole("checkbox")).toHaveCount(0);
+        // the details to compare, in full above the question, and one clear confirmation
+        await expect(panel.getByRole("term")).toHaveText(["Recipient", "IBAN", "Amount", "Reference"]);
+        const confirm = section.getByRole("button", { name: "These match the letter" });
+        await confirm.scrollIntoViewIfNeeded();
+        expect(await reachable(confirm)).toBe(true);
+        await confirm.focus();
+        await expect(confirm).toBeFocused();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+        expect(await reachable(panel.getByRole("button", { name: "Mark as paid" }))).toBe(true);
+        await expectAccessible(page, testInfo, `girocode-first-payment-${scheme}-${width}`);
+      });
+    }
+  }
+});
 
 for (const scheme of ["light", "dark"] as const) {
   test.describe(`${scheme} mode`, () => {
@@ -98,7 +159,7 @@ test.describe("phone 390×844", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test("a phone can't scan its own screen: the code waits behind “Show code”", async ({ page }) => {
-    const id = await letterId(page, STATEMENT);
+    const id = await statementCompared(page);
     await open(page, `/documents/${id}`);
     await page.getByRole("main").getByRole("article").first().getByRole("button", { name: /^Pay €184\.30/ }).click();
     const sheet = page.getByRole("dialog");
@@ -116,7 +177,13 @@ test.describe("phone 390×844", () => {
     await open(page, "/", /Sam/);
     await page.getByRole("region", { name: "Top 3 this week" }).getByRole("button", { name: /^Pay: / }).first().click();
     const sheet = page.getByRole("dialog");
-    await sheet.getByRole("button", { name: "Show code" }).click();
+    // a first payment to its account is compared once first; just compared, the code shows unfolded
+    const compare = sheet.getByRole("button", { name: "These match the letter" });
+    const show = sheet.getByRole("button", { name: "Show code" });
+    // whichever the sheet shows once its letter has loaded
+    await expect(compare.or(show)).toBeVisible();
+    if (await compare.isVisible()) await compare.click();
+    else await show.click();
     const code = sheet.getByRole("img", { name: /^GiroCode: transfer/ });
     await expect(code).toBeVisible();
     await settle(page);
@@ -130,7 +197,7 @@ test.describe("phone turned sideways 844×390", () => {
   test.use({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
 
   test("the code still waits behind “Show code”, and the actions don't pin themselves over the little room", async ({ page }) => {
-    const id = await letterId(page, STATEMENT);
+    const id = await statementCompared(page);
     await open(page, `/documents/${id}`);
     await page.getByRole("main").getByRole("article").first().getByRole("button", { name: /^Pay €184\.30/ }).click();
     const panel = page.getByRole("dialog");

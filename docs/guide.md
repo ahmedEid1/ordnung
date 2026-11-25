@@ -324,7 +324,7 @@ The tour in pictures: eight here, ten more one click below. Everything else Ordn
 <td><img src="assets/court-order.png" alt="A court payment order with its deadline and a get-advice card"><br><b>High-stakes letters.</b> A court payment order, enforcement order, dismissal, landlord's notice, rent increase or operating-cost statement gets the law's own date and a "get advice" card that names free or low-cost help.†</td>
 </tr>
 <tr>
-<td><img src="assets/pay.png" alt="The Pay panel with a GiroCode"><br><b>Pay by scan.</b> For a bank transfer the Pay panel shows a GiroCode (EPC-QR) your banking app scans. Never for a direct debit, a scam or a bill a reminder replaced; a value read from a photo waits until you compare it with the paper.</td>
+<td><img src="assets/pay.png" alt="The Pay panel with a GiroCode"><br><b>Pay by scan.</b> For a bank transfer the Pay panel shows a GiroCode (EPC-QR) your banking app scans. Never for a direct debit, a scam or a bill a reminder replaced; a value read from a photo waits until you compare it with the paper, and so does the first code to a payee and IBAN: you compare its details with the letter once, and later bills from the same sender to that account show their code at once.</td>
 <td><img src="assets/ask.png" alt="Ask with a checked answer"><br><b>Ask.</b> Answers about your letters, every date and amount checked against the record it cites. Here the fine's amount, read from a photo, stays in quotation marks as the letter's, and a note says so.</td>
 </tr>
 <tr>

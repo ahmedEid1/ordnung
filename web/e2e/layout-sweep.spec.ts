@@ -400,15 +400,15 @@ const OVERLAYS: SweepState[] = [
     present: dialogShown,
   },
   {
-    name: "Pay panel with a GiroCode",
+    // the demo has compared no payment yet: the first payment to the account asks to compare once (the sweep changes
+    // nothing, so it doesn't confirm; e2e/girocode-layout.spec.ts covers the code itself)
+    name: "Pay panel asking to compare a first payment",
     enter: async (page, demo) => {
       await open(page, `/documents/${letter(demo, "13_nebenkostenabrechnung_2025.pdf").id}`);
       await page.getByRole("article").first().getByRole("button", { name: /^Pay\b/ }).click();
       const panel = page.getByRole("dialog", { name: /^Pay/ });
       await expect(panel).toBeVisible();
-      const show = panel.getByRole("button", { name: "Show code" });
-      if (await show.isVisible()) await show.click();
-      await expect(panel.locator("svg[data-qr-version]")).toBeVisible();
+      await expect(panel.getByRole("button", { name: "These match the letter" })).toBeVisible();
       await settle(page);
     },
     present: dialogShown,
