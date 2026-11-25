@@ -351,7 +351,9 @@ function CardContent({ step, steps, stepIndex, here, compact, headingRef, go, on
 
       <AnimatePresence mode="wait" initial={false}>
         <motion.div key={step.id} initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.18 }}>
-          <h2 ref={headingRef} tabIndex={-1} className={cn("display mt-2 font-semibold leading-snug outline-none", compact ? "text-lg" : "text-[19px]")}>
+          {/* the line height goes with the size (snug, as titles are): a leading-* class before a size was dropped by
+              tailwind-merge before 3.7.1 and is kept since, so the heading's lines once depended on the version */}
+          <h2 ref={headingRef} tabIndex={-1} className={cn("display mt-2 font-semibold outline-none", compact ? "text-lg/snug" : "text-[19px]/snug")}>
             {step.title}
           </h2>
           <p className={cn("mt-1 text-muted", compact ? "text-sm leading-normal" : "text-base leading-relaxed")}>{step.body}</p>

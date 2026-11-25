@@ -236,6 +236,27 @@ describe("the tour tells the page what it covers", () => {
 });
 
 describe("the card never covers the page", () => {
+  // tailwind-merge 3.7.0 dropped a leading-* class written before a text size, 3.7.1 keeps it: the line height goes
+  // with the size (text-lg/snug), the way neither version reads differently
+  it("gives its heading the line height with its size, docked and floating, never as a separate leading-* class", async () => {
+    useMockApi();
+    viewport(1440, 900);
+    const dock = addDock(400);
+    tourRect({ height: 300 });
+    const { unmount } = renderWithProviders(<DemoTour />);
+    const docked = within(await tourRegion()).getByRole("heading", { name: "You have new mail" });
+    expect(docked.className.split(" ")).toContain("text-lg/snug");
+    expect(docked.className).not.toMatch(/(^|\s)leading-/);
+    unmount();
+    dock.remove();
+    vi.restoreAllMocks();
+    tourRect({ height: 180, left: 280, right: 632 });
+    renderWithProviders(<DemoTour />);
+    const floating = within(await tourRegion()).getByRole("heading", { name: "You have new mail" });
+    expect(floating.className.split(" ")).toContain("text-[19px]/snug");
+    expect(floating.className).not.toMatch(/(^|\s)leading-/);
+  });
+
   it("docks in the sidebar's free space when the whole card fits there (and sets nothing)", async () => {
     useMockApi();
     viewport(1440, 900);
