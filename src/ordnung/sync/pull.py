@@ -40,6 +40,7 @@ from ordnung.backup.archive import (
     FOLDERS,
     checked_name,
     estimate,
+    foreign_contents,
     iter_data_files,
     table_counts,
 )
@@ -259,12 +260,13 @@ def stage(session: Session, head: HeadView, *, keep: bool = False) -> Staged:
             fs.fsync_dir(Path(current))
         conn = sqlite3.connect(db_path)
         try:
+            foreign = foreign_contents(conn)
             ids = document_ids(conn)
-            named = {
-                p for p in referenced_paths(conn) if not (p.startswith("/") or (len(p) > 1 and p[1] == ":"))
-            }
+            named = referenced_paths(conn)
         finally:
             conn.close()
+        if foreign is not None:  # the reading pipeline would reach outside the data folder
+            raise SyncError("folder_problem", f"A version in the sync folder names {foreign}.")
         if not named <= {e.path for e in entries}:
             raise SyncError("folder_problem", "A version in the sync folder names files it doesn't hold.")
     except BaseException:

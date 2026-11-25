@@ -332,6 +332,26 @@ def _render(tmp_path: Path, data: bytes, mime: str, name: str = "src") -> list[R
     return render_pages(source, mime, tmp_path / "derived", "doc_test")
 
 
+@pytest.mark.parametrize(
+    "doc_id", ["../escape-target", "../../escape-target", "doc_a/../../x", "absolute", "."]
+)
+def test_render_pages_stays_in_its_own_folder(tmp_path: Path, doc_id: str) -> None:
+    """A restored or pulled letter id is one folder under ``derived/``: an id that names another folder
+    is refused before anything is made, deleted or written there."""
+    outside = tmp_path / "escape-target"
+    outside.mkdir()
+    (outside / "page-9.jpg").write_bytes(b"keep")
+    source = tmp_path / "src"
+    source.write_bytes(letter_pdf())
+    if doc_id == "absolute":
+        doc_id = str(outside)
+    with pytest.raises(IntakeError):
+        render_pages(source, "application/pdf", tmp_path / "derived", doc_id)
+    assert (outside / "page-9.jpg").read_bytes() == b"keep"
+    assert sorted(p.name for p in outside.iterdir()) == ["page-9.jpg"]
+    assert not (tmp_path / "derived").exists()
+
+
 def test_render_pdf_pages_and_thumbnail(tmp_path: Path) -> None:
     pages = _render(tmp_path, letter_pdf(), "application/pdf")
     assert [p.page for p in pages] == [1, 2, 3]

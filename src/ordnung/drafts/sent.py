@@ -563,7 +563,7 @@ def _enclosure(store: Store, proof: Proof, document: Document | None) -> Nachwei
     images = tuple(
         image
         for page in store.list_pages(document.id)
-        if (image := store.data_dir / page.image_path).is_file()
+        if (image := store.data_file(page.image_path)) is not None and image.is_file()
     )
     return NachweisFile(german, english, shows, does_not_show, images=images) if images else None
 

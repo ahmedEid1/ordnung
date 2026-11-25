@@ -483,7 +483,7 @@ def test_add_document_with_explicit_id_and_options(store: Store) -> None:
     stored = store.get_document("doc_manual000001")
     assert stored == document
     assert (stored.pages, stored.source, stored.direction, stored.ai_private) == (3, "capture", "note", True)
-    assert store.get_document_file(document.id) == Path("/abs/elsewhere/note.txt")
+    assert store.get_document_file(document.id) is None  # outside the data folder: never read
 
 
 def test_duplicate_sha_is_rejected(store: Store) -> None:
@@ -497,6 +497,31 @@ def test_get_document_file_resolves_relative_paths(store: Store) -> None:
     path = store.get_document_file(document.id)
     assert path is not None and path.is_absolute() and path.read_bytes() == b"abc"
     assert store.get_document_file("doc_missing") is None
+
+
+def test_get_document_file_never_leaves_the_data_folder(store: Store, tmp_path: Path) -> None:
+    """A restored or pulled database can name any path: Ordnung reads, renders and deletes only files
+    inside its data folder (an absolute path inside it, as written long ago, still counts)."""
+    outside = tmp_path / "outside.txt"
+    outside.write_text("not a letter")
+    inside = store.data_dir / "files" / "ab" / "note.txt"
+    for number, (stored, expected) in enumerate(
+        [
+            (str(outside), None),
+            ("../outside.txt", None),
+            ("files/../../outside.txt", None),
+            (str(inside), inside),
+            ("files/ab/note.txt", inside),
+        ]
+    ):
+        doc = store.add_document(
+            sha256=sha(stored.encode()), filename=f"n{number}.txt", mime="text/plain", file_path=stored
+        )
+        assert store.get_document_file(doc.id) == expected, stored
+        assert store.data_file(stored) == expected, stored
+        if expected is None:
+            assert store.delete_document(doc.id, purge_files=True)
+            assert outside.read_text() == "not a letter"  # deleting it for good leaves the file alone
 
 
 def test_update_document_round_trips_nested_json(store: Store, clock: Clock) -> None:

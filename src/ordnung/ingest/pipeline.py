@@ -659,7 +659,7 @@ def keep_held_private(ctx: AppContext, doc_ids: Sequence[str]) -> consent.Consen
 async def _ensure_pages(store: Store, document: Document) -> list[Page]:
     """The stored pages; re-rendered from the original if they or their images are missing."""
     pages = store.list_pages(document.id)
-    if pages and all((store.data_dir / page.image_path).is_file() for page in pages):
+    if pages and all(_page_file(store, page).is_file() for page in pages):
         return pages
     original = store.get_document_file(document.id)
     if original is None or not original.is_file():
@@ -691,8 +691,16 @@ def has_text_layer(document: Document) -> bool:
     return document.mime == "application/pdf" or document.mime in TEXT_TYPES
 
 
+def _page_file(store: Store, page: Page) -> Path:
+    """A page's image; refused when its stored path leads outside the data folder."""
+    path = store.data_file(page.image_path)
+    if path is None:
+        raise IntakeError("A page of this document is missing, so it can't be read.")
+    return path
+
+
 def _rendered(store: Store, pages: Sequence[Page]) -> list[RenderedPage]:
-    return [RenderedPage(p.page, p.width, p.height, store.data_dir / p.image_path) for p in pages]
+    return [RenderedPage(p.page, p.width, p.height, _page_file(store, p)) for p in pages]
 
 
 def _page_texts(store: Store, document: Document, pages: Sequence[Page]) -> PdfText:

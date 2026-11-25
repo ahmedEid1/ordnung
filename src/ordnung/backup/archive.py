@@ -25,7 +25,10 @@ Written policy (ADR 0007):
   anything else refuses the backup. The whole encrypted file is read to its authenticated end even
   after the archive's end marker, then every file must match the manifest (no file missing, none
   extra, sizes and hashes equal), the database must pass ``PRAGMA integrity_check``, its schema
-  must not be newer than this Ordnung's, and its row counts must equal the manifest's.
+  must not be newer than this Ordnung's, and its row counts must equal the manifest's. Nor may the
+  database hold what Ordnung never writes (:func:`foreign_contents`, which hand-off sync's pull checks
+  too): a file or page path that isn't a plain relative path under the three folders, a letter id
+  that could name another folder, or a trigger or view of its own.
 """
 
 from __future__ import annotations
@@ -34,6 +37,7 @@ import contextlib
 import hashlib
 import io
 import os
+import re
 import sqlite3
 import stat
 import tarfile
@@ -513,7 +517,8 @@ def _open_database(data: bytes) -> sqlite3.Connection:
 
 
 def verify_database(conn: sqlite3.Connection, manifest: Manifest) -> None:
-    """The restored database is intact, not newer than this Ordnung, and has the recorded rows."""
+    """The restored database is intact, not newer than this Ordnung, has the recorded rows and holds
+    nothing Ordnung never writes (:func:`foreign_contents`)."""
     if manifest.schema_version > latest_version():
         raise NewerBackupFormat(
             "This backup was made by a newer version of Ordnung (its database is newer than this "
@@ -529,6 +534,54 @@ def verify_database(conn: sqlite3.Connection, manifest: Manifest) -> None:
         raise DamagedBackup("The database in this backup is damaged.")
     if version != manifest.schema_version or counts != manifest.tables:
         raise DamagedBackup("The database in this backup doesn't match its list of contents.")
+    try:
+        foreign = foreign_contents(conn)
+    except sqlite3.DatabaseError:
+        raise DamagedBackup("The database in this backup is damaged.") from None
+    if foreign is not None:
+        raise DamagedBackup(f"The database in this backup names {foreign}, so it is not restored.")
+
+
+#: A letter id as Ordnung writes it (``ids.new_id``), and nothing that could name another folder in
+#: ``derived/<id>``: no separator, no dot.
+_DOC_ID_RE = re.compile(r"doc_[0-9a-z_]{1,64}", re.ASCII)
+#: The columns that name a file of the data folder, and those that name a letter (whose id is a folder
+#: name under ``derived/``).
+_PATH_COLUMNS = (("documents", "file_path"), ("pages", "image_path"))
+_DOC_ID_COLUMNS = (("documents", "id"), ("pages", "doc_id"), ("jobs", "doc_id"))
+
+
+def _column_values(conn: sqlite3.Connection, table: str, column: str) -> Iterator[object]:
+    if conn.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (table,)).fetchone():
+        yield from (row[0] for row in conn.execute(f'SELECT "{column}" FROM "{table}"'))
+
+
+def _plain_path(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    try:
+        checked_name(value.replace("\\", "/"))  # a path written on Windows long ago is still a path
+    except DamagedBackup:
+        return False
+    return value not in (DB_NAME, MANIFEST_NAME)
+
+
+def foreign_contents(conn: sqlite3.Connection) -> str | None:
+    """What a database to restore or pull holds that Ordnung never writes (``None``: nothing): a file
+    or page path outside the data folder's three folders (absolute, or with ``..``), a letter id that
+    could name another folder, or a trigger or view (Ordnung makes only temporary ones), which would
+    act on every later write. Each would make the reading pipeline, or the database itself, reach
+    outside what the person restored."""
+    if conn.execute("SELECT 1 FROM sqlite_master WHERE type IN ('trigger', 'view')").fetchone():
+        return "a trigger or view"
+    for table, column in _PATH_COLUMNS:
+        if not all(_plain_path(value) for value in _column_values(conn, table, column)):
+            return "a file outside the data folder"
+    for table, column in _DOC_ID_COLUMNS:
+        for value in _column_values(conn, table, column):
+            if value is not None and not (isinstance(value, str) and _DOC_ID_RE.fullmatch(value)):
+                return "a letter id Ordnung never writes"
+    return None
 
 
 _UNEXPECTED = "This backup contains an entry Ordnung never writes, so it is not restored."

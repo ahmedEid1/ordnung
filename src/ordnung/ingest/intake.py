@@ -292,6 +292,8 @@ def render_pages(src_path: Path, mime: str, out_dir: Path, doc_id: str) -> list[
     and e-mail documents are typeset onto A4 pages. The number of pages is ``len(result)``.
     """
     target = Path(out_dir) / doc_id
+    if target.resolve().parent != Path(out_dir).resolve():  # an id is one folder, never a path
+        raise IntakeError("This document can't be read: its id is not one Ordnung writes.")
     target.mkdir(mode=0o700, parents=True, exist_ok=True)
     for stale in target.glob("page-*.jpg"):
         stale.unlink()

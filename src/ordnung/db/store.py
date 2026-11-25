@@ -1269,7 +1269,8 @@ class Store:
         return self._one(_DOCUMENTS, "sha256 = ?", (sha256,))
 
     def get_document_file(self, id: str) -> Path | None:
-        """Absolute path of the document's original file (``None`` for an unknown document)."""
+        """Absolute path of the document's original file (``None`` for an unknown document, or one whose
+        stored path leads outside the data folder)."""
         row = self._conn().execute("SELECT file_path FROM documents WHERE id = ?", (id,)).fetchone()
         return None if row is None else self._data_path(row["file_path"])
 
@@ -1472,9 +1473,16 @@ class Store:
         with contextlib.suppress(sqlite3.Error):
             self._conn().execute("PRAGMA wal_checkpoint(TRUNCATE)")
 
-    def _data_path(self, stored: str) -> Path:
+    def _data_path(self, stored: str) -> Path | None:
+        return self.data_file(stored)
+
+    def data_file(self, stored: str) -> Path | None:
+        """The file a stored path (relative to the data folder, or an absolute one inside it) names, or
+        ``None`` when it leads outside the data folder: Ordnung never reads, renders or deletes a file
+        there, whatever a restored or pulled database says."""
         path = Path(stored)
-        return path if path.is_absolute() else self.data_dir / path
+        path = path if path.is_absolute() else self.data_dir / path
+        return path if path.resolve().is_relative_to(self.data_dir.resolve()) else None
 
     def discard_upload(self, sha256: str, doc_id: str, original: Path) -> bool:
         """Remove what an upload left when its document was never stored (it was refused while its pages
@@ -1485,7 +1493,7 @@ class Store:
         self._purge_files(doc_id, original)
         return True
 
-    def _purge_files(self, doc_id: str, original: Path) -> None:
+    def _purge_files(self, doc_id: str, original: Path | None) -> None:
         data_dir = self.data_dir.resolve()
         database = self.db_path.resolve()
         protected = {
@@ -1496,8 +1504,13 @@ class Store:
         derived_root = self.paths.derived.resolve()
         derived = (derived_root / doc_id).resolve()
         try:
-            target = original.resolve()
-            if target.is_file() and target.is_relative_to(data_dir) and target not in protected:
+            target = original.resolve() if original is not None else None
+            if (
+                target is not None
+                and target.is_file()
+                and target.is_relative_to(data_dir)
+                and target not in protected
+            ):
                 target.unlink()
             if derived.parent == derived_root and derived.is_dir():
                 shutil.rmtree(derived)

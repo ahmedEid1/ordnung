@@ -236,6 +236,32 @@ def test_a_demo_database_arriving_is_refused(pair, monkeypatch: pytest.MonkeyPat
         a.s.stage(a.s.scan().by_computer(b.s.state.computer))  # type: ignore[arg-type]
 
 
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "UPDATE documents SET file_path = '/etc/hostname'",
+        "UPDATE pages SET image_path = '/etc/outside.jpg'",
+        "INSERT INTO jobs (kind, status, doc_id, force, created_at, updated_at) "
+        "VALUES ('reprocess', 'queued', '../../escape-target', 1, 'x', 'x')",
+        "CREATE TRIGGER zz AFTER INSERT ON documents BEGIN SELECT 1; END",
+    ],
+)
+def test_a_version_naming_what_ordnung_never_writes_is_refused(pair, statement: str) -> None:  # type: ignore[no-untyped-def]
+    """A version pushed by a compromised or forgotten computer could point the reading pipeline outside
+    the data folder (no click needed: a queued job runs at the next start) or keep a trigger: staging
+    refuses it, and nothing is kept."""
+    a, b = pair
+    joined(a, b)
+    conn = sqlite3.connect(b.paths.db)  # the hostile computer's own write, past Ordnung's checks
+    conn.execute(statement)
+    conn.commit()
+    conn.close()
+    b.s.push(b.db)
+    with pytest.raises(SyncError, match="names"):
+        a.s.stage(a.s.scan().by_computer(b.s.state.computer))  # type: ignore[arg-type]
+    assert not (a.paths.data_dir / "sync" / "incoming").exists()
+
+
 def test_no_space_is_checked_before_staging(pair, monkeypatch: pytest.MonkeyPatch) -> None:  # type: ignore[no-untyped-def]
     a, b = pair
     joined(a, b)
