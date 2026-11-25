@@ -3,6 +3,24 @@
 How a version of Ordnung is released, and the owner's one-time setup for PyPI. Only the repository's owner
 makes releases; nothing here is needed to use Ordnung or to change it.
 
+## In one minute
+
+- **A release is a pushed tag.** `vX.Y.Z` on the release pull request's merge commit runs `release.yml`: it checks
+  the tag, builds, publishes a GitHub Release and, once you turn it on, uploads to PyPI
+  ([what a release does](#what-a-release-does)).
+- **Five steps:** raise the version, name the changelog's section, merge once CI passes (on `main` too), tag the
+  merge commit, watch the run ([making a release](#making-a-release)).
+- **A wrong tag stops before anything is built or published.** Once the GitHub Release exists, keep the tag
+  ([step 5](#making-a-release)).
+- **PyPI never takes the same version twice:** once the upload has worked, a mistake is fixed in the next version.
+- **Once, by the owner:** GitHub Pages for the online demo, the repository's settings, and PyPI
+  ([online demo](#the-online-demo-turned-on-once-by-the-owner),
+  [settings](#repository-settings-once-by-the-owner), [PyPI](#turning-on-pypi-once-by-the-owner)).
+
+[What a release does](#what-a-release-does) · [Making a release](#making-a-release) ·
+[The online demo](#the-online-demo-turned-on-once-by-the-owner) ·
+[Repository settings](#repository-settings-once-by-the-owner) · [Turning on PyPI](#turning-on-pypi-once-by-the-owner)
+
 ## What a release does
 
 Pushing a version tag such as `vX.Y.Z` runs [`.github/workflows/release.yml`](../.github/workflows/release.yml):
@@ -25,12 +43,19 @@ Pushing a version tag such as `vX.Y.Z` runs [`.github/workflows/release.yml`](..
 4. **It uploads the same two files to PyPI**, but only once you have turned that on (below). The upload uses
    Trusted Publishing: PyPI trusts this workflow, so no token is stored in the repository or anywhere else.
 
-A wrong tag stops at the first step, before anything is built or published. These checks run from the
+A wrong tag stops at the first step, before anything is built or published.
+
+<details>
+<summary>Why a tag pushed on purpose from somewhere else still can't publish</summary>
+
+These checks run from the
 tagged commit's own copy of the workflow, so they catch honest mistakes; the reviewer and the tag ruleset
 below stop a tag pushed on purpose from somewhere else. Each job gets only the rights it
 needs: the build only reads the code, the GitHub Release is written with the run's own token, which ends with
 the run, and only the PyPI job may ask for the short-lived token PyPI checks. A pull request never starts the
 workflow, and a fork never uploads to PyPI.
+
+</details>
 
 On PyPI the project page shows the README, with its links and pictures pointing to GitHub (`pyproject.toml`,
 `[tool.hatch.metadata.hooks.fancy-pypi-readme]`). They point to `main`, not to the release's tag, so a later
@@ -66,46 +91,55 @@ change to the README also changes what that page links to.
    git push origin vX.Y.Z
    ```
 
-5. **Watch Actions → Release.** If the build job stops, or the GitHub Release job fails before the Release
-   exists, nothing is published yet: delete the tag (`git push origin :refs/tags/vX.Y.Z`, then
-   `git tag -d vX.Y.Z`), remove the cause and tag again. A fix that needs a commit is merged into `main` and its
-   merge commit tagged, as in step 4 (the fix's changelog line goes in the version's section, not under
-   `## Unreleased`), but only while `main` lists nothing under `## Unreleased`; once it does, the tag can go back
-   only on the same commit, which mends only a cause outside that commit (CI not yet passed there, say). For
-   that case the run itself can also be run again (*Re-run all jobs*) once CI has passed, as its message says.
-
-   Once the GitHub Release exists, keep the tag: the Release belongs to it (deleting the tag turns a published
-   Release into a draft), and the PyPI job is run again on the same run, not from a new tag. If only the PyPI
-   job failed or its review was rejected, fix the cause and run it again on the same run (*Re-run failed
-   jobs*). A re-run uploads the artifact `dist` the build job stored, and the jobs before it don't run again. A
-   review still waiting is given on the run's page (GitHub fails the job after 30 days). GitHub re-runs a run
-   only within 30 days of its start, and keeps that artifact 90 days unless the repository or organisation
-   keeps artifacts for less. After either limit the version reaches PyPI only as the next one. A version tagged
-   while PyPI was off stays on GitHub only (its PyPI job is skipped, and the run counts as passed): turn PyPI
-   on before you tag a version meant for PyPI. PyPI never takes the same version twice: once the upload has
-   worked, a mistake is fixed in the next version.
+5. **Watch Actions → Release.**
+   - **Before the GitHub Release exists.** If the build job stops, or the GitHub Release job fails before the
+     Release exists, nothing is published yet: delete the tag (`git push origin :refs/tags/vX.Y.Z`, then
+     `git tag -d vX.Y.Z`), remove the cause and tag again. A fix that needs a commit is merged into `main` and its
+     merge commit tagged, as in step 4 (the fix's changelog line goes in the version's section, not under
+     `## Unreleased`), but only while `main` lists nothing under `## Unreleased`; once it does, the tag can go
+     back only on the same commit, which mends only a cause outside that commit (CI not yet passed there, say).
+     For that case the run itself can also be run again (*Re-run all jobs*) once CI has passed, as its message
+     says.
+   - **Once the GitHub Release exists, keep the tag:** the Release belongs to it (deleting the tag turns a
+     published Release into a draft), and the PyPI job is run again on the same run, not from a new tag. If only
+     the PyPI job failed or its review was rejected, fix the cause and run it again on the same run (*Re-run
+     failed jobs*). A re-run uploads the artifact `dist` the build job stored, and the jobs before it don't run
+     again. A review still waiting is given on the run's page (GitHub fails the job after 30 days).
+   - **Time limits.** GitHub re-runs a run only within 30 days of its start, and keeps that artifact 90 days
+     unless the repository or organisation keeps artifacts for less. After either limit the version reaches PyPI
+     only as the next one.
+   - **PyPI off, and never twice.** A version tagged while PyPI was off stays on GitHub only (its PyPI job is
+     skipped, and the run counts as passed): turn PyPI on before you tag a version meant for PyPI. PyPI never
+     takes the same version twice: once the upload has worked, a mistake is fixed in the next version.
 
 The next change goes under a new `## Unreleased` heading again (CONTRIBUTING.md).
 
-**A version named before its tag.** A version can be named a while before it is tagged, as 0.4.0 was at the
-freeze of the pre-registered evaluation, whose publication its tag waited for. Its section then says so ("The
-`vX.Y.Z` tag and its GitHub release follow once …; until then, install this version by its commit"), and until
-the pull request whose merge gets the tag is merged, every change goes under `## X.Y.Z`, not under
-`## Unreleased`, which stays empty: step 1 refuses a tag with anything listed above the version. A change merged
-after that merge goes under `## Unreleased` again, even while the tag is still to be pushed: the tag goes on that
-merge commit, not on `main`'s newest one. The pull request whose merge is tagged sets the section's date to the day
-of the release and drops that sentence: `scripts/release_notes.py --tag` refuses a section that still has it.
-For 0.4.0 that is not the pull request that publishes the evaluation but the one after it, which adds
-`evals/preregistration/published-0.4.0.json`: its merge gets the `v0.4.0` tag. The publishing pull request is
-merged with a merge commit, never squashed or rebased (the deviations name its checkpoint commits), and the record
-names that merge commit on `main`. Once the amendment is posted on the pre-registration issue,
-`python -m scripts.prereg_published --write-record <merge commit> <the amendment's URL>` writes it, with the
-sha256 of the files that check the pre-registration from then on, on a branch made from `main` after that merge; it
-runs the record's checks first and writes nothing if one fails (`--check-record` runs them on the committed record).
-From that merge on, `main` moves only through pull requests merged on GitHub, never by a direct push: the record's
-checks need the publish commit on `main`'s first-parent line. If a push ever moves `main` so that it leaves that line
-(a `git pull` merge pushed from an old branch), a merge with the last good `main` as first parent puts it back,
-pushed as a fast-forward; the record and the amendment stay as they are.
+<details>
+<summary>A version named before its tag (as 0.4.0 was), and <code>main</code>'s first-parent line</summary>
+
+- A version can be named a while before it is tagged, as 0.4.0 was at the freeze of the pre-registered
+  evaluation, whose publication its tag waited for. Its section then says so ("The `vX.Y.Z` tag and its GitHub
+  release follow once …; until then, install this version by its commit"), and until the pull request whose
+  merge gets the tag is merged, every change goes under `## X.Y.Z`, not under `## Unreleased`, which stays
+  empty: step 1 refuses a tag with anything listed above the version. A change merged after that merge goes
+  under `## Unreleased` again, even while the tag is still to be pushed: the tag goes on that merge commit, not
+  on `main`'s newest one.
+- The pull request whose merge is tagged sets the section's date to the day of the release and drops that
+  sentence: `scripts/release_notes.py --tag` refuses a section that still has it.
+- For 0.4.0 that is not the pull request that publishes the evaluation but the one after it, which adds
+  `evals/preregistration/published-0.4.0.json`: its merge gets the `v0.4.0` tag. The publishing pull request is
+  merged with a merge commit, never squashed or rebased (the deviations name its checkpoint commits), and the
+  record names that merge commit on `main`. Once the amendment is posted on the pre-registration issue,
+  `python -m scripts.prereg_published --write-record <merge commit> <the amendment's URL>` writes it, with the
+  sha256 of the files that check the pre-registration from then on, on a branch made from `main` after that
+  merge; it runs the record's checks first and writes nothing if one fails (`--check-record` runs them on the
+  committed record).
+- From that merge on, `main` moves only through pull requests merged on GitHub, never by a direct push: the
+  record's checks need the publish commit on `main`'s first-parent line. If a push ever moves `main` so that it
+  leaves that line (a `git pull` merge pushed from an old branch), a merge with the last good `main` as first
+  parent puts it back, pushed as a fast-forward; the record and the amendment stay as they are.
+
+</details>
 
 A pre-release works the same way, with a version such as `X.Y.Zrc1`, its own changelog section and the tag
 `vX.Y.Zrc1`. Once PyPI is on (below), `pipx install ordnung` skips it and `pipx install "ordnung==X.Y.Zrc1"`
