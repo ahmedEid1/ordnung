@@ -477,7 +477,10 @@ describe("Proof of sending", () => {
     window.addEventListener("error", onError);
     try {
       const user = userEvent.setup();
-      renderLetter("/letters/drf_gym");
+      // the app's query client, whose error toast would say it couldn't be saved
+      const client = createQueryClient();
+      client.setQueryData(qk.health, TEST_HEALTH);
+      renderLetter("/letters/drf_gym", undefined, client);
       const proof = await screen.findByRole("region", { name: "Proof of sending" });
       await user.click(await within(proof).findByRole("button", { name: "Remove" }));
       const removed = (await screen.findByText("Tracking number removed")).closest("li")!;
@@ -490,6 +493,11 @@ describe("Proof of sending", () => {
       await waitFor(() => expect(removed).not.toBeInTheDocument());
       expect(reported).toHaveLength(1);
       expect(reported[0]).toBeInstanceOf(TypeError);
+      // the server stored the number before the answer was read: nothing says it wasn't saved, and the field
+      // is not filled as if it had to be saved again
+      expect(await screen.findByText("Something went wrong")).toBeInTheDocument();
+      expect(screen.queryByText("Couldn't save the tracking number")).toBeNull();
+      expect(within(proof).getByLabelText("Tracking number")).toHaveValue("");
     } finally {
       window.removeEventListener("error", onError);
     }

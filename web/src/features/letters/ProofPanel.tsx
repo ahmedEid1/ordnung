@@ -26,7 +26,7 @@ import { AddProofDialog } from "./AddProofDialog";
 import { RemoveProofDialog } from "./RemoveProofDialog";
 import { TrackingField, trackingSavable } from "./TrackingField";
 import { hasPicture, kindsIn, proofFileHref, nachweisFileName, startWith, suggestedKind, takesTrackingNumber, waitingTitle, WAITING_TONE } from "./proof";
-import { ignoreFailedRequest } from "@/api/client";
+import { ApiError, ignoreFailedRequest } from "@/api/client";
 
 const WAITING_ICON = {
   // what you wait for from someone else has its own icon (the hourglass is the Deadline kind)
@@ -158,7 +158,8 @@ function Tracking({ draft, overview }: { draft: Draft; overview: ProofOverview }
       },
       (err: unknown) => {
         ignoreFailedRequest(err); // a failed request: the hook's toast says it couldn't be saved
-        failed?.();
+        // only a failed request leaves the number unsaved: a bug in reading the answer comes after the server stored it
+        if (err instanceof ApiError) failed?.();
         return false;
       },
     );

@@ -150,8 +150,9 @@ export function createQueryClient(): QueryClient {
         const { title, description } = describe(err);
         // a demo's limit (the hosted demo, or `ordnung demo` asked to read a new letter): a calm note
         const demo = err instanceof ApiError && err.isDemoLimit;
-        // what failed ("Couldn't save your profile"), unless the reason is the better title
-        const specific = demo || (err instanceof ApiError && err.status === 429) ? title : (mutation.meta?.errorTitle ?? title);
+        // what failed ("Couldn't save your profile"), unless the reason is the better title. Not for a bug in the
+        // code around the request (not an ApiError): that is thrown while the answer is read, after the server did it
+        const specific = demo || !(err instanceof ApiError) || err.status === 429 ? title : (mutation.meta?.errorTitle ?? title);
         toast({
           tone: demo ? "info" : "danger",
           title: specific,
