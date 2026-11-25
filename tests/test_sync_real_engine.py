@@ -699,3 +699,42 @@ async def test_after_the_computer_in_use_leaves_no_computer_is_in_use(
         taken = await a.client.post("/api/sync/use-here", json={})
         assert taken.status_code == 200 and taken.json()["mode"] == "in_use", taken.text
         assert taken.json()["in_use_on"] == "desktop"
+
+
+async def test_a_full_sync_folder_is_told_as_full_not_as_one_that_doesn_t_answer(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A save into a full folder was shown as "doesn't answer" at once, then as "keeps failing": the
+    folder's own error (``FolderFull``) named no problem, so it fell back to an unreachable folder. A full
+    folder is told after FAILING_AFTER_S, like a save that keeps failing, and the next save ends it."""
+    from ordnung.sync import agent as agent_module
+    from ordnung.sync.folder import RealFs
+    from sync_faults import FullFs
+
+    monkeypatch.setattr(agent_module, "FAILING_AFTER_S", 0.5)
+    (tmp_path / "Nextcloud").mkdir()
+    async with computer(tmp_path / "desk", engine=RealEngine()) as api:
+        await connect(api, tmp_path / "Nextcloud" / "Vault", "desktop")
+        agent = agent_of(api)
+        await _saved(api)
+        shown: list[str] = []
+        set_problem = agent._set_problem
+
+        def record(code: Any, exc: BaseException | None = None) -> None:
+            shown.append(code)
+            set_problem(code, exc)
+
+        monkeypatch.setattr(agent, "_set_problem", record)
+        session = agent._session
+        assert session is not None
+        session.inner.folder.fs = FullFs(after_bytes=0)  # no byte more fits
+        assert (await _add_todo(api, "Pay the gym")).status_code == 201
+        found = await eventually(lambda: agent.problem, within=15)
+        assert found.code == "folder_full"
+        assert "folder_unreachable" not in shown and "save_failing" not in shown, shown
+        told = (await status(api))["problem"]
+        assert told["code"] == "folder_full" and told["title"] == "The sync folder is full"
+
+        session.inner.folder.fs = RealFs()  # room again
+        await _saved(api)
+        assert agent.problem is None
