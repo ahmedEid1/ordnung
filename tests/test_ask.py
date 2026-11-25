@@ -899,6 +899,66 @@ async def test_cache_key_is_stable_without_timestamps_and_tracks_the_ledger(
     )
 
 
+def _fingerprint_read_from_the_store(store: Store) -> str:
+    """The ledger fingerprint as it was worked out before it reused the ledger's rows: every record read from
+    the store again, each letter's text by a query of its own."""
+    from ordnung.assistant.ask import PARTY_FIELDS, _rows, stable_hash
+    from ordnung.secretary.household import ask_view
+    from ordnung.secretary.ledger import Ledger
+
+    profile = store.get_profile()
+    documents = store.list_documents()
+    shown = {doc.id for doc in documents if not doc.ai_private}
+    basis: dict[str, Any] = {
+        "profile": [profile.name, profile.language, profile.region, profile.country],
+        "documents": _rows(documents),
+        "texts": {doc.id: stable_hash(store.get_document_text(doc.id)) for doc in documents},
+        "items": _rows(store.list_items()),
+        "contracts": _rows(store.list_contracts()),
+        "parties": sorted(
+            (p.model_dump(mode="json", include={*PARTY_FIELDS, "identifiers"}) for p in store.list_parties()),
+            key=lambda row: str(row["id"]),
+        ),
+    }
+    choices = {doc_id: choice for doc_id, choice in store.tax_choices().items() if doc_id in shown}
+    if choices:
+        basis["tax_choices"] = choices
+    household = ask_view(store, shown)
+    if household is not None:
+        basis["household"] = household
+    checked = Ledger(store, clock.today()).scam_checked
+    if checked:
+        basis["scam_checked"] = sorted(checked)
+    return stable_hash(basis)
+
+
+def test_the_fingerprint_reuses_the_ledgers_rows_and_hashes_the_same(
+    store: Store, ids: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ask's first question after a change decoded every letter, to-do and contract again (seconds at 3,000
+    letters): the fingerprint takes the ledger's rows, read once per change, and hashes exactly what the
+    store's own reads gave — letters in the trash left out, proof files and page texts in — so every recorded
+    answer still replays."""
+    from ordnung.drafts.proof import PROOF_SOURCE
+    from ordnung.secretary.ledger import Ledger
+
+    proof = add_doc(store, "proof", title="Einlieferungsbeleg", source=PROOF_SOURCE)
+    page = {"width": 595, "height": 842, "image_path": "derived/p.png"}
+    store.set_pages(proof, [{**page, "page": 1, "text": "Einlieferungsbeleg Nr. 1"}])
+    store.set_pages(
+        ids["doc_tax"], [{**page, "page": 1, "text": "Seite eins"}, {**page, "page": 2, "text": "Seite zwei"}]
+    )
+    store.update_document(ids["doc_invoice"], deleted_at="2026-09-27T10:00:00Z")
+    expected = _fingerprint_read_from_the_store(store)
+    Ledger(store, TODAY)  # the rows of this state of the database, as any page after a change loads them
+    with monkeypatch.context() as patch:
+        for name in ("list_documents", "list_items", "list_contracts", "list_parties", "get_document_text"):
+            patch.setattr(
+                Store, name, lambda *args, _name=name, **kwargs: pytest.fail(f"read again: {_name}")
+            )
+        assert ledger_fingerprint(store) == expected
+
+
 def test_fingerprint_tracks_everything_ask_can_read(store: Store, ids: dict[str, str]) -> None:
     """In the demo, recorded answers still warned about an IBAN that the ledger no longer flagged,
     because warnings and payment details were not part of the fingerprint."""

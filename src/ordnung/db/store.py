@@ -1621,6 +1621,17 @@ class Store:
         )
         return "\n\n".join(f"=== Page {row['page']} ===\n{row['text']}" for row in rows)
 
+    def document_texts(self) -> dict[str, str]:
+        """:meth:`get_document_text` of every letter that has text, by letter id, in one query (a letter
+        without is left out: its text is ``""``)."""
+        pages: dict[str, list[str]] = {}
+        rows = self._conn().execute(
+            "SELECT doc_id, page, text FROM pages WHERE trim(text) != '' ORDER BY doc_id, page"
+        )
+        for row in rows:
+            pages.setdefault(row["doc_id"], []).append(f"=== Page {row['page']} ===\n{row['text']}")
+        return {doc_id: "\n\n".join(texts) for doc_id, texts in pages.items()}
+
     def recipient_names(self) -> dict[str, str | None]:
         """Who each letter in the Inbox is addressed to, as read (``DocumentExtraction.recipient_name``), by
         letter id, in one query: every letter outside the trash but proof files; ``None`` unless the letter
