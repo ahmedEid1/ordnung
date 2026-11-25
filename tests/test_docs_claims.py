@@ -2634,6 +2634,30 @@ def test_serve_points_to_the_shortcut_as_the_spec_says() -> None:
     )
 
 
+def test_the_guide_s_one_minute_privacy_point_is_spec_s_statement() -> None:
+    """SPEC §1's honest privacy statement says "use this wording everywhere", and the guide's *In one minute* states
+    it as the README does, then what else reaches Claude and what stays off, as docs/privacy.md's table says."""
+    spec = _flat((ROOT / "docs" / "SPEC.md").read_text(encoding="utf-8"))
+    statement = spec.split("**Honest privacy statement (use this wording everywhere):** *", 1)[1].split(
+        "*", 1
+    )[0]
+    minute = _guide().split("\n**In one minute**\n", 1)[1].split("\n**Contents**\n", 1)[0]
+    point = re.sub(r"\*\*(.+?)\*\*", r"\1", _flat(minute))
+    assert statement in point
+    assert "*Ask*, *Weekly Ideas* and *Letters* send excerpts of your ledger the same way" in point
+    assert (
+        "phone access, calendar sync and sync between your computers stay off until you turn them on" in point
+    )
+    table = (ROOT / "docs" / "privacy.md").read_text(encoding="utf-8")
+    assert "| Excerpts, when you use *Ask*, *Weekly Ideas* or *Letters* |" in table
+    for row in (
+        "| Calendar sync (only if you connect a calendar) |",
+        "| Phone access (only if you turn it on) |",
+        "| Hand-off sync between your computers (only if you set it up) |",
+    ):
+        assert row in table, row
+
+
 def test_the_guide_says_how_to_open_ordnung_without_a_terminal() -> None:
     """The guide's "Also:" names the shortcut, and its Install has `ordnung shortcut` in its table of commands and a
     paragraph on each system's launcher, what a click does in both states, the recorded PATH, --remove, the Linux

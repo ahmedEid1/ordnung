@@ -11,14 +11,17 @@ and run `ordnung demo`.
   and needs no Claude account ([the demo](#the-demo)).
 - **Install with one command,** with uv or pipx; `ordnung serve` then opens the web app in your browser, signed in,
   and `ordnung shortcut` puts it in your app menu ([install and start](#install-and-start)).
-- **Ordnung has no server and no account:** your letters are kept on your computer, and reading one sends it to
-  Anthropic through your own Claude Code, which needs a paid Claude plan or an Anthropic Console account
-  ([what goes where](privacy.md), [what you need](#what-you-need)).
+- **Your files and your database stay on this computer. When Claude reads a letter, that letter's text or image is
+  sent to Anthropic through your own Claude account** (Claude Code, the Claude program you installed and signed in
+  to). Ordnung has no server, no telemetry and never sees your credentials. *Ask*, *Weekly Ideas* and *Letters*
+  send excerpts of your ledger the same way; phone access, calendar sync and sync between your computers stay off
+  until you turn them on ([what goes where](privacy.md)). Claude Code needs a paid Claude plan or an Anthropic
+  Console account ([what you need](#what-you-need)).
 - **Phone and second computer, both optional:** a paired phone uses Ordnung over your home Wi-Fi, and two
   computers hand it over through a folder you already sync ([phone](#on-your-phone),
   [other computer](#on-your-other-computer)).
-- **Update:** stop Ordnung, back up (the only way back), run `uv tool upgrade ordnung` (pipx:
-  `pipx reinstall ordnung`), then `ordnung doctor` ([updating](#updating)).
+- **Update:** stop Ordnung, back up (an older Ordnung can't open a database a newer one has updated), run
+  `uv tool upgrade ordnung` (pipx: `pipx reinstall ordnung`), then `ordnung doctor` ([updating](#updating)).
 - **Know the limits:** built for Germany, not legal advice, and the app's own text is in English
   ([limitations](#limitations)).
 
