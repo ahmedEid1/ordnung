@@ -184,8 +184,8 @@ sync.
   was read, your *For taxes* choice for it and whom you filed it for, and the cached model responses of
   every call that carried it (a secretary's note or review built from several letters included). The usage log keeps only anonymous numbers (its calls' replay keys, which hash the
   letter's content, and their error texts, which may quote Claude's answer, are cleared too), and deleted
-  database rows are overwritten rather than left behind. Originals and page images are never kept in the
-  browser's cache, and deleting a letter for good or deleting everything also tells the browser to empty
+  database rows are overwritten rather than left behind. Originals, page images and every answer of the app's
+  API are never kept in the browser's cache, and deleting a letter for good or deleting everything also tells the browser to empty
   its cache. A paired phone keeps no copy either: every answer it gets is marked not to be stored, it
   can't download originals, letter PDFs or the calendar file, and a phone you removed is told to empty its cache and storage
   the next time it reaches Ordnung (a tab still open there shows what it last showed until it is closed).

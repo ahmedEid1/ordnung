@@ -85,6 +85,7 @@ _ALWAYS_HEADERS: tuple[tuple[bytes, bytes], ...] = (
     (b"x-content-type-options", b"nosniff"),
     (b"referrer-policy", b"no-referrer"),
 )
+_API_NO_STORE: tuple[bytes, bytes] = (b"cache-control", b"no-store")
 _INLINE_SCRIPT_RE = re.compile(r"<script(?P<attrs>[^>]*)>(?P<body>.*?)</script>", re.IGNORECASE | re.DOTALL)
 _SRC_ATTR_RE = re.compile(r"\bsrc\s*=", re.IGNORECASE)
 _PORT_RE = re.compile(r"^\d{1,5}$")
@@ -458,9 +459,9 @@ class SecurityMiddleware:
         request = Request(scope)
         response = self._gate(request)
         if response is not None:
-            await response(scope, receive, _with_headers(send))
+            await response(scope, receive, _with_headers(send, api=_is_api(request.url.path)))
             return
-        await self.app(scope, receive, _with_headers(send))
+        await self.app(scope, receive, _with_headers(send, api=_is_api(request.url.path)))
 
     def _signs_in(self, request: Request) -> Redemption:
         """What the page load's token, or one-time code, does (a code is then used up; never by a HEAD, which
@@ -513,12 +514,17 @@ class SecurityMiddleware:
         return None
 
 
-def _with_headers(send: Send) -> Send:
+def _with_headers(send: Send, *, api: bool = False) -> Send:
+    """Add the headers every answer carries; an ``/api`` answer that names no caching also says
+    ``no-store``, so no letter, number or household detail is kept in the browser's disk cache (where a
+    letter deleted elsewhere would outlive its deletion)."""
+
     async def wrapped(message: Message) -> None:
         if message["type"] == "http.response.start":
             headers = list(message.get("headers", []))
             present = {name.lower() for name, _ in headers}
-            headers.extend(header for header in _ALWAYS_HEADERS if header[0] not in present)
+            extra = [*_ALWAYS_HEADERS, *((_API_NO_STORE,) if api else ())]
+            headers.extend(header for header in extra if header[0] not in present)
             message = {**message, "headers": headers}
         await send(message)
 
