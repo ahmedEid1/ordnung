@@ -58,13 +58,17 @@ def _step_index(job: dict[str, Any], needle: str) -> int:
 
 
 def _uses(path: Path) -> dict[str, str]:
-    """Each action a workflow uses, with its ref (``actions/checkout`` → ``v5``)."""
+    """Each action a workflow uses, with its ref (``actions/checkout`` → ``v5``); an action pinned to a commit
+    with its version beside it, by that version (``…@<sha> # v7.6.0`` → ``v7.6.0``)."""
+    versions = dict(
+        re.findall(r"uses: ([\w.-]+/[\w.-]+@[0-9a-f]{40}) # (v\d+\.\d+\.\d+)$", path.read_text("utf-8"), re.M)
+    )
     refs: dict[str, set[str]] = {}
     for job in _jobs(path).values():
         for step in job["steps"]:
             if "uses" in step:
                 name, _, ref = step["uses"].partition("@")
-                refs.setdefault(name, set()).add(ref)
+                refs.setdefault(name, set()).add(versions.get(step["uses"], ref))
     assert all(len(found) == 1 for found in refs.values()), refs  # one version of each action per file
     return {name: found.pop() for name, found in refs.items()}
 
