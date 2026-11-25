@@ -72,6 +72,15 @@ describe("Today page", () => {
     assertNoRawEnumsInElement(container);
   });
 
+  it("marks the German words in a to-do's title, so a screen reader says them in German", async () => {
+    const client = await seededClient((d) => JSON.parse(JSON.stringify(d).replaceAll('"Pay the parking fine"', '"Pay the parking fine (Verwarnungsgeld)"')) as Dashboard);
+    renderWithProviders(<TodayView />, { client });
+    const top = await screen.findByRole("region", { name: "Top 3 this week" });
+    const heading = await within(top).findByRole("heading", { name: "Pay the parking fine (Verwarnungsgeld)" });
+    expect(within(heading).getByText("Verwarnungsgeld")).toHaveAttribute("lang", "de");
+    expect(heading).not.toHaveAttribute("lang");
+  });
+
   it("shows 'All clear until …' when nothing is due this week", async () => {
     const client = await seededClient((d) => ({
       ...d,

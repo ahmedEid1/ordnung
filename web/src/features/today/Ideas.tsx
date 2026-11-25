@@ -23,6 +23,7 @@ import { TOUR_TARGETS } from "@/features/tour/steps";
 import { RefText } from "@/features/ask/RefText";
 import { HISTORY_DAYS } from "@/features/inbox/filters";
 import { ignoreFailedRequest } from "@/api/client";
+import { MarkedGerman } from "@/features/document/Explained";
 
 const quiet =
   "inline-flex h-8 items-center gap-1.5 rounded-md px-1.5 text-[12.5px] font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink aria-disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent";
@@ -118,7 +119,7 @@ function IdeaCard({
           {!scam && idea.due_date && daysUntil(idea.due_date, today) >= -HISTORY_DAYS ? <Countdown date={idea.due_date} className="ml-auto text-[12px]" /> : null}
         </div>
         <h3 id={titleId} data-idea-heading="" className="mt-2.5 text-[15px] font-semibold leading-snug text-ink [overflow-wrap:anywhere]">
-          {idea.title}
+          <MarkedGerman text={idea.title} />
         </h3>
         <ReadMore className="mt-1.5 text-[13.5px] leading-relaxed text-muted">
           <RefText text={idea.body} />

@@ -43,6 +43,7 @@ import { LetterText } from "@/components/ui/LetterText";
 import { GiroCodeSection, canReadLetterAgain } from "@/features/girocode/GiroCode";
 import { IbanCheck, PayFooter, TransferDetails, amountForTransfer, hasTransferDetails } from "@/features/pay/TransferDetails";
 import { ignoreFailedRequest } from "@/api/client";
+import { MarkedGerman } from "@/features/document/Explained";
 
 const VERB: Record<ActionVerb, { label: string; icon: LucideIcon }> = {
   pay: { label: "Pay", icon: Wallet },
@@ -193,7 +194,9 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
   return (
     <div>
       <p className="eyebrow in-sheet:hidden">Pay</p>
-      <p className="mt-0.5 text-sm text-muted">{action.title}</p>
+      <p className="mt-0.5 text-sm text-muted">
+        <MarkedGerman text={action.title} />
+      </p>
       {action.amount ? <Money amount={action.amount} currency={action.currency} className="display mt-2 block text-[28px] font-semibold leading-none" /> : null}
 
       {action.docId && doc.isPending ? (
@@ -375,7 +378,7 @@ function ActionCard({
           </div>
 
           <h3 id={headingId(action.key)} data-top-heading="" className="mt-3.5 text-[16px] font-semibold leading-snug text-ink [overflow-wrap:anywhere]">
-            {action.title}
+            <MarkedGerman text={action.title} />
           </h3>
           {action.amount ? (
             <Money amount={action.amount} currency={action.currency} className="display mt-1 text-[22px] font-semibold leading-tight" />

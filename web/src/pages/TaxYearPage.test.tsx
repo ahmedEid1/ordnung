@@ -107,7 +107,8 @@ describe("TaxYearPage", () => {
     const callout = screen.getByText("Papers for 2025 that come in 2026").closest("[data-callout], div")!;
     expect(callout).toBeInTheDocument();
     expect(screen.getByText(/The letter for taxes dated January–May 2026 is listed below too; check which year it is for\./)).toBeInTheDocument();
-    expect(screen.getByText("Lohnsteuerbescheinigung", { selector: "[lang='de']" })).toBeInTheDocument();
+    // (in the callout, and in the list's title of that letter: both marked German)
+    expect(screen.getAllByText("Lohnsteuerbescheinigung", { selector: "[lang='de']" }).length).toBeGreaterThan(0);
     const early = screen.getByRole("heading", { level: 3, name: /^Dated January–May 2026/ }).closest("section")!;
     expect(within(early).getByRole("link", { name: "Lohnsteuerbescheinigung 2025" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Insurance June" })).toBeNull();

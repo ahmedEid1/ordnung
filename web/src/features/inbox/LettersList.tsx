@@ -44,6 +44,7 @@ import { PersonTag } from "@/features/household/PersonTag";
 import { scamLetterIds } from "@/features/document/verdict";
 import { inboxDateInfo, isReading, otherYearDated, pinJustRead, type LetterGroup, type OpenSummary } from "./filters";
 import { useSeenLetters } from "./seen";
+import { MarkedGerman } from "@/features/document/Explained";
 
 /** A next step this close (in days) is spelled out under the letter. */
 const NEXT_STEP_DAYS = 14;
@@ -269,7 +270,7 @@ function LetterRow({
               aria-describedby={todos ? describedBy : undefined}
               className="line-clamp-2 min-w-0 break-words text-[14.5px] font-medium leading-snug text-ink outline-none after:absolute after:inset-0 after:content-[''] focus-visible:after:rounded-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-accent @4xl:block @4xl:truncate"
             >
-              {protectRefs(title)}
+              <MarkedGerman text={protectRefs(title)} />
             </Link>
             {/* table rows: status and "New" after the title (stacked rows: on the chip line) */}
             {status ? <span className="hidden shrink-0 @4xl:inline-flex">{status}</span> : null}
@@ -293,7 +294,7 @@ function LetterRow({
             ) : null}
             {doc.summary ? (
               <span title={doc.summary} className="hidden min-w-0 flex-1 truncate @5xl:block">
-                {doc.summary}
+                <MarkedGerman text={doc.summary} />
               </span>
             ) : null}
           </div>

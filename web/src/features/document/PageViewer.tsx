@@ -647,7 +647,6 @@ function Highlight({
       <button
         type="button"
         data-highlight={group.key}
-        aria-label={`${lead.label}${lead.value ? `: ${lead.value}` : ""} — “${lead.evidence.quote}”`}
         aria-pressed={isSelected}
         onFocus={() => onHover(lead.id)}
         onBlur={() => onHover(null)}
@@ -661,6 +660,12 @@ function Highlight({
           boxShadow: isFocus ? `0 0 0 1.5px ${MARKER_EDGE}` : undefined,
         }}
       >
+        {/* its name: what it shows, then the letter's own words, read out in German (an aria-label can't say
+            which language a part of it is in, so a whole German sentence was read with the English voice) */}
+        <span className="sr-only">
+          {lead.label}
+          {lead.value ? `: ${lead.value}` : ""} — <span lang="de">“{lead.evidence.quote}”</span>
+        </span>
         {isSelected ? (
           // a thin ring that blinks in place (it grew over the neighbouring lines)
           <motion.span
