@@ -714,6 +714,9 @@ NO_INK = {
     + b" Q\nBT /F2 12 Tf 72 700 Td ("
     + b" " * 36
     + b") Tj ET\n1 1 1 rg 60 700.7 400 30 re f",
+    # White text on a light photo: its ink shows faintly, but the page under it isn't dark.
+    "white on a light photo": b"q 400 0 0 30 60 690 cm BI /W 2 /H 2 /CS /G /BPC 8 ID \xe6\xf0\xe1\xeb EI Q 1 1 1 rg "
+    + _UNSEEN,
 }
 #: The same line drawn so that it shows: it stays page text.
 INKED = {
@@ -733,6 +736,9 @@ INKED = {
     "over a blue band whose edge runs 6 pt above the baseline": b"0 0.3 0.9 rg 50 650 450 56 re f 0 g "
     + _UNSEEN,
     "over a blue band whose edge runs 4 pt above the baseline": b"0 0.3 0.9 rg 50 650 450 54 re f 0 g "
+    + _UNSEEN,
+    # White text on a dark photo (an image, not a filled shape): the page under it is dark.
+    "white on a dark photo": b"q 400 0 0 30 60 690 cm BI /W 2 /H 2 /CS /G /BPC 8 ID \x00\x28\x46\x14 EI Q 1 1 1 rg "
     + _UNSEEN,
     "over two dark bands that meet inside the line": b"0.157 g 50 704 450 40 re f 0.275 g 50 650 450 54 re f"
     b" 0 g " + _UNSEEN,
@@ -831,6 +837,7 @@ def test_text_drawn_invisibly_on_a_turned_page_is_hidden_text(tmp_path: Path, pa
         "light grey",
         "inside a form XObject",
         "over a grey band whose edge runs 6 pt above the baseline",
+        "white on a dark photo",
     ],
 )
 def test_text_with_ink_on_a_turned_page_stays_page_text(tmp_path: Path, construction: str, page: str) -> None:

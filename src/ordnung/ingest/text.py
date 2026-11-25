@@ -2,7 +2,8 @@
 
 * **PDF text layers** — pdfplumber characters are assembled into words and lines in their own reading
   direction, with word boxes relative (0..1) to the page image rendered by pypdfium2 (effective
-  CropBox and ``/Rotate`` handled). Invisible characters (white, tiny or off-page) are kept out of
+  CropBox and ``/Rotate`` handled). Invisible characters (tiny, off-page, or white where the page under
+  them isn't dark: a dark filled shape, or a dark photo PDFium finds them inked on) are kept out of
   the page text and reported separately as ``hidden_text``. So is text drawn *invisibly* — text render
   mode 3 or 7, which PDFium reports for each character's text object (:func:`_drawn_chars`) — with
   one exception: a page whose invisible text is at least a text layer's worth and no less than its
@@ -76,7 +77,7 @@ from pdfminer.pdfinterp import PDFResourceManager
 from pdfminer.pdfparser import PDFParser, PDFSyntaxError
 from pdfminer.pdftypes import PDFObjRef
 from pdfplumber.pdf import PDF
-from PIL import Image, ImageChops, ImageFont
+from PIL import Image, ImageChops, ImageFont, ImageStat
 
 from ordnung.config import PACKAGE_DIR
 from ordnung.ingest.email_text import _email_body
@@ -388,14 +389,16 @@ def read_pdf_text(pdf_path: Path, rendered: Sequence[RenderedPage]) -> PdfText:
 
 class _DrawnChar(NamedTuple):
     """One character as PDFium reads it: its text, the centre of its box (PDF user space), whether its
-    text object draws it invisibly (text render mode 3 or 7) and whether it puts ink on the rendered
-    page (:func:`_drawn_chars`)."""
+    text object draws it invisibly (text render mode 3 or 7), whether it puts ink on the rendered
+    page (:func:`_drawn_chars`) and whether the page without its text is dark under it (white text on a
+    photo, :func:`_is_hidden`)."""
 
     text: str
     x: float
     y: float
     invisible: bool
     inked: bool = True
+    on_dark: bool = False
 
 
 _INVISIBLE_MODES = frozenset({3, 7})  # FPDF_TEXTRENDERMODE_INVISIBLE, FPDF_TEXTRENDERMODE_CLIP
@@ -412,6 +415,10 @@ INK_THRESHOLD = 16
 #: much of its shape as black text), and each of those pixels shows where the page differs by
 #: :data:`INK_THRESHOLD` there, whatever the ground (a band's edge through the line, a photo).
 INK_SHARE = 0.5
+#: The mean luminance (0..1) of the page without its text under a character below which white text on it
+#: is readable: the darkness :func:`_dark_backgrounds` asks of a filled shape, asked here of whatever the
+#: page draws there (a photo, a gradient).
+DARK_GROUND = 0.6
 
 
 def _drawn_chars(pdf_path: Path, numbers: Sequence[int]) -> dict[int, dict[str, list[_DrawnChar]]]:
@@ -493,7 +500,8 @@ def _page_chars(document: pdfium.PdfDocument, number: int) -> dict[str, list[_Dr
         objects = _text_objects(page, size)
         before = _render(page, scale)
         _remove_text(page.raw, raw.FPDFPage_CountObjects, raw.FPDFPage_GetObject, raw.FPDFPage_RemoveObject)
-        shown = _difference(before, _render(page, scale))
+        after = _render(page, scale)
+        shown = _difference(before, after)
     finally:
         page.close()
     ink = _mask(shown)
@@ -542,9 +550,11 @@ def _page_chars(document: pdfium.PdfDocument, number: int) -> dict[str, list[_Dr
                         and _shows(own_shown, own_expected, box)
                         and (_spans(_mask(own_expected), box, drawn.text) or _spans(ink, box, drawn.text))
                     )
+    ground = after.convert("L")
     chars: dict[str, list[_DrawnChar]] = {}
-    for (drawn, _, _), value in zip(placed, inked, strict=True):
-        chars.setdefault(drawn.text, []).append(drawn._replace(inked=value))
+    for (drawn, box, _), value in zip(placed, inked, strict=True):
+        on_dark = box is not None and ImageStat.Stat(ground.crop(box)).mean[0] < DARK_GROUND * 255
+        chars.setdefault(drawn.text, []).append(drawn._replace(inked=value, on_dark=on_dark))
     return chars
 
 
@@ -1055,7 +1065,7 @@ def _extract_page(
             continue
         near = _near(char, drawn)
         if glyph.is_space or not (
-            _is_hidden(char, glyph, frame, backgrounds)
+            _is_hidden(char, glyph, frame, backgrounds, near)
             or _drawn_invisibly(near)
             or _drawn_without_ink(near)
             or _unmatched(char, near)
@@ -1070,7 +1080,7 @@ def _extract_page(
             unmatched.append(glyph)
         elif _drawn_invisibly(near):
             invisible.append(glyph)
-        elif _is_hidden(char, glyph, frame, backgrounds) or _drawn_without_ink(near):
+        elif _is_hidden(char, glyph, frame, backgrounds, near) or _drawn_without_ink(near):
             hidden.append(glyph)
     text, words = _assemble(visible, frame)
     meaningful = sum(ch.isalnum() for ch in text)
@@ -1133,11 +1143,18 @@ def _reading_frame(box: Rect, direction: Direction, frame: _PageFrame) -> Rect:
     return box
 
 
-def _is_hidden(char: dict[str, Any], glyph: _Glyph, frame: _PageFrame, backgrounds: list[Rect]) -> bool:
-    """SPEC §21: tiny, off-page, or white text (unless it sits on a dark filled shape)."""
+def _is_hidden(
+    char: dict[str, Any], glyph: _Glyph, frame: _PageFrame, backgrounds: list[Rect], near: list[_DrawnChar]
+) -> bool:
+    """SPEC §21: tiny, off-page, or white text, unless it sits on a dark filled shape, or PDFium finds it
+    inked on a page that is dark under it without its text (:data:`DARK_GROUND`: white text on a photo)."""
     if glyph.size < MIN_VISIBLE_FONT_SIZE or not frame.contains(glyph.box):
         return True
-    return is_near_white(char.get("non_stroking_color")) and not _inside_any(glyph.box, backgrounds)
+    return (
+        is_near_white(char.get("non_stroking_color"))
+        and not _inside_any(glyph.box, backgrounds)
+        and not any(other.inked and other.on_dark for other in near)
+    )
 
 
 def _dark_backgrounds(page: Page, frame: _PageFrame) -> list[Rect]:
