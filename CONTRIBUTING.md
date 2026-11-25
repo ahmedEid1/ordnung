@@ -134,11 +134,14 @@ CI runs its jobs side by side, none waiting for another.
   weekly, the newest) 5 to 8, the replayed benchmarks 5 to 8, the replay of every published number (`make
   eval-reproduce`) 6 to 9, the frontend 4 to 7; lint and types, the wheel and the dependency audit take under a
   minute each.
-- **Windows and macOS.** Windows (7 to 9 minutes) runs on every pull request too, with the tests of the code that
-  differs per system (`PER_SYSTEM_TESTS` in `tests/test_ci_workflow.py`), and has to pass, as Linux does. macOS
-  (3 to 6 minutes) runs the same tests on `main`, weekly and when the workflow is started by hand, not on a pull
-  request: on one pull request of three its runner was 10 minutes in coming, and on another none came in 15
-  minutes, the job was cancelled and the run failed with every other job passed.
+- **Windows and macOS.** Windows runs on every pull request too, with the tests of the code that differs per
+  system (`PER_SYSTEM_TESTS` in `tests/test_ci_workflow.py`), and has to pass, as Linux does. Those tests run in
+  one process, and as one job Windows took 6.6 to 9.9 minutes (three runs, 25 November 2026), mostly the sync
+  tests: it runs in two parts side by side, the sync files from a to c (the crash tests among them) in one, every
+  other file and the wheel's checks in the other. macOS (3 to 6 minutes) runs the same tests as one job on
+  `main`, weekly and when the workflow is started by hand, not on a pull request: on one pull request of three its
+  runner was 10 minutes in coming, and on another none came in 15 minutes, the job was cancelled and the run
+  failed with every other job passed.
 
 </details>
 

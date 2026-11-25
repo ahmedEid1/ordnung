@@ -477,10 +477,18 @@ def _script_runs(
     script: str, rules: dict[str, tuple[list[str], list[str]]], seen: set[str]
 ) -> list[list[str]]:
     runs = []
+    # a bash array the script fills (``tests=(...)``) and passes as ``"${part[@]}"``: read as every item of every
+    # array the script writes out, a superset of what the run can take
+    listed = [
+        item for items in re.findall(r"^\s*\w+=\(([^)]*)\)", script, re.M | re.S) for item in items.split()
+    ]
     for line in script.replace("\\\n", " ").splitlines():
         found = re.search(r"(?:^|[\s/])pytest(?=\s|$)", line)
         if found:
-            runs.append(shlex.split(line[found.end() :]))
+            args = shlex.split(line[found.end() :])
+            runs.append(
+                [item for arg in args for item in (listed if re.fullmatch(r"\$\{\w+\[@\]\}", arg) else [arg])]
+            )
             continue
         make = re.search(r"(?:^|[\s;&|(])make\s+(.*)", line)
         for target in shlex.split(make.group(1)) if make else []:
@@ -905,6 +913,52 @@ PER_SYSTEM_TESTS = (
 )
 
 
+def _other_systems_legs(job: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """The legs (``os``, ``part``, ``parts``) of the macOS and Windows job: on a pull request, and on every other
+    event."""
+    legs = re.fullmatch(
+        r"\$\{\{ fromJSON\(github\.event_name == 'pull_request' && '(\{[^']*\})' \|\| '(\{[^']*\})'\) \}\}",
+        job["strategy"]["matrix"],
+    )
+    assert legs, job["strategy"]["matrix"]
+    on_a_pull_request, on_every_other_event = (json.loads(listed) for listed in legs.groups())
+    assert set(on_a_pull_request) == set(on_every_other_event) == {"include"}
+    return on_a_pull_request["include"], on_every_other_event["include"]
+
+
+#: what the macOS and Windows job's test step does with its list: the tests whose file matches FIRST_PART are part
+#: 1, every other test part 2, and a leg of one part runs them all
+_PART_SELECTION = """
+part=()
+for test in "${tests[@]}"; do
+  if [[ $test == $FIRST_PART ]]; then first=1; else first=2; fi
+  if [ "${{ matrix.parts }}" = 1 ] || [ "$first" = "${{ matrix.part }}" ]; then part+=("$test"); fi
+done
+# with no file named, the run would take every test of the repository
+test ${#part[@]} -gt 0 || { echo "::error::part ${{ matrix.part }} has no test: see FIRST_PART"; exit 1; }
+"$venv/python" -m pytest -m "not slow" --durations=20 "${part[@]}"
+"""
+
+
+def _per_system_parts(step: dict[str, Any]) -> tuple[list[str], list[str], list[str]]:
+    """The tests of the macOS and Windows job's test step, as bash expands its list (``tests=(...)``, a glob read as
+    the files it matches, in their order): those of part 1, of part 2, and all of them."""
+    script = step["run"].replace("\\\n", " ")
+    assert _PART_SELECTION in "\n" + script, "the test step picks its part of the list by FIRST_PART alone"
+    (listed,) = re.findall(r"^tests=\(([^)]*)\)$", script, re.M | re.S)
+    tests = []
+    for name in listed.split():
+        path, _, test = name.partition("::")
+        files = sorted(str(file.relative_to(ROOT)) for file in ROOT.glob(path)) if "*" in path else [path]
+        assert files and (ROOT / files[0]).is_file(), f"{name} names no test file"
+        assert not test or f"def {test}(" in (ROOT / path).read_text(encoding="utf-8"), (
+            f"{name} names no test"
+        )
+        tests += [f"{file}::{test}" if test else file for file in files]
+    first = step["env"]["FIRST_PART"]
+    return [t for t in tests if fnmatch(t, first)], [t for t in tests if not fnmatch(t, first)], tests
+
+
 def test_the_other_systems_job_runs_the_tests_whose_subject_differs_per_system() -> None:
     """Every job ran on Ubuntu, so the data-folder lock's, the durable writes', sync's
     computer id and phone access's macOS and Windows code never ran. One job runs their tests there, and a failure
@@ -914,29 +968,64 @@ def test_the_other_systems_job_runs_the_tests_whose_subject_differs_per_system()
     cancelled after 15 minutes in the queue and failed a run whose other jobs had all passed."""
     job = _jobs()["other-systems"]
     (step,) = [step for step in job["steps"] if "pytest" in step.get("run", "")]
-    named = step["run"].replace("\\\n", " ").split()
+    *_, tests = _per_system_parts(step)
+    files = {test.split("::")[0] for test in tests}
     for name in PER_SYSTEM_TESTS:
-        assert name in named, name
-    assert "--durations=20" in named  # the job's long poles, on record in its log
-    systems = re.fullmatch(
-        r"\$\{\{ fromJSON\(github\.event_name == 'pull_request' && '(\[[^']*\])' \|\| '(\[[^']*\])'\) \}\}",
-        job["strategy"]["matrix"]["os"],
-    )
-    assert systems, job["strategy"]["matrix"]["os"]
-    on_a_pull_request, on_every_other_event = (json.loads(listed) for listed in systems.groups())
-    assert on_a_pull_request == ["windows-latest"]
-    assert on_every_other_event == ["macos-latest", "windows-latest"]
+        assert name in files, name
+    assert "--durations=20" in step["run"].split()  # each leg's long poles, on record in its log
+    on_a_pull_request, on_every_other_event = _other_systems_legs(job)
+    assert {leg["os"] for leg in on_a_pull_request} == {"windows-latest"}
+    assert {leg["os"] for leg in on_every_other_event} == {"macos-latest", "windows-latest"}
+    assert [leg for leg in on_every_other_event if leg["os"] == "windows-latest"] == on_a_pull_request
     assert job["runs-on"] == "${{ matrix.os }}"
     assert "if" not in job
     assert "continue-on-error" not in job and all("continue-on-error" not in step for step in job["steps"])
-    tests = "\n".join(step.get("run", "") for step in job["steps"] if "pytest" in step.get("run", ""))
-    named = re.findall(r"tests/[\w*]+\.py(?:::\w+)?", tests)
-    assert "tests/test_platform_smoke.py" in named
-    for name in named:
-        pattern, _, test = name.partition("::")
-        files = list(ROOT.glob(pattern))
-        assert files, f"{name} names no test file"
-        assert not test or f"def {test}(" in files[0].read_text(encoding="utf-8"), f"{name} names no test"
+    assert "tests/test_platform_smoke.py" in tests
+    # the run is read as its list, not as the whole suite (which would need the whole history checked out)
+    (args,) = _pytest_runs(job)
+    assert _can_run(args, "tests/test_sync_crash.py") and not _can_run(args, PREREGISTRATION_TESTS)
+
+
+def test_each_per_system_test_runs_in_exactly_one_part_on_each_system() -> None:
+    """On Windows the tests run in one process (locks across processes, real ports, kills mid-write), and as one
+    job they took 6.6 to 9.9 minutes, twice the longest of a run (three runs, 25 Nov 2026). So Windows runs them in two legs side
+    by side: one list in the step, and one pattern (``FIRST_PART``) that sends a test to part 1 when its file
+    matches and to part 2 when it does not, so no test is in neither part or in both, and a file added to the list
+    lands in one of them without an edit. A system with one leg (macOS) runs the whole list. Each system's legs
+    together are the parts 1 to N once each; the wheel's steps run in the last part only."""
+    job = _jobs()["other-systems"]
+    (step,) = [step for step in job["steps"] if "pytest" in step.get("run", "")]
+    first, second, tests = _per_system_parts(step)
+    assert len(tests) == len(set(tests))
+    assert first and second and sorted(first + second) == sorted(tests) and not set(first) & set(second)
+    assert "tests/test_sync_crash.py" in first  # the longest file, about a third of the step on Windows
+    on_a_pull_request, on_every_other_event = _other_systems_legs(job)
+    for legs in (on_a_pull_request, on_every_other_event):
+        for system in {leg["os"] for leg in legs}:
+            parts = sorted((leg["part"], leg["parts"]) for leg in legs if leg["os"] == system)
+            count = parts[0][1]
+            assert parts == [(part, count) for part in range(1, count + 1)], (system, parts)
+            assert count in (1, 2), (system, parts)
+    assert ("macos-latest", 1, 1) in [(leg["os"], leg["part"], leg["parts"]) for leg in on_every_other_event]
+    assert "matrix.parts > 1" in job["name"] and "matrix.part" in step["name"]
+    for name in ("Build the wheel and install it into a clean venv", "The wheel reports this version"):
+        (wheel,) = [step for step in job["steps"] if step.get("name", "").startswith(name)]
+        assert wheel["if"] == "matrix.part == matrix.parts", name
+
+
+def test_a_per_system_selection_that_loses_or_repeats_a_test_is_caught() -> None:
+    """The reading above fails a step whose list or pattern would drop or double a test: a pattern that matches
+    every file or none leaves a part empty, and a step that picks its part some other way is not read at all."""
+    (step,) = [step for step in _jobs()["other-systems"]["steps"] if "pytest" in step.get("run", "")]
+    for pattern in ("tests/*", "tests/nothing_*"):
+        first, second, _ = _per_system_parts({**step, "env": {"FIRST_PART": pattern}})
+        assert not (first and second), pattern
+    for old, new in (
+        ('[ "$first" = "${{ matrix.part }}" ]', '[ "$first" -le "${{ matrix.part }}" ]'),
+        ('"${part[@]}"', '"${tests[@]}"'),
+    ):
+        with pytest.raises(AssertionError, match="picks its part"):
+            _per_system_parts({**step, "run": step["run"].replace(old, new)})
 
 
 def test_the_installed_wheel_reports_the_package_version_in_ci() -> None:

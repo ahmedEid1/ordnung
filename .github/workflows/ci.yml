@@ -487,20 +487,22 @@ jobs:
           "$RUNNER_TEMP/wheel/bin/ordnung" demo --check
 
   other-systems:
-    name: Other systems (${{ matrix.os }}, Python 3.12)
+    name: Other systems (${{ matrix.os }}, Python 3.12${{ matrix.parts > 1 && format(', {0}/{1}', matrix.part, matrix.parts) || '' }})
     # the lock, durable writes, sync's computer id, phone access's network lookups, autostart, the
     # app-menu shortcut (the Mac bundle opened, the Windows link read back and opened), the
     # disk-encryption probe and text in pictures with Tesseract missing differ on macOS and Windows, and a failure
-    # there fails the run. Windows runs on every event, pull requests among them: it took 8 minutes (19 Nov 2026),
-    # under the longest Linux jobs. macOS runs on main, by hand and weekly, not on a pull request: the job takes
-    # 3 to 4 minutes, but on one pull request of three its runner was 10 minutes in coming and on another none
-    # came: after 15 minutes in the queue the job was cancelled, and a run failed whose other jobs had all passed
+    # there fails the run. Windows runs on every event, pull requests among them, in two parts side by side: as
+    # one job it took 6.6 to 9.9 minutes in three runs (25 Nov 2026), twice the longest of its run, its tests in
+    # one process (see the test step). macOS runs on main, by hand and weekly, not on a pull request, as one job with
+    # every test of both parts: it takes 3 to 4 minutes, but on one pull request of three its runner was 10 minutes
+    # in coming and on another none came: after 15 minutes in the queue the job was cancelled, and a run failed
+    # whose other jobs had all passed
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:
       fail-fast: false
-      matrix:
-        os: ${{ fromJSON(github.event_name == 'pull_request' && '["windows-latest"]' || '["macos-latest", "windows-latest"]') }}
+      # each leg runs part `part` of the `parts` parts of the tests; the wheel's steps run in the last part
+      matrix: ${{ fromJSON(github.event_name == 'pull_request' && '{"include":[{"os":"windows-latest","part":1,"parts":2},{"os":"windows-latest","part":2,"parts":2}]}' || '{"include":[{"os":"macos-latest","part":1,"parts":1},{"os":"windows-latest","part":1,"parts":2},{"os":"windows-latest","part":2,"parts":2}]}') }}
     defaults:
       run:
         shell: bash
@@ -519,6 +521,7 @@ jobs:
           uv pip install -e ".[dev]" -c constraints.txt
       - name: Build the wheel and install it into a clean venv
         id: wheel
+        if: matrix.part == matrix.parts
         run: |
           uv build --wheel --build-constraints build-constraints.txt --require-hashes
           uv venv "$RUNNER_TEMP/wheel"
@@ -526,6 +529,7 @@ jobs:
           if [ "$RUNNER_OS" = Windows ]; then bin="$RUNNER_TEMP/wheel/Scripts"; else bin="$RUNNER_TEMP/wheel/bin"; fi
           echo "WHEEL_BIN=$bin" >> "$GITHUB_ENV"
       - name: The wheel reports this version and rebuilds the demo identically (outside the checkout)
+        if: matrix.part == matrix.parts
         run: |
           version=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' src/ordnung/__init__.py)
           cd "$RUNNER_TEMP"
@@ -560,22 +564,36 @@ jobs:
               (disk,) = [check for check in checks if check.id == "disk_encryption"]
               assert disk.status == "info" and disk.fix is None, disk
           EOF
-      - name: Tests of the code that differs per system
+      - name: Tests of the code that differs per system (${{ matrix.parts > 1 && format('part {0} of {1}', matrix.part, matrix.parts) || 'all of them' }})
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         # one process: these are the tests of locks held across processes, servers on real ports and child
         # processes killed mid-write, and their parallel runs were proven on Linux only (the whole job 3 to 6 minutes
-        # on macOS, 7 to 9 on Windows, 19 Nov 2026). On Windows this step took 5.5 to 7.3 minutes, two thirds of it in
-        # the first 150 tests (24 and 25 Nov 2026): the 20 slowest, named at the end, show which, for a split of the job
+        # on macOS, 7 to 9 on Windows, 19 Nov 2026). On Windows this step took 5.2 to 8.5 minutes, nine tenths of it
+        # in the sync tests, the crash tests (tests/test_sync_crash.py) alone 108 to 207 s (three runs, 25 Nov
+        # 2026). So part 1 takes the files that match FIRST_PART (the sync files from a to c, the crash tests
+        # among them: about 295 of the 511 s of the longest run, read from its log's progress lines), part 2
+        # every other file and the wheel's steps, and a job of one part takes them all: one list and one pattern,
+        # so each file is in exactly one part, and an empty part fails. The 20 slowest are named at the end
+        env:
+          FIRST_PART: tests/test_sync_[a-c]*
         run: |
           if [ -d .venv/Scripts ]; then venv=.venv/Scripts; else venv=.venv/bin; fi
-          "$venv/python" -m pytest -m "not slow" --durations=20 tests/test_platform_smoke.py \
-            tests/test_cli.py::test_the_lock_keeps_a_second_writer_out \
-            tests/test_cli.py::test_the_lock_waits_up_to_its_timeout \
-            tests/test_cli.py::test_a_lock_held_by_another_process_blocks_until_it_exits \
-            tests/test_sync_*.py tests/test_phone_net.py tests/test_phone_tls.py tests/test_phone_listener.py \
-            tests/test_autostart.py tests/test_shortcut.py tests/test_backup.py tests/test_backup_container.py \
-            tests/test_rules_postcodes.py tests/test_make_postcode_table.py tests/test_encryption.py \
-            tests/test_store_ledger_token.py tests/test_ocr.py tests/test_doctor_pictures.py
+          tests=(tests/test_platform_smoke.py
+            tests/test_cli.py::test_the_lock_keeps_a_second_writer_out
+            tests/test_cli.py::test_the_lock_waits_up_to_its_timeout
+            tests/test_cli.py::test_a_lock_held_by_another_process_blocks_until_it_exits
+            tests/test_sync_*.py tests/test_phone_net.py tests/test_phone_tls.py tests/test_phone_listener.py
+            tests/test_autostart.py tests/test_shortcut.py tests/test_backup.py tests/test_backup_container.py
+            tests/test_rules_postcodes.py tests/test_make_postcode_table.py tests/test_encryption.py
+            tests/test_store_ledger_token.py tests/test_ocr.py tests/test_doctor_pictures.py)
+          part=()
+          for test in "${tests[@]}"; do
+            if [[ $test == $FIRST_PART ]]; then first=1; else first=2; fi
+            if [ "${{ matrix.parts }}" = 1 ] || [ "$first" = "${{ matrix.part }}" ]; then part+=("$test"); fi
+          done
+          # with no file named, the run would take every test of the repository
+          test ${#part[@]} -gt 0 || { echo "::error::part ${{ matrix.part }} has no test: see FIRST_PART"; exit 1; }
+          "$venv/python" -m pytest -m "not slow" --durations=20 "${part[@]}"
 
   frontend:
     name: Frontend
