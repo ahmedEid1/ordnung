@@ -10,10 +10,10 @@ goes where.
 
 ## In one minute
 
-- **What leaves your computer:** a letter Claude reads, and the excerpts of your records that *Ask*, *Weekly
-  Ideas*, the secretary's note and *Letters* use, go to Anthropic through your own Claude account; every call is
-  listed in Settings → Privacy & AI usage, with what it carried, tokens and cost
-  ([per feature](#what-is-sent-to-claude-per-feature)). Your calendar provider, your phone and your sync folder
+- **What leaves your computer:** a letter Claude reads (with your name and region), and the excerpts of your
+  records and household that *Ask*, *Weekly Ideas*, the secretary's note and *Letters* use, go to Anthropic
+  through your own Claude account; every call is listed in Settings → Privacy & AI usage, with its purpose,
+  which documents, tokens and cost ([per feature](#what-is-sent-to-claude-per-feature)). Your calendar provider, your phone and your sync folder
   get something only if you turn that feature on ([at a glance](#at-a-glance)). With
   `ordnung mcp install --with-ledger`, a Claude client you add Ordnung to reads your ledger too, and that
   client's other tools could send it on ([Claude Desktop or Claude Code](#using-ordnung-from-claude-desktop-or-claude-code)).
@@ -84,7 +84,9 @@ not.
   title like "Ordnung: deadline", while *With details* also sends what Ordnung's calendar file holds: the title
   (after the name of the household member the letter is filed for), what to do, the amount, who it is with
   and why that date; and the sync folder holds only encrypted files, though their number, sizes and times
-  show roughly how much you add ([calendar](#calendar-sync-optional),
+  show roughly how much you add, and anyone who knows Ordnung's open format can tell the folder is its
+  encrypted store, under the name you gave it, and how many computers take part
+  ([calendar](#calendar-sync-optional),
   [hand-off sync](#hand-off-sync-between-your-computers-optional)).
 
 ## At a glance

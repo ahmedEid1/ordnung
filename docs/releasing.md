@@ -8,8 +8,8 @@ makes releases; nothing here is needed to use Ordnung or to change it.
 - **A release is a pushed tag.** `vX.Y.Z` on the release pull request's merge commit runs `release.yml`: it checks
   the tag, builds, publishes a GitHub Release and, once you turn it on, uploads to PyPI
   ([what a release does](#what-a-release-does)).
-- **Five steps:** raise the version, name the changelog's section, merge once CI passes (on `main` too), tag the
-  merge commit, watch the run ([making a release](#making-a-release)).
+- **Five steps:** raise the version, name the changelog's section, merge once CI passes and wait for CI on
+  `main`, tag the merge commit, watch the run ([making a release](#making-a-release)).
 - **A wrong tag stops before anything is built or published.** Once the GitHub Release exists, keep the tag
   ([step 5](#making-a-release)).
 - **PyPI never takes the same version twice:** once the upload has worked, a mistake is fixed in the next version.

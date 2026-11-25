@@ -6,7 +6,7 @@ what happens next.
 
 ## In one minute
 
-- **Report privately**, never in a public issue: the repository's **Security** tab → **Report a
+- **Report privately first**, not in a public issue: the repository's **Security** tab → **Report a
   vulnerability**, or, if that button is missing, the **Security contact** issue form
   ([how to report](#how-to-report)).
 - **Send no real letters or personal data**: show the problem with the demo or a letter you made up
