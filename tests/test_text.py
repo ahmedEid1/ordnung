@@ -8,6 +8,8 @@ import random
 import re
 import threading
 import time
+import tracemalloc
+import unicodedata
 from email.message import EmailMessage
 from pathlib import Path
 
@@ -17,7 +19,7 @@ import pytest
 from fpdf import FPDF
 from fpdf.enums import EncryptionMethod
 from pdfminer.arcfour import Arcfour
-from PIL import Image
+from PIL import Image, ImageChops, ImageStat
 
 from helpers_docs import (
     INJECTION,
@@ -1114,6 +1116,177 @@ def test_the_invisible_text_check_holds_the_pdfium_lock(
     monkeypatch.setattr(text_module.pdfium, "PdfDocument", spy)
     found = text_module._drawn_chars(pdf_path, [1])
     assert opened == [True] and found[1]
+
+
+# -- the ink check's shortcuts answer as the long way does ------------------------------------------------
+
+#: Differences around the thresholds the ink check asks of a pixel (half a strongest, INK_THRESHOLD).
+_LEVELS = [0, 0, 0, 1, 7, 8, 9, 15, 16, 17, 31, 32, 33, 100, 152, 153, 154, 255, 255]
+
+
+def _noise(rng: random.Random, size: tuple[int, int], levels: list[int]) -> Image.Image:
+    return Image.frombytes("L", size, bytes(rng.choice(levels) for _ in range(size[0] * size[1])))
+
+
+def _shows_by_crops(shown: Image.Image, expected: Image.Image, box: tuple[int, int, int, int]) -> bool:
+    seen, own = shown.crop(box), expected.crop(box)
+    if seen.getextrema()[1] < text_module.INK_THRESHOLD:
+        return False
+    strongest = int(own.getextrema()[1])
+    if strongest < text_module.INK_THRESHOLD:
+        return True
+    core = own.point([255 if value >= (strongest + 1) // 2 else 0 for value in range(256)])
+    count = ImageChops.darker(core, text_module._mask(seen)).histogram()[255]
+    return count >= text_module.INK_SHARE * core.histogram()[255]
+
+
+def _spans_by_crops(own_ink: Image.Image, box: tuple[int, int, int, int]) -> bool:
+    crop = own_ink.crop(box)
+    if crop.getbbox() is None:
+        return True
+    width, height = crop.size
+    rows = sum(any(crop.getpixel((x, y)) for x in range(width)) for y in range(height))
+    columns = sum(any(crop.getpixel((x, y)) for y in range(height)) for x in range(width))
+    share = text_module.INK_SHARE
+    return rows >= share * max(height - 3, 1) and columns >= share * max(width - 3, 1)
+
+
+@pytest.mark.parametrize("size", [(40, 30), (300, 8)], ids=["glyph-sized", "wider than 255 pixels"])
+def test_a_character_is_judged_from_its_box_s_counts_as_from_its_crops(size: tuple[int, int]) -> None:
+    """The ink check reads a character's box once, as counts of four images in one (:class:`_Judged`):
+    whether it shows, whether its own ink spans its box and whether the page is dark under it come out
+    as cropping each image says, for boxes anywhere, partly off the page too."""
+    rng = random.Random(f"judged {size}")
+    width, height = size
+    for _ in range(150):
+        shown, expected = _noise(rng, size, _LEVELS), _noise(rng, size, _LEVELS)
+        if rng.random() < 0.5:  # the page shows all of the text's own ink, as on most letters
+            shown = ImageChops.lighter(shown, expected.point(lambda value: 255 if value >= 8 else 0))
+        # grounds all darker or all lighter than DARK_GROUND asks, and mixes whose mean lies either side of it
+        grounds = rng.choice(
+            [[0, 152], [150, 152], [153, 156, 255], [152, 155, 155, 155], list(range(148, 159))]
+        )
+        ground = _noise(rng, size, grounds)
+        judged = text_module._Judged(text_module._mask(shown), expected, ground)
+        own_ink = text_module._mask(expected)
+        left, top = rng.randint(-4, width - 2), rng.randint(-4, height - 2)
+        box = (left, top, rng.randint(left + 1, width + 4), rng.randint(top + 1, height + 4))
+        counts, verdict = judged.counts(box), judged.verdict(box)
+        assert verdict.ink == (shown.crop(box).getextrema()[1] >= text_module.INK_THRESHOLD)
+        assert text_module._shows(counts) == verdict.shows == _shows_by_crops(shown, expected, box)
+        assert verdict.own_ink == (own_ink.crop(box).getbbox() is not None)
+        assert text_module._spans(own_ink, box, "A", verdict.own_ink) == _spans_by_crops(own_ink, box)
+        assert text_module._spans(own_ink, box, "A") == _spans_by_crops(own_ink, box)
+        dark = ImageStat.Stat(ground.crop(box)).mean[0] < text_module.DARK_GROUND * 255
+        assert text_module._on_dark(counts) == verdict.on_dark == dark
+
+
+def _shows_more_by_crops(
+    shown: Image.Image, expected: Image.Image, boxes: list[tuple[int, int, int, int] | None]
+) -> bool:
+    return any(
+        box is not None
+        and _strongest_by_crop(shown, box) >= _strongest_by_crop(expected, box) + text_module.INK_THRESHOLD
+        for box in boxes
+    )
+
+
+def _strongest_by_crop(image: Image.Image, box: tuple[int, int, int, int]) -> int:
+    return int(image.crop(box).getextrema()[1])
+
+
+def _placed(
+    boxes: list[tuple[int, int, int, int] | None],
+) -> list[tuple[text_module._DrawnChar, tuple[int, int, int, int] | None, int | None]]:
+    return [(text_module._DrawnChar("A", 0.0, 0.0, False), box, None) for box in boxes]
+
+
+def test_the_page_is_searched_for_light_text_on_dark_where_a_crop_of_each_box_finds_it() -> None:
+    """Whether to render the text on black too (:func:`_shows_more`) is only asked of boxes near the
+    pixels where the page differs from the text alone by :data:`INK_THRESHOLD` or more: the same answer
+    as cropping every box, for boxes anywhere, partly off the page too, and for a single pixel on a box's
+    edge that differs by one less than the threshold, the threshold or one more."""
+    rng = random.Random("shows more")
+    width, height = 40, 30
+    for _ in range(300):
+        shown, expected = _noise(rng, (width, height), _LEVELS), _noise(rng, (width, height), _LEVELS)
+        if rng.random() < 0.7:  # mostly the text's own ink, as where no text is light on dark
+            shown = ImageChops.darker(shown, expected)
+        boxes: list[tuple[int, int, int, int] | None] = [None]
+        for _ in range(rng.randint(1, 4)):
+            left, top = rng.randint(-4, width - 2), rng.randint(-4, height - 2)
+            boxes.append((left, top, rng.randint(left + 1, width + 4), rng.randint(top + 1, height + 4)))
+        assert text_module._shows_more(shown, expected, _placed(boxes)) == _shows_more_by_crops(
+            shown, expected, boxes
+        )
+    box = (10, 8, 20, 16)
+    corners = [(10, 8), (19, 8), (10, 15), (19, 15), (15, 15)]  # inside, on its edges
+    outside = [(9, 8), (20, 8), (10, 7), (10, 16)]  # just past them
+    for difference in (
+        text_module.INK_THRESHOLD - 1,
+        text_module.INK_THRESHOLD,
+        text_module.INK_THRESHOLD + 1,
+    ):
+        for x, y in corners + outside:
+            expected = Image.new("L", (width, height), 40)
+            shown = expected.copy()
+            shown.putpixel((x, y), 40 + difference)
+            answer = text_module._shows_more(shown, expected, _placed([box]))
+            assert answer == _shows_more_by_crops(shown, expected, [box])
+            assert answer == ((x, y) in corners and difference >= text_module.INK_THRESHOLD)
+
+
+def test_a_page_of_many_tiny_glyphs_is_judged_in_little_memory(tmp_path: Path) -> None:
+    """The ink check keeps a few answers per character, not its box's counts (8 KB each): a page of
+    thousands of tiny glyphs, cheap to write into a PDF, must not take memory in proportion."""
+    line = ("Musterstadt Zahlung 0123456789 " * 9)[:250]
+    source = tmp_path / "tiny.pdf"
+    source.write_bytes(make_pdf([[Line(40, 40 + 2.5 * row, line, size=2) for row in range(24)]]))
+    tracemalloc.start()
+    try:
+        found = text_module._drawn_chars(source, [1])
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    chars = sum(len(drawn) for drawn in found[1].values())
+    assert chars > 5000
+    assert peak < 2000 * chars  # about 1 KB a character; it was over 8 KB
+
+
+def test_the_characters_near_a_place_are_the_ones_a_full_search_finds() -> None:
+    """The characters PDFium draws near a text-layer character are looked up in order of their place
+    (:class:`_DrawnAt`): the same ones, in the same order, as going through all of them, also for places
+    no number can be compared with."""
+    rng = random.Random("near")
+    odd = [float("nan"), float("inf"), -float("inf"), 1e300]
+    drawn: dict[str, list[text_module._DrawnChar]] = {}
+    for text in ["a", "f", "1"]:
+        drawn[text] = [
+            text_module._DrawnChar(
+                text,
+                rng.choice(odd) if rng.random() < 0.05 else rng.uniform(0, 600),
+                rng.choice(odd) if rng.random() < 0.05 else rng.uniform(0, 800),
+                rng.random() < 0.2,
+            )
+            for _ in range(300)
+        ]
+    at = text_module._DrawnAt(drawn)
+    for _ in range(2000):
+        size = rng.choice([0.0, 2.0, 9.0, 12.0, 40.0, None, *odd])
+        x0 = rng.choice(odd) if rng.random() < 0.02 else rng.uniform(-5, 605)
+        top = rng.uniform(-5, 805)
+        char = {"text": rng.choice(["a", "f", "1", "b", "ﬁ"]), "size": size, "x0": x0, "x1": x0 + 5}
+        char |= {"top": top, "bottom": top + 9}
+        x, y = (char["x0"] + char["x1"]) / 2, (top + top + 9) / 2
+        reach_x, reach_y = max(1.0, 0.25 * float(size or 0.0)), max(1.5, 0.5 * float(size or 0.0))
+        texts = dict.fromkeys((char["text"], unicodedata.normalize("NFKC", char["text"])[:1]))
+        everywhere = [
+            other
+            for key in texts
+            for other in drawn.get(key, [])
+            if abs(other.x - x) <= reach_x and abs(other.y - y) <= reach_y
+        ]
+        assert text_module._near(char, at) == everywhere
 
 
 # -- e-mails whose text Pillow's layout couldn't take ---------------------------------------------------

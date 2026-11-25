@@ -221,7 +221,8 @@ entry.
   amount or reference in it no longer backs a GiroCode, which is refused or asks you to compare the values. A
   PDF page whose text layer doesn't match what the page draws, or that the check can't read, is read from its
   picture like a photo, so its payment details ask you to compare them with the letter. Readable text over a
-  coloured band or a photo stays page text.
+  coloured band or a photo stays page text. The check draws each page a few times, which adds about a tenth of a
+  second a page to reading a PDF's text.
 - **An e-mail is read as a mail program shows it.** An e-mail whose plain part, or an earlier HTML version, names
   an IBAN or amount that one of its HTML versions doesn't show is read from its last HTML version and flagged
   as a scam sign.
