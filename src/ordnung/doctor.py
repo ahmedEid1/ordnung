@@ -649,7 +649,7 @@ _LANGUAGE_NAMES = {"deu": "German", "eng": "English"}
 
 def tesseract_install(platform: str = sys.platform) -> str:
     """How to install Tesseract with its German language data on ``platform``. It ends "then restart Ordnung":
-    Ordnung looks for Tesseract when it starts. The README gives the same lines."""
+    Ordnung looks for Tesseract when it starts. docs/guide.md#words-in-photos-optional gives the same lines."""
     if platform == "win32":
         return (
             f"the installer from {TESSERACT_WINDOWS_URL}, with German ticked under “Additional language data”, "

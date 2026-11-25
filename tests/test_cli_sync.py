@@ -79,6 +79,16 @@ def test_status_without_a_connection(engine: FakeEngine, data_dir: Path) -> None
     assert invoke("sync", "status", "--data-dir", str(data_dir)).exit_code == 0
 
 
+def test_status_of_a_folder_without_data_creates_nothing(engine: FakeEngine, tmp_path: Path) -> None:
+    """A mistyped --data-dir used to become a new, empty data folder: the status only reports."""
+    typo = tmp_path / "typo"
+    for args in (["sync"], ["sync", "status"]):
+        result = invoke(*args, "--data-dir", str(typo))
+        assert result.exit_code == 0, result.output
+        assert "This computer doesn't sync: there is no Ordnung data in" in " ".join(result.output.split())
+    assert not typo.exists()
+
+
 def test_connect_with_the_passphrase_from_the_environment(
     engine: FakeEngine, data_dir: Path, folder: Path
 ) -> None:

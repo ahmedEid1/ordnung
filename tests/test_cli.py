@@ -104,6 +104,22 @@ def test_the_help_and_the_package_summary_say_it_is_for_germany() -> None:
     assert ordnung.__doc__ == "Ordnung — your private AI secretary for life admin in Germany."
 
 
+def test_help_shows_names_not_python_types() -> None:
+    """Typer prints each value's Python type in --help (``--version <bool>``, ``files... <list[Path]>``), which
+    tells a reader nothing: a flag shows no type, and an argument shows its name in capitals."""
+    top = plain(invoke("--help").output)
+    assert "<bool>" not in top and "--version" in top
+    add = plain(invoke("add", "--help").output)
+    assert "<bool>" not in add and "list[" not in add and "FILES" in add and "{files}" not in add
+    assert "QUESTION" in plain(invoke("ask", "--help").output)
+
+
+def test_the_eval_help_line_promises_nothing_an_installed_copy_lacks() -> None:
+    """``ordnung eval --help`` only works in a source checkout, so the one-line help doesn't point to it."""
+    (line,) = [line for line in plain(invoke("--help").output).splitlines() if " eval " in line]
+    assert "source checkout" in line and "--help" not in line
+
+
 def test_version() -> None:
     result = invoke("--version")
     assert result.exit_code == 0 and result.output.startswith("ordnung ")
@@ -578,6 +594,24 @@ def test_serve_on_a_busy_port_explains_what_to_do(data_dir: Path, monkeypatch: p
         result = invoke("serve", "--no-browser", "--port", str(port), "--data-dir", str(data_dir))
     assert result.exit_code == 1
     assert f"Port {port} is already in use" in result.output and f"--port {port + 1}" in result.output
+
+
+def test_commands_that_fail_or_only_report_leave_a_mistyped_folder_alone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A typo in --data-dir left a new data folder behind: ``serve`` on a busy port checks the port before it
+    opens the folder, and ``brief`` says there is nothing there instead of creating it."""
+    typo = tmp_path / "typo"
+    with socket.socket() as busy:
+        busy.bind(("127.0.0.1", 0))
+        busy.listen()
+        port = busy.getsockname()[1]
+        served = invoke("serve", "--no-browser", "--port", str(port), "--data-dir", str(typo))
+    assert served.exit_code == 1 and f"Port {port} is already in use" in served.output
+    brief = invoke("brief", "--no-llm", "--data-dir", str(typo))
+    assert brief.exit_code == 1
+    assert "There is no Ordnung database in" in plain(brief.output)
+    assert not typo.exists()
 
 
 def test_serve_points_to_an_already_running_server(api: FakeServer) -> None:
