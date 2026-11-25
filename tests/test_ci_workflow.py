@@ -10,11 +10,14 @@ from __future__ import annotations
 import ast
 import functools
 import json
+import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 import tomllib
+from collections import Counter
 from fnmatch import fnmatch
 from pathlib import Path
 from typing import Any
@@ -143,6 +146,47 @@ def _e2e_groups() -> list[str]:
     return re.findall(r'^  "?([\w-]+)"?: \[', groups, re.M)
 
 
+def _e2e_legs(e2e: dict[str, Any]) -> list[tuple[str, int, int]]:
+    """The end-to-end job's legs: each one's group, its part and how many parts its group runs in."""
+    return [(leg["group"], leg["shard"], leg["shards"]) for leg in e2e["strategy"]["matrix"]["include"]]
+
+
+def _legs_cover_their_groups(legs: list[tuple[str, int, int]], groups: list[str]) -> list[str]:
+    """What is wrong with ``legs`` as the legs of ``groups`` (nothing: every test runs once): each group runs in
+    parts 1 to N of N, each part once, and every leg is of a group. Playwright's ``--shard=k/N`` gives every file of
+    the group to exactly one of the N parts, so parts 1 to N of one N are the whole group, each test once."""
+    problems = []
+    for group in groups:
+        parts = sorted((shard, shards) for name, shard, shards in legs if name == group)
+        totals = {shards for _, shards in parts}
+        if len(totals) != 1 or parts != [(k, max(totals)) for k in range(1, max(totals) + 1)]:
+            problems.append(f"{group}: parts {parts}")
+    problems += [f"{name}: no such group" for name, _, _ in legs if name not in groups]
+    return problems
+
+
+#: legs that leave tests out or run them twice, and what the check above says of each
+BROKEN_LEGS = [
+    ([("demo", 1, 1), ("layout", 1, 2)], ["layout: parts [(1, 2)]"]),  # a part missing
+    # a part twice
+    (
+        [("demo", 1, 1), ("layout", 1, 2), ("layout", 2, 2), ("layout", 2, 2)],
+        ["layout: parts [(1, 2), (2, 2), (2, 2)]"],
+    ),
+    # two ways to cut one group
+    ([("demo", 1, 1), ("layout", 1, 2), ("layout", 2, 3)], ["layout: parts [(1, 2), (2, 3)]"]),
+    ([("layout", 1, 1)], ["demo: parts []"]),  # a group with no leg
+    ([("demo", 1, 1), ("layout", 1, 1), ("lay-out", 1, 1)], ["lay-out: no such group"]),
+]
+
+
+def test_a_group_whose_legs_leave_out_or_repeat_a_part_is_caught() -> None:
+    whole = [("demo", 1, 1), ("layout", 1, 2), ("layout", 2, 2)]
+    assert _legs_cover_their_groups(whole, ["demo", "layout"]) == []
+    for legs, problems in BROKEN_LEGS:
+        assert _legs_cover_their_groups(legs, ["demo", "layout"]) == problems, legs
+
+
 def test_the_end_to_end_groups_start_at_once_and_together_run_every_project() -> None:
     """Each end-to-end leg installs its own Python, Node and Chromium and checks that the committed web build
     matches its sources: it uses nothing another job makes, so it waits for none (waiting for the frontend job put 8
@@ -150,35 +194,29 @@ def test_the_end_to_end_groups_start_at_once_and_together_run_every_project() ->
     frontend job's build proves the sources still build). Playwright drives the committed build, the one the wheel
     ships, never one the leg builds. Chromium comes as its headless shell, with no system packages (an apt mirror
     once hung the install and failed a run), cached under a key of its own. Its legs are the groups of
-    web/e2e/env.ts, each once: a group left out here would never run in CI. Only the layout group, the longest, runs
-    as two halves (Playwright's ``--shard``), and the two halves together are the whole group: every other group has
-    one leg that runs all of it. The checks that need both toolchains run on one leg, not on each."""
+    web/e2e/env.ts: a group left out here would never run in CI. A group runs whole, or in parts (Playwright's
+    ``--shard``) whose legs together are the whole group, each part once: the layout guards, the longest, in four.
+    The checks that need both toolchains run on one leg, not on each; among them the next test, which lists every
+    leg's tests with Playwright and holds them to the whole run's, each once."""
     jobs = _jobs()
     e2e = jobs["e2e"]
     assert "needs" not in e2e and "download-artifact" not in json.dumps(e2e)
     assert _on_pull_requests(e2e) and _on_pull_requests(jobs["frontend"])
-    matrix = e2e["strategy"]["matrix"]
-    groups = matrix["group"]
-    assert sorted(groups) == sorted(set(groups)) == sorted(_e2e_groups())
-    assert set(matrix) == {"group", "shard", "exclude"} and matrix["shard"] == [1, 2]
-    legs = [
-        (group, shard)
-        for group in groups
-        for shard in matrix["shard"]
-        if {"group": group, "shard": shard} not in matrix["exclude"]
-    ]
-    assert sorted(legs) == sorted([(group, 1) for group in groups] + [("layout", 2)])
+    assert set(e2e["strategy"]["matrix"]) == {"include"}
+    legs = _e2e_legs(e2e)
+    assert len(legs) == len(set(legs))
+    assert _legs_cover_their_groups(legs, _e2e_groups()) == []
+    assert ("layout", 4, 4) in legs
     _, playwright = _step(e2e, "npm run e2e")
     assert playwright["env"]["E2E_GROUP"] == "${{ matrix.group }}"
-    # a leg runs its shard of as many as its group has legs: 1/1 is the whole group, 1/2 and 2/2 the layout's
-    assert playwright["run"] == (
-        "cd web && npm run e2e -- --shard=${{ matrix.shard }}/${{ matrix.group == 'layout' && 2 || 1 }}"
-    )
-    assert "format(' {0}/2', matrix.shard)" in e2e["name"]
+    # a leg runs its part of its group: 1/1 is the whole group
+    assert playwright["run"] == "cd web && npm run e2e -- --shard=${{ matrix.shard }}/${{ matrix.shards }}"
+    assert "format(' {0}/{1}', matrix.shard, matrix.shards)" in e2e["name"]
     (upload,) = [step for step in e2e["steps"] if "upload-artifact" in step.get("uses", "")]
     assert upload["with"]["name"] == "playwright-report-${{ matrix.group }}-${{ matrix.shard }}"
     (checks,) = [step for step in e2e["steps"] if "ORDNUNG_REQUIRE_MOCK_CHECK" in step.get("env", {})]
     assert checks["if"] == "matrix.group == 'real'"
+    assert [leg for leg in legs if leg[0] == "real"] == [("real", 1, 1)]
     fresh_at, fresh = _step(e2e, "cd web && node scripts/source-hash.mjs --check")
     assert fresh["run"].endswith(" ../src/ordnung/web/dist/build-info.json")
     assert "npm run build" not in _script(e2e) and "npm run build" in _script(jobs["frontend"])
@@ -187,6 +225,51 @@ def test_the_end_to_end_groups_start_at_once_and_together_run_every_project() ->
     assert browser["run"] == "cd web && npx playwright install --only-shell chromium"
     (cache,) = [step for step in e2e["steps"] if "ms-playwright" in step.get("with", {}).get("path", "")]
     assert cache["with"]["key"].startswith("playwright-shell-")
+
+
+_WEB = ROOT / "web"
+#: Playwright's ``--list`` line of a test: ``[project] › file:line:column › title``
+_LISTED_TEST = re.compile(r"^\s+\[[\w-]+\] › \S+:\d+:\d+ › ", re.M)
+
+
+def _listed(group: str | None, *args: str) -> list[str]:
+    """The tests Playwright lists for a run of ``group`` (``E2E_GROUP``; ``None``: the whole run) with ``args``."""
+    env = {key: value for key, value in os.environ.items() if key not in ("E2E_GROUP", "CI")}
+    if group:
+        env["E2E_GROUP"] = group
+    out = subprocess.run(
+        [str(_WEB / "node_modules" / ".bin" / "playwright"), "test", "--list", *args],
+        cwd=_WEB,
+        capture_output=True,
+        text=True,
+        check=True,
+        env=env,
+    ).stdout
+    return [line.strip() for line in out.splitlines() if _LISTED_TEST.match(line)]
+
+
+#: Skipped without Node and the web app's packages, except where ``ORDNUNG_REQUIRE_MOCK_CHECK=1`` (CI's end-to-end
+#: job, which has both toolchains): there a missing toolchain fails, so CI always checks its own legs.
+_needs_web = pytest.mark.skipif(
+    os.environ.get("ORDNUNG_REQUIRE_MOCK_CHECK") != "1"
+    and (shutil.which("node") is None or not (_WEB / "node_modules" / ".bin").exists()),
+    reason="needs node and web/node_modules (npm ci in web/)",
+)
+
+
+@_needs_web
+def test_every_end_to_end_test_runs_in_exactly_one_leg() -> None:
+    """What Playwright itself lists for each leg of the end-to-end job (its group and its ``--shard``) is, all legs
+    together, what it lists for the whole run, and no test is in two legs: a spec file that no group's project
+    takes, or a part left out, fails here, not by never running."""
+    whole = _listed(None)
+    seen: Counter[str] = Counter()
+    for group, shard, shards in _e2e_legs(_jobs()["e2e"]):
+        tests = _listed(group, f"--shard={shard}/{shards}")
+        assert tests, (group, shard, shards)
+        seen.update(tests)
+    assert [test for test, count in seen.items() if count > 1] == []
+    assert sorted(seen) == sorted(whole)
 
 
 def test_only_a_pull_request_s_older_run_is_cancelled() -> None:
@@ -887,7 +970,7 @@ def test_tesseract_is_installed_only_where_a_real_binary_test_needs_it() -> None
     assert install["run"].strip() == APT_TESSERACT and install["if"] == "matrix.group == 'real'"
     playwright_at, playwright = _step(e2e, "npm run e2e")
     assert at < playwright_at
-    assert "real" in e2e["strategy"]["matrix"]["group"]
+    assert ("real", 1, 1) in _e2e_legs(e2e)
     assert playwright["env"] == {
         "E2E_GROUP": "${{ matrix.group }}",
         "ORDNUNG_E2E_OCR": "on",

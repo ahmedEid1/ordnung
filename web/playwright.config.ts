@@ -45,8 +45,10 @@ import {
  *
  * `E2E_GROUP=<name>` (e2e/env.ts) runs one group of the projects below, in the same order, on fresh servers of its
  * own and only those its projects use, so CI can run the groups as jobs side by side. Unset, everything runs, as described.
- * CI runs the layout group in two halves with `--shard`; each layout file sets up what it needs, so any split by whole
- * files works.
+ * CI runs the layout group in four parts with `--shard`, each on a fresh demo. A part is a run of whole files in the
+ * group's order, and a layout file needs nothing a file before it did, so any such split works. The order still
+ * counts on one demo: some files need what a later one changes as the demo ships it (Ask's recorded answers, a
+ * contract's notice period), and the four parts run last to first on one demo failed five tests.
  *
  * Local: `npm run build && PW_CHROMIUM_PATH=/path/to/chrome npm run e2e`. See `e2e/env.ts` for
  * the knobs (ports, data folders, reuse running servers, groups).
@@ -124,7 +126,8 @@ export default defineConfig({
   projects: projectsOfThisRun([
     { name: "tour", testMatch: /tour\.spec\.ts$/, use: desktop },
     { name: "pages", testMatch: /pages\.spec\.ts$/, use: desktop },
-    // it changes nothing and asks Ask a recorded question, on the demo as `pages` left it. It opens its own
+    // it changes nothing and asks Ask a recorded question, on the demo as `pages` left it (in CI, on a fresh demo
+    // of its own: its group, e2e/env.ts). It opens its own
     // contexts, dozens per test: no traces or failure screenshots of them (it attaches the first failing view
     // of each state itself)
     {

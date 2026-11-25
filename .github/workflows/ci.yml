@@ -541,28 +541,36 @@ jobs:
           test -z "$(git status --porcelain -- ../src/ordnung/web/dist)"
 
   e2e:
-    name: End-to-end (${{ matrix.group }}${{ matrix.group == 'layout' && format(' {0}/2', matrix.shard) || '' }})
+    name: End-to-end (${{ matrix.group }}${{ matrix.shards > 1 && format(' {0}/{1}', matrix.shard, matrix.shards) || '' }})
     # each leg installs its own Python, Node and Chromium and checks that the committed web build matches its
     # sources (Playwright drives the build the wheel ships; the frontend job proves the sources still build): it
     # waits for no other job. Chromium is its headless shell alone, without apt: the system packages
     # --with-deps added are fonts, and one apt mirror hung a leg for 4 minutes (19 Nov 2026).
     # The groups of Playwright's projects (E2E_GROUPS in web/e2e/env.ts) run side by side, each on fresh servers
     # of its own. One run of them all took 39 minutes (18 Nov 2026), and the layout guards as one leg 23. So the
-    # layout group runs in two halves (Playwright's --shard, which keeps whole files and their order), each on a
-    # fresh demo of its own: every layout file sets up what it needs. The other groups run whole (--shard=1/1)
+    # layout group runs in four parts (Playwright's --shard, which keeps whole files and their order and gives each
+    # part about as many tests), each on a fresh demo of its own: a part runs whole files in the group's order, and a
+    # layout file needs nothing a file before it did (some need the demo as it ships, before a later file changes it),
+    # so a new file can land in whichever part its place in that order gives it. In two halves, the first half took
+    # 8.6 to 11.9 minutes and the second 7.5 to 8.5, the longest legs of a run (five runs, 24 and 25 Nov 2026). The
+    # layout sweep and the evaluation's report page left the demo's and the real apps' groups for the same reason:
+    # each group of its own (e2e/env.ts). The other groups run whole (--shard=1/1)
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        group: [demo, layout, real]
-        shard: [1, 2]
-        exclude:
-          - group: demo
-            shard: 2
-          - group: real
-            shard: 2
+        # each leg runs part `shard` of the `shards` parts of its group
+        include:
+          - { group: demo, shard: 1, shards: 1 }
+          - { group: sweep, shard: 1, shards: 1 }
+          - { group: layout, shard: 1, shards: 4 }
+          - { group: layout, shard: 2, shards: 4 }
+          - { group: layout, shard: 3, shards: 4 }
+          - { group: layout, shard: 4, shards: 4 }
+          - { group: report, shard: 1, shards: 1 }
+          - { group: real, shard: 1, shards: 1 }
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
@@ -591,8 +599,8 @@ jobs:
         run: cd web && npx playwright install --only-shell chromium
       - name: Checks that need both toolchains (node + web/node_modules and the Python package)
         # the static demo's My numbers and weekly session match the Python code; the README's Vitest and
-        # Playwright counts hold; a web build ships the licences of what it bundles. Only this job has both,
-        # so here they must run instead of skipping: once, on one leg
+        # Playwright counts hold; a web build ships the licences of what it bundles; the legs of this job run every
+        # Playwright test once. Only this job has both, so here they must run instead of skipping: once, on one leg
         if: matrix.group == 'real'
         env:
           ORDNUNG_REQUIRE_MOCK_CHECK: "1"
@@ -600,6 +608,7 @@ jobs:
           .venv/bin/pytest -q tests/test_mock_numbers.py
           tests/test_docs_claims.py::test_readme_vitest_and_playwright_counts_hold
           tests/test_repo_hygiene.py::test_a_web_build_ships_the_licence_of_every_package_it_bundles
+          tests/test_ci_workflow.py::test_every_end_to_end_test_runs_in_exactly_one_leg
       - name: Committed web build is up to date (Playwright drives it as it ships)
         run: cd web && node scripts/source-hash.mjs --check ../src/ordnung/web/dist/build-info.json
       - name: Install Tesseract with German (the real app reads a private photo's words, ADR 0024)
@@ -609,15 +618,15 @@ jobs:
         # playwright.config.ts starts what the group's projects use: `ordnung demo --reset`, or `ordnung serve` with
         # tests/fake_claude.py from .venv and a second `ordnung serve` (hand-off sync's other computer; both real
         # apps keep secrets in the file keyring of tests/e2e_support), and logs in to each with its token. demo:
-        # tour, pages, sweep, girocode, high-stakes, add-date; layout: the layout guards; real: eval-report (the
-        # evaluation's report page, no server), then real-app (e2e/real-app-*.spec.ts) and pictures (the guide's two
-        # screenshots, skipped unless `make capture` runs them). Text in pictures is on in the first real app only
+        # tour, pages, girocode, high-stakes, add-date; sweep: the layout sweep; layout: the layout guards; report:
+        # the evaluation's report page (no server); real: real-app (e2e/real-app-*.spec.ts) and pictures (the guide's
+        # two screenshots, skipped unless `make capture` runs them). Text in pictures is on in the first real app only
         # (ORDNUNG_E2E_OCR), with the Tesseract installed above: its spec must run, not skip
         env:
           E2E_GROUP: ${{ matrix.group }}
           ORDNUNG_E2E_OCR: "on"
           ORDNUNG_REQUIRE_TESSERACT: "1"
-        run: cd web && npm run e2e -- --shard=${{ matrix.shard }}/${{ matrix.group == 'layout' && 2 || 1 }}
+        run: cd web && npm run e2e -- --shard=${{ matrix.shard }}/${{ matrix.shards }}
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
