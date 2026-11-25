@@ -335,37 +335,43 @@ def update_proof(
     return store.update_proof(proof_id, **changes) if changes else _proof(store, draft_id, proof_id)
 
 
-def _forget_file(store: Store, doc_id: str | None, *, keep: str | None = None) -> None:
-    """Delete a proof file for good when it was added as proof and no other proof uses it."""
+def _forget_file(store: Store, doc_id: str | None, *, keep: str | None = None) -> bool:
+    """Delete a proof file for good when it was added as proof and no other proof uses it (whether it
+    was deleted)."""
     if doc_id is None:
-        return
+        return False
     document = store.get_document(doc_id)
     others = [proof for proof in store.list_proofs(doc_id=doc_id) if proof.id != keep]
     if document is not None and document.source == PROOF_SOURCE and not others:
         store.delete_document(doc_id)
+        return True
+    return False
 
 
-def remove_proof(store: Store, draft_id: str, proof_id: str) -> None:
-    """Remove a proof and, when nothing else uses it, its file (for good)."""
+def remove_proof(store: Store, draft_id: str, proof_id: str) -> bool:
+    """Remove a proof and, when nothing else uses it, its file (for good; whether a file was deleted)."""
     proof = _proof(store, draft_id, proof_id)
     with store.tx():
         store.delete_proof(proof.id)
-        _forget_file(store, proof.doc_id)
+        deleted = _forget_file(store, proof.doc_id)
         store.log_activity(
             "draft.proof_removed", "Removed a proof and its file", ref_type="draft", ref_id=draft_id
         )
+    return deleted
 
 
-def delete_letter(store: Store, draft_id: str, *, keep_files: bool = False) -> None:
-    """Delete a letter with its proofs and — unless ``keep_files`` — their files. A kept proof file
-    becomes a document of its own (still private and outgoing), so it is listed with the letters."""
+def delete_letter(store: Store, draft_id: str, *, keep_files: bool = False) -> bool:
+    """Delete a letter with its proofs and — unless ``keep_files`` — their files (whether a file was
+    deleted for good). A kept proof file becomes a document of its own (still private and outgoing), so
+    it is listed with the letters."""
     draft = _draft(store, draft_id)
     files = [proof.doc_id for proof in store.list_proofs(draft.id) if proof.doc_id]
+    deleted = False
     with store.tx():
         store.delete_draft(draft.id)  # its proofs go with it (ON DELETE CASCADE)
         for doc_id in dict.fromkeys(files):
             if not keep_files:
-                _forget_file(store, doc_id)
+                deleted = _forget_file(store, doc_id) or deleted
                 continue
             document = store.get_document(doc_id)
             if (
@@ -385,6 +391,7 @@ def delete_letter(store: Store, draft_id: str, *, keep_files: bool = False) -> N
             ref_type="draft",
             ref_id=draft.id,
         )
+    return deleted
 
 
 def mark_answered(store: Store, draft_id: str, today: date, *, doc_id: str | None = None) -> Draft:
