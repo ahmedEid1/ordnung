@@ -313,4 +313,20 @@ test.describe("320×256 (400 % zoom)", () => {
     expect(await composer.evaluate((el) => getComputedStyle(el).position)).toBe("static");
     expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--ask-composer-h").trim())).toBe("0px");
   });
+
+  test("a suggested question chosen with the keyboard leaves a strip of the answer to read between the bars", async ({ page }) => {
+    await open(page, "/ask");
+    await page.getByRole("list", { name: "Suggested questions" }).getByRole("button").first().focus();
+    await page.keyboard.press("Enter");
+    await expect(status(page)).toHaveText("Answer ready.");
+    // from the top bar's bottom (or the window's top, once it has scrolled away) to the top of the fixed tab bar
+    const strip = await page.getByRole("banner").evaluate((header) => {
+      const banner = header.getBoundingClientRect();
+      const fixedTops = [...document.querySelectorAll("body *")]
+        .filter((el) => getComputedStyle(el).position === "fixed" && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().bottom >= innerHeight - 1)
+        .map((el) => el.getBoundingClientRect().top);
+      return Math.min(innerHeight, ...fixedTops) - Math.max(0, banner.bottom);
+    });
+    expect(strip, "the answer's visible strip, in px").toBeGreaterThanOrEqual(120);
+  });
 });

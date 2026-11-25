@@ -185,6 +185,21 @@ test.describe("phone 390 px: what the verdict leads with, and the viewer", () =>
 // ------------------------------------------------------------------------------------------------
 
 const FINE = "21_verwarnungsgeld_parken.jpg";
+/** A letter with one open to-do: its "Mark done" empties the verdict's band. */
+const PASSPORT = "18_reisepass.jpg";
+
+/** Focus is on the page (<body>), where a screen reader says nothing and Tab starts again at the top. */
+const focusOnPage = (page: Page) => page.evaluate(() => !document.activeElement || document.activeElement === document.body);
+
+/** For about 1.5 s: focus never falls to the page, and ends where `where` says. */
+async function focusStays(page: Page, where: Locator): Promise<void> {
+  const until = Date.now() + 1500;
+  while (Date.now() < until) {
+    expect(await focusOnPage(page), "focus fell to the page").toBe(false);
+    await page.waitForTimeout(100);
+  }
+  await expect(where).toBeFocused();
+}
 
 /** Put the letter's to-dos back as they were (these tests share the demo). */
 async function reopenAll(page: Page, docId: string, before: { id: string; status: string }[]): Promise<void> {
@@ -202,12 +217,32 @@ test("“Mark done” in the verdict keeps focus in the card, on the next to-do'
   try {
     await open(page, `/documents/${docId}`);
     const card = page.locator("article[aria-labelledby='verdict-title']");
+    const openBefore = before.filter((i) => i.status === "open").length;
     const done = card.getByRole("button", { name: "Mark done", exact: true }).first();
     await done.focus();
     await page.keyboard.press("Enter");
     await expect(page.getByText("Marked as done").first()).toBeVisible();
-    await expect(card.locator(":focus")).toHaveCount(1);
-    expect(await page.evaluate(() => document.activeElement === document.body)).toBe(false);
+    // once it is saved, and while the refreshed card takes the to-do's buttons away: focus stays in the card
+    await expect.poll(async () => (await apiGet<DocumentDetail>(page, `/api/documents/${docId}`)).items.filter((i) => i.status === "open").length).toBe(openBefore - 1);
+    await focusStays(page, card.locator(":focus"));
+  } finally {
+    await reopenAll(page, docId, before);
+  }
+});
+
+test("“Mark done” on a letter's last to-do: focus goes to the card's title, never to the page", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const docId = await letterId(page, PASSPORT);
+  const before = (await apiGet<DocumentDetail>(page, `/api/documents/${docId}`)).items.map((i) => ({ id: i.id, status: i.status }));
+  expect(before.filter((i) => i.status === "open"), "the passport has one open to-do").toHaveLength(1);
+  try {
+    await open(page, `/documents/${docId}`);
+    const card = page.locator("article[aria-labelledby='verdict-title']");
+    // the band's buttons all belong to that one to-do: they go with it (focus once went to one of them, then fell)
+    await card.getByRole("button", { name: "Mark done", exact: true }).first().focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByText("Marked as done").first()).toBeVisible();
+    await focusStays(page, page.locator("#verdict-title"));
   } finally {
     await reopenAll(page, docId, before);
   }
@@ -233,8 +268,12 @@ test("“Not a real to-do” hands focus to the next to-do, and Undo gives it ba
     await expect(page.locator(`[id="${id}"]`)).toHaveCount(0);
     // the row in its place: its "More actions", not the page
     await expect(menus.first()).toBeFocused();
-    // Undo in the toast: the row comes back with focus on its own menu
-    await page.getByRole("button", { name: "Undo" }).first().click();
+    // Undo in the toast, from the keyboard (Alt+N, then Tab to Undo): the row comes back with focus on its own menu
+    // (the closing toast hands focus back to the next row's menu first)
+    await page.keyboard.press("Alt+KeyN");
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("button", { name: "Undo" })).toBeFocused();
+    await page.keyboard.press("Enter");
     await expect(page.locator(`[id="${id}"]`)).toBeFocused();
   } finally {
     await reopenAll(page, docId, before);

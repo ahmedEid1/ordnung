@@ -85,7 +85,7 @@ import { DEMO_NOTE } from "@/lib/mode";
 import { AnswerButton } from "@/features/inbox/AnswerButton";
 import { usePhoneCompanion } from "@/features/phone/client";
 import { ignoreFailedRequest } from "@/api/client";
-import { focusOrigin, focusWhenReady } from "@/lib/focus";
+import { focusOrigin, focusWhenReady, LEAVING_WAIT_MS } from "@/lib/focus";
 
 const countdownTone: Record<Urgency, string> = {
   overdue: "bg-danger text-white dark:text-canvas",
@@ -835,16 +835,17 @@ function Actions({
   // the calendar file stays on the computer (ADR 0017): a phone offers no "Add to calendar"
   const phone = usePhoneCompanion();
   const band = useRef<HTMLDivElement>(null);
-  // "Mark done" goes with its to-do: focus moves to the band's first button now (the next to-do's), or to the
-  // verdict's title when no button is left, never to the page (as on Today)
+  // "Mark done" goes with its to-do: once the button pressed has gone (the refreshed band is drawn by then), focus
+  // moves to the band's first button (the next to-do's), or to the verdict's title when no button is left, never to
+  // the page (as on Today). Chosen any earlier, it went to a button of the to-do that was leaving. A button kept
+  // for the next to-do keeps the focus.
   const markDone = (item: Item) => {
     const from = focusOrigin();
-    actions.markDone(item, {
-      onDone: () =>
-        focusWhenReady(() => (band.current?.isConnected ? band.current.querySelector<HTMLElement>("button, a[href]") : null) ?? document.getElementById("verdict-title"), 5000, {
-          from,
-        }),
-    });
+    const next = () => {
+      if (from?.isConnected) return null;
+      return (band.current?.isConnected ? band.current.querySelector<HTMLElement>("button, a[href]") : null) ?? document.getElementById("verdict-title");
+    };
+    actions.markDone(item, { onDone: () => focusWhenReady(next, LEAVING_WAIT_MS, { from }) });
   };
 
   const mainEl: ReactNode = (() => {

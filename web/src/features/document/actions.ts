@@ -12,6 +12,7 @@ import { doneLine } from "@/features/items/repeat";
 import { formatDate } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
 import { ignoreFailedRequest } from "@/api/client";
+import { focusOrigin } from "@/lib/focus";
 
 export function useItemActions() {
   const update = useUpdateItem();
@@ -44,9 +45,12 @@ export function useItemActions() {
 
   const reopen = useCallback((item: Item) => update.mutate({ id: item.id, patch: { status: "open" } }), [update]);
 
-  /** "Not a real to-do", with Undo; `onUndone` runs once the Undo is saved (to give the to-do back its focus). */
+  /**
+   * "Not a real to-do", with Undo; `onUndone` runs once the Undo is saved (to give the to-do back its focus), with
+   * where focus was as the Undo was pressed (`focusOrigin`: from the toast, where the closing toast hands it back).
+   */
   const dismiss = useCallback(
-    (item: Item, { onUndone }: { onUndone?: () => void } = {}) =>
+    (item: Item, { onUndone }: { onUndone?: (from: Element | null) => void } = {}) =>
       update.mutate(
         { id: item.id, patch: { status: "dismissed" } },
         {
@@ -54,7 +58,10 @@ export function useItemActions() {
             toast({
               title: "Removed from your to-dos",
               description: `“${item.title}” won't remind you. The letter stays filed.`,
-              undo: () => update.mutateAsync({ id: item.id, patch: { status: "open" } }).then(() => onUndone?.()),
+              undo: () => {
+                const from = focusOrigin();
+                return update.mutateAsync({ id: item.id, patch: { status: "open" } }).then(() => onUndone?.(from));
+              },
             }),
         },
       ),

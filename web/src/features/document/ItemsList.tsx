@@ -290,7 +290,9 @@ function ItemRow({
   // (or the section's heading when none is left), and back to this row's once an Undo brings it back
   const dismissKeepingFocus = (it: Item) => {
     focusAfterLeaving(rowMenus, menuId, TODOS_TITLE_ID);
-    dismiss(it, { onUndone: () => focusWhenReady(() => document.getElementById(menuId)) });
+    // `from`: the Undo is pressed in the toast, which hands focus back (to the next row's menu) as it closes, before
+    // the row is back; focus moves on from there, but not from somewhere the person went in the meantime
+    dismiss(it, { onUndone: (from) => focusWhenReady(() => document.getElementById(menuId), 5000, { from }) });
   };
 
   // back to the "More actions" button the editor was opened from (not <body>)
