@@ -7,7 +7,7 @@ export const GIROCODES: Record<string, GiroCode> = {
     "status": "blocked",
     "item_id": "itm_parking",
     "reason": "check_letter",
-    "message": "No code yet: the amount, the IBAN and the reference were read by AI from a photo. Compare them with the paper letter, then confirm.",
+    "message": "No code yet: this is the first payment to this IBAN, and the amount, the IBAN and the reference were read by AI from a photo. Compare the payee, IBAN, amount and reference with the paper letter, then confirm.",
     "to_check": [
       "amount",
       "iban",
@@ -18,13 +18,22 @@ export const GIROCODES: Record<string, GiroCode> = {
       "iban": "DE51123456000000100017",
       "reference": "OA-VW-2026-55012",
       "amount": 30.0
-    }
+    },
+    "first_payment": true
   },
   "itm_tm_dunning": {
-    "status": "ready",
+    "status": "blocked",
     "item_id": "itm_tm_dunning",
-    "payload": "BCD\n002\n1\nSCT\n\nTechMarkt Online GmbH\nDE70123478000048213000\nEUR94.99\n\n\nRE-2026-084213",
-    "checked": false
+    "reason": "check_letter",
+    "message": "No code yet: this is the first payment to this IBAN. Compare the payee, IBAN, amount and reference with the letter, then confirm.",
+    "to_check": [],
+    "values": {
+      "payee": "TechMarkt Online GmbH",
+      "iban": "DE70123478000048213000",
+      "reference": "RE-2026-084213",
+      "amount": 94.99
+    },
+    "first_payment": true
   },
   "itm_tm_invoice": {
     "status": "blocked",
@@ -32,7 +41,8 @@ export const GIROCODES: Record<string, GiroCode> = {
     "reason": "settled",
     "message": "No code: you set this to-do aside.",
     "to_check": [],
-    "values": null
+    "values": null,
+    "first_payment": false
   },
   "itm_rent_oct": {
     "status": "blocked",
@@ -40,7 +50,8 @@ export const GIROCODES: Record<string, GiroCode> = {
     "reason": "several",
     "message": "No code: this letter asks for more than one payment, and its reference may belong to only one of them. Copy the details by hand.",
     "to_check": [],
-    "values": null
+    "values": null,
+    "first_payment": false
   },
   "itm_rent_sep": {
     "status": "blocked",
@@ -48,25 +59,50 @@ export const GIROCODES: Record<string, GiroCode> = {
     "reason": "settled",
     "message": "No code: you marked this as paid.",
     "to_check": [],
-    "values": null
+    "values": null,
+    "first_payment": false
   },
   "itm_nk": {
-    "status": "ready",
+    "status": "blocked",
     "item_id": "itm_nk",
-    "payload": "BCD\n002\n1\nSCT\n\nWohnbau Musterstadt eG\nDE05123456000004455660\nEUR184.3\n\n\nMV-2025-0412 NK 2025",
-    "checked": false
+    "reason": "check_letter",
+    "message": "No code yet: this is the first payment to this IBAN. Compare the payee, IBAN, amount and reference with the letter, then confirm.",
+    "to_check": [],
+    "values": {
+      "payee": "Wohnbau Musterstadt eG",
+      "iban": "DE05123456000004455660",
+      "reference": "MV-2025-0412 NK 2025",
+      "amount": 184.3
+    },
+    "first_payment": true
   },
   "itm_rundfunk": {
-    "status": "ready",
+    "status": "blocked",
     "item_id": "itm_rundfunk",
-    "payload": "BCD\n002\n1\nSCT\n\nBeitragsservice Musterstadt\nDE57123489000055081836\nEUR55.08\n\n\n457 812 309",
-    "checked": false
+    "reason": "check_letter",
+    "message": "No code yet: this is the first payment to this IBAN. Compare the payee, IBAN, amount and reference with the letter, then confirm.",
+    "to_check": [],
+    "values": {
+      "payee": "Beitragsservice Musterstadt",
+      "iban": "DE57123489000055081836",
+      "reference": "457 812 309",
+      "amount": 55.08
+    },
+    "first_payment": true
   },
   "itm_semester": {
-    "status": "ready",
+    "status": "blocked",
     "item_id": "itm_semester",
-    "payload": "BCD\n002\n1\nSCT\n\nHochschule Musterstadt\nDE10123456000007700220\nEUR312.4\n\n\n2231847 SoSe27",
-    "checked": false
+    "reason": "check_letter",
+    "message": "No code yet: this is the first payment to this IBAN. Compare the payee, IBAN, amount and reference with the letter, then confirm.",
+    "to_check": [],
+    "values": {
+      "payee": "Hochschule Musterstadt",
+      "iban": "DE10123456000007700220",
+      "reference": "2231847 SoSe27",
+      "amount": 312.4
+    },
+    "first_payment": true
   },
   "itm_scam_demand": {
     "status": "blocked",
@@ -74,7 +110,8 @@ export const GIROCODES: Record<string, GiroCode> = {
     "reason": "scam",
     "message": "No code: this IBAN is not the one Beitragsservice Musterstadt used before. Check with them using contact details you already have, not the ones in this letter.",
     "to_check": [],
-    "values": null
+    "values": null,
+    "first_payment": false
   },
   "itm_library_fee": {
     "status": "blocked",
@@ -82,7 +119,8 @@ export const GIROCODES: Record<string, GiroCode> = {
     "reason": "no_iban",
     "message": "No code: the letter gives no IBAN to transfer to.",
     "to_check": [],
-    "values": null
+    "values": null,
+    "first_payment": false
   },
   "itm_abh_fee": {
     "status": "blocked",
@@ -90,7 +128,8 @@ export const GIROCODES: Record<string, GiroCode> = {
     "reason": "no_iban",
     "message": "No code: the letter gives no IBAN to transfer to.",
     "to_check": [],
-    "values": null
+    "values": null,
+    "first_payment": false
   },
   "itm_power_abschlag": {
     "status": "blocked",
@@ -98,7 +137,8 @@ export const GIROCODES: Record<string, GiroCode> = {
     "reason": "no_iban",
     "message": "No code: the letter gives no IBAN to transfer to.",
     "to_check": [],
-    "values": null
+    "values": null,
+    "first_payment": false
   },
   "itm_bkk": {
     "status": "blocked",
@@ -106,7 +146,8 @@ export const GIROCODES: Record<string, GiroCode> = {
     "reason": "no_iban",
     "message": "No code: the letter gives no IBAN to transfer to.",
     "to_check": [],
-    "values": null
+    "values": null,
+    "first_payment": false
   },
   "itm_liability": {
     "status": "blocked",
@@ -114,7 +155,8 @@ export const GIROCODES: Record<string, GiroCode> = {
     "reason": "no_iban",
     "message": "No code: the letter gives no IBAN to transfer to.",
     "to_check": [],
-    "values": null
+    "values": null,
+    "first_payment": false
   },
   "itm_power_new": {
     "status": "blocked",
@@ -122,7 +164,8 @@ export const GIROCODES: Record<string, GiroCode> = {
     "reason": "no_iban",
     "message": "No code: the letter gives no IBAN to transfer to.",
     "to_check": [],
-    "values": null
+    "values": null,
+    "first_payment": false
   }
 };
 
@@ -132,6 +175,30 @@ export const GIROCODES_CHECKED: Record<string, GiroCodeReady> = {
     "status": "ready",
     "item_id": "itm_parking",
     "payload": "BCD\n002\n1\nSCT\n\nStadtkasse Musterstadt\nDE51123456000000100017\nEUR30\n\n\nOA-VW-2026-55012",
+    "checked": true
+  },
+  "itm_tm_dunning": {
+    "status": "ready",
+    "item_id": "itm_tm_dunning",
+    "payload": "BCD\n002\n1\nSCT\n\nTechMarkt Online GmbH\nDE70123478000048213000\nEUR94.99\n\n\nRE-2026-084213",
+    "checked": true
+  },
+  "itm_nk": {
+    "status": "ready",
+    "item_id": "itm_nk",
+    "payload": "BCD\n002\n1\nSCT\n\nWohnbau Musterstadt eG\nDE05123456000004455660\nEUR184.3\n\n\nMV-2025-0412 NK 2025",
+    "checked": true
+  },
+  "itm_rundfunk": {
+    "status": "ready",
+    "item_id": "itm_rundfunk",
+    "payload": "BCD\n002\n1\nSCT\n\nBeitragsservice Musterstadt\nDE57123489000055081836\nEUR55.08\n\n\n457 812 309",
+    "checked": true
+  },
+  "itm_semester": {
+    "status": "ready",
+    "item_id": "itm_semester",
+    "payload": "BCD\n002\n1\nSCT\n\nHochschule Musterstadt\nDE10123456000007700220\nEUR312.4\n\n\n2231847 SoSe27",
     "checked": true
   }
 };
@@ -145,7 +212,7 @@ export const GIROCODES_AMOUNT_CHANGED: Record<string, GiroCodeBlocked> = {
     "status": "blocked",
     "item_id": "itm_parking",
     "reason": "check_letter",
-    "message": "No code yet: the amount, the IBAN and the reference were read by AI from a photo. Compare them with the paper letter, then confirm.",
+    "message": "No code yet: this is the first payment to this IBAN, and the amount, the IBAN and the reference were read by AI from a photo. Compare the payee, IBAN, amount and reference with the paper letter, then confirm.",
     "to_check": [
       "amount",
       "iban",
@@ -156,13 +223,14 @@ export const GIROCODES_AMOUNT_CHANGED: Record<string, GiroCodeBlocked> = {
       "iban": "DE51123456000000100017",
       "reference": "OA-VW-2026-55012",
       "amount": null
-    }
+    },
+    "first_payment": true
   },
   "itm_tm_dunning": {
     "status": "blocked",
     "item_id": "itm_tm_dunning",
     "reason": "check_letter",
-    "message": "No code yet: the amount wasn't found in the letter's text. Compare it with the letter, then confirm.",
+    "message": "No code yet: this is the first payment to this IBAN, and the amount wasn't found in the letter's text. Compare the payee, IBAN, amount and reference with the letter, then confirm.",
     "to_check": [
       "amount"
     ],
@@ -171,13 +239,14 @@ export const GIROCODES_AMOUNT_CHANGED: Record<string, GiroCodeBlocked> = {
       "iban": "DE70123478000048213000",
       "reference": "RE-2026-084213",
       "amount": null
-    }
+    },
+    "first_payment": true
   },
   "itm_nk": {
     "status": "blocked",
     "item_id": "itm_nk",
     "reason": "check_letter",
-    "message": "No code yet: the amount wasn't found in the letter's text. Compare it with the letter, then confirm.",
+    "message": "No code yet: this is the first payment to this IBAN, and the amount wasn't found in the letter's text. Compare the payee, IBAN, amount and reference with the letter, then confirm.",
     "to_check": [
       "amount"
     ],
@@ -186,13 +255,14 @@ export const GIROCODES_AMOUNT_CHANGED: Record<string, GiroCodeBlocked> = {
       "iban": "DE05123456000004455660",
       "reference": "MV-2025-0412 NK 2025",
       "amount": null
-    }
+    },
+    "first_payment": true
   },
   "itm_rundfunk": {
     "status": "blocked",
     "item_id": "itm_rundfunk",
     "reason": "check_letter",
-    "message": "No code yet: the amount wasn't found in the letter's text. Compare it with the letter, then confirm.",
+    "message": "No code yet: this is the first payment to this IBAN, and the amount wasn't found in the letter's text. Compare the payee, IBAN, amount and reference with the letter, then confirm.",
     "to_check": [
       "amount"
     ],
@@ -201,13 +271,14 @@ export const GIROCODES_AMOUNT_CHANGED: Record<string, GiroCodeBlocked> = {
       "iban": "DE57123489000055081836",
       "reference": "457 812 309",
       "amount": null
-    }
+    },
+    "first_payment": true
   },
   "itm_semester": {
     "status": "blocked",
     "item_id": "itm_semester",
     "reason": "check_letter",
-    "message": "No code yet: the amount wasn't found in the letter's text. Compare it with the letter, then confirm.",
+    "message": "No code yet: this is the first payment to this IBAN, and the amount wasn't found in the letter's text. Compare the payee, IBAN, amount and reference with the letter, then confirm.",
     "to_check": [
       "amount"
     ],
@@ -216,7 +287,8 @@ export const GIROCODES_AMOUNT_CHANGED: Record<string, GiroCodeBlocked> = {
       "iban": "DE10123456000007700220",
       "reference": "2231847 SoSe27",
       "amount": null
-    }
+    },
+    "first_payment": true
   }
 };
 

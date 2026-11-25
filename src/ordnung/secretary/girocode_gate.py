@@ -45,6 +45,21 @@ reason the person reads:
    only while all four stay the same: reading the letter again differently, or changing the amount,
    asks again. Nothing else the person does to the to-do (confirming or moving its date) vouches for
    its amount.
+7. **The person has compared a payment to this IBAN before** — confirmed *These match the letter* for
+   another to-do of this data folder asking for the same account (the IBAN as :func:`normalize_iban`
+   writes it, so its spelling on the letter doesn't matter). Until then the first code to an IBAN waits
+   for the person to compare the payee, IBAN, amount and reference with the letter, however well point 6
+   grounds them: a PDF's text layer can say something its page doesn't show (a font whose glyphs draw
+   other digits than its text reads, a line clipped under a visible one), and the check for text without
+   ink (:mod:`ordnung.ingest.text`) is one layer, not a guarantee. The account is the IBAN, never the
+   sender's or payee's name, which the letter itself supplies: a new IBAN under a familiar name is a new
+   account. Only the person's comparison counts (:func:`compared_accounts`) — not *Mark as paid*, which
+   says money left but not to which account (it may have been typed from the page by hand), not an IBAN
+   the sender's letters taught, and not the model. The comparison goes with its letter: once that letter
+   is deleted for good, the account is new again. Later codes to the account follow points 1–6 alone:
+   the amount and the reference change with every letter, so comparing them once would vouch for
+   nothing on the next one; they stay grounded letter by letter, and what a later letter's text layer
+   could still change is how much goes, or with which reference, to an account the person confirmed.
 
 The reference a code carries is the letter's without a leading label word ("Kassenzeichen …",
 :func:`ordnung.payments.payment_reference`), checked and shown as such. A refusal of the standard's
@@ -74,7 +89,7 @@ one; the Pay panel then says to add the letter's reference, if it names one, in 
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
 from typing import Literal
@@ -157,6 +172,8 @@ class TransferFacts:
     reference_grounding: Grounding = "unverified"
     #: the values the person last compared with the paper letter
     checked: TransferValues | None = None
+    #: the person compared a payment to this IBAN with its letter before, on another to-do (point 7)
+    known_account: bool = False
 
     @property
     def values(self) -> TransferValues:
@@ -170,7 +187,7 @@ class TransferFacts:
 
 
 def decide(facts: TransferFacts) -> GiroCode:
-    """The GiroCode for a payment, or why there is none (module policy, points 1–6 in order)."""
+    """The GiroCode for a payment, or why there is none (module policy, points 1–7 in order)."""
     blocked = _not_payable(facts) or _unsafe(facts) or _not_this_one(facts) or _incomplete(facts)
     if blocked is not None:
         return blocked
@@ -183,16 +200,18 @@ def decide(facts: TransferFacts) -> GiroCode:
     except girocode.GiroCodeError as exc:
         return _blocked(facts, "invalid", f"No code: {_reads_on(str(exc))} Copy the details by hand.")
     to_check = _to_check(facts)
+    first = not facts.known_account
     confirmed = facts.checked is not None and same_values(facts.checked, facts.values)
-    if to_check and not confirmed:
+    if (to_check or first) and not confirmed:
         return GiroCodeBlocked(
             item_id=facts.item_id,
             reason="check_letter",
-            message=_check_message(facts, to_check),
+            message=_check_message(facts, to_check, first=first),
             to_check=to_check,
             values=facts.values,
+            first_payment=first,
         )
-    return GiroCodeReady(item_id=facts.item_id, payload=payload, checked=bool(to_check))
+    return GiroCodeReady(item_id=facts.item_id, payload=payload, checked=bool(to_check) or first)
 
 
 def _blocked(facts: TransferFacts, reason: GiroCodeBlock, message: str) -> GiroCodeBlocked:
@@ -331,7 +350,7 @@ def _to_check(facts: TransferFacts) -> list[TransferField]:
     return found
 
 
-def _check_message(facts: TransferFacts, fields: Sequence[TransferField]) -> str:
+def _check_message(facts: TransferFacts, fields: Sequence[TransferField], *, first: bool) -> str:
     grounding = {
         "amount": facts.amount_grounding,
         "iban": facts.iban_grounding,
@@ -339,16 +358,29 @@ def _check_message(facts: TransferFacts, fields: Sequence[TransferField]) -> str
     }
     photo = [field for field in fields if grounding[field] == "model_read"]
     missing = [field for field in fields if grounding[field] != "model_read"]
+    # the paper only for a letter read from a photo: a PDF's pages are the letter itself
+    letter = "the paper letter" if photo else "the letter"
+    if first:
+        compared = (
+            "the payee, IBAN, amount and reference" if facts.reference else "the payee, IBAN and amount"
+        )
+        why = "this is the first payment to this IBAN"
+        if fields:
+            why += ", and " + _grounding_reasons(photo, missing)
+        return f"No code yet: {why}. Compare {compared} with {letter}, then confirm."
+    it = "it" if len(fields) == 1 else "them"
+    return f"No code yet: {_grounding_reasons(photo, missing)}. Compare {it} with {letter}, then confirm."
+
+
+def _grounding_reasons(photo: Sequence[TransferField], missing: Sequence[TransferField]) -> str:
+    """Why values need comparing: "the IBAN was read by AI from a photo and the amount wasn't found …"."""
     parts = []
     if photo:
         parts.append(f"{_names(photo)} {'was' if len(photo) == 1 else 'were'} read by AI from a photo")
     if missing:
         verb = "wasn't" if len(missing) == 1 else "weren't"
         parts.append(f"{_names(missing)} {verb} found in the letter's text")
-    it = "it" if len(fields) == 1 else "them"
-    # the paper only for a letter read from a photo: a PDF's pages are the letter itself
-    letter = "the paper letter" if photo else "the letter"
-    return f"No code yet: {' and '.join(parts)}. Compare {it} with {letter}, then confirm."
+    return " and ".join(parts)
 
 
 def _names(fields: Sequence[TransferField]) -> str:
@@ -453,7 +485,8 @@ def amount_confirmed(store: Store, item: Item) -> bool:
     """The amount of a letter's payment is grounded as point 6 wants it: stated by a sentence found in
     the text layer, or compared by the person with the paper letter (their last check, at this amount).
     The weekly session's *Pay this week* uses it, so it never calls an amount confirmed that the Pay
-    panel still asks to compare."""
+    panel still asks to compare for its own sake. (The first payment to an account asks to compare every
+    value, point 7: that is about the account, not a sign that the amount is in doubt.)"""
     if item.amount is None or amount_grounding(item) == "verified":
         return True
     checked = last_check(store, item.id)
@@ -543,6 +576,18 @@ def _scam_sign(store: Store, ledger: Ledger, document: Document, party: Party | 
     return ScamSign(kind="other", party=party.name if party else None, checked=checked)
 
 
+def compared_accounts(store: Store) -> dict[str, frozenset[str]]:
+    """The IBANs the person compared a payment to with its letter (*These match the letter*), each with
+    the to-dos they compared (policy point 7). Only their own confirmation counts, and it goes with its
+    letter when that is deleted for good (:meth:`~ordnung.db.store.Store.delete_document`)."""
+    found: dict[str, set[str]] = {}
+    for entry in store.list_activity(None, kinds=[CHECKED]):
+        iban = entry.data.get("iban")
+        if entry.ref_type == "item" and entry.ref_id and isinstance(iban, str) and iban:
+            found.setdefault(normalize_iban(iban), set()).add(entry.ref_id)
+    return {iban: frozenset(items) for iban, items in found.items()}
+
+
 def last_check(store: Store, item_id: str) -> TransferValues | None:
     """The transfer details the person last compared with the paper letter (``None``: never)."""
     entry = store.last_activity("item", item_id, [CHECKED])
@@ -550,9 +595,15 @@ def last_check(store: Store, item_id: str) -> TransferValues | None:
 
 
 def transfer_facts(
-    store: Store, ledger: Ledger, document: Document, item: Item, siblings: Sequence[Item]
+    store: Store,
+    ledger: Ledger,
+    document: Document,
+    item: Item,
+    siblings: Sequence[Item],
+    compared: Mapping[str, frozenset[str]],
 ) -> TransferFacts:
-    """What the policy needs to know about ``item`` of ``document`` (``siblings``: the letter's to-dos)."""
+    """What the policy needs to know about ``item`` of ``document`` (``siblings``: the letter's to-dos;
+    ``compared``: :func:`compared_accounts`)."""
     party = store.get_party(document.party_id) if document.party_id else None
     payment = document.payment
     pages = store.list_pages(document.id)
@@ -591,6 +642,8 @@ def transfer_facts(
         reference=reference,
         reference_grounding=value_grounding(reference, pages) if reference else "unverified",
         checked=last_check(store, item.id),
+        # another to-do's comparison: this one's own vouches only for the values it saw (``checked``)
+        known_account=iban is not None and bool(compared.get(iban, frozenset()) - {item.id}),
     )
 
 
@@ -602,7 +655,8 @@ def document_girocodes(
     if not payments:
         return []
     ledger = Ledger(store, today)
-    return [decide(transfer_facts(store, ledger, document, item, items)) for item in payments]
+    compared = compared_accounts(store)
+    return [decide(transfer_facts(store, ledger, document, item, items, compared)) for item in payments]
 
 
 def item_girocode(store: Store, item: Item, today: date) -> GiroCode | None:
@@ -611,7 +665,9 @@ def item_girocode(store: Store, item: Item, today: date) -> GiroCode | None:
     if document is None or item.kind != "payment":
         return None
     items = store.list_items(doc_id=document.id)
-    return decide(transfer_facts(store, Ledger(store, today), document, item, items))
+    return decide(
+        transfer_facts(store, Ledger(store, today), document, item, items, compared_accounts(store))
+    )
 
 
 class CheckRefused(Exception):

@@ -5,7 +5,9 @@ The hosted demo runs on hand-written mocks without the backend; its codes must s
 what the app would show. Each payment of the mock world is described here by the facts the gate
 reads (:class:`~ordnung.secretary.girocode_gate.TransferFacts`) — its letter's payment details
 (``web/src/mocks/data/documents.ts``) and how each value was found on the mock letter
-(``letters.ts``: a PDF's text layer is ``verified``, the parking fine's photo ``model_read``).
+(``letters.ts``: a PDF's text layer is ``verified``, the parking fine's photo ``model_read``). Nobody
+in the mock world has compared a payment with its letter yet, so each code is a first payment to its
+account and waits for that comparison (policy point 7); once compared it is ``GIROCODES_CHECKED``.
 ``web/src/mocks/girocode.test.ts`` checks those facts against the mock data. Run after changing the
 gate, the builder or a mock payment::
 

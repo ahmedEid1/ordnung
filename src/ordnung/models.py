@@ -1321,7 +1321,9 @@ class GiroCodeReady(_Model):
 
 class GiroCodeBlocked(_Model):
     """Why a payment has no GiroCode, in plain words (``message``). For ``check_letter``, ``to_check``
-    names the details to compare with the paper letter and ``values`` are the ones to confirm."""
+    names the details not found in the letter's text, ``values`` are the ones to confirm, and
+    ``first_payment`` says the person has not compared a payment to this IBAN before: then every value
+    is compared, found in the text or not."""
 
     status: Literal["blocked"] = "blocked"
     item_id: str
@@ -1329,6 +1331,7 @@ class GiroCodeBlocked(_Model):
     message: str
     to_check: list[TransferField] = Field(default_factory=list)
     values: TransferValues | None = None
+    first_payment: bool = False
 
 
 GiroCode = Annotated[GiroCodeReady | GiroCodeBlocked, Field(discriminator="status")]
