@@ -776,11 +776,15 @@ class Store:
 
         When it returns, none of them is open — also one a thread that is ending was closing meanwhile
         (it closes under the same lock)."""
-        with self._connections_lock:
+        # the watch's lock first, as commit_stamp takes it before _open_watch takes the connections' lock
+        with self._watch_lock, self._connections_lock:
             self._closed = True
             connections, self._connections = self._connections, []
             for conn in connections:
                 conn.close()
+            if self._watch is not None:
+                self._watch.close()
+                self._watch = None
 
     def wipe(self) -> None:
         """Start over with an empty database ("Delete everything").
@@ -1030,11 +1034,10 @@ class Store:
         )
         for pragma in _READ_ONLY_PRAGMAS:
             watch.execute(pragma)
-        with self._connections_lock:
-            if self._closed:
-                watch.close()
-                raise RuntimeError("store is closed")
-            self._connections.append(watch)  # closed with the others by close()
+        # not one of the threads' connections (close() closes it apart): leak checks count those alone
+        if self._closed:
+            watch.close()
+            raise RuntimeError("store is closed")
         return watch
 
     def ledger_token(self) -> tuple[int, int, int] | None:
