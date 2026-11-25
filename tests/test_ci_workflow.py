@@ -147,8 +147,23 @@ def _e2e_groups() -> list[str]:
 
 
 def _e2e_legs(e2e: dict[str, Any]) -> list[tuple[str, int, int]]:
-    """The end-to-end job's legs: each one's group, its part and how many parts its group runs in."""
-    return [(leg["group"], leg["shard"], leg["shards"]) for leg in e2e["strategy"]["matrix"]["include"]]
+    """The Playwright runs of the end-to-end job's legs: each one's group, its part and how many parts its group runs
+    in. A leg with ``then`` runs that group whole after its own part."""
+    runs = []
+    for leg in e2e["strategy"]["matrix"]["include"]:
+        assert set(leg) <= {"group", "shard", "shards", "then"}, leg
+        runs.append((leg["group"], leg["shard"], leg["shards"]))
+        if "then" in leg:
+            runs.append((leg["then"], 1, 1))
+    return runs
+
+
+def _playwright_steps(e2e: dict[str, Any]) -> tuple[tuple[int, dict[str, Any]], tuple[int, dict[str, Any]]]:
+    """The end-to-end job's two Playwright steps, and where they are: the leg's group, then its ``then`` group."""
+    first, then = [
+        (index, step) for index, step in enumerate(e2e["steps"]) if "npm run e2e" in step.get("run", "")
+    ]
+    return first, then
 
 
 def _legs_cover_their_groups(legs: list[tuple[str, int, int]], groups: list[str]) -> list[str]:
@@ -211,11 +226,23 @@ def test_the_end_to_end_groups_start_at_once_and_together_run_every_project() ->
         "each group in web/e2e/env.ts needs legs for parts 1..N of one N in the e2e job's matrix"
     )
     assert ("layout", 4, 4) in legs
-    _, playwright = _step(e2e, "npm run e2e")
+    (playwright_at, playwright), (then_at, then) = _playwright_steps(e2e)
     assert playwright["env"]["E2E_GROUP"] == "${{ matrix.group }}"
     # a leg runs its part of its group: 1/1 is the whole group
     assert playwright["run"] == "cd web && npm run e2e -- --shard=${{ matrix.shard }}/${{ matrix.shards }}"
     assert "format(' {0}/{1}', matrix.shard, matrix.shards)" in e2e["name"]
+    # More jobs start than the account runs at once, so the report page's group (about 3 minutes) runs after
+    # layout 4/4, the shortest part, in its leg: whole, whether the first group passed or failed, with its results
+    # and report in folders of their own (a failure of the first group stays in the uploaded report)
+    assert [leg["then"] for leg in e2e["strategy"]["matrix"]["include"] if "then" in leg] == ["report"]
+    assert "format(', then {0}', matrix.then)" in e2e["name"]
+    assert then_at == playwright_at + 1 and playwright["id"] == "playwright"
+    assert then["if"] == "${{ !cancelled() && matrix.then && steps.playwright.outcome != 'skipped' }}"
+    assert then["env"] == {
+        "E2E_GROUP": "${{ matrix.then }}",
+        "PLAYWRIGHT_HTML_OUTPUT_DIR": "playwright-report/${{ matrix.then }}",
+    }
+    assert then["run"] == "cd web && npm run e2e -- --shard=1/1 --output=test-results/${{ matrix.then }}"
     (upload,) = [step for step in e2e["steps"] if "upload-artifact" in step.get("uses", "")]
     assert upload["with"]["name"] == "playwright-report-${{ matrix.group }}-${{ matrix.shard }}"
     (checks,) = [step for step in e2e["steps"] if "ORDNUNG_REQUIRE_MOCK_CHECK" in step.get("env", {})]
@@ -228,7 +255,7 @@ def test_the_end_to_end_groups_start_at_once_and_together_run_every_project() ->
     fresh_at, fresh = _step(e2e, "cd web && node scripts/source-hash.mjs --check")
     assert fresh["run"].endswith(" ../src/ordnung/web/dist/build-info.json")
     assert "npm run build" not in _script(e2e) and "npm run build" in _script(jobs["frontend"])
-    assert fresh_at < _step(e2e, "npm run e2e")[0]
+    assert fresh_at < playwright_at
     _, browser = _step(e2e, "npx playwright install")
     assert browser["run"] == "cd web && npx playwright install --only-shell chromium"
     (cache,) = [step for step in e2e["steps"] if "ms-playwright" in step.get("with", {}).get("path", "")]
@@ -1161,7 +1188,7 @@ def test_tesseract_is_installed_only_where_a_real_binary_test_needs_it() -> None
     e2e = jobs["e2e"]
     at, install = _step(e2e, "tesseract")
     assert install["run"].strip() == APT_TESSERACT and install["if"] == "matrix.group == 'real'"
-    playwright_at, playwright = _step(e2e, "npm run e2e")
+    (playwright_at, playwright), _ = _playwright_steps(e2e)
     assert at < playwright_at
     assert ("real", 1, 1) in _e2e_legs(e2e)
     assert playwright["env"] == {

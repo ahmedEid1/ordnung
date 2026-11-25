@@ -126,7 +126,10 @@ CI runs its jobs side by side, none waiting for another.
   projects or part of one, took 7 to 12 as four legs; the layout guards took 23 as one leg and up to 12 as the
   first of two halves, so they run in four parts (Playwright's `--shard`, each part on a demo of its own: a layout
   file sets up what it needs and relies on no file before it), and the layout sweep and the evaluation's report
-  page have groups of their own. In the first run with eight legs (25 November 2026) they took 3 to 7.
+  page have groups of their own. In the first run with eight legs (25 November 2026) they took 3 to 7. A pull
+  request's run starts more jobs than GitHub runs at once (20 for this account), and a job left waiting starts
+  only when another ends, so the report page's group (about 3 minutes) runs after the last layout part (also about
+  3) in that part's leg: seven legs.
 - **The other jobs.** The backend's 3.12 leg, which measures the coverage, took 7 to 12 as one leg: it runs as
   two halves side by side, each on half of the test files, and a short job adds up their coverage and holds the
   sum to the floors (in the first run the halves took 9 and 6 minutes, the adding up 20 seconds, and the whole
