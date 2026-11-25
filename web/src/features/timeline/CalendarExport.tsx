@@ -14,6 +14,7 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { usePhoneCompanion } from "@/features/phone/client";
 import { theComputer } from "@/features/phone/copy";
 import { CALENDAR_GUIDES, downloadCalendarFile, reminderDays, type CalendarApp, type CalendarGuide, type GuideStep } from "./calendar";
+import { cn } from "@/lib/utils";
 
 function StepText({ step }: { step: GuideStep }) {
   const [before, after] = step.text.split("{link}");
@@ -92,18 +93,20 @@ export function CalendarExport({ variant = "secondary", size = "md", className }
       {/* one name for it everywhere: the button, the dialog it opens and Settings say "Add your dates to your
           calendar". Ask's prompt names this button (src/ordnung/llm/prompts/ask_system.md), so its label
           changes only with it (and a re-recording of Ask's answers) */}
+      {/* on a phone the label may wrap rather than run past the screen's edge (with wider letter and word spacing,
+          WCAG 1.4.12, it did at 320 px); it keeps one line, and its height, where it fits */}
       <Button
         variant={variant}
         size={size}
         icon={CalendarPlus}
-        className={className}
+        className={cn("max-w-full max-sm:h-auto max-sm:shrink max-sm:py-1.5", size === "sm" ? "max-sm:min-h-8" : "max-sm:min-h-9", className)}
         onClick={() => {
           if (file === "none") download();
           else setFile("earlier");
           setOpen(true);
         }}
       >
-        Add your dates to your calendar
+        <span className="min-w-0 truncate max-sm:whitespace-normal max-sm:text-left">Add your dates to your calendar</span>
       </Button>
       <Dialog
         open={open}

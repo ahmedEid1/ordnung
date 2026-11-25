@@ -303,3 +303,14 @@ test.describe("laptop", () => {
     }
   });
 });
+
+test.describe("320×256 (400 % zoom)", () => {
+  test.use({ viewport: { width: 320, height: 256 } });
+
+  test("the question box doesn't stick over the answer: it scrolls with the page, and covers nothing", async ({ page }) => {
+    await open(page, "/ask");
+    const composer = page.locator("[data-ask-composer]");
+    expect(await composer.evaluate((el) => getComputedStyle(el).position)).toBe("static");
+    expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--ask-composer-h").trim())).toBe("0px");
+  });
+});

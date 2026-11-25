@@ -287,3 +287,11 @@ describe("forced colours (Windows high contrast)", () => {
     expect(forced).toMatch(/:is\(a, button\)\[aria-current="page"\],\s*\[role="tab"\]\[aria-selected="true"\],\s*\[role="radio"\]\[aria-checked="true"\]\s*{\s*border:\s*2px solid Highlight;/);
   });
 });
+
+describe("scroll shadows", () => {
+  it("paint their covers in --scroll-shadow-bg, so a scroll area on another background shows no bands", () => {
+    const shadow = block(".scroll-shadow");
+    expect(shadow.match(/var\(--scroll-shadow-bg, var\(--color-surface\)\)/g)).toHaveLength(3);
+    expect(shadow).not.toMatch(/linear-gradient\(var\(--color-surface\)/);
+  });
+});

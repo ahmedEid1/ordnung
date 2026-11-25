@@ -429,7 +429,7 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
             enterWhenSettled.current = false;
           }}
           className={cn(
-            "h-9 w-full rounded-lg border border-line bg-surface/70 pl-9 pr-10 text-base text-ink shadow-[inset_0_1px_1px_rgb(0_0_0/0.03)] outline-none transition-[border-color,box-shadow,background-color]",
+            "h-9 w-full rounded-lg border border-control-border bg-surface/70 pl-9 pr-10 text-base text-ink shadow-[inset_0_1px_1px_rgb(0_0_0/0.03)] outline-none transition-[border-color,box-shadow,background-color]",
             "placeholder:text-muted hover:border-line-strong focus:border-accent focus:bg-surface focus:ring-2 focus:ring-accent/60 [&::-webkit-search-cancel-button]:hidden",
           )}
         />

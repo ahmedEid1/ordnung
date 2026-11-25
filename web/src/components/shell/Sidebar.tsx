@@ -259,10 +259,16 @@ export function Sidebar() {
       </div>
 
       {/* on a short window the sections scroll inside the sidebar (the footer — Settings, the theme — stays
-          on screen); the entries' focus rings are inset, so they need no padding inside the scroll area */}
+          on screen); the entries' focus rings are inset, so they need no padding inside the scroll area. A
+          shadow at the cut says there is more (a phone on its side showed two of seven sections, and no hint);
+          its covers take the sidebar's own colour (bg-surface-2/60 on the canvas, dark: bg-surface/40) */}
       <nav
         aria-label="Primary"
-        className={cn("mt-2 flex min-h-0 shrink flex-col overflow-y-auto overscroll-contain scrollbar-thin", rail ? "w-full gap-1" : "gap-0.5")}
+        className={cn(
+          "mt-2 flex min-h-0 shrink flex-col overflow-y-auto overscroll-contain scrollbar-thin scroll-shadow",
+          "[--scroll-shadow-bg:color-mix(in_srgb,var(--color-surface-2)_60%,var(--color-canvas))] dark:[--scroll-shadow-bg:color-mix(in_srgb,var(--color-surface)_40%,var(--color-canvas))]",
+          rail ? "w-full gap-1" : "gap-0.5",
+        )}
       >
         {NAV_ITEMS.map((item) => (
           <NavEntry key={item.to} item={item} rail={rail} counts={item.badge === "please-check" ? inbox : undefined} />

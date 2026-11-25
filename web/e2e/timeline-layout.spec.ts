@@ -151,3 +151,13 @@ test("filters at 1024px: menus as wide as their words", async ({ page }) => {
   });
   expect(fits).toBe(true);
 });
+
+test("Timeline at 320px with wider text spacing (WCAG 1.4.12): the calendar button wraps rather than scroll the page sideways", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 740 });
+  await open(page, "/timeline", "Timeline");
+  await page.addStyleTag({
+    content: "* { line-height: 1.5 !important; letter-spacing: 0.12em !important; word-spacing: 0.16em !important; } p { margin-bottom: 2em !important; }",
+  });
+  await expect(page.getByRole("button", { name: "Add your dates to your calendar" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+});

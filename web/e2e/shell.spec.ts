@@ -408,3 +408,42 @@ test.describe("phone: a letter chosen in the search sheet", () => {
     await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toBeFocused();
   });
 });
+
+test.describe("812×375 (a phone on its side): the rail", () => {
+  test.use({ viewport: { width: 812, height: 375 }, isMobile: true, hasTouch: true });
+
+  test("shows a shadow where its sections are cut, in the rail's own colour", async ({ page }) => {
+    await open(page, "/", /Sam/);
+    const nav = page.getByRole("complementary", { name: "Sidebar" }).getByRole("navigation", { name: "Primary" });
+    const state = await nav.evaluate((el) => {
+      const s = getComputedStyle(el);
+      return { overflows: el.scrollHeight > el.clientHeight, image: s.backgroundImage, cover: s.getPropertyValue("--scroll-shadow-bg").trim() };
+    });
+    expect(state.overflows).toBe(true);
+    expect(state.image).toContain("gradient");
+    expect(state.cover).toContain("color-mix");
+  });
+});
+
+test.describe("1280 px with Chrome's “Very large” text: the demo badge", () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+
+  test("stays inside the sidebar", async ({ page }) => {
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Page.setFontSizes", { fontSizes: { standard: 24, fixed: 20 } });
+    await open(page, "/inbox", "Inbox");
+    const sidebar = page.getByRole("complementary", { name: "Sidebar" });
+    const badge = sidebar.getByRole("button", { name: /about the demo/ });
+    const [b, s] = [(await badge.boundingBox())!, (await sidebar.boundingBox())!];
+    expect(b.x + b.width).toBeLessThanOrEqual(s.x + s.width);
+  });
+});
+
+test.describe("320×256 (400 % zoom): the bars leave room for the page", () => {
+  test.use({ viewport: { width: 320, height: 256 } });
+
+  test("the top bar scrolls away with the page instead of staying over it", async ({ page }) => {
+    await open(page, "/inbox", "Inbox");
+    expect(await page.getByRole("banner").evaluate((el) => getComputedStyle(el).position)).toBe("static");
+  });
+});

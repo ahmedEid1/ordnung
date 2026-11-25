@@ -79,13 +79,14 @@ export function DemoBadge({ compact, short, className }: { compact?: boolean; sh
         title={compact || short ? label : undefined}
         className={cn(
           "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full border border-marker-strong/40 bg-marker/35 font-medium text-ink transition-colors hover:bg-marker/55 dark:border-marker-strong/30 dark:bg-marker/25 dark:hover:bg-marker/40",
-          compact ? "size-9" : short ? "h-7 px-2 text-xs" : "h-7 px-2.5 text-xs",
+          // the full badge wraps within the sidebar rather than cross its edge (a larger browser text size)
+          compact ? "size-9" : short ? "h-7 px-2 text-xs" : "min-h-7 max-w-full px-2.5 py-0.5 text-xs",
           className,
         )}
       >
         <FlaskConical className="size-3.5 shrink-0 text-warn-ink" aria-hidden />
         {compact ? null : (
-          <span className="whitespace-nowrap tabular-nums" aria-hidden>
+          <span className={cn("tabular-nums", short ? "whitespace-nowrap" : "min-w-0 text-left")} aria-hidden>
             {short ? "Demo" : label}
           </span>
         )}

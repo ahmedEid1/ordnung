@@ -300,14 +300,15 @@
     scrollbar-color: var(--color-line-strong) transparent;
   }
   /* scroll shadows: a soft edge where a scroll area has more to show (the surface-coloured covers
-     scroll with the content and hide the shadow at either end) */
+     scroll with the content and hide the shadow at either end); on another background, set
+     --scroll-shadow-bg to it, or the covers show as bands of their own */
   .scroll-shadow {
     background:
-      linear-gradient(var(--color-surface) 30%, transparent) top / 100% 2.5rem no-repeat local,
-      linear-gradient(transparent, var(--color-surface) 70%) bottom / 100% 2.5rem no-repeat local,
+      linear-gradient(var(--scroll-shadow-bg, var(--color-surface)) 30%, transparent) top / 100% 2.5rem no-repeat local,
+      linear-gradient(transparent, var(--scroll-shadow-bg, var(--color-surface)) 70%) bottom / 100% 2.5rem no-repeat local,
       radial-gradient(farthest-side at 50% 0, color-mix(in srgb, var(--color-ink) 16%, transparent), transparent) top / 100% 0.625rem no-repeat scroll,
       radial-gradient(farthest-side at 50% 100%, color-mix(in srgb, var(--color-ink) 16%, transparent), transparent) bottom / 100% 0.625rem no-repeat scroll,
-      var(--color-surface);
+      var(--scroll-shadow-bg, var(--color-surface));
   }
   .hatch {
     background-image: repeating-linear-gradient(
