@@ -370,11 +370,13 @@ def _save_to_sync_folder(engine: Any, paths: Paths) -> None:
 
 def reachable_server(data_dir: Path) -> ServerInfo | None:
     """The server of this data folder, if ``server.json`` names a live process that answers for it."""
-    import httpx
-
     info = running_server(data_dir)
     if info is None:
         return None
+    # only a server that seems to run is asked: "ordnung serve" comes through here first, and on its usual start
+    # (no server yet) it must not pay for loading the HTTP client (tests/test_start_imports.py)
+    import httpx
+
     try:
         response = httpx.get(
             info.api_url("health"), headers=info.auth_headers(), timeout=HEALTH_TIMEOUT_S, trust_env=False
