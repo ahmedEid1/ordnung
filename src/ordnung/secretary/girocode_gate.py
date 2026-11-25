@@ -45,21 +45,29 @@ reason the person reads:
    only while all four stay the same: reading the letter again differently, or changing the amount,
    asks again. Nothing else the person does to the to-do (confirming or moving its date) vouches for
    its amount.
-7. **The person has compared a payment to this IBAN before** — confirmed *These match the letter* for
-   another to-do of this data folder asking for the same account (the IBAN as :func:`normalize_iban`
-   writes it, so its spelling on the letter doesn't matter). Until then the first code to an IBAN waits
-   for the person to compare the payee, IBAN, amount and reference with the letter, however well point 6
-   grounds them: a PDF's text layer can say something its page doesn't show (a font whose glyphs draw
-   other digits than its text reads, a line clipped under a visible one), and the check for text without
-   ink (:mod:`ordnung.ingest.text`) is one layer, not a guarantee. The account is the IBAN, never the
-   sender's or payee's name, which the letter itself supplies: a new IBAN under a familiar name is a new
-   account. Only the person's comparison counts (:func:`compared_accounts`) — not *Mark as paid*, which
-   says money left but not to which account (it may have been typed from the page by hand), not an IBAN
-   the sender's letters taught, and not the model. The comparison goes with its letter: once that letter
-   is deleted for good, the account is new again. Later codes to the account follow points 1–6 alone:
-   the amount and the reference change with every letter, so comparing them once would vouch for
-   nothing on the next one; they stay grounded letter by letter, and what a later letter's text layer
-   could still change is how much goes, or with which reference, to an account the person confirmed.
+7. **The person has compared a payment to this payee and IBAN before** — confirmed *These match the
+   letter* for a payment to the same IBAN (as :func:`normalize_iban` writes it, so its spelling on the
+   letter doesn't matter) under the same payee name (case and spacing aside; between two letters of the
+   same sender, give or take a legal form), on a letter from the same sender when both letters have one
+   (:func:`known_account`). Until then the first code to a payee waits for the person to compare the
+   payee, IBAN, amount and reference with the letter, however well point 6 grounds them: a PDF's text
+   layer can say something its page doesn't show (a font whose glyphs draw other digits than its text
+   reads, a line clipped under a visible one), and the check for text without ink
+   (:mod:`ordnung.ingest.text`) is one layer, not a guarantee. The IBAN alone is not enough:
+   an account the person confirmed for one payee says nothing about a letter that names another payee
+   or comes from another sender — a crafted letter's text layer could otherwise borrow it. A new IBAN
+   under a familiar name is a new account too. Only the person's comparison counts — not *Mark as paid*,
+   which says money left but not to which account (it may have been typed from the page by hand), not
+   an IBAN the sender's letters taught, and not the model; a comparison made before this rule existed
+   is the same act and counts. A to-do's own comparison vouches for the values it saw through point 6
+   (``checked``); once the letter is read again with another amount or reference — the same to-do or a
+   new one — it counts as an earlier payment to the account, like another letter's. The comparison goes
+   with its letter: once that letter is deleted for good, the account is new again. Later codes to the
+   account follow points 1–6 alone: the amount and the reference change with every letter, so comparing
+   them once would vouch for nothing on the next one; they stay grounded letter by letter, and what a
+   later letter's text layer could still change is how much goes, or with which reference, to an account
+   the person confirmed — or, naming that payee and IBAN in full, borrow the account for a letter from
+   no sender or the same one.
 
 The reference a code carries is the letter's without a leading label word ("Kassenzeichen …",
 :func:`ordnung.payments.payment_reference`), checked and shown as such. A refusal of the standard's
@@ -90,7 +98,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from typing import Literal
 
@@ -114,7 +122,7 @@ from ordnung.models import (
 from ordnung.money.iban import INVALID_IBAN_ADVICE, inspect_iban
 from ordnung.payments import debit_in_sentence, is_direct_debit, payment_reference
 from ordnung.secretary.ledger import Ledger
-from ordnung.secretary.scam import format_iban, normalize_iban, payment_mismatch
+from ordnung.secretary.scam import format_iban, normalize_iban, payment_mismatch, same_payee
 
 #: The activity entry that records the transfer details the person compared with the paper letter
 #: (``ref_type="item"``; ``data`` holds the :class:`~ordnung.models.TransferValues` they confirmed).
@@ -172,7 +180,7 @@ class TransferFacts:
     reference_grounding: Grounding = "unverified"
     #: the values the person last compared with the paper letter
     checked: TransferValues | None = None
-    #: the person compared a payment to this IBAN with its letter before, on another to-do (point 7)
+    #: the person compared a payment to this payee and IBAN with its letter before (point 7)
     known_account: bool = False
 
     @property
@@ -364,7 +372,9 @@ def _check_message(facts: TransferFacts, fields: Sequence[TransferField], *, fir
         compared = (
             "the payee, IBAN, amount and reference" if facts.reference else "the payee, IBAN and amount"
         )
-        why = "this is the first payment to this IBAN"
+        # what is true whatever else happened: the person may have paid the account before, unseen
+        source = "a letter from this sender" if facts.party else "its letter"
+        why = f"you haven't compared a payment to this payee and IBAN with {source} before"
         if fields:
             why += ", and " + _grounding_reasons(photo, missing)
         return f"No code yet: {why}. Compare {compared} with {letter}, then confirm."
@@ -576,16 +586,67 @@ def _scam_sign(store: Store, ledger: Ledger, document: Document, party: Party | 
     return ScamSign(kind="other", party=party.name if party else None, checked=checked)
 
 
-def compared_accounts(store: Store) -> dict[str, frozenset[str]]:
-    """The IBANs the person compared a payment to with its letter (*These match the letter*), each with
-    the to-dos they compared (policy point 7). Only their own confirmation counts, and it goes with its
-    letter when that is deleted for good (:meth:`~ordnung.db.store.Store.delete_document`)."""
-    found: dict[str, set[str]] = {}
+@dataclass(frozen=True)
+class ComparedPayment:
+    """A payment the person compared with its letter (*These match the letter*): the values they saw and
+    the sender of that letter (``None``: a letter matched to no sender, or one no longer there)."""
+
+    item_id: str
+    values: TransferValues
+    party_id: str | None
+
+
+def compared_accounts(store: Store) -> dict[str, tuple[ComparedPayment, ...]]:
+    """The payments the person compared with their letters, by IBAN (policy point 7). Only their own
+    confirmation counts, and it goes with its letter when that is deleted for good
+    (:meth:`~ordnung.db.store.Store.delete_document`)."""
+    senders: dict[str, str | None] = {}
+    found: dict[str, list[ComparedPayment]] = {}
     for entry in store.list_activity(None, kinds=[CHECKED]):
         iban = entry.data.get("iban")
-        if entry.ref_type == "item" and entry.ref_id and isinstance(iban, str) and iban:
-            found.setdefault(normalize_iban(iban), set()).add(entry.ref_id)
-    return {iban: frozenset(items) for iban, items in found.items()}
+        if entry.ref_type != "item" or not entry.ref_id or not isinstance(iban, str) or not iban:
+            continue
+        doc_id = entry.data.get("doc_id")
+        if isinstance(doc_id, str) and doc_id not in senders:
+            document = store.get_document(doc_id)
+            senders[doc_id] = document.party_id if document is not None else None
+        compared = ComparedPayment(
+            item_id=entry.ref_id,
+            values=TransferValues.model_validate(entry.data),
+            party_id=senders.get(doc_id) if isinstance(doc_id, str) else None,
+        )
+        found.setdefault(normalize_iban(iban), []).append(compared)
+    return {iban: tuple(payments) for iban, payments in found.items()}
+
+
+def _payee_key(payee: str | None) -> str:
+    return "".join(girocode.clean_text(payee or "").casefold().split())
+
+
+def known_account(
+    compared: Sequence[ComparedPayment], values: TransferValues, party_id: str | None, item_id: str
+) -> bool:
+    """Whether the person compared a payment to this payee and IBAN before (policy point 7): another
+    comparison of the same IBAN under the same payee name, from the same sender when both letters have
+    one. The name is the same one, case and spacing aside; only between two letters of the same sender
+    may it differ by a legal form (:func:`~ordnung.secretary.scam.same_payee`) — anything looser would
+    lend the account to another payee. This to-do's own comparison of exactly these values doesn't count:
+    it vouches for them as ``checked`` does."""
+    payee = _payee_key(values.payee)
+    if not payee or not values.payee:
+        return False
+    for earlier in compared:
+        if earlier.item_id == item_id and same_values(earlier.values, values):
+            continue
+        if party_id is not None and earlier.party_id is not None and earlier.party_id != party_id:
+            continue
+        if _payee_key(earlier.values.payee) == payee or (
+            party_id is not None
+            and earlier.party_id == party_id
+            and same_payee(earlier.values.payee or "", values.payee)
+        ):
+            return True
+    return False
 
 
 def last_check(store: Store, item_id: str) -> TransferValues | None:
@@ -600,7 +661,7 @@ def transfer_facts(
     document: Document,
     item: Item,
     siblings: Sequence[Item],
-    compared: Mapping[str, frozenset[str]],
+    compared: Mapping[str, Sequence[ComparedPayment]],
 ) -> TransferFacts:
     """What the policy needs to know about ``item`` of ``document`` (``siblings``: the letter's to-dos;
     ``compared``: :func:`compared_accounts`)."""
@@ -621,7 +682,7 @@ def transfer_facts(
             if known_iban(ledger, party, iban, document.id)
             else value_grounding(iban, pages, whole=False)
         )
-    return TransferFacts(
+    facts = TransferFacts(
         item_id=item.id,
         status=item.status,
         incoming=item.direction == "in",
@@ -642,9 +703,14 @@ def transfer_facts(
         reference=reference,
         reference_grounding=value_grounding(reference, pages) if reference else "unverified",
         checked=last_check(store, item.id),
-        # another to-do's comparison: this one's own vouches only for the values it saw (``checked``)
-        known_account=iban is not None and bool(compared.get(iban, frozenset()) - {item.id}),
+        known_account=False,
     )
+    if iban is not None:
+        facts = replace(
+            facts,
+            known_account=known_account(compared.get(iban, ()), facts.values, document.party_id, item.id),
+        )
+    return facts
 
 
 def document_girocodes(

@@ -3,8 +3,8 @@
 ``GET /api/documents/{id}`` carries each payment's code — or why there is none — in ``girocodes``
 (:mod:`ordnung.secretary.girocode_gate`). The one write is ``POST /api/items/{id}/girocode/confirm``:
 the person compared the transfer details the app shows with the paper letter ("These match the
-letter") — asked for when a value wasn't found in the letter's text, and for the first payment to an
-IBAN. The body repeats those details; the answer is the payment's code. It is 409 when the
+letter") — asked for when a value wasn't found in the letter's text, and before the first code to a
+payee and IBAN. The body repeats those details; the answer is the payment's code. It is 409 when the
 details changed since the person saw them, or when the code is refused for another reason — a
 confirmation never unlocks a letter with scam signs.
 """

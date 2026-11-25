@@ -1,6 +1,6 @@
 """GiroCodes over HTTP: the document detail carries one per payment, a photo letter waits for the
 person to compare it with the paper (``POST /api/items/{id}/girocode/confirm``), so does the first
-payment to an account however its values were found, and a confirmation never covers other values,
+payment to a payee and IBAN however its values were found, and a confirmation never covers other values,
 another to-do or a refused code."""
 
 from __future__ import annotations
@@ -13,7 +13,9 @@ import pytest
 
 from fixtures_llm import DUNNING_LETTER, INVOICE_LETTER, TELECOM_IBAN, iban, record_events
 from helpers_docs import Fill, Line, make_pdf, photo
+from helpers_secretary import add_doc, add_item
 from ordnung import clock
+from ordnung.models import Evidence, PaymentDetails
 from test_api_support import FINE_LETTER, TODAY, Api, ApiRouter, api_for
 
 INVOICE_PAYLOAD = f"BCD\n002\n1\nSCT\n\nMuster Telecom GmbH\n{TELECOM_IBAN}\nEUR49.99\n\n\nR-2026-0815"
@@ -45,8 +47,8 @@ INVOICE_VALUES = {
     "amount": 49.99,
 }
 FIRST_PAYMENT = (
-    "No code yet: this is the first payment to this IBAN. Compare the payee, IBAN, amount and reference "
-    "with the letter, then confirm."
+    "No code yet: you haven't compared a payment to this payee and IBAN with a letter from this sender "
+    "before. Compare the payee, IBAN, amount and reference with the letter, then confirm."
 )
 
 
@@ -97,9 +99,9 @@ async def test_a_photo_letter_is_compared_with_the_paper_before_it_gets_a_code(d
         assert code["to_check"] == ["amount", "iban", "reference"]
         assert code["first_payment"] is True
         assert code["message"] == (
-            "No code yet: this is the first payment to this IBAN, and the amount, the IBAN and the reference "
-            "were read by AI from a photo. Compare the payee, IBAN, amount and reference with the paper letter, "
-            "then confirm."
+            "No code yet: you haven't compared a payment to this payee and IBAN with a letter from this sender "
+            "before, and the amount, the IBAN and the reference were read by AI from a photo. Compare the payee, "
+            "IBAN, amount and reference with the paper letter, then confirm."
         )
         values = code["values"]
         assert values == {
@@ -279,4 +281,59 @@ async def test_an_iban_whose_glyphs_show_another_iban_waits_for_the_comparison(d
         assert code["status"] == "blocked" and code["reason"] == "check_letter" and code["first_payment"]
         assert code["to_check"] == []  # the text layer grounds every value: only the first payment asks
         assert code["values"]["iban"] == TELECOM_IBAN
+        assert "payload" not in code
+
+
+async def test_an_iban_compared_for_another_payee_lends_no_trust_to_a_two_faced_pdf(data_dir: Path) -> None:
+    """Adversarial (security review, pay0-1): the person compared a payment to an account for a shop whose
+    page really shows it. A two-faced PDF from another sender, its text layer reading that account under
+    another payee, is still a first payment: the person compares it with the page, where it differs."""
+    async with api_for(data_dir) as api:
+        store = api.ctx.store
+        shop = store.add_party(name="Kramladen Versand", kind="other").id
+        quote = "Bitte überweisen Sie 19,90 EUR bis zum 15.09.2026."
+        doc_id = add_doc(
+            store,
+            "kramladen",
+            party_id=shop,
+            payment=PaymentDetails(
+                iban=TELECOM_IBAN, payee="Kramladen Versand", reference="KV-1", iban_valid=True
+            ),
+        )
+        store.set_pages(
+            doc_id,
+            [
+                {
+                    "page": 1,
+                    "width": 100,
+                    "height": 100,
+                    "image_path": "derived/kramladen.jpg",
+                    "text": f"Kramladen Versand\nBestellung KV-1\n{quote}\nIBAN: {TELECOM_IBAN}",
+                    "text_source": "text",
+                }
+            ],
+        )
+        bought = add_item(
+            store,
+            kind="payment",
+            title="Pay Kramladen",
+            amount=19.90,
+            currency="EUR",
+            direction="out",
+            doc_id=doc_id,
+            party_id=shop,
+            evidence=[Evidence(doc_id=doc_id, page=1, quote=quote, grounding="verified")],
+        )
+        compared = await api.client.post(
+            f"/api/items/{bought}/girocode/confirm",
+            json={"payee": "Kramladen Versand", "iban": TELECOM_IBAN, "reference": "KV-1", "amount": 19.90},
+        )
+        assert compared.status_code == 200 and compared.json()["status"] == "ready", compared.text
+
+        detail = await _read(api, "rechnung.pdf", _two_faced_invoice())
+        assert detail["document"]["hidden_text"] is False
+        (code,) = detail["girocodes"]
+        assert code["status"] == "blocked" and code["reason"] == "check_letter" and code["first_payment"]
+        assert code["to_check"] == [] and code["values"]["iban"] == TELECOM_IBAN
+        assert code["values"]["payee"] == "Muster Telecom GmbH"
         assert "payload" not in code

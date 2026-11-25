@@ -1,7 +1,7 @@
 """The GiroCode gate (ordnung.secretary.girocode_gate): every reason a payment gets no code, in the
 policy's order, the grounding of each value, and — on a real store — known senders, an attacker's
 IBAN with valid check digits, photo letters, the person's comparison with the paper letter, and the
-first payment to an account, which always waits for that comparison."""
+first payment to a payee and IBAN, which always waits for that comparison."""
 
 from __future__ import annotations
 
@@ -313,8 +313,8 @@ def test_the_first_payment_to_an_account_waits_for_the_comparison_however_well_g
     code = blocked(first)
     assert code.reason == "check_letter" and code.first_payment
     assert code.message == (
-        "No code yet: this is the first payment to this IBAN. Compare the payee, IBAN, amount and "
-        "reference with the letter, then confirm."
+        "No code yet: you haven't compared a payment to this payee and IBAN with a letter from this sender "
+        "before. Compare the payee, IBAN, amount and reference with the letter, then confirm."
     )
     # every value is grounded: nothing to name as not found, all four to compare
     assert code.to_check == []
@@ -340,14 +340,14 @@ def test_the_first_payment_message_names_what_else_is_missing() -> None:
     )
     assert photo.first_payment and photo.to_check == ["amount", "iban", "reference"]
     assert photo.message == (
-        "No code yet: this is the first payment to this IBAN, and the amount, the IBAN and the reference "
-        "were read by AI from a photo. Compare the payee, IBAN, amount and reference with the paper letter, "
-        "then confirm."
+        "No code yet: you haven't compared a payment to this payee and IBAN with a letter from this sender "
+        "before, and the amount, the IBAN and the reference were read by AI from a photo. Compare the payee, "
+        "IBAN, amount and reference with the paper letter, then confirm."
     )
-    no_reference = blocked(ready_facts(known_account=False, reference=None))
+    no_reference = blocked(ready_facts(known_account=False, reference=None, party=None))
     assert no_reference.message == (
-        "No code yet: this is the first payment to this IBAN. Compare the payee, IBAN and amount with the "
-        "letter, then confirm."
+        "No code yet: you haven't compared a payment to this payee and IBAN with its letter before. Compare "
+        "the payee, IBAN and amount with the letter, then confirm."
     )
     # a known account's check message stays as it was
     assert not blocked(ready_facts(amount_grounding="unverified")).first_payment
@@ -973,7 +973,7 @@ def test_a_scam_letter_teaches_no_known_iban_and_marks_its_iban(store: Store) ->
     store.update_document(scam_id, deleted_at="2026-09-27T10:00:00Z")
     assert getattr(code_for(store, text_item), "reason", None) == "scam"
     store.delete_document(scam_id)
-    code = code_for(store, text_item)  # judged on its own: a first payment to that account
+    code = code_for(store, text_item)  # judged on its own: a first payment to that payee and IBAN
     assert isinstance(code, GiroCodeBlocked) and code.first_payment
 
 
@@ -1150,20 +1150,61 @@ def test_the_first_code_to_an_iban_waits_for_the_comparison_then_the_next_letter
 
 
 def test_the_first_comparison_holds_only_for_the_values_it_saw(store: Store) -> None:
+    """The to-do's own comparison vouches for the values it saw (``checked``). Once the letter is read
+    again with another reference or amount, it is an earlier payment to that payee and IBAN, as another
+    letter's would be: point 6 alone decides, so a value not in the text asks again, and not as a first
+    payment."""
     doc_id, item_id = letter(store, "invoice", telecom(store))
     compare(store, item_id)
-    # read again with another reference: the first payment hasn't been compared at these values
+    # read again with another reference, one the letter's text doesn't print
     store.update_document(
         doc_id, payment=PaymentDetails(iban=KNOWN_IBAN, payee="Muster Telecom GmbH", reference="R-2026-0816")
     )
     again = code_for(store, item_id)
-    assert isinstance(again, GiroCodeBlocked) and again.first_payment
+    assert isinstance(again, GiroCodeBlocked) and again.reason == "check_letter"
+    assert not again.first_payment and again.to_check == ["reference"]
+    # back to the reference printed, at an amount the letter's text says: ready, as on a later letter
+    store.update_document(
+        doc_id, payment=PaymentDetails(iban=KNOWN_IBAN, payee="Muster Telecom GmbH", reference="R-2026-0815")
+    )
+    assert code_for(store, item_id) == GiroCodeReady(
+        item_id=item_id, payload=PAYLOAD.format(iban=KNOWN_IBAN), checked=True
+    )
+
+
+def test_a_reading_that_makes_a_new_to_do_finds_the_account_compared(store: Store) -> None:
+    """Read again, a letter can get a new to-do (another sentence quoted) while the old one goes: what the
+    person compared on that page still names the payee and IBAN, so the new to-do is a later payment to
+    them — its values grounded by point 6 as on any later letter."""
+    party = telecom(store)
+    doc_id, old = letter(store, "invoice", party)
+    compare(store, old)
+    store.delete_item(old)
+    new = add_item(
+        store,
+        kind="payment",
+        title="Pay invoice",
+        amount=49.99,
+        currency="EUR",
+        direction="out",
+        doc_id=doc_id,
+        party_id=party,
+        evidence=[
+            Evidence(
+                doc_id=doc_id,
+                page=1,
+                quote="Bitte überweisen Sie 49,99 EUR bis zum 15.09.2026.",
+                grounding="verified",
+            )
+        ],
+    )
+    assert code_for(store, new) == GiroCodeReady(item_id=new, payload=PAYLOAD.format(iban=KNOWN_IBAN))
 
 
 def test_a_known_sender_asking_for_a_new_iban_is_a_new_account(store: Store) -> None:
-    """The account is the IBAN, never the sender's or payee's name, which the letter itself supplies. The
+    """A familiar name, which the letter itself supplies, never makes a new IBAN a known account. The
     known-sender check keeps its stricter answer (no code at all) where it has one; where it has none, the
-    familiar name still makes no known account: the person compares again."""
+    person compares again."""
     party = telecom(store, ibans=[KNOWN_IBAN])
     _, genuine = letter(store, "genuine", party, doc_date="2026-08-01")
     compare(store, genuine)
@@ -1180,6 +1221,61 @@ def test_a_known_sender_asking_for_a_new_iban_is_a_new_account(store: Store) -> 
     _, unmatched = letter(store, "unmatched", None, iban=make_iban("DE", "500500500111222333"))
     code = code_for(store, unmatched)
     assert isinstance(code, GiroCodeBlocked) and code.reason == "check_letter" and code.first_payment
+
+
+def test_a_known_iban_under_another_payee_or_sender_asks_again(store: Store) -> None:
+    """Security review (pay0-1): an IBAN the person confirmed for one payee says nothing about a letter
+    naming another payee, or coming from another sender. A shop's letter whose page really shows the
+    account is compared once; a later crafted letter, its text layer reading that account under another
+    name, must not borrow it — the scam checks compare only the sender's own history, and point 6 trusts
+    the text layer."""
+    shop = store.add_party(name="Kramladen Versand", kind="other").id
+    _, bought = letter(store, "shop", shop, payee="Kramladen Versand")
+    compare(store, bought)
+    tax_office = store.add_party(name="Finanzamt Musterstadt", kind="authority").id
+    _, tax = letter(store, "tax", tax_office, payee="Finanzamt Musterstadt")
+    code = code_for(store, tax)
+    assert isinstance(code, GiroCodeBlocked) and code.reason == "check_letter" and code.first_payment
+    assert code.message == (
+        "No code yet: you haven't compared a payment to this payee and IBAN with a letter from this sender "
+        "before. Compare the payee, IBAN, amount and reference with the letter, then confirm."
+    )
+    # a letter matched to no sender, naming someone else
+    _, stranger = letter(store, "stranger", None, payee="Jemand Anders")
+    code = code_for(store, stranger)
+    assert isinstance(code, GiroCodeBlocked) and code.first_payment
+    assert code.message.startswith(
+        "No code yet: you haven't compared a payment to this payee and IBAN with its letter before."
+    )
+    # the shop's name and account, but from another sender
+    _, borrowed = letter(store, "borrowed", tax_office, payee="Kramladen Versand")
+    code = code_for(store, borrowed)
+    assert isinstance(code, GiroCodeBlocked) and code.first_payment
+    # the same sender: its name as that sender's letters spell it, give or take a legal form
+    for label, payee in (("shop-again", "KRAMLADEN  versand"), ("shop-gmbh", "Kramladen Versand GmbH")):
+        _, again = letter(store, label, shop, payee=payee)
+        assert isinstance(code_for(store, again), GiroCodeReady), payee
+    # a letter matched to no sender: the payee's name itself, case and spacing aside, nothing looser
+    _, unmatched = letter(store, "shop-unmatched", None, payee="kramladen versand")
+    assert isinstance(code_for(store, unmatched), GiroCodeReady)
+    _, shorter = letter(store, "shop-short", None, payee="Kramladen")
+    code = code_for(store, shorter)
+    assert isinstance(code, GiroCodeBlocked) and code.first_payment
+
+
+def test_a_comparison_made_before_this_rule_counts(store: Store) -> None:
+    """A data folder from before point 7 keeps its ``payment.checked`` entries as they were (the same
+    shape: the values and the letter's id): the person compared that account then, so its next letter
+    gets its code without asking again (security review, pay0-3)."""
+    party = telecom(store)
+    _, photo_item = letter(store, "photo", party, source="transcript", doc_date="2026-08-01")
+    compare(store, photo_item)
+    entry = store.last_activity("item", photo_item, [CHECKED])
+    assert entry is not None and set(entry.data) == {"payee", "iban", "reference", "amount", "doc_id"}
+    _, pdf_item = letter(store, "pdf", party, iban=spaced(KNOWN_IBAN), doc_date="2026-09-01")
+    assert code_for(store, pdf_item) == GiroCodeReady(
+        item_id=pdf_item, payload=PAYLOAD.format(iban=KNOWN_IBAN)
+    )
 
 
 def test_only_the_persons_comparison_makes_an_account_known(store: Store) -> None:
