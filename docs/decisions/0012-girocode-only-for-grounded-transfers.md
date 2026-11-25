@@ -94,21 +94,32 @@ says, a line clipped under a visible one). The check for text without ink (`inge
 many such letters, but it is one layer, not a guarantee, and a code built from such a letter is exactly
 the wrong transfer this record is about. So the policy gets a seventh point:
 
-7. **The first code to an IBAN waits for the person's comparison**, however well its values are
-   grounded: the person compares payee, IBAN, amount and reference with the letter once and confirms
-   ("These match the letter", the same entry as point 3). The account is the IBAN as the gate
-   normalises it, never the sender's or payee's name, which the letter supplies: a new IBAN under a
-   familiar name is a new account, and the known-sender check keeps its stricter answer where it has
-   one. Only the person's own confirmation on another to-do makes an account known — not *Mark as paid*
-   (it says money left, not to which account: the person may have typed the IBAN from the page), not an
-   IBAN the sender's letters taught, not the model. It goes with its letter: deleting that letter for
-   good makes the account new again, as a separate list of known accounts would outlive the letters.
+7. **The first code to a payee and IBAN waits for the person's comparison**, however well its values
+   are grounded: the person compares payee, IBAN, amount and reference with the letter once and
+   confirms ("These match the letter", the same entry as point 3). An account is known only when the
+   person compared a payment to the same IBAN (as the gate normalises it) under the same payee name
+   (case and spacing aside; between two letters of the same sender, give or take a legal form such as
+   "GmbH"), on a letter from the same sender when both letters have one. The IBAN alone is not enough:
+   a shop's letter whose page really shows an account, once compared, must not lend that account to a
+   crafted letter from another sender whose text layer reads it under another payee — the scam checks
+   compare only a sender's own history, and point 6 trusts the text layer. A new IBAN under a familiar
+   name is a new account too, and the known-sender check keeps its stricter answer where it has one.
+   Only the person's own confirmation makes an account known — not *Mark as paid* (it says money left,
+   not to which account: the person may have typed the IBAN from the page), not an IBAN the sender's
+   letters taught, not the model. A to-do's own comparison vouches for the values it saw; once the
+   letter is read again with another amount or reference (the same to-do or a new one), it counts as an
+   earlier payment to the account, like another letter's. It goes with its letter: deleting that letter
+   for good makes the account new again, as a separate list of known accounts would outlive the letters.
    Later codes to the account follow points 1–6: the amount and the reference change with every
    letter, so one comparison could not vouch for the next letter's; they stay grounded letter by letter.
 
 Consequences: the demo's utility statement and payment reminder now ask to compare first (nobody in the
-demo has compared a payment yet), and so does every account's first code after an update — a person who
-paid an account with a code before compares once more, since Ordnung kept no record of that. Not
-covered: a later letter to a confirmed account whose text layer changes the amount or the reference (the
-money still goes to the account the person confirmed, and the banking app shows the amount before the
-TAN), and a person who confirms without looking.
+demo has compared a payment yet), and so does the first code to every account the person hasn't compared
+a payment to before (a comparison made before this update counts: it is the same entry). The block says
+so as it is — "you haven't compared a payment to this payee and IBAN" — not that it is the first
+payment, which it may not be: a person may have paid the account before, unseen by Ordnung. Not covered:
+a later letter to a confirmed account whose text layer changes the amount or the reference (the money
+still goes to the account the person confirmed, and the banking app shows the amount before the TAN); a
+crafted letter whose text layer repeats a compared payee's name and IBAN in full, from that sender or
+from none (the money then goes to the account the person confirmed for that payee); and a person who
+confirms without looking.

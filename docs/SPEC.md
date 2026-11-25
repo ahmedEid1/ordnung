@@ -1855,7 +1855,7 @@ of the month dates the new to-do at its first occurrence at once),
 to-do not read from a letter, `recurrence` sent with `due_date` starts its schedule again at that date and
 `{recurrence: null}` stops it repeating),
 `items/{id}/confirm` (POST: grounding=user), `items/{id}/girocode/confirm` (POST: the transfer details
-the person compared with the paper letter, or with the letter for a first payment; 409 when they changed
+the person compared with the paper letter, or with the letter for a new account; 409 when they changed
 or the code is refused for another reason), `items/{id}.ics`, `contracts` (GET), `contracts/{id}`
 (PATCH), `parties`, `parties/{id}` (GET, with `region_suggestion`: the state the postcode on their letter
 suggests, computed on read and never stored (ADR 0019); PATCH `{region}`: the Land the person says a sender
@@ -1935,7 +1935,7 @@ which counts at once (a save that names it tells the worker, § 8); a waiting le
 be reprocessed or made non-private by `PATCH` (`409`) — only an answer changes it.
 A letter's detail carries `girocodes`: per payment to-do a GiroCode (`ready`, with the EPC payload)
 or why there is none (`blocked`, a reason code and plain words; `first_payment` when it waits for the
-comparison a first payment to the account asks), worked out on read (§ 21).
+first comparison for its payee and IBAN), worked out on read (§ 21).
 Contracts carry `cancellable` + `cancel_hint`, worked out on read (not for the broadcasting fee,
 obligations towards authorities or a job — a job gets "Draft resignation").
 
@@ -2720,12 +2720,15 @@ needed outside the EEA and Ordnung reads none; an RF reference must pass ISO 116
 grounded — the amount stated by a verified sentence of the text layer, the IBAN printed in the text
 layer or known for the sender from another of its letters (not in the trash, without scam signs), the
 reference printed whole in the text layer (not cut short at a dash or before another digit group);
-and the first payment to an account — its IBAN, however the letter spells it — waits for the person to
-compare payee, IBAN, amount and reference with the letter once, even when every value is grounded: a text
-layer can say what the page doesn't show, and the check for text without ink is one layer, not a
-guarantee (ADR 0012, 2026-11-25). Only the person's own "These match the letter" on another to-do makes
-an account known — not "Mark as paid", not an IBAN the sender's letters taught — and it goes with its
-letter when that is deleted for good; later codes to the account follow the rest of this policy.
+and the first payment to an account waits for the person to compare payee, IBAN, amount and reference
+with the letter once, even when every value is grounded: a text layer can say what the page doesn't show,
+and the check for text without ink is one layer, not a guarantee (ADR 0012, 2026-11-25). The account is
+the IBAN, however the letter spells it, together with the payee's name (case and spacing aside; between
+letters of the same sender, give or take a legal form) and the sender when both letters have one: a known
+IBAN under another payee or from another sender asks again, and so does a new IBAN under a familiar name.
+Only the person's own "These match the letter" makes an account known — not "Mark as paid", not an IBAN
+the sender's letters taught; one made before this rule counts — and it goes with its letter when that is
+deleted for good; later codes to the account follow the rest of this policy.
 The reference is used without a leading label ("Kassenzeichen 5126 …" → "5126 …"), in the code and in
 the Pay panels' rows alike; a code without a reference says so (add the letter's reference, if it names
 one, in the banking app — the reading may have missed it). A value read from a photo, or not found — an
