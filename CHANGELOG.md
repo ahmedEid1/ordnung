@@ -13,8 +13,9 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   away in a fold. Nothing was dropped to get there: every fact is still on its page or in a fold on it.
   - **The guide** puts installing first. The install command is on the second screen where it was on the ninth
     (on a phone the fourth, where it was the eleventh), and the update command is in *In one minute*. Its visible
-    text went from about 6,400 words to about 5,100 (about 7,100 with every fold open), its longest paragraph
-    from 444 words to 243, and no code line or table needs sideways scrolling on a phone.
+    text went from about 6,400 words to about 5,100 (about 7,100 with every fold open) and its longest paragraph
+    from 444 words to 243. The comments beside its commands are short enough for a phone; the install command
+    itself, with its long address, still scrolls sideways there.
   - **The privacy page** answers at its top what people come for: what leaves your computer, what Anthropic
     keeps, what is stored where, how to delete for good, what is encrypted, and who else can see what, each with
     the limit that belongs to it. Every sentence of the page as it was is still there, word for word.
