@@ -61,9 +61,8 @@ delete or replace an open file).
 (logged with codes and counts only — never the passphrase, a letter's name or a path inside
 ``files/``), and the server keeps working. While the folder doesn't answer (``folder_unreachable``)
 it is looked at every :data:`~ordnung.sync.UNREACHABLE_SCAN_S`, until a look or a save shows that it
-answers again. A waiting take-over gives up after
-:data:`~ordnung.sync.TAKE_OVER_WAIT_MAX_S`, or when the computer it waits for saves a new change of
-the person's, and says why.
+answers again. A waiting take-over gives up after :data:`~ordnung.sync.TAKE_OVER_WAIT_MAX_S`, or
+when the computer it waits for saves a new change of the person's, and says why.
 
 Until the engine is part of this installation (``ordnung.sync.engine`` can't be imported), sync is
 ``off`` and unavailable.

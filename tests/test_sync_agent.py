@@ -736,8 +736,13 @@ async def test_a_folder_that_doesn_t_answer_is_looked_at_less_often_until_it_doe
 
     async with computer(desk, engine=engine) as api:
         await connect(api, folder, "desktop")
+        agent = agent_of(api)
         monkeypatch.setattr(FakeSession, "scan", unreachable)
-        found = await eventually(lambda: agent_of(api).problem)
+        # counted only once the lock is free: every save holds it, so none is under way across the count (one that
+        # started before it and ended in the window would bring its two looks unallowed for)
+        found = await eventually(
+            lambda: agent.problem if agent.problem is not None and not agent._lock_now().locked() else None
+        )
         assert found.code == "folder_unreachable"
         before, saved = looks(), saves()
         await asyncio.sleep(5 * agent_module.SCAN_S)
@@ -749,7 +754,6 @@ async def test_a_folder_that_doesn_t_answer_is_looked_at_less_often_until_it_doe
         assert agent_module.UNREACHABLE_SCAN_S > 5 * agent_module.SCAN_S
 
         monkeypatch.setattr(FakeSession, "scan", answering)
-        agent = agent_of(api)
         # the round that found the folder answering is over, so the next look is the one it set: due within SCAN_S.
         # Not a count of looks in a window of wall-clock time: a slow runner once gave one look in the 0.5 s that
         # should have held five, which says nothing about the pace (the clock only moves on after the round set it)
@@ -796,9 +800,11 @@ async def test_a_save_that_goes_through_brings_the_usual_pace_back(
         )
 
         monkeypatch.setattr(FakeSession, "scan", answering)  # the folder is back; the next look is 600 s away
-        saves = engine.calls.count("push:change")
+        saves = engine.calls_of(desk).count("push:change")
         assert (await _add_todo(api, "Pay the gym")).status_code == 201
-        await eventually(lambda: engine.calls.count("push:change") > saves and not agent._lock_now().locked())
+        await eventually(
+            lambda: engine.calls_of(desk).count("push:change") > saves and not agent._lock_now().locked()
+        )
         assert agent.status().problem is None, "the save went through: the folder answers"
         assert agent._next_scan <= time.monotonic() + agent_module.SCAN_S, (
             "and it is looked at every SCAN_S again"
