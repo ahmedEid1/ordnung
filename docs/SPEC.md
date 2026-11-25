@@ -2724,8 +2724,9 @@ and the first payment to an account waits for the person to compare payee, IBAN,
 with the letter once, even when every value is grounded: a text layer can say what the page doesn't show,
 and the check for text without ink is one layer, not a guarantee (ADR 0012, 2026-11-25). The account is
 the IBAN, however the letter spells it, together with the payee's name (case and spacing aside; between
-letters of the same sender, give or take a legal form) and the sender when both letters have one: a known
-IBAN under another payee or from another sender asks again, and so does a new IBAN under a familiar name.
+letters of the same sender, give or take a legal form at its end, not a longer name or a part of it) and
+the sender when both letters have one: a known IBAN under another payee or from another sender asks
+again, and so does a new IBAN under a familiar name.
 Only the person's own "These match the letter" makes an account known — not "Mark as paid", not an IBAN
 the sender's letters taught; one made before this rule counts — and it goes with its letter when that is
 deleted for good; later codes to the account follow the rest of this policy.

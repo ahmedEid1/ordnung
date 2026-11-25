@@ -194,12 +194,6 @@ def _compound_overlap(parts: Sequence[str], compounds: Sequence[str], skip: froz
     )
 
 
-def same_payee(a: str, b: str) -> bool:
-    """Whether two payee names are one account holder's as letters spell it — the words of one are the
-    other's, give or take a legal form ("Muster Telecom" / "Muster Telecom GmbH") — not merely alike."""
-    return fuzz.token_set_ratio(utils.default_process(a), utils.default_process(b)) >= _PAYEE_MATCH
-
-
 def _payee_matches(payee: str, known: Iterable[str]) -> bool:
     wanted = utils.default_process(payee)
     return any(

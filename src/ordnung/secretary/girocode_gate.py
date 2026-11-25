@@ -48,8 +48,8 @@ reason the person reads:
 7. **The person has compared a payment to this payee and IBAN before** — confirmed *These match the
    letter* for a payment to the same IBAN (as :func:`normalize_iban` writes it, so its spelling on the
    letter doesn't matter) under the same payee name (case and spacing aside; between two letters of the
-   same sender, give or take a legal form), on a letter from the same sender when both letters have one
-   (:func:`known_account`). Until then the first code to a payee waits for the person to compare the
+   same sender, give or take a legal form at its end — not a longer name or a part of it), on a letter
+   from the same sender when both letters have one (:func:`known_account`). Until then the first code to a payee waits for the person to compare the
    payee, IBAN, amount and reference with the letter, however well point 6 grounds them: a PDF's text
    layer can say something its page doesn't show (a font whose glyphs draw other digits than its text
    reads, a line clipped under a visible one), and the check for text without ink
@@ -122,7 +122,7 @@ from ordnung.models import (
 from ordnung.money.iban import INVALID_IBAN_ADVICE, inspect_iban
 from ordnung.payments import debit_in_sentence, is_direct_debit, payment_reference
 from ordnung.secretary.ledger import Ledger
-from ordnung.secretary.scam import format_iban, normalize_iban, payment_mismatch, same_payee
+from ordnung.secretary.scam import format_iban, normalize_iban, payment_mismatch
 
 #: The activity entry that records the transfer details the person compared with the paper letter
 #: (``ref_type="item"``; ``data`` holds the :class:`~ordnung.models.TransferValues` they confirmed).
@@ -180,7 +180,7 @@ class TransferFacts:
     reference_grounding: Grounding = "unverified"
     #: the values the person last compared with the paper letter
     checked: TransferValues | None = None
-    #: the person compared a payment to this payee and IBAN with its letter before (point 7)
+    #: the person compared a payment to this payee and IBAN with a letter before (point 7)
     known_account: bool = False
 
     @property
@@ -373,7 +373,7 @@ def _check_message(facts: TransferFacts, fields: Sequence[TransferField], *, fir
             "the payee, IBAN, amount and reference" if facts.reference else "the payee, IBAN and amount"
         )
         # what is true whatever else happened: the person may have paid the account before, unseen
-        source = "a letter from this sender" if facts.party else "its letter"
+        source = "a letter from this sender" if facts.party else "a letter"
         why = f"you haven't compared a payment to this payee and IBAN with {source} before"
         if fields:
             why += ", and " + _grounding_reasons(photo, missing)
@@ -623,14 +623,28 @@ def _payee_key(payee: str | None) -> str:
     return "".join(girocode.clean_text(payee or "").casefold().split())
 
 
+#: A legal form at the end of a name ("GmbH", "e. V.", "GmbH & Co. KG", "UG (haftungsbeschränkt)"),
+#: after case folding: a fixed list, so that only the form itself may differ (policy point 7).
+_LEGAL_FORM = re.compile(
+    r"(?:[\s,]+(?:gmbh|mbh|ag|eg|e\.\s*v\.?|kg|ohg|ug(?:\s*\(haftungsbeschränkt\))?|gbr|se|&\s*co\.?))+$"
+)
+
+
+def _holder_key(payee: str | None) -> str:
+    """The payee's name without a trailing legal form, case and spacing aside ("" for a name that is
+    nothing but one)."""
+    name = girocode.clean_text(payee or "").casefold()
+    return "".join(_LEGAL_FORM.sub("", f" {name}").split())
+
+
 def known_account(
     compared: Sequence[ComparedPayment], values: TransferValues, party_id: str | None, item_id: str
 ) -> bool:
     """Whether the person compared a payment to this payee and IBAN before (policy point 7): another
     comparison of the same IBAN under the same payee name, from the same sender when both letters have
     one. The name is the same one, case and spacing aside; only between two letters of the same sender
-    may it differ by a legal form (:func:`~ordnung.secretary.scam.same_payee`) — anything looser would
-    lend the account to another payee. This to-do's own comparison of exactly these values doesn't count:
+    may it differ by a legal form at its end, from a fixed list (``_LEGAL_FORM``) — anything looser,
+    such as a longer name containing it or a part of it, would lend the account to another payee. This to-do's own comparison of exactly these values doesn't count:
     it vouches for them as ``checked`` does."""
     payee = _payee_key(values.payee)
     if not payee or not values.payee:
@@ -643,7 +657,8 @@ def known_account(
         if _payee_key(earlier.values.payee) == payee or (
             party_id is not None
             and earlier.party_id == party_id
-            and same_payee(earlier.values.payee or "", values.payee)
+            and _holder_key(values.payee) != ""
+            and _holder_key(earlier.values.payee) == _holder_key(values.payee)
         ):
             return True
     return False

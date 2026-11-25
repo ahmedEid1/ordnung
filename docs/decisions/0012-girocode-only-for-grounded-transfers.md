@@ -99,10 +99,11 @@ the wrong transfer this record is about. So the policy gets a seventh point:
    confirms ("These match the letter", the same entry as point 3). An account is known only when the
    person compared a payment to the same IBAN (as the gate normalises it) under the same payee name
    (case and spacing aside; between two letters of the same sender, give or take a legal form such as
-   "GmbH"), on a letter from the same sender when both letters have one. The IBAN alone is not enough:
-   a shop's letter whose page really shows an account, once compared, must not lend that account to a
-   crafted letter from another sender whose text layer reads it under another payee — the scam checks
-   compare only a sender's own history, and point 6 trusts the text layer. A new IBAN under a familiar
+   "GmbH" at its end, nothing looser: not a longer name or a part of it), on a letter from the same
+   sender when both letters have one. The IBAN alone is not enough: a shop's letter whose page really
+   shows an account, once compared, must not lend that account to a crafted letter from another
+   sender whose text layer reads it under another payee — the scam checks compare only a sender's own
+   history, and point 6 trusts the text layer. A new IBAN under a familiar
    name is a new account too, and the known-sender check keeps its stricter answer where it has one.
    Only the person's own confirmation makes an account known — not *Mark as paid* (it says money left,
    not to which account: the person may have typed the IBAN from the page), not an IBAN the sender's

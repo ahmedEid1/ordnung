@@ -36,6 +36,7 @@ from ordnung.secretary.girocode_gate import (
     ScamSign,
     TransferFacts,
     amount_grounding,
+    compared_accounts,
     decide,
     document_girocodes,
     item_girocode,
@@ -346,7 +347,7 @@ def test_the_first_payment_message_names_what_else_is_missing() -> None:
     )
     no_reference = blocked(ready_facts(known_account=False, reference=None, party=None))
     assert no_reference.message == (
-        "No code yet: you haven't compared a payment to this payee and IBAN with its letter before. Compare "
+        "No code yet: you haven't compared a payment to this payee and IBAN with a letter before. Compare "
         "the payee, IBAN and amount with the letter, then confirm."
     )
     # a known account's check message stays as it was
@@ -1245,21 +1246,59 @@ def test_a_known_iban_under_another_payee_or_sender_asks_again(store: Store) -> 
     code = code_for(store, stranger)
     assert isinstance(code, GiroCodeBlocked) and code.first_payment
     assert code.message.startswith(
-        "No code yet: you haven't compared a payment to this payee and IBAN with its letter before."
+        "No code yet: you haven't compared a payment to this payee and IBAN with a letter before."
     )
     # the shop's name and account, but from another sender
     _, borrowed = letter(store, "borrowed", tax_office, payee="Kramladen Versand")
     code = code_for(store, borrowed)
     assert isinstance(code, GiroCodeBlocked) and code.first_payment
-    # the same sender: its name as that sender's letters spell it, give or take a legal form
-    for label, payee in (("shop-again", "KRAMLADEN  versand"), ("shop-gmbh", "Kramladen Versand GmbH")):
+    # the same sender: its name as that sender's letters spell it, give or take a legal form at its end
+    for label, payee in (
+        ("shop-again", "KRAMLADEN  versand"),
+        ("shop-gmbh", "Kramladen Versand GmbH"),
+        ("shop-kg", "Kramladen Versand GmbH & Co. KG"),
+        ("shop-ug", "Kramladen Versand UG (haftungsbeschränkt)"),
+        ("shop-ev", "Kramladen Versand e. V."),
+    ):
         _, again = letter(store, label, shop, payee=payee)
         assert isinstance(code_for(store, again), GiroCodeReady), payee
+    # ... and nothing looser (security review, pay1-1): a longer name containing it, a part of it, a
+    # nearly-alike name, or a legal form alone are other payees, even from the same sender
+    for label, payee in (
+        ("shop-longer", "Kramladen Versand Inkasso Partner"),
+        ("shop-part", "Versand"),
+        ("shop-alike", "Kramladen Versandt"),
+        ("shop-form-only", "GmbH"),
+    ):
+        _, other = letter(store, label, shop, payee=payee)
+        code = code_for(store, other)
+        assert isinstance(code, GiroCodeBlocked) and code.first_payment, payee
     # a letter matched to no sender: the payee's name itself, case and spacing aside, nothing looser
     _, unmatched = letter(store, "shop-unmatched", None, payee="kramladen versand")
     assert isinstance(code_for(store, unmatched), GiroCodeReady)
     _, shorter = letter(store, "shop-short", None, payee="Kramladen")
     code = code_for(store, shorter)
+    assert isinstance(code, GiroCodeBlocked) and code.first_payment
+
+
+def test_only_a_comparison_logged_for_a_to_do_counts(store: Store) -> None:
+    """``payment.checked`` is written for a to-do (:func:`record_check`); an entry with that kind about
+    anything else is not the person's comparison of a payment and makes no account known."""
+    store.log_activity(
+        CHECKED,
+        "Not a comparison of a payment",
+        ref_type="document",
+        ref_id="doc_elsewhere",
+        data={
+            **TransferValues(
+                payee="Muster Telecom GmbH", iban=KNOWN_IBAN, reference="R-2026-0715", amount=49.99
+            ).model_dump(),
+            "doc_id": "doc_elsewhere",
+        },
+    )
+    assert compared_accounts(store) == {}
+    _, item_id = letter(store, "invoice", telecom(store))
+    code = code_for(store, item_id)
     assert isinstance(code, GiroCodeBlocked) and code.first_payment
 
 
