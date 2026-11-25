@@ -332,7 +332,9 @@ apart from two `meta` moments:
   invoice a payment reminder took over, an e-mail's payment its attached bill repeats — never counted,
   listed, exported to the calendar or synced) and the identity documents' renewal windows. Every
   `Ledger` built while the database stays the same shares one load of its rows (`_RowsCache`, checked
-  per connection with `PRAGMA data_version`, the connection's own writes and the schema version): the
+  with `Store.commit_stamp`: `PRAGMA data_version` and the schema version on a read-only connection of
+  the store's own, which every API thread compares alike, so after a change the first thread loads the
+  rows once and the others take them; reads inside a transaction are loaded afresh and not kept): the
   letters (also by sender, which the scam checks read instead of one query per letter), to-dos,
   contracts and parties, and, once worked out, each letter's scam signs and reading. So a page's
   requests load the letters once.
