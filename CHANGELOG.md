@@ -7,6 +7,24 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ### Changed
 
+- **The guide and the other documents are built for a reader who skims**, as the README is. Each opens with one
+  sentence on what it is and who it is for, then *In one minute* (at most six plain statements, each linked to its
+  section) and its contents. Headings are the questions a reader brings, and what most readers skip is one click
+  away in a fold. Nothing was dropped to get there: every fact is still on its page or in a fold on it.
+  - **The guide** puts installing first. The install command is on the second screen where it was on the ninth
+    (on a phone the fourth, where it was the eleventh), and the update command is in *In one minute*. Its visible
+    text went from about 6,400 words to about 5,100 (about 7,100 with every fold open), its longest paragraph
+    from 444 words to 243, and no code line or table needs sideways scrolling on a phone.
+  - **The privacy page** answers at its top what people come for: what leaves your computer, what Anthropic
+    keeps, what is stored where, how to delete for good, what is encrypted, and who else can see what, each with
+    the limit that belongs to it. Every sentence of the page as it was is still there, word for word.
+  - **CONTRIBUTING.md** opens with a contributor's first hour: set up, run the checks, the rules that fail a pull
+    request, where things live (about 2,700 visible words where there were 4,100). **SECURITY.md** leads with how
+    to report, and **docs/releasing.md** with its five steps; no step changed.
+  - The spec, the deadline rules and the architecture page got a top each (what the page is for, six points, its
+    sections as links) and are otherwise as they were. The evaluation pages are unchanged.
+  - Two lists of what reaches Claude left out the secretary's note (the guide's and the privacy page's at-a-glance
+    row); both name it now, and a test reads the list from the privacy page's own table.
 - **The first minutes with Ordnung have fewer stumbles.** Someone followed the README from an empty computer, by
   the book, and what tripped them is fixed:
   - **No address that leads nowhere.** The README and the guide named `http://127.0.0.1:8765`, which only shows
