@@ -563,10 +563,11 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         # one process: these are the tests of locks held across processes, servers on real ports and child
         # processes killed mid-write, and their parallel runs were proven on Linux only (the whole job 3 to 6 minutes
-        # on macOS, 7 to 9 on Windows, 19 Nov 2026)
+        # on macOS, 7 to 9 on Windows, 19 Nov 2026). On Windows this step took 5.5 to 7.3 minutes, two thirds of it in
+        # the first 150 tests (24 and 25 Nov 2026): the 20 slowest, named at the end, show which, for a split of the job
         run: |
           if [ -d .venv/Scripts ]; then venv=.venv/Scripts; else venv=.venv/bin; fi
-          "$venv/python" -m pytest -m "not slow" tests/test_platform_smoke.py \
+          "$venv/python" -m pytest -m "not slow" --durations=20 tests/test_platform_smoke.py \
             tests/test_cli.py::test_the_lock_keeps_a_second_writer_out \
             tests/test_cli.py::test_the_lock_waits_up_to_its_timeout \
             tests/test_cli.py::test_a_lock_held_by_another_process_blocks_until_it_exits \

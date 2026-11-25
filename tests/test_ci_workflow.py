@@ -900,6 +900,7 @@ def test_the_other_systems_job_runs_the_tests_whose_subject_differs_per_system()
     named = step["run"].replace("\\\n", " ").split()
     for name in PER_SYSTEM_TESTS:
         assert name in named, name
+    assert "--durations=20" in named  # the job's long poles, on record in its log
     systems = re.fullmatch(
         r"\$\{\{ fromJSON\(github\.event_name == 'pull_request' && '(\[[^']*\])' \|\| '(\[[^']*\])'\) \}\}",
         job["strategy"]["matrix"]["os"],
