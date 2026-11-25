@@ -169,6 +169,27 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ### Fixed
 
+- **Accessibility, beyond what the automated scans see.** The app was gone through with the keyboard alone, with
+  what a screen reader is told, and with the settings people use to see better (zoom, larger text, high contrast,
+  reduced motion). What was found and could be fixed where it was is in the next four entries. Two larger gaps
+  are written up for a later version, not fixed: text set in fixed sizes doesn't grow with the browser's text
+  size (zoom does work), and the picture of a letter has no text alternative for its content.
+- **Windows high contrast keeps what was shown by colour alone.** Every focused control, the current page, the
+  selected tab, filled buttons, the on/off switches and the notice windows in the contracts chart stay visible.
+  Before, many Tab stops showed no focus mark at all: every sidebar link, the search field, the Inbox's filters
+  and rows.
+- **Keyboard focus stays where you are** after *Mark done*, *Not a real to-do* and its *Undo*, *Save*, a button
+  that is busy, a link to one contract, and a search result chosen on a phone. Before, focus fell back to the top
+  of the page. The arrow keys in *New letter* no longer scroll the chosen kind out of view.
+- **A screen reader is told what happened, once.** A search's count is said when it is true and not on every key;
+  the secretary's note is no longer read in fragments; *Read all* says one line and then what it found, a
+  possible scam included; an upload says which letter it filed or couldn't read. German quotes and German terms
+  in titles are read in German. Saving a draft letter says when a check now fails ("1 thing needs a look before
+  you send it"), not that everything is up to date.
+- **Room for the page at high zoom and on small screens.** At 400 % zoom the top bar, Ask's question box and a
+  drawer's header and footer no longer leave the content a slit; a phone turned sideways shows that the
+  sidebar's sections scroll; the calendar button and the demo badge stay on screen with wider text spacing or
+  larger text; the search field in the top bar has an edge you can see.
 - **Hand-off sync looks at a folder that answers again at the usual pace.** While the sync folder doesn't answer,
   Ordnung looks at it every three minutes instead of every 15 seconds. A save that went through showed the folder
   was back, but the next look still came up to three minutes later, so the other computer's change could wait
