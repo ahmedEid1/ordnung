@@ -68,6 +68,14 @@ jobs:
       - name: The committed web build is the one its sources make
         working-directory: web
         run: node scripts/source-hash.mjs --check ../src/ordnung/web/dist/build-info.json
+      # the hash above covers the sources only: the build is rebuilt (without install scripts, outside the
+      # checkout) and must equal the committed one byte for byte, so a bundle changed by hand never ships
+      - name: The committed web build is byte for byte the one its sources make
+        working-directory: web
+        run: |
+          npm ci --ignore-scripts
+          npx vite build --outDir "$RUNNER_TEMP/web" --emptyOutDir
+          diff -r "$RUNNER_TEMP/web" ../src/ordnung/web/dist
       - name: Build sdist and wheel
         run: uv build
       - name: The wheel carries the built web app and the demo

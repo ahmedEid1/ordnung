@@ -533,6 +533,12 @@ jobs:
       - name: Committed web build is up to date
         run: node scripts/source-hash.mjs --check ../src/ordnung/web/dist/build-info.json
       - run: npm run build
+      # the build is reproducible: the one just made must be the committed one byte for byte (the sources' hash
+      # above would pass a committed bundle changed by hand)
+      - name: The committed web build is byte for byte the one its sources make
+        run: |
+          git diff --exit-code --stat -- ../src/ordnung/web/dist
+          test -z "$(git status --porcelain -- ../src/ordnung/web/dist)"
 
   e2e:
     name: End-to-end (${{ matrix.group }}${{ matrix.group == 'layout' && format(' {0}/2', matrix.shard) || '' }})

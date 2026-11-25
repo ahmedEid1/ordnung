@@ -180,6 +180,26 @@ def test_the_build_checks_the_tag_the_branch_and_the_files_before_anything_is_pu
     assert all(upload["if-no-files-found"] == "error" for upload in uploads.values())
 
 
+def test_the_release_ships_only_the_web_build_its_sources_make() -> None:
+    """The sources' hash alone passes a committed bundle changed by hand: before ``uv build`` packs it, the web
+    app is rebuilt outside the checkout, without install scripts, and must equal the committed one byte for
+    byte."""
+    build = _jobs()["build"]
+    step = build["steps"][_step_index(build, "diff -r")]
+    assert step["working-directory"] == "web"
+    lines = [line.strip() for line in step["run"].splitlines() if line.strip()]
+    assert lines == [
+        "npm ci --ignore-scripts",
+        'npx vite build --outDir "$RUNNER_TEMP/web" --emptyOutDir',
+        'diff -r "$RUNNER_TEMP/web" ../src/ordnung/web/dist',
+    ]
+    assert (
+        _step_index(build, "source-hash.mjs --check")
+        < _step_index(build, "diff -r")
+        < _step_index(build, "uv build")
+    )
+
+
 def test_the_build_checks_the_files_as_ci_s_wheel_job_does_and_more() -> None:
     script = "\n".join(_runs(_jobs()["build"]))
     wheel = _jobs(ROOT / ".github/workflows/ci.yml")["wheel"]

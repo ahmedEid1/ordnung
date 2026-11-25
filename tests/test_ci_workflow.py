@@ -292,6 +292,17 @@ def test_the_frontend_job_has_room_for_a_slow_runner() -> None:
     assert "npm test" in _script(frontend)
 
 
+def test_the_frontend_job_fails_on_any_difference_from_the_committed_build() -> None:
+    """The sources' hash alone passes a committed bundle changed by hand: the build is reproducible, so the step
+    right after ``npm run build`` (which writes into the committed folder) fails on any changed, added or removed
+    file there."""
+    steps = _jobs()["frontend"]["steps"]
+    (built,) = [i for i, step in enumerate(steps) if step.get("run") == "npm run build"]
+    check = steps[built + 1]["run"]
+    assert "git diff --exit-code --stat -- ../src/ordnung/web/dist" in check
+    assert 'test -z "$(git status --porcelain -- ../src/ordnung/web/dist)"' in check
+
+
 def test_the_backend_legs_have_room_for_a_slow_runner() -> None:
     """The backend's legs on Python 3.11 to 3.14 run the tests in parallel processes, a file to each. Serial, the
     slowest leg's tests took 39 minutes with coverage (3.12, run 44310555051 of 18 November 2026), 26 without
