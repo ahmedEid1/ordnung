@@ -87,6 +87,7 @@ def test_discreet_counts_the_things_and_full_lists_each_with_amount_and_day() ->
     assert compose(week, "full") == Notification(
         "Ordnung · 2 things due this week",
         "Pay the parking fine €30 by Thu · Decide on FitWell membership: cancel by Thu",
+        private=True,  # it names to-dos and amounts: never on a command line
     )
 
 
@@ -383,7 +384,7 @@ def test_a_hostile_title_cannot_become_an_option_or_markup() -> None:
     )
     note = compose(week, "full")
     assert note is not None and not note.body.startswith("-")
-    argv, _env = command("notify-send", "/usr/bin/notify-send", note)
+    argv, _env = command("notify-send", "/usr/bin/notify-send", Notification(note.title, note.body))
     assert argv[:3] == ["/usr/bin/notify-send", "--app-name=Ordnung", "--"]
     assert "<a href" not in argv[-1] and "&lt;a href" in argv[-1] and "&amp;" in argv[-1]
 
@@ -408,20 +409,55 @@ def test_detect_per_system() -> None:
     assert detect("win32", which_of("pwsh")) is None  # PowerShell 7 can't load the toast API
 
 
-def test_osascript_gets_the_texts_as_arguments_of_a_fixed_script() -> None:
+def test_osascript_gets_the_texts_in_the_environment_of_a_fixed_script() -> None:
     argv, env = command("osascript", "/usr/bin/osascript", NOTE)
-    assert argv == [
-        "/usr/bin/osascript",
-        "-e",
-        "on run argv",
-        "-e",
-        "display notification (item 2 of argv) with title (item 1 of argv)",
-        "-e",
-        "end run",
-        NOTE.title,
-        NOTE.body,
-    ]
-    assert env == {}
+    assert argv == ["/usr/bin/osascript", *(arg for line in desktop._OSASCRIPT for arg in ("-e", line))]
+    assert 'objectForKey:"ORDNUNG_NOTIFY_BODY"' in " ".join(argv)
+    assert env == {"ORDNUNG_NOTIFY_TITLE": NOTE.title, "ORDNUNG_NOTIFY_BODY": NOTE.body}
+
+
+PRIVATE = Notification(
+    "Ordnung · 1 due today", "Pay the parking fine €30 to Stadt Musterstadt — today", private=True
+)
+
+
+def test_no_note_text_on_any_command_line() -> None:
+    """Every account on the computer can read a process's command line: a *Full* note's to-dos, amounts
+    and names are never on it (a process's environment is private to its owner). On Linux only the
+    title — the count, as *Discreet* shows it — is, when the notification service isn't reachable."""
+    for mechanism, path in (
+        ("notify-send", "/usr/bin/notify-send"),
+        ("osascript", "/usr/bin/osascript"),
+        ("powershell", "C:/Windows/powershell.exe"),
+    ):
+        argv, _env = command(mechanism, path, PRIVATE)  # type: ignore[arg-type]
+        assert not any("parking fine" in arg or "€30" in arg or "Musterstadt" in arg for arg in argv), (
+            mechanism
+        )
+        if mechanism != "notify-send":
+            assert PRIVATE.title not in argv, mechanism
+    assert command("notify-send", "/usr/bin/notify-send", PRIVATE)[0][-1] == PRIVATE.title
+
+
+def test_a_private_note_goes_over_the_session_bus_on_linux() -> None:
+    shown: list[Notification] = []
+
+    def bus(note: Notification) -> str | None:
+        shown.append(note)
+        return None
+
+    run = FakeRun()
+    assert send(PRIVATE, system="linux", which=which_of("notify-send"), run=run, bus=bus) == SendResult(
+        sent=True, mechanism="notify-send"
+    )
+    assert shown == [PRIVATE] and run.calls == []
+    # the bus can't be reached: notify-send shows the count only
+    result = send(PRIVATE, system="linux", which=which_of("notify-send"), run=run, bus=lambda note: "no bus")
+    assert result.sent and run.calls[0]["argv"][-1] == PRIVATE.title
+    # a discreet note never needs the bus
+    run = FakeRun()
+    assert send(NOTE, system="linux", which=which_of("notify-send"), run=run, bus=bus).sent
+    assert len(shown) == 1 and run.calls[0]["argv"][-1] == NOTE.body
 
 
 def test_powershell_gets_the_texts_in_the_environment_of_a_fixed_script() -> None:
@@ -744,3 +780,41 @@ async def test_a_broken_notifier_never_breaks_the_tick(store: Store) -> None:
     )
     result = await tick.check()
     assert result.day_changed and result.desktop is None
+
+
+def test_the_session_bus_call_carries_the_texts(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``Notify`` on ``org.freedesktop.Notifications``, the body escaped as notify-send's is; an
+    unreachable bus is a reason, never an exception."""
+    from jeepney import HeaderFields, MessageType
+    from jeepney.io import blocking
+
+    sent: list[Any] = []
+
+    class Reply:
+        class header:
+            message_type = MessageType.method_return
+
+    class Connection:
+        def __enter__(self) -> Connection:
+            return self
+
+        def __exit__(self, *exc: object) -> None:
+            return None
+
+        def send_and_get_reply(self, message: Any, *, timeout: float) -> Any:
+            sent.append((message, timeout))
+            return Reply
+
+    monkeypatch.setattr(blocking, "open_dbus_connection", lambda bus: Connection())
+    note = Notification("Ordnung · 1 due today", "Pay <b>€30</b> & more", private=True)
+    assert desktop._session_bus_notify(note) is None
+    ((message, timeout),) = sent
+    assert message.header.fields[HeaderFields.member] == "Notify"
+    assert message.body == ("Ordnung", 0, "", note.title, "Pay &lt;b&gt;€30&lt;/b&gt; &amp; more", [], {}, -1)
+    assert timeout == desktop.SEND_TIMEOUT_S
+
+    def unreachable(bus: str) -> Any:
+        raise KeyError("DBUS_SESSION_BUS_ADDRESS")
+
+    monkeypatch.setattr(blocking, "open_dbus_connection", unreachable)
+    assert "couldn't be reached" in (desktop._session_bus_notify(note) or "")

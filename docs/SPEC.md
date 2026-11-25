@@ -1417,9 +1417,10 @@ are in their docstrings):
   local day at the chosen time (the tick wakes up for it), or a minute after start-up when Ordnung
   wasn't running then; a notification the system couldn't show is tried again at the next checks
   (3 a day at most) and the last failure is shown in Settings; a missing tool uses the day up;
-  never in the demo. Shown with `notify-send`, `osascript` (fixed script, texts as arguments) or a
-  Windows PowerShell toast (fixed script, texts in environment variables) — argument lists, never a
-  shell; a missing tool or an error breaks nothing. A tool that took it counts as *sent to the
+  never in the demo. Shown with `notify-send`, `osascript` (fixed script, texts in environment
+  variables) or a Windows PowerShell toast (fixed script, texts in environment variables) — argument
+  lists, never a shell; a *full* note's texts are never arguments (on Linux it goes over the session
+  bus, else `notify-send` gets only its count); a missing tool or an error breaks nothing. A tool that took it counts as *sent to the
   system* (the activity log says so): the system may still keep it back (macOS without permission
   for Script Editor, Focus, Do not disturb), so the test's toast and the card say where to look
   per system. Settings shows today's text in both modes and can show a test notification (it

@@ -32,8 +32,12 @@ Written policy (ADR 0007):
   due, no notification — and the day is done. The demo never notifies on its own.
 * **How.** The system's own tool, no new dependency and never through a shell: ``notify-send``
   (Linux and other Unix desktops; the text's ``& < >`` escaped, as the notification servers read
-  markup), ``osascript`` (macOS; a fixed script, the texts as its arguments) and Windows
-  PowerShell's toast API (a fixed script, the texts in environment variables). A missing tool, an
+  markup), ``osascript`` (macOS; a fixed script that reads the texts from environment variables) and
+  Windows PowerShell's toast API (a fixed script, the texts in environment variables). A *Full* note's
+  texts never go on a command line, which every account on the computer can read: on Linux it goes to
+  the desktop's notification service over the session bus (D-Bus, with jeepney, which ``keyring``
+  already brings), and when that can't be reached ``notify-send`` gets only its title (the count, as
+  *Discreet* shows it); a process's environment is private to its owner. A missing tool, an
   error or no answer within :data:`SEND_TIMEOUT_S` seconds shows nothing and breaks nothing — the
   result says why, and the person's other reminders (the calendar file's alarms) are unaffected.
   A tool that took the notification is all Ordnung can know: the system may still keep it back
@@ -101,7 +105,15 @@ $xml.LoadXml("<toast><visual><binding template='ToastGeneric'><text>$title</text
 $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
 [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{POWERSHELL_APP_ID}').Show($toast)
 """
-_OSASCRIPT = ("on run argv", "display notification (item 2 of argv) with title (item 1 of argv)", "end run")
+#: AppleScript reads the texts from the environment with Foundation (UTF-8, as Python wrote them).
+_OSASCRIPT = (
+    'use framework "Foundation"',
+    "use scripting additions",
+    "set env to current application's NSProcessInfo's processInfo()'s environment()",
+    f'set theTitle to (env\'s objectForKey:"{TITLE_ENV}") as text',
+    f'set theBody to (env\'s objectForKey:"{BODY_ENV}") as text',
+    "display notification theBody with title theTitle",
+)
 # C0/C1 controls and bidirectional overrides: a letter's words must not reorder or hide the text
 _CONTROL_RE = re.compile("[\x00-\x1f\x7f-\x9f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]")
 _TIME_RE = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
@@ -119,10 +131,11 @@ MISSING_TOOL: dict[SystemKind, str] = {
 
 @dataclass(frozen=True)
 class Notification:
-    """What the notification says."""
+    """What the notification says; ``private`` when its body names to-dos, amounts or people (*Full*)."""
 
     title: str
     body: str
+    private: bool = False
 
 
 @dataclass(frozen=True)
@@ -282,7 +295,7 @@ def _compose(things: Sequence[_Thing], mode: Mode) -> Notification | None:
     more = len(things) - len(listed)
     if more:
         listed.append(f"and {more} more")
-    return Notification(title=f"{APP_NAME} · {count}", body=" · ".join(listed))
+    return Notification(title=f"{APP_NAME} · {count}", body=" · ".join(listed), private=True)
 
 
 def compose(agenda: Agenda, mode: Mode, times: Mapping[str, str] | None = None) -> Notification | None:
@@ -363,13 +376,16 @@ def detect(
 
 
 def command(mechanism: Mechanism, path: str, note: Notification) -> tuple[list[str], dict[str, str]]:
-    """The argument list (never a shell line) and extra environment that show ``note``."""
+    """The argument list (never a shell line) and extra environment that show ``note``. A private note's
+    body is never an argument (module policy): ``notify-send`` then gets only the title."""
     if mechanism == "notify-send":
+        if note.private:
+            return [path, f"--app-name={APP_NAME}", "--", note.title], {}
         body = html.escape(note.body, quote=False)
         return [path, f"--app-name={APP_NAME}", "--", note.title, body], {}
     if mechanism == "osascript":
         script = [arg for line in _OSASCRIPT for arg in ("-e", line)]
-        return [path, *script, note.title, note.body], {}
+        return [path, *script], {TITLE_ENV: note.title, BODY_ENV: note.body}
     encoded = base64.b64encode(_TOAST_SCRIPT.encode("utf-16-le")).decode("ascii")
     argv = [path, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encoded]
     return argv, {TITLE_ENV: note.title, BODY_ENV: note.body}
@@ -384,12 +400,16 @@ def send(
     system: str | None = None,
     which: Callable[[str], str | None] | None = None,
     run: Runner | None = None,
+    bus: Callable[[Notification], str | None] | None = None,
 ) -> SendResult:
-    """Show ``note`` with the system's tool (module policy); never raises."""
+    """Show ``note`` with the system's tool (module policy); never raises. ``bus`` shows a private note on
+    Linux (:func:`_session_bus_notify`)."""
     found = detect(system, which)
     if found is None:
         return SendResult(sent=False, mechanism=None, detail=MISSING_TOOL[system_kind(system)])
     mechanism, path = found
+    if mechanism == "notify-send" and note.private and (bus or _session_bus_notify)(note) is None:
+        return SendResult(sent=True, mechanism=mechanism)
     argv, extra = command(mechanism, path, note)
     run = run or subprocess.run
     try:
@@ -415,6 +435,33 @@ def send(
     if code != 0:
         return SendResult(sent=False, mechanism=mechanism, detail=f"{mechanism} failed (exit code {code}).")
     return SendResult(sent=True, mechanism=mechanism)
+
+
+def _session_bus_notify(note: Notification) -> str | None:
+    """Show ``note`` through the desktop's notification service on the session bus
+    (``org.freedesktop.Notifications.Notify``): ``None`` when the service took it, else why not."""
+    try:
+        from jeepney import DBusAddress, MessageType, new_method_call
+        from jeepney.io.blocking import open_dbus_connection
+    except ImportError:
+        return "jeepney isn't installed"
+    address = DBusAddress(
+        "/org/freedesktop/Notifications",
+        bus_name="org.freedesktop.Notifications",
+        interface="org.freedesktop.Notifications",
+    )
+    body = html.escape(note.body, quote=False)
+    message = new_method_call(
+        address, "Notify", "susssasa{sv}i", (APP_NAME, 0, "", note.title, body, [], {}, -1)
+    )
+    try:
+        with open_dbus_connection(bus="SESSION") as connection:
+            reply = connection.send_and_get_reply(message, timeout=SEND_TIMEOUT_S)
+    except Exception as exc:  # no session bus, no service, no answer in time
+        return f"the notification service couldn't be reached ({type(exc).__name__})"
+    if reply.header.message_type == MessageType.error:
+        return "the notification service refused it"
+    return None
 
 
 # --------------------------------------------------------------------------------------------------
