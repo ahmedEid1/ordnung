@@ -801,8 +801,8 @@ class Ledger:
 
     def followup_item(self, draft: Draft) -> Item | None:
         """The follow-up to-do created when the letter was marked as sent (``None`` once deleted)."""
-        wanted = followup_item_id(draft.id)
-        return next((item for item in self.items if item.id == wanted), None)
+        # found by id: a walk over every to-do for each sent letter grew with the square of the archive
+        return self._items_by_id.get(followup_item_id(draft.id))
 
     def letter_after(
         self, case_id: str | None, since: date, *, exclude: str | None = None, contract_id: str | None = None

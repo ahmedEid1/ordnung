@@ -185,6 +185,27 @@ async def test_closing_the_follow_up_closes_the_entry(ctx: AppContext, gym: Gym)
     assert _entries(ctx) == []
 
 
+async def test_a_closed_letter_s_answer_is_not_looked_for(
+    ctx: AppContext, gym: Gym, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Looking for an answer walks every letter, so for years of sent letters, nearly all closed, the open list
+    looked through the archive once per letter only to leave the entry out; it looks only for the open ones."""
+    letter = await helpers_proof.sent_letter(ctx, gym)
+    looked: list[str | None] = []
+    original = Ledger.letter_after
+
+    def counted(self: Ledger, case_id: str | None, *args: object, **kwargs: object) -> object:
+        looked.append(case_id)
+        return original(self, case_id, *args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(Ledger, "letter_after", counted)
+    assert _only(ctx).status == "overdue" and len(looked) == 1
+    ctx.store.update_item(followup_item_id(letter.id), status="done")
+    looked.clear()
+    assert _entries(ctx) == [] and looked == []
+    assert [entry.status for entry in _entries(ctx, include_closed=True)] == ["closed"] and len(looked) == 1
+
+
 async def test_answered_in_the_persons_words_closes_the_entry_and_undo_reopens_it(
     ctx: AppContext, gym: Gym
 ) -> None:
