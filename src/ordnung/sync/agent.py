@@ -60,8 +60,8 @@ delete or replace an open file).
 **Never raises out of the loop.** Every failure becomes a :class:`~ordnung.sync.status.SyncProblem`
 (logged with codes and counts only — never the passphrase, a letter's name or a path inside
 ``files/``), and the server keeps working. While the folder doesn't answer (``folder_unreachable``)
-it is looked at every :data:`~ordnung.sync.UNREACHABLE_SCAN_S`, until a look or a save shows that it
-answers again. A waiting take-over gives up after :data:`~ordnung.sync.TAKE_OVER_WAIT_MAX_S`, or
+it is looked at every :data:`~ordnung.sync.UNREACHABLE_SCAN_S`, until a look answers or a save goes
+through. A waiting take-over gives up after :data:`~ordnung.sync.TAKE_OVER_WAIT_MAX_S`, or
 when the computer it waits for saves a new change of the person's, and says why.
 
 Until the engine is part of this installation (``ordnung.sync.engine`` can't be imported), sync is
@@ -1296,10 +1296,11 @@ class SyncAgent:
         self._retry_at = 0.0
         if self.problem is not None and self.problem.code in (*_SAVE_PROBLEMS, "folder_unreachable"):
             self.problem = None
-        # the folder took a save, so it answers: the next look comes at the usual pace, not where the slow pace
-        # of a folder that doesn't answer had put it, up to UNREACHABLE_SCAN_S away (after any save that went
-        # through, not only one that cleared "doesn't answer": a failed save may have put its own problem in
-        # that one's place since the slow look). At the usual pace already, this changes nothing
+        # a save that went through cleared "doesn't answer" above: the next look comes at the usual pace, not
+        # where the slow pace had put it, up to UNREACHABLE_SCAN_S away (after any save that went through, not
+        # only one that cleared "doesn't answer": a failed save may have put its own problem in that one's place
+        # since the slow look). A save with nothing new to write asked the folder nothing: this look finds out,
+        # and puts the slow pace back if the folder still hangs. At the usual pace already, this changes nothing
         self._next_scan = min(self._next_scan, time.monotonic() + self._look_again_in())
         if self._last_change is None or self._last_change <= started:
             self._dirty_since = self._last_change = self._person_since = None
