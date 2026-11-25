@@ -260,11 +260,18 @@ export function LetterView({ draft }: { draft: Draft }) {
       setBodyEdited(false);
       toast.success("Translation updated", { description: "The English text now matches your letter." });
     } catch (err) {
-      const demo = err instanceof ApiError && (err.status === 409 || err.isStaticDemo);
+      if (!(err instanceof ApiError)) {
+        // a bug in the code around the request, perhaps after the translation was saved: reported, and never told
+        // as a failed translation (the words are those of any other save's bug)
+        reportError(err);
+        toast({ tone: "danger", title: "Something went wrong", description: err instanceof Error ? err.message : undefined });
+        return;
+      }
+      const demo = err.status === 409 || err.isStaticDemo;
       toast({
         tone: demo ? "info" : "danger",
         title: demo ? "Not available in the demo" : "Couldn't translate the letter",
-        description: err instanceof ApiError ? plainText(err.message) : "Please try again in a moment.",
+        description: plainText(err.message),
       });
     }
   }, [draft.id, save, translate]);

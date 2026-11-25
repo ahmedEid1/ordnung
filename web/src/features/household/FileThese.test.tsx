@@ -122,6 +122,31 @@ describe("File these N", () => {
     expect(button).toHaveFocus();
   });
 
+  it("a bug after filing (not a failed request) is reported once, and never told as a part filed", async () => {
+    const reported: unknown[] = [];
+    const onError = (e: ErrorEvent) => {
+      e.preventDefault();
+      reported.push(e.error);
+    };
+    window.addEventListener("error", onError);
+    try {
+      renderCard(
+        LETTERS,
+        vi.fn(() => {
+          throw new TypeError("a bug in moving focus on");
+        }),
+      );
+      await userEvent.setup().click(screen.getByRole("button", { name: "File these 2 for Alex Rivera" }));
+      await waitFor(() => expect(reported).toHaveLength(1));
+      expect(reported[0]).toBeInstanceOf(TypeError);
+      expect(filings).toEqual([{ doc_a: ALEX, doc_b: ALEX }]);
+      expect(screen.queryByText(/^Filed \d+ of /)).toBeNull();
+      expect(screen.queryByText(/^Couldn't /)).toBeNull();
+    } finally {
+      window.removeEventListener("error", onError);
+    }
+  });
+
   it("says “Filed 1 letter” for one", async () => {
     renderCard(LETTERS.slice(1));
     await userEvent.setup().click(screen.getByRole("button", { name: "File it for Alex Rivera" }));

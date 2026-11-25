@@ -11,6 +11,7 @@
 import { Link } from "react-router";
 import { User, UserCheck } from "lucide-react";
 import type { Household, HouseholdPerson, ListedLetter, Party } from "@/api/types";
+import { ignoreFailedRequest } from "@/api/client";
 import { filedBeforeFailure, useFileLetters } from "@/api/hooks";
 import { protectRefs } from "@/lib/glue";
 import { plural } from "@/lib/utils";
@@ -68,8 +69,9 @@ export function FileThese({
         onFiled?.();
       })
       .catch((err: unknown) => {
-        // the request's own error toast says what went wrong; more than 1,000 letters go in parts, and the parts
-        // filed before one failed stay filed: say so, with their Undo
+        // a bug (not a failed request) is reported; the request's own error toast says what went wrong. More than
+        // 1,000 letters go in parts, and the parts filed before one failed stay filed: say so, with their Undo
+        ignoreFailedRequest(err);
         const filed = filedBeforeFailure(err);
         if (filed.length) {
           toast.warn(`Filed ${filed.length} of ${plural(n, "letter")} for ${member.name}`, { description: "The others weren't filed.", ...undo(filed) });
