@@ -229,13 +229,13 @@ def _explain(exc: Exception) -> tuple[str, str | None]:
     from ordnung.demo import DemoError
     from ordnung.ingest.extract import ExtractionError
     from ordnung.ingest.intake import IntakeError
-    from ordnung.llm.base import LLMError
+    from ordnung.llm.base import CHECK_CLAUDE, LLMError
     from ordnung.locking import DataDirLocked
 
     if isinstance(exc, DataDirLocked):
         return str(exc), "If Ordnung's web app is running for this folder, use it — or stop it first."
     if isinstance(exc, LLMError):
-        return str(exc), "Run `ordnung doctor` to check Claude."
+        return str(exc), CHECK_CLAUDE
     if isinstance(exc, SchemaError):
         return str(exc), SCHEMA_HINT
     if isinstance(exc, DemoError | IntakeError | ExtractionError | ApiError | BackupError):
@@ -1093,7 +1093,9 @@ def add(
         else:
             read = _add_in_process(paths, files, combine=combine, private=private)
     if not read:
-        raise _fail("Not every letter was read (see above).", hint="Run `ordnung doctor` to check Claude.")
+        from ordnung.llm.base import CHECK_CLAUDE
+
+        raise _fail("Not every letter was read (see above).", hint=CHECK_CLAUDE)
 
 
 # --------------------------------------------------------------------------------------------------

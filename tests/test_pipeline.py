@@ -1137,3 +1137,18 @@ async def test_a_confirmed_to_do_is_never_listed_as_unsure_in_the_please_check_i
         ]
         assert ideas and "came back incomplete" not in ideas[0].body
         assert check.id not in {ref.id for ref in ideas[0].refs}
+
+
+def test_a_claude_that_ends_without_an_answer_says_how_to_check_it() -> None:
+    """A broken ``claude`` fails every letter the same way, and the letter's own "Try again" can't help: the
+    message says how to check Claude (``ordnung doctor``; the letter's page adds Settings → Claude connection).
+    Other failures keep their own words."""
+    from ordnung.ingest.pipeline import describe_error
+    from ordnung.llm.base import CHECK_CLAUDE, ClaudeExited, ClaudeTimeout
+
+    assert describe_error(ClaudeExited("Claude exited without an answer")) == (
+        f"Claude exited without an answer. {CHECK_CLAUDE}"
+    )
+    assert describe_error(ClaudeExited("Segmentation fault.")) == f"Segmentation fault. {CHECK_CLAUDE}"
+    assert CHECK_CLAUDE == "Run `ordnung doctor` to check Claude."
+    assert describe_error(ClaudeTimeout("Claude took too long.")) == "Claude took too long."
