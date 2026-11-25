@@ -10,22 +10,26 @@
   text is somebody's reading of the picture, not the letter's own text: the page counts as having no
   text layer and is read from its image like a photo (so its values are compared with the paper, ADR
   0012), and the OCR text is neither the page text nor reported as hidden: it is returned apart, as
-  :attr:`PdfText.scan_text`, for search only (ADR 0020). Text that puts no ink on the page counts as
-  hidden too, however it is hidden (covered by a shape or an image, drawn fully transparent, clipped
-  away, in an optional layer that is off, black on black …), and so does text that shows only a sliver
-  of itself: PDFium renders each page as it is and with its text objects removed, which shows the ink
-  text leaves on the page, and the page's text alone, on white (and on black where text shows more on
-  the page than on white: light text on a dark ground), which is the ink each glyph draws by itself. A
-  character shows when at least :data:`INK_SHARE` of its own ink shows in its box, and a letter or
-  digit only when its own ink also spans that share of its glyph's box (so a clip leaves no strip of it
-  either). Where another text object can paint in a character's box too (a visible line drawn over the
-  cover of a hidden one), the character is judged by its own text object alone: the page and its text
-  alone are rendered once more without just that object, or without a batch of objects that can't
-  paint in each other's characters' boxes (:func:`_page_chars`). The two readers' characters are
-  matched (the same character within a fraction of its size) in pdfplumber's space, whatever the
-  page's ``/Rotate`` and MediaBox (:func:`_in_page_space`). A letter or digit of the text layer that
-  PDFium draws nowhere near is hidden text too; a page with more than :data:`MAX_UNMATCHED_CHARS` of
-  them, or one PDFium can't check, is read from its image like a photo: its text layer is not trusted.
+  :attr:`PdfText.scan_text`, for search only (ADR 0020). Text that puts no ink of its own on the page
+  counts as hidden too (covered by a shape or an image, drawn fully transparent, clipped away, in an
+  optional layer that is off, black on black …: the constructions ``tests/test_text.py``'s ``NO_INK``
+  holds), and so does text that shows only a sliver of itself: PDFium renders each page as it is and
+  with its text objects removed, which shows the ink text leaves on the page, and the page's text
+  alone, on white (and on black where text shows more on the page than on white: light text on a dark
+  ground), which is the ink each glyph draws by itself. A character shows when at least
+  :data:`INK_SHARE` of its own ink shows in its box, and a letter or digit only when its own ink also
+  spans that share of its glyph's box (so a clip leaves no strip of it either). Where another text
+  object can paint in a character's box too (a visible line drawn over the cover of a hidden one), the
+  character is judged by its own text object alone: the page and its text alone are rendered once more
+  without just that object, or without a batch of objects that can't paint in each other's characters'
+  boxes (:func:`_page_chars`). The two readers' characters are matched (the same character within a
+  fraction of its size) in pdfplumber's space, whatever the page's ``/Rotate`` and MediaBox
+  (:func:`_in_page_space`). A letter or digit of the text layer that PDFium draws nowhere near is
+  hidden text too; a page with more than :data:`MAX_UNMATCHED_CHARS` of them, or one PDFium can't
+  check, is read from its image like a photo: its text layer is not trusted. This check is one layer,
+  not a guarantee: it compares renders, so a sender who works at it can still draw text nobody sees
+  that it counts as shown, and it never compares what a glyph shows with the character the text layer
+  reads for it.
   The text layer is read with a pdfminer document that gives up after :data:`MAX_REFERENCE_LOOKUPS`
   lookups answering with another reference: an object that refers to itself (``5 0 obj 5 0 R
   endobj``, in the document information, a page's contents or resources …) would otherwise be resolved
@@ -38,8 +42,8 @@
   a huge one-line file costs linear time. Text an HTML e-mail certainly hides from every reader
   (``display:none``, a tiny font, text the colour of its background …) is kept out of the text and
   reported as hidden; the short policy that decides it is in :func:`~ordnung.ingest.email_text.html_to_text`.
-  So is an e-mail's plain part when it names an IBAN or amount its HTML part (what mail programs show)
-  doesn't show: the HTML part's visible text is read instead.
+  So is an e-mail's plain part when it names an IBAN or amount one of its HTML parts (what mail programs
+  show) doesn't show: the last HTML part's visible text is read instead.
 * **Prompt helpers** — ``page_delimited`` for the extraction prompt and ``detect_injection_phrases``.
 """
 
