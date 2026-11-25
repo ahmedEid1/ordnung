@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import bisect
 import email
 import email.parser
 import email.policy
@@ -60,9 +59,10 @@ def _email_body(message: EmailMessage) -> tuple[str, str]:
     plain part is empty (mail clients show the HTML part then, so its sender never notices).
 
     Mail programs show the HTML part of an e-mail that has both, so a plain part could name another
-    IBAN or amount than the person read: a line of the plain part with an IBAN or amount that the HTML
-    part doesn't show is left out of the text and reported as hidden (:func:`_unshown_lines`), a scam
-    sign, never text a value is grounded in."""
+    IBAN or amount than the person read. A plain part that names an IBAN or amount the HTML part
+    doesn't show (:func:`_names_unshown`) is not read: all of it is reported as hidden text, a scam
+    sign, never text a value is grounded in, and the HTML part's visible text is read instead, as the
+    person's mail program shows it."""
     part = message.get_body(preferencelist=("plain", "html"))
     if part is None:
         return "", ""
@@ -76,47 +76,30 @@ def _email_body(message: EmailMessage) -> tuple[str, str]:
         return html_to_text(content)
     if html is None:
         return content, ""
-    shown, _ = html_to_text(_part_text(html))
-    return _unshown_lines(content, shown)
+    shown, hidden = html_to_text(_part_text(html))
+    if _names_unshown(content, shown):
+        return shown, "\n\n".join(part for part in (content.strip(), hidden) if part)
+    return content, ""
 
 
 #: Words as the GiroCode gate reads a printed IBAN: runs of letters and digits, whatever stands between.
 _WORDS = re.compile(r"[^\W_]+")
 
 
-def _unshown_lines(plain: str, shown: str) -> tuple[str, str]:
-    """``plain`` without the lines that name an IBAN or amount ``shown`` (the HTML part's visible text)
-    doesn't, and those lines apart (as hidden text).
+def _names_unshown(plain: str, shown: str) -> bool:
+    """Whether ``plain`` names an IBAN or amount ``shown`` (the HTML part's visible text) doesn't.
 
-    Both are found with what grounds a value on the text: an IBAN is any valid IBAN that a run of whole
-    words spells (dashes, tabs, line breaks or anything else between its groups, as the GiroCode gate
-    joins them), and counts as shown when the HTML part's letters and digits hold it; an amount is what
+    Both are read the way a value is grounded on the text, in one pass each: an IBAN is any valid IBAN
+    that a run of whole words spells (dashes, tabs, line breaks or anything else between its groups, as
+    the GiroCode gate joins them, :func:`_ibans`), on both sides; an amount is what
     :func:`~ordnung.ingest.amounts.amount_matches` reads (``1.200 EUR``, ``99,- €`` included), and counts
-    as shown only as the same amount. A value spread over lines takes all of them out. What is left is
-    checked again, since taking a line out can join the lines around it into a new value."""
-    seen = "".join(_WORDS.findall(fold_punctuation(shown).upper()))
+    as shown only as the same amount."""
+    plain, shown = fold_punctuation(plain), fold_punctuation(shown)
+    seen = {iban for iban, _, _ in _ibans(shown)}
+    if any(iban not in seen for iban, _, _ in _ibans(plain)):
+        return True
     seen_amounts = {match.value for match in amount_matches(shown)}
-    lines = [fold_punctuation(line) for line in plain.splitlines(keepends=True)]
-    originals = plain.splitlines(keepends=True)
-    kept = list(range(len(lines)))
-    unshown: set[int] = set()
-    while True:
-        text = "".join(lines[index] for index in kept)
-        starts = list(itertools.accumulate((len(lines[index]) for index in kept), initial=0))
-        spans = [(start, end) for iban, start, end in _ibans(text) if iban not in seen]
-        spans += [(m.start, m.end) for m in amount_matches(text) if m.value not in seen_amounts]
-        out = {
-            kept[position]
-            for start, end in spans
-            for position in range(bisect.bisect_right(starts, start) - 1, bisect.bisect_left(starts, end))
-        }
-        if not out:
-            break
-        unshown |= out
-        kept = [index for index in kept if index not in out]
-    return "".join(originals[index] for index in kept), "".join(
-        originals[index] for index in sorted(unshown)
-    ).strip()
+    return any(match.value not in seen_amounts for match in amount_matches(plain))
 
 
 def _ibans(text: str) -> Iterator[tuple[str, int, int]]:

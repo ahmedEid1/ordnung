@@ -746,7 +746,8 @@ you set up before: a copy kept somewhere else, and an encrypted disk.
   far off-screen boxes, text in its own inline background colour, simple hiding classes) is kept from
   the model like hidden text in PDFs. When that isn't certain (media queries, Outlook-only parts,
   responsive and dark-mode copies, stylesheet colours) the text stays visible and the other defences
-  apply; see [ADR 0007](decisions/0007-short-written-policies-over-growing-heuristics.md).
+  apply. An e-mail whose plain-text version names an IBAN or amount its HTML version doesn't show is read
+  from the HTML version, and its plain text counts as hidden text; see [ADR 0007](decisions/0007-short-written-policies-over-growing-heuristics.md).
 - Uploads are checked before anything decodes them: PDFs whose compressed streams expand too far (an
   edit-protected PDF's measured decrypted), photos with too many pixels and texts over 60 pages are
   refused, so a hostile file can't exhaust your computer's memory or keep the check busy for minutes. A PDF whose protection or structure

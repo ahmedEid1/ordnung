@@ -558,17 +558,45 @@ def _alternatives(plain: str, html: str) -> bytes:
     ],
 )
 def test_alternatives_that_name_different_ibans_are_a_scam_sign(plain_line: str, html_line: str) -> None:
-    """Adversarial: the plain part Ordnung reads names another IBAN or amount than the HTML part the
-    person's mail program shows. That line is hidden text (a scam sign), never text a value is grounded
-    in; the rest of the plain part is read as before."""
-    document = text_document(
-        _alternatives(
-            f"Sehr geehrte Frau Rivera,\n{plain_line}\nMit freundlichen Grüßen\n", f"<p>{html_line}</p>"
-        ),
-        "message/rfc822",
-    )
+    """Adversarial: the plain part names another IBAN or amount than the HTML part the person's mail
+    program shows. The plain part is hidden text (a scam sign), never text a value is grounded in; the
+    HTML part's visible text is read instead, as the mail program shows it."""
+    plain = f"Sehr geehrte Frau Rivera,\n{plain_line}\nMit freundlichen Grüßen\n"
+    document = text_document(_alternatives(plain, f"<p>{html_line}</p>"), "message/rfc822")
     assert plain_line not in document.text and plain_line in document.hidden_text
+    assert html_line in document.text
     assert "Sehr geehrte Frau Rivera," in document.text and "Mit freundlichen Grüßen" in document.text
+
+
+@pytest.mark.parametrize(
+    "shown", [f"X{SHOWN_IBAN}", f"Referenz 4711{SHOWN_IBAN}"], ids=["run-into-a-word", "inside-a-reference"]
+)
+def test_an_iban_the_html_part_shows_only_inside_another_word_is_not_shown(shown: str) -> None:
+    """An IBAN counts as shown only as the GiroCode gate reads a printed one, from the start of a word:
+    the same letters and digits run into a neighbouring word don't show it."""
+    plain = f"Bitte überweisen Sie auf IBAN {SHOWN_IBAN}.\n"
+    document = text_document(_alternatives(plain, f"<p>{shown}</p>"), "message/rfc822")
+    assert f"IBAN {SHOWN_IBAN}" in document.hidden_text and f"IBAN {SHOWN_IBAN}" not in document.text
+
+
+def _joinable_lines(count: int) -> str:
+    """An e-mail whose plain part has a currency word followed by ``count`` lines of bare whole numbers:
+    taking out one line that reads as an amount puts the next number beside the currency."""
+    plain = "Sehr geehrte Frau Rivera,\nEUR\n" + "".join(f"{100 + n % 800}\n" for n in range(count))
+    return _alternatives(plain, "<p>Ihre Rechnung finden Sie im Kundenportal.</p>").decode()
+
+
+def test_a_plain_part_with_many_joinable_lines_is_hidden_at_once() -> None:
+    document = text_document(_joinable_lines(2000).encode(), "message/rfc822")
+    assert "Kundenportal" in document.text and "EUR" in document.hidden_text and "EUR" not in document.text
+
+
+@pytest.mark.slow  # times its own growth (helpers_timing): a wall-clock ratio
+def test_comparing_the_two_parts_takes_linear_time() -> None:
+    """Point 6 for the plain part: a stranger's e-mail is compared at upload and at every page render,
+    so the comparison reads each part once, never once per line it takes out (a chain of joinable lines
+    took 13 s at 20 KB)."""
+    assert_linear(_joinable_lines, 2000, lambda data: text_document(data.encode(), "message/rfc822"))
 
 
 def test_alternatives_that_name_the_same_values_are_read_as_before() -> None:
