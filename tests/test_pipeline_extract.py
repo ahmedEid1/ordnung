@@ -459,6 +459,19 @@ def test_control_and_bidi_characters_never_reach_a_title() -> None:
     assert reading.items[0].quote == _STATEMENT["items"][0]["quote"]
 
 
+def test_unicode_line_separators_and_invisible_spaces_never_reach_a_title() -> None:
+    """U+2028 and U+2029 break a line like a line break: a title stays one line, a long field keeps the
+    line as a line break. Invisible spaces (zero width space, word joiner, byte order mark) go."""
+    dirty = {
+        **_STATEMENT,
+        "title": "Ihre\u2028Neben\u200bkosten\u2029abrechnung\ufeff",
+        "summary": "Line one\u2028line two\u2029line\u2060three",
+    }
+    reading = parse_extraction(dirty, "")
+    assert reading.title == "Ihre Nebenkosten abrechnung"
+    assert reading.summary == "Line one\nline two\nlinethree"
+
+
 NO_RENT_SERIES_CASES = [
     {"high_stakes_kind": "rent_increase"},  # § 558b BGB: owed once agreed; the reading's own item says so
     {"contract": None},
