@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { useState } from "react";
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { X } from "lucide-react";
 import { renderWithProviders } from "@/test/render";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { ITEM_KINDS, DOCUMENT_KINDS } from "@/api/types";
@@ -14,7 +15,7 @@ import { Stepper } from "./Stepper";
 import { Dialog } from "./Dialog";
 import { TabPanel, Tabs } from "./Tabs";
 import { Glossary } from "./Glossary";
-import { Button, buttonVariants } from "./Button";
+import { Button, IconButton, buttonVariants } from "./Button";
 import { Checkbox, Field, Input, Select, Switch } from "./Field";
 import { SegmentedControl } from "./SegmentedControl";
 import { Badge, CountBadge } from "./Badge";
@@ -125,7 +126,58 @@ describe("Button", () => {
     expect(disabled.className).not.toMatch(/opacity-50/);
     const busy = screen.getByRole("button", { name: "Saving" });
     expect(busy).toHaveAttribute("aria-busy", "true");
-    expect(busy).toBeDisabled();
+    expect(busy).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("keeps focus on a busy button, and a press does nothing until it is done (a disabled one dropped focus to the page)", async () => {
+    const user = userEvent.setup();
+    let pressed = 0;
+    let submitted = 0;
+    function Harness() {
+      const [busy, setBusy] = useState(false);
+      return (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            submitted += 1;
+          }}
+        >
+          <Button
+            type="submit"
+            loading={busy}
+            onClick={() => {
+              pressed += 1;
+              setBusy(true);
+            }}
+          >
+            Write a new note
+          </Button>
+          <IconButton icon={X} label="Try again" loading={busy} onClick={() => (pressed += 1)} />
+        </form>
+      );
+    }
+    renderWithProviders(<Harness />);
+    const button = screen.getByRole("button", { name: "Write a new note" });
+    button.focus();
+    await user.keyboard("{Enter}");
+    expect(pressed).toBe(1);
+    expect(submitted).toBe(1);
+    expect(button).toHaveFocus();
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(button).toHaveAttribute("aria-busy", "true");
+    expect(button).not.toBeDisabled();
+    // pressed again while busy: neither its action nor the form's submit runs
+    await user.keyboard("{Enter}");
+    fireEvent.click(button);
+    expect(pressed).toBe(1);
+    expect(submitted).toBe(1);
+    const icon = screen.getByRole("button", { name: "Try again" });
+    expect(icon).toHaveAttribute("aria-disabled", "true");
+    expect(icon).not.toBeDisabled();
+    icon.focus();
+    await user.keyboard("{Enter}");
+    expect(pressed).toBe(1);
+    expect(icon).toHaveFocus();
   });
 
   it("gives a filled button an edge in forced colours, where its fill is dropped (WCAG 1.4.11)", () => {

@@ -429,7 +429,8 @@ describe("Letter editor", () => {
     const user = userEvent.setup();
     renderAt(<LetterPage />, "/letters/:id", "/letters/drf_phone");
     const body = await screen.findByLabelText("Letter text (German)");
-    expect(screen.getByRole("button", { name: /Saved/ })).toBeDisabled();
+    // nothing to save: it says so, and keeps focus (aria-disabled, not disabled)
+    expect(screen.getByRole("button", { name: /Saved/ })).toHaveAttribute("aria-disabled", "true");
     expect(screen.queryByText("Unsaved changes")).toBeNull();
     await user.type(body, " Danke.");
     // said to screen readers; on screen a dot on Save — no line above the letter that pushed everything down
@@ -441,7 +442,7 @@ describe("Letter editor", () => {
     const patch = calls.find((c) => c.method === "PATCH")!;
     expect(patch.path).toBe("/drafts/drf_phone");
     expect(Object.keys(patch.body as object)).toEqual(["body"]);
-    await waitFor(() => expect(screen.getByRole("button", { name: /Saved/ })).toBeDisabled());
+    await waitFor(() => expect(screen.getByRole("button", { name: /Saved/ })).toHaveAttribute("aria-disabled", "true"));
   });
 
   it("marks a letter as sent and promises the follow-up reminder", async () => {

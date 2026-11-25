@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps, MouseEvent, ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Spinner } from "./Spinner";
@@ -60,10 +60,27 @@ export function buttonVariants({
   return cn(base, variants[variant], sizes[size], className);
 }
 
+/**
+ * A busy button (`loading`) is `aria-disabled`, not `disabled`: a disabled button drops keyboard focus to the
+ * page, and a screen reader is then told nothing. It keeps focus, and a press (a click, Enter, or Enter in its
+ * form) does nothing until it is done.
+ */
+function busyProps(
+  loading: boolean,
+  { disabled, onClick, "aria-disabled": ariaDisabled }: Pick<ComponentProps<"button">, "disabled" | "onClick" | "aria-disabled">,
+) {
+  return {
+    disabled,
+    "aria-disabled": loading || ariaDisabled || undefined,
+    "aria-busy": loading || undefined,
+    onClick: loading ? (e: MouseEvent<HTMLButtonElement>) => e.preventDefault() : onClick,
+  };
+}
+
 export interface ButtonProps extends ComponentProps<"button"> {
   variant?: ButtonVariant;
   size?: ButtonSize;
-  /** Shows a spinner, disables the button and sets aria-busy. */
+  /** Shows a spinner, sets aria-busy and ignores presses; the button keeps focus (see `busyProps`). */
   loading?: boolean;
   /** Leading icon (lucide component). */
   icon?: LucideIcon;
@@ -87,6 +104,8 @@ export function Button({
   className,
   children,
   disabled,
+  onClick,
+  "aria-disabled": ariaDisabled,
   type,
   ref,
   ...rest
@@ -96,8 +115,7 @@ export function Button({
       ref={ref}
       type={type ?? "button"}
       className={buttonVariants({ variant, size, className })}
-      disabled={disabled || loading}
-      aria-busy={loading || undefined}
+      {...busyProps(loading, { disabled, onClick, "aria-disabled": ariaDisabled })}
       {...rest}
     >
       {loading ? <Spinner className="size-4" /> : Icon ? <Icon aria-hidden /> : null}
@@ -137,6 +155,8 @@ export function IconButton({
   className,
   type,
   disabled,
+  onClick,
+  "aria-disabled": ariaDisabled,
   title,
   ref,
   ...rest
@@ -147,8 +167,7 @@ export function IconButton({
       type={type ?? "button"}
       aria-label={label}
       title={title ?? label}
-      disabled={disabled || loading}
-      aria-busy={loading || undefined}
+      {...busyProps(Boolean(loading), { disabled, onClick, "aria-disabled": ariaDisabled })}
       className={cn(base, variants[variant], iconSizes[size], "px-0", className)}
       {...rest}
     >

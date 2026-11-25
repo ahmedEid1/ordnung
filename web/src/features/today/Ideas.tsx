@@ -25,7 +25,7 @@ import { HISTORY_DAYS } from "@/features/inbox/filters";
 import { ignoreFailedRequest } from "@/api/client";
 
 const quiet =
-  "inline-flex h-8 items-center gap-1.5 rounded-md px-1.5 text-[12.5px] font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent";
+  "inline-flex h-8 items-center gap-1.5 rounded-md px-1.5 text-[12.5px] font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink aria-disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent";
 
 const headingId = (id: string) => `idea-${id}`;
 
@@ -68,7 +68,9 @@ function IdeaCard({
   // Focus is watched from the click, while the card is in its place, and the toast follows the call's promise,
   // not mutate's callbacks: the card leaves with the refreshed list, often before every list is refreshed, and a
   // card that has gone gets no callbacks (no toast, no Undo, focus lost).
+  // while a change is saved the quiet buttons are `aria-disabled`, not `disabled` (that drops focus to the page): a press waits
   const snooze = () => {
+    if (update.isPending) return;
     const until = format(addDays(parseISO(today), 7), "yyyy-MM-dd");
     focus.leaving(idea.id);
     update.mutateAsync({ id: idea.id, patch: { status: "snoozed", snoozed_until: until } }).then(
@@ -83,6 +85,7 @@ function IdeaCard({
   };
 
   const dismiss = () => {
+    if (update.isPending) return;
     focus.leaving(idea.id);
     update.mutateAsync({ id: idea.id, patch: { status: "dismissed" } }).then(
       () =>
@@ -157,17 +160,17 @@ function IdeaCard({
         <div className="-mx-1.5 mt-3 flex flex-wrap items-center justify-between gap-x-2 border-t border-line pt-2">
           {scam ? (
             // a scam warning is never snoozed or "not relevant": the person checks it with the sender
-            <button type="button" onClick={dismiss} disabled={update.isPending} aria-describedby={titleId} className={quiet}>
+            <button type="button" onClick={dismiss} aria-disabled={update.isPending || undefined} aria-describedby={titleId} className={quiet}>
               <ShieldCheck className="size-3.5" aria-hidden />
               I checked — it's genuine
             </button>
           ) : (
             <>
-              <button type="button" onClick={snooze} disabled={update.isPending} aria-describedby={titleId} className={quiet}>
+              <button type="button" onClick={snooze} aria-disabled={update.isPending || undefined} aria-describedby={titleId} className={quiet}>
                 <AlarmClock className="size-3.5" aria-hidden />
                 Remind me in a week
               </button>
-              <button type="button" onClick={dismiss} disabled={update.isPending} aria-describedby={titleId} className={quiet}>
+              <button type="button" onClick={dismiss} aria-disabled={update.isPending || undefined} aria-describedby={titleId} className={quiet}>
                 <X className="size-3.5" aria-hidden />
                 Not relevant
               </button>

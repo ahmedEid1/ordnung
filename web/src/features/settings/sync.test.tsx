@@ -524,6 +524,36 @@ describe("Settings → Your computers: setting up", () => {
     expect(passphrase).toHaveValue("");
   });
 
+  it("keeps Next in the Tab order while the folder is looked at: busy, not disabled (a disabled one dropped focus to the page)", async () => {
+    useMockApi();
+    const mocked = globalThis.fetch;
+    let asked = false;
+    let release!: () => void;
+    const held = new Promise<void>((done) => (release = done));
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes("/api/sync/inspect")) {
+        asked = true;
+        await held;
+      }
+      return mocked(input, init);
+    });
+    const user = userEvent.setup();
+    openSection();
+    const card = await screen.findByRole("region", { name: "Use Ordnung on more than one computer" }, WAIT);
+    await user.type(within(card).getByLabelText("Sync folder"), "/home/sam/Nextcloud/Ordnung-new");
+    // Tab, Tab at once: leaving the folder field looks at it, and the second Tab lands on Next while it does
+    await user.tab();
+    expect(within(card).getByLabelText("This computer's name")).toHaveFocus();
+    await waitFor(() => expect(asked).toBe(true), WAIT);
+    await user.tab();
+    const next = within(card).getByRole("button", { name: "Next" });
+    expect(next).toHaveFocus();
+    expect(next).toHaveAttribute("aria-disabled", "true");
+    expect(next).toHaveAttribute("aria-busy", "true");
+    release();
+    await waitFor(() => expect(next).not.toHaveAttribute("aria-busy"), WAIT);
+  });
+
   it("warns when Ordnung's data folder itself is inside a synced folder", async () => {
     const { srv } = useMockApi();
     srv.sync.dataFolderSynced = true;
