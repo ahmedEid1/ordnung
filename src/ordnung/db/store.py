@@ -1020,11 +1020,47 @@ class Store:
         if self._conn().in_transaction:
             return None
         with self._watch_lock:
-            watch = self._watch
-            if watch is None:
-                watch = self._watch = self._open_watch()
-            data = watch.execute("PRAGMA data_version").fetchone()[0]
-            schema = watch.execute("PRAGMA schema_version").fetchone()[0]
+            return self._stamp_of(self._watched())
+
+    @contextmanager
+    def as_of_commit_stamp(self) -> Iterator[tuple[int, int] | None]:
+        """Reads in the block see the database exactly as of the stamp it yields (:meth:`commit_stamp`): they go
+        through the stamp's own connection, in one read transaction begun before the stamp is read. So what
+        is read can be kept under that stamp for every thread. Read on the thread's own connection instead,
+        it could be older than the stamp: a statement left unfinished there (a cursor read part of the way)
+        keeps that connection seeing the database as it was when the statement began.
+
+        Other threads wait for the stamp until the block ends. Only for reads (the connection is
+        ``query_only``). ``None``, and the reads go to this thread's connection as usual, while this thread
+        is inside a transaction, whose reads may not be committed."""
+        state = self._local
+        own = self._conn()
+        if own.in_transaction:
+            yield None
+            return
+        with self._watch_lock:
+            watch = self._watched()
+            watch.execute("BEGIN")
+            state.conn = watch
+            try:
+                yield self._stamp_of(watch)  # its first read begins the read transaction
+            finally:
+                state.conn = own
+                if watch.in_transaction:
+                    watch.execute("ROLLBACK")
+
+    def _watched(self) -> sqlite3.Connection:
+        """The connection the commit stamp is read on (opened on first use). Under ``_watch_lock``."""
+        watch = self._watch
+        if watch is None:
+            watch = self._watch = self._open_watch()
+        return watch
+
+    @staticmethod
+    def _stamp_of(watch: sqlite3.Connection) -> tuple[int, int]:
+        # both read the file's header, so inside a read transaction they are that transaction's
+        data = watch.execute("PRAGMA data_version").fetchone()[0]
+        schema = watch.execute("PRAGMA schema_version").fetchone()[0]
         return int(data), int(schema)
 
     def _open_watch(self) -> sqlite3.Connection:
@@ -1032,6 +1068,7 @@ class Store:
         watch = sqlite3.connect(
             target, uri=self.read_only, isolation_level=None, check_same_thread=False, timeout=5.0
         )
+        watch.row_factory = sqlite3.Row  # the store's reads go through it in as_of_commit_stamp
         for pragma in _READ_ONLY_PRAGMAS:
             watch.execute(pragma)
         # not one of the threads' connections (close() closes it apart): leak checks count those alone

@@ -496,28 +496,36 @@ class _RowsCache:
     Whether it changed is :meth:`Store.commit_stamp`, which every thread compares alike: after a commit the
     first thread to look loads the rows once, under the lock, and the threads waiting there take them
     (each thread compared its own token before, so four threads after one change made four loads of a few
-    seconds each at 3,000 letters). The stamp is read before the rows: rows newer than their stamp only
-    cost one load too many. Inside a transaction, which may read what isn't committed, the rows are loaded
-    afresh and not kept.
+    seconds each at 3,000 letters). The rows are loaded as of the stamp they are kept under
+    (:meth:`Store.as_of_commit_stamp`), never on the thread's own connection, which may still see the
+    database as it was before the last commit (a read left unfinished there) and would keep old rows for
+    every thread. Inside a transaction, which may read what isn't committed, the rows are loaded afresh and
+    not kept.
     """
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._rows: _Rows | None = None
-        self._stamp: tuple[int, int] | None = None
+        #: the rows and the stamp they were loaded as of, kept together so a reader never pairs one with
+        #: the other's predecessor
+        self._kept: tuple[tuple[int, int], _Rows] | None = None
         self._loads = 0
 
     def rows(self, store: Store) -> _Rows:
-        if store.commit_stamp() is None:  # inside a transaction
+        stamp = store.commit_stamp()
+        if stamp is None:  # inside a transaction
             return _Rows.load(store)
-        with self._lock:
-            # read again under the lock: a thread that waited here takes the rows the one before it loaded
-            stamp = store.commit_stamp()
-            if self._rows is None or stamp is None or stamp != self._stamp:
-                self._rows = _Rows.load(store)
-                self._stamp = stamp
+        kept = self._kept
+        if kept is not None and kept[0] == stamp:
+            return kept[1]
+        with self._lock, store.as_of_commit_stamp() as as_of:
+            kept = self._kept
+            if as_of is not None and kept is not None and kept[0] == as_of:
+                return kept[1]  # a thread that waited here takes the rows the one before it loaded
+            rows = _Rows.load(store)
+            if as_of is not None:
+                self._kept = (as_of, rows)
                 self._loads += 1
-            return self._rows
+            return rows
 
 
 _CACHES: weakref.WeakKeyDictionary[Store, _RowsCache] = weakref.WeakKeyDictionary()

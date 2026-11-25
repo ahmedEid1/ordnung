@@ -541,6 +541,53 @@ def test_the_shared_rows_follow_changes_made_in_other_threads(paths: Paths) -> N
         assert len(triggers.Ledger(store, TODAY).documents) == before + 1
 
 
+def test_rows_loaded_behind_an_unfinished_read_are_not_kept_for_the_others(paths: Paths) -> None:
+    """A thread whose connection still has a read open (a cursor read part of the way) sees the database as
+    it was when that read began. Rows it loaded then must not be kept for the commit made since: every other
+    thread would be shown the old rows until the next commit."""
+    with Store.open(paths) as store, Store.open(paths) as other:
+        seed_ledger(store)
+        item = next(item for item in store.list_items() if item.status == "open")
+        triggers.Ledger(store, TODAY)
+        seen: dict[str, str] = {}
+
+        def pinned() -> None:
+            cursor = store._conn().execute("SELECT id FROM documents")
+            cursor.fetchone()  # the read stays open: this connection keeps seeing the database as it was
+            other.update_item(item.id, status="done")
+            seen["pinned"] = next(i.status for i in triggers.Ledger(store, TODAY).items if i.id == item.id)
+            cursor.close()
+
+        def after() -> None:
+            seen["after"] = next(i.status for i in triggers.Ledger(store, TODAY).items if i.id == item.id)
+
+        for target in (pinned, after):
+            worker = threading.Thread(target=target)
+            worker.start()
+            worker.join()
+        assert seen == {"pinned": "done", "after": "done"}
+
+
+def test_a_ledger_of_an_unchanged_database_reads_only_the_commit_stamp(paths: Paths) -> None:
+    """Several Ledgers are built per request: while nothing changed, each looks at the commit stamp once (two
+    PRAGMAs) and takes the kept rows, nothing more."""
+    with Store.open(paths) as store:
+        seed_ledger(store)
+        triggers.Ledger(store, TODAY)
+        assert store._watch is not None
+        ran: list[str] = []
+        connections = (store._conn(), store._watch)
+        for conn in connections:
+            conn.set_trace_callback(ran.append)
+        try:
+            for _ in range(3):
+                triggers.Ledger(store, TODAY)
+        finally:
+            for conn in connections:
+                conn.set_trace_callback(None)
+        assert len(ran) <= 3 * 2, ran
+
+
 def test_only_the_readings_that_state_a_change_are_parsed(
     paths: Paths, monkeypatch: pytest.MonkeyPatch
 ) -> None:

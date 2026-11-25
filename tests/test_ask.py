@@ -1019,13 +1019,17 @@ def test_the_ledger_fingerprint_reads_only_the_watched_tables(
         return sqlite3.SQLITE_OK
 
     with Store.open(paths) as fresh:
-        conn = fresh._conn()
-        conn.set_authorizer(authorizer)
+        fresh.commit_stamp()  # opens the connection the ledger's rows are read on (Store.as_of_commit_stamp)
+        assert fresh._watch is not None
+        connections = (fresh._conn(), fresh._watch)
+        for conn in connections:
+            conn.set_authorizer(authorizer)
         monkeypatch.setattr(Store, "get_meta", spied)
         try:
             ledger_fingerprint(fresh)
         finally:
-            conn.set_authorizer(None)
+            for conn in connections:
+                conn.set_authorizer(None)
     assert {"documents", "pages", "items", "contracts", "parties", "meta", "suggestions"} <= read
     unwatched = read - {*LEDGER_TABLES, "meta", "suggestions"}
     assert not unwatched, f"the ledger fingerprint reads {sorted(unwatched)}: add them to LEDGER_TABLES"

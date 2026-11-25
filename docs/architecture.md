@@ -334,7 +334,9 @@ apart from two `meta` moments:
   `Ledger` built while the database stays the same shares one load of its rows (`_RowsCache`, checked
   with `Store.commit_stamp`: `PRAGMA data_version` and the schema version on a read-only connection of
   the store's own, which every API thread compares alike, so after a change the first thread loads the
-  rows once and the others take them; reads inside a transaction are loaded afresh and not kept): the
+  rows once and the others take them; the rows are read on that connection too, in the same read
+  transaction as the stamp, so they are never older than the stamp they are kept under; reads inside a
+  transaction are loaded afresh and not kept): the
   letters (also by sender, which the scam checks read instead of one query per letter), to-dos,
   contracts and parties, and, once worked out, each letter's scam signs and reading. So a page's
   requests load the letters once.
