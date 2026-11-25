@@ -98,9 +98,9 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   Land, moved out of the benchmarks' job, after its second part. A pull request's run then had 21 jobs of several
   minutes for the 20 GitHub runs at once for this account, and the one left waiting started about four minutes
   late, so a pull request now tests Python 3.11 in the lowest versions' job alone (the same tests, on 3.11); its
-  leg with the pinned versions runs on `main`. The two runs after took 8.3 and 8.5 minutes, the second with every
-  job started within 52 seconds; the runner a job happens to get now sets the time (the same job took 6.3 and 8.5
-  minutes an hour apart). `make check` runs the backend tests in parallel too. Every
+  leg with the pinned versions runs on `main`. The three runs after took 8.3, 8.5 and 9.1 minutes, the last two with
+  every job started within 52 seconds; the runner a job happens to get now sets the time (the longest slow tests
+  took 5.7, 7.9 and 9.0 minutes in those runs). `make check` runs the backend tests in parallel too. Every
   published number is replayed in a job of its own (it made the benchmarks' job the longest of a run), Windows
   runs on every pull request and not only on `main` (macOS stays on `main`
   and the weekly run: on a pull request its runner was 10 minutes in coming once, and once none came and the run
@@ -169,6 +169,10 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ### Fixed
 
+- **Hand-off sync looks at a folder that answers again at the usual pace.** While the sync folder doesn't answer,
+  Ordnung looks at it every three minutes instead of every 15 seconds. A save that went through showed the folder
+  was back, but the next look still came up to three minutes later, so the other computer's change could wait
+  that long. The look now comes at the usual pace after any save that went through.
 - **A message that is closing can no longer be used.** The small messages that confirm an action (*Marked as
   answered*, with *Undo*) take a moment to fade out, and for that moment their buttons could still be clicked,
   reached with Tab or read by a screen reader: a page could briefly offer two *Undo* buttons, one of them dead. Now
