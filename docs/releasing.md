@@ -46,7 +46,7 @@ Pushing a version tag such as `vX.Y.Z` runs [`.github/workflows/release.yml`](..
 A wrong tag stops at the first step, before anything is built or published.
 
 <details>
-<summary>Why a tag pushed on purpose from somewhere else still can't publish</summary>
+<summary>What stops a tag pushed on purpose from somewhere else, and each job's rights</summary>
 
 These checks run from the
 tagged commit's own copy of the workflow, so they catch honest mistakes; the reviewer and the tag ruleset
@@ -86,20 +86,24 @@ change to the README also changes what that page links to.
 
    ```bash
    git fetch origin
-   git log --oneline origin/main    # the release pull request's merge commit
-   git tag -a vX.Y.Z <merge commit> -m "Ordnung X.Y.Z"
+   # the release PR's merge commit
+   git log --oneline origin/main
+   git tag -a vX.Y.Z <merge commit> \
+     -m "Ordnung X.Y.Z"
    git push origin vX.Y.Z
    ```
 
 5. **Watch Actions → Release.**
    - **Before the GitHub Release exists.** If the build job stops, or the GitHub Release job fails before the
      Release exists, nothing is published yet: delete the tag (`git push origin :refs/tags/vX.Y.Z`, then
-     `git tag -d vX.Y.Z`), remove the cause and tag again. A fix that needs a commit is merged into `main` and its
-     merge commit tagged, as in step 4 (the fix's changelog line goes in the version's section, not under
-     `## Unreleased`), but only while `main` lists nothing under `## Unreleased`; once it does, the tag can go
-     back only on the same commit, which mends only a cause outside that commit (CI not yet passed there, say).
-     For that case the run itself can also be run again (*Re-run all jobs*) once CI has passed, as its message
-     says.
+     `git tag -d vX.Y.Z`), remove the cause and tag again.
+     - **A fix that needs a commit** is merged into `main` and its merge commit tagged, as in step 4 (the fix's
+       changelog line goes in the version's section, not under `## Unreleased`), but only while `main` lists
+       nothing under `## Unreleased`.
+     - **Once `main` lists something under `## Unreleased`,** the tag can go back only on the same commit, which
+       mends only a cause outside that commit (CI not yet passed there, say).
+     - **For that case** the run itself can also be run again (*Re-run all jobs*) once CI has passed, as its
+       message says.
    - **Once the GitHub Release exists, keep the tag:** the Release belongs to it (deleting the tag turns a
      published Release into a draft), and the PyPI job is run again on the same run, not from a new tag. If only
      the PyPI job failed or its review was rejected, fix the cause and run it again on the same run (*Re-run
