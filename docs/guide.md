@@ -110,7 +110,7 @@ starting at a real login, and phone access and sync between real devices are not
 ```bash
 uv tool install git+https://github.com/ahmedEid1/ordnung   # or: pipx install git+https://github.com/ahmedEid1/ordnung; the built web app is included
 ordnung doctor                  # checks Claude, search, fonts, text in pictures, your data folder and database, your last backup, disk encryption (--probe: also one tiny live call to Claude)
-ordnung serve                   # the web app on http://127.0.0.1:8765
+ordnung serve                   # the web app: opens your browser, signed in
 ordnung shortcut                # Ordnung in your app menu: opens it signed in, no terminal needed
 ordnung add ~/Downloads/*.pdf   # or drag files into the app
 ordnung brief                   # today's note in the terminal

@@ -2631,7 +2631,7 @@ def test_the_guide_says_how_to_open_ordnung_without_a_terminal() -> None:
     ) in also
     commands = _section(_guide(), "## Install and run").split("```bash", 1)[1].split("```", 1)[0]
     assert (
-        "ordnung serve                   # the web app on http://127.0.0.1:8765\n"
+        "ordnung serve                   # the web app: opens your browser, signed in\n"
         "ordnung shortcut                # Ordnung in your app menu: opens it signed in, no terminal needed\n"
     ) in commands
     text = _without_a_terminal()
@@ -4387,10 +4387,13 @@ def test_contributing_says_when_a_recording_is_needed_and_how_to_record() -> Non
 
 def test_the_readme_sends_a_newcomer_to_the_signed_in_link_not_a_bare_address() -> None:
     """A bare ``http://127.0.0.1:<port>`` only shows "Please open Ordnung from its link" (the server wants its
-    token), so README names none. Its install block holds the commands alone, which fit a phone's width, and the
-    bullets above it say what each does and that it opens the browser signed in."""
+    token), so README names none, and neither do the commands of the guide's Install and run, which the README's
+    "Your own letters" sends a newcomer to. README's install block holds the commands alone, which fit a phone's
+    width, and the bullets above it say what each does and that it opens the browser signed in."""
     readme = _readme()
     assert "http://127.0.0.1" not in readme
+    commands = _section(_guide(), "## Install and run").split("```bash", 1)[1].split("```", 1)[0]
+    assert "http://127.0.0.1" not in commands
     lines = readme.splitlines()
     assert "ordnung demo" in lines and "ordnung serve" in lines
     install = _flat(_section(readme, "## Install and run"))
