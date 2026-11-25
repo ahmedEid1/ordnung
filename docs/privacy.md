@@ -76,12 +76,14 @@ not.
 - **Other devices on your network** can't reach Ordnung, which listens only on this computer's own address (`127.0.0.1`).
   With phone access on, it also answers on your home network, over HTTPS, and only a phone you paired sees
   anything of yours ([phone access](#phone-access-optional)).
-- **Someone who sees your screen:** *My numbers* hides each of your numbers until you choose *Show*, and the
-  morning notification, if you switch it on, is *Discreet* unless you choose *With details*
+- **Someone who sees your screen:** *My numbers* hides each of your own numbers (all but the last few
+  characters) until you choose *Show*; a case's reference, such as a Kassenzeichen, is shown in full, as its
+  letter shows it. The morning notification, if you switch it on, is *Discreet* unless you choose *With details*
   ([my numbers](#my-numbers), [reminders](#reminders-while-ordnung-is-closed)).
 - **Your calendar and sync providers** get only what those features send: a discreet event (the default) has its date, time and alarms and a
-  title like "Ordnung: deadline", while *With details* also sends the event's title, what to do, the amount and who
-  it is with; and the sync folder holds only encrypted files, though their number, sizes and times
+  title like "Ordnung: deadline", while *With details* also sends what Ordnung's calendar file holds: the title
+  (after the name of the household member the letter is filed for), what to do, the amount, who it is with
+  and why that date; and the sync folder holds only encrypted files, though their number, sizes and times
   show roughly how much you add ([calendar](#calendar-sync-optional),
   [hand-off sync](#hand-off-sync-between-your-computers-optional)).
 
