@@ -45,6 +45,9 @@ test("New mail → the tax assessment is read → evidence, Einspruch deadline a
     );
     await page.waitForURL(/\/documents\/doc_/, { timeout: 30_000 });
     await page.waitForLoadState("networkidle");
+    // the envelope that held focus went with the Inbox: the letter's title takes it, not <body> (57 Tab presses
+    // from the tour's Next)
+    await expect(page.locator("main h1")).toBeFocused();
   } else {
     await openMail(page, FINANZAMT); // a retry: the letter was read before
   }
@@ -137,6 +140,19 @@ test("laptops: every step docks in the sidebar at 1280×800, and all but the lon
       expect(await page.locator("#tour-dock").evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(0);
     }
   }
+  // away from its page, the first step's text link sits beside the dots ("Show me the mail" once a letter was read):
+  // it ran over the docked card's edge at 1280×800, its row 18 px too narrow
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await setTour(page, 0);
+  await open(page, "/timeline");
+  const docked = page.locator("#tour-dock section");
+  await expect(docked).toHaveCount(1);
+  // (the boxes, inside the card's border: its rows' negative margins reach into its padding by design)
+  const over = await docked.evaluate((card) => {
+    const inner = card.getBoundingClientRect().right - parseFloat(getComputedStyle(card).borderRightWidth);
+    return [...card.querySelectorAll<HTMLElement>("button, a")].filter((el) => el.getBoundingClientRect().right > inner + 0.5).map((el) => el.textContent);
+  });
+  expect(over, "nothing runs over the docked card's edge").toEqual([]);
   await setTour(page, null);
 });
 

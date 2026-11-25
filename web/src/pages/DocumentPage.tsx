@@ -10,6 +10,7 @@ import { LoadError } from "@/components/ui/LoadError";
 import { LoadingLabel } from "@/components/ui/Skeleton";
 import { DocumentSkeleton, DocumentView } from "@/features/document/DocumentView";
 import { isReading } from "@/features/inbox/filters";
+import { letterName } from "@/lib/format";
 import { useMarkLetterSeen } from "@/features/inbox/seen";
 import { proofFileHref } from "@/features/letters/proof";
 
@@ -61,7 +62,7 @@ export default function DocumentPage() {
   // the Inbox's "New" badge clears once the letter itself was shown
   useMarkLetterSeen(doc && !proof && !isReading(doc) ? doc.id : null);
   const notFound = q.isError && q.error instanceof ApiError && q.error.status === 404;
-  const title = doc ? (doc.title ?? doc.filename) : notFound ? "Letter not found" : "Letter";
+  const title = doc ? letterName(doc) : notFound ? "Letter not found" : "Letter";
 
   // the viewer sits closer under the top bar; a message about the letter keeps the page's own spacing, as on a
   // draft's page

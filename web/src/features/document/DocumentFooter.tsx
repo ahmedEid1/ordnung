@@ -72,6 +72,9 @@ export function keepTogether(text: string): string {
 export function sentText(detail: DocumentDetail, phone = false): string {
   if (detail.document.ai_private) return "This letter never left your computer.";
   if (!detail.given_to_model) return "Not sent to Claude. The letter hasn't left your computer.";
+  // a reading that failed may have ended before Claude got the letter: no claim that it was sent
+  if (detail.document.status === "failed" && !detail.document.ai_processed_at)
+    return `Ordnung tried to read it with your own Claude account, so its text or image may have reached Anthropic. The file itself stays on ${theComputer(phone)}.`;
   return `The letter's text or image was sent to Anthropic through your own Claude account. The file itself stays on ${theComputer(phone)}.`;
 }
 

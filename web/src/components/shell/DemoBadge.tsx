@@ -1,4 +1,4 @@
-import { FlaskConical, RotateCcw } from "lucide-react";
+import { FlaskConical, Play, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import { useHealth } from "@/api/hooks";
@@ -12,14 +12,17 @@ const ABOUT = "You're exploring Sam Rivera's sample life. Every letter is fictio
  * "Demo · 28 Sep 2026" — shown when the backend simulates a date (demo mode). A button: it opens
  * "About the demo" (a bottom sheet on phones), which explains that the data is Sam Rivera's sample
  * life and the date is simulated, and restarts the guided tour (from its first step — also after
- * it was ended or finished). `compact` shows the flask only.
+ * it was ended or finished), or resumes it at the step it was hidden at. `compact` shows the flask only;
+ * `short` the flask and "Demo" (phones, which have no tooltip to show the rest).
  */
-export function DemoBadge({ compact, className }: { compact?: boolean; className?: string }) {
+export function DemoBadge({ compact, short, className }: { compact?: boolean; short?: boolean; className?: string }) {
   const { data } = useHealth();
   const tour = useTourController();
   if (!data?.simulated_today && !data?.demo) return null;
   const date = formatDate(data.simulated_today ?? data.today, { style: "medium" });
   const label = `Demo · ${date}`;
+  // hidden part of the way through: it can go on at that step
+  const resumeAt = tour.demo && tour.state && !tour.visible && tour.state.step > 0 ? tour.state.step : null;
   return (
     <Popover
       label="About the demo"
@@ -36,6 +39,19 @@ export function DemoBadge({ compact, className }: { compact?: boolean; className
             Today in the demo: <span className="font-medium tabular-nums text-ink">{date}</span>
           </p>
           <div className="flex flex-wrap items-center justify-between gap-2 in-sheet:justify-start">
+            {resumeAt !== null ? (
+              <Button
+                size="sm"
+                variant="soft"
+                icon={Play}
+                onClick={() => {
+                  tour.send({ type: "restart", step: resumeAt });
+                  close();
+                }}
+              >
+                Resume at step {resumeAt + 1}
+              </Button>
+            ) : null}
             {tour.demo && tour.state ? (
               <Button
                 size="sm"
@@ -59,17 +75,17 @@ export function DemoBadge({ compact, className }: { compact?: boolean; className
       <button
         type="button"
         aria-label={`${label} — about the demo`}
-        title={compact ? label : undefined}
+        title={compact || short ? label : undefined}
         className={cn(
           "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full border border-marker-strong/40 bg-marker/35 font-medium text-ink transition-colors hover:bg-marker/55 dark:border-marker-strong/30 dark:bg-marker/25 dark:hover:bg-marker/40",
-          compact ? "size-9" : "h-7 px-2.5 text-xs",
+          compact ? "size-9" : short ? "h-7 px-2 text-xs" : "h-7 px-2.5 text-xs",
           className,
         )}
       >
         <FlaskConical className="size-3.5 shrink-0 text-warn-ink" aria-hidden />
         {compact ? null : (
           <span className="whitespace-nowrap tabular-nums" aria-hidden>
-            {label}
+            {short ? "Demo" : label}
           </span>
         )}
       </button>

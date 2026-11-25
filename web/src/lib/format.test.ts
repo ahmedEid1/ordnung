@@ -16,6 +16,7 @@ import {
   formatRelativeDays,
   formatTime,
   formatUsd,
+  letterName,
   looksGerman,
   monthlyAmount,
   parseLooseNumber,
@@ -248,5 +249,17 @@ describe("running text", () => {
     expect(show(formatInlineText(quote, { rewrite: false }))).toBe(
       "Bitte zahlen Sie 184,30⍽€ bis zum 14.⍽Oktober⍽2026 um 10:30⍽Uhr (§⍽286 BGB).",
     );
+  });
+});
+
+// one letter had three names: "Foto brief" in the list, "foto-brief.jpg" in its breadcrumb and tab (the photo added
+// as foto-brief.png is kept as a JPEG)
+describe("letterName", () => {
+  it("is the title once read, else the file's name made readable, whatever its extension", () => {
+    expect(letterName({ title: "Parking fine", filename: "scan.pdf" })).toBe("Parking fine");
+    expect(letterName({ title: null, filename: "foto-brief.jpg" })).toBe("Foto brief");
+    expect(letterName({ title: null, filename: "foto-brief.png" })).toBe("Foto brief");
+    expect(letterName({ title: null, filename: "23_steuerbescheid_2025_p1.pdf" })).toBe("Steuerbescheid 2025 p1");
+    expect(letterName({ title: null, filename: ".pdf" })).toBe("New letter");
   });
 });

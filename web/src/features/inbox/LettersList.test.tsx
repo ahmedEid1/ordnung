@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import { renderWithProviders } from "@/test/render";
 import { createMockServer, type MockServer } from "@/mocks/server";
+import { __resetEventsForTests, seedJob } from "@/api/sse";
 import type { DocumentRow } from "@/api/types";
 import { AddLettersProvider } from "@/components/shell/AddLetters";
 import InboxPage from "@/pages/InboxPage";
@@ -23,7 +24,10 @@ beforeEach(() => {
     return srv.handle(init?.method ?? "GET", url.pathname.replace(/^\/api/, ""), url.searchParams, body);
   });
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  __resetEventsForTests();
+});
 
 function renderInbox(route = "/inbox") {
   return renderWithProviders(
@@ -134,6 +138,19 @@ describe("Inbox letters list", () => {
     expect(within(row).getByText("Reading…")).toHaveClass("line-clamp-2");
     // no countdown to act on while it is still being read
     expect(within(row).queryByText(/transfer by|send by/)).toBeNull();
+  });
+
+  // with no Claude, waiting letters were grouped under "Being read", each with a stepper that looked under way
+  it("groups letters that wait for Claude under 'Waiting for Claude', with a pause sign, not a stepper", async () => {
+    srv.db.state.documents.find((d) => d.id === "doc_library")!.status = "queued";
+    const reason = "Waiting for Claude: Claude Code isn't installed on this computer yet. Ordnung reads this letter as soon as Claude is connected (Settings → Claude connection).";
+    act(() => seedJob({ job_id: "job_library", doc_id: "doc_library", stage: "intake", progress: 0, status: "queued", waiting_reason: reason }));
+    renderInbox();
+    const link = await screen.findByRole("link", { name: "Library: overdue books" });
+    expect(screen.getAllByRole("heading", { level: 3 })[0]).toHaveTextContent(/^Waiting for Claude/);
+    const row = rowOf(link);
+    expect(within(row).getByText("Waiting for Claude…")).toBeInTheDocument();
+    expect(within(row).queryByRole("list", { name: /^Reading / })).toBeNull();
   });
 
   it("puts letters read from New mail on top ('Just read'), marked New until their page was opened", async () => {

@@ -117,7 +117,24 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
   // opened for its advice card ("Open the letter's card" in the composer): scroll to it and focus its title
   // (the page once opened at its top, focus on <main>, the card 1250 px below)
   const location = useLocation();
-  const toCard = (location.state as { focus?: string } | null)?.focus === "advice" && !neverRead;
+  const focusOn = (location.state as { focus?: string } | null)?.focus;
+  const toCard = focusOn === "advice" && !neverRead;
+  // opened by itself once read (a letter from New mail): its title holds focus. Focus was on the envelope that
+  // went with the Inbox, and fell to the page's very start whenever the heading it moved to was swapped for the
+  // verdict's (57 Tab presses back to the tour's Next). Focus the person moved elsewhere stays there.
+  const toTitle = focusOn === "title";
+  useEffect(() => {
+    if (!toTitle) return;
+    const frame = window.requestAnimationFrame(() => {
+      const active = document.activeElement;
+      if (active && active !== document.body && active.id !== "main" && active.isConnected) return;
+      const h = document.querySelector<HTMLElement>("main h1:not([data-loading])");
+      if (!h) return;
+      if (!h.hasAttribute("tabindex")) h.setAttribute("tabindex", "-1");
+      h.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [toTitle, doc.id, doc.status, busy]);
   useEffect(() => {
     if (!toCard) return;
     const frame = window.requestAnimationFrame(() => {

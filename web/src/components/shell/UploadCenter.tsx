@@ -3,8 +3,9 @@ import { Link } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight, Camera, ChevronUp, FileStack, FileText, RotateCw, X } from "lucide-react";
 import { useDocument, useReprocessDocument } from "@/api/hooks";
-import { dismissJob, seedJob, useEvents, type JobProgress } from "@/api/sse";
+import { claudeWaitReason, dismissJob, seedJob, useEvents, type JobProgress } from "@/api/sse";
 import { JOB_STAGE_COPY, PIPELINE_STEPS, copyFor, stageToStep } from "@/lib/copy";
+import { letterName } from "@/lib/format";
 import { cn, plural } from "@/lib/utils";
 import { Spinner } from "@/components/ui/Spinner";
 import { Stepper } from "@/components/ui/Stepper";
@@ -60,7 +61,7 @@ function UploadRow({ job, grouped }: { job: JobProgress; grouped?: boolean }) {
   const done = job.status === "done";
   const failed = job.status === "failed";
   const step = done ? PIPELINE_STEPS.length : stageToStep(job.stage);
-  const name = doc?.title ?? doc?.filename ?? "New letter";
+  const name = doc ? letterName(doc) : "New letter";
   const photo = doc?.text_mode === "vision" || doc?.mime?.startsWith("image/");
   const Icon = photo ? Camera : FileText;
   // a letter waiting in the queue (for Claude) says why instead of "Opening the file…"
@@ -112,9 +113,12 @@ function UploadRow({ job, grouped }: { job: JobProgress; grouped?: boolean }) {
           <X className="size-4" aria-hidden />
         </button>
       </div>
-      <div className="mt-3 px-0.5">
-        <Stepper steps={PIPELINE_STEPS} current={step} status={failed ? "error" : "active"} size="sm" labels="all" fallback="none" live label={`Reading ${name}`} />
-      </div>
+      {/* nothing moves while it waits (for Claude, or a usage limit's end): no stepper that looks under way */}
+      {waiting ? null : (
+        <div className="mt-3 px-0.5">
+          <Stepper steps={PIPELINE_STEPS} current={step} status={failed ? "error" : "active"} size="sm" labels="all" fallback="none" live label={`Reading ${name}`} />
+        </div>
+      )}
       {(done || failed) && docId ? (
         <div className="-mb-1 mt-1.5 flex flex-wrap justify-end gap-1">
           {failed ? (
@@ -143,21 +147,32 @@ function UploadRow({ job, grouped }: { job: JobProgress; grouped?: boolean }) {
 }
 
 export interface UploadSummary {
-  /** "Reading 2 letters", else "1 letter couldn't be read", else "3 letters filed". */
+  /** "Reading 2 letters", else "3 letters waiting for Claude", else "1 letter couldn't be read", else "3 letters filed". */
   title: string;
-  /** The other counts: "1 filed", "1 couldn't be read" (danger). */
+  /** The other counts: "1 waiting for Claude", "1 filed", "1 couldn't be read" (danger). */
   parts: { text: string; danger?: boolean }[];
+  /** Letters not finished yet: being read, or waiting for Claude. */
   reading: number;
   failed: number;
 }
 
-/** "Reading 2 letters · 1 filed · 1 couldn't be read" — the group's summary, in parts. */
-export function uploadSummary(jobs: Pick<JobProgress, "status">[]): UploadSummary {
+/** "Reading 2 letters · 1 waiting for Claude · 1 filed · 1 couldn't be read" — the group's summary, in parts. */
+export function uploadSummary(jobs: Pick<JobProgress, "status" | "waiting_reason">[]): UploadSummary {
   const failed = jobs.filter((j) => j.status === "failed").length;
   const done = jobs.filter((j) => j.status === "done").length;
+  // a letter that waits for Claude isn't being read: the banner says why, and so does the summary
+  const waiting = jobs.filter((j) => claudeWaitReason(j)).length;
   const reading = jobs.length - failed - done;
-  const title = reading ? `Reading ${plural(reading, "letter")}` : failed ? `${plural(failed, "letter")} couldn't be read` : `${plural(done, "letter")} filed`;
+  const active = reading - waiting;
+  const title = active
+    ? `Reading ${plural(active, "letter")}`
+    : waiting
+      ? `${plural(waiting, "letter")} waiting for Claude`
+      : failed
+        ? `${plural(failed, "letter")} couldn't be read`
+        : `${plural(done, "letter")} filed`;
   const parts: UploadSummary["parts"] = [];
+  if (waiting && active) parts.push({ text: `${waiting} waiting for Claude` });
   if (done && (reading || failed)) parts.push({ text: `${done} filed` });
   if (failed && reading) parts.push({ text: `${failed} couldn't be read`, danger: true });
   return { title, parts, reading, failed };

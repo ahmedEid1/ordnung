@@ -51,10 +51,19 @@ describe("Where the letter went", () => {
     expect(screen.queryByText(/sent to Anthropic/)).toBeNull();
   });
 
-  it("says it was sent once a call carried it, even if the reading then failed", () => {
-    const doc = makeDoc({ status: "failed", ai_processed_at: null });
+  it("says it was sent once a call carried it", () => {
+    const doc = makeDoc({ status: "processed", ai_processed_at: "2026-09-28T10:00:00Z" });
     renderWithProviders(<DocumentFooter detail={makeDetail({ document: doc, given_to_model: true })} />);
     expect(screen.getByText(/The letter's text or image was sent to Anthropic/)).toBeInTheDocument();
+    expect(screen.queryByText(/Not sent to Claude/)).toBeNull();
+  });
+
+  // a failed reading said, in the past tense, that the letter was sent: Claude Code may have ended before sending it
+  it("says a call that failed may have carried it to Anthropic, never that it wasn't sent", () => {
+    const doc = makeDoc({ status: "failed", ai_processed_at: null });
+    renderWithProviders(<DocumentFooter detail={makeDetail({ document: doc, given_to_model: true })} />);
+    expect(screen.getByText(/^Ordnung tried to read it with your own Claude account, so its text or image may have reached Anthropic\./)).toBeInTheDocument();
+    expect(screen.queryByText(/was sent to Anthropic/)).toBeNull();
     expect(screen.queryByText(/Not sent to Claude/)).toBeNull();
   });
 

@@ -596,3 +596,22 @@ export function languageName(language: string | null | undefined): string | null
     return null; // a code the browser doesn't know
   }
 }
+
+/** "23_steuerbescheid_2025_p1.pdf" → "Steuerbescheid 2025 p1": a file's name as a letter's, while it has no title yet. */
+export function readableFilename(name: string): string {
+  const base = name
+    .replace(/\.[a-z0-9]{2,4}$/i, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/^\d+\s+/, "")
+    .trim();
+  return base ? base.charAt(0).toUpperCase() + base.slice(1) : "New letter";
+}
+
+/**
+ * What a letter is called: its title once read, else its file's name made readable ("Foto brief") — one name
+ * in the letters list, the progress cards, the letter's breadcrumb and the browser tab. (A photo is stored as
+ * a JPEG: "foto-brief.png" became "foto-brief.jpg", which matched neither what was added nor the list.)
+ */
+export function letterName(doc: { title?: string | null; filename: string }): string {
+  return doc.title ?? readableFilename(doc.filename);
+}

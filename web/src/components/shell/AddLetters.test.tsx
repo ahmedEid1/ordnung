@@ -208,6 +208,27 @@ describe("files Ordnung can't read", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  // a 0-byte PDF was counted in "Add 2 letters?" and refused only after "Store now"
+  it("leave out an empty file before the dialog, and say so", async () => {
+    const user = renderAdder([new File([], "leer.pdf", { type: "application/pdf" }), new File(["%PDF-1.4"], "brief.pdf", { type: "application/pdf" })]);
+    await user.click(screen.getByRole("button", { name: "Add them" }));
+    const toast = (await screen.findByText("1 file skipped")).closest("li")!;
+    expect(toast).toHaveTextContent("leer.pdf is empty.");
+    expect(toast).not.toHaveTextContent("isn't a file Ordnung reads");
+    const dialog = await screen.findByRole("dialog", { name: "Add this letter?" });
+    expect(within(dialog).queryByText(/leer\.pdf/)).toBeNull();
+  });
+
+  it("say what to do with a Word file", async () => {
+    const user = renderAdder([new File(["x"], "Mietvertrag.docx", { type: "" }), new File([], "leer.pdf", { type: "application/pdf" })]);
+    await user.click(screen.getByRole("button", { name: "Add them" }));
+    const toast = (await screen.findByText("2 files skipped")).closest("li")!;
+    expect(toast).toHaveTextContent("Mietvertrag.docx isn't a file Ordnung reads.");
+    expect(toast).toHaveTextContent("Save a Word file as a PDF first, then add that.");
+    expect(toast).toHaveTextContent("leer.pdf is empty.");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
   it("takes a saved e-mail and a text file like the watched folder does", async () => {
     const user = renderAdder([
       new File(["From: a@example.org\r\nSubject: Rechnung\r\n\r\nHallo"], "rechnung.eml", { type: "" }),

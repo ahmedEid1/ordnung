@@ -295,6 +295,20 @@ describe("Inbox", () => {
     expect(within(tray).getByRole("heading", { name: /New mail, 4 letters/ })).toBeInTheDocument();
   });
 
+  // keyboard only: the envelope that held focus went with the Inbox, and focus fell to the page's very start
+  it("opens a New-mail letter once read, asking its page to focus the letter's title", async () => {
+    const { client, router } = renderInbox();
+    const tray = await screen.findByRole("region", { name: /New mail, 5 letters/ });
+    const card = within(tray).getByText("Finanzamt Musterstadt").closest("li")!;
+    await userEvent.setup().click(within(card).getByRole("button", { name: "Let Ordnung read it" }));
+    await waitFor(() => expect(srv.db.state.tray.find((t) => t.id === "mail_finanzamt")?.doc_id).toBeTruthy());
+    const docId = srv.db.state.tray.find((t) => t.id === "mail_finanzamt")!.doc_id!;
+    progress(client, docId, "running");
+    progress(client, docId, "done");
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/documents/${docId}`));
+    expect(router.state.location.state).toEqual({ focus: "title" });
+  });
+
   it("recaps a batch with the letters that couldn't be read, the tile's count matching Please check, then returns focus to the letters", async () => {
     const { client } = renderInbox();
     await screen.findByRole("link", { name: "Parking fine (Verwarnungsgeld)" });

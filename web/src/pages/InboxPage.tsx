@@ -155,7 +155,8 @@ export default function InboxPage() {
         }
         if (ok.length === 1 && fromTray.current.has(ok[0]!)) {
           dismissJob(ok[0]!);
-          navigate(`/documents/${ok[0]}`);
+          // its envelope (which had focus) goes with the Inbox: the letter's title takes it, not the page's start
+          navigate(`/documents/${ok[0]}`, { state: { focus: "title" } });
         }
         const id = failed[0];
         if (id) {

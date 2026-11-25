@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import { ArrowRight, CirclePause, CircleX, RotateCw } from "lucide-react";
 import type { Document } from "@/api/types";
 import { useReprocessDocument } from "@/api/hooks";
-import { WAITING_FOR_CLAUDE, claudeWaitReason, dismissJob, seedJob, useEvents, useJobProgress } from "@/api/sse";
+import { CHECK_CLAUDE, WAITING_FOR_CLAUDE, claudeWaitReason, dismissJob, seedJob, useEvents, useJobProgress } from "@/api/sse";
 import { setUploadToastHidden } from "@/components/shell/UploadCenter";
 import { FileNameText } from "@/components/ui/FileNameText";
 import { JOB_STAGE_COPY, PIPELINE_STEPS, copyFor, stageToStep } from "@/lib/copy";
@@ -88,6 +88,8 @@ export function ProcessingCard({ doc }: { doc: Document }) {
   if (claudeWait) return <ClaudeWaitCard reason={claudeWait} again={again} />;
   if (doc.status === "failed" || job?.status === "failed") {
     const reason = job?.error ?? doc.error ?? "Something went wrong while reading it.";
+    // Claude Code itself failed (it ended without an answer): every letter fails alike until it is fixed
+    const checkClaude = reason.endsWith(CHECK_CLAUDE);
     return (
       <div className="card flex gap-3 border-danger/30 px-5 py-4" role="alert">
         <CircleX className="mt-0.5 size-5 shrink-0 text-danger" aria-hidden />
@@ -102,19 +104,26 @@ export function ProcessingCard({ doc }: { doc: Document }) {
             {again ? "What's shown below is from the earlier reading. " : ""}
             {reason} Your file is safe.
           </p>
-          <Button
-            size="sm"
-            className="mt-3"
-            icon={RotateCw}
-            loading={reprocess.isPending}
-            onClick={() =>
-              reprocess.mutate(doc.id, {
-                onSuccess: (j) => seedJob({ job_id: j.id, doc_id: doc.id, stage: "intake", progress: 0, status: "running" }),
-              })
-            }
-          >
-            Try again
-          </Button>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              icon={RotateCw}
+              loading={reprocess.isPending}
+              onClick={() =>
+                reprocess.mutate(doc.id, {
+                  onSuccess: (j) => seedJob({ job_id: j.id, doc_id: doc.id, stage: "intake", progress: 0, status: "running" }),
+                })
+              }
+            >
+              Try again
+            </Button>
+            {checkClaude ? (
+              <Link to="/settings?section=claude" className={buttonVariants({ size: "sm" })}>
+                Claude connection
+                <ArrowRight className="size-4" aria-hidden />
+              </Link>
+            ) : null}
+          </div>
         </div>
       </div>
     );
