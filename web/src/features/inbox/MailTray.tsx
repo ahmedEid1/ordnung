@@ -62,6 +62,14 @@ export function MailTray({
   const [started, setStarted] = useState<Record<string, string | null>>({});
   /** documents whose job finished while the tray was on screen */
   const [finished, setFinished] = useState<Record<string, boolean>>({});
+  /**
+   * The letters "Read all" started together (mail ids): their progress is said as one line. Kept from the press,
+   * not worked out from each render's cards, which pass through other states as the requests return (an envelope
+   * then spoke on its own, and the line's count dropped and rose). It stays after the batch is over, so its last
+   * line ("Finished: …") is said and the filed envelopes do not each say so again; the next letter opened alone
+   * starts afresh.
+   */
+  const [batchIds, setBatchIds] = useState<string[] | null>(null);
 
   useServerEvent("job.progress", (ev) => {
     if (ev.doc_id && (ev.status === "done" || ev.status === "failed")) setFinished((f) => ({ ...f, [ev.doc_id!]: true }));
@@ -104,8 +112,12 @@ export function MailTray({
   const idle = cards.filter((c) => c.state.kind === "idle");
   const reading = cards.length > idle.length;
   // several letters read at once: one line for them all ("Reading 3 letters · 1 done"), not each card's steps
-  // interleaved, none of them saying which letter they belong to
-  const batch = cards.length - idle.length > 1;
+  // interleaved, none of them saying which letter they belong to. A letter that has left the tray was filed.
+  const batch = batchIds !== null;
+  const batchStates = (batchIds ?? []).map((id): CardState => {
+    const t = tray.data.find((m) => m.id === id);
+    return (t && stateOf(t)) ?? { kind: "done", docId: "" };
+  });
 
   const anchorOf = (mailId: string) => sectionRef.current?.querySelector<HTMLElement>(`${ANCHOR}[data-mail-id="${CSS.escape(mailId)}"]`);
 
@@ -113,6 +125,7 @@ export function MailTray({
     // the button goes when reading starts: its envelope takes focus first (and keeps it)
     if (sectionRef.current?.contains(document.activeElement) && items[0]) anchorOf(items[0].id)?.focus({ preventScroll: true });
     setStarted((s) => ({ ...s, ...Object.fromEntries(items.map((t) => [t.id, null])) }));
+    setBatchIds(items.length > 1 ? items.map((t) => t.id) : null);
     const results = await Promise.allSettled(items.map((t) => openMail.mutateAsync(t.id)));
     const opened: Record<string, string> = {};
     const letters: { docId: string; sender: string }[] = [];
@@ -121,6 +134,8 @@ export function MailTray({
       opened[items[i]!.id] = r.value.document.id;
       letters.push({ docId: r.value.document.id, sender: items[i]!.sender });
     });
+    // a letter that couldn't be opened is back in the tray, unopened (the error toast says why): not part of the batch
+    setBatchIds((ids) => ids && ids.filter((id) => id in opened || !items.some((t) => t.id === id)));
     setStarted((s) => {
       const next = { ...s, ...opened };
       // requests that failed go back to "unopened" (the error toast explains why)
@@ -185,7 +200,7 @@ export function MailTray({
           ))}
         </ul>
       </div>
-      <LiveText text={batch ? batchLine(cards.map((c) => c.state)) : ""} />
+      <LiveText text={batch ? batchLine(batchStates) : ""} />
     </section>
   );
 }

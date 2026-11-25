@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import type { QueryClient } from "@tanstack/react-query";
 import { renderWithProviders } from "@/test/render";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
-import { handleServerEvent, __resetEventsForTests } from "@/api/sse";
+import { dismissJob, handleServerEvent, __resetEventsForTests } from "@/api/sse";
 import type { DocumentRow, Household, HouseholdFiling, JobProgressEvent } from "@/api/types";
 import { createMockServer, type MockServer } from "@/mocks/server";
 import { AddLettersProvider } from "@/components/shell/AddLetters";
@@ -350,6 +350,51 @@ describe("Inbox", () => {
     for (const envelope of within(tray).getAllByRole("group", { name: /^Letter from / })) {
       for (const region of envelope.querySelectorAll("[aria-live]")) expect(region).toHaveTextContent("");
     }
+  });
+
+  it("“Read all” keeps one line with the same count while the letters' envelopes open one by one", async () => {
+    // each letter's "open" request answers in turn, as a busy demo does: the cards pass through in-between states
+    const mocked = globalThis.fetch;
+    const held: (() => void)[] = [];
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith("/api/demo/mail") && init?.method?.toUpperCase() === "POST") await new Promise<void>((go) => held.push(go));
+      return mocked(input, init);
+    });
+    const { client } = renderInbox();
+    const tray = await screen.findByRole("region", { name: /New mail, 5 letters/ });
+    // every text the tray's regions hold, as a screen reader would be told it
+    const said: string[] = [];
+    const heard = () => {
+      for (const region of tray.querySelectorAll("[aria-live]")) {
+        const text = region.textContent ?? "";
+        if (text && said[said.length - 1] !== text) said.push(text);
+      }
+    };
+    const watch = new MutationObserver(heard);
+    watch.observe(tray, { subtree: true, childList: true, characterData: true });
+    await userEvent.setup().click(within(tray).getByRole("button", { name: "Read all 5" }));
+    await waitFor(() => expect(held).toHaveLength(5));
+    const reading = new Set<string>();
+    for (const [i, go] of held.entries()) {
+      go();
+      await waitFor(() => expect(srv.db.state.tray.filter((t) => t.doc_id).length).toBe(i + 1));
+      // the letter just opened: it starts reading (and the first is filed before the last is even opened)
+      const docId = srv.db.state.tray.find((t) => t.doc_id && !reading.has(t.doc_id))!.doc_id!;
+      reading.add(docId);
+      progress(client, docId, "running");
+      if (i === 0) {
+        progress(client, docId, "done");
+        // its progress put away (as a finished upload's toast does): its envelope leaves while the others still open
+        act(() => dismissJob(docId));
+      }
+      await act(() => new Promise((r) => setTimeout(r, 30)));
+    }
+    watch.disconnect();
+    heard();
+    // the envelopes' own regions never spoke, and the tray's line always counted the 5 letters started
+    expect(said.length).toBeGreaterThan(0);
+    for (const line of said) expect(line).toMatch(/^Reading 5 letters/);
+    expect(said[said.length - 1]).toBe("Reading 5 letters · 1 done");
   });
 
   it("says each step of a letter read on its own, the first one too (a region added with its words in it is not read)", async () => {
