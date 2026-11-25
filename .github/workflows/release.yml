@@ -70,14 +70,7 @@ jobs:
       - name: The committed web build is the one its sources make
         working-directory: web
         run: node scripts/source-hash.mjs --check ../src/ordnung/web/dist/build-info.json
-      # the hash above covers the sources only: the build is rebuilt (without install scripts, outside the
-      # checkout) and must equal the committed one byte for byte, so a bundle changed by hand never ships
-      - name: The committed web build is byte for byte the one its sources make
-        working-directory: web
-        run: |
-          npm ci --ignore-scripts
-          npx vite build --outDir "$RUNNER_TEMP/web" --emptyOutDir
-          diff -r "$RUNNER_TEMP/web" ../src/ordnung/web/dist
+      # the hash above covers the sources only; the job web-build checks the bundle itself
       - name: Build sdist and wheel
         run: uv build --build-constraints build-constraints.txt --require-hashes
       - name: The wheel carries the built web app and the demo
@@ -114,9 +107,34 @@ jobs:
           path: constraints.txt
           if-no-files-found: error
 
+  # The hash in build covers the web app's sources only: here the web app is rebuilt (without install scripts,
+  # outside the checkout) and must equal the committed one byte for byte, so a bundle changed by hand never
+  # ships. A job of its own: the npm packages that build runs (vite, its plugins and theirs) never run where
+  # dist/ is built and uploaded, and the release waits for it.
+  web-build:
+    name: The committed web build is byte for byte the one its sources make
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - name: The committed web build is byte for byte the one its sources make
+        working-directory: web
+        run: |
+          npm ci --ignore-scripts
+          npx vite build --outDir "$RUNNER_TEMP/web" --emptyOutDir
+          diff -r "$RUNNER_TEMP/web" ../src/ordnung/web/dist
+
   github-release:
     name: GitHub Release
-    needs: build
+    needs: [build, web-build]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # the run's own token, which ends with the run; this job runs no code from the repository
@@ -149,7 +167,7 @@ jobs:
     name: PyPI (Trusted Publishing)
     # last, after the GitHub Release: PyPI never takes the same version twice. Off until the owner has set PyPI
     # up (docs/releasing.md); never for a pull request or a fork
-    needs: [build, github-release]
+    needs: [build, web-build, github-release]
     if: >-
       github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') &&
       github.repository == 'ahmedEid1/ordnung' && vars.PYPI_PUBLISH == 'true'

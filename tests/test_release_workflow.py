@@ -106,9 +106,10 @@ def test_each_job_gets_only_the_rights_it_needs() -> None:
     only the PyPI job may ask for the OIDC token PyPI checks."""
     assert _workflow()["permissions"] == {}
     jobs = _jobs()
-    assert set(jobs) == {"build", "github-release", "pypi"}
+    assert set(jobs) == {"build", "web-build", "github-release", "pypi"}
     # the build reads the code, and CI's runs to check that CI passed on the tagged commit
     assert jobs["build"]["permissions"] == {"contents": "read", "actions": "read"}
+    assert jobs["web-build"]["permissions"] == {"contents": "read"}
     assert jobs["github-release"]["permissions"] == {"contents": "write"}
     assert jobs["pypi"]["permissions"] == {"id-token": "write"}
 
@@ -125,7 +126,8 @@ def test_pypi_waits_for_the_owner_s_switch_and_never_runs_for_a_pull_request_or_
         assert gate in condition, gate
     assert "||" not in condition and "always()" not in condition  # every gate must hold
     assert pypi["environment"]["name"] == "pypi"
-    assert set(pypi["needs"]) == {"build", "github-release"}  # last: an upload can never be replaced
+    # last: an upload can never be replaced
+    assert set(pypi["needs"]) == {"build", "web-build", "github-release"}
     assert [step.get("uses", "").split("@")[0] for step in pypi["steps"]] == [
         "actions/download-artifact",
         "pypa/gh-action-pypi-publish",
@@ -185,11 +187,13 @@ def test_the_build_checks_the_tag_the_branch_and_the_files_before_anything_is_pu
 
 
 def test_the_release_ships_only_the_web_build_its_sources_make() -> None:
-    """The sources' hash alone passes a committed bundle changed by hand: before ``uv build`` packs it, the web
-    app is rebuilt outside the checkout, without install scripts, and must equal the committed one byte for
-    byte."""
-    build = _jobs()["build"]
-    step = build["steps"][_step_index(build, "diff -r")]
+    """The sources' hash alone passes a committed bundle changed by hand: the web app is rebuilt outside the
+    checkout, without install scripts, and must equal the committed one byte for byte, or nothing is
+    published. That runs npm packages (vite and its plugins), so it is a job of its own: none of them runs in
+    the job that builds and uploads dist/."""
+    jobs = _jobs()
+    web = jobs["web-build"]
+    step = web["steps"][_step_index(web, "diff -r")]
     assert step["working-directory"] == "web"
     lines = [line.strip() for line in step["run"].splitlines() if line.strip()]
     assert lines == [
@@ -197,11 +201,14 @@ def test_the_release_ships_only_the_web_build_its_sources_make() -> None:
         'npx vite build --outDir "$RUNNER_TEMP/web" --emptyOutDir',
         'diff -r "$RUNNER_TEMP/web" ../src/ordnung/web/dist',
     ]
-    assert (
-        _step_index(build, "source-hash.mjs --check")
-        < _step_index(build, "diff -r")
-        < _step_index(build, "uv build")
-    )
+    assert "needs" not in web and not any("upload-artifact" in step.get("uses", "") for step in web["steps"])
+    # the build job runs the repository's own hash check, and no npm package
+    build_script = "\n".join(_runs(jobs["build"]))
+    assert "source-hash.mjs --check" in build_script
+    assert not any(word in build_script for word in ("npm ", "npx ", "vite", "pnpm", "yarn"))
+    # neither publishing job runs unless the bundle checked out
+    for publisher in ("github-release", "pypi"):
+        assert "web-build" in jobs[publisher]["needs"], publisher
 
 
 def test_the_build_checks_the_files_as_ci_s_wheel_job_does_and_more() -> None:
@@ -214,7 +221,7 @@ def test_the_build_checks_the_files_as_ci_s_wheel_job_does_and_more() -> None:
 
 def test_the_github_release_has_the_notes_and_both_files_and_checks_out_no_code() -> None:
     release = _jobs()["github-release"]
-    assert release["needs"] == "build" or release["needs"] == ["build"]
+    assert set(release["needs"]) == {"build", "web-build"}
     assert not any("checkout" in step.get("uses", "") for step in release["steps"])
     (run,) = _runs(release)
     command = " ".join(run.replace("\\\n", " ").split())
