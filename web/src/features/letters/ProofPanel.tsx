@@ -166,6 +166,8 @@ function Tracking({ draft, overview }: { draft: Draft; overview: ProofOverview }
           // the number may well be stored: ask the server, so the page shows what it holds
           void qc.invalidateQueries({ queryKey: qk.drafts.proof(draft.id) });
           void qc.invalidateQueries({ queryKey: qk.drafts.detail(draft.id) });
+          // that swaps the field (where a failed Undo put focus) for the stored number: Change takes focus, not <body>
+          focusId(TRACKING_CHANGE);
         }
         return false;
       },

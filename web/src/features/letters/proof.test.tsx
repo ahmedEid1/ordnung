@@ -501,6 +501,8 @@ describe("Proof of sending", () => {
       // and the page asks again, so it shows the number as stored, not an empty field to save it into
       expect(await within(proof).findByText("RT 123 456 785 DE")).toBeInTheDocument();
       expect(within(proof).queryByLabelText("Tracking number")).toBeNull();
+      // the field the Toaster focused is gone with that refetch: Change takes focus, not <body>
+      await waitFor(() => expect(within(proof).getByRole("button", { name: "Change" })).toHaveFocus());
     } finally {
       window.removeEventListener("error", onError);
     }
