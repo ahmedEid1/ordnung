@@ -1,8 +1,22 @@
 # Security policy
 
-Ordnung keeps people's letters, deadlines and bank details on their own computer. If you find a way
-to get at them, or to make Ordnung do something it shouldn't, please tell us privately first, not in
-a public issue.
+This page is for anyone who has found a way to get at the letters, deadlines or bank details people keep in
+Ordnung on their own computer, or to make Ordnung do something it shouldn't: how to report it, what counts and
+what happens next.
+
+## In one minute
+
+- **Report privately first**, not in a public issue: the repository's **Security** tab → **Report a
+  vulnerability**, or, if that button is missing, the **Security contact** issue form
+  ([how to report](#how-to-report)).
+- **Send no real letters or personal data**: show the problem with the demo or a letter you made up
+  ([what to include](#what-to-include)).
+- **In scope:** anything in this repository, from the local server, phone access and hand-off sync to prompt
+  injection through a letter ([what is in scope](#what-is-in-scope)).
+- **Not in scope:** Claude Code or the Claude models themselves, attacks that need your user account already, and
+  a dependency's known vulnerability that Ordnung doesn't expose.
+- **What happens next:** the newest release and `main` get fixes; a fix ships as a new version with a line in
+  the changelog, naming you if you ask ([what happens next](#what-happens-next)).
 
 ## How to report
 
@@ -16,6 +30,8 @@ owner turns it on once, in the repository's security settings. If you can't find
 with the **Security contact** form, which asks for nothing about the problem, and you will be given a
 private way to send the report.
 
+## What to include
+
 Please include:
 
 - the Ordnung version (`ordnung --version`) and your system;
@@ -24,12 +40,15 @@ Please include:
 - the steps, ideally against the demo (`ordnung demo`, a fictional person's letters) or a letter you
   made up.
 
-**Never send real letters or personal data**, yours or anyone else's: no scans, photos or e-mails of
-real letters, no names, addresses, IBANs, tax or case numbers, no `ordnung.db`, data folder, backup
-file or sync folder from real use, no passphrases, session tokens, pairing codes or phone keys. A
-plain `ordnung trace` names the letter's sender, to-dos, threads and contracts and shows its dates, so
-don't send one of a real letter either. If a real letter is the only way to show the problem,
-describe it; we will ask for a made-up one.
+**Never send real letters or personal data**, yours or anyone else's:
+
+- no scans, photos or e-mails of real letters, no names, addresses, IBANs, tax or case numbers;
+- no `ordnung.db`, data folder, backup file or sync folder from real use, no passphrases, session tokens,
+  pairing codes or phone keys;
+- no `ordnung trace` of a real letter either: a plain one names the letter's sender, to-dos, threads and
+  contracts and shows its dates.
+
+If a real letter is the only way to show the problem, describe it; we will ask for a made-up one.
 
 ## What is in scope
 
@@ -52,12 +71,15 @@ What each part is meant to protect, and how, is in
 [docs/architecture.md](docs/architecture.md#components-and-trust-boundaries) and
 [docs/privacy.md](docs/privacy.md).
 
-Not in scope: problems in Claude Code or the Claude models themselves (report those to Anthropic),
+**Not in scope:** problems in Claude Code or the Claude models themselves (report those to Anthropic),
 attacks that need someone already in control of your user account, and a known vulnerability in a
 dependency that Ordnung doesn't expose (CI's dependency audit tracks those; a normal issue is fine).
 
-## Which versions get fixes
+<a id="which-versions-get-fixes"></a>
 
-The newest release (see [CHANGELOG.md](CHANGELOG.md)) and `main`. Please check that the problem is
-still there in one of them. A fix ships as a new version, with a line in the changelog; say in the
-report whether you want to be named there.
+## What happens next
+
+- **Fixed versions.** The newest release (see [CHANGELOG.md](CHANGELOG.md)) and `main` get fixes. Please check
+  that the problem is still there in one of them.
+- **The fix.** A fix ships as a new version, with a line in the changelog; say in the report whether you want to
+  be named there.

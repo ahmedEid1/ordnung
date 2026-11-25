@@ -1,11 +1,97 @@
 # Privacy & data flow
 
+This page is for anyone who wants to know, before trusting Ordnung with their letters, what it keeps, where,
+and what it sends to whom.
+
 Ordnung is a **local app**. It has no server, no account, no telemetry, and it never sees your
 Claude credentials. But it is not "offline AI": when Claude reads a letter, the content of that
 letter is sent to Anthropic **through your own Claude account**. This page explains exactly what
 goes where.
 
+## In one minute
+
+- **What leaves your computer:** a letter Claude reads (with your name and region), and the excerpts of your
+  records and household that *Ask*, *Weekly Ideas*, the secretary's note and *Letters* use, go to Anthropic
+  through your own Claude account; every call is listed in Settings → Privacy & AI usage, with its purpose,
+  which documents, tokens and cost ([per feature](#what-is-sent-to-claude-per-feature)). Your calendar provider, your phone and your sync folder
+  get something only if you turn that feature on ([at a glance](#at-a-glance)). With
+  `ordnung mcp install --with-ledger`, a Claude client you add Ordnung to reads your ledger too, and that
+  client's other tools could send it on ([Claude Desktop or Claude Code](#using-ordnung-from-claude-desktop-or-claude-code)).
+- **What Anthropic keeps:** how long it keeps your data, and whether it trains on it, follow your Claude
+  account's type and settings ([per feature](#what-is-sent-to-claude-per-feature)). Claude Code's own telemetry and error reporting
+  apply to Ordnung's calls unless you turn them off ([hardening](#hardening-built-into-every-model-call)).
+- **What is stored where:** your letters, what was read from them and your records are in one data folder on
+  your computer; the calendar's app password and the sync passphrase stay in your system's password store
+  ([at a glance](#at-a-glance)).
+- **Deleting for good:** deleting a letter removes its file, everything read from it and every cached answer
+  that carried it; your *Ask* conversations and the contracts and letters you drafted stay. *Delete everything*
+  wipes this computer's database and takes it out of hand-off sync; your other computers and the sync folder
+  keep what they have. Backups you made, a ZIP you exported and your sync tool's history keep what they hold
+  until you delete them there; with hand-off sync, a deleted letter's files leave the sync folder once nothing
+  refers to them for 7 days ([deleting](#deleting-for-good)).
+- **What is encrypted:** backups, the hand-off sync folder and the phone connection are. Your data folder and an
+  exported ZIP are not, so encrypt your computer's disk ([what is encrypted](#what-is-encrypted-and-what-is-not)).
+- **Others on your computer or network:** on Linux and macOS other accounts can't open your data folder, and
+  other devices can't reach Ordnung unless you turn on phone access. What they still can see is listed
+  ([who else can see what](#who-else-can-see-what)).
+
+## Contents
+
+- **Start here:** [What is encrypted](#what-is-encrypted-and-what-is-not) ·
+  [Who else can see what](#who-else-can-see-what) · [At a glance](#at-a-glance) ·
+  [What is sent to Claude](#what-is-sent-to-claude-per-feature) · [Your controls](#your-controls)
+- **What Ordnung keeps:** [My numbers](#my-numbers) · [Your household](#your-household) ·
+  [The watched folder](#the-watched-folder) · [Searchable scans](#searchable-scans) ·
+  [Words in pictures](#words-in-pictures-optional) · [GiroCode](#girocode-payment-qr-codes)
+- **Features you turn on:** [Reminders](#reminders-while-ordnung-is-closed) ·
+  [Calendar sync](#calendar-sync-optional) · [Phone access](#phone-access-optional) ·
+  [Hand-off sync](#hand-off-sync-between-your-computers-optional) · [Encrypted backups](#encrypted-backups)
+- **Safety and the rest:** [If your computer is lost or stolen](#if-your-computer-is-lost-or-stolen) ·
+  [Hardening](#hardening-built-into-every-model-call) ·
+  [Claude Desktop or Claude Code](#using-ordnung-from-claude-desktop-or-claude-code) ·
+  [Demo fixtures](#demo-fixtures)
+
+## What is encrypted, and what is not
+
+The files Ordnung writes for a backup or for hand-off sync are encrypted; your data folder and an exported ZIP are
+not.
+
+| What | Encrypted? |
+|---|---|
+| Your data folder: letters, page images, your ledger ([why that matters](#if-your-computer-is-lost-or-stolen)) | **No.** On Linux and macOS it is private to your account; encrypt your computer's disk |
+| [Encrypted backups](#encrypted-backups) | Yes: AES-256-GCM, with a key made from your passphrase |
+| [Hand-off sync's folder](#hand-off-sync-between-your-computers-optional) | Yes: every file, and its name is a keyed hash |
+| [Phone access](#phone-access-optional) | Yes: HTTPS with a certificate Ordnung makes. Its keys in the data folder are not encrypted |
+| [Calendar sync](#calendar-sync-optional) | Sent only over `https://` (or `http://` to a server on this computer); your provider stores the events |
+| [Exported letters](#seeing-what-was-done-and-taking-your-letters-with-you) (the ZIP) | **No.** Anyone who has the file can read the letters |
+| The calendar's app password and the sync passphrase | Kept in your system's password store, never in Ordnung's database, a log or a backup |
+
+## Who else can see what
+
+- **Another account on this computer** can't read your data folder on Linux and macOS. Until your browser uses
+  it, it could read the one-time code of the sign-in link Ordnung opens your browser with, and sign in with it
+  first ([how](#hardening-built-into-every-model-call)).
+- **Other programs on this computer** that serve pages on localhost get Ordnung's sign-in cookie from your
+  browser while you're signed in: open only local pages you trust ([signed in](#signed-in)).
+- **Other devices on your network** can't reach Ordnung, which listens only on this computer's own address (`127.0.0.1`).
+  With phone access on, it also answers on your home network, over HTTPS, and only a phone you paired sees
+  anything of yours ([phone access](#phone-access-optional)).
+- **Someone who sees your screen:** *My numbers* hides each of your own numbers (all but the last few
+  characters) until you choose *Show*; a case's reference, such as a Kassenzeichen, is shown in full, as its
+  letter shows it. The morning notification, if you switch it on, is *Discreet* unless you choose *With details*
+  ([my numbers](#my-numbers), [reminders](#reminders-while-ordnung-is-closed)).
+- **Your calendar and sync providers** get only what those features send: a discreet event (the default) has its date, time and alarms and a
+  title like "Ordnung: deadline", while *With details* also sends what Ordnung's calendar file holds: the title
+  (after the name of the household member the letter is filed for), what to do, the amount, who it is with
+  and why that date; and the sync folder holds only encrypted files, though their number, sizes and times
+  show roughly how much you add, and anyone who knows Ordnung's open format can tell the folder is its
+  encrypted store, under the name you gave it, and how many computers take part
+  ([calendar](#calendar-sync-optional),
+  [hand-off sync](#hand-off-sync-between-your-computers-optional)).
+
 ## At a glance
+
+On a phone, scroll the table sideways for its last column.
 
 | Data | Where it lives | Leaves your computer? |
 |---|---|---|
@@ -14,7 +100,7 @@ goes where.
 | Page images, thumbnails | `<data dir>/derived/` | Only as part of a *Read* call (see below) |
 | A scanner's text (the hidden text a scanner adds to a "searchable PDF") | `<data dir>/derived/` (`scan-text.json`): kept with the letter's page images (so also in backups and hand-off sync), only for search | Only inside your encrypted backups and hand-off sync's encrypted copy, like the page images — never to Claude, and never shown ([below](#searchable-scans)) |
 | Text Ordnung read from a picture (only with Tesseract installed: the words in a photo or scan Claude isn't reading) | `<data dir>/derived/` (`picture-text.json`): kept with the letter's page images (so also in backups and hand-off sync), only for search | Only inside your encrypted backups and hand-off sync's encrypted copy, like the page images — never to Claude, and never shown. Tesseract runs on the computer Ordnung runs on: nothing is sent anywhere to read a picture ([below](#words-in-pictures-optional)) |
-| Your ledger (letters, to-dos, contracts, ideas, drafts) | `<data dir>/ordnung.db` (SQLite) | Excerpts, when you use *Ask*, *Weekly Ideas* or *Letters* |
+| Your ledger (letters, to-dos, contracts, ideas, drafts) | `<data dir>/ordnung.db` (SQLite) | Excerpts, when you use *Ask*, *Weekly Ideas*, the secretary's note or *Letters* |
 | Profile (name, address, region, the IBAN you may add for refunds; after you say you moved, the day you moved in and your old address) | `ordnung.db` | Name, language and region in prompts; the address and IBAN you enter here, and your old address, are never put into a prompt (a letter you add is read as printed, with the address in its window; letters Ordnung drafts that contain them reach Claude with placeholders, also when translated again, and get the real values back in the translation); the day you moved in reaches Claude only as the day to register by (two weeks later) in the moving checklist's first row, whose title and date *Weekly Ideas* and the daily note send like every Idea's, and as a new-address letter you write states it |
 | Your *For taxes* choices (the letters you marked for taxes yourself, or took off your letters for taxes) | `ordnung.db` (`meta`, the `tax_choices` row: letter ids with yes or no) | Inside your encrypted backups and hand-off sync's encrypted copy, and in *Download a copy of your records* when you save it; to Claude only whether a letter Claude may read counts for taxes, when *Ask* or *Weekly Ideas* reads that letter, and in *Ask* that you marked or unmarked it yourself ([below](#what-is-sent-to-claude-per-feature)) |
 | Your household (the people whose letters come to you too, whether each signs their own letters, and which letters you filed for whom) | `ordnung.db` (`meta`, the `household` row) | Inside your encrypted backups and hand-off sync's encrypted copy, in *Download a copy of your records* when you save it, and on the screen of a phone you paired; to Claude only the names and which letters you filed for whom, through *Ask*, and a name in the title of an Idea about their letters you don't keep private ([below](#your-household)); and, with calendar sync *With details*, to your calendar provider in the events' titles |
@@ -54,6 +140,17 @@ privacy settings before processing sensitive documents.
 | **Ask** | your question and the last few messages of the conversation; the assistant then reads what it needs through Ordnung's **read-only** tools (search results, document excerpts) |
 | **Letters** | the related letter's title, date, summary and reference numbers, the contract's name and customer number, the letter's fixed wording (with your addresses and IBAN replaced by placeholders), the recipient's name (first line only) and your instructions — including facts you typed for a template letter, such as a defect's description. *Translate again* sends the letter's subject and text as they stand, with your profile's address and IBAN, the sender block's address, every IBAN and the addresses a template letter wrote replaced by placeholders; other text you typed into the letter yourself is sent as you wrote it. Ordnung doesn't add your name, or the name a letter goes out in, to the request. The related letter's title and summary are sent as they were read, though, and they often name you or the person the letter was addressed to |
 
+You can inspect every call in **Settings → Privacy & AI usage**: purpose, which documents, how many
+pages and bytes were sent, tokens, API-equivalent cost, and whether it came from cache. For Ask, that is
+every letter whose text a tool result sent — a search hit's title and snippet, the letter a listed to-do
+was read from, every letter a listed contract's terms were read from and a cancellation letter whose end
+date it gives — not only the letters it opened. A call whose `claude` never started (Claude
+not installed) sent nothing and lists no letter; a letter no call has carried says *Not sent to Claude*
+on its page.
+
+<details>
+<summary>Sent twice, the postcode question, the moving checklist, <i>For taxes</i> and your household</summary>
+
 Reading a letter can send its text more than once, never anything more: when Claude's answer doesn't fit
 the form it is asked once more with the problems listed, and when its reading comes back incomplete (almost
 blank, or without the deadline to object the letter's instructions state) it is asked once more for what it
@@ -79,13 +176,139 @@ appear or go away; its title (*Your 2025 tax documents are ready to collect*: no
 Idea's, is part of what *Weekly Ideas* and the daily note send. Your household reaches Claude only as
 [below](#your-household) says.
 
-You can inspect every call in **Settings → Privacy & AI usage**: purpose, which documents, how many
-pages and bytes were sent, tokens, API-equivalent cost, and whether it came from cache. For Ask, that is
-every letter whose text a tool result sent — a search hit's title and snippet, the letter a listed to-do
-was read from, every letter a listed contract's terms were read from and a cancellation letter whose end
-date it gives — not only the letters it opened. A call whose `claude` never started (Claude
-not installed) sent nothing and lists no letter; a letter no call has carried says *Not sent to Claude*
-on its page.
+</details>
+
+## Your controls
+
+What you decide about each letter, how to delete it for good, and what Ordnung never does by itself.
+
+### Keeping a letter from Claude
+
+- **Keep private — no AI** — every upload asks first: switch it on and the document is never sent to
+  Claude. It is stored, search finds it by its name and by the text in the file — a PDF's own text, or
+  the text a scanner added to a scan, kept for search only; a photo by its name, and by the words Ordnung
+  reads in it if you installed Tesseract, kept the same way — and you can add dates by hand. A letter you
+  delete while it still waits to be read is never sent either.
+- **The watched folder waits for you** — files your scanner or phone app saves into the watched folder
+  are stored and read on this computer only, and wait in the Inbox ("From your folder — not read
+  yet") until you choose *Read these* or *Keep private* ([details](#the-watched-folder)). *Keep
+  private* can be undone (the toast's *Undo*, or *Undo "Keep private"* on the letter — for an e-mail,
+  its attachments kept private with it wait again too).
+- **E-mail attachments follow the e-mail** — each PDF or photo attached to an e-mail you add becomes
+  a letter of its own with the e-mail's choice: attachments of a private e-mail stay private, those of
+  a waiting e-mail wait with it. An e-mail saved from Outlook (`.msg`) is opened on this computer and kept
+  as an `.eml` copy; the `.msg` itself isn't kept, so keep it yourself if you need the original.
+- **Proof of sending stays private** — a receipt, delivery record, fax report or saved e-mail you
+  add to a sent letter is stored like any upload with *Keep private — no AI* on: it is never sent to
+  Claude, not even when you ask about the letter, and it isn't listed among your letters.
+
+  <details>
+  <summary>The one exception, and what else happens to a proof</summary>
+
+  - One exception is said when it happens: a file that was already in Ordnung (the same bytes, e.g. you
+    first added it to your Inbox) is linked as it is — made private then if it was never given to Claude,
+    and otherwise Ordnung tells you it was given to Claude instead of calling it private (one still waiting
+    from your watched folder is kept private then, so *Read these* never sends it; and a proof never
+    waits again — *Undo "Keep private"* skips it, also for the e-mail it came attached to). "Given to Claude"
+    counts every time a model had it, also when reading it failed or paused afterwards, and also
+    when you switched *Keep private* on later.
+  - A sent e-mail kept as proof is one file: its attachments never become letters, and the ones it brought
+    while it waited in your Inbox (never read) are deleted when it becomes proof — the e-mail keeps them.
+  - Its kind, day and note are what you chose — Ordnung doesn't read them from the file. The *Nachweis* PDF
+    is made on your computer from the letter and these files. Tracking numbers are checked on your computer;
+    Ordnung never asks a tracking website. The name, e-mail and phone the letter showed when you marked it
+    sent are kept with it, so its PDF shows what went out.
+  - Removing a proof deletes its file for good (unless another proof uses it) — the confirmation names the
+    file and offers to download it first, as a photographed receipt may be your only copy; deleting the
+    letter deletes its proofs too, unless you choose to keep the files.
+
+  </details>
+- **Call notes** — what you note about a phone call is kept as you typed it; no AI reads it.
+
+### Deleting for good
+
+- **Delete means delete** — deleting a letter removes it for good: the original, page images (and
+  the text a scanner added to it or Ordnung read from it), everything read from it, its to-dos and Ideas,
+  its search-index entries, its entries in the activity log, quotes from it in contracts you keep, the record of how it
+  was read, your *For taxes* choice for it and whom you filed it for, and the cached model responses of
+  every call that carried it (a secretary's note or review built from several letters included).
+  - The usage log keeps only anonymous numbers (its calls' replay keys, which hash the letter's content, and
+    their error texts, which may quote Claude's answer, are cleared too), and deleted database rows are
+    overwritten rather than left behind.
+  - Originals, page images and every answer of the app's API are never kept in the browser's cache, and
+    deleting a letter for good or deleting everything also tells the browser to empty its cache. A paired
+    phone keeps no copy either: every answer it gets is marked not to be stored, it can't download originals,
+    letter PDFs or the calendar file, and a phone you removed is told to empty its cache and storage the next
+    time it reaches Ordnung (a tab still open there shows what it last showed until it is closed).
+  - Contracts and letters you drafted stay, without the link to it; your *Ask* conversations stay as
+    they are.
+  - *Settings → Delete everything* wipes the whole database — and, when a calendar is
+    connected for calendar sync, first removes Ordnung's events from it and the app password from your
+    system's password store (if that can't be done, nothing is deleted and Ordnung says what to do; when
+    another of your computers sends to the same calendar through hand-off sync, the events stay there and
+    only this computer's connection goes).
+  - **Copies outside Ordnung's database.** Encrypted backups you made earlier are files of your own: they still
+    hold what was in Ordnung when you made them, deleted letters included, until you delete them. With
+    [hand-off sync](#hand-off-sync-between-your-computers-optional) on, a deleted letter's encrypted files leave
+    the sync folder once nothing refers to them for 7 days (of Ordnung's clock and of its running time); your
+    sync tool's version history or trash may keep them longer — empty it there too. A kept copy holds what it
+    saved until you delete it. *Delete everything* takes this computer out of sync first; your other
+    computers and the sync folder keep what they have.
+- **A letter deleted while it is being read** — if a call to Claude about it is still under way,
+  its answer is not cached and the usage log keeps only the anonymous numbers, as for a letter
+  deleted afterwards.
+
+### Seeing what was done, and taking your letters with you
+
+- **How it was read** — each letter's page shows how it was read: every step, what Claude was
+  asked (the prompt's name and version, tokens, API-equivalent cost), what code checked and what was
+  filed. Only the steps' numbers, codes and the ids of what they found are kept — never the letter's
+  text; the names shown are looked up when you open it. *Download a copy of your records* includes
+  these traces.
+
+  <details>
+  <summary>Sharing one reading with a tracing tool</summary>
+
+  `ordnung trace <letter id> --otel` writes one reading as OpenTelemetry JSON for a
+  tracing tool: no letter text, titles or names, and every id replaced by a code made for that file
+  (Ordnung's own ids are hashes of a file, a sender's name or a sentence, so they could confirm a
+  guess). It still shows the dates Ordnung computed and the letter's dates they came from, the rules
+  that computed them (their public names, such as `zpo_692`), the holiday calendar each date used (a
+  Bundesland's, or nationwide), how many pages, quotes and to-dos there were, match scores, and the
+  prompts' versions and models — look it over before you share it.
+
+  </details>
+- **Export letters** — Settings → Data → *Export letters* (or *Export these letters…* on a tax year) saves
+  your letters' original files as one ZIP, in folders by year and sender, with a list of them
+  (`index.csv`) for a spreadsheet. It runs only when you click it, on the computer — a paired phone can't
+  export — and it leaves the computer only as the ZIP you save: Ordnung writes nothing for it, sends nothing
+  and keeps no copy. **The ZIP isn't encrypted:** anyone who has it can read the letters, so keep it safe and
+  share it only with people you trust, like your tax adviser. Letters you kept private are in it too;
+  letters still waiting for your answer from the watched folder aren't, nor are letters you wrote in Ordnung
+  (download each one's PDF under Letters) or their proofs of sending.
+- **Model** — choose the Claude model every call runs on (Settings → Claude connection; Sonnet 5 unless you
+  change it). The demo and the benchmarks keep the model they were recorded with.
+
+### What only you do
+
+- **Nothing is sent or paid automatically** — Ordnung drafts letters and suggests actions; you send
+  them yourself. A GiroCode only pre-fills your banking app; you check and confirm the transfer
+  there. (Two things keep themselves current, each only after you turn it on: calendar sync updates
+  Ordnung's own events in the calendar you connected, and hand-off sync keeps the encrypted copy in your
+  sync folder up to date — see below.)
+
+### Signed in
+
+- **Signed in on this computer** — Ordnung's sign-in cookie is named after its port, so the demo and
+  your own Ordnung on another port keep separate sign-ins. Browsers don't keep cookies apart by port,
+  though: while you're signed in, your browser also sends Ordnung's sign-in cookie to other programs on
+  this computer that serve pages on localhost, on any port. On a shared computer, only open local web
+  pages you trust while Ordnung is open.
+- **Signed in on your phone** — a paired phone signs in with a cookie of its own that only that
+  phone's browser holds, never your computer's session token. It works only from your home network,
+  changes by itself at most once an hour, and stops working the moment you remove the phone in
+  Settings → Phone on your computer. Ordnung keeps only a hash of it. Cookies ignore ports here too: if
+  that phone opens another HTTPS service on your computer's address, its browser sends the cookie along.
 
 ## My numbers
 
@@ -161,119 +384,6 @@ sync.
   letters again; which letters were filed for them is kept until your next change of the list, so the toast's
   *Undo* can file them again. Deleting a letter for good removes its filing in the same step; the trash keeps
   it, as it keeps the letter. *Delete everything* removes the row with the rest of the database.
-
-## Your controls
-
-- **Keep private — no AI** — every upload asks first: switch it on and the document is never sent to
-  Claude. It is stored, search finds it by its name and by the text in the file — a PDF's own text, or
-  the text a scanner added to a scan, kept for search only; a photo by its name, and by the words Ordnung
-  reads in it if you installed Tesseract, kept the same way — and you can add dates by hand. A letter you
-  delete while it still waits to be read is never sent either.
-- **The watched folder waits for you** — files your scanner or phone app saves into the watched folder
-  are stored and read on this computer only, and wait in the Inbox ("From your folder — not read
-  yet") until you choose *Read these* or *Keep private* ([details](#the-watched-folder)). *Keep
-  private* can be undone (the toast's *Undo*, or *Undo "Keep private"* on the letter — for an e-mail,
-  its attachments kept private with it wait again too).
-- **E-mail attachments follow the e-mail** — each PDF or photo attached to an e-mail you add becomes
-  a letter of its own with the e-mail's choice: attachments of a private e-mail stay private, those of
-  a waiting e-mail wait with it. An e-mail saved from Outlook (`.msg`) is opened on this computer and kept
-  as an `.eml` copy; the `.msg` itself isn't kept, so keep it yourself if you need the original.
-- **Delete means delete** — deleting a letter removes it for good: the original, page images (and
-  the text a scanner added to it or Ordnung read from it), everything read from it, its to-dos and Ideas,
-  its search-index entries, its entries in the activity log, quotes from it in contracts you keep, the record of how it
-  was read, your *For taxes* choice for it and whom you filed it for, and the cached model responses of
-  every call that carried it (a secretary's note or review built from several letters included). The usage log keeps only anonymous numbers (its calls' replay keys, which hash the
-  letter's content, and their error texts, which may quote Claude's answer, are cleared too), and deleted
-  database rows are overwritten rather than left behind. Originals, page images and every answer of the app's
-  API are never kept in the browser's cache, and deleting a letter for good or deleting everything also tells the browser to empty
-  its cache. A paired phone keeps no copy either: every answer it gets is marked not to be stored, it
-  can't download originals, letter PDFs or the calendar file, and a phone you removed is told to empty its cache and storage
-  the next time it reaches Ordnung (a tab still open there shows what it last showed until it is closed).
-  Contracts and letters you drafted stay, without the link to it; your *Ask* conversations stay as
-  they are. *Settings → Delete everything* wipes the whole database — and, when a calendar is
-  connected for calendar sync, first removes Ordnung's events from it and the app password from your
-  system's password store (if that can't be done, nothing is deleted and Ordnung says what to do; when
-  another of your computers sends to the same calendar through hand-off sync, the events stay there and
-  only this computer's connection goes).
-  Encrypted backups you made earlier are files of your own: they still hold what was in Ordnung
-  when you made them, deleted letters included, until you delete them. With [hand-off
-  sync](#hand-off-sync-between-your-computers-optional) on, a deleted letter's encrypted files leave the
-  sync folder once nothing refers to them for 7 days (of Ordnung's clock and of its running time); your
-  sync tool's version history or trash may keep them longer — empty it there too. A kept copy holds what it
-  saved until you delete it. *Delete everything* takes this computer out of sync first; your other
-  computers and the sync folder keep what they have.
-- **Proof of sending stays private** — a receipt, delivery record, fax report or saved e-mail you
-  add to a sent letter is stored like any upload with *Keep private — no AI* on: it is never sent to
-  Claude, not even when you ask about the letter, and it isn't listed among your letters. One
-  exception is said when it happens: a file that was already in Ordnung (the same bytes, e.g. you
-  first added it to your Inbox) is linked as it is — made private then if it was never given to Claude,
-  and otherwise Ordnung tells you it was given to Claude instead of calling it private (one still waiting
-  from your watched folder is kept private then, so *Read these* never sends it; and a proof never
-  waits again — *Undo "Keep private"* skips it, also for the e-mail it came attached to). A sent e-mail
-  kept as proof is one file: its attachments never become letters, and the ones it brought while it
-  waited in your Inbox (never read) are deleted when it becomes proof — the e-mail keeps them. "Given to Claude"
-  counts every time a model had it, also when reading it failed or paused afterwards, and also
-  when you switched *Keep private* on later. Its kind, day and note are what you chose — Ordnung
-  doesn't read them from the file. The *Nachweis* PDF is made on your computer from the letter and
-  these files. Removing a proof deletes its file for good (unless another proof uses it) — the
-  confirmation names the file and offers to download it first, as a photographed receipt may be
-  your only copy; deleting the letter deletes its proofs too, unless you choose to keep the files. Tracking numbers are checked on your computer; Ordnung never asks a tracking website. The
-  name, e-mail and phone the letter showed when you marked it sent are kept with it, so its PDF shows
-  what went out.
-- **Call notes** — what you note about a phone call is kept as you typed it; no AI reads it.
-- **How it was read** — each letter's page shows how it was read: every step, what Claude was
-  asked (the prompt's name and version, tokens, API-equivalent cost), what code checked and what was
-  filed. Only the steps' numbers, codes and the ids of what they found are kept — never the letter's
-  text; the names shown are looked up when you open it. *Download a copy of your records* includes
-  these traces. `ordnung trace <letter id> --otel` writes one reading as OpenTelemetry JSON for a
-  tracing tool: no letter text, titles or names, and every id replaced by a code made for that file
-  (Ordnung's own ids are hashes of a file, a sender's name or a sentence, so they could confirm a
-  guess). It still shows the dates Ordnung computed and the letter's dates they came from, the rules
-  that computed them (their public names, such as `zpo_692`), the holiday calendar each date used (a Bundesland's, or nationwide), how many pages, quotes and to-dos there were, match scores, and the
-  prompts' versions and models — look it over before you share it.
-- **A letter deleted while it is being read** — if a call to Claude about it is still under way,
-  its answer is not cached and the usage log keeps only the anonymous numbers, as for a letter
-  deleted afterwards.
-- **Model** — choose the Claude model every call runs on (Settings → Claude connection; Sonnet 5 unless you
-  change it). The demo and the benchmarks keep the model they were recorded with.
-- **Export letters** — Settings → Data → *Export letters* (or *Export these letters…* on a tax year) saves
-  your letters' original files as one ZIP, in folders by year and sender, with a list of them
-  (`index.csv`) for a spreadsheet. It runs only when you click it, on the computer — a paired phone can't
-  export — and it leaves the computer only as the ZIP you save: Ordnung writes nothing for it, sends nothing
-  and keeps no copy. The ZIP isn't encrypted: anyone who has it can read the letters, so keep it safe and
-  share it only with people you trust, like your tax adviser. Letters you kept private are in it too;
-  letters still waiting for your answer from the watched folder aren't, nor are letters you wrote in Ordnung
-  (download each one's PDF under Letters) or their proofs of sending.
-- **Nothing is sent or paid automatically** — Ordnung drafts letters and suggests actions; you send
-  them yourself. A GiroCode only pre-fills your banking app; you check and confirm the transfer
-  there. (Two things keep themselves current, each only after you turn it on: calendar sync updates
-  Ordnung's own events in the calendar you connected, and hand-off sync keeps the encrypted copy in your
-  sync folder up to date — see below.)
-- **Signed in on this computer** — Ordnung's sign-in cookie is named after its port, so the demo and
-  your own Ordnung on another port keep separate sign-ins. Browsers don't keep cookies apart by port,
-  though: while you're signed in, your browser also sends Ordnung's sign-in cookie to other programs on
-  this computer that serve pages on localhost, on any port. On a shared computer, only open local web
-  pages you trust while Ordnung is open.
-- **Signed in on your phone** — a paired phone signs in with a cookie of its own that only that
-  phone's browser holds, never your computer's session token. It works only from your home network,
-  changes by itself at most once an hour, and stops working the moment you remove the phone in
-  Settings → Phone on your computer. Ordnung keeps only a hash of it. Cookies ignore ports here too: if
-  that phone opens another HTTPS service on your computer's address, its browser sends the cookie along.
-
-## GiroCode (payment QR codes)
-
-The QR code in a Pay panel is made on your computer: the Ordnung server writes its text (payee,
-IBAN, amount, reference — the details the panel shows anyway) and the web app draws the code with a
-library bundled into the app. No online QR service is ever asked, nothing about the code is sent to
-Claude or anywhere else, and the code is not stored — it is worked out again each time you open a
-letter. When you confirm "These match the letter", the details you compared are written to the
-activity log in your database (they are what the letter says), so the code stays unlocked until the
-letter is read differently; deleting the letter deletes that entry too (also when you deleted the
-to-do first). Scanning the code hands its
-text to your banking app on your phone, like typing it would. On a [paired phone](#phone-access-optional),
-which can't scan its own screen, the block offers to copy the details or to save the code as a picture
-that many banking apps can read: the picture is drawn on the phone, shared with your banking app or
-saved on the phone, and stays in your Photos until you delete it.
 
 ## The watched folder
 
@@ -364,15 +474,40 @@ Without Tesseract none of this happens; `ordnung doctor` says whether Ordnung fo
   deletes it with the page images.
 - **Turning it off.** Settings → Data → *Text in pictures* turns it off at once: a reading under way stops,
   search ignores the words read before, and Ordnung deletes them; turned on again, Ordnung starts reading and
-  looks for Tesseract afresh. With hand-off sync the switch travels with your settings. `ORDNUNG_OCR=off` (or
-  `0`, `false`, `no`) turns it off on one computer, whatever the switch says: Tesseract is never started,
-  search ignores the words read before, and Ordnung removes them when it starts. `ordnung doctor`, run where
-  it is set, then shows *Turned off (ORDNUNG_OCR=off)*. On Linux and macOS, set it before `ordnung serve`, or
-  before `ordnung autostart enable` or `ordnung shortcut`, which record it (run them again after setting or
-  unsetting it). On Windows, run `setx ORDNUNG_OCR off`, then start Ordnung again from a new terminal window
-  or the Start menu (`setx` doesn't change a window already open), and run `ordnung autostart enable` again
-  there if Ordnung starts at login. With hand-off sync, set the variable the same way on every computer: one
-  with it off removes the words the others read, and they read them again once they are in use.
+  looks for Tesseract afresh. With hand-off sync the switch travels with your settings.
+
+  <details>
+  <summary>Turning it off on a single computer (<code>ORDNUNG_OCR</code>)</summary>
+
+  `ORDNUNG_OCR=off` (or `0`, `false`, `no`) turns it off on one computer, whatever the switch says: Tesseract is
+  never started, search ignores the words read before, and Ordnung removes them when it starts.
+  `ordnung doctor`, run where it is set, then shows *Turned off (ORDNUNG_OCR=off)*. On Linux and macOS, set it
+  before `ordnung serve`, or before `ordnung autostart enable` or `ordnung shortcut`, which record it (run them
+  again after setting or unsetting it). On Windows, run `setx ORDNUNG_OCR off`, then start Ordnung again from a
+  new terminal window or the Start menu (`setx` doesn't change a window already open), and run
+  `ordnung autostart enable` again there if Ordnung starts at login. With hand-off sync, set the variable the
+  same way on every computer: one with it off removes the words the others read, and they read them again once
+  they are in use.
+
+  </details>
+
+## GiroCode (payment QR codes)
+
+The QR code in a Pay panel is made on your computer: the Ordnung server writes its text (payee,
+IBAN, amount, reference — the details the panel shows anyway) and the web app draws the code with a
+library bundled into the app. No online QR service is ever asked, nothing about the code is sent to
+Claude or anywhere else, and the code is not stored — it is worked out again each time you open a
+letter.
+
+When you confirm "These match the letter", the details you compared are written to the
+activity log in your database (they are what the letter says), so the code stays unlocked until the
+letter is read differently; deleting the letter deletes that entry too (also when you deleted the
+to-do first).
+
+Scanning the code hands its text to your banking app on your phone, like typing it would. On a
+[paired phone](#phone-access-optional), which can't scan its own screen, the block offers to copy the details or to save the code as a picture
+that many banking apps can read: the picture is drawn on the phone, shared with your banking app or
+saved on the phone, and stays in your Photos until you delete it.
 
 ## Reminders while Ordnung is closed
 
@@ -433,6 +568,9 @@ third party** — your calendar provider — so:
   then the events stay for that computer to keep current.
 - **When.** When you connect, when you press *Sync now*, and every 15 minutes while `ordnung serve`
   runs — only what changed is sent. The activity log notes each sync that sent or removed events.
+<details>
+<summary>A restored backup, and what an event's hidden name reveals</summary>
+
 - **A restored backup doesn't take over the calendar.** The backup holds the calendar's address and
   mode, never the password. A restored copy starts with calendar sync waiting: it sends, changes and
   removes nothing, and never touches the password the original Ordnung keeps on the same computer,
@@ -441,6 +579,8 @@ third party** — your calendar provider — so:
 - **Discreet events don't say what kind of date they are.** An event's name in the calendar and its
   UID are a keyed hash (the key stays in your data folder, and a backup carries it), not the to-do's or
   contract's id, which would tell a cancellation deadline from a payment.
+
+</details>
 
 ## Phone access (optional)
 
@@ -476,6 +616,9 @@ on while Ordnung runs without its session token (`--no-token`). The policy is in
   address changes, phone access pauses too; moving it to the new address means pairing every phone again.
   Reserving the address in your router avoids that (on a FRITZ!Box: Heimnetz → Netzwerk → the computer →
   "Diesem Netzwerkgerät immer die gleiche IPv4-Adresse zuweisen").
+<details>
+<summary>Pairing, the certificate, sign-ins, limits, logging, the firewall and starting over</summary>
+
 - **Pairing.** *Pair a phone* shows a QR code whose address carries a one-time code after its `#`, the
   part of an address a browser never sends to a server, so no log or link preview sees it. The code has 10
   characters, works once, for 10 minutes, and closing the dialog cancels it. A wrong, expired or missing
@@ -533,6 +676,8 @@ on while Ordnung runs without its session token (`--no-token`). The policy is in
   everything else. Backups never carry phone access — no certificates, no paired phones — and a restored
   copy starts with it off ([below](#encrypted-backups)).
 
+</details>
+
 ## Hand-off sync between your computers (optional)
 
 Settings → Your computers lets you use the same Ordnung on your laptop and your desktop, one at a time,
@@ -572,6 +717,9 @@ password store. The policy is in `ordnung/sync/__init__.py`, the decision in
   file sits at your provider for years, open to guessing offline (and at least 12 characters, as for
   backups). Without it nobody can open the folder: not your sync provider, not Ordnung's makers, not
   you. Changing it isn't possible yet; a new sync folder with a new passphrase is.
+<details>
+<summary>What stays on each computer, conflicts, kept copies, half-arrived files, lost computers, logging and disconnecting</summary>
+
 - **What stays on each computer.** Only your ledger and your letters' files travel. Your household and your
   *For taxes* choices travel with your ledger. The text a scanner added to a scan and the words Ordnung read in
   a picture travel with the page images. Never: phone access and
@@ -613,6 +761,9 @@ password store. The policy is in `ordnung/sync/__init__.py`, the decision in
   when another of your computers sends to the same calendar, Ordnung's events stay there. While no other
   computer has received this one's latest changes, both ask a second time. Backups never carry sync, so a
   restored copy starts without it.
+
+</details>
+
 - **Tested** with a simulated sync tool (files late, out of order, in pieces, conflict copies, online-only
   placeholders) and two data folders on one machine. A pass with a real Nextcloud, Syncthing or iCloud Drive
   folder on two physical computers is still to be done.
@@ -658,6 +809,9 @@ folder): a restored copy starts without sync.
   computer: Ordnung can't see them. Backups made with `ordnung backup` before Ordnung noted them have no
   note, so they don't count. The note is a privacy-log entry that stays on this computer, and the
   reminder is Ordnung's own words, never sent to Claude. Nothing is backed up by itself.
+<details>
+<summary>A restored copy, the watched folder, phones and linked folders</summary>
+
 - **A restored copy doesn't take over the watched folder.** The backup remembers which files of your
   watched folder were already there and which were picked up — on the computer it came from. A folder
   with the same path on another computer (the same `~/Downloads`) holds other files, so the restored
@@ -668,6 +822,8 @@ folder): a restored copy starts without sync.
 - **Links are never followed — and never silently.** A folder inside the data folder that is a link
   to somewhere else (originals moved to a bigger drive) is not in the backup; `ordnung backup` and
   Settings name it before the backup is made, so you can back it up separately.
+
+</details>
 
 ## If your computer is lost or stolen
 
@@ -725,6 +881,9 @@ you set up before: a copy kept somewhere else, and an encrypted disk.
   set it before `ordnung autostart enable` or `ordnung shortcut`, or run that again after setting it; on
   Windows the shortcut can't carry it, so set it for your account (`ordnung shortcut` prints the `setx`
   command).
+<details>
+<summary>Untrusted text, hidden text, <i>Ask</i>'s tools, uploads, the local server, the phone listener and compression</summary>
+
 - Document text is treated as **untrusted**: it is wrapped in `<untrusted_document>` markers, a scan's
   invisible OCR layer never reaches the model (the page is read from its picture, and what was read from it
   is compared with the paper; the OCR text is kept only for your letter search, [above](#searchable-scans)),
@@ -783,6 +942,8 @@ you set up before: a copy kept somewhere else, and an encrypted disk.
   phone listener. An attack that reads secrets out of compressed HTTPS needs a website to make your phone
   send Ordnung many requests, and the phone listener refuses requests from other sites
   ([ADR 0022](decisions/0022-compressed-answers-and-a-lighter-letter-list.md)).
+
+</details>
 
 ## Using Ordnung from Claude Desktop or Claude Code
 

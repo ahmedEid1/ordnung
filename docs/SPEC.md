@@ -4,6 +4,32 @@
 > this page wrong fixes it in the same change. Code and tests cite its sections by number, so a section keeps its
 > number, and a removed one leaves its number unused.
 
+**In one minute**
+
+- **Claude reads, tested code computes:** the model returns a `DateSpec`, and the rules engine computes the date and
+  explains it ([§1.1](#11-what-makes-it-different),
+  [§6](#6-rules-engine--rules-pure-100--branch-covered-hypothesis-property-tests)).
+- **A letter goes through seven stages:** intake, text, transcribe (pages without text), extract, verify, then
+  compute, link and plan, then done ([§8](#8-ingestion-pipeline--ingest)).
+- **In doubt, the earliest plausible date:** missing a deadline is far worse than acting early
+  ([§21](#21-trust-and-legal-safety)).
+- **Some things are not built, on purpose,** such as a bank CSV or money subsystem and MCP write tools
+  ([§2](#2-not-built)).
+- **Each module has its section,** headed with its folder (`rules/`, `ingest/`, `api/`, `web/` …): the contents
+  below. The numbers jump from 19 to 21, as a removed section leaves its number unused.
+
+**Contents:** [§1 Vision](#1-vision) · [§2 Not built](#2-not-built) · [§3 Architecture](#3-architecture) ·
+[§4 Domain model](#4-domain-model--ordnungmodelspy-implemented-the-file-is-authoritative) ·
+[§5 Persistence](#5-persistence--db) ·
+[§6 Rules engine](#6-rules-engine--rules-pure-100--branch-covered-hypothesis-property-tests) ·
+[§7 LLM layer](#7-llm-layer--llm) · [§8 Ingestion pipeline](#8-ingestion-pipeline--ingest) ·
+[§9 Secretary](#9-secretary--secretary--tickpy) · [§10 Ask](#10-ask--assistant) · [§11 Letters](#11-letters--drafts) ·
+[§12 Calendar](#12-calendar--calendaricspy) · [§12b Phone access](#12b-phone-access-optional--phone) ·
+[§12c Hand-off sync](#12c-hand-off-sync-between-computers-optional--sync) · [§13 HTTP API](#13-http-api--api) ·
+[§14 Web app](#14-web-app--web) · [§15 CLI](#15-cli) · [§16 Demo mode](#16-demo-mode) ·
+[§17 Evaluation](#17-evaluation--evals) · [§18 Quality bar](#18-quality-bar) ·
+[§19 Docs contract](#19-docs-contract-readme-guide-and-doc-map) · [§21 Trust and legal safety](#21-trust-and-legal-safety)
+
 ## 1. Vision
 
 **Ordnung is a private AI secretary for life admin.** Drop in letters, bills, contracts, payslips

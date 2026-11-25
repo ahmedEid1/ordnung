@@ -211,6 +211,17 @@ def _section(text: str, heading: str) -> str:
     return text.split(f"\n{heading}\n", 1)[1].split("\n## ", 1)[0]
 
 
+def _command_row(command: str) -> str:
+    """The bullet of the guide's list of commands (in *Install and start*) that says what ``command`` does,
+    flattened."""
+    (row,) = [
+        part
+        for part in _flat(_install_part("Install and start")).split(" - ")
+        if part.startswith(f"`{command}` — ")
+    ]
+    return row
+
+
 def _install_part(heading: str) -> str:
     """The guide's Install and run, its ``### heading`` (``Without a terminal``) up to the next ``###`` heading."""
     install = _section(_guide(), "## Install and run")
@@ -352,9 +363,11 @@ def test_the_numbers_without_the_sender_s_land_match_their_results_file() -> Non
 
     christmas = (objection_ends("BW") - objection_ends(None)).days
     assert christmas > days[-1]
+    # the bullet leads with what happens until the Land is set, then says by how much
+    lead = "Until you tell Ordnung which state (Land) an authority is in, its dates can come out early, never late."
+    assert lead in limitation
     assert (
-        f"a date can come out a few days early ({days[0]}–{days[-1]} on the benchmark's letters, up to {christmas} "
-        "around Christmas), never late"
+        f"({days[0]}–{days[-1]} days early on the benchmark's letters, up to {christmas} around Christmas)"
     ) in limitation
     assert "[evaluation report](evals.md#6-results) gives its numbers without it" in limitation
     # deadline-rules.md section 5 and the history page, which renders the file itself
@@ -995,7 +1008,7 @@ def test_the_guide_installs_claude_code_as_anthropic_s_setup_page_does() -> None
 
 def test_the_guide_lists_every_template_letter() -> None:
     """The guide's *template letters* list has one entry per template the composer offers."""
-    listed = _tour().split("**Also:**", 1)[1].split("*template letters* — ", 1)[1].split(" · ", 1)[0]
+    listed = _tour().split("**Also:**", 1)[1].split("- *template letters* — ", 1)[1].split("\n- ", 1)[0]
     entries = [entry.strip() for entry in listed.replace("\n", " ").split(",")]
     assert len(entries) == len(TEMPLATES) == 8
 
@@ -1032,8 +1045,9 @@ def _images(markdown: str) -> list[tuple[str, str | None]]:
 
 
 def _tour() -> str:
-    """The guide's tour: its pictures with their captions and footnotes, and the *Also* list."""
-    return _section(_guide(), "## A tour")
+    """The guide's *What it does* (the tour): its pictures with their captions and footnotes, and the *Also*
+    list."""
+    return _section(_guide(), "## What it does")
 
 
 def test_the_tour_s_pictures_from_the_real_app_are_2880_by_1800_pngs() -> None:
@@ -2034,7 +2048,7 @@ def test_doctor_checks_the_last_backup_and_disk_encryption_as_the_guide_says(
     assert windows is not None
     assert (windows.status, windows.detail, windows.fix) == ("info", doctor.WINDOWS_ENCRYPTION, None)
     assert "BitLocker or Device encryption" in windows.detail
-    (line,) = [line for line in _guide().splitlines() if line.startswith("ordnung doctor ")]
+    line = _command_row("ordnung doctor")
     assert "your last backup" in line and "disk encryption" in line
     assert (
         "On Windows it can't check: its row there says where to see that BitLocker or Device encryption is on."
@@ -2515,7 +2529,7 @@ def test_the_web_app_and_the_guide_know_how_a_letter_says_to_check_claude() -> N
     sse = (ROOT / "web" / "src" / "api" / "sse.ts").read_text(encoding="utf-8")
     assert f"export const CHECK_CLAUDE = {json.dumps(CHECK_CLAUDE)};" in sse
     assert "`ordnung doctor --probe`" in CHECK_CLAUDE
-    (line,) = [line for line in _guide().splitlines() if line.startswith("ordnung doctor ")]
+    line = _command_row("ordnung doctor")
     assert "(--probe: also one tiny live call to Claude)" in line
 
 
@@ -2620,8 +2634,43 @@ def test_serve_points_to_the_shortcut_as_the_spec_says() -> None:
     )
 
 
+def test_the_guide_s_one_minute_privacy_point_is_spec_s_statement() -> None:
+    """SPEC §1's honest privacy statement says "use this wording everywhere", and the guide's *In one minute* states
+    it as the README does, then what else reaches Claude and what stays off, as docs/privacy.md's table says."""
+    spec = _flat((ROOT / "docs" / "SPEC.md").read_text(encoding="utf-8"))
+    statement = spec.split("**Honest privacy statement (use this wording everywhere):** *", 1)[1].split(
+        "*", 1
+    )[0]
+    minute = _guide().split("\n**In one minute**\n", 1)[1].split("\n**Contents**\n", 1)[0]
+    point = re.sub(r"\*\*(.+?)\*\*", r"\1", _flat(minute))
+    assert statement in point
+    assert "send excerpts of your ledger the same way" in point
+    assert (
+        "phone access, calendar sync and sync between your computers stay off until you turn them on" in point
+    )
+    table = (ROOT / "docs" / "privacy.md").read_text(encoding="utf-8")
+    # every feature of privacy.md's per-feature table that sends more than the letter being read is named, in the
+    # guide's point and in the at-a-glance row: a list that leaves one out reads as the whole list
+    features = table.split("## What is sent to Claude, per feature", 1)[1].split("\n## ", 1)[0]
+    names = [
+        name for name in re.findall(r"^\| \*\*(.+?)\*\*", features, flags=re.M) if name != "Read a letter"
+    ]
+    assert sorted(set(names)) == ["Ask", "Letters", "Secretary's note", "Weekly Ideas"]
+    glance = next(line for line in table.splitlines() if line.startswith("| Your ledger ("))
+    for name in names:
+        said = "the secretary's note" if name == "Secretary's note" else f"*{name}*"
+        assert said in point, name
+        assert said in glance, name
+    for row in (
+        "| Calendar sync (only if you connect a calendar) |",
+        "| Phone access (only if you turn it on) |",
+        "| Hand-off sync between your computers (only if you set it up) |",
+    ):
+        assert row in table, row
+
+
 def test_the_guide_says_how_to_open_ordnung_without_a_terminal() -> None:
-    """The guide's "Also:" names the shortcut, and its Install has `ordnung shortcut` in the commands and a
+    """The guide's "Also:" names the shortcut, and its Install has `ordnung shortcut` in its table of commands and a
     paragraph on each system's launcher, what a click does in both states, the recorded PATH, --remove, the Linux
     terminal, the Mac's first launch and Windows' opt-out, and what CI doesn't test."""
     also = _flat(_tour().split("**Also:**", 1)[1])
@@ -2630,10 +2679,14 @@ def test_the_guide_says_how_to_open_ordnung_without_a_terminal() -> None:
         "without a terminal"
     ) in also
     commands = _section(_guide(), "## Install and run").split("```bash", 1)[1].split("```", 1)[0]
-    assert (
-        "ordnung serve                   # the web app: opens your browser, signed in\n"
-        "ordnung shortcut                # Ordnung in your app menu: opens it signed in, no terminal needed\n"
-    ) in commands
+    # the comment stands on its own line above its command, so it fits a phone's width
+    assert re.search(r"^# opens your browser, signed in\nordnung serve$", commands, re.M)
+    assert _command_row("ordnung serve").startswith(
+        "`ordnung serve` — the web app: opens your browser, signed in"
+    )
+    assert _command_row("ordnung shortcut").startswith(
+        "`ordnung shortcut` — Ordnung in your app menu: opens it signed in, no terminal needed"
+    )
     text = _without_a_terminal()
     for words in (
         "`ordnung shortcut` puts Ordnung where your computer keeps its apps: an entry in your app menu on Linux, "
@@ -4015,7 +4068,7 @@ def test_text_in_pictures_is_documented_as_optional_and_off_switchable() -> None
     assert "([how](privacy.md#words-in-pictures-optional))" in pictures
     for sentence in GUIDE_PICTURES:
         assert sentence in pictures, sentence
-    (line,) = [line for line in _guide().splitlines() if line.startswith("ordnung doctor ")]
+    line = _command_row("ordnung doctor")
     assert "text in pictures" in line
     install = _flat(_section(_guide(), "## Install and run").split("```", 1)[0])
     assert "CI tests Ordnung on Linux, with a real Tesseract for text in pictures." in install

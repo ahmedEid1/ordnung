@@ -430,6 +430,8 @@ def test_contributing_gives_ci_s_own_checks_and_the_rule_about_real_letters() ->
     for command in ("make install", "make check", "make e2e", "make build-web", "make openapi"):
         assert command in contributing, command
     checks = contributing.split("## Checks", 1)[1].split("\n## ", 1)[0]
+    # a long command is broken over lines with " \\" to fit a phone's width: read it as the one line it is
+    checks = re.sub(r"\\\n\s*", "", checks)
     listed = [" ".join(line.split()) for line in checks.splitlines() if line.startswith(".venv/bin/")]
     jobs = _yaml(".github/workflows/ci.yml")["jobs"]
     ci = "\n".join(" ".join(step.get("run", "").split()) for job in jobs.values() for step in job["steps"])
