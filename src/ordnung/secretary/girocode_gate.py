@@ -49,14 +49,15 @@ reason the person reads:
    letter* for a payment to the same IBAN (as :func:`normalize_iban` writes it, so its spelling on the
    letter doesn't matter) under the same payee name (case and spacing aside; between two letters of the
    same sender, give or take a legal form at its end — not a longer name or a part of it), on a letter
-   from the same sender when both letters have one (:func:`known_account`). Until then the first code to a payee waits for the person to compare the
-   payee, IBAN, amount and reference with the letter, however well point 6 grounds them: a PDF's text
-   layer can say something its page doesn't show (a font whose glyphs draw other digits than its text
-   reads, a line clipped under a visible one), and the check for text without ink
-   (:mod:`ordnung.ingest.text`) is one layer, not a guarantee. The IBAN alone is not enough:
-   an account the person confirmed for one payee says nothing about a letter that names another payee
-   or comes from another sender — a crafted letter's text layer could otherwise borrow it. A new IBAN
-   under a familiar name is a new account too. Only the person's comparison counts — not *Mark as paid*,
+   from the same sender when both letters have one (:func:`known_account`). Until then the first code
+   to a payee waits for the person to compare the payee, IBAN, amount and reference with the letter,
+   however well point 6 grounds them: a PDF's text layer can say something its page doesn't show (a
+   font whose glyphs draw other digits than its text reads, a line clipped under a visible one), and
+   the check for text without ink (:mod:`ordnung.ingest.text`) is one layer, not a guarantee. The
+   IBAN alone is not enough: an account the person confirmed for one payee says nothing about a letter
+   that names another payee or comes from another sender — a crafted letter's text layer could
+   otherwise borrow it. A new IBAN under a familiar name is a new account too. Only the person's
+   comparison counts — not *Mark as paid*,
    which says money left but not to which account (it may have been typed from the page by hand), not
    an IBAN the sender's letters taught, and not the model; a comparison made before this rule existed
    is the same act and counts. A to-do's own comparison vouches for the values it saw through point 6
@@ -644,8 +645,9 @@ def known_account(
     comparison of the same IBAN under the same payee name, from the same sender when both letters have
     one. The name is the same one, case and spacing aside; only between two letters of the same sender
     may it differ by a legal form at its end, from a fixed list (``_LEGAL_FORM``) — anything looser,
-    such as a longer name containing it or a part of it, would lend the account to another payee. This to-do's own comparison of exactly these values doesn't count:
-    it vouches for them as ``checked`` does."""
+    such as a longer name containing it or a part of it, would lend the account to another payee. This
+    to-do's own comparison of exactly these values doesn't count: it vouches for them as ``checked``
+    does."""
     payee = _payee_key(values.payee)
     if not payee or not values.payee:
         return False
