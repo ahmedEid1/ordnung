@@ -204,7 +204,9 @@ def test_the_end_to_end_groups_start_at_once_and_together_run_every_project() ->
     assert _on_pull_requests(e2e) and _on_pull_requests(jobs["frontend"])
     assert set(e2e["strategy"]["matrix"]) == {"include"}
     legs = _e2e_legs(e2e)
-    assert len(legs) == len(set(legs))
+    assert len(legs) == len(set(legs)), (
+        "a leg is listed twice in e2e's matrix: each (group, shard, shards) once"
+    )
     assert _legs_cover_their_groups(legs, _e2e_groups()) == []
     assert ("layout", 4, 4) in legs
     _, playwright = _step(e2e, "npm run e2e")
@@ -216,6 +218,10 @@ def test_the_end_to_end_groups_start_at_once_and_together_run_every_project() ->
     assert upload["with"]["name"] == "playwright-report-${{ matrix.group }}-${{ matrix.shard }}"
     (checks,) = [step for step in e2e["steps"] if "ORDNUNG_REQUIRE_MOCK_CHECK" in step.get("env", {})]
     assert checks["if"] == "matrix.group == 'real'"
+    assert (
+        "tests/test_ci_workflow.py::test_every_end_to_end_test_runs_in_exactly_one_leg"
+        in checks["run"].split()
+    ), "the end-to-end job's real leg must run the listing test: it skips everywhere else"
     assert [leg for leg in legs if leg[0] == "real"] == [("real", 1, 1)]
     fresh_at, fresh = _step(e2e, "cd web && node scripts/source-hash.mjs --check")
     assert fresh["run"].endswith(" ../src/ordnung/web/dist/build-info.json")
@@ -261,8 +267,14 @@ _needs_web = pytest.mark.skipif(
 def test_every_end_to_end_test_runs_in_exactly_one_leg() -> None:
     """What Playwright itself lists for each leg of the end-to-end job (its group and its ``--shard``) is, all legs
     together, what it lists for the whole run, and no test is in two legs: a spec file that no group's project
-    takes, or a part left out, fails here, not by never running."""
+    takes, or a part left out, fails here, not by never running: such a file is missing from the whole run's
+    listing too, so the spec files on disk are held to that listing."""
     whole = _listed(None)
+    listed_files = {line.split(" › ")[1].rsplit(":", 2)[0] for line in whole}
+    on_disk = {path.relative_to(_WEB / "e2e").as_posix() for path in (_WEB / "e2e").rglob("*.spec.ts")}
+    assert sorted(on_disk - listed_files) == [], (
+        "a spec file no project of playwright.config.ts takes never runs: add it to a project's testMatch"
+    )
     seen: Counter[str] = Counter()
     for group, shard, shards in _e2e_legs(_jobs()["e2e"]):
         tests = _listed(group, f"--shard={shard}/{shards}")
@@ -1033,8 +1045,13 @@ def test_coverage_counts_branches_and_has_floors_for_the_whole_package_sync_and_
         "${{ matrix.coverage && matrix.half == 2 }}",
     ]
     (_, named), (_, second) = measured
+    assert len(_paths(named)[0]) == 1, f"half 1 must name exactly one pattern of test files: {_paths(named)}"
     (pattern,) = _paths(named)[0]
-    assert _paths(named) == ([pattern], []) and _paths(second) == ([], [pattern])
+    assert _paths(named) == ([pattern], []) and _paths(second) == ([], [pattern]), (
+        "half 2 must leave out exactly the pattern half 1 names, so every test file runs in one half",
+        _paths(named),
+        _paths(second),
+    )
     for args in (named, second):
         # the floors are the sum's: a half alone measures half the package
         assert "--cov-report=" in args and "--cov-fail-under=0" in args and "--durations=15" in args, args
@@ -1053,12 +1070,18 @@ def test_coverage_counts_branches_and_has_floors_for_the_whole_package_sync_and_
     assert total["needs"] == "backend" and total["name"] == "Backend (Python 3.12)"
     assert total["if"] == "${{ !cancelled() && github.event_name != 'schedule' }}"
     script = _script(total)
-    assert "test -f .coverage.1\ntest -f .coverage.2\n" in script
+    # a missing half says which one, not only that the step failed
+    assert "for h in 1 2; do\n  test -f .coverage.$h || {" in script
+    assert '"::error::no coverage from half $h: its tests failed or did not finish' in script
     assert ".venv/bin/coverage combine .coverage.1 .coverage.2\n.venv/bin/coverage report " in script
     # the whole package's floor is pyproject.toml's
     assert "--fail-under" not in script.split("coverage report", 2)[1]
     for package in ("sync", "phone"):
-        (line,) = [line for line in script.splitlines() if f"--include='*/ordnung/{package}/*'" in line]
+        lines = [line for line in script.splitlines() if f"--include='*/ordnung/{package}/*'" in line]
+        assert len(lines) == 1, (
+            f"the coverage job must read the {package} floor once, with --fail-under: {lines}"
+        )
+        (line,) = lines
         floor = float(line.split("--fail-under=", 1)[1].split()[0])
         assert 80 <= floor < 100, package
     assert "coverage report" not in _script(backend)

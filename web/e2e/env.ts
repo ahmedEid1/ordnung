@@ -171,12 +171,14 @@ export const REAL_APP_PROJECTS = ["real-app", "pictures"] as const;
  * every server, as before. Together the groups hold every project exactly once (playwright.config.ts checks it).
  */
 export const E2E_GROUPS: Readonly<Record<string, readonly string[]>> = {
-  // the layout sweep (five long tests) takes about as long as the rest of the demo's projects together, and the
-  // layout guards (36 files) about four times as long: each runs apart, the guards in parts (CI's --shard)
+  // in a local run (Nov 2026) the layout sweep (five long tests) took about as long as the rest of the demo's
+  // projects together, and the layout guards (36 files) about four times as long: each runs apart, the guards in
+  // parts (CI's --shard)
   demo: ["tour", "pages", "girocode", "high-stakes", "add-date"],
   sweep: ["sweep"],
   layout: ["layout"],
-  // the evaluation report's page needs no server, and took 40 % of the real apps' group: it runs apart
+  // the evaluation report's page needs no server, and took 40 % of the real apps' group in a local run (Nov
+  // 2026): it runs apart
   report: ["eval-report"],
   real: ["real-app", "pictures"],
 };

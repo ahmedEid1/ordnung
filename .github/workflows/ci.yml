@@ -152,8 +152,9 @@ jobs:
           merge-multiple: true
       - name: Both halves' coverage added up (and pyproject.toml's coverage floor for the whole package)
         run: |
-          test -f .coverage.1
-          test -f .coverage.2
+          for h in 1 2; do
+            test -f .coverage.$h || { echo "::error::no coverage from half $h: its tests failed or did not finish (see Backend (Python 3.12, with coverage, $h/2))"; exit 1; }
+          done
           .venv/bin/coverage combine .coverage.1 .coverage.2
           .venv/bin/coverage report --show-missing --skip-covered
       - name: Coverage floors of hand-off sync and phone access (read from the sum above)
