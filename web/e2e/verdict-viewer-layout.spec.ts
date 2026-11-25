@@ -188,16 +188,38 @@ const FINE = "21_verwarnungsgeld_parken.jpg";
 /** A letter with one open to-do: its "Mark done" empties the verdict's band. */
 const PASSPORT = "18_reisepass.jpg";
 
-/** Focus is on the page (<body>), where a screen reader says nothing and Tab starts again at the top. */
-const focusOnPage = (page: Page) => page.evaluate(() => !document.activeElement || document.activeElement === document.body);
+type FocusWatch = { drops: string[]; since: number; stop: boolean };
 
-/** For about 1.5 s: focus never falls to the page, and ends where `where` says. */
+/**
+ * From now on, note each frame drawn while focus is on the page (<body>, where a screen reader says nothing and Tab
+ * starts again at the top): looked at right after every frame, so a drop too short for a look every 100 ms still
+ * counts. Focus that is on <body> only within a frame (the button pressed is removed, and the frame's own work moves
+ * focus on before it is drawn) is never shown or told to anyone, so it is not a drop. {@link focusStays} reads the notes.
+ */
+async function watchFocus(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const watch: FocusWatch = { drops: [], since: performance.now(), stop: false };
+    (window as unknown as { __focusWatch: FocusWatch }).__focusWatch = watch;
+    const look = () => {
+      if (watch.stop) return;
+      if (!document.activeElement || document.activeElement === document.body) watch.drops.push(`a frame ${Math.round(performance.now() - watch.since)} ms after the key`);
+      requestAnimationFrame(() => setTimeout(look, 0));
+    };
+    // a timer set in a frame's callback runs once that frame is drawn
+    requestAnimationFrame(() => setTimeout(look, 0));
+  });
+}
+
+/** Since {@link watchFocus}, and for 1.5 s more: focus never fell to the page, and it ends where `where` says. */
 async function focusStays(page: Page, where: Locator): Promise<void> {
-  const until = Date.now() + 1500;
-  while (Date.now() < until) {
-    expect(await focusOnPage(page), "focus fell to the page").toBe(false);
-    await page.waitForTimeout(100);
-  }
+  const from = await page.evaluate(() => performance.now());
+  await page.waitForFunction((t) => performance.now() - t >= 1500, from);
+  const drops = await page.evaluate(() => {
+    const watch = (window as unknown as { __focusWatch: FocusWatch }).__focusWatch;
+    watch.stop = true;
+    return watch.drops;
+  });
+  expect(drops, "focus fell to the page").toEqual([]);
   await expect(where).toBeFocused();
 }
 
@@ -220,6 +242,7 @@ test("“Mark done” in the verdict keeps focus in the card, on the next to-do'
     const openBefore = before.filter((i) => i.status === "open").length;
     const done = card.getByRole("button", { name: "Mark done", exact: true }).first();
     await done.focus();
+    await watchFocus(page);
     await page.keyboard.press("Enter");
     await expect(page.getByText("Marked as done").first()).toBeVisible();
     // once it is saved, and while the refreshed card takes the to-do's buttons away: focus stays in the card
@@ -240,6 +263,7 @@ test("“Mark done” on a letter's last to-do: focus goes to the card's title, 
     const card = page.locator("article[aria-labelledby='verdict-title']");
     // the band's buttons all belong to that one to-do: they go with it (focus once went to one of them, then fell)
     await card.getByRole("button", { name: "Mark done", exact: true }).first().focus();
+    await watchFocus(page);
     await page.keyboard.press("Enter");
     await expect(page.getByText("Marked as done").first()).toBeVisible();
     await focusStays(page, page.locator("#verdict-title"));
