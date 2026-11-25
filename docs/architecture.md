@@ -1,11 +1,37 @@
 # Architecture
 
+How Ordnung's pieces fit together and why, for someone reading or changing its code.
+
 Ordnung is a single Python package (`ordnung`) that serves a React single-page app on
 `127.0.0.1`, keeps everything in one SQLite file, and talks to Claude only through the user's own
 `claude` CLI. Optionally, the same process serves the same app to phones the person paired, on a
 second listener on the home network (HTTPS, off until turned on), and hands Ordnung over between the
 person's computers through an encrypted copy in a folder their own sync tool keeps in step (off until set
-up; one computer in use at a time). This page explains how the pieces fit together and why.
+up; one computer in use at a time).
+
+**In one minute**
+
+- **One process:** FastAPI runs the API, the ingest worker, the daily tick and the folder watcher on one asyncio loop
+  ([concurrency model](#concurrency-model)).
+- **The model is the `claude` CLI in headless mode,** with no SDK keys
+  ([components](#components-and-trust-boundaries)).
+- **Letters are untrusted input:** each boundary, from a document to the model to your banking app, has its defence
+  ([trust boundaries](#components-and-trust-boundaries)).
+- **Every reading is kept as a trace** of what Claude was asked and what code decided
+  ([observability](#observability-how-a-letter-was-read)).
+- **Ask only reads:** read-only MCP tools on a `query_only` connection ([asking a question](#asking-a-question)).
+- **Phone access and hand-off sync are optional,** off until turned on or set up
+  ([hand-off sync](#moving-between-computers-hand-off-sync)).
+
+**Contents:** [Components and trust boundaries](#components-and-trust-boundaries) ·
+[Reading a letter](#reading-a-letter) · [The watched folder](#the-watched-folder) ·
+[Observability](#observability-how-a-letter-was-read) · [Asking a question](#asking-a-question) ·
+[My numbers and the weekly session](#my-numbers-and-the-weekly-session) ·
+[The rules engine for other Claude clients](#the-rules-engine-for-other-claude-clients) ·
+[Paying a bill](#paying-a-bill-the-girocode) ·
+[While the browser is closed](#while-the-browser-is-closed-reminders-and-backups) ·
+[Hand-off sync](#moving-between-computers-hand-off-sync) · [The web app](#the-web-app) ·
+[Data model](#data-model-simplified) · [Concurrency model](#concurrency-model) · [Testing strategy](#testing-strategy)
 
 ## Components and trust boundaries
 
