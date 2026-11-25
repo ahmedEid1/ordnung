@@ -517,22 +517,25 @@ def _page_chars(document: pdfium.PdfDocument, number: int) -> dict[str, list[_Dr
         expected = _own_ink(alone, None)
     own_ink = _mask(expected)
     judged = _Judged(ink, expected, after.convert("L"))
-    counts = [None if box is None else judged.counts(box) for _, box, _ in placed]
+    # what each box says, kept as four answers, not its counts: a page of tiny glyphs stays small
+    verdicts = [None if box is None else judged.verdict(box) for _, box, _ in placed]
     nearby = _Nearby(objects)
     unclear: set[int] = set()
-    for (_, box, key), count in zip(placed, counts, strict=True):
+    for (_, box, key), verdict in zip(placed, verdicts, strict=True):
         if (
             box is not None
-            and count is not None
-            and count[255]  # ink in its box
+            and verdict is not None
+            and verdict.ink
             and key in objects
             and key not in unclear
             and _ink_maybe_not_own(ink, box, key, nearby)
         ):
             unclear.add(key)
     inked = [
-        box is None or count is None or (_shows(count) and _spans(own_ink, box, drawn.text, count))
-        for (drawn, box, _), count in zip(placed, counts, strict=True)
+        box is None
+        or verdict is None
+        or (verdict.shows and _spans(own_ink, box, drawn.text, verdict.own_ink))
+        for (drawn, box, _), verdict in zip(placed, verdicts, strict=True)
     ]
     if unclear:
         own: dict[int, list[int]] = {}  # object → its characters, in page order
@@ -554,13 +557,13 @@ def _page_chars(document: pdfium.PdfDocument, number: int) -> dict[str, list[_Dr
                     if box is None:
                         inked[index] = False
                         continue
-                    count = own_judged.counts(box)
-                    inked[index] = _shows(count) and (
-                        _spans(own_mask, box, drawn.text, count) or _spans(ink, box, drawn.text)
+                    verdict = own_judged.verdict(box)
+                    inked[index] = verdict.shows and (
+                        _spans(own_mask, box, drawn.text, verdict.own_ink) or _spans(ink, box, drawn.text)
                     )
     chars: dict[str, list[_DrawnChar]] = {}
-    for (drawn, _, _), value, count in zip(placed, inked, counts, strict=True):
-        on_dark = count is not None and _on_dark(count)
+    for (drawn, _, _), value, verdict in zip(placed, inked, verdicts, strict=True):
+        on_dark = verdict is not None and verdict.on_dark
         chars.setdefault(drawn.text, []).append(drawn._replace(inked=value, on_dark=on_dark))
     return chars
 
@@ -579,6 +582,28 @@ class _Judged:
         """How many pixels of the box hold each value (0..255), band after band (:meth:`__init__`)."""
         counts: list[int] = self.image.crop(box).histogram()
         return counts
+
+    def verdict(self, box: _Box) -> _Verdict:
+        """What the ink check asks of the box, read from its counts (:meth:`counts`). Only these four
+        answers are kept: the counts, 8 KB a character, would add up on a page of many tiny glyphs."""
+        counts = self.counts(box)
+        return _Verdict(
+            ink=counts[255] > 0,
+            shows=_shows(counts),
+            own_ink=any(counts[256 + INK_THRESHOLD : 512]),
+            on_dark=_on_dark(counts),
+        )
+
+
+class _Verdict(NamedTuple):
+    """What a character's box says (:meth:`_Judged.verdict`): whether it holds ink, whether the
+    character shows (:func:`_shows`), whether its text draws ink of its own there (:func:`_spans`) and
+    whether the page without its text is dark under it (:func:`_on_dark`)."""
+
+    ink: bool
+    shows: bool
+    own_ink: bool
+    on_dark: bool
 
 
 def _shows(counts: list[int]) -> bool:
@@ -640,19 +665,19 @@ def _strongest(difference: Image.Image) -> int:
     return int(extrema[1]) if isinstance(extrema[1], (int, float)) else 0
 
 
-def _spans(own_ink: Image.Image, box: _Box, text: str, counts: list[int] | None = None) -> bool:
+def _spans(own_ink: Image.Image, box: _Box, text: str, own: bool | None = None) -> bool:
     """Whether a letter's or digit's own ink (``own_ink``: where its text drawn alone differs by
     :data:`INK_THRESHOLD`, :func:`_mask`) reaches over at least :data:`INK_SHARE` of the rows and of the
     columns of its glyph's box: a clip (a clipping path, a form's bounding box) that leaves a strip of it
-    is in the text's own render too. Other characters pass. ``counts``, the box's counts of the images
-    ``own_ink`` is the mask of (:meth:`_Judged.counts`), answer whether it holds any without a crop."""
+    is in the text's own render too. Other characters pass. ``own``, where it is known
+    (:meth:`_Judged.verdict`), says whether the box holds any of that ink, without a crop."""
     if not any(ch.isalnum() for ch in text):
         return True
-    if counts is not None and not any(counts[256 + INK_THRESHOLD : 512]):
+    if own is False:
         return True  # no ink of its own: :func:`_shows` decides
     crop = own_ink.crop(box)
     columns, rows = crop.getprojection()  # 1 where a column or a row holds ink
-    if counts is None and not any(columns):
+    if own is None and not any(columns):
         return True  # no ink of its own: :func:`_shows` decides
     width, height = crop.size
     # the box is 3 pixels larger than the glyph (:func:`_device_box`)
