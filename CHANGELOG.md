@@ -7,6 +7,10 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ### Changed
 
+- **A payment code to a new account asks you to compare once.** The first GiroCode to a payee and IBAN waits
+  until you have compared its details with the letter (*Security* below says why). After this update an account
+  asks once unless you compared a payment to it before, and deleting the letter you compared for good makes its
+  account new again. The demo's bills ask too.
 - **The guide and the other documents are built for a reader who skims**, as the README is. Each opens with one
   sentence on what it is and who it is for, then *In one minute* (at most six plain statements, each linked to its
   section) and its contents. Headings are the questions a reader brings, and what most readers skip is one click
@@ -223,6 +227,11 @@ entry.
   picture like a photo, so its payment details ask you to compare them with the letter. Readable text over a
   coloured band or a photo stays page text. The check draws each page a few times, which adds about a tenth of a
   second a page to reading a PDF's text.
+- **The first GiroCode to a payee and IBAN waits for your comparison.** A crafted PDF can make its text say
+  another IBAN than its page shows, so even for a PDF whose details are all in its text, the first code to an
+  account asks you to compare the payee, IBAN, amount and reference with the letter. Only your own "These match
+  the letter" makes an account known, for that payee (give or take a legal form such as GmbH) and, when the
+  letter names one, that sender; later bills from that sender to it get their code at once.
 - **An e-mail is read as a mail program shows it.** An e-mail whose plain part, or an earlier HTML version, names
   an IBAN or amount that one of its HTML versions doesn't show is read from its last HTML version and flagged
   as a scam sign.
@@ -246,7 +255,10 @@ entry.
 - **Still open: the hidden-text check is one layer, not a guarantee.** A sender who works at it can still draw
   text a person cannot read that the check counts as printed, and a PDF's font can show one character and yield
   another. The README, the guide, the spec, the privacy notes and the architecture page now say what the check
-  finds and no longer that hidden text is always found.
+  finds and no longer that hidden text is always found. For payments the comparison above is the second layer.
+  What stays open there: a later letter to an account you compared whose text changes the amount or the
+  reference, or that repeats a compared payee's name and IBAN in full. The money then still goes to the account
+  you confirmed, and your banking app shows the amount before you approve it.
 
 ## 0.4.0 — 2026-11-17
 
