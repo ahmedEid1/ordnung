@@ -19,11 +19,11 @@ import json
 import re
 import threading
 import weakref
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from ordnung.clock import now_iso
 from ordnung.days import parse_day
@@ -71,6 +71,7 @@ try:  # the scam checks are optional: the triggers work without them
 except ImportError:  # pragma: no cover - only while the module is absent
     _scam = None  # type: ignore[assignment]
 
+_T = TypeVar("_T")
 #: Item kinds that can be overdue (appointments and milestones simply pass; expiries have their own rule).
 OVERDUE_KINDS = frozenset({"deadline", "payment", "task"})
 IDENTITY_WINDOW_DAYS = 180
@@ -429,6 +430,8 @@ class _Rows:
     scam_checked: frozenset[str] | None = None
     extractions: dict[str, DocumentExtraction | None] = field(default_factory=dict)
     covered: dict[str, Document] | None = None
+    #: whole pages worked out from this state of the database (:meth:`Ledger.kept`), by what they depend on
+    pages: dict[tuple[object, ...], object] = field(default_factory=dict)
 
     @classmethod
     def load(cls, store: Store) -> _Rows:
@@ -774,6 +777,15 @@ class Ledger:
         if doc_id not in known:
             known[doc_id] = self.store.get_extraction(doc_id)
         return known[doc_id]
+
+    def kept(self, key: tuple[object, ...], work: Callable[[], _T]) -> _T:
+        """``work()``, worked out once per state of the database and ``key`` and kept with the rows: for a
+        whole page read from the database alone, ``key`` naming everything else it depends on (the day among
+        them). Any commit replaces the rows, and the page with them. Callers must not change what it gives."""
+        known = self._rows.pages
+        if key not in known:
+            known[key] = work()
+        return cast(_T, known[key])
 
     def every_letter(self) -> tuple[Document, ...]:
         """Every letter, in the trash and proof files too, in the store's order

@@ -1034,8 +1034,15 @@ def lanes(store: Store, start: date, end: date, *, today: date | None = None) ->
 
 
 def my_numbers(store: Store, today: date, *, shareable_only: bool = False) -> NumbersPage:
-    """The *My numbers* page (:mod:`ordnung.numbers`) over a snapshot of the ledger (:func:`numbers_input`)."""
-    return build_my_numbers(numbers_input(store, today, shareable_only=shareable_only))
+    """The *My numbers* page (:mod:`ordnung.numbers`) over a snapshot of the ledger (:func:`numbers_input`),
+    worked out once per state of the database (:meth:`Ledger.kept`): building it took most of a second at
+    3,000 letters, and it is the same until something changes. Each caller gets a copy of its own."""
+    ledger = Ledger(store, today)
+    page = ledger.kept(
+        ("my_numbers", today, shareable_only),
+        lambda: build_my_numbers(_numbers_input(ledger, store, today, shareable_only=shareable_only)),
+    )
+    return page.model_copy(deep=True)
 
 
 def numbers_input(store: Store, today: date, *, shareable_only: bool = False) -> NumbersInput:
@@ -1045,7 +1052,10 @@ def numbers_input(store: Store, today: date, *, shareable_only: bool = False) ->
     ADR 0006): a private letter's to-do is never a case's next step there. A letter the person filed for
     someone of their household (:attr:`Ledger.household_filed`) gives that person's numbers.
     """
-    ledger = Ledger(store, today)
+    return _numbers_input(Ledger(store, today), store, today, shareable_only=shareable_only)
+
+
+def _numbers_input(ledger: Ledger, store: Store, today: date, *, shareable_only: bool) -> NumbersInput:
     private = {doc.id for doc in ledger.documents.values() if shareable_only and doc.ai_private}
     documents = [doc for doc in ledger.documents.values() if doc.id not in private]
     items = [item for item in ledger.items if item.doc_id not in private]
