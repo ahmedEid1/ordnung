@@ -11,6 +11,7 @@ import { toast } from "@/components/ui/Toast";
 import { doneLine } from "@/features/items/repeat";
 import { formatDate } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
+import { ignoreFailedRequest } from "@/api/client";
 
 export function useItemActions() {
   const update = useUpdateItem();
@@ -92,7 +93,8 @@ export function useStartDraft() {
     async (kind: DraftKind, refs: { doc_id?: string | null; contract_id?: string | null; party_id?: string | null; case_id?: string | null }) => {
       // a second click opens the letter already being drafted for this letter/contract instead of a copy
       setLooking(true);
-      const drafts = await api.drafts().catch(() => []);
+      // a failed request: start a new letter (one being drafted already is then not found)
+      const drafts = await api.drafts().catch((err: unknown) => (ignoreFailedRequest(err), []));
       setLooking(false);
       const open = drafts.find(
         (d) =>

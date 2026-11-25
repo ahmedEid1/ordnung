@@ -29,6 +29,7 @@ import { focusWhenReady } from "@/lib/focus";
 import { cn } from "@/lib/utils";
 import { answerOf, memberById, MINE } from "./logic";
 import { HOUSEHOLD_CHANGE_TOAST, MANAGE_HOUSEHOLD_HREF, MAX_PEOPLE, membersOf, nameProblem, oneLine, refusal, useChangeHousehold } from "./save";
+import { ignoreFailedRequest } from "@/api/client";
 
 const SIGNS_HINT = "Untick for a child: a reply to their letter then goes out in your name.";
 const CHOICES_LABEL = "Who is this letter for?";
@@ -240,7 +241,7 @@ export function useLetterFor(detail: DocumentDetail, editable: boolean): LetterF
           focusIfUndoFails: () => changeRef.current,
         });
       },
-      () => undefined, // the mutation's error toast says what went wrong
+      ignoreFailedRequest, // a failed request: the mutation's error toast says what went wrong
     );
   };
   const choices = (close: () => void) => (

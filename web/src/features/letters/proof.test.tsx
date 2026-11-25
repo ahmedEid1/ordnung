@@ -466,6 +466,35 @@ describe("Proof of sending", () => {
     expect(screen.queryByText("Tracking number saved")).not.toBeInTheDocument();
   });
 
+  it("reports a broken tracking Undo (not a failed request) once, instead of hiding it", async () => {
+    // a bug is not a failed request, which its error toast has told: it must still reach the console and the tests
+    useMockApi();
+    const reported: unknown[] = [];
+    const onError = (e: ErrorEvent) => {
+      e.preventDefault();
+      reported.push(e.error);
+    };
+    window.addEventListener("error", onError);
+    try {
+      const user = userEvent.setup();
+      renderLetter("/letters/drf_gym");
+      const proof = await screen.findByRole("region", { name: "Proof of sending" });
+      await user.click(await within(proof).findByRole("button", { name: "Remove" }));
+      const removed = (await screen.findByText("Tracking number removed")).closest("li")!;
+      // the number's PUT answers, but with nothing in it: reading the answer throws a TypeError
+      const mock = globalThis.fetch;
+      vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) =>
+        init?.method === "PUT" ? new Response("null", { status: 200, headers: { "Content-Type": "application/json" } }) : mock(input, init),
+      );
+      await user.click(within(removed).getByRole("button", { name: "Undo" }));
+      await waitFor(() => expect(removed).not.toBeInTheDocument());
+      expect(reported).toHaveLength(1);
+      expect(reported[0]).toBeInstanceOf(TypeError);
+    } finally {
+      window.removeEventListener("error", onError);
+    }
+  });
+
   it("closes the letter when it was answered another way — with Undo", async () => {
     const { calls } = useMockApi();
     const user = userEvent.setup();

@@ -25,6 +25,7 @@ import { focusWhenReady } from "@/lib/focus";
 import { cn } from "@/lib/utils";
 import { savedStateLine } from "./sender-land";
 import { regionName } from "./timeline";
+import { ignoreFailedRequest } from "@/api/client";
 
 export type PartyUpdate = ReturnType<typeof useUpdateParty>;
 
@@ -78,9 +79,10 @@ export function SenderLandQuestion({
     let saved: Party;
     try {
       saved = await update.mutateAsync({ id: party.id, patch: { region: suggestion.region } });
-    } catch {
+    } catch (err) {
       setBusy(null);
-      return; // the hook's toast says what went wrong; the question stays, the keyboard on Yes
+      ignoreFailedRequest(err); // a failed request: the hook's toast says what went wrong; the question stays, the keyboard on Yes
+      return;
     }
     setBusy(null);
     if (focusAfterYes) focusWhenReady(() => (document.getElementById(groupId) ? null : focusAfterYes()));
@@ -112,7 +114,10 @@ export function SenderLandQuestion({
         });
         if (focusAfterDontKnow) focusWhenReady(() => (document.getElementById(dontKnowId) ? null : focusAfterDontKnow()));
       },
-      () => setBusy(null),
+      (err: unknown) => {
+        setBusy(null);
+        ignoreFailedRequest(err); // a failed request: the hook's toast says so
+      },
     );
   };
 

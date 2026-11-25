@@ -171,6 +171,31 @@ describe("answering on the letter's page", () => {
     expect(screen.getByRole("button", { name: "Undo “Keep private”" })).toHaveFocus();
   });
 
+  it("a broken answer to “Keep private” (not a failed request) is reported once, never swallowed", async () => {
+    useMockApi();
+    const reported: unknown[] = [];
+    const onError = (e: ErrorEvent) => {
+      e.preventDefault();
+      reported.push(e.error);
+    };
+    window.addEventListener("error", onError);
+    try {
+      const mock = globalThis.fetch;
+      // the request answers, but with nothing in it: reading the answer throws a TypeError
+      vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) =>
+        String(input).endsWith("/documents/held/keep-private") ? new Response("null", { status: 200, headers: { "Content-Type": "application/json" } }) : mock(input, init),
+      );
+      const user = userEvent.setup();
+      renderPage("doc_folder_scan");
+      const card = await screen.findByRole("article", { name: "Scan_2026-09-28_0914.pdf" });
+      await user.click(within(card).getByRole("button", { name: "Keep private" }));
+      await waitFor(() => expect(reported).toHaveLength(1));
+      expect(reported[0]).toBeInstanceOf(TypeError);
+    } finally {
+      window.removeEventListener("error", onError);
+    }
+  });
+
   it("a waiting photo whose words Ordnung read never says nothing in it is read, before or after “Keep private”", async () => {
     const { srv } = useMockApi();
     // a photo the folder brought in (held), whose words Ordnung read itself (ADR 0024): its footer says so

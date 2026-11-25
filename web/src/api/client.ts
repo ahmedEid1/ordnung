@@ -82,6 +82,17 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * For a rejection that needs nothing more when it is a failed request: its mutation's error toast has told the person,
+ * or what it fetched was only extra (a request stopped on purpose is not a failure either). Anything else — a TypeError
+ * in the code that reads an answer, say — is a bug: reported, once, so the console, the end-to-end tests' page errors
+ * and Vitest still see it, instead of being swallowed with the failed requests.
+ */
+export function ignoreFailedRequest(err: unknown): void {
+  if (err instanceof ApiError || (err instanceof DOMException && err.name === "AbortError")) return;
+  reportError(err);
+}
+
 export type QueryValue = string | number | boolean | null | undefined;
 
 export interface RequestOptions {

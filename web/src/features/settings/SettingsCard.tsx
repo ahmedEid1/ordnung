@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { focusIsLost } from "@/lib/focus";
 import { cn } from "@/lib/utils";
 import { useReportDirty } from "./dirty";
+import { ignoreFailedRequest } from "@/api/client";
 
 /**
  * The width of a settings select or short field: the whole row on phones, from `sm` as wide as a
@@ -174,10 +175,11 @@ export function SaveBar({ dirty, saving = false, onSave, onDiscard, invalid = fa
       setSaved({ note: note ?? null });
       setJustSaved(true);
       return true;
-    } catch {
+    } catch (err) {
       fromBar.current = false;
       setRejected(true);
-      return false; // the error toast (or the field) explains; the edits stay
+      ignoreFailedRequest(err); // a failed request: the error toast (or the field) explains; the edits stay
+      return false;
     }
   };
   useReportDirty(dirty, save);

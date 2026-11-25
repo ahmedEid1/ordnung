@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, typ
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useIsPresent } from "motion/react";
 import { CircleCheck, Info, TriangleAlert, CircleX, X, Undo2 } from "lucide-react";
-import { ApiError } from "@/api/client";
+import { ignoreFailedRequest } from "@/api/client";
 import { setToastHandBack } from "@/lib/focus";
 import { useHotkey, useMediaQuery } from "@/lib/hooks";
 import { cn, IS_APPLE } from "@/lib/utils";
@@ -243,9 +243,9 @@ function ToastItem({ t, paused }: { t: ToastRecord; paused: boolean }) {
                       failed = true;
                       // A failed request has said so itself (the query client's error toast; a household change,
                       // which is quiet, with its own): nothing is left to tell, and nothing awaits this click to
-                      // catch it, so it would escape as a page error. Anything else is a bug: report it, so the
+                      // catch it, so it would escape as a page error. Anything else is a bug: reported, so the
                       // console, the end-to-end tests and Vitest still see it.
-                      if (!(err instanceof ApiError)) reportError(err);
+                      ignoreFailedRequest(err);
                     } finally {
                       close(hadFocus, failed);
                     }

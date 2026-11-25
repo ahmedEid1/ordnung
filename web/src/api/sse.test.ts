@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { QueryClient } from "@tanstack/react-query";
+import { ApiError } from "./client";
 import { api } from "./endpoints";
 import { __resetEventsForTests, claudeWaitReason, handleServerEvent, seedFromQueue, seedJob, useEvents } from "./sse";
 import type { Job, JobProgressEvent } from "./types";
@@ -113,7 +114,7 @@ describe("seedFromQueue (on connecting: a reload, a new tab)", () => {
   });
 
   it("shows no banner for a letter that waits for another reason, and stays quiet when the queue can't be read", async () => {
-    vi.spyOn(api, "jobs").mockResolvedValueOnce([job("job_b", "doc_b", STOPPED)]).mockRejectedValueOnce(new Error("offline"));
+    vi.spyOn(api, "jobs").mockResolvedValueOnce([job("job_b", "doc_b", STOPPED)]).mockRejectedValueOnce(new ApiError(0, "Ordnung isn't reachable."));
     const { result, rerender } = renderHook(() => useEvents());
     await seedFromQueue(Date.now());
     await seedFromQueue(Date.now());

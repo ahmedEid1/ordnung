@@ -26,6 +26,7 @@ import { AddProofDialog } from "./AddProofDialog";
 import { RemoveProofDialog } from "./RemoveProofDialog";
 import { TrackingField, trackingSavable } from "./TrackingField";
 import { hasPicture, kindsIn, proofFileHref, nachweisFileName, startWith, suggestedKind, takesTrackingNumber, waitingTitle, WAITING_TONE } from "./proof";
+import { ignoreFailedRequest } from "@/api/client";
 
 const WAITING_ICON = {
   // what you wait for from someone else has its own icon (the hourglass is the Deadline kind)
@@ -75,7 +76,7 @@ function WaitingBox({ entry, draft }: { entry: WaitingEntry; draft: Draft }) {
             description: "The follow-up is open again.",
           });
       },
-      () => undefined,
+      ignoreFailedRequest, // a failed request: the hook's toast says so
     );
   };
   const reminder =
@@ -155,8 +156,9 @@ function Tracking({ draft, overview }: { draft: Draft; overview: ProofOverview }
         }
         return true;
       },
-      () => {
-        failed?.(); // the hook's toast says it couldn't be saved
+      (err: unknown) => {
+        ignoreFailedRequest(err); // a failed request: the hook's toast says it couldn't be saved
+        failed?.();
         return false;
       },
     );

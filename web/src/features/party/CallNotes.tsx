@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { focusWhenReady } from "@/lib/focus";
 import { ComputerOnly } from "@/features/phone/ComputerOnly";
 import { CALL_FIELDS, callNoteProblems, clearCallDraft, draftHasText, keepCallDraft, loadCallDraft, promisedAmount, type CallNoteDraft as Draft } from "./calls";
+import { ignoreFailedRequest } from "@/api/client";
 
 const SUMMARY_MAX = 2000;
 const PROMISE_MAX = 300;
@@ -118,7 +119,7 @@ function NoteForm({ partyId, cases, caseId = "", asking, hasTextRef, onCancel, o
           });
           if (mounted.current) onSaved();
         },
-        () => undefined, // the error is said by the mutation; the note stays as typed
+        ignoreFailedRequest, // a failed request is said by the mutation; the note stays as typed
       );
   };
 

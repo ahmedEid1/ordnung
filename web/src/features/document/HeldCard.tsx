@@ -28,6 +28,7 @@ import { usePhoneCompanion } from "@/features/phone/client";
 import { OnYourComputer } from "@/features/phone/ComputerOnly";
 import { DECIDE_ONE_ON_COMPUTER, theComputer } from "@/features/phone/copy";
 import { hasLongWord, waitAgainId } from "./verdict";
+import { ignoreFailedRequest } from "@/api/client";
 
 /**
  * "Not read yet" over a waiting letter's title, with the Inbox's icon for it. Its row is as tall as the
@@ -92,7 +93,7 @@ export function HeldCard({ detail, className, onAnswered }: HeldCardProps) {
         toast.success("Claude is reading it", { description: "You'll see every step here." });
         if (answeredFor(res, doc.id)) onAnswered?.(doc.status);
       })
-      .catch(() => undefined); // the request's own error toast says what went wrong
+      .catch(ignoreFailedRequest); // a failed request: its own error toast says what went wrong
 
   const keepIt = () =>
     keep
@@ -112,7 +113,7 @@ export function HeldCard({ detail, className, onAnswered }: HeldCardProps) {
         });
         if (answeredFor(res, doc.id)) onAnswered?.(doc.status);
       })
-      .catch(() => undefined);
+      .catch(ignoreFailedRequest);
 
   return (
     // named as written (the heading keeps its hyphens whole with non-breaking ones)

@@ -27,6 +27,7 @@ import { protectRefs } from "@/lib/glue";
 import { focusAfterLeaving, focusWhenReady } from "@/lib/focus";
 import { ideaActionLabel, ideaHref } from "@/features/today/helpers";
 import { ideasForLetter, onThisLetter } from "./letter-ideas";
+import { ignoreFailedRequest } from "@/api/client";
 
 const docDate = (d: Document) => d.doc_date ?? d.received_date ?? d.created_at.slice(0, 10);
 
@@ -204,7 +205,7 @@ function LetterIdea({ idea, docId, items, onLeave }: { idea: Suggestion; docId: 
             focusWhenReady(() => document.getElementById(titleId));
           },
         }),
-      () => undefined, // the error toast comes from the mutation's meta
+      ignoreFailedRequest, // a failed request: the error toast comes from the mutation's meta
     );
   };
   const snooze = () => {

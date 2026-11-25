@@ -36,6 +36,7 @@ import { AnswerButton } from "./AnswerButton";
 import { isHeld } from "./filters";
 import { Thumb } from "./LettersList";
 import { fileKindLabel, readLabel, waitingRows, type WaitingRow } from "./waiting";
+import { ignoreFailedRequest } from "@/api/client";
 
 export function WaitingFromFolder({
   docs,
@@ -78,7 +79,7 @@ export function WaitingFromFolder({
           });
         onAnswered?.();
       })
-      .catch(() => undefined); // the request's own error toast says what went wrong
+      .catch(ignoreFailedRequest); // a failed request: its own error toast says what went wrong
   const keepThem = () =>
     keep
       .mutateAsync(ids)
@@ -98,7 +99,7 @@ export function WaitingFromFolder({
         });
         onAnswered?.();
       })
-      .catch(() => undefined);
+      .catch(ignoreFailedRequest);
 
   return (
     <section aria-labelledby="waiting-title" className="mb-10">

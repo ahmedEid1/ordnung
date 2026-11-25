@@ -3,7 +3,7 @@ import { Link, useBlocker, useNavigate } from "react-router";
 import { Check, ChevronRight, CircleCheck, Download, Ellipsis, FilePen, FileCheck2, ListChecks, PenLine, Save, Send, Trash2, TriangleAlert, Undo2 } from "lucide-react";
 import { api } from "@/api/endpoints";
 import { useDeleteDraft, useDocuments, useContracts, useDraftProof, useMarkDraftSent, useParties, useProfile, useTranslateDraft, useUpdateDraft } from "@/api/hooks";
-import { ApiError } from "@/api/client";
+import { ApiError, ignoreFailedRequest } from "@/api/client";
 import type { Draft, SendChannelKind } from "@/api/types";
 import { Button, IconButton, buttonVariants } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
@@ -250,8 +250,9 @@ export function LetterView({ draft }: { draft: Draft }) {
     let current: Draft;
     try {
       current = await save();
-    } catch {
-      return; // the save error is already shown
+    } catch (err) {
+      ignoreFailedRequest(err); // a failed request: the save error is already shown
+      return;
     }
     try {
       await translate.mutateAsync(current.id);
@@ -328,8 +329,8 @@ export function LetterView({ draft }: { draft: Draft }) {
           description: `${again ? "Now marked as sent" : "Marked as sent"} ${how}.`,
         });
       }
-    } catch {
-      /* the global mutation handler shows the error */
+    } catch (err) {
+      ignoreFailedRequest(err); // a failed request: the global mutation handler shows the error
     }
   };
 

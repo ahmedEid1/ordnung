@@ -18,7 +18,7 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { invalidateLedger, qk, resetAfterReplace } from "./hooks";
-import { apiPath } from "./client";
+import { apiPath, ignoreFailedRequest } from "./client";
 import { api } from "./endpoints";
 import type { Job, JobProgressEvent, JobStatus, LlmPausedEvent, ServerEvent, ServerEventType } from "./types";
 
@@ -153,8 +153,9 @@ export async function seedFromQueue(openedAt: number): Promise<void> {
   let jobs: Job[];
   try {
     jobs = await api.jobs(true);
-  } catch {
-    return; // the live events still say what changes
+  } catch (err) {
+    ignoreFailedRequest(err); // a failed request: the live events still say what changes
+    return;
   }
   let forClaude = false;
   for (const job of jobs) {
