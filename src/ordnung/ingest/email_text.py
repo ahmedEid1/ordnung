@@ -58,28 +58,50 @@ def _email_body(message: EmailMessage) -> tuple[str, str]:
     """The text/plain body, or the visible text of the HTML body when there is no plain part or the
     plain part is empty (mail clients show the HTML part then, so its sender never notices).
 
-    Mail programs show the HTML part of an e-mail that has both, so a plain part could name another
-    IBAN or amount than the person read. A plain part that names an IBAN or amount the HTML part
-    doesn't show (:func:`_names_unshown`) is not read: all of it is reported as hidden text, a scam
-    sign, never text a value is grounded in, and the HTML part's visible text is read instead, as the
-    person's mail program shows it."""
+    Mail programs show the HTML part of an e-mail that has both, and of several HTML alternatives the
+    last (RFC 2046, 5.1.4), so the part read could name another IBAN or amount than the person saw. The
+    part read is compared with every HTML part of the message (:func:`_html_parts`, an alternative marked
+    as an attachment included). If one of them doesn't show an IBAN or amount it names
+    (:func:`_names_unshown`), it is not read: all of its text is reported as hidden text, a scam sign,
+    never text a value is grounded in, and the last HTML part's visible text is read instead."""
     part = message.get_body(preferencelist=("plain", "html"))
     if part is None:
         return "", ""
+    htmls = list(_html_parts(message))
     content = _part_text(part)
-    html = message.get_body(preferencelist=("html",))
     if part.get_content_type() == "text/plain" and not content.strip():
-        if html is None:
+        if not htmls:
             return content, ""
-        part, content = html, _part_text(html)
+        part = message.get_body(preferencelist=("html",)) or htmls[0]
+        content = _part_text(part)
     if part.get_content_type() == "text/html":
-        return html_to_text(content)
-    if html is None:
-        return content, ""
-    shown, hidden = html_to_text(_part_text(html))
-    if _names_unshown(content, shown):
-        return shown, "\n\n".join(part for part in (content.strip(), hidden) if part)
-    return content, ""
+        read, hidden = html_to_text(content)
+    else:
+        read, hidden = content, ""
+    if not htmls or part is htmls[-1]:
+        return read, hidden  # what is read is what mail programs show
+    others = [html_to_text(_part_text(html)) for html in htmls if html is not part]
+    if any(_names_unshown(read, shown) for shown, _ in others):
+        last_shown, last_hidden = html_to_text(_part_text(htmls[-1]))
+        unread = read.strip() if part.get_content_type() == "text/plain" else read
+        return last_shown, "\n\n".join(text for text in (unread, hidden, last_hidden) if text)
+    return read, hidden
+
+
+def _html_parts(part: MIMEPart, *, alternative: bool = False) -> Iterator[MIMEPart]:
+    """Every text/html part a mail program may show as the message's body, in order: those the body is
+    looked for in (:meth:`~email.message.MIMEPart.get_body`: no attachment, no attached e-mail), and an
+    alternative of a multipart/alternative even when it is marked as an attachment."""
+    if part.is_attachment() and not alternative:
+        return
+    if part.get_content_type() == "text/html":
+        yield part
+        return
+    if part.get_content_maintype() != "multipart":
+        return
+    inside = part.get_content_subtype() == "alternative"
+    for subpart in part.iter_parts():
+        yield from _html_parts(subpart, alternative=inside)
 
 
 #: Words as the GiroCode gate reads a printed IBAN: runs of letters and digits, whatever stands between.

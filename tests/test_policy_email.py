@@ -505,13 +505,27 @@ def _spaced(value: str, mark: str) -> str:
     return mark.join(value[i : i + 4] for i in range(0, len(value), 4))
 
 
-def _alternatives(plain: str, html: str) -> bytes:
+def _alternatives(plain: str, html: str, *, before: str | None = None, attached: bool = False) -> bytes:
+    """A multipart/alternative of ``plain`` and ``html`` (the last alternative, what mail programs show),
+    with an HTML alternative ``before`` it, and ``html`` marked as an attachment if ``attached``."""
     message = EmailMessage()
     message["From"] = "rechnung@stadtwerke-musterstadt.example"
     message["Subject"] = "Ihre Rechnung September"
     message.set_content(plain)
+    if before is not None:
+        message.add_alternative(_mail(before), subtype="html")
     message.add_alternative(_mail(html), subtype="html")
+    if attached:
+        message.get_payload()[-1]["Content-Disposition"] = "attachment"
     return message.as_bytes()
+
+
+#: How the HTML part the person sees stands beside the plain part.
+CONSTRUCTIONS = [
+    "one HTML part",
+    "an HTML part showing the plain line first",
+    "the HTML part marked as an attachment",
+]
 
 
 @pytest.mark.parametrize(
@@ -557,15 +571,41 @@ def _alternatives(plain: str, html: str) -> bytes:
         "iban-joined-by-taking-a-line-out",
     ],
 )
-def test_alternatives_that_name_different_ibans_are_a_scam_sign(plain_line: str, html_line: str) -> None:
+@pytest.mark.parametrize("construction", CONSTRUCTIONS)
+def test_alternatives_that_name_different_ibans_are_a_scam_sign(
+    plain_line: str, html_line: str, construction: str
+) -> None:
     """Adversarial: the plain part names another IBAN or amount than the HTML part the person's mail
-    program shows. The plain part is hidden text (a scam sign), never text a value is grounded in; the
-    HTML part's visible text is read instead, as the mail program shows it."""
+    program shows: the last alternative (RFC 2046), also behind an earlier HTML alternative that shows
+    the plain part's line, and also when it is marked as an attachment. The plain part is hidden text (a
+    scam sign), never text a value is grounded in; the last HTML part's visible text is read instead, as
+    the mail program shows it."""
     plain = f"Sehr geehrte Frau Rivera,\n{plain_line}\nMit freundlichen Grüßen\n"
-    document = text_document(_alternatives(plain, f"<p>{html_line}</p>"), "message/rfc822")
+    data = _alternatives(
+        plain,
+        f"<p>{html_line}</p>",
+        before=f"<p>{plain_line}</p>" if construction == CONSTRUCTIONS[1] else None,
+        attached=construction == CONSTRUCTIONS[2],
+    )
+    document = text_document(data, "message/rfc822")
     assert plain_line not in document.text and plain_line in document.hidden_text
     assert html_line in document.text
     assert "Sehr geehrte Frau Rivera," in document.text and "Mit freundlichen Grüßen" in document.text
+
+
+def test_of_several_html_alternatives_the_last_is_read() -> None:
+    """Adversarial: an HTML-only e-mail with two alternatives naming different IBANs. Mail programs show
+    the last; the first, the one a body is otherwise read from, is hidden text (a scam sign)."""
+    first, last = (
+        f"Bitte überweisen Sie auf IBAN {OTHER_IBAN}.",
+        f"Bitte überweisen Sie auf IBAN {SHOWN_IBAN}.",
+    )
+    message = EmailMessage()
+    message["From"] = "rechnung@stadtwerke-musterstadt.example"
+    message.set_content(_mail(f"<p>{first}</p>"), subtype="html")
+    message.add_alternative(_mail(f"<p>{last}</p>"), subtype="html")
+    document = text_document(message.as_bytes(), "message/rfc822")
+    assert last in document.text and first not in document.text and first in document.hidden_text
 
 
 @pytest.mark.parametrize(
