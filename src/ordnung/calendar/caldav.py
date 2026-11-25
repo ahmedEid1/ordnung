@@ -75,12 +75,11 @@ import xml.etree.ElementTree as ET
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import SplitResult, unquote, urljoin, urlsplit, urlunsplit
 from xml.parsers import expat
 from xml.sax.saxutils import escape
 
-import httpx
 from icalendar import Alarm, Calendar, Event
 from icalendar.cal import Component
 from pydantic import ValidationError
@@ -97,6 +96,10 @@ from ordnung.models import (
     CalendarSyncReport,
     CalendarSyncState,
 )
+
+if TYPE_CHECKING:
+    # httpx loads when a calendar is first reached, not with the server: calendar sync is off by default
+    import httpx
 
 log = logging.getLogger(__name__)
 
@@ -527,6 +530,8 @@ def _network_error(url: str, exc: httpx.HTTPError) -> CalDavError:
                 "(For a server with its own certificate authority, point SSL_CERT_FILE at it.)",
             )
         cause = cause.__cause__ or cause.__context__
+    import httpx
+
     if isinstance(exc, httpx.TimeoutException):
         return CalDavError("network", f"{host_of(url)} didn't answer in time.")
     return CalDavError("network", f"Couldn't reach {host_of(url)}.")
@@ -541,6 +546,8 @@ class CalDavClient:
         self.url = url
         #: a redirect finding calendars didn't follow (another host): named when nothing is found
         self._moved: CalDavError | None = None
+        import httpx  # here, not at the top: only calendar sync talks to a server
+
         self._http = httpx.Client(
             auth=httpx.BasicAuth(username, password),
             timeout=TIMEOUT_S,
@@ -560,6 +567,8 @@ class CalDavClient:
 
     def _send(self, method: str, url: str, **kwargs: Any) -> tuple[httpx.Response, bytes]:
         """One request; the answer's body is read up to :data:`MAX_RESPONSE_BYTES` (then refused)."""
+        import httpx
+
         try:
             with self._http.stream(method, url, **kwargs) as response:
                 body = bytearray()
