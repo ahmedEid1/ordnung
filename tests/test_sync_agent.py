@@ -731,14 +731,21 @@ async def test_a_folder_that_doesn_t_answer_is_looked_at_less_often_until_it_doe
     def looks() -> int:
         return engine.calls_of(desk).count("scan")
 
+    def saves() -> int:
+        return sum(call.startswith("push:") for call in engine.calls_of(desk))
+
     async with computer(desk, engine=engine) as api:
         await connect(api, folder, "desktop")
         monkeypatch.setattr(FakeSession, "scan", unreachable)
         found = await eventually(lambda: agent_of(api).problem)
         assert found.code == "folder_unreachable"
-        before = looks()
+        before, saved = looks(), saves()
         await asyncio.sleep(5 * agent_module.SCAN_S)
-        assert looks() <= before + 1, "not every SCAN_S while the folder doesn't answer"
+        # a save in this window (CI once had one) looks once itself and, the folder having taken it, brings the
+        # next look in to the usual pace: two looks that say nothing about the slow pace
+        assert looks() <= before + 1 + 2 * (saves() - saved), (
+            "not every SCAN_S while the folder doesn't answer"
+        )
         assert agent_module.UNREACHABLE_SCAN_S > 5 * agent_module.SCAN_S
 
         monkeypatch.setattr(FakeSession, "scan", answering)
@@ -792,7 +799,7 @@ async def test_a_save_that_goes_through_brings_the_usual_pace_back(
         saves = engine.calls.count("push:change")
         assert (await _add_todo(api, "Pay the gym")).status_code == 201
         await eventually(lambda: engine.calls.count("push:change") > saves and not agent._lock_now().locked())
-        assert agent.problem is None, "the save went through: the folder answers"
+        assert agent.status().problem is None, "the save went through: the folder answers"
         assert agent._next_scan <= time.monotonic() + agent_module.SCAN_S, (
             "and it is looked at every SCAN_S again"
         )
