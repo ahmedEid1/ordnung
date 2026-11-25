@@ -1295,12 +1295,12 @@ class SyncAgent:
         self._failing_since = None
         self._retry_at = 0.0
         if self.problem is not None and self.problem.code in (*_SAVE_PROBLEMS, "folder_unreachable"):
-            answers_again = self.problem.code == "folder_unreachable"
             self.problem = None
-            if answers_again:
-                # the folder took a save, so it answers: the next look comes at the usual pace, not where the
-                # slow pace of a folder that doesn't answer had put it (up to UNREACHABLE_SCAN_S away)
-                self._next_scan = min(self._next_scan, time.monotonic() + self._look_again_in())
+        # the folder took a save, so it answers: the next look comes at the usual pace, not where the slow pace
+        # of a folder that doesn't answer had put it, up to UNREACHABLE_SCAN_S away (after any save that went
+        # through, not only one that cleared "doesn't answer": a failed save may have put its own problem in
+        # that one's place since the slow look). At the usual pace already, this changes nothing
+        self._next_scan = min(self._next_scan, time.monotonic() + self._look_again_in())
         if self._last_change is None or self._last_change <= started:
             self._dirty_since = self._last_change = self._person_since = None
         version = self._data_version_now() if self.mode == "in_use" else None

@@ -811,6 +811,57 @@ async def test_a_save_that_goes_through_brings_the_usual_pace_back(
         )
 
 
+async def test_a_save_that_goes_through_after_a_failed_one_brings_the_usual_pace_back_too(
+    tmp_path: Path, folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """After a long outage what is shown alternates: a look says the folder doesn't answer, a failed save says
+    saving fails. A save that then went through cleared "saving fails", and the next look stayed where the slow
+    pace had put it, as it did for "doesn't answer" (the test above)."""
+    engine = FakeEngine()
+    desk, _ = _dirs(tmp_path)
+    answering = FakeSession.scan
+    monkeypatch.setattr(
+        agent_module, "UNREACHABLE_SCAN_S", 600.0
+    )  # out of reach without the fix, however slow
+    monkeypatch.setattr(agent_module, "FAILING_AFTER_S", 0.0)  # a failed save says so at once
+
+    def unreachable(session: FakeSession) -> View:
+        answering(session)
+        return View([], Problem("folder_unreachable"))
+
+    async with computer(desk, engine=engine) as api:
+        await connect(api, folder, "desktop")
+        agent = agent_of(api)
+        await eventually(lambda: not agent.status().pending_changes)  # the connection's own change is saved
+        monkeypatch.setattr(FakeSession, "scan", unreachable)
+        await eventually(
+            lambda: (
+                agent.problem is not None
+                and agent.problem.code == "folder_unreachable"
+                and not agent._lock_now().locked()
+            )
+        )
+        engine.fail_push = OSError(5, "Input/output error")  # the share takes no save either
+        assert (await _add_todo(api, "Pay the gym")).status_code == 201
+        await eventually(
+            lambda: (
+                agent.problem is not None
+                and agent.problem.code == "save_failing"
+                and not agent._lock_now().locked()
+            )
+        )
+        assert agent._next_scan > time.monotonic() + agent_module.SCAN_S, (
+            "still the slow pace: no look has answered"
+        )
+
+        engine.fail_push = None  # the folder is back: the save is tried again and goes through
+        monkeypatch.setattr(FakeSession, "scan", answering)
+        await eventually(lambda: agent.status().problem is None and not agent._lock_now().locked())
+        assert agent._next_scan <= time.monotonic() + agent_module.SCAN_S, (
+            "it is looked at every SCAN_S again"
+        )
+
+
 async def test_shutdown_saves_and_says_the_computer_was_closed(tmp_path: Path, folder: Path) -> None:
     engine = FakeEngine()
     desk, _ = _dirs(tmp_path)
