@@ -20,6 +20,7 @@ import { LoadError } from "@/components/ui/LoadError";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Skeleton, SkeletonCard } from "@/components/ui/Skeleton";
 import { Tabs, type TabItem } from "@/components/ui/Tabs";
+import { focusWhenReady } from "@/lib/focus";
 import { useTodayISO } from "@/lib/today";
 import { plural, prefersReducedMotion } from "@/lib/utils";
 import { formatMoney } from "@/lib/format";
@@ -147,10 +148,13 @@ export function ContractsView() {
   );
 
   // A selected contract (from the chart, Today's Ideas or the Timeline) scrolls into view; one
-  // picked in the chart also takes the keyboard focus along (it would stay on an off-screen bar).
+  // picked in the chart also takes the keyboard focus along (it would stay on an off-screen bar), and so does
+  // one a link from another page opened: focus would stay on the page's heading, scrolled away above it.
   const selectedShown = Boolean(selectedId && shown.some((c) => c.id === selectedId));
   /** the contract just picked in the chart, until its card has the focus */
   const focusNext = useRef<string | null>(null);
+  /** the contract the page was opened with, until its card is shown */
+  const arrivedWith = useRef(selectedId);
   /** counts picks, so picking the selected contract again scrolls back to it */
   const [picks, setPicks] = useState(0);
   useEffect(() => {
@@ -160,6 +164,11 @@ export function ContractsView() {
     if (focusNext.current === selectedId) {
       focusNext.current = null;
       el?.focus({ preventScroll: true });
+    } else if (arrivedWith.current === selectedId) {
+      arrivedWith.current = null;
+      // from the h1, which the new page's announcer may focus first (lib/focus: never pulled from elsewhere)
+      const h1 = document.querySelector("#main h1");
+      focusWhenReady(() => document.getElementById(`contract-${selectedId}`), 3000, { from: h1, preventScroll: true });
     }
   }, [selectedId, selectedShown, picks]);
   // …even when it is filtered out by the status tabs (show it rather than nothing).

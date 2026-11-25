@@ -405,6 +405,11 @@ export interface ModalOptions {
    * button that disappeared). Default: the page's `<main>`.
    */
   returnFocus?: RefObject<HTMLElement | null>;
+  /**
+   * Asked as it closes: false leaves focus where the close puts it, for a modal whose choice opened a new page
+   * (the page's heading takes focus then, not the button that opened the modal). Default: restored.
+   */
+  restoreFocus?: () => boolean;
 }
 
 /**
@@ -491,6 +496,7 @@ export function useModal(open: boolean, containerRef: RefObject<HTMLElement | nu
         root?.removeAttribute("inert");
       }
       modalListeners.forEach((l) => l());
+      if (optsRef.current.restoreFocus?.() === false) return;
       focusFirstOf([...openerRef.current, optsRef.current.returnFocus?.current, document.querySelector<HTMLElement>("main")]);
     };
   }, [open, containerRef]);

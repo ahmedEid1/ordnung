@@ -192,3 +192,17 @@ test("at 320 px: the notice period entered on the card of a contract whose lette
     expect.soft(after && asLedgerRow(after), "the current account is back as its letter left it (the ledger later Ask answers replay against)").toEqual(snapshot);
   }
 });
+
+test("a contract opened from the Timeline takes the focus: its card, in view (focus stayed on the page's heading, scrolled away)", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await open(page, "/timeline", "Timeline");
+  const row = page.getByRole("main").locator("a[href*='contract=']").first();
+  const href = (await row.getAttribute("href"))!;
+  const id = new URL(href, "http://x").searchParams.get("contract")!;
+  await row.focus();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/contracts\?/);
+  const card = page.locator(`[id="contract-${id}"]`);
+  await expect(card).toBeFocused();
+  await expect(card).toBeInViewport();
+});

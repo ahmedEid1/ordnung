@@ -392,3 +392,19 @@ test.describe("forced colours: focus, the current page and filled buttons stay v
     expect(colours.border).toBe("solid 2px");
   });
 });
+
+test.describe("phone: a letter chosen in the search sheet", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("opens with its heading focused, not the header's search button", async ({ page }) => {
+    await open(page, "/", /Sam/);
+    await page.getByRole("button", { name: "Search letters" }).click();
+    const sheet = page.getByRole("dialog", { name: "Search letters" });
+    await sheet.getByRole("combobox").fill("Muster");
+    await expect(sheet.getByRole("option").first()).toBeVisible();
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/documents\//);
+    await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toBeFocused();
+  });
+});
