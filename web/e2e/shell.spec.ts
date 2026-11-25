@@ -7,7 +7,7 @@
  * overlays of the shell: the letter search's dropdown and phone sheet, the card of letters being
  * read on a phone, and the opaque drop overlay.
  */
-import type { Page, Route } from "@playwright/test";
+import type { Locator, Page, Route } from "@playwright/test";
 import { apiGet, expect, letterId, open, openMail, settle, setTour, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
@@ -337,5 +337,58 @@ test.describe("1920 px: drop overlay", () => {
       return parts.length === 4 ? Number(parts[3]) : 1;
     });
     expect(alpha).toBe(1);
+  });
+});
+
+// ------------------------------------------------------------------------------------------------
+// Windows high contrast (forced colours): box-shadow rings and fills are dropped there
+// ------------------------------------------------------------------------------------------------
+
+/** The computed outline of the focused element (focus moved by script after no pointer use: `:focus-visible`). */
+async function focusOutline(target: Locator): Promise<string> {
+  await target.focus();
+  return target.evaluate((el) => {
+    if (!el.matches(":focus-visible")) return "not focus-visible";
+    const s = getComputedStyle(el);
+    return `${s.outlineStyle} ${s.outlineWidth}`;
+  });
+}
+
+test.describe("forced colours: focus, the current page and filled buttons stay visible", () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+  test.beforeEach(async ({ page }) => {
+    await page.emulateMedia({ forcedColors: "active" });
+  });
+
+  test("every focused control has an outline, and the current page, the selected tab and filled buttons a frame", async ({ page }) => {
+    await open(page, "/inbox", "Inbox");
+    const sidebar = page.getByRole("complementary", { name: "Sidebar" });
+    // these drew focus with a box-shadow ring alone (`outline-none`): nothing showed in forced colours
+    const today = sidebar.getByRole("link", { name: "Today", exact: true });
+    expect(await focusOutline(today)).toBe("solid 2px");
+    // inside the sidebar's scroll area the outline is drawn inside the link, where it isn't cut off
+    expect(await today.evaluate((el) => getComputedStyle(el).outlineOffset)).toBe("-2px");
+    expect(await focusOutline(searchField(page))).toBe("solid 2px");
+    expect(await focusOutline(page.getByRole("main").locator("a[href^='/documents/']").first())).toBe("solid 2px");
+    // the current page and the selected tab had only a tint or a shadow
+    const edge = (l: Locator) => l.evaluate((el) => `${getComputedStyle(el).borderTopStyle} ${getComputedStyle(el).borderTopWidth}`);
+    // (the Inbox entry's name carries its count of letters to check, which the other tests change)
+    const current = sidebar.getByRole("navigation", { name: "Primary" }).locator("a[aria-current='page']");
+    await expect(current).toHaveAttribute("href", "/inbox");
+    expect(await edge(current)).toBe("solid 2px");
+    expect(await edge(page.getByRole("tab", { selected: true }).first())).toBe("solid 2px");
+    // a filled button: its fill is dropped, its edge is not
+    expect(await edge(page.getByRole("button", { name: "Add letters" }).first())).toBe("solid 1px");
+  });
+
+  test("an on/off switch shows where its knob is", async ({ page }) => {
+    await open(page, "/timeline", "Timeline");
+    const sw = page.getByRole("switch", { name: "Show past" });
+    const colours = await sw.evaluate((el) => {
+      const s = getComputedStyle(el);
+      return { track: s.backgroundColor, knob: getComputedStyle(el.querySelector("span")!).backgroundColor, border: `${s.borderTopStyle} ${s.borderTopWidth}` };
+    });
+    expect(colours.knob).not.toBe(colours.track);
+    expect(colours.border).toBe("solid 2px");
   });
 });

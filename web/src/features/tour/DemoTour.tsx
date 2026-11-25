@@ -80,7 +80,7 @@ function Spotlight({ rect, target }: { rect: SpotRect; target: string }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.25 }}
-      className="pointer-events-none fixed z-[5] rounded-[calc(var(--radius-card)+8px)] ring-2 ring-accent/70"
+      className="pointer-events-none fixed z-[5] rounded-[calc(var(--radius-card)+8px)] ring-2 ring-accent/70 forced-colors:outline-2 forced-colors:outline-[Highlight] forced-colors:outline-solid"
       style={{
         top: rect.top,
         left: rect.left,

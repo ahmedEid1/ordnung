@@ -24,18 +24,22 @@ const base =
 
 /** Filled variants lose their fill when disabled. */
 const inactiveFill = "inactive:border-transparent inactive:bg-surface-3";
+/** Forced colours drop a fill: a filled button keeps an edge there, or it reads as plain text (WCAG 1.4.11). */
+const forcedEdge = "forced-colors:border forced-colors:border-[ButtonText]";
 
 const variants: Record<ButtonVariant, string> = {
   primary: cn(
     "bg-accent text-on-accent shadow-[inset_0_1px_0_rgb(255_255_255/0.14),0_1px_2px_rgb(0_0_0/0.14)] hover:bg-accent-strong dark:hover:bg-accent-strong",
     inactiveFill,
+    forcedEdge,
   ),
   secondary: cn("border border-line-strong/80 bg-surface text-ink shadow-[var(--shadow-card)] hover:border-line-strong hover:bg-surface-2", inactiveFill),
-  soft: cn("bg-accent-soft text-accent hover:bg-accent/15", inactiveFill),
+  soft: cn("bg-accent-soft text-accent hover:bg-accent/15", inactiveFill, forcedEdge),
   ghost: "text-muted hover:bg-surface-3/70 hover:text-ink",
   danger: cn(
     "bg-danger text-white shadow-[0_1px_2px_rgb(0_0_0/0.14)] hover:bg-danger/90 dark:border dark:border-danger/40 dark:bg-danger-soft dark:text-danger-ink dark:hover:bg-danger-soft-hover",
     inactiveFill,
+    forcedEdge,
   ),
   // text-sized, but still a 24 px tall target (WCAG 2.5.8)
   link: "h-auto! min-h-6 px-0! text-accent underline-offset-4 hover:underline active:translate-y-0",

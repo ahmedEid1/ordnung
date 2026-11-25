@@ -128,6 +128,14 @@ describe("Button", () => {
     expect(busy).toBeDisabled();
   });
 
+  it("gives a filled button an edge in forced colours, where its fill is dropped (WCAG 1.4.11)", () => {
+    for (const variant of ["primary", "soft", "danger"] as const) {
+      expect(buttonVariants({ variant }).split(" "), variant).toEqual(expect.arrayContaining(["forced-colors:border", "forced-colors:border-[ButtonText]"]));
+    }
+    // a ghost button has no edge in normal colours either
+    expect(buttonVariants({ variant: "ghost" })).not.toContain("forced-colors:border");
+  });
+
   it("fills a hovered danger button opaquely in dark mode: its text contrast never depends on the parent", () => {
     const hover = buttonVariants({ variant: "danger" }).split(" ").filter((c) => c.startsWith("dark:hover:bg-"));
     expect(hover).toEqual(["dark:hover:bg-danger-soft-hover"]);
@@ -299,6 +307,17 @@ describe("Dialog", () => {
 });
 
 describe("Switch and Checkbox", () => {
+  it("the switch stays visible in forced colours: an edge the system paints, and a knob in the text colour (WCAG 1.4.11)", () => {
+    const { rerender } = renderWithProviders(<Switch checked={false} onCheckedChange={() => {}} label="Keep private — no AI" />);
+    const track = screen.getByRole("switch", { name: "Keep private — no AI" });
+    expect(track).toHaveClass("border-2", "border-transparent");
+    const knob = track.querySelector("span")!;
+    expect(knob).toHaveClass("forced-colors:bg-[CanvasText]", "translate-x-0");
+    // inside the border, the knob sits 2 px from either end, as before
+    rerender(<Switch checked onCheckedChange={() => {}} label="Keep private — no AI" />);
+    expect(screen.getByRole("switch", { name: "Keep private — no AI" }).querySelector("span")).toHaveClass("translate-x-4");
+  });
+
   it("wrap their descriptions without a one-word last line", () => {
     renderWithProviders(
       <>
