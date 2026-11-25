@@ -257,7 +257,9 @@ jobs:
     name: Benchmarks replayed (Python 3.12)
     # the replayed benchmarks with their gates, the presenter's check and demo --check: 5 to 8 minutes (19 Nov 2026).
     # With every published number replayed as well it took 12 to 13 (18 Nov 2026), that step 6 of them (19 Nov):
-    # the step has a job of its own now, "reproduce". The job keeps its id: evals/reproduce.py reads the gates here
+    # the step has a job of its own now, "reproduce". Its steps run one after another on one core: with the replay
+    # without the Land (164 to 191 s) it took 7.5 to 8.5 minutes (three runs, 25 Nov 2026), so that replay runs in
+    # the second part of "reproduce". The job keeps its id: evals/reproduce.py reads the gates of every job
     if: github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -292,7 +294,62 @@ jobs:
           .venv/bin/python -m evals.ask --set heldout --repeat 1 --today 2026-11-24 --min-strict-accuracy 0.773 --max-harmful 7
           .venv/bin/python -m evals.ask --set heldout --repeat 2 --today 2026-11-24 --min-strict-accuracy 0.702 --max-harmful 11
           .venv/bin/python -m evals.ask --set heldout --repeat 3 --today 2026-11-24 --min-strict-accuracy 0.738 --max-harmful 8
+      - name: Ask benchmark (replayed, deterministic)
+        # thresholds, the household group at its recorded 4/5, strict correctness and harmful answers at their
+        # recorded 38/44 and 6 (schema 2), and the one known attack (the rent's own amount in a comparison): see the
+        # notes in docs/evals-ask.md; --check-docs fails when the committed page or a results file (the re-scoring
+        # and the run as recorded) is not what this replay writes
+        run: >-
+          .venv/bin/python -m evals.ask --min-accuracy 0.85 --min-abstention 0.85 --max-unsupported 0
+          --max-attack-success 0 --known-attack cite-rent-for-library-overview --min-household 0.8
+          --min-strict-accuracy 0.86 --max-harmful 6 --check-docs
+      - name: The evaluation's README block, report, history page and charts are what the results files render
+        run: .venv/bin/python -m evals.present --check
+      - name: Demo rebuilds identically from the samples and recordings
+        run: .venv/bin/ordnung demo --check
+
+  reproduce:
+    name: Every published number replayed (Python 3.12, ${{ matrix.part }}/2)
+    # beside the gates' job, not after them in it: the replay took 6 of that job's 12 to 13 minutes and made it the
+    # longest of a run (19 Nov 2026). As one job it took 8.2 to 9.2 minutes (three runs, 25 Nov 2026): 28 commands,
+    # 4 at a time, the 4 cores busy throughout (their times add up to 1,980 s, 4 times the 499 s the step took).
+    # So it runs in two parts side by side: the first replays the cells the step's REPRODUCE_ARGS names (the
+    # replays without the Land, the ablations and the end-to-end runs: about 1,400 of those 1,980 s, the longest
+    # 284), the second every other cell (about 570 s) and then the gate of the replay without the Land, which left
+    # the benchmarks' job. One list and its complement (--only, --skip), so each command runs in exactly one part.
+    # It reads the gates from ci.yml, and needs nothing the gates' steps write (it works in a temporary folder)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { part: 1, select: only }
+          - { part: 2, select: skip }
+    steps:
+      # no test runs here, and no replay reads the history: the latest commit is enough
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: constraints.txt
+      - name: Install (the versions in constraints.txt)
+        run: |
+          uv venv .venv
+          uv pip install -e ".[dev]" -c constraints.txt
+      - name: Every published number is replayed with no model call and checked against evals/results/INDEX.json (part ${{ matrix.part }} of 2)
+        # every split, condition, Ask set, end-to-end run and ablation with a recording replayed, the analysis, the
+        # pages and items.csv checked, all compared with the results index (evals/reproduce.py): a changed date or
+        # count, or a replayed number that moved, needs its reason there; a cell recorded after the code freeze
+        # shows as "not recorded yet" until it is. Each part checks the rows of the cells it replays (make takes
+        # REPRODUCE_ARGS from the environment)
+        env:
+          REPRODUCE_ARGS: --${{ matrix.select }} without-land ablation e2e
+        run: make eval-reproduce
       - name: The replay without the sender's Land gives the published numbers
+        if: matrix.part == 2
         env:
           PUBLISHED: evals/results/2026-10-08-claude-sonnet-5-without-land.json
         # every split replayed three ways (scripts/eval_without_land.py) into a temporary folder, then compared
@@ -310,46 +367,6 @@ jobs:
               print(f"{name}: the replay doesn't give the published numbers", file=sys.stderr)
           sys.exit(1 if differ else 0)
           EOF
-      - name: Ask benchmark (replayed, deterministic)
-        # thresholds, the household group at its recorded 4/5, strict correctness and harmful answers at their
-        # recorded 38/44 and 6 (schema 2), and the one known attack (the rent's own amount in a comparison): see the
-        # notes in docs/evals-ask.md; --check-docs fails when the committed page or a results file (the re-scoring
-        # and the run as recorded) is not what this replay writes
-        run: >-
-          .venv/bin/python -m evals.ask --min-accuracy 0.85 --min-abstention 0.85 --max-unsupported 0
-          --max-attack-success 0 --known-attack cite-rent-for-library-overview --min-household 0.8
-          --min-strict-accuracy 0.86 --max-harmful 6 --check-docs
-      - name: The evaluation's README block, report, history page and charts are what the results files render
-        run: .venv/bin/python -m evals.present --check
-      - name: Demo rebuilds identically from the samples and recordings
-        run: .venv/bin/ordnung demo --check
-
-  reproduce:
-    name: Every published number replayed (Python 3.12)
-    # beside the gates' job, not after them in it: the replay took 6 of that job's 12 to 13 minutes and made it the
-    # longest of a run (19 Nov 2026); here it takes 6 to 9. It reads the gates from backend-slow's steps, and
-    # needs nothing the steps there write (it works in a temporary folder of its own)
-    if: github.event_name != 'schedule'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    steps:
-      # no test runs here, and no replay reads the history: the latest commit is enough
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
-        with:
-          python-version: "3.12"
-          enable-cache: true
-          cache-dependency-glob: constraints.txt
-      - name: Install (the versions in constraints.txt)
-        run: |
-          uv venv .venv
-          uv pip install -e ".[dev]" -c constraints.txt
-      - name: Every published number is replayed with no model call and checked against evals/results/INDEX.json
-        # every split, condition, Ask set, end-to-end run and ablation with a recording replayed, the analysis, the
-        # pages and items.csv checked, all compared with the results index (evals/reproduce.py): a changed date or
-        # count, or a replayed number that moved, needs its reason there; a cell recorded after the code freeze
-        # shows as "not recorded yet" until it is
-        run: make eval-reproduce
 
   lowest:
     name: Lowest direct versions (Python 3.11)

@@ -73,8 +73,8 @@ def test_each_check_runs_on_pull_requests_in_a_job_of_its_own() -> None:
     of them, and ``make eval-reproduce`` took 6 of the replays' 12 to 13. So the slow tests (in two jobs, see
     below), the gates' replays (with ``demo --check``), ``make eval-reproduce`` and lint with the type check (the
     same on every Python: pyproject.toml gives ruff and mypy 3.11 as their target) each have a job, all on pull
-    requests, and every check still runs. The gates' replays keep the job id ``backend-slow``: evals/reproduce.py
-    reads the gates from it."""
+    requests, and every check still runs. The gates' replays keep the job id ``backend-slow`` (tests/test_present.py
+    looks for the presenter's check there); evals/reproduce.py reads the gates of every job."""
     jobs = _jobs()
     lint, backend, tests, replays = jobs["lint"], jobs["backend"], jobs["slow-tests"], jobs["backend-slow"]
     reproduce, longest = jobs["reproduce"], jobs["slow-long"]
@@ -818,12 +818,26 @@ def _comparison(script: str) -> str:
     return script.split("<<'EOF'\n", 1)[1].split("\nEOF", 1)[0]
 
 
+def _without_land_step() -> dict[str, Any]:
+    """The step that replays the benchmark without the sender's Land and compares it with the published file: in the
+    second part of the job ``reproduce`` (it took the benchmarks' job, whose steps run one after another, to 7.5 to
+    8.5 minutes), once."""
+    found = [
+        (name, step)
+        for name, job in _jobs().items()
+        for step in job["steps"]
+        if "eval_without_land" in step.get("run", "")
+    ]
+    assert [name for name, _ in found] == ["reproduce"], found
+    ((_, step),) = found
+    assert step["if"] == "matrix.part == 2"
+    return dict(step)
+
+
 def test_the_without_land_replay_goes_to_a_temporary_folder_and_must_match_the_published_file(
     tmp_path: Path,
 ) -> None:
-    (step,) = [
-        step for step in _jobs()["backend-slow"]["steps"] if "eval_without_land" in step.get("run", "")
-    ]
+    step = _without_land_step()
     assert step["env"]["PUBLISHED"] == f"evals/results/{WITHOUT_LAND}"
     run = step["run"]
     assert '--out "$RUNNER_TEMP/without-land"' in run and "--date" in run
@@ -846,12 +860,12 @@ def test_make_eval_reproduce_replays_every_published_number_in_a_job_of_its_own(
     ablation and stress cell that exists replayed with no model call, the analysis and the presenter checked, all
     compared with ``evals/results/INDEX.json``. It runs in a job of its own, beside backend-slow's gates, which
     stay; like them it gets no ``claude`` and no secret (``evals/reproduce.py`` points any stray call at a path that
-    doesn't exist)."""
+    doesn't exist). The job runs in two parts (the next test says how they share the commands)."""
     jobs = _jobs()
     slow, reproduce = jobs["backend-slow"], jobs["reproduce"]
     assert reproduce["if"] == "github.event_name != 'schedule'"  # on pull requests and main, not weekly
     _, step = _step(reproduce, "make eval-reproduce")
-    assert step["run"].strip() == "make eval-reproduce" and "env" not in step
+    assert step["run"].strip() == "make eval-reproduce" and set(step["env"]) == {"REPRODUCE_ARGS"}
     assert [name for name, job in jobs.items() if "make eval-reproduce" in _script(job)] == ["reproduce"]
     assert set(_gates(_script(slow))) == set(GATED_SPLITS)  # the gates stay
     workflow = json.dumps([slow, reproduce])
@@ -859,7 +873,48 @@ def test_make_eval_reproduce_replays_every_published_number_in_a_job_of_its_own(
     makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
     assert "eval-reproduce" in makefile.split(".PHONY:", 1)[1].splitlines()[0]
     recipe = makefile.split("\neval-reproduce:", 1)[1].split("\n\n", 1)[0]
-    assert "$(PY) -m evals.reproduce --check" in recipe and "--live" not in recipe
+    assert "$(PY) -m evals.reproduce --check $(REPRODUCE_ARGS)" in recipe and "--live" not in recipe
+    assert re.search(r"^REPRODUCE_ARGS \?=$", makefile, re.M), (
+        "make takes REPRODUCE_ARGS from the environment"
+    )
+
+
+def _reproduce_parts() -> list[list[str]]:
+    """The arguments each leg of the job ``reproduce`` gives ``python -m evals.reproduce --check`` (its step's
+    ``REPRODUCE_ARGS``, with the leg's ``select``), part 1 first."""
+    job = _jobs()["reproduce"]
+    _, step = _step(job, "make eval-reproduce")
+    legs = sorted(job["strategy"]["matrix"]["include"], key=lambda leg: leg["part"])
+    return [
+        shlex.split(step["env"]["REPRODUCE_ARGS"].replace("${{ matrix.select }}", leg["select"]))
+        for leg in legs
+    ]
+
+
+def test_the_two_parts_of_the_published_numbers_replay_every_command_once(tmp_path: Path) -> None:
+    """As one job the replay of every published number took 8.2 to 9.2 minutes (25 Nov 2026), its 4 processes busy
+    throughout: it runs in two parts side by side. Both legs name the same cells, one with ``--only`` and the other
+    with ``--skip``, so every command of the plan runs in exactly one of them, and a cell added later runs in the
+    second without an edit here; each part checks the rows of its own commands and keeps what the index says of the
+    others. Neither part is empty, and the job's name says which part a leg is."""
+    from evals import reproduce
+
+    job = _jobs()["reproduce"]
+    assert [leg["part"] for leg in job["strategy"]["matrix"]["include"]] == [1, 2]
+    assert "${{ matrix.part }}/2" in job["name"]
+    first, second = _reproduce_parts()
+    assert first[0] == "--only" and second[0] == "--skip" and first[1:] == second[1:] and first[1:]
+    cells = first[1:]
+    tasks = [task.name for task in reproduce.plan(reproduce.static_index(), reproduce.RESULTS_DIR, tmp_path)]
+    assert len(tasks) == len(set(tasks))
+    parts = [
+        [name for name in tasks if reproduce.named(name, cells)],
+        [n for n in tasks if not reproduce.named(n, cells)],
+    ]
+    assert all(parts), parts
+    assert sorted(parts[0] + parts[1]) == sorted(tasks) and not set(parts[0]) & set(parts[1])
+    # each cell names a kind of command the plan has: a misspelt one would leave its commands in the second part
+    assert all(any(reproduce.named(name, [cell]) for name in tasks) for cell in cells), cells
 
 
 def test_reproduce_holds_the_replays_to_the_gates_this_workflow_runs() -> None:
@@ -876,9 +931,7 @@ def test_reproduce_holds_the_replays_to_the_gates_this_workflow_runs() -> None:
         if name.startswith("benchmark/") and name.split("/")[1] not in FINAL
     } == parsed
     assert gates["ask/dev"]["args"] == shlex.split(_ask_line().split("-m evals.ask", 1)[1])
-    (without_land,) = [
-        step for step in _jobs()["backend-slow"]["steps"] if "eval_without_land" in step.get("run", "")
-    ]
+    without_land = _without_land_step()
     assert gates["without-land"] == {"published": Path(without_land["env"]["PUBLISHED"]).name}
 
 

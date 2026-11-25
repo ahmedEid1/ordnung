@@ -34,6 +34,11 @@ are a re-scoring stay pinned) — ``--check`` fails when it moves, and ``--write
 reason (``sha256_moved``). The index also
 pins the dataset's and the recordings' hashes, the CI gates (read from ``.github/workflows/ci.yml``) and every cell.
 
+``--only CELL…`` replays only the tasks those cells name (a name, or a prefix such as ``e2e``) and ``--skip CELL…``
+every other task: run once with each, the same cells, they replay every task once between them, each of the two
+checking its own tasks' rows and keeping what the index says of the others (CI runs it so, in two jobs side by
+side).
+
 ``--check`` exits 1 on any difference INDEX.json doesn't declare, a hash that moved, a failed check, a gate missed or a
 stale ``items.csv``; 2 when the index is missing or a results file is of a kind nothing knows. ``--write`` rewrites the
 index's computed fields (keeping every declared reason) and ``items.csv``, for a pull request that changes numbers on
@@ -230,18 +235,19 @@ def _options(args: Sequence[str]) -> dict[str, list[str]]:
 
 
 def ci_gates(path: Path = CI_PATH) -> dict[str, Any]:
-    """The gates the ``backend-slow`` job of ``ci.yml`` runs, one per read: each split's replay
-    (``benchmark/<split>`` for its first read, ``benchmark/<split>/r<N>`` for read N of the final run), the Ask
-    benchmark's arguments (``ask/dev`` for the development set, ``ask/<set>/r<N>`` for each run of the held-out set)
-    and the published file the replay without the Land must equal. A command the step continues over the next line
-    after a backslash is read as the shell runs it, as one line."""
+    """The gates the jobs of ``ci.yml`` run (the ``backend-slow`` job's, and the replay without the Land in the
+    ``reproduce`` job's second part), one per read: each split's replay (``benchmark/<split>`` for its first read,
+    ``benchmark/<split>/r<N>`` for read N of the final run), the Ask benchmark's arguments (``ask/dev`` for the
+    development set, ``ask/<set>/r<N>`` for each run of the held-out set) and the published file the replay without
+    the Land must equal. A command the step continues over the next line after a backslash is read as the shell runs
+    it, as one line."""
     try:
         import yaml  # PyYAML comes with uvicorn[standard]
     except ImportError as exc:  # pragma: no cover - a dependency of the app
         raise ReproduceError("reading the CI gates needs PyYAML (it comes with uvicorn[standard])") from exc
     workflow = yaml.safe_load(path.read_text(encoding="utf-8"))
     gates: dict[str, Any] = {}
-    for step in workflow["jobs"]["backend-slow"]["steps"]:
+    for step in (step for job in workflow["jobs"].values() for step in job.get("steps") or []):
         run = str(step.get("run", ""))
         for line in run.replace("\\\n", " ").splitlines():
             if "ordnung eval" in line:
@@ -1252,6 +1258,11 @@ def plan(index: Mapping[str, Any], results_dir: Path, work: Path) -> list[Task]:
     return sorted(tasks, key=lambda task: (-WEIGHTS.get(task.name.split("/", 1)[0], 10), task.name))
 
 
+def named(task: str, cells: Sequence[str]) -> bool:
+    """Whether one of ``cells`` names ``task``: its name, or a prefix of it (``e2e`` names ``e2e/holdout4-newkinds``)."""
+    return any(task == cell or task.startswith(cell.rstrip("/") + "/") for cell in cells)
+
+
 def child_env(work: Path) -> dict[str, str]:
     """The children's environment: no model to reach (unless a fake one is named), no OCR, no demo recording."""
     env = dict(os.environ)
@@ -1321,7 +1332,7 @@ def gate_problems(
     and ``evals.ask``'s gate). A benchmark gate (``benchmark/<split>`` for read 1, ``benchmark/<split>/r<N>`` for a
     later read of the final run) is held to that read's replay, its exact dates and its dangerously late ones each
     against the gate's own limit; an Ask gate is its replay's exit, which runs with the gate's thresholds. A gate whose
-    replay did not run (a partial run, ``--only``) is neither held nor named."""
+    replay did not run (a partial run, ``--only`` or ``--skip``) is neither held nor named."""
     problems: list[str] = []
     parts: list[str] = []
     for name, gate in index["gates"].items():
@@ -1338,7 +1349,7 @@ def gate_problems(
         _, split, *rest = name.split("/")
         read = rest[0] if rest else "r1"
         cell = f"benchmark/{split}/{read}"
-        if cell not in done:  # a partial run (--only)
+        if cell not in done:  # a partial run (--only or --skip)
             continue
         shown = split if read == "r1" else f"{split} {read}"
         replay = replays.get(cell)
@@ -1392,7 +1403,7 @@ def _verify(
                 )
             continue
         task = task_of(row)
-        if task not in done:  # a partial run (--only): keep what the index says
+        if task not in done:  # a partial run (--only or --skip): keep what the index says
             for key in DYNAMIC:
                 if old is not None and key in old:
                     row[key] = old[key]
@@ -1474,8 +1485,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--write", action="store_true", help="rewrite INDEX.json's computed fields and items.csv"
     )
     parser.add_argument("--jobs", type=int, default=min(4, os.cpu_count() or 1), help="commands at a time")
-    parser.add_argument(
+    some = parser.add_mutually_exclusive_group()
+    some.add_argument(
         "--only", nargs="+", metavar="CELL", help="only these tasks (e.g. benchmark/test/r1 e2e)"
+    )
+    some.add_argument(
+        "--skip", nargs="+", metavar="CELL", help="every task but these (the cells --only takes)"
     )
     parser.add_argument(
         "--work", type=Path, help="keep the replays and logs in this folder (default: a temporary one)"
@@ -1484,8 +1499,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--index", type=Path, default=None, help=argparse.SUPPRESS)
     parser.add_argument("--items", type=Path, default=None, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
-    if args.write and args.only:
-        parser.error("--write needs every task (no --only)")
+    if args.write and (args.only or args.skip):
+        parser.error("--write needs every task (no --only or --skip)")
 
     def say(message: str) -> None:
         print(message, file=sys.stderr, flush=True)
@@ -1507,12 +1522,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     work.mkdir(parents=True, exist_ok=True)
     try:
         tasks = plan(fresh, results_dir, work)
-        if args.only:
-            tasks = [
-                task
-                for task in tasks
-                if any(task.name == o or task.name.startswith(o.rstrip("/") + "/") for o in args.only)
-            ]
+        if args.only or args.skip:
+            tasks = [task for task in tasks if named(task.name, args.only or args.skip) == bool(args.only)]
         env = child_env(work)
         say(f"replaying {len(tasks)} commands, {args.jobs} at a time, into {work} (no model is called)")
         started = time.monotonic()

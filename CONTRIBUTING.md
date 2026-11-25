@@ -131,9 +131,11 @@ CI runs its jobs side by side, none waiting for another.
   two halves side by side, each on half of the test files, and a short job adds up their coverage and holds the
   sum to the floors (in the first run the halves took 9 and 6 minutes, the adding up 20 seconds, and the whole
   run 9.5). The backend's other legs (Python 3.11, 3.13 and 3.14) take 4 to 6, the lowest versions (and,
-  weekly, the newest) 5 to 8, the replayed benchmarks 5 to 8, the replay of every published number (`make
-  eval-reproduce`) 6 to 9, the frontend 4 to 7; lint and types, the wheel and the dependency audit take under a
-  minute each.
+  weekly, the newest) 5 to 8, the frontend 4 to 7; lint and types, the wheel and the dependency audit take under a
+  minute each. The replayed benchmarks' gates run one after another and took 7.5 to 8.5 with the replay without
+  the Land among them, and the replay of every published number (`make eval-reproduce`, 4 commands at a time)
+  8.2 to 9.2 (25 November 2026): it runs in two parts side by side, `--only` some cells and `--skip` the same
+  cells, the second with the replay without the Land after it.
 - **Windows and macOS.** Windows runs on every pull request too, with the tests of the code that differs per
   system (`PER_SYSTEM_TESTS` in `tests/test_ci_workflow.py`), and has to pass, as Linux does. Those tests run in
   one process, and as one job Windows took 6.6 to 9.9 minutes (three runs, 25 November 2026), mostly the sync
