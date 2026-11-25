@@ -2492,6 +2492,33 @@ def test_the_scanner_text_s_file_marker_and_note_are_the_ones_the_docs_quote() -
     assert SCANNER_TEXT_NOTE in adr and f"*{SCANNER_TEXT_MATCH}*" in adr
 
 
+def test_the_spec_says_where_a_failed_reading_may_have_sent_the_letter() -> None:
+    """SPEC § 14's letter page, "where the letter went": a reading that failed before it ever succeeded says the letter *may*
+    have reached Anthropic, as ``DocumentFooter.tsx`` does — the call may have ended before Claude got it."""
+    footer = _flat(
+        (ROOT / "web" / "src" / "features" / "document" / "DocumentFooter.tsx").read_text(encoding="utf-8")
+    )
+    assert 'status === "failed" && !detail.document.ai_processed_at' in footer
+    assert "so its text or image may have reached Anthropic." in footer
+    assert (
+        "else that its text or image was sent to Anthropic (for a reading that failed before it ever succeeded: "
+        "that it may have reached Anthropic, since the call may have ended before Claude got it)"
+    ) in _spec()
+
+
+def test_the_web_app_and_the_guide_know_how_a_letter_says_to_check_claude() -> None:
+    """The letter's page links Settings → Claude connection when the failure ends with ``CHECK_CLAUDE``: its own
+    copy in ``api/sse.ts`` must be the backend's sentence, or the link quietly goes. The guide's doctor line names
+    the flag the sentence asks for, and that it makes a live call."""
+    from ordnung.llm.base import CHECK_CLAUDE
+
+    sse = (ROOT / "web" / "src" / "api" / "sse.ts").read_text(encoding="utf-8")
+    assert f"export const CHECK_CLAUDE = {json.dumps(CHECK_CLAUDE)};" in sse
+    assert "`ordnung doctor --probe`" in CHECK_CLAUDE
+    (line,) = [line for line in _guide().splitlines() if line.startswith("ordnung doctor ")]
+    assert "(--probe: also one tiny live call to Claude)" in line
+
+
 def test_only_the_store_reads_the_scanner_text_as_adr_0020_says() -> None:
     """ADR 0020: only ``Store`` reads and writes the scanner text — no other module imports ``ordnung.db.scan_text``,
     so Ask, the reading, the evidence checks and prompts can't reach it; a waiting letter's own text is read at
@@ -2604,7 +2631,7 @@ def test_the_guide_says_how_to_open_ordnung_without_a_terminal() -> None:
     ) in also
     commands = _section(_guide(), "## Install and run").split("```bash", 1)[1].split("```", 1)[0]
     assert (
-        "ordnung serve                   # the web app on http://127.0.0.1:8765\n"
+        "ordnung serve                   # the web app: opens your browser, signed in\n"
         "ordnung shortcut                # Ordnung in your app menu: opens it signed in, no terminal needed\n"
     ) in commands
     text = _without_a_terminal()
@@ -4358,17 +4385,29 @@ def test_contributing_says_when_a_recording_is_needed_and_how_to_record() -> Non
     assert '"--serve/--no-serve"' in cli
 
 
+def test_the_readme_sends_a_newcomer_to_the_signed_in_link_not_a_bare_address() -> None:
+    """A bare ``http://127.0.0.1:<port>`` only shows "Please open Ordnung from its link" (the server wants its
+    token), so README names none, and neither do the commands of the guide's Install and run, which the README's
+    "Your own letters" sends a newcomer to. README's install block holds the commands alone, which fit a phone's
+    width, and the bullets above it say what each does and that it opens the browser signed in."""
+    readme = _readme()
+    assert "http://127.0.0.1" not in readme
+    commands = _section(_guide(), "## Install and run").split("```bash", 1)[1].split("```", 1)[0]
+    assert "http://127.0.0.1" not in commands
+    lines = readme.splitlines()
+    assert "ordnung demo" in lines and "ordnung serve" in lines
+    install = _flat(_section(readme, "## Install and run"))
+    assert "`ordnung demo` opens a sample life" in install
+    assert "**Your own letters:** `ordnung serve`," in install
+    assert "Each command opens your browser, signed in." in install
+
+
 def test_the_demo_port_in_the_docs_is_the_one_ordnung_demo_uses() -> None:
-    """README's demo and serve lines and SPEC §15's lines for ``serve`` and ``demo`` name ``ordnung demo``'s own
-    port (``server.DEMO_PORT``), so the demo runs beside Ordnung, which keeps ``server.DEFAULT_PORT``."""
+    """SPEC §15's lines for ``serve`` and ``demo`` name ``ordnung demo``'s own port (``server.DEMO_PORT``), so the
+    demo runs beside Ordnung, which keeps ``server.DEFAULT_PORT``."""
     from ordnung.server import DEFAULT_PORT, DEMO_PORT
 
     assert DEMO_PORT != DEFAULT_PORT
-    lines = _readme().splitlines()
-    (demo_line,) = [line for line in lines if line.startswith("ordnung demo ")]
-    assert re.fullmatch(rf"ordnung demo +# opens http://127\.0\.0\.1:{DEMO_PORT} .+", demo_line), demo_line
-    (serve_line,) = [line for line in lines if line.startswith("ordnung serve ")]
-    assert re.fullmatch(rf"ordnung serve +# .*http://127\.0\.0\.1:{DEFAULT_PORT}", serve_line), serve_line
     commands = _spec().split("## 15. CLI", 1)[1].split(" ## ", 1)[0]
     serve = commands.split("- `serve` — ", 1)[1].split(" - `", 1)[0]
     demo = commands.split("- `demo` — ", 1)[1].split(" - `", 1)[0]

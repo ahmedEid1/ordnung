@@ -84,7 +84,8 @@ export function TopBar() {
             </span>
           )}
         </div>
-        <DemoBadge compact className="md:hidden max-[360px]:hidden" />
+        {/* "Demo" in words: a phone has no tooltip to name the flask; on a detail page the title needs the room */}
+        <DemoBadge short={!parent} compact={Boolean(parent)} className="md:hidden max-[360px]:hidden" />
         {/* hand-off sync, on the computer in use: saved, saving, or not (it leads to Your computers) */}
         <SyncIndicator className={cn(parent && "max-sm:hidden")} />
         <SearchBox />

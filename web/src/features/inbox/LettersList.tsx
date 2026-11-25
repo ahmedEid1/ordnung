@@ -21,16 +21,16 @@
  */
 import { Link } from "react-router";
 import { useId, useMemo, type ReactNode } from "react";
-import { ListTodo, Lock, ScanText, ShieldAlert } from "lucide-react";
+import { CirclePause, ListTodo, Lock, ScanText, ShieldAlert } from "lucide-react";
 import type { DocumentRow, ListedLetter, MailTrayItem, Party } from "@/api/types";
 import { useSuggestions } from "@/api/hooks";
 import { useOpenedTrayDocs, useTrayByDoc } from "@/features/tour/newMail";
 import { actionFromItem } from "@/features/today/selection";
 import { ActionCountdown } from "@/features/today/TopThree";
 import { api } from "@/api/endpoints";
-import { claudeWaitReason, useJobProgress } from "@/api/sse";
+import { claudeWaitReason, useEvents, useJobProgress } from "@/api/sse";
 import { JOB_STAGE_COPY, PIPELINE_STEPS, copyFor, stageToStep, uncheckedMatch } from "@/lib/copy";
-import { formatDate } from "@/lib/format";
+import { formatDate, letterName } from "@/lib/format";
 import { NBSP, protectRefs } from "@/lib/glue";
 import { useTodayISO } from "@/lib/today";
 import { cn } from "@/lib/utils";
@@ -84,6 +84,9 @@ export function LettersList({
   // until the warnings are known, no letter does: any of them may be one (fail closed)
   const scamsKnown = suggestions.data !== undefined;
   const shown = useMemo(() => pinJustRead(groups, justRead), [groups, justRead]);
+  // letters that wait for Claude aren't being read: their group says what they wait for
+  const { jobs } = useEvents();
+  const groupLabel = (g: LetterGroup) => (g.key === "reading" && g.docs.every((d) => claudeWaitReason(jobs[d.id])) ? "Waiting for Claude" : g.label);
   return (
     <div className="@container">
       {/* the page's h1 → this h2 → one h3 per group, with or without the New-mail tray above */}
@@ -107,7 +110,7 @@ export function LettersList({
         {shown.map((g) => (
           <section key={g.key} aria-labelledby={`grp-${g.key}`}>
             <h3 id={`grp-${g.key}`} className="eyebrow mb-2 flex items-center gap-1.5">
-              {g.label}
+              {groupLabel(g)}
               <span aria-hidden className="font-medium tabular-nums">
                 · {g.docs.length}
               </span>
@@ -180,18 +183,17 @@ function ReadingStatus({ doc }: { doc: ListedLetter }) {
   const detail = job ? copyFor(JOB_STAGE_COPY, job.status === "done" ? "done" : (job.stage ?? "intake")).label : undefined;
   return (
     <div className="mt-2 flex min-w-0 items-center gap-2.5">
-      <Stepper steps={PIPELINE_STEPS} current={step} size="sm" labels="none" className="w-24 shrink-0" label={`Reading ${doc.filename}`} />
+      {claudeWaitReason(job) ? (
+        // nothing moves until Claude is connected: a pause sign, not a stepper that looks under way
+        <CirclePause className="size-4 shrink-0 text-warn" aria-hidden />
+      ) : (
+        <Stepper steps={PIPELINE_STEPS} current={step} size="sm" labels="none" className="w-24 shrink-0" label={`Reading ${doc.filename}`} />
+      )}
       <span title={detail} className="line-clamp-2 min-w-0 text-xs text-muted">
         {name}
       </span>
     </div>
   );
-}
-
-/** "23_steuerbescheid_2025_p1.pdf" → "Steuerbescheid 2025 p1" (while a letter has no title yet). */
-function readableFilename(name: string): string {
-  const base = name.replace(/\.[a-z0-9]{2,4}$/i, "").replace(/[_-]+/g, " ").replace(/^\d+\s+/, "").trim();
-  return base ? base.charAt(0).toUpperCase() + base.slice(1) : "New letter";
 }
 
 function LetterRow({
@@ -232,7 +234,7 @@ function LetterRow({
   const action = next ? actionFromItem(next, { today }) : null;
   const urgent = action ? action.daysLeft <= NEXT_STEP_DAYS : false;
   // while it is being read a letter has no title yet: the tray's subject, else a tidy file name
-  const title = doc.title ?? (tray ? `${tray.subject} — ${tray.sender}` : readableFilename(doc.filename));
+  const title = doc.title ?? (tray ? `${tray.subject} — ${tray.sender}` : letterName(doc));
   const todos = open?.count ? `${open.count} open ${open.count === 1 ? "to-do" : "to-dos"}` : null;
 
   const status = reading ? null : scam ? (

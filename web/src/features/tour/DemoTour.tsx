@@ -11,7 +11,7 @@ import { TOAST_LIFT_VAR, toast } from "@/components/ui/Toast";
 import { useIsTabletUp, useLocalStorage, useMediaQuery } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { MORE_TO_TRY, TOUR_DOCK_ID, TOUR_STEPS, onStepRoute, stepCopy, type TourFacts, type TourStep } from "./steps";
-import type { TourEvent } from "./tourMachine";
+import { canResumeAt, type TourEvent } from "./tourMachine";
 import { onTourRestart, useTourController } from "./useTourController";
 import { spotlitElement, useSpotlight, type SpotRect } from "./useSpotlight";
 import { useNewMailIdeas } from "./newMail";
@@ -291,7 +291,7 @@ function CardContent({ step, steps, stepIndex, here, compact, headingRef, go, on
       type="button"
       onClick={() => (step.onward ? onShow() : go({ type: "next" }))}
       className={cn(
-        "-mr-1.5 inline-flex shrink-0 items-center rounded-md px-1.5 text-xs font-medium text-muted transition-colors hover:bg-surface-3/70 hover:text-ink first:-ml-1.5",
+        "-mr-1.5 ml-auto inline-flex shrink-0 items-center rounded-md px-1.5 text-xs font-medium text-muted transition-colors hover:bg-surface-3/70 hover:text-ink first:-ml-1.5",
         compact ? "h-6" : "h-7",
       )}
     >
@@ -391,7 +391,9 @@ function CardContent({ step, steps, stepIndex, here, compact, headingRef, go, on
 
       {compact ? (
         <>
-          <div className="mt-2.5 flex items-center justify-between gap-2">
+          {/* "Show me the mail" is wider than the room the dots leave in the sidebar at 1280 px: it goes to a
+              line of its own, at the right, rather than over the card's edge */}
+          <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-2">
             {dots}
             {skip}
           </div>
@@ -508,6 +510,17 @@ export function DemoTour() {
     if (across > 8 && down > 8) stepAside(step.id);
   }, [floatingCard, compactForm, rect, step.id, step.target, stepAside]);
 
+  // The bar opened into the whole card covers a third to two thirds of a phone's screen: once a page opens
+  // ("Show me", the letter just read) it folds back to its bar, so the page it talks about can be read. The
+  // card (its last step's "More to try" too) opens again from the bar.
+  // (adjusted while rendering, as React suggests for state that follows a prop: no extra render with the card)
+  const pathname = location.pathname;
+  const [openedAt, setOpenedAt] = useState(pathname);
+  if (openedAt !== pathname) {
+    setOpenedAt(pathname);
+    if (compactForm && expanded) setExpanded(false);
+  }
+
   const onArrive = useCallback(() => send({ type: "idea-arrived" }), [send]);
   useIdeaArrival(visible && stepIndex === 0, onArrive);
 
@@ -579,8 +592,9 @@ export function DemoTour() {
     focusPage();
     toast({
       title: "Tour hidden",
-      // Settings exists at every width (the top bar's Demo badge doesn't fit below 360 px)
-      description: "You can restart it any time in Settings → Data.",
+      // Settings exists at every width (the top bar's Demo badge doesn't fit below 360 px); it offers Resume
+      // only between the first and the last step
+      description: canResumeAt(at) ? "You can resume or restart it any time in Settings → Data." : "You can restart it any time in Settings → Data.",
       // back where it was
       undo: () => send({ type: "restart", step: at }),
     });
@@ -594,6 +608,7 @@ export function DemoTour() {
   const show = () => {
     // "Show me" always brings the element into view, even when this step scrolled there before
     writeScrolled(readScrolled().filter((id) => id !== step.id));
+    if (compactForm && expanded) requestFocus(); // the card folds back to its bar: the bar takes focus
     navigate(step.route);
   };
   const minimise = () => {

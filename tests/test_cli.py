@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import logging
 import os
 import re
 import socket
@@ -31,7 +32,15 @@ from ordnung.config import Paths
 from ordnung.db.store import Store
 from ordnung.demo import load_manifest
 from ordnung.demo.loader import build_demo
-from ordnung.llm.base import ClaudeNotInstalled, ClaudeTimeout
+from ordnung.llm.base import (
+    CHECK_CLAUDE,
+    CHECK_CLAUDE_SETUP,
+    ClaudeAuthError,
+    ClaudeExited,
+    ClaudeNotInstalled,
+    ClaudeRateLimited,
+    ClaudeTimeout,
+)
 from ordnung.llm.fake import FakeBackend
 from ordnung.locking import DataDirLock, DataDirLocked
 from ordnung.models import Document, DocumentDetail, DocumentStatus, Item, Party
@@ -102,6 +111,25 @@ def test_the_help_and_the_package_summary_say_it_is_for_germany() -> None:
         "Your private AI secretary for life admin in Germany"
     )
     assert ordnung.__doc__ == "Ordnung — your private AI secretary for life admin in Germany."
+
+
+def test_help_shows_names_not_python_types() -> None:
+    """Typer prints each value's Python type in --help (``--version <bool>``, ``files... <list[Path]>``), which
+    tells a reader nothing: a flag shows no type, and an argument shows its name in capitals."""
+    top = plain(invoke("--help").output)
+    assert "<bool>" not in top and "--version" in top
+    add = plain(invoke("add", "--help").output)
+    assert "<bool>" not in add and "list[" not in add and "FILES" in add and "{files}" not in add
+    # newer Typer sets a required argument in braces in the Usage line (``{FILES}...``): plain capitals instead
+    (usage,) = [line for line in add.splitlines() if line.strip().startswith("Usage:")]
+    assert "{" not in usage and usage.rstrip().endswith("FILES...")
+    assert "QUESTION" in plain(invoke("ask", "--help").output)
+
+
+def test_the_eval_help_line_promises_nothing_an_installed_copy_lacks() -> None:
+    """``ordnung eval --help`` only works in a source checkout, so the one-line help doesn't point to it."""
+    (line,) = [line for line in plain(invoke("--help").output).splitlines() if " eval " in line]
+    assert "source checkout" in line and "--help" not in line
 
 
 def test_version() -> None:
@@ -211,6 +239,71 @@ def test_add_exits_non_zero_when_a_letter_was_not_read(
     assert "Traceback" not in result.output
     if isinstance(error, ClaudeNotInstalled):
         assert "Claude Code isn't installed on this computer yet." in result.output
+
+
+@pytest.mark.parametrize(
+    "error",
+    [ClaudeExited(""), ClaudeTimeout("Claude took too long to answer.")],
+    ids=["claude-ended-without-an-answer", "other-failure"],
+)
+def test_add_says_how_to_check_claude_once(
+    tmp_path: Path,
+    data_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    error: Exception,
+) -> None:
+    """A ``claude`` that ends without an answer: the letter's row ends with how to check Claude, and neither the
+    closing line nor the log line says it again. A failure that doesn't say it gets the plain check as the
+    closing hint: ``--probe`` (a live call) is only for a ``claude`` that ended without an answer."""
+    router = Router()
+    router.errors["extract"] = lambda: error
+    monkeypatch.setattr(
+        cli, "open_context", lambda folder: build_context(folder, backend_obj=fake_backend(router))
+    )
+    letter = tmp_path / "brief.pdf"
+    letter.write_bytes(TAX_LETTER.pdf())
+    with caplog.at_level(logging.WARNING):
+        result = invoke("add", str(letter), "--data-dir", str(data_dir))
+    assert result.exit_code == 1, result.output
+    assert any("reading document" in record.getMessage() for record in caplog.records), (
+        "the failure is logged"
+    )
+    table, closing = plain(result.output).split("Not every letter was read (see above).")
+    said_in_the_row = isinstance(error, ClaudeExited)
+    everything = plain(result.output) + "\n".join(record.getMessage() for record in caplog.records)
+    assert everything.count(CHECK_CLAUDE) == (1 if said_in_the_row else 0), everything
+    assert (CHECK_CLAUDE in table) is said_in_the_row, result.output
+    assert (CHECK_CLAUDE_SETUP in closing) is not said_in_the_row, result.output
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        ClaudeRateLimited("Claude's usage limit is reached; reading continues at 14:00."),
+        ClaudeNotInstalled("The “claude” command was not found."),
+        ClaudeAuthError("Claude Code isn't signed in."),
+    ],
+    ids=["usage-limit", "not-installed", "not-signed-in"],
+)
+def test_a_letter_waiting_for_claude_is_not_sent_to_the_live_probe(
+    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch, error: Exception
+) -> None:
+    """A letter that waits for Claude, and the same error on its own: the hint is the plain, zero-token
+    ``ordnung doctor``, which shows these states. The probe spends a live call (against an exhausted limit, say)."""
+    router = Router()
+    router.errors["extract"] = lambda: error
+    monkeypatch.setattr(
+        cli, "open_context", lambda folder: build_context(folder, backend_obj=fake_backend(router))
+    )
+    letter = tmp_path / "brief.pdf"
+    letter.write_bytes(TAX_LETTER.pdf())
+    result = invoke("add", str(letter), "--data-dir", str(data_dir))
+    assert result.exit_code == 1, result.output
+    _, closing = plain(result.output).split("Not every letter was read (see above).")
+    assert CHECK_CLAUDE_SETUP in closing and "--probe" not in plain(result.output), result.output
+    assert cli._explain(error)[1] == CHECK_CLAUDE_SETUP
+    assert cli._explain(ClaudeExited("Segmentation fault."))[1] == CHECK_CLAUDE
 
 
 def test_add_rejects_unreadable_files_without_a_traceback(
@@ -578,6 +671,24 @@ def test_serve_on_a_busy_port_explains_what_to_do(data_dir: Path, monkeypatch: p
         result = invoke("serve", "--no-browser", "--port", str(port), "--data-dir", str(data_dir))
     assert result.exit_code == 1
     assert f"Port {port} is already in use" in result.output and f"--port {port + 1}" in result.output
+
+
+def test_commands_that_fail_or_only_report_leave_a_mistyped_folder_alone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A typo in --data-dir left a new data folder behind: ``serve`` on a busy port checks the port before it
+    opens the folder, and ``brief`` says there is nothing there instead of creating it."""
+    typo = tmp_path / "typo"
+    with socket.socket() as busy:
+        busy.bind(("127.0.0.1", 0))
+        busy.listen()
+        port = busy.getsockname()[1]
+        served = invoke("serve", "--no-browser", "--port", str(port), "--data-dir", str(typo))
+    assert served.exit_code == 1 and f"Port {port} is already in use" in served.output
+    brief = invoke("brief", "--no-llm", "--data-dir", str(typo))
+    assert brief.exit_code == 1
+    assert "There is no Ordnung database in" in plain(brief.output)
+    assert not typo.exists()
 
 
 def test_serve_points_to_an_already_running_server(api: FakeServer) -> None:

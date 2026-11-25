@@ -2023,7 +2023,9 @@ Pages:
    for taxes; "Read by Claude on
    … · text of 2 pages" badge, and under it where the letter went — "Not sent to Claude" while no
    model call has carried it (`DocumentDetail.given_to_model`: a call whose CLI never started, Claude
-   not installed, carried nothing), else that its text or image was sent to Anthropic, and for a scan whose
+   not installed, carried nothing), else that its text or image was sent to Anthropic (for a reading that
+   failed before it ever succeeded: that it may have reached Anthropic, since the call may have ended before
+   Claude got it), and for a scan whose
    pages have only the text its scanner added (`DocumentDetail.scan_text_pages`), what that text is kept for
    (search only — never checked, shown as the letter's words or sent to Claude), and for a letter whose
    pictures Ordnung read with Tesseract (`picture_text_pages`), which pages ("in this photo", "in this file",
@@ -2181,11 +2183,12 @@ Pages:
    "Explore the demo instead". Its first step also offers "I already use Ordnung on another computer":
    `/join` (outside the shell) joins a sync folder and brings that Ordnung over, profile included.
 11. **Demo tour**: 4 steps (New mail → Idea arrives → Ask → Timeline), skippable, tracked in meta;
-   ending it can be undone, and the Demo badge (or Settings → Data) restarts it. Docked in the
-   sidebar when it fits, else a card (wide screens) or a slim bar (phones, tablets, short laptops)
-   that never covers the page's end or the focused control. Its ring goes around the step's
-   element — on phones, and when that is taller than the screen, around a marked part of it (the
-   first envelope, the first Idea).
+   ending it can be undone, and the Demo badge (or Settings → Data) restarts it, or resumes an ended
+   one at its step (a finished one starts again at step 1). Docked in the sidebar when it fits, else
+   a card (wide screens) or a slim bar (phones, tablets, short laptops) that never covers the page's
+   end or the focused control; opened from the bar, the card folds back to it once its page opens.
+   Its ring goes around the step's element — on phones, and when that is taller than the screen,
+   around a marked part of it (the first envelope, the first Idea).
 12. **On a paired phone** (`Health.client == "phone"`, §12b): `/pair` (outside the shell) reads the code
    from the link's fragment and clears it, or takes it typed (`XXXXX-XXXXX`), names the phone and pairs
    it, then shows the two check words; every page the phone may use works as on the computer, without
@@ -2227,11 +2230,11 @@ One line per command; `ordnung <cmd> --help` lists every flag but the two hidden
   lock; refused in a demo folder; `ORDNUNG_SYNC_PASSPHRASE` instead of the prompt.
 
 If a server is running (`server.json` + live pid) `add`/`ask`/`brief` go through its API; otherwise
-they run in-process under an exclusive data-dir lock. `backup` reads the folder directly (holding
-the lock when it is free, else alongside the running server — the database snapshot is consistent
-either way); `restore` refuses a folder whose lock is held (naming the stop command when Ordnung
-starts at login for it) and ends with the command that starts the restored folder
-(`ordnung serve --data-dir D` unless it is the default one). A link under `files/`, `derived/`
+they run in-process under an exclusive data-dir lock (`brief` refuses a folder without a database).
+`backup` reads the folder directly (holding the lock when it is free, else alongside the running
+server — the database snapshot is consistent either way); `restore` refuses a folder whose lock is
+held (naming the stop command when Ordnung starts at login for it) and ends with the command that
+starts the restored folder (`ordnung serve --data-dir D` unless it is the default one). A link under `files/`, `derived/`
 or `drafts/` (or one of them being a link) is never followed and is named by `backup` and by
 `GET /api/backup` (`left_out`) before the backup is made.
 

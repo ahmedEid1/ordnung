@@ -24,7 +24,7 @@ import { MobileTabBar } from "./MobileTabBar";
 import { NAV_ITEMS, isNavItemActive, sectionAt } from "./nav";
 import { recordLocation, resetOrigins, useOriginParent } from "./origin";
 import { Page } from "./Page";
-import { PageMetaProvider } from "./page-meta";
+import { PageMetaProvider, tabTitle } from "./page-meta";
 import { PausedBanner, pauseEnds } from "./PausedBanner";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
@@ -387,6 +387,23 @@ describe("demo badge", () => {
     await user.click(within(dialog).getByRole("button", { name: "Close" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(badge).toHaveFocus();
+  });
+
+  // a phone has no hover: the flask alone never said "Demo"
+  it("says Demo in words on phones, its date in the name and tooltip", () => {
+    viewport(375);
+    renderWithProviders(<DemoBadge short />);
+    const badge = screen.getByRole("button", { name: "Demo · 28 Sep 2026 — about the demo" });
+    expect(badge).toHaveTextContent(/^Demo$/);
+    expect(badge).toHaveAttribute("title", "Demo · 28 Sep 2026");
+  });
+
+  // `ordnung demo` beside `ordnung serve`: two tabs called "Inbox · Ordnung"
+  it("names the demo's browser tabs apart from your own Ordnung's", () => {
+    expect(tabTitle("Inbox", true)).toBe("Inbox · Ordnung demo");
+    expect(tabTitle("Inbox", false)).toBe("Inbox · Ordnung");
+    expect(tabTitle(null, true)).toBe("Ordnung demo");
+    expect(tabTitle("Ordnung", false)).toBe("Ordnung");
   });
 
   it("is hidden when not in the demo", () => {

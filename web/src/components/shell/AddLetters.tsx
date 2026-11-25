@@ -38,6 +38,8 @@ const isImage = (f: File) => f.type.startsWith("image/") || /\.(jpe?g|png|webp|h
 const isEmail = (f: File) => f.type === "message/rfc822" || f.type === "application/vnd.ms-outlook" || /\.(eml|msg)$/i.test(f.name);
 const isText = (f: File) => isEmail(f) || f.type === "text/plain" || /\.(eml|txt)$/i.test(f.name);
 const isAccepted = (f: File) => isImage(f) || isText(f) || f.type === "application/pdf" || /\.pdf$/i.test(f.name);
+/** A Word (or Writer) document: Ordnung doesn't read it, but its PDF it does. */
+const isWordFile = (f: File) => /\.(docx?|odt|rtf)$/i.test(f.name);
 
 /** What a file to add is, as its row in the dialog says it: "Photo", "E‑mail", "Text file" or "PDF". */
 export function fileKind(f: File): { label: string; icon: LucideIcon } {
@@ -255,14 +257,27 @@ export function AddLettersProvider({ children }: { children: ReactNode }) {
       return;
     }
     const files = Array.from(list);
-    const accepted = files.filter(isAccepted);
+    // an empty file is left out here, before the dialog counts it (the server refused it only after "Store now")
+    const empty = files.filter((f) => isAccepted(f) && f.size === 0).map((f) => f.name);
+    const accepted = files.filter((f) => isAccepted(f) && f.size > 0);
     const rejected = files.filter((f) => !isAccepted(f)).map((f) => f.name);
-    if (rejected.length)
-      toast.warn(`${plural(rejected.length, "file")} skipped`, {
+    const word = files.some((f) => !isAccepted(f) && isWordFile(f));
+    if (rejected.length || empty.length)
+      toast.warn(`${plural(rejected.length + empty.length, "file")} skipped`, {
         description: (
           <span className="[overflow-wrap:anywhere]">
-            <span className="font-medium text-ink">{nameList(rejected)}</span> {rejected.length === 1 ? "isn't a file Ordnung reads" : "aren't files Ordnung reads"}.
-            Ordnung reads {ACCEPTED_TYPES}.
+            {rejected.length ? (
+              <>
+                <span className="font-medium text-ink">{nameList(rejected)}</span> {rejected.length === 1 ? "isn't a file Ordnung reads" : "aren't files Ordnung reads"}.
+                Ordnung reads {ACCEPTED_TYPES}.{word ? " Save a Word file as a PDF first, then add that." : ""}
+              </>
+            ) : null}
+            {rejected.length && empty.length ? " " : null}
+            {empty.length ? (
+              <>
+                <span className="font-medium text-ink">{nameList(empty)}</span> {empty.length === 1 ? "is empty" : "are empty"}.
+              </>
+            ) : null}
           </span>
         ),
       });

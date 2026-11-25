@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import type { TourState } from "@/api/types";
-import { isTourVisible, normalizeTour, reduceTour, type TourEvent } from "./tourMachine";
+import { canResumeAt, isTourVisible, normalizeTour, reduceTour, type TourEvent } from "./tourMachine";
 import { TOUR_STEPS, onStepRoute } from "./steps";
 
 /** A tour at its first step, as the demo starts it. */
@@ -18,7 +18,13 @@ describe("tour state machine", () => {
   it("walks forward and completes after the last step", () => {
     expect(run([{ type: "next" }])).toEqual({ active: true, step: 1, completed: false });
     expect(run([{ type: "next" }, { type: "next" }, { type: "next" }])).toEqual({ active: true, step: 3, completed: false });
-    expect(run([{ type: "next" }, { type: "next" }, { type: "next" }, { type: "next" }])).toEqual({ active: false, step: 3, completed: true });
+    // finished: back at step 0, so nothing offers to resume it (an ended tour keeps its step for Resume)
+    expect(run([{ type: "next" }, { type: "next" }, { type: "next" }, { type: "next" }])).toEqual({ active: false, step: 0, completed: true });
+    expect(run([{ type: "next" }, { type: "finish" }])).toEqual({ active: false, step: 0, completed: true });
+  });
+
+  it("resumes a hidden tour only between its first and last step (completed at the last step is finished)", () => {
+    expect(TOUR_STEPS.map((_, step) => canResumeAt(step))).toEqual([false, true, true, false]);
   });
 
   it("goes back but never below the first step", () => {

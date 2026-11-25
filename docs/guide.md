@@ -109,8 +109,8 @@ starting at a real login, and phone access and sync between real devices are not
 
 ```bash
 uv tool install git+https://github.com/ahmedEid1/ordnung   # or: pipx install git+https://github.com/ahmedEid1/ordnung; the built web app is included
-ordnung doctor                  # checks Claude, search, fonts, text in pictures, your data folder and database, your last backup, disk encryption
-ordnung serve                   # the web app on http://127.0.0.1:8765
+ordnung doctor                  # checks Claude, search, fonts, text in pictures, your data folder and database, your last backup, disk encryption (--probe: also one tiny live call to Claude)
+ordnung serve                   # the web app: opens your browser, signed in
 ordnung shortcut                # Ordnung in your app menu: opens it signed in, no terminal needed
 ordnung add ~/Downloads/*.pdf   # or drag files into the app
 ordnung brief                   # today's note in the terminal
@@ -261,11 +261,11 @@ A backup first lets you go back: an older Ordnung can't open a database a newer 
 
 ```bash
 ordnung backup --to /media/usb   # optional: the way back
-pipx reinstall ordnung           # installed with uv: uv tool upgrade ordnung
+uv tool upgrade ordnung          # installed with pipx: pipx reinstall ordnung
 ordnung doctor
 ```
 
-`pipx reinstall` and `uv tool upgrade` install the newest code from GitHub, which can hold changes no release
+`uv tool upgrade` and `pipx reinstall` install the newest code from GitHub, which can hold changes no release
 has yet; `pipx upgrade ordnung` can keep the old code when the version number didn't change. To install a
 release instead, name its tag once it has one:
 `pipx install --force "git+https://github.com/ahmedEid1/ordnung@vX.Y.Z"`

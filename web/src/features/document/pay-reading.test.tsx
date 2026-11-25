@@ -103,6 +103,29 @@ describe("the letter's Pay panel", () => {
     expect(reference.textContent).toBe("TM‑2026‑0048213");
   });
 
+  // a letter from New mail opens by itself once read: focus was left on <body>, 57 Tab presses from the tour's Next
+  it("opened by itself once read, its title holds focus — also when the reading card gives way to the verdict", async () => {
+    const { srv } = useMockApi();
+    const read = await detail(srv, "doc_nebenkosten");
+    const reading: DocumentDetail = { ...read, document: { ...read.document, status: "processing", title: null, kind: null } };
+    let show: (d: DocumentDetail) => void = () => {};
+    function Page() {
+      const [d, setD] = useState(reading);
+      show = setD;
+      return (
+        <main id="main" tabIndex={-1}>
+          <DocumentView detail={d} />
+        </main>
+      );
+    }
+    const { router } = renderWithProviders(<Page />, { client: client() });
+    await act(() => router.navigate("/documents/doc_nebenkosten", { state: { focus: "title" } }));
+    await waitFor(() => expect(document.activeElement?.tagName).toBe("H1"));
+    // the reading card's heading goes with it: focus moves to the verdict's, never to <body>
+    act(() => show(read));
+    await waitFor(() => expect(document.activeElement).toBe(document.getElementById("verdict-title")));
+  });
+
   it("after “Mark as paid”, keyboard focus goes on to the verdict's heading — never <body>", async () => {
     const { srv, calls } = useMockApi();
     const user = userEvent.setup();
@@ -255,6 +278,23 @@ describe("reading a letter again", () => {
     renderWithProviders(<ProcessingCard doc={makeDoc({ title: null, kind: null, status: "failed", error: blurry })} />, { client: client() });
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Ordnung couldn't read this letter");
     expect(screen.queryByText(/earlier reading/)).toBeNull();
+  });
+
+  // a broken claude program failed every letter alike, and the card offered only "Try again"
+  it("a failure of Claude Code itself also leads to Settings → Claude connection", () => {
+    const exited = "Claude exited without an answer. Run `ordnung doctor --probe` to check Claude.";
+    renderWithProviders(<ProcessingCard doc={makeDoc({ title: null, kind: null, status: "failed", error: exited })} />, { client: client() });
+    const card = screen.getByRole("alert");
+    // the command is set as code, as Settings → Claude connection sets the check's commands: no literal backticks
+    expect(card).toHaveTextContent("Claude exited without an answer. Run ordnung doctor --probe to check Claude. Your file is safe.");
+    expect(within(card).getByText("ordnung doctor --probe").tagName).toBe("CODE");
+    expect(within(card).getByRole("button", { name: "Try again" })).toBeInTheDocument();
+    expect(within(card).getByRole("link", { name: "Claude connection" })).toHaveAttribute("href", "/settings?section=claude");
+  });
+
+  it("a letter's own failure (a blurry photo) doesn't send you to Claude's settings", () => {
+    renderWithProviders(<ProcessingCard doc={makeDoc({ title: null, kind: null, status: "failed", error: blurry })} />, { client: client() });
+    expect(screen.queryByRole("link", { name: "Claude connection" })).toBeNull();
   });
 
   it("reading it again: a line above the verdict — its title isn't said twice", () => {

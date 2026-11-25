@@ -108,7 +108,9 @@ from ordnung.ingest.text import (
 )
 from ordnung.ingest.transcribe import pages_to_transcribe, transcribe_pages
 from ordnung.llm.base import (
+    CHECK_CLAUDE,
     ClaudeAuthError,
+    ClaudeExited,
     ClaudeNotInstalled,
     ClaudeOutdated,
     ClaudeRateLimited,
@@ -1164,7 +1166,12 @@ async def _run_stages(
 
 
 def describe_error(exc: BaseException) -> str:
-    """A message for the person: the error's own text when it is written for people."""
+    """A message for the person: the error's own text when it is written for people. A ``claude`` that ended
+    without an answer fails every letter alike, and trying the letter again doesn't help: it says how to check
+    Claude."""
+    if isinstance(exc, ClaudeExited):
+        said = str(exc).strip() or "Claude exited without an answer"
+        return f"{said if said.endswith(('.', '!', '?')) else said + '.'} {CHECK_CLAUDE}"
     if isinstance(exc, IntakeError | LLMError | ExtractionError) and str(exc):
         return str(exc)
     if isinstance(exc, NotFoundError):
@@ -1250,7 +1257,9 @@ async def ingest_document(
         raise
     except Exception as exc:
         message = describe_error(exc)
-        log.warning("reading document %s failed: %s", doc_id, message, exc_info=message == UNEXPECTED_ERROR)
+        # the log line without the hint: the letter's row says it, and the log would print it a second time
+        logged = message.removesuffix(f" {CHECK_CLAUDE}")
+        log.warning("reading document %s failed: %s", doc_id, logged, exc_info=message == UNEXPECTED_ERROR)
         if progress.quiet:
             _note_held_error(store, doc_id, message)
         else:

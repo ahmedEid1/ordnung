@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useMatches } from "react-router";
+import { useHealth } from "@/api/hooks";
 import type { PageWidth } from "./layout";
 
 export interface PageMeta {
@@ -55,10 +56,18 @@ export function usePageTitle(title: string | null | undefined, parent?: { to: st
   }, [title, parentTo, parentLabel, width, setMeta]);
 }
 
+/** The browser tab's title for a page: "Inbox · Ordnung", and in the demo "Inbox · Ordnung demo". */
+export function tabTitle(title: string | null | undefined, demo: boolean): string {
+  // the demo runs beside your own Ordnung (`ordnung demo` and `ordnung serve` at once): tell their tabs apart
+  const app = demo ? "Ordnung demo" : "Ordnung";
+  return title && title !== "Ordnung" ? `${title} · ${app}` : app;
+}
+
 /** Keeps `document.title` in sync with the page meta. */
 export function useDocumentTitle(): void {
   const { title } = usePageMeta();
+  const demo = Boolean(useHealth().data?.demo);
   useEffect(() => {
-    document.title = title && title !== "Ordnung" ? `${title} · Ordnung` : "Ordnung";
-  }, [title]);
+    document.title = tabTitle(title, demo);
+  }, [title, demo]);
 }

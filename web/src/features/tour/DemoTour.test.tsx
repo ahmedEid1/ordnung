@@ -333,6 +333,43 @@ describe("the card never covers the page", () => {
     await waitFor(() => expect(title).toHaveFocus());
   });
 
+  // "Show me the mail" ran over the docked card's edge at 1280×800: its row needs 211 px and has 193
+  it("in the narrow docked card, the step's link goes under the dots when they leave it no room", async () => {
+    useMockApi();
+    viewport(1280, 800);
+    const dock = addDock(400);
+    tourRect({ height: 300 });
+    renderWithProviders(<DemoTour />);
+    const card = await tourRegion();
+    expect(dock.contains(card)).toBe(true);
+    // the text link beside the dots ("Skip this step" here; "Show me the mail" once a letter was read)
+    const row = within(card).getByRole("list", { name: "Steps (1 of 4)" }).parentElement!;
+    const link = row.lastElementChild!;
+    expect(link).toHaveTextContent("Skip this step");
+    expect(row).toHaveClass("flex-wrap");
+    expect(link).toHaveClass("ml-auto");
+  });
+
+  // opened on a phone, the card covered a third to two thirds of the page it had just shown
+  it("on phones the opened card folds back to its bar once its page opens", async () => {
+    useMockApi();
+    viewport(390, 844);
+    const { router } = renderWithProviders(<DemoTour />, { route: "/" });
+    fireEvent.click(await screen.findByRole("button", { name: /^Demo tour · 1 of 4: You have new mail — show the whole step$/ }));
+    const card = await tourRegion();
+    fireEvent.click(within(card).getByRole("button", { name: "Show me the mail" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/inbox"));
+    const bar = await screen.findByRole("button", { name: /^Demo tour · 1 of 4: You have new mail — show the whole step$/ });
+    expect(screen.queryByRole("heading", { name: "You have new mail" })).toBeNull();
+    await waitFor(() => expect(bar).toHaveFocus());
+    // it opens again on request, and stays open on the same page
+    fireEvent.click(bar);
+    expect(await screen.findByRole("heading", { name: "You have new mail" })).toBeInTheDocument();
+    // the letter just read opens by itself: the card folds again
+    await act(() => router.navigate("/documents/doc_parking"));
+    await waitFor(() => expect(screen.queryByRole("heading", { name: "You have new mail" })).toBeNull());
+  });
+
   it("the Ask step's example is one of the suggested questions, word for word", () => {
     const ask = TOUR_STEPS.find((s) => s.id === "ask")!;
     const quoted = /“([^”]+)”/.exec(ask.body)?.[1];
@@ -395,12 +432,29 @@ describe("keyboard and screen readers", () => {
     expect(document.getElementById("main")).toHaveFocus();
     expect(screen.getByText("Tour hidden")).toBeInTheDocument();
     // a way back that exists at every width (the Demo badge is hidden below 360 px)
-    expect(screen.getByText("You can restart it any time in Settings → Data.")).toBeInTheDocument();
+    expect(screen.getByText("You can resume or restart it any time in Settings → Data.")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     const back = await tourRegion();
     expect(within(back).getByRole("heading", { name: "Ask anything" })).toBeInTheDocument();
     await waitFor(() => expect(within(back).getByRole("heading", { name: "Ask anything" })).toHaveFocus());
+  });
+
+  // at the first step there is nothing to resume; at the last, Settings counts it as finished
+  it.each([0, 3])("End the tour at step %i: the toast promises only a restart (Settings offers no Resume there)", async (step) => {
+    const { srv } = useMockApi();
+    srv.db.state.tour = { active: true, step, completed: false };
+    viewport(1440, 900);
+    renderWithProviders(
+      <>
+        <main id="main" tabIndex={-1} />
+        <DemoTour />
+        <Toaster />
+      </>,
+    );
+    fireEvent.click(within(await tourRegion()).getByRole("button", { name: "End the tour" }));
+    expect(await screen.findByText("You can restart it any time in Settings → Data.")).toBeInTheDocument();
+    expect(screen.queryByText(/resume/i)).toBeNull();
   });
 
   it("the Finish toast offers to restart the tour", async () => {
@@ -417,6 +471,8 @@ describe("keyboard and screen readers", () => {
     );
     fireEvent.click(within(await tourRegion()).getByRole("button", { name: "Finish" }));
     expect(await screen.findByText("That's the tour")).toBeInTheDocument();
+    // finished, not ended: nothing is left to resume (Settings and the Demo badge offer Resume past step 1)
+    await waitFor(() => expect(srv.db.state.tour).toEqual({ active: false, step: 0, completed: true }));
     expect(document.getElementById("main")).toHaveFocus();
     fireEvent.click(screen.getByRole("button", { name: "Restart the tour" }));
     expect(within(await tourRegion()).getByRole("heading", { name: "You have new mail" })).toBeInTheDocument();
@@ -476,13 +532,52 @@ describe("restarting the tour", () => {
       { route: "/settings?section=data" },
     );
     const card = (await screen.findByRole("heading", { level: 3, name: "Guided tour" })).closest("section") as HTMLElement;
+    // completed at the last step (a tour finished on 0.4.0, or ended there): finished, nothing to resume
     expect(within(card).getByTestId("tour-status")).toHaveTextContent("Hidden right now — restarting opens it at step 1.");
+    expect(within(card).queryByRole("button", { name: /^Resume/ })).toBeNull();
     fireEvent.click(within(card).getByRole("button", { name: "Restart the demo tour" }));
     const tour = await tourRegion();
     const title = within(tour).getByRole("heading", { name: "You have new mail" });
     await waitFor(() => expect(title).toHaveFocus());
     await waitFor(() => expect(srv.db.state.tour).toEqual({ active: true, step: 0, completed: false }));
     expect(within(card).getByTestId("tour-status")).toHaveTextContent("Open now at step 1 of 4: You have new mail.");
+  });
+
+  // ended at step 2, it could only start over at step 1
+  it("an ended tour resumes at the step it was ended at, from Settings › Data and the Demo badge", async () => {
+    const { srv } = useMockApi();
+    srv.db.state.tour = { active: false, step: 2, completed: true };
+    viewport(1440, 900);
+    renderWithProviders(
+      <>
+        <SettingsPage />
+        <DemoBadge />
+        <DemoTour />
+      </>,
+      { route: "/settings?section=data" },
+    );
+    const card = (await screen.findByRole("heading", { level: 3, name: "Guided tour" })).closest("section") as HTMLElement;
+    expect(within(card).getByTestId("tour-status")).toHaveTextContent("Hidden right now, at step 3 of 4: Ask anything. Resume it there, or restart it at step 1.");
+    fireEvent.click(screen.getByRole("button", { name: /about the demo$/ }));
+    const about = await screen.findByRole("dialog", { name: "About the demo" });
+    expect(within(about).getByRole("button", { name: "Resume at step 3" })).toBeInTheDocument();
+    fireEvent.click(within(about).getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "About the demo" })).toBeNull());
+    fireEvent.click(within(card).getByRole("button", { name: "Resume at step 3" }));
+    const tour = await tourRegion();
+    await waitFor(() => expect(within(tour).getByRole("heading", { name: "Ask anything" })).toHaveFocus());
+    await waitFor(() => expect(srv.db.state.tour).toEqual({ active: true, step: 2, completed: false }));
+    expect(within(card).queryByRole("button", { name: /^Resume/ })).toBeNull();
+  });
+
+  it("a tour hidden at its first step only restarts", async () => {
+    const { srv } = useMockApi();
+    srv.db.state.tour = { active: false, step: 0, completed: true };
+    viewport(1440, 900);
+    renderWithProviders(<SettingsPage />, { route: "/settings?section=data" });
+    const card = (await screen.findByRole("heading", { level: 3, name: "Guided tour" })).closest("section") as HTMLElement;
+    expect(within(card).getByTestId("tour-status")).toHaveTextContent("Hidden right now — restarting opens it at step 1.");
+    expect(within(card).queryByRole("button", { name: /^Resume/ })).toBeNull();
   });
 
   it("a minimised tour opens again when restarted", async () => {

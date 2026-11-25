@@ -116,6 +116,20 @@ describe("a letter waiting for Claude", () => {
     const list = screen.getByRole("list", { name: "Letters being read" });
     expect(within(list).getByText(reason)).toBeInTheDocument();
     expect(within(list).queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+    // nothing moves while it waits: no stepper that looks under way
+    expect(within(list).queryByRole("list", { name: /^Reading / })).toBeNull();
+  });
+
+  // several waiting letters were "Reading 2 letters" under a banner that said they wait for Claude
+  it("several say they wait for Claude, not that they are being read", () => {
+    const waiting = { status: "queued" as const, waiting_reason: "Waiting for Claude: Claude Code isn't installed on this computer yet. Ordnung reads this letter as soon as Claude is connected (Settings → Claude connection)." };
+    expect(uploadSummary([waiting, waiting, waiting])).toMatchObject({ title: "3 letters waiting for Claude", parts: [] });
+    expect(uploadSummary([waiting, { status: "running" }, { status: "done" }])).toMatchObject({
+      title: "Reading 1 letter",
+      parts: [{ text: "1 waiting for Claude" }, { text: "1 filed" }],
+    });
+    // a letter queued for another reason (Ordnung was stopped) is still being read
+    expect(uploadSummary([{ status: "queued", waiting_reason: "Ordnung was stopped before this letter was finished; it will continue." }, waiting]).title).toBe("Reading 1 letter");
   });
 });
 

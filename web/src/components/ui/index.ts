@@ -43,6 +43,7 @@ export { Stepper, labelsFit, chooseStepLabels, type StepperProps, type StepperSt
 export { ProgressRing, type ProgressRingProps } from "./ProgressRing";
 export { SectionHeader, type SectionHeaderProps } from "./SectionHeader";
 export { Kbd } from "./Kbd";
+export { WithCode, inlineCode } from "./WithCode";
 export { Glossary, type GlossaryProps } from "./Glossary";
 export { Disclaimer, AdviceLinks, ADVICE_LINKS, type DisclaimerProps, type AdviceLink } from "./Disclaimer";
 export { Callout, type CalloutProps, type CalloutTone } from "./Callout";

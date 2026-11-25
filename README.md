@@ -63,16 +63,16 @@ Mecklenburg-Vorpommern began): a warning names the earlier date.
   hand-written sample letters, with no server behind it; it keeps nothing once you reload.
 - **On your computer, free:** `ordnung demo` opens a sample life in fictional Musterstadt: 25 letters, with
   three unopened letters in *New mail*. Its model answers are recordings of real runs: no Claude account needed.
-- **Your own letters:** Claude Code 2.1.0 or newer, with a paid Claude plan or an Anthropic Console account
-  ([the guide](docs/guide.md#install-and-run) sets it up).
+- **Your own letters:** `ordnung serve`, with Claude Code 2.1.0 or newer and a paid Claude plan or an Anthropic
+  Console account ([the guide](docs/guide.md#install-and-run) sets it up). Each command opens your browser, signed in.
 
 You need Git, Python 3.11 or newer, and [uv](https://docs.astral.sh/uv/) or pipx:
 
 ```bash
 uv tool install git+https://github.com/ahmedEid1/ordnung
 # or: pipx install git+https://github.com/ahmedEid1/ordnung
-ordnung demo     # opens http://127.0.0.1:8766 with a guided tour
-ordnung serve    # your own letters, on http://127.0.0.1:8765
+ordnung demo
+ordnung serve
 ```
 
 ### Updating

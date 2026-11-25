@@ -44,6 +44,7 @@ from rich.console import Console
 from rich.markup import escape as markup_escape
 from rich.panel import Panel
 from rich.table import Table
+from typer.core import TyperArgument, TyperCommand, TyperGroup, TyperOption
 
 from ordnung import __version__
 from ordnung.assistant.mcp_install import McpClient
@@ -101,7 +102,64 @@ STATUS_ICONS = {"ok": "[green]✓[/]", "info": "[blue]i[/]", "warn": "[yellow]![
 console = Console(highlight=False)
 err_console = Console(stderr=True, highlight=False)
 
-app = typer.Typer(
+
+_F = TypeVar("_F", bound=Callable[..., Any])
+
+
+class _NamedArgument(TyperArgument):
+    """An argument whose --help shows its name (``FILES``) and no Python type (``<list[Path]>``)."""
+
+    def display_type_rich(self, ctx: Any) -> str | None:
+        return None
+
+    def _usage_display_name(self) -> str:
+        # newer Typer sets a required argument in braces in the Usage line (``{FILES}...``), which reads like
+        # Python; the name alone says it, and one that may be left out keeps its ``[FILES]``
+        name = self.display_name_raw if self.required else f"[{self.display_name_raw}]"
+        return f"{name}..." if self.nargs != 1 else name
+
+
+#: Newer Typer prints an argument's Python type in a column of its own; older Typer prints its name in capitals
+#: there already, and a name given to it would lose the ``...`` that says it takes several.
+_ARGUMENT_TYPES_SHOWN = hasattr(TyperArgument, "display_type_rich")
+
+
+def _without_python_types(params: list[Any]) -> list[Any]:
+    """Typer prints each value's Python type in --help: ``--version <bool>``, ``files... <list[Path]>``. A flag
+    takes no value, so it shows none; an argument shows its name in capitals instead."""
+    for param in params:
+        if isinstance(param, TyperOption) and param.is_flag and param.metavar is None:
+            param.metavar = ""
+        elif _ARGUMENT_TYPES_SHOWN and type(param) is TyperArgument:
+            if param.metavar is None and param.name:
+                param.metavar = param.name.upper()
+            param.__class__ = _NamedArgument
+    return params
+
+
+class _Command(TyperCommand):
+    def get_params(self, ctx: Any) -> list[Any]:
+        return _without_python_types(super().get_params(ctx))
+
+
+class _Group(TyperGroup):
+    def get_params(self, ctx: Any) -> list[Any]:
+        return _without_python_types(super().get_params(ctx))
+
+
+class _Typer(typer.Typer):
+    """A command group whose commands' --help shows names, not Python types (:func:`_without_python_types`)."""
+
+    def __init__(self, **settings: Any) -> None:
+        super().__init__(cls=_Group, **settings)
+
+    def command(self, *args: Any, **settings: Any) -> Callable[[_F], _F]:
+        settings.setdefault("cls", _Command)
+        decorate: Callable[[_F], _F] = super().command(*args, **settings)
+        return decorate
+
+
+app = _Typer(
     name="ordnung",
     help="Ordnung — your private AI secretary for life admin in Germany. Your files stay on this computer.",
     no_args_is_help=True,
@@ -177,13 +235,13 @@ def _explain(exc: Exception) -> tuple[str, str | None]:
     from ordnung.demo import DemoError
     from ordnung.ingest.extract import ExtractionError
     from ordnung.ingest.intake import IntakeError
-    from ordnung.llm.base import LLMError
+    from ordnung.llm.base import CHECK_CLAUDE, CHECK_CLAUDE_SETUP, ClaudeExited, LLMError
     from ordnung.locking import DataDirLocked
 
     if isinstance(exc, DataDirLocked):
         return str(exc), "If Ordnung's web app is running for this folder, use it — or stop it first."
     if isinstance(exc, LLMError):
-        return str(exc), "Run `ordnung doctor` to check Claude."
+        return str(exc), CHECK_CLAUDE if isinstance(exc, ClaudeExited) else CHECK_CLAUDE_SETUP
     if isinstance(exc, SchemaError):
         return str(exc), SCHEMA_HINT
     if isinstance(exc, DemoError | IntakeError | ExtractionError | ApiError | BackupError):
@@ -665,6 +723,18 @@ def _hold_window(exc: Exception) -> None:
         input()
 
 
+def _port_in_use(port: int, *, from_shortcut: bool) -> typer.Exit:
+    other = port + 1 if port + 1 != DEMO_PORT else port + 2  # the demo's stays free for the demo
+    # opened from the launcher, nobody typed a command to add --port to
+    hint = (
+        "Something else uses it, maybe another Ordnung such as `ordnung demo`: stop it and open "
+        f"Ordnung again, or give the shortcut another port once: ordnung shortcut --port {other}"
+        if from_shortcut
+        else f"Choose another one, e.g. --port {other}."
+    )
+    return _fail(f"Port {port} is already in use.", hint=hint)
+
+
 def _serve(
     folder: Path,
     *,
@@ -710,6 +780,10 @@ def _serve(
             err_console.print("Ordnung isn't running, and there is no window to run it in.")
             raise typer.Exit(NO_WINDOW_EXIT)
         console.set_window_title("Ordnung")
+    # before the data folder is opened (a mistyped --data-dir is not left behind); from the launcher a second
+    # click finds the port taken by the first one while it starts, and waits for it below
+    if not from_shortcut and not _port_free(host, port):
+        raise _port_in_use(port, from_shortcut=False)
     lock = DataDirLock(folder, purpose="ordnung serve")
     try:
         lock.acquire()
@@ -725,15 +799,7 @@ def _serve(
         if prepare is not None:
             prepare()
         if not _port_free(host, port):
-            other = port + 1 if port + 1 != DEMO_PORT else port + 2  # the demo's stays free for the demo
-            # opened from the launcher, nobody typed a command to add --port to
-            hint = (
-                "Something else uses it, maybe another Ordnung such as `ordnung demo`: stop it and open "
-                f"Ordnung again, or give the shortcut another port once: ordnung shortcut --port {other}"
-                if from_shortcut
-                else f"Choose another one, e.g. --port {other}."
-            )
-            raise _fail(f"Port {port} is already in use.", hint=hint)
+            raise _port_in_use(port, from_shortcut=from_shortcut)
         context = build_context(folder, backend=backend)
         token = generate_token() if token_on else None
         try:
@@ -789,7 +855,7 @@ def serve(
                 return
             from ordnung.demo.marker import is_demo_dir
 
-            folder = resolve_paths(_chosen(ctx, data_dir)).data_dir
+            folder = _folder(ctx, data_dir)  # created once the port is known to be free
             demo_folder = is_demo_dir(folder)
             _serve(
                 folder,
@@ -884,7 +950,9 @@ def _uploads(files: Sequence[Path], combine: bool) -> list[list[tuple[str, bytes
     return [entries] if combine else [[entry] for entry in entries]
 
 
-def _add_in_process(paths: Paths, files: Sequence[Path], *, combine: bool, private: bool) -> bool:
+def _add_in_process(
+    paths: Paths, files: Sequence[Path], *, combine: bool, private: bool
+) -> tuple[bool, str | None]:
     groups = _uploads(files, combine)
 
     async def work(
@@ -921,7 +989,7 @@ def _add_in_process(paths: Paths, files: Sequence[Path], *, combine: bool, priva
         return [_row(ctx, document.id) for document in added], waiting, local_today(ctx.store)
 
     rows, waiting, today = _in_process(paths, "ordnung add", work)
-    return _print_summary(rows, today, waiting)
+    return _print_summary(rows, today, waiting), _unread_hint(rows, waiting)
 
 
 def _row(ctx: AppContext, doc_id: str) -> tuple[Document, str | None, list[Item]]:
@@ -949,6 +1017,20 @@ def _print_summary(
     return not waiting and all(document.status != "failed" for document, _, _ in rows)
 
 
+def _unread_hint(
+    rows: Sequence[tuple[Document, str | None, Sequence[Item]]], waiting: Mapping[str, str]
+) -> str | None:
+    """The closing hint when not every letter was read: how to check Claude, unless each letter's row says it.
+    The plain ``ordnung doctor``: ``--probe`` is only for a ``claude`` that ended without an answer, and those rows
+    say so themselves."""
+    from ordnung.llm.base import CHECK_CLAUDE, CHECK_CLAUDE_SETUP
+
+    failed = [document for document, _, _ in rows if document.status == "failed"]
+    if failed and not waiting and all((document.error or "").endswith(CHECK_CLAUDE) for document in failed):
+        return None
+    return CHECK_CLAUDE_SETUP
+
+
 def _server_today(client: httpx.Client) -> date:
     """The server's "today" (the person's local or the demo's pinned date)."""
     from ordnung import clock
@@ -959,7 +1041,9 @@ def _server_today(client: httpx.Client) -> date:
         return clock.today()
 
 
-def _add_remote(info: ServerInfo, files: Sequence[Path], *, combine: bool, private: bool) -> bool:
+def _add_remote(
+    info: ServerInfo, files: Sequence[Path], *, combine: bool, private: bool
+) -> tuple[bool, str | None]:
     from ordnung.models import Document, DocumentDetail, Job
 
     console.print(f"[dim]Sending to the running Ordnung at {escape(info.base_url)}[/]")
@@ -998,7 +1082,8 @@ def _add_remote(info: ServerInfo, files: Sequence[Path], *, combine: bool, priva
                     break
                 time.sleep(POLL_S)
         today = _server_today(client)
-    return _print_summary([_detail_row(details[doc_id]) for doc_id in ids], today, waiting)
+    rows = [_detail_row(details[doc_id]) for doc_id in ids]
+    return _print_summary(rows, today, waiting), _unread_hint(rows, waiting)
 
 
 def _detail_row(detail: DocumentDetail) -> tuple[Document, str | None, list[Item]]:
@@ -1029,11 +1114,11 @@ def add(
             )
         info = reachable_server(paths.data_dir)
         if info is not None:
-            read = _add_remote(info, files, combine=combine, private=private)
+            read, hint = _add_remote(info, files, combine=combine, private=private)
         else:
-            read = _add_in_process(paths, files, combine=combine, private=private)
+            read, hint = _add_in_process(paths, files, combine=combine, private=private)
     if not read:
-        raise _fail("Not every letter was read (see above).", hint="Run `ordnung doctor` to check Claude.")
+        raise _fail("Not every letter was read (see above).", hint=hint)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -1081,13 +1166,20 @@ def brief(
 ) -> None:
     """Today's note from your secretary: what's due, what's coming, new ideas."""
     with _friendly():
-        paths = resolve_paths(_chosen(ctx, data_dir))
-        info = reachable_server(paths.data_dir)
+        folder = _folder(ctx, data_dir)
+        info = reachable_server(folder)
         if info is not None:
             with _api(info, timeout=180.0) as client:
                 response = client.post("/api/brief", params={"llm": "false"} if no_llm else None)
                 note = _json_object(_checked(response))
+        elif not Paths(folder).db.is_file():  # nothing to write about, and a mistyped folder is not created
+            raise _fail(
+                f"There is no Ordnung database in {folder}.",
+                hint="Add letters first (ordnung serve or ordnung add), or name your data folder with --data-dir.",
+                soft_wrap=True,
+            )
         else:
+            paths = resolve_paths(folder)
             note = _in_process(paths, "ordnung brief", lambda context: _brief_in_process(context, not no_llm))
         _print_brief(note)
 
@@ -1488,7 +1580,7 @@ def doctor(
     probe: Annotated[bool, typer.Option("--probe", help="Also make one tiny live call to Claude.")] = False,
     data_dir: DataDirOption = None,
 ) -> None:
-    """Check Claude, search, fonts, the web app, text in pictures and your data folder (zero tokens)."""
+    """Check Claude, search, fonts, the web app, text in pictures and your data folder (zero tokens unless --probe)."""
     from ordnung.doctor import run_doctor_sync
 
     folder = _folder(ctx, data_dir)
@@ -1554,7 +1646,7 @@ def _evals_module() -> Any:
     add_help_option=False,
 )
 def eval_(ctx: typer.Context) -> None:
-    """Run the benchmark (source checkout only); ordnung eval --help lists its options."""
+    """Run the benchmark (in a source checkout of Ordnung only)."""
     runner = getattr(_evals_module(), "run_cli", None)
     if not callable(runner):
         raise _fail(
@@ -1566,7 +1658,7 @@ def eval_(ctx: typer.Context) -> None:
     raise typer.Exit(int(code or 0))
 
 
-mcp_app = typer.Typer(
+mcp_app = _Typer(
     name="mcp",
     help="Ordnung's read-only MCP tools: serve them over stdio, or install them into Claude "
     "(the options below are for serving; `install` takes its own).",
@@ -1769,7 +1861,7 @@ def mcp_install(
 # autostart
 # --------------------------------------------------------------------------------------------------
 
-autostart_app = typer.Typer(
+autostart_app = _Typer(
     name="autostart",
     help="Start Ordnung when you log in, so reminders reach you while the browser is closed.",
     no_args_is_help=True,
@@ -2035,7 +2127,7 @@ def _remove_shortcut(*, dry_run: bool) -> None:
 # hand-off sync
 # --------------------------------------------------------------------------------------------------
 
-sync_app = typer.Typer(
+sync_app = _Typer(
     name="sync",
     help="Hand-off sync: use Ordnung on your computers one at a time, through a folder you already sync.",
     invoke_without_command=True,
@@ -2252,15 +2344,23 @@ def _sync_passphrase(*, new: bool) -> str:
 def sync_main(ctx: typer.Context, data_dir: DataDirOption = None) -> None:
     """Without a command: the status (as ``ordnung sync status``)."""
     if ctx.invoked_subcommand is None:
-        with _friendly():
-            _print_sync_status(_sync_status(_sync_folder(ctx, data_dir)))
+        sync_status(ctx, data_dir)
 
 
 @sync_app.command("status")
 def sync_status(ctx: typer.Context, data_dir: DataDirOption = None) -> None:
     """Whether this computer is in use or standing by, when it last saved, and the other computers."""
     with _friendly():
-        _print_sync_status(_sync_status(_sync_folder(ctx, data_dir)))
+        folder = _sync_folder(ctx, data_dir)
+        # it only reports, so a folder without data (a mistyped --data-dir) is left as it is, not created
+        paths = Paths(folder)
+        if not paths.db.is_file() and not paths.sync.is_dir() and reachable_server(folder) is None:
+            console.print(
+                f"This computer doesn't sync: there is no Ordnung data in {escape(str(folder))}.",
+                soft_wrap=True,
+            )
+            return
+        _print_sync_status(_sync_status(folder))
 
 
 @sync_app.command("connect")
