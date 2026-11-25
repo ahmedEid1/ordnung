@@ -866,6 +866,11 @@ def test_make_eval_reproduce_replays_every_published_number_in_a_job_of_its_own(
     assert reproduce["if"] == "github.event_name != 'schedule'"  # on pull requests and main, not weekly
     _, step = _step(reproduce, "make eval-reproduce")
     assert step["run"].strip() == "make eval-reproduce" and set(step["env"]) == {"REPRODUCE_ARGS"}
+    assert "if" not in step, "both parts replay: a condition on the step loses its part's commands"
+    # the without-Land gate runs in one part only (the gate's own test); every other step runs in both
+    assert [
+        s.get("name") for s in reproduce["steps"] if "if" in s and "eval_without_land" not in s.get("run", "")
+    ] == [], "only the without-Land gate runs in one part: a condition on another step loses that part's work"
     assert [name for name, job in jobs.items() if "make eval-reproduce" in _script(job)] == ["reproduce"]
     assert set(_gates(_script(slow))) == set(GATED_SPLITS)  # the gates stay
     workflow = json.dumps([slow, reproduce])
@@ -901,6 +906,8 @@ def test_the_two_parts_of_the_published_numbers_replay_every_command_once(tmp_pa
 
     job = _jobs()["reproduce"]
     assert [leg["part"] for leg in job["strategy"]["matrix"]["include"]] == [1, 2]
+    # a failure in one part must not cancel the other: its gates' and comparisons' failures would go unreported
+    assert job["strategy"]["fail-fast"] is False
     assert "${{ matrix.part }}/2" in job["name"]
     first, second = _reproduce_parts()
     assert first[0] == "--only" and second[0] == "--skip" and first[1:] == second[1:] and first[1:]
@@ -955,10 +962,25 @@ def test_the_weekly_run_installs_claude_code_as_the_guide_says_and_checks_its_fl
     assert "ANTHROPIC_API_KEY" not in json.dumps(job) and "secrets." not in json.dumps(job)
 
 
-#: test files whose subject differs per system and that the "Other systems" job runs on macOS and Windows
+#: the tests whose subject differs per system, which the "Other systems" job runs on macOS and Windows: its test
+#: step's list (``tests=(...)``), entry for entry and in its order. A file dropped from that list would stop running
+#: there with nothing else failing, so a change to it is a change here, with its reason
 PER_SYSTEM_TESTS = (
     "tests/test_platform_smoke.py",  # the real lookups, the disk-encryption probe among them
+    # the data folder's lock, held across processes
+    "tests/test_cli.py::test_the_lock_keeps_a_second_writer_out",
+    "tests/test_cli.py::test_the_lock_waits_up_to_its_timeout",
+    "tests/test_cli.py::test_a_lock_held_by_another_process_blocks_until_it_exits",
+    "tests/test_sync_*.py",  # sync's computer id among them
+    "tests/test_phone_net.py",  # phone access's network lookups
+    "tests/test_phone_tls.py",
+    "tests/test_phone_listener.py",
+    "tests/test_autostart.py",  # the autostart entry, one per operating system
     "tests/test_shortcut.py",  # the Mac bundle opened; the Windows link read back by the shell and opened
+    "tests/test_backup.py",
+    "tests/test_backup_container.py",
+    "tests/test_rules_postcodes.py",
+    "tests/test_make_postcode_table.py",
     "tests/test_encryption.py",  # no answer and no process on Windows; nothing in it depends on the system
     "tests/test_store_ledger_token.py",  # SQLite's data_version and TEMP triggers, in each system's own SQLite
     "tests/test_ocr.py",  # Tesseract's places, priority, private temp folder and kill per system; missing there
@@ -999,6 +1021,9 @@ def _per_system_parts(step: dict[str, Any]) -> tuple[list[str], list[str], list[
     script = step["run"].replace("\\\n", " ")
     assert _PART_SELECTION in "\n" + script, "the test step picks its part of the list by FIRST_PART alone"
     (listed,) = re.findall(r"^tests=\(([^)]*)\)$", script, re.M | re.S)
+    assert tuple(listed.split()) == PER_SYSTEM_TESTS, (
+        "the per-system list changed: update PER_SYSTEM_TESTS and say why"
+    )
     tests = []
     for name in listed.split():
         path, _, test = name.partition("::")
@@ -1021,10 +1046,7 @@ def test_the_other_systems_job_runs_the_tests_whose_subject_differs_per_system()
     cancelled after 15 minutes in the queue and failed a run whose other jobs had all passed."""
     job = _jobs()["other-systems"]
     (step,) = [step for step in job["steps"] if "pytest" in step.get("run", "")]
-    *_, tests = _per_system_parts(step)
-    files = {test.split("::")[0] for test in tests}
-    for name in PER_SYSTEM_TESTS:
-        assert name in files, name
+    *_, tests = _per_system_parts(step)  # the list is PER_SYSTEM_TESTS, entry for entry
     assert "--durations=20" in step["run"].split()  # each leg's long poles, on record in its log
     on_a_pull_request, on_every_other_event = _other_systems_legs(job)
     assert {leg["os"] for leg in on_a_pull_request} == {"windows-latest"}
@@ -1061,9 +1083,20 @@ def test_each_per_system_test_runs_in_exactly_one_part_on_each_system() -> None:
             assert count in (1, 2), (system, parts)
     assert ("macos-latest", 1, 1) in [(leg["os"], leg["part"], leg["parts"]) for leg in on_every_other_event]
     assert "matrix.parts > 1" in job["name"] and "matrix.part" in step["name"]
-    for name in ("Build the wheel and install it into a clean venv", "The wheel reports this version"):
+    assert step["if"] == "${{ !cancelled() && steps.install.outcome == 'success' }}", (
+        "the test step runs in every leg: a condition on matrix.part drops that part's tests"
+    )
+    wheel_steps = ("Build the wheel and install it into a clean venv", "The wheel reports this version")
+    for name in wheel_steps:
         (wheel,) = [step for step in job["steps"] if step.get("name", "").startswith(name)]
         assert wheel["if"] == "matrix.part == matrix.parts", name
+    # a leg's failure must not cancel the other legs: each part's failures are its own to report
+    assert job["strategy"]["fail-fast"] is False
+    assert [
+        step.get("name")
+        for step in job["steps"]
+        if "matrix.part" in step.get("if", "") and not step.get("name", "").startswith(wheel_steps)
+    ] == [], "only the wheel's steps depend on the part: a condition on matrix.part drops that part's work"
 
 
 def test_a_per_system_selection_that_loses_or_repeats_a_test_is_caught() -> None:
