@@ -235,13 +235,13 @@ def _explain(exc: Exception) -> tuple[str, str | None]:
     from ordnung.demo import DemoError
     from ordnung.ingest.extract import ExtractionError
     from ordnung.ingest.intake import IntakeError
-    from ordnung.llm.base import CHECK_CLAUDE, LLMError
+    from ordnung.llm.base import CHECK_CLAUDE, CHECK_CLAUDE_SETUP, ClaudeExited, LLMError
     from ordnung.locking import DataDirLocked
 
     if isinstance(exc, DataDirLocked):
         return str(exc), "If Ordnung's web app is running for this folder, use it — or stop it first."
     if isinstance(exc, LLMError):
-        return str(exc), CHECK_CLAUDE
+        return str(exc), CHECK_CLAUDE if isinstance(exc, ClaudeExited) else CHECK_CLAUDE_SETUP
     if isinstance(exc, SchemaError):
         return str(exc), SCHEMA_HINT
     if isinstance(exc, DemoError | IntakeError | ExtractionError | ApiError | BackupError):
@@ -1020,13 +1020,15 @@ def _print_summary(
 def _unread_hint(
     rows: Sequence[tuple[Document, str | None, Sequence[Item]]], waiting: Mapping[str, str]
 ) -> str | None:
-    """The closing hint when not every letter was read: how to check Claude, unless each letter's row says it."""
-    from ordnung.llm.base import CHECK_CLAUDE
+    """The closing hint when not every letter was read: how to check Claude, unless each letter's row says it.
+    The plain ``ordnung doctor``: ``--probe`` is only for a ``claude`` that ended without an answer, and those rows
+    say so themselves."""
+    from ordnung.llm.base import CHECK_CLAUDE, CHECK_CLAUDE_SETUP
 
     failed = [document for document, _, _ in rows if document.status == "failed"]
     if failed and not waiting and all((document.error or "").endswith(CHECK_CLAUDE) for document in failed):
         return None
-    return CHECK_CLAUDE
+    return CHECK_CLAUDE_SETUP
 
 
 def _server_today(client: httpx.Client) -> date:
@@ -1578,7 +1580,7 @@ def doctor(
     probe: Annotated[bool, typer.Option("--probe", help="Also make one tiny live call to Claude.")] = False,
     data_dir: DataDirOption = None,
 ) -> None:
-    """Check Claude, search, fonts, the web app, text in pictures and your data folder (zero tokens)."""
+    """Check Claude, search, fonts, the web app, text in pictures and your data folder (zero tokens unless --probe)."""
     from ordnung.doctor import run_doctor_sync
 
     folder = _folder(ctx, data_dir)
@@ -2351,7 +2353,8 @@ def sync_status(ctx: typer.Context, data_dir: DataDirOption = None) -> None:
     with _friendly():
         folder = _sync_folder(ctx, data_dir)
         # it only reports, so a folder without data (a mistyped --data-dir) is left as it is, not created
-        if not Paths(folder).db.is_file() and reachable_server(folder) is None:
+        paths = Paths(folder)
+        if not paths.db.is_file() and not paths.sync.is_dir() and reachable_server(folder) is None:
             console.print(
                 f"This computer doesn't sync: there is no Ordnung data in {escape(str(folder))}.",
                 soft_wrap=True,

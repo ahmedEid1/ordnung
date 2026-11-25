@@ -1257,7 +1257,9 @@ async def ingest_document(
         raise
     except Exception as exc:
         message = describe_error(exc)
-        log.warning("reading document %s failed: %s", doc_id, message, exc_info=message == UNEXPECTED_ERROR)
+        # the log line without the hint: the letter's row says it, and the log would print it a second time
+        logged = message.removesuffix(f" {CHECK_CLAUDE}")
+        log.warning("reading document %s failed: %s", doc_id, logged, exc_info=message == UNEXPECTED_ERROR)
         if progress.quiet:
             _note_held_error(store, doc_id, message)
         else:

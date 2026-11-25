@@ -2506,6 +2506,19 @@ def test_the_spec_says_where_a_failed_reading_may_have_sent_the_letter() -> None
     ) in _spec()
 
 
+def test_the_web_app_and_the_guide_know_how_a_letter_says_to_check_claude() -> None:
+    """The letter's page links Settings → Claude connection when the failure ends with ``CHECK_CLAUDE``: its own
+    copy in ``api/sse.ts`` must be the backend's sentence, or the link quietly goes. The guide's doctor line names
+    the flag the sentence asks for, and that it makes a live call."""
+    from ordnung.llm.base import CHECK_CLAUDE
+
+    sse = (ROOT / "web" / "src" / "api" / "sse.ts").read_text(encoding="utf-8")
+    assert f"export const CHECK_CLAUDE = {json.dumps(CHECK_CLAUDE)};" in sse
+    assert "`ordnung doctor --probe`" in CHECK_CLAUDE
+    (line,) = [line for line in _guide().splitlines() if line.startswith("ordnung doctor ")]
+    assert "(--probe: also one tiny live call to Claude)" in line
+
+
 def test_only_the_store_reads_the_scanner_text_as_adr_0020_says() -> None:
     """ADR 0020: only ``Store`` reads and writes the scanner text — no other module imports ``ordnung.db.scan_text``,
     so Ask, the reading, the evidence checks and prompts can't reach it; a waiting letter's own text is read at

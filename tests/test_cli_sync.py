@@ -364,3 +364,14 @@ def test_the_command_line_suggests_a_strong_passphrase_when_it_sets_up_a_folder(
     assert sync.passphrase_bits(chosen) >= sync.MIN_PASSPHRASE_BITS
     for _ in range(50):
         assert sync.passphrase_problem(sync.suggested_passphrase()) is None
+
+
+def test_status_of_a_folder_with_sync_state_but_no_database_goes_to_the_agent(
+    engine: FakeEngine, tmp_path: Path
+) -> None:
+    """A folder that lost its database but kept its sync state is not "a computer that doesn't sync": the status
+    goes on and reports what the sync state says."""
+    folder = tmp_path / "data"
+    (folder / "sync").mkdir(parents=True)
+    result = invoke("sync", "status", "--data-dir", str(folder))
+    assert "there is no Ordnung data in" not in " ".join(result.output.split()), result.output

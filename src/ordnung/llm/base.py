@@ -137,10 +137,13 @@ class ClaudeBadOutput(LLMError):
     pass
 
 
-#: What to do when the ``claude`` program itself fails (the command line's hint; the end of a letter's failure that
-#: :class:`ClaudeExited` caused, where the letter's page also links Settings → Claude connection). ``--probe``: a
-#: ``claude`` that answers ``--version`` but ends a real call without an answer passes the plain check.
+#: What to do when the ``claude`` program ended without an answer (:class:`ClaudeExited`): the end of the letter's
+#: failure, where the letter's page also links Settings → Claude connection, and the command line's hint. ``--probe``:
+#: such a ``claude`` answers ``--version``, so only the live call finds it. Only for that failure: the probe spends a
+#: call, and the other Claude problems (not installed, not signed in, the usage limit) show in the plain check.
 CHECK_CLAUDE = "Run `ordnung doctor --probe` to check Claude."
+#: The hint for any other Claude problem: the plain, zero-token ``ordnung doctor`` shows it and how to fix it.
+CHECK_CLAUDE_SETUP = "Run `ordnung doctor` to check Claude."
 
 
 class ClaudeExited(LLMError):
