@@ -51,7 +51,6 @@
 
 from __future__ import annotations
 
-import array
 import codecs
 import ctypes
 import email
@@ -61,6 +60,8 @@ import functools
 import hashlib
 import itertools
 import logging
+import math
+import operator
 import re
 import struct
 import threading
@@ -78,7 +79,7 @@ from pdfminer.pdfinterp import PDFResourceManager
 from pdfminer.pdfparser import PDFParser, PDFSyntaxError
 from pdfminer.pdftypes import PDFObjRef
 from pdfplumber.pdf import PDF
-from PIL import Image, ImageChops, ImageFont, ImageStat
+from PIL import Image, ImageChops, ImageFont
 
 from ordnung.config import PACKAGE_DIR
 from ordnung.ingest.email_text import _email_body
@@ -508,28 +509,29 @@ def _page_chars(document: pdfium.PdfDocument, number: int) -> dict[str, list[_Dr
     ink = _mask(shown)
     alone = _text_alone(document, number, (), scale, (_WHITE,))
     expected = _own_ink(alone, None)
-    if any(
-        box is not None and _strongest(shown.crop(box)) >= _strongest(expected.crop(box)) + INK_THRESHOLD
-        for _, box, _ in placed
-    ):
+    if _shows_more(shown, expected, placed):
         # text that shows more on the page than on white (light text on a dark ground): its own ink is
         # what it draws on black too
         alone += _text_alone(document, number, (), scale, (_BLACK,))
         expected = _own_ink(alone, None)
     own_ink = _mask(expected)
+    judged = _Judged(ink, expected, after.convert("L"))
+    counts = [None if box is None else judged.counts(box) for _, box, _ in placed]
     nearby = _Nearby(objects)
     unclear: set[int] = set()
-    for _, box, key in placed:
+    for (_, box, key), count in zip(placed, counts, strict=True):
         if (
             box is not None
+            and count is not None
+            and count[255]  # ink in its box
             and key in objects
             and key not in unclear
             and _ink_maybe_not_own(ink, box, key, nearby)
         ):
             unclear.add(key)
     inked = [
-        box is None or (_shows(shown, expected, box) and _spans(own_ink, box, drawn.text))
-        for drawn, box, _ in placed
+        box is None or count is None or (_shows(count) and _spans(own_ink, box, drawn.text, count))
+        for (drawn, box, _), count in zip(placed, counts, strict=True)
     ]
     if unclear:
         own: dict[int, list[int]] = {}  # object → its characters, in page order
@@ -544,40 +546,91 @@ def _page_chars(document: pdfium.PdfDocument, number: int) -> dict[str, list[_Dr
             )
             if found is not None:
                 own_shown, own_expected = found
+                own_judged = _Judged(_mask(own_shown), own_expected)
+                own_mask = _mask(own_expected)
                 for index in batch.judged:
                     drawn, box, _ = placed[index]
-                    inked[index] = (
-                        box is not None
-                        and _shows(own_shown, own_expected, box)
-                        and (_spans(_mask(own_expected), box, drawn.text) or _spans(ink, box, drawn.text))
+                    if box is None:
+                        inked[index] = False
+                        continue
+                    count = own_judged.counts(box)
+                    inked[index] = _shows(count) and (
+                        _spans(own_mask, box, drawn.text, count) or _spans(ink, box, drawn.text)
                     )
-    ground = after.convert("L")
     chars: dict[str, list[_DrawnChar]] = {}
-    for (drawn, box, _), value in zip(placed, inked, strict=True):
-        on_dark = box is not None and ImageStat.Stat(ground.crop(box)).mean[0] < DARK_GROUND * 255
+    for (drawn, _, _), value, count in zip(placed, inked, counts, strict=True):
+        on_dark = count is not None and _on_dark(count)
         chars.setdefault(drawn.text, []).append(drawn._replace(inked=value, on_dark=on_dark))
     return chars
 
 
-def _shows(shown: Image.Image, expected: Image.Image, box: _Box) -> bool:
+class _Judged:
+    """The images a character is judged by, as the four bands of one image, so its box is cropped once
+    and counted once (a histogram) instead of cropping and thresholding each image in turn: where the page
+    shows ink (``ink``, :func:`_mask`), the ink its text draws by itself (``expected``, a difference), that
+    ink only where the page shows ink, and the page without its text (``ground``, luminance)."""
+
+    def __init__(self, ink: Image.Image, expected: Image.Image, ground: Image.Image | None = None) -> None:
+        bands = (ink, expected, ImageChops.darker(expected, ink), expected if ground is None else ground)
+        self.image = Image.merge("CMYK", bands)
+
+    def counts(self, box: _Box) -> list[int]:
+        """How many pixels of the box hold each value (0..255), band after band (:meth:`__init__`)."""
+        counts: list[int] = self.image.crop(box).histogram()
+        return counts
+
+
+def _shows(counts: list[int]) -> bool:
     """Whether a character's box holds ink (a difference of :data:`INK_THRESHOLD`), and at least
     :data:`INK_SHARE` of the ink its text draws by itself there (all of it where that is none: text that
-    only shows against what lies under it). ``shown`` and ``expected`` are differences
-    (:func:`_difference`). The ink its text draws by itself is where ``expected`` is at least half its
-    strongest in the box (so the share doesn't depend on the text's contrast), and a pixel of it shows
-    where ``shown`` is ink (:data:`INK_THRESHOLD`) there: never measured against the strongest the page
-    shows, so text whose ground changes inside its line (a band's edge, a photo) is judged pixel by
-    pixel, while a cover or a sliver still leaves its pixels without ink."""
-    seen = shown.crop(box)
-    if _strongest(seen) < INK_THRESHOLD:
+    only shows against what lies under it). ``counts`` are the box's (:meth:`_Judged.counts`). The ink its
+    text draws by itself is where the difference it makes alone is at least half its strongest in the box
+    (so the share doesn't depend on the text's contrast), and a pixel of it shows where the page shows ink
+    (:data:`INK_THRESHOLD`) there: never measured against the strongest the page shows, so text whose
+    ground changes inside its line (a band's edge, a photo) is judged pixel by pixel, while a cover or a
+    sliver still leaves its pixels without ink."""
+    if not counts[255]:  # no pixel of ink
         return False
-    own = expected.crop(box)
-    own_strongest = _strongest(own)
+    own = counts[256:512]
+    own_strongest = _strongest_of(own)
     if own_strongest < INK_THRESHOLD:
         return True
-    core = own.point([255 if value >= (own_strongest + 1) // 2 else 0 for value in range(256)])
-    count = ImageChops.darker(core, _mask(seen)).histogram()[255]
-    return count >= INK_SHARE * core.histogram()[255]
+    least = (own_strongest + 1) // 2
+    return sum(counts[512 + least : 768]) >= INK_SHARE * sum(own[least:])
+
+
+def _strongest_of(counts: list[int]) -> int:
+    """The strongest value (0..255) that a band's counts (a histogram) hold, 0 for none."""
+    strongest: int = next(filter(counts.__getitem__, range(255, 0, -1)), 0)
+    return strongest
+
+
+def _on_dark(counts: list[int]) -> bool:
+    """Whether the page without its text is dark under a character (:data:`DARK_GROUND`): the mean of the
+    fourth band of its box's counts (:meth:`_Judged.counts`)."""
+    ground = counts[768:1024]
+    pixels = sum(ground)
+    least = math.ceil(DARK_GROUND * 255)
+    if sum(ground[least:]) == pixels:  # no pixel darker: neither is the mean (most text, on white)
+        return False
+    total: int = sum(map(operator.mul, range(256), ground))
+    return total / pixels < DARK_GROUND * 255
+
+
+def _shows_more(
+    shown: Image.Image, expected: Image.Image, placed: list[tuple[_DrawnChar, _Box | None, int | None]]
+) -> bool:
+    """Whether a character's box shows a stronger difference on the page than its text draws on white by
+    :data:`INK_THRESHOLD` or more (light text on a dark ground). Only a box where some pixel of the page
+    differs by that much more than the text alone can: elsewhere no pixel does, so neither does the box's
+    strongest."""
+    more = _mask(ImageChops.subtract(shown, expected)).getbbox()
+    return more is not None and any(
+        box is not None
+        and _box_intersection(box, more) is not None
+        and _strongest(shown.crop(box)) >= _strongest(expected.crop(box)) + INK_THRESHOLD
+        for _, box, _ in placed
+    )
 
 
 def _strongest(difference: Image.Image) -> int:
@@ -586,30 +639,25 @@ def _strongest(difference: Image.Image) -> int:
     return int(extrema[1]) if isinstance(extrema[1], (int, float)) else 0
 
 
-def _spans(own_ink: Image.Image, box: _Box, text: str) -> bool:
+def _spans(own_ink: Image.Image, box: _Box, text: str, counts: list[int] | None = None) -> bool:
     """Whether a letter's or digit's own ink (``own_ink``: where its text drawn alone differs by
     :data:`INK_THRESHOLD`, :func:`_mask`) reaches over at least :data:`INK_SHARE` of the rows and of the
     columns of its glyph's box: a clip (a clipping path, a form's bounding box) that leaves a strip of it
-    is in the text's own render too. Other characters pass."""
+    is in the text's own render too. Other characters pass. ``counts``, the box's counts of the images
+    ``own_ink`` is the mask of (:meth:`_Judged.counts`), answer whether it holds any without a crop."""
     if not any(ch.isalnum() for ch in text):
         return True
+    if counts is not None and not any(counts[256 + INK_THRESHOLD : 512]):
+        return True  # no ink of its own: :func:`_shows` decides
     crop = own_ink.crop(box)
-    if crop.getbbox() is None:
+    columns, rows = crop.getprojection()  # 1 where a column or a row holds ink
+    if counts is None and not any(columns):
         return True  # no ink of its own: :func:`_shows` decides
     width, height = crop.size
     # the box is 3 pixels larger than the glyph (:func:`_device_box`)
-    return _lines(crop, (1, height)) >= INK_SHARE * max(height - 3, 1) and _lines(
-        crop, (width, 1)
+    return len(rows) - rows.count(0) >= INK_SHARE * max(height - 3, 1) and len(columns) - columns.count(
+        0
     ) >= INK_SHARE * max(width - 3, 1)
-
-
-def _lines(mask: Image.Image, size: tuple[int, int]) -> int:
-    """How many rows (``size`` (1, height)) or columns (``size`` (width, 1)) of a mask hold ink."""
-    across = mask.size[0] if size[0] == 1 else mask.size[1]
-    if across <= 255:  # one pixel of 255 in a line averages to at least 1
-        return sum(mask.resize(size, Image.Resampling.BOX).histogram()[1:])
-    values = array.array("f", mask.convert("F").resize(size, Image.Resampling.BOX).tobytes())
-    return sum(value > 0 for value in values)
 
 
 class _Grid:

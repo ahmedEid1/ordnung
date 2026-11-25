@@ -17,7 +17,7 @@ import pytest
 from fpdf import FPDF
 from fpdf.enums import EncryptionMethod
 from pdfminer.arcfour import Arcfour
-from PIL import Image
+from PIL import Image, ImageChops, ImageStat
 
 from helpers_docs import (
     INJECTION,
@@ -1114,6 +1114,67 @@ def test_the_invisible_text_check_holds_the_pdfium_lock(
     monkeypatch.setattr(text_module.pdfium, "PdfDocument", spy)
     found = text_module._drawn_chars(pdf_path, [1])
     assert opened == [True] and found[1]
+
+
+# -- the ink check's shortcuts answer as the long way does ------------------------------------------------
+
+#: Differences around the thresholds the ink check asks of a pixel (half a strongest, INK_THRESHOLD).
+_LEVELS = [0, 0, 0, 1, 7, 8, 9, 15, 16, 17, 31, 32, 33, 100, 152, 153, 154, 255, 255]
+
+
+def _noise(rng: random.Random, size: tuple[int, int], levels: list[int]) -> Image.Image:
+    return Image.frombytes("L", size, bytes(rng.choice(levels) for _ in range(size[0] * size[1])))
+
+
+def _shows_by_crops(shown: Image.Image, expected: Image.Image, box: tuple[int, int, int, int]) -> bool:
+    seen, own = shown.crop(box), expected.crop(box)
+    if seen.getextrema()[1] < text_module.INK_THRESHOLD:
+        return False
+    strongest = int(own.getextrema()[1])
+    if strongest < text_module.INK_THRESHOLD:
+        return True
+    core = own.point([255 if value >= (strongest + 1) // 2 else 0 for value in range(256)])
+    count = ImageChops.darker(core, text_module._mask(seen)).histogram()[255]
+    return count >= text_module.INK_SHARE * core.histogram()[255]
+
+
+def _spans_by_crops(own_ink: Image.Image, box: tuple[int, int, int, int]) -> bool:
+    crop = own_ink.crop(box)
+    if crop.getbbox() is None:
+        return True
+    width, height = crop.size
+    rows = sum(any(crop.getpixel((x, y)) for x in range(width)) for y in range(height))
+    columns = sum(any(crop.getpixel((x, y)) for y in range(height)) for x in range(width))
+    share = text_module.INK_SHARE
+    return rows >= share * max(height - 3, 1) and columns >= share * max(width - 3, 1)
+
+
+@pytest.mark.parametrize("size", [(40, 30), (300, 8)], ids=["glyph-sized", "wider than 255 pixels"])
+def test_a_character_is_judged_from_its_box_s_counts_as_from_its_crops(size: tuple[int, int]) -> None:
+    """The ink check reads a character's box once, as counts of four images in one (:class:`_Judged`):
+    whether it shows, whether its own ink spans its box and whether the page is dark under it come out
+    as cropping each image says, for boxes anywhere, partly off the page too."""
+    rng = random.Random(f"judged {size}")
+    width, height = size
+    for _ in range(150):
+        shown, expected = _noise(rng, size, _LEVELS), _noise(rng, size, _LEVELS)
+        if rng.random() < 0.5:  # the page shows all of the text's own ink, as on most letters
+            shown = ImageChops.lighter(shown, expected.point(lambda value: 255 if value >= 8 else 0))
+        # grounds all darker or all lighter than DARK_GROUND asks, and mixes whose mean lies either side of it
+        grounds = rng.choice(
+            [[0, 152], [150, 152], [153, 156, 255], [152, 155, 155, 155], list(range(148, 159))]
+        )
+        ground = _noise(rng, size, grounds)
+        judged = text_module._Judged(text_module._mask(shown), expected, ground)
+        own_ink = text_module._mask(expected)
+        left, top = rng.randint(-4, width - 2), rng.randint(-4, height - 2)
+        box = (left, top, rng.randint(left + 1, width + 4), rng.randint(top + 1, height + 4))
+        counts = judged.counts(box)
+        assert text_module._shows(counts) == _shows_by_crops(shown, expected, box)
+        assert text_module._spans(own_ink, box, "A", counts) == _spans_by_crops(own_ink, box)
+        assert text_module._spans(own_ink, box, "A") == _spans_by_crops(own_ink, box)
+        dark = ImageStat.Stat(ground.crop(box)).mean[0] < text_module.DARK_GROUND * 255
+        assert text_module._on_dark(counts) == dark
 
 
 # -- e-mails whose text Pillow's layout couldn't take ---------------------------------------------------
