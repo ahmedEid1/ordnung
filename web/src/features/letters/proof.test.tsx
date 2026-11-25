@@ -484,11 +484,12 @@ describe("Proof of sending", () => {
       const proof = await screen.findByRole("region", { name: "Proof of sending" });
       await user.click(await within(proof).findByRole("button", { name: "Remove" }));
       const removed = (await screen.findByText("Tracking number removed")).closest("li")!;
-      // the number's PUT answers, but with nothing in it: reading the answer throws a TypeError
+      // the number's PUT is stored, but its answer has nothing in it: reading the answer throws a TypeError
       const mock = globalThis.fetch;
-      vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) =>
-        init?.method === "PUT" ? new Response("null", { status: 200, headers: { "Content-Type": "application/json" } }) : mock(input, init),
-      );
+      vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+        const answer = await mock(input, init);
+        return init?.method === "PUT" ? new Response("null", { status: 200, headers: { "Content-Type": "application/json" } }) : answer;
+      });
       await user.click(within(removed).getByRole("button", { name: "Undo" }));
       await waitFor(() => expect(removed).not.toBeInTheDocument());
       expect(reported).toHaveLength(1);
@@ -497,7 +498,9 @@ describe("Proof of sending", () => {
       // is not filled as if it had to be saved again
       expect(await screen.findByText("Something went wrong")).toBeInTheDocument();
       expect(screen.queryByText("Couldn't save the tracking number")).toBeNull();
-      expect(within(proof).getByLabelText("Tracking number")).toHaveValue("");
+      // and the page asks again, so it shows the number as stored, not an empty field to save it into
+      expect(await within(proof).findByText("RT 123 456 785 DE")).toBeInTheDocument();
+      expect(within(proof).queryByLabelText("Tracking number")).toBeNull();
     } finally {
       window.removeEventListener("error", onError);
     }

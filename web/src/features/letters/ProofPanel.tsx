@@ -2,7 +2,8 @@ import { useRef, useState } from "react";
 import { Link } from "react-router";
 import { CalendarClock, CircleCheck, CircleDashed, CircleHelp, Ellipsis, FileDown, Info, PenLine, Phone, Plus, ShieldCheck, Trash2, TriangleAlert, Undo2 } from "lucide-react";
 import { api } from "@/api/endpoints";
-import { useDraftProof, useMarkAnswered, useRemoveProof, useSetTracking } from "@/api/hooks";
+import { useQueryClient } from "@tanstack/react-query";
+import { qk, useDraftProof, useMarkAnswered, useRemoveProof, useSetTracking } from "@/api/hooks";
 import type { Draft, ProofEntry, ProofEvent, ProofOverview, WaitingEntry } from "@/api/types";
 import { Button, IconButton, buttonVariants } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
@@ -134,6 +135,7 @@ function WaitingBox({ entry, draft }: { entry: WaitingEntry; draft: Draft }) {
 /** The saved number with Change / Remove (with Undo), or the field to enter it. */
 function Tracking({ draft, overview }: { draft: Draft; overview: ProofOverview }) {
   const save = useSetTracking();
+  const qc = useQueryClient();
   const saved = overview.tracking;
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState("");
@@ -160,6 +162,11 @@ function Tracking({ draft, overview }: { draft: Draft; overview: ProofOverview }
         ignoreFailedRequest(err); // a failed request: the hook's toast says it couldn't be saved
         // only a failed request leaves the number unsaved: a bug in reading the answer comes after the server stored it
         if (err instanceof ApiError) failed?.();
+        else {
+          // the number may well be stored: ask the server, so the page shows what it holds
+          void qc.invalidateQueries({ queryKey: qk.drafts.proof(draft.id) });
+          void qc.invalidateQueries({ queryKey: qk.drafts.detail(draft.id) });
+        }
         return false;
       },
     );
