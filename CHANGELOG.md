@@ -82,8 +82,9 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   they are not part of the Python package.
 - CI on a pull request took 40 to 50 minutes and takes about 10: the backend tests run in parallel processes,
   lint and types run once, the slow tests have two jobs and the replayed benchmarks one, and the end-to-end tests
-  run side by side without waiting for the frontend job, in eight legs: the layout guards in four parts, the
-  layout sweep and the evaluation report's page in groups of their own, the rest of the demo and the real apps.
+  run side by side without waiting for the frontend job, in seven legs: the layout guards in four parts (the
+  evaluation report's page runs after the last one, in its leg), the layout sweep in a group of its own, the rest
+  of the demo and the real apps.
   As two halves the layout guards' first half was the longest job of a run, up to 12 minutes; the longest leg
   took under 7 in the first run with eight (25 November 2026). Coverage, measured on Python 3.12 alone, is
   measured in two halves side by side, and a short job adds them up and holds the sum to the same floors. Every
@@ -91,7 +92,11 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   took 9.5 minutes, where the five runs before the split took 9.3 to 12.0, and the three after the security
   review's hidden-text check had made every PDF slower to read took 10.9 to 14.8. Four jobs now end within half
   a minute of each other and set the time: the coverage halves (which are not even yet), the slow tests, the
-  replay of every published number and Windows. `make check` runs the backend tests in parallel too. Every
+  replay of every published number and Windows. The last two now run in two parts side by side each: Windows
+  with its sync files from a to c in one part and every other file in the other, the replay with
+  `python -m evals.reproduce --only` some cells and `--skip` the same cells, and with the replay without the
+  Land, moved out of the benchmarks' job, after its second part. `make check` runs the backend tests in
+  parallel too. Every
   published number is replayed in a job of its own (it made the benchmarks' job the longest of a run), Windows
   runs on every pull request and not only on `main` (macOS stays on `main`
   and the weekly run: on a pull request its runner was 10 minutes in coming once, and once none came and the run
