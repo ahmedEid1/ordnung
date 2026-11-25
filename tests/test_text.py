@@ -712,14 +712,25 @@ INKED = {
 }
 
 
-def _raw_pdf(content: bytes) -> bytes:
+#: How the page itself is placed: PDFium reads characters in PDF user space, pdfplumber in the page as it
+#: is shown, turned by /Rotate and counted from the MediaBox's corner.
+PAGES = {
+    "upright": b"/MediaBox [0 0 595 842]",
+    "turned 90": b"/MediaBox [0 0 595 842] /Rotate 90",
+    "turned 180": b"/MediaBox [0 0 595 842] /Rotate 180",
+    "turned 270": b"/MediaBox [0 0 595 842] /Rotate 270",
+    "a MediaBox off the origin": b"/MediaBox [-100 50 495 892]",
+}
+
+
+def _raw_pdf(content: bytes, page: bytes = PAGES["upright"]) -> bytes:
     """A one-page PDF with Helvetica, an optional content group that is off, a fully transparent graphics
     state and a form XObject drawing the unseen line."""
     stream = _SHOWN + content + b"\n"
     objects = [
         b"<< /Type /Catalog /Pages 2 0 R /OCProperties << /OCGs [6 0 R] /D << /OFF [6 0 R] >> >> >>",
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R"
+        b"<< /Type /Page /Parent 2 0 R " + page + b" /Contents 4 0 R /Resources << /Font << /F1 5 0 R"
         b" >> /XObject << /Inner 7 0 R >> /ExtGState << /Clear << /ca 0 /CA 0 >> >> /Properties << /off 6 0 R"
         b" >> >> >>",
         b"<< /Length %d >>\nstream\n" % len(stream) + stream + b"\nendstream",
@@ -740,12 +751,14 @@ def _raw_pdf(content: bytes) -> bytes:
     return bytes(out)
 
 
+@pytest.mark.parametrize("page", list(PAGES))
 @pytest.mark.parametrize("construction", list(NO_INK))
-def test_text_without_ink_on_the_page_is_hidden(tmp_path: Path, construction: str) -> None:
+def test_text_without_ink_on_the_page_is_hidden(tmp_path: Path, construction: str, page: str) -> None:
     """Adversarial: text the rendered page never shows (covered, transparent, clipped, in a layer that is
     off, black on black, under an image) is hidden text, a scam sign, never the page text a quote or a
-    GiroCode value is grounded in; the letter's visible line stays page text."""
-    _, result = _read(tmp_path, _raw_pdf(NO_INK[construction]))
+    GiroCode value is grounded in; the letter's visible line stays page text. However the page is turned
+    or placed: the two readers' characters are matched in one space."""
+    _, result = _read(tmp_path, _raw_pdf(NO_INK[construction], PAGES[page]))
     [page] = result.pages
     assert page.has_text_layer and "Musterfirma GmbH Rechnung 4711" in page.text
     assert "Geheimkonto" not in page.text and all("DE02" not in word.text for word in page.words)
@@ -758,6 +771,110 @@ def test_text_with_ink_on_the_page_stays_page_text(tmp_path: Path, construction:
     [page] = result.pages
     assert "Geheimkonto DE02120300000000202051" in page.text
     assert page.hidden_text == ""
+
+
+@pytest.mark.parametrize("page", list(PAGES))
+def test_text_drawn_invisibly_on_a_turned_page_is_hidden_text(tmp_path: Path, page: str) -> None:
+    _, result = _read(tmp_path, _raw_pdf(_UNSEEN.replace(b"BT ", b"BT 3 Tr ", 1), PAGES[page]))
+    [only] = result.pages
+    assert "Musterfirma GmbH Rechnung 4711" in only.text and "DE02" not in only.text
+    assert "Geheimkonto DE02120300000000202051" in only.hidden_text
+
+
+@pytest.mark.parametrize("page", [name for name in PAGES if name != "upright"])
+@pytest.mark.parametrize("construction", ["white on a dark box", "mid grey", "inside a form XObject"])
+def test_text_with_ink_on_a_turned_page_stays_page_text(tmp_path: Path, construction: str, page: str) -> None:
+    _, result = _read(tmp_path, _raw_pdf(INKED[construction], PAGES[page]))
+    [only] = result.pages
+    assert "Geheimkonto DE02120300000000202051" in only.text and only.hidden_text == ""
+
+
+#: A made-up line of a letter, set one text object per glyph (as some generators write small print).
+_SMALL_PRINT = "Die Stadtwerke Musterstadt bitten um Zahlung bis zum Monatsende, vielen Dank im Voraus. "
+
+
+def _per_glyph_page(size: int, lines: int) -> bytes:
+    from pdfminer.fontmetrics import FONT_METRICS
+
+    widths = FONT_METRICS["Helvetica"][1]
+    objects = []
+    for row in range(lines):
+        x, y = 40.0, 740 - row * size * 1.2
+        for char in _SMALL_PRINT * 3:
+            if x > 550:
+                break
+            if char != " ":
+                objects.append(b"BT /F1 %d Tf %.2f %.2f Td (%s) Tj ET" % (size, x, y, char.encode("latin-1")))
+            x += widths[char] * size / 1000
+    return _raw_pdf(b"\n".join(objects))
+
+
+def test_small_print_set_one_glyph_at_a_time_stays_page_text(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A narrow glyph (i, l, t) of its own text object lies inside its neighbours' footprints, so each
+    such object is judged on its own; objects that can't paint in each other's characters' boxes share a
+    render. A dense page in 8 pt (over a hundred such objects, more than the budget) keeps all its text,
+    in a few renders."""
+    renders: list[int] = []
+    real = text_module._ink_without
+
+    def counted(*args: object) -> object:
+        renders.append(len(args[2]))  # type: ignore[arg-type]
+        return real(*args)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(text_module, "_ink_without", counted)
+    _, result = _read(tmp_path, _per_glyph_page(8, 60))
+    [page] = result.pages
+    assert page.hidden_text == "" and "Musterstadt bitten um Zahlung" in page.text
+    assert sum(renders) > text_module.MAX_SEPARATE_RENDERS and len(renders) <= 8
+
+
+def _without(drawn: dict[int, dict[str, list[text_module._DrawnChar]]], letters: str) -> None:
+    """``drawn`` as if PDFium drew none of these letters where it draws them on the unseen line."""
+    for page in drawn.values():
+        for letter in letters:
+            page[letter] = [char for char in page.get(letter, []) if abs(char.y - 706) > 6]
+
+
+@pytest.mark.parametrize(
+    ("letters", "read"), [("G", "hidden"), ("Geheimkonto", "from its image")], ids=["a few", "many"]
+)
+def test_text_layer_characters_pdfium_draws_nowhere_are_not_page_text(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, letters: str, read: str
+) -> None:
+    """Fail closed: a letter or digit of the text layer that PDFium draws nowhere near is not page text.
+    A few are hidden text; more than :data:`MAX_UNMATCHED_CHARS`, and the text layer and the drawn page
+    disagree: the page is read from its image."""
+    real = text_module._drawn_chars
+
+    def drawn(path: Path, numbers: list[int]) -> dict[int, dict[str, list[text_module._DrawnChar]]]:
+        found = real(path, numbers)
+        _without(found, letters)
+        return found
+
+    monkeypatch.setattr(text_module, "_drawn_chars", drawn)
+    _, result = _read(tmp_path, _raw_pdf(INKED["mid grey"]))
+    [page] = result.pages
+    if read == "hidden":
+        assert page.has_text_layer and "Musterfirma GmbH Rechnung 4711" in page.text
+        assert "Geheimkonto" not in page.text and page.hidden_text == "G"
+    else:
+        assert (page.text, page.has_text_layer, page.source) == ("", False, "none")
+
+
+def test_a_page_pdfium_can_t_check_is_read_from_its_image(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Fail closed: where the ink check fails on a page, its text layer isn't trusted."""
+
+    def broken(document: object, number: int) -> None:
+        raise RuntimeError("cannot check this page")
+
+    monkeypatch.setattr(text_module, "_page_chars", broken)
+    _, result = _read(tmp_path, _raw_pdf(INKED["mid grey"]))
+    [page] = result.pages
+    assert (page.text, page.hidden_text, page.has_text_layer) == ("", "", False)
 
 
 def test_overlapping_text_past_the_render_budget_counts_as_unseen(
