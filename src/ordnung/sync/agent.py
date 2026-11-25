@@ -1149,8 +1149,13 @@ class SyncAgent:
             if self.mode == "in_use" and decision.may_push and self._local_pending():
                 await self._push("change")
             return
-        if self.problem is not None and self.problem.code not in _SAVE_PROBLEMS:
-            self.problem = None  # the folder answered as it should (a save's own problem waits for a save)
+        if self.problem is not None and (
+            self.problem.code not in _SAVE_PROBLEMS
+            or (self.problem.code == "folder_full" and self._failing_since is None)
+        ):
+            # the folder answered as it should (a save's own problem waits for a save); a full folder met
+            # by a look, not by a failing save, ends here too: a standing-by computer never saves
+            self.problem = None
         await self._follow_standby()
         if self.mode != "in_use":
             if kind == "late_push" and self.mode == "standing_by" and self._waiting is None:
@@ -1285,9 +1290,12 @@ class SyncAgent:
         except Exception as exc:
             self._failed_push(exc)
             if strict:
-                raise SyncError(
-                    "folder_problem", self.problem.message if self.problem else CANT_OPEN_MESSAGE
-                ) from exc
+                shown = self.problem
+                if shown is None and self._problem_code(exc) == "folder_full":
+                    # shown on screen only once saving has failed for a while; the person who asked is
+                    # told now, and told it is full, not that the folder can't be opened
+                    shown = problem("folder_full", name=self._other_name(), in_use=self.mode == "in_use")
+                raise SyncError("folder_problem", shown.message if shown else CANT_OPEN_MESSAGE) from exc
             return
         finally:
             self.activity = "idle"
