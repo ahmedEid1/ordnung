@@ -80,7 +80,7 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   keeps every movement at its real length, so the recording is as long on a busy machine as on a quiet one, and it
   takes the pictures and the film on a fresh demo each. The README's media are 22 MB in a checkout (they were 9 MB);
   they are not part of the Python package.
-- CI on a pull request took 40 to 50 minutes and takes about 10: the backend tests run in parallel processes,
+- CI on a pull request took 40 to 50 minutes and takes 8 to 9: the backend tests run in parallel processes,
   lint and types run once, the slow tests have two jobs and the replayed benchmarks one, and the end-to-end tests
   run side by side without waiting for the frontend job, in seven legs: the layout guards in four parts (the
   evaluation report's page runs after the last one, in its leg), the layout sweep in a group of its own, the rest
@@ -98,7 +98,9 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   Land, moved out of the benchmarks' job, after its second part. A pull request's run then had 21 jobs of several
   minutes for the 20 GitHub runs at once for this account, and the one left waiting started about four minutes
   late, so a pull request now tests Python 3.11 in the lowest versions' job alone (the same tests, on 3.11); its
-  leg with the pinned versions runs on `main`. `make check` runs the backend tests in parallel too. Every
+  leg with the pinned versions runs on `main`. The two runs after took 8.3 and 8.5 minutes, the second with every
+  job started within 52 seconds; the runner a job happens to get now sets the time (the same job took 6.3 and 8.5
+  minutes an hour apart). `make check` runs the backend tests in parallel too. Every
   published number is replayed in a job of its own (it made the benchmarks' job the longest of a run), Windows
   runs on every pull request and not only on `main` (macOS stays on `main`
   and the weekly run: on a pull request its runner was 10 minutes in coming once, and once none came and the run

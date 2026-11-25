@@ -115,9 +115,12 @@ CI runs its jobs side by side, none waiting for another.
 
 - **The whole run.** A whole run took 40 to 50 minutes with each suite in one process and 13 to 16 once the
   suites ran in parallel; with every published number replayed in a job of its own and the slow tests in two, a
-  pull request's run takes 10 to 12 (the runs of 19 November 2026, on which the minutes here were measured; where
-  two are given, they are the shortest and the longest of that day, and the same job can take half as long again
-  on another runner).
+  pull request's run took 10 to 12 (the runs of 19 November 2026, on which the minutes here were measured unless
+  another day is named; where two are given, they are the shortest and the longest of that day, and the same job
+  can take half as long again on another runner). With what the paragraphs below describe it takes 8 to 9: 8.3
+  and 8.5 minutes in the two runs of 25 November 2026, the second with every job started within 52 seconds.
+  What sets the time now is the runner a job happens to get: the lowest versions' job took 6.3 minutes in one of
+  those runs and 8.5 in the other, the longest slow tests 5.7 and 7.9.
 - **The slow tests.** The slow tests took 10 as one job, and 15 on a slower runner, where every test ran about
   1.6 times as long (three runs of five that day): they run as two jobs side by side, each with about half the
   work, the seven files with the longest tests in one (5 to 6 minutes, most of it the kill test of
