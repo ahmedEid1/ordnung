@@ -176,8 +176,11 @@ test.describe("phone 390×844", () => {
     const sheet = page.getByRole("dialog");
     // a first payment to its account is compared once first; just compared, the code shows unfolded
     const compare = sheet.getByRole("button", { name: "These match the letter" });
+    const show = sheet.getByRole("button", { name: "Show code" });
+    // whichever the sheet shows once its letter has loaded
+    await expect(compare.or(show)).toBeVisible();
     if (await compare.isVisible()) await compare.click();
-    else await sheet.getByRole("button", { name: "Show code" }).click();
+    else await show.click();
     const code = sheet.getByRole("img", { name: /^GiroCode: transfer/ });
     await expect(code).toBeVisible();
     await settle(page);
