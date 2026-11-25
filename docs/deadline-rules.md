@@ -1,10 +1,36 @@
 # How Ordnung computes dates
 
+Every rule Ordnung's engine applies to a date, with its source, for anyone who wants to check a date Ordnung
+computed or change a rule.
+
 > **Not legal advice.** This page describes the law as of **25 September 2026** (`LAST_CHECKED` in
 > `src/ordnung/rules/catalog.py`). It was researched and cross-checked against the statutes and court
 > decisions linked below, but it has **not been reviewed by a lawyer**. When a date really matters —
 > a court case, a fine, your residence permit — get advice (Verbraucherzentrale, Studierendenwerk,
 > Mieterverein, a lawyer).
+
+**In one minute**
+
+- **In doubt, the earliest plausible date:** when something is uncertain, the engine computes the earliest plausible
+  date, lowers the confidence and says why ([§1](#1-safety-policy-and-confidence)).
+- **The model never computes a date:** Claude returns what the letter says, and the rules engine turns it into a
+  date with a receipt, "Why this date?" (below).
+- **A letter from an authority counts as delivered on a fixed day after posting,** which depends on the sender's law
+  and, for a state authority, on its state ([§5](#5-deemed-delivery-bekanntgabefiktion)).
+- **A deadline that ends on a weekend or holiday usually moves to the next working day;** a notice period never
+  does, and gets a safe date the working day before ([§4](#4-when-the-last-day-is-a-weekend-or-holiday)).
+- **High-stakes letters, such as a court payment order or a dismissal,** are filed under their own kind by code,
+  as several of them never state their most important deadline ([§7](#7-high-stakes-letters)).
+- **Some things it deliberately does not compute,** such as whether a claim is time-barred
+  ([§10](#10-what-ordnung-deliberately-does-not-compute)).
+
+**Contents:** [1 Safety policy](#1-safety-policy-and-confidence) ·
+[2 Holidays and working days](#2-calendar-holidays-business-days-and-werktage) ·
+[3 Periods](#3-periods---187-188-bgb) · [4 Weekends and holidays](#4-when-the-last-day-is-a-weekend-or-holiday) ·
+[5 Deemed delivery](#5-deemed-delivery-bekanntgabefiktion) ·
+[6 Objections](#6-objections-and-other-statutory-deadlines) · [7 High-stakes letters](#7-high-stakes-letters) ·
+[8 Contracts](#8-contracts) · [9 How to send it](#9-how-to-send-it) ·
+[10 Not computed](#10-what-ordnung-deliberately-does-not-compute) · [11 Rule catalog](#11-rule-catalog)
 
 Ordnung's promise is simple: **the language model reads, deterministic code computes.** When Claude
 reads a letter it does not produce a deadline. It produces a `DateSpec` — *what the letter says*
