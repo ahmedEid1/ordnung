@@ -268,6 +268,8 @@ check shows in the numbers at once, and costs nothing.
   `constraints.txt`. The samples' libraries (fpdf2, fonttools, pillow, pypdfium2) stay at the versions
   in the samples' manifest, because the sample letters regenerate byte for byte only with those;
   `make constraints` keeps them. The floors in `pyproject.toml` are what CI's "lowest" job installs.
+  What builds the sdist and the wheel (`pyproject.toml`'s build-system and what it needs) is pinned with
+  hashes in `build-constraints.txt`: run `make build-constraints` after changing the build-system's pins.
 - **Web packages and GitHub Actions**: Dependabot opens update pull requests every week
   (`.github/dependabot.yml`): minor and patch updates together, each major on its own. One for `web/`
   changes `package-lock.json`, so CI passes only once `make build-web` has run and `src/ordnung/web/dist`

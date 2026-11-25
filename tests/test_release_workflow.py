@@ -282,7 +282,8 @@ def test_the_tools_that_build_and_check_the_release_are_pinned() -> None:
     """The build job's dist/ is what the PyPI job uploads, so the tools that write and check it run one known
     version, as its actions do: twine at one version, the same in CI's wheel job, and hatchling, the build backend,
     at one version in pyproject.toml's build-system, beside the readme plugin (CI's wheel job builds with the same).
-    What they need themselves is not pinned (uv resolves it on each run), and release.yml's comment says so."""
+    What those two need is pinned with hashes in build-constraints.txt, which every ``uv build`` must use, and uv
+    runs one version; only what twine needs is resolved on each run, and release.yml's comment says so."""
     for path in (RELEASE, ROOT / ".github" / "workflows" / "ci.yml"):
         lines = [line.strip() for line in path.read_text(encoding="utf-8").splitlines()]
         runs = [line for line in lines if "twine" in line and not line.startswith("#")]
@@ -295,7 +296,30 @@ def test_the_tools_that_build_and_check_the_release_are_pinned() -> None:
     header = " ".join(RELEASE.read_text(encoding="utf-8").split("\non:", 1)[0].replace("#", " ").split())
     assert "the tools that build and check dist/ run fixed versions" not in header
     assert "twine (here) and hatchling (in pyproject.toml) run fixed versions" in header
-    assert "are the newest on each run" in header
+    assert "uv runs a fixed version too" in header and "pinned with hashes in build-constraints.txt" in header
+    assert "What twine itself needs (its readme renderer among them) is the newest on each run" in header
+    # every build of the files, here and in CI, takes only the hash-pinned build requirements
+    for path in (RELEASE, ROOT / ".github" / "workflows" / "ci.yml"):
+        builds = [
+            line.strip() for line in path.read_text(encoding="utf-8").splitlines() if "uv build" in line
+        ]
+        assert builds and all(
+            line.endswith("--build-constraints build-constraints.txt --require-hashes") for line in builds
+        ), (path.name, builds)
+    (setup_uv,) = [
+        step for step in _jobs()["build"]["steps"] if step.get("uses", "").startswith("astral-sh/setup-uv@")
+    ]
+    assert re.fullmatch(r"\d+\.\d+\.\d+", setup_uv["with"]["version"])
+    pins = (ROOT / "build-constraints.txt").read_text(encoding="utf-8")
+    for requirement in requires:
+        assert re.search(rf"^{re.escape(requirement)} \\\n    --hash=sha256:[0-9a-f]{{64}}", pins, re.M), (
+            requirement
+        )
+    pinned_names = re.findall(r"^([a-z0-9-]+)==\S+ \\$", pins, re.M)
+    assert {"hatchling", "hatch-fancy-pypi-readme", "packaging", "pluggy"} <= set(pinned_names)
+    assert all(
+        re.search(rf"^{name}==\S+ \\\n    --hash=sha256:[0-9a-f]{{64}}", pins, re.M) for name in pinned_names
+    )
 
 
 def test_releasing_md_says_how_to_release_and_how_the_owner_turns_pypi_on() -> None:

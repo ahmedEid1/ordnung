@@ -3,7 +3,7 @@ UV ?= uv
 SAMPLES_MANIFEST = src/ordnung/demo/samples/manifest.json
 DE_ZIP ?= DE.zip
 
-.PHONY: help install web-dev serve test lint typecheck check build-web openapi demo eval eval-reproduce browser e2e ui-audit capture samples postcodes constraints clean
+.PHONY: help install web-dev serve test lint typecheck check build-web openapi demo eval eval-reproduce browser e2e ui-audit capture samples postcodes constraints build-constraints clean
 
 .DEFAULT_GOAL := help
 
@@ -54,6 +54,11 @@ constraints:        ## re-pin what CI and `make install` install (CONSTRAINTS_AR
 	pins=$$(mktemp) && trap 'rm -f "$$pins"' EXIT && \
 	$(PY) -c 'import json; env = json.load(open("$(SAMPLES_MANIFEST)"))["generator"]["environment"]; print(*(f"{name}=={env[name]}" for name in ("fpdf2", "fonttools", "pillow", "pypdfium2")), sep="\n")' > "$$pins" && \
 	$(UV) pip compile pyproject.toml --extra dev --extra eval --universal --python-version 3.11 -c "$$pins" --custom-compile-command "make constraints" --no-annotate -o constraints.txt $(CONSTRAINTS_ARGS)
+
+build-constraints:  ## re-pin, with hashes, what builds the sdist and the wheel (pyproject.toml's build-system and what it needs)
+	reqs=$$(mktemp) && trap 'rm -f "$$reqs"' EXIT && \
+	$(PY) -c 'import tomllib; print(*tomllib.load(open("pyproject.toml", "rb"))["build-system"]["requires"], sep="\n")' > "$$reqs" && \
+	$(UV) pip compile "$$reqs" --generate-hashes --universal --python-version 3.11 --no-annotate --custom-compile-command "make build-constraints" -o build-constraints.txt
 
 demo:               ## explore the sample life (replayed model outputs, zero tokens)
 	.venv/bin/ordnung demo --serve

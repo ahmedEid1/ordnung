@@ -11,8 +11,9 @@ name: Release
 #
 # Every action runs a fixed commit (its version beside it; Dependabot updates both), never a tag that can be
 # moved, twine (here) and hatchling (in pyproject.toml) run fixed versions, and the build restores no cache: the
-# PyPI job holds the token PyPI accepts as the owner. uv, and what twine and hatchling themselves need (twine's
-# readme renderer among them), are the newest on each run.
+# PyPI job holds the token PyPI accepts as the owner. uv runs a fixed version too, and what hatchling and its
+# readme plugin need is pinned with hashes in build-constraints.txt (`make build-constraints`). What twine itself
+# needs (its readme renderer among them) is the newest on each run: it only checks dist/, it writes nothing.
 on:
   push:
     tags: ["v*"]
@@ -59,6 +60,7 @@ jobs:
           fi
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
+          version: "0.11.32"
           python-version: "3.12"
           enable-cache: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -77,7 +79,7 @@ jobs:
           npx vite build --outDir "$RUNNER_TEMP/web" --emptyOutDir
           diff -r "$RUNNER_TEMP/web" ../src/ordnung/web/dist
       - name: Build sdist and wheel
-        run: uv build
+        run: uv build --build-constraints build-constraints.txt --require-hashes
       - name: The wheel carries the built web app and the demo
         run: |
           unzip -l dist/ordnung-*.whl | grep -q " ordnung/web/dist/index.html$"

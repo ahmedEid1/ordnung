@@ -406,7 +406,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Build sdist and wheel
-        run: uv build
+        run: uv build --build-constraints build-constraints.txt --require-hashes
       - name: The description renders on PyPI
         run: uvx --from 'twine==7.0.0' twine check --strict dist/*
       - name: The wheel carries the built web app
@@ -455,7 +455,7 @@ jobs:
       - name: Build the wheel and install it into a clean venv
         id: wheel
         run: |
-          uv build --wheel
+          uv build --wheel --build-constraints build-constraints.txt --require-hashes
           uv venv "$RUNNER_TEMP/wheel"
           uv pip install --python "$RUNNER_TEMP/wheel" dist/ordnung-*.whl -c constraints.txt
           if [ "$RUNNER_OS" = Windows ]; then bin="$RUNNER_TEMP/wheel/Scripts"; else bin="$RUNNER_TEMP/wheel/bin"; fi
