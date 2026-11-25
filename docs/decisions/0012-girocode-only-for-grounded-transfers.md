@@ -114,9 +114,9 @@ the wrong transfer this record is about. So the policy gets a seventh point:
    Later codes to the account follow points 1–6: the amount and the reference change with every
    letter, so one comparison could not vouch for the next letter's; they stay grounded letter by letter.
 
-Consequences: the demo's utility statement and payment reminder now ask to compare first (nobody in the
-demo has compared a payment yet), and so does the first code to every account the person hasn't compared
-a payment to before (a comparison made before this update counts: it is the same entry). The block says
+Consequences: every bill in the demo that had a ready code now asks to compare first (nobody in the demo
+has compared a payment yet; in the hosted demo these are the utility statement and the payment reminder),
+and so does the first code to every account the person hasn't compared a payment to before (a comparison made before this update counts: it is the same entry). The block says
 so as it is — "you haven't compared a payment to this payee and IBAN" — not that it is the first
 payment, which it may not be: a person may have paid the account before, unseen by Ordnung. Not covered:
 a later letter to a confirmed account whose text layer changes the amount or the reference (the money
