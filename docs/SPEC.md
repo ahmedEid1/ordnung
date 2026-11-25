@@ -2023,7 +2023,9 @@ Pages:
    for taxes; "Read by Claude on
    … · text of 2 pages" badge, and under it where the letter went — "Not sent to Claude" while no
    model call has carried it (`DocumentDetail.given_to_model`: a call whose CLI never started, Claude
-   not installed, carried nothing), else that its text or image was sent to Anthropic, and for a scan whose
+   not installed, carried nothing), else that its text or image was sent to Anthropic (for a reading that
+   failed before it ever succeeded: that it may have reached Anthropic, since the call may have ended before
+   Claude got it), and for a scan whose
    pages have only the text its scanner added (`DocumentDetail.scan_text_pages`), what that text is kept for
    (search only — never checked, shown as the letter's words or sent to Claude), and for a letter whose
    pictures Ordnung read with Tesseract (`picture_text_pages`), which pages ("in this photo", "in this file",

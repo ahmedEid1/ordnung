@@ -1141,8 +1141,8 @@ async def test_a_confirmed_to_do_is_never_listed_as_unsure_in_the_please_check_i
 
 def test_a_claude_that_ends_without_an_answer_says_how_to_check_it() -> None:
     """A broken ``claude`` fails every letter the same way, and the letter's own "Try again" can't help: the
-    message says how to check Claude (``ordnung doctor``; the letter's page adds Settings → Claude connection).
-    Other failures keep their own words."""
+    message says how to check Claude (``ordnung doctor --probe``: only its live call finds such a ``claude``; the
+    letter's page adds Settings → Claude connection). Other failures keep their own words."""
     from ordnung.ingest.pipeline import describe_error
     from ordnung.llm.base import CHECK_CLAUDE, ClaudeExited, ClaudeTimeout
 
@@ -1150,5 +1150,5 @@ def test_a_claude_that_ends_without_an_answer_says_how_to_check_it() -> None:
         f"Claude exited without an answer. {CHECK_CLAUDE}"
     )
     assert describe_error(ClaudeExited("Segmentation fault.")) == f"Segmentation fault. {CHECK_CLAUDE}"
-    assert CHECK_CLAUDE == "Run `ordnung doctor` to check Claude."
+    assert CHECK_CLAUDE == "Run `ordnung doctor --probe` to check Claude."
     assert describe_error(ClaudeTimeout("Claude took too long.")) == "Claude took too long."

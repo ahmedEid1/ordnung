@@ -31,7 +31,7 @@ from ordnung.config import Paths
 from ordnung.db.store import Store
 from ordnung.demo import load_manifest
 from ordnung.demo.loader import build_demo
-from ordnung.llm.base import ClaudeNotInstalled, ClaudeTimeout
+from ordnung.llm.base import CHECK_CLAUDE, ClaudeExited, ClaudeNotInstalled, ClaudeTimeout
 from ordnung.llm.fake import FakeBackend
 from ordnung.locking import DataDirLock, DataDirLocked
 from ordnung.models import Document, DocumentDetail, DocumentStatus, Item, Party
@@ -111,6 +111,9 @@ def test_help_shows_names_not_python_types() -> None:
     assert "<bool>" not in top and "--version" in top
     add = plain(invoke("add", "--help").output)
     assert "<bool>" not in add and "list[" not in add and "FILES" in add and "{files}" not in add
+    # newer Typer sets a required argument in braces in the Usage line (``{FILES}...``): plain capitals instead
+    (usage,) = [line for line in add.splitlines() if line.strip().startswith("Usage:")]
+    assert "{" not in usage and usage.rstrip().endswith("FILES...")
     assert "QUESTION" in plain(invoke("ask", "--help").output)
 
 
@@ -227,6 +230,31 @@ def test_add_exits_non_zero_when_a_letter_was_not_read(
     assert "Traceback" not in result.output
     if isinstance(error, ClaudeNotInstalled):
         assert "Claude Code isn't installed on this computer yet." in result.output
+
+
+@pytest.mark.parametrize(
+    "error",
+    [ClaudeExited(""), ClaudeTimeout("Claude took too long to answer.")],
+    ids=["claude-ended-without-an-answer", "other-failure"],
+)
+def test_add_says_how_to_check_claude_once(
+    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch, error: Exception
+) -> None:
+    """A ``claude`` that ends without an answer: the letter's row already ends with how to check Claude, so
+    the closing line doesn't say it again. A failure that doesn't say it gets it as the closing hint."""
+    router = Router()
+    router.errors["extract"] = lambda: error
+    monkeypatch.setattr(
+        cli, "open_context", lambda folder: build_context(folder, backend_obj=fake_backend(router))
+    )
+    letter = tmp_path / "brief.pdf"
+    letter.write_bytes(TAX_LETTER.pdf())
+    result = invoke("add", str(letter), "--data-dir", str(data_dir))
+    assert result.exit_code == 1, result.output
+    table, closing = plain(result.output).split("Not every letter was read (see above).")
+    said_in_the_row = isinstance(error, ClaudeExited)
+    assert ("--probe" in table) is said_in_the_row, result.output
+    assert (CHECK_CLAUDE in closing) is not said_in_the_row, result.output
 
 
 def test_add_rejects_unreadable_files_without_a_traceback(

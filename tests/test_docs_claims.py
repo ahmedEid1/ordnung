@@ -2492,6 +2492,20 @@ def test_the_scanner_text_s_file_marker_and_note_are_the_ones_the_docs_quote() -
     assert SCANNER_TEXT_NOTE in adr and f"*{SCANNER_TEXT_MATCH}*" in adr
 
 
+def test_the_spec_says_where_a_failed_reading_may_have_sent_the_letter() -> None:
+    """SPEC § 14's letter page, "where the letter went": a reading that failed before it ever succeeded says the letter *may*
+    have reached Anthropic, as ``DocumentFooter.tsx`` does — the call may have ended before Claude got it."""
+    footer = _flat(
+        (ROOT / "web" / "src" / "features" / "document" / "DocumentFooter.tsx").read_text(encoding="utf-8")
+    )
+    assert 'status === "failed" && !detail.document.ai_processed_at' in footer
+    assert "so its text or image may have reached Anthropic." in footer
+    assert (
+        "else that its text or image was sent to Anthropic (for a reading that failed before it ever succeeded: "
+        "that it may have reached Anthropic, since the call may have ended before Claude got it)"
+    ) in _spec()
+
+
 def test_only_the_store_reads_the_scanner_text_as_adr_0020_says() -> None:
     """ADR 0020: only ``Store`` reads and writes the scanner text — no other module imports ``ordnung.db.scan_text``,
     so Ask, the reading, the evidence checks and prompts can't reach it; a waiting letter's own text is read at

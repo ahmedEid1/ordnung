@@ -112,6 +112,12 @@ class _NamedArgument(TyperArgument):
     def display_type_rich(self, ctx: Any) -> str | None:
         return None
 
+    def _usage_display_name(self) -> str:
+        # newer Typer sets a required argument in braces in the Usage line (``{FILES}...``), which reads like
+        # Python; the name alone says it, and one that may be left out keeps its ``[FILES]``
+        name = self.display_name_raw if self.required else f"[{self.display_name_raw}]"
+        return f"{name}..." if self.nargs != 1 else name
+
 
 #: Newer Typer prints an argument's Python type in a column of its own; older Typer prints its name in capitals
 #: there already, and a name given to it would lose the ``...`` that says it takes several.
@@ -944,7 +950,9 @@ def _uploads(files: Sequence[Path], combine: bool) -> list[list[tuple[str, bytes
     return [entries] if combine else [[entry] for entry in entries]
 
 
-def _add_in_process(paths: Paths, files: Sequence[Path], *, combine: bool, private: bool) -> bool:
+def _add_in_process(
+    paths: Paths, files: Sequence[Path], *, combine: bool, private: bool
+) -> tuple[bool, str | None]:
     groups = _uploads(files, combine)
 
     async def work(
@@ -981,7 +989,7 @@ def _add_in_process(paths: Paths, files: Sequence[Path], *, combine: bool, priva
         return [_row(ctx, document.id) for document in added], waiting, local_today(ctx.store)
 
     rows, waiting, today = _in_process(paths, "ordnung add", work)
-    return _print_summary(rows, today, waiting)
+    return _print_summary(rows, today, waiting), _unread_hint(rows, waiting)
 
 
 def _row(ctx: AppContext, doc_id: str) -> tuple[Document, str | None, list[Item]]:
@@ -1009,6 +1017,18 @@ def _print_summary(
     return not waiting and all(document.status != "failed" for document, _, _ in rows)
 
 
+def _unread_hint(
+    rows: Sequence[tuple[Document, str | None, Sequence[Item]]], waiting: Mapping[str, str]
+) -> str | None:
+    """The closing hint when not every letter was read: how to check Claude, unless each letter's row says it."""
+    from ordnung.llm.base import CHECK_CLAUDE
+
+    failed = [document for document, _, _ in rows if document.status == "failed"]
+    if failed and not waiting and all((document.error or "").endswith(CHECK_CLAUDE) for document in failed):
+        return None
+    return CHECK_CLAUDE
+
+
 def _server_today(client: httpx.Client) -> date:
     """The server's "today" (the person's local or the demo's pinned date)."""
     from ordnung import clock
@@ -1019,7 +1039,9 @@ def _server_today(client: httpx.Client) -> date:
         return clock.today()
 
 
-def _add_remote(info: ServerInfo, files: Sequence[Path], *, combine: bool, private: bool) -> bool:
+def _add_remote(
+    info: ServerInfo, files: Sequence[Path], *, combine: bool, private: bool
+) -> tuple[bool, str | None]:
     from ordnung.models import Document, DocumentDetail, Job
 
     console.print(f"[dim]Sending to the running Ordnung at {escape(info.base_url)}[/]")
@@ -1058,7 +1080,8 @@ def _add_remote(info: ServerInfo, files: Sequence[Path], *, combine: bool, priva
                     break
                 time.sleep(POLL_S)
         today = _server_today(client)
-    return _print_summary([_detail_row(details[doc_id]) for doc_id in ids], today, waiting)
+    rows = [_detail_row(details[doc_id]) for doc_id in ids]
+    return _print_summary(rows, today, waiting), _unread_hint(rows, waiting)
 
 
 def _detail_row(detail: DocumentDetail) -> tuple[Document, str | None, list[Item]]:
@@ -1089,13 +1112,11 @@ def add(
             )
         info = reachable_server(paths.data_dir)
         if info is not None:
-            read = _add_remote(info, files, combine=combine, private=private)
+            read, hint = _add_remote(info, files, combine=combine, private=private)
         else:
-            read = _add_in_process(paths, files, combine=combine, private=private)
+            read, hint = _add_in_process(paths, files, combine=combine, private=private)
     if not read:
-        from ordnung.llm.base import CHECK_CLAUDE
-
-        raise _fail("Not every letter was read (see above).", hint=CHECK_CLAUDE)
+        raise _fail("Not every letter was read (see above).", hint=hint)
 
 
 # --------------------------------------------------------------------------------------------------
