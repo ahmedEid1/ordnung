@@ -2644,12 +2644,23 @@ def test_the_guide_s_one_minute_privacy_point_is_spec_s_statement() -> None:
     minute = _guide().split("\n**In one minute**\n", 1)[1].split("\n**Contents**\n", 1)[0]
     point = re.sub(r"\*\*(.+?)\*\*", r"\1", _flat(minute))
     assert statement in point
-    assert "*Ask*, *Weekly Ideas* and *Letters* send excerpts of your ledger the same way" in point
+    assert "send excerpts of your ledger the same way" in point
     assert (
         "phone access, calendar sync and sync between your computers stay off until you turn them on" in point
     )
     table = (ROOT / "docs" / "privacy.md").read_text(encoding="utf-8")
-    assert "| Excerpts, when you use *Ask*, *Weekly Ideas* or *Letters* |" in table
+    # every feature of privacy.md's per-feature table that sends more than the letter being read is named, in the
+    # guide's point and in the at-a-glance row: a list that leaves one out reads as the whole list
+    features = table.split("## What is sent to Claude, per feature", 1)[1].split("\n## ", 1)[0]
+    names = [
+        name for name in re.findall(r"^\| \*\*(.+?)\*\*", features, flags=re.M) if name != "Read a letter"
+    ]
+    assert sorted(set(names)) == ["Ask", "Letters", "Secretary's note", "Weekly Ideas"]
+    glance = next(line for line in table.splitlines() if line.startswith("| Your ledger ("))
+    for name in names:
+        said = "the secretary's note" if name == "Secretary's note" else f"*{name}*"
+        assert said in point, name
+        assert said in glance, name
     for row in (
         "| Calendar sync (only if you connect a calendar) |",
         "| Phone access (only if you turn it on) |",

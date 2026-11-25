@@ -13,10 +13,10 @@ and run `ordnung demo`.
   and `ordnung shortcut` puts it in your app menu ([install and start](#install-and-start)).
 - **Your files and your database stay on this computer. When Claude reads a letter, that letter's text or image is
   sent to Anthropic through your own Claude account** (Claude Code, the Claude program you installed and signed in
-  to). Ordnung has no server, no telemetry and never sees your credentials. *Ask*, *Weekly Ideas* and *Letters*
-  send excerpts of your ledger the same way; phone access, calendar sync and sync between your computers stay off
-  until you turn them on ([what goes where](privacy.md)). Claude Code needs a paid Claude plan or an Anthropic
-  Console account ([what you need](#what-you-need)).
+  to). Ordnung has no server, no telemetry and never sees your credentials. *Ask*, *Weekly Ideas*, the
+  secretary's note and *Letters* send excerpts of your ledger the same way; phone access, calendar sync and sync
+  between your computers stay off until you turn them on ([what goes where](privacy.md)). Claude Code needs a
+  paid Claude plan or an Anthropic Console account ([what you need](#what-you-need)).
 - **Phone and second computer, both optional:** a paired phone uses Ordnung over your home Wi-Fi, and two
   computers hand it over through a folder you already sync ([phone](#on-your-phone),
   [other computer](#on-your-other-computer)).
