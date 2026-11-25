@@ -221,6 +221,33 @@ def test_the_github_release_has_the_notes_and_both_files_and_checks_out_no_code(
     assert release["steps"][-1]["env"]["PRERELEASE"] == "${{ needs.build.outputs.prerelease }}"
 
 
+def test_the_github_release_carries_the_versions_ci_tested() -> None:
+    """constraints.txt goes with the release as a file of its own (never into dist/, which PyPI gets), so an
+    install can take the versions the tests ran with (docs/guide.md says how)."""
+    build = _jobs()["build"]
+    uploads = {
+        step["with"]["name"]: step["with"]
+        for step in build["steps"]
+        if "upload-artifact" in step.get("uses", "")
+    }
+    assert uploads["constraints"] == {
+        "name": "constraints",
+        "path": "constraints.txt",
+        "if-no-files-found": "error",
+    }
+    release = _jobs()["github-release"]
+    downloads = {
+        step["with"]["name"]: step["with"]["path"]
+        for step in release["steps"]
+        if "download-artifact" in step.get("uses", "")
+    }
+    assert downloads["constraints"] == "constraints"
+    (run,) = _runs(release)
+    assert 'gh release create "$GITHUB_REF_NAME" dist/* constraints/constraints.txt ' in run
+    guide = (ROOT / "docs" / "guide.md").read_text(encoding="utf-8")
+    assert "--constraints constraints.txt" in guide and '--pip-args "-c constraints.txt"' in guide
+
+
 def test_ci_must_have_passed_on_the_tagged_commit() -> None:
     """Being on main isn't enough: CI's run for that commit on main must have passed (a scheduled run skips the
     tests, so only a push counts)."""

@@ -106,6 +106,13 @@ jobs:
           name: notes
           path: release-notes.md
           if-no-files-found: error
+      # the versions CI tested, attached to the release: an install can take them instead of the newest of each
+      # dependency (docs/guide.md, "Update")
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: constraints
+          path: constraints.txt
+          if-no-files-found: error
 
   github-release:
     name: GitHub Release
@@ -124,14 +131,18 @@ jobs:
         with:
           name: notes
           path: notes
-      - name: Publish the release with the changelog's section and both files
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: constraints
+          path: constraints
+      - name: Publish the release with the changelog's section, both files and the tested versions
         env:
           GH_TOKEN: ${{ github.token }}
           PRERELEASE: ${{ needs.build.outputs.prerelease }}
         run: |
           flags=()
           if [ "$PRERELEASE" = true ]; then flags+=(--prerelease); fi
-          gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --verify-tag \
+          gh release create "$GITHUB_REF_NAME" dist/* constraints/constraints.txt --repo "$GITHUB_REPOSITORY" --verify-tag \
             --title "Ordnung ${GITHUB_REF_NAME#v}" --notes-file notes/release-notes.md "${flags[@]}"
 
   pypi:

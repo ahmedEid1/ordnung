@@ -271,7 +271,10 @@ release instead, name its tag once it has one:
 `pipx install --force "git+https://github.com/ahmedEid1/ordnung@vX.Y.Z"`
 (with uv: `uv tool install "git+https://github.com/ahmedEid1/ordnung@vX.Y.Z"`), and a release without a tag by
 its commit, taken from the repository's history. An install made from a tag stays on that release when you
-reinstall or upgrade it; install the next tag the same way. When a version changes how the database is stored,
+reinstall or upgrade it; install the next tag the same way. Each release on GitHub also carries
+`constraints.txt`, the versions of every dependency its tests ran with: save it and add
+`--constraints constraints.txt` to `uv tool install` (pipx: `--pip-args "-c constraints.txt"`), so a dependency
+released the same day doesn't reach you untried. When a version changes how the database is stored,
 Ordnung updates your data folder by itself the next time it starts (each step completes or leaves it as it was).
 With hand-off sync, update both computers: until then Settings → Your computers says that the other one runs
 another version, and if the database changed, the computer with the older Ordnung can't bring the other's
