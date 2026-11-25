@@ -76,12 +76,20 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   keeps every movement at its real length, so the recording is as long on a busy machine as on a quiet one, and it
   takes the pictures and the film on a fresh demo each. The README's media are 22 MB in a checkout (they were 9 MB);
   they are not part of the Python package.
-- CI on a pull request takes 10 to 12 minutes instead of 40 to 50: the backend tests run in parallel
-  processes, coverage is measured on the Python 3.12 leg alone, lint and types run once, the slow tests have two
-  jobs and the replayed benchmarks one, and the end-to-end tests run in three groups side by side without waiting
-  for the frontend job. The layout guards, the longest of the three, run as two legs. `make check` runs the
-  backend tests in parallel too. Every published number is replayed in a job of its own (it made the benchmarks'
-  job the longest of a run), Windows runs on every pull request and not only on `main` (macOS stays on `main`
+- CI on a pull request took 40 to 50 minutes and takes about 10: the backend tests run in parallel processes,
+  lint and types run once, the slow tests have two jobs and the replayed benchmarks one, and the end-to-end tests
+  run side by side without waiting for the frontend job, in eight legs: the layout guards in four parts, the
+  layout sweep and the evaluation report's page in groups of their own, the rest of the demo and the real apps.
+  As two halves the layout guards' first half was the longest job of a run, up to 12 minutes; the longest leg
+  took under 7 in the first run with eight (25 November 2026). Coverage, measured on Python 3.12 alone, is
+  measured in two halves side by side, and a short job adds them up and holds the sum to the same floors. Every
+  test still runs once: a test lists each leg's tests and fails when one is in no leg or in two. That first run
+  took 9.5 minutes, where the five runs before the split took 9.3 to 12.0, and the three after the security
+  review's hidden-text check had made every PDF slower to read took 10.9 to 14.8. Four jobs now end within half
+  a minute of each other and set the time: the coverage halves (which are not even yet), the slow tests, the
+  replay of every published number and Windows. `make check` runs the backend tests in parallel too. Every
+  published number is replayed in a job of its own (it made the benchmarks' job the longest of a run), Windows
+  runs on every pull request and not only on `main` (macOS stays on `main`
   and the weekly run: on a pull request its runner was 10 minutes in coming once, and once none came and the run
   failed for it), and the end-to-end legs drive the committed web build with Chromium's headless shell, installed
   without system packages: a package mirror that hung could fail a run.

@@ -287,13 +287,19 @@ def test_an_icloud_placeholder_sibling_is_online_only(tmp_path: Path) -> None:
     assert folder.shard("ab")[name].online_only
 
 
+#: How long "once the hung call returns" may take before a test gives up waiting. It is a bound on whether a thing
+#: happens at all, not on how fast: the loops below end the moment it does. Two seconds were not enough on a
+#: machine running five other jobs (the threads ended 0.01 s late), and a thread that never ends still fails.
+EVENTUALLY = 30.0
+
+
 def _folder_threads() -> int:
     return sum(thread.name == "ordnung-sync-folder" for thread in threading.enumerate())
 
 
 def _problem_once_answered(computer: Computer) -> object:
     """A round's problem once the hung call returned (it ends on its own thread a moment after release)."""
-    deadline = time.monotonic() + 2
+    deadline = time.monotonic() + EVENTUALLY
     while True:
         found = getattr(computer.round().decision, "problem", None)
         if found is None or time.monotonic() > deadline:
@@ -310,7 +316,7 @@ def test_a_hung_folder_operation_gives_up(tmp_path: Path) -> None:
         folder.is_dir()
     assert time.monotonic() - started < 2
     hanging.release()
-    deadline = time.monotonic() + 2
+    deadline = time.monotonic() + EVENTUALLY
     while True:  # once the hung call returns, its thread answers again
         try:
             assert folder.is_dir()
@@ -352,7 +358,7 @@ def test_a_hung_folder_leaves_few_threads_behind_however_often_it_is_read(anna: 
     finally:
         hanging.release()
     assert _problem_once_answered(anna) is None
-    deadline = time.monotonic() + 2
+    deadline = time.monotonic() + EVENTUALLY
     while _folder_threads() > before + 1:  # a released thread takes the next call, or ends
         assert time.monotonic() < deadline
         time.sleep(0.01)

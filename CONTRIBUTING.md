@@ -123,12 +123,17 @@ CI runs its jobs side by side, none waiting for another.
   work, the seven files with the longest tests in one (5 to 6 minutes, most of it the kill test of
   `tests/test_sync_pull_process.py`) and every other slow test in the other (4 to 5 minutes).
 - **End to end.** The end-to-end job waits for no other job: its legs, one for each group of Playwright's
-  projects, take 7 to 11; the layout guards took 23 as one leg, so they run as two (Playwright's `--shard`, each
-  half on a demo of its own: a layout file sets up what it needs and relies on no file before it).
-- **The other jobs.** The backend's 3.12 leg, which measures the coverage, takes 7 to 12, the backend's other
-  legs (Python 3.11, 3.13 and 3.14) 4 to 6, the lowest versions (and, weekly, the newest) 5 to 8, the replayed
-  benchmarks 5 to 8, the replay of every published number (`make eval-reproduce`) 6 to 9, the frontend 4 to 7;
-  lint and types, the wheel and the dependency audit take under a minute each.
+  projects or part of one, took 7 to 12 as four legs; the layout guards took 23 as one leg and up to 12 as the
+  first of two halves, so they run in four parts (Playwright's `--shard`, each part on a demo of its own: a layout
+  file sets up what it needs and relies on no file before it), and the layout sweep and the evaluation's report
+  page have groups of their own. In the first run with eight legs (25 November 2026) they took 3 to 7.
+- **The other jobs.** The backend's 3.12 leg, which measures the coverage, took 7 to 12 as one leg: it runs as
+  two halves side by side, each on half of the test files, and a short job adds up their coverage and holds the
+  sum to the floors (in the first run the halves took 9 and 6 minutes, the adding up 20 seconds, and the whole
+  run 9.5). The backend's other legs (Python 3.11, 3.13 and 3.14) take 4 to 6, the lowest versions (and,
+  weekly, the newest) 5 to 8, the replayed benchmarks 5 to 8, the replay of every published number (`make
+  eval-reproduce`) 6 to 9, the frontend 4 to 7; lint and types, the wheel and the dependency audit take under a
+  minute each.
 - **Windows and macOS.** Windows (7 to 9 minutes) runs on every pull request too, with the tests of the code that
   differs per system (`PER_SYSTEM_TESTS` in `tests/test_ci_workflow.py`), and has to pass, as Linux does. macOS
   (3 to 6 minutes) runs the same tests on `main`, weekly and when the workflow is started by hand, not on a pull

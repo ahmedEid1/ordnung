@@ -46,22 +46,32 @@ jobs:
         run: .venv/bin/mypy
 
   backend:
-    name: Backend (Python ${{ matrix.python }})
+    name: Backend (Python ${{ matrix.python }}${{ matrix.coverage && format(', with coverage, {0}/2', matrix.half) || '' }})
     if: github.event_name != 'schedule'
     # pinned, as the slow tests' jobs are: the tests of every Linux leg run on one system, Tesseract's among them
     runs-on: ubuntu-24.04
-    # one process a file, as many as the runner has cores: 4 to 6 minutes, 3.12's with coverage 7 to 12 (19 Nov
-    # 2026; serial, the legs took 16 to 40 minutes with coverage and 26 without, 18 Nov 2026); a hung test is
-    # named at 10 (faulthandler_timeout)
+    # one process a file, as many as the runner has cores: 4 to 6 minutes, 3.12's with coverage 7 to 12 as one leg
+    # (19 Nov 2026; serial, the legs took 16 to 40 minutes with coverage and 26 without, 18 Nov 2026); a hung test
+    # is named at 10 (faulthandler_timeout)
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         python: ["3.11", "3.12", "3.13", "3.14"]
+        # 3.12's leg runs in two halves, on two runners side by side; the others whole
+        half: [1, 2]
+        exclude:
+          - { python: "3.11", half: 2 }
+          - { python: "3.13", half: 2 }
+          - { python: "3.14", half: 2 }
         include:
-          # coverage is measured on one leg, 3.12's, which also runs the real Tesseract's and the samples' tests. On
+          # coverage is measured on 3.12's leg, which also runs the real Tesseract's and the samples' tests. On
           # 3.14 (sys.monitoring) it costs less than half the time, but measured a little less: the lines only
-          # Python 3.12 and older reach, such as a link loop that Path.resolve raises on
+          # Python 3.12 and older reach, such as a link loop that Path.resolve raises on. On 3.12, coverage's
+          # sys.monitoring core can't count branches, so the leg's 6,300 tests take up to three times as long as on
+          # 3.13 without coverage, and as one leg it was the longest of a run (7 to 12 minutes, 24 and 25 Nov 2026):
+          # its two halves each measure half the files, and the job "coverage" adds the two up and holds the sum
+          # to the floors
           - python: "3.12"
             coverage: true
     env:
@@ -87,12 +97,67 @@ jobs:
       - name: Tests
         if: ${{ !matrix.coverage }}
         run: .venv/bin/pytest -m "not slow" -n auto --dist loadfile
-      - name: Tests with coverage (and pyproject.toml's coverage floor for the whole package)
+      # the two halves: the test files whose names match the one pattern, and every other file (the same pattern
+      # left out), so a new test file runs in one of them without an edit here. The 15 slowest tests named at the
+      # end: these legs are among a run's longest, so their long poles are on record. A half measures half the
+      # package's coverage: its floors are the job "coverage"'s, on the sum (--cov-fail-under=0 here)
+      - name: Tests with coverage, the first half (the files tests/test_[a-n]*.py)
+        if: ${{ matrix.coverage && matrix.half == 1 }}
+        run: >-
+          .venv/bin/pytest -m "not slow" -n auto --dist loadfile --cov=ordnung --cov-report= --cov-fail-under=0
+          --durations=15 tests/test_[a-n]*.py
+      - name: Tests with coverage, the second half (every other test file)
+        if: ${{ matrix.coverage && matrix.half == 2 }}
+        run: >-
+          .venv/bin/pytest -m "not slow" -n auto --dist loadfile --cov=ordnung --cov-report= --cov-fail-under=0
+          --durations=15 --ignore-glob='tests/test_[a-n]*.py'
+      - name: This half's coverage, kept for the job "coverage"
         if: ${{ matrix.coverage }}
-        # the 15 slowest tests named at the end: the leg is among a run's longest, so its long pole is on record
-        run: .venv/bin/pytest -m "not slow" -n auto --dist loadfile --cov=ordnung --cov-report=term-missing:skip-covered --durations=15
-      - name: Coverage floors of hand-off sync and phone access (read from the run above)
+        run: mv .coverage ".coverage.${{ matrix.half }}"
+      - uses: actions/upload-artifact@v7
         if: ${{ matrix.coverage }}
+        with:
+          name: coverage-${{ matrix.half }}
+          path: .coverage.${{ matrix.half }}
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
+  coverage:
+    # the coverage both halves of the backend's 3.12 leg measured, added up: the same numbers one leg measured with
+    # all of the tests (coverage adds up the lines and branches each half ran), held to the same floors. It keeps
+    # the name that leg had, as a required check may be registered under it: it passes only when both halves did
+    # (a half whose tests fail keeps no coverage, and this job then finds it missing)
+    name: Backend (Python 3.12)
+    needs: backend
+    # also when another backend leg failed: the coverage is these two halves' alone
+    if: ${{ !cancelled() && github.event_name != 'schedule' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      # the sources the report shows the missing lines of, at the paths the halves measured them at
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: constraints.txt
+      - name: Install coverage (the version in constraints.txt)
+        run: |
+          uv venv .venv
+          uv pip install coverage -c constraints.txt
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: coverage-*
+          merge-multiple: true
+      - name: Both halves' coverage added up (and pyproject.toml's coverage floor for the whole package)
+        run: |
+          for h in 1 2; do
+            test -f .coverage.$h || { echo "::error::no coverage from half $h: its tests failed or did not finish (see Backend (Python 3.12, with coverage, $h/2))"; exit 1; }
+          done
+          .venv/bin/coverage combine .coverage.1 .coverage.2
+          .venv/bin/coverage report --show-missing --skip-covered
+      - name: Coverage floors of hand-off sync and phone access (read from the sum above)
         run: |
           .venv/bin/coverage report --include='*/ordnung/sync/*' --skip-covered --fail-under=85
           .venv/bin/coverage report --include='*/ordnung/phone/*' --skip-covered --fail-under=89
@@ -499,10 +564,11 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         # one process: these are the tests of locks held across processes, servers on real ports and child
         # processes killed mid-write, and their parallel runs were proven on Linux only (the whole job 3 to 6 minutes
-        # on macOS, 7 to 9 on Windows, 19 Nov 2026)
+        # on macOS, 7 to 9 on Windows, 19 Nov 2026). On Windows this step took 5.5 to 7.3 minutes, two thirds of it in
+        # the first 150 tests (24 and 25 Nov 2026): the 20 slowest, named at the end, show which, for a split of the job
         run: |
           if [ -d .venv/Scripts ]; then venv=.venv/Scripts; else venv=.venv/bin; fi
-          "$venv/python" -m pytest -m "not slow" tests/test_platform_smoke.py \
+          "$venv/python" -m pytest -m "not slow" --durations=20 tests/test_platform_smoke.py \
             tests/test_cli.py::test_the_lock_keeps_a_second_writer_out \
             tests/test_cli.py::test_the_lock_waits_up_to_its_timeout \
             tests/test_cli.py::test_a_lock_held_by_another_process_blocks_until_it_exits \
@@ -541,28 +607,36 @@ jobs:
           test -z "$(git status --porcelain -- ../src/ordnung/web/dist)"
 
   e2e:
-    name: End-to-end (${{ matrix.group }}${{ matrix.group == 'layout' && format(' {0}/2', matrix.shard) || '' }})
+    name: End-to-end (${{ matrix.group }}${{ matrix.shards > 1 && format(' {0}/{1}', matrix.shard, matrix.shards) || '' }})
     # each leg installs its own Python, Node and Chromium and checks that the committed web build matches its
     # sources (Playwright drives the build the wheel ships; the frontend job proves the sources still build): it
     # waits for no other job. Chromium is its headless shell alone, without apt: the system packages
     # --with-deps added are fonts, and one apt mirror hung a leg for 4 minutes (19 Nov 2026).
     # The groups of Playwright's projects (E2E_GROUPS in web/e2e/env.ts) run side by side, each on fresh servers
     # of its own. One run of them all took 39 minutes (18 Nov 2026), and the layout guards as one leg 23. So the
-    # layout group runs in two halves (Playwright's --shard, which keeps whole files and their order), each on a
-    # fresh demo of its own: every layout file sets up what it needs. The other groups run whole (--shard=1/1)
+    # layout group runs in four parts (Playwright's --shard, which keeps whole files and their order and gives each
+    # part about as many tests), each on a fresh demo of its own: a part runs whole files in the group's order, and a
+    # layout file needs nothing a file before it did (some need the demo as it ships, before a later file changes it),
+    # so a new file can land in whichever part its place in that order gives it. In two halves, the first half took
+    # 8.6 to 11.9 minutes and the second 7.5 to 8.5, the longest legs of a run (five runs, 24 and 25 Nov 2026). The
+    # layout sweep and the evaluation's report page left the demo's and the real apps' groups for the same reason:
+    # each group of its own (e2e/env.ts). The other groups run whole (--shard=1/1)
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        group: [demo, layout, real]
-        shard: [1, 2]
-        exclude:
-          - group: demo
-            shard: 2
-          - group: real
-            shard: 2
+        # each leg runs part `shard` of the `shards` parts of its group
+        include:
+          - { group: demo, shard: 1, shards: 1 }
+          - { group: sweep, shard: 1, shards: 1 }
+          - { group: layout, shard: 1, shards: 4 }
+          - { group: layout, shard: 2, shards: 4 }
+          - { group: layout, shard: 3, shards: 4 }
+          - { group: layout, shard: 4, shards: 4 }
+          - { group: report, shard: 1, shards: 1 }
+          - { group: real, shard: 1, shards: 1 }
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
@@ -591,8 +665,8 @@ jobs:
         run: cd web && npx playwright install --only-shell chromium
       - name: Checks that need both toolchains (node + web/node_modules and the Python package)
         # the static demo's My numbers and weekly session match the Python code; the README's Vitest and
-        # Playwright counts hold; a web build ships the licences of what it bundles. Only this job has both,
-        # so here they must run instead of skipping: once, on one leg
+        # Playwright counts hold; a web build ships the licences of what it bundles; the legs of this job run every
+        # Playwright test once. Only this job has both, so here they must run instead of skipping: once, on one leg
         if: matrix.group == 'real'
         env:
           ORDNUNG_REQUIRE_MOCK_CHECK: "1"
@@ -600,6 +674,7 @@ jobs:
           .venv/bin/pytest -q tests/test_mock_numbers.py
           tests/test_docs_claims.py::test_readme_vitest_and_playwright_counts_hold
           tests/test_repo_hygiene.py::test_a_web_build_ships_the_licence_of_every_package_it_bundles
+          tests/test_ci_workflow.py::test_every_end_to_end_test_runs_in_exactly_one_leg
       - name: Committed web build is up to date (Playwright drives it as it ships)
         run: cd web && node scripts/source-hash.mjs --check ../src/ordnung/web/dist/build-info.json
       - name: Install Tesseract with German (the real app reads a private photo's words, ADR 0024)
@@ -609,15 +684,15 @@ jobs:
         # playwright.config.ts starts what the group's projects use: `ordnung demo --reset`, or `ordnung serve` with
         # tests/fake_claude.py from .venv and a second `ordnung serve` (hand-off sync's other computer; both real
         # apps keep secrets in the file keyring of tests/e2e_support), and logs in to each with its token. demo:
-        # tour, pages, sweep, girocode, high-stakes, add-date; layout: the layout guards; real: eval-report (the
-        # evaluation's report page, no server), then real-app (e2e/real-app-*.spec.ts) and pictures (the guide's two
-        # screenshots, skipped unless `make capture` runs them). Text in pictures is on in the first real app only
+        # tour, pages, girocode, high-stakes, add-date; sweep: the layout sweep; layout: the layout guards; report:
+        # the evaluation's report page (no server); real: real-app (e2e/real-app-*.spec.ts) and pictures (the guide's
+        # two screenshots, skipped unless `make capture` runs them). Text in pictures is on in the first real app only
         # (ORDNUNG_E2E_OCR), with the Tesseract installed above: its spec must run, not skip
         env:
           E2E_GROUP: ${{ matrix.group }}
           ORDNUNG_E2E_OCR: "on"
           ORDNUNG_REQUIRE_TESSERACT: "1"
-        run: cd web && npm run e2e -- --shard=${{ matrix.shard }}/${{ matrix.group == 'layout' && 2 || 1 }}
+        run: cd web && npm run e2e -- --shard=${{ matrix.shard }}/${{ matrix.shards }}
       - uses: actions/upload-artifact@v7
         if: failure()
         with:

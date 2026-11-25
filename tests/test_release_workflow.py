@@ -289,7 +289,7 @@ def test_the_actions_are_pinned_to_commits_of_the_versions_ci_uses() -> None:
     assert len(re.findall(r"uses: ", text)) == len(re.findall(r"uses: \S+@[0-9a-f]{40} # v", text))
     _pins_follow(ci)
     assert pinned["pypa/gh-action-pypi-publish"].startswith("v1.")  # its documented release/v1 line
-    assert set(pinned) - set(ci) == {"actions/download-artifact", "pypa/gh-action-pypi-publish"}
+    assert set(pinned) - set(ci) == {"pypa/gh-action-pypi-publish"}  # ci.yml downloads the coverage halves
     nvmrc = (ROOT / ".nvmrc").read_text(encoding="utf-8").strip()
     for job in _jobs().values():
         for step in job["steps"]:
