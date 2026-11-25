@@ -31,14 +31,9 @@ from ordnung.db.store import Store
 from ordnung.models import ContractComputation, Party, RegionSuggestion, Suggestion
 from ordnung.rules import normalize_region
 from ordnung.rules.calendar_de import REGION_NAMES
-from ordnung.rules.deadlines import (
-    REGION_EARLIER,
-    REGION_UNKNOWN,
-    RuleContext,
-    compute_due,
-    waits_for_sender_land,
-)
+from ordnung.rules.deadlines import REGION_EARLIER, REGION_UNKNOWN, RuleContext, waits_for_sender_land
 from ordnung.rules.delivery import LAND_DAYS_UNCONFIRMED, LAND_EMAIL_UNCONFIRMED
+from ordnung.rules.due import compute_due
 from ordnung.secretary import sender_land
 from ordnung.secretary.sender_land import (
     LETTERS_LOOKED_AT,

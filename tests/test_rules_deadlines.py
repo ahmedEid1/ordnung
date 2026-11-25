@@ -31,8 +31,6 @@ from ordnung.rules.deadlines import (
     PRIVATE_SENDER_DATED_WARNING,
     PRIVATE_SENDER_WARNING,
     RuleContext,
-    compute_due,
-    compute_one_year_fallback,
     from_arrival,
     older_matter_note,
     older_matter_switch,
@@ -42,6 +40,7 @@ from ordnung.rules.deadlines import (
     sending_time_passed,
     statute_rule,
 )
+from ordnung.rules.due import compute_due, compute_one_year_fallback
 
 D = date.fromisoformat
 TODAY = D("2026-09-25")

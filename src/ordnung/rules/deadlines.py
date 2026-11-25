@@ -940,7 +940,7 @@ def _resolve_anchor(
 
 
 def from_arrival(spec: DateSpec, ctx: RuleContext) -> DateSpec:
-    """The period :func:`compute_due` counts: without deemed delivery when the sender is no authority.
+    """The period :func:`~ordnung.rules.due.compute_due` counts: without deemed delivery when the sender is no authority.
 
     For ``ctx.private_sender`` (and a relative period whose letter names none of the remedy statutes,
     which only authorities' decisions and courts' orders have, nor a court rule its kind of letter gives
@@ -953,7 +953,7 @@ def from_arrival(spec: DateSpec, ctx: RuleContext) -> DateSpec:
     from there), so its arrival day is never asked for. Without a confirmed arrival day a period from
     arrival runs from the letter's date, never later than with deemed delivery; a confirmed one after
     the day a letter usually counts as delivered does not move it later either when the sender may be a
-    public body after all (``private_sender_late_arrival`` in :func:`compute_due`). Words
+    public body after all (``private_sender_late_arrival`` in :func:`~ordnung.rules.due.compute_due`). Words
     alone never bring deemed delivery back: counted from arrival, the date is never later than with it.
     Anything else is returned unchanged (the same object), so callers can tell whether it applied
     (and by the anchor, which of the two).
@@ -1247,7 +1247,7 @@ def _period(spec: DateSpec) -> tuple[int, PeriodUnit] | str:
 
 def period_problem(spec: DateSpec) -> str | None:
     """Why a relative period cannot be computed at all (its length unreadable or implausible), else ``None``:
-    then :func:`compute_due` gives no date and applies no other rule."""
+    then :func:`~ordnung.rules.due.compute_due` gives no date and applies no other rule."""
     found = _period(spec)
     return found if isinstance(found, str) else None
 
@@ -1620,89 +1620,3 @@ def _compute_relative(
     end = _end_clause(raw_end, due, place, safe=safe, backward=backward and spec.nature != "notice")
     summary = due_sentence(lead, period, relation, end)
     return _receipt(trace, ctx, due=due, summary=summary, send_by=send_by, safe_date=safe, region=place)
-
-
-def compute_due(
-    spec: DateSpec, ctx: RuleContext, *, postal_buffer_days: int = POSTAL_BUFFER_DAYS
-) -> ComputationReceipt:
-    """Compute the date a :class:`DateSpec` describes, with steps, citations and a plain summary.
-
-    * ``none`` → no date.
-    * ``fixed`` → the date as written; moved to the next business day only when
-      ``shift_rule == "next_business_day"`` (never for appointments or notice deadlines).
-    * ``relative`` → anchor (document date, deemed delivery, confirmed receipt, explicit date or
-      today) → optional deemed delivery → period → shift for objection/payment/declaration
-      deadlines (unless ``shift_rule == "none"``); notice deadlines never shift but get a safe date.
-      A negative ``amount`` counts backwards ("2 weeks before …"); such a deadline never moves to a
-      later day either (it gets a safe date instead).
-
-    ``send_by`` is set for objection, payment, declaration and notice deadlines: the due date minus
-    ``postal_buffer_days`` business days (one business day for payments by bank transfer), never
-    before ``ctx.today``; ``None`` if the due date has passed. Periods longer than
-    :data:`MAX_PERIOD` and dates outside the calendar give a "no date" receipt, never an exception.
-    """
-    trace = Trace()
-    if spec.type == "none":
-        return _receipt(trace, ctx, due=None, summary="This letter doesn't set a date.", region=ctx.region)
-    if ctx.country != "DE":
-        trace.hard(
-            f"Ordnung only knows German rules; this date was computed as if the letter were German ({ctx.country})."
-        )
-    try:
-        _court_notes(trace, spec, ctx)
-        special = routing.special_rule(
-            spec, ctx.letter_kind, authority=ctx.delivery_scope is not None or ctx.court
-        )
-        if special is not None:
-            # the letter rules build on this module's receipts, so they are imported where needed
-            from ordnung.rules.letters import compute_letter_date
-
-            return compute_letter_date(special, spec, ctx, trace, postal_buffer_days)
-        if spec.type == "fixed":
-            return _compute_fixed(spec, ctx, trace, postal_buffer_days)
-        return _compute_relative(spec, ctx, trace, postal_buffer_days)
-    except (OverflowError, ValueError):  # a misread date or period near the ends of the calendar
-        return _no_date(Trace(), ctx, "The dates in the letter are out of range — please check them.")
-
-
-def compute_one_year_fallback(spec: DateSpec, ctx: RuleContext) -> ComputationReceipt:
-    """Outer limit if the instructions on how to object were missing or wrong (one year).
-
-    § 356 Abs. 2 AO, § 58 Abs. 2 VwGO (with § 70 Abs. 2 VwGO), § 66 Abs. 2 SGG. Counted from the same
-    delivery day as the regular deadline. Whether the instructions are really wrong is a legal
-    judgement, so the result always has ``low`` confidence and is meant to be shown only as a
-    warning. Do not use it for fines or penal orders (OWiG and StPO have no one-year rule).
-    """
-    one_year = spec.model_copy(
-        update={
-            "type": "relative",
-            "amount": 1,
-            "unit": "years",
-            "nature": "objection",
-            "shift_rule": "auto",
-            "legal_basis": None,
-            "text": "",
-        }
-    )
-    receipt = compute_due(one_year, ctx)
-    receipt.rule_ids.append("rbb_one_year")
-    receipt.steps.append(
-        ComputationStep(
-            label="One year applies only if the instructions on how to object were missing or wrong",
-            date=receipt.due_date,
-            rule_id="rbb_one_year",
-            citation=catalog.citation("rbb_one_year"),
-        )
-    )
-    receipt.warnings.insert(
-        0,
-        "Only if the instructions on how to object (Rechtsbehelfsbelehrung) were missing or wrong — "
-        "get advice before relying on this date.",
-    )
-    receipt.confidence = "low"
-    if receipt.due_date:
-        receipt.summary = (
-            f"If the instructions on how to object were missing or wrong: {receipt.summary[:1].lower()}"
-            f"{receipt.summary[1:]}"
-        )
-    return receipt

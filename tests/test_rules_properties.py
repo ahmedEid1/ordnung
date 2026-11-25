@@ -18,8 +18,9 @@ from ordnung.rules.calendar_de import (
     previous_business_day,
 )
 from ordnung.rules.contracts import compute_contract
-from ordnung.rules.deadlines import RuleContext, compute_due
+from ordnung.rules.deadlines import RuleContext
 from ordnung.rules.delivery import VWVFG_FOUR_DAY_FROM, VWVFG_OLD_PROCEDURES, deemed_delivery
+from ordnung.rules.due import compute_due
 from ordnung.rules.explain import fmt_date
 from ordnung.rules.periods import add_period, days_in_month, latest_receipt_for
 

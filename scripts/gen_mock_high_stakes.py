@@ -18,7 +18,8 @@ from datetime import date, timedelta
 from ordnung.drafts.compose import STATUTORY_OBJECTION_NOTES
 from ordnung.models import DateSpec
 from ordnung.rules import calendar_de, send_guidance
-from ordnung.rules.deadlines import RuleContext, compute_due
+from ordnung.rules.deadlines import RuleContext
+from ordnung.rules.due import compute_due
 from ordnung.rules.routing import derived_deadlines
 
 #: The mock demo's "today" (web/src/mocks/data/constants.ts) and Sam's Land.

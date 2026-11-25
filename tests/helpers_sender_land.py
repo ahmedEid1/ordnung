@@ -9,7 +9,8 @@ from typing import Any
 from helpers_secretary import TODAY, add_doc, add_item
 from ordnung.db.store import Store
 from ordnung.models import DateSpec, DocumentExtraction, ExtractedParty, Party
-from ordnung.rules.deadlines import RuleContext, compute_due
+from ordnung.rules.deadlines import RuleContext
+from ordnung.rules.due import compute_due
 
 MUNICH = "Marienplatz 8, 80331 München"
 NUREMBERG = "Hauptmarkt 18, 90403 Nürnberg"

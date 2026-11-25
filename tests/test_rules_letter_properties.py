@@ -13,7 +13,8 @@ from ordnung.rules import calendar_de, routing
 from ordnung.rules.advice import letter_advice
 from ordnung.rules.calendar_de import REGION_NAMES
 from ordnung.rules.consumer import long_withdrawal_end, withdrawal_end
-from ordnung.rules.deadlines import RuleContext, compute_due
+from ordnung.rules.deadlines import RuleContext
+from ordnung.rules.due import compute_due
 from ordnung.rules.employment import registration_deadline
 from ordnung.rules.periods import add_months, latest_receipt_for
 from ordnung.rules.tenancy import (

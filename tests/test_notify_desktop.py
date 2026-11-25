@@ -39,7 +39,8 @@ from ordnung.notify.desktop import (
     summary,
     things_due,
 )
-from ordnung.rules.deadlines import RuleContext, compute_due
+from ordnung.rules.deadlines import RuleContext
+from ordnung.rules.due import compute_due
 from ordnung.secretary import household
 from ordnung.secretary.brief import Agenda, AgendaEntry, build_agenda
 from ordnung.tick import DailyTick

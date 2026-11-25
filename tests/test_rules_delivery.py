@@ -19,7 +19,7 @@ import pytest
 from helpers_tables import check_rows
 from ordnung.models import DateSpec
 from ordnung.rules.calendar_de import REGION_NAMES
-from ordnung.rules.deadlines import RuleContext, compute_due
+from ordnung.rules.deadlines import RuleContext
 from ordnung.rules.delivery import (
     LAND_DAYS_UNCONFIRMED,
     LAND_EMAIL_UNCONFIRMED,
@@ -33,6 +33,7 @@ from ordnung.rules.delivery import (
     resolve_delivery,
     scope_for_party_kind,
 )
+from ordnung.rules.due import compute_due
 
 D = date.fromisoformat
 
