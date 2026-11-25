@@ -410,13 +410,15 @@ class PriceIncreaseWindow:
 @dataclass
 class _Rows:
     """The rows a :class:`Ledger` reads, as of one state of the database: every letter once (in the
-    trash and proof files too, by sender for the scam checks), the to-dos, contracts and parties, the scam
-    warnings the person dismissed — and, once worked out, what depends on nothing else: each letter's scam
-    warning signs and its reading, the letters the person checked, and which payment reminders took over
-    which letters' payments."""
+    trash and proof files too, in the store's order and by sender for the scam checks), the to-dos,
+    contracts and parties, the scam warnings the person dismissed — and, once worked out, what depends on
+    nothing else: each letter's scam warning signs and its reading, the letters the person checked, and
+    which payment reminders took over which letters' payments."""
 
     profile: Profile
     documents: dict[str, Document]
+    #: every letter, in the trash and proof files too, as ``Store.list_documents(include_deleted=True)`` lists them
+    every: tuple[Document, ...]
     by_party: dict[str, list[Document]]
     items: list[Item]
     contracts: list[Contract]
@@ -442,6 +444,7 @@ class _Rows:
                 documents={
                     doc.id: doc for doc in every if doc.deleted_at is None and doc.source != PROOF_SOURCE
                 },
+                every=tuple(every),
                 by_party=by_party,
                 items=store.list_items(),
                 contracts=store.list_contracts(),
@@ -771,6 +774,12 @@ class Ledger:
         if doc_id not in known:
             known[doc_id] = self.store.get_extraction(doc_id)
         return known[doc_id]
+
+    def every_letter(self) -> tuple[Document, ...]:
+        """Every letter, in the trash and proof files too, in the store's order
+        (``Store.list_documents(include_deleted=True)``), as of the rows' state of the database: read once
+        per change, not once per question."""
+        return self._rows.every
 
     def sent_drafts(self) -> list[Draft]:
         """Letters marked as sent, newest first."""

@@ -41,8 +41,10 @@ from ordnung.secretary.girocode_gate import (
     document_girocodes,
     item_girocode,
     known_iban,
+    normalize_iban,
     record_check,
     same_values,
+    scam_letter_with,
     value_grounding,
 )
 from ordnung.secretary.triggers import Ledger
@@ -976,6 +978,26 @@ def test_a_scam_letter_teaches_no_known_iban_and_marks_its_iban(store: Store) ->
     store.delete_document(scam_id)
     code = code_for(store, text_item)  # judged on its own: a first payment to that payee and IBAN
     assert isinstance(code, GiroCodeBlocked) and code.first_payment
+
+
+def test_the_scam_letter_is_found_among_the_ledgers_letters(
+    store: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The other letters asking for the IBAN are the ledger's, in the trash too: reading every letter from the
+    store again for each letter page took most of a second at 3,000 letters."""
+    party = telecom(store, ibans=[ATTACKER_IBAN])
+    scam_id, _ = letter(store, "hidden", party, iban=ATTACKER_IBAN, hidden_text=True)
+    text_id, _ = letter(store, "text-follow-up", party, iban=ATTACKER_IBAN)
+    store.update_document(scam_id, deleted_at="2026-09-27T10:00:00Z")
+    ledger = Ledger(store, TODAY)
+
+    def no_second_read(*args: object, **kwargs: object) -> None:
+        raise AssertionError("the letters were read from the store again")
+
+    monkeypatch.setattr(Store, "list_documents", no_second_read)
+    found = scam_letter_with(store, ledger, normalize_iban(ATTACKER_IBAN), text_id)
+    assert found is not None and found.id == scam_id
+    assert scam_letter_with(store, ledger, normalize_iban(ATTACKER_IBAN), scam_id) is None
 
 
 def test_a_letter_in_the_trash_makes_no_iban_known(store: Store) -> None:

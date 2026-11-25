@@ -528,11 +528,13 @@ def known_iban(ledger: Ledger, party: Party | None, iban: str, doc_id: str) -> b
 
 
 def scam_letter_with(store: Store, ledger: Ledger, iban: str, doc_id: str) -> Document | None:
-    """Another letter (in the trash too) with scam signs that asks for ``iban`` (policy point 3)."""
+    """Another letter (in the trash too) with scam signs that asks for ``iban`` (policy point 3). The letters
+    are the ledger's, which holds them all already (reading every letter from the store again took most of a
+    second per letter page at 3,000 letters)."""
     return next(
         (
             other
-            for other in store.list_documents(include_deleted=True)
+            for other in ledger.every_letter()
             if other.id != doc_id and _asks_for(other, iban) and ledger.scam_reasons(other)
         ),
         None,
