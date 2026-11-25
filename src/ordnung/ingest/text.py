@@ -407,8 +407,10 @@ INK_RENDER_SIDE = 1200
 INK_THRESHOLD = 16
 #: The least share of the ink a character draws by itself (its text alone, :func:`_text_alone`) that
 #: must show on the page for it to count as seen: a sliver of each glyph left beside a cover is no text
-#: anybody can read. Both are counted at half their box's strongest difference, so the share doesn't
-#: depend on the text's contrast (light grey text shows as much of its shape as black text).
+#: anybody can read. Its own ink is where the text alone differs by at least half its strongest
+#: difference in the box, so the share doesn't depend on the text's contrast (light grey text shows as
+#: much of its shape as black text), and each of those pixels shows where the page differs by
+#: :data:`INK_THRESHOLD` there, whatever the ground (a band's edge through the line, a photo).
 INK_SHARE = 0.5
 
 
@@ -550,17 +552,21 @@ def _shows(shown: Image.Image, expected: Image.Image, box: _Box) -> bool:
     """Whether a character's box holds ink (a difference of :data:`INK_THRESHOLD`), and at least
     :data:`INK_SHARE` of the ink its text draws by itself there (all of it where that is none: text that
     only shows against what lies under it). ``shown`` and ``expected`` are differences
-    (:func:`_difference`), each counted at half its strongest one in the box (:data:`INK_SHARE`)."""
+    (:func:`_difference`). The ink its text draws by itself is where ``expected`` is at least half its
+    strongest in the box (so the share doesn't depend on the text's contrast), and a pixel of it shows
+    where ``shown`` is ink (:data:`INK_THRESHOLD`) there: never measured against the strongest the page
+    shows, so text whose ground changes inside its line (a band's edge, a photo) is judged pixel by
+    pixel, while a cover or a sliver still leaves its pixels without ink."""
     seen = shown.crop(box)
-    strongest = _strongest(seen)
-    if strongest < INK_THRESHOLD:
+    if _strongest(seen) < INK_THRESHOLD:
         return False
     own = expected.crop(box)
     own_strongest = _strongest(own)
     if own_strongest < INK_THRESHOLD:
         return True
-    count = sum(seen.histogram()[max(INK_THRESHOLD, (strongest + 1) // 2) :])
-    return count >= INK_SHARE * sum(own.histogram()[(own_strongest + 1) // 2 :])
+    core = own.point([255 if value >= (own_strongest + 1) // 2 else 0 for value in range(256)])
+    count = ImageChops.darker(core, _mask(seen)).histogram()[255]
+    return count >= INK_SHARE * core.histogram()[255]
 
 
 def _strongest(difference: Image.Image) -> int:

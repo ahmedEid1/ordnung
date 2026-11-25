@@ -725,6 +725,17 @@ INKED = {
     "drawn twice, a third of a point apart": _UNSEEN + b" 1 0 0 1 0.3 0 cm " + _UNSEEN,
     "with a visible line drawn over it": _UNSEEN
     + b" BT /F1 12 Tf 72 705 Td (Lyra Bau Lyra Bau Lyra Bau) Tj ET",
+    # Black text whose ground changes inside its glyphs (a coloured band's top edge runs through the
+    # line, 4 or 6 pt above the baseline): each glyph shows less contrast below the edge than above it,
+    # and all of it is readable.
+    "over a grey band whose edge runs 6 pt above the baseline": b"0.392 g 50 650 450 56 re f 0 g " + _UNSEEN,
+    "over a grey band whose edge runs 4 pt above the baseline": b"0.392 g 50 650 450 54 re f 0 g " + _UNSEEN,
+    "over a blue band whose edge runs 6 pt above the baseline": b"0 0.3 0.9 rg 50 650 450 56 re f 0 g "
+    + _UNSEEN,
+    "over a blue band whose edge runs 4 pt above the baseline": b"0 0.3 0.9 rg 50 650 450 54 re f 0 g "
+    + _UNSEEN,
+    "over two dark bands that meet inside the line": b"0.157 g 50 704 450 40 re f 0.275 g 50 650 450 54 re f"
+    b" 0 g " + _UNSEEN,
 }
 
 
@@ -813,7 +824,14 @@ def test_text_drawn_invisibly_on_a_turned_page_is_hidden_text(tmp_path: Path, pa
 
 @pytest.mark.parametrize("page", [name for name in PAGES if name != "upright"])
 @pytest.mark.parametrize(
-    "construction", ["white on a dark box", "mid grey", "light grey", "inside a form XObject"]
+    "construction",
+    [
+        "white on a dark box",
+        "mid grey",
+        "light grey",
+        "inside a form XObject",
+        "over a grey band whose edge runs 6 pt above the baseline",
+    ],
 )
 def test_text_with_ink_on_a_turned_page_stays_page_text(tmp_path: Path, construction: str, page: str) -> None:
     _, result = _read(tmp_path, _raw_pdf(INKED[construction], PAGES[page]))
