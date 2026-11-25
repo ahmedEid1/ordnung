@@ -71,7 +71,7 @@ class TwoComputers(RuleBasedStateMachine):
         self.b.connect()
         self.sim.settle()
         self.a.round()
-        self.kept_seen: dict[str, set[str]] = {}
+        self.kept_seen: dict[tuple[str, str, int, int], set[str]] = {}
 
     def teardown(self) -> None:
         self.a.close()
@@ -185,16 +185,20 @@ class TwoComputers(RuleBasedStateMachine):
     # ---- invariants ---------------------------------------------------------------------------------
 
     def _kept_notes(self, computer: Computer) -> set[str]:
+        # A kept copy's name is unique only in its own computer's ``sync/kept/`` (it is the minute on
+        # that computer's clock, and both fake clocks start at the same minute), so what was read is
+        # remembered per computer and per file (name, size, time), never by the name alone: the other
+        # computer's copy of the same name must not stand in for this one.
         found: set[str] = set()
         for path in computer.s.local.kept_files():
-            if path.name not in self.kept_seen:
-                target = self.tmp / "restored" / path.name
+            info = path.stat()
+            key = (computer.name, path.name, info.st_size, info.st_mtime_ns)
+            if key not in self.kept_seen:
+                target = self.tmp / "restored" / str(len(self.kept_seen))
                 restore_backup(path, PASSPHRASE, target)
                 with Store.open(Paths(target)) as copy:
-                    self.kept_seen[path.name] = {
-                        r["text"] for r in copy._conn().execute("SELECT text FROM notes")
-                    }
-            found |= self.kept_seen[path.name]
+                    self.kept_seen[key] = {r["text"] for r in copy._conn().execute("SELECT text FROM notes")}
+            found |= self.kept_seen[key]
         return found
 
     @invariant()
@@ -257,3 +261,97 @@ def test_two_computers_many_histories() -> None:
             max_examples=400, stateful_step_count=30, deadline=None, suppress_health_check=list(HealthCheck)
         ),
     )
+
+
+# ---- a history the random runs once found -----------------------------------------------------------
+
+_A, _B = 0, 1
+#: Two choices answered on both computers before either answer arrived, at the same minute on both
+#: clocks: each computer keeps a copy of its own data first (Rule K), and both copies get the same file
+#: name, each in its own computer's ``sync/kept/``. The model once read one computer's copy for the
+#: other's and reported "lost: ['note 3']" (seed 163907028463129181249818252614244187632 of
+#: test_two_computers_many_histories); note 3 was in the kept copy all along. After each step: (mode,
+#: notes, kept copies opened directly) of A, then of B; mode ``None`` at the end, where both computers
+#: reach the same epoch and their random computer ids settle which one is in use.
+_SAME_MINUTE_CHOICES = {
+    "B's copy kept first": [
+        # A: "Use Ordnung here"; B hasn't seen the claim yet, so both work at once.
+        ("use_here", {"which": _A, "older": False}, ("in_use", [], []), ("in_use", [], [])),
+        ("person_edit", {"which": _A}, ("in_use", ["note 1"], []), ("in_use", [], [])),
+        ("person_edit", {"which": _B}, ("in_use", ["note 1"], []), ("in_use", ["note 2"], [])),
+        # B sees A's claim, saves its note late and stands by: both computers show the choice.
+        ("converge", {}, ("in_use", ["note 1"], []), ("standing_by", ["note 2"], [])),
+        # Work goes on on A while the choice waits.
+        ("person_edit", {"which": _A}, ("in_use", ["note 1", "note 3"], []), ("standing_by", ["note 2"], [])),
+        # On B: keep A's Ordnung. B keeps a copy of note 2 first.
+        (
+            "choose",
+            {"which": _B, "this": False},
+            ("in_use", ["note 1", "note 3"], []),
+            ("in_use", ["note 1"], [["note 2"]]),
+        ),
+        # On A, before B's answer arrived: keep B's. A keeps a copy of notes 1 and 3 first.
+        (
+            "choose",
+            {"which": _A, "this": False},
+            ("in_use", ["note 2"], [["note 1", "note 3"]]),
+            ("in_use", ["note 1"], [["note 2"]]),
+        ),
+        # Both answers arrive; they contradict each other (checked after the loop).
+        ("converge", {}, (None, ["note 2"], [["note 1", "note 3"]]), (None, ["note 1"], [["note 2"]])),
+    ],
+    "A's copy kept first": [
+        ("use_here", {"which": _A, "older": False}, ("in_use", [], []), ("in_use", [], [])),
+        ("converge", {}, ("in_use", [], []), ("standing_by", [], [])),
+        ("use_here", {"which": _B, "older": False}, ("in_use", [], []), ("in_use", [], [])),
+        ("person_edit", {"which": _B}, ("in_use", [], []), ("in_use", ["note 1"], [])),
+        ("person_edit", {"which": _A}, ("in_use", ["note 2"], []), ("in_use", ["note 1"], [])),
+        ("converge", {}, ("standing_by", ["note 2"], []), ("in_use", ["note 1"], [])),
+        ("person_edit", {"which": _B}, ("standing_by", ["note 2"], []), ("in_use", ["note 1", "note 3"], [])),
+        (
+            "choose",
+            {"which": _A, "this": False},
+            ("in_use", ["note 1"], [["note 2"]]),
+            ("in_use", ["note 1", "note 3"], []),
+        ),
+        (
+            "choose",
+            {"which": _B, "this": False},
+            ("in_use", ["note 1"], [["note 2"]]),
+            ("in_use", ["note 2"], [["note 1", "note 3"]]),
+        ),
+        ("converge", {}, (None, ["note 1"], [["note 2"]]), (None, ["note 2"], [["note 1", "note 3"]])),
+    ],
+}
+
+
+def _opened(computer: Computer) -> list[list[str]]:
+    """The notes in each of ``computer``'s kept copies, each opened afresh (nothing remembered)."""
+    found = []
+    for path in computer.s.local.kept_files():
+        target = Path(tempfile.mkdtemp(dir=computer.root)) / "restored"
+        restore_backup(path, PASSPHRASE, target)
+        with Store.open(Paths(target)) as copy:
+            found.append(sorted(r["text"] for r in copy._conn().execute("SELECT text FROM notes")))
+    return found
+
+
+@pytest.mark.parametrize("history", list(_SAME_MINUTE_CHOICES))
+def test_kept_copies_of_the_same_minute_on_both_computers_are_each_counted(history: str) -> None:
+    model = TwoComputers()
+    try:
+        for number, (rule_name, args, want_a, want_b) in enumerate(_SAME_MINUTE_CHOICES[history], 1):
+            getattr(model, rule_name)(**args)
+            for computer, want in ((model.a, want_a), (model.b, want_b)):
+                got = (computer.mode if want[0] else None, sorted(computer.notes()), _opened(computer))
+                assert got == want, f"step {number} ({rule_name}) on {computer.name}"
+            model.nothing_lost()
+        # Both kept copies have one name, each in its own computer's folder.
+        names = [[path.name for path in c.s.local.kept_files()] for c in (model.a, model.b)]
+        assert names[0] == names[1] and len(names[0]) == 1
+        # The answers contradict each other: one computer is in use and puts the choice to the person again.
+        assert sorted((model.a.mode, model.b.mode)) == ["in_use", "standing_by"]
+        in_use = model.a if model.a.mode == "in_use" else model.b
+        assert isinstance(engine_module.decide(in_use.s.local_view(in_use.db), in_use.s.scan()), Choice)
+    finally:
+        model.teardown()
