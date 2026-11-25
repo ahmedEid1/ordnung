@@ -1,6 +1,7 @@
 import { Play, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { TOUR_STEPS } from "@/features/tour/steps";
+import { canResumeAt } from "@/features/tour/tourMachine";
 import { useTourController } from "@/features/tour/useTourController";
 import { FOOTER_ACTION, SettingsCard } from "./SettingsCard";
 
@@ -14,8 +15,8 @@ export function TourCard() {
   if (!tour.demo || !tour.state) return null;
   const step = TOUR_STEPS[tour.state.step] ?? TOUR_STEPS[0]!;
   const at = tour.state.step;
-  // ended (or finished) past its first step: it can go on from there, not only from the start
-  const resumable = !tour.visible && at > 0;
+  // ended part of the way through: it can go on from there, not only from the start
+  const resumable = !tour.visible && canResumeAt(at);
   return (
     <SettingsCard
       title="Guided tour"

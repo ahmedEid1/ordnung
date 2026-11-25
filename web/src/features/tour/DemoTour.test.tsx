@@ -440,9 +440,10 @@ describe("keyboard and screen readers", () => {
     await waitFor(() => expect(within(back).getByRole("heading", { name: "Ask anything" })).toHaveFocus());
   });
 
-  it("End the tour at its first step: the toast promises only a restart (there is no step to resume at)", async () => {
+  // at the first step there is nothing to resume; at the last, Settings counts it as finished
+  it.each([0, 3])("End the tour at step %i: the toast promises only a restart (Settings offers no Resume there)", async (step) => {
     const { srv } = useMockApi();
-    srv.db.state.tour = { active: true, step: 0, completed: false };
+    srv.db.state.tour = { active: true, step, completed: false };
     viewport(1440, 900);
     renderWithProviders(
       <>
@@ -531,7 +532,9 @@ describe("restarting the tour", () => {
       { route: "/settings?section=data" },
     );
     const card = (await screen.findByRole("heading", { level: 3, name: "Guided tour" })).closest("section") as HTMLElement;
-    expect(within(card).getByTestId("tour-status")).toHaveTextContent("Hidden right now, at step 4 of 4: Your year ahead.");
+    // completed at the last step (a tour finished on 0.4.0, or ended there): finished, nothing to resume
+    expect(within(card).getByTestId("tour-status")).toHaveTextContent("Hidden right now — restarting opens it at step 1.");
+    expect(within(card).queryByRole("button", { name: /^Resume/ })).toBeNull();
     fireEvent.click(within(card).getByRole("button", { name: "Restart the demo tour" }));
     const tour = await tourRegion();
     const title = within(tour).getByRole("heading", { name: "You have new mail" });

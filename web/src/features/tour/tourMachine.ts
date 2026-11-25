@@ -28,6 +28,15 @@ const clamp = (n: number, total: number) => Math.max(0, Math.min(total - 1, Math
  */
 const FINISHED: TourState = { active: false, step: 0, completed: true };
 
+/**
+ * Whether a hidden tour can be resumed at `step`: past the first step (there it only restarts) and short of the
+ * last. A tour finished before Finish went back to step 0 is stored completed at its last step, and an ended one
+ * looks the same: both count as finished, not as a fourth step to resume.
+ */
+export function canResumeAt(step: number, total = TOUR_STEPS.length): boolean {
+  return step > 0 && step < total - 1;
+}
+
 /** Repair a state from the server (step out of range, active and completed at once). */
 export function normalizeTour(s: TourState, total = TOUR_STEPS.length): TourState {
   const step = clamp(s.step, total);

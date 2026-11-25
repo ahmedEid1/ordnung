@@ -73,7 +73,7 @@ const jobKey = (ev: JobProgressEvent) => ev.doc_id ?? ev.job_id ?? "job";
 /** How a job's `waiting_reason` starts while its letter waits for Claude (`WAITING_FOR_CLAUDE` in `ingest/worker.py`). */
 export const WAITING_FOR_CLAUDE = "Waiting for Claude";
 
-/** How a letter's failure ends when the `claude` program itself failed (`CHECK_CLAUDE` in `llm/base.py`). */
+/** How a letter's failure ends when the `claude` program ended without an answer (`CHECK_CLAUDE` in `llm/base.py`). */
 export const CHECK_CLAUDE = "Run `ordnung doctor --probe` to check Claude.";
 
 /**

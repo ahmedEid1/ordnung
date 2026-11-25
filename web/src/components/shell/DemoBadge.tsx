@@ -4,6 +4,7 @@ import { formatDate } from "@/lib/format";
 import { useHealth } from "@/api/hooks";
 import { Button } from "@/components/ui/Button";
 import { Popover } from "@/components/ui/Popover";
+import { canResumeAt } from "@/features/tour/tourMachine";
 import { useTourController } from "@/features/tour/useTourController";
 
 const ABOUT = "You're exploring Sam Rivera's sample life. Every letter is fictional and today's date is simulated, so deadlines look the same whenever you visit.";
@@ -22,7 +23,7 @@ export function DemoBadge({ compact, short, className }: { compact?: boolean; sh
   const date = formatDate(data.simulated_today ?? data.today, { style: "medium" });
   const label = `Demo · ${date}`;
   // hidden part of the way through: it can go on at that step
-  const resumeAt = tour.demo && tour.state && !tour.visible && tour.state.step > 0 ? tour.state.step : null;
+  const resumeAt = tour.demo && tour.state && !tour.visible && canResumeAt(tour.state.step) ? tour.state.step : null;
   return (
     <Popover
       label="About the demo"

@@ -11,7 +11,7 @@ import { TOAST_LIFT_VAR, toast } from "@/components/ui/Toast";
 import { useIsTabletUp, useLocalStorage, useMediaQuery } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { MORE_TO_TRY, TOUR_DOCK_ID, TOUR_STEPS, onStepRoute, stepCopy, type TourFacts, type TourStep } from "./steps";
-import type { TourEvent } from "./tourMachine";
+import { canResumeAt, type TourEvent } from "./tourMachine";
 import { onTourRestart, useTourController } from "./useTourController";
 import { spotlitElement, useSpotlight, type SpotRect } from "./useSpotlight";
 import { useNewMailIdeas } from "./newMail";
@@ -593,8 +593,8 @@ export function DemoTour() {
     toast({
       title: "Tour hidden",
       // Settings exists at every width (the top bar's Demo badge doesn't fit below 360 px); it offers Resume
-      // only past the first step
-      description: at > 0 ? "You can resume or restart it any time in Settings → Data." : "You can restart it any time in Settings → Data.",
+      // only between the first and the last step
+      description: canResumeAt(at) ? "You can resume or restart it any time in Settings → Data." : "You can restart it any time in Settings → Data.",
       // back where it was
       undo: () => send({ type: "restart", step: at }),
     });
