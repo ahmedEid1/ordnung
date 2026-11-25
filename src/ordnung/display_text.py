@@ -13,7 +13,9 @@ _SEPARATORS = re.compile("[\u2028\u2029]")
 #: The format characters (Unicode category Cf) that stay: the zero-width non-joiner and joiner, which
 #: Persian and Indic spelling and emoji sequences need, and which reorder nothing. Every other one goes:
 #: a bidirectional override or isolate reorders a title on screen, and an invisible space, joiner, tag or
-#: byte order mark splits or marks a word no reader sees split or marked.
+#: byte order mark splits or marks a word no reader sees split or marked. The tag characters go too, so
+#: the subdivision flags (England, Scotland, Wales) show as a plain black flag: tags can spell out a
+#: whole hidden text after one, and no name or address needs them.
 _KEPT_FORMATS = frozenset("\u200c\u200d")
 
 
