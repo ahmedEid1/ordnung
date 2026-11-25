@@ -121,7 +121,7 @@ src/ordnung/            (the main modules; the package itself is the complete li
   db/ (migrations/NNNN_*.sql, migrate.py, store.py)
   llm/ (base.py, claude_cli.py, replay.py, fake.py, runtime.py, schemas.py, prompts/*.md)
   rules/ (calendar_de.py, periods.py, delivery.py, deadlines.py, contracts.py, catalog.py, send.py,
-          routing.py, letters.py, advice.py, explain.py, consumer.py, employment.py, tenancy.py)
+          due.py, routing.py, letters.py, advice.py, explain.py, consumer.py, employment.py, tenancy.py)
   ingest/ (intake.py, text.py, transcribe.py, extract.py, verify.py, link.py, plan.py, pipeline.py, worker.py,
            held.py, watcher.py, attachments.py, own_files.py, expansion.py, normalize.py, ocr.py)
   secretary/ (triggers.py, review.py, brief.py, week.py, waiting.py, scam.py, calls.py, girocode_gate.py,

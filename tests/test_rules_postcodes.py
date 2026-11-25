@@ -23,10 +23,10 @@ from ordnung.rules.deadlines import (
     REGION_UNKNOWN,
     LandWait,
     RuleContext,
-    compute_due,
     waits_for_sender_land,
 )
 from ordnung.rules.delivery import LAND_DAYS_UNCONFIRMED, LAND_EMAIL_UNCONFIRMED
+from ordnung.rules.due import compute_due
 from ordnung.rules.postcodes import (
     TABLE_PATH,
     Home,

@@ -24,7 +24,8 @@ from ordnung.calendar.ics import (
 )
 from ordnung.db.store import NotFoundError, Store
 from ordnung.models import ComputationReceipt, DateSpec, Evidence, Item
-from ordnung.rules.deadlines import RuleContext, compute_due, older_matter_note
+from ordnung.rules.deadlines import RuleContext, older_matter_note
+from ordnung.rules.due import compute_due
 from ordnung.rules.explain import fmt_date
 from ordnung.secretary import household
 from ordnung.secretary.triggers import run_triggers

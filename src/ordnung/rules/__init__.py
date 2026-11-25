@@ -20,7 +20,7 @@ from ordnung.rules.calendar_de import (
 )
 from ordnung.rules.catalog import LAST_CHECKED, RULES, get_rule, list_rules
 from ordnung.rules.contracts import compute_contract, price_increase_window, regime_for
-from ordnung.rules.deadlines import RentDue, RuleContext, compute_due, compute_one_year_fallback
+from ordnung.rules.deadlines import RentDue, RuleContext
 from ordnung.rules.delivery import (
     DeliveryChannel,
     DeliveryScope,
@@ -28,6 +28,7 @@ from ordnung.rules.delivery import (
     is_private_sender,
     scope_for_party_kind,
 )
+from ordnung.rules.due import compute_due, compute_one_year_fallback
 from ordnung.rules.periods import PeriodMode, add_months, add_period
 from ordnung.rules.send import send_guidance
 

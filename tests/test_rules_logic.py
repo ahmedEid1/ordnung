@@ -17,7 +17,8 @@ from helpers_tables import check_rows
 from ordnung.models import ContractTerms, DateSpec
 from ordnung.rules import catalog
 from ordnung.rules.contracts import compute_contract
-from ordnung.rules.deadlines import RuleContext, compute_due
+from ordnung.rules.deadlines import RuleContext
+from ordnung.rules.due import compute_due
 
 D = date.fromisoformat
 

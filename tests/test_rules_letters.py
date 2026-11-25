@@ -48,8 +48,8 @@ from ordnung.rules.deadlines import (
     ASSUMED_RECEIPT_WARNING,
     NEEDS_DELIVERY_WARNING,
     RuleContext,
-    compute_due,
 )
+from ordnung.rules.due import compute_due
 from ordnung.rules.employment import registration_deadline
 from ordnung.rules.explain import fmt_date
 from ordnung.rules.letters import LATE_NOTICE_OBJECTION, NEXT_END_WARNING

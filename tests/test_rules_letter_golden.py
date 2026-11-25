@@ -21,7 +21,8 @@ import pytest
 from ordnung.models import DateSpec
 from ordnung.rules.advice import billing_period
 from ordnung.rules.consumer import long_withdrawal_end
-from ordnung.rules.deadlines import RuleContext, compute_due
+from ordnung.rules.deadlines import RuleContext
+from ordnung.rules.due import compute_due
 from ordnung.rules.tenancy import statement_check
 
 GOLDEN = Path(__file__).parent / "golden" / "letter_cases.json"

@@ -67,7 +67,8 @@ from ordnung.models import (
     Profile,
 )
 from ordnung.phone import scope as phone_scope
-from ordnung.rules.deadlines import RuleContext, compute_due
+from ordnung.rules.deadlines import RuleContext
+from ordnung.rules.due import compute_due
 from ordnung.rules.postcodes import Home, suggest_land_why
 from ordnung.secretary import moving, triggers
 from ordnung.secretary.triggers import Ledger, letter_day, tax_documents

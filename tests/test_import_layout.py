@@ -15,13 +15,11 @@ import pytest
 from helpers_tables import check_rows
 from ordnung.config import PACKAGE_DIR
 
-#: Every circle of modules that import each other, with why it is there. A new import that closes a circle
-#: fails the test below; a refactor that ends one takes it out of this list.
-ALLOWED_CYCLES: dict[frozenset[str], str] = {
-    frozenset(
-        {"ordnung.rules.deadlines", "ordnung.rules.letters"}
-    ): "the letter rules build on the deadline receipts; deadlines imports them lazily where needed",
-}
+#: Every circle of modules that import each other, with why it is there: none is left. A new import that
+#: closes a circle fails the test below, an import inside a function too. Rather than adding the circle
+#: here, move the piece both sides need into a module below them, or the code that needs both into one
+#: above (as ``rules/due.py`` sits above the deadline pipeline and the letter rules).
+ALLOWED_CYCLES: dict[frozenset[str], str] = {}
 
 #: (module, modules that importing it must not load): a low layer stays light.
 STAYS_LIGHT = [
@@ -158,8 +156,11 @@ def _cycles(graph: Graph) -> set[frozenset[str]]:
 def test_the_only_import_cycles_are_the_named_ones(graph: Graph) -> None:
     """A layer never imports a higher one, at import or lazily: the circles left are the named ones."""
     assert len(graph) > 100
-    cycles = _cycles(graph)
-    assert {tuple(sorted(c)) for c in cycles} == {tuple(sorted(c)) for c in ALLOWED_CYCLES}
+    found = {tuple(sorted(c)) for c in _cycles(graph)}
+    named = {tuple(sorted(c)) for c in ALLOWED_CYCLES}
+    assert found == named, (
+        f"new circles: {sorted(found - named)}; ended, to take off the list: {sorted(named - found)}"
+    )
 
 
 def _loaded_by(graph: Graph, module: str) -> set[str]:
