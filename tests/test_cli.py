@@ -630,7 +630,16 @@ def test_serve_holds_the_folder_and_writes_server_json(
 
     def fake_run(self: uvicorn.Server) -> None:
         seen["info"] = read_server_info(data_dir)
-        seen["app"], seen["loop"] = self.config.app, self.config.loop
+        seen["app"], seen["loop"], seen["ws"] = self.config.app, self.config.loop, self.config.ws
+        logged = logging.getLogger("uvicorn.error")
+        seen["logged"] = [
+            bool(logged.filter(logging.makeLogRecord({"msg": message})))
+            for message in (
+                "Unsupported upgrade request.",
+                "No supported WebSocket library detected. Please use \"pip install 'uvicorn[standard]'\".",
+                "Something else went wrong.",
+            )
+        ]
         with pytest.raises(DataDirLocked):
             DataDirLock(data_dir).acquire()
 
@@ -644,6 +653,9 @@ def test_serve_holds_the_folder_and_writes_server_json(
     assert info.login_url in result.output.replace("\n", "").replace("│", "").replace(" ", "")
     assert seen["app"] == {"token": info.token, "demo": False}
     assert seen["loop"] == "asyncio"  # not uvloop: it runs Python in the child it forks to start `claude`
+    assert seen["ws"] == "none"  # the app has no WebSocket: an upgrade request is a plain request
+    # nor a log line per upgrade request (one advising uvicorn[standard]); other warnings are kept
+    assert seen["logged"] == [False, False, True]
     assert not (data_dir / "server.json").exists()
     DataDirLock(data_dir).acquire().release()
 
