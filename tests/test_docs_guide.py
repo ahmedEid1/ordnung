@@ -99,10 +99,11 @@ def test_the_guide_s_ocr_values_are_the_code_s() -> None:
 
 
 def test_the_guide_says_how_to_note_a_call() -> None:
-    """The tour's *Also* names call notes as the app does (*Note a call* in a drawer and on an overdue entry under
+    """*What it does*, its *Also* list, names call notes as the app does (*Note a call* in a drawer and on an overdue entry under
     *Waiting for*, the form's fields, *They kept it*), and says no AI reads them, as the privacy page does."""
-    also = _flat(_section("A tour").split("**Also:**", 1)[1])
-    item = also.split("*call notes* — ", 1)[1].split(" · ", 1)[0]
+    also = _section("What it does").split("**Also:**", 1)[1]
+    # one bullet per thing it also does: the call notes' bullet, up to the next one
+    item = _flat(also.split("- *call notes* — ", 1)[1].split("\n- ", 1)[0])
     assert item.startswith(
         "*Note a call* in a person's or an organisation's drawer, or on an overdue reply or promise under "
         "*Waiting for*,"

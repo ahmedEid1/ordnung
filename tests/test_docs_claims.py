@@ -211,6 +211,12 @@ def _section(text: str, heading: str) -> str:
     return text.split(f"\n{heading}\n", 1)[1].split("\n## ", 1)[0]
 
 
+def _command_row(command: str) -> str:
+    """The row of the guide's table of commands (in *Install and start*) that says what ``command`` does."""
+    (row,) = [line for line in _guide().splitlines() if line.startswith(f"| `{command}` | ")]
+    return row
+
+
 def _install_part(heading: str) -> str:
     """The guide's Install and run, its ``### heading`` (``Without a terminal``) up to the next ``###`` heading."""
     install = _section(_guide(), "## Install and run")
@@ -995,7 +1001,7 @@ def test_the_guide_installs_claude_code_as_anthropic_s_setup_page_does() -> None
 
 def test_the_guide_lists_every_template_letter() -> None:
     """The guide's *template letters* list has one entry per template the composer offers."""
-    listed = _tour().split("**Also:**", 1)[1].split("*template letters* — ", 1)[1].split(" · ", 1)[0]
+    listed = _tour().split("**Also:**", 1)[1].split("- *template letters* — ", 1)[1].split("\n- ", 1)[0]
     entries = [entry.strip() for entry in listed.replace("\n", " ").split(",")]
     assert len(entries) == len(TEMPLATES) == 8
 
@@ -1032,8 +1038,9 @@ def _images(markdown: str) -> list[tuple[str, str | None]]:
 
 
 def _tour() -> str:
-    """The guide's tour: its pictures with their captions and footnotes, and the *Also* list."""
-    return _section(_guide(), "## A tour")
+    """The guide's *What it does* (the tour): its pictures with their captions and footnotes, and the *Also*
+    list."""
+    return _section(_guide(), "## What it does")
 
 
 def test_the_tour_s_pictures_from_the_real_app_are_2880_by_1800_pngs() -> None:
@@ -2034,7 +2041,7 @@ def test_doctor_checks_the_last_backup_and_disk_encryption_as_the_guide_says(
     assert windows is not None
     assert (windows.status, windows.detail, windows.fix) == ("info", doctor.WINDOWS_ENCRYPTION, None)
     assert "BitLocker or Device encryption" in windows.detail
-    (line,) = [line for line in _guide().splitlines() if line.startswith("ordnung doctor ")]
+    line = _command_row("ordnung doctor")
     assert "your last backup" in line and "disk encryption" in line
     assert (
         "On Windows it can't check: its row there says where to see that BitLocker or Device encryption is on."
@@ -2329,7 +2336,8 @@ def _spec() -> str:
 def _moving_limitation() -> str:
     """The guide's Limitations bullet about the moving checklist."""
     (bullet,) = [part for part in _limitations().split(" - ") if "moving checklist" in part]
-    return bullet
+    # without its bold label (**Moving checklist.**): the sentence that follows says it
+    return re.sub(r"^\*\*[^*]+\*\* ", "", bullet)
 
 
 def test_the_guide_s_limitations_say_what_the_tax_year_export_scans_and_moving_checklist_can_t_do() -> None:
@@ -2515,7 +2523,7 @@ def test_the_web_app_and_the_guide_know_how_a_letter_says_to_check_claude() -> N
     sse = (ROOT / "web" / "src" / "api" / "sse.ts").read_text(encoding="utf-8")
     assert f"export const CHECK_CLAUDE = {json.dumps(CHECK_CLAUDE)};" in sse
     assert "`ordnung doctor --probe`" in CHECK_CLAUDE
-    (line,) = [line for line in _guide().splitlines() if line.startswith("ordnung doctor ")]
+    line = _command_row("ordnung doctor")
     assert "(--probe: also one tiny live call to Claude)" in line
 
 
@@ -2621,7 +2629,7 @@ def test_serve_points_to_the_shortcut_as_the_spec_says() -> None:
 
 
 def test_the_guide_says_how_to_open_ordnung_without_a_terminal() -> None:
-    """The guide's "Also:" names the shortcut, and its Install has `ordnung shortcut` in the commands and a
+    """The guide's "Also:" names the shortcut, and its Install has `ordnung shortcut` in its table of commands and a
     paragraph on each system's launcher, what a click does in both states, the recorded PATH, --remove, the Linux
     terminal, the Mac's first launch and Windows' opt-out, and what CI doesn't test."""
     also = _flat(_tour().split("**Also:**", 1)[1])
@@ -2630,10 +2638,13 @@ def test_the_guide_says_how_to_open_ordnung_without_a_terminal() -> None:
         "without a terminal"
     ) in also
     commands = _section(_guide(), "## Install and run").split("```bash", 1)[1].split("```", 1)[0]
-    assert (
-        "ordnung serve                   # the web app: opens your browser, signed in\n"
-        "ordnung shortcut                # Ordnung in your app menu: opens it signed in, no terminal needed\n"
-    ) in commands
+    assert re.search(r"^ordnung serve +# the web app: opens your browser, signed in$", commands, re.M)
+    assert _command_row("ordnung serve").startswith(
+        "| `ordnung serve` | The web app: opens your browser, signed in |"
+    )
+    assert _command_row("ordnung shortcut").startswith(
+        "| `ordnung shortcut` | Ordnung in your app menu: opens it signed in, no terminal needed"
+    )
     text = _without_a_terminal()
     for words in (
         "`ordnung shortcut` puts Ordnung where your computer keeps its apps: an entry in your app menu on Linux, "
@@ -4015,7 +4026,7 @@ def test_text_in_pictures_is_documented_as_optional_and_off_switchable() -> None
     assert "([how](privacy.md#words-in-pictures-optional))" in pictures
     for sentence in GUIDE_PICTURES:
         assert sentence in pictures, sentence
-    (line,) = [line for line in _guide().splitlines() if line.startswith("ordnung doctor ")]
+    line = _command_row("ordnung doctor")
     assert "text in pictures" in line
     install = _flat(_section(_guide(), "## Install and run").split("```", 1)[0])
     assert "CI tests Ordnung on Linux, with a real Tesseract for text in pictures." in install
