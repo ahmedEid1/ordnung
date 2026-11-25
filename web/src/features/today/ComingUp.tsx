@@ -14,6 +14,7 @@ import { fadeUp } from "./motion";
 import { comingUpMeta } from "./helpers";
 import { groupByWeek, isOutgoingPayment, worthASecondLook, type TodayAction } from "./selection";
 import { actionHref } from "./useTodayData";
+import { MarkedGerman } from "@/features/document/Explained";
 
 /**
  * One date: the calendar leaf, then the title (up to two lines) and what/who (up to two lines),
@@ -43,7 +44,7 @@ function Row({ action, party, forName }: { action: TodayAction; party: Party | u
         </span>
         <span className="min-w-0 flex-1">
           <span title={action.title} className="line-clamp-2 break-words text-base font-medium leading-snug text-ink">
-            {action.title}
+            <MarkedGerman text={action.title} />
           </span>
           {full ? (
             <span title={full} data-part="meta" className="mt-0.5 line-clamp-2 break-words text-sm leading-snug text-muted">

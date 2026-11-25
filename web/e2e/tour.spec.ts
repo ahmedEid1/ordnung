@@ -1,7 +1,8 @@
 /**
  * The guided demo tour (SPEC §14.10, §16): a New-mail letter is read live through the real
  * pipeline (recorded answers), the viewer shows the evidence and the objection deadline with its
- * receipt, and the tour card walks on through Idea → Ask → Timeline.
+ * receipt, and the tour card walks on through Idea → Ask → Timeline. Last, "Read all" reads the rest of New mail,
+ * and a screen reader hears the tray's one line and the recap, nothing else.
  */
 import type { Locator, Page } from "@playwright/test";
 import { apiGet, envelope, expect, expectAccessible, letterDetail, letterItem, mailLetterId, open, openMail, setTour, shownAs, test, type TourState } from "./helpers";
@@ -204,4 +205,52 @@ test("short laptops (1280×720, 1024×768): the tour is never cut off — docked
     for (const control of await tour.getByRole("button").all()) await expect(control).toBeInViewport({ ratio: 1 });
   }
   await setTour(page, null);
+});
+
+// Last: it reads what is left in New mail (the test above read the tax assessment), and later projects find those
+// letters already read, as on a retry
+test("“Read all”: a screen reader hears the tray's one line, then the recap — nothing from the corner's progress card", async ({ page }) => {
+  await setTour(page, null);
+  const unread = (await apiGet<{ opened: boolean }[]>(page, "/api/demo/mail")).filter((t) => !t.opened).length;
+  test.skip(unread < 2, "New mail was read already (a rerun on the same demo): no “Read all” to press");
+  await open(page, "/inbox");
+  // every text that any live or status region on the page takes from now on, and where it is
+  await page.evaluate(() => {
+    const said: { text: string; where: string }[] = [];
+    (window as unknown as { __said: typeof said }).__said = said;
+    const regions = "[aria-live], [role=status], [role=alert], [role=log]";
+    const seen = new WeakMap<Element, string>();
+    // what the regions already say is not news: only what changes from here on is said
+    let before = true;
+    const look = () => {
+      for (const region of document.querySelectorAll(regions)) {
+        const text = (region.textContent ?? "").replace(/\s+/g, " ").trim();
+        if (seen.get(region) === text) continue;
+        seen.set(region, text);
+        if (!text || before) continue;
+        const where = region.closest("[role=dialog]") ? "recap" : region.closest("section[aria-labelledby='new-mail-title']") ? "tray" : region.closest("[data-upload-row], [data-upload-group]") ? "corner" : "page";
+        said.push({ text, where });
+      }
+    };
+    look();
+    before = false;
+    new MutationObserver(look).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
+  });
+  const readAll = page.getByRole("region", { name: /^New mail/ }).getByRole("button", { name: `Read all ${unread}` });
+  await readAll.focus();
+  await page.keyboard.press("Enter");
+  const recap = page.getByRole("dialog", { name: /^I read / });
+  await expect(recap).toBeVisible({ timeout: 60_000 });
+  await expect(recap.getByRole("status")).not.toBeEmpty();
+  const said = await page.evaluate(() => (window as unknown as { __said: { text: string; where: string }[] }).__said);
+  // the tray's line counts every letter from the first word; the recap says what it found; nobody else speaks
+  // (the corner's card once said "Reading, step 1 of 5." and "Reading 2 letters" for a moment)
+  expect(said.length).toBeGreaterThan(0);
+  expect(said[0]).toEqual({ text: `Reading ${unread} letters`, where: "tray" });
+  for (const line of said) {
+    if (line.where === "recap") continue;
+    expect(line.where, `“${line.text}”`).toBe("tray");
+    expect(line.text).toMatch(new RegExp(`^(Reading ${unread} letters|Finished: )`));
+  }
+  expect(said.some((l) => l.where === "recap")).toBe(true);
 });

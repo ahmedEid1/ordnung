@@ -166,11 +166,16 @@
 @media (forced-colors: active) {
   .lane-bar::before { border: 1px solid CanvasText; }
   .lane-marker { background: CanvasText; }
+  /* the hatching is gone there: a dashed edge still tells a notice window from a term */
+  .lane-bar[data-kind="notice_window"]::before { border: 2px dashed CanvasText; }
 }
 
-/* Keyboard focus on a marker: a ring that follows the marker's own shape. */
+/*
+ * Keyboard focus on a marker: a ring that follows the marker's own shape. The outline is transparent,
+ * not none: forced colours drop the ring (a box-shadow) but paint that outline.
+ */
 .lane-mark:focus-visible {
-  outline: none;
+  outline: 2px solid transparent;
 }
 .lane-mark:focus-visible .lane-marker:not(.lane-mark-stack) {
   box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-accent);

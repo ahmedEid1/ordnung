@@ -18,7 +18,7 @@ export const DONE_LINGER_MS = 9000;
 const cardCls = "pointer-events-auto w-full rounded-xl border border-line bg-surface shadow-[var(--shadow-pop)] dark:border-line-strong";
 /** A text-sized card action that is still a 28 px target (as in toasts). */
 const actionCls =
-  "inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-sm font-semibold text-accent transition-[background-color] hover:bg-accent-soft disabled:opacity-60";
+  "inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-sm font-semibold text-accent transition-[background-color] hover:bg-accent-soft aria-disabled:opacity-60";
 
 /**
  * A card (or row) is about to go while focus is in it: hand focus to the next card's first control,
@@ -116,7 +116,20 @@ function UploadRow({ job, grouped }: { job: JobProgress; grouped?: boolean }) {
       {/* nothing moves while it waits (for Claude, or a usage limit's end): no stepper that looks under way */}
       {waiting ? null : (
         <div className="mt-3 px-0.5">
-          <Stepper steps={PIPELINE_STEPS} current={step} status={failed ? "error" : "active"} size="sm" labels="all" fallback="none" live label={`Reading ${name}`} />
+          <Stepper
+            steps={PIPELINE_STEPS}
+            current={step}
+            status={failed ? "error" : "active"}
+            size="sm"
+            labels="all"
+            fallback="none"
+            live
+            // which letter: "Finished." alone didn't say. No shortcut is named: Alt+N goes to the
+            // newest toast, never to this card, so "Open letter" is reached with Tab.
+            doneText={`Filed: “${name}”.`}
+            errorText={`Couldn't read “${name}”.`}
+            label={`Reading ${name}`}
+          />
         </div>
       )}
       {(done || failed) && docId ? (
@@ -125,13 +138,15 @@ function UploadRow({ job, grouped }: { job: JobProgress; grouped?: boolean }) {
             <button
               type="button"
               className={actionCls}
-              disabled={reprocess.isPending}
+              // busy: `aria-disabled`, not `disabled`, so focus stays on it (see Button's `busyProps`)
+              aria-disabled={reprocess.isPending || undefined}
               aria-busy={reprocess.isPending || undefined}
-              onClick={() =>
+              onClick={() => {
+                if (reprocess.isPending) return;
                 reprocess.mutate(docId, {
                   onSuccess: (j) => seedJob({ job_id: j.id, doc_id: docId, stage: "intake", progress: 0, status: "running" }),
-                })
-              }
+                });
+              }}
             >
               {reprocess.isPending ? <Spinner className="size-3.5" /> : <RotateCw className="size-3.5" aria-hidden />}
               Try again
@@ -256,10 +271,19 @@ function UploadGroup({ jobs }: { jobs: JobProgress[] }) {
 }
 
 // Documents whose progress is already shown in place (e.g. the Inbox's New-mail tray) — no toast.
-let hiddenDocs = new Set<string>();
+let hiddenNow: { docs: Set<string>; since: number | null } = { docs: new Set(), since: null };
 const hiddenListeners = new Set<() => void>();
 /** How many places show a document's progress: the letter's progress card and a Pay panel's GiroCode block can both. */
 const hiders = new Map<string, number>();
+/** When each hold ({@link holdNewUploadToasts}) began. */
+const holds = new Set<{ since: number }>();
+
+function publishHidden(docs: Set<string>): void {
+  const since = holds.size ? Math.min(...[...holds].map((h) => h.since)) : null;
+  if (docs === hiddenNow.docs && since === hiddenNow.since) return;
+  hiddenNow = { docs, since };
+  hiddenListeners.forEach((l) => l());
+}
 
 /**
  * Hide (or show again) the progress toast of a document while a page shows it in place. Each hide is
@@ -269,21 +293,41 @@ export function setUploadToastHidden(docId: string, hidden: boolean): void {
   const count = Math.max(0, (hiders.get(docId) ?? 0) + (hidden ? 1 : -1));
   if (count) hiders.set(docId, count);
   else hiders.delete(docId);
-  if (hiddenDocs.has(docId) === count > 0) return;
-  hiddenDocs = new Set(hiddenDocs);
-  if (count) hiddenDocs.add(docId);
-  else hiddenDocs.delete(docId);
-  hiddenListeners.forEach((l) => l());
+  if (hiddenNow.docs.has(docId) === count > 0) return;
+  const docs = new Set(hiddenNow.docs);
+  if (count) docs.add(docId);
+  else docs.delete(docId);
+  publishHidden(docs);
 }
 
-function useHiddenDocs(): Set<string> {
+/**
+ * Show no toast for letters that start being read from now on, until the returned release is called. For a page
+ * that starts letters it will show in place, while it does not know yet which documents they became (the New-mail
+ * tray, while its requests are out): their progress can arrive first, and the toast then spoke over the page for a
+ * moment. The page hides those documents ({@link setUploadToastHidden}) before it releases; any other letter started
+ * meanwhile shows its toast then.
+ */
+export function holdNewUploadToasts(): () => void {
+  const hold = { since: Date.now() };
+  holds.add(hold);
+  publishHidden(hiddenNow.docs);
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    holds.delete(hold);
+    publishHidden(hiddenNow.docs);
+  };
+}
+
+function useHidden(): typeof hiddenNow {
   return useSyncExternalStore(
     (l) => {
       hiddenListeners.add(l);
       return () => hiddenListeners.delete(l);
     },
-    () => hiddenDocs,
-    () => hiddenDocs,
+    () => hiddenNow,
+    () => hiddenNow,
   );
 }
 
@@ -295,11 +339,11 @@ function useHiddenDocs(): Set<string> {
  */
 export function UploadCenter() {
   const { jobs } = useEvents();
-  const hidden = useHiddenDocs();
+  const { docs: hiddenDocs, since: heldSince } = useHidden();
   const modal = useModalOpen();
   const { held, handlers } = useHeld();
   const list = Object.values(jobs)
-    .filter((j) => j.doc_id && !hidden.has(j.doc_id))
+    .filter((j) => j.doc_id && !hiddenDocs.has(j.doc_id) && (heldSince === null || j.startedAt < heldSince))
     .sort((a, b) => a.startedAt - b.startedAt);
   return (
     <ul aria-label="Letters being read" className="flex flex-col items-stretch gap-2" {...handlers}>

@@ -21,6 +21,7 @@ import { formatDate, formatTime, formatTotals } from "@/lib/format";
 import { useIsTabletUp } from "@/lib/hooks";
 import { cn, plural, prefersReducedMotion } from "@/lib/utils";
 import { entryDetail, entryRole, entryStatus, foldPast, isPastEntry, type MonthGroup } from "./model";
+import { MarkedGerman } from "@/features/document/Explained";
 
 export interface TimelineListProps {
   groups: MonthGroup[];
@@ -93,7 +94,7 @@ function Entry({
       <span className="min-w-0 flex-1">
         {/* phones: the whole title and who it's with, wrapped; from sm one line each (full text on hover) */}
         <span title={e.title} className={cn("block break-words text-base font-medium leading-snug sm:line-clamp-1", past ? "text-ink/70" : "text-ink")}>
-          {e.title}
+          <MarkedGerman text={e.title} />
         </span>
         <span title={meta} className="mt-0.5 block break-words text-sm leading-5 text-muted sm:truncate">
           <kind.icon className={cn("mr-1 inline size-3.5 -translate-y-px align-middle sm:hidden", TONES[kind.tone].icon, past && "opacity-60")} aria-hidden />

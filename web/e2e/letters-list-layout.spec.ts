@@ -184,6 +184,22 @@ test("composer at 320px: picking a kind brings its second step into view", async
   await expect(dialog.getByRole("heading", { name: "Step 2: Which contract?" })).toBeInViewport();
 });
 
+test("composer at 1280px: the arrow keys move through the kinds and the one focused stays in view (step 2 jumped up over it)", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await open(page, "/", undefined);
+  await page.goto("/letters?new=1");
+  const dialog = page.getByRole("dialog", { name: "New letter" });
+  const first = dialog.getByRole("radio").first();
+  await first.focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(dialog.getByRole("radio").nth(1)).toBeFocused();
+  await expect(dialog.getByRole("radio").nth(1)).toBeChecked();
+  // the radio is drawn as its card (the input itself is visually hidden): the card is what must stay in view
+  await expect(dialog.locator("label:has(input:focus)")).toBeInViewport();
+  await page.keyboard.press("ArrowDown");
+  await expect(dialog.locator("label:has(input:focus)")).toBeInViewport();
+});
+
 test("composer: an objection that isn't possible names the letter, apart from the decisions that are", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await open(page, "/", undefined);

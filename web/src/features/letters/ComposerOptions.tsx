@@ -17,6 +17,7 @@ import {
 import {
   TEMPLATES,
 } from "./templates";
+import { MarkedGerman } from "@/features/document/Explained";
 
 export interface KindOption {
   kind: DraftKind;
@@ -319,7 +320,9 @@ export function KindChooser({ kind, onPick, unavailable }: { kind: DraftKind | n
               <span className={cn("row-span-2 grid size-8 place-items-center rounded-lg", selected ? "bg-accent text-on-accent" : "bg-surface-2 text-muted", disabled && "opacity-55")}>
                 <o.icon className="size-4" aria-hidden />
               </span>
-              <span className={cn("text-[14px] font-semibold", disabled ? "text-muted" : "text-ink")}>{o.title}</span>
+              <span className={cn("text-[14px] font-semibold", disabled ? "text-muted" : "text-ink")}>
+                <MarkedGerman text={o.title} />
+              </span>
               <span className="col-start-2 text-[12.5px] leading-snug text-muted">{reason ?? o.description}</span>
               <RadioDot selected={selected} className={cn("col-start-3 row-span-2 row-start-1 sm:absolute sm:right-3 sm:top-3", disabled && "opacity-40")} />
             </label>
@@ -346,8 +349,12 @@ export function KindChooser({ kind, onPick, unavailable }: { kind: DraftKind | n
                 <t.icon className="size-3.5" aria-hidden />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-[13.5px] font-semibold leading-5 text-ink">{t.title}</span>
-                <span className="block text-[12px] leading-snug text-muted">{t.blurb}</span>
+                <span className="block text-[13.5px] font-semibold leading-5 text-ink">
+                  <MarkedGerman text={t.title} />
+                </span>
+                <span className="block text-[12px] leading-snug text-muted">
+                  <MarkedGerman text={t.blurb} />
+                </span>
               </span>
               <RadioDot selected={selected} className="mt-1" />
             </label>

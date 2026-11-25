@@ -1,1 +1,0 @@
-import{ar as e}from"./dateLabels-CEblA19e.js";function t(){return e().data?.client===`phone`}export{t};

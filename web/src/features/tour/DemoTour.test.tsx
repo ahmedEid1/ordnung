@@ -104,6 +104,8 @@ describe("the tour spotlights each page's element", () => {
     expect(screen.getByTestId("tour-spotlight")).toHaveStyle({ top: "112px", left: "252px", width: "656px", height: "236px" });
     // under the sticky top bar (z-30) and the Ask composer (z-10): it marks the page, never covers a control
     expect(screen.getByTestId("tour-spotlight").className).toContain("z-[5]");
+    // forced colours drop its ring and glow (box-shadows): an outline in the system's highlight colour marks the place
+    expect(screen.getByTestId("tour-spotlight")).toHaveClass("forced-colors:outline-2", "forced-colors:outline-solid", "forced-colors:outline-[Highlight]");
   });
 
   // the tray's swipe row ran past a ring around the whole tray

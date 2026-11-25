@@ -125,16 +125,19 @@ export function Switch({ checked, onCheckedChange, label, description, className
       aria-checked={checked}
       onClick={() => onCheckedChange(!checked)}
       className={cn(
-        "relative inline-flex h-6 w-10 shrink-0 items-center rounded-full transition-colors duration-200",
+        // the transparent border is what forced colours paint, where the track's fill is dropped (WCAG 1.4.11);
+        // the knob sits inside it, 2 px from either end as before
+        "relative inline-flex h-6 w-10 shrink-0 items-center rounded-full border-2 border-transparent transition-colors duration-200",
         checked ? "bg-accent" : "bg-faint",
         !label && className,
       )}
       {...rest}
     >
+      {/* in forced colours the knob takes the text colour, so where it sits still says on or off */}
       <span
         className={cn(
-          "inline-block size-5 rounded-full bg-white shadow-[0_1px_3px_rgb(0_0_0/0.25)] transition-transform duration-200",
-          checked ? "translate-x-[18px]" : "translate-x-0.5",
+          "inline-block size-5 rounded-full bg-white shadow-[0_1px_3px_rgb(0_0_0/0.25)] transition-transform duration-200 forced-colors:bg-[CanvasText]",
+          checked ? "translate-x-4" : "translate-x-0",
         )}
         aria-hidden
       />

@@ -62,6 +62,8 @@ export function Drawer({ open, onClose, title, eyebrow, description, headerExtra
             transition={{ type: "spring", stiffness: 380, damping: 38 }}
             className={cn(
               "absolute inset-y-0 right-0 flex w-full flex-col border-line bg-canvas shadow-[var(--shadow-pop)] outline-none sm:border-l",
+              // a very short window (400 % zoom): header, body and footer scroll as one, not the body alone in a slit
+              "[@media(max-height:30rem)]:overflow-y-auto",
               widths[size],
               className,
             )}
@@ -79,7 +81,7 @@ export function Drawer({ open, onClose, title, eyebrow, description, headerExtra
             </header>
             <div
               className={cn(
-                "min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 scrollbar-thin",
+                "min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 scrollbar-thin [@media(max-height:30rem)]:flex-none [@media(max-height:30rem)]:overflow-visible",
                 !footer && "pb-[calc(1.25rem+env(safe-area-inset-bottom))]",
               )}
             >

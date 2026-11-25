@@ -5,6 +5,7 @@ import { SEARCH_LIMIT, useDocuments, useParties, useSearchDocuments } from "@/ap
 import type { DocumentRow, ListedLetter } from "@/api/types";
 import { cn, plural } from "@/lib/utils";
 import { useDebounced, useHotkey } from "@/lib/hooks";
+import { focusWhenReady } from "@/lib/focus";
 import { DOCUMENT_STATUS_COPY, documentKindLabel, uncheckedMatch } from "@/lib/copy";
 import { KindIcon } from "@/components/ui/KindBadge";
 import { DateText } from "@/components/ui/DateText";
@@ -47,8 +48,8 @@ export function Highlight({ text, query }: { text: string; query: string }) {
 
 interface ComboProps {
   autoFocus?: boolean;
-  /** Called after the search took the person somewhere (a letter, the Inbox, the file picker). */
-  onNavigate?: () => void;
+  /** Called after the search took the person somewhere: a page (a letter, the Inbox) or, `page` false, the file picker. */
+  onNavigate?: (page: boolean) => void;
   /** Render results inline (the phone sheet) instead of in a dropdown. */
   inline?: boolean;
   className?: string;
@@ -138,7 +139,7 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
     navigate(`/documents/${d.id}`);
     reset();
     inputRef.current?.blur();
-    onNavigate?.();
+    onNavigate?.(true);
   };
 
   // the Enter that waited: once the search of what was typed has answered, its highlighted match opens
@@ -301,7 +302,7 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
             onClick={() => {
               reset();
               inputRef.current?.blur();
-              onNavigate?.();
+              onNavigate?.(true);
             }}
             className={cn(
               "flex min-h-10 items-center gap-2 border-t border-line text-sm font-semibold text-accent transition-colors hover:bg-accent-soft",
@@ -343,7 +344,7 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
             icon={Plus}
             onClick={() => {
               reset();
-              onNavigate?.();
+              onNavigate?.(false);
               openPicker();
             }}
           >
@@ -428,7 +429,7 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
             enterWhenSettled.current = false;
           }}
           className={cn(
-            "h-9 w-full rounded-lg border border-line bg-surface/70 pl-9 pr-10 text-base text-ink shadow-[inset_0_1px_1px_rgb(0_0_0/0.03)] outline-none transition-[border-color,box-shadow,background-color]",
+            "h-9 w-full rounded-lg border border-control-border bg-surface/70 pl-9 pr-10 text-base text-ink shadow-[inset_0_1px_1px_rgb(0_0_0/0.03)] outline-none transition-[border-color,box-shadow,background-color]",
             "placeholder:text-muted hover:border-line-strong focus:border-accent focus:bg-surface focus:ring-2 focus:ring-accent/60 [&::-webkit-search-cancel-button]:hidden",
           )}
         />
@@ -450,8 +451,10 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
           </button>
         ) : null}
       </div>
+      {/* said once the search has answered what is typed now: until then the list holds the previous words'
+          matches, and their count is not the new words' */}
       <p role="status" className="sr-only">
-        {open ? announcement : ""}
+        {open && settled ? announcement : ""}
       </p>
       {open ? panel : null}
     </div>
@@ -461,12 +464,25 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
 /** Top-bar search: inline input from md up, an icon that opens a search sheet on phones. */
 export function SearchBox() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  // a letter chosen in the sheet: focus goes to its page's heading, as from the field on a computer, not back to
+  // the header's "Search letters" (two more Tab stops before the letter)
+  const chose = useRef(false);
+  const open = () => {
+    chose.current = false;
+    setMobileOpen(true);
+  };
+  const left = (page: boolean) => {
+    chose.current = page;
+    setMobileOpen(false);
+    // once the sheet has closed (the page is inert while it is open), and the page has drawn its heading
+    if (page) focusWhenReady(() => (document.getElementById("root")?.inert ? null : document.querySelector<HTMLElement>("#main h1:not([data-loading])")), 10_000);
+  };
   return (
     <>
       <SearchCombobox className="hidden w-56 md:block lg:w-72" />
-      <IconButton icon={Search} label="Search letters" className="md:hidden" onClick={() => setMobileOpen(true)} />
-      <Dialog open={mobileOpen} onClose={() => setMobileOpen(false)} title="Search letters" size="lg" align="top">
-        <SearchCombobox inline autoFocus onNavigate={() => setMobileOpen(false)} className="pb-3" />
+      <IconButton icon={Search} label="Search letters" className="md:hidden" onClick={open} />
+      <Dialog open={mobileOpen} onClose={() => setMobileOpen(false)} restoreFocus={() => !chose.current} title="Search letters" size="lg" align="top">
+        <SearchCombobox inline autoFocus onNavigate={left} className="pb-3" />
       </Dialog>
     </>
   );

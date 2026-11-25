@@ -36,10 +36,12 @@ export function TopBar() {
   const attention = problems.length > 0;
 
   return (
+    // a very short window (a phone on its side, 400 % zoom): it scrolls away with the page, which has little
+    // enough room as it is (WCAG 1.4.10)
     <header
       ref={setBar}
       className={cn(
-        "sticky top-0 z-30 h-14 shrink-0 border-b bg-canvas/95 backdrop-blur-md backdrop-saturate-150 transition-[border-color,box-shadow]",
+        "sticky top-0 z-30 h-14 shrink-0 border-b [@media(max-height:30rem)]:static bg-canvas/95 backdrop-blur-md backdrop-saturate-150 transition-[border-color,box-shadow]",
         scrolled ? "border-line shadow-[0_1px_0_rgb(0_0_0/0.02)]" : "border-transparent",
       )}
     >

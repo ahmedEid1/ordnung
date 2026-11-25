@@ -5,7 +5,7 @@
  */
 import type { Locator, Page } from "@playwright/test";
 import type { DocumentDetail } from "@/api/types";
-import { apiGet, expect, letterId, letterItem, open, setTour, shownAs, test } from "./helpers";
+import { apiGet, apiPatch, expect, letterId, letterItem, open, setTour, shownAs, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -178,4 +178,130 @@ test.describe("phone 390 px: what the verdict leads with, and the viewer", () =>
     await page.getByRole("button", { name: /^Back to/ }).click();
     await expect.poll(async () => Math.round((await chip.boundingBox())!.y)).toBe(Math.round(before));
   });
+});
+
+// ------------------------------------------------------------------------------------------------
+// Where focus goes when a to-do leaves the letter's page (it fell to the page, and a screen reader was told nothing)
+// ------------------------------------------------------------------------------------------------
+
+const FINE = "21_verwarnungsgeld_parken.jpg";
+/** A letter with one open to-do: its "Mark done" empties the verdict's band. */
+const PASSPORT = "18_reisepass.jpg";
+
+type FocusWatch = { drops: string[]; since: number; stop: boolean };
+
+/**
+ * From now on, note each frame drawn while focus is on the page (<body>, where a screen reader says nothing and Tab
+ * starts again at the top): looked at right after every frame, so a drop too short for a look every 100 ms still
+ * counts. Focus that is on <body> only within a frame (the button pressed is removed, and the frame's own work moves
+ * focus on before it is drawn) is never shown or told to anyone, so it is not a drop. {@link focusStays} reads the notes.
+ */
+async function watchFocus(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const watch: FocusWatch = { drops: [], since: performance.now(), stop: false };
+    (window as unknown as { __focusWatch: FocusWatch }).__focusWatch = watch;
+    const look = () => {
+      if (watch.stop) return;
+      if (!document.activeElement || document.activeElement === document.body) watch.drops.push(`a frame ${Math.round(performance.now() - watch.since)} ms after the key`);
+      requestAnimationFrame(() => setTimeout(look, 0));
+    };
+    // a timer set in a frame's callback runs once that frame is drawn
+    requestAnimationFrame(() => setTimeout(look, 0));
+  });
+}
+
+/** Since {@link watchFocus}, and for 1.5 s more: focus never fell to the page, and it ends where `where` says. */
+async function focusStays(page: Page, where: Locator): Promise<void> {
+  // A deliberate observation window, not a wait for a state: the check is that focus never drops
+  // during it, and watchFocus looks at every frame until it ends.
+  const from = await page.evaluate(() => performance.now());
+  await page.waitForFunction((t) => performance.now() - t >= 1500, from);
+  const drops = await page.evaluate(() => {
+    const watch = (window as unknown as { __focusWatch: FocusWatch }).__focusWatch;
+    watch.stop = true;
+    return watch.drops;
+  });
+  expect(drops, "focus fell to the page").toEqual([]);
+  await expect(where).toBeFocused();
+}
+
+/** Put the letter's to-dos back as they were (these tests share the demo). */
+async function reopenAll(page: Page, docId: string, before: { id: string; status: string }[]): Promise<void> {
+  const now = await apiGet<DocumentDetail>(page, `/api/documents/${docId}`);
+  for (const was of before) {
+    const item = now.items.find((i) => i.id === was.id);
+    if (item && item.status !== was.status) await apiPatch(page, `/api/items/${was.id}`, { status: was.status });
+  }
+}
+
+test("“Mark done” in the verdict keeps focus in the card, on the next to-do's buttons or the card's title", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const docId = await letterId(page, FINE);
+  const before = (await apiGet<DocumentDetail>(page, `/api/documents/${docId}`)).items.map((i) => ({ id: i.id, status: i.status }));
+  try {
+    await open(page, `/documents/${docId}`);
+    const card = page.locator("article[aria-labelledby='verdict-title']");
+    const openBefore = before.filter((i) => i.status === "open").length;
+    const done = card.getByRole("button", { name: "Mark done", exact: true }).first();
+    await done.focus();
+    await watchFocus(page);
+    await page.keyboard.press("Enter");
+    await expect(page.getByText("Marked as done").first()).toBeVisible();
+    // once it is saved, and while the refreshed card takes the to-do's buttons away: focus stays in the card
+    await expect.poll(async () => (await apiGet<DocumentDetail>(page, `/api/documents/${docId}`)).items.filter((i) => i.status === "open").length).toBe(openBefore - 1);
+    await focusStays(page, card.locator(":focus"));
+  } finally {
+    await reopenAll(page, docId, before);
+  }
+});
+
+test("“Mark done” on a letter's last to-do: focus goes to the card's title, never to the page", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const docId = await letterId(page, PASSPORT);
+  const before = (await apiGet<DocumentDetail>(page, `/api/documents/${docId}`)).items.map((i) => ({ id: i.id, status: i.status }));
+  expect(before.filter((i) => i.status === "open"), "the passport has one open to-do").toHaveLength(1);
+  try {
+    await open(page, `/documents/${docId}`);
+    const card = page.locator("article[aria-labelledby='verdict-title']");
+    // the band's buttons all belong to that one to-do: they go with it (focus once went to one of them, then fell)
+    await card.getByRole("button", { name: "Mark done", exact: true }).first().focus();
+    await watchFocus(page);
+    await page.keyboard.press("Enter");
+    await expect(page.getByText("Marked as done").first()).toBeVisible();
+    await focusStays(page, page.locator("#verdict-title"));
+  } finally {
+    await reopenAll(page, docId, before);
+  }
+});
+
+test("“Not a real to-do” hands focus to the next to-do, and Undo gives it back to the to-do's own menu", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const docId = await letterId(page, FINE);
+  const detail = await apiGet<DocumentDetail>(page, `/api/documents/${docId}`);
+  const before = detail.items.map((i) => ({ id: i.id, status: i.status }));
+  try {
+    await open(page, `/documents/${docId}`);
+    const section = page.locator("section#todos");
+    const menus = section.locator("[id^='item-actions-']");
+    expect(await menus.count(), "the fine has more than one to-do").toBeGreaterThan(1);
+    const menu = menus.first();
+    const id = (await menu.getAttribute("id"))!;
+    await menu.focus();
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("End");
+    await expect(page.getByRole("menuitem", { name: "Not a real to-do" })).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.locator(`[id="${id}"]`)).toHaveCount(0);
+    // the row in its place: its "More actions", not the page
+    await expect(menus.first()).toBeFocused();
+    // Undo in the toast, from the keyboard (Alt+N, then Tab to Undo): the row comes back with focus on its own menu
+    // (the closing toast hands focus back to the next row's menu first)
+    await page.keyboard.press("Alt+KeyN");
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("button", { name: "Undo" })).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.locator(`[id="${id}"]`)).toBeFocused();
+  } finally {
+    await reopenAll(page, docId, before);
+  }
 });

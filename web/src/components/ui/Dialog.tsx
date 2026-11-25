@@ -19,6 +19,8 @@ export interface DialogProps {
   initialFocus?: RefObject<HTMLElement | null>;
   /** Where focus goes on close when the element that opened the dialog is gone (default: the page's main). */
   returnFocus?: RefObject<HTMLElement | null>;
+  /** Asked on close: false when the dialog's choice opened a new page, whose heading then takes focus (see `useModal`). */
+  restoreFocus?: () => boolean;
   /** Hide the × button (e.g. for forced choices). */
   hideClose?: boolean;
   /** Close when clicking the backdrop (default true). */
@@ -49,6 +51,7 @@ export function Dialog({
   size = "md",
   initialFocus,
   returnFocus,
+  restoreFocus,
   hideClose,
   dismissible = true,
   align = "center",
@@ -57,7 +60,7 @@ export function Dialog({
   const panelRef = useRef<HTMLDivElement | null>(null);
   const titleId = useStableId(undefined, "dlg-title");
   const descId = useStableId(undefined, "dlg-desc");
-  useModal(open, panelRef, onClose, { initialFocus, returnFocus });
+  useModal(open, panelRef, onClose, { initialFocus, returnFocus, restoreFocus });
   const sheet = align === "center"; // a bottom sheet below `sm`
   // the body scrolls on its own: a focused field (e.g. a tall textarea) comes fully into view
   const revealFocused = (e: FocusEvent<HTMLDivElement>) => {

@@ -209,8 +209,11 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
     return () => window.clearTimeout(t);
   }, [open, startAtWhich]);
   // a kind picked by hand: when step 2 starts below the fold (a phone, under the template tiles), bring it
-  // up — before, nothing visible changed at 320 px
+  // up — before, nothing visible changed at 320 px. Only for a pick with the mouse or a finger: the arrow keys
+  // pick as they move through the kinds, and scrolling then took the focused kind out of view (Tab brings
+  // step 2 up for the keyboard)
   const picked = useRef(false);
+  const byPointer = useRef(false);
   useEffect(() => {
     if (!picked.current || !kind) return;
     picked.current = false;
@@ -387,7 +390,8 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
             : false;
 
   const pickKind = (k: DraftKind) => {
-    picked.current = true;
+    picked.current = byPointer.current;
+    byPointer.current = false;
     setKind(k);
     setToClaimant(false);
     if (k === "cancellation") setDocId(null);
@@ -526,7 +530,11 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
           {ABOUT}
         </p>
         {/* 1 · what */}
-        <section aria-labelledby="cmp-kind">
+        <section
+          aria-labelledby="cmp-kind"
+          onPointerDown={() => (byPointer.current = true)}
+          onKeyDown={() => (byPointer.current = false)}
+        >
           <StepLabel n={1} id="cmp-kind">
             What do you want to do?
           </StepLabel>

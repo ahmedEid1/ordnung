@@ -30,6 +30,7 @@ import { fitsACalendar, icsFileName, icsHref, useItemActions } from "./actions";
 import { englishInline, isGermanText } from "./fact-text";
 import { daysUntil, formatMoney, glueText } from "@/lib/format";
 import { plainText } from "@/lib/glue";
+import { focusAfterLeaving, focusWhenReady } from "@/lib/focus";
 import { useToday } from "@/lib/today";
 import { asideNote } from "@/features/party/model";
 import { itemDateRole, undatedNote } from "./item-meta";
@@ -39,6 +40,12 @@ import { READING_CHECK_SLOT } from "./Warnings";
 /** The letters a set-aside note names (the payment reminder that replaced this letter's payment). */
 type NoteDocs = readonly Pick<Document, "id" | "doc_date" | "received_date">[];
 const NONE: readonly never[] = [];
+
+/** The section's id, and its heading's (PanelSection's `<id>-title`): where focus goes when its last row leaves. */
+const TODOS_ID = "todos";
+const TODOS_TITLE_ID = `${TODOS_ID}-title`;
+/** Each row's "More actions" button, in order: the one in a leaving row's place takes focus. */
+const rowMenus = () => [...document.querySelectorAll<HTMLElement>(`#${TODOS_ID} [id^="item-actions-"]`)];
 
 function download(href: string, name: string) {
   const a = document.createElement("a");
@@ -107,7 +114,7 @@ export function ItemsList({
   return (
     // a scam letter's demands are no to-dos of yours: no count
     <PanelSection
-      id="todos"
+      id={TODOS_ID}
       title="To-dos & dates"
       icon={ListTodo}
       count={scam || !list.length ? undefined : open}
@@ -279,6 +286,15 @@ function ItemRow({
   const role = itemDateRole(item);
   const menuId = `item-actions-${item.id}`;
 
+  // "Not a real to-do" takes the row (and this menu's button) away: focus goes to the next row's "More actions"
+  // (or the section's heading when none is left), and back to this row's once an Undo brings it back
+  const dismissKeepingFocus = (it: Item) => {
+    focusAfterLeaving(rowMenus, menuId, TODOS_TITLE_ID);
+    // `from`: the Undo is pressed in the toast, which hands focus back (to the next row's menu) as it closes, before
+    // the row is back; focus moves on from there, but not from somewhere the person went in the meantime
+    dismiss(it, { onUndone: (from) => focusWhenReady(() => document.getElementById(menuId), 5000, { from }) });
+  };
+
   // back to the "More actions" button the editor was opened from (not <body>)
   const closeEditor = () => {
     setEditing(false);
@@ -414,7 +430,7 @@ function ItemRow({
           own ? { label: "Edit", icon: Pencil, onSelect: () => setEditingOwn(true) } : { label: item.due_date ? "Change date" : "Set a date", icon: Pencil, onSelect: () => setEditing(true) },
           open ? { label: "Mark done", icon: Check, onSelect: () => markDone(item) } : { label: "Reopen", icon: RotateCcw, onSelect: () => reopen(item) },
           "separator" as const,
-          { label: "Not a real to-do", icon: X, onSelect: () => dismiss(item), danger: true },
+          { label: "Not a real to-do", icon: X, onSelect: () => dismissKeepingFocus(item), danger: true },
         ]}
       >
         <IconButton id={menuId} icon={Ellipsis} label={`More actions for ${item.title}`} size="sm" className="absolute top-2 right-2.5 opacity-70 group-hover:opacity-100 focus-visible:opacity-100 sm:right-3.5" />

@@ -204,6 +204,33 @@ describe("status actions", () => {
     await waitFor(() => expect(calls.filter((c) => c.method === "PATCH").map((c) => c.body)).toEqual([{ status: "final" }, { status: "draft" }]));
   });
 
+  it("Save keeps focus as it turns into “Saved”, and says a check the edit made fail (not that all is up to date)", async () => {
+    useMockApi();
+    // the server's checks after this save: one fails now (a placeholder left in the letter, say)
+    const mocked = globalThis.fetch;
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const res = await mocked(input, init);
+      if (init?.method !== "PATCH" || !String(input).includes("/drafts/drf_phone")) return res;
+      const saved = (await res.json()) as Draft;
+      expect(saved.checks.length).toBeGreaterThan(1);
+      const checks = saved.checks.map((c, i) => (i === 0 ? { ...c, ok: false } : c));
+      return new Response(JSON.stringify({ ...saved, checks }), { status: 200, headers: { "Content-Type": "application/json" } });
+    });
+    const user = userEvent.setup();
+    renderLetter("drf_phone");
+    await user.type(await screen.findByLabelText("Letter text (German)"), " Danke.");
+    const save = screen.getByRole("button", { name: "Save" });
+    save.focus();
+    await user.keyboard("{Enter}");
+    const toast = (await screen.findByText("Letter saved")).closest("li")!;
+    expect(toast).toHaveTextContent("1 thing needs a look before you send it.");
+    expect(toast).not.toHaveTextContent("up to date");
+    // nothing left to save: the same button, “Saved”, still focused (a disabled one dropped focus to the page)
+    expect(save).toHaveAccessibleName("Saved");
+    expect(save).toHaveAttribute("aria-disabled", "true");
+    expect(save).toHaveFocus();
+  });
+
   it("leaving with changes: Discard is a quiet danger button, not a second filled one", async () => {
     useMockApi();
     const user = userEvent.setup();

@@ -118,6 +118,17 @@ describe("highlights", () => {
     expect(container.querySelectorAll('[data-hit="g1"]')).toHaveLength(1);
   });
 
+  it("is named with what it shows and the letter's own words, those marked German (an aria-label read them in the English voice)", () => {
+    const { container } = renderViewer(two);
+    const wage = screen.getByRole("button", { name: "Hourly wage: €15.00 — “Bitte überweisen Sie 94,99 €”" });
+    expect(wage).not.toHaveAttribute("aria-label");
+    const quote = within(wage).getByText("“Bitte überweisen Sie 94,99 €”");
+    expect(quote).toHaveAttribute("lang", "de");
+    // what it is stays English (the page's language)
+    expect(quote.parentElement).not.toHaveAttribute("lang");
+    expect(container.querySelectorAll("button[data-highlight] [lang=de]")).toHaveLength(2);
+  });
+
   it("hovering a line target lights up its own fact, never the neighbour's", async () => {
     const { container } = renderViewer(two);
     await userEvent.hover(container.querySelector('[data-hit="g1"]')!);

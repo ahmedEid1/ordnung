@@ -300,14 +300,15 @@
     scrollbar-color: var(--color-line-strong) transparent;
   }
   /* scroll shadows: a soft edge where a scroll area has more to show (the surface-coloured covers
-     scroll with the content and hide the shadow at either end) */
+     scroll with the content and hide the shadow at either end); on another background, set
+     --scroll-shadow-bg to it, or the covers show as bands of their own */
   .scroll-shadow {
     background:
-      linear-gradient(var(--color-surface) 30%, transparent) top / 100% 2.5rem no-repeat local,
-      linear-gradient(transparent, var(--color-surface) 70%) bottom / 100% 2.5rem no-repeat local,
+      linear-gradient(var(--scroll-shadow-bg, var(--color-surface)) 30%, transparent) top / 100% 2.5rem no-repeat local,
+      linear-gradient(transparent, var(--scroll-shadow-bg, var(--color-surface)) 70%) bottom / 100% 2.5rem no-repeat local,
       radial-gradient(farthest-side at 50% 0, color-mix(in srgb, var(--color-ink) 16%, transparent), transparent) top / 100% 0.625rem no-repeat scroll,
       radial-gradient(farthest-side at 50% 100%, color-mix(in srgb, var(--color-ink) 16%, transparent), transparent) bottom / 100% 0.625rem no-repeat scroll,
-      var(--color-surface);
+      var(--scroll-shadow-bg, var(--color-surface));
   }
   .hatch {
     background-image: repeating-linear-gradient(
@@ -336,5 +337,29 @@
         calc(1.5rem + var(--ordnung-toast-lift, 0px) + var(--ordnung-toast-space, 0px))
       );
     }
+  }
+}
+
+/*
+ * Forced colours (Windows high contrast) drop every box-shadow and author colour, so the
+ * `focus-visible:ring-*` rings, the raised thumb of a selected tab and the tint of the current page
+ * all vanish. These rules sit outside the layers on purpose: unlayered rules win over the
+ * utilities, so `outline-none` cannot hide them. The system paints them in its own colours.
+ */
+@media (forced-colors: active) {
+  /* every focused control shows where it is (WCAG 2.4.7) */
+  :focus-visible {
+    outline-style: solid;
+    outline-width: 2px;
+  }
+  /* a ring drawn inside its control (rows and links in a scroll area) keeps its outline inside, where it isn't cut off */
+  [class~="focus-visible:ring-inset"]:focus-visible {
+    outline-offset: -2px;
+  }
+  /* the current page, the selected tab and the chosen option get a frame (WCAG 1.4.1, 1.4.11) */
+  :is(a, button)[aria-current="page"],
+  [role="tab"][aria-selected="true"],
+  [role="radio"][aria-checked="true"] {
+    border: 2px solid Highlight;
   }
 }

@@ -119,3 +119,24 @@ for (const width of [320, 390]) {
     await expect(main.getByRole("button", { name: /Saved/ })).toBeDisabled();
   });
 }
+
+test("Save pressed with Enter keeps focus as it turns into “Saved” (a disabled button dropped it to the page)", async ({ page }) => {
+  await openLetter(page, 1280, 800);
+  const main = page.getByRole("main");
+  const text = main.getByRole("textbox", { name: "Letter text (German)" });
+  await text.click();
+  await page.keyboard.press("ControlOrMeta+End");
+  await page.keyboard.type(" Danke.");
+  const save = main.getByRole("button", { name: "Save", exact: true }).first();
+  await save.focus();
+  await page.keyboard.press("Enter");
+  const saved = main.getByRole("button", { name: "Saved", exact: true }).first();
+  await expect(saved).toBeFocused();
+  await expect(saved).toHaveAttribute("aria-disabled", "true");
+  // the demo's letter as it was
+  await text.click();
+  await page.keyboard.press("ControlOrMeta+End");
+  for (let i = 0; i < " Danke.".length; i++) await page.keyboard.press("Backspace");
+  await page.keyboard.press("ControlOrMeta+s");
+  await expect(main.getByRole("button", { name: "Saved", exact: true }).first()).toBeVisible();
+});

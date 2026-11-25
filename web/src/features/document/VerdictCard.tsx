@@ -2,7 +2,7 @@
  * The verdict card — the first thing on a letter: what this is, what you need to do, by when
  * (with "Why this date?"), what happens if you ignore it, and one main button.
  */
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { Link } from "react-router";
 import {
   ArrowRight,
@@ -85,6 +85,7 @@ import { DEMO_NOTE } from "@/lib/mode";
 import { AnswerButton } from "@/features/inbox/AnswerButton";
 import { usePhoneCompanion } from "@/features/phone/client";
 import { ignoreFailedRequest } from "@/api/client";
+import { focusOrigin, focusWhenReady, LEAVING_WAIT_MS } from "@/lib/focus";
 
 const countdownTone: Record<Urgency, string> = {
   overdue: "bg-danger text-white dark:text-canvas",
@@ -833,6 +834,19 @@ function Actions({
   const draft = useStartDraft();
   // the calendar file stays on the computer (ADR 0017): a phone offers no "Add to calendar"
   const phone = usePhoneCompanion();
+  const band = useRef<HTMLDivElement>(null);
+  // "Mark done" goes with its to-do: once the button pressed has gone (the refreshed band is drawn by then), focus
+  // moves to the band's first button (the next to-do's), or to the verdict's title when no button is left, never to
+  // the page (as on Today). Chosen any earlier, it went to a button of the to-do that was leaving. A button kept
+  // for the next to-do keeps the focus.
+  const markDone = (item: Item) => {
+    const from = focusOrigin();
+    const next = () => {
+      if (from?.isConnected) return null;
+      return (band.current?.isConnected ? band.current.querySelector<HTMLElement>("button, a[href]") : null) ?? document.getElementById("verdict-title");
+    };
+    actions.markDone(item, { onDone: () => focusWhenReady(next, LEAVING_WAIT_MS, { from }) });
+  };
 
   const mainEl: ReactNode = (() => {
     switch (main.type) {
@@ -908,7 +922,7 @@ function Actions({
         return phone || !fitsACalendar(main.item) ? null : <CalendarButton item={main.item} primary />;
       case "done":
         return (
-          <Button variant="primary" icon={Check} onClick={() => actions.markDone(main.item)}>
+          <Button variant="primary" icon={Check} onClick={() => markDone(main.item)}>
             Mark done
           </Button>
         );
@@ -937,14 +951,14 @@ function Actions({
   if (!buttons && !footer) return null;
 
   return (
-    <div className="border-t border-line bg-surface-2/40 px-5 py-4 sm:px-6">
+    <div ref={band} className="border-t border-line bg-surface-2/40 px-5 py-4 sm:px-6">
       {buttons ? (
         <div className="flex flex-wrap items-center gap-2">
           {mainEl}
           {showCalendar && primary ? <CalendarButton item={primary} /> : null}
           {/* the quiet one sits apart at the end of the row (it wrapped alone and indented at 320 px) */}
           {showDone && primary ? (
-            <Button variant="ghost" icon={Check} className="ml-auto" onClick={() => actions.markDone(primary)}>
+            <Button variant="ghost" icon={Check} className="ml-auto" onClick={() => markDone(primary)}>
               Mark done
             </Button>
           ) : null}

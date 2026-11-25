@@ -302,3 +302,13 @@ test("at 390 px, “Choose their state” in “Why this date?” takes the keyb
   await expect(drawer).toBeHidden();
   await expect(page.getByRole("region", { name: /To-dos & dates/ }).getByRole("button", { name: `Why this date? (${fee.title})` })).toBeFocused();
 });
+
+test("at 320×256 (400 % zoom) the drawer scrolls as one: its body is not a slit between a fixed header and footer", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 256 });
+  await open(page, "/");
+  const parties = await apiGet<PartyRow[]>(page, "/api/parties");
+  const drawer = await openDrawer(page, parties[0]!);
+  const scroll = await drawer.evaluate((el) => ({ panel: getComputedStyle(el).overflowY, height: el.clientHeight, view: window.innerHeight }));
+  expect(scroll.panel).toBe("auto");
+  expect(scroll.height).toBeGreaterThanOrEqual(scroll.view / 2);
+});

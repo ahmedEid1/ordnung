@@ -30,6 +30,10 @@ export interface StepperProps {
   fallback?: "current" | "none" | "stagger";
   /** Announce step changes politely to screen readers. */
   live?: boolean;
+  /** What `live` says when every step is done (default "Finished."): name what finished, e.g. the letter. */
+  doneText?: string;
+  /** What `live` says when a step stopped (default "Stopped at <step>."). */
+  errorText?: string;
   /** Accessible name, e.g. "Reading Nebenkostenabrechnung.pdf". */
   label?: string;
   /**
@@ -136,7 +140,7 @@ function useFittingLabels(steps: readonly StepperStep[], wanted: boolean, stagge
  * (or nothing, with `fallback="none"`; or the short labels over two lines first, with
  * `fallback="stagger"`). Respects reduced motion via the global MotionConfig.
  */
-export function Stepper({ steps, current, status = "active", size = "md", labels = "all", fallback = "current", live, label, doneIds, onPick, className }: StepperProps) {
+export function Stepper({ steps, current, status = "active", size = "md", labels = "all", fallback = "current", live, doneText, errorText, label, doneIds, onPick, className }: StepperProps) {
   const n = steps.length;
   const done = current >= n;
   const dot = size === "sm" ? 16 : 20;
@@ -262,7 +266,7 @@ export function Stepper({ steps, current, status = "active", size = "md", labels
       ) : null}
       {live ? (
         <span className="sr-only" aria-live="polite">
-          {done ? "Finished." : status === "error" ? `Stopped at ${activeLabel}.` : `${activeLabel}, step ${current + 1} of ${steps.length}.`}
+          {done ? (doneText ?? "Finished.") : status === "error" ? (errorText ?? `Stopped at ${activeLabel}.`) : `${activeLabel}, step ${current + 1} of ${steps.length}.`}
         </span>
       ) : null}
     </div>

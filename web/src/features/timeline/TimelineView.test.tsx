@@ -96,7 +96,8 @@ describe("Timeline page", () => {
     const list = screen.getByRole("region", { name: "Every date" });
     expect(within(list).getByRole("combobox", { name: "Life area" })).toHaveValue("residence");
     expect(within(list).queryByText("Rent for October")).not.toBeInTheDocument();
-    expect(within(list).getByText("Ausländerbehörde: extend residence permit")).toBeInTheDocument();
+    // (its German word is marked for a screen reader, in a span of its own)
+    expect(within(list).getByText((_, el) => el?.textContent === "Ausländerbehörde: extend residence permit" && el.tagName === "SPAN" && Boolean(el.getAttribute("title")))).toBeInTheDocument();
 
     fireEvent.click(within(lanesRegion).getByRole("button", { name: "Show all areas" }));
     expect(laneNames(lanesRegion).length).toBeGreaterThan(5);

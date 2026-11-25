@@ -3,7 +3,7 @@
  * the recap after several letters were read at once, with links to where each thing lives, and
  * every letter of the batch (the ones that couldn't be read too: "I read 2 of 3 letters").
  */
-import type { ReactNode, RefObject } from "react";
+import { useState, type ReactNode, type RefObject } from "react";
 import { Link } from "react-router";
 import { useQueries } from "@tanstack/react-query";
 import { ArrowRight, CalendarClock, Hourglass, Repeat, ShieldAlert, Signature, TriangleAlert, type LucideIcon } from "lucide-react";
@@ -79,6 +79,14 @@ export function BatchRecapDialog({
   const details = results.map((r) => r.data).filter((d): d is DocumentDetail => Boolean(d));
   const recap = !loading ? summarizeBatch(details, today) : null;
   const failed = failedIds.filter((id) => ids.includes(id)).length;
+  // what it found, said once and true: only when no letter's details are still being fetched (a letter just filed
+  // was first said with what it had before its to-dos came in: "1 needs you now", then "2 need you now"), and
+  // never rewritten while the dialog is open. Closing it starts afresh.
+  const findings = recap ? findingsText(recapFindings(recap)) : "";
+  const settled = Boolean(recap) && !results.some((r) => r.isFetching);
+  const [said, setSaid] = useState({ for: docIds, text: "" });
+  if (said.for !== docIds) setSaid({ for: docIds, text: "" });
+  else if (docIds && settled && !said.text) setSaid({ for: docIds, text: findings });
 
   return (
     <Dialog
@@ -87,13 +95,18 @@ export function BatchRecapDialog({
       size="lg"
       returnFocus={returnFocus}
       title={recapTitle(ids.length, failed)}
-      description={recap ? findingsText(recapFindings(recap)) : "Putting it all together…"}
+      description={findings || "Putting it all together…"}
       footer={
         <Button variant="primary" onClick={onClose}>
           Done
         </Button>
       }
     >
+      {/* the findings, said when they arrive: the dialog takes focus while it is still "Putting it all together…",
+          and a description that changes later is not read out (only a stray tile was, "1possible scam") */}
+      <p role="status" className="sr-only">
+        {said.for === docIds ? said.text : ""}
+      </p>
       {!recap ? (
         <div className={TILE_GRID} aria-hidden>
           {[0, 1, 2, 3].map((i) => (
@@ -101,7 +114,7 @@ export function BatchRecapDialog({
           ))}
         </div>
       ) : (
-        <div aria-live="polite">
+        <div>
           <ul className={TILE_GRID}>
             {recap.scams ? (
               <Stat

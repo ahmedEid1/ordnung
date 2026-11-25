@@ -136,3 +136,19 @@ for (const width of [320, 390]) {
     }
   });
 }
+
+test("forced colours: a focused date marker has an outline, and a notice window a dashed edge", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.emulateMedia({ forcedColors: "active" });
+  await open(page, "/contracts", "Contracts");
+  // the ring around a focused marker is a box-shadow, which forced colours drop: the outline is what shows there
+  const mark = page.locator("[data-mark-key][tabindex='0']").first();
+  await mark.focus();
+  await page.keyboard.press("ArrowRight");
+  const focused = page.locator(".lane-mark:focus");
+  await expect(focused).toHaveCount(1);
+  expect(await focused.evaluate((el) => `${getComputedStyle(el).outlineStyle} ${getComputedStyle(el).outlineWidth}`)).toBe("solid 2px");
+  // the hatching is gone there, so the caption's "hatched" needs another mark
+  const notice = page.locator(".lane-bar[data-kind='notice_window']").first();
+  expect(await notice.evaluate((el) => getComputedStyle(el, "::before").borderTopStyle)).toBe("dashed");
+});

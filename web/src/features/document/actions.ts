@@ -12,6 +12,7 @@ import { doneLine } from "@/features/items/repeat";
 import { formatDate } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
 import { ignoreFailedRequest } from "@/api/client";
+import { focusOrigin } from "@/lib/focus";
 
 export function useItemActions() {
   const update = useUpdateItem();
@@ -21,17 +22,22 @@ export function useItemActions() {
   // Each Undo returns its request's promise: the toast stays busy until it is done, and knows when it failed (focus
   // then stays near the change instead of dropping to the top of the page).
 
-  /** Done, with Undo; `title` names what was done ("Marked as paid" after the Pay panel, as on Today). */
+  /**
+   * Done, with Undo; `title` names what was done ("Marked as paid" after the Pay panel, as on Today). `onDone`
+   * runs once it is saved and the letter's to-dos are refreshed: where focus goes when the button pressed has gone.
+   */
   const markDone = useCallback(
-    (item: Item, { title = "Marked as done" }: { title?: string } = {}) =>
+    (item: Item, { title = "Marked as done", onDone }: { title?: string; onDone?: () => void } = {}) =>
       update.mutate(
         { id: item.id, patch: { status: "done" } },
         {
-          onSuccess: (moved) =>
+          onSuccess: (moved) => {
+            onDone?.();
             toast.success(title, {
               description: doneLine(item, moved, today),
               undo: () => update.mutateAsync({ id: item.id, patch: { status: "open" } }).then(() => undefined),
-            }),
+            });
+          },
         },
       ),
     [update, today],
@@ -39,8 +45,12 @@ export function useItemActions() {
 
   const reopen = useCallback((item: Item) => update.mutate({ id: item.id, patch: { status: "open" } }), [update]);
 
+  /**
+   * "Not a real to-do", with Undo; `onUndone` runs once the Undo is saved (to give the to-do back its focus), with
+   * where focus was as the Undo was pressed (`focusOrigin`: from the toast, where the closing toast hands it back).
+   */
   const dismiss = useCallback(
-    (item: Item) =>
+    (item: Item, { onUndone }: { onUndone?: (from: Element | null) => void } = {}) =>
       update.mutate(
         { id: item.id, patch: { status: "dismissed" } },
         {
@@ -48,7 +58,10 @@ export function useItemActions() {
             toast({
               title: "Removed from your to-dos",
               description: `“${item.title}” won't remind you. The letter stays filed.`,
-              undo: () => update.mutateAsync({ id: item.id, patch: { status: "open" } }).then(() => undefined),
+              undo: () => {
+                const from = focusOrigin();
+                return update.mutateAsync({ id: item.id, patch: { status: "open" } }).then(() => onUndone?.(from));
+              },
             }),
         },
       ),

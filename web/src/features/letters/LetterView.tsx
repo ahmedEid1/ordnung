@@ -278,7 +278,12 @@ export function LetterView({ draft }: { draft: Draft }) {
 
   const saveWithToast = useCallback(() => {
     if (!dirty || update.isPending) return;
-    void save().then(() => toast.success("Letter saved", { description: "Checks and the PDF are up to date." }));
+    // the checks as the save left them: an edit can make one fail (a placeholder left in), and the chip that
+    // says so changes silently
+    void save().then((saved) => {
+      const checks = checksSummary(saved.checks);
+      toast.success("Letter saved", { description: checks.failed ? `${checks.text} before you send it.` : "Checks and the PDF are up to date." });
+    });
   }, [dirty, save, update.isPending]);
 
   const discard = () => {
@@ -525,11 +530,13 @@ export function LetterView({ draft }: { draft: Draft }) {
           >
             {!isSent ? (
               // unsaved changes: a dot on Save (no line of text that would push the page down or the
-              // chips over); the live region below says it, the save bar spells it out further down
+              // chips over); the live region below says it, the save bar spells it out further down.
+              // Nothing to save: `aria-disabled`, not `disabled`, so the button pressed keeps focus as it turns
+              // into "Saved" (saveWithToast does nothing then)
               <Button
                 icon={dirty ? Save : Check}
                 onClick={saveWithToast}
-                disabled={!dirty}
+                aria-disabled={!dirty || undefined}
                 loading={update.isPending}
                 title={dirty ? `Unsaved changes — save (${MOD_KEY}+S)` : "All changes saved"}
                 className="min-w-0 max-[359px]:px-2.5"

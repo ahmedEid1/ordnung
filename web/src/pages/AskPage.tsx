@@ -110,12 +110,16 @@ export default function AskPage() {
     const el = composerRef.current;
     const root = document.documentElement;
     if (!el) return;
-    const publish = () => root.style.setProperty("--ask-composer-h", `${Math.ceil(el.getBoundingClientRect().height)}px`);
+    // (nothing on a very short window, where it doesn't stick: it covers nothing there)
+    const publish = () =>
+      root.style.setProperty("--ask-composer-h", getComputedStyle(el).position === "sticky" ? `${Math.ceil(el.getBoundingClientRect().height)}px` : "0px");
     publish();
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(publish);
     observer?.observe(el);
+    window.addEventListener("resize", publish);
     return () => {
       observer?.disconnect();
+      window.removeEventListener("resize", publish);
       root.style.removeProperty("--ask-composer-h");
     };
   }, []);
@@ -302,8 +306,9 @@ export default function AskPage() {
       {/* opaque down to the screen's edge (under the see-through tab bar too), so the answer never
           shows around the tour's bar or through the tab bar */}
       {/* on phones it keeps to the essentials — less fade above it, a one-line hint — so the answer has
-          the screen (box, hint, tour bar and tab bar once took half of a 320 × 640 screen) */}
-      <div ref={composerRef} data-ask-composer className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 -mx-4 mt-6 bg-linear-to-t from-canvas from-80% to-transparent px-4 pb-[calc(0.75rem+var(--ordnung-toast-lift,0px))] pt-3 after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-[calc(4rem+env(safe-area-inset-bottom))] after:bg-canvas sm:-mx-6 sm:px-6 sm:pt-6 md:bottom-0 md:pb-[calc(1.25rem+var(--ordnung-toast-lift,0px))] md:after:hidden lg:-mx-10 lg:px-10">
+          the screen (box, hint, tour bar and tab bar once took half of a 320 × 640 screen); on a very short window
+          (400 % zoom) it does not stick at all: the answer showed through a 26 px slit */}
+      <div ref={composerRef} data-ask-composer className="sticky [@media(max-height:30rem)]:static bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 -mx-4 mt-6 bg-linear-to-t from-canvas from-80% to-transparent px-4 pb-[calc(0.75rem+var(--ordnung-toast-lift,0px))] pt-3 after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-[calc(4rem+env(safe-area-inset-bottom))] after:bg-canvas sm:-mx-6 sm:px-6 sm:pt-6 md:bottom-0 md:pb-[calc(1.25rem+var(--ordnung-toast-lift,0px))] md:after:hidden lg:-mx-10 lg:px-10">
         <AskComposer
           value={draft}
           onChange={(v) => {

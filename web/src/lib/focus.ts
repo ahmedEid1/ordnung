@@ -18,12 +18,13 @@ export function focusIsLost(): boolean {
  * {@link focusOrigin} as the action starts): focus also moves while it is still there (the button
  * they pressed), but not once they have gone on to type or choose somewhere else while the answer
  * was on its way. `always`: focus moves wherever it is — only for a failed action's error, which
- * needs reading before anything else (as a refused form's field takes focus).
+ * needs reading before anything else (as a refused form's field takes focus). `preventScroll`: the page scrolls
+ * to it by itself (smoothly), which a focus scroll would cut short.
  */
 export function focusWhenReady(
   find: () => HTMLElement | null,
   ms = 5000,
-  { always = false, from = null }: { always?: boolean; from?: Element | null } = {},
+  { always = false, from = null, preventScroll = false }: { always?: boolean; from?: Element | null; preventScroll?: boolean } = {},
 ): void {
   const until = performance.now() + ms;
   const tick = () => {
@@ -34,7 +35,7 @@ export function focusWhenReady(
     }
     if (!always && !focusIsLost() && !(from && document.activeElement === from)) return;
     if (!el.hasAttribute("tabindex")) el.tabIndex = -1;
-    el.focus();
+    el.focus({ preventScroll });
   };
   requestAnimationFrame(tick);
 }

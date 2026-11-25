@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { useState } from "react";
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { X } from "lucide-react";
 import { renderWithProviders } from "@/test/render";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { ITEM_KINDS, DOCUMENT_KINDS } from "@/api/types";
@@ -14,7 +15,7 @@ import { Stepper } from "./Stepper";
 import { Dialog } from "./Dialog";
 import { TabPanel, Tabs } from "./Tabs";
 import { Glossary } from "./Glossary";
-import { Button, buttonVariants } from "./Button";
+import { Button, IconButton, buttonVariants } from "./Button";
 import { Checkbox, Field, Input, Select, Switch } from "./Field";
 import { SegmentedControl } from "./SegmentedControl";
 import { Badge, CountBadge } from "./Badge";
@@ -125,7 +126,66 @@ describe("Button", () => {
     expect(disabled.className).not.toMatch(/opacity-50/);
     const busy = screen.getByRole("button", { name: "Saving" });
     expect(busy).toHaveAttribute("aria-busy", "true");
-    expect(busy).toBeDisabled();
+    expect(busy).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("keeps focus on a busy button, and a press does nothing until it is done (a disabled one dropped focus to the page)", async () => {
+    const user = userEvent.setup();
+    let pressed = 0;
+    let submitted = 0;
+    function Harness() {
+      const [busy, setBusy] = useState(false);
+      return (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            submitted += 1;
+          }}
+        >
+          <Button
+            type="submit"
+            loading={busy}
+            onClick={() => {
+              pressed += 1;
+              setBusy(true);
+            }}
+          >
+            Write a new note
+          </Button>
+          <IconButton icon={X} label="Try again" loading={busy} onClick={() => (pressed += 1)} />
+        </form>
+      );
+    }
+    renderWithProviders(<Harness />);
+    const button = screen.getByRole("button", { name: "Write a new note" });
+    button.focus();
+    await user.keyboard("{Enter}");
+    expect(pressed).toBe(1);
+    expect(submitted).toBe(1);
+    expect(button).toHaveFocus();
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(button).toHaveAttribute("aria-busy", "true");
+    expect(button).not.toBeDisabled();
+    // pressed again while busy: neither its action nor the form's submit runs
+    await user.keyboard("{Enter}");
+    fireEvent.click(button);
+    expect(pressed).toBe(1);
+    expect(submitted).toBe(1);
+    const icon = screen.getByRole("button", { name: "Try again" });
+    expect(icon).toHaveAttribute("aria-disabled", "true");
+    expect(icon).not.toBeDisabled();
+    icon.focus();
+    await user.keyboard("{Enter}");
+    expect(pressed).toBe(1);
+    expect(icon).toHaveFocus();
+  });
+
+  it("gives a filled button an edge in forced colours, where its fill is dropped (WCAG 1.4.11)", () => {
+    for (const variant of ["primary", "soft", "danger"] as const) {
+      expect(buttonVariants({ variant }).split(" "), variant).toEqual(expect.arrayContaining(["forced-colors:border", "forced-colors:border-[ButtonText]"]));
+    }
+    // a ghost button has no edge in normal colours either
+    expect(buttonVariants({ variant: "ghost" })).not.toContain("forced-colors:border");
   });
 
   it("fills a hovered danger button opaquely in dark mode: its text contrast never depends on the parent", () => {
@@ -269,6 +329,13 @@ describe("Stepper", () => {
     expect(screen.getByLabelText("Filing: not started")).toBeInTheDocument();
     expect(screen.getByText("Checking, step 3 of 5.")).toBeInTheDocument();
   });
+
+  it("says what finished or stopped in its own words when given them (not a bare “Finished.”)", () => {
+    const { rerender } = renderWithProviders(<Stepper steps={PIPELINE_STEPS} current={PIPELINE_STEPS.length} live doneText="Filed: “Rent increase”." label="Reading x" />);
+    expect(screen.getByText("Filed: “Rent increase”.")).toHaveAttribute("aria-live", "polite");
+    rerender(<Stepper steps={PIPELINE_STEPS} current={1} status="error" live errorText="Couldn't read “Rent increase”." label="Reading x" />);
+    expect(screen.getByText("Couldn't read “Rent increase”.")).toHaveAttribute("aria-live", "polite");
+  });
 });
 
 describe("Dialog", () => {
@@ -299,6 +366,17 @@ describe("Dialog", () => {
 });
 
 describe("Switch and Checkbox", () => {
+  it("the switch stays visible in forced colours: an edge the system paints, and a knob in the text colour (WCAG 1.4.11)", () => {
+    const { rerender } = renderWithProviders(<Switch checked={false} onCheckedChange={() => {}} label="Keep private — no AI" />);
+    const track = screen.getByRole("switch", { name: "Keep private — no AI" });
+    expect(track).toHaveClass("border-2", "border-transparent");
+    const knob = track.querySelector("span")!;
+    expect(knob).toHaveClass("forced-colors:bg-[CanvasText]", "translate-x-0");
+    // inside the border, the knob sits 2 px from either end, as before
+    rerender(<Switch checked onCheckedChange={() => {}} label="Keep private — no AI" />);
+    expect(screen.getByRole("switch", { name: "Keep private — no AI" }).querySelector("span")).toHaveClass("translate-x-4");
+  });
+
   it("wrap their descriptions without a one-word last line", () => {
     renderWithProviders(
       <>

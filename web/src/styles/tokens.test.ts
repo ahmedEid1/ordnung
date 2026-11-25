@@ -266,3 +266,32 @@ describe("colour tokens", () => {
     expect(THEME_COLORS.dark).toBe(dark["color-canvas"]);
   });
 });
+
+describe("forced colours (Windows high contrast)", () => {
+  // the block's position, and how deep it sits: outside every layer, so the utilities' `outline-none` can't win
+  const at = css.indexOf("@media (forced-colors: active)");
+  const depth = [...css.slice(0, Math.max(at, 0))].reduce((d, ch) => d + (ch === "{" ? 1 : ch === "}" ? -1 : 0), 0);
+  const forced = block("@media (forced-colors: active)");
+
+  it("is one block outside the layers", () => {
+    expect(at).toBeGreaterThan(0);
+    expect(depth).toBe(0);
+  });
+
+  it("gives every focused control a real outline, inside a control whose ring is drawn inside (WCAG 2.4.7)", () => {
+    expect(forced).toMatch(/:focus-visible\s*{\s*outline-style:\s*solid;\s*outline-width:\s*2px;\s*}/);
+    expect(forced).toMatch(/\[class~="focus-visible:ring-inset"\]:focus-visible\s*{\s*outline-offset:\s*-2px;\s*}/);
+  });
+
+  it("frames the current page, the selected tab and the chosen option (WCAG 1.4.1)", () => {
+    expect(forced).toMatch(/:is\(a, button\)\[aria-current="page"\],\s*\[role="tab"\]\[aria-selected="true"\],\s*\[role="radio"\]\[aria-checked="true"\]\s*{\s*border:\s*2px solid Highlight;/);
+  });
+});
+
+describe("scroll shadows", () => {
+  it("paint their covers in --scroll-shadow-bg, so a scroll area on another background shows no bands", () => {
+    const shadow = block(".scroll-shadow");
+    expect(shadow.match(/var\(--scroll-shadow-bg, var\(--color-surface\)\)/g)).toHaveLength(3);
+    expect(shadow).not.toMatch(/linear-gradient\(var\(--color-surface\)/);
+  });
+});

@@ -228,7 +228,8 @@ describe("Mark done", () => {
     const { top, user } = await renderToday();
     const button = within(top).getByRole("button", { name: "Mark done: Water the plants" });
     await user.click(button);
-    await waitFor(() => expect(button).toBeDisabled());
+    // busy: it keeps focus (aria-disabled, not disabled)
+    await waitFor(() => expect(button).toHaveAttribute("aria-busy", "true"));
     // jsdom keeps focus on a disabled button (and won't blur it): lose it the way Chromium does
     act(() => {
       const away = document.body.appendChild(document.createElement("input"));

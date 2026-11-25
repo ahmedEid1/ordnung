@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps, MouseEvent, ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Spinner } from "./Spinner";
@@ -24,18 +24,22 @@ const base =
 
 /** Filled variants lose their fill when disabled. */
 const inactiveFill = "inactive:border-transparent inactive:bg-surface-3";
+/** Forced colours drop a fill: a filled button keeps an edge there, or it reads as plain text (WCAG 1.4.11). */
+const forcedEdge = "forced-colors:border forced-colors:border-[ButtonText]";
 
 const variants: Record<ButtonVariant, string> = {
   primary: cn(
     "bg-accent text-on-accent shadow-[inset_0_1px_0_rgb(255_255_255/0.14),0_1px_2px_rgb(0_0_0/0.14)] hover:bg-accent-strong dark:hover:bg-accent-strong",
     inactiveFill,
+    forcedEdge,
   ),
   secondary: cn("border border-line-strong/80 bg-surface text-ink shadow-[var(--shadow-card)] hover:border-line-strong hover:bg-surface-2", inactiveFill),
-  soft: cn("bg-accent-soft text-accent hover:bg-accent/15", inactiveFill),
+  soft: cn("bg-accent-soft text-accent hover:bg-accent/15", inactiveFill, forcedEdge),
   ghost: "text-muted hover:bg-surface-3/70 hover:text-ink",
   danger: cn(
     "bg-danger text-white shadow-[0_1px_2px_rgb(0_0_0/0.14)] hover:bg-danger/90 dark:border dark:border-danger/40 dark:bg-danger-soft dark:text-danger-ink dark:hover:bg-danger-soft-hover",
     inactiveFill,
+    forcedEdge,
   ),
   // text-sized, but still a 24 px tall target (WCAG 2.5.8)
   link: "h-auto! min-h-6 px-0! text-accent underline-offset-4 hover:underline active:translate-y-0",
@@ -56,10 +60,27 @@ export function buttonVariants({
   return cn(base, variants[variant], sizes[size], className);
 }
 
+/**
+ * A busy button (`loading`) is `aria-disabled`, not `disabled`: a disabled button drops keyboard focus to the
+ * page, and a screen reader is then told nothing. It keeps focus, and a press (a click, Enter, or Enter in its
+ * form) does nothing until it is done.
+ */
+function busyProps(
+  loading: boolean,
+  { disabled, onClick, "aria-disabled": ariaDisabled }: Pick<ComponentProps<"button">, "disabled" | "onClick" | "aria-disabled">,
+) {
+  return {
+    disabled,
+    "aria-disabled": loading || ariaDisabled || undefined,
+    "aria-busy": loading || undefined,
+    onClick: loading ? (e: MouseEvent<HTMLButtonElement>) => e.preventDefault() : onClick,
+  };
+}
+
 export interface ButtonProps extends ComponentProps<"button"> {
   variant?: ButtonVariant;
   size?: ButtonSize;
-  /** Shows a spinner, disables the button and sets aria-busy. */
+  /** Shows a spinner, sets aria-busy and ignores presses; the button keeps focus (see `busyProps`). */
   loading?: boolean;
   /** Leading icon (lucide component). */
   icon?: LucideIcon;
@@ -83,6 +104,8 @@ export function Button({
   className,
   children,
   disabled,
+  onClick,
+  "aria-disabled": ariaDisabled,
   type,
   ref,
   ...rest
@@ -92,8 +115,7 @@ export function Button({
       ref={ref}
       type={type ?? "button"}
       className={buttonVariants({ variant, size, className })}
-      disabled={disabled || loading}
-      aria-busy={loading || undefined}
+      {...busyProps(loading, { disabled, onClick, "aria-disabled": ariaDisabled })}
       {...rest}
     >
       {loading ? <Spinner className="size-4" /> : Icon ? <Icon aria-hidden /> : null}
@@ -133,6 +155,8 @@ export function IconButton({
   className,
   type,
   disabled,
+  onClick,
+  "aria-disabled": ariaDisabled,
   title,
   ref,
   ...rest
@@ -143,8 +167,7 @@ export function IconButton({
       type={type ?? "button"}
       aria-label={label}
       title={title ?? label}
-      disabled={disabled || loading}
-      aria-busy={loading || undefined}
+      {...busyProps(Boolean(loading), { disabled, onClick, "aria-disabled": ariaDisabled })}
       className={cn(base, variants[variant], iconSizes[size], "px-0", className)}
       {...rest}
     >
