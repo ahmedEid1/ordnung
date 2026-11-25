@@ -52,19 +52,57 @@ def _sender_name(header: Any) -> str:
 
 def _email_body(message: EmailMessage) -> tuple[str, str]:
     """The text/plain body, or the visible text of the HTML body when there is no plain part or the
-    plain part is empty (mail clients show the HTML part then, so its sender never notices)."""
+    plain part is empty (mail clients show the HTML part then, so its sender never notices).
+
+    Mail programs show the HTML part of an e-mail that has both, so a plain part could name another
+    IBAN or amount than the person read: a line of the plain part with an IBAN or amount that the HTML
+    part doesn't show is left out of the text and reported as hidden (:func:`_unshown_lines`), a scam
+    sign, never text a value is grounded in."""
     part = message.get_body(preferencelist=("plain", "html"))
     if part is None:
         return "", ""
     content = _part_text(part)
+    html = message.get_body(preferencelist=("html",))
     if part.get_content_type() == "text/plain" and not content.strip():
-        html = message.get_body(preferencelist=("html",))
         if html is None:
             return content, ""
         part, content = html, _part_text(html)
     if part.get_content_type() == "text/html":
         return html_to_text(content)
-    return content, ""
+    if html is None:
+        return content, ""
+    shown, _ = html_to_text(_part_text(html))
+    return _unshown_lines(content, shown)
+
+
+#: An IBAN as printed (country, check digits, groups with optional spaces) and an amount with cents
+#: ("1.234,56", "49,99", "12.50"); spaces, dots and commas inside are compared away.
+_IBAN_IN_TEXT = re.compile(r"\b[A-Z]{2}[0-9]{2}(?:[ \u00a0]?[A-Z0-9]){11,30}\b")
+_AMOUNT_IN_TEXT = re.compile(r"(?<![\d.,])\d{1,3}(?:[.\u00a0 ]?\d{3})*[.,]\d{2}(?!\d)")
+_COMPARED_AWAY = re.compile(r"[\s\u00a0.,\-]")
+
+
+def _compact(text: str) -> str:
+    return _COMPARED_AWAY.sub("", text).upper()
+
+
+def _amounts(text: str) -> set[str]:
+    return {_compact(amount) for amount in _AMOUNT_IN_TEXT.findall(text)}
+
+
+def _unshown_lines(plain: str, shown: str) -> tuple[str, str]:
+    """``plain`` without the lines that name an IBAN or amount ``shown`` (the HTML part's visible text)
+    doesn't, and those lines apart (as hidden text). An IBAN counts as shown anywhere in ``shown``
+    (however its groups are spaced), an amount only as the same amount."""
+    seen, seen_amounts = _compact(shown), _amounts(shown)
+    kept: list[str] = []
+    unshown: list[str] = []
+    for line in plain.splitlines(keepends=True):
+        missing = any(_compact(iban) not in seen for iban in _IBAN_IN_TEXT.findall(line.upper())) or not (
+            _amounts(line) <= seen_amounts
+        )
+        (unshown if missing else kept).append(line)
+    return "".join(kept), "".join(unshown).strip()
 
 
 #: The labels that name ISO-8859-1. Browsers and mail programs read text so labelled as Windows-1252 (WHATWG

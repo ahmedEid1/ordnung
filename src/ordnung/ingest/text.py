@@ -28,6 +28,8 @@
   a huge one-line file costs linear time. Text an HTML e-mail certainly hides from every reader
   (``display:none``, a tiny font, text the colour of its background …) is kept out of the text and
   reported as hidden; the short policy that decides it is in :func:`~ordnung.ingest.email_text.html_to_text`.
+  So is a line of an e-mail's plain part with an IBAN or amount its HTML part (what mail programs show)
+  doesn't show.
 * **Prompt helpers** — ``page_delimited`` for the extraction prompt and ``detect_injection_phrases``.
 """
 

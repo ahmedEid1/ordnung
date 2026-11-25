@@ -4,12 +4,14 @@ of the policy in its docstring, found by verifying it; each test pins the fix.""
 from __future__ import annotations
 
 from collections.abc import Callable
+from email.message import EmailMessage
 
 import pytest
 
+from fixtures_llm import iban
 from helpers_tables import check_rows
 from helpers_timing import assert_linear
-from ordnung.ingest.text import html_to_text
+from ordnung.ingest.text import html_to_text, text_document
 
 AMOUNT = "Rechnungsbetrag 77,00 EUR, fällig am 10.10.2026"
 
@@ -488,3 +490,59 @@ def test_a_caption_whose_end_tag_is_left_out_ends_at_the_first_row() -> None:
     )
     visible, hidden = html_to_text(_mail(body))
     assert "Rechnungsbetrag   77,00 EUR" in visible and hidden == "Ihre Rechnung", (visible, hidden)
+
+
+# --------------------------------------------------------------------------------------------------
+# E-mails with a plain and an HTML part: mail programs show the HTML part
+# --------------------------------------------------------------------------------------------------
+
+SHOWN_IBAN = iban("DE", "100100100123456789")
+OTHER_IBAN = iban("DE", "500500500444555666")
+
+
+def _alternatives(plain: str, html: str) -> bytes:
+    message = EmailMessage()
+    message["From"] = "rechnung@stadtwerke-musterstadt.example"
+    message["Subject"] = "Ihre Rechnung September"
+    message.set_content(plain)
+    message.add_alternative(_mail(html), subtype="html")
+    return message.as_bytes()
+
+
+@pytest.mark.parametrize(
+    ("plain_line", "html_line"),
+    [
+        (
+            f"Bitte überweisen Sie 49,99 EUR auf IBAN {OTHER_IBAN}.",
+            f"Bitte überweisen Sie 49,99 EUR auf IBAN {SHOWN_IBAN}.",
+        ),
+        (
+            f"Bitte überweisen Sie 149,99 EUR auf IBAN {SHOWN_IBAN}.",
+            f"Bitte überweisen Sie 49,99 EUR auf IBAN {SHOWN_IBAN}.",
+        ),
+    ],
+    ids=["another-iban", "another-amount"],
+)
+def test_alternatives_that_name_different_ibans_are_a_scam_sign(plain_line: str, html_line: str) -> None:
+    """Adversarial: the plain part Ordnung reads names another IBAN or amount than the HTML part the
+    person's mail program shows. That line is hidden text (a scam sign), never text a value is grounded
+    in; the rest of the plain part is read as before."""
+    document = text_document(
+        _alternatives(
+            f"Sehr geehrte Frau Rivera,\n{plain_line}\nMit freundlichen Grüßen\n", f"<p>{html_line}</p>"
+        ),
+        "message/rfc822",
+    )
+    assert plain_line not in document.text and plain_line in document.hidden_text
+    assert "Sehr geehrte Frau Rivera," in document.text and "Mit freundlichen Grüßen" in document.text
+
+
+def test_alternatives_that_name_the_same_values_are_read_as_before() -> None:
+    """The same IBAN and amount, however the HTML part spaces or formats them: the plain part is the text,
+    nothing is hidden."""
+    grouped = " ".join(SHOWN_IBAN[i : i + 4] for i in range(0, len(SHOWN_IBAN), 4))
+    plain = f"Sehr geehrte Frau Rivera,\nBitte überweisen Sie 1.249,99 EUR auf IBAN {SHOWN_IBAN}.\n"
+    html = f"<p>Bitte überweisen Sie <b>1.249,99</b>&nbsp;EUR auf IBAN <span>{grouped}</span>.</p>"
+    document = text_document(_alternatives(plain, html), "message/rfc822")
+    assert f"1.249,99 EUR auf IBAN {SHOWN_IBAN}" in document.text
+    assert document.hidden_text == ""
