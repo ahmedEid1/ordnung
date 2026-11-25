@@ -9,8 +9,6 @@ import re
 from pathlib import Path
 from typing import Any
 
-import pytest
-
 ROOT = Path(__file__).resolve().parents[1]
 DEMO = ROOT / ".github" / "workflows" / "demo.yml"
 CI = ROOT / ".github" / "workflows" / "ci.yml"
@@ -19,7 +17,8 @@ REPORT_URL = f"{PAGES_URL}evals/"
 
 
 def _workflow(path: Path) -> dict[Any, Any]:
-    yaml = pytest.importorskip("yaml")  # PyYAML comes with uvicorn[standard]
+    import yaml  # a dev dependency: missing, these tests fail rather than skip
+
     loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
     assert isinstance(loaded, dict)
     return loaded

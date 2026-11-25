@@ -42,7 +42,8 @@ def _text(path: str) -> str:
 
 
 def _yaml(path: str) -> Any:
-    yaml = pytest.importorskip("yaml")  # PyYAML comes with uvicorn[standard]
+    import yaml  # a dev dependency: missing, these tests fail rather than skip
+
     return yaml.safe_load(_text(path))
 
 
@@ -691,7 +692,8 @@ def test_the_fast_loop_says_which_jobs_the_end_to_end_job_waits_for() -> None:
     """The fast loop's sentence on when CI's end-to-end job starts names exactly the jobs its ``needs:`` lists
     (ci.yml's job ids), or says it waits for none: a workflow that starts it sooner or later fails here until the
     sentence follows."""
-    yaml = pytest.importorskip("yaml")  # PyYAML comes with uvicorn[standard]
+    import yaml  # a dev dependency: missing, these tests fail rather than skip
+
     jobs = yaml.safe_load(_text(".github/workflows/ci.yml"))["jobs"]
     needs = jobs["e2e"].get("needs", [])
     needs = {needs} if isinstance(needs, str) else set(needs)

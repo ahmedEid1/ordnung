@@ -242,9 +242,11 @@ def ci_gates(path: Path = CI_PATH) -> dict[str, Any]:
     the Land must equal. A command the step continues over the next line after a backslash is read as the shell runs
     it, as one line."""
     try:
-        import yaml  # PyYAML comes with uvicorn[standard]
-    except ImportError as exc:  # pragma: no cover - a dependency of the app
-        raise ReproduceError("reading the CI gates needs PyYAML (it comes with uvicorn[standard])") from exc
+        import yaml  # a dev dependency (pyproject.toml), as for the tests
+    except ImportError as exc:  # pragma: no cover - installed with the dev extras
+        raise ReproduceError(
+            "reading the CI gates needs PyYAML: install the dev extras (pip install -e '.[dev]')"
+        ) from exc
     workflow = yaml.safe_load(path.read_text(encoding="utf-8"))
     gates: dict[str, Any] = {}
     for step in (step for job in workflow["jobs"].values() for step in job.get("steps") or []):

@@ -1158,7 +1158,8 @@ def test_a_benchmark_run_never_writes_over_the_presenter_s_pages(
 
 def test_ci_checks_the_outputs_with_no_model_call() -> None:
     """CI's slow backend job renders every committed output again and fails on a difference (it replays nothing)."""
-    yaml = pytest.importorskip("yaml")
+    import yaml  # a dev dependency: missing, these tests fail rather than skip
+
     workflow = yaml.safe_load((ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8"))
     runs = [step.get("run", "") for step in workflow["jobs"]["backend-slow"]["steps"]]
     assert ".venv/bin/python -m evals.present --check" in runs

@@ -34,7 +34,8 @@ def _twine_check() -> str:
 @functools.cache
 def _parsed(path: Path) -> dict[Any, Any]:
     """A workflow parsed once for the module: every test only reads it."""
-    yaml = pytest.importorskip("yaml")  # PyYAML comes with uvicorn[standard]
+    import yaml  # a dev dependency: missing, these tests fail rather than skip
+
     loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
     assert isinstance(loaded, dict)
     return loaded

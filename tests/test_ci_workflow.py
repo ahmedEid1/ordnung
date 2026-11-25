@@ -43,7 +43,8 @@ assert isinstance(WITHOUT_LAND, str)
 @functools.cache
 def _parsed_workflow() -> dict[Any, Any]:
     """ci.yml parsed once for the module: every test only reads it."""
-    yaml = pytest.importorskip("yaml")  # PyYAML comes with uvicorn[standard]
+    import yaml  # a dev dependency: missing, these tests fail rather than skip
+
     return dict(yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")))
 
 
