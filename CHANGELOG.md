@@ -72,8 +72,9 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   `demo/marker.py`, so the sync engine no longer loads the demo and the assistant (102 of Ordnung's modules where it
   loaded 109); the labels of Ask's tool steps live in `assistant/tool_steps.py`, so the citation markers no longer
   import the answer check (importing them loads 220 modules where it loaded 563). ISO dates are read by two functions
-  where six copies did. Six circles of modules importing each other are gone, the largest of 13 modules;
-  `tests/test_import_layout.py` names the one that remains and fails when a new one appears, and holds each lower
+  where six copies did. All seven circles of modules importing each other are gone, the largest of 13 modules (the
+  last, between the deadline pipeline and the letter rules, ended when the function that needs both moved into
+  `rules/due.py` above them); `tests/test_import_layout.py` fails when a new one appears, and holds each lower
   layer free of the heavier one above it. In the web app, shared helpers moved out of feature folders into `lib/` and
   `components/ui`, an ESLint rule keeps the shared layers from importing a feature, a page or the mocks, and the
   letter composer's 1,551-line file is four files.

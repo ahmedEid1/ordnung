@@ -256,8 +256,9 @@ check shows in the numbers at once, and costs nothing.
 - A docs test pins a fact the page states (a flag exists, a number is the one its results file holds, a file it
   names is there), not the sentence that states it: rewording a page should not need a test change.
 - The layers are pinned. `tests/test_import_layout.py` reads the backend's imports from the source, a lazy one
-  inside a function included: no circle of modules imports each other, so an import that closes one fails it. In the web app, `npm run lint` refuses an import of a
-  feature, a page, the shell or the mocks from `lib/`, `api/` or `components/ui` (`web/eslint.config.js`).
+  inside a function included, one only for type checking not: no circle of modules imports each other, so an
+  import that closes one fails it. In the web app, `npm run lint` refuses an import of a feature, a page, the
+  shell or the mocks from `lib/`, `api/` or `components/ui` (`web/eslint.config.js`).
 
 ## Dependencies
 
