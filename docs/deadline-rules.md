@@ -15,8 +15,9 @@ computed or change a rule.
   date, lowers the confidence and says why ([§1](#1-safety-policy-and-confidence)).
 - **The model never computes a date:** Claude returns what the letter says, and the rules engine turns it into a
   date with a receipt, "Why this date?" (below).
-- **A letter from an authority counts as delivered on a fixed day after posting,** which depends on the sender's law
-  and, for a state authority, on its state ([§5](#5-deemed-delivery-bekanntgabefiktion)).
+- **A letter an authority posts counts as delivered on the 4th day after posting for most senders** (the 3rd if
+  posted before 1 January 2025). Some states switched later or keep the 3rd, and for a state authority whose state it
+  doesn't know, Ordnung counts the 3rd ([§5](#5-deemed-delivery-bekanntgabefiktion)).
 - **A deadline that ends on a weekend or holiday usually moves to the next working day;** a notice period never
   does, and gets a safe date the working day before ([§4](#4-when-the-last-day-is-a-weekend-or-holiday)).
 - **High-stakes letters, such as a court payment order or a dismissal,** are filed under their own kind by code,
