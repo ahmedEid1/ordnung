@@ -39,6 +39,7 @@ from typing import Any, Literal
 from pydantic import ValidationError
 
 from ordnung import clock
+from ordnung.display_text import clean_display_text
 from ordnung.ingest.gaps import (
     Check,
     Gap,
@@ -304,10 +305,44 @@ def validation_problems(exc: ValidationError) -> str:
 
 
 def parse_extraction(data: dict[str, Any] | None, text: str) -> DocumentExtraction:
-    """Validate a model answer (structured ``data`` or JSON inside ``text``), completed by
-    :func:`with_rent_series`."""
+    """Validate a model answer (structured ``data`` or JSON inside ``text``), its free-text fields made
+    plain (:func:`clean_reading`), completed by :func:`with_rent_series`."""
     payload = data if data is not None else extract_json(text)
-    return with_rent_series(DocumentExtraction.model_validate(payload if payload is not None else {}))
+    reading = DocumentExtraction.model_validate(payload if payload is not None else {})
+    return with_rent_series(clean_reading(reading))
+
+
+def clean_reading(reading: DocumentExtraction) -> DocumentExtraction:
+    """The reading with its free-text fields — titles, summary, explanation, to-dos' wording, the sender's
+    name — made plain (:func:`clean_display_text`). Quotes and values stay exactly as read: they are
+    matched against the page."""
+
+    def plain(value: str | None, *, lines: bool = False) -> str | None:
+        return None if value is None else clean_display_text(value, lines=lines)
+
+    items = [
+        item.model_copy(
+            update={
+                "title": clean_display_text(item.title),
+                "action": plain(item.action, lines=True),
+                "consequence": plain(item.consequence, lines=True),
+                "location": plain(item.location),
+            }
+        )
+        for item in reading.items
+    ]
+    sender = reading.sender
+    return reading.model_copy(
+        update={
+            "title": clean_display_text(reading.title),
+            "summary": clean_display_text(reading.summary, lines=True),
+            "explanation": clean_display_text(reading.explanation, lines=True),
+            "case_title": clean_display_text(reading.case_title),
+            "tax_note": plain(reading.tax_note, lines=True),
+            "sender": sender.model_copy(update={"name": clean_display_text(sender.name)}) if sender else None,
+            "items": items,
+        }
+    )
 
 
 def _eur(amount: float) -> str:
