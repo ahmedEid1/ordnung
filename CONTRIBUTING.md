@@ -126,10 +126,11 @@ CI runs its jobs side by side, none waiting for another.
   projects or part of one, took 7 to 12 as four legs; the layout guards took 23 as one leg and up to 12 as the
   first of two halves, so they run in four parts (Playwright's `--shard`, each part on a demo of its own: a layout
   file sets up what it needs and relies on no file before it), and the layout sweep and the evaluation's report
-  page have groups of their own.
+  page have groups of their own. In the first run with eight legs (25 November 2026) they took 3 to 7.
 - **The other jobs.** The backend's 3.12 leg, which measures the coverage, took 7 to 12 as one leg: it runs as
   two halves side by side, each on half of the test files, and a short job adds up their coverage and holds the
-  sum to the floors. The backend's other legs (Python 3.11, 3.13 and 3.14) take 4 to 6, the lowest versions (and,
+  sum to the floors (in the first run the halves took 9 and 6 minutes, the adding up 20 seconds, and the whole
+  run 9.5). The backend's other legs (Python 3.11, 3.13 and 3.14) take 4 to 6, the lowest versions (and,
   weekly, the newest) 5 to 8, the replayed benchmarks 5 to 8, the replay of every published number (`make
   eval-reproduce`) 6 to 9, the frontend 4 to 7; lint and types, the wheel and the dependency audit take under a
   minute each.
