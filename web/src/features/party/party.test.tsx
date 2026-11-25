@@ -3,7 +3,7 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Document, Draft, MyNumbers, PartyDetail, RegionSuggestion } from "@/api/types";
 import { renderWithProviders } from "@/test/render";
-import { useMockApi } from "@/test/mockFetch";
+import { failRequests, useMockApi } from "@/test/mockFetch";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { usePartyDrawer } from "@/lib/party-drawer";
 import { item } from "@/mocks/data/helpers";
@@ -433,6 +433,21 @@ describe("a sender's state, suggested from the postcode on their letter (ADR 001
     // not known again: asked again
     expect(await within(drawer).findByRole("group", { name: FUNKNETZ })).toBeInTheDocument();
     expect(picker).toHaveValue("");
+  });
+
+  it("a failed Undo of Yes keeps their state and gives the keyboard back to the State heading, where Yes left it", async () => {
+    const { srv } = useMockApi();
+    const region = () => srv.db.state.parties.find((p) => p.id === "pty_funknetz")!.region;
+    const { user, drawer, picker } = await openDrawer();
+    await user.click(within(within(drawer).getByRole("group", { name: FUNKNETZ })).getByRole("button", { name: "Yes" }));
+    const heading = within(drawer).getByRole("heading", { name: "State" });
+    await waitFor(() => expect(heading).toHaveFocus());
+    failRequests((c) => c.method === "PATCH");
+    picker.focus(); // the person went on before reaching for Undo
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(screen.queryByText("Saved: FunkNetz Mobil GmbH is in Berlin")).not.toBeInTheDocument());
+    expect(region()).toBe("BE");
+    expect(heading).toHaveFocus();
   });
 
   it("credits the state's delivery rules when that is why their dates wait: Yes, and the picker choosing that state", async () => {

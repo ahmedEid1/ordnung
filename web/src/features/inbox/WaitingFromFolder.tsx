@@ -93,6 +93,8 @@ export function WaitingFromFolder({
                   .mutateAsync(kept)
                   .then((back) => void toast({ title: back.documents.length === 1 ? "It's back with the letters not read yet" : "They're back with the letters not read yet", tone: "info" }))
             : undefined,
+          // still kept private: the first of them, now among the letters (else back where focus was)
+          focusIfUndoFails: () => (count ? document.querySelector<HTMLElement>(`a[href="/documents/${kept[0]}"]`) : null),
         });
         onAnswered?.();
       })

@@ -53,14 +53,18 @@ export function FileThese({
     // each letter's answer before the press (not answered): what Undo sends back
     const before = undoLetters(household, ids);
     /** Undo of the letters `filed`: each back as it was, then focus back on the button. */
-    const undo = (filed: readonly string[]) => () =>
-      file
-        .mutateAsync({ letters: Object.fromEntries(filed.map((id) => [id, before[id] ?? null])) })
-        .then(() => focusWhenReady(() => document.getElementById(FILE_THESE_BUTTON_ID)));
+    const undo = (filed: readonly string[]) => ({
+      undo: () =>
+        file
+          .mutateAsync({ letters: Object.fromEntries(filed.map((id) => [id, before[id] ?? null])) })
+          .then(() => focusWhenReady(() => document.getElementById(FILE_THESE_BUTTON_ID))),
+      // still filed: the button when the card stays (some weren't filed), else the first of them among the letters
+      focusIfUndoFails: () => document.getElementById(FILE_THESE_BUTTON_ID) ?? document.querySelector<HTMLElement>(`a[href="/documents/${filed[0]}"]`),
+    });
     file
       .mutateAsync({ letters: Object.fromEntries(ids.map((id) => [id, member.id])) })
       .then(() => {
-        toast.success(`Filed ${plural(n, "letter")} for ${member.name}`, { undo: undo(ids) });
+        toast.success(`Filed ${plural(n, "letter")} for ${member.name}`, undo(ids));
         onFiled?.();
       })
       .catch((err: unknown) => {
@@ -68,7 +72,7 @@ export function FileThese({
         // filed before one failed stay filed: say so, with their Undo
         const filed = filedBeforeFailure(err);
         if (filed.length) {
-          toast.warn(`Filed ${filed.length} of ${plural(n, "letter")} for ${member.name}`, { description: "The others weren't filed.", undo: undo(filed) });
+          toast.warn(`Filed ${filed.length} of ${plural(n, "letter")} for ${member.name}`, { description: "The others weren't filed.", ...undo(filed) });
         }
       });
   };

@@ -64,6 +64,7 @@ import {
   usesLaw,
   verdictWords,
   withoutIfYouDisagree,
+  waitAgainId,
   type AsideItem,
   type MainAction,
   type NotOwed,
@@ -196,6 +197,7 @@ function NotRead({ doc, canWaitAgain: canWait, onAnswered }: { doc: DocumentDeta
       {canWaitAgain ? (
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
           <AnswerButton
+            id={waitAgainId(doc.id)}
             size="sm"
             icon={Undo2}
             busy={wait.isPending}
@@ -763,7 +765,7 @@ function KeepButton({ suggestion }: { suggestion: Suggestion }) {
             toast({
               title: "Kept",
               description: "Ordnung won't remind you about this window again.",
-              undo: () => update.mutate({ id: suggestion.id, patch: { status: "new" } }),
+              undo: () => update.mutateAsync({ id: suggestion.id, patch: { status: "new" } }).then(() => undefined),
             }),
           () => undefined, // the error toast comes from the mutation's meta
         )

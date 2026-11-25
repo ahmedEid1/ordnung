@@ -456,7 +456,8 @@ describe("Proof of sending", () => {
     // the toast goes and the app's error toast says why; no rejection escapes
     await waitFor(() => expect(screen.queryByText("Tracking number removed")).not.toBeInTheDocument());
     expect(await screen.findByText("Couldn't save the tracking number")).toBeInTheDocument();
-    expect(within(proof).getByLabelText("Tracking number")).toBeInTheDocument();
+    // the keyboard is back on the field, not dropped at the top of the page
+    expect(within(proof).getByLabelText("Tracking number")).toHaveFocus();
     expect(screen.queryByText("Tracking number saved")).not.toBeInTheDocument();
   });
 
@@ -497,6 +498,8 @@ describe("Proof of sending", () => {
     // and no second error toast from the Undo itself
     expect(document.querySelectorAll('[aria-live="assertive"] li[data-toast]')).toHaveLength(1);
     expect(within(proof).getByText(/You marked it as answered on/)).toBeInTheDocument();
+    // focus is on the box the change was about (where a working Undo puts it), not on <main>
+    expect(document.getElementById("proof-waiting")).toHaveFocus();
   });
 
   it("puts focus on Change after the tracking number's Undo pressed from the keyboard (Alt+N, Enter)", async () => {

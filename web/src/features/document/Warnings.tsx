@@ -292,7 +292,7 @@ function ScamBanner({ suggestion, doc, reasons }: { suggestion: Suggestion; doc:
                 toast({
                   title: "Warning removed",
                   description: "You checked it with the sender. We'll keep comparing new letters.",
-                  undo: () => update.mutate({ id: suggestion.id, patch: { status: "new" } }),
+                  undo: () => update.mutateAsync({ id: suggestion.id, patch: { status: "new" } }).then(() => undefined),
                 }),
               () => undefined, // the error toast comes from the mutation's meta
             )

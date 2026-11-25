@@ -49,21 +49,41 @@ export function useMockApi(opts: MockApiOptions = {}): { srv: MockServer; calls:
   setClientKind(phone ? "phone" : "computer");
   const calls: FetchCall[] = [];
   vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, "http://localhost");
-    const method = (init?.method ?? "GET").toUpperCase();
-    let body: unknown = undefined;
-    if (typeof init?.body === "string") {
-      try {
-        body = JSON.parse(init.body);
-      } catch {
-        body = init.body;
-      }
-    } else if (init?.body instanceof FormData) {
-      body = init.body; // multipart uploads (the mock handlers read the form)
-    }
-    const path = url.pathname.replace(/^\/api/, "");
-    calls.push({ method, path, body });
-    return srv.handle(method, path, url.searchParams, body, init?.signal ?? null);
+    const { url, ...call } = request(input, init);
+    calls.push(call);
+    return srv.handle(call.method, call.path, url.searchParams, call.body, init?.signal ?? null);
   });
   return { srv, calls };
+}
+
+/** A fetch call as the mock server reads it: method, path under /api, the JSON body parsed. */
+function request(input: RequestInfo | URL, init?: RequestInit): FetchCall & { url: URL } {
+  const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, "http://localhost");
+  const method = (init?.method ?? "GET").toUpperCase();
+  let body: unknown = undefined;
+  if (typeof init?.body === "string") {
+    try {
+      body = JSON.parse(init.body);
+    } catch {
+      body = init.body;
+    }
+  } else if (init?.body instanceof FormData) {
+    body = init.body; // multipart uploads (the mock handlers read the form)
+  }
+  return { url, method, path: url.pathname.replace(/^\/api/, ""), body };
+}
+
+/**
+ * After {@link useMockApi}: the requests `match` picks answer 500, as a server that broke would — to see what a failed
+ * request (an Undo's, say) leaves behind. `failed` counts them.
+ */
+export function failRequests(match: (call: FetchCall) => boolean): { failed: number } {
+  const mocked = globalThis.fetch;
+  const seen = { failed: 0 };
+  vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (!match(request(input, init))) return mocked(input, init);
+    seen.failed += 1;
+    return new Response(JSON.stringify({ detail: "Failed on purpose." }), { status: 500, headers: { "Content-Type": "application/json" } });
+  });
+  return seen;
 }

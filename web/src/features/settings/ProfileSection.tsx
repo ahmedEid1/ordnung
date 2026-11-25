@@ -233,7 +233,12 @@ export function ProfileSection({ profile }: { profile: Profile }) {
     update.mutateAsync({ moved_on: "", old_address: "" }).then(
       () => {
         focusWhenReady(() => addressRef.current);
-        toast({ title: "Moving checklist stopped", undo: () => update.mutateAsync(back).then(() => undefined) });
+        toast({
+          title: "Moving checklist stopped",
+          undo: () => update.mutateAsync(back).then(() => undefined),
+          // still stopped: the address, where stopping left the keyboard
+          focusIfUndoFails: () => addressRef.current,
+        });
       },
       () => undefined, // the error toast comes from the mutation's meta
     );
@@ -249,6 +254,8 @@ export function ProfileSection({ profile }: { profile: Profile }) {
         title: "Moving checklist started",
         description: "Today lists who needs your new address.",
         undo: () => update.mutateAsync({ moved_on: "", old_address: "" }).then(() => undefined),
+        // still started: its line, where starting it left the keyboard
+        focusIfUndoFails: () => lineRef.current?.querySelector<HTMLElement>("a, button") ?? null,
       });
     });
 

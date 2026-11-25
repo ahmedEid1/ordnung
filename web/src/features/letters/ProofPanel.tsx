@@ -68,6 +68,7 @@ function WaitingBox({ entry, draft }: { entry: WaitingEntry; draft: Draft }) {
               const back = focusOrigin();
               return answered.mutateAsync({ id: draft.id, answered: false }).then(() => focusId(BOX_ID, back));
             },
+            focusIfUndoFails: () => document.getElementById(BOX_ID),
           });
         else
           toast.success("Waiting for an answer again", {
@@ -136,9 +137,10 @@ function Tracking({ draft, overview }: { draft: Draft; overview: ProofOverview }
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState("");
   const [tried, setTried] = useState(false);
-  // a promise, so the Undo that puts a removed number back waits for it (its toast stays, busy, until then);
-  // `from`: where focus was as it started (focusOrigin), so Change takes focus from there too
-  const store = (text: string | null, then?: () => void, from: Element | null = null) =>
+  // a promise of whether it was saved, so the Undo that puts a removed number back waits for it (its toast stays,
+  // busy, until then) and knows when it failed; `from`: where focus was as it started (focusOrigin), so Change takes
+  // focus from there too
+  const store = (text: string | null, { then, from = null }: { then?: () => void; from?: Element | null } = {}) =>
     save.mutateAsync({ id: draft.id, trackingNumber: text }).then(
       (next) => {
         setEditing(false);
@@ -151,20 +153,25 @@ function Tracking({ draft, overview }: { draft: Draft; overview: ProofOverview }
             description: next.tracking ? displayTracking(next.tracking.number) : undefined,
           });
         }
+        return true;
       },
-      () => undefined, // the hook's toast says it couldn't be saved
+      () => false, // the hook's toast says it couldn't be saved
     );
   const remove = () => {
     if (!saved) return;
     const previous = saved.number;
-    store(null, () => {
-      focusId(TRACKING_INPUT);
-      toast.success("Tracking number removed", {
-        description: displayTracking(previous),
-        // pressed from the keyboard (Alt+N, Enter), the closing toast hands focus back where it was before Alt+N:
-        // Change takes it from there, as after "Marked as answered"'s Undo
-        undo: () => store(previous, undefined, focusOrigin()),
-      });
+    void store(null, {
+      then: () => {
+        focusId(TRACKING_INPUT);
+        toast.success("Tracking number removed", {
+          description: displayTracking(previous),
+          // pressed from the keyboard (Alt+N, Enter), the closing toast hands focus back where it was before Alt+N:
+          // Change takes it from there, as after "Marked as answered"'s Undo
+          undo: () => store(previous, { from: focusOrigin() }),
+          // not put back: the field, as Remove left it
+          focusIfUndoFails: () => document.getElementById(TRACKING_INPUT),
+        });
+      },
     });
   };
 
@@ -212,7 +219,7 @@ function Tracking({ draft, overview }: { draft: Draft; overview: ProofOverview }
       onSubmit={(e) => {
         e.preventDefault();
         setTried(true);
-        if (value.trim() && trackingSavable(value)) store(value);
+        if (value.trim() && trackingSavable(value)) void store(value);
         else document.getElementById(TRACKING_INPUT)?.focus();
       }}
     >

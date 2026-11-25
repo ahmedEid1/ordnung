@@ -109,6 +109,19 @@ describe("File these N", () => {
     await waitFor(() => expect(filings).toEqual([{ doc_a: ALEX, doc_b: ALEX }, { doc_a: null, doc_b: null }]));
   });
 
+  it("a failed Undo puts focus back on the button, not on the top of the page", async () => {
+    renderCard();
+    const user = userEvent.setup();
+    const button = screen.getByRole("button", { name: "File these 2 for Alex Rivera" });
+    await user.click(button);
+    const toastItem = (await screen.findByText("Filed 2 letters for Alex Rivera")).closest("li")!;
+    failNext = true;
+    await user.click(within(toastItem).getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(toastItem).not.toBeInTheDocument());
+    expect(filings).toEqual([{ doc_a: ALEX, doc_b: ALEX }]);
+    expect(button).toHaveFocus();
+  });
+
   it("says “Filed 1 letter” for one", async () => {
     renderCard(LETTERS.slice(1));
     await userEvent.setup().click(screen.getByRole("button", { name: "File it for Alex Rivera" }));

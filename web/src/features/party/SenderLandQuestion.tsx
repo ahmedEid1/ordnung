@@ -89,6 +89,8 @@ export function SenderLandQuestion({
     toast.success(`Saved: ${saved.name} is in ${state}`, {
       description: [savedStateLine(state, suggestion.reason), moved].filter(Boolean).join(" "),
       undo: () => update.mutateAsync({ id: party.id, patch: { region: null } }).then(() => undefined),
+      // still saved, the question gone: where Yes left the keyboard
+      focusIfUndoFails: () => focusAfterYes?.() ?? null,
     });
   };
 
@@ -105,6 +107,8 @@ export function SenderLandQuestion({
             suggestion.may_be_late ? "A holiday in their state could make a date earlier: act a working day before it." : "Their dates stay the earlier ones."
           } You can choose their state any time in their details.`,
           undo: () => idea.mutateAsync({ id: ideaId, patch: { status: "new" } }).then(() => undefined),
+          // still dismissed, its button gone: where "Don't know" left the keyboard
+          focusIfUndoFails: () => focusAfterDontKnow?.() ?? null,
         });
         if (focusAfterDontKnow) focusWhenReady(() => (document.getElementById(dontKnowId) ? null : focusAfterDontKnow()));
       },

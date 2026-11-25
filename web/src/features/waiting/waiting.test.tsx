@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import type { WaitingEntry } from "@/api/types";
 import { api } from "@/api/endpoints";
 import { renderWithProviders } from "@/test/render";
-import { useMockApi } from "@/test/mockFetch";
+import { failRequests, useMockApi } from "@/test/mockFetch";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { doc } from "@/mocks/data/helpers";
@@ -145,6 +145,26 @@ describe("Waiting for page", () => {
     expect(await screen.findByText("A written confirmation of the end date")).toBeInTheDocument();
     // back in its place, with focus on it
     await waitFor(() => expect(screen.getByRole("heading", { name: "A written confirmation of the end date" })).toHaveFocus());
+  });
+
+  it("a failed Undo leaves the row closed and focus on the row now in its place, not on the top of the page", async () => {
+    useMockApi();
+    const user = userEvent.setup();
+    renderWaiting();
+    const letter = (await screen.findByText("A written confirmation of the end date")).closest("li")!;
+    await user.click(within(letter as HTMLElement).getByRole("button", { name: "I got an answer — close this" }));
+    await waitFor(() => expect(screen.queryByText("A written confirmation of the end date")).not.toBeInTheDocument());
+    // the row now in its place took the keyboard
+    const there = await waitFor(() => {
+      const el = document.activeElement as HTMLElement;
+      expect(el.tagName).toMatch(/^H\d$/);
+      return el;
+    });
+    failRequests((c) => c.method === "DELETE" && c.path === "/drafts/drf_gym/answered");
+    await user.click(await screen.findByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(screen.queryByText("Marked as answered")).not.toBeInTheDocument());
+    expect(screen.queryByText("A written confirmation of the end date")).not.toBeInTheDocument();
+    expect(there).toHaveFocus();
   });
 
   it("marks money as received and a phone promise as kept", async () => {

@@ -591,3 +591,6 @@ export function withoutIfYouDisagree(text: string): string {
   const rest = text.replace(/^if you disagree(?: with (?:this|the) decision)?,\s*/i, "");
   return rest === text || !rest ? text : rest.charAt(0).toUpperCase() + rest.slice(1);
 }
+
+/** The id of a private letter's "Undo “Keep private”" (the Kept private toast's failed Undo hands focus to it). */
+export const waitAgainId = (docId: string) => `wait-again-${docId}`;

@@ -267,7 +267,8 @@ export function HouseholdCard() {
       title: `Removed ${person.name}`,
       description: person.letters ? backToYours(person.letters) : undefined,
       // the same person, with the same id, where they were: their letters are filed for them again
-      undo: () => save(after, membersOf(h)).then(() => undefined),
+      // a quiet change: save() says why it failed, and `false` tells the toast it didn't work
+      undo: () => save(after, membersOf(h)).then((back) => back !== null),
     });
   };
 

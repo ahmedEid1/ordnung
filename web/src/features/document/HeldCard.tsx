@@ -27,7 +27,7 @@ import { heldOrigin } from "@/features/inbox/waiting";
 import { usePhoneCompanion } from "@/features/phone/client";
 import { OnYourComputer } from "@/features/phone/ComputerOnly";
 import { DECIDE_ONE_ON_COMPUTER, theComputer } from "@/features/phone/copy";
-import { hasLongWord } from "./verdict";
+import { hasLongWord, waitAgainId } from "./verdict";
 
 /**
  * "Not read yet" over a waiting letter's title, with the Inbox's icon for it. Its row is as tall as the
@@ -107,6 +107,8 @@ export function HeldCard({ detail, className, onAnswered }: HeldCardProps) {
                   .mutateAsync(ids)
                   .then(() => void toast({ title: "It's back with the letters not read yet", tone: "info" }))
             : undefined,
+          // still kept private: the letter's own "Undo “Keep private”", one press from trying again
+          focusIfUndoFails: () => document.getElementById(waitAgainId(doc.id)),
         });
         if (answeredFor(res, doc.id)) onAnswered?.(doc.status);
       })

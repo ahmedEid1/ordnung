@@ -236,6 +236,8 @@ export function useLetterFor(detail: DocumentDetail, editable: boolean): LetterF
         toast({
           title: next === MINE ? "Filed as yours" : `Filed for ${name ?? ""}`,
           undo: () => file.mutateAsync({ letters: { [doc.id]: before } }).then(backToAnswer),
+          // still filed: Change, as this answer left it
+          focusIfUndoFails: () => changeRef.current,
         });
       },
       () => undefined, // the mutation's error toast says what went wrong
@@ -265,8 +267,11 @@ export function useLetterFor(detail: DocumentDetail, editable: boolean): LetterF
         change.mutateAsync({ base: after.version, members: membersOf(before), also_file: [] }).then(
           // the offer comes back with the person gone: the keyboard goes on from it
           () => focusWhenReady(() => addRef.current),
-          (err: unknown) => void refusal(err, qc),
+          // a quiet change: refusal() says why, and `false` tells the toast it didn't work
+          (err: unknown) => (refusal(err, qc), false),
         ),
+      // still added: where adding them left the keyboard
+      focusIfUndoFails: () => (filedToo ? changeRef.current : (questionRef.current?.querySelector("button") ?? null)),
     });
   };
 

@@ -94,6 +94,8 @@ export function TaxToggle({ detail }: { detail: DocumentDetail }) {
                   return el instanceof HTMLButtonElement && !el.disabled ? el : null;
                 }),
             ),
+          // not undone: back on the toggle all the same, one press from trying again
+          focusIfUndoFails: () => document.getElementById(toggleId(doc.id)),
         }),
       () => undefined, // the hook's toast says it couldn't be saved
     );

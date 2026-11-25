@@ -161,7 +161,8 @@ export function NoticePeriodForm({
     update.mutateAsync({ id: c.id, patch }).then(
       (fresh) => {
         onClose(fresh);
-        const undo = () => update.mutateAsync({ id: c.id, patch: before }).then(onUndone, () => undefined);
+        // (a failed one rejects: the toast then knows, and the error toast from the mutation's meta says why)
+        const undo = () => update.mutateAsync({ id: c.id, patch: before }).then(onUndone);
         const description = fresh.computed?.summary || undefined;
         // saved either way; say so plainly when the dates still can't be worked out (e.g. no term)
         if (termsUnclear(fresh)) toast.warn("Notice period saved — the dates still need checking", { description, undo });
