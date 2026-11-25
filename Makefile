@@ -2,6 +2,8 @@ PY ?= .venv/bin/python
 UV ?= uv
 SAMPLES_MANIFEST = src/ordnung/demo/samples/manifest.json
 DE_ZIP ?= DE.zip
+# e.g. --only e2e, or --skip e2e: a part of the replays (python -m evals.reproduce --help)
+REPRODUCE_ARGS ?=
 
 .PHONY: help install web-dev serve test lint typecheck check build-web openapi demo eval eval-reproduce browser e2e ui-audit capture samples postcodes constraints build-constraints clean
 
@@ -67,7 +69,7 @@ eval:               ## replay the test split (no model call) into evals/results/
 	.venv/bin/ordnung eval
 
 eval-reproduce:     ## replay every published number (no model call, no API key) and compare with evals/results/INDEX.json
-	$(PY) -m evals.reproduce --check
+	$(PY) -m evals.reproduce --check $(REPRODUCE_ARGS)
 
 browser:            ## the Chromium Playwright drives (skipped when PW_CHROMIUM_PATH names one)
 	@if [ -z "$$PW_CHROMIUM_PATH" ]; then cd web && npx playwright install chromium; fi

@@ -115,9 +115,12 @@ CI runs its jobs side by side, none waiting for another.
 
 - **The whole run.** A whole run took 40 to 50 minutes with each suite in one process and 13 to 16 once the
   suites ran in parallel; with every published number replayed in a job of its own and the slow tests in two, a
-  pull request's run takes 10 to 12 (the runs of 19 November 2026, on which the minutes here were measured; where
-  two are given, they are the shortest and the longest of that day, and the same job can take half as long again
-  on another runner).
+  pull request's run took 10 to 12 (the runs of 19 November 2026, on which the minutes here were measured unless
+  another day is named; where two are given, they are the shortest and the longest of that day, and the same job
+  can take half as long again on another runner). With what the paragraphs below describe it takes 8 to 9: 8.3
+  and 8.5 minutes in the two runs of 25 November 2026, the second with every job started within 52 seconds.
+  What sets the time now is the runner a job happens to get: the lowest versions' job took 6.3 minutes in one of
+  those runs and 8.5 in the other, the longest slow tests 5.7 and 7.9.
 - **The slow tests.** The slow tests took 10 as one job, and 15 on a slower runner, where every test ran about
   1.6 times as long (three runs of five that day): they run as two jobs side by side, each with about half the
   work, the seven files with the longest tests in one (5 to 6 minutes, most of it the kill test of
@@ -126,19 +129,30 @@ CI runs its jobs side by side, none waiting for another.
   projects or part of one, took 7 to 12 as four legs; the layout guards took 23 as one leg and up to 12 as the
   first of two halves, so they run in four parts (Playwright's `--shard`, each part on a demo of its own: a layout
   file sets up what it needs and relies on no file before it), and the layout sweep and the evaluation's report
-  page have groups of their own. In the first run with eight legs (25 November 2026) they took 3 to 7.
+  page have groups of their own. In the first run with eight legs (25 November 2026) they took 3 to 7. A pull
+  request's run starts more jobs than GitHub runs at once (20 for this account), and a job left waiting starts
+  only when another ends, so the report page's group (about 3 minutes) runs after the last layout part (also about
+  3) in that part's leg: seven legs.
 - **The other jobs.** The backend's 3.12 leg, which measures the coverage, took 7 to 12 as one leg: it runs as
   two halves side by side, each on half of the test files, and a short job adds up their coverage and holds the
   sum to the floors (in the first run the halves took 9 and 6 minutes, the adding up 20 seconds, and the whole
-  run 9.5). The backend's other legs (Python 3.11, 3.13 and 3.14) take 4 to 6, the lowest versions (and,
-  weekly, the newest) 5 to 8, the replayed benchmarks 5 to 8, the replay of every published number (`make
-  eval-reproduce`) 6 to 9, the frontend 4 to 7; lint and types, the wheel and the dependency audit take under a
-  minute each.
-- **Windows and macOS.** Windows (7 to 9 minutes) runs on every pull request too, with the tests of the code that
-  differs per system (`PER_SYSTEM_TESTS` in `tests/test_ci_workflow.py`), and has to pass, as Linux does. macOS
-  (3 to 6 minutes) runs the same tests on `main`, weekly and when the workflow is started by hand, not on a pull
-  request: on one pull request of three its runner was 10 minutes in coming, and on another none came in 15
-  minutes, the job was cancelled and the run failed with every other job passed.
+  run 9.5). The backend's other legs (Python 3.13 and 3.14, and on `main` 3.11) take 4 to 6, the lowest versions
+  (and, weekly, the newest) 5 to 8, the frontend 4 to 7; lint and types, the wheel and the dependency audit take
+  under a minute each. On a pull request Python 3.11 is tested in the lowest versions' job alone, which runs the
+  same tests on 3.11: with its own leg as well, a pull request's run had 21 jobs of several minutes for the 20
+  GitHub runs at once, and the one left waiting started about four minutes late, whichever it happened to be
+  (25 November 2026). With 20, every job starts within the minute the three short ones take. The replayed benchmarks' gates run one after another and took 7.5 to 8.5 with the replay without
+  the Land among them, and the replay of every published number (`make eval-reproduce`, 4 commands at a time)
+  8.2 to 9.2 (25 November 2026): it runs in two parts side by side, `--only` some cells and `--skip` the same
+  cells, the second with the replay without the Land after it.
+- **Windows and macOS.** Windows runs on every pull request too, with the tests of the code that differs per
+  system (`PER_SYSTEM_TESTS` in `tests/test_ci_workflow.py`), and has to pass, as Linux does. Those tests run in
+  one process, and as one job Windows took 6.6 to 9.9 minutes (three runs, 25 November 2026), mostly the sync
+  tests: it runs in two parts side by side, the sync files from a to c (the crash tests among them) in one, every
+  other file and the wheel's checks in the other. macOS (3 to 6 minutes) runs the same tests as one job on
+  `main`, weekly and when the workflow is started by hand, not on a pull request: on one pull request of three its
+  runner was 10 minutes in coming, and on another none came in 15 minutes, the job was cancelled and the run
+  failed with every other job passed.
 
 </details>
 

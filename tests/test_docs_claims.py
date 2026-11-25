@@ -140,11 +140,16 @@ def test_mypy_is_strict_on_the_rules_engine() -> None:
 
 def test_the_ci_gates_row_says_where_each_test_suite_runs() -> None:
     """docs/architecture.md's *CI gates* row: the backend tests run on each Python of the backend job's matrix, and
-    Vitest once, in the frontend job on its Node version; neither suite is said to run on every Python."""
+    Vitest once, in the frontend job on its Node version; neither suite is said to run on every Python. The
+    matrix's Pythons are two lists, a pull request's and every other event's (main): the row names main's, and
+    says which of them a pull request tests in the lowest versions' job alone."""
     import yaml
 
     jobs = yaml.safe_load((ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8"))["jobs"]
-    versions = jobs["backend"]["strategy"]["matrix"]["python"]
+    on_pull_request, versions = (
+        json.loads(listed)
+        for listed in re.findall(r"'(\[[^']*\])'", jobs["backend"]["strategy"]["matrix"]["python"])
+    )
     frontend = jobs["frontend"]["steps"]
     (node,) = [step["with"]["node-version"] for step in frontend if "setup-node" in step.get("uses", "")]
     assert any(step.get("run") == "npm test" for step in frontend)
@@ -152,6 +157,8 @@ def test_the_ci_gates_row_says_where_each_test_suite_runs() -> None:
     (row,) = [_flat(line) for line in testing.splitlines() if line.startswith("| CI gates |")]
     tested = ", ".join(versions[:-1]) + f" and {versions[-1]}"
     assert f"the backend tests on Python {tested} with the versions pinned in constraints.txt" in row
+    (left_out,) = [python for python in versions if python not in on_pull_request]
+    assert f"on a pull request {left_out} runs in that job alone" in row
     assert f"Vitest on Node {node}," in row
     assert "both test suites" not in row
 

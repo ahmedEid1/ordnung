@@ -1112,6 +1112,29 @@ def test_write_then_check_on_a_small_folder(
     assert "ADR 0016" in (results / "INDEX.json").read_text(encoding="utf-8")
 
 
+def test_only_and_skip_with_the_same_cells_replay_every_task_once_between_them(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """CI runs the replay in two parts side by side: ``--only`` some cells, and ``--skip`` the same cells. Between
+    them every task runs once, each part passes on its own (keeping what the index says of the rows it didn't
+    replay), and ``--write``, which needs every task, takes neither."""
+    results = _copy_results(tmp_path, SMALL[:1])
+    ran = _stand_in(tmp_path, monkeypatch, results, fixed=False)
+    assert _main(results, tmp_path, "--write") == 0
+    every = sorted(ran)
+    parts = []
+    for select in ("--only", "--skip"):
+        ran.clear()
+        assert _main(results, tmp_path, "--check", select, "benchmark") == 0, select
+        parts.append(sorted(ran))
+    first, second = parts
+    assert first and second and not set(first) & set(second) and sorted(first + second) == every
+    assert all(name.startswith("benchmark/") for name in first)
+    for select in ("--only", "--skip"):
+        with pytest.raises(SystemExit):
+            _main(results, tmp_path, "--write", select, "benchmark")
+
+
 def test_check_fails_on_an_edited_results_file_a_stale_csv_or_a_failed_check(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

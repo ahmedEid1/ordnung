@@ -73,8 +73,8 @@ def test_each_check_runs_on_pull_requests_in_a_job_of_its_own() -> None:
     of them, and ``make eval-reproduce`` took 6 of the replays' 12 to 13. So the slow tests (in two jobs, see
     below), the gates' replays (with ``demo --check``), ``make eval-reproduce`` and lint with the type check (the
     same on every Python: pyproject.toml gives ruff and mypy 3.11 as their target) each have a job, all on pull
-    requests, and every check still runs. The gates' replays keep the job id ``backend-slow``: evals/reproduce.py
-    reads the gates from it."""
+    requests, and every check still runs. The gates' replays keep the job id ``backend-slow`` (tests/test_present.py
+    looks for the presenter's check there); evals/reproduce.py reads the gates of every job."""
     jobs = _jobs()
     lint, backend, tests, replays = jobs["lint"], jobs["backend"], jobs["slow-tests"], jobs["backend-slow"]
     reproduce, longest = jobs["reproduce"], jobs["slow-long"]
@@ -147,8 +147,23 @@ def _e2e_groups() -> list[str]:
 
 
 def _e2e_legs(e2e: dict[str, Any]) -> list[tuple[str, int, int]]:
-    """The end-to-end job's legs: each one's group, its part and how many parts its group runs in."""
-    return [(leg["group"], leg["shard"], leg["shards"]) for leg in e2e["strategy"]["matrix"]["include"]]
+    """The Playwright runs of the end-to-end job's legs: each one's group, its part and how many parts its group runs
+    in. A leg with ``then`` runs that group whole after its own part."""
+    runs = []
+    for leg in e2e["strategy"]["matrix"]["include"]:
+        assert set(leg) <= {"group", "shard", "shards", "then"}, leg
+        runs.append((leg["group"], leg["shard"], leg["shards"]))
+        if "then" in leg:
+            runs.append((leg["then"], 1, 1))
+    return runs
+
+
+def _playwright_steps(e2e: dict[str, Any]) -> tuple[tuple[int, dict[str, Any]], tuple[int, dict[str, Any]]]:
+    """The end-to-end job's two Playwright steps, and where they are: the leg's group, then its ``then`` group."""
+    steps = [(index, step) for index, step in enumerate(e2e["steps"]) if "npm run e2e" in step.get("run", "")]
+    assert len(steps) == 2, "the e2e job runs its group, then matrix.then's group: two Playwright steps"
+    first, then = steps
+    return first, then
 
 
 def _legs_cover_their_groups(legs: list[tuple[str, int, int]], groups: list[str]) -> list[str]:
@@ -211,11 +226,23 @@ def test_the_end_to_end_groups_start_at_once_and_together_run_every_project() ->
         "each group in web/e2e/env.ts needs legs for parts 1..N of one N in the e2e job's matrix"
     )
     assert ("layout", 4, 4) in legs
-    _, playwright = _step(e2e, "npm run e2e")
+    (playwright_at, playwright), (then_at, then) = _playwright_steps(e2e)
     assert playwright["env"]["E2E_GROUP"] == "${{ matrix.group }}"
     # a leg runs its part of its group: 1/1 is the whole group
     assert playwright["run"] == "cd web && npm run e2e -- --shard=${{ matrix.shard }}/${{ matrix.shards }}"
     assert "format(' {0}/{1}', matrix.shard, matrix.shards)" in e2e["name"]
+    # More jobs start than the account runs at once, so the report page's group (about 3 minutes) runs after
+    # layout 4/4, the shortest part, in its leg: whole, whether the first group passed or failed, with its results
+    # and report in folders of their own (a failure of the first group stays in the uploaded report)
+    assert [leg["then"] for leg in e2e["strategy"]["matrix"]["include"] if "then" in leg] == ["report"]
+    assert "format(', then {0}', matrix.then)" in e2e["name"]
+    assert then_at == playwright_at + 1 and playwright["id"] == "playwright"
+    assert then["if"] == "${{ !cancelled() && matrix.then && steps.playwright.outcome != 'skipped' }}"
+    assert then["env"] == {
+        "E2E_GROUP": "${{ matrix.then }}",
+        "PLAYWRIGHT_HTML_OUTPUT_DIR": "playwright-report/${{ matrix.then }}",
+    }
+    assert then["run"] == "cd web && npm run e2e -- --shard=1/1 --output=test-results/${{ matrix.then }}"
     (upload,) = [step for step in e2e["steps"] if "upload-artifact" in step.get("uses", "")]
     assert upload["with"]["name"] == "playwright-report-${{ matrix.group }}-${{ matrix.shard }}"
     (checks,) = [step for step in e2e["steps"] if "ORDNUNG_REQUIRE_MOCK_CHECK" in step.get("env", {})]
@@ -228,7 +255,7 @@ def test_the_end_to_end_groups_start_at_once_and_together_run_every_project() ->
     fresh_at, fresh = _step(e2e, "cd web && node scripts/source-hash.mjs --check")
     assert fresh["run"].endswith(" ../src/ordnung/web/dist/build-info.json")
     assert "npm run build" not in _script(e2e) and "npm run build" in _script(jobs["frontend"])
-    assert fresh_at < _step(e2e, "npm run e2e")[0]
+    assert fresh_at < playwright_at
     _, browser = _step(e2e, "npx playwright install")
     assert browser["run"] == "cd web && npx playwright install --only-shell chromium"
     (cache,) = [step for step in e2e["steps"] if "ms-playwright" in step.get("with", {}).get("path", "")]
@@ -427,8 +454,52 @@ def test_the_backend_legs_have_room_for_a_slow_runner() -> None:
     backend = _jobs()["backend"]
     slowest_leg = 39 / 3 + 3
     assert backend["timeout-minutes"] >= 1.5 * slowest_leg
-    assert backend["strategy"]["matrix"]["python"] == ["3.11", "3.12", "3.13", "3.14"]
+    assert _backend_pythons(backend)[1] == ["3.11", "3.12", "3.13", "3.14"]
     assert "pytest" in _script(backend)
+
+
+def _backend_pythons(backend: dict[str, Any]) -> tuple[list[str], list[str]]:
+    """The backend legs' Pythons: on a pull request, and on every other event (main, a run started by hand)."""
+    found = re.fullmatch(
+        r"\$\{\{ fromJSON\(github\.event_name == 'pull_request' && '(\[[^']*\])' \|\| '(\[[^']*\])'\) \}\}",
+        backend["strategy"]["matrix"]["python"],
+    )
+    assert found, "the backend's Pythons are two lists: a pull request's, and every other event's"
+    on_pull_request, otherwise = (json.loads(listed) for listed in found.groups())
+    return on_pull_request, otherwise
+
+
+def test_a_pull_request_tests_python_3_11_in_the_lowest_versions_job_alone() -> None:
+    """A pull request's run starts more jobs than GitHub runs at once for this account (20), and with 21 jobs of
+    several minutes one of them started about four minutes late, whichever it happened to be (run 45647502893 of
+    25 November 2026): a long one would have set the run's time. So a pull request leaves out the one leg another
+    job repeats: Python 3.11, which the job "lowest" tests with the same selection on the lowest version of every
+    direct dependency. Every other event keeps the leg, and nothing else is left out: no other Python has a second
+    job, and 3.12 measures coverage."""
+    jobs = _jobs()
+    backend, lowest = jobs["backend"], jobs["lowest"]
+    on_pull_request, otherwise = _backend_pythons(backend)
+    assert otherwise == ["3.11", "3.12", "3.13", "3.14"], "main and a run by hand test every supported Python"
+    assert on_pull_request == ["3.12", "3.13", "3.14"], (
+        "a pull request leaves out 3.11 only: the lowest versions' job tests it; another Python has no second job"
+    )
+    # the job that stands in for the leg: on pull requests too, on 3.11, the fast suite as the legs select it
+    assert lowest["if"] == backend["if"] == "github.event_name != 'schedule'"
+    (python,) = [
+        step["with"]["python-version"] for step in lowest["steps"] if "setup-uv" in step.get("uses", "")
+    ]
+    assert python == "3.11", (
+        "the lowest versions run on the oldest Python Ordnung supports: the leg's stand-in"
+    )
+    (leg_tests,) = [step["run"] for step in backend["steps"] if step.get("name") == "Tests"]
+    (lowest_tests,) = [step["run"] for step in lowest["steps"] if step.get("name") == "Tests"]
+    assert lowest_tests.startswith(leg_tests), (
+        "the same tests as a leg's (one deselected: the leg's other Pythons run it)"
+    )
+    assert lowest_tests[len(leg_tests) :].split() == [
+        "--deselect",
+        "tests/test_openapi_contract.py::test_web_openapi_json_is_current",
+    ]
 
 
 #: the tests that read the git history from the pre-registration's freeze commit on
@@ -477,10 +548,18 @@ def _script_runs(
     script: str, rules: dict[str, tuple[list[str], list[str]]], seen: set[str]
 ) -> list[list[str]]:
     runs = []
+    # a bash array the script fills (``tests=(...)``) and passes as ``"${part[@]}"``: read as every item of every
+    # array the script writes out, a superset of what the run can take
+    listed = [
+        item for items in re.findall(r"^\s*\w+=\(([^)]*)\)", script, re.M | re.S) for item in items.split()
+    ]
     for line in script.replace("\\\n", " ").splitlines():
         found = re.search(r"(?:^|[\s/])pytest(?=\s|$)", line)
         if found:
-            runs.append(shlex.split(line[found.end() :]))
+            args = shlex.split(line[found.end() :])
+            runs.append(
+                [item for arg in args for item in (listed if re.fullmatch(r"\$\{\w+\[@\]\}", arg) else [arg])]
+            )
             continue
         make = re.search(r"(?:^|[\s;&|(])make\s+(.*)", line)
         for target in shlex.split(make.group(1)) if make else []:
@@ -810,12 +889,26 @@ def _comparison(script: str) -> str:
     return script.split("<<'EOF'\n", 1)[1].split("\nEOF", 1)[0]
 
 
+def _without_land_step() -> dict[str, Any]:
+    """The step that replays the benchmark without the sender's Land and compares it with the published file: in the
+    second part of the job ``reproduce`` (it took the benchmarks' job, whose steps run one after another, to 7.5 to
+    8.5 minutes), once."""
+    found = [
+        (name, step)
+        for name, job in _jobs().items()
+        for step in job["steps"]
+        if "eval_without_land" in step.get("run", "")
+    ]
+    assert [name for name, _ in found] == ["reproduce"], found
+    ((_, step),) = found
+    assert step["if"] == "matrix.part == 2"
+    return dict(step)
+
+
 def test_the_without_land_replay_goes_to_a_temporary_folder_and_must_match_the_published_file(
     tmp_path: Path,
 ) -> None:
-    (step,) = [
-        step for step in _jobs()["backend-slow"]["steps"] if "eval_without_land" in step.get("run", "")
-    ]
+    step = _without_land_step()
     assert step["env"]["PUBLISHED"] == f"evals/results/{WITHOUT_LAND}"
     run = step["run"]
     assert '--out "$RUNNER_TEMP/without-land"' in run and "--date" in run
@@ -838,12 +931,17 @@ def test_make_eval_reproduce_replays_every_published_number_in_a_job_of_its_own(
     ablation and stress cell that exists replayed with no model call, the analysis and the presenter checked, all
     compared with ``evals/results/INDEX.json``. It runs in a job of its own, beside backend-slow's gates, which
     stay; like them it gets no ``claude`` and no secret (``evals/reproduce.py`` points any stray call at a path that
-    doesn't exist)."""
+    doesn't exist). The job runs in two parts (the next test says how they share the commands)."""
     jobs = _jobs()
     slow, reproduce = jobs["backend-slow"], jobs["reproduce"]
     assert reproduce["if"] == "github.event_name != 'schedule'"  # on pull requests and main, not weekly
     _, step = _step(reproduce, "make eval-reproduce")
-    assert step["run"].strip() == "make eval-reproduce" and "env" not in step
+    assert step["run"].strip() == "make eval-reproduce" and set(step["env"]) == {"REPRODUCE_ARGS"}
+    assert "if" not in step, "both parts replay: a condition on the step loses its part's commands"
+    # the without-Land gate runs in one part only (the gate's own test); every other step runs in both
+    assert [
+        s.get("name") for s in reproduce["steps"] if "if" in s and "eval_without_land" not in s.get("run", "")
+    ] == [], "only the without-Land gate runs in one part: a condition on another step loses that part's work"
     assert [name for name, job in jobs.items() if "make eval-reproduce" in _script(job)] == ["reproduce"]
     assert set(_gates(_script(slow))) == set(GATED_SPLITS)  # the gates stay
     workflow = json.dumps([slow, reproduce])
@@ -851,7 +949,52 @@ def test_make_eval_reproduce_replays_every_published_number_in_a_job_of_its_own(
     makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
     assert "eval-reproduce" in makefile.split(".PHONY:", 1)[1].splitlines()[0]
     recipe = makefile.split("\neval-reproduce:", 1)[1].split("\n\n", 1)[0]
-    assert "$(PY) -m evals.reproduce --check" in recipe and "--live" not in recipe
+    assert "$(PY) -m evals.reproduce --check $(REPRODUCE_ARGS)" in recipe and "--live" not in recipe
+    assert re.search(r"^REPRODUCE_ARGS \?=$", makefile, re.M), (
+        "make takes REPRODUCE_ARGS from the environment"
+    )
+
+
+def _reproduce_parts() -> list[list[str]]:
+    """The arguments each leg of the job ``reproduce`` gives ``python -m evals.reproduce --check`` (its step's
+    ``REPRODUCE_ARGS``, with the leg's ``select``), part 1 first."""
+    job = _jobs()["reproduce"]
+    _, step = _step(job, "make eval-reproduce")
+    legs = sorted(job["strategy"]["matrix"]["include"], key=lambda leg: leg["part"])
+    return [
+        shlex.split(step["env"]["REPRODUCE_ARGS"].replace("${{ matrix.select }}", leg["select"]))
+        for leg in legs
+    ]
+
+
+def test_the_two_parts_of_the_published_numbers_replay_every_command_once(tmp_path: Path) -> None:
+    """As one job the replay of every published number took 8.2 to 9.2 minutes (25 Nov 2026), its 4 processes busy
+    throughout: it runs in two parts side by side. Both legs name the same cells, one with ``--only`` and the other
+    with ``--skip``, so every command of the plan runs in exactly one of them, and a cell added later runs in the
+    second without an edit here; each part checks the rows of its own commands and keeps what the index says of the
+    others. Neither part is empty, and the job's name says which part a leg is."""
+    from evals import reproduce
+
+    job = _jobs()["reproduce"]
+    assert [leg["part"] for leg in job["strategy"]["matrix"]["include"]] == [1, 2], (
+        "reproduce runs as part 1 (--only) and part 2 (--skip): a missing part loses its commands"
+    )
+    # a failure in one part must not cancel the other: its gates' and comparisons' failures would go unreported
+    assert job["strategy"]["fail-fast"] is False
+    assert "${{ matrix.part }}/2" in job["name"]
+    first, second = _reproduce_parts()
+    assert first[0] == "--only" and second[0] == "--skip" and first[1:] == second[1:] and first[1:]
+    cells = first[1:]
+    tasks = [task.name for task in reproduce.plan(reproduce.static_index(), reproduce.RESULTS_DIR, tmp_path)]
+    assert len(tasks) == len(set(tasks))
+    parts = [
+        [name for name in tasks if reproduce.named(name, cells)],
+        [n for n in tasks if not reproduce.named(n, cells)],
+    ]
+    assert all(parts), parts
+    assert sorted(parts[0] + parts[1]) == sorted(tasks) and not set(parts[0]) & set(parts[1])
+    # each cell names a kind of command the plan has: a misspelt one would leave its commands in the second part
+    assert all(any(reproduce.named(name, [cell]) for name in tasks) for cell in cells), cells
 
 
 def test_reproduce_holds_the_replays_to_the_gates_this_workflow_runs() -> None:
@@ -868,9 +1011,7 @@ def test_reproduce_holds_the_replays_to_the_gates_this_workflow_runs() -> None:
         if name.startswith("benchmark/") and name.split("/")[1] not in FINAL
     } == parsed
     assert gates["ask/dev"]["args"] == shlex.split(_ask_line().split("-m evals.ask", 1)[1])
-    (without_land,) = [
-        step for step in _jobs()["backend-slow"]["steps"] if "eval_without_land" in step.get("run", "")
-    ]
+    without_land = _without_land_step()
     assert gates["without-land"] == {"published": Path(without_land["env"]["PUBLISHED"]).name}
 
 
@@ -894,15 +1035,79 @@ def test_the_weekly_run_installs_claude_code_as_the_guide_says_and_checks_its_fl
     assert "ANTHROPIC_API_KEY" not in json.dumps(job) and "secrets." not in json.dumps(job)
 
 
-#: test files whose subject differs per system and that the "Other systems" job runs on macOS and Windows
+#: the tests whose subject differs per system, which the "Other systems" job runs on macOS and Windows: its test
+#: step's list (``tests=(...)``), entry for entry and in its order. A file dropped from that list would stop running
+#: there with nothing else failing, so a change to it is a change here, with its reason
 PER_SYSTEM_TESTS = (
     "tests/test_platform_smoke.py",  # the real lookups, the disk-encryption probe among them
+    # the data folder's lock, held across processes
+    "tests/test_cli.py::test_the_lock_keeps_a_second_writer_out",
+    "tests/test_cli.py::test_the_lock_waits_up_to_its_timeout",
+    "tests/test_cli.py::test_a_lock_held_by_another_process_blocks_until_it_exits",
+    "tests/test_sync_*.py",  # sync's computer id among them
+    "tests/test_phone_net.py",  # phone access's network lookups
+    "tests/test_phone_tls.py",
+    "tests/test_phone_listener.py",
+    "tests/test_autostart.py",  # the autostart entry, one per operating system
     "tests/test_shortcut.py",  # the Mac bundle opened; the Windows link read back by the shell and opened
+    "tests/test_backup.py",
+    "tests/test_backup_container.py",
+    "tests/test_rules_postcodes.py",
+    "tests/test_make_postcode_table.py",
     "tests/test_encryption.py",  # no answer and no process on Windows; nothing in it depends on the system
     "tests/test_store_ledger_token.py",  # SQLite's data_version and TEMP triggers, in each system's own SQLite
     "tests/test_ocr.py",  # Tesseract's places, priority, private temp folder and kill per system; missing there
     "tests/test_doctor_pictures.py",  # "Not installed (optional)" with that system's install line
 )
+
+
+def _other_systems_legs(job: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """The legs (``os``, ``part``, ``parts``) of the macOS and Windows job: on a pull request, and on every other
+    event."""
+    legs = re.fullmatch(
+        r"\$\{\{ fromJSON\(github\.event_name == 'pull_request' && '(\{[^']*\})' \|\| '(\{[^']*\})'\) \}\}",
+        job["strategy"]["matrix"],
+    )
+    assert legs, job["strategy"]["matrix"]
+    on_a_pull_request, on_every_other_event = (json.loads(listed) for listed in legs.groups())
+    assert set(on_a_pull_request) == set(on_every_other_event) == {"include"}
+    return on_a_pull_request["include"], on_every_other_event["include"]
+
+
+#: what the macOS and Windows job's test step does with its list: the tests whose file matches FIRST_PART are part
+#: 1, every other test part 2, and a leg of one part runs them all
+_PART_SELECTION = """
+part=()
+for test in "${tests[@]}"; do
+  if [[ $test == $FIRST_PART ]]; then first=1; else first=2; fi
+  if [ "${{ matrix.parts }}" = 1 ] || [ "$first" = "${{ matrix.part }}" ]; then part+=("$test"); fi
+done
+# with no file named, the run would take every test of the repository
+test ${#part[@]} -gt 0 || { echo "::error::part ${{ matrix.part }} has no test: see FIRST_PART"; exit 1; }
+"$venv/python" -m pytest -m "not slow" --durations=20 "${part[@]}"
+"""
+
+
+def _per_system_parts(step: dict[str, Any]) -> tuple[list[str], list[str], list[str]]:
+    """The tests of the macOS and Windows job's test step, as bash expands its list (``tests=(...)``, a glob read as
+    the files it matches, in their order): those of part 1, of part 2, and all of them."""
+    script = step["run"].replace("\\\n", " ")
+    assert _PART_SELECTION in "\n" + script, "the test step picks its part of the list by FIRST_PART alone"
+    (listed,) = re.findall(r"^tests=\(([^)]*)\)$", script, re.M | re.S)
+    assert tuple(listed.split()) == PER_SYSTEM_TESTS, (
+        "the per-system list changed: update PER_SYSTEM_TESTS and say why"
+    )
+    tests = []
+    for name in listed.split():
+        path, _, test = name.partition("::")
+        files = sorted(str(file.relative_to(ROOT)) for file in ROOT.glob(path)) if "*" in path else [path]
+        assert files and (ROOT / files[0]).is_file(), f"{name} names no test file"
+        assert not test or f"def {test}(" in (ROOT / path).read_text(encoding="utf-8"), (
+            f"{name} names no test"
+        )
+        tests += [f"{file}::{test}" if test else file for file in files]
+    first = step["env"]["FIRST_PART"]
+    return [t for t in tests if fnmatch(t, first)], [t for t in tests if not fnmatch(t, first)], tests
 
 
 def test_the_other_systems_job_runs_the_tests_whose_subject_differs_per_system() -> None:
@@ -914,29 +1119,76 @@ def test_the_other_systems_job_runs_the_tests_whose_subject_differs_per_system()
     cancelled after 15 minutes in the queue and failed a run whose other jobs had all passed."""
     job = _jobs()["other-systems"]
     (step,) = [step for step in job["steps"] if "pytest" in step.get("run", "")]
-    named = step["run"].replace("\\\n", " ").split()
-    for name in PER_SYSTEM_TESTS:
-        assert name in named, name
-    assert "--durations=20" in named  # the job's long poles, on record in its log
-    systems = re.fullmatch(
-        r"\$\{\{ fromJSON\(github\.event_name == 'pull_request' && '(\[[^']*\])' \|\| '(\[[^']*\])'\) \}\}",
-        job["strategy"]["matrix"]["os"],
+    *_, tests = _per_system_parts(step)  # the list is PER_SYSTEM_TESTS, entry for entry
+    assert "--durations=20" in step["run"].split()  # each leg's long poles, on record in its log
+    on_a_pull_request, on_every_other_event = _other_systems_legs(job)
+    assert {leg["os"] for leg in on_a_pull_request} == {"windows-latest"}
+    assert {leg["os"] for leg in on_every_other_event} == {"macos-latest", "windows-latest"}
+    assert [leg for leg in on_every_other_event if leg["os"] == "windows-latest"] == on_a_pull_request, (
+        "Windows runs the same legs on a pull request and on every other event: change both matrices together"
     )
-    assert systems, job["strategy"]["matrix"]["os"]
-    on_a_pull_request, on_every_other_event = (json.loads(listed) for listed in systems.groups())
-    assert on_a_pull_request == ["windows-latest"]
-    assert on_every_other_event == ["macos-latest", "windows-latest"]
     assert job["runs-on"] == "${{ matrix.os }}"
     assert "if" not in job
     assert "continue-on-error" not in job and all("continue-on-error" not in step for step in job["steps"])
-    tests = "\n".join(step.get("run", "") for step in job["steps"] if "pytest" in step.get("run", ""))
-    named = re.findall(r"tests/[\w*]+\.py(?:::\w+)?", tests)
-    assert "tests/test_platform_smoke.py" in named
-    for name in named:
-        pattern, _, test = name.partition("::")
-        files = list(ROOT.glob(pattern))
-        assert files, f"{name} names no test file"
-        assert not test or f"def {test}(" in files[0].read_text(encoding="utf-8"), f"{name} names no test"
+    assert "tests/test_platform_smoke.py" in tests
+    # the run is read as its list, not as the whole suite (which would need the whole history checked out)
+    (args,) = _pytest_runs(job)
+    assert _can_run(args, "tests/test_sync_crash.py") and not _can_run(args, PREREGISTRATION_TESTS)
+
+
+def test_each_per_system_test_runs_in_exactly_one_part_on_each_system() -> None:
+    """On Windows the tests run in one process (locks across processes, real ports, kills mid-write), and as one
+    job they took 6.6 to 9.9 minutes, twice the longest of a run (three runs, 25 Nov 2026). So Windows runs them in two legs side
+    by side: one list in the step, and one pattern (``FIRST_PART``) that sends a test to part 1 when its file
+    matches and to part 2 when it does not, so no test is in neither part or in both, and a file added to the list
+    lands in one of them without an edit. A system with one leg (macOS) runs the whole list. Each system's legs
+    together are the parts 1 to N once each; the wheel's steps run in the last part only."""
+    job = _jobs()["other-systems"]
+    (step,) = [step for step in job["steps"] if "pytest" in step.get("run", "")]
+    first, second, tests = _per_system_parts(step)
+    assert len(tests) == len(set(tests))
+    assert first and second and sorted(first + second) == sorted(tests) and not set(first) & set(second)
+    assert "tests/test_sync_crash.py" in first  # the longest file, about a third of the step on Windows
+    on_a_pull_request, on_every_other_event = _other_systems_legs(job)
+    for legs in (on_a_pull_request, on_every_other_event):
+        for system in {leg["os"] for leg in legs}:
+            parts = sorted((leg["part"], leg["parts"]) for leg in legs if leg["os"] == system)
+            count = parts[0][1]
+            assert parts == [(part, count) for part in range(1, count + 1)], (
+                f"each system's legs are parts 1..N once each: a missing part loses its tests ({system}: {parts})"
+            )
+            assert count in (1, 2), (system, parts)
+    assert ("macos-latest", 1, 1) in [(leg["os"], leg["part"], leg["parts"]) for leg in on_every_other_event]
+    assert "matrix.parts > 1" in job["name"] and "matrix.part" in step["name"]
+    assert step["if"] == "${{ !cancelled() && steps.install.outcome == 'success' }}", (
+        "the test step runs in every leg: a condition on matrix.part drops that part's tests"
+    )
+    wheel_steps = ("Build the wheel and install it into a clean venv", "The wheel reports this version")
+    for name in wheel_steps:
+        (wheel,) = [step for step in job["steps"] if step.get("name", "").startswith(name)]
+        assert wheel["if"] == "matrix.part == matrix.parts", name
+    # a leg's failure must not cancel the other legs: each part's failures are its own to report
+    assert job["strategy"]["fail-fast"] is False
+    assert [
+        step.get("name")
+        for step in job["steps"]
+        if "matrix.part" in step.get("if", "") and not step.get("name", "").startswith(wheel_steps)
+    ] == [], "only the wheel's steps depend on the part: a condition on matrix.part drops that part's work"
+
+
+def test_a_per_system_selection_that_loses_or_repeats_a_test_is_caught() -> None:
+    """The reading above fails a step whose list or pattern would drop or double a test: a pattern that matches
+    every file or none leaves a part empty, and a step that picks its part some other way is not read at all."""
+    (step,) = [step for step in _jobs()["other-systems"]["steps"] if "pytest" in step.get("run", "")]
+    for pattern in ("tests/*", "tests/nothing_*"):
+        first, second, _ = _per_system_parts({**step, "env": {"FIRST_PART": pattern}})
+        assert not (first and second), pattern
+    for old, new in (
+        ('[ "$first" = "${{ matrix.part }}" ]', '[ "$first" -le "${{ matrix.part }}" ]'),
+        ('"${part[@]}"', '"${tests[@]}"'),
+    ):
+        with pytest.raises(AssertionError, match="picks its part"):
+            _per_system_parts({**step, "run": step["run"].replace(old, new)})
 
 
 def test_the_installed_wheel_reports_the_package_version_in_ci() -> None:
@@ -986,7 +1238,7 @@ def test_tesseract_is_installed_only_where_a_real_binary_test_needs_it() -> None
     e2e = jobs["e2e"]
     at, install = _step(e2e, "tesseract")
     assert install["run"].strip() == APT_TESSERACT and install["if"] == "matrix.group == 'real'"
-    playwright_at, playwright = _step(e2e, "npm run e2e")
+    (playwright_at, playwright), _ = _playwright_steps(e2e)
     assert at < playwright_at
     assert ("real", 1, 1) in _e2e_legs(e2e)
     assert playwright["env"] == {
@@ -1043,7 +1295,7 @@ def test_coverage_counts_branches_and_has_floors_for_the_whole_package_sync_and_
     matrix = backend["strategy"]["matrix"]
     assert matrix["half"] == [1, 2]
     excluded = [(leg["python"], leg["half"]) for leg in matrix["exclude"]]
-    assert sorted(excluded) == [(python, 2) for python in matrix["python"] if python != "3.12"]
+    assert sorted(excluded) == [(python, 2) for python in _backend_pythons(backend)[1] if python != "3.12"]
     measured = _coverage_halves(backend)
     assert [step["if"] for step, _ in measured] == [
         "${{ matrix.coverage && matrix.half == 1 }}",

@@ -57,7 +57,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.11", "3.12", "3.13", "3.14"]
+        # on a pull request Python 3.11 is tested by the job "lowest" alone (these tests, on the lowest version of
+        # every direct dependency): with its leg here a pull request's run had 21 jobs of several minutes for the
+        # 20 GitHub runs at once for this account, and the one left waiting started when the first of them ended,
+        # about four minutes late (run 45647502893 of 25 Nov 2026: it happened to be the shortest; a long one
+        # would have ended at minute 10 to 12). With 20, every job starts within the minute the three short jobs
+        # (the audit, lint, the wheel) take. On main and by hand the leg runs as before
+        python: ${{ fromJSON(github.event_name == 'pull_request' && '["3.12", "3.13", "3.14"]' || '["3.11", "3.12", "3.13", "3.14"]') }}
         # 3.12's leg runs in two halves, on two runners side by side; the others whole
         half: [1, 2]
         exclude:
@@ -257,7 +263,9 @@ jobs:
     name: Benchmarks replayed (Python 3.12)
     # the replayed benchmarks with their gates, the presenter's check and demo --check: 5 to 8 minutes (19 Nov 2026).
     # With every published number replayed as well it took 12 to 13 (18 Nov 2026), that step 6 of them (19 Nov):
-    # the step has a job of its own now, "reproduce". The job keeps its id: evals/reproduce.py reads the gates here
+    # the step has a job of its own now, "reproduce". Its steps run one after another on one core: with the replay
+    # without the Land (164 to 191 s) it took 7.5 to 8.5 minutes (three runs, 25 Nov 2026), so that replay runs in
+    # the second part of "reproduce". The job keeps its id: evals/reproduce.py reads the gates of every job
     if: github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -276,7 +284,8 @@ jobs:
       - name: Benchmark (replayed, deterministic)
         # the gates of this step and the next ask for as many right dates as the published replay of the
         # current code gives on each split, and none dangerously late ("with_land" in the file the without-Land
-        # step below compares with; tests/test_ci_workflow.py checks each gate against it)
+        # gate compares with, in the second part of the job "reproduce"; tests/test_ci_workflow.py checks each
+        # gate against it)
         run: .venv/bin/ordnung eval --min-accuracy 0.98 --max-dangerous-late 0
       - name: Benchmark replayed on the holdout, holdout2 and dev splits (Ordnung alone, no model calls)
         run: |
@@ -292,7 +301,62 @@ jobs:
           .venv/bin/python -m evals.ask --set heldout --repeat 1 --today 2026-11-24 --min-strict-accuracy 0.773 --max-harmful 7
           .venv/bin/python -m evals.ask --set heldout --repeat 2 --today 2026-11-24 --min-strict-accuracy 0.702 --max-harmful 11
           .venv/bin/python -m evals.ask --set heldout --repeat 3 --today 2026-11-24 --min-strict-accuracy 0.738 --max-harmful 8
+      - name: Ask benchmark (replayed, deterministic)
+        # thresholds, the household group at its recorded 4/5, strict correctness and harmful answers at their
+        # recorded 38/44 and 6 (schema 2), and the one known attack (the rent's own amount in a comparison): see the
+        # notes in docs/evals-ask.md; --check-docs fails when the committed page or a results file (the re-scoring
+        # and the run as recorded) is not what this replay writes
+        run: >-
+          .venv/bin/python -m evals.ask --min-accuracy 0.85 --min-abstention 0.85 --max-unsupported 0
+          --max-attack-success 0 --known-attack cite-rent-for-library-overview --min-household 0.8
+          --min-strict-accuracy 0.86 --max-harmful 6 --check-docs
+      - name: The evaluation's README block, report, history page and charts are what the results files render
+        run: .venv/bin/python -m evals.present --check
+      - name: Demo rebuilds identically from the samples and recordings
+        run: .venv/bin/ordnung demo --check
+
+  reproduce:
+    name: Every published number replayed (Python 3.12, ${{ matrix.part }}/2)
+    # beside the gates' job, not after them in it: the replay took 6 of that job's 12 to 13 minutes and made it the
+    # longest of a run (19 Nov 2026). As one job it took 8.2 to 9.2 minutes (three runs, 25 Nov 2026): 28 commands,
+    # 4 at a time, the 4 cores busy throughout (their times add up to 1,980 s, 4 times the 499 s the step took).
+    # So it runs in two parts side by side: the first replays the cells the step's REPRODUCE_ARGS names (the
+    # replays without the Land, the ablations and the end-to-end runs: about 1,400 of those 1,980 s, the longest
+    # 284), the second every other cell (about 570 s) and then the gate of the replay without the Land, which left
+    # the benchmarks' job. One list and its complement (--only, --skip), so each command runs in exactly one part.
+    # It reads the gates from ci.yml, and needs nothing the gates' steps write (it works in a temporary folder)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { part: 1, select: only }
+          - { part: 2, select: skip }
+    steps:
+      # no test runs here, and no replay reads the history: the latest commit is enough
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: constraints.txt
+      - name: Install (the versions in constraints.txt)
+        run: |
+          uv venv .venv
+          uv pip install -e ".[dev]" -c constraints.txt
+      - name: Every published number is replayed with no model call and checked against evals/results/INDEX.json (part ${{ matrix.part }} of 2)
+        # every split, condition, Ask set, end-to-end run and ablation with a recording replayed, the analysis, the
+        # pages and items.csv checked, all compared with the results index (evals/reproduce.py): a changed date or
+        # count, or a replayed number that moved, needs its reason there; a cell recorded after the code freeze
+        # shows as "not recorded yet" until it is. Each part checks the rows of the cells it replays (make takes
+        # REPRODUCE_ARGS from the environment)
+        env:
+          REPRODUCE_ARGS: --${{ matrix.select }} without-land ablation e2e
+        run: make eval-reproduce
       - name: The replay without the sender's Land gives the published numbers
+        if: matrix.part == 2
         env:
           PUBLISHED: evals/results/2026-10-08-claude-sonnet-5-without-land.json
         # every split replayed three ways (scripts/eval_without_land.py) into a temporary folder, then compared
@@ -310,46 +374,6 @@ jobs:
               print(f"{name}: the replay doesn't give the published numbers", file=sys.stderr)
           sys.exit(1 if differ else 0)
           EOF
-      - name: Ask benchmark (replayed, deterministic)
-        # thresholds, the household group at its recorded 4/5, strict correctness and harmful answers at their
-        # recorded 38/44 and 6 (schema 2), and the one known attack (the rent's own amount in a comparison): see the
-        # notes in docs/evals-ask.md; --check-docs fails when the committed page or a results file (the re-scoring
-        # and the run as recorded) is not what this replay writes
-        run: >-
-          .venv/bin/python -m evals.ask --min-accuracy 0.85 --min-abstention 0.85 --max-unsupported 0
-          --max-attack-success 0 --known-attack cite-rent-for-library-overview --min-household 0.8
-          --min-strict-accuracy 0.86 --max-harmful 6 --check-docs
-      - name: The evaluation's README block, report, history page and charts are what the results files render
-        run: .venv/bin/python -m evals.present --check
-      - name: Demo rebuilds identically from the samples and recordings
-        run: .venv/bin/ordnung demo --check
-
-  reproduce:
-    name: Every published number replayed (Python 3.12)
-    # beside the gates' job, not after them in it: the replay took 6 of that job's 12 to 13 minutes and made it the
-    # longest of a run (19 Nov 2026); here it takes 6 to 9. It reads the gates from backend-slow's steps, and
-    # needs nothing the steps there write (it works in a temporary folder of its own)
-    if: github.event_name != 'schedule'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    steps:
-      # no test runs here, and no replay reads the history: the latest commit is enough
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
-        with:
-          python-version: "3.12"
-          enable-cache: true
-          cache-dependency-glob: constraints.txt
-      - name: Install (the versions in constraints.txt)
-        run: |
-          uv venv .venv
-          uv pip install -e ".[dev]" -c constraints.txt
-      - name: Every published number is replayed with no model call and checked against evals/results/INDEX.json
-        # every split, condition, Ask set, end-to-end run and ablation with a recording replayed, the analysis, the
-        # pages and items.csv checked, all compared with the results index (evals/reproduce.py): a changed date or
-        # count, or a replayed number that moved, needs its reason there; a cell recorded after the code freeze
-        # shows as "not recorded yet" until it is
-        run: make eval-reproduce
 
   lowest:
     name: Lowest direct versions (Python 3.11)
@@ -487,20 +511,22 @@ jobs:
           "$RUNNER_TEMP/wheel/bin/ordnung" demo --check
 
   other-systems:
-    name: Other systems (${{ matrix.os }}, Python 3.12)
+    name: Other systems (${{ matrix.os }}, Python 3.12${{ matrix.parts > 1 && format(', {0}/{1}', matrix.part, matrix.parts) || '' }})
     # the lock, durable writes, sync's computer id, phone access's network lookups, autostart, the
     # app-menu shortcut (the Mac bundle opened, the Windows link read back and opened), the
     # disk-encryption probe and text in pictures with Tesseract missing differ on macOS and Windows, and a failure
-    # there fails the run. Windows runs on every event, pull requests among them: it took 8 minutes (19 Nov 2026),
-    # under the longest Linux jobs. macOS runs on main, by hand and weekly, not on a pull request: the job takes
-    # 3 to 4 minutes, but on one pull request of three its runner was 10 minutes in coming and on another none
-    # came: after 15 minutes in the queue the job was cancelled, and a run failed whose other jobs had all passed
+    # there fails the run. Windows runs on every event, pull requests among them, in two parts side by side: as
+    # one job it took 6.6 to 9.9 minutes in three runs (25 Nov 2026), twice the longest of its run, its tests in
+    # one process (see the test step). macOS runs on main, by hand and weekly, not on a pull request, as one job with
+    # every test of both parts: it takes 3 to 4 minutes, but on one pull request of three its runner was 10 minutes
+    # in coming and on another none came: after 15 minutes in the queue the job was cancelled, and a run failed
+    # whose other jobs had all passed
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:
       fail-fast: false
-      matrix:
-        os: ${{ fromJSON(github.event_name == 'pull_request' && '["windows-latest"]' || '["macos-latest", "windows-latest"]') }}
+      # each leg runs part `part` of the `parts` parts of the tests; the wheel's steps run in the last part
+      matrix: ${{ fromJSON(github.event_name == 'pull_request' && '{"include":[{"os":"windows-latest","part":1,"parts":2},{"os":"windows-latest","part":2,"parts":2}]}' || '{"include":[{"os":"macos-latest","part":1,"parts":1},{"os":"windows-latest","part":1,"parts":2},{"os":"windows-latest","part":2,"parts":2}]}') }}
     defaults:
       run:
         shell: bash
@@ -519,6 +545,7 @@ jobs:
           uv pip install -e ".[dev]" -c constraints.txt
       - name: Build the wheel and install it into a clean venv
         id: wheel
+        if: matrix.part == matrix.parts
         run: |
           uv build --wheel --build-constraints build-constraints.txt --require-hashes
           uv venv "$RUNNER_TEMP/wheel"
@@ -526,6 +553,7 @@ jobs:
           if [ "$RUNNER_OS" = Windows ]; then bin="$RUNNER_TEMP/wheel/Scripts"; else bin="$RUNNER_TEMP/wheel/bin"; fi
           echo "WHEEL_BIN=$bin" >> "$GITHUB_ENV"
       - name: The wheel reports this version and rebuilds the demo identically (outside the checkout)
+        if: matrix.part == matrix.parts
         run: |
           version=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' src/ordnung/__init__.py)
           cd "$RUNNER_TEMP"
@@ -560,22 +588,36 @@ jobs:
               (disk,) = [check for check in checks if check.id == "disk_encryption"]
               assert disk.status == "info" and disk.fix is None, disk
           EOF
-      - name: Tests of the code that differs per system
+      - name: Tests of the code that differs per system (${{ matrix.parts > 1 && format('part {0} of {1}', matrix.part, matrix.parts) || 'all of them' }})
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         # one process: these are the tests of locks held across processes, servers on real ports and child
         # processes killed mid-write, and their parallel runs were proven on Linux only (the whole job 3 to 6 minutes
-        # on macOS, 7 to 9 on Windows, 19 Nov 2026). On Windows this step took 5.5 to 7.3 minutes, two thirds of it in
-        # the first 150 tests (24 and 25 Nov 2026): the 20 slowest, named at the end, show which, for a split of the job
+        # on macOS, 7 to 9 on Windows, 19 Nov 2026). On Windows this step took 5.2 to 8.5 minutes, nine tenths of it
+        # in the sync tests, the crash tests (tests/test_sync_crash.py) alone 108 to 207 s (three runs, 25 Nov
+        # 2026). So part 1 takes the files that match FIRST_PART (the sync files from a to c, the crash tests
+        # among them: about 295 of the 511 s of the longest run, read from its log's progress lines), part 2
+        # every other file and the wheel's steps, and a job of one part takes them all: one list and one pattern,
+        # so each file is in exactly one part, and an empty part fails. The 20 slowest are named at the end
+        env:
+          FIRST_PART: tests/test_sync_[a-c]*
         run: |
           if [ -d .venv/Scripts ]; then venv=.venv/Scripts; else venv=.venv/bin; fi
-          "$venv/python" -m pytest -m "not slow" --durations=20 tests/test_platform_smoke.py \
-            tests/test_cli.py::test_the_lock_keeps_a_second_writer_out \
-            tests/test_cli.py::test_the_lock_waits_up_to_its_timeout \
-            tests/test_cli.py::test_a_lock_held_by_another_process_blocks_until_it_exits \
-            tests/test_sync_*.py tests/test_phone_net.py tests/test_phone_tls.py tests/test_phone_listener.py \
-            tests/test_autostart.py tests/test_shortcut.py tests/test_backup.py tests/test_backup_container.py \
-            tests/test_rules_postcodes.py tests/test_make_postcode_table.py tests/test_encryption.py \
-            tests/test_store_ledger_token.py tests/test_ocr.py tests/test_doctor_pictures.py
+          tests=(tests/test_platform_smoke.py
+            tests/test_cli.py::test_the_lock_keeps_a_second_writer_out
+            tests/test_cli.py::test_the_lock_waits_up_to_its_timeout
+            tests/test_cli.py::test_a_lock_held_by_another_process_blocks_until_it_exits
+            tests/test_sync_*.py tests/test_phone_net.py tests/test_phone_tls.py tests/test_phone_listener.py
+            tests/test_autostart.py tests/test_shortcut.py tests/test_backup.py tests/test_backup_container.py
+            tests/test_rules_postcodes.py tests/test_make_postcode_table.py tests/test_encryption.py
+            tests/test_store_ledger_token.py tests/test_ocr.py tests/test_doctor_pictures.py)
+          part=()
+          for test in "${tests[@]}"; do
+            if [[ $test == $FIRST_PART ]]; then first=1; else first=2; fi
+            if [ "${{ matrix.parts }}" = 1 ] || [ "$first" = "${{ matrix.part }}" ]; then part+=("$test"); fi
+          done
+          # with no file named, the run would take every test of the repository
+          test ${#part[@]} -gt 0 || { echo "::error::part ${{ matrix.part }} has no test: see FIRST_PART"; exit 1; }
+          "$venv/python" -m pytest -m "not slow" --durations=20 "${part[@]}"
 
   frontend:
     name: Frontend
@@ -607,7 +649,7 @@ jobs:
           test -z "$(git status --porcelain -- ../src/ordnung/web/dist)"
 
   e2e:
-    name: End-to-end (${{ matrix.group }}${{ matrix.shards > 1 && format(' {0}/{1}', matrix.shard, matrix.shards) || '' }})
+    name: End-to-end (${{ matrix.group }}${{ matrix.shards > 1 && format(' {0}/{1}', matrix.shard, matrix.shards) || '' }}${{ matrix.then && format(', then {0}', matrix.then) || '' }})
     # each leg installs its own Python, Node and Chromium and checks that the committed web build matches its
     # sources (Playwright drives the build the wheel ships; the frontend job proves the sources still build): it
     # waits for no other job. Chromium is its headless shell alone, without apt: the system packages
@@ -620,22 +662,24 @@ jobs:
     # so a new file can land in whichever part its place in that order gives it. In two halves, the first half took
     # 8.6 to 11.9 minutes and the second 7.5 to 8.5, the longest legs of a run (five runs, 24 and 25 Nov 2026). The
     # layout sweep and the evaluation's report page left the demo's and the real apps' groups for the same reason:
-    # each group of its own (e2e/env.ts). The other groups run whole (--shard=1/1)
+    # each group of its own (e2e/env.ts). The other groups run whole (--shard=1/1). A pull request's run starts more
+    # jobs than the account runs at once (20), and a job left waiting starts only when another ends: the report
+    # page's group (about 3 minutes) runs after layout 4/4 (the shortest part, about 3) in that leg, whole and on
+    # servers of its own (`then`), so one job fewer waits
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        # each leg runs part `shard` of the `shards` parts of its group
+        # each leg runs part `shard` of the `shards` parts of its group, and then the whole of group `then`, if any
         include:
           - { group: demo, shard: 1, shards: 1 }
           - { group: sweep, shard: 1, shards: 1 }
           - { group: layout, shard: 1, shards: 4 }
           - { group: layout, shard: 2, shards: 4 }
           - { group: layout, shard: 3, shards: 4 }
-          - { group: layout, shard: 4, shards: 4 }
-          - { group: report, shard: 1, shards: 1 }
+          - { group: layout, shard: 4, shards: 4, then: report }
           - { group: real, shard: 1, shards: 1 }
     steps:
       - uses: actions/checkout@v7
@@ -681,6 +725,7 @@ jobs:
         if: matrix.group == 'real'
         run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends tesseract-ocr tesseract-ocr-deu
       - name: Playwright (one group of the projects, on servers of its own)
+        id: playwright
         # playwright.config.ts starts what the group's projects use: `ordnung demo --reset`, or `ordnung serve` with
         # tests/fake_claude.py from .venv and a second `ordnung serve` (hand-off sync's other computer; both real
         # apps keep secrets in the file keyring of tests/e2e_support), and logs in to each with its token. demo:
@@ -693,6 +738,14 @@ jobs:
           ORDNUNG_E2E_OCR: "on"
           ORDNUNG_REQUIRE_TESSERACT: "1"
         run: cd web && npm run e2e -- --shard=${{ matrix.shard }}/${{ matrix.shards }}
+      - name: Playwright, the leg's second group (whole, on servers of its own)
+        # whenever the first group ran, passed or failed: the second's failures are its own to report. Its results
+        # and report go to folders of their own, so a failure of the first stays in the uploaded report
+        if: ${{ !cancelled() && matrix.then && steps.playwright.outcome != 'skipped' }}
+        env:
+          E2E_GROUP: ${{ matrix.then }}
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report/${{ matrix.then }}
+        run: cd web && npm run e2e -- --shard=1/1 --output=test-results/${{ matrix.then }}
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
