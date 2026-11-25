@@ -7,14 +7,11 @@ to try it and how it is measured; start there.
 
 - **To install, run and update Ordnung,** and to know its limits: the [guide](guide.md).
 - **To know what leaves your computer:** [privacy.md](privacy.md).
-- **To check whether its dates are right:** the [evaluation report](https://ahmedeid1.github.io/ordnung/evals/)
+- **To check how a date is worked out, rule by rule:** [deadline-rules.md](deadline-rules.md).
+- **To see how often its dates are right:** the [evaluation report](https://ahmedeid1.github.io/ordnung/evals/)
   ([evals.md](evals.md) on GitHub).
 - **To change the code:** [CONTRIBUTING.md](../CONTRIBUTING.md), then [architecture.md](architecture.md).
 - **To report a vulnerability:** [SECURITY.md](../SECURITY.md), privately.
-- **To see what changed:** [CHANGELOG.md](../CHANGELOG.md).
-
-**Contents:** [Using Ordnung](#using-ordnung) · [Checking the AI](#checking-the-ai) ·
-[How it is built](#how-it-is-built) · [Working on Ordnung](#working-on-ordnung)
 
 ## Using Ordnung
 
