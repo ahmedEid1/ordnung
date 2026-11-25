@@ -39,12 +39,19 @@ You need Python 3.11 or newer, [uv](https://docs.astral.sh/uv/) and Node.js 22.2
 and jsdom, under the unit tests, for 22.22.2+ or 24.15+.
 
 ```bash
-git clone --filter=blob:none https://github.com/ahmedEid1/ordnung.git && cd ordnung
-make           # lists the targets and what each does
-make install   # .venv and web/node_modules
-make serve     # the API and the built web app
-make web-dev   # the Vite dev server, hot reload
-make demo      # the sample life: no Claude needed
+git clone --filter=blob:none \
+  https://github.com/ahmedEid1/ordnung.git
+cd ordnung
+# list the targets and what each does
+make
+# .venv and web/node_modules
+make install
+# the API and the built web app
+make serve
+# the Vite dev server, hot reload
+make web-dev
+# the sample life: no Claude needed
+make demo
 ```
 
 - `make install` makes .venv with the dev extras at the versions in `constraints.txt`, and web/node_modules
@@ -80,13 +87,16 @@ signing in.
 While you work, run the tests near your change, and the fast suite in parallel processes before you push:
 
 ```bash
-# one file, only the tests whose names match
+# one file, tests whose names match
 .venv/bin/pytest tests/test_rules_deadlines.py -k weekend
-# one folder or file of the web app's tests (-t "<name>")
+# web app tests: a folder or a file
+# (-t "<name>" for one test)
 cd web && npx vitest run src/features/today
-# one end-to-end spec (-g "<title>" for one test)
+# one end-to-end spec
+# (-g "<title>" for one test)
 cd web && npx playwright test e2e/letter-layout.spec.ts
-# the fast suite, a file to each process, one per core
+# the fast suite: a process per core,
+# each taking whole files
 .venv/bin/pytest -m "not slow" -n auto --dist loadfile
 ```
 
@@ -143,9 +153,16 @@ tests measured (so before the next command, which measures only the rules engine
 line and branch coverage:
 
 ```bash
-.venv/bin/coverage report --include='*/ordnung/sync/*' --skip-covered --fail-under=85
-.venv/bin/coverage report --include='*/ordnung/phone/*' --skip-covered --fail-under=89
-.venv/bin/pytest tests/test_rules_*.py --cov=ordnung.rules --cov-branch --cov-report=term-missing:skip-covered --cov-fail-under=100
+.venv/bin/coverage report \
+  --include='*/ordnung/sync/*' \
+  --skip-covered --fail-under=85
+.venv/bin/coverage report \
+  --include='*/ordnung/phone/*' \
+  --skip-covered --fail-under=89
+.venv/bin/pytest tests/test_rules_*.py \
+  --cov=ordnung.rules --cov-branch \
+  --cov-report=term-missing:skip-covered \
+  --cov-fail-under=100
 ```
 
 **Both benchmarks, replayed** (deterministic, zero tokens, no results file written). CI also replays the
@@ -153,8 +170,20 @@ holdout, holdout2 and dev splits, the final run (holdout4 r1-r3, newkinds and As
 household r1-r3, each against its own gate) and the numbers without the sender's Land:
 
 ```bash
-.venv/bin/ordnung eval --min-accuracy 0.98 --max-dangerous-late 0
-.venv/bin/python -m evals.ask --min-accuracy 0.85 --min-abstention 0.85 --max-unsupported 0 --max-attack-success 0 --known-attack cite-rent-for-library-overview --min-household 0.8 --min-strict-accuracy 0.86 --max-harmful 6 --check-docs
+.venv/bin/ordnung eval \
+  --min-accuracy 0.98 \
+  --max-dangerous-late 0
+.venv/bin/python \
+  -m evals.ask \
+  --min-accuracy 0.85 \
+  --min-abstention 0.85 \
+  --max-unsupported 0 \
+  --max-attack-success 0 \
+  --known-attack \
+    cite-rent-for-library-overview \
+  --min-household 0.8 \
+  --min-strict-accuracy 0.86 \
+  --max-harmful 6 --check-docs
 ```
 
 **What is generated matches what it is made from.** The demo rebuilds identically from the samples and
@@ -173,7 +202,8 @@ also finds a private photo by the words Ordnung reads in it (ADR 0024).
 
 ```bash
 make e2e
-ORDNUNG_E2E_OCR=on make e2e    # with Tesseract, as CI
+# with Tesseract, as CI
+ORDNUNG_E2E_OCR=on make e2e
 ```
 
 A few more things CI checks:
@@ -238,8 +268,14 @@ server, no model); [.github/workflows/demo.yml](.github/workflows/demo.yml) publ
 into a folder of its own, never into `src/ordnung/web/dist`:
 
 ```bash
-cd web && VITE_STATIC_DEMO=1 npx vite build --base ./ --outDir /tmp/ordnung-static-demo --emptyOutDir
-npx vite preview --outDir /tmp/ordnung-static-demo     # then open the address it prints
+cd web
+VITE_STATIC_DEMO=1 npx vite build \
+  --base ./ \
+  --outDir /tmp/ordnung-static-demo \
+  --emptyOutDir
+# then open the address it prints
+npx vite preview \
+  --outDir /tmp/ordnung-static-demo
 ```
 
 **The README's pictures and video** stay in the history, every version of them. To look at a capture, write it
