@@ -71,7 +71,8 @@ async function reachable(l: Locator): Promise<boolean> {
 }
 
 // First in the file: the demo's statement is a first payment to its account until a test below compares it
-// (and the comparison stays in the shared demo). Run in another order, the precondition says so and skips.
+// (and the comparison stays in the shared demo). Run in another order, the precondition fails and says so: a
+// skip would let these four checks disappear without anyone noticing.
 test.describe("the first payment to an account", () => {
   for (const scheme of ["light", "dark"] as const) {
     for (const [width, height] of [
@@ -84,7 +85,7 @@ test.describe("the first payment to an account", () => {
         const id = await letterId(page, STATEMENT);
         const { girocodes } = await apiGet<{ girocodes: BlockedCode[] }>(page, `/api/documents/${id}`);
         const first = girocodes.some((c) => c.status === "blocked" && c.reason === "check_letter" && c.first_payment);
-        test.skip(!first, "the statement's payment was compared earlier in this run (statementCompared): this needs a demo where nobody has");
+        expect(first, "the statement's payment was compared before this test (statementCompared, or a project that ran earlier): this needs a demo where nobody has").toBe(true);
         await open(page, `/documents/${id}`);
         await page.getByRole("main").getByRole("article").first().getByRole("button", { name: /^Pay €184\.30/ }).click();
         const panel = page.getByRole("dialog");
