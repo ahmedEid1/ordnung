@@ -46,22 +46,32 @@ jobs:
         run: .venv/bin/mypy
 
   backend:
-    name: Backend (Python ${{ matrix.python }})
+    name: Backend (Python ${{ matrix.python }}${{ matrix.coverage && format(', with coverage, {0}/2', matrix.half) || '' }})
     if: github.event_name != 'schedule'
     # pinned, as the slow tests' jobs are: the tests of every Linux leg run on one system, Tesseract's among them
     runs-on: ubuntu-24.04
-    # one process a file, as many as the runner has cores: 4 to 6 minutes, 3.12's with coverage 7 to 12 (19 Nov
-    # 2026; serial, the legs took 16 to 40 minutes with coverage and 26 without, 18 Nov 2026); a hung test is
-    # named at 10 (faulthandler_timeout)
+    # one process a file, as many as the runner has cores: 4 to 6 minutes, 3.12's with coverage 7 to 12 as one leg
+    # (19 Nov 2026; serial, the legs took 16 to 40 minutes with coverage and 26 without, 18 Nov 2026); a hung test
+    # is named at 10 (faulthandler_timeout)
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         python: ["3.11", "3.12", "3.13", "3.14"]
+        # 3.12's leg runs in two halves, on two runners side by side; the others whole
+        half: [1, 2]
+        exclude:
+          - { python: "3.11", half: 2 }
+          - { python: "3.13", half: 2 }
+          - { python: "3.14", half: 2 }
         include:
-          # coverage is measured on one leg, 3.12's, which also runs the real Tesseract's and the samples' tests. On
+          # coverage is measured on 3.12's leg, which also runs the real Tesseract's and the samples' tests. On
           # 3.14 (sys.monitoring) it costs less than half the time, but measured a little less: the lines only
-          # Python 3.12 and older reach, such as a link loop that Path.resolve raises on
+          # Python 3.12 and older reach, such as a link loop that Path.resolve raises on. On 3.12, coverage's
+          # sys.monitoring core can't count branches, so the leg's 6,300 tests take two to three times as long as on
+          # 3.13 without coverage, and as one leg it was the longest of a run (7 to 12 minutes, 24 and 25 Nov 2026):
+          # its two halves each measure half the files, and the job "coverage" adds the two up and holds the sum
+          # to the floors
           - python: "3.12"
             coverage: true
     env:
@@ -87,12 +97,66 @@ jobs:
       - name: Tests
         if: ${{ !matrix.coverage }}
         run: .venv/bin/pytest -m "not slow" -n auto --dist loadfile
-      - name: Tests with coverage (and pyproject.toml's coverage floor for the whole package)
+      # the two halves: the test files whose names match the one pattern, and every other file (the same pattern
+      # left out), so a new test file runs in one of them without an edit here. The 15 slowest tests named at the
+      # end: these legs are among a run's longest, so their long poles are on record. A half measures half the
+      # package's coverage: its floors are the job "coverage"'s, on the sum (--cov-fail-under=0 here)
+      - name: Tests with coverage, the first half (the files tests/test_[a-n]*.py)
+        if: ${{ matrix.coverage && matrix.half == 1 }}
+        run: >-
+          .venv/bin/pytest -m "not slow" -n auto --dist loadfile --cov=ordnung --cov-report= --cov-fail-under=0
+          --durations=15 tests/test_[a-n]*.py
+      - name: Tests with coverage, the second half (every other test file)
+        if: ${{ matrix.coverage && matrix.half == 2 }}
+        run: >-
+          .venv/bin/pytest -m "not slow" -n auto --dist loadfile --cov=ordnung --cov-report= --cov-fail-under=0
+          --durations=15 --ignore-glob='tests/test_[a-n]*.py'
+      - name: This half's coverage, kept for the job "coverage"
         if: ${{ matrix.coverage }}
-        # the 15 slowest tests named at the end: the leg is among a run's longest, so its long pole is on record
-        run: .venv/bin/pytest -m "not slow" -n auto --dist loadfile --cov=ordnung --cov-report=term-missing:skip-covered --durations=15
-      - name: Coverage floors of hand-off sync and phone access (read from the run above)
+        run: mv .coverage ".coverage.${{ matrix.half }}"
+      - uses: actions/upload-artifact@v7
         if: ${{ matrix.coverage }}
+        with:
+          name: coverage-${{ matrix.half }}
+          path: .coverage.${{ matrix.half }}
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
+  coverage:
+    # the coverage both halves of the backend's 3.12 leg measured, added up: the same numbers one leg measured with
+    # all of the tests (coverage adds up the lines and branches each half ran), held to the same floors. It keeps
+    # the name that leg had, as a required check may be registered under it: it passes only when both halves did
+    # (a half whose tests fail keeps no coverage, and this job then finds it missing)
+    name: Backend (Python 3.12)
+    needs: backend
+    # also when another backend leg failed: the coverage is these two halves' alone
+    if: ${{ !cancelled() && github.event_name != 'schedule' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      # the sources the report shows the missing lines of, at the paths the halves measured them at
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: constraints.txt
+      - name: Install coverage (the version in constraints.txt)
+        run: |
+          uv venv .venv
+          uv pip install coverage -c constraints.txt
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: coverage-*
+          merge-multiple: true
+      - name: Both halves' coverage added up (and pyproject.toml's coverage floor for the whole package)
+        run: |
+          test -f .coverage.1
+          test -f .coverage.2
+          .venv/bin/coverage combine .coverage.1 .coverage.2
+          .venv/bin/coverage report --show-missing --skip-covered
+      - name: Coverage floors of hand-off sync and phone access (read from the sum above)
         run: |
           .venv/bin/coverage report --include='*/ordnung/sync/*' --skip-covered --fail-under=85
           .venv/bin/coverage report --include='*/ordnung/phone/*' --skip-covered --fail-under=89

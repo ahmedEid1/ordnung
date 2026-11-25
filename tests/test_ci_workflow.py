@@ -1002,24 +1002,62 @@ def test_the_installed_wheels_doctor_finds_text_in_pictures_optional_on_other_sy
     assert 'check.status == "fail"' in script and 'name.startswith("claude")' in script
 
 
+def _coverage_halves(backend: dict[str, Any]) -> list[tuple[dict[str, Any], list[str]]]:
+    """The steps of the backend's coverage leg that measure it, with each one's pytest arguments: one a half."""
+    measured = [step for step in backend["steps"] if "--cov=ordnung" in step.get("run", "")]
+    return [(step, shlex.split(step["run"].split("pytest", 1)[1])) for step in measured]
+
+
 def test_coverage_counts_branches_and_has_floors_for_the_whole_package_sync_and_phone() -> None:
     """Only the rules engine had a coverage gate: the main test step reported coverage but never failed on
-    it. The floors read the coverage the test step measured, so they cost no second run. Coverage is measured
-    on one leg, the one with Tesseract (the most code runs there), and that leg runs
-    the whole fast suite with it: the floors are read where the coverage was measured."""
+    it. The floors read the coverage the test steps measured, so they cost no second run. Coverage is measured
+    on one leg, the one with Tesseract (the most code runs there), in two halves on two runners: each test file runs
+    in exactly one of them (the files one pattern names, and every other file with that pattern left out), and the
+    job ``coverage`` adds up what both measured and reads the floors from the sum, so they are read on the whole
+    fast suite, as when one leg ran it. It runs once both halves are done, and fails when either kept no coverage
+    (a half whose tests failed); it keeps the name the one leg had."""
     coverage = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["coverage"]
     assert coverage["run"]["branch"] is True
     assert 90 <= coverage["report"]["fail_under"] < 100
-    backend = _jobs()["backend"]
+    jobs = _jobs()
+    backend, total = jobs["backend"], jobs["coverage"]
     assert _coverage_legs(backend) == ["3.12"]
-    (measured,) = [step for step in backend["steps"] if "--cov=ordnung" in step.get("run", "")]
-    assert _can_run(shlex.split(measured["run"].split("pytest", 1)[1]), "tests/test_sync_lineage.py")
-    script = ""
-    for step in backend["steps"]:
-        if "coverage report" in step.get("run", ""):
-            assert step["if"] == measured["if"] == "${{ matrix.coverage }}"
-            script += step["run"]
+    matrix = backend["strategy"]["matrix"]
+    assert matrix["half"] == [1, 2]
+    excluded = [(leg["python"], leg["half"]) for leg in matrix["exclude"]]
+    assert sorted(excluded) == [(python, 2) for python in matrix["python"] if python != "3.12"]
+    measured = _coverage_halves(backend)
+    assert [step["if"] for step, _ in measured] == [
+        "${{ matrix.coverage && matrix.half == 1 }}",
+        "${{ matrix.coverage && matrix.half == 2 }}",
+    ]
+    (_, named), (_, second) = measured
+    (pattern,) = _paths(named)[0]
+    assert _paths(named) == ([pattern], []) and _paths(second) == ([], [pattern])
+    for args in (named, second):
+        # the floors are the sum's: a half alone measures half the package
+        assert "--cov-report=" in args and "--cov-fail-under=0" in args and "--durations=15" in args, args
+        options = args[: args.index("--cov=ordnung")]
+        assert options == shlex.split('-m "not slow" -n auto --dist loadfile'), args
+    files = sorted(str(path.relative_to(ROOT)) for path in (ROOT / "tests").glob("test_*.py"))
+    in_no_half_or_both = [name for name in files if _can_run(named, name) == _can_run(second, name)]
+    assert in_no_half_or_both == []
+    assert _can_run(named, "tests/test_cli.py") and _can_run(second, "tests/test_sync_lineage.py")
+    # each half keeps its data for the job that adds them up
+    _, keep = _step(backend, 'mv .coverage ".coverage.${{ matrix.half }}"')
+    assert keep["if"] == "${{ matrix.coverage }}"
+    (upload,) = [step for step in backend["steps"] if "upload-artifact" in step.get("uses", "")]
+    assert upload["with"]["path"] == ".coverage.${{ matrix.half }}" and upload["with"]["include-hidden-files"]
+    assert upload["with"]["if-no-files-found"] == "error" and upload["if"] == "${{ matrix.coverage }}"
+    assert total["needs"] == "backend" and total["name"] == "Backend (Python 3.12)"
+    assert total["if"] == "${{ !cancelled() && github.event_name != 'schedule' }}"
+    script = _script(total)
+    assert "test -f .coverage.1\ntest -f .coverage.2\n" in script
+    assert ".venv/bin/coverage combine .coverage.1 .coverage.2\n.venv/bin/coverage report " in script
+    # the whole package's floor is pyproject.toml's
+    assert "--fail-under" not in script.split("coverage report", 2)[1]
     for package in ("sync", "phone"):
         (line,) = [line for line in script.splitlines() if f"--include='*/ordnung/{package}/*'" in line]
         floor = float(line.split("--fail-under=", 1)[1].split()[0])
         assert 80 <= floor < 100, package
+    assert "coverage report" not in _script(backend)
