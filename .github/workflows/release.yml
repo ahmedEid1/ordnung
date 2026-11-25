@@ -11,8 +11,9 @@ name: Release
 #
 # Every action runs a fixed commit (its version beside it; Dependabot updates both), never a tag that can be
 # moved, twine (here) and hatchling (in pyproject.toml) run fixed versions, and the build restores no cache: the
-# PyPI job holds the token PyPI accepts as the owner. uv, and what twine and hatchling themselves need (twine's
-# readme renderer among them), are the newest on each run.
+# PyPI job holds the token PyPI accepts as the owner. uv runs a fixed version too, and what hatchling and its
+# readme plugin need is pinned with hashes in build-constraints.txt (`make build-constraints`). What twine itself
+# needs (its readme renderer among them) is the newest on each run: it only checks dist/, it writes nothing.
 on:
   push:
     tags: ["v*"]
@@ -59,6 +60,7 @@ jobs:
           fi
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
+          version: "0.11.32"
           python-version: "3.12"
           enable-cache: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -68,8 +70,9 @@ jobs:
       - name: The committed web build is the one its sources make
         working-directory: web
         run: node scripts/source-hash.mjs --check ../src/ordnung/web/dist/build-info.json
+      # the hash above covers the sources only; the job web-build checks the bundle itself
       - name: Build sdist and wheel
-        run: uv build
+        run: uv build --build-constraints build-constraints.txt --require-hashes
       - name: The wheel carries the built web app and the demo
         run: |
           unzip -l dist/ordnung-*.whl | grep -q " ordnung/web/dist/index.html$"
@@ -96,10 +99,42 @@ jobs:
           name: notes
           path: release-notes.md
           if-no-files-found: error
+      # the versions CI tested, attached to the release: an install can take them instead of the newest of each
+      # dependency (docs/guide.md, "Update")
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: constraints
+          path: constraints.txt
+          if-no-files-found: error
+
+  # The hash in build covers the web app's sources only: here the web app is rebuilt (without install scripts,
+  # outside the checkout) and must equal the committed one byte for byte, so a bundle changed by hand never
+  # ships. A job of its own: the npm packages that build runs (vite, its plugins and theirs) never run where
+  # dist/ is built and uploaded, and the release waits for it.
+  web-build:
+    name: The committed web build is byte for byte the one its sources make
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - name: The committed web build is byte for byte the one its sources make
+        working-directory: web
+        run: |
+          npm ci --ignore-scripts
+          npx vite build --outDir "$RUNNER_TEMP/web" --emptyOutDir
+          diff -r "$RUNNER_TEMP/web" ../src/ordnung/web/dist
 
   github-release:
     name: GitHub Release
-    needs: build
+    needs: [build, web-build]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # the run's own token, which ends with the run; this job runs no code from the repository
@@ -114,21 +149,25 @@ jobs:
         with:
           name: notes
           path: notes
-      - name: Publish the release with the changelog's section and both files
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: constraints
+          path: constraints
+      - name: Publish the release with the changelog's section, both files and the tested versions
         env:
           GH_TOKEN: ${{ github.token }}
           PRERELEASE: ${{ needs.build.outputs.prerelease }}
         run: |
           flags=()
           if [ "$PRERELEASE" = true ]; then flags+=(--prerelease); fi
-          gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --verify-tag \
+          gh release create "$GITHUB_REF_NAME" dist/* constraints/constraints.txt --repo "$GITHUB_REPOSITORY" --verify-tag \
             --title "Ordnung ${GITHUB_REF_NAME#v}" --notes-file notes/release-notes.md "${flags[@]}"
 
   pypi:
     name: PyPI (Trusted Publishing)
     # last, after the GitHub Release: PyPI never takes the same version twice. Off until the owner has set PyPI
     # up (docs/releasing.md); never for a pull request or a fork
-    needs: [build, github-release]
+    needs: [build, web-build, github-release]
     if: >-
       github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') &&
       github.repository == 'ahmedEid1/ordnung' && vars.PYPI_PUBLISH == 'true'

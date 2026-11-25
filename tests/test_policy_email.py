@@ -4,12 +4,14 @@ of the policy in its docstring, found by verifying it; each test pins the fix.""
 from __future__ import annotations
 
 from collections.abc import Callable
+from email.message import EmailMessage
 
 import pytest
 
+from fixtures_llm import iban
 from helpers_tables import check_rows
 from helpers_timing import assert_linear
-from ordnung.ingest.text import html_to_text
+from ordnung.ingest.text import html_to_text, text_document
 
 AMOUNT = "Rechnungsbetrag 77,00 EUR, fällig am 10.10.2026"
 
@@ -488,3 +490,167 @@ def test_a_caption_whose_end_tag_is_left_out_ends_at_the_first_row() -> None:
     )
     visible, hidden = html_to_text(_mail(body))
     assert "Rechnungsbetrag   77,00 EUR" in visible and hidden == "Ihre Rechnung", (visible, hidden)
+
+
+# --------------------------------------------------------------------------------------------------
+# E-mails with a plain and an HTML part: mail programs show the HTML part
+# --------------------------------------------------------------------------------------------------
+
+SHOWN_IBAN = iban("DE", "100100100123456789")
+OTHER_IBAN = iban("DE", "500500500444555666")
+
+
+def _spaced(value: str, mark: str) -> str:
+    """``value`` in groups of four joined by ``mark``."""
+    return mark.join(value[i : i + 4] for i in range(0, len(value), 4))
+
+
+def _alternatives(plain: str, html: str, *, before: str | None = None, attached: bool = False) -> bytes:
+    """A multipart/alternative of ``plain`` and ``html`` (the last alternative, what mail programs show),
+    with an HTML alternative ``before`` it, and ``html`` marked as an attachment if ``attached``."""
+    message = EmailMessage()
+    message["From"] = "rechnung@stadtwerke-musterstadt.example"
+    message["Subject"] = "Ihre Rechnung September"
+    message.set_content(plain)
+    if before is not None:
+        message.add_alternative(_mail(before), subtype="html")
+    message.add_alternative(_mail(html), subtype="html")
+    if attached:
+        message.get_payload()[-1]["Content-Disposition"] = "attachment"
+    return message.as_bytes()
+
+
+#: How the HTML part the person sees stands beside the plain part.
+CONSTRUCTIONS = [
+    "one HTML part",
+    "an HTML part showing the plain line first",
+    "the HTML part marked as an attachment",
+]
+
+
+@pytest.mark.parametrize(
+    ("plain_line", "html_line"),
+    [
+        (
+            f"Bitte überweisen Sie 49,99 EUR auf IBAN {OTHER_IBAN}.",
+            f"Bitte überweisen Sie 49,99 EUR auf IBAN {SHOWN_IBAN}.",
+        ),
+        (
+            f"Bitte überweisen Sie 149,99 EUR auf IBAN {SHOWN_IBAN}.",
+            f"Bitte überweisen Sie 49,99 EUR auf IBAN {SHOWN_IBAN}.",
+        ),
+        # The grounding joins an IBAN's groups across any marks and line breaks, and reads whole amounts
+        # next to a currency: so does the comparison.
+        (f"IBAN {_spaced(OTHER_IBAN, '-')}", f"Bitte überweisen Sie 49,99 EUR auf IBAN {SHOWN_IBAN}."),
+        (f"IBAN {_spaced(OTHER_IBAN, '  ')}", f"Bitte überweisen Sie 49,99 EUR auf IBAN {SHOWN_IBAN}."),
+        (f"IBAN {_spaced(OTHER_IBAN, chr(9))}", f"Bitte überweisen Sie 49,99 EUR auf IBAN {SHOWN_IBAN}."),
+        (
+            f"IBAN {OTHER_IBAN[:12]}\n{OTHER_IBAN[12:]}",
+            f"Bitte überweisen Sie 49,99 EUR auf IBAN {SHOWN_IBAN}.",
+        ),
+        ("Bitte überweisen Sie 1.200 EUR.", f"Bitte überweisen Sie 12,00 EUR auf IBAN {SHOWN_IBAN}."),
+        (
+            "Bitte überweisen Sie EUR 99,- bis Monatsende.",
+            f"Bitte überweisen Sie 12,00 EUR auf IBAN {SHOWN_IBAN}.",
+        ),
+        # Taking the amount's line out would join the lines around it into another IBAN.
+        (
+            f"IBAN {OTHER_IBAN[:12]}\nGebühr 99,00 EUR\n{OTHER_IBAN[12:]}",
+            f"Bitte überweisen Sie 12,00 EUR auf IBAN {SHOWN_IBAN}.",
+        ),
+    ],
+    ids=[
+        "another-iban",
+        "another-amount",
+        "dashed-iban",
+        "double-spaced-iban",
+        "tabbed-iban",
+        "iban-over-two-lines",
+        "whole-amount",
+        "amount-with-a-dash",
+        "iban-joined-by-taking-a-line-out",
+    ],
+)
+@pytest.mark.parametrize("construction", CONSTRUCTIONS)
+def test_alternatives_that_name_different_ibans_are_a_scam_sign(
+    plain_line: str, html_line: str, construction: str
+) -> None:
+    """Adversarial: the plain part names another IBAN or amount than the HTML part the person's mail
+    program shows: the last alternative (RFC 2046), also behind an earlier HTML alternative that shows
+    the plain part's line, and also when it is marked as an attachment. The plain part is hidden text (a
+    scam sign), never text a value is grounded in; the last HTML part's visible text is read instead, as
+    the mail program shows it."""
+    plain = f"Sehr geehrte Frau Rivera,\n{plain_line}\nMit freundlichen Grüßen\n"
+    data = _alternatives(
+        plain,
+        f"<p>{html_line}</p>",
+        before=f"<p>{plain_line}</p>" if construction == CONSTRUCTIONS[1] else None,
+        attached=construction == CONSTRUCTIONS[2],
+    )
+    document = text_document(data, "message/rfc822")
+    assert plain_line not in document.text and plain_line in document.hidden_text
+    assert html_line in document.text
+    assert "Sehr geehrte Frau Rivera," in document.text and "Mit freundlichen Grüßen" in document.text
+
+
+def test_of_several_html_alternatives_the_last_is_read() -> None:
+    """Adversarial: an HTML-only e-mail with two alternatives naming different IBANs. Mail programs show
+    the last; the first, the one a body is otherwise read from, is hidden text (a scam sign)."""
+    first, last = (
+        f"Bitte überweisen Sie auf IBAN {OTHER_IBAN}.",
+        f"Bitte überweisen Sie auf IBAN {SHOWN_IBAN}.",
+    )
+    message = EmailMessage()
+    message["From"] = "rechnung@stadtwerke-musterstadt.example"
+    message.set_content(_mail(f"<p>{first}</p>"), subtype="html")
+    message.add_alternative(_mail(f"<p>{last}</p>"), subtype="html")
+    document = text_document(message.as_bytes(), "message/rfc822")
+    assert last in document.text and first not in document.text and first in document.hidden_text
+
+
+@pytest.mark.parametrize(
+    "shown", [f"X{SHOWN_IBAN}", f"Referenz 4711{SHOWN_IBAN}"], ids=["run-into-a-word", "inside-a-reference"]
+)
+def test_an_iban_the_html_part_shows_only_inside_another_word_is_not_shown(shown: str) -> None:
+    """An IBAN counts as shown only as the GiroCode gate reads a printed one, from the start of a word:
+    the same letters and digits run into a neighbouring word don't show it."""
+    plain = f"Bitte überweisen Sie auf IBAN {SHOWN_IBAN}.\n"
+    document = text_document(_alternatives(plain, f"<p>{shown}</p>"), "message/rfc822")
+    assert f"IBAN {SHOWN_IBAN}" in document.hidden_text and f"IBAN {SHOWN_IBAN}" not in document.text
+
+
+def _joinable_lines(count: int) -> str:
+    """An e-mail whose plain part has a currency word followed by ``count`` lines of bare whole numbers:
+    taking out one line that reads as an amount puts the next number beside the currency."""
+    plain = "Sehr geehrte Frau Rivera,\nEUR\n" + "".join(f"{100 + n % 800}\n" for n in range(count))
+    return _alternatives(plain, "<p>Ihre Rechnung finden Sie im Kundenportal.</p>").decode()
+
+
+def test_a_plain_part_with_many_joinable_lines_is_hidden_at_once() -> None:
+    document = text_document(_joinable_lines(2000).encode(), "message/rfc822")
+    assert "Kundenportal" in document.text and "EUR" in document.hidden_text and "EUR" not in document.text
+
+
+@pytest.mark.slow  # times its own growth (helpers_timing): a wall-clock ratio
+def test_comparing_the_two_parts_takes_linear_time() -> None:
+    """Point 6 for the plain part: a stranger's e-mail is compared at upload and at every page render,
+    so the comparison reads each part once, never once per line it takes out (a chain of joinable lines
+    took 13 s at 20 KB)."""
+    assert_linear(_joinable_lines, 2000, lambda data: text_document(data.encode(), "message/rfc822"))
+
+
+def test_alternatives_that_name_the_same_values_are_read_as_before() -> None:
+    """The same IBAN and amount, however the HTML part spaces or formats them: the plain part is the text,
+    nothing is hidden."""
+    grouped = _spaced(SHOWN_IBAN, " ")
+    plain = (
+        f"Sehr geehrte Frau Rivera,\nBitte überweisen Sie 1.249,99 EUR auf IBAN {SHOWN_IBAN}.\n"
+        f"Konto: {_spaced(SHOWN_IBAN, '-')}, Mahngebühr 5,- EUR\n"
+    )
+    html = (
+        f"<p>Bitte überweisen Sie <b>1.249,99</b>&nbsp;EUR auf IBAN <span>{grouped}</span>.</p>"
+        "<p>Mahngebühr 5,00 EUR</p>"
+    )
+    document = text_document(_alternatives(plain, html), "message/rfc822")
+    assert f"1.249,99 EUR auf IBAN {SHOWN_IBAN}" in document.text and "Mahngebühr 5,- EUR" in document.text
+    assert document.hidden_text == ""

@@ -17,8 +17,9 @@ jobs; files that were already in Ordnung are reported by id in ``duplicates``, r
 ``errors``. Deleting moves a letter to the trash (``?purge=true`` deletes it and everything derived
 from it for good).
 
-Originals, page images and thumbnails are sent with ``no-store``, and deleting for good also tells the
-browser to empty its cache (``Clear-Site-Data``), so no copy of a deleted letter stays in the browser.
+Originals, page images, thumbnails and every other ``/api`` answer are sent with ``no-store``, and
+deleting for good also tells the browser to empty its cache (``Clear-Site-Data``), so no copy of a
+deleted letter stays in the browser.
 
 From a paired phone (:mod:`ordnung.phone`) an upload is filed as ``source="phone"`` ("… from your
 phone"), each letter it adds counts against the phone's hourly upload limit (the gate counted the

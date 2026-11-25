@@ -19,6 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from ordnung.api.deps import CtxDep, StoreDep, TodayDep
 from ordnung.api.routes.common import IsoDate, ledger_changed
+from ordnung.api.routes.documents import CLEAR_CACHE
 from ordnung.drafts import sent
 from ordnung.drafts.proof import MAX_NOTE
 from ordnung.drafts.tracking import MAX_INPUT
@@ -127,9 +128,14 @@ async def update_proof(
 
 
 @router.delete("/drafts/{draft_id}/proofs/{proof_id}", response_model=ProofOverview)
-async def remove_proof(draft_id: str, proof_id: str, ctx: CtxDep, today: TodayDep) -> ProofOverview:
+async def remove_proof(
+    draft_id: str, proof_id: str, ctx: CtxDep, today: TodayDep, response: Response
+) -> ProofOverview:
     """Remove a proof; its file is deleted for good unless another proof uses it."""
-    await asyncio.to_thread(sent.remove_proof, ctx.store, draft_id, proof_id)
+    if await asyncio.to_thread(sent.remove_proof, ctx.store, draft_id, proof_id):
+        response.headers.update(
+            CLEAR_CACHE
+        )  # deleted for good: as for a letter, the browser empties its cache
     await ledger_changed(ctx)
     return sent.overview(ctx.store, draft_id, today)
 

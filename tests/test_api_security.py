@@ -17,6 +17,7 @@ from typing import Any
 import httpx
 import pytest
 
+from helpers_secretary import add_doc
 from helpers_tables import check_rows_async
 from ordnung import __version__, clock
 from ordnung.api import app as app_module
@@ -128,6 +129,25 @@ async def test_every_response_is_nosniff_and_no_referrer(data_dir: Path) -> None
         response = await api.client.get("/api/rules")
         assert response.headers["x-content-type-options"] == "nosniff"
         assert response.headers["referrer-policy"] == "no-referrer"
+
+
+async def test_every_api_answer_says_no_store(data_dir: Path, web_dist: Path) -> None:
+    """No letter, number or household detail is kept in the browser's disk cache, where a letter
+    deleted from another browser would outlive its deletion; the built assets stay cacheable."""
+    async with api_for(data_dir, token=TOKEN) as api:
+        doc_id = add_doc(api.ctx.store, "musterstadt-letter")
+        bearer = {"Authorization": f"Bearer {TOKEN}"}
+        for path in ("/api/profile", "/api/numbers", f"/api/documents/{doc_id}", "/api/household"):
+            answer = await api.client.get(path, headers=bearer)
+            assert answer.status_code == 200, path
+            assert answer.headers["cache-control"] == "no-store", path
+        refused = await api.client.get("/api/profile")
+        assert refused.status_code == 401
+        assert refused.headers["cache-control"] == "no-store"
+        asset = await api.client.get("/assets/index-abc.js", headers=bearer)
+        assert "immutable" in asset.headers["cache-control"]
+        page = await api.client.get("/", headers=bearer)
+        assert page.headers["cache-control"] == "no-cache"  # the page itself: revalidated, as before
 
 
 # --------------------------------------------------------------------------------------------------

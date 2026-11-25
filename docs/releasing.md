@@ -14,7 +14,9 @@ Pushing a version tag such as `vX.Y.Z` runs [`.github/workflows/release.yml`](..
    `main`, and CI must have passed on it there. `scripts/release_notes.py` does the first checks. The tests
    don't run again: CI ran them on `main`.
 2. **It builds the sdist and the wheel** from the tagged commit and checks them as CI's wheel job does. The
-   committed web build must be the one its sources make, and the wheel must carry the web app and the demo.
+   committed web build must be the one its sources make (a job of its own rebuilds it and compares it byte
+   for byte, so the npm packages that build runs never run where the files PyPI gets are built), and the
+   wheel must carry the web app and the demo.
    The wheel is installed into a clean venv outside the checkout, where it must report the version and rebuild
    the demo identically (`ordnung demo --check`). `twine check --strict` checks that the description renders on
    PyPI.

@@ -592,7 +592,8 @@ def test_serve_points_to_an_already_running_server(api: FakeServer) -> None:
 
 @pytest.fixture(scope="module")
 def demo_life(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    """The mini sample life recorded with the packaged suggested questions, plus its snapshot."""
+    """The mini sample life recorded with the packaged suggested questions, plus its snapshot, built again by
+    replay as the committed one is (so ``demo --check`` compares its cached answers too)."""
     root = tmp_path_factory.mktemp("cli-life")
     samples = write_sample_life(root / "samples")
     ids = load_manifest(samples).document_ids(samples)
@@ -602,6 +603,13 @@ def demo_life(tmp_path_factory: pytest.TempPathFactory) -> Path:
         samples=samples,
         fixtures=root / "fixtures",
         live=model_answers(ids),
+        snapshot=root / "snapshot",
+        rebuild=True,
+    )
+    build_demo(
+        root / "replayed",
+        samples=samples,
+        fixtures=root / "fixtures",
         snapshot=root / "snapshot",
         rebuild=True,
     )

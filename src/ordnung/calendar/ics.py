@@ -36,6 +36,7 @@ from icalendar import Alarm, Calendar, Event
 from ordnung.clock import now_iso
 from ordnung.days import local_today, parse_day, parse_timestamp
 from ordnung.db.store import NotFoundError, Store
+from ordnung.display_text import clean_display_text
 from ordnung.models import Contract, ContractComputation, Item, Profile
 from ordnung.rules.deadlines import older_matter_note
 from ordnung.rules.explain import fmt_date
@@ -120,7 +121,7 @@ def _parse_time(value: str | None) -> time | None:
 def _alarm(trigger: timedelta, text: str) -> Alarm:
     alarm = Alarm()
     alarm.add("action", "DISPLAY")
-    alarm.add("description", text)
+    alarm.add("description", clean_display_text(text))
     alarm.add("trigger", trigger)
     return alarm
 
@@ -160,8 +161,8 @@ def _base_event(uid: str, summary: str, description: str, stamp: datetime) -> Ev
     event.add("uid", uid)
     event.add("dtstamp", stamp)
     event.add("last-modified", stamp)
-    event.add("summary", summary)
-    event.add("description", description)
+    event.add("summary", clean_display_text(summary))
+    event.add("description", clean_display_text(description, lines=True))
     return event
 
 
@@ -254,7 +255,7 @@ def item_event(ledger: Ledger, item: Item, profile: Profile) -> Event:
     except OverflowError as exc:  # it ends the day after, or an hour after, 31 Dec 9999
         raise TooFarAhead(TOO_FAR_AHEAD) from exc
     if item.location:
-        event.add("location", item.location)
+        event.add("location", clean_display_text(item.location))
     event.add("categories", [item.kind])
     if item.status in OPEN_STATUSES:
         days = profile.reminder_days.get(item.kind, [])

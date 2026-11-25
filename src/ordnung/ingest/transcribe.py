@@ -16,6 +16,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from ordnung.db.store import Store
+from ordnung.ingest.intake import IntakeError
 from ordnung.llm import prompts
 from ordnung.llm.base import Attachment, ClaudeBadOutput, LLMRequest, LLMResponse
 from ordnung.llm.claude_cli import extract_json
@@ -109,13 +110,16 @@ async def transcribe_pages(
     todo = pages_to_transcribe(pages)
     if not todo:
         return []
+    images = [image for page in todo if (image := store.data_file(page.image_path)) is not None]
+    if len(images) != len(todo):  # never a picture from outside the data folder
+        raise IntakeError("A page of this document is missing, so it can't be read.")
     with trace.span("ocr", "Transcribe", key="transcribe", stage="transcribe", parallel=True) as group:
         group.set(pages=len(todo))
         tasks = [
             asyncio.ensure_future(
                 transcribe_page(
                     llm,
-                    store.data_dir / page.image_path,
+                    image,
                     page=page.page,
                     doc_id=doc_id,
                     model=model,
@@ -123,7 +127,7 @@ async def transcribe_pages(
                     trace=group,
                 )
             )
-            for page in todo
+            for page, image in zip(todo, images, strict=True)
         ]
         try:
             results = await asyncio.gather(*tasks)

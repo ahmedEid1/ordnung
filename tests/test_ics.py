@@ -177,6 +177,29 @@ def test_all_day_event_with_description_and_alarms(store: Store, ids: dict[str, 
     assert _triggers(event) == sorted(timedelta(days=-days, hours=9) for days in (14, 7, 6, 3, 1))
 
 
+def test_no_control_byte_reaches_the_calendar_file(store: Store) -> None:
+    """A to-do stored with control characters or bidirectional overrides in its title, action or place
+    (read before readings were cleaned, or typed so) gives a calendar file without them: RFC 5545 forbids
+    them in text, and a NUL can break an import."""
+    store.save_profile({"name": "Sam Rivera", "timezone": "Europe/Berlin"})
+    _item(
+        store,
+        kind="appointment",
+        title="Pay\x00 the\x1b[2J bill \u202e05,94 EUR\u202c ok",
+        action="Bring\x07 the letter",
+        due_date="2026-10-07",
+        due_time="10:30",
+        location="Rathaus\x00, Raum\u2066 3",
+    )
+    data = build_ics(store)
+    text = data.decode("utf-8")
+    for char in ("\x00", "\x1b", "\x07", "\u202e", "\u202c", "\u2066"):
+        assert char not in text, repr(char)
+    (event,) = _events(data).values()
+    assert "Pay the[2J bill 05,94 EUR ok" in str(event["summary"])
+    assert str(event["location"]) == "Rathaus, Raum 3"
+
+
 def test_timed_event_is_timezone_correct(store: Store, ids: dict[str, str]) -> None:
     data = build_ics(store)
     event = _events(data)[f"{ids['appointment']}@ordnung.local"]

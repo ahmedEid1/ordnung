@@ -685,14 +685,13 @@ def _serve(
     from ordnung.doctor import web_ui_check
     from ordnung.locking import DataDirLock, DataDirLocked
 
-    if host not in LOOPBACK_HOSTS and not token_on:
-        raise _fail(
-            "--no-token is only allowed on this computer's own address.",
-            hint="Leave out --host or --no-token.",
-        )
     if host not in LOOPBACK_HOSTS:
-        err_console.print(
-            f"[yellow]![/] {escape(host)} is not this computer only — anyone on your network could connect."
+        # The computer's listener speaks plain HTTP and takes the session token: on a network address,
+        # a device that tried it would send the token in clear. Phones get their own HTTPS listener.
+        raise _fail(
+            f"{escape(host)} is not this computer's own address: Ordnung listens only on 127.0.0.1, "
+            "localhost or ::1.",
+            hint="Leave out --host. To use Ordnung from your phone, turn on phone access in Settings → Phone.",
         )
     already = reachable_server(folder)
     if already is not None:
@@ -763,7 +762,9 @@ def _serve(
 def serve(
     ctx: typer.Context,
     data_dir: DataDirOption = None,
-    host: Annotated[str, typer.Option(help="Address to listen on (keep 127.0.0.1).")] = DEFAULT_HOST,
+    host: Annotated[
+        str, typer.Option(help="Address to listen on: 127.0.0.1, localhost or ::1.")
+    ] = DEFAULT_HOST,
     port: Annotated[int, typer.Option(help="Port to listen on.")] = DEFAULT_PORT,
     no_browser: Annotated[bool, typer.Option("--no-browser", help="Don't open the browser.")] = False,
     no_token: Annotated[bool, typer.Option("--no-token", help="No session token (tests only).")] = False,
@@ -1430,7 +1431,9 @@ def demo(
         bool, typer.Option("--rebuild", help="Rebuild the prebuilt demo database (maintainers).")
     ] = False,
     no_browser: Annotated[bool, typer.Option("--no-browser", help="Don't open the browser.")] = False,
-    host: Annotated[str, typer.Option(help="Address to listen on.")] = DEFAULT_HOST,
+    host: Annotated[
+        str, typer.Option(help="Address to listen on: 127.0.0.1, localhost or ::1.")
+    ] = DEFAULT_HOST,
     # its own port, so the demo runs beside Ordnung (`serve --demo` keeps Ordnung's)
     port: Annotated[int, typer.Option(help="Port to listen on.")] = DEMO_PORT,
 ) -> None:

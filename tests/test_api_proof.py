@@ -270,6 +270,7 @@ async def test_correcting_and_removing_a_proof(data_dir: Path, letter_bytes: byt
         ).status_code == 422
         removed = await api.client.delete(f"/api/drafts/{draft_id}/proofs/{proof_id}")
         assert removed.status_code == 200 and removed.json()["proofs"] == []
+        assert removed.headers["clear-site-data"] == '"cache"'  # its file is gone for good
         assert (await api.client.get(f"/api/documents/{doc_id}")).status_code == 404
         assert (await api.client.delete(f"/api/drafts/{draft_id}/proofs/{proof_id}")).status_code == 404
 
@@ -300,7 +301,9 @@ async def test_deleting_a_letter_deletes_its_proof_files(data_dir: Path) -> None
         draft_id, _ = await _sent(api)
         overview = await _add(api, draft_id, "a.jpg", photo("JPEG"))
         doc_id = overview["proofs"][0]["document"]["id"]
-        assert (await api.client.delete(f"/api/drafts/{draft_id}")).status_code == 204
+        deleted = await api.client.delete(f"/api/drafts/{draft_id}")
+        assert deleted.status_code == 204
+        assert deleted.headers["clear-site-data"] == '"cache"'  # no copy stays in the browser
         assert (await api.client.get(f"/api/documents/{doc_id}")).status_code == 404
 
 
@@ -318,7 +321,9 @@ async def test_deleting_a_letter_takes_its_ideas_with_it(data_dir: Path) -> None
         draft_id, _ = await _sent(api)  # registered, no number, no proof: "Keep the proof …"
         before = _about((await api.client.get("/api/suggestions")).json(), draft_id)
         assert any("Keep the proof of your cancellation" in title for title in before)
-        assert (await api.client.delete(f"/api/drafts/{draft_id}")).status_code == 204
+        deleted = await api.client.delete(f"/api/drafts/{draft_id}")
+        assert deleted.status_code == 204
+        assert "clear-site-data" not in deleted.headers  # no file was deleted: the cache stays
         assert _about((await api.client.get("/api/suggestions")).json(), draft_id) == []
 
 

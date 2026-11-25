@@ -18,6 +18,10 @@ from typing import Any, NamedTuple
 
 from PIL import ImageColor
 
+from ordnung.ingest.amounts import amount_matches
+from ordnung.ingest.normalize import fold_punctuation
+from ordnung.money.iban import MAX_LENGTH, MIN_LENGTH, inspect_iban
+
 EMAIL_HEADING_CHARS = 200
 
 
@@ -52,19 +56,90 @@ def _sender_name(header: Any) -> str:
 
 def _email_body(message: EmailMessage) -> tuple[str, str]:
     """The text/plain body, or the visible text of the HTML body when there is no plain part or the
-    plain part is empty (mail clients show the HTML part then, so its sender never notices)."""
+    plain part is empty (mail clients show the HTML part then, so its sender never notices).
+
+    Mail programs show the HTML part of an e-mail that has both, and of several HTML alternatives the
+    last (RFC 2046, 5.1.4), so the part read could name another IBAN or amount than the person saw. The
+    part read is compared with every HTML part of the message (:func:`_html_parts`, an alternative marked
+    as an attachment included). If one of them doesn't show an IBAN or amount it names
+    (:func:`_names_unshown`), it is not read: all of its text is reported as hidden text, a scam sign,
+    never text a value is grounded in, and the last HTML part's visible text is read instead."""
     part = message.get_body(preferencelist=("plain", "html"))
     if part is None:
         return "", ""
+    htmls = list(_html_parts(message))
     content = _part_text(part)
     if part.get_content_type() == "text/plain" and not content.strip():
-        html = message.get_body(preferencelist=("html",))
-        if html is None:
+        if not htmls:
             return content, ""
-        part, content = html, _part_text(html)
+        part = message.get_body(preferencelist=("html",)) or htmls[0]
+        content = _part_text(part)
     if part.get_content_type() == "text/html":
-        return html_to_text(content)
-    return content, ""
+        read, hidden = html_to_text(content)
+    else:
+        read, hidden = content, ""
+    if not htmls or part is htmls[-1]:
+        return read, hidden  # what is read is what mail programs show
+    others = [html_to_text(_part_text(html)) for html in htmls if html is not part]
+    if any(_names_unshown(read, shown) for shown, _ in others):
+        last_shown, last_hidden = html_to_text(_part_text(htmls[-1]))
+        unread = read.strip() if part.get_content_type() == "text/plain" else read
+        return last_shown, "\n\n".join(text for text in (unread, hidden, last_hidden) if text)
+    return read, hidden
+
+
+def _html_parts(part: MIMEPart, *, alternative: bool = False) -> Iterator[MIMEPart]:
+    """Every text/html part a mail program may show as the message's body, in order: those the body is
+    looked for in (:meth:`~email.message.MIMEPart.get_body`: no attachment, no attached e-mail), and an
+    alternative of a multipart/alternative even when it is marked as an attachment."""
+    if part.is_attachment() and not alternative:
+        return
+    if part.get_content_type() == "text/html":
+        yield part
+        return
+    if part.get_content_maintype() != "multipart":
+        return
+    inside = part.get_content_subtype() == "alternative"
+    for subpart in part.iter_parts():
+        yield from _html_parts(subpart, alternative=inside)
+
+
+#: Words as the GiroCode gate reads a printed IBAN: runs of letters and digits, whatever stands between.
+_WORDS = re.compile(r"[^\W_]+")
+
+
+def _names_unshown(plain: str, shown: str) -> bool:
+    """Whether ``plain`` names an IBAN or amount ``shown`` (the HTML part's visible text) doesn't.
+
+    Both are read the way a value is grounded on the text, in one pass each: an IBAN is any valid IBAN
+    that a run of whole words spells (dashes, tabs, line breaks or anything else between its groups, as
+    the GiroCode gate joins them, :func:`_ibans`), on both sides; an amount is what
+    :func:`~ordnung.ingest.amounts.amount_matches` reads (``1.200 EUR``, ``99,- €`` included), and counts
+    as shown only as the same amount."""
+    plain, shown = fold_punctuation(plain), fold_punctuation(shown)
+    seen = {iban for iban, _, _ in _ibans(shown)}
+    if any(iban not in seen for iban, _, _ in _ibans(plain)):
+        return True
+    seen_amounts = {match.value for match in amount_matches(shown)}
+    return any(match.value not in seen_amounts for match in amount_matches(plain))
+
+
+def _ibans(text: str) -> Iterator[tuple[str, int, int]]:
+    """Every valid IBAN that a run of whole words of ``text`` spells, with where the run starts and
+    ends."""
+    words = list(_WORDS.finditer(text))  # spans in ``text``: an upper-case letter can be longer
+    for first, word in enumerate(words):
+        if not word.group()[:1].isascii() or not word.group()[:1].isalpha():
+            continue
+        joined = ""
+        for last in range(first, len(words)):
+            joined += words[last].group().upper()
+            if len(joined) > MAX_LENGTH:
+                break
+            if len(joined) >= 4 and not (joined[:2].isalpha() and joined[2:4].isdecimal()):
+                break
+            if len(joined) >= MIN_LENGTH and inspect_iban(joined).valid:
+                yield joined, word.start(), words[last].end()
 
 
 #: The labels that name ISO-8859-1. Browsers and mail programs read text so labelled as Windows-1252 (WHATWG

@@ -136,7 +136,7 @@ pays, sends or cancels anything.
 
 | Boundary | What guards it |
 |---|---|
-| Letter → Claude | Wrapped as untrusted data, read with no tools, the answer held to a JSON schema; text hidden in a PDF is shown, never followed. |
+| Letter → Claude | Wrapped as untrusted data, read with no tools, the answer held to a JSON schema; hidden text Ordnung finds in a PDF is kept from Claude and shown to you as a scam sign (one layer, not a guarantee). |
 | Claude → your records | A fact is `verified` only when its sentence is on the page with the same digits; a date without its sentence is marked *Please check* ([ADR 0003](docs/decisions/0003-grounding-levels.md)). |
 | Your records → Ask | Read-only MCP tools on a read-only connection, no date calculator; every date, time or amount must cite a record that holds it, checked before you see it ([ADR 0008](docs/decisions/0008-two-channels-and-claim-level-citations.md), [ADR 0011](docs/decisions/0011-ask-keeps-to-the-ledger.md)). |
 | Ordnung → the world | A GiroCode only pre-fills a transfer you confirm in your banking app; legally operative sentences come from fixed templates ([ADR 0006](docs/decisions/0006-read-only-agent-and-humble-automation.md), [ADR 0012](docs/decisions/0012-girocode-only-for-grounded-transfers.md)). Calendar sync sends dates, times and alarms, with no letter's title, name or amount unless you choose *With details*; hand-off sync writes only encrypted files to your sync folder. |

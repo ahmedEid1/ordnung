@@ -292,6 +292,30 @@ def test_the_frontend_job_has_room_for_a_slow_runner() -> None:
     assert "npm test" in _script(frontend)
 
 
+def test_the_only_third_party_action_runs_a_fixed_commit() -> None:
+    """GitHub's own actions are named by major version; astral-sh/setup-uv, the one from elsewhere, runs a fixed
+    commit with its version beside it (Dependabot updates both), the one release.yml pins, so a moved tag can't
+    make a run pass that should fail."""
+    text = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    refs = set(re.findall(r"uses: astral-sh/setup-uv@(\S+.*)$", text, re.M))
+    release = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
+    (pinned,) = re.findall(r"uses: astral-sh/setup-uv@([0-9a-f]{40} # v\d+\.\d+\.\d+)$", release, re.M)
+    assert refs == {pinned}
+    others = {ref.split("@")[0] for ref in re.findall(r"uses: (\S+)", text)} - {"astral-sh/setup-uv"}
+    assert all(name.startswith("actions/") for name in others), others
+
+
+def test_the_frontend_job_fails_on_any_difference_from_the_committed_build() -> None:
+    """The sources' hash alone passes a committed bundle changed by hand: the build is reproducible, so the step
+    right after ``npm run build`` (which writes into the committed folder) fails on any changed, added or removed
+    file there."""
+    steps = _jobs()["frontend"]["steps"]
+    (built,) = [i for i, step in enumerate(steps) if step.get("run") == "npm run build"]
+    check = steps[built + 1]["run"]
+    assert "git diff --exit-code --stat -- ../src/ordnung/web/dist" in check
+    assert 'test -z "$(git status --porcelain -- ../src/ordnung/web/dist)"' in check
+
+
 def test_the_backend_legs_have_room_for_a_slow_runner() -> None:
     """The backend's legs on Python 3.11 to 3.14 run the tests in parallel processes, a file to each. Serial, the
     slowest leg's tests took 39 minutes with coverage (3.12, run 44310555051 of 18 November 2026), 26 without

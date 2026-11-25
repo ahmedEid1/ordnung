@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
+import unicodedata
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -16,6 +18,7 @@ from ordnung import clock
 from ordnung.app_context import SIMULATED_TODAY_KEY, build_context
 from ordnung.config import Paths
 from ordnung.db.store import Store
+from ordnung.display_text import clean_display_text
 from ordnung.ingest.extract import (
     MAX_KNOWN_PARTIES_BYTES,
     MAX_LISTED_NAME,
@@ -408,6 +411,93 @@ def test_a_statements_new_rent_is_read_as_the_series_the_ledger_needs() -> None:
     # a broken amount keeps its cents
     cents = {**_STATEMENT, "change": {**_STATEMENT["change"], "new_amount": 670.5}}
     assert parse_extraction(cents, "").items[-1].title == "New monthly total rent €670.50"
+
+
+#: Control characters a model could copy from a letter, or write itself: NUL, an escape sequence and
+#: right-to-left overrides that reorder a title on screen.
+_CONTROLS = "\x00\x1b[2J\u202e\u202c\u2066\x7f\x85"
+_CONTROL_CHARS = "\x00\x1b\u202e\u202c\u2066\x7f\x85"
+
+
+def test_control_and_bidi_characters_never_reach_a_title() -> None:
+    """The reading's free-text fields carry no control character or bidirectional override (a calendar
+    file forbids them, a NUL can break its import, an override reorders a title); a long field keeps its
+    lines. Quotes stay exactly as read, because they are matched against the page."""
+    dirty = {
+        **_STATEMENT,
+        "title": f"Ihre Neben{_CONTROLS}kosten",
+        "summary": f"Line one{_CONTROLS}\nline two",
+        "case_title": f"Miete{_CONTROLS}",
+        "sender": {
+            **_STATEMENT.get("sender", {}),
+            "name": f"Muster{_CONTROLS} Wohnen GmbH",
+            "kind": "landlord",
+        },
+        "items": [
+            {
+                **item,
+                "title": f"Pay the\tback\npayment{_CONTROLS}",
+                "action": "Transfer it\x00\nby the date",
+                "location": f"Musterstadt{_CONTROLS}",
+            }
+            for item in _STATEMENT["items"]
+        ],
+    }
+    reading = parse_extraction(dirty, "")
+    texts = [
+        reading.title,
+        reading.summary,
+        reading.case_title,
+        reading.sender.name if reading.sender else "",
+    ]
+    for item in reading.items:
+        texts += [item.title, item.action or "", item.location or ""]
+    for text in texts:
+        assert not any(ch in text for ch in _CONTROL_CHARS), repr(text)
+        assert "\t" not in text
+    assert reading.title == "Ihre Neben[2Jkosten"  # the escape character goes, its printable rest stays
+    assert reading.summary == "Line one[2J\nline two"  # a long field keeps its line
+    assert reading.items[0].title == "Pay the back payment[2J"  # a title is one line
+    assert reading.items[0].action == "Transfer it\nby the date"
+    assert reading.items[0].quote == _STATEMENT["items"][0]["quote"]
+
+
+def test_unicode_line_separators_and_invisible_spaces_never_reach_a_title() -> None:
+    """U+2028 and U+2029 break a line like a line break: a title stays one line, a long field keeps the
+    line as a line break. Invisible spaces (zero width space, word joiner, byte order mark) go."""
+    dirty = {
+        **_STATEMENT,
+        "title": "Ihre\u2028Neben\u200bkosten\u2029abrechnung\ufeff",
+        "summary": "Line one\u2028line two\u2029line\u2060three",
+    }
+    reading = parse_extraction(dirty, "")
+    assert reading.title == "Ihre Nebenkosten abrechnung"
+    assert reading.summary == "Line one\nline two\nlinethree"
+
+
+#: Every format character (Unicode category Cf) Python knows, but the two a script needs.
+_FORMATS = "".join(
+    ch
+    for ch in map(chr, range(sys.maxunicode + 1))
+    if unicodedata.category(ch) == "Cf" and ch not in "\u200c\u200d"
+)
+
+
+def test_no_invisible_format_character_reaches_a_title() -> None:
+    """Every format character goes (soft hyphen, bidirectional marks, overrides and isolates, invisible
+    operators, tags, interlinear annotation …), not a hand-picked list; the zero-width non-joiner and
+    joiner stay, since Persian spelling and emoji sequences need them. Line breaks and tabs keep the rules
+    above."""
+    assert len(_FORMATS) > 150 and {"\u00ad", "\u202e", "\u2066", "\u2064", "\U000e0041"} <= set(_FORMATS)
+    dirty = {
+        **_STATEMENT,
+        "title": f"Neben{_FORMATS}kosten\tmi\u200cl\u200dk",
+        "summary": f"Line{_FORMATS} one\nline two",
+    }
+    reading = parse_extraction(dirty, "")
+    assert reading.title == "Nebenkosten mi\u200cl\u200dk"
+    assert reading.summary == "Line one\nline two"
+    assert clean_display_text("\u200d\U0001f468\u200d\U0001f467") == "\u200d\U0001f468\u200d\U0001f467"
 
 
 NO_RENT_SERIES_CASES = [

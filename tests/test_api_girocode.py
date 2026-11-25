@@ -11,7 +11,7 @@ from typing import Any
 import pytest
 
 from fixtures_llm import DUNNING_LETTER, INVOICE_LETTER, TELECOM_IBAN, record_events
-from helpers_docs import photo
+from helpers_docs import Fill, Line, make_pdf, photo
 from ordnung import clock
 from test_api_support import FINE_LETTER, TODAY, Api, ApiRouter, api_for
 
@@ -131,6 +131,23 @@ async def test_a_reminder_takes_the_code_over_from_its_invoice(data_dir: Path) -
         assert refused.status_code == 409 and refused.json()["detail"].startswith(
             "No code: the payment reminder"
         )
+
+
+async def test_a_covered_iban_never_gets_a_code(data_dir: Path) -> None:
+    """Adversarial: the invoice's IBAN line is in the text layer but painted over with a white box, so
+    the printed letter shows no IBAN at all. It is hidden text, a scam sign: no code, never one carrying
+    an IBAN nobody can see on the page."""
+    lines: list[Line | Fill] = [
+        Line(72, 90 + 20 * row, text, size=11) for row, text in enumerate(INVOICE_LETTER.pages[0])
+    ]
+    iban_row = INVOICE_LETTER.pages[0].index(f"IBAN: {TELECOM_IBAN}")
+    lines.append(Fill(60, 90 + 20 * iban_row - 14, 470, 20, (255, 255, 255)))  # drawn after the text: over it
+    async with api_for(data_dir) as api:
+        detail = await _read(api, "rechnung.pdf", make_pdf([lines]))
+        assert detail["document"]["hidden_text"] is True
+        (code,) = detail["girocodes"]
+        assert code["status"] != "ready" and code["reason"] == "scam"
+        assert TELECOM_IBAN.replace(" ", "") not in str(detail["girocodes"])
 
 
 async def test_a_letter_with_hidden_text_never_gets_a_code(data_dir: Path) -> None:

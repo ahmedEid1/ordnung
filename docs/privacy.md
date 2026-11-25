@@ -184,8 +184,8 @@ sync.
   was read, your *For taxes* choice for it and whom you filed it for, and the cached model responses of
   every call that carried it (a secretary's note or review built from several letters included). The usage log keeps only anonymous numbers (its calls' replay keys, which hash the
   letter's content, and their error texts, which may quote Claude's answer, are cleared too), and deleted
-  database rows are overwritten rather than left behind. Originals and page images are never kept in the
-  browser's cache, and deleting a letter for good or deleting everything also tells the browser to empty
+  database rows are overwritten rather than left behind. Originals, page images and every answer of the app's
+  API are never kept in the browser's cache, and deleting a letter for good or deleting everything also tells the browser to empty
   its cache. A paired phone keeps no copy either: every answer it gets is marked not to be stored, it
   can't download originals, letter PDFs or the calendar file, and a phone you removed is told to empty its cache and storage
   the next time it reaches Ordnung (a tab still open there shows what it last showed until it is closed).
@@ -725,12 +725,16 @@ you set up before: a copy kept somewhere else, and an encrypted disk.
   set it before `ordnung autostart enable` or `ordnung shortcut`, or run that again after setting it; on
   Windows the shortcut can't carry it, so set it for your account (`ordnung shortcut` prints the `setx`
   command).
-- Document text is treated as **untrusted**: it is wrapped in `<untrusted_document>` markers, hidden
-  (invisible) text — white, tiny, off the page, or drawn invisibly (a PDF's text render mode 3) — is
-  removed before it reaches the model (a scan's invisible OCR layer never reaches the model: the page is
-  read from its picture, and what was read from it is compared with the paper; the OCR text is kept only for
-  your letter search, [above](#searchable-scans)), and every extracted fact is checked against the page
-  before it is shown as "found in the letter".
+- Document text is treated as **untrusted**: it is wrapped in `<untrusted_document>` markers, a scan's
+  invisible OCR layer never reaches the model (the page is read from its picture, and what was read from it
+  is compared with the paper; the OCR text is kept only for your letter search, [above](#searchable-scans)),
+  and every extracted fact is checked against the page before it is shown as "found in the letter".
+- Hidden (invisible) text that Ordnung finds in a PDF is removed before it reaches the model and counts as a
+  scam sign: text that is white on a light ground, tiny, off the page or drawn invisibly (a PDF's text render
+  mode 3), text that leaves no ink of its own on the rendered page (covered, transparent, clipped away, in a
+  layer that is off), and text that shows less than half of each glyph (a cover or clip that leaves a sliver
+  of it). This check compares renders of the page; it is one layer, not a guarantee. A sender who works at it
+  can still hide text from it, and such text is then read as if it were printed.
 - *Ask* can only call Ordnung's **read-only** ledger tools; there are no write tools for a
   prompt-injected document to abuse, and no date calculator: the rules tools other clients can install
   are not on Ask's server ([ADR 0011](decisions/0011-ask-keeps-to-the-ledger.md)).
@@ -746,7 +750,9 @@ you set up before: a copy kept somewhere else, and an encrypted disk.
   far off-screen boxes, text in its own inline background colour, simple hiding classes) is kept from
   the model like hidden text in PDFs. When that isn't certain (media queries, Outlook-only parts,
   responsive and dark-mode copies, stylesheet colours) the text stays visible and the other defences
-  apply; see [ADR 0007](decisions/0007-short-written-policies-over-growing-heuristics.md).
+  apply. An e-mail whose plain-text version names an IBAN or amount one of its HTML versions doesn't show is read
+  from its last HTML version, as mail programs show it, and its plain text counts as hidden text (other differences,
+  in a date, name or wording, are not compared); see [ADR 0007](decisions/0007-short-written-policies-over-growing-heuristics.md).
 - Uploads are checked before anything decodes them: PDFs whose compressed streams expand too far (an
   edit-protected PDF's measured decrypted), photos with too many pixels and texts over 60 pages are
   refused, so a hostile file can't exhaust your computer's memory or keep the check busy for minutes. A PDF whose protection or structure

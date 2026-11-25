@@ -1417,9 +1417,10 @@ are in their docstrings):
   local day at the chosen time (the tick wakes up for it), or a minute after start-up when Ordnung
   wasn't running then; a notification the system couldn't show is tried again at the next checks
   (3 a day at most) and the last failure is shown in Settings; a missing tool uses the day up;
-  never in the demo. Shown with `notify-send`, `osascript` (fixed script, texts as arguments) or a
-  Windows PowerShell toast (fixed script, texts in environment variables) — argument lists, never a
-  shell; a missing tool or an error breaks nothing. A tool that took it counts as *sent to the
+  never in the demo. Shown with `notify-send`, `osascript` (fixed script, texts in environment
+  variables) or a Windows PowerShell toast (fixed script, texts in environment variables) — argument
+  lists, never a shell; a *full* note's texts are never arguments (on Linux it goes over the session
+  bus, else `notify-send` gets only its count); a missing tool or an error breaks nothing. A tool that took it counts as *sent to the
   system* (the activity log says so): the system may still keep it back (macOS without permission
   for Script Editor, Focus, Do not disturb), so the test's toast and the card say where to look
   per system. Settings shows today's text in both modes and can show a test notification (it
@@ -2637,8 +2638,9 @@ ones, or a quote naming another day keep the reason (`plan.day_evidence`). UI ne
 
 **Injection defences.** Extraction has no tools (content blocks via stdin). All document-derived
 text in any prompt (including earlier summaries) is wrapped in `<untrusted_document>` tags. Hidden-
-text detector (pdfplumber char colour/size/position): invisible text is excluded from the prompt and
-raises a red banner. HTML e-mails follow the short written policy of `html_to_text` (ADR 0007): only
+text detector (pdfplumber colour/size/position, text render mode, and PDFium renders with and without
+the text: text that leaves no ink of its own, or only a sliver, `ingest/text.py`): hidden text it
+finds is excluded from the prompt and raises a red banner; one layer, not a guarantee (privacy.md). HTML e-mails follow the short written policy of `html_to_text` (ADR 0007): only
 text that is certainly hidden is excluded; when in doubt it stays visible. Brief/review free text is checked: every date, amount and § must exist in
 the agenda/ledger/catalog, else it is removed (fallback to code-generated text). Ask's tool results
 separate Ordnung's record from letter text, and each date or amount of an Ask answer must be in the

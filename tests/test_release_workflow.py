@@ -58,13 +58,17 @@ def _step_index(job: dict[str, Any], needle: str) -> int:
 
 
 def _uses(path: Path) -> dict[str, str]:
-    """Each action a workflow uses, with its ref (``actions/checkout`` → ``v5``)."""
+    """Each action a workflow uses, with its ref (``actions/checkout`` → ``v5``); an action pinned to a commit
+    with its version beside it, by that version (``…@<sha> # v7.6.0`` → ``v7.6.0``)."""
+    versions = dict(
+        re.findall(r"uses: ([\w.-]+/[\w.-]+@[0-9a-f]{40}) # (v\d+\.\d+\.\d+)$", path.read_text("utf-8"), re.M)
+    )
     refs: dict[str, set[str]] = {}
     for job in _jobs(path).values():
         for step in job["steps"]:
             if "uses" in step:
                 name, _, ref = step["uses"].partition("@")
-                refs.setdefault(name, set()).add(ref)
+                refs.setdefault(name, set()).add(versions.get(step["uses"], ref))
     assert all(len(found) == 1 for found in refs.values()), refs  # one version of each action per file
     return {name: found.pop() for name, found in refs.items()}
 
@@ -102,9 +106,10 @@ def test_each_job_gets_only_the_rights_it_needs() -> None:
     only the PyPI job may ask for the OIDC token PyPI checks."""
     assert _workflow()["permissions"] == {}
     jobs = _jobs()
-    assert set(jobs) == {"build", "github-release", "pypi"}
+    assert set(jobs) == {"build", "web-build", "github-release", "pypi"}
     # the build reads the code, and CI's runs to check that CI passed on the tagged commit
     assert jobs["build"]["permissions"] == {"contents": "read", "actions": "read"}
+    assert jobs["web-build"]["permissions"] == {"contents": "read"}
     assert jobs["github-release"]["permissions"] == {"contents": "write"}
     assert jobs["pypi"]["permissions"] == {"id-token": "write"}
 
@@ -121,7 +126,8 @@ def test_pypi_waits_for_the_owner_s_switch_and_never_runs_for_a_pull_request_or_
         assert gate in condition, gate
     assert "||" not in condition and "always()" not in condition  # every gate must hold
     assert pypi["environment"]["name"] == "pypi"
-    assert set(pypi["needs"]) == {"build", "github-release"}  # last: an upload can never be replaced
+    # last: an upload can never be replaced
+    assert set(pypi["needs"]) == {"build", "web-build", "github-release"}
     assert [step.get("uses", "").split("@")[0] for step in pypi["steps"]] == [
         "actions/download-artifact",
         "pypa/gh-action-pypi-publish",
@@ -180,6 +186,31 @@ def test_the_build_checks_the_tag_the_branch_and_the_files_before_anything_is_pu
     assert all(upload["if-no-files-found"] == "error" for upload in uploads.values())
 
 
+def test_the_release_ships_only_the_web_build_its_sources_make() -> None:
+    """The sources' hash alone passes a committed bundle changed by hand: the web app is rebuilt outside the
+    checkout, without install scripts, and must equal the committed one byte for byte, or nothing is
+    published. That runs npm packages (vite and its plugins), so it is a job of its own: none of them runs in
+    the job that builds and uploads dist/."""
+    jobs = _jobs()
+    web = jobs["web-build"]
+    step = web["steps"][_step_index(web, "diff -r")]
+    assert step["working-directory"] == "web"
+    lines = [line.strip() for line in step["run"].splitlines() if line.strip()]
+    assert lines == [
+        "npm ci --ignore-scripts",
+        'npx vite build --outDir "$RUNNER_TEMP/web" --emptyOutDir',
+        'diff -r "$RUNNER_TEMP/web" ../src/ordnung/web/dist',
+    ]
+    assert "needs" not in web and not any("upload-artifact" in step.get("uses", "") for step in web["steps"])
+    # the build job runs the repository's own hash check, and no npm package
+    build_script = "\n".join(_runs(jobs["build"]))
+    assert "source-hash.mjs --check" in build_script
+    assert not any(word in build_script for word in ("npm ", "npx ", "vite", "pnpm", "yarn"))
+    # neither publishing job runs unless the bundle checked out
+    for publisher in ("github-release", "pypi"):
+        assert "web-build" in jobs[publisher]["needs"], publisher
+
+
 def test_the_build_checks_the_files_as_ci_s_wheel_job_does_and_more() -> None:
     script = "\n".join(_runs(_jobs()["build"]))
     wheel = _jobs(ROOT / ".github/workflows/ci.yml")["wheel"]
@@ -190,7 +221,7 @@ def test_the_build_checks_the_files_as_ci_s_wheel_job_does_and_more() -> None:
 
 def test_the_github_release_has_the_notes_and_both_files_and_checks_out_no_code() -> None:
     release = _jobs()["github-release"]
-    assert release["needs"] == "build" or release["needs"] == ["build"]
+    assert set(release["needs"]) == {"build", "web-build"}
     assert not any("checkout" in step.get("uses", "") for step in release["steps"])
     (run,) = _runs(release)
     command = " ".join(run.replace("\\\n", " ").split())
@@ -199,6 +230,33 @@ def test_the_github_release_has_the_notes_and_both_files_and_checks_out_no_code(
         assert flag in command, flag
     assert "--prerelease" in command
     assert release["steps"][-1]["env"]["PRERELEASE"] == "${{ needs.build.outputs.prerelease }}"
+
+
+def test_the_github_release_carries_the_versions_ci_tested() -> None:
+    """constraints.txt goes with the release as a file of its own (never into dist/, which PyPI gets), so an
+    install can take the versions the tests ran with (docs/guide.md says how)."""
+    build = _jobs()["build"]
+    uploads = {
+        step["with"]["name"]: step["with"]
+        for step in build["steps"]
+        if "upload-artifact" in step.get("uses", "")
+    }
+    assert uploads["constraints"] == {
+        "name": "constraints",
+        "path": "constraints.txt",
+        "if-no-files-found": "error",
+    }
+    release = _jobs()["github-release"]
+    downloads = {
+        step["with"]["name"]: step["with"]["path"]
+        for step in release["steps"]
+        if "download-artifact" in step.get("uses", "")
+    }
+    assert downloads["constraints"] == "constraints"
+    (run,) = _runs(release)
+    assert 'gh release create "$GITHUB_REF_NAME" dist/* constraints/constraints.txt ' in run
+    guide = (ROOT / "docs" / "guide.md").read_text(encoding="utf-8")
+    assert "--constraints constraints.txt" in guide and '--pip-args "-c constraints.txt"' in guide
 
 
 def test_ci_must_have_passed_on_the_tagged_commit() -> None:
@@ -262,7 +320,8 @@ def test_the_tools_that_build_and_check_the_release_are_pinned() -> None:
     """The build job's dist/ is what the PyPI job uploads, so the tools that write and check it run one known
     version, as its actions do: twine at one version, the same in CI's wheel job, and hatchling, the build backend,
     at one version in pyproject.toml's build-system, beside the readme plugin (CI's wheel job builds with the same).
-    What they need themselves is not pinned (uv resolves it on each run), and release.yml's comment says so."""
+    What those two need is pinned with hashes in build-constraints.txt, which every ``uv build`` must use, and uv
+    runs one version; only what twine needs is resolved on each run, and release.yml's comment says so."""
     for path in (RELEASE, ROOT / ".github" / "workflows" / "ci.yml"):
         lines = [line.strip() for line in path.read_text(encoding="utf-8").splitlines()]
         runs = [line for line in lines if "twine" in line and not line.startswith("#")]
@@ -275,7 +334,30 @@ def test_the_tools_that_build_and_check_the_release_are_pinned() -> None:
     header = " ".join(RELEASE.read_text(encoding="utf-8").split("\non:", 1)[0].replace("#", " ").split())
     assert "the tools that build and check dist/ run fixed versions" not in header
     assert "twine (here) and hatchling (in pyproject.toml) run fixed versions" in header
-    assert "are the newest on each run" in header
+    assert "uv runs a fixed version too" in header and "pinned with hashes in build-constraints.txt" in header
+    assert "What twine itself needs (its readme renderer among them) is the newest on each run" in header
+    # every build of the files, here and in CI, takes only the hash-pinned build requirements
+    for path in (RELEASE, ROOT / ".github" / "workflows" / "ci.yml"):
+        builds = [
+            line.strip() for line in path.read_text(encoding="utf-8").splitlines() if "uv build" in line
+        ]
+        assert builds and all(
+            line.endswith("--build-constraints build-constraints.txt --require-hashes") for line in builds
+        ), (path.name, builds)
+    (setup_uv,) = [
+        step for step in _jobs()["build"]["steps"] if step.get("uses", "").startswith("astral-sh/setup-uv@")
+    ]
+    assert re.fullmatch(r"\d+\.\d+\.\d+", setup_uv["with"]["version"])
+    pins = (ROOT / "build-constraints.txt").read_text(encoding="utf-8")
+    for requirement in requires:
+        assert re.search(rf"^{re.escape(requirement)} \\\n    --hash=sha256:[0-9a-f]{{64}}", pins, re.M), (
+            requirement
+        )
+    pinned_names = re.findall(r"^([a-z0-9-]+)==\S+ \\$", pins, re.M)
+    assert {"hatchling", "hatch-fancy-pypi-readme", "packaging", "pluggy"} <= set(pinned_names)
+    assert all(
+        re.search(rf"^{name}==\S+ \\\n    --hash=sha256:[0-9a-f]{{64}}", pins, re.M) for name in pinned_names
+    )
 
 
 def test_releasing_md_says_how_to_release_and_how_the_owner_turns_pypi_on() -> None:

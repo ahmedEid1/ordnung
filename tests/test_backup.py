@@ -827,6 +827,96 @@ def test_a_newer_schema_or_archive_format_is_refused(tmp_path: Path, empty_db: b
     assert not (tmp_path / "r").exists()
 
 
+_STAMP_SQL = "2026-09-28T07:30:00Z"
+
+
+def _with_rows(db: bytes, *statements: str) -> bytes:
+    """``db`` after ``statements`` (run on an in-memory copy, as a crafted backup's maker would)."""
+    conn = sqlite3.connect(":memory:")
+    conn.deserialize(db)
+    for statement in statements:
+        conn.execute(statement)
+    conn.commit()
+    data = conn.serialize()
+    conn.close()
+    return data
+
+
+def _letter(
+    doc_id: str = "doc_musterstadt1", file_path: str = "files/aa/x.pdf", image: str = ""
+) -> list[str]:
+    rows = [
+        "INSERT INTO documents (id, sha256, filename, mime, file_path, created_at, updated_at) "
+        f"VALUES ('{doc_id}', 'aa', 'x.pdf', 'application/pdf', '{file_path}', '{_STAMP_SQL}', '{_STAMP_SQL}')",
+        "INSERT INTO jobs (id, kind, status, doc_id, force, created_at, updated_at) "
+        f"VALUES ('job_musterstadt1', 'reprocess', 'queued', '{doc_id}', 1, '{_STAMP_SQL}', '{_STAMP_SQL}')",
+    ]
+    if image:
+        rows.append(
+            f"INSERT INTO pages (doc_id, page, width, height, image_path) VALUES ('{doc_id}', 1, 10, 10, '{image}')"
+        )
+    return rows
+
+
+@pytest.mark.parametrize(
+    ("label", "statements"),
+    [
+        ("absolute original", _letter(file_path="/home/someone/.ssh/id_ed25519")),
+        ("original above the folder", _letter(file_path="files/../../outside.txt")),
+        ("page image above the folder", _letter(image="derived/../../outside.jpg")),
+        ("absolute page image", _letter(image="/etc/outside.jpg")),
+        ("letter id naming another folder", _letter(doc_id="../../escape-target")),
+        ("job for such an id", [*_letter(), "UPDATE jobs SET doc_id = 'doc_../x'"]),
+        (
+            "trigger",
+            [*_letter(), "CREATE TRIGGER zz AFTER INSERT ON documents BEGIN SELECT 1; END"],
+        ),
+        ("view", [*_letter(), "CREATE VIEW vv AS SELECT id FROM documents"]),
+    ],
+)
+def test_restore_refuses_a_database_naming_what_ordnung_never_writes(
+    tmp_path: Path, empty_db: bytes, label: str, statements: list[str]
+) -> None:
+    """A crafted backup's database could point the reading pipeline at a file outside the data folder,
+    or at a folder outside it, with a queued job that runs at the next start, or keep a trigger that
+    acts on every later write: restore refuses it, and creates no target."""
+    files = {"files/aa/x.pdf": b"%PDF"}
+
+    def restore(db: bytes, name: str) -> Path:
+        members = [
+            _member(DB_NAME, db),
+            *(_member(n, d) for n, d in files.items()),
+            _member(MANIFEST_NAME, _manifest(db, files)),
+        ]
+        return restore_backup(craft(tmp_path / name, members), PASS, tmp_path / name.replace(".b", "")).target
+
+    honest = restore(_with_rows(empty_db, *_letter(image="derived/doc_musterstadt1/page-1.jpg")), "honest.b")
+    assert (honest / "files" / "aa" / "x.pdf").read_bytes() == b"%PDF"  # the same rows, honest paths
+    with pytest.raises(DamagedBackup, match="not restored"):
+        restore(_with_rows(empty_db, *statements), "crafted.b")
+    assert not (tmp_path / "crafted").exists(), label
+    assert not [p for p in tmp_path.iterdir() if ".restoring-" in p.name], label
+
+
+def test_restore_refuses_a_database_missing_a_checked_column(tmp_path: Path, empty_db: bytes) -> None:
+    """A database whose job table lacks its letter column can't be checked for what it names: it is
+    damaged (SQLite would read the missing column's quoted name as a string, an id that passes)."""
+    db = _with_rows(
+        empty_db,
+        *_letter(image="derived/doc_musterstadt1/page-1.jpg"),
+        "ALTER TABLE jobs RENAME COLUMN doc_id TO letter",
+    )
+    files = {"files/aa/x.pdf": b"%PDF"}
+    members = [
+        _member(DB_NAME, db),
+        *(_member(n, d) for n, d in files.items()),
+        _member(MANIFEST_NAME, _manifest(db, files)),
+    ]
+    with pytest.raises(DamagedBackup, match="damaged"):
+        restore_backup(craft(tmp_path / "crafted.b", members), PASS, tmp_path / "crafted")
+    assert not (tmp_path / "crafted").exists()
+
+
 def test_check_backup_writes_nothing(life: Path, tmp_path: Path) -> None:
     backup = make_backup(life, tmp_path / "b")
     letters = row_counts(life)["documents"]

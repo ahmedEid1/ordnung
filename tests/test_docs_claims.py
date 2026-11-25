@@ -4493,3 +4493,75 @@ def test_no_public_page_calls_the_new_ask_set_held_out() -> None:
         for match in re.finditer(r"\bheld[- ]out Ask\b", text, re.I)
     ]
     assert found == [], found
+
+
+#: What privacy.md says hidden text in a PDF looks like → the cases of tests/test_text.py's ``NO_INK`` that hold
+#: each of them.
+_HIDDEN_TEXT_CLAIMS = {
+    "covered": ["covered by a white rectangle", "covered, with a visible line drawn over the cover"],
+    "transparent": ["fill alpha 0"],
+    "clipped away": ["clipped away"],
+    "in a layer that is off": ["optional content off"],
+    "a cover or clip that leaves a sliver of it": [
+        "covered except a 0.7 pt strip at the baseline",
+        "clipped to a 0.7 pt strip at the baseline",
+    ],
+}
+
+
+def _no_ink_cases() -> set[str]:
+    """The names of tests/test_text.py's ``NO_INK`` constructions, read from its source."""
+    tree = ast.parse((ROOT / "tests" / "test_text.py").read_text(encoding="utf-8"))
+    [value] = [
+        node.value
+        for node in tree.body
+        if isinstance(node, ast.Assign) and any(getattr(t, "id", "") == "NO_INK" for t in node.targets)
+    ]
+    assert isinstance(value, ast.Dict)
+    return {key.value for key in value.keys if isinstance(key, ast.Constant) and isinstance(key.value, str)}
+
+
+def test_the_hidden_text_check_is_documented_as_one_layer_with_what_its_tests_hold() -> None:
+    """The ink check on a PDF's text layer can't be complete (a sender who works at it can draw text a person
+    doesn't see that still counts as shown): privacy.md and architecture.md say it is one layer, not a
+    guarantee, and that such text is then read as printed. Each kind of hidden text privacy.md names is a
+    construction tests/test_text.py holds as hidden on every page placement."""
+    privacy = _doc("docs/privacy.md")
+    assert "Hidden (invisible) text that Ordnung finds in a PDF is removed" in privacy
+    assert "it is one layer, not a guarantee. A sender who works at it can still hide text from it" in privacy
+    assert "such text is then read as if it were printed" in privacy
+    assert "one layer, not a guarantee: a sender who works at it can still hide text" in _doc(
+        "docs/architecture.md"
+    )
+    module = _flat(inspect.getdoc(importlib.import_module("ordnung.ingest.text")) or "")
+    assert "This check is one layer, not a guarantee" in module
+    cases = _no_ink_cases()
+    for phrase, constructions in _HIDDEN_TEXT_CLAIMS.items():
+        assert phrase in privacy, phrase
+        assert set(constructions) <= cases, constructions
+    for absolute in ("always removed", "however it is hidden", "every hidden text"):
+        assert absolute not in privacy and absolute not in module, absolute
+
+
+def test_no_page_promises_that_hidden_text_in_a_pdf_is_always_found() -> None:
+    """The README's trust boundaries, the guide, the spec and the text layer's docstring speak of the hidden
+    text Ordnung *finds*, as one layer: text the check misses is read as printed, so it is neither shown nor
+    kept from the model. No page says text hidden in a PDF is shown, never followed."""
+    readme, guide, spec = _doc("README.md"), _doc("docs/guide.md"), _doc("docs/SPEC.md")
+    assert (
+        "hidden text Ordnung finds in a PDF is kept from Claude and shown to you as a scam sign (one layer, not"
+        " a guarantee)"
+    ) in readme
+    assert (
+        "Hidden text Ordnung finds in a PDF is kept from the AI and shown; instructions aimed at an AI"
+        in guide
+    )
+    assert (
+        "hidden text it finds is excluded from the prompt and raises a red banner; one layer, not a guarantee"
+        in spec
+    )
+    module = _flat(inspect.getdoc(importlib.import_module("ordnung.ingest.text")) or "")
+    assert "the ink the page shows there (fake bold)" in module
+    for name in ("README.md", "SECURITY.md", "docs/guide.md", "docs/privacy.md", "docs/architecture.md"):
+        assert "hidden in a PDF is shown" not in _doc(name), name
+    assert "invisible text is excluded from the prompt" not in spec

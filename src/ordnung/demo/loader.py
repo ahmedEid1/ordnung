@@ -27,6 +27,7 @@ import itertools
 import json
 import logging
 import os
+import platform
 import re
 import shutil
 import sqlite3
@@ -38,6 +39,8 @@ from pathlib import Path
 from typing import Any, Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+import PIL
+import pypdfium2
 from platformdirs import user_data_dir
 from pydantic import BaseModel, ValidationError
 
@@ -86,6 +89,8 @@ log = logging.getLogger(__name__)
 BackendKind = Literal["replay", "record"]
 
 VERSION_NAME = "VERSION"
+#: The snapshot's file naming what rendered its page images (:func:`renderer`).
+RENDERER_NAME = "RENDERER"
 DB_NAME = "ordnung.db"
 COPIED_DIRS = ("files", "derived")
 DEFAULT_SNAPSHOT = PACKAGE_DIR / "demo" / "demo_db"
@@ -109,6 +114,12 @@ DUMP_TABLES = (
     "llm_calls",
     "llm_cache",
     "trace_spans",
+)
+#: What the snapshot must hold as the fixtures build it: everything the demo shows, and the cached answers it
+#: reads again (by key, :func:`_cached_answers`). The model-call log and the trace record how the snapshot was
+#: made (recorded live, or replayed), not what it shows.
+SNAPSHOT_TABLES = tuple(
+    table for table in DUMP_TABLES if table not in ("llm_calls", "llm_cache", "trace_spans")
 )
 VOLATILE_FIELDS = frozenset(
     {
@@ -277,7 +288,7 @@ def copy_data(source: Path, target: Path, *, compact: bool = False) -> None:
 def write_snapshot(data_dir: Path, snapshot: Path, version: str) -> Path:
     """Replace the demo snapshot with a copy of ``data_dir`` and stamp it with ``version``."""
     snapshot.mkdir(parents=True, exist_ok=True)
-    for name in (DB_NAME, f"{DB_NAME}-wal", f"{DB_NAME}-shm", VERSION_NAME, *COPIED_DIRS):
+    for name in (DB_NAME, f"{DB_NAME}-wal", f"{DB_NAME}-shm", VERSION_NAME, RENDERER_NAME, *COPIED_DIRS):
         path = snapshot / name
         if path.is_dir():
             shutil.rmtree(path)
@@ -285,7 +296,16 @@ def write_snapshot(data_dir: Path, snapshot: Path, version: str) -> Path:
             path.unlink()
     copy_data(data_dir, snapshot, compact=True)
     (snapshot / VERSION_NAME).write_text(version + "\n", encoding="utf-8")
+    (snapshot / RENDERER_NAME).write_text(renderer() + "\n", encoding="utf-8")
     return snapshot
+
+
+def renderer() -> str:
+    """What renders page images here: their bytes are the same only where this is."""
+    return (
+        f"pypdfium2 {pypdfium2.version.PYPDFIUM_INFO}, pdfium {pypdfium2.version.PDFIUM_INFO}, "
+        f"Pillow {PIL.__version__}, {platform.system()} {platform.machine()}"
+    )
 
 
 # --------------------------------------------------------------------------------------------------
@@ -788,12 +808,12 @@ def _strip_volatile(value: Any) -> Any:
     return value
 
 
-def canonical_dump(db_path: Path) -> list[str]:
+def canonical_dump(db_path: Path, tables: Sequence[str] = DUMP_TABLES) -> list[str]:
     """The database as sorted JSON lines, without timestamps (``table<TAB>row``)."""
     lines: list[str] = []
     with contextlib.closing(sqlite3.connect(f"{db_path.resolve().as_uri()}?mode=ro", uri=True)) as conn:
         conn.row_factory = sqlite3.Row
-        for table in DUMP_TABLES:
+        for table in tables:
             rows = [
                 json.dumps(_strip_volatile(dict(row)), sort_keys=True, ensure_ascii=False, default=str)
                 for row in conn.execute(f"SELECT * FROM {table}")
@@ -920,17 +940,74 @@ async def _check_builds(
     return states
 
 
-def _check_snapshot(report: DemoCheck, snapshot: Path, plan: _Plan) -> None:
+def _check_snapshot(report: DemoCheck, snapshot: Path, plan: _Plan, built: Path) -> None:
+    """The snapshot ``ordnung demo`` copies as it is: its version, and then its content, must be what the
+    fixtures build (``built``): the database row for row (timestamps aside), each cached answer by its key,
+    the originals byte for byte, and the page images byte for byte where the renderer that drew the snapshot's
+    (:data:`RENDERER_NAME`) is this one (by name elsewhere, with a warning)."""
     current = demo_version(samples=plan.samples, fixtures=plan.fixtures)
     found = snapshot_version(snapshot)
     if found is None:
         report.warnings.append(
             f"No demo snapshot in {snapshot}: `ordnung demo` will build from the fixtures."
         )
-    elif found != current:
+        return
+    if found != current:
         report.problems.append(
             f"The demo snapshot in {snapshot} is out of date — rebuild it with `ordnung demo --rebuild`."
         )
+        return
+    differences = dump_differences(
+        canonical_dump(built / DB_NAME, SNAPSHOT_TABLES), canonical_dump(snapshot / DB_NAME, SNAPSHOT_TABLES)
+    )
+    report.problems += [f"the snapshot differs from the build: {line}" for line in differences]
+    if _cached_answers(built / DB_NAME) != _cached_answers(snapshot / DB_NAME):
+        report.problems.append(f"The cached answers in the demo snapshot {snapshot} differ from the build's.")
+    if _folder_digest(built / "files") != _folder_digest(snapshot / "files"):
+        report.problems.append(f"The originals in the demo snapshot {snapshot} differ from the build's.")
+    images, built_images = _folder_digest(snapshot / "derived"), _folder_digest(built / "derived")
+    if images.keys() != built_images.keys():
+        report.problems.append(f"The page images in the demo snapshot {snapshot} differ from the build's.")
+    elif images != built_images:
+        rendered = _snapshot_renderer(snapshot)
+        if rendered == renderer():
+            report.problems.append(
+                f"The page images in the demo snapshot {snapshot} differ from the build's."
+            )
+        else:  # another renderer draws other bytes: only the names can be compared here
+            report.warnings.append(
+                f"The page images in the demo snapshot {snapshot} were rendered with {rendered or 'an unknown renderer'}, "
+                f"this check with {renderer()}: compared by name only."
+            )
+
+
+def _snapshot_renderer(snapshot: Path) -> str | None:
+    try:
+        return (snapshot / RENDERER_NAME).read_text(encoding="utf-8").strip() or None
+    except OSError:
+        return None
+
+
+def _cached_answers(db_path: Path) -> dict[str, tuple[str, str, str]]:
+    """Each cached model answer by its key: purpose, model and response (when it was cached aside)."""
+    with contextlib.closing(sqlite3.connect(f"{db_path.resolve().as_uri()}?mode=ro", uri=True)) as conn:
+        return {
+            key: (purpose, model, response)
+            for key, purpose, model, response in conn.execute(
+                "SELECT key, purpose, model, response FROM llm_cache"
+            )
+        }
+
+
+def _folder_digest(folder: Path) -> dict[str, str]:
+    """Each file under ``folder`` (relative path) with its SHA-256."""
+    if not folder.is_dir():
+        return {}
+    return {
+        path.relative_to(folder).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in sorted(folder.rglob("*"))
+        if path.is_file()
+    }
 
 
 def check_demo(
@@ -945,7 +1022,8 @@ def check_demo(
 
     Problems: replay misses (also for the suggested questions in every tray state), builds that
     differ, fixtures that are invalid or carry non-sample documents, Idea references or recorded
-    citations that do not resolve, a stale snapshot. Runs its own event loop.
+    citations that do not resolve, a stale snapshot or one whose content is not what the fixtures build.
+    Runs its own event loop.
     """
     plan = _plan(samples, fixtures)
     report = DemoCheck(fixtures=len(fixture_files(plan.fixtures)))
@@ -975,5 +1053,7 @@ def check_demo(
         report.problems += [f"builds differ: {line}" for line in differences]
         base_problems, report.ideas = _inspect(work / "first", None)
         report.problems += base_problems + _inspect(states[-1], plan.fixtures)[0]
-    _check_snapshot(report, Path(snapshot) if snapshot is not None else snapshot_dir(), plan)
+        _check_snapshot(
+            report, Path(snapshot) if snapshot is not None else snapshot_dir(), plan, work / "second"
+        )
     return report

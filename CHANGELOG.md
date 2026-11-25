@@ -153,6 +153,46 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   version named before its tag still says the tag is to follow, and is refused too. CONTRIBUTING and
   docs/releasing.md say where a change goes once that pull request is merged but the tag is not yet pushed:
   under `## Unreleased`.
+- **Download all letters works when a link in the data folder points in a circle.** The ZIP of all letters
+  failed on such a file; it is now listed as missing, as it was before.
+
+### Security
+
+A security review went through the app as a hostile web page, a hostile letter, a hostile backup or sync folder
+and a hostile dependency would. What it found is fixed here, each with a test; what stays open is in the last
+entry.
+
+- **Text that cannot be seen in a PDF no longer counts as printed.** Text in a PDF's text layer that leaves no
+  ink of its own on the page, or only a sliver of each letter (covered, clipped, transparent, in a layer that is
+  off, under an image), is hidden text: it is kept from Claude and shown to you as a scam sign, and an IBAN,
+  amount or reference in it no longer backs a GiroCode, which is refused or asks you to compare the values. A
+  PDF page whose text layer doesn't match what the page draws, or that the check can't read, is read from its
+  picture like a photo, so its payment details ask you to compare them with the letter. Readable text over a
+  coloured band or a photo stays page text.
+- **An e-mail is read as a mail program shows it.** An e-mail whose plain part, or an earlier HTML version, names
+  an IBAN or amount that one of its HTML versions doesn't show is read from its last HTML version and flagged
+  as a scam sign.
+- **`ordnung serve` and `ordnung demo` refuse a `--host` that is not this computer.** They used to warn. No
+  browser could use such an address, and trying it from a phone sent the sign-in token over the network
+  unencrypted. Phone access, with its own encrypted listener, is the way in from your network.
+- **A restored backup or a pulled sync version cannot reach outside the data folder.** Restore and sync refuse a
+  database that names a file outside the folder, gives a letter an id that is not one of Ordnung's, or carries
+  a trigger or view (Ordnung stores none).
+- **The browser keeps no copy of your data on disk.** Every answer of the API says `no-store`, and deleting a
+  proof file for good also empties the browser's cache. "Delete means delete" now also holds for a second
+  browser and for a deletion that arrives by sync.
+- **A detailed desktop notification's texts stay off the command line**, where every account on the computer
+  could read them.
+- **Titles, summaries and calendar files carry no control characters and no invisible format characters.**
+- **What ships is what the sources build.** CI and the release compare the committed web build with a fresh one,
+  byte for byte, and `ordnung demo --check` compares the shipped demo's contents with what its fixtures build.
+  The release build uses hash-pinned build requirements and a fixed uv, CI's one third-party action runs a fixed
+  commit, and each GitHub Release carries `constraints.txt`, the versions CI tested;
+  [the guide](docs/guide.md#updating) says how to install with them.
+- **Still open: the hidden-text check is one layer, not a guarantee.** A sender who works at it can still draw
+  text a person cannot read that the check counts as printed, and a PDF's font can show one character and yield
+  another. The README, the guide, the spec, the privacy notes and the architecture page now say what the check
+  finds and no longer that hidden text is always found.
 
 ## 0.4.0 — 2026-11-17
 

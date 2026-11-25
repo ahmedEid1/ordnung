@@ -2,33 +2,56 @@
 
 * **PDF text layers** — pdfplumber characters are assembled into words and lines in their own reading
   direction, with word boxes relative (0..1) to the page image rendered by pypdfium2 (effective
-  CropBox and ``/Rotate`` handled). Invisible characters (white, tiny or off-page) are kept out of
+  CropBox and ``/Rotate`` handled). Invisible characters (tiny, off-page, or white where the page under
+  them isn't dark: a dark filled shape, or a dark photo PDFium finds them inked on) are kept out of
   the page text and reported separately as ``hidden_text``. So is text drawn *invisibly* — text render
-  mode 3 or 7, which PDFium reports for each character's text object (:func:`_invisible_chars`) — with
+  mode 3 or 7, which PDFium reports for each character's text object (:func:`_drawn_chars`) — with
   one exception: a page whose invisible text is at least a text layer's worth and no less than its
   visible text is a scan with an OCR layer (a searchable PDF from a scanner or a phone app). Its OCR
   text is somebody's reading of the picture, not the letter's own text: the page counts as having no
   text layer and is read from its image like a photo (so its values are compared with the paper, ADR
   0012), and the OCR text is neither the page text nor reported as hidden: it is returned apart, as
-  :attr:`PdfText.scan_text`, for search only (ADR 0020). Characters PDFium can't be
-  matched to (the same character within a fraction of its size) count as visible. The text layer is
-  read with a pdfminer document that gives up after :data:`MAX_REFERENCE_LOOKUPS` lookups answering
-  with another reference: an object that refers to itself (``5 0 obj 5 0 R endobj``, in the document
-  information, a page's contents or resources …) would otherwise be resolved forever. Such a PDF's pages
-  are read from their images, like a photo. A PDF protected with RC4 is decrypted with :func:`rc4`,
-  which returns what pdfminer's own cipher does in linear time (pdfminer's slows down with the square of
-  a stream's length: over a minute for a page of 1.5 MB).
+  :attr:`PdfText.scan_text`, for search only (ADR 0020). Text that puts no ink of its own on the page
+  counts as hidden too (covered by a shape or an image, drawn fully transparent, clipped away, in an
+  optional layer that is off, black on black …: the constructions ``tests/test_text.py``'s ``NO_INK``
+  holds), and so does text that shows only a sliver of itself: PDFium renders each page as it is and
+  with its text objects removed, which shows the ink text leaves on the page, and the page's text
+  alone, on white (and on black where text shows more on the page than on white: light text on a dark
+  ground), which is the ink each glyph draws by itself. A character shows when at least
+  :data:`INK_SHARE` of its own ink shows in its box, and a letter or digit only when ink spans that
+  share of its glyph's box: its own, or, where text objects overlap, the ink the page shows there (fake
+  bold); so a clip leaves no strip of it either. Where another text
+  object can paint in a character's box too (a visible line drawn over the cover of a hidden one), the
+  character is judged by its own text object alone: the page and its text alone are rendered once more
+  without just that object, or without a batch of objects that can't paint in each other's characters'
+  boxes (:func:`_page_chars`). The two readers' characters are matched (the same character within a
+  fraction of its size) in pdfplumber's space, whatever the page's ``/Rotate`` and MediaBox
+  (:func:`_in_page_space`). A letter or digit of the text layer that PDFium draws nowhere near is
+  hidden text too; a page with more than :data:`MAX_UNMATCHED_CHARS` of them, or one PDFium can't
+  check, is read from its image like a photo: its text layer is not trusted. This check is one layer,
+  not a guarantee: it compares renders, so a sender who works at it can still draw text nobody sees
+  that it counts as shown, and it never compares what a glyph shows with the character the text layer
+  reads for it.
+  The text layer is read with a pdfminer document that gives up after :data:`MAX_REFERENCE_LOOKUPS`
+  lookups answering with another reference: an object that refers to itself (``5 0 obj 5 0 R
+  endobj``, in the document information, a page's contents or resources …) would otherwise be resolved
+  forever. Such a PDF's pages are read from their images, like a photo. A PDF protected with RC4 is
+  decrypted with :func:`rc4`, which returns what pdfminer's own cipher does in linear time (pdfminer's
+  slows down with the square of a stream's length: over a minute for a page of 1.5 MB).
 * **Plain-text and e-mail documents** — decoded, laid out on A4 page images with a bundled font, and
   returned with exact word boxes so quotes from them can be highlighted like PDF text. Layout is
   lazy (it stops once a page limit is passed) and wrapping measures at most one row at a time, so
   a huge one-line file costs linear time. Text an HTML e-mail certainly hides from every reader
   (``display:none``, a tiny font, text the colour of its background …) is kept out of the text and
   reported as hidden; the short policy that decides it is in :func:`~ordnung.ingest.email_text.html_to_text`.
+  So is an e-mail's plain part when it names an IBAN or amount one of its HTML parts (what mail programs
+  show) doesn't show: the last HTML part's visible text is read instead.
 * **Prompt helpers** — ``page_delimited`` for the extraction prompt and ``detect_injection_phrases``.
 """
 
 from __future__ import annotations
 
+import array
 import codecs
 import ctypes
 import email
@@ -55,7 +78,7 @@ from pdfminer.pdfinterp import PDFResourceManager
 from pdfminer.pdfparser import PDFParser, PDFSyntaxError
 from pdfminer.pdftypes import PDFObjRef
 from pdfplumber.pdf import PDF
-from PIL import ImageFont
+from PIL import Image, ImageChops, ImageFont, ImageStat
 
 from ordnung.config import PACKAGE_DIR
 from ordnung.ingest.email_text import _email_body
@@ -353,7 +376,7 @@ def read_pdf_text(pdf_path: Path, rendered: Sequence[RenderedPage]) -> PdfText:
         log.warning("could not read the pages of %s", pdf_path, exc_info=True)
         pdf.stream.close()  # closing the PDF would read its pages again, and fail again
         return unread
-    invisible = _invisible_chars(pdf_path, [r.page for r in rendered])
+    invisible = _drawn_chars(pdf_path, [r.page for r in rendered])
     texts: list[PageText] = []
     scanned: dict[int, str] = {}
     with pdf:
@@ -366,26 +389,48 @@ def read_pdf_text(pdf_path: Path, rendered: Sequence[RenderedPage]) -> PdfText:
 
 
 class _DrawnChar(NamedTuple):
-    """One character as PDFium reads it: its text, the centre of its box (PDF user space) and whether
-    its text object draws it invisibly (text render mode 3 or 7)."""
+    """One character as PDFium reads it: its text, the centre of its box (PDF user space), whether its
+    text object draws it invisibly (text render mode 3 or 7), whether it puts ink on the rendered
+    page (:func:`_drawn_chars`) and whether the page without its text is dark under it (white text on a
+    photo, :func:`_is_hidden`)."""
 
     text: str
     x: float
     y: float
     invisible: bool
+    inked: bool = True
+    on_dark: bool = False
 
 
 _INVISIBLE_MODES = frozenset({3, 7})  # FPDF_TEXTRENDERMODE_INVISIBLE, FPDF_TEXTRENDERMODE_CLIP
+#: The long side, in pixels, of the two renders that tell inked text from text nobody can see: a glyph
+#: of :data:`MIN_VISIBLE_FONT_SIZE` on A4 is still four pixels tall.
+INK_RENDER_SIDE = 1200
+#: The least difference (0..255, luminance of the per-channel difference) between the two renders
+#: that counts as ink: the contrast of :data:`NEAR_WHITE` text on white.
+INK_THRESHOLD = 16
+#: The least share of the ink a character draws by itself (its text alone, :func:`_text_alone`) that
+#: must show on the page for it to count as seen: a sliver of each glyph left beside a cover is no text
+#: anybody can read. Its own ink is where the text alone differs by at least half its strongest
+#: difference in the box, so the share doesn't depend on the text's contrast (light grey text shows as
+#: much of its shape as black text), and each of those pixels shows where the page differs by
+#: :data:`INK_THRESHOLD` there, whatever the ground (a band's edge through the line, a photo).
+INK_SHARE = 0.5
+#: The mean luminance (0..1) of the page without its text under a character below which white text on it
+#: is readable: the darkness :func:`_dark_backgrounds` asks of a filled shape, asked here of whatever the
+#: page draws there (a photo, a gradient).
+DARK_GROUND = 0.6
 
 
-def _invisible_chars(pdf_path: Path, numbers: Sequence[int]) -> dict[int, dict[str, list[_DrawnChar]]]:
-    """Page number → character → where PDFium draws it, for the pages that draw text invisibly (module
-    docstring); empty when PDFium can't read the file (every character then counts as visible)."""
+def _drawn_chars(pdf_path: Path, numbers: Sequence[int]) -> dict[int, dict[str, list[_DrawnChar]]]:
+    """Page number → character → where PDFium draws it, whether invisibly and whether with ink (module
+    docstring); a page PDFium can't check is left out, and its text layer is not trusted
+    (:func:`_extract_page` reads it from its image)."""
     with PDFIUM_LOCK:
-        return _invisible_chars_locked(pdf_path, numbers)
+        return _drawn_chars_locked(pdf_path, numbers)
 
 
-def _invisible_chars_locked(pdf_path: Path, numbers: Sequence[int]) -> dict[int, dict[str, list[_DrawnChar]]]:
+def _drawn_chars_locked(pdf_path: Path, numbers: Sequence[int]) -> dict[int, dict[str, list[_DrawnChar]]]:
     found: dict[int, dict[str, list[_DrawnChar]]] = {}
     try:
         document = pdfium.PdfDocument(pdf_path)
@@ -394,30 +439,12 @@ def _invisible_chars_locked(pdf_path: Path, numbers: Sequence[int]) -> dict[int,
         return found
     try:
         for number in numbers:
-            page = document[number - 1]
-            textpage = page.get_textpage()
             try:
-                chars: dict[str, list[_DrawnChar]] = {}
-                any_invisible = False
-                box = raw.FS_RECTF()
-                for index in range(raw.FPDFText_CountChars(textpage.raw)):
-                    if raw.FPDFText_IsGenerated(textpage.raw, index):
-                        continue
-                    text = chr(raw.FPDFText_GetUnicode(textpage.raw, index))
-                    if text.isspace() or not raw.FPDFText_GetLooseCharBox(
-                        textpage.raw, index, ctypes.byref(box)
-                    ):
-                        continue
-                    obj = raw.FPDFText_GetTextObject(textpage.raw, index)
-                    hidden = bool(obj) and raw.FPDFTextObj_GetTextRenderMode(obj) in _INVISIBLE_MODES
-                    any_invisible = any_invisible or hidden
-                    drawn = _DrawnChar(text, (box.left + box.right) / 2, (box.top + box.bottom) / 2, hidden)
-                    chars.setdefault(text, []).append(drawn)
-                if any_invisible:
-                    found[number] = chars
-            finally:
-                textpage.close()
-                page.close()
+                found[number] = _page_chars(document, number)
+            except Exception:
+                log.warning(
+                    "could not check page %d of %s for invisible text", number, pdf_path, exc_info=True
+                )
     except Exception:
         log.warning("could not check %s for invisible text", pdf_path, exc_info=True)
     finally:
@@ -425,21 +452,577 @@ def _invisible_chars_locked(pdf_path: Path, numbers: Sequence[int]) -> dict[int,
     return found
 
 
-def _drawn_invisibly(char: dict[str, Any], drawn: dict[str, list[_DrawnChar]] | None) -> bool:
-    """Whether PDFium draws this pdfplumber character only invisibly: every character of the same
-    text within a fraction of its size of it is invisible (none visible), and there is one."""
-    if not drawn:
+#: Device pixels: a render-side box (left, top, right, bottom), as :meth:`PIL.Image.Image.crop` takes it.
+_Box = tuple[int, int, int, int]
+
+
+class _TextObject(NamedTuple):
+    """A text object of a page: where it sits in the page's object tree (indices, form XObjects
+    included) and where it can paint on the render (its bounds, stroke and all, in render pixels)."""
+
+    path: tuple[int, ...]
+    footprint: _Box
+    clips: bool  # text render mode 4 to 7: it adds its glyphs to the clipping path
+
+
+#: The most extra renders of one page (:func:`_page_chars`). Text objects that can't change each other's
+#: characters' ink share one. A page that needs more is hostile or broken: the rest of its overlapping
+#: objects count as leaving no ink.
+MAX_SEPARATE_RENDERS = 64
+#: The side, in render pixels, of the grid cells that find the text objects near a character.
+_CELL = 64
+
+
+def _page_chars(document: pdfium.PdfDocument, number: int) -> dict[str, list[_DrawnChar]]:
+    """Every character of the page, and whether it puts ink on the render.
+
+    The page is rendered as it is and again with every text object removed: that difference is the ink
+    text shows. The page's text is also rendered alone (every other object removed, on white, and on
+    black too where a character shows more on the page than on white): that is the ink each glyph draws
+    by itself. A character shows when at least :data:`INK_SHARE` of its own ink shows in its box
+    (:func:`_shows`), and a letter or digit only when its own ink also spans at least that share of its
+    glyph's height and width (a clip leaves no sliver of it either, :func:`_spans`). Ink in its box can
+    also be another text object's, drawn over a cover that hides this one. So a character whose box
+    holds ink only where another text object can paint too is judged by its own text object alone: the
+    page and its text alone are rendered once more without just that object; its letters and digits must
+    then span their boxes with that object's own ink, or with the ink the page really shows (fake bold:
+    two copies a hair apart), never with ink only another text object draws by itself (a decoy under the
+    same cover). Objects that overlap no other text object (a normal letter's) cost no extra render, and
+    objects that can't paint in each other's characters' boxes are left out together, in one render
+    (:func:`_batches`)."""
+    page = document[number - 1]
+    try:
+        width, height = page.get_size()
+        scale = INK_RENDER_SIDE / max(width, height, 1.0)
+        size = (round(width * scale), round(height * scale))
+        placed = _placed_chars(page, size)
+        if not placed:
+            return {}
+        objects = _text_objects(page, size)
+        before = _render(page, scale)
+        _remove_text(page.raw, raw.FPDFPage_CountObjects, raw.FPDFPage_GetObject, raw.FPDFPage_RemoveObject)
+        after = _render(page, scale)
+        shown = _difference(before, after)
+    finally:
+        page.close()
+    ink = _mask(shown)
+    alone = _text_alone(document, number, (), scale, (_WHITE,))
+    expected = _own_ink(alone, None)
+    if any(
+        box is not None and _strongest(shown.crop(box)) >= _strongest(expected.crop(box)) + INK_THRESHOLD
+        for _, box, _ in placed
+    ):
+        # text that shows more on the page than on white (light text on a dark ground): its own ink is
+        # what it draws on black too
+        alone += _text_alone(document, number, (), scale, (_BLACK,))
+        expected = _own_ink(alone, None)
+    own_ink = _mask(expected)
+    nearby = _Nearby(objects)
+    unclear: set[int] = set()
+    for _, box, key in placed:
+        if (
+            box is not None
+            and key in objects
+            and key not in unclear
+            and _ink_maybe_not_own(ink, box, key, nearby)
+        ):
+            unclear.add(key)
+    inked = [
+        box is None or (_shows(shown, expected, box) and _spans(own_ink, box, drawn.text))
+        for drawn, box, _ in placed
+    ]
+    if unclear:
+        own: dict[int, list[int]] = {}  # object → its characters, in page order
+        for index, (_, box, key) in enumerate(placed):
+            if box is not None and key in unclear:
+                own.setdefault(key, []).append(index)
+        for index in (index for indices in own.values() for index in indices):
+            inked[index] = False  # unless a render of its own object's batch finds its ink
+        for batch in _batches(own, objects, placed):
+            found = _ink_without(
+                document, number, [objects[key].path for key in batch.keys], before, alone, scale
+            )
+            if found is not None:
+                own_shown, own_expected = found
+                for index in batch.judged:
+                    drawn, box, _ = placed[index]
+                    inked[index] = (
+                        box is not None
+                        and _shows(own_shown, own_expected, box)
+                        and (_spans(_mask(own_expected), box, drawn.text) or _spans(ink, box, drawn.text))
+                    )
+    ground = after.convert("L")
+    chars: dict[str, list[_DrawnChar]] = {}
+    for (drawn, box, _), value in zip(placed, inked, strict=True):
+        on_dark = box is not None and ImageStat.Stat(ground.crop(box)).mean[0] < DARK_GROUND * 255
+        chars.setdefault(drawn.text, []).append(drawn._replace(inked=value, on_dark=on_dark))
+    return chars
+
+
+def _shows(shown: Image.Image, expected: Image.Image, box: _Box) -> bool:
+    """Whether a character's box holds ink (a difference of :data:`INK_THRESHOLD`), and at least
+    :data:`INK_SHARE` of the ink its text draws by itself there (all of it where that is none: text that
+    only shows against what lies under it). ``shown`` and ``expected`` are differences
+    (:func:`_difference`). The ink its text draws by itself is where ``expected`` is at least half its
+    strongest in the box (so the share doesn't depend on the text's contrast), and a pixel of it shows
+    where ``shown`` is ink (:data:`INK_THRESHOLD`) there: never measured against the strongest the page
+    shows, so text whose ground changes inside its line (a band's edge, a photo) is judged pixel by
+    pixel, while a cover or a sliver still leaves its pixels without ink."""
+    seen = shown.crop(box)
+    if _strongest(seen) < INK_THRESHOLD:
         return False
+    own = expected.crop(box)
+    own_strongest = _strongest(own)
+    if own_strongest < INK_THRESHOLD:
+        return True
+    core = own.point([255 if value >= (own_strongest + 1) // 2 else 0 for value in range(256)])
+    count = ImageChops.darker(core, _mask(seen)).histogram()[255]
+    return count >= INK_SHARE * core.histogram()[255]
+
+
+def _strongest(difference: Image.Image) -> int:
+    """The strongest difference (0..255) of a difference (:func:`_difference`, one band)."""
+    extrema = difference.getextrema()
+    return int(extrema[1]) if isinstance(extrema[1], (int, float)) else 0
+
+
+def _spans(own_ink: Image.Image, box: _Box, text: str) -> bool:
+    """Whether a letter's or digit's own ink (``own_ink``: where its text drawn alone differs by
+    :data:`INK_THRESHOLD`, :func:`_mask`) reaches over at least :data:`INK_SHARE` of the rows and of the
+    columns of its glyph's box: a clip (a clipping path, a form's bounding box) that leaves a strip of it
+    is in the text's own render too. Other characters pass."""
+    if not any(ch.isalnum() for ch in text):
+        return True
+    crop = own_ink.crop(box)
+    if crop.getbbox() is None:
+        return True  # no ink of its own: :func:`_shows` decides
+    width, height = crop.size
+    # the box is 3 pixels larger than the glyph (:func:`_device_box`)
+    return _lines(crop, (1, height)) >= INK_SHARE * max(height - 3, 1) and _lines(
+        crop, (width, 1)
+    ) >= INK_SHARE * max(width - 3, 1)
+
+
+def _lines(mask: Image.Image, size: tuple[int, int]) -> int:
+    """How many rows (``size`` (1, height)) or columns (``size`` (width, 1)) of a mask hold ink."""
+    across = mask.size[0] if size[0] == 1 else mask.size[1]
+    if across <= 255:  # one pixel of 255 in a line averages to at least 1
+        return sum(mask.resize(size, Image.Resampling.BOX).histogram()[1:])
+    values = array.array("f", mask.convert("F").resize(size, Image.Resampling.BOX).tobytes())
+    return sum(value > 0 for value in values)
+
+
+class _Grid:
+    """Boxes found through a coarse grid of :data:`_CELL` pixels."""
+
+    def __init__(self) -> None:
+        self.cells: dict[tuple[int, int], list[_Box]] = {}
+
+    def add(self, box: _Box) -> None:
+        for cell in _cells(box):
+            self.cells.setdefault(cell, []).append(box)
+
+    def meets(self, box: _Box) -> bool:
+        return any(
+            _box_intersection(box, other) is not None
+            for cell in _cells(box)
+            for other in self.cells.get(cell, ())
+        )
+
+
+class _Batch:
+    """Text objects left out of the page together in one render, and their characters judged by it."""
+
+    def __init__(self, alone: bool) -> None:
+        self.keys: list[int] = []
+        self.judged: list[int] = []
+        self.alone = alone
+        self.footprints = _Grid()
+        self.boxes = _Grid()
+
+    def fits(self, footprint: _Box, boxes: list[_Box]) -> bool:
+        """Whether leaving one more object out changes nothing in this batch's characters' boxes, and
+        this batch's objects nothing in its characters' boxes (removing a text object changes the render
+        only inside its footprint)."""
+        return (
+            not self.alone
+            and not self.boxes.meets(footprint)
+            and not any(self.footprints.meets(box) for box in boxes)
+        )
+
+    def add(self, key: int, footprint: _Box, boxes: list[_Box], judged: list[int]) -> None:
+        self.keys.append(key)
+        self.judged += judged
+        self.footprints.add(footprint)
+        for box in boxes:
+            self.boxes.add(box)
+
+
+def _batches(
+    own: dict[int, list[int]],
+    objects: dict[int, _TextObject],
+    placed: list[tuple[_DrawnChar, _Box | None, int | None]],
+) -> list[_Batch]:
+    """The text objects to render the page without, each with its characters (``own``), put greedily in
+    page order into at most :data:`MAX_SEPARATE_RENDERS` batches whose objects can't paint in each
+    other's characters' boxes. An object that adds its glyphs to the clipping path is a batch of its own,
+    since a clip can reach past its footprint. Objects that fit no batch are left out."""
+    batches: list[_Batch] = []
+    for key, judged in own.items():
+        footprint = objects[key].footprint
+        boxes = [box for index in judged if (box := placed[index][1]) is not None]
+        alone = objects[key].clips
+        for batch in () if alone else batches:
+            if batch.fits(footprint, boxes):
+                batch.add(key, footprint, boxes, judged)
+                break
+        else:
+            if len(batches) < MAX_SEPARATE_RENDERS:
+                batch = _Batch(alone)
+                batch.add(key, footprint, boxes, judged)
+                batches.append(batch)
+    return batches
+
+
+def _placed_chars(
+    page: pdfium.PdfPage, size: tuple[int, int]
+) -> list[tuple[_DrawnChar, _Box | None, int | None]]:
+    """The page's characters (spaces and generated ones left out), each with its tight box in render
+    pixels (None when PDFium has none) and its text object's address (None when it has none)."""
+    placed: list[tuple[_DrawnChar, _Box | None, int | None]] = []
+    textpage = page.get_textpage()
+    try:
+        loose = raw.FS_RECTF()
+        edges = [ctypes.c_double() for _ in range(4)]
+        for index in range(raw.FPDFText_CountChars(textpage.raw)):
+            if raw.FPDFText_IsGenerated(textpage.raw, index):
+                continue
+            text = chr(raw.FPDFText_GetUnicode(textpage.raw, index))
+            if text.isspace() or not raw.FPDFText_GetLooseCharBox(textpage.raw, index, ctypes.byref(loose)):
+                continue
+            obj = raw.FPDFText_GetTextObject(textpage.raw, index)
+            hidden = bool(obj) and raw.FPDFTextObj_GetTextRenderMode(obj) in _INVISIBLE_MODES
+            drawn = _DrawnChar(text, (loose.left + loose.right) / 2, (loose.top + loose.bottom) / 2, hidden)
+            tight = raw.FPDFText_GetCharBox(textpage.raw, index, *(ctypes.byref(edge) for edge in edges))
+            box = _device_box(page, size, [e.value for e in edges]) if tight else None
+            placed.append((drawn, box, _address(obj) if obj else None))
+    finally:
+        textpage.close()
+    return placed
+
+
+def _address(obj: Any) -> int | None:
+    value: int | None = ctypes.cast(obj, ctypes.c_void_p).value
+    return value
+
+
+def _text_objects(page: pdfium.PdfPage, size: tuple[int, int]) -> dict[int, _TextObject]:
+    """Every text object of the page, form XObjects included, by its address. Its footprint is its
+    bounds as PDFium computes them: the glyphs as they are drawn (a stroke's width, a Type 3 glyph's
+    drawing), whatever its characters say, spaces included."""
+    found: dict[int, _TextObject] = {}
+
+    def walk(holder: Any, count: Any, get: Any, path: tuple[int, ...], matrices: tuple[Any, ...]) -> None:
+        for index in range(count(holder)):
+            obj = get(holder, index)
+            kind = raw.FPDFPageObj_GetType(obj)
+            if kind == raw.FPDF_PAGEOBJ_FORM:
+                matrix = raw.FS_MATRIX()
+                if raw.FPDFPageObj_GetMatrix(obj, ctypes.byref(matrix)):
+                    walk(
+                        obj,
+                        raw.FPDFFormObj_CountObjects,
+                        raw.FPDFFormObj_GetObject,
+                        (*path, index),
+                        (matrix, *matrices),
+                    )
+            elif kind == raw.FPDF_PAGEOBJ_TEXT:
+                edges = [ctypes.c_float() for _ in range(4)]
+                key = _address(obj)
+                if key is not None and raw.FPDFPageObj_GetBounds(
+                    obj, *(ctypes.byref(edge) for edge in edges)
+                ):
+                    left, bottom, right, top = (edge.value for edge in edges)
+                    corners = [(left, bottom), (left, top), (right, bottom), (right, top)]
+                    for matrix in matrices:  # innermost form first, out to the page
+                        corners = [
+                            (matrix.a * x + matrix.c * y + matrix.e, matrix.b * x + matrix.d * y + matrix.f)
+                            for x, y in corners
+                        ]
+                    xs = [x for x, _ in corners]
+                    ys = [y for _, y in corners]
+                    box = _device_box(page, size, [min(xs), max(xs), min(ys), max(ys)])
+                    clips = raw.FPDFTextObj_GetTextRenderMode(obj) >= raw.FPDF_TEXTRENDERMODE_FILL_CLIP
+                    found[key] = _TextObject((*path, index), box, clips)
+
+    walk(page.raw, raw.FPDFPage_CountObjects, raw.FPDFPage_GetObject, (), ())
+    return found
+
+
+class _Nearby:
+    """The text objects whose footprints touch a box, found through a coarse grid."""
+
+    def __init__(self, objects: dict[int, _TextObject]) -> None:
+        self.objects = objects
+        self.cells: dict[tuple[int, int], list[int]] = {}
+        for key, obj in objects.items():
+            for cell in _cells(obj.footprint):
+                self.cells.setdefault(cell, []).append(key)
+
+    def footprints(self, box: _Box, but: int) -> list[_Box]:
+        keys = {key for cell in _cells(box) for key in self.cells.get(cell, ()) if key != but}
+        found = [_box_intersection(self.objects[key].footprint, box) for key in keys]
+        return [part for part in found if part is not None]
+
+
+def _cells(box: _Box) -> Iterator[tuple[int, int]]:
+    left, top, right, bottom = box
+    for column in range(max(left, 0) // _CELL, max(right, 0) // _CELL + 1):
+        for row in range(max(top, 0) // _CELL, max(bottom, 0) // _CELL + 1):
+            yield column, row
+
+
+def _box_intersection(a: _Box, b: _Box) -> _Box | None:
+    left, top = max(a[0], b[0]), max(a[1], b[1])
+    right, bottom = min(a[2], b[2]), min(a[3], b[3])
+    return (left, top, right, bottom) if left < right and top < bottom else None
+
+
+def _ink_maybe_not_own(ink: Image.Image, box: _Box, key: int, nearby: _Nearby) -> bool:
+    """Whether the ink in a character's box could all be another text object's: there is ink, and none
+    of it lies outside every other text object's footprint."""
+    others = nearby.footprints(box, but=key)
+    if not others:
+        return False
+    crop = ink.crop(box)
+    if crop.getbbox() is None:
+        return False
+    for left, top, right, bottom in others:
+        crop.paste(0, (left - box[0], top - box[1], right - box[0], bottom - box[1]))
+    return crop.getbbox() is None
+
+
+def _ink_without(
+    document: pdfium.PdfDocument,
+    number: int,
+    paths: Sequence[tuple[int, ...]],
+    before: Image.Image,
+    alone: list[tuple[_Fill, Image.Image]],
+    scale: float,
+) -> tuple[Image.Image, Image.Image] | None:
+    """The ink of some text objects alone, as the page shows it and as they draw it by themselves: the
+    page, loaded afresh, rendered without just those objects (in memory only), against the page as it is;
+    and the page's text alone without them, against its text alone (``alone``, :func:`_text_alone`).
+    None if one of them can't be found or removed."""
+    page = document[number - 1]
+    try:
+        if not _remove_paths(page, paths):
+            return None
+        shown = _difference(before, _render(page, scale))
+    finally:
+        page.close()
+    without = _text_alone(document, number, paths, scale, tuple(fill for fill, _ in alone))
+    return shown, _own_ink(alone, without)
+
+
+def _remove_paths(page: pdfium.PdfPage, paths: Sequence[tuple[int, ...]]) -> bool:
+    """Remove the text objects at ``paths`` from a page loaded afresh; False if one can't be."""
+    found = [_object_at(page, path) for path in paths]  # before any removal moves the indices
+    for located in found:
+        if located is None:
+            return False
+        holder, remove, obj = located
+        if not remove(holder, obj):
+            return False
+        raw.FPDFPageObj_Destroy(obj)
+    return True
+
+
+#: An RGBA colour a page is rendered on.
+_Fill = tuple[int, int, int, int]
+_WHITE: _Fill = (255, 255, 255, 255)
+_BLACK: _Fill = (0, 0, 0, 255)
+
+
+def _text_alone(
+    document: pdfium.PdfDocument,
+    number: int,
+    paths: Sequence[tuple[int, ...]],
+    scale: float,
+    fills: Sequence[_Fill],
+) -> list[tuple[_Fill, Image.Image]]:
+    """The page's text drawn by itself, on each of ``fills``: the page loaded afresh with every object that
+    is no text removed (forms kept, their text in them), and the text objects at ``paths`` too, rendered
+    without its form fields. Raises if one of ``paths`` can't be found or removed."""
+    page = document[number - 1]
+    try:
+        if not _remove_paths(page, paths):
+            raise RuntimeError("a text object could not be removed")
+        _remove_all_but_text(
+            page.raw, raw.FPDFPage_CountObjects, raw.FPDFPage_GetObject, raw.FPDFPage_RemoveObject
+        )
+        return [(fill, _render(page, scale, fill)) for fill in fills]
+    finally:
+        page.close()
+
+
+def _own_ink(
+    alone: list[tuple[_Fill, Image.Image]], without: list[tuple[_Fill, Image.Image]] | None
+) -> Image.Image:
+    """The ink text draws by itself: how much its render alone (:func:`_text_alone`) differs, on any of
+    its fills, from the same render without the text in question (``without``; None: without any text,
+    the fill itself)."""
+    differences = [
+        _difference(image, Image.new("RGB", image.size, fill[:3]) if without is None else without[i][1])
+        for i, (fill, image) in enumerate(alone)
+    ]
+    return functools.reduce(ImageChops.lighter, differences)
+
+
+def _object_at(page: pdfium.PdfPage, path: tuple[int, ...]) -> tuple[Any, Any, Any] | None:
+    """The text object at ``path`` in the page's object tree, its holder and the holder's remove call."""
+    holder: Any = page.raw
+    count, get, remove = raw.FPDFPage_CountObjects, raw.FPDFPage_GetObject, raw.FPDFPage_RemoveObject
+    for index in path[:-1]:
+        if index >= count(holder):
+            return None
+        holder = get(holder, index)
+        count, get, remove = (
+            raw.FPDFFormObj_CountObjects,
+            raw.FPDFFormObj_GetObject,
+            raw.FPDFFormObj_RemoveObject,
+        )
+    if path[-1] >= count(holder):
+        return None
+    obj = get(holder, path[-1])
+    if raw.FPDFPageObj_GetType(obj) != raw.FPDF_PAGEOBJ_TEXT:
+        return None
+    return holder, remove, obj
+
+
+def _device_box(page: pdfium.PdfPage, size: tuple[int, int], edges: Sequence[float]) -> _Box:
+    """A box (left, right, bottom, top in PDF user space) in render pixels, one pixel wider on every
+    side (so a thin glyph keeps at least one pixel)."""
+    left, right, bottom, top = edges
+    xs: list[int] = []
+    ys: list[int] = []
+    for x, y in ((left, top), (right, bottom)):
+        dx, dy = ctypes.c_int(), ctypes.c_int()
+        raw.FPDF_PageToDevice(page.raw, 0, 0, size[0], size[1], 0, x, y, ctypes.byref(dx), ctypes.byref(dy))
+        xs.append(dx.value)
+        ys.append(dy.value)
+    return (min(xs) - 1, min(ys) - 1, max(xs) + 2, max(ys) + 2)
+
+
+def _difference(before: Image.Image, after: Image.Image) -> Image.Image:
+    """How much two renders of a page differ, pixel by pixel (0..255, the luminance of the per-channel
+    difference)."""
+    return ImageChops.difference(before, after).convert("L")
+
+
+def _mask(difference: Image.Image) -> Image.Image:
+    """Where a difference is ink: a mask, 255 = ink (:data:`INK_THRESHOLD`)."""
+    return difference.point(_INK_TABLE)
+
+
+_INK_TABLE = [255 if value >= INK_THRESHOLD else 0 for value in range(256)]
+
+
+def _render(page: pdfium.PdfPage, scale: float, fill: tuple[int, int, int, int] | None = None) -> Image.Image:
+    """The page as its images are rendered; with ``fill``, on that colour and without its form fields."""
+    if fill is None:
+        bitmap = page.render(scale=scale, may_draw_forms=True)  # as the page images are rendered
+    else:
+        bitmap = page.render(scale=scale, may_draw_forms=False, fill_color=fill)
+    try:
+        image: Image.Image = bitmap.to_pil().convert("RGB")
+        return image
+    finally:
+        bitmap.close()
+
+
+def _remove_text(holder: Any, count: Any, get: Any, remove: Any) -> None:
+    """Remove every text object of a page or form XObject (forms in forms included)."""
+    for index in reversed(range(count(holder))):
+        obj = get(holder, index)
+        kind = raw.FPDFPageObj_GetType(obj)
+        if kind == raw.FPDF_PAGEOBJ_TEXT:
+            if remove(holder, obj):
+                raw.FPDFPageObj_Destroy(obj)
+        elif kind == raw.FPDF_PAGEOBJ_FORM:
+            _remove_text(
+                obj, raw.FPDFFormObj_CountObjects, raw.FPDFFormObj_GetObject, raw.FPDFFormObj_RemoveObject
+            )
+
+
+def _remove_all_but_text(holder: Any, count: Any, get: Any, remove: Any) -> None:
+    """Remove every object of a page or form XObject that is no text object (forms are kept, and the
+    objects in them that are no text removed)."""
+    for index in reversed(range(count(holder))):
+        obj = get(holder, index)
+        kind = raw.FPDFPageObj_GetType(obj)
+        if kind == raw.FPDF_PAGEOBJ_FORM:
+            _remove_all_but_text(
+                obj, raw.FPDFFormObj_CountObjects, raw.FPDFFormObj_GetObject, raw.FPDFFormObj_RemoveObject
+            )
+        elif kind != raw.FPDF_PAGEOBJ_TEXT and remove(holder, obj):
+            raw.FPDFPageObj_Destroy(obj)
+
+
+def _in_page_space(drawn: dict[str, list[_DrawnChar]], page: Page) -> dict[str, list[_DrawnChar]]:
+    """PDFium's characters with their centres moved from PDF user space into pdfplumber's space: ``x``
+    as pdfplumber's ``x0``/``x1``, ``y`` as its ``top``/``bottom`` (the page CTM pdfminer applies for
+    ``/Rotate`` and the MediaBox origin, as :meth:`_PageFrame.of` places the visible area)."""
+    media = _ordered(page.page_obj.mediabox)
+    rotation = page.page_obj.rotate
+    plumber_x0, _, _, plumber_bottom = (float(v) for v in page.mediabox)
+
+    def placed(char: _DrawnChar) -> _DrawnChar:
+        x, y = _device_point(char.x, char.y, media, rotation)
+        return char._replace(x=x + plumber_x0, y=plumber_bottom - y)
+
+    return {text: [placed(char) for char in chars] for text, chars in drawn.items()}
+
+
+def _near(char: dict[str, Any], drawn: dict[str, list[_DrawnChar]] | None) -> list[_DrawnChar]:
+    """PDFium's characters of the same text within a fraction of this pdfplumber character's size
+    (``drawn`` in pdfplumber's space, :func:`_in_page_space`). PDFium splits a ligature into its
+    letters, all at the ligature's place: "ﬁ" is matched by its "f"."""
+    if not drawn:
+        return []
     text = str(char.get("text", ""))
     size = float(char.get("size") or 0.0)
     x = (float(char["x0"]) + float(char["x1"])) / 2
-    y = (float(char["y0"]) + float(char["y1"])) / 2
-    near = [
+    y = (float(char["top"]) + float(char["bottom"])) / 2
+    texts = dict.fromkeys((text, unicodedata.normalize("NFKC", text)[:1]))
+    return [
         other
-        for other in drawn.get(text, [])
+        for key in texts
+        for other in drawn.get(key, [])
         if abs(other.x - x) <= max(1.0, 0.25 * size) and abs(other.y - y) <= max(1.5, 0.5 * size)
     ]
+
+
+def _drawn_invisibly(near: list[_DrawnChar]) -> bool:
+    """Whether PDFium draws a pdfplumber character only invisibly: every character of the same text
+    near it (:func:`_near`) is invisible (none visible), and there is one."""
     return bool(near) and all(other.invisible for other in near)
+
+
+def _drawn_without_ink(near: list[_DrawnChar]) -> bool:
+    """Whether a pdfplumber character leaves no ink on the rendered page: every PDFium character of the
+    same text near it changes nothing in the render, and there is one."""
+    return bool(near) and not any(other.inked for other in near)
+
+
+def _unmatched(char: dict[str, Any], near: list[_DrawnChar]) -> bool:
+    """Whether a letter or digit pdfplumber reads is one PDFium draws nowhere near (module docstring)."""
+    return not near and any(ch.isalnum() for ch in str(char.get("text", "")))
+
+
+#: The most letters and digits of a page that pdfplumber reads and PDFium draws nowhere near which count
+#: as hidden text; with more, the two disagree about the page, and it is read from its image.
+MAX_UNMATCHED_CHARS = 8
 
 
 def is_near_white(color: object) -> bool:
@@ -463,29 +1046,42 @@ def _extract_page_safely(
 def _extract_page(
     page: Page, number: int, drawn: dict[str, list[_DrawnChar]] | None = None
 ) -> tuple[PageText, str]:
-    """The page's text and its scanner text (``""`` unless the page is a scan with an OCR layer)."""
+    """The page's text and its scanner text (``""`` unless the page is a scan with an OCR layer).
+    ``drawn`` is what PDFium draws on it (:func:`_drawn_chars`); without it, the page's text layer
+    can't be trusted and the page is read from its image."""
+    if drawn is None:
+        return PageText(page=number, text=""), ""
     frame = _PageFrame.of(page)
     backgrounds = _dark_backgrounds(page, frame)
+    drawn = _in_page_space(drawn, page)
     visible: list[_Glyph] = []
     hidden: list[_Glyph] = []
     invisible: list[_Glyph] = []
+    unmatched: list[_Glyph] = []
     # Visible text comes from the de-duplicated characters (fake-bold overprints collapse); hidden text
     # from the raw ones — at 1-2 pt, de-duplication would merge real double letters ("Assistant").
     for char in page.dedupe_chars().chars:
         glyph = _glyph(char, frame)
         if glyph is None:
             continue
+        near = _near(char, drawn)
         if glyph.is_space or not (
-            _is_hidden(char, glyph, frame, backgrounds) or _drawn_invisibly(char, drawn)
+            _is_hidden(char, glyph, frame, backgrounds, near)
+            or _drawn_invisibly(near)
+            or _drawn_without_ink(near)
+            or _unmatched(char, near)
         ):
             visible.append(glyph)
     for char in page.chars:
         glyph = _glyph(char, frame)
         if glyph is None or glyph.is_space:
             continue
-        if _drawn_invisibly(char, drawn):
+        near = _near(char, drawn)
+        if _unmatched(char, near):
+            unmatched.append(glyph)
+        elif _drawn_invisibly(near):
             invisible.append(glyph)
-        elif _is_hidden(char, glyph, frame, backgrounds):
+        elif _is_hidden(char, glyph, frame, backgrounds, near) or _drawn_without_ink(near):
             hidden.append(glyph)
     text, words = _assemble(visible, frame)
     meaningful = sum(ch.isalnum() for ch in text)
@@ -493,10 +1089,14 @@ def _extract_page(
     if unseen >= MIN_TEXT_CHARS and unseen >= meaningful:
         # a scan's OCR layer (module docstring): read from the image, the OCR text kept apart for search
         hidden_text, _ = _assemble(hidden, frame)
-        scanned, _ = _assemble(invisible, frame)
+        scanned, _ = _assemble([*invisible, *unmatched], frame)
         page_text = PageText(page=number, text="", hidden_text=hidden_text, has_text_layer=False)
         return page_text, scanned[:MAX_SCAN_TEXT_CHARS]
-    hidden_text, _ = _assemble([*hidden, *invisible], frame)
+    if sum(ch.isalnum() for glyph in unmatched for ch in glyph.text) > MAX_UNMATCHED_CHARS:
+        # the text layer and the drawn page disagree: read from the image, like a photo
+        hidden_text, _ = _assemble([*hidden, *invisible], frame)
+        return PageText(page=number, text="", hidden_text=hidden_text, has_text_layer=False), ""
+    hidden_text, _ = _assemble([*hidden, *invisible, *unmatched], frame)
     page_text = PageText(
         page=number,
         text=text,
@@ -544,11 +1144,18 @@ def _reading_frame(box: Rect, direction: Direction, frame: _PageFrame) -> Rect:
     return box
 
 
-def _is_hidden(char: dict[str, Any], glyph: _Glyph, frame: _PageFrame, backgrounds: list[Rect]) -> bool:
-    """SPEC §21: tiny, off-page, or white text (unless it sits on a dark filled shape)."""
+def _is_hidden(
+    char: dict[str, Any], glyph: _Glyph, frame: _PageFrame, backgrounds: list[Rect], near: list[_DrawnChar]
+) -> bool:
+    """SPEC §21: tiny, off-page, or white text, unless it sits on a dark filled shape, or PDFium finds it
+    inked on a page that is dark under it without its text (:data:`DARK_GROUND`: white text on a photo)."""
     if glyph.size < MIN_VISIBLE_FONT_SIZE or not frame.contains(glyph.box):
         return True
-    return is_near_white(char.get("non_stroking_color")) and not _inside_any(glyph.box, backgrounds)
+    return (
+        is_near_white(char.get("non_stroking_color"))
+        and not _inside_any(glyph.box, backgrounds)
+        and not any(other.inked and other.on_dark for other in near)
+    )
 
 
 def _dark_backgrounds(page: Page, frame: _PageFrame) -> list[Rect]:

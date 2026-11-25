@@ -4,9 +4,11 @@ the recorder's privacy guard, snapshots, ``check_demo``, the New-mail tray and t
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
 import json
 import shutil
+import sqlite3
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import date
@@ -183,10 +185,18 @@ def unpinned_clock() -> Iterator[None]:
 
 @pytest.fixture(scope="module")
 def life(tmp_path_factory: pytest.TempPathFactory) -> SampleLife:
-    """The mini sample life, recorded once (fixtures + snapshot) for the whole module."""
+    """The mini sample life, recorded once (fixtures + snapshot) for the whole module. Its snapshot is then
+    built again by replay, as the committed one is, so ``check_demo`` compares its cached answers too."""
     root = tmp_path_factory.mktemp("life")
     samples = write_sample_life(root / "samples")
     record(root, root / "recorded", rebuild=True)
+    build_demo(
+        root / "replayed",
+        samples=samples,
+        fixtures=root / "fixtures",
+        snapshot=root / "snapshot",
+        rebuild=True,
+    )
     clock.set_today(None)
     return SampleLife(
         samples=samples,
@@ -440,6 +450,50 @@ def test_check_demo_reports_every_kind_of_problem(life: SampleLife, tmp_path: Pa
     assert "cites a missing record doc_missing00000" in problems
     assert "replay miss: ask" in problems
     assert "out of date" in problems  # the fixtures changed, so the snapshot no longer matches
+
+
+def test_check_demo_finds_a_snapshot_whose_content_was_changed(life: SampleLife, tmp_path: Path) -> None:
+    """``ordnung demo`` copies the committed snapshot as it is, so its version alone is not enough: an amount
+    changed in its database, or an original changed, is a problem though the version still matches."""
+    changed = tmp_path / "snapshot"
+    shutil.copytree(life.snapshot, changed)
+    with contextlib.closing(sqlite3.connect(changed / "ordnung.db")) as conn:
+        assert conn.execute("UPDATE items SET amount = amount + 100 WHERE amount IS NOT NULL").rowcount
+        conn.commit()
+    report = check_demo(samples=life.samples, fixtures=life.fixtures, snapshot=changed, questions=[])
+    assert not report.ok
+    assert any(problem.startswith("the snapshot differs from the build: ") for problem in report.problems)
+    shutil.rmtree(changed)
+    shutil.copytree(life.snapshot, changed)
+    original = next(path for path in (changed / "files").rglob("*") if path.is_file())
+    original.write_bytes(original.read_bytes() + b"\n%changed")
+    report = check_demo(samples=life.samples, fixtures=life.fixtures, snapshot=changed, questions=[])
+    assert [problem for problem in report.problems if "originals" in problem], report.problems
+
+
+def test_check_demo_compares_the_snapshot_s_cached_answers_and_page_images(
+    life: SampleLife, tmp_path: Path
+) -> None:
+    """The cached answers ``ordnung demo`` reads again are compared by key, and the page images byte for byte
+    where the snapshot's renderer is this one; drawn by another renderer, they are compared by name, with a
+    warning."""
+    changed = tmp_path / "snapshot"
+    shutil.copytree(life.snapshot, changed)
+    with contextlib.closing(sqlite3.connect(changed / "ordnung.db")) as conn:
+        assert conn.execute("UPDATE llm_cache SET response = replace(response, 'a', 'b')").rowcount
+        conn.commit()
+    report = check_demo(samples=life.samples, fixtures=life.fixtures, snapshot=changed, questions=[])
+    assert [problem for problem in report.problems if "cached answers" in problem], report.problems
+    shutil.rmtree(changed)
+    shutil.copytree(life.snapshot, changed)
+    image = next(path for path in sorted((changed / "derived").rglob("*.jpg")))
+    image.write_bytes(image.read_bytes()[:-2] + b"\x00\xff\xd9")
+    report = check_demo(samples=life.samples, fixtures=life.fixtures, snapshot=changed, questions=[])
+    assert [problem for problem in report.problems if "page images" in problem], report.problems
+    (changed / "RENDERER").write_text("another renderer\n", encoding="utf-8")
+    report = check_demo(samples=life.samples, fixtures=life.fixtures, snapshot=changed, questions=[])
+    assert report.ok, report.problems
+    assert [warning for warning in report.warnings if "by name only" in warning], report.warnings
 
 
 def test_check_demo_warns_when_there_is_no_snapshot(life: SampleLife, tmp_path: Path) -> None:
