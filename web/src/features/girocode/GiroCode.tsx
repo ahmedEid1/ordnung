@@ -346,7 +346,7 @@ function SaveAsPicture({ payload }: { payload: string }) {
 /** Over the first comparison for an account: why it is asked, and that it is asked once per payee and IBAN. */
 export const GIROCODE_FIRST_PAYMENT = "New account: compare once";
 export const GIROCODE_FIRST_PAYMENT_WHY =
-  "A PDF's text can say something its page doesn't show, so before the first code to a payee and IBAN you check the details with the letter yourself. Later codes to the same payee and IBAN skip this step.";
+  "A PDF's text can say something its page doesn't show, so before the first code to a payee and IBAN you check the details with the letter yourself. Later codes from the same sender to this payee and IBAN skip this step.";
 
 export const GIROCODE_MISMATCH =
   "Then type the payee, IBAN, reference and amount into your banking app yourself, as the paper letter shows them — not the details above, which Ordnung read differently (their copy buttons are off now).";
