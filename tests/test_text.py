@@ -699,11 +699,19 @@ NO_INK = {
     + b"\n1 1 1 rg 60 694 400 18 re f 0 g BT /F1 12 Tf 72 705 Td (Lyra Bau Lyra Bau Lyra Bau) Tj ET",
     "covered, with a thickly stroked line drawn over the cover": _UNSEEN
     + b"\n1 1 1 rg 60 690 400 30 re f 0 g BT /F1 12 Tf 2 Tr 1 1 1 RG 6 w 72 716 Td (Muster) Tj ET",
+    # A sliver of every glyph left showing is no text anybody can read, on screen or on paper.
+    "covered except a 0.7 pt strip at the baseline": _UNSEEN + b"\n1 1 1 rg 60 700.7 400 30 re f",
+    "covered except the top 1 pt": _UNSEEN + b"\n1 1 1 rg 60 690 400 17.6 re f",
+    "white on a dark box, covered except a 0.7 pt strip": b"0 0 0 rg 60 690 400 30 re f 1 1 1 rg "
+    + _UNSEEN
+    + b"\n0 0 0 rg 60 700.7 400 30 re f",
+    "clipped to a 0.7 pt strip at the baseline": b"q 60 690 400 10.7 re W n " + _UNSEEN + b" Q",
 }
 #: The same line drawn so that it shows: it stays page text.
 INKED = {
     "white on a dark box": b"0 0 0.5 rg 60 690 400 30 re f 1 1 1 rg " + _UNSEEN,
     "mid grey": b"0.6 g " + _UNSEEN,
+    "light grey": b"0.85 g " + _UNSEEN,
     "inside a form XObject": b"/Inner Do",
     "drawn twice in the same place (bold by overprinting)": _UNSEEN + b" " + _UNSEEN,
     "drawn twice, a third of a point apart": _UNSEEN + b" 1 0 0 1 0.3 0 cm " + _UNSEEN,
@@ -755,9 +763,9 @@ def _raw_pdf(content: bytes, page: bytes = PAGES["upright"]) -> bytes:
 @pytest.mark.parametrize("construction", list(NO_INK))
 def test_text_without_ink_on_the_page_is_hidden(tmp_path: Path, construction: str, page: str) -> None:
     """Adversarial: text the rendered page never shows (covered, transparent, clipped, in a layer that is
-    off, black on black, under an image) is hidden text, a scam sign, never the page text a quote or a
-    GiroCode value is grounded in; the letter's visible line stays page text. However the page is turned
-    or placed: the two readers' characters are matched in one space."""
+    off, black on black, under an image), or shows only a sliver of, is hidden text, a scam sign, never
+    the page text a quote or a GiroCode value is grounded in; the letter's visible line stays page text.
+    However the page is turned or placed: the two readers' characters are matched in one space."""
     _, result = _read(tmp_path, _raw_pdf(NO_INK[construction], PAGES[page]))
     [page] = result.pages
     assert page.has_text_layer and "Musterfirma GmbH Rechnung 4711" in page.text
@@ -782,7 +790,9 @@ def test_text_drawn_invisibly_on_a_turned_page_is_hidden_text(tmp_path: Path, pa
 
 
 @pytest.mark.parametrize("page", [name for name in PAGES if name != "upright"])
-@pytest.mark.parametrize("construction", ["white on a dark box", "mid grey", "inside a form XObject"])
+@pytest.mark.parametrize(
+    "construction", ["white on a dark box", "mid grey", "light grey", "inside a form XObject"]
+)
 def test_text_with_ink_on_a_turned_page_stays_page_text(tmp_path: Path, construction: str, page: str) -> None:
     _, result = _read(tmp_path, _raw_pdf(INKED[construction], PAGES[page]))
     [only] = result.pages
