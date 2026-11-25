@@ -83,12 +83,12 @@ describe("a filed letter's card", () => {
 });
 
 describe("what a screen reader is told", () => {
-  it("names the letter that was filed, and where it waits (not a bare “Finished.”)", async () => {
+  it("names the letter that was filed (not a bare “Finished.”), and names no shortcut that doesn't reach it", async () => {
     renderCenter();
     act(() => seedJob(job("doc_parking", "done")));
     const list = screen.getByRole("list", { name: "Letters being read" });
     await waitFor(() =>
-      expect(list.querySelector("[aria-live]")).toHaveTextContent(/^Filed: “Parking fine \(Verwarnungsgeld\)”\. Open it from Notifications \((Alt|Option)\+N\)\.$/),
+      expect(list.querySelector("[aria-live]")).toHaveTextContent(/^Filed: “Parking fine \(Verwarnungsgeld\)”\.$/),
     );
   });
 

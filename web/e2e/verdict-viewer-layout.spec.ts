@@ -212,6 +212,8 @@ async function watchFocus(page: Page): Promise<void> {
 
 /** Since {@link watchFocus}, and for 1.5 s more: focus never fell to the page, and it ends where `where` says. */
 async function focusStays(page: Page, where: Locator): Promise<void> {
+  // A deliberate observation window, not a wait for a state: the check is that focus never drops
+  // during it, and watchFocus looks at every frame until it ends.
   const from = await page.evaluate(() => performance.now());
   await page.waitForFunction((t) => performance.now() - t >= 1500, from);
   const drops = await page.evaluate(() => {

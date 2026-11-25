@@ -9,7 +9,6 @@ import { letterName } from "@/lib/format";
 import { cn, plural } from "@/lib/utils";
 import { Spinner } from "@/components/ui/Spinner";
 import { Stepper } from "@/components/ui/Stepper";
-import { TOAST_HOTKEY_LABEL } from "@/components/ui/Toast";
 import { useModalOpen } from "@/components/ui/internal";
 
 /** How long a filed letter's card stays (its time only runs while it isn't hovered or focused). */
@@ -125,8 +124,9 @@ function UploadRow({ job, grouped }: { job: JobProgress; grouped?: boolean }) {
             labels="all"
             fallback="none"
             live
-            // which letter, and where it waits: "Finished." alone named neither
-            doneText={`Filed: “${name}”. Open it from Notifications (${TOAST_HOTKEY_LABEL}).`}
+            // which letter: "Finished." alone didn't say. No shortcut is named: Alt+N goes to the
+            // newest toast, never to this card, so "Open letter" is reached with Tab.
+            doneText={`Filed: “${name}”.`}
             errorText={`Couldn't read “${name}”.`}
             label={`Reading ${name}`}
           />
