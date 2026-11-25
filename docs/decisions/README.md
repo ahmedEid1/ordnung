@@ -18,7 +18,7 @@ status.
 | [0009](0009-rules-engine-as-mcp-tools.md) | The rules engine as MCP tools, rules-only by default | accepted · 2026-09-26 |
 | [0010](0010-high-stakes-kinds-assigned-by-code.md) | High-stakes letters: kinds assigned by code from the reading | accepted · 2026-09-26, updated 2026-09-29 |
 | [0011](0011-ask-keeps-to-the-ledger.md) | Ask keeps to the ledger; the rules tools are for other clients | accepted · 2026-09-27 |
-| [0012](0012-girocode-only-for-grounded-transfers.md) | A GiroCode only for grounded transfers, decided by a written policy | accepted · 2026-09-27 |
+| [0012](0012-girocode-only-for-grounded-transfers.md) | A GiroCode only for grounded transfers, decided by a written policy | accepted · 2026-09-27, updated 2026-11-25 |
 | [0013](0013-backups-and-reminders-outside-the-browser.md) | Backups and reminders that work while Ordnung is closed | accepted · 2026-09-27, updated 2026-10-08, 2026-10-09 and 2026-10-10 |
 | [0014](0014-proof-files-are-deleted-for-good.md) | Proof files are deleted for good, after a confirmation that names them | accepted · 2026-09-27 |
 | [0015](0015-incomplete-readings-get-a-check-written-by-code.md) | Incomplete readings get a check written by code | accepted · 2026-10-01, updated 2026-10-07 |
