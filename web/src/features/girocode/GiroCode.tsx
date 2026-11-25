@@ -2,10 +2,10 @@
  * The GiroCode (EPC-QR) of a payment: a QR code any German banking app scans to pre-fill the
  * transfer, which the person then confirms there with their TAN — Ordnung never pays. The server
  * decides whether there is a code (`girocodes` of the letter's detail); this shows the code, or
- * why there is none, or — for details read from a photo, or not found in the letter's text, and for the
- * first payment to an account however its details were found — asks to compare them with the letter
+ * why there is none, or — for details read from a photo, or not found in the letter's text, and for a
+ * payee and IBAN not compared before however its details were found — asks to compare them with the letter
  * first ("These match the letter", or "They don't match": then type them from the letter, or have the
- * letter read again). A first payment says so, and why: the pay panel's details above the block are
+ * letter read again). A new account says so, and why: the pay panel's details above the block are
  * what the person compares with the letter. A refused comparison, or a failed reading,
  * says why in the block itself — a toast would wait behind a phone's sheet or cover the panel's
  * footer. A code without a reference says so (the letter may name one the reading missed), and on a
@@ -343,10 +343,10 @@ function SaveAsPicture({ payload }: { payload: string }) {
   );
 }
 
-/** Over a first payment's comparison: why it is asked, and that it is asked once per account. */
-export const GIROCODE_FIRST_PAYMENT = "First payment to this account: compare once";
+/** Over the first comparison for an account: why it is asked, and that it is asked once per payee and IBAN. */
+export const GIROCODE_FIRST_PAYMENT = "New account: compare once";
 export const GIROCODE_FIRST_PAYMENT_WHY =
-  "A PDF's text can say something its page doesn't show, so before the first code to an IBAN you check the details with the letter yourself. Later codes to this IBAN skip this step.";
+  "A PDF's text can say something its page doesn't show, so before the first code to a payee and IBAN you check the details with the letter yourself. Later codes to the same payee and IBAN skip this step.";
 
 export const GIROCODE_MISMATCH =
   "Then type the payee, IBAN, reference and amount into your banking app yourself, as the paper letter shows them — not the details above, which Ordnung read differently (their copy buttons are off now).";

@@ -3837,8 +3837,8 @@ export interface components {
          * GiroCodeBlocked
          * @description Why a payment has no GiroCode, in plain words (``message``). For ``check_letter``, ``to_check``
          *     names the details not found in the letter's text, ``values`` are the ones to confirm, and
-         *     ``first_payment`` says the person has not compared a payment to this IBAN before: then every value
-         *     is compared, found in the text or not.
+         *     ``first_payment`` says this is the first comparison for the account: the person has not compared a
+         *     payment to this payee and IBAN before, so every value is compared, found in the text or not.
          */
         GiroCodeBlocked: {
             /**

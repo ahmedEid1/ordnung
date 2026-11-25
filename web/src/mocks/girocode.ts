@@ -4,14 +4,23 @@
  * letter", "no code" once a payment is marked paid or set aside, and — like the server — a code
  * whose amount was changed by hand asks to compare with the letter again (and then carries the new
  * amount). Which payments were compared, and at which amount, belongs to the mock state, so
- * resetting the demo forgets it. Every code there starts as a first payment to its account (nobody has
- * compared one yet); no two payments that could get a code share an account, so one comparison never
- * makes another payment's code ready here.
+ * resetting the demo forgets it. Every code there starts as a first payment to its payee and IBAN
+ * (nobody has compared one yet); once compared at one amount, the payment at another amount goes by
+ * the letter's text alone, as on the server. No two payments that could get a code share an account,
+ * so one comparison never makes another payment's code ready here.
  */
 import type { GiroCode, GiroCodeBlocked, GiroCodeReady, Item, TransferValues } from "@/api/types";
 import { normalizeIban } from "@/lib/format";
 import { readPayload } from "@/features/girocode/qr";
-import { GIROCODE_MESSAGES, GIROCODE_REFUSALS, GIROCODES, GIROCODES_AMOUNT_CHANGED, GIROCODES_CHECKED } from "./data/girocodes";
+import {
+  GIROCODE_MESSAGES,
+  GIROCODE_REFUSALS,
+  GIROCODES,
+  GIROCODES_AMOUNT_CHANGED,
+  GIROCODES_AMOUNT_CHANGED_KNOWN,
+  GIROCODES_CHECKED,
+  GIROCODES_KNOWN,
+} from "./data/girocodes";
 import type { MockDb } from "./db";
 
 /** Per mock state: item id → the amount the person compared with the letter. */
@@ -56,11 +65,13 @@ export function mockGiroCode(db: MockDb, item: Item): GiroCode {
   const letterAmount = readPayload(ready.payload).amount;
   if (sameAmount(item.amount, letterAmount)) {
     if (base.status === "ready") return base;
-    return sameAmount(seen, item.amount) ? ready : base;
+    if (sameAmount(seen, item.amount)) return ready;
+    // compared at another amount: the payee and IBAN are compared, the letter's text decides the rest
+    return seen === undefined ? base : GIROCODES_KNOWN[item.id]!;
   }
   // the amount isn't the one on the letter any more: only the person's comparison vouches for it
   if (sameAmount(seen, item.amount)) return { ...ready, payload: withAmount(ready.payload, item.amount), checked: true };
-  const asks = GIROCODES_AMOUNT_CHANGED[item.id]!;
+  const asks = (seen === undefined ? GIROCODES_AMOUNT_CHANGED : GIROCODES_AMOUNT_CHANGED_KNOWN)[item.id]!;
   return { ...asks, values: { ...asks.values!, amount: item.amount } };
 }
 

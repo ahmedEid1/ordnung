@@ -116,8 +116,9 @@ export default defineConfig({
   // feedback components: toasts, stepper, receipts — the app shell, a sender's state suggested from the postcode
   // on their letter: Yes on the demo is set back, and the screens fed by the lighter letter list), and last the high-stakes
   // letters, which re-file demo letters (PATCH kind) and so add the law's to-dos to the shared demo.
-  // The GiroCode guards run between the two: they change the parking fine's amount (PATCH) to ask for the
-  // paper letter again, and an edited to-do stays marked as edited when its amount is set back — Ask's
+  // The GiroCode guards run between the two: they compare the statement's first payment (a payment.checked
+  // entry the later projects find) and change the parking fine's amount (PATCH) to ask for the paper letter
+  // again, and an edited to-do stays marked as edited when its amount is set back — Ask's
   // recorded answers replay only against the untouched demo, so the layout project's Ask guards come first.
   // Then dates of the person's own (e2e/add-date.spec.ts: added to the shared demo, then taken away), then
   // the real app: e2e/real-app-*.spec.ts, against `ordnung serve` (real-app-sync.spec.ts with the second one);

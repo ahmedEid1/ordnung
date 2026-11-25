@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import type { DocumentDetail, GiroCode, TransferValues } from "@/api/types";
 import { normalizeIban } from "@/lib/format";
 import { readPayload } from "@/features/girocode/qr";
-import { GIROCODE_REFUSALS, GIROCODES, GIROCODES_CHECKED } from "./data/girocodes";
+import { GIROCODE_REFUSALS, GIROCODES, GIROCODES_CHECKED, GIROCODES_KNOWN } from "./data/girocodes";
 import { ITEMS, TRAY_ITEMS } from "./data/items";
 import { letterFor } from "./db";
 import { amountText } from "./girocode";
@@ -110,7 +110,7 @@ describe("“These match the letter” in the demo", () => {
       to_check: ["amount"],
       first_payment: true,
       message:
-        "No code yet: this is the first payment to this IBAN, and the amount wasn't found in the letter's text. Compare the payee, IBAN, amount and reference with the letter, then confirm.",
+        "No code yet: you haven't compared a payment to this payee and IBAN with a letter from this sender before, and the amount wasn't found in the letter's text. Compare the payee, IBAN, amount and reference with the letter, then confirm.",
     });
     const values = (asks as Extract<GiroCode, { status: "blocked" }>).values!;
     expect(values).toEqual({ payee: "Wohnbau Musterstadt eG", iban: "DE05123456000004455660", reference: "MV-2025-0412 NK 2025", amount: 190 });
@@ -119,9 +119,16 @@ describe("“These match the letter” in the demo", () => {
     expect(res.status).toBe(200);
     const ready = (await res.json()) as GiroCode;
     expect(ready).toEqual({ status: "ready", item_id: "itm_nk", checked: true, payload: GIROCODES_CHECKED.itm_nk!.payload.replace("EUR184.3", "EUR190") });
-    // back to the letter's amount: the comparison was at €190, so the first payment asks again
+    // back to the letter's amount: the payee and IBAN are compared now (at €190), and the letter's text
+    // states €184.30 — the code is ready, as on the server, without saying the person compared this amount
     await patch("itm_nk", 184.3);
-    expect((await detail(srv, "doc_nebenkosten")).girocodes).toEqual([GIROCODES.itm_nk]);
+    expect((await detail(srv, "doc_nebenkosten")).girocodes).toEqual([GIROCODES_KNOWN.itm_nk]);
+    expect(GIROCODES_KNOWN.itm_nk).toEqual({ ...GIROCODES_CHECKED.itm_nk, checked: false });
+    // and at another amount again: compare that amount, no longer as a first payment
+    await patch("itm_nk", 200);
+    const [later] = (await detail(srv, "doc_nebenkosten")).girocodes;
+    expect(later).toMatchObject({ status: "blocked", reason: "check_letter", to_check: ["amount"], first_payment: false });
+    await patch("itm_nk", 184.3);
 
     // a photo's code compared at €30 no longer covers €35
     await confirm(srv, "itm_parking", PARKING);

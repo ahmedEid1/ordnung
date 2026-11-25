@@ -5,9 +5,11 @@ The hosted demo runs on hand-written mocks without the backend; its codes must s
 what the app would show. Each payment of the mock world is described here by the facts the gate
 reads (:class:`~ordnung.secretary.girocode_gate.TransferFacts`) — its letter's payment details
 (``web/src/mocks/data/documents.ts``) and how each value was found on the mock letter
-(``letters.ts``: a PDF's text layer is ``verified``, the parking fine's photo ``model_read``). Nobody
-in the mock world has compared a payment with its letter yet, so each code is a first payment to its
-account and waits for that comparison (policy point 7); once compared it is ``GIROCODES_CHECKED``.
+(``letters.ts``: a PDF's text layer is ``verified``, the parking fine's photo ``model_read``) and its
+sender (``parties.ts``). Nobody in the mock world has compared a payment with its letter yet, so each
+code is a first payment to its payee and IBAN and waits for that comparison (policy point 7); once
+compared it is ``GIROCODES_CHECKED``, and at another amount later the account counts as compared
+(``GIROCODES_KNOWN``, ``GIROCODES_AMOUNT_CHANGED_KNOWN``).
 ``web/src/mocks/girocode.test.ts`` checks those facts against the mock data. Run after changing the
 gate, the builder or a mock payment::
 
@@ -30,8 +32,13 @@ from ordnung.secretary.girocode_gate import (
     decide,
 )
 
-WOHNBAU = {"payee": "Wohnbau Musterstadt eG", "iban": "DE05123456000004455660"}
+WOHNBAU = {
+    "party": "Wohnbau Musterstadt eG",
+    "payee": "Wohnbau Musterstadt eG",
+    "iban": "DE05123456000004455660",
+}
 TECHMARKT = {
+    "party": "TechMarkt Online GmbH",
     "payee": "TechMarkt Online GmbH",
     "iban": "DE70123478000048213000",
     "reference": "RE-2026-084213",
@@ -51,6 +58,7 @@ PHOTO: dict[str, Any] = {
 PAYMENTS: dict[str, dict[str, Any]] = {
     # the fine is a phone photo: every value was read by AI
     "itm_parking": {
+        "party": "Ordnungsamt Musterstadt",
         "payee": "Stadtkasse Musterstadt",
         "iban": "DE51123456000000100017",
         "reference": "OA-VW-2026-55012",
@@ -73,6 +81,7 @@ PAYMENTS: dict[str, dict[str, Any]] = {
     "itm_rent_sep": {**WOHNBAU, "reference": "12-0412-07", "amount": 640.0, "status": "done", **TEXT_LAYER},
     "itm_nk": {**WOHNBAU, "reference": "MV-2025-0412 NK 2025", "amount": 184.3, **TEXT_LAYER},
     "itm_rundfunk": {
+        "party": "Beitragsservice Musterstadt",
         "payee": "Beitragsservice Musterstadt",
         "iban": "DE57123489000055081836",
         "reference": "457 812 309",
@@ -80,6 +89,7 @@ PAYMENTS: dict[str, dict[str, Any]] = {
         **TEXT_LAYER,
     },
     "itm_semester": {
+        "party": "Hochschule Musterstadt",
         "payee": "Hochschule Musterstadt",
         "iban": "DE10123456000007700220",
         "reference": "2231847 SoSe27",
@@ -126,17 +136,21 @@ def render() -> str:
     """The TypeScript module (see the module docstring)."""
     codes = {item_id: decide(facts(item_id)).model_dump() for item_id in PAYMENTS}
     checked: dict[str, Any] = {}
+    known: dict[str, Any] = {}
     changed: dict[str, Any] = {}
+    changed_known: dict[str, Any] = {}
     for item_id, code in codes.items():
         if code["status"] == "blocked" and code["reason"] == "check_letter":
             base = facts(item_id)
             ready = decide(replace(base, checked=base.values))
             assert isinstance(ready, GiroCodeReady)
             checked[item_id] = ready.model_dump()
+            known[item_id] = decide(replace(base, known_account=True)).model_dump()
         if code["status"] == "ready" or code["reason"] == "check_letter":
-            asks = decide(amount_changed(item_id)).model_dump()
-            assert asks["reason"] == "check_letter" and asks["values"]["amount"] == 1.0
-            changed[item_id] = {**asks, "values": {**asks["values"], "amount": None}}
+            for into, account in ((changed, False), (changed_known, True)):
+                asks = decide(replace(amount_changed(item_id), known_account=account)).model_dump()
+                assert asks["reason"] == "check_letter" and asks["values"]["amount"] == 1.0
+                into[item_id] = {**asks, "values": {**asks["values"], "amount": None}}
     messages = {
         status: decide(replace(facts("itm_nk"), status=status)).model_dump()["message"]
         for status in ("done", "dismissed")
@@ -163,10 +177,20 @@ def render() -> str:
         f"export const GIROCODES_CHECKED: Record<string, GiroCodeReady> = {dump(checked)};",
         "",
         "/**",
+        " * The code at the letter's amount once the person compared the payment at another amount: its",
+        " * payee and IBAN are compared, the values go by the letter's text alone (policy point 7).",
+        " */",
+        f"export const GIROCODES_KNOWN: Record<string, GiroCode> = {dump(known)};",
+        "",
+        "/**",
         " * What a payment with a code (or waiting for one) asks once its amount was changed by hand: compare",
         " * with the letter (`values.amount` is the to-do's new amount, filled in by the mock).",
         " */",
         f"export const GIROCODES_AMOUNT_CHANGED: Record<string, GiroCodeBlocked> = {dump(changed)};",
+        "",
+        "/** The same once the person compared the payment at another amount: no longer a first payment. */",
+        "export const GIROCODES_AMOUNT_CHANGED_KNOWN: Record<string, GiroCodeBlocked> = "
+        f"{dump(changed_known)};",
         "",
         "/** Why a payment marked paid or set aside, or without an account or an amount, has no code. */",
         "export const GIROCODE_MESSAGES: Record<"

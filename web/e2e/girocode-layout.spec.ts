@@ -1,6 +1,6 @@
 /**
  * The GiroCode (EPC-QR) in the Pay panels on the real demo, where jsdom can't look: the first payment to
- * an account asks to compare its details with the letter once, laid out and accessible at 320 and 1280 px in
+ * a payee and IBAN asks to compare its details with the letter once, laid out and accessible at 320 and 1280 px in
  * both themes; the code is a square of black modules on white with its quiet zone in both themes, big enough to scan and
  * wholly on screen from 320 px up, the panel's actions stay in view, phones fold it behind
  * "Show code" and say what to do instead, a photographed letter asks to compare with the paper
@@ -70,7 +70,8 @@ async function reachable(l: Locator): Promise<boolean> {
   });
 }
 
-// First in the file: the demo's statement is a first payment to its account until a test below compares it.
+// First in the file: the demo's statement is a first payment to its account until a test below compares it
+// (and the comparison stays in the shared demo). Run in another order, the precondition says so and skips.
 test.describe("the first payment to an account", () => {
   for (const scheme of ["light", "dark"] as const) {
     for (const [width, height] of [
@@ -82,13 +83,14 @@ test.describe("the first payment to an account", () => {
         await page.setViewportSize({ width, height });
         const id = await letterId(page, STATEMENT);
         const { girocodes } = await apiGet<{ girocodes: BlockedCode[] }>(page, `/api/documents/${id}`);
-        expect(girocodes.map((c) => [c.status, c.reason, c.first_payment]), "the demo has compared no payment to this account").toContainEqual(["blocked", "check_letter", true]);
+        const first = girocodes.some((c) => c.status === "blocked" && c.reason === "check_letter" && c.first_payment);
+        test.skip(!first, "the statement's payment was compared earlier in this run (statementCompared): this needs a demo where nobody has");
         await open(page, `/documents/${id}`);
         await page.getByRole("main").getByRole("article").first().getByRole("button", { name: /^Pay €184\.30/ }).click();
         const panel = page.getByRole("dialog");
         const section = panel.getByRole("region", { name: "GiroCode (EPC-QR)" });
-        await expect(section.getByText("First payment to this account: compare once")).toBeVisible();
-        await expect(section).toContainText("this is the first payment to this IBAN");
+        await expect(section.getByText("New account: compare once")).toBeVisible();
+        await expect(section).toContainText("you haven't compared a payment to this payee and IBAN with a letter from this sender before");
         await expect(section.getByRole("img")).toHaveCount(0);
         await expect(section.getByRole("checkbox")).toHaveCount(0);
         // the details to compare, in full above the question, and one clear confirmation

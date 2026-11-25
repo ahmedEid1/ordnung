@@ -196,7 +196,7 @@ describe("the first payment to an account", () => {
     renderWithProviders(<LiveStatementCode />);
     const section = await screen.findByRole("region", { name: "GiroCode (EPC-QR)" });
     expect(within(section).getByText(GIROCODE_FIRST_PAYMENT)).toBeInTheDocument();
-    expect(section).toHaveTextContent("this is the first payment to this IBAN");
+    expect(section).toHaveTextContent("you haven't compared a payment to this payee and IBAN with a letter from this sender before");
     expect(within(section).getByText(GIROCODE_FIRST_PAYMENT_WHY)).toBeInTheDocument();
     // nothing to tick, nothing ticked for the person: one button says they compared
     expect(within(section).queryByRole("checkbox")).toBeNull();
