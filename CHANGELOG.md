@@ -7,6 +7,18 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ### Changed
 
+- **Years of letters stay quick.** The app was measured with 300 and 3,000 made-up letters, and the requests
+  that grew with the archive were fixed on the server. After a change the letters are loaded once for every open
+  page, not once for each; Waiting, the weekly review, My numbers, a letter with a bank transfer and Ask's first
+  question after a change no longer read or parse every letter again. At 3,000 letters: Today after ticking a
+  to-do in 3.5 to 5.1 seconds where it took 7.1 to 8.2, and the first page after a start in 3 seconds where it
+  took 11; Waiting in 14 ms (0.6 s), the weekly review in 0.13 s (0.87 s), My numbers in 0.04 s (0.82 s), a
+  letter with a bank transfer in 0.06 s (1.2 s); Ask reaches Claude about 1.5 seconds sooner. Every answer is
+  the same as before, compared byte for byte on the demo and on both archives.
+- **A smaller install and a slightly quicker start.** The demo's letters and its search index are in the package
+  once, not twice (the download is 12.9 MB, was 15.2), and Ordnung no longer installs three libraries it never
+  used (17.8 MB less on disk). `ordnung serve` loads the PDF writer and the HTTP client when they are first
+  needed, not at start.
 - **A payment code to a new account asks you to compare once.** The first GiroCode to a payee and IBAN waits
   until you have compared its details with the letter (*Security* below says why). After this update an account
   asks once unless you compared a payment to it before, and deleting the letter you compared for good makes its
