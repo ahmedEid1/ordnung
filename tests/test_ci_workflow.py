@@ -160,9 +160,9 @@ def _e2e_legs(e2e: dict[str, Any]) -> list[tuple[str, int, int]]:
 
 def _playwright_steps(e2e: dict[str, Any]) -> tuple[tuple[int, dict[str, Any]], tuple[int, dict[str, Any]]]:
     """The end-to-end job's two Playwright steps, and where they are: the leg's group, then its ``then`` group."""
-    first, then = [
-        (index, step) for index, step in enumerate(e2e["steps"]) if "npm run e2e" in step.get("run", "")
-    ]
+    steps = [(index, step) for index, step in enumerate(e2e["steps"]) if "npm run e2e" in step.get("run", "")]
+    assert len(steps) == 2, "the e2e job runs its group, then matrix.then's group: two Playwright steps"
+    first, then = steps
     return first, then
 
 
@@ -932,7 +932,9 @@ def test_the_two_parts_of_the_published_numbers_replay_every_command_once(tmp_pa
     from evals import reproduce
 
     job = _jobs()["reproduce"]
-    assert [leg["part"] for leg in job["strategy"]["matrix"]["include"]] == [1, 2]
+    assert [leg["part"] for leg in job["strategy"]["matrix"]["include"]] == [1, 2], (
+        "reproduce runs as part 1 (--only) and part 2 (--skip): a missing part loses its commands"
+    )
     # a failure in one part must not cancel the other: its gates' and comparisons' failures would go unreported
     assert job["strategy"]["fail-fast"] is False
     assert "${{ matrix.part }}/2" in job["name"]
@@ -1078,7 +1080,9 @@ def test_the_other_systems_job_runs_the_tests_whose_subject_differs_per_system()
     on_a_pull_request, on_every_other_event = _other_systems_legs(job)
     assert {leg["os"] for leg in on_a_pull_request} == {"windows-latest"}
     assert {leg["os"] for leg in on_every_other_event} == {"macos-latest", "windows-latest"}
-    assert [leg for leg in on_every_other_event if leg["os"] == "windows-latest"] == on_a_pull_request
+    assert [leg for leg in on_every_other_event if leg["os"] == "windows-latest"] == on_a_pull_request, (
+        "Windows runs the same legs on a pull request and on every other event: change both matrices together"
+    )
     assert job["runs-on"] == "${{ matrix.os }}"
     assert "if" not in job
     assert "continue-on-error" not in job and all("continue-on-error" not in step for step in job["steps"])
@@ -1106,7 +1110,9 @@ def test_each_per_system_test_runs_in_exactly_one_part_on_each_system() -> None:
         for system in {leg["os"] for leg in legs}:
             parts = sorted((leg["part"], leg["parts"]) for leg in legs if leg["os"] == system)
             count = parts[0][1]
-            assert parts == [(part, count) for part in range(1, count + 1)], (system, parts)
+            assert parts == [(part, count) for part in range(1, count + 1)], (
+                f"each system's legs are parts 1..N once each: a missing part loses its tests ({system}: {parts})"
+            )
             assert count in (1, 2), (system, parts)
     assert ("macos-latest", 1, 1) in [(leg["os"], leg["part"], leg["parts"]) for leg in on_every_other_event]
     assert "matrix.parts > 1" in job["name"] and "matrix.part" in step["name"]

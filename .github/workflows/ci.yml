@@ -278,7 +278,8 @@ jobs:
       - name: Benchmark (replayed, deterministic)
         # the gates of this step and the next ask for as many right dates as the published replay of the
         # current code gives on each split, and none dangerously late ("with_land" in the file the without-Land
-        # step below compares with; tests/test_ci_workflow.py checks each gate against it)
+        # gate compares with, in the second part of the job "reproduce"; tests/test_ci_workflow.py checks each
+        # gate against it)
         run: .venv/bin/ordnung eval --min-accuracy 0.98 --max-dangerous-late 0
       - name: Benchmark replayed on the holdout, holdout2 and dev splits (Ordnung alone, no model calls)
         run: |
