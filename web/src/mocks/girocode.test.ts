@@ -101,18 +101,25 @@ describe("“These match the letter” in the demo", () => {
   it("asks to compare with the letter again when a code's amount was changed, then carries the new amount", async () => {
     const srv = server();
     const patch = (id: string, amount: number) => srv.handle("PATCH", `/items/${id}`, new URLSearchParams(), { amount });
-    // a code from the letter's text layer: the new amount isn't the letter's
+    // a code from the letter's text layer, a first payment to its account: the new amount isn't the letter's
     await patch("itm_nk", 190);
     const [asks] = (await detail(srv, "doc_nebenkosten")).girocodes;
-    expect(asks).toMatchObject({ status: "blocked", reason: "check_letter", to_check: ["amount"], message: "No code yet: the amount wasn't found in the letter's text. Compare it with the letter, then confirm." });
+    expect(asks).toMatchObject({
+      status: "blocked",
+      reason: "check_letter",
+      to_check: ["amount"],
+      first_payment: true,
+      message:
+        "No code yet: this is the first payment to this IBAN, and the amount wasn't found in the letter's text. Compare the payee, IBAN, amount and reference with the letter, then confirm.",
+    });
     const values = (asks as Extract<GiroCode, { status: "blocked" }>).values!;
     expect(values).toEqual({ payee: "Wohnbau Musterstadt eG", iban: "DE05123456000004455660", reference: "MV-2025-0412 NK 2025", amount: 190 });
     await confirm(srv, "itm_nk", { ...values, amount: 184.3 }).then((res) => expect(res.status).toBe(409));
     const res = await confirm(srv, "itm_nk", values);
     expect(res.status).toBe(200);
     const ready = (await res.json()) as GiroCode;
-    expect(ready).toEqual({ status: "ready", item_id: "itm_nk", checked: true, payload: (GIROCODES.itm_nk as Extract<GiroCode, { status: "ready" }>).payload.replace("EUR184.3", "EUR190") });
-    // back to the letter's amount: the letter's own code
+    expect(ready).toEqual({ status: "ready", item_id: "itm_nk", checked: true, payload: GIROCODES_CHECKED.itm_nk!.payload.replace("EUR184.3", "EUR190") });
+    // back to the letter's amount: the comparison was at €190, so the first payment asks again
     await patch("itm_nk", 184.3);
     expect((await detail(srv, "doc_nebenkosten")).girocodes).toEqual([GIROCODES.itm_nk]);
 
@@ -136,12 +143,17 @@ describe("“These match the letter” in the demo", () => {
       expect(((await res.json()) as { detail: string }).detail).toBe(detailText);
     };
     await refused("itm_parking", { ...PARKING, amount: 35 }, 409, GIROCODE_REFUSALS.changed);
-    await refused("itm_nk", PARKING, 409, GIROCODE_REFUSALS.nothing_to_compare);
+    await refused("itm_nk", PARKING, 409, GIROCODE_REFUSALS.changed);
     const scam = GIROCODES.itm_scam_demand;
     await refused("itm_scam_demand", PARKING, 409, scam.status === "blocked" ? scam.message : "");
     await refused("itm_bank_decide", PARKING, 409, GIROCODE_REFUSALS.not_a_payment);
     await refused("itm_nope", PARKING, 404, "Unknown to-do.");
     expect(srv.db.state.activity.some((a) => a.kind === "payment.checked")).toBe(false);
+    // a code that is ready already: nothing to compare
+    const nk = GIROCODES.itm_nk;
+    const values = nk.status === "blocked" ? nk.values! : PARKING;
+    expect((await confirm(srv, "itm_nk", values)).status).toBe(200);
+    await refused("itm_nk", values, 409, GIROCODE_REFUSALS.nothing_to_compare);
   });
 
   it("files the scam letter's demand apart in its sender's drawer, never as something to do", async () => {

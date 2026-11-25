@@ -4,7 +4,9 @@
  * letter", "no code" once a payment is marked paid or set aside, and — like the server — a code
  * whose amount was changed by hand asks to compare with the letter again (and then carries the new
  * amount). Which payments were compared, and at which amount, belongs to the mock state, so
- * resetting the demo forgets it.
+ * resetting the demo forgets it. Every code there starts as a first payment to its account (nobody has
+ * compared one yet); no two payments that could get a code share an account, so one comparison never
+ * makes another payment's code ready here.
  */
 import type { GiroCode, GiroCodeBlocked, GiroCodeReady, Item, TransferValues } from "@/api/types";
 import { normalizeIban } from "@/lib/format";
@@ -25,7 +27,7 @@ function comparedIn(db: MockDb): Map<string, number> {
 }
 
 function blocked(item: Item, reason: GiroCodeBlocked["reason"], message: string): GiroCodeBlocked {
-  return { status: "blocked", item_id: item.id, reason, message, to_check: [], values: null };
+  return { status: "blocked", item_id: item.id, reason, message, to_check: [], values: null, first_payment: false };
 }
 
 const sameAmount = (a: number | null | undefined, b: number | null | undefined) => a != null && b != null && a.toFixed(2) === b.toFixed(2);

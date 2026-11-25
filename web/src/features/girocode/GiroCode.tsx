@@ -2,9 +2,11 @@
  * The GiroCode (EPC-QR) of a payment: a QR code any German banking app scans to pre-fill the
  * transfer, which the person then confirms there with their TAN — Ordnung never pays. The server
  * decides whether there is a code (`girocodes` of the letter's detail); this shows the code, or
- * why there is none, or — for details read from a photo, or not found in the letter's text — asks
- * to compare them with the letter first ("These match the letter", or "They don't match": then type
- * them from the letter, or have the letter read again). A refused comparison, or a failed reading,
+ * why there is none, or — for details read from a photo, or not found in the letter's text, and for the
+ * first payment to an account however its details were found — asks to compare them with the letter
+ * first ("These match the letter", or "They don't match": then type them from the letter, or have the
+ * letter read again). A first payment says so, and why: the pay panel's details above the block are
+ * what the person compares with the letter. A refused comparison, or a failed reading,
  * says why in the block itself — a toast would wait behind a phone's sheet or cover the panel's
  * footer. A code without a reference says so (the letter may name one the reading missed), and on a
  * phone or tablet, which can't scan its own screen, the block says what to do instead — on a phone paired with the
@@ -341,6 +343,11 @@ function SaveAsPicture({ payload }: { payload: string }) {
   );
 }
 
+/** Over a first payment's comparison: why it is asked, and that it is asked once per account. */
+export const GIROCODE_FIRST_PAYMENT = "First payment to this account: compare once";
+export const GIROCODE_FIRST_PAYMENT_WHY =
+  "A PDF's text can say something its page doesn't show, so before the first code to an IBAN you check the details with the letter yourself. Later codes to this IBAN skip this step.";
+
 export const GIROCODE_MISMATCH =
   "Then type the payee, IBAN, reference and amount into your banking app yourself, as the paper letter shows them — not the details above, which Ordnung read differently (their copy buttons are off now).";
 /** Over the transfer details while "They don't match" is open. */
@@ -458,7 +465,9 @@ function CompareFirst({
   return (
     <section aria-labelledby={`${id}-h`} data-girocode="check" className={cn("rounded-lg border border-warn/25 bg-warn-soft p-3", className)}>
       <Heading id={`${id}-h`} headingRef={headingRef} icon={ScanLine} tone="text-warn-ink" />
+      {code.first_payment ? <p className="mt-1 text-sm font-semibold leading-relaxed text-warn-ink">{GIROCODE_FIRST_PAYMENT}</p> : null}
       <p className="mt-1 text-sm leading-relaxed text-ink/85 wrap-break-word">{code.message}</p>
+      {code.first_payment ? <p className="mt-1.5 text-xs leading-5 text-muted">{GIROCODE_FIRST_PAYMENT_WHY}</p> : null}
       <div className="mt-2.5 flex flex-wrap gap-2">
         <Button ref={confirmRef} variant="secondary" size="sm" icon={Check} loading={pending} onClick={onConfirm} disabled={!code.values}>
           These match the letter

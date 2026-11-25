@@ -1003,7 +1003,8 @@ async function tour(page, frames) {
   await hold(page, 3100);
 
   mark("8 pay by scan");
-  // a bill's Pay panel, which shows its GiroCode at once (the weekly review's keeps it folded)
+  // a bill's Pay panel: the demo's first payment to this account asks to compare it with the letter once, then the
+  // code shows at once (the weekly review's keeps it folded)
   const statement = await letterIdFor(page.context(), STATEMENT_FILE);
   const pay = () => page.getByRole("main").getByRole("article").first().getByRole("button", { name: /^Pay €/ });
   await load(`${BASE}/documents/${statement}`, pay);
@@ -1018,6 +1019,10 @@ async function tour(page, frames) {
   // button where it is
   await click(page, pay(), { after: 700, clear: BAND + 8 });
   await page.getByRole("region", { name: "GiroCode (EPC-QR)" }).waitFor();
+  await rest(160);
+  await hold(page, 2400);
+  await click(page, page.getByRole("button", { name: "These match the letter" }), { after: 700 });
+  await page.getByRole("img", { name: /^GiroCode: transfer/ }).waitFor();
   await rest(160);
   await hold(page, 3800);
   await close();
@@ -1292,12 +1297,15 @@ async function screenshots(browser) {
   await settle(page);
   await shot(page, "trace");
 
-  // the Pay panel's GiroCode (a bill read from a PDF: no comparison with the paper letter needed)
+  // the Pay panel's GiroCode, once compared with the letter: the first payment to the demo's account asks for that
   const statementId = await letterIdFor(context, STATEMENT_FILE);
   await page.goto(`${BASE}/documents/${statementId}`);
   await settle(page);
   await page.getByRole("main").getByRole("article").first().getByRole("button", { name: /^Pay €/ }).click();
   await page.getByRole("region", { name: "GiroCode (EPC-QR)" }).waitFor();
+  const compare = page.getByRole("button", { name: "These match the letter" });
+  if (await compare.isVisible()) await compare.click();
+  await page.getByRole("img", { name: /^GiroCode: transfer/ }).waitFor();
   await settle(page, 800);
   await shot(page, "pay");
   await page.keyboard.press("Escape");
