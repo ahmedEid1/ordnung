@@ -693,12 +693,22 @@ NO_INK = {
     "an image mask painted over it": _UNSEEN
     + b"\nq 1 1 1 rg 400 0 0 30 60 690 cm BI /W 1 /H 1 /IM true /BPC 1 ID \x00 EI Q",
     "covered inside a form XObject": b"/Inner Do 1 1 1 rg 60 690 400 30 re f",
+    # The cover's own visible line, drawn over it a few points above the covered one, paints inside the
+    # covered characters' boxes: each text object is judged by its own ink.
+    "covered, with a visible line drawn over the cover": _UNSEEN
+    + b"\n1 1 1 rg 60 694 400 18 re f 0 g BT /F1 12 Tf 72 705 Td (Lyra Bau Lyra Bau Lyra Bau) Tj ET",
+    "covered, with a thickly stroked line drawn over the cover": _UNSEEN
+    + b"\n1 1 1 rg 60 690 400 30 re f 0 g BT /F1 12 Tf 2 Tr 1 1 1 RG 6 w 72 716 Td (Muster) Tj ET",
 }
 #: The same line drawn so that it shows: it stays page text.
 INKED = {
     "white on a dark box": b"0 0 0.5 rg 60 690 400 30 re f 1 1 1 rg " + _UNSEEN,
     "mid grey": b"0.6 g " + _UNSEEN,
     "inside a form XObject": b"/Inner Do",
+    "drawn twice in the same place (bold by overprinting)": _UNSEEN + b" " + _UNSEEN,
+    "drawn twice, a third of a point apart": _UNSEEN + b" 1 0 0 1 0.3 0 cm " + _UNSEEN,
+    "with a visible line drawn over it": _UNSEEN
+    + b" BT /F1 12 Tf 72 705 Td (Lyra Bau Lyra Bau Lyra Bau) Tj ET",
 }
 
 
@@ -748,6 +758,20 @@ def test_text_with_ink_on_the_page_stays_page_text(tmp_path: Path, construction:
     [page] = result.pages
     assert "Geheimkonto DE02120300000000202051" in page.text
     assert page.hidden_text == ""
+
+
+def test_overlapping_text_past_the_render_budget_counts_as_unseen(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A page with more overlapping text objects than are rendered on their own fails closed: the rest
+    count as leaving no ink. A text object that overlaps nothing needs no render of its own."""
+    monkeypatch.setattr(text_module, "MAX_SEPARATE_RENDERS", 0)
+    _, result = _read(tmp_path, _raw_pdf(NO_INK["covered, with a visible line drawn over the cover"]))
+    [page] = result.pages
+    assert "Musterfirma GmbH Rechnung 4711" in page.text and "DE02" not in page.text
+    _, result = _read(tmp_path, _raw_pdf(INKED["with a visible line drawn over it"]))
+    [page] = result.pages
+    assert "Geheimkonto DE02120300000000202051" in page.text and page.hidden_text == ""
 
 
 def _read(tmp_path: Path, data: bytes) -> tuple[list[RenderedPage], text_module.PdfText]:
