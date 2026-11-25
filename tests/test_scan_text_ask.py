@@ -3,9 +3,9 @@ every recorded answer replays against ignores it — so keeping that text change
 
 from __future__ import annotations
 
-import shutil
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -17,6 +17,7 @@ from ordnung.assistant.ask import ledger_fingerprint
 from ordnung.assistant.mcp_server import LedgerTools
 from ordnung.config import Paths
 from ordnung.db.store import Store
+from ordnung.demo.loader import copy_snapshot
 from ordnung.ingest import pipeline
 from ordnung.ingest.pipeline import add_file
 from ordnung.llm.base import ClaudeNotInstalled
@@ -72,18 +73,32 @@ async def test_the_ledger_fingerprint_ignores_scanner_text(ctx: AppContext) -> N
     assert ledger_fingerprint(ctx.store) == kept and tools.get_document(doc_id) == shown
 
 
-def test_the_demo_keeps_no_scanner_text_and_its_fingerprint(tmp_path: Path) -> None:
-    """The demo's letters all have text of their own: the catch-up finds nothing to do there, writes no
-    ``scan-text.json`` and leaves Ask's fingerprint as it was."""
+def test_the_demo_keeps_no_scanner_text_and_its_fingerprint(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The demo's letters all have text of their own: the catch-up reads each PDF letter's original, finds
+    nothing to do there, writes no ``scan-text.json`` and leaves Ask's fingerprint as it was."""
     data = tmp_path / "demo"
-    shutil.copytree(DEMO_DB, data)
+    copy_snapshot(DEMO_DB, data)  # as the demo is prepared: the snapshot alone carries no originals
+    read: list[Path] = []
+    original_read = pipeline.read_pdf_text
+
+    def counted(pdf_path: Path, *args: Any) -> Any:
+        read.append(pdf_path)
+        return original_read(pdf_path, *args)
+
+    monkeypatch.setattr(pipeline, "read_pdf_text", counted)
     store = Store.open(Paths(data))
     try:
+        pdfs = [document for document in store.list_documents() if document.mime == "application/pdf"]
+        # an original missing would make the catch-up skip its letter, and this test check nothing
+        assert pdfs and all((store.get_document_file(document.id) or data).is_file() for document in pdfs)
         before = ledger_fingerprint(store)
         assert store.scan_text_missing() == []
         for document in store.list_documents():
             pipeline.catch_up_scan_text(store, document.id)
             assert store.scan_text_pages(document.id) == []
+        assert len(read) == len(pdfs)
         assert store.scan_text_matches("Miete") == set()
         assert ledger_fingerprint(store) == before
     finally:
