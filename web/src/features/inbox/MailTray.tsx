@@ -21,7 +21,7 @@ import { cn, initials, plural } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { useAddLetters } from "@/components/shell/AddLetters";
-import { setUploadToastHidden } from "@/components/shell/UploadCenter";
+import { holdNewUploadToasts, setUploadToastHidden } from "@/components/shell/UploadCenter";
 import { TOUR_TARGETS } from "@/features/tour/steps";
 
 type CardState =
@@ -83,6 +83,29 @@ export function MailTray({
     return () => ids.forEach((id) => setUploadToastHidden(id, false));
   }, [shownHere]);
 
+  /**
+   * The corner's toasts held while letters are being opened (see `open`), each with the documents they became: let go
+   * once those are hidden above (this effect runs after that one), or when the tray goes.
+   */
+  const toastHolds = useRef<{ docIds: string[]; release: () => void }[]>([]);
+  const mounted = useRef(false);
+  useEffect(() => {
+    const shown = new Set(shownHere ? shownHere.split(",") : []);
+    toastHolds.current = toastHolds.current.filter((h) => {
+      if (!h.docIds.every((id) => shown.has(id))) return true;
+      h.release();
+      return false;
+    });
+  });
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      toastHolds.current.forEach((h) => h.release());
+      toastHolds.current = [];
+    };
+  }, []);
+
   // an envelope (or the whole tray) that had focus is gone: focus moves on, never to the page
   const lastFocus = useRef<HTMLElement | null>(null);
   useLayoutEffect(() => {
@@ -126,6 +149,9 @@ export function MailTray({
     if (sectionRef.current?.contains(document.activeElement) && items[0]) anchorOf(items[0].id)?.focus({ preventScroll: true });
     setStarted((s) => ({ ...s, ...Object.fromEntries(items.map((t) => [t.id, null])) }));
     setBatchIds(items.length > 1 ? items.map((t) => t.id) : null);
+    // their progress can arrive before the requests answer: until the tray knows (and hides) the documents they
+    // became, no toast in the corner speaks for them over the tray's own line
+    const release = holdNewUploadToasts();
     const results = await Promise.allSettled(items.map((t) => openMail.mutateAsync(t.id)));
     const opened: Record<string, string> = {};
     const letters: { docId: string; sender: string }[] = [];
@@ -144,6 +170,8 @@ export function MailTray({
       });
       return next;
     });
+    if (letters.length && mounted.current) toastHolds.current.push({ docIds: letters.map((l) => l.docId), release });
+    else release();
     onOpened(letters);
   };
 

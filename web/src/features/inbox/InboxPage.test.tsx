@@ -8,6 +8,7 @@ import { dismissJob, handleServerEvent, __resetEventsForTests } from "@/api/sse"
 import type { DocumentRow, Household, HouseholdFiling, JobProgressEvent } from "@/api/types";
 import { createMockServer, type MockServer } from "@/mocks/server";
 import { AddLettersProvider } from "@/components/shell/AddLetters";
+import { UploadCenter } from "@/components/shell/UploadCenter";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { makeRow } from "@/features/document/fixtures";
 import CASES from "@/features/export/selection-cases.json";
@@ -125,6 +126,9 @@ function spoken(el: HTMLElement): string {
 }
 
 /** A `job.progress` event, as the server sends it while a letter is read. */
+/** The cards in the corner (one per letter, or the group's one card for several). */
+const cards = (corner: HTMLElement) => [...corner.querySelectorAll("[data-upload-row], [data-upload-group]")];
+
 function progress(client: QueryClient, doc_id: string, status: JobProgressEvent["status"], error: string | null = null) {
   act(() =>
     handleServerEvent(client, {
@@ -395,6 +399,76 @@ describe("Inbox", () => {
     expect(said.length).toBeGreaterThan(0);
     for (const line of said) expect(line).toMatch(/^Reading 5 letters/);
     expect(said[said.length - 1]).toBe("Reading 5 letters · 1 done");
+  });
+
+  it("“Read all”: the corner's progress card stays away while the letters are opened, their progress arriving first", async () => {
+    // the demo starts each letter's reading before its "open" request answers: hold the answers, the letters made
+    const mocked = globalThis.fetch;
+    const held: (() => void)[] = [];
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const res = await mocked(input, init);
+      if (String(input).endsWith("/api/demo/mail") && init?.method?.toUpperCase() === "POST") await new Promise<void>((go) => held.push(go));
+      return res;
+    });
+    const { client } = renderWithProviders(
+      <AddLettersProvider>
+        <InboxPage />
+        <UploadCenter />
+      </AddLettersProvider>,
+      { route: "/inbox" },
+    );
+    const tray = await screen.findByRole("region", { name: /New mail, 5 letters/ });
+    const corner = screen.getByRole("list", { name: "Letters being read" });
+    // every text the corner's regions hold: none may be said
+    const said: string[] = [];
+    const watch = new MutationObserver(() => {
+      for (const region of corner.querySelectorAll("[aria-live], [role=status]")) if (region.textContent) said.push(region.textContent);
+    });
+    watch.observe(corner, { subtree: true, childList: true, characterData: true });
+    await userEvent.setup().click(within(tray).getByRole("button", { name: "Read all 5" }));
+    await waitFor(() => expect(held).toHaveLength(5));
+    const docIds = srv.db.state.tray.map((t) => t.doc_id!);
+    // their progress arrives while every request is still out
+    docIds.forEach((id) => progress(client, id, "running"));
+    await act(() => new Promise((r) => setTimeout(r, 30)));
+    expect(cards(corner)).toHaveLength(0);
+    held.forEach((go) => go());
+    await waitFor(() => expect(within(tray).getByText("Reading 5 letters")).toBeInTheDocument());
+    progress(client, docIds[0]!, "done");
+    await act(() => new Promise((r) => setTimeout(r, 30)));
+    watch.disconnect();
+    expect(cards(corner)).toHaveLength(0);
+    expect(said).toEqual([]);
+  });
+
+  it("a letter started from elsewhere while the tray's letters are opened still gets its card once they are", async () => {
+    const mocked = globalThis.fetch;
+    const held: (() => void)[] = [];
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const res = await mocked(input, init);
+      if (String(input).endsWith("/api/demo/mail") && init?.method?.toUpperCase() === "POST") await new Promise<void>((go) => held.push(go));
+      return res;
+    });
+    const { client } = renderWithProviders(
+      <AddLettersProvider>
+        <InboxPage />
+        <UploadCenter />
+      </AddLettersProvider>,
+      { route: "/inbox" },
+    );
+    const tray = await screen.findByRole("region", { name: /New mail, 5 letters/ });
+    const corner = screen.getByRole("list", { name: "Letters being read" });
+    await userEvent.setup().click(within(tray).getByRole("button", { name: "Read all 5" }));
+    await waitFor(() => expect(held).toHaveLength(5));
+    // an upload of the person's own, meanwhile: held with the rest, not lost
+    progress(client, "doc_upload_own", "running");
+    srv.db.state.tray.forEach((t) => progress(client, t.doc_id!, "running"));
+    await act(() => new Promise((r) => setTimeout(r, 30)));
+    expect(cards(corner)).toHaveLength(0);
+    held.forEach((go) => go());
+    // the tray's letters stay in the tray; the upload's card comes, alone
+    await waitFor(() => expect(cards(corner)).toHaveLength(1));
+    expect(cards(corner)[0]).toHaveAttribute("data-upload-row");
   });
 
   it("says each step of a letter read on its own, the first one too (a region added with its words in it is not read)", async () => {
