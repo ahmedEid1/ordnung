@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
+import unicodedata
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -16,6 +18,7 @@ from ordnung import clock
 from ordnung.app_context import SIMULATED_TODAY_KEY, build_context
 from ordnung.config import Paths
 from ordnung.db.store import Store
+from ordnung.display_text import clean_display_text
 from ordnung.ingest.extract import (
     MAX_KNOWN_PARTIES_BYTES,
     MAX_LISTED_NAME,
@@ -470,6 +473,31 @@ def test_unicode_line_separators_and_invisible_spaces_never_reach_a_title() -> N
     reading = parse_extraction(dirty, "")
     assert reading.title == "Ihre Nebenkosten abrechnung"
     assert reading.summary == "Line one\nline two\nlinethree"
+
+
+#: Every format character (Unicode category Cf) Python knows, but the two a script needs.
+_FORMATS = "".join(
+    ch
+    for ch in map(chr, range(sys.maxunicode + 1))
+    if unicodedata.category(ch) == "Cf" and ch not in "\u200c\u200d"
+)
+
+
+def test_no_invisible_format_character_reaches_a_title() -> None:
+    """Every format character goes (soft hyphen, bidirectional marks, overrides and isolates, invisible
+    operators, tags, interlinear annotation …), not a hand-picked list; the zero-width non-joiner and
+    joiner stay, since Persian spelling and emoji sequences need them. Line breaks and tabs keep the rules
+    above."""
+    assert len(_FORMATS) > 150 and {"\u00ad", "\u202e", "\u2066", "\u2064", "\U000e0041"} <= set(_FORMATS)
+    dirty = {
+        **_STATEMENT,
+        "title": f"Neben{_FORMATS}kosten\tmi\u200cl\u200dk",
+        "summary": f"Line{_FORMATS} one\nline two",
+    }
+    reading = parse_extraction(dirty, "")
+    assert reading.title == "Nebenkosten mi\u200cl\u200dk"
+    assert reading.summary == "Line one\nline two"
+    assert clean_display_text("\u200d\U0001f468\u200d\U0001f467") == "\u200d\U0001f468\u200d\U0001f467"
 
 
 NO_RENT_SERIES_CASES = [
