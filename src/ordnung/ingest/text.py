@@ -470,9 +470,12 @@ def _page_chars(document: pdfium.PdfDocument, number: int) -> dict[str, list[_Dr
     glyph's height and width (a clip leaves no sliver of it either, :func:`_spans`). Ink in its box can
     also be another text object's, drawn over a cover that hides this one. So a character whose box
     holds ink only where another text object can paint too is judged by its own text object alone: the
-    page and its text alone are rendered once more without just that object. Objects that overlap no
-    other text object (a normal letter's) cost no extra render, and objects that can't paint in each
-    other's characters' boxes are left out together, in one render (:func:`_batches`)."""
+    page and its text alone are rendered once more without just that object; its letters and digits must
+    then span their boxes with that object's own ink, or with the ink the page really shows (fake bold:
+    two copies a hair apart), never with ink only another text object draws by itself (a decoy under the
+    same cover). Objects that overlap no other text object (a normal letter's) cost no extra render, and
+    objects that can't paint in each other's characters' boxes are left out together, in one render
+    (:func:`_batches`)."""
     page = document[number - 1]
     try:
         width, height = page.get_size()
@@ -531,7 +534,7 @@ def _page_chars(document: pdfium.PdfDocument, number: int) -> dict[str, list[_Dr
                     inked[index] = (
                         box is not None
                         and _shows(own_shown, own_expected, box)
-                        and _spans(own_ink, box, drawn.text)
+                        and (_spans(_mask(own_expected), box, drawn.text) or _spans(ink, box, drawn.text))
                     )
     chars: dict[str, list[_DrawnChar]] = {}
     for (drawn, _, _), value in zip(placed, inked, strict=True):

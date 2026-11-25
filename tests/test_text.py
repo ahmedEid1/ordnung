@@ -706,6 +706,14 @@ NO_INK = {
     + _UNSEEN
     + b"\n0 0 0 rg 60 700.7 400 30 re f",
     "clipped to a 0.7 pt strip at the baseline": b"q 60 690 400 10.7 re W n " + _UNSEEN + b" Q",
+    # A second text object in the same place, whose glyphs draw ink but read as spaces (F2), covered all
+    # but the same strip: the clipped line is judged by its own ink and the page's, never by the ink the
+    # covered decoy draws by itself.
+    "clipped to a 0.7 pt strip, over a covered decoy that reads as spaces": b"q 60 690 400 10.7 re W n "
+    + _UNSEEN
+    + b" Q\nBT /F2 12 Tf 72 700 Td ("
+    + b" " * 36
+    + b") Tj ET\n1 1 1 rg 60 700.7 400 30 re f",
 }
 #: The same line drawn so that it shows: it stays page text.
 INKED = {
@@ -731,21 +739,33 @@ PAGES = {
 }
 
 
+#: A ToUnicode CMap that reads the space's code as a space (F2 draws an "M" for it).
+_SPACE_CMAP = (
+    b"/CIDInit /ProcSet findresource begin 12 dict begin begincmap /CMapName /Spaces def 1"
+    b" begincodespacerange <00> <FF> endcodespacerange 1 beginbfchar <20> <0020> endbfchar endcmap"
+    b" CMapName currentdict /CMap defineresource pop end end"
+)
+
+
 def _raw_pdf(content: bytes, page: bytes = PAGES["upright"]) -> bytes:
-    """A one-page PDF with Helvetica, an optional content group that is off, a fully transparent graphics
-    state and a form XObject drawing the unseen line."""
+    """A one-page PDF with Helvetica (F1, and F2 that draws an "M" for a space and reads it as a space), an
+    optional content group that is off, a fully transparent graphics state and a form XObject drawing the
+    unseen line."""
     stream = _SHOWN + content + b"\n"
     objects = [
         b"<< /Type /Catalog /Pages 2 0 R /OCProperties << /OCGs [6 0 R] /D << /OFF [6 0 R] >> >> >>",
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
         b"<< /Type /Page /Parent 2 0 R " + page + b" /Contents 4 0 R /Resources << /Font << /F1 5 0 R"
-        b" >> /XObject << /Inner 7 0 R >> /ExtGState << /Clear << /ca 0 /CA 0 >> >> /Properties << /off 6 0 R"
+        b" /F2 8 0 R >> /XObject << /Inner 7 0 R >> /ExtGState << /Clear << /ca 0 /CA 0 >> >> /Properties << /off 6 0 R"
         b" >> >> >>",
         b"<< /Length %d >>\nstream\n" % len(stream) + stream + b"\nendstream",
         b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
         b"<< /Type /OCG /Name (Musterstadt) >>",
         b"<< /Type /XObject /Subtype /Form /BBox [0 0 595 842] /Resources << /Font << /F1 5 0 R >> >> "
         b"/Length %d >>\nstream\n" % len(_UNSEEN) + _UNSEEN + b"\nendstream",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding << /Type /Encoding /Differences [32 /M]"
+        b" >> /ToUnicode 9 0 R >>",
+        b"<< /Length %d >>\nstream\n" % len(_SPACE_CMAP) + _SPACE_CMAP + b"\nendstream",
     ]
     out = bytearray(b"%PDF-1.7\n")
     offsets = []
@@ -765,12 +785,14 @@ def test_text_without_ink_on_the_page_is_hidden(tmp_path: Path, construction: st
     """Adversarial: text the rendered page never shows (covered, transparent, clipped, in a layer that is
     off, black on black, under an image), or shows only a sliver of, is hidden text, a scam sign, never
     the page text a quote or a GiroCode value is grounded in; the letter's visible line stays page text.
-    However the page is turned or placed: the two readers' characters are matched in one space."""
+    However the page is turned or placed: the two readers' characters are matched in one space. Spaces
+    don't count: an IBAN is read across them."""
     _, result = _read(tmp_path, _raw_pdf(NO_INK[construction], PAGES[page]))
     [page] = result.pages
     assert page.has_text_layer and "Musterfirma GmbH Rechnung 4711" in page.text
     assert "Geheimkonto" not in page.text and all("DE02" not in word.text for word in page.words)
-    assert "Geheimkonto DE02120300000000202051" in page.hidden_text
+    assert not any(part in "".join(page.text.split()) for part in ("DE02", "202051"))
+    assert "GeheimkontoDE02120300000000202051" in "".join(page.hidden_text.split())
 
 
 @pytest.mark.parametrize("construction", list(INKED))
