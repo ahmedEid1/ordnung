@@ -7,6 +7,32 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ### Changed
 
+- **The first minutes with Ordnung have fewer stumbles.** Someone followed the README from an empty computer, by
+  the book, and what tripped them is fixed:
+  - **No address that leads nowhere.** The README and the guide named `http://127.0.0.1:8765`, which only shows
+    *Please open Ordnung from its link*. They now say what the commands do: open your browser, signed in. The
+    README's install block holds the commands alone and fits a phone's width, and the guide's Updating names uv
+    first.
+  - **Letters that wait for Claude say so.** With no Claude installed they stood under *Being read* with a moving
+    stepper, beside a banner that said nothing could be read. They are grouped under *Waiting for Claude*, and
+    the progress card says *3 letters waiting for Claude*.
+  - **A Claude that fails says how to check it.** When Claude Code ends without an answer, the letter says to run
+    `ordnung doctor --probe` (the plain `ordnung doctor` does not find such a Claude) and links to Settings →
+    Claude connection, beside *Try again*; `ordnung add` says it once. Its footer no longer says in the past tense
+    that the letter was sent to Anthropic: it may have reached Anthropic.
+  - **The demo tour.** The docked card's link stays inside the card. On a phone the card folds back to its bar
+    once its page opens, so it no longer covers the letter it just opened, and *More to try* stays folded until
+    asked for. A tour you ended part of the way through can be resumed at its step from Settings → Data and the
+    Demo badge. The letter the tour opens gives its title the keyboard focus, which had fallen to the top of the
+    page.
+  - **One name per letter**, in the list, the progress card, the breadcrumb and the browser tab. The demo's tabs
+    say *Ordnung demo*, so they are told apart from your own Ordnung's. An empty file is left out before *Add 2
+    letters?*, and a Word file's message says to save it as a PDF first.
+  - **The command line.** `--help` no longer shows Python types (`--version <bool>`, `<list[Path]>`), and
+    `ordnung eval`'s help no longer points to options an installed copy lacks. A mistyped `--data-dir` no longer
+    leaves a new data folder behind: `serve` on a busy port, `brief` and `sync status` create nothing. `ordnung
+    brief` on a folder without an Ordnung database now says so and exits 1, also on a computer where Ordnung has
+    never run, where it used to say *All clear*.
 - **The README is shorter and in the order a visitor asks.** Under the animation it opens with one worked example:
   a sentence of the demo's tax assessment and the steps from it to the date, each with its law. Then come three
   ways to try it and the install commands, what it does in four pictures, privacy and the limitations. How it
