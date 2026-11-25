@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import bisect
 import email
 import email.parser
 import email.policy
@@ -17,6 +18,10 @@ from html.parser import HTMLParser
 from typing import Any, NamedTuple
 
 from PIL import ImageColor
+
+from ordnung.ingest.amounts import amount_matches
+from ordnung.ingest.normalize import fold_punctuation
+from ordnung.money.iban import MAX_LENGTH, MIN_LENGTH, inspect_iban
 
 EMAIL_HEADING_CHARS = 200
 
@@ -75,34 +80,61 @@ def _email_body(message: EmailMessage) -> tuple[str, str]:
     return _unshown_lines(content, shown)
 
 
-#: An IBAN as printed (country, check digits, groups with optional spaces) and an amount with cents
-#: ("1.234,56", "49,99", "12.50"); spaces, dots and commas inside are compared away.
-_IBAN_IN_TEXT = re.compile(r"\b[A-Z]{2}[0-9]{2}(?:[ \u00a0]?[A-Z0-9]){11,30}\b")
-_AMOUNT_IN_TEXT = re.compile(r"(?<![\d.,])\d{1,3}(?:[.\u00a0 ]?\d{3})*[.,]\d{2}(?!\d)")
-_COMPARED_AWAY = re.compile(r"[\s\u00a0.,\-]")
-
-
-def _compact(text: str) -> str:
-    return _COMPARED_AWAY.sub("", text).upper()
-
-
-def _amounts(text: str) -> set[str]:
-    return {_compact(amount) for amount in _AMOUNT_IN_TEXT.findall(text)}
+#: Words as the GiroCode gate reads a printed IBAN: runs of letters and digits, whatever stands between.
+_WORDS = re.compile(r"[^\W_]+")
 
 
 def _unshown_lines(plain: str, shown: str) -> tuple[str, str]:
     """``plain`` without the lines that name an IBAN or amount ``shown`` (the HTML part's visible text)
-    doesn't, and those lines apart (as hidden text). An IBAN counts as shown anywhere in ``shown``
-    (however its groups are spaced), an amount only as the same amount."""
-    seen, seen_amounts = _compact(shown), _amounts(shown)
-    kept: list[str] = []
-    unshown: list[str] = []
-    for line in plain.splitlines(keepends=True):
-        missing = any(_compact(iban) not in seen for iban in _IBAN_IN_TEXT.findall(line.upper())) or not (
-            _amounts(line) <= seen_amounts
-        )
-        (unshown if missing else kept).append(line)
-    return "".join(kept), "".join(unshown).strip()
+    doesn't, and those lines apart (as hidden text).
+
+    Both are found with what grounds a value on the text: an IBAN is any valid IBAN that a run of whole
+    words spells (dashes, tabs, line breaks or anything else between its groups, as the GiroCode gate
+    joins them), and counts as shown when the HTML part's letters and digits hold it; an amount is what
+    :func:`~ordnung.ingest.amounts.amount_matches` reads (``1.200 EUR``, ``99,- €`` included), and counts
+    as shown only as the same amount. A value spread over lines takes all of them out. What is left is
+    checked again, since taking a line out can join the lines around it into a new value."""
+    seen = "".join(_WORDS.findall(fold_punctuation(shown).upper()))
+    seen_amounts = {match.value for match in amount_matches(shown)}
+    lines = [fold_punctuation(line) for line in plain.splitlines(keepends=True)]
+    originals = plain.splitlines(keepends=True)
+    kept = list(range(len(lines)))
+    unshown: set[int] = set()
+    while True:
+        text = "".join(lines[index] for index in kept)
+        starts = list(itertools.accumulate((len(lines[index]) for index in kept), initial=0))
+        spans = [(start, end) for iban, start, end in _ibans(text) if iban not in seen]
+        spans += [(m.start, m.end) for m in amount_matches(text) if m.value not in seen_amounts]
+        out = {
+            kept[position]
+            for start, end in spans
+            for position in range(bisect.bisect_right(starts, start) - 1, bisect.bisect_left(starts, end))
+        }
+        if not out:
+            break
+        unshown |= out
+        kept = [index for index in kept if index not in out]
+    return "".join(originals[index] for index in kept), "".join(
+        originals[index] for index in sorted(unshown)
+    ).strip()
+
+
+def _ibans(text: str) -> Iterator[tuple[str, int, int]]:
+    """Every valid IBAN that a run of whole words of ``text`` spells, with where the run starts and
+    ends."""
+    words = list(_WORDS.finditer(text))  # spans in ``text``: an upper-case letter can be longer
+    for first, word in enumerate(words):
+        if not word.group()[:1].isascii() or not word.group()[:1].isalpha():
+            continue
+        joined = ""
+        for last in range(first, len(words)):
+            joined += words[last].group().upper()
+            if len(joined) > MAX_LENGTH:
+                break
+            if len(joined) >= 4 and not (joined[:2].isalpha() and joined[2:4].isdecimal()):
+                break
+            if len(joined) >= MIN_LENGTH and inspect_iban(joined).valid:
+                yield joined, word.start(), words[last].end()
 
 
 #: The labels that name ISO-8859-1. Browsers and mail programs read text so labelled as Windows-1252 (WHATWG

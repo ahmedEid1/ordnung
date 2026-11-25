@@ -500,6 +500,11 @@ SHOWN_IBAN = iban("DE", "100100100123456789")
 OTHER_IBAN = iban("DE", "500500500444555666")
 
 
+def _spaced(value: str, mark: str) -> str:
+    """``value`` in groups of four joined by ``mark``."""
+    return mark.join(value[i : i + 4] for i in range(0, len(value), 4))
+
+
 def _alternatives(plain: str, html: str) -> bytes:
     message = EmailMessage()
     message["From"] = "rechnung@stadtwerke-musterstadt.example"
@@ -520,8 +525,37 @@ def _alternatives(plain: str, html: str) -> bytes:
             f"Bitte überweisen Sie 149,99 EUR auf IBAN {SHOWN_IBAN}.",
             f"Bitte überweisen Sie 49,99 EUR auf IBAN {SHOWN_IBAN}.",
         ),
+        # The grounding joins an IBAN's groups across any marks and line breaks, and reads whole amounts
+        # next to a currency: so does the comparison.
+        (f"IBAN {_spaced(OTHER_IBAN, '-')}", f"Bitte überweisen Sie 49,99 EUR auf IBAN {SHOWN_IBAN}."),
+        (f"IBAN {_spaced(OTHER_IBAN, '  ')}", f"Bitte überweisen Sie 49,99 EUR auf IBAN {SHOWN_IBAN}."),
+        (f"IBAN {_spaced(OTHER_IBAN, chr(9))}", f"Bitte überweisen Sie 49,99 EUR auf IBAN {SHOWN_IBAN}."),
+        (
+            f"IBAN {OTHER_IBAN[:12]}\n{OTHER_IBAN[12:]}",
+            f"Bitte überweisen Sie 49,99 EUR auf IBAN {SHOWN_IBAN}.",
+        ),
+        ("Bitte überweisen Sie 1.200 EUR.", f"Bitte überweisen Sie 12,00 EUR auf IBAN {SHOWN_IBAN}."),
+        (
+            "Bitte überweisen Sie EUR 99,- bis Monatsende.",
+            f"Bitte überweisen Sie 12,00 EUR auf IBAN {SHOWN_IBAN}.",
+        ),
+        # Taking the amount's line out would join the lines around it into another IBAN.
+        (
+            f"IBAN {OTHER_IBAN[:12]}\nGebühr 99,00 EUR\n{OTHER_IBAN[12:]}",
+            f"Bitte überweisen Sie 12,00 EUR auf IBAN {SHOWN_IBAN}.",
+        ),
     ],
-    ids=["another-iban", "another-amount"],
+    ids=[
+        "another-iban",
+        "another-amount",
+        "dashed-iban",
+        "double-spaced-iban",
+        "tabbed-iban",
+        "iban-over-two-lines",
+        "whole-amount",
+        "amount-with-a-dash",
+        "iban-joined-by-taking-a-line-out",
+    ],
 )
 def test_alternatives_that_name_different_ibans_are_a_scam_sign(plain_line: str, html_line: str) -> None:
     """Adversarial: the plain part Ordnung reads names another IBAN or amount than the HTML part the
@@ -540,9 +574,15 @@ def test_alternatives_that_name_different_ibans_are_a_scam_sign(plain_line: str,
 def test_alternatives_that_name_the_same_values_are_read_as_before() -> None:
     """The same IBAN and amount, however the HTML part spaces or formats them: the plain part is the text,
     nothing is hidden."""
-    grouped = " ".join(SHOWN_IBAN[i : i + 4] for i in range(0, len(SHOWN_IBAN), 4))
-    plain = f"Sehr geehrte Frau Rivera,\nBitte überweisen Sie 1.249,99 EUR auf IBAN {SHOWN_IBAN}.\n"
-    html = f"<p>Bitte überweisen Sie <b>1.249,99</b>&nbsp;EUR auf IBAN <span>{grouped}</span>.</p>"
+    grouped = _spaced(SHOWN_IBAN, " ")
+    plain = (
+        f"Sehr geehrte Frau Rivera,\nBitte überweisen Sie 1.249,99 EUR auf IBAN {SHOWN_IBAN}.\n"
+        f"Konto: {_spaced(SHOWN_IBAN, '-')}, Mahngebühr 5,- EUR\n"
+    )
+    html = (
+        f"<p>Bitte überweisen Sie <b>1.249,99</b>&nbsp;EUR auf IBAN <span>{grouped}</span>.</p>"
+        "<p>Mahngebühr 5,00 EUR</p>"
+    )
     document = text_document(_alternatives(plain, html), "message/rfc822")
-    assert f"1.249,99 EUR auf IBAN {SHOWN_IBAN}" in document.text
+    assert f"1.249,99 EUR auf IBAN {SHOWN_IBAN}" in document.text and "Mahngebühr 5,- EUR" in document.text
     assert document.hidden_text == ""
