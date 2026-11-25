@@ -1482,7 +1482,11 @@ class Store:
         there, whatever a restored or pulled database says."""
         path = Path(stored)
         path = path if path.is_absolute() else self.data_dir / path
-        return path if path.resolve().is_relative_to(self.data_dir.resolve()) else None
+        try:
+            resolved = path.resolve()
+        except (OSError, RuntimeError):  # a loop of links (RuntimeError before Python 3.13) leads nowhere
+            return None
+        return path if resolved.is_relative_to(self.data_dir.resolve()) else None
 
     def discard_upload(self, sha256: str, doc_id: str, original: Path) -> bool:
         """Remove what an upload left when its document was never stored (it was refused while its pages
