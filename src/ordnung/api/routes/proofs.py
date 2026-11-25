@@ -131,10 +131,11 @@ async def update_proof(
 async def remove_proof(
     draft_id: str, proof_id: str, ctx: CtxDep, today: TodayDep, response: Response
 ) -> ProofOverview:
-    """Remove a proof; its file is deleted for good unless another proof uses it (and the browser is
-    then told to empty its cache, as for a letter deleted for good)."""
+    """Remove a proof; its file is deleted for good unless another proof uses it."""
     if await asyncio.to_thread(sent.remove_proof, ctx.store, draft_id, proof_id):
-        response.headers.update(CLEAR_CACHE)
+        response.headers.update(
+            CLEAR_CACHE
+        )  # deleted for good: as for a letter, the browser empties its cache
     await ledger_changed(ctx)
     return sent.overview(ctx.store, draft_id, today)
 
