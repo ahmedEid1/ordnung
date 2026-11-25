@@ -212,8 +212,13 @@ def _section(text: str, heading: str) -> str:
 
 
 def _command_row(command: str) -> str:
-    """The row of the guide's table of commands (in *Install and start*) that says what ``command`` does."""
-    (row,) = [line for line in _guide().splitlines() if line.startswith(f"| `{command}` | ")]
+    """The bullet of the guide's list of commands (in *Install and start*) that says what ``command`` does,
+    flattened."""
+    (row,) = [
+        part
+        for part in _flat(_install_part("Install and start")).split(" - ")
+        if part.startswith(f"`{command}` — ")
+    ]
     return row
 
 
@@ -358,9 +363,11 @@ def test_the_numbers_without_the_sender_s_land_match_their_results_file() -> Non
 
     christmas = (objection_ends("BW") - objection_ends(None)).days
     assert christmas > days[-1]
+    # the bullet leads with what happens until the Land is set, then says by how much
+    lead = "Until you tell Ordnung which state (Land) an authority is in, its dates can come out early, never late."
+    assert lead in limitation
     assert (
-        f"a date can come out a few days early ({days[0]}–{days[-1]} on the benchmark's letters, up to {christmas} "
-        "around Christmas), never late"
+        f"({days[0]}–{days[-1]} days early on the benchmark's letters, up to {christmas} around Christmas)"
     ) in limitation
     assert "[evaluation report](evals.md#6-results) gives its numbers without it" in limitation
     # deadline-rules.md section 5 and the history page, which renders the file itself
@@ -2336,8 +2343,7 @@ def _spec() -> str:
 def _moving_limitation() -> str:
     """The guide's Limitations bullet about the moving checklist."""
     (bullet,) = [part for part in _limitations().split(" - ") if "moving checklist" in part]
-    # without its bold label (**Moving checklist.**): the sentence that follows says it
-    return re.sub(r"^\*\*[^*]+\*\* ", "", bullet)
+    return bullet
 
 
 def test_the_guide_s_limitations_say_what_the_tax_year_export_scans_and_moving_checklist_can_t_do() -> None:
@@ -2638,12 +2644,13 @@ def test_the_guide_says_how_to_open_ordnung_without_a_terminal() -> None:
         "without a terminal"
     ) in also
     commands = _section(_guide(), "## Install and run").split("```bash", 1)[1].split("```", 1)[0]
-    assert re.search(r"^ordnung serve +# the web app: opens your browser, signed in$", commands, re.M)
+    # the comment stands on its own line above its command, so it fits a phone's width
+    assert re.search(r"^# opens your browser, signed in\nordnung serve$", commands, re.M)
     assert _command_row("ordnung serve").startswith(
-        "| `ordnung serve` | The web app: opens your browser, signed in |"
+        "`ordnung serve` — the web app: opens your browser, signed in"
     )
     assert _command_row("ordnung shortcut").startswith(
-        "| `ordnung shortcut` | Ordnung in your app menu: opens it signed in, no terminal needed"
+        "`ordnung shortcut` — Ordnung in your app menu: opens it signed in, no terminal needed"
     )
     text = _without_a_terminal()
     for words in (

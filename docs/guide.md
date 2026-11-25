@@ -9,15 +9,16 @@ and run `ordnung demo`.
 
 - **Try it free:** the online demo needs nothing installed; `ordnung demo` opens a sample life on your computer
   and needs no Claude account ([the demo](#the-demo)).
-- **Install with one command,** with uv or pipx; reading your own letters needs Claude Code and a paid Claude plan
-  or an Anthropic Console account ([what you need](#what-you-need)).
-- **Open it:** `ordnung serve` opens the web app in your browser, signed in; `ordnung shortcut` puts it in your
-  app menu ([without a terminal](#without-a-terminal)).
+- **Install with one command,** with uv or pipx; `ordnung serve` then opens the web app in your browser, signed in,
+  and `ordnung shortcut` puts it in your app menu ([install and start](#install-and-start)).
+- **Ordnung has no server and no account:** your letters are kept on your computer, and reading one sends it to
+  Anthropic through your own Claude Code, which needs a paid Claude plan or an Anthropic Console account
+  ([what goes where](privacy.md), [what you need](#what-you-need)).
 - **Phone and second computer, both optional:** a paired phone uses Ordnung over your home Wi-Fi, and two
   computers hand it over through a folder you already sync ([phone](#on-your-phone),
   [other computer](#on-your-other-computer)).
-- **Update:** stop Ordnung, back up if you like, run `uv tool upgrade ordnung`, then `ordnung doctor`
-  ([updating](#updating)).
+- **Update:** stop Ordnung, back up (the only way back), run `uv tool upgrade ordnung` (pipx:
+  `pipx reinstall ordnung`), then `ordnung doctor` ([updating](#updating)).
 - **Know the limits:** built for Germany, not legal advice, and the app's own text is in English
   ([limitations](#limitations)).
 
@@ -38,7 +39,7 @@ and run `ordnung demo`.
 
 | For | You need |
 |---|---|
-| Ordnung | Git, [uv](https://docs.astral.sh/uv/) or pipx, and Python 3.11 or newer (CI tests 3.11–3.14) |
+| Ordnung | Linux, macOS or Windows (CI installs and checks it on all three); Git, [uv](https://docs.astral.sh/uv/) or pipx, and Python 3.11 or newer (CI tests 3.11–3.14) |
 | Reading your own letters | Claude Code 2.1.0 or newer, signed in with a paid Claude plan (Pro, Max, Team or Enterprise) or an Anthropic Console account; the free Claude plan doesn't include Claude Code |
 | Finding photos by their words | Optional: Tesseract ([words in photos](#words-in-photos-optional)) |
 
@@ -76,23 +77,28 @@ real login, and phone access and sync between real devices are not tested on mac
 
 ```bash
 uv tool install git+https://github.com/ahmedEid1/ordnung
-# or: pipx install git+https://github.com/ahmedEid1/ordnung
-ordnung doctor   # is everything ready?
-ordnung serve    # the web app: opens your browser, signed in
+# or, with pipx instead:
+# pipx install git+https://github.com/ahmedEid1/ordnung
+
+# is everything ready?
+ordnung doctor
+# opens your browser, signed in
+ordnung serve
 ```
 
-The built web app is included. Then, as you need them:
+The built web app is included. Your letters and database live in your data folder
+([where](privacy.md#at-a-glance)); `--data-dir` or `ORDNUNG_HOME` picks another one. Then, as you need them:
 
-| Command | What it does |
-|---|---|
-| `ordnung doctor` | Checks Claude, search, fonts, text in pictures, your data folder and database, your last backup, disk encryption (--probe: also one tiny live call to Claude) |
-| `ordnung serve` | The web app: opens your browser, signed in |
-| `ordnung shortcut` | Ordnung in your app menu: opens it signed in, no terminal needed ([more](#without-a-terminal)) |
-| `ordnung add ~/Downloads/*.pdf` | Adds letters; or drag files into the app |
-| `ordnung brief` | Today's note in the terminal |
-| `ordnung ask "When can I cancel my phone contract?"` | Answers a question about your letters |
-| `ordnung autostart enable` | Starts Ordnung at login; then switch on the morning notification in Settings → Reminders |
-| `ordnung backup --to /media/usb` | Everything in one encrypted file; `ordnung restore FILE` brings it back |
+- `ordnung doctor` — checks Claude, search, fonts, text in pictures, your data folder and database, your last backup,
+  disk encryption (--probe: also one tiny live call to Claude)
+- `ordnung serve` — the web app: opens your browser, signed in
+- `ordnung shortcut` — Ordnung in your app menu: opens it signed in, no terminal needed ([more](#without-a-terminal))
+- `ordnung add ~/Downloads/*.pdf` — adds letters; or drag files into the app
+- `ordnung brief` — today's note in the terminal
+- `ordnung ask "When can I cancel my phone contract?"` — answers a question about your letters
+- `ordnung autostart enable` — starts Ordnung at login; then switch on the morning notification in Settings →
+  Reminders
+- `ordnung backup --to /media/usb` — everything in one encrypted file; `ordnung restore FILE` brings it back
 
 `ordnung add` exits with 1 when a letter couldn't be read, or waits for Claude: to be installed, signed in or
 updated, or for its usage limit to pass (it is stored and read once Claude is ready).
@@ -116,8 +122,13 @@ login, `ordnung autostart disable` prints how to stop it and `ordnung autostart 
 **Then back up, update and check:**
 
 ```bash
-ordnung backup --to /media/usb   # optional: the way back
-uv tool upgrade ordnung          # installed with pipx: pipx reinstall ordnung
+# optional: the way back
+ordnung backup --to /media/usb
+# installed with uv:
+uv tool upgrade ordnung
+# or, installed with pipx:
+pipx reinstall ordnung
+# then check
 ordnung doctor
 ```
 
@@ -253,9 +264,13 @@ no data folder and nothing personal: `compute_deadline` (what a letter says → 
 steps and citations), `german_holidays`, `add_working_days` and `check_iban`.
 
 ```bash
-ordnung mcp install --client claude-desktop           # prints the entry and where it goes
-ordnung mcp install --client claude-desktop --write   # merges it in (backup first); restart Claude
-ordnung mcp install --client claude-code              # the `claude mcp add` command
+# prints the entry, where it goes
+ordnung mcp install --client claude-desktop
+# merges it in (backup first),
+# then restart Claude
+ordnung mcp install --client claude-desktop --write
+# the `claude mcp add` command
+ordnung mcp install --client claude-code
 ```
 
 Then ask Claude about a letter; it reads, Ordnung's engine computes. `--with-ledger` also gives the
@@ -269,17 +284,26 @@ packages ask for; `nvm use` picks the one in `.nvmrc`). [CONTRIBUTING.md](../CON
 CI runs and how to send a change:
 
 ```bash
-make install     # Python venv (the versions CI pins in constraints.txt) + web dependencies
-make check       # lint, types, tests
-make serve       # backend; `make web-dev` for the Vite dev server
-make e2e         # Playwright over the demo and the real app with a fake Claude
-make capture     # these screenshots, the tour video, its WebP and the GIF (needs ffmpeg)
+# Python venv, web dependencies
+make install
+# lint, types, tests
+make check
+# the backend
+make serve
+# browser tests (Playwright)
+make e2e
+# screenshots and the tour video
+make capture
 ```
 
-`make e2e` installs Playwright's Chromium first (`make browser`). `make check` runs one check after another: lint
-and types, the backend's tests as a backend leg of CI runs them, the slow tests, then the web app's tests.
-CONTRIBUTING's [Fast loop](../CONTRIBUTING.md#fast-loop) says how long these take in CI, and how to run only the
-tests near your change.
+`make install` takes the versions CI pins in `constraints.txt`. `make web-dev` starts the Vite dev server.
+`make e2e` runs Playwright over the demo and the real app with a fake Claude, and installs Playwright's Chromium
+first (`make browser`). `make capture` makes these screenshots, the tour video, its WebP and the GIF (it needs
+ffmpeg).
+
+`make check` runs one check after another: lint and types, the backend's tests as a backend leg of CI runs them, the
+slow tests, then the web app's tests. CONTRIBUTING's [Fast loop](../CONTRIBUTING.md#fast-loop) says how long these
+take in CI, and how to run only the tests near your change.
 
 <a id="a-tour"></a>
 
@@ -390,19 +414,18 @@ Every limit Ordnung has, by topic: [dates and the law](#dates-and-the-law) ·
 
 ### Dates and the law
 
-- **Built for Germany.** The rules engine knows German deadlines and holidays; letters from other countries are read
+- **Built for Germany:** the rules engine knows German deadlines and holidays; letters from other countries are read
   and filed, but their dates are taken as written.
-- **Not legal advice.** The rules were researched against statutes and case law and checked against worked examples,
+- **Not legal advice:** the rules were researched against statutes and case law and checked against worked examples,
   but not reviewed by a lawyer. Court deadlines always come with a "get advice" warning, and in doubt Ordnung picks
-  the earliest plausible date.
-- **A sender's state (Land) counts only once you set it.** Ordnung knows which German state (Land) a sender is in only
-  once you set it for that sender (*Which state is this sender in?* in its drawer, also offered under a date's *Why
-  this date?*) or answer *Is X in Bavaria?*, which Ordnung asks from the postcode on their letter: in their details,
-  and on the letter and among Today's Ideas when one of their dates may depend on it. Until then, for letters from a
-  Land authority it uses nationwide public holidays and the 3-day delivery rule at lower confidence, so a date can
-  come out a few days early (1–3 on the benchmark's letters, up to 5 around Christmas), never late; an e-mailed
-  decision is counted from the day it was sent until then, so its date can be several days early, more around
-  holidays.
+  the earliest plausible date. [Every rule and its source](deadline-rules.md).
+- **Until you tell Ordnung which state (Land) an authority is in, its dates can come out early, never late.** For a Land
+  authority's letters it then uses nationwide public holidays and the 3-day delivery rule at lower confidence (1–3 days
+  early on the benchmark's letters, up to 5 around Christmas), and it counts an e-mailed decision from the day it was
+  sent, so that date can be several days early, more around holidays. Set the state for the sender under *Which state is
+  this sender in?* in its drawer (also offered under a date's *Why this date?*), or answer *Is X in Bavaria?*, which
+  Ordnung asks from the postcode on their letter: in their details, and on the letter and among Today's Ideas when one
+  of their dates may depend on it.
 
   <details><summary>Each state's rule once you set it, and when Ordnung asks no question</summary>
 
@@ -427,7 +450,7 @@ Every limit Ordnung has, by topic: [dates and the law](#dates-and-the-law) ·
 
   </details>
 
-- **Recurring payments need a day.** A recurring payment is dated only when its letter gives a first date, a working
+- A recurring payment is dated only when its letter gives a first date, a working
   day (also the last, "am letzten Bankarbeitstag") or a day of the month ("zum 1. eines Monats", counted from the
   letter's date or the contract's start) — except a lease's own monthly rent, which is due by the law's 3rd working
   day (§ 556b Abs. 1 BGB), from the month the tenancy starts at the earliest, one confidence level lower and with a
@@ -442,11 +465,11 @@ Every limit Ordnung has, by topic: [dates and the law](#dates-and-the-law) ·
 
   </details>
 
-- **Dates you add yourself.** A repeating date is one entry at its next day: Timeline, Today, the calendar file and a
+- A repeating date is one entry at its next day: Timeline, Today, the calendar file and a
   synced calendar show that one, and it moves on when you mark it done or its day has passed. A date you add without a
   letter counts working days with the nationwide public holidays only, so where your Land has a holiday of its own,
   its working day can come out a day early, or a day late for "the last working day".
-- **Your own weekly deadlines and payments are nearly always an Idea.** A deadline or a payment you add that repeats
+- A deadline or a payment you add that repeats
   every week, or a deadline every 2 weeks, is among Today's Ideas nearly all the time: by default Ordnung reminds you
   from 14 days before a deadline and 7 days before a payment (Settings → Reminders), and the next one is never further
   off, unless you mark one done before its day. Added as a reminder, the dialog's first kind, such a date is an Idea
@@ -454,26 +477,26 @@ Every limit Ordnung has, by topic: [dates and the law](#dates-and-the-law) ·
 
 ### Reading your letters
 
-- **Photos and scans need Claude.** Photos and scans are read by Claude, so reading them needs a model call; Ordnung's
+- Photos and scans are read by Claude, so reading them needs a model call; Ordnung's
   own text recognition (optional, with Tesseract) is for search only. JPEG photos above about 179 megapixels (some
   phones' 200 MP mode), and PNG, WebP or HEIC images above about 89.5 megapixels, are refused; take the photo at
   normal resolution.
-- **Text found for search is never checked.** The text a scanner adds to a PDF (a "searchable PDF") is kept for search
+- The text a scanner adds to a PDF (a "searchable PDF") is kept for search
   only and isn't checked: a letter found by it says so, and it is never shown as the letter's words, used to check a
   date or an amount, or sent to Claude. With Tesseract installed, the words Ordnung reads in a photo or scan Claude
   isn't reading are kept the same way, marked *not checked*; Tesseract often misreads handwriting, creased paper and
   small print, so such a letter may not be found by every word on it. Without Tesseract, a photo kept private, waiting
   or that couldn't be read is found only by its name.
-- **High-stakes kinds are checked by code.** High-stakes kinds are named by Claude and checked by code against the
+- High-stakes kinds are named by Claude and checked by code against the
   rest of the reading, partly from its German wording: where code reads a kind itself, code's kind wins, and it drops
   Claude's where the reading rules it out (a sender that is clearly no court, a contract of another category). A
   letter read before extraction prompt version 9 names no kind and is classified by code alone. You can change a
   letter's kind on its page ([ADR 0010](decisions/0010-high-stakes-kinds-assigned-by-code.md) lists the accepted
   misses).
-- **A letter keeps the reading it was given.** One read before extraction prompt version 9 can have a to-do's action
+- A letter keeps the reading it was given. One read before extraction prompt version 9 can have a to-do's action
   or a key fact's label in German, in the letter's number formats, and no word about a decision window Ordnung
   computed; *Read again* on the letter's page reads it with the current prompt.
-- **The check for incomplete readings uses fixed rules.** The check for incomplete readings works from the letter's
+- The check for incomplete readings works from the letter's
   text with fixed rules, in German and English wording only. When the letter's dates or periods disagree, or its own
   date can't be read, it files the to-do without a date for you to fill in.
 
@@ -489,32 +512,32 @@ Every limit Ordnung has, by topic: [dates and the law](#dates-and-the-law) ·
 
   </details>
 
-- **E-mails come in as saved files.** E-mailed letters come in as saved files: `.eml`, or Outlook's `.msg`, which
+- E-mailed letters come in as saved files: `.eml`, or Outlook's `.msg`, which
   Ordnung keeps as an `.eml` copy (the `.msg` itself isn't kept). Ordnung doesn't fetch mail from a mailbox. An
   Outlook e-mail whose text is only in RTF comes in without its text (its attachments still come in), and a signed or
   encrypted one can't be opened: save its attachments and add those.
 
 ### Language
 
-- **The app's own text is in English.** The app's own text is in English only: buttons, receipts, the Ideas Ordnung's
+- The app's own text is in English only: buttons, receipts, the Ideas Ordnung's
   own rules make, and notifications. Ordnung reads German letters, and what Claude writes for you (explanations,
   translations, Ask's answers, Today's note and the weekly review's Ideas) follows the language you choose in
   Settings; letters to German offices stay in German.
-- **Older explanations keep their language.** Changing the language of explanations doesn't re-read older letters:
+- Changing the language of explanations doesn't re-read older letters:
   what Claude wrote before stays in the old language. With Arabic or Ukrainian that older text keeps its own direction
   and voice; with Turkish, Spanish or French a screen reader may read older English text in the new language's voice.
 
 ### Household, phone and computers
 
-- **One person's Ordnung.** One person's Ordnung, in use on one computer at a time. A letter addressed to someone else
+- One person's Ordnung, in use on one computer at a time. A letter addressed to someone else
   (a partner, a child) says so, you can file it for them once they are in your household, and a reply to it can go out
   in their name. Once it is filed, My numbers lists its numbers under them, and Ask, Ordnung's own Ideas, Today and
   the Timeline say whose it is; its dates and reminders are still yours to act on, and the letters the weekly Ideas
   get carry no filing, though the titles of Ordnung's own Ideas name the person.
-- **A paired phone works through the computer.** A phone you pair in Settings → Phone can use it in its browser over
+- A phone you pair in Settings → Phone can use it in its browser over
   your home Wi-Fi while the computer is on: the letters stay on the computer, the phone warns once about Ordnung's own
   certificate, and it can't change settings, back up or delete. There is no app-store app.
-- **Two computers take turns.** Ordnung moves between your computers one at a time through a folder you sync yourself;
+- Ordnung moves between your computers one at a time through a folder you sync yourself;
   it doesn't merge changes made on two computers at once (it asks which to keep), a computer standing by sends no
   reminders and reads no letters, and calendar sync is connected on each computer. Forgetting a lost computer doesn't
   lock it out (it still knows the passphrase): a new sync folder with a new passphrase does ([what else to
@@ -526,7 +549,7 @@ Every limit Ordnung has, by topic: [dates and the law](#dates-and-the-law) ·
   your provider's version history and trash may keep them longer: on a metered connection or a small quota, turn
   version history off for the sync folder if your provider lets you, and empty its trash now and then.
 
-- **Backups and disk encryption.** Ordnung can't see backups of the whole computer (Time Machine, File History), so
+- Ordnung can't see backups of the whole computer (Time Machine, File History), so
   the weekly review reminds you to back up even when you make those; a scheduled `ordnung backup` counts. Its
   disk-encryption check is a best effort on macOS (FileVault) and Linux (LUKS and encrypted folders such as eCryptfs;
   not fscrypt or ZFS's own encryption). On Windows it can't check: its row there says where to see that BitLocker or
@@ -534,22 +557,22 @@ Every limit Ordnung has, by topic: [dates and the law](#dates-and-the-law) ·
 
 ### Calendar, taxes and moving
 
-- **Live calendar sync needs CalDAV.** Calendar sync keeps your dates current only in a CalDAV calendar that takes a
+- Calendar sync keeps your dates current only in a CalDAV calendar that takes a
   user name and an app password (Nextcloud, iCloud, mailbox.org …). Google Calendar and Outlook.com don't offer that,
   so they get the calendar file: a snapshot whose alarms fire, but dates from letters read later reach it only when
   you download and import the file again (Today's Ideas say when there are new ones).
-- **The tax year goes by the date on a letter.** The tax year files a letter by the date printed on it (else the day
+- The tax year files a letter by the date printed on it (else the day
   it arrived), not by the year it is for: a yearly statement for 2025 dated February 2026 is a 2026 letter, which is
   why a tax year also lists the letters for taxes dated January–May of the next year, for you to check — a heuristic
   that also lists a January payslip for the new year and misses a statement dated in June. Claude marks a letter for
   taxes when it reads it; *For taxes* on a letter's page changes that, for private letters too, and your choice stays
   when the letter is read again; Ask and the Ideas Claude suggests each week follow it. A letter still waiting under
   *From your folder — not read yet* can't be marked.
-- **Export letters.** *Export letters* with *Only letters for taxes* off takes all of a year's letters, private ones
+- *Export letters* with *Only letters for taxes* off takes all of a year's letters, private ones
   too, but not those still waiting under *From your folder — not read yet*: choose *Read these* or *Keep private*
   first. The ZIP *Export letters* saves isn't encrypted, and letters you wrote in Ordnung and their proofs of sending
   aren't in it.
-- **Moving checklist.** The moving checklist knows only the organisations Ordnung has seen in your contracts and
+- The moving checklist knows only the organisations Ordnung has seen in your contracts and
   letters (a running contract, or a letter of the last three years from a bank, an insurer, your employer, a landlord,
   a utility, an office and the like); others, such as your doctor or online shops, aren't on it. It doesn't cover
   moving abroad or the contract rights a move may give, and its day to register, two weeks after the move, is never
@@ -557,7 +580,7 @@ Every limit Ordnung has, by topic: [dates and the law](#dates-and-the-law) ·
 
 ### How it was tested
 
-- **The benchmark letters are synthetic.** The benchmark letters are synthetic, and the Ask benchmark uses the demo's
+- The benchmark letters are synthetic, and the Ask benchmark uses the demo's
   own sample life. Real post is messier.
 
   <details><summary>Ask and the computer's date in the demo</summary>
@@ -569,10 +592,10 @@ Every limit Ordnung has, by topic: [dates and the law](#dates-and-the-law) ·
 
   </details>
 
-- **Hand-off sync, not yet on two physical computers.** Hand-off sync was tested with a simulated sync tool (files
+- Hand-off sync was tested with a simulated sync tool (files
   late, out of order, in pieces, conflict copies, online-only placeholders) and two data folders on one machine, not
   yet with a real Nextcloud, Syncthing or iCloud Drive folder on two physical computers.
-- **Phone access, not yet on physical phones.** Phone access was tested with phone emulation in Chromium over HTTPS,
+- Phone access was tested with phone emulation in Chromium over HTTPS,
   not yet on physical phones.
 
   <details><summary>What still has to be checked on real phones</summary>

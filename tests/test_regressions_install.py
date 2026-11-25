@@ -257,10 +257,11 @@ def test_the_guide_says_how_to_update() -> None:
     updating = guide.split("\n### Updating\n", 1)[1].split("\n## ", 1)[0]
     for command in ("pipx reinstall ordnung", "uv tool upgrade ordnung", "ordnung doctor"):
         assert command in updating, command
-    # The README installs with uv first and pipx second, so the update line leads the same way.
+    # The README installs with uv first and pipx second, so the update block leads the same way: each command on
+    # its own line under a comment that says which install it is for.
     assert (
-        "\nuv tool upgrade ordnung  " in updating
-        and "# installed with pipx: pipx reinstall ordnung" in updating
+        "\n# installed with uv:\nuv tool upgrade ordnung\n# or, installed with pipx:\npipx reinstall ordnung\n"
+        in updating
     )
     tagged = "git+https://github.com/ahmedEid1/ordnung@vX.Y.Z"
     flat = " ".join(updating.split())
