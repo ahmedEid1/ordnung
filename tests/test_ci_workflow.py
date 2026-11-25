@@ -454,8 +454,52 @@ def test_the_backend_legs_have_room_for_a_slow_runner() -> None:
     backend = _jobs()["backend"]
     slowest_leg = 39 / 3 + 3
     assert backend["timeout-minutes"] >= 1.5 * slowest_leg
-    assert backend["strategy"]["matrix"]["python"] == ["3.11", "3.12", "3.13", "3.14"]
+    assert _backend_pythons(backend)[1] == ["3.11", "3.12", "3.13", "3.14"]
     assert "pytest" in _script(backend)
+
+
+def _backend_pythons(backend: dict[str, Any]) -> tuple[list[str], list[str]]:
+    """The backend legs' Pythons: on a pull request, and on every other event (main, a run started by hand)."""
+    found = re.fullmatch(
+        r"\$\{\{ fromJSON\(github\.event_name == 'pull_request' && '(\[[^']*\])' \|\| '(\[[^']*\])'\) \}\}",
+        backend["strategy"]["matrix"]["python"],
+    )
+    assert found, "the backend's Pythons are two lists: a pull request's, and every other event's"
+    on_pull_request, otherwise = (json.loads(listed) for listed in found.groups())
+    return on_pull_request, otherwise
+
+
+def test_a_pull_request_tests_python_3_11_in_the_lowest_versions_job_alone() -> None:
+    """A pull request's run starts more jobs than GitHub runs at once for this account (20), and with 21 jobs of
+    several minutes one of them started about four minutes late, whichever it happened to be (run 45647502893 of
+    25 November 2026): a long one would have set the run's time. So a pull request leaves out the one leg another
+    job repeats: Python 3.11, which the job "lowest" tests with the same selection on the lowest version of every
+    direct dependency. Every other event keeps the leg, and nothing else is left out: no other Python has a second
+    job, and 3.12 measures coverage."""
+    jobs = _jobs()
+    backend, lowest = jobs["backend"], jobs["lowest"]
+    on_pull_request, otherwise = _backend_pythons(backend)
+    assert otherwise == ["3.11", "3.12", "3.13", "3.14"], "main and a run by hand test every supported Python"
+    assert on_pull_request == ["3.12", "3.13", "3.14"], (
+        "a pull request leaves out 3.11 only: the lowest versions' job tests it; another Python has no second job"
+    )
+    # the job that stands in for the leg: on pull requests too, on 3.11, the fast suite as the legs select it
+    assert lowest["if"] == backend["if"] == "github.event_name != 'schedule'"
+    (python,) = [
+        step["with"]["python-version"] for step in lowest["steps"] if "setup-uv" in step.get("uses", "")
+    ]
+    assert python == "3.11", (
+        "the lowest versions run on the oldest Python Ordnung supports: the leg's stand-in"
+    )
+    (leg_tests,) = [step["run"] for step in backend["steps"] if step.get("name") == "Tests"]
+    (lowest_tests,) = [step["run"] for step in lowest["steps"] if step.get("name") == "Tests"]
+    assert lowest_tests.startswith(leg_tests), (
+        "the same tests as a leg's (one deselected: the leg's other Pythons run it)"
+    )
+    assert lowest_tests[len(leg_tests) :].split() == [
+        "--deselect",
+        "tests/test_openapi_contract.py::test_web_openapi_json_is_current",
+    ]
 
 
 #: the tests that read the git history from the pre-registration's freeze commit on
@@ -1251,7 +1295,7 @@ def test_coverage_counts_branches_and_has_floors_for_the_whole_package_sync_and_
     matrix = backend["strategy"]["matrix"]
     assert matrix["half"] == [1, 2]
     excluded = [(leg["python"], leg["half"]) for leg in matrix["exclude"]]
-    assert sorted(excluded) == [(python, 2) for python in matrix["python"] if python != "3.12"]
+    assert sorted(excluded) == [(python, 2) for python in _backend_pythons(backend)[1] if python != "3.12"]
     measured = _coverage_halves(backend)
     assert [step["if"] for step, _ in measured] == [
         "${{ matrix.coverage && matrix.half == 1 }}",

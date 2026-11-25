@@ -95,8 +95,10 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   replay of every published number and Windows. The last two now run in two parts side by side each: Windows
   with its sync files from a to c in one part and every other file in the other, the replay with
   `python -m evals.reproduce --only` some cells and `--skip` the same cells, and with the replay without the
-  Land, moved out of the benchmarks' job, after its second part. `make check` runs the backend tests in
-  parallel too. Every
+  Land, moved out of the benchmarks' job, after its second part. A pull request's run then had 21 jobs of several
+  minutes for the 20 GitHub runs at once for this account, and the one left waiting started about four minutes
+  late, so a pull request now tests Python 3.11 in the lowest versions' job alone (the same tests, on 3.11); its
+  leg with the pinned versions runs on `main`. `make check` runs the backend tests in parallel too. Every
   published number is replayed in a job of its own (it made the benchmarks' job the longest of a run), Windows
   runs on every pull request and not only on `main` (macOS stays on `main`
   and the weekly run: on a pull request its runner was 10 minutes in coming once, and once none came and the run

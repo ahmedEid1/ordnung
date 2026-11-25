@@ -57,7 +57,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.11", "3.12", "3.13", "3.14"]
+        # on a pull request Python 3.11 is tested by the job "lowest" alone (these tests, on the lowest version of
+        # every direct dependency): with its leg here a pull request's run had 21 jobs of several minutes for the
+        # 20 GitHub runs at once for this account, and the one left waiting started when the first of them ended,
+        # about four minutes late (run 45647502893 of 25 Nov 2026: it happened to be the shortest; a long one
+        # would have ended at minute 10 to 12). With 20, every job starts within the minute the three short jobs
+        # (the audit, lint, the wheel) take. On main and by hand the leg runs as before
+        python: ${{ fromJSON(github.event_name == 'pull_request' && '["3.12", "3.13", "3.14"]' || '["3.11", "3.12", "3.13", "3.14"]') }}
         # 3.12's leg runs in two halves, on two runners side by side; the others whole
         half: [1, 2]
         exclude:

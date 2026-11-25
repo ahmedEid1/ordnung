@@ -136,9 +136,19 @@ def test_the_readme_s_ci_badge_counts_pushes_to_main_only() -> None:
 
 def test_the_readme_s_python_versions_are_the_ones_ci_tests_and_pyproject_allows() -> None:
     """The badge and the CI bullet name the backend job's Python versions, and the install names the oldest that
-    pyproject.toml's ``requires-python`` allows, which is the oldest CI tests."""
+    pyproject.toml's ``requires-python`` allows, which is the oldest CI tests. The job's Pythons are two lists, a
+    pull request's and every other event's: a pull request tests the oldest in the lowest versions' job alone
+    (tests/test_ci_workflow.py says why), so the bullet's "on every pull request" names that job's Python too."""
     readme = _readme()
-    versions = _workflow()["jobs"]["backend"]["strategy"]["matrix"]["python"]
+    jobs = _workflow()["jobs"]
+    on_pull_request, versions = (
+        json.loads(listed)
+        for listed in re.findall(r"'(\[[^']*\])'", jobs["backend"]["strategy"]["matrix"]["python"])
+    )
+    (lowest,) = [
+        s["with"]["python-version"] for s in jobs["lowest"]["steps"] if "setup-uv" in s.get("uses", "")
+    ]
+    assert sorted({lowest, *on_pull_request}) == versions, "a pull request tests every Python main does"
     oldest, newest = versions[0], versions[-1]
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
     assert project["requires-python"] == f">={oldest}"

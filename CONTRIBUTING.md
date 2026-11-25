@@ -133,9 +133,12 @@ CI runs its jobs side by side, none waiting for another.
 - **The other jobs.** The backend's 3.12 leg, which measures the coverage, took 7 to 12 as one leg: it runs as
   two halves side by side, each on half of the test files, and a short job adds up their coverage and holds the
   sum to the floors (in the first run the halves took 9 and 6 minutes, the adding up 20 seconds, and the whole
-  run 9.5). The backend's other legs (Python 3.11, 3.13 and 3.14) take 4 to 6, the lowest versions (and,
-  weekly, the newest) 5 to 8, the frontend 4 to 7; lint and types, the wheel and the dependency audit take under a
-  minute each. The replayed benchmarks' gates run one after another and took 7.5 to 8.5 with the replay without
+  run 9.5). The backend's other legs (Python 3.13 and 3.14, and on `main` 3.11) take 4 to 6, the lowest versions
+  (and, weekly, the newest) 5 to 8, the frontend 4 to 7; lint and types, the wheel and the dependency audit take
+  under a minute each. On a pull request Python 3.11 is tested in the lowest versions' job alone, which runs the
+  same tests on 3.11: with its own leg as well, a pull request's run had 21 jobs of several minutes for the 20
+  GitHub runs at once, and the one left waiting started about four minutes late, whichever it happened to be
+  (25 November 2026). With 20, every job starts within the minute the three short ones take. The replayed benchmarks' gates run one after another and took 7.5 to 8.5 with the replay without
   the Land among them, and the replay of every published number (`make eval-reproduce`, 4 commands at a time)
   8.2 to 9.2 (25 November 2026): it runs in two parts side by side, `--only` some cells and `--skip` the same
   cells, the second with the replay without the Land after it.
