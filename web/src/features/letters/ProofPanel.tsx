@@ -139,8 +139,8 @@ function Tracking({ draft, overview }: { draft: Draft; overview: ProofOverview }
   const [tried, setTried] = useState(false);
   // a promise of whether it was saved, so the Undo that puts a removed number back waits for it (its toast stays,
   // busy, until then) and knows when it failed; `from`: where focus was as it started (focusOrigin), so Change takes
-  // focus from there too
-  const store = (text: string | null, { then, from = null }: { then?: () => void; from?: Element | null } = {}) =>
+  // focus from there too; `failed`: what to do when it couldn't be saved
+  const store = (text: string | null, { then, from = null, failed }: { then?: () => void; from?: Element | null; failed?: () => void } = {}) =>
     save.mutateAsync({ id: draft.id, trackingNumber: text }).then(
       (next) => {
         setEditing(false);
@@ -155,7 +155,10 @@ function Tracking({ draft, overview }: { draft: Draft; overview: ProofOverview }
         }
         return true;
       },
-      () => false, // the hook's toast says it couldn't be saved
+      () => {
+        failed?.(); // the hook's toast says it couldn't be saved
+        return false;
+      },
     );
   const remove = () => {
     if (!saved) return;
@@ -167,8 +170,16 @@ function Tracking({ draft, overview }: { draft: Draft; overview: ProofOverview }
           description: displayTracking(previous),
           // pressed from the keyboard (Alt+N, Enter), the closing toast hands focus back where it was before Alt+N:
           // Change takes it from there, as after "Marked as answered"'s Undo
-          undo: () => store(previous, { from: focusOrigin() }),
-          // not put back: the field, as Remove left it
+          // not put back: the number goes into the field again, not saved, so Save is one press from trying again
+          // (rather than having to remember it and type it again)
+          undo: () =>
+            store(previous, {
+              from: focusOrigin(),
+              failed: () => {
+                setValue(displayTracking(previous));
+                setTried(false);
+              },
+            }),
           focusIfUndoFails: () => document.getElementById(TRACKING_INPUT),
         });
       },

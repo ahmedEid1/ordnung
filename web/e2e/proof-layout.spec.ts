@@ -268,8 +268,10 @@ test("a failed Undo leaves the keyboard on what it was about, never at the top o
   await toast(page, "Tracking number removed").getByRole("button", { name: "Undo" }).click();
   await expect(errors.filter({ hasText: "Couldn't save the tracking number" })).toHaveCount(1);
   await expect(field).toBeFocused();
+  // the number is in the field again, not saved: one press of Save tries again
+  await expect(field).toHaveValue(TRACKING);
+  await expect(proof.getByRole("button", { name: "Change", exact: true })).toHaveCount(0);
   await page.unroute(`**/api/drafts/${draftId}/tracking`);
-  await field.fill(TRACKING);
   await proof.getByRole("button", { name: "Save number" }).click();
   await expect(proof.getByRole("button", { name: "Change", exact: true })).toBeFocused();
 });

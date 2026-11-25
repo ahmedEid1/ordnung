@@ -456,8 +456,13 @@ describe("Proof of sending", () => {
     // the toast goes and the app's error toast says why; no rejection escapes
     await waitFor(() => expect(screen.queryByText("Tracking number removed")).not.toBeInTheDocument());
     expect(await screen.findByText("Couldn't save the tracking number")).toBeInTheDocument();
-    // the keyboard is back on the field, not dropped at the top of the page
-    expect(within(proof).getByLabelText("Tracking number")).toHaveFocus();
+    // the keyboard is back on the field, not dropped at the top of the page, and the field holds the number again:
+    // not saved (nothing says so), one press of Save from trying again
+    const field = within(proof).getByLabelText("Tracking number");
+    expect(field).toHaveFocus();
+    expect(field).toHaveValue("RT 123 456 785 DE");
+    expect(within(proof).getByRole("button", { name: "Save number" })).toBeEnabled();
+    expect(within(proof).queryByRole("button", { name: "Change" })).not.toBeInTheDocument();
     expect(screen.queryByText("Tracking number saved")).not.toBeInTheDocument();
   });
 
