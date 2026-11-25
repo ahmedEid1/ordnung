@@ -15,6 +15,7 @@ import { usePartyDrawer } from "@/lib/party-drawer";
 import { cn } from "@/lib/utils";
 import { focusWhenReady } from "@/lib/focus";
 import { WAITING_GROUPS, WRAPPING_BUTTON, asksForACall, closeLabel, groupWaiting } from "./model";
+import { ignoreFailedRequest } from "@/api/client";
 
 const rowHeadingId = (entryId: string) => `waiting-row-${entryId}`;
 
@@ -66,7 +67,7 @@ function Actions({ entry }: { entry: WaitingEntry }) {
           description: entry.title,
           undo: () => item.mutateAsync({ id, patch: { status: "open" } }).then(() => focus?.returning(entry.id)),
         }),
-      () => undefined,
+      ignoreFailedRequest, // a failed request: the mutation's own toast says so
     );
   };
   const kept = () => {
@@ -77,7 +78,7 @@ function Actions({ entry }: { entry: WaitingEntry }) {
           description: entry.title,
           undo: () => call.mutateAsync({ id: entry.ref.id, kept: false }).then(() => focus?.returning(entry.id)),
         }),
-      () => undefined,
+      ignoreFailedRequest, // a failed request: the mutation's own toast says so
     );
   };
   // a letter: the person's word closes it — with the letter that came (answered) or without (by phone, e-mail …)
@@ -96,7 +97,7 @@ function Actions({ entry }: { entry: WaitingEntry }) {
             description: `${entry.title} — the follow-up is closed.`,
             undo: () => answered.mutateAsync({ id: draftId, answered: false }).then(() => focus?.returning(entry.id)),
           }),
-        () => undefined,
+        ignoreFailedRequest,
       );
   };
   const link = (to: string, label: string, icon?: typeof PenLine) => {

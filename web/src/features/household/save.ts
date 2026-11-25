@@ -5,7 +5,7 @@
  * who each is for, and My numbers whose each number is.
  */
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { ApiError } from "@/api/client";
+import { ApiError, ignoreFailedRequest } from "@/api/client";
 import { api } from "@/api/endpoints";
 import { qk } from "@/api/hooks";
 import type { Household, HouseholdChange, MemberIn } from "@/api/types";
@@ -69,6 +69,8 @@ export function refusal(err: unknown, qc: QueryClient): string | null {
     toast({ tone: "danger", title: err.message });
     return null;
   }
+  // a bug (not a failed request) is reported as well, so the console and the tests see it
+  ignoreFailedRequest(err);
   toast({ tone: "danger", title: "Couldn't save your household", description: err instanceof Error ? err.message : undefined });
   return null;
 }

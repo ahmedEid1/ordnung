@@ -59,7 +59,7 @@ function DealtWith({ advice, doc, onDone }: { advice: LetterAdvice; doc: Pick<Do
           return dealt
             ? toast.success("Marked as dealt with", {
                 description: "The card stays on the letter for reference. Nothing was sent.",
-                undo: () => update.mutate({ id: doc.id, patch: { tags: tags.filter((t) => t !== DEALT_WITH_TAG) } }),
+                undo: () => update.mutateAsync({ id: doc.id, patch: { tags: tags.filter((t) => t !== DEALT_WITH_TAG) } }).then(() => undefined),
               })
             : toast.success("Back to “get advice now”");
         },

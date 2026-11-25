@@ -12,7 +12,7 @@ import { qk } from "@/api/hooks";
 import { handleServerEvent } from "@/api/sse";
 import type { DocumentDetail } from "@/api/types";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
-import { useMockApi } from "@/test/mockFetch";
+import { failRequests, useMockApi } from "@/test/mockFetch";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import DocumentPage from "@/pages/DocumentPage";
 import { DocumentView } from "./DocumentView";
@@ -154,6 +154,46 @@ describe("answering on the letter's page", () => {
     await user.click(screen.getByRole("button", { name: "Undo" }));
     await waitFor(() => expect(srv.db.document("doc_folder_scan")!.status).toBe("held"));
     expect(await screen.findByRole("article", { name: "Scan_2026-09-28_0914.pdf" })).toBeInTheDocument();
+  });
+
+  it("a failed Undo of “Keep private” puts focus on the letter's own “Undo “Keep private””, one press from trying again", async () => {
+    const { srv } = useMockApi();
+    const user = userEvent.setup();
+    renderPage("doc_folder_scan");
+    const card = await screen.findByRole("article", { name: "Scan_2026-09-28_0914.pdf" });
+    await user.click(within(card).getByRole("button", { name: "Keep private" }));
+    await waitFor(() => expect(screen.getByRole("heading", { level: 1 })).toHaveFocus());
+    const failing = failRequests((c) => c.path === "/documents/held/wait");
+    await user.click(await screen.findByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(screen.queryByText("Kept private")).not.toBeInTheDocument());
+    expect(failing.failed).toBe(1);
+    expect(srv.db.document("doc_folder_scan")!.status).toBe("processed");
+    expect(screen.getByRole("button", { name: "Undo “Keep private”" })).toHaveFocus();
+  });
+
+  it("a broken answer to “Keep private” (not a failed request) is reported once, never swallowed", async () => {
+    useMockApi();
+    const reported: unknown[] = [];
+    const onError = (e: ErrorEvent) => {
+      e.preventDefault();
+      reported.push(e.error);
+    };
+    window.addEventListener("error", onError);
+    try {
+      const mock = globalThis.fetch;
+      // the request answers, but with nothing in it: reading the answer throws a TypeError
+      vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) =>
+        String(input).endsWith("/documents/held/keep-private") ? new Response("null", { status: 200, headers: { "Content-Type": "application/json" } }) : mock(input, init),
+      );
+      const user = userEvent.setup();
+      renderPage("doc_folder_scan");
+      const card = await screen.findByRole("article", { name: "Scan_2026-09-28_0914.pdf" });
+      await user.click(within(card).getByRole("button", { name: "Keep private" }));
+      await waitFor(() => expect(reported).toHaveLength(1));
+      expect(reported[0]).toBeInstanceOf(TypeError);
+    } finally {
+      window.removeEventListener("error", onError);
+    }
   });
 
   it("a waiting photo whose words Ordnung read never says nothing in it is read, before or after “Keep private”", async () => {

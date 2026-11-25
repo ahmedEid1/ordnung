@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { QueryClient } from "@tanstack/react-query";
-import { ApiError, apiPath, assetUrl, messageFromDetail, request, SERVER_PROBLEM, setAssetResolver, UNREADABLE_ANSWER, UNREADABLE_CODE } from "./client";
+import { ApiError, apiPath, assetUrl, ignoreFailedRequest, messageFromDetail, request, SERVER_PROBLEM, setAssetResolver, UNREADABLE_ANSWER, UNREADABLE_CODE } from "./client";
 import { api } from "./endpoints";
 import { __resetEventsForTests, handleServerEvent, useEvents } from "./sse";
 import { qk } from "./hooks";
@@ -139,6 +139,28 @@ describe("client", () => {
     setAssetResolver((p, query) => (seen.push([p, query]), p === "/documents.zip" ? "data:application/zip;base64," : null));
     expect(api.lettersZipUrl({ year: 2025 })).toBe("data:application/zip;base64,");
     expect(seen).toEqual([["/documents.zip", { year: 2025 }]]);
+  });
+});
+
+describe("ignoreFailedRequest", () => {
+  it("lets a failed request (and one stopped on purpose) go, and reports anything else once", () => {
+    const reported: unknown[] = [];
+    const onError = (e: ErrorEvent) => {
+      e.preventDefault();
+      reported.push(e.error);
+    };
+    window.addEventListener("error", onError);
+    try {
+      ignoreFailedRequest(new ApiError(500, "Ordnung isn't reachable."));
+      ignoreFailedRequest(new ApiError(0, "Ordnung isn't reachable."));
+      ignoreFailedRequest(new DOMException("stopped", "AbortError"));
+      expect(reported).toEqual([]);
+      const bug = new TypeError("Cannot read properties of null (reading 'draft_id')");
+      ignoreFailedRequest(bug);
+      expect(reported).toEqual([bug]);
+    } finally {
+      window.removeEventListener("error", onError);
+    }
   });
 });
 

@@ -19,7 +19,7 @@ import { Link } from "react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, CircleX, CloudAlert, Copy, FileCheck, Files, FolderOpen, type LucideIcon } from "lucide-react";
 import { api } from "@/api/endpoints";
-import { ApiError } from "@/api/client";
+import { ApiError, ignoreFailedRequest } from "@/api/client";
 import { qk, useFolder } from "@/api/hooks";
 import type { AppSettings, FolderPickup, FolderStatus, SettingsPatch } from "@/api/types";
 import { ACCEPTED_SHORT } from "@/components/shell/AddLetters";
@@ -254,7 +254,7 @@ function FolderState({ status }: { status: FolderStatus }) {
                   toast.success("Stopped watching the folder", { description: "Files already added stay in Ordnung; the folder is left as it is." });
                   focusFolderField(); // this button goes: focus stays in the section, on the (now empty) folder field
                 })
-                .catch(() => undefined)
+                .catch(ignoreFailedRequest) // a failed request: its own error toast says so
             }
           >
             Stop watching

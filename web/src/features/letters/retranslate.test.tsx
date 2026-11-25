@@ -58,6 +58,36 @@ describe("Re-translate after editing the German letter", () => {
     expect(localStorage.getItem("ordnung.letters.edited") ?? "[]").not.toContain("drf_phone");
   });
 
+  it("a broken answer to the translation (not a failed request) is reported once, never told as a failed translation", async () => {
+    const { srv } = useMockApi();
+    srv.db.state.health.backend = "claude";
+    const reported: unknown[] = [];
+    const onError = (e: ErrorEvent) => {
+      e.preventDefault();
+      reported.push(e.error);
+    };
+    window.addEventListener("error", onError);
+    try {
+      const mock = globalThis.fetch;
+      // the translation answers, but with nothing in it: storing the answer throws a TypeError
+      vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) =>
+        String(input).endsWith("/drafts/drf_phone/translate") ? new Response("null", { status: 200, headers: { "Content-Type": "application/json" } }) : mock(input, init),
+      );
+      const user = userEvent.setup();
+      renderLetter("drf_phone");
+      await editGermanLetter(user);
+      await user.click(screen.getByRole("button", { name: "Re-translate" }));
+
+      expect(await screen.findByText("Something went wrong")).toBeInTheDocument();
+      expect(reported).toHaveLength(1);
+      expect(reported[0]).toBeInstanceOf(TypeError);
+      expect(screen.queryByText("Couldn't translate the letter")).toBeNull();
+      expect(screen.queryByText("Translation updated")).toBeNull();
+    } finally {
+      window.removeEventListener("error", onError);
+    }
+  });
+
   it("the demo explains that it can't translate edits", async () => {
     useMockApi(); // the demo backend replays recordings
     const user = userEvent.setup();

@@ -10,8 +10,9 @@ import { qk, useDocument } from "@/api/hooks";
 import { setClientKind } from "@/api/clientKind";
 import type { DocumentDetail } from "@/api/types";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
-import { makeTestQueryClient, renderWithProviders } from "@/test/render";
-import { useMockApi, type FetchCall } from "@/test/mockFetch";
+import { TEST_HEALTH, makeTestQueryClient, renderWithProviders } from "@/test/render";
+import { createQueryClient } from "@/app/queryClient";
+import { failRequests, useMockApi, type FetchCall } from "@/test/mockFetch";
 import { DocumentFooter } from "./DocumentFooter";
 import { makeDetail, makeDoc } from "./fixtures";
 import { TaxState, TaxToggle, taxStateLine, taxToggleShown } from "./TaxToggle";
@@ -134,6 +135,33 @@ describe("the For taxes toggle", () => {
     await user.click(screen.getByRole("button", { name: "Undo" }));
     await waitFor(() => expect(srv.db.state.taxChoices).toEqual({ doc_dentist: false }));
     expect(patches(calls, "doc_dentist")).toEqual([{ tax_choice: true }, { tax_choice: false }]);
+  });
+
+  it("a failed Undo says so once and puts focus back on the toggle, one press from trying again", async () => {
+    const { srv } = useMockApi();
+    const user = userEvent.setup();
+    // the app's query client, whose error toast says what went wrong
+    const qc = createQueryClient();
+    qc.setQueryData(qk.health, TEST_HEALTH);
+    qc.setQueryData(qk.rules, []);
+    renderWithProviders(
+      <>
+        <Letter id="doc_dentist" />
+        <Toaster />
+      </>,
+      { client: qc },
+    );
+    await user.click(await toggle());
+    await waitFor(async () => expect(await toggle()).toHaveAttribute("aria-pressed", "true"));
+    failRequests((c) => c.method === "PATCH");
+    // the person went on to the year's page link before reaching for Undo
+    await user.click(await screen.findByRole("link", { name: /All letters for taxes from/ }));
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+    expect(await screen.findByText("Couldn't save the change to this letter")).toBeInTheDocument();
+    expect(screen.getAllByText("Couldn't save the change to this letter")).toHaveLength(1);
+    await waitFor(() => expect(screen.queryByText("Marked for taxes")).not.toBeInTheDocument());
+    expect(srv.db.state.taxChoices).toEqual({ doc_dentist: true });
+    expect(await toggle()).toHaveFocus();
   });
 
   it("a second press replaces the toast, so only the newest Undo is offered", async () => {

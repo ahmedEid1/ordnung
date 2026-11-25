@@ -456,8 +456,56 @@ describe("Proof of sending", () => {
     // the toast goes and the app's error toast says why; no rejection escapes
     await waitFor(() => expect(screen.queryByText("Tracking number removed")).not.toBeInTheDocument());
     expect(await screen.findByText("Couldn't save the tracking number")).toBeInTheDocument();
-    expect(within(proof).getByLabelText("Tracking number")).toBeInTheDocument();
+    // the keyboard is back on the field, not dropped at the top of the page, and the field holds the number again:
+    // not saved (nothing says so), one press of Save from trying again
+    const field = within(proof).getByLabelText("Tracking number");
+    expect(field).toHaveFocus();
+    expect(field).toHaveValue("RT 123 456 785 DE");
+    expect(within(proof).getByRole("button", { name: "Save number" })).toBeEnabled();
+    expect(within(proof).queryByRole("button", { name: "Change" })).not.toBeInTheDocument();
     expect(screen.queryByText("Tracking number saved")).not.toBeInTheDocument();
+  });
+
+  it("reports a broken tracking Undo (not a failed request) once, instead of hiding it", async () => {
+    // a bug is not a failed request, which its error toast has told: it must still reach the console and the tests
+    useMockApi();
+    const reported: unknown[] = [];
+    const onError = (e: ErrorEvent) => {
+      e.preventDefault();
+      reported.push(e.error);
+    };
+    window.addEventListener("error", onError);
+    try {
+      const user = userEvent.setup();
+      // the app's query client, whose error toast would say it couldn't be saved
+      const client = createQueryClient();
+      client.setQueryData(qk.health, TEST_HEALTH);
+      renderLetter("/letters/drf_gym", undefined, client);
+      const proof = await screen.findByRole("region", { name: "Proof of sending" });
+      await user.click(await within(proof).findByRole("button", { name: "Remove" }));
+      const removed = (await screen.findByText("Tracking number removed")).closest("li")!;
+      // the number's PUT is stored, but its answer has nothing in it: reading the answer throws a TypeError
+      const mock = globalThis.fetch;
+      vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+        const answer = await mock(input, init);
+        return init?.method === "PUT" ? new Response("null", { status: 200, headers: { "Content-Type": "application/json" } }) : answer;
+      });
+      await user.click(within(removed).getByRole("button", { name: "Undo" }));
+      await waitFor(() => expect(removed).not.toBeInTheDocument());
+      expect(reported).toHaveLength(1);
+      expect(reported[0]).toBeInstanceOf(TypeError);
+      // the server stored the number before the answer was read: nothing says it wasn't saved, and the field
+      // is not filled as if it had to be saved again
+      expect(await screen.findByText("Something went wrong")).toBeInTheDocument();
+      expect(screen.queryByText("Couldn't save the tracking number")).toBeNull();
+      // and the page asks again, so it shows the number as stored, not an empty field to save it into
+      expect(await within(proof).findByText("RT 123 456 785 DE")).toBeInTheDocument();
+      expect(within(proof).queryByLabelText("Tracking number")).toBeNull();
+      // the field the Toaster focused is gone with that refetch: Change takes focus, not <body>
+      await waitFor(() => expect(within(proof).getByRole("button", { name: "Change" })).toHaveFocus());
+    } finally {
+      window.removeEventListener("error", onError);
+    }
   });
 
   it("closes the letter when it was answered another way — with Undo", async () => {
@@ -497,6 +545,8 @@ describe("Proof of sending", () => {
     // and no second error toast from the Undo itself
     expect(document.querySelectorAll('[aria-live="assertive"] li[data-toast]')).toHaveLength(1);
     expect(within(proof).getByText(/You marked it as answered on/)).toBeInTheDocument();
+    // focus is on the box the change was about (where a working Undo puts it), not on <main>
+    expect(document.getElementById("proof-waiting")).toHaveFocus();
   });
 
   it("puts focus on Change after the tracking number's Undo pressed from the keyboard (Alt+N, Enter)", async () => {

@@ -64,6 +64,7 @@ import {
   usesLaw,
   verdictWords,
   withoutIfYouDisagree,
+  waitAgainId,
   type AsideItem,
   type MainAction,
   type NotOwed,
@@ -83,6 +84,7 @@ import { keepCitations, protectRefs } from "@/lib/glue";
 import { DEMO_NOTE } from "@/lib/mode";
 import { AnswerButton } from "@/features/inbox/AnswerButton";
 import { usePhoneCompanion } from "@/features/phone/client";
+import { ignoreFailedRequest } from "@/api/client";
 
 const countdownTone: Record<Urgency, string> = {
   overdue: "bg-danger text-white dark:text-canvas",
@@ -196,6 +198,7 @@ function NotRead({ doc, canWaitAgain: canWait, onAnswered }: { doc: DocumentDeta
       {canWaitAgain ? (
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
           <AnswerButton
+            id={waitAgainId(doc.id)}
             size="sm"
             icon={Undo2}
             busy={wait.isPending}
@@ -210,7 +213,7 @@ function NotRead({ doc, canWaitAgain: canWait, onAnswered }: { doc: DocumentDeta
                   toast({ title: "It's back with the letters not read yet", description: "Choose “Read it” to have Claude read it.", tone: "info" });
                   onAnswered?.(doc.status);
                 })
-                .catch(() => undefined) // the request's own error toast says what went wrong
+                .catch(ignoreFailedRequest) // a failed request: its own error toast says what went wrong
             }
           >
             Undo “Keep private”
@@ -763,9 +766,9 @@ function KeepButton({ suggestion }: { suggestion: Suggestion }) {
             toast({
               title: "Kept",
               description: "Ordnung won't remind you about this window again.",
-              undo: () => update.mutate({ id: suggestion.id, patch: { status: "new" } }),
+              undo: () => update.mutateAsync({ id: suggestion.id, patch: { status: "new" } }).then(() => undefined),
             }),
-          () => undefined, // the error toast comes from the mutation's meta
+          ignoreFailedRequest, // a failed request: the error toast comes from the mutation's meta
         )
       }
     >

@@ -3,6 +3,7 @@
  * card with one button that files exactly those, a toast that says how many, and an Undo that puts each letter back
  * as it was (not answered). Nothing is filed without the press.
  */
+import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -107,6 +108,82 @@ describe("File these N", () => {
     await user.click(within(toastItem).getByRole("button", { name: "Undo" }));
     // back to not answered: null for each, as before the press (doc_c, not listed, is never sent)
     await waitFor(() => expect(filings).toEqual([{ doc_a: ALEX, doc_b: ALEX }, { doc_a: null, doc_b: null }]));
+  });
+
+  it("a failed Undo puts focus back on the button, not on the top of the page", async () => {
+    renderCard();
+    const user = userEvent.setup();
+    const button = screen.getByRole("button", { name: "File these 2 for Alex Rivera" });
+    await user.click(button);
+    const toastItem = (await screen.findByText("Filed 2 letters for Alex Rivera")).closest("li")!;
+    failNext = true;
+    await user.click(within(toastItem).getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(toastItem).not.toBeInTheDocument());
+    expect(filings).toEqual([{ doc_a: ALEX, doc_b: ALEX }]);
+    expect(button).toHaveFocus();
+  });
+
+  it("a failed Undo after the card has gone puts focus on the first filed letter, not where focus was", async () => {
+    // the page: the card while letters are listed in it, and the letters list, where the filed letters stay
+    function Page() {
+      const [listed, setListed] = useState<typeof LETTERS>(LETTERS);
+      return (
+        <>
+          <FileThese
+            member={HOUSEHOLD.members[0]!}
+            letters={listed}
+            household={HOUSEHOLD}
+            parties={PARTIES}
+            onFiled={() => {
+              setListed([]);
+              document.getElementById("elsewhere")!.focus();
+            }}
+          />
+          <a id="elsewhere" href="/documents/doc_z">
+            Another letter
+          </a>
+          <a href="/documents/doc_b">Library: overdue books</a>
+          <a href="/documents/doc_a">Dentist appointment reminder</a>
+          <Toaster />
+        </>
+      );
+    }
+    renderWithProviders(<Page />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "File these 2 for Alex Rivera" }));
+    const toastItem = (await screen.findByText("Filed 2 letters for Alex Rivera")).closest("li")!;
+    await waitFor(() => expect(screen.queryByRole("region", { name: /Addressed to/ })).toBeNull());
+    expect(screen.getByRole("link", { name: "Another letter" })).toHaveFocus();
+    failNext = true;
+    await user.click(within(toastItem).getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(toastItem).not.toBeInTheDocument());
+    expect(filings).toEqual([{ doc_a: ALEX, doc_b: ALEX }]);
+    expect(screen.getByRole("link", { name: "Dentist appointment reminder" })).toHaveFocus();
+  });
+
+  it("a bug after filing (not a failed request) is reported once, and never told as a part filed", async () => {
+    const reported: unknown[] = [];
+    const onError = (e: ErrorEvent) => {
+      e.preventDefault();
+      reported.push(e.error);
+    };
+    window.addEventListener("error", onError);
+    try {
+      renderCard(
+        LETTERS,
+        vi.fn(() => {
+          throw new TypeError("a bug in moving focus on");
+        }),
+      );
+      await userEvent.setup().click(screen.getByRole("button", { name: "File these 2 for Alex Rivera" }));
+      await waitFor(() => expect(reported).toHaveLength(1));
+      expect(reported[0]).toBeInstanceOf(TypeError);
+      expect(filings).toEqual([{ doc_a: ALEX, doc_b: ALEX }]);
+      expect(screen.queryByText(/^Filed \d+ of /)).toBeNull();
+      expect(screen.queryByText(/^Couldn't /)).toBeNull();
+    } finally {
+      window.removeEventListener("error", onError);
+    }
   });
 
   it("says “Filed 1 letter” for one", async () => {

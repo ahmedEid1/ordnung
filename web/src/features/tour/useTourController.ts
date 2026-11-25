@@ -4,6 +4,7 @@ import { api } from "@/api/endpoints";
 import { qk, useHealth, useTour } from "@/api/hooks";
 import type { TourState } from "@/api/types";
 import { isTourVisible, normalizeTour, reduceTour, type TourEvent } from "./tourMachine";
+import { ignoreFailedRequest } from "@/api/client";
 
 const restartListeners = new Set<() => void>();
 
@@ -33,7 +34,7 @@ export function useTourController() {
       const next = reduceTour(current, ev);
       if (next === current) return;
       qc.setQueryData(qk.tour, next);
-      api.updateTour(next).catch(() => undefined); // the tour is a nicety — never toast about it
+      api.updateTour(next).catch(ignoreFailedRequest); // the tour is a nicety — never toast about a failed request
     },
     [qc],
   );

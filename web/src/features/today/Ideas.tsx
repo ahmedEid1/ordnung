@@ -22,6 +22,7 @@ import { PayPopover } from "./TopThree";
 import { TOUR_TARGETS } from "@/features/tour/steps";
 import { RefText } from "@/features/ask/RefText";
 import { HISTORY_DAYS } from "@/features/inbox/filters";
+import { ignoreFailedRequest } from "@/api/client";
 
 const quiet =
   "inline-flex h-8 items-center gap-1.5 rounded-md px-1.5 text-[12.5px] font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent";
@@ -77,7 +78,7 @@ function IdeaCard({
           description: idea.title,
           undo: undo({ status: "new", snoozed_until: null }),
         }),
-      () => undefined, // the error toast comes from the mutation's meta
+      ignoreFailedRequest, // a failed request: the error toast comes from the mutation's meta
     );
   };
 
@@ -90,7 +91,7 @@ function IdeaCard({
           description: idea.title,
           undo: undo({ status: "new" }),
         }),
-      () => undefined,
+      ignoreFailedRequest,
     );
   };
 

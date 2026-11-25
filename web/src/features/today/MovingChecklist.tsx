@@ -14,6 +14,7 @@ import { focusAfterLeaving, focusOrigin, focusWhenReady } from "@/lib/focus";
 import { ideaHref } from "./helpers";
 import { collapseOut, fadeUp } from "./motion";
 import { MOVING_CHECKLIST_ID, MOVING_SHOWN, openDraftFor } from "./moving";
+import { ignoreFailedRequest } from "@/api/client";
 
 const TITLE_ID = `${MOVING_CHECKLIST_ID}-title`;
 const checkId = (id: string) => `moving-check-${id}`;
@@ -84,7 +85,10 @@ function ChecklistCard({ rows }: { rows: Suggestion[] }) {
     focusAfterLeaving(checksOnPage, checkId(row.id), TITLE_ID);
     update.mutateAsync({ id: row.id, patch: { status } }).then(
       () => toast({ title: status === "done" ? "Ticked off" : "Hidden", description: row.title, undo: undo(row) }),
-      () => mark(row.id, false), // the error toast comes from the mutation's meta
+      (err: unknown) => {
+        mark(row.id, false); // a failed request's error toast comes from the mutation's meta
+        ignoreFailedRequest(err);
+      },
     );
   };
 

@@ -1,6 +1,7 @@
 import { useId, useRef, useState } from "react";
 import { Link } from "react-router";
 import { Lock, MapPinHouse } from "lucide-react";
+import { ignoreFailedRequest } from "@/api/client";
 import { useDashboard, useUpdateProfile } from "@/api/hooks";
 import type { Profile } from "@/api/types";
 import { Button } from "@/components/ui/Button";
@@ -129,7 +130,7 @@ function StartMove({
       return;
     }
     // once saved the move stands, and its line takes this one's place
-    onStart({ moved_on: movedOn, old_address: cleanAddress(oldAddress) }).then(close, () => undefined);
+    onStart({ moved_on: movedOn, old_address: cleanAddress(oldAddress) }).then(close, ignoreFailedRequest);
   };
 
   return (
@@ -233,9 +234,14 @@ export function ProfileSection({ profile }: { profile: Profile }) {
     update.mutateAsync({ moved_on: "", old_address: "" }).then(
       () => {
         focusWhenReady(() => addressRef.current);
-        toast({ title: "Moving checklist stopped", undo: () => update.mutateAsync(back).then(() => undefined) });
+        toast({
+          title: "Moving checklist stopped",
+          undo: () => update.mutateAsync(back).then(() => undefined),
+          // still stopped: the address, where stopping left the keyboard
+          focusIfUndoFails: () => addressRef.current,
+        });
       },
-      () => undefined, // the error toast comes from the mutation's meta
+      ignoreFailedRequest, // a failed request: the error toast comes from the mutation's meta
     );
   };
   // "Moved recently?": the new address was saved first, so the move goes alone (the address stays); once it
@@ -249,6 +255,8 @@ export function ProfileSection({ profile }: { profile: Profile }) {
         title: "Moving checklist started",
         description: "Today lists who needs your new address.",
         undo: () => update.mutateAsync({ moved_on: "", old_address: "" }).then(() => undefined),
+        // still started: its line, where starting it left the keyboard
+        focusIfUndoFails: () => lineRef.current?.querySelector<HTMLElement>("a, button") ?? null,
       });
     });
 

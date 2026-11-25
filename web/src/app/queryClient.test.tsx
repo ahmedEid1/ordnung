@@ -235,6 +235,13 @@ describe("a failed change", () => {
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
   });
 
+  it("never says a save failed for a bug in the code around the request: it is thrown after the server did it", async () => {
+    await run({ mutationFn: () => Promise.reject(new TypeError("Cannot read properties of null")), meta: { errorTitle: "Couldn't save the tracking number" } });
+    expect(screen.getByText("Something went wrong")).toBeInTheDocument();
+    expect(screen.queryByText("Couldn't save the tracking number")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+
   it("keeps the online demo's and Claude's break's own titles", async () => {
     await run({ mutationFn: () => Promise.reject(new ApiError(409, "Install Ordnung to try this.", null, "static_demo")), meta: { errorTitle: "Couldn't add your letters" } });
     expect(screen.getByText("Not available in the online demo")).toBeInTheDocument();

@@ -3,13 +3,14 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Document, Draft, MyNumbers, PartyDetail, RegionSuggestion } from "@/api/types";
 import { renderWithProviders } from "@/test/render";
-import { useMockApi } from "@/test/mockFetch";
+import { failRequests, useMockApi } from "@/test/mockFetch";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { usePartyDrawer } from "@/lib/party-drawer";
 import { item } from "@/mocks/data/helpers";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { maskValue } from "@/features/numbers/mask";
 import { BUNDESLAENDER } from "@/features/onboarding/options";
+import { PartyChip } from "@/components/ui/PartyChip";
 import { PartyDrawer } from "./PartyDrawer";
 import { byYear, letterTimeline, mailtoUrl, regionName, websiteUrl } from "./timeline";
 
@@ -433,6 +434,50 @@ describe("a sender's state, suggested from the postcode on their letter (ADR 001
     // not known again: asked again
     expect(await within(drawer).findByRole("group", { name: FUNKNETZ })).toBeInTheDocument();
     expect(picker).toHaveValue("");
+  });
+
+  it("a failed Undo of Yes keeps their state and gives the keyboard back to the State heading, where Yes left it", async () => {
+    const { srv } = useMockApi();
+    const region = () => srv.db.state.parties.find((p) => p.id === "pty_funknetz")!.region;
+    const { user, drawer, picker } = await openDrawer();
+    await user.click(within(within(drawer).getByRole("group", { name: FUNKNETZ })).getByRole("button", { name: "Yes" }));
+    const heading = within(drawer).getByRole("heading", { name: "State" });
+    await waitFor(() => expect(heading).toHaveFocus());
+    failRequests((c) => c.method === "PATCH");
+    picker.focus(); // the person went on before reaching for Undo
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(screen.queryByText("Saved: FunkNetz Mobil GmbH is in Berlin")).not.toBeInTheDocument());
+    expect(region()).toBe("BE");
+    expect(heading).toHaveFocus();
+  });
+
+  it.each([
+    ["the chip of that sender on the page", true],
+    ["the page's heading, without such a chip", false],
+  ])("a failed Undo of Yes after the drawer was closed gives the keyboard to %s, never <main>", async (_, withChip) => {
+    useMockApi();
+    const user = userEvent.setup();
+    renderWithProviders(
+      <>
+        <main tabIndex={-1}>
+          <h1>Today</h1>
+          {withChip ? <PartyChip id="pty_funknetz" name="FunkNetz Mobil GmbH" /> : null}
+        </main>
+        <PartyDrawer />
+        <Toaster />
+      </>,
+      { route: "/?party=pty_funknetz" },
+    );
+    const drawer = await screen.findByRole("dialog", { name: "FunkNetz Mobil GmbH" });
+    await user.click(within(await within(drawer).findByRole("group", { name: FUNKNETZ })).getByRole("button", { name: "Yes" }));
+    await waitFor(() => expect(within(drawer).getByRole("heading", { name: "State" })).toHaveFocus());
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    failRequests((c) => c.method === "PATCH");
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(screen.queryByText("Saved: FunkNetz Mobil GmbH is in Berlin")).not.toBeInTheDocument());
+    const target = withChip ? screen.getByRole("button", { name: /^FunkNetz Mobil GmbH/ }) : screen.getByRole("heading", { name: "Today" });
+    expect(target).toHaveFocus();
   });
 
   it("credits the state's delivery rules when that is why their dates wait: Yes, and the picker choosing that state", async () => {

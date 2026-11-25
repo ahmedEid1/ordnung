@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "@/test/render";
-import { useMockApi } from "@/test/mockFetch";
+import { failRequests, useMockApi } from "@/test/mockFetch";
 import { __resetEventsForTests } from "@/api/sse";
 import { AddLettersProvider } from "@/components/shell/AddLetters";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
@@ -93,6 +93,22 @@ describe("the letters waiting from the folder", () => {
     });
     expect(await group()).toBeInTheDocument();
     expect(await screen.findByText("They're back with the letters not read yet")).toBeInTheDocument();
+  });
+
+  it("a failed Undo of “Keep private” puts focus on the first of them, still private among the letters", async () => {
+    const { srv } = useMockApi();
+    const user = userEvent.setup();
+    renderInbox();
+    await user.click(within(await group()).getByRole("button", { name: "Keep private" }));
+    expect(await screen.findByText("Kept 3 letters private")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("region", { name: /From your folder/ })).toBeNull());
+    failRequests((c) => c.path === "/documents/held/wait");
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(screen.queryByText("Kept 3 letters private")).not.toBeInTheDocument());
+    expect(srv.db.document("doc_folder_scan")!.status).toBe("processed");
+    const first = document.activeElement as HTMLElement;
+    expect(first.tagName).toBe("A");
+    expect(first.getAttribute("href")).toBe("/documents/doc_folder_scan");
   });
 
   it("the online demo can't read new letters: it says so beforehand, and they keep waiting", async () => {

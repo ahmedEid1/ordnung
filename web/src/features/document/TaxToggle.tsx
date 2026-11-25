@@ -17,6 +17,7 @@ import { toast } from "@/components/ui/Toast";
 import { forTaxes, letterYear } from "@/features/export/selection";
 import { AnswerButton } from "@/features/inbox/AnswerButton";
 import { focusWhenReady } from "@/lib/focus";
+import { ignoreFailedRequest } from "@/api/client";
 
 /** The toggle's id, and its line's (`aria-describedby`). */
 const toggleId = (docId: string) => `tax-toggle-${docId}`;
@@ -94,8 +95,10 @@ export function TaxToggle({ detail }: { detail: DocumentDetail }) {
                   return el instanceof HTMLButtonElement && !el.disabled ? el : null;
                 }),
             ),
+          // not undone: back on the toggle all the same, one press from trying again
+          focusIfUndoFails: () => document.getElementById(toggleId(doc.id)),
         }),
-      () => undefined, // the hook's toast says it couldn't be saved
+      ignoreFailedRequest, // a failed request: the hook's toast says it couldn't be saved
     );
   };
 

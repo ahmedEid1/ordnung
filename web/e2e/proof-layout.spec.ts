@@ -234,6 +234,48 @@ test("keyboard focus never falls to <body> after the proof, Waiting-for and call
   await expect(calls.getByRole("heading", { name: /^Calls/ })).toBeFocused();
 });
 
+test("a failed Undo leaves the keyboard on what it was about, never at the top of the page", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const { draftId } = setup!;
+  await open(page, `/letters/${draftId}`);
+  const proof = page.getByRole("region", { name: "Proof of sending" });
+  /** Make the `method` request to `path` (under /api/drafts/<id>/) fail, as a broken server would. */
+  const breakRequest = (method: string, path: string) =>
+    page.route(`**/api/drafts/${draftId}/${path}`, (route) =>
+      route.request().method() === method ? route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ detail: "Failed on purpose." }) }) : route.fallback(),
+    );
+  const errors = page.locator('[aria-live="assertive"] li[data-toast]');
+
+  // "I got an answer": the Undo's request fails; the box the change was about takes the keyboard, not <main>
+  await proof.getByRole("button", { name: "I got an answer — close this" }).click();
+  const box = page.locator("#proof-waiting");
+  await expect(box).toBeFocused();
+  await breakRequest("DELETE", "answered");
+  await toast(page, "Marked as answered").getByRole("button", { name: "Undo" }).click();
+  await expect(errors.filter({ hasText: "Couldn't save that" })).toHaveCount(1);
+  await expect(box).toBeFocused();
+  await page.unroute(`**/api/drafts/${draftId}/answered`);
+  await proof.getByRole("button", { name: "Not answered after all" }).click();
+  await expect(proof.getByRole("button", { name: "I got an answer — close this" })).toBeVisible();
+  await errors.getByRole("button", { name: "Dismiss notification" }).click();
+  await expect(errors).toHaveCount(0);
+
+  // the tracking number: removed, and its Undo's request fails; the field takes the keyboard
+  await proof.getByRole("button", { name: "Remove", exact: true }).click();
+  const field = proof.getByRole("textbox", { name: "Tracking number" });
+  await expect(field).toBeFocused();
+  await breakRequest("PUT", "tracking");
+  await toast(page, "Tracking number removed").getByRole("button", { name: "Undo" }).click();
+  await expect(errors.filter({ hasText: "Couldn't save the tracking number" })).toHaveCount(1);
+  await expect(field).toBeFocused();
+  // the number is in the field again, not saved: one press of Save tries again
+  await expect(field).toHaveValue(TRACKING);
+  await expect(proof.getByRole("button", { name: "Change", exact: true })).toHaveCount(0);
+  await page.unroute(`**/api/drafts/${draftId}/tracking`);
+  await proof.getByRole("button", { name: "Save number" }).click();
+  await expect(proof.getByRole("button", { name: "Change", exact: true })).toBeFocused();
+});
+
 /** An unsent cancellation of the FunkNetz contract (a new one each time: marking it sent uses it up). */
 async function unsentLetter(page: Page): Promise<string> {
   const contract = await contractOf(page, "mobile");

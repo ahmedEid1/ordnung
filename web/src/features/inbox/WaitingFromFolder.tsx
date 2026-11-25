@@ -36,6 +36,7 @@ import { AnswerButton } from "./AnswerButton";
 import { isHeld } from "./filters";
 import { Thumb } from "./LettersList";
 import { fileKindLabel, readLabel, waitingRows, type WaitingRow } from "./waiting";
+import { ignoreFailedRequest } from "@/api/client";
 
 export function WaitingFromFolder({
   docs,
@@ -78,7 +79,7 @@ export function WaitingFromFolder({
           });
         onAnswered?.();
       })
-      .catch(() => undefined); // the request's own error toast says what went wrong
+      .catch(ignoreFailedRequest); // a failed request: its own error toast says what went wrong
   const keepThem = () =>
     keep
       .mutateAsync(ids)
@@ -93,10 +94,12 @@ export function WaitingFromFolder({
                   .mutateAsync(kept)
                   .then((back) => void toast({ title: back.documents.length === 1 ? "It's back with the letters not read yet" : "They're back with the letters not read yet", tone: "info" }))
             : undefined,
+          // still kept private: the first of them, now among the letters (else back where focus was)
+          focusIfUndoFails: () => (count ? document.querySelector<HTMLElement>(`a[href="/documents/${kept[0]}"]`) : null),
         });
         onAnswered?.();
       })
-      .catch(() => undefined);
+      .catch(ignoreFailedRequest);
 
   return (
     <section aria-labelledby="waiting-title" className="mb-10">

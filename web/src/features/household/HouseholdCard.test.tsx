@@ -9,7 +9,7 @@ import userEvent from "@testing-library/user-event";
 import type { Household } from "@/api/types";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { renderWithProviders } from "@/test/render";
-import { useMockApi, type FetchCall } from "@/test/mockFetch";
+import { failRequests, useMockApi, type FetchCall } from "@/test/mockFetch";
 import SettingsPage from "@/pages/SettingsPage";
 import { HouseholdCard } from "./HouseholdCard";
 
@@ -167,6 +167,20 @@ describe("Your household (Settings)", () => {
     await screen.findByText("Removed Mia Rivera");
     await waitFor(() => expect(document.getElementById("set-household")).toHaveFocus());
     expect(addField()).not.toHaveFocus();
+  });
+
+  it("a failed Undo of a removal says why and leaves the keyboard on the Edit of the person now in their place", async () => {
+    const { user, srv } = renderCard(useMockApi(), { members: [ALEX, MIA] });
+    await user.click(await screen.findByRole("button", { name: "Remove Alex Rivera" }));
+    const toast = (await screen.findByText("Removed Alex Rivera")).closest("[data-toast]") as HTMLElement;
+    const edit = screen.getByRole("button", { name: "Edit Mia Rivera" });
+    await waitFor(() => expect(edit).toHaveFocus());
+    failRequests((c) => c.path === "/household");
+    await user.click(within(toast).getByRole("button", { name: "Undo" }));
+    expect(await screen.findByText("Couldn't save your household")).toBeInTheDocument();
+    await waitFor(() => expect(toast).not.toBeInTheDocument());
+    expect(srv.db.state.household.members).toEqual([MIA]);
+    expect(edit).toHaveFocus();
   });
 
   it("a later change takes the earlier Undo away: only the newest one is offered, and it works", async () => {

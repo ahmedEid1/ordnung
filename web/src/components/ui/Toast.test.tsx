@@ -255,6 +255,79 @@ describe("A toast on its way out", () => {
     }
   });
 
+  /** A page with a heading and two controls, and the toasts. The heading has no tabindex, as on a real page. */
+  function page() {
+    renderWithProviders(
+      <>
+        <main tabIndex={-1}>
+          <h1>Today</h1>
+          <button type="button">For taxes</button>
+          <button type="button">Next card</button>
+        </main>
+        <Toaster />
+      </>,
+    );
+    return { toggle: screen.getByRole("button", { name: "For taxes" }), next: screen.getByRole("button", { name: "Next card" }) };
+  }
+  const failing = () => Promise.reject(new ApiError(500, "Ordnung isn't reachable."));
+
+  it("puts focus on the control the change was about when its Undo fails, not on <main>", async () => {
+    const user = userEvent.setup();
+    const { toggle, next } = page();
+    act(() => void toast({ title: "Marked for taxes", undo: failing, focusIfUndoFails: () => toggle }));
+    next.focus(); // the person went on before reaching for Undo
+    const toastItem = item("Marked for taxes");
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(contents(toastItem)).toHaveAttribute("inert"));
+    expect(toggle).toHaveFocus();
+    await waitFor(() => expect(toastItem).not.toBeInTheDocument());
+    // the heading is made focusable only when focus goes there
+    expect(screen.getByRole("heading", { name: "Today" })).not.toHaveAttribute("tabindex");
+  });
+
+  it("without that control, puts focus back where it was before it moved into the toast", async () => {
+    const user = userEvent.setup();
+    const { next } = page();
+    act(() => void toast({ title: "Marked as paid", undo: failing, focusIfUndoFails: () => null }));
+    next.focus(); // where the card that left handed focus
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(screen.queryByText("Marked as paid")).not.toBeInTheDocument());
+    expect(next).toHaveFocus();
+  });
+
+  it("skips a control that is gone or disabled, and then takes the page's heading — never <main>", async () => {
+    const user = userEvent.setup();
+    const { toggle, next } = page();
+    act(() => void toast({ title: "Marked for taxes", undo: failing, focusIfUndoFails: () => toggle }));
+    next.focus();
+    toggle.setAttribute("disabled", "");
+    next.remove();
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(screen.queryByText("Marked for taxes")).not.toBeInTheDocument());
+    // a page's h1 cannot take focus by itself: it is given tabindex -1 first, as focusWhenReady does
+    expect(screen.getByRole("heading", { name: "Today" })).toHaveFocus();
+    expect(screen.getByRole("heading", { name: "Today" })).toHaveAttribute("tabindex", "-1");
+  });
+
+  it("counts an Undo that resolves false as failed (it said why itself)", async () => {
+    const user = userEvent.setup();
+    const { toggle } = page();
+    act(() => void toast({ title: "Removed Erika", undo: async () => false, focusIfUndoFails: () => toggle }));
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(screen.queryByText("Removed Erika")).not.toBeInTheDocument());
+    expect(toggle).toHaveFocus();
+  });
+
+  it("still hands focus to <main> after an Undo that works: the Undo's own code moves it on from there", async () => {
+    const user = userEvent.setup();
+    const { toggle, next } = page();
+    act(() => void toast({ title: "Marked for taxes", undo: async () => {}, focusIfUndoFails: () => toggle }));
+    next.focus();
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(screen.queryByText("Marked for taxes")).not.toBeInTheDocument());
+    expect(screen.getByRole("main")).toHaveFocus();
+  });
+
   it("is out of reach on phones too, when a newer toast takes its place", () => {
     viewport(390);
     renderWithProviders(<Toaster />);

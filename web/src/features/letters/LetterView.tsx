@@ -3,7 +3,7 @@ import { Link, useBlocker, useNavigate } from "react-router";
 import { Check, ChevronRight, CircleCheck, Download, Ellipsis, FilePen, FileCheck2, ListChecks, PenLine, Save, Send, Trash2, TriangleAlert, Undo2 } from "lucide-react";
 import { api } from "@/api/endpoints";
 import { useDeleteDraft, useDocuments, useContracts, useDraftProof, useMarkDraftSent, useParties, useProfile, useTranslateDraft, useUpdateDraft } from "@/api/hooks";
-import { ApiError } from "@/api/client";
+import { ApiError, ignoreFailedRequest } from "@/api/client";
 import type { Draft, SendChannelKind } from "@/api/types";
 import { Button, IconButton, buttonVariants } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
@@ -250,8 +250,9 @@ export function LetterView({ draft }: { draft: Draft }) {
     let current: Draft;
     try {
       current = await save();
-    } catch {
-      return; // the save error is already shown
+    } catch (err) {
+      ignoreFailedRequest(err); // a failed request: the save error is already shown
+      return;
     }
     try {
       await translate.mutateAsync(current.id);
@@ -259,11 +260,18 @@ export function LetterView({ draft }: { draft: Draft }) {
       setBodyEdited(false);
       toast.success("Translation updated", { description: "The English text now matches your letter." });
     } catch (err) {
-      const demo = err instanceof ApiError && (err.status === 409 || err.isStaticDemo);
+      if (!(err instanceof ApiError)) {
+        // a bug in the code around the request, perhaps after the translation was saved: reported, and never told
+        // as a failed translation (the words are those of any other save's bug)
+        reportError(err);
+        toast({ tone: "danger", title: "Something went wrong", description: err instanceof Error ? err.message : undefined });
+        return;
+      }
+      const demo = err.status === 409 || err.isStaticDemo;
       toast({
         tone: demo ? "info" : "danger",
         title: demo ? "Not available in the demo" : "Couldn't translate the letter",
-        description: err instanceof ApiError ? plainText(err.message) : "Please try again in a moment.",
+        description: plainText(err.message),
       });
     }
   }, [draft.id, save, translate]);
@@ -328,8 +336,8 @@ export function LetterView({ draft }: { draft: Draft }) {
           description: `${again ? "Now marked as sent" : "Marked as sent"} ${how}.`,
         });
       }
-    } catch {
-      /* the global mutation handler shows the error */
+    } catch (err) {
+      ignoreFailedRequest(err); // a failed request: the global mutation handler shows the error
     }
   };
 

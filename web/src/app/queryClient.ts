@@ -1,6 +1,6 @@
 import { createElement, Fragment, type ReactNode } from "react";
 import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query";
-import { ApiError } from "@/api/client";
+import { ApiError, ignoreFailedRequest } from "@/api/client";
 import { clientKind } from "@/api/clientKind";
 import { TechnicalDetails, technicalDetails } from "@/components/ui/LoadError";
 import { dismissToast, toast } from "@/components/ui/Toast";
@@ -150,8 +150,9 @@ export function createQueryClient(): QueryClient {
         const { title, description } = describe(err);
         // a demo's limit (the hosted demo, or `ordnung demo` asked to read a new letter): a calm note
         const demo = err instanceof ApiError && err.isDemoLimit;
-        // what failed ("Couldn't save your profile"), unless the reason is the better title
-        const specific = demo || (err instanceof ApiError && err.status === 429) ? title : (mutation.meta?.errorTitle ?? title);
+        // what failed ("Couldn't save your profile"), unless the reason is the better title. Not for a bug in the
+        // code around the request (not an ApiError): that is thrown while the answer is read, after the server did it
+        const specific = demo || !(err instanceof ApiError) || err.status === 429 ? title : (mutation.meta?.errorTitle ?? title);
         toast({
           tone: demo ? "info" : "danger",
           title: specific,
@@ -160,7 +161,8 @@ export function createQueryClient(): QueryClient {
             ? {
                 label: "Try again",
                 // the same request with the same options (its own success and error handling included)
-                onClick: () => void client.getMutationCache().build(client, mutation.options).execute(variables).catch(() => {}),
+                // (a failed request tells itself again, through this handler)
+                onClick: () => void client.getMutationCache().build(client, mutation.options).execute(variables).catch(ignoreFailedRequest),
               }
             : undefined,
         });

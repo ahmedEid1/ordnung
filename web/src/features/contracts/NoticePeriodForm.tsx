@@ -13,6 +13,7 @@ import { toast } from "@/components/ui/Toast";
 import { NOTICE_BASIS_COPY } from "@/lib/copy";
 import { formatDate } from "@/lib/format";
 import { earlyNoticeCounts, noticeDayCounts, statutoryNoticeCounts, termsUnclear } from "./model";
+import { ignoreFailedRequest } from "@/api/client";
 
 /** The longest notice period the form takes per unit (longer ones are misreadings). */
 export const NOTICE_MAX: Record<NoticeUnit, number> = { days: 730, weeks: 104, months: 24 };
@@ -161,13 +162,14 @@ export function NoticePeriodForm({
     update.mutateAsync({ id: c.id, patch }).then(
       (fresh) => {
         onClose(fresh);
-        const undo = () => update.mutateAsync({ id: c.id, patch: before }).then(onUndone, () => undefined);
+        // (a failed one rejects: the toast then knows, and the error toast from the mutation's meta says why)
+        const undo = () => update.mutateAsync({ id: c.id, patch: before }).then(onUndone);
         const description = fresh.computed?.summary || undefined;
         // saved either way; say so plainly when the dates still can't be worked out (e.g. no term)
         if (termsUnclear(fresh)) toast.warn("Notice period saved — the dates still need checking", { description, undo });
         else toast.success("Notice period saved", { description, undo });
       },
-      () => undefined, // the error toast comes from the mutation's meta; the form stays open to try again
+      ignoreFailedRequest, // a failed request: the error toast comes from the mutation's meta; the form stays open to try again
     );
   };
 

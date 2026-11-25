@@ -35,6 +35,7 @@ import { DEMO_NOTE } from "@/lib/mode";
 import { usePartyDrawer } from "@/lib/party-drawer";
 import { SenderLandQuestion } from "@/features/party/SenderLandQuestion";
 import { LAND_WAIT_REASON, landWait } from "@/features/party/sender-land";
+import { ignoreFailedRequest } from "@/api/client";
 
 export const SAFE_NOTE = "No warning does not mean it is safe.";
 
@@ -292,9 +293,9 @@ function ScamBanner({ suggestion, doc, reasons }: { suggestion: Suggestion; doc:
                 toast({
                   title: "Warning removed",
                   description: "You checked it with the sender. We'll keep comparing new letters.",
-                  undo: () => update.mutate({ id: suggestion.id, patch: { status: "new" } }),
+                  undo: () => update.mutateAsync({ id: suggestion.id, patch: { status: "new" } }).then(() => undefined),
                 }),
-              () => undefined, // the error toast comes from the mutation's meta
+              ignoreFailedRequest, // a failed request: the error toast comes from the mutation's meta
             )
           }
         >
@@ -412,8 +413,9 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
     // focus never came. This closure outlives the form.
     try {
       await update.mutateAsync({ id: doc.id, patch: { received_date: date } });
-    } catch {
-      return; // the mutation's own error toast says what went wrong; the form stays for another try
+    } catch (err) {
+      ignoreFailedRequest(err); // a failed request: its own error toast says what went wrong; the form stays for another try
+      return;
     }
     // the question goes away once answered: keyboard focus moves to the verdict and its new date, in view
     const title = document.getElementById("verdict-title");
@@ -434,7 +436,7 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
     // the items as recomputed with the arrival day: they say what the date now counts from
     const fresh = await qc
       .query({ queryKey: qk.documents.detail(doc.id), queryFn: () => api.document(doc.id), staleTime: 5_000 })
-      .catch(() => undefined);
+      .catch(ignoreFailedRequest); // a failed request: the note it would add is left out
     const asked = new Set(items.map((i) => i.id));
     const recomputed = (fresh?.items ?? []).filter((i) => asked.has(i.id));
     // a delivery day the letter states counts when it is earlier than the one entered
@@ -547,7 +549,7 @@ function SenderLandCheck({ detail, party, suggestion }: { detail: DocumentDetail
     title?.scrollIntoView?.({ block: "start" });
     const fresh = await qc
       .query({ queryKey: qk.documents.detail(doc.id), queryFn: () => api.document(doc.id), staleTime: 5_000 })
-      .catch(() => undefined);
+      .catch(ignoreFailedRequest); // a failed request: the note it would add is left out
     return fresh ? movedNote(before, fresh.items) : null;
   };
   return (

@@ -22,9 +22,11 @@ import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toast";
 import { AnswerButton } from "@/features/inbox/AnswerButton";
 import { focusWhenReady } from "@/lib/focus";
+import { partyChipOnPage } from "@/components/ui/PartyChip";
 import { cn } from "@/lib/utils";
 import { savedStateLine } from "./sender-land";
 import { regionName } from "./timeline";
+import { ignoreFailedRequest } from "@/api/client";
 
 export type PartyUpdate = ReturnType<typeof useUpdateParty>;
 
@@ -78,9 +80,10 @@ export function SenderLandQuestion({
     let saved: Party;
     try {
       saved = await update.mutateAsync({ id: party.id, patch: { region: suggestion.region } });
-    } catch {
+    } catch (err) {
       setBusy(null);
-      return; // the hook's toast says what went wrong; the question stays, the keyboard on Yes
+      ignoreFailedRequest(err); // a failed request: the hook's toast says what went wrong; the question stays, the keyboard on Yes
+      return;
     }
     setBusy(null);
     if (focusAfterYes) focusWhenReady(() => (document.getElementById(groupId) ? null : focusAfterYes()));
@@ -89,6 +92,9 @@ export function SenderLandQuestion({
     toast.success(`Saved: ${saved.name} is in ${state}`, {
       description: [savedStateLine(state, suggestion.reason), moved].filter(Boolean).join(" "),
       undo: () => update.mutateAsync({ id: party.id, patch: { region: null } }).then(() => undefined),
+      // still saved, the question gone: where Yes left the keyboard; with its drawer closed since, this sender's chip
+      // on the page (none: the Toaster goes on to where focus was, then the page's heading)
+      focusIfUndoFails: () => (focusAfterYes ? (focusAfterYes() ?? partyChipOnPage(party.id)) : null),
     });
   };
 
@@ -105,10 +111,15 @@ export function SenderLandQuestion({
             suggestion.may_be_late ? "A holiday in their state could make a date earlier: act a working day before it." : "Their dates stay the earlier ones."
           } You can choose their state any time in their details.`,
           undo: () => idea.mutateAsync({ id: ideaId, patch: { status: "new" } }).then(() => undefined),
+          // still dismissed, its button gone: where "Don't know" left the keyboard
+          focusIfUndoFails: () => focusAfterDontKnow?.() ?? null,
         });
         if (focusAfterDontKnow) focusWhenReady(() => (document.getElementById(dontKnowId) ? null : focusAfterDontKnow()));
       },
-      () => setBusy(null),
+      (err: unknown) => {
+        setBusy(null);
+        ignoreFailedRequest(err); // a failed request: the hook's toast says so
+      },
     );
   };
 

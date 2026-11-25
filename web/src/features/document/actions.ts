@@ -11,11 +11,15 @@ import { toast } from "@/components/ui/Toast";
 import { doneLine } from "@/features/items/repeat";
 import { formatDate } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
+import { ignoreFailedRequest } from "@/api/client";
 
 export function useItemActions() {
   const update = useUpdateItem();
   const confirm = useConfirmItem();
   const today = useTodayISO();
+
+  // Each Undo returns its request's promise: the toast stays busy until it is done, and knows when it failed (focus
+  // then stays near the change instead of dropping to the top of the page).
 
   /** Done, with Undo; `title` names what was done ("Marked as paid" after the Pay panel, as on Today). */
   const markDone = useCallback(
@@ -26,7 +30,7 @@ export function useItemActions() {
           onSuccess: (moved) =>
             toast.success(title, {
               description: doneLine(item, moved, today),
-              undo: () => update.mutate({ id: item.id, patch: { status: "open" } }),
+              undo: () => update.mutateAsync({ id: item.id, patch: { status: "open" } }).then(() => undefined),
             }),
         },
       ),
@@ -44,7 +48,7 @@ export function useItemActions() {
             toast({
               title: "Removed from your to-dos",
               description: `“${item.title}” won't remind you. The letter stays filed.`,
-              undo: () => update.mutate({ id: item.id, patch: { status: "open" } }),
+              undo: () => update.mutateAsync({ id: item.id, patch: { status: "open" } }).then(() => undefined),
             }),
         },
       ),
@@ -61,7 +65,7 @@ export function useItemActions() {
             toast.success(`Date changed to ${formatDate(date, { style: "short" })}`, {
               // a repeating to-do's new date stands in for this one only (ordnung.recurrence, point 7)
               description: item.recurrence ? "Only this one moves — the ones after keep their day." : "You set this date yourself, so Ordnung won't overwrite it.",
-              undo: item.due_date ? () => update.mutate({ id: item.id, patch: { due_date: item.due_date } }) : undefined,
+              undo: item.due_date ? () => update.mutateAsync({ id: item.id, patch: { due_date: item.due_date } }).then(() => undefined) : undefined,
             });
           },
         },
@@ -89,7 +93,8 @@ export function useStartDraft() {
     async (kind: DraftKind, refs: { doc_id?: string | null; contract_id?: string | null; party_id?: string | null; case_id?: string | null }) => {
       // a second click opens the letter already being drafted for this letter/contract instead of a copy
       setLooking(true);
-      const drafts = await api.drafts().catch(() => []);
+      // a failed request: start a new letter (one being drafted already is then not found)
+      const drafts = await api.drafts().catch((err: unknown) => (ignoreFailedRequest(err), []));
       setLooking(false);
       const open = drafts.find(
         (d) =>

@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, typ
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useIsPresent } from "motion/react";
 import { CircleCheck, Info, TriangleAlert, CircleX, X, Undo2 } from "lucide-react";
-import { ApiError } from "@/api/client";
+import { ignoreFailedRequest } from "@/api/client";
 import { setToastHandBack } from "@/lib/focus";
 import { useHotkey, useMediaQuery } from "@/lib/hooks";
 import { cn, IS_APPLE } from "@/lib/utils";
@@ -16,8 +16,17 @@ export interface ToastOptions {
   tone?: ToastTone;
   /** A secondary action ("Open", "View letter"). */
   action?: { label: string; onClick: () => void };
-  /** Adds an "Undo" button; the toast closes after it runs. */
-  undo?: () => void | Promise<void>;
+  /**
+   * Adds an "Undo" button; the toast closes after it runs. It failed when it rejects (a failed request has said so
+   * itself) or resolves `false` (it said why itself, as a household change does).
+   */
+  undo?: () => void | boolean | Promise<void | boolean>;
+  /**
+   * Where focus goes when the Undo fails and the toast held focus: the control the change was about, where a
+   * successful Undo puts it (null when it is not on the page). Without it, or without that control, focus goes back
+   * where it was before it moved into the toasts — never to the top of the page while a control is left.
+   */
+  focusIfUndoFails?: () => HTMLElement | null;
   /**
    * Auto-dismiss after ms (see {@link toastDuration}: 5 s, 10 s with an action, 15 s with Undo;
    * errors stay until dismissed). `Infinity` keeps it open.
@@ -130,6 +139,40 @@ function restoreFocus() {
   back?.focus({ preventScroll: true });
 }
 
+/** The last element that had focus outside the toasts (however it then moved in: Alt+N, Tab or a click). */
+let focusOutsideToasts: HTMLElement | null = null;
+
+/** Focus the first of `places` that takes it: on the page, a control (not <main> or <body>), not inert or disabled. */
+function focusFirst(places: (HTMLElement | null | undefined)[]): boolean {
+  for (const el of places) {
+    if (!el?.isConnected || el === document.body || el.tagName === "MAIN" || el.closest("[inert], [data-toast]")) continue;
+    el.focus();
+    if (document.activeElement === el) return true;
+  }
+  return false;
+}
+
+/**
+ * The page's heading, made able to take focus: a page's h1 has no tabindex, and without one focus() does nothing.
+ * Asked for only when the two places before it are gone, so the -1 is set only when focus really goes there.
+ */
+function pageHeading(): HTMLElement | null {
+  const h1 = document.querySelector<HTMLElement>("main h1");
+  if (h1 && !h1.hasAttribute("tabindex")) h1.tabIndex = -1;
+  return h1;
+}
+
+/**
+ * After a failed Undo the change still stands, and the person is one step from trying again: focus goes to the
+ * control the change was about, else back where it was before the toast took it, else the page's heading — not to
+ * <main>, which drops a keyboard or screen-reader user at the top of the page.
+ */
+function focusAfterFailedUndo(t: ToastRecord) {
+  const placed = focusFirst([t.focusIfUndoFails?.(), focusOutsideToasts]) || focusFirst([pageHeading()]);
+  if (placed) focusBeforeToasts = null;
+  else restoreFocus();
+}
+
 function ToastItem({ t, paused }: { t: ToastRecord; paused: boolean }) {
   const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLLIElement>(null);
@@ -152,10 +195,12 @@ function ToastItem({ t, paused }: { t: ToastRecord; paused: boolean }) {
   }, [paused, t.id, t.seq, lifetime]);
 
   const hasFocus = () => Boolean(ref.current?.contains(document.activeElement));
-  /** Close it; when focus was inside, hand it back instead of dropping it on the page. */
-  const close = (hadFocus = hasFocus()) => {
+  /** Close it; when focus was inside, hand it back instead of dropping it on the page (after a failed Undo: see there). */
+  const close = (hadFocus = hasFocus(), undoFailed = false) => {
     dismissToast(t.id);
-    if (hadFocus) restoreFocus();
+    if (!hadFocus) return;
+    if (undoFailed) focusAfterFailedUndo(t);
+    else restoreFocus();
   };
 
   const { icon: Icon, cls } = toneIcon[t.tone ?? "info"];
@@ -201,16 +246,18 @@ function ToastItem({ t, paused }: { t: ToastRecord; paused: boolean }) {
                     // (read before the busy button is disabled and loses focus)
                     const hadFocus = hasFocus();
                     setBusy(true);
+                    let failed = false;
                     try {
-                      await t.undo?.();
+                      failed = (await t.undo?.()) === false;
                     } catch (err) {
+                      failed = true;
                       // A failed request has said so itself (the query client's error toast; a household change,
                       // which is quiet, with its own): nothing is left to tell, and nothing awaits this click to
-                      // catch it, so it would escape as a page error. Anything else is a bug: report it, so the
+                      // catch it, so it would escape as a page error. Anything else is a bug: reported, so the
                       // console, the end-to-end tests and Vitest still see it.
-                      if (!(err instanceof ApiError)) reportError(err);
+                      ignoreFailedRequest(err);
                     } finally {
-                      close(hadFocus);
+                      close(hadFocus, failed);
                     }
                   }}
                 >
@@ -351,6 +398,17 @@ export function Toaster({ className, children }: { className?: string; children?
   const paused = hovered || focused || modal || hidden;
   const [section, setSection] = useState<HTMLElement | null>(null);
   useToastSpace(section);
+
+  // where focus was on the page: a failed Undo hands it back there when the control it was about is gone
+  useEffect(() => {
+    if (!section) return;
+    const seen = (e: FocusEvent) => {
+      const el = e.target;
+      if (el instanceof HTMLElement && el.tagName !== "MAIN" && !section.contains(el)) focusOutsideToasts = el;
+    };
+    document.addEventListener("focusin", seen);
+    return () => document.removeEventListener("focusin", seen);
+  }, [section]);
 
   return createPortal(
     <section

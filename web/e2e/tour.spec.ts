@@ -140,6 +140,29 @@ test("laptops: every step docks in the sidebar at 1280×800, and all but the lon
   await setTour(page, null);
 });
 
+test("the card's heading is snug (1.375 of its size), docked at 1280 px and opened on a 320 px phone, light and dark", async ({ page }) => {
+  for (const { size, expand } of [
+    { size: { width: 1280, height: 800 }, expand: false }, // docked: 17 px
+    { size: { width: 320, height: 700 }, expand: true }, // the bar, opened: 19 px
+  ]) {
+    await page.setViewportSize(size);
+    for (const colorScheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme });
+      await setTour(page, 1); // two lines when docked
+      await open(page, "/");
+      const tour = tourCard(page);
+      if (expand) await tour.getByRole("button", { name: /show the whole step$/ }).click();
+      const heading = tour.getByRole("heading", { name: "Ideas from your secretary" });
+      await expect(heading).toBeVisible();
+      const { fontSize, lineHeight } = await heading.evaluate((el) => ({ fontSize: parseFloat(getComputedStyle(el).fontSize), lineHeight: parseFloat(getComputedStyle(el).lineHeight) }));
+      expect(fontSize, `${size.width} px`).toBe(expand ? 19 : 17);
+      expect(lineHeight / fontSize, `${size.width} px ${colorScheme}: line height`).toBeCloseTo(1.375, 3);
+    }
+  }
+  await page.emulateMedia({ colorScheme: null });
+  await setTour(page, null);
+});
+
 test("short laptops (1280×720, 1024×768): the tour is never cut off — docked whole, or the slim bar", async ({ page }) => {
   for (const size of [
     { width: 1280, height: 720 },

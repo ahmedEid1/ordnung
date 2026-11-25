@@ -42,6 +42,7 @@ import { WhyThisDate } from "./WhyThisDate";
 import { LetterText } from "@/components/ui/LetterText";
 import { GiroCodeSection, canReadLetterAgain } from "@/features/girocode/GiroCode";
 import { IbanCheck, PayFooter, TransferDetails, amountForTransfer, hasTransferDetails } from "@/features/pay/TransferDetails";
+import { ignoreFailedRequest } from "@/api/client";
 
 const VERB: Record<ActionVerb, { label: string; icon: LucideIcon }> = {
   pay: { label: "Pay", icon: Wallet },
@@ -185,7 +186,7 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
           },
         });
       },
-      () => undefined, // the error toast comes from the mutation's meta
+      ignoreFailedRequest, // a failed request: the error toast comes from the mutation's meta
     );
   };
 
@@ -292,7 +293,10 @@ function VerbButton({ action, variant }: { action: TodayAction; variant: ButtonV
               },
             });
           },
-          () => settled?.(), // the card stays; the error toast comes from the mutation's meta
+          (err: unknown) => {
+            settled?.(); // the card stays; a failed request's error toast comes from the mutation's meta
+            ignoreFailedRequest(err);
+          },
         );
         return;
       }

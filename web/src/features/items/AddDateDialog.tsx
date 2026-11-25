@@ -255,7 +255,7 @@ export function AddDateDialog({ open, onClose, letter = null, item = null, retur
     toast.success("Date added", {
       description: savedLine(created, today),
       // undone by deleting it, which a paired phone leaves to the computer
-      undo: phone ? undefined : () => remove.mutate(created.id),
+      undo: phone ? undefined : () => remove.mutateAsync(created.id).then(() => undefined),
     });
     onClose();
   };
@@ -290,7 +290,7 @@ export function AddDateDialog({ open, onClose, letter = null, item = null, retur
           toast({
             title: "Removed from your dates",
             description: `“${own.title}” won't remind you any more.`,
-            undo: () => update.mutate({ id: own.id, patch: back }),
+            undo: () => update.mutateAsync({ id: own.id, patch: back }).then(() => undefined),
           });
           onClose();
         },

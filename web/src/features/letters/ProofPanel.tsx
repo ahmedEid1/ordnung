@@ -2,7 +2,8 @@ import { useRef, useState } from "react";
 import { Link } from "react-router";
 import { CalendarClock, CircleCheck, CircleDashed, CircleHelp, Ellipsis, FileDown, Info, PenLine, Phone, Plus, ShieldCheck, Trash2, TriangleAlert, Undo2 } from "lucide-react";
 import { api } from "@/api/endpoints";
-import { useDraftProof, useMarkAnswered, useRemoveProof, useSetTracking } from "@/api/hooks";
+import { useQueryClient } from "@tanstack/react-query";
+import { qk, useDraftProof, useMarkAnswered, useRemoveProof, useSetTracking } from "@/api/hooks";
 import type { Draft, ProofEntry, ProofEvent, ProofOverview, WaitingEntry } from "@/api/types";
 import { Button, IconButton, buttonVariants } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
@@ -26,6 +27,7 @@ import { AddProofDialog } from "./AddProofDialog";
 import { RemoveProofDialog } from "./RemoveProofDialog";
 import { TrackingField, trackingSavable } from "./TrackingField";
 import { hasPicture, kindsIn, proofFileHref, nachweisFileName, startWith, suggestedKind, takesTrackingNumber, waitingTitle, WAITING_TONE } from "./proof";
+import { ApiError, ignoreFailedRequest } from "@/api/client";
 
 const WAITING_ICON = {
   // what you wait for from someone else has its own icon (the hourglass is the Deadline kind)
@@ -68,13 +70,14 @@ function WaitingBox({ entry, draft }: { entry: WaitingEntry; draft: Draft }) {
               const back = focusOrigin();
               return answered.mutateAsync({ id: draft.id, answered: false }).then(() => focusId(BOX_ID, back));
             },
+            focusIfUndoFails: () => document.getElementById(BOX_ID),
           });
         else
           toast.success("Waiting for an answer again", {
             description: "The follow-up is open again.",
           });
       },
-      () => undefined,
+      ignoreFailedRequest, // a failed request: the hook's toast says so
     );
   };
   const reminder =
@@ -132,13 +135,15 @@ function WaitingBox({ entry, draft }: { entry: WaitingEntry; draft: Draft }) {
 /** The saved number with Change / Remove (with Undo), or the field to enter it. */
 function Tracking({ draft, overview }: { draft: Draft; overview: ProofOverview }) {
   const save = useSetTracking();
+  const qc = useQueryClient();
   const saved = overview.tracking;
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState("");
   const [tried, setTried] = useState(false);
-  // a promise, so the Undo that puts a removed number back waits for it (its toast stays, busy, until then);
-  // `from`: where focus was as it started (focusOrigin), so Change takes focus from there too
-  const store = (text: string | null, then?: () => void, from: Element | null = null) =>
+  // a promise of whether it was saved, so the Undo that puts a removed number back waits for it (its toast stays,
+  // busy, until then) and knows when it failed; `from`: where focus was as it started (focusOrigin), so Change takes
+  // focus from there too; `failed`: what to do when it couldn't be saved
+  const store = (text: string | null, { then, from = null, failed }: { then?: () => void; from?: Element | null; failed?: () => void } = {}) =>
     save.mutateAsync({ id: draft.id, trackingNumber: text }).then(
       (next) => {
         setEditing(false);
@@ -151,20 +156,45 @@ function Tracking({ draft, overview }: { draft: Draft; overview: ProofOverview }
             description: next.tracking ? displayTracking(next.tracking.number) : undefined,
           });
         }
+        return true;
       },
-      () => undefined, // the hook's toast says it couldn't be saved
+      (err: unknown) => {
+        ignoreFailedRequest(err); // a failed request: the hook's toast says it couldn't be saved
+        // only a failed request leaves the number unsaved: a bug in reading the answer comes after the server stored it
+        if (err instanceof ApiError) failed?.();
+        else {
+          // the number may well be stored: ask the server, so the page shows what it holds
+          void qc.invalidateQueries({ queryKey: qk.drafts.proof(draft.id) });
+          void qc.invalidateQueries({ queryKey: qk.drafts.detail(draft.id) });
+          // that swaps the field (where a failed Undo put focus) for the stored number: Change takes focus, not <body>
+          focusId(TRACKING_CHANGE);
+        }
+        return false;
+      },
     );
   const remove = () => {
     if (!saved) return;
     const previous = saved.number;
-    store(null, () => {
-      focusId(TRACKING_INPUT);
-      toast.success("Tracking number removed", {
-        description: displayTracking(previous),
-        // pressed from the keyboard (Alt+N, Enter), the closing toast hands focus back where it was before Alt+N:
-        // Change takes it from there, as after "Marked as answered"'s Undo
-        undo: () => store(previous, undefined, focusOrigin()),
-      });
+    void store(null, {
+      then: () => {
+        focusId(TRACKING_INPUT);
+        toast.success("Tracking number removed", {
+          description: displayTracking(previous),
+          // pressed from the keyboard (Alt+N, Enter), the closing toast hands focus back where it was before Alt+N:
+          // Change takes it from there, as after "Marked as answered"'s Undo
+          // not put back: the number goes into the field again, not saved, so Save is one press from trying again
+          // (rather than having to remember it and type it again)
+          undo: () =>
+            store(previous, {
+              from: focusOrigin(),
+              failed: () => {
+                setValue(displayTracking(previous));
+                setTried(false);
+              },
+            }),
+          focusIfUndoFails: () => document.getElementById(TRACKING_INPUT),
+        });
+      },
     });
   };
 
@@ -212,7 +242,7 @@ function Tracking({ draft, overview }: { draft: Draft; overview: ProofOverview }
       onSubmit={(e) => {
         e.preventDefault();
         setTried(true);
-        if (value.trim() && trackingSavable(value)) store(value);
+        if (value.trim() && trackingSavable(value)) void store(value);
         else document.getElementById(TRACKING_INPUT)?.focus();
       }}
     >

@@ -13,7 +13,7 @@ import type { HouseholdMember } from "@/api/types";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { ADDRESSEES } from "@/mocks/data/documents";
 import { renderWithProviders } from "@/test/render";
-import { useMockApi, type FetchCall } from "@/test/mockFetch";
+import { failRequests, useMockApi, type FetchCall } from "@/test/mockFetch";
 import { VerdictCard } from "@/features/document/VerdictCard";
 import { selectPrimaryItem } from "@/features/document/verdict";
 
@@ -90,6 +90,20 @@ describe("the letter's question", () => {
     const again = await screen.findByRole("group", { name: "Is this letter for Alex Rivera?" });
     // Change is gone with the answer: the keyboard goes on from the question that came back
     await waitFor(() => expect(within(again).getByRole("button", { name: "Yes" })).toHaveFocus());
+  });
+
+  it("a failed Undo of an answer leaves it filed and puts focus on Change, not on the top of the page", async () => {
+    const { user, calls, id } = await openLetter(useMockApi(), "Alex Rivera", [ALEX]);
+    await user.click(within(await screen.findByRole("group", { name: "Is this letter for Alex Rivera?" })).getByRole("button", { name: "Yes" }));
+    const toast = await toastOf("Filed for Alex Rivera");
+    const change = await screen.findByRole("button", { name: "Change who this letter is for" });
+    await waitFor(() => expect(change).toHaveFocus());
+    failRequests((c) => c.path === "/household");
+    await user.click(within(toast).getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(toast).not.toBeInTheDocument());
+    expect(patches(calls)).toEqual([{ letters: { [id]: ALEX.id } }]);
+    expect(header()).toHaveTextContent("For Alex Rivera");
+    expect(change).toHaveFocus();
   });
 
   it("“No, it's mine” files it as the person's own; Undo forgets the answer", async () => {
@@ -178,6 +192,21 @@ describe("Add … to your household", () => {
     await waitFor(() => expect(puts(calls).at(-1)).toMatchObject({ members: [] }));
     // Change is gone with the person: the keyboard goes on from the offer that came back
     await waitFor(() => expect(screen.getByRole("button", { name: "Add Alex Rivera to your household" })).toHaveFocus());
+  });
+
+  it("a failed Undo of “Added …” says why and puts focus on Change, where adding them left it", async () => {
+    const { user } = await openLetter(useMockApi(), "Frau Alex Rivera", []);
+    await user.click(await screen.findByRole("button", { name: "Add Alex Rivera to your household" }));
+    const form = await screen.findByRole("dialog", { name: "Add to your household" });
+    await user.click(within(form).getByRole("button", { name: "Add" }));
+    const toast = await toastOf("Added Alex Rivera to your household");
+    await waitFor(() => expect(header()).toHaveTextContent("For Alex Rivera"));
+    failRequests((c) => c.path === "/household");
+    await user.click(within(toast).getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(toast).not.toBeInTheDocument());
+    expect(await screen.findByText("Couldn't save your household")).toBeInTheDocument();
+    expect(header()).toHaveTextContent("For Alex Rivera");
+    expect(screen.getByRole("button", { name: "Change who this letter is for" })).toHaveFocus();
   });
 
   it("a later change of the list takes the “Added …” Undo away, so no Undo is offered that can't work", async () => {

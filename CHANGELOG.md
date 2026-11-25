@@ -111,6 +111,12 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   every other Undo does, and then puts you on *Change*, also when you reached the message from the keyboard (Alt+N,
   Option+N on a Mac). An Undo whose request fails is reported once, by its error message, and no longer also throws
   an error in the page.
+- **A failed Undo leaves the keyboard where the change was.** When an *Undo* could not be carried out (Ordnung not
+  reachable, or an error), keyboard focus jumped to the top of the page. It now stays by the change: on the control
+  it was about, the one now in its place, or else the page's heading. A tracking number whose Undo failed is back in
+  its field, not saved, one press of *Save number* from another try. A programming error while a request's answer
+  is handled is now reported instead of being swallowed with failed requests, and is never told as a failed save or
+  translation; after one, the page shows what was really stored.
 - **Ordnung keeps working when your internet drops.** When the browser said it was offline (a laptop losing Wi-Fi,
   for example), pages that had not loaded yet kept spinning and saves did nothing until the internet came back,
   although Ordnung runs on your computer (or, for the phone, on your home network) and could still answer. Every
