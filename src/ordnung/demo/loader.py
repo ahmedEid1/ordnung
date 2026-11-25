@@ -110,6 +110,11 @@ DUMP_TABLES = (
     "llm_cache",
     "trace_spans",
 )
+#: What the snapshot must hold as the fixtures build it: everything the demo shows. The model-call log, the
+#: cached answers and the trace record how the snapshot was made (recorded live, or replayed), not what it shows.
+SNAPSHOT_TABLES = tuple(
+    table for table in DUMP_TABLES if table not in ("llm_calls", "llm_cache", "trace_spans")
+)
 VOLATILE_FIELDS = frozenset(
     {
         "ts",
@@ -788,12 +793,12 @@ def _strip_volatile(value: Any) -> Any:
     return value
 
 
-def canonical_dump(db_path: Path) -> list[str]:
+def canonical_dump(db_path: Path, tables: Sequence[str] = DUMP_TABLES) -> list[str]:
     """The database as sorted JSON lines, without timestamps (``table<TAB>row``)."""
     lines: list[str] = []
     with contextlib.closing(sqlite3.connect(f"{db_path.resolve().as_uri()}?mode=ro", uri=True)) as conn:
         conn.row_factory = sqlite3.Row
-        for table in DUMP_TABLES:
+        for table in tables:
             rows = [
                 json.dumps(_strip_volatile(dict(row)), sort_keys=True, ensure_ascii=False, default=str)
                 for row in conn.execute(f"SELECT * FROM {table}")
@@ -920,17 +925,45 @@ async def _check_builds(
     return states
 
 
-def _check_snapshot(report: DemoCheck, snapshot: Path, plan: _Plan) -> None:
+def _check_snapshot(report: DemoCheck, snapshot: Path, plan: _Plan, built: Path) -> None:
+    """The snapshot ``ordnung demo`` copies as it is: its version, and then its content, must be what the
+    fixtures build (``built``): the database row for row (timestamps aside), the originals byte for byte and
+    the same page images (by name: their pixels are the renderer's)."""
     current = demo_version(samples=plan.samples, fixtures=plan.fixtures)
     found = snapshot_version(snapshot)
     if found is None:
         report.warnings.append(
             f"No demo snapshot in {snapshot}: `ordnung demo` will build from the fixtures."
         )
-    elif found != current:
+        return
+    if found != current:
         report.problems.append(
             f"The demo snapshot in {snapshot} is out of date — rebuild it with `ordnung demo --rebuild`."
         )
+        return
+    differences = dump_differences(
+        canonical_dump(built / DB_NAME, SNAPSHOT_TABLES), canonical_dump(snapshot / DB_NAME, SNAPSHOT_TABLES)
+    )
+    report.problems += [f"the snapshot differs from the build: {line}" for line in differences]
+    if _folder_digest(built / "files") != _folder_digest(snapshot / "files"):
+        report.problems.append(f"The originals in the demo snapshot {snapshot} differ from the build's.")
+    if _folder_digest(built / "derived", names_only=True) != _folder_digest(
+        snapshot / "derived", names_only=True
+    ):
+        report.problems.append(f"The page images in the demo snapshot {snapshot} differ from the build's.")
+
+
+def _folder_digest(folder: Path, *, names_only: bool = False) -> dict[str, str]:
+    """Each file under ``folder`` (relative path) with its SHA-256 (``""`` with ``names_only``)."""
+    if not folder.is_dir():
+        return {}
+    return {
+        path.relative_to(folder).as_posix(): ""
+        if names_only
+        else hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in sorted(folder.rglob("*"))
+        if path.is_file()
+    }
 
 
 def check_demo(
@@ -945,7 +978,8 @@ def check_demo(
 
     Problems: replay misses (also for the suggested questions in every tray state), builds that
     differ, fixtures that are invalid or carry non-sample documents, Idea references or recorded
-    citations that do not resolve, a stale snapshot. Runs its own event loop.
+    citations that do not resolve, a stale snapshot or one whose content is not what the fixtures build.
+    Runs its own event loop.
     """
     plan = _plan(samples, fixtures)
     report = DemoCheck(fixtures=len(fixture_files(plan.fixtures)))
@@ -975,5 +1009,7 @@ def check_demo(
         report.problems += [f"builds differ: {line}" for line in differences]
         base_problems, report.ideas = _inspect(work / "first", None)
         report.problems += base_problems + _inspect(states[-1], plan.fixtures)[0]
-    _check_snapshot(report, Path(snapshot) if snapshot is not None else snapshot_dir(), plan)
+        _check_snapshot(
+            report, Path(snapshot) if snapshot is not None else snapshot_dir(), plan, work / "second"
+        )
     return report
