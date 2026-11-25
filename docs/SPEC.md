@@ -2294,7 +2294,9 @@ after authentication; a newer format or database schema is refused before anythi
 Ordnung on this computer").
 
 ## 16. Demo mode
-`demo_db/` (prebuilt, committed) is copied into the demo data dir and opens instantly; the 3 *New
+`demo_db/` (prebuilt, committed: the database without its search index, and the page images) is copied
+into the demo data dir and opens instantly; the copy takes each letter's original from the samples by its
+SHA-256 (refused if none has those bytes) and writes the search index from the letters' rows; the 3 *New
 mail* letters are ingested live through the real pipeline on the `ReplayBackend` (stages shown ≥
 600 ms each in demo), producing a live Idea over SSE. `simulated_today = 2026-09-28` is stored in
 `meta` (shared with the MCP subprocess). `demo --check` rebuilds the demo DB from samples with a

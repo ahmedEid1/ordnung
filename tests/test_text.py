@@ -1010,14 +1010,18 @@ def _page_count(path: Path) -> int:
 
 
 @pytest.mark.slow  # reads every letter of the demo
-def test_the_demo_letters_read_exactly_as_their_database_holds() -> None:
+def test_the_demo_letters_read_exactly_as_their_database_holds(tmp_path: Path) -> None:
     """The demo's PDF letters give, page for page, the text, words, hidden text and source the demo
     database holds (what every recorded answer was made from), and none has scanner text: keeping a
-    scan's text apart changed nothing a recording depends on. Counts only, never the letters' text."""
+    scan's text apart changed nothing a recording depends on. Counts only, never the letters' text. The
+    letters are read from a copy of the snapshot as ``ordnung demo`` makes it (its originals are the samples)."""
     import json
     import sqlite3
 
-    root = Path(text_module.__file__).parents[1] / "demo" / "demo_db"
+    from ordnung.demo.loader import copy_snapshot
+
+    root = tmp_path / "demo"
+    copy_snapshot(Path(text_module.__file__).parents[1] / "demo" / "demo_db", root)
     conn = sqlite3.connect(f"file:{root / 'ordnung.db'}?mode=ro", uri=True)
     conn.row_factory = sqlite3.Row
     compared = 0

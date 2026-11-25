@@ -239,8 +239,11 @@ def test_a_file_the_disk_got_differently_fails_the_restore(
 
 
 def test_the_demo_life_round_trips(tmp_path: Path) -> None:
+    from ordnung.demo.loader import copy_snapshot
+
     demo = tmp_path / "demo"
-    shutil.copytree(PACKAGE_DIR / "demo" / "demo_db", demo)
+    # as `ordnung demo` makes it: the originals and the search index in
+    copy_snapshot(PACKAGE_DIR / "demo" / "demo_db", demo)
     backup = make_backup(demo, tmp_path / "demo.ordnung-backup")
     restored = restore_backup(backup, PASS, tmp_path / "back").target
     assert file_digests(restored) == file_digests(demo)
