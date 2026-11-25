@@ -755,6 +755,49 @@ async def test_a_folder_that_doesn_t_answer_is_looked_at_less_often_until_it_doe
         await eventually(lambda: looks() >= before + 2)  # and it keeps looking
 
 
+async def test_a_save_that_goes_through_brings_the_usual_pace_back(
+    tmp_path: Path, folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A save the folder took cleared "doesn't answer" but left the next look where the slow pace had put it: up
+    to UNREACHABLE_SCAN_S without a look at a folder that had just answered. (In the test above a save of the
+    connection's own change, landing between the slow look and the check, failed "every SCAN_S again" on a slow
+    runner.)"""
+    engine = FakeEngine()
+    desk, _ = _dirs(tmp_path)
+    answering = FakeSession.scan
+    # far away, so that without the fix the next look stays out of reach however slow the machine is
+    monkeypatch.setattr(agent_module, "UNREACHABLE_SCAN_S", 600.0)
+
+    def unreachable(session: FakeSession) -> View:
+        answering(session)
+        return View([], Problem("folder_unreachable"))
+
+    async with computer(desk, engine=engine) as api:
+        await connect(api, folder, "desktop")
+        agent = agent_of(api)
+        await eventually(lambda: not agent.status().pending_changes)  # the connection's own change is saved
+        monkeypatch.setattr(FakeSession, "scan", unreachable)
+        await eventually(
+            lambda: (
+                agent.problem is not None
+                and agent.problem.code == "folder_unreachable"
+                and not agent._lock_now().locked()
+            )
+        )
+        assert agent._next_scan > time.monotonic() + agent_module.SCAN_S, (
+            "the slow pace while it doesn't answer"
+        )
+
+        monkeypatch.setattr(FakeSession, "scan", answering)  # the folder is back; the next look is 600 s away
+        saves = engine.calls.count("push:change")
+        assert (await _add_todo(api, "Pay the gym")).status_code == 201
+        await eventually(lambda: engine.calls.count("push:change") > saves and not agent._lock_now().locked())
+        assert agent.problem is None, "the save went through: the folder answers"
+        assert agent._next_scan <= time.monotonic() + agent_module.SCAN_S, (
+            "and it is looked at every SCAN_S again"
+        )
+
+
 async def test_shutdown_saves_and_says_the_computer_was_closed(tmp_path: Path, folder: Path) -> None:
     engine = FakeEngine()
     desk, _ = _dirs(tmp_path)
