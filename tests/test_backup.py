@@ -898,6 +898,25 @@ def test_restore_refuses_a_database_naming_what_ordnung_never_writes(
     assert not [p for p in tmp_path.iterdir() if ".restoring-" in p.name], label
 
 
+def test_restore_refuses_a_database_missing_a_checked_column(tmp_path: Path, empty_db: bytes) -> None:
+    """A database whose job table lacks its letter column can't be checked for what it names: it is
+    damaged (SQLite would read the missing column's quoted name as a string, an id that passes)."""
+    db = _with_rows(
+        empty_db,
+        *_letter(image="derived/doc_musterstadt1/page-1.jpg"),
+        "ALTER TABLE jobs RENAME COLUMN doc_id TO letter",
+    )
+    files = {"files/aa/x.pdf": b"%PDF"}
+    members = [
+        _member(DB_NAME, db),
+        *(_member(n, d) for n, d in files.items()),
+        _member(MANIFEST_NAME, _manifest(db, files)),
+    ]
+    with pytest.raises(DamagedBackup, match="damaged"):
+        restore_backup(craft(tmp_path / "crafted.b", members), PASS, tmp_path / "crafted")
+    assert not (tmp_path / "crafted").exists()
+
+
 def test_check_backup_writes_nothing(life: Path, tmp_path: Path) -> None:
     backup = make_backup(life, tmp_path / "b")
     letters = row_counts(life)["documents"]

@@ -552,7 +552,12 @@ _DOC_ID_COLUMNS = (("documents", "id"), ("pages", "doc_id"), ("jobs", "doc_id"))
 
 
 def _column_values(conn: sqlite3.Connection, table: str, column: str) -> Iterator[object]:
+    """The values of ``table.column`` (none if the table isn't there). A table without the column is a
+    damaged database (``sqlite3.OperationalError``): SQLite would read a missing ``"column"`` as the
+    string itself, which would pass for a value."""
     if conn.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (table,)).fetchone():
+        if column not in {row[1] for row in conn.execute(f'PRAGMA table_info("{table}")')}:
+            raise sqlite3.OperationalError(f"no such column: {table}.{column}")
         yield from (row[0] for row in conn.execute(f'SELECT "{column}" FROM "{table}"'))
 
 

@@ -4,7 +4,9 @@
 the live database × 1.1 + the files needed + a kept copy's estimate + 64 MiB); the manifest
 and buckets are authenticated and checked (names, caps); the database slices are decrypted into
 ``sync/incoming/ordnung.db``, each and the whole file SHA-checked, then ``integrity_check``, schema and
-row counts, a demo database refused, an older schema migrated *here*, a page size made the live one's;
+row counts, a demo database refused, one that names what Ordnung never writes refused
+(:func:`~ordnung.backup.archive.foreign_contents`, before any migration), an older schema migrated
+*here*, a page size made the live one's;
 every path the database names must be among the version's files. A local file is reused
 only when its size matches and its cached (or freshly computed) SHA-256 is the version's;
 every other file is decrypted into ``incoming/`` (``O_EXCL``, ``0600``), checked and ``fsync``-ed.
@@ -260,13 +262,10 @@ def stage(session: Session, head: HeadView, *, keep: bool = False) -> Staged:
             fs.fsync_dir(Path(current))
         conn = sqlite3.connect(db_path)
         try:
-            foreign = foreign_contents(conn)
             ids = document_ids(conn)
             named = referenced_paths(conn)
         finally:
             conn.close()
-        if foreign is not None:  # the reading pipeline would reach outside the data folder
-            raise SyncError("folder_problem", f"A version in the sync folder names {foreign}.")
         if not named <= {e.path for e in entries}:
             raise SyncError("folder_problem", "A version in the sync folder names files it doesn't hold.")
     except BaseException:
@@ -335,6 +334,12 @@ def _stage_database(session: Session, manifest: Manifest, db_path: Path) -> None
             raise SyncError("folder_problem", "A version's database in the sync folder is damaged.")
         if is_demo(conn):
             raise SyncRefused()
+        try:  # before the migration, so a trigger of the pulled file never fires even in staging
+            foreign = foreign_contents(conn)
+        except sqlite3.DatabaseError:
+            raise SyncError("folder_problem", "A version's database in the sync folder is damaged.") from None
+        if foreign is not None:  # the reading pipeline would reach outside the data folder
+            raise SyncError("folder_problem", f"A version in the sync folder names {foreign}.")
         if version < latest_version():
             migrate(conn)  # in staging: a migration never fails half-way inside the live database
         live = _live_page_size(session.paths.db)

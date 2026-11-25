@@ -262,6 +262,22 @@ def test_a_version_naming_what_ordnung_never_writes_is_refused(pair, statement: 
     assert not (a.paths.data_dir / "sync" / "incoming").exists()
 
 
+def test_a_version_whose_tables_lack_a_checked_column_is_damaged(pair) -> None:  # type: ignore[no-untyped-def]
+    """A pulled database that can't be checked for what it names is refused like a damaged one, before
+    its migration runs, and nothing is kept."""
+    a, b = pair
+    joined(a, b)
+    conn = sqlite3.connect(b.paths.db)  # the hostile computer's own write, past Ordnung's checks
+    conn.execute("ALTER TABLE jobs RENAME COLUMN doc_id TO letter")
+    conn.commit()
+    conn.close()
+    b.s.push(b.db)
+    with pytest.raises(SyncError, match="damaged") as refused:
+        a.s.stage(a.s.scan().by_computer(b.s.state.computer))  # type: ignore[arg-type]
+    assert refused.value.kind == "folder_problem"
+    assert not (a.paths.data_dir / "sync" / "incoming").exists()
+
+
 def test_no_space_is_checked_before_staging(pair, monkeypatch: pytest.MonkeyPatch) -> None:  # type: ignore[no-untyped-def]
     a, b = pair
     joined(a, b)
