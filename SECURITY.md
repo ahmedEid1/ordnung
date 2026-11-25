@@ -1,27 +1,22 @@
 # Security policy
 
-This page is for anyone who has found a security problem in Ordnung: how to report it, what counts, and what
-happens next.
-
-Ordnung keeps people's letters, deadlines and bank details on their own computer. If you find a way
-to get at them, or to make Ordnung do something it shouldn't, please tell us privately first, not in
-a public issue.
+This page is for anyone who has found a way to get at the letters, deadlines or bank details people keep in
+Ordnung on their own computer, or to make Ordnung do something it shouldn't: how to report it, what counts and
+what happens next.
 
 ## In one minute
 
 - **Report privately**, never in a public issue: the repository's **Security** tab → **Report a
-  vulnerability** ([how to report](#how-to-report)).
+  vulnerability**, or, if that button is missing, the **Security contact** issue form
+  ([how to report](#how-to-report)).
 - **Send no real letters or personal data**: show the problem with the demo or a letter you made up
   ([what to include](#what-to-include)).
 - **In scope:** anything in this repository, from the local server, phone access and hand-off sync to prompt
   injection through a letter ([what is in scope](#what-is-in-scope)).
 - **Not in scope:** Claude Code or the Claude models themselves, attacks that need your user account already, and
   a dependency's known vulnerability that Ordnung doesn't expose.
-- **What happens next:** the fix can be prepared privately, and ships as a new version with a line in the changelog
-  ([what happens next](#what-happens-next)).
-
-[How to report](#how-to-report) · [What to include](#what-to-include) · [What is in scope](#what-is-in-scope) ·
-[What happens next](#what-happens-next)
+- **What happens next:** the newest release and `main` get fixes; a fix ships as a new version with a line in
+  the changelog, naming you if you ask ([what happens next](#what-happens-next)).
 
 ## How to report
 
