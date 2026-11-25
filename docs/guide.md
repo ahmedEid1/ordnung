@@ -261,11 +261,11 @@ A backup first lets you go back: an older Ordnung can't open a database a newer 
 
 ```bash
 ordnung backup --to /media/usb   # optional: the way back
-pipx reinstall ordnung           # installed with uv: uv tool upgrade ordnung
+uv tool upgrade ordnung          # installed with pipx: pipx reinstall ordnung
 ordnung doctor
 ```
 
-`pipx reinstall` and `uv tool upgrade` install the newest code from GitHub, which can hold changes no release
+`uv tool upgrade` and `pipx reinstall` install the newest code from GitHub, which can hold changes no release
 has yet; `pipx upgrade ordnung` can keep the old code when the version number didn't change. To install a
 release instead, name its tag once it has one:
 `pipx install --force "git+https://github.com/ahmedEid1/ordnung@vX.Y.Z"`

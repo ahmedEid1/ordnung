@@ -4358,17 +4358,26 @@ def test_contributing_says_when_a_recording_is_needed_and_how_to_record() -> Non
     assert '"--serve/--no-serve"' in cli
 
 
+def test_the_readme_sends_a_newcomer_to_the_signed_in_link_not_a_bare_address() -> None:
+    """A bare ``http://127.0.0.1:<port>`` only shows "Please open Ordnung from its link" (the server wants its
+    token), so README names none. Its install block holds the commands alone, which fit a phone's width, and the
+    bullets above it say what each does and that it opens the browser signed in."""
+    readme = _readme()
+    assert "http://127.0.0.1" not in readme
+    lines = readme.splitlines()
+    assert "ordnung demo" in lines and "ordnung serve" in lines
+    install = _flat(_section(readme, "## Install and run"))
+    assert "`ordnung demo` opens a sample life" in install
+    assert "**Your own letters:** `ordnung serve`," in install
+    assert "Each command opens your browser, signed in." in install
+
+
 def test_the_demo_port_in_the_docs_is_the_one_ordnung_demo_uses() -> None:
-    """README's demo and serve lines and SPEC §15's lines for ``serve`` and ``demo`` name ``ordnung demo``'s own
-    port (``server.DEMO_PORT``), so the demo runs beside Ordnung, which keeps ``server.DEFAULT_PORT``."""
+    """SPEC §15's lines for ``serve`` and ``demo`` name ``ordnung demo``'s own port (``server.DEMO_PORT``), so the
+    demo runs beside Ordnung, which keeps ``server.DEFAULT_PORT``."""
     from ordnung.server import DEFAULT_PORT, DEMO_PORT
 
     assert DEMO_PORT != DEFAULT_PORT
-    lines = _readme().splitlines()
-    (demo_line,) = [line for line in lines if line.startswith("ordnung demo ")]
-    assert re.fullmatch(rf"ordnung demo +# opens http://127\.0\.0\.1:{DEMO_PORT} .+", demo_line), demo_line
-    (serve_line,) = [line for line in lines if line.startswith("ordnung serve ")]
-    assert re.fullmatch(rf"ordnung serve +# .*http://127\.0\.0\.1:{DEFAULT_PORT}", serve_line), serve_line
     commands = _spec().split("## 15. CLI", 1)[1].split(" ## ", 1)[0]
     serve = commands.split("- `serve` — ", 1)[1].split(" - `", 1)[0]
     demo = commands.split("- `demo` — ", 1)[1].split(" - `", 1)[0]
