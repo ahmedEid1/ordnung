@@ -11,28 +11,35 @@ goes where.
 ## In one minute
 
 - **What leaves your computer:** a letter Claude reads, and the excerpts of your records that *Ask*, *Weekly
-  Ideas*, the secretary's note and *Letters* use, go to Anthropic through your own Claude account
+  Ideas*, the secretary's note and *Letters* use, go to Anthropic through your own Claude account; every call is
+  listed in Settings → Privacy & AI usage, with what it carried, tokens and cost
   ([per feature](#what-is-sent-to-claude-per-feature)). Your calendar provider, your phone and your sync folder
-  get something only if you turn that feature on ([at a glance](#at-a-glance)).
+  get something only if you turn that feature on ([at a glance](#at-a-glance)). With
+  `ordnung mcp install --with-ledger`, a Claude client you add Ordnung to reads your ledger too, and that
+  client's other tools could send it on ([Claude Desktop or Claude Code](#using-ordnung-from-claude-desktop-or-claude-code)).
+- **What Anthropic keeps:** how long it keeps your data, and whether it trains on it, follow your Claude
+  account's type and settings ([per feature](#what-is-sent-to-claude-per-feature)). Claude Code's own telemetry and error reporting
+  apply to Ordnung's calls unless you turn them off ([hardening](#hardening-built-into-every-model-call)).
 - **What is stored where:** your letters, what was read from them and your records are in one data folder on
   your computer; the calendar's app password and the sync passphrase stay in your system's password store
   ([at a glance](#at-a-glance)).
 - **Deleting for good:** deleting a letter removes its file, everything read from it and every cached answer
-  that carried it; *Delete everything* wipes the whole database. Backups you made, a ZIP you exported and your
-  sync tool's history keep what they hold until you delete them there ([deleting](#deleting-for-good)).
+  that carried it; your *Ask* conversations and the contracts and letters you drafted stay. *Delete everything*
+  wipes this computer's database and takes it out of hand-off sync; your other computers and the sync folder
+  keep what they have. Backups you made, a ZIP you exported and your sync tool's history keep what they hold
+  until you delete them there; with hand-off sync, a deleted letter's files leave the sync folder once nothing
+  refers to them for 7 days ([deleting](#deleting-for-good)).
 - **What is encrypted:** backups, the hand-off sync folder and the phone connection are. Your data folder and an
   exported ZIP are not, so encrypt your computer's disk ([what is encrypted](#what-is-encrypted-and-what-is-not)).
 - **Others on your computer or network:** on Linux and macOS other accounts can't open your data folder, and
   other devices can't reach Ordnung unless you turn on phone access. What they still can see is listed
   ([who else can see what](#who-else-can-see-what)).
-- **Every call to Claude is listed** in Settings → Privacy & AI usage: what it carried, tokens and cost
-  ([per feature](#what-is-sent-to-claude-per-feature)).
 
 ## Contents
 
-- **Start here:** [At a glance](#at-a-glance) · [What is sent to Claude](#what-is-sent-to-claude-per-feature) ·
-  [Your controls](#your-controls) · [What is encrypted](#what-is-encrypted-and-what-is-not) ·
-  [Who else can see what](#who-else-can-see-what)
+- **Start here:** [What is encrypted](#what-is-encrypted-and-what-is-not) ·
+  [Who else can see what](#who-else-can-see-what) · [At a glance](#at-a-glance) ·
+  [What is sent to Claude](#what-is-sent-to-claude-per-feature) · [Your controls](#your-controls)
 - **What Ordnung keeps:** [My numbers](#my-numbers) · [Your household](#your-household) ·
   [The watched folder](#the-watched-folder) · [Searchable scans](#searchable-scans) ·
   [Words in pictures](#words-in-pictures-optional) · [GiroCode](#girocode-payment-qr-codes)
@@ -44,7 +51,43 @@ goes where.
   [Claude Desktop or Claude Code](#using-ordnung-from-claude-desktop-or-claude-code) ·
   [Demo fixtures](#demo-fixtures)
 
+## What is encrypted, and what is not
+
+The files Ordnung writes for a backup or for hand-off sync are encrypted; your data folder and an exported ZIP are
+not.
+
+| What | Encrypted? |
+|---|---|
+| Your data folder: letters, page images, your ledger ([why that matters](#if-your-computer-is-lost-or-stolen)) | **No.** On Linux and macOS it is private to your account; encrypt your computer's disk |
+| [Encrypted backups](#encrypted-backups) | Yes: AES-256-GCM, with a key made from your passphrase |
+| [Hand-off sync's folder](#hand-off-sync-between-your-computers-optional) | Yes: every file, and its name is a keyed hash |
+| [Phone access](#phone-access-optional) | Yes: HTTPS with a certificate Ordnung makes. Its keys in the data folder are not encrypted |
+| [Calendar sync](#calendar-sync-optional) | Sent only over `https://` (or `http://` to a server on this computer); your provider stores the events |
+| [Exported letters](#seeing-what-was-done-and-taking-your-letters-with-you) (the ZIP) | **No.** Anyone who has the file can read the letters |
+| The calendar's app password and the sync passphrase | Kept in your system's password store, never in Ordnung's database, a log or a backup |
+
+## Who else can see what
+
+- **Another account on this computer** can't read your data folder on Linux and macOS. Until your browser uses
+  it, it could read the one-time code of the sign-in link Ordnung opens your browser with, and sign in with it
+  first ([how](#hardening-built-into-every-model-call)).
+- **Other programs on this computer** that serve pages on localhost get Ordnung's sign-in cookie from your
+  browser while you're signed in: open only local pages you trust ([signed in](#signed-in)).
+- **Other devices on your network** can't reach Ordnung, which listens only on this computer's own address (`127.0.0.1`).
+  With phone access on, it also answers on your home network, over HTTPS, and only a phone you paired sees
+  anything of yours ([phone access](#phone-access-optional)).
+- **Someone who sees your screen:** *My numbers* hides each of your numbers until you choose *Show*, and the
+  morning notification, if you switch it on, is *Discreet* unless you choose *With details*
+  ([my numbers](#my-numbers), [reminders](#reminders-while-ordnung-is-closed)).
+- **Your calendar and sync providers** get only what those features send: a discreet event (the default) has its date, time and alarms and a
+  title like "Ordnung: deadline", while *With details* also sends the event's title, what to do, the amount and who
+  it is with; and the sync folder holds only encrypted files, though their number, sizes and times
+  show roughly how much you add ([calendar](#calendar-sync-optional),
+  [hand-off sync](#hand-off-sync-between-your-computers-optional)).
+
 ## At a glance
+
+On a phone, scroll the table sideways for its last column.
 
 | Data | Where it lives | Leaves your computer? |
 |---|---|---|
@@ -262,39 +305,6 @@ What you decide about each letter, how to delete it for good, and what Ordnung n
   changes by itself at most once an hour, and stops working the moment you remove the phone in
   Settings → Phone on your computer. Ordnung keeps only a hash of it. Cookies ignore ports here too: if
   that phone opens another HTTPS service on your computer's address, its browser sends the cookie along.
-
-## What is encrypted, and what is not
-
-The files Ordnung writes for a backup or for hand-off sync are encrypted; your data folder and an exported ZIP are
-not.
-
-| What | Encrypted? |
-|---|---|
-| Your data folder: letters, page images, your ledger ([why that matters](#if-your-computer-is-lost-or-stolen)) | **No.** On Linux and macOS it is private to your account; encrypt your computer's disk |
-| [Encrypted backups](#encrypted-backups) | Yes: AES-256-GCM, with a key made from your passphrase |
-| [Hand-off sync's folder](#hand-off-sync-between-your-computers-optional) | Yes: every file, and its name is a keyed hash |
-| [Phone access](#phone-access-optional) | Yes: HTTPS with a certificate Ordnung makes. Its keys in the data folder are not encrypted |
-| [Calendar sync](#calendar-sync-optional) | Sent only over `https://` (or `http://` to a server on this computer); your provider stores the events |
-| [Exported letters](#seeing-what-was-done-and-taking-your-letters-with-you) (the ZIP) | **No.** Anyone who has the file can read the letters |
-| The calendar's app password and the sync passphrase | Kept in your system's password store, never in Ordnung's database, a log or a backup |
-
-## Who else can see what
-
-- **Another account on this computer** can't read your data folder on Linux and macOS. Until your browser uses
-  it, it could read the one-time code of the sign-in link Ordnung opens your browser with, and sign in with it
-  first ([how](#hardening-built-into-every-model-call)).
-- **Other programs on this computer** that serve pages on localhost get Ordnung's sign-in cookie from your
-  browser while you're signed in: open only local pages you trust ([signed in](#signed-in)).
-- **Other devices on your network** can't reach Ordnung, which listens only on this computer's own address (`127.0.0.1`).
-  With phone access on, it also answers on your home network, over HTTPS, and only a phone you paired sees
-  anything of yours ([phone access](#phone-access-optional)).
-- **Someone who sees your screen:** *My numbers* hides each of your numbers until you choose *Show*, and the
-  morning notification, if you switch it on, is *Discreet* unless you choose *With details*
-  ([my numbers](#my-numbers), [reminders](#reminders-while-ordnung-is-closed)).
-- **Your calendar and sync providers** get only what those features send: a discreet event has its date, time and alarms and a title like
-  "Ordnung: deadline", and the sync folder holds only encrypted files, though their number, sizes and times
-  show roughly how much you add ([calendar](#calendar-sync-optional),
-  [hand-off sync](#hand-off-sync-between-your-computers-optional)).
 
 ## My numbers
 
