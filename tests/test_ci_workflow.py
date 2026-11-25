@@ -207,7 +207,9 @@ def test_the_end_to_end_groups_start_at_once_and_together_run_every_project() ->
     assert len(legs) == len(set(legs)), (
         "a leg is listed twice in e2e's matrix: each (group, shard, shards) once"
     )
-    assert _legs_cover_their_groups(legs, _e2e_groups()) == []
+    assert _legs_cover_their_groups(legs, _e2e_groups()) == [], (
+        "each group in web/e2e/env.ts needs legs for parts 1..N of one N in the e2e job's matrix"
+    )
     assert ("layout", 4, 4) in legs
     _, playwright = _step(e2e, "npm run e2e")
     assert playwright["env"]["E2E_GROUP"] == "${{ matrix.group }}"
@@ -243,15 +245,18 @@ def _listed(group: str | None, *args: str) -> list[str]:
     env = {key: value for key, value in os.environ.items() if key not in ("E2E_GROUP", "CI")}
     if group:
         env["E2E_GROUP"] = group
-    out = subprocess.run(
+    listing = subprocess.run(
         [str(_WEB / "node_modules" / ".bin" / "playwright"), "test", "--list", *args],
         cwd=_WEB,
         capture_output=True,
         text=True,
-        check=True,
+        check=False,
         env=env,
-    ).stdout
-    return [line.strip() for line in out.splitlines() if _LISTED_TEST.match(line)]
+    )
+    if listing.returncode != 0:
+        # Playwright's own reason (such as a project that E2E_GROUPS doesn't hold) is what the next person needs
+        pytest.fail(f"playwright test --list (E2E_GROUP={group}) failed:\n{listing.stderr or listing.stdout}")
+    return [line.strip() for line in listing.stdout.splitlines() if _LISTED_TEST.match(line)]
 
 
 #: Skipped without Node and the web app's packages, except where ``ORDNUNG_REQUIRE_MOCK_CHECK=1`` (CI's end-to-end
@@ -281,7 +286,7 @@ def test_every_end_to_end_test_runs_in_exactly_one_leg() -> None:
         assert tests, (group, shard, shards)
         seen.update(tests)
     assert [test for test, count in seen.items() if count > 1] == []
-    assert sorted(seen) == sorted(whole)
+    assert sorted(seen) == sorted(whole), "a test runs in no leg or in two: compare the two lists"
 
 
 def test_only_a_pull_request_s_older_run_is_cancelled() -> None:
@@ -1067,7 +1072,8 @@ def test_coverage_counts_branches_and_has_floors_for_the_whole_package_sync_and_
     (upload,) = [step for step in backend["steps"] if "upload-artifact" in step.get("uses", "")]
     assert upload["with"]["path"] == ".coverage.${{ matrix.half }}" and upload["with"]["include-hidden-files"]
     assert upload["with"]["if-no-files-found"] == "error" and upload["if"] == "${{ matrix.coverage }}"
-    assert total["needs"] == "backend" and total["name"] == "Backend (Python 3.12)"
+    assert total.get("needs") == "backend", "the job that adds up the coverage must wait for the backend legs"
+    assert total["name"] == "Backend (Python 3.12)"
     assert total["if"] == "${{ !cancelled() && github.event_name != 'schedule' }}"
     script = _script(total)
     # a missing half says which one, not only that the step failed

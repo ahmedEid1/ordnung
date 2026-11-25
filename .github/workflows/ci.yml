@@ -68,7 +68,7 @@ jobs:
           # coverage is measured on 3.12's leg, which also runs the real Tesseract's and the samples' tests. On
           # 3.14 (sys.monitoring) it costs less than half the time, but measured a little less: the lines only
           # Python 3.12 and older reach, such as a link loop that Path.resolve raises on. On 3.12, coverage's
-          # sys.monitoring core can't count branches, so the leg's 6,300 tests take two to three times as long as on
+          # sys.monitoring core can't count branches, so the leg's 6,300 tests take up to three times as long as on
           # 3.13 without coverage, and as one leg it was the longest of a run (7 to 12 minutes, 24 and 25 Nov 2026):
           # its two halves each measure half the files, and the job "coverage" adds the two up and holds the sum
           # to the floors
