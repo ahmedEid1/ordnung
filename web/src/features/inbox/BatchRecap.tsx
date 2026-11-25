@@ -94,6 +94,11 @@ export function BatchRecapDialog({
         </Button>
       }
     >
+      {/* the findings, said when they arrive: the dialog takes focus while it is still "Putting it all together…",
+          and a description that changes later is not read out (only a stray tile was, "1possible scam") */}
+      <p role="status" className="sr-only">
+        {recap ? findingsText(recapFindings(recap)) : ""}
+      </p>
       {!recap ? (
         <div className={TILE_GRID} aria-hidden>
           {[0, 1, 2, 3].map((i) => (
@@ -101,7 +106,7 @@ export function BatchRecapDialog({
           ))}
         </div>
       ) : (
-        <div aria-live="polite">
+        <div>
           <ul className={TILE_GRID}>
             {recap.scams ? (
               <Stat

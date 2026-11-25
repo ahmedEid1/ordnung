@@ -9,6 +9,7 @@ import { letterName } from "@/lib/format";
 import { cn, plural } from "@/lib/utils";
 import { Spinner } from "@/components/ui/Spinner";
 import { Stepper } from "@/components/ui/Stepper";
+import { TOAST_HOTKEY_LABEL } from "@/components/ui/Toast";
 import { useModalOpen } from "@/components/ui/internal";
 
 /** How long a filed letter's card stays (its time only runs while it isn't hovered or focused). */
@@ -18,7 +19,7 @@ export const DONE_LINGER_MS = 9000;
 const cardCls = "pointer-events-auto w-full rounded-xl border border-line bg-surface shadow-[var(--shadow-pop)] dark:border-line-strong";
 /** A text-sized card action that is still a 28 px target (as in toasts). */
 const actionCls =
-  "inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-sm font-semibold text-accent transition-[background-color] hover:bg-accent-soft disabled:opacity-60";
+  "inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-sm font-semibold text-accent transition-[background-color] hover:bg-accent-soft aria-disabled:opacity-60";
 
 /**
  * A card (or row) is about to go while focus is in it: hand focus to the next card's first control,
@@ -116,7 +117,19 @@ function UploadRow({ job, grouped }: { job: JobProgress; grouped?: boolean }) {
       {/* nothing moves while it waits (for Claude, or a usage limit's end): no stepper that looks under way */}
       {waiting ? null : (
         <div className="mt-3 px-0.5">
-          <Stepper steps={PIPELINE_STEPS} current={step} status={failed ? "error" : "active"} size="sm" labels="all" fallback="none" live label={`Reading ${name}`} />
+          <Stepper
+            steps={PIPELINE_STEPS}
+            current={step}
+            status={failed ? "error" : "active"}
+            size="sm"
+            labels="all"
+            fallback="none"
+            live
+            // which letter, and where it waits: "Finished." alone named neither
+            doneText={`Filed: “${name}”. Open it from Notifications (${TOAST_HOTKEY_LABEL}).`}
+            errorText={`Couldn't read “${name}”.`}
+            label={`Reading ${name}`}
+          />
         </div>
       )}
       {(done || failed) && docId ? (
@@ -125,13 +138,15 @@ function UploadRow({ job, grouped }: { job: JobProgress; grouped?: boolean }) {
             <button
               type="button"
               className={actionCls}
-              disabled={reprocess.isPending}
+              // busy: `aria-disabled`, not `disabled`, so focus stays on it (see Button's `busyProps`)
+              aria-disabled={reprocess.isPending || undefined}
               aria-busy={reprocess.isPending || undefined}
-              onClick={() =>
+              onClick={() => {
+                if (reprocess.isPending) return;
                 reprocess.mutate(docId, {
                   onSuccess: (j) => seedJob({ job_id: j.id, doc_id: docId, stage: "intake", progress: 0, status: "running" }),
-                })
-              }
+                });
+              }}
             >
               {reprocess.isPending ? <Spinner className="size-3.5" /> : <RotateCw className="size-3.5" aria-hidden />}
               Try again

@@ -216,6 +216,33 @@ describe("Inbox", () => {
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Type one more letter to search."));
   });
 
+  it("says a search's count once it has answered the words typed: never the last words' count with the new words", async () => {
+    const mocked = globalThis.fetch;
+    let asked = false;
+    let release!: () => void;
+    const held = new Promise<void>((done) => (release = done));
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes("q=Library")) {
+        asked = true;
+        await held;
+      }
+      return mocked(input, init);
+    });
+    renderInbox("/inbox?q=Parking");
+    const field = await screen.findByRole("searchbox", { name: "Search letters" });
+    const status = screen.getByRole("status");
+    await waitFor(() => expect(status).toHaveTextContent("1 letter matches “Parking”"));
+    const user = userEvent.setup();
+    await user.clear(field);
+    await user.type(field, "Library");
+    // the search for the new words is on its way, and the list still holds the parking fine: the line stays as it was
+    await waitFor(() => expect(asked).toBe(true));
+    expect(status).toHaveTextContent("1 letter matches “Parking”");
+    expect(status).not.toHaveTextContent("Library");
+    release();
+    await waitFor(() => expect(status).toHaveTextContent(/^\d+ letters? match(es)? “Library”$/));
+  });
+
   it("counts the tabs within the kind picked, and says how many of all letters show", async () => {
     renderInbox("/inbox?kind=dunning");
     await screen.findByRole("link", { name: "Library: overdue books" });
@@ -307,6 +334,36 @@ describe("Inbox", () => {
     progress(client, docId, "done");
     await waitFor(() => expect(router.state.location.pathname).toBe(`/documents/${docId}`));
     expect(router.state.location.state).toEqual({ focus: "title" });
+  });
+
+  it("“Read all” says one line for the whole batch, not each envelope's steps interleaved", async () => {
+    const { client } = renderInbox();
+    const tray = await screen.findByRole("region", { name: /New mail, 5 letters/ });
+    await userEvent.setup().click(within(tray).getByRole("button", { name: "Read all 5" }));
+    await waitFor(() => expect(srv.db.state.tray.filter((t) => t.doc_id).length).toBe(5));
+    const docIds = srv.db.state.tray.map((t) => t.doc_id!);
+    docIds.forEach((id) => progress(client, id, "running"));
+    progress(client, docIds[0]!, "done");
+    const regions = () => [...tray.querySelectorAll("[aria-live]")];
+    // the envelopes' own regions say nothing; the tray's says how far the batch is
+    await waitFor(() => expect(regions().map((r) => r.textContent).filter(Boolean)).toEqual(["Reading 5 letters · 1 done"]));
+    for (const envelope of within(tray).getAllByRole("group", { name: /^Letter from / })) {
+      for (const region of envelope.querySelectorAll("[aria-live]")) expect(region).toHaveTextContent("");
+    }
+  });
+
+  it("says each step of a letter read on its own, the first one too (a region added with its words in it is not read)", async () => {
+    const { client } = renderInbox();
+    const tray = await screen.findByRole("region", { name: /New mail, 5 letters/ });
+    const card = within(tray).getByText("Finanzamt Musterstadt").closest("li")!;
+    await userEvent.setup().click(within(card).getByRole("button", { name: "Let Ordnung read it" }));
+    const envelope = within(tray).getByRole("group", { name: "Letter from Finanzamt Musterstadt" });
+    const region = () => envelope.querySelector("ol + [aria-live]");
+    // mounted empty, then given its words a frame later: a screen reader hears the first step too
+    await waitFor(() => expect(region()?.textContent).toMatch(/step 1 of 5\.$/));
+    await waitFor(() => expect(srv.db.state.tray.find((t) => t.id === "mail_finanzamt")?.doc_id).toBeTruthy());
+    progress(client, srv.db.state.tray.find((t) => t.id === "mail_finanzamt")!.doc_id!, "running");
+    await waitFor(() => expect(region()?.textContent).toMatch(/step \d of 5\.$/));
   });
 
   it("recaps a batch with the letters that couldn't be read, the tile's count matching Please check, then returns focus to the letters", async () => {

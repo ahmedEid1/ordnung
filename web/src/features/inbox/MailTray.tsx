@@ -103,6 +103,9 @@ export function MailTray({
   if (!cards.length) return null;
   const idle = cards.filter((c) => c.state.kind === "idle");
   const reading = cards.length > idle.length;
+  // several letters read at once: one line for them all ("Reading 3 letters · 1 done"), not each card's steps
+  // interleaved, none of them saying which letter they belong to
+  const batch = cards.length - idle.length > 1;
 
   const anchorOf = (mailId: string) => sectionRef.current?.querySelector<HTMLElement>(`${ANCHOR}[data-mail-id="${CSS.escape(mailId)}"]`);
 
@@ -178,15 +181,44 @@ export function MailTray({
           )}
         >
           {cards.map(({ t, state }, i) => (
-            <Envelope key={t.id} item={t} state={state} index={i} onOpen={() => void open([t])} />
+            <Envelope key={t.id} item={t} state={state} index={i} onOpen={() => void open([t])} live={!batch} />
           ))}
         </ul>
       </div>
+      <LiveText text={batch ? batchLine(cards.map((c) => c.state)) : ""} />
     </section>
   );
 }
 
-function Envelope({ item, state, index, onOpen }: { item: MailTrayItem; state: CardState; index: number; onOpen: () => void }) {
+/** "Reading 3 letters · 1 done", then "Finished: 3 letters filed." — a batch's progress, said as one line. */
+function batchLine(states: CardState[]): string {
+  const count = (kind: CardState["kind"]) => states.filter((st) => st.kind === kind).length;
+  const active = count("reading") + count("waiting");
+  const done = count("done");
+  const failed = count("failed");
+  const couldnt = failed ? ` · ${plural(failed, "letter")} couldn't be read` : "";
+  if (active) return `Reading ${plural(active + done + failed, "letter")}${done ? ` · ${done} done` : ""}${couldnt}`;
+  return `Finished: ${plural(done, "letter")} filed${couldnt}.`;
+}
+
+/**
+ * A polite live region that starts empty and takes its words a frame later: a region added with its words
+ * already in it is not read out (the first step of a letter was never said).
+ */
+function LiveText({ text }: { text: string }) {
+  const [said, setSaid] = useState("");
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setSaid(text));
+    return () => cancelAnimationFrame(frame);
+  }, [text]);
+  return (
+    <span className="sr-only" aria-live="polite">
+      {said}
+    </span>
+  );
+}
+
+function Envelope({ item, state, index, onOpen, live }: { item: MailTrayItem; state: CardState; index: number; onOpen: () => void; live: boolean }) {
   const reduced = useReducedMotion();
   const anchor = useRef<HTMLDivElement>(null);
   const opened = state.kind !== "idle";
@@ -297,7 +329,7 @@ function Envelope({ item, state, index, onOpen }: { item: MailTrayItem; state: C
               <FailedPanel item={item} docId={state.docId} message={state.message} anchor={anchor} />
             ) : (
               <div className="rounded-xl bg-surface-2/70 px-3 pb-2.5 pt-3">
-                <StageList step={step} label={`Reading the letter from ${item.sender}`} />
+                <StageList step={step} label={`Reading the letter from ${item.sender}`} live={live} />
                 <div className="mt-3 flex items-center justify-between gap-2">
                   <p className={cn("line-clamp-2 min-w-0 text-sm leading-5", state.kind === "done" ? "font-medium text-ok-ink" : "text-muted")} aria-hidden>
                     {stage}
@@ -375,7 +407,8 @@ function FailedPanel({ item, docId, message, anchor }: { item: MailTrayItem; doc
 }
 
 /** Vertical pipeline stepper for the envelope cards: every stage is named and visible. */
-function StageList({ step, label }: { step: number; label: string }) {
+/** `live`: its steps are said as they happen (not in a batch, whose progress the tray says as one line). */
+function StageList({ step, label, live }: { step: number; label: string; live: boolean }) {
   const done = step >= PIPELINE_STEPS.length;
   const current = PIPELINE_STEPS[step]?.label;
   return (
@@ -407,9 +440,7 @@ function StageList({ step, label }: { step: number; label: string }) {
           );
         })}
       </ol>
-      <span className="sr-only" aria-live="polite">
-        {done ? "Finished — the letter is filed." : `${current}, step ${step + 1} of ${PIPELINE_STEPS.length}.`}
-      </span>
+      <LiveText text={!live ? "" : done ? "Finished — the letter is filed." : `${current}, step ${step + 1} of ${PIPELINE_STEPS.length}.`} />
     </>
   );
 }

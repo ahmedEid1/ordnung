@@ -82,6 +82,37 @@ describe("a filed letter's card", () => {
   });
 });
 
+describe("what a screen reader is told", () => {
+  it("names the letter that was filed, and where it waits (not a bare “Finished.”)", async () => {
+    renderCenter();
+    act(() => seedJob(job("doc_parking", "done")));
+    const list = screen.getByRole("list", { name: "Letters being read" });
+    await waitFor(() =>
+      expect(list.querySelector("[aria-live]")).toHaveTextContent(/^Filed: “Parking fine \(Verwarnungsgeld\)”\. Open it from Notifications \((Alt|Option)\+N\)\.$/),
+    );
+  });
+
+  it("names the letter that couldn't be read, and “Try again” keeps focus while it asks", async () => {
+    let answer: () => void = () => {};
+    const mocked = globalThis.fetch;
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes("/reprocess")) await new Promise<void>((done) => (answer = done));
+      return mocked(input, init);
+    });
+    renderCenter();
+    act(() => seedJob(job("doc_parking", "failed", { error: "The file is damaged." })));
+    const list = screen.getByRole("list", { name: "Letters being read" });
+    await waitFor(() => expect(list.querySelector("[aria-live]")).toHaveTextContent("Couldn't read “Parking fine (Verwarnungsgeld)”."));
+    const again = screen.getByRole("button", { name: "Try again" });
+    act(() => again.focus());
+    fireEvent.click(again);
+    await waitFor(() => expect(again).toHaveAttribute("aria-busy", "true"));
+    expect(again).toHaveAttribute("aria-disabled", "true");
+    expect(again).toHaveFocus();
+    await act(async () => answer());
+  });
+});
+
 describe("a failed letter's card", () => {
   it("says why in full, offers 'Try again' and 'Open letter', and stays until dismissed", async () => {
     const reason = "Couldn't read this letter — the file is damaged. Try exporting it again as a PDF from the scanner app.";

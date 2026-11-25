@@ -238,6 +238,28 @@ describe("search states", () => {
     await waitFor(() => expect(calls).toBeGreaterThan(before));
   });
 
+  it("says how many it found only for what is typed now, not the count of the matches still listed", async () => {
+    // "Musterstadt" finds letters; the answer to what is typed next is held back
+    let asked = false;
+    let answer: () => void = () => {};
+    searchOverride = (q) => {
+      if (q !== "Musterstadtqq") return srv.handle("GET", "/documents", new URLSearchParams({ q }), undefined);
+      asked = true;
+      return new Promise<Response>((resolve) => (answer = () => resolve(json([]))));
+    };
+    renderSearch();
+    const user = userEvent.setup();
+    await user.click(topField());
+    await user.type(topField(), "Musterstadt");
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/letters? found/));
+    await user.type(topField(), "qq");
+    await waitFor(() => expect(asked).toBe(true));
+    // the list still holds the matches of "Musterstadt": nothing is said about them as if they were found for "…qq"
+    expect(screen.getByRole("status")).not.toHaveTextContent(/found/);
+    await act(async () => answer());
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("No letters match “Musterstadtqq”"));
+  });
+
   it("says when nothing matches", async () => {
     searchOverride = () => json([]);
     renderSearch();

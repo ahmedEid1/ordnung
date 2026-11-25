@@ -451,8 +451,10 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
           </button>
         ) : null}
       </div>
+      {/* said once the search has answered what is typed now: until then the list holds the previous words'
+          matches, and their count is not the new words' */}
       <p role="status" className="sr-only">
-        {open ? announcement : ""}
+        {open && settled ? announcement : ""}
       </p>
       {open ? panel : null}
     </div>

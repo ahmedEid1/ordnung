@@ -7,6 +7,7 @@ import { dismissJob } from "@/api/sse";
 import { useDebounced, useMediaQuery, useStickyError } from "@/lib/hooks";
 import { useTodayISO } from "@/lib/today";
 import { documentKindLabel } from "@/lib/copy";
+import { letterName } from "@/lib/format";
 import { Page, PageHeader } from "@/components/shell/Page";
 import { ACCEPTED_ONE, ACCEPTED_SHORT, useAddLetters } from "@/components/shell/AddLetters";
 import { Button, buttonVariants } from "@/components/ui/Button";
@@ -162,8 +163,10 @@ export default function InboxPage() {
         if (id) {
           const onTray = fromTray.current.has(id);
           const sender = fromTray.current.get(id) ?? known.current.trayByDoc.get(id)?.sender;
-          const title = known.current.docs?.find((d) => d.id === id)?.title;
-          toast.error(`Couldn't read ${sender ? `the letter from ${sender}` : title ? `“${title}”` : "a letter"}`, {
+          // a new letter has no title yet: its file's name, as its card shows it (not "a letter")
+          const doc = known.current.docs?.find((d) => d.id === id);
+          const name = doc ? letterName(doc) : null;
+          toast.error(`Couldn't read ${sender ? `the letter from ${sender}` : name ? `“${name}”` : "a letter"}`, {
             action: onTray
               ? { label: "Show", onClick: () => void (focusMailEnvelope(id) || navigate(`/documents/${id}`)) }
               : { label: "Open", onClick: () => void navigate(`/documents/${id}`) },
@@ -220,7 +223,16 @@ export default function InboxPage() {
   const whoView: InboxWho | null = who === MINE ? { kind: "mine" } : member ? { kind: "person", name: member.name, suggested: toFile.length } : null;
   const view: InboxView = { filter, kindLabel: kind ? documentKindLabel(kind) : null, typed: q, q: searching ? q : "", year, who: whoView };
   const pendingSearch = searching && search.isPending;
-  const line = resultLine(view, visible.length, total, pendingSearch, heldFound?.size);
+  const now = resultLine(view, visible.length, total, pendingSearch, heldFound?.size);
+  // A search that has not answered the words typed yet (still debounced, on its way, or listing the previous
+  // words' letters while it runs) keeps the line it had: a count of the old words' letters named the new words
+  // ("21 letters match “Zahnarzt”" before "1 letter matches …"), and every keystroke was read out. The first
+  // search still shows "Searching…" on screen; it is said once there is an answer.
+  const searchSettled = !searching || (q === typed && !search.isFetching && !search.isPlaceholderData);
+  const [settledLine, setSettledLine] = useState(now);
+  if (searchSettled && (settledLine.text !== now.text || settledLine.visible !== now.visible)) setSettledLine(now);
+  const line = searchSettled ? now : settledLine;
+  const shownLine = !searchSettled && pendingSearch ? now : line;
   const empty = emptyCopy(view, phone, heldFound?.size);
   const onlySearch = Boolean(view.q) && filter === "all" && !kind && year == null && who == null;
   // `?for=` waits for the household before it lists anything (never every letter first, then one person's)
@@ -317,9 +329,9 @@ export default function InboxPage() {
                 <p role="status" className="sr-only">
                   {line.text}
                 </p>
-                {line.visible ? (
+                {shownLine.visible ? (
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
-                    <p aria-hidden>{line.text}</p>
+                    <p aria-hidden>{shownLine.text}</p>
                     {isNarrowed(view) && visible.length ? (
                       <Button variant="link" size="sm" onClick={onlySearch ? clearSearch : clearAll}>
                         {onlySearch ? "Clear search" : "Clear filters"}

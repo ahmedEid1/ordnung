@@ -329,6 +329,13 @@ describe("Stepper", () => {
     expect(screen.getByLabelText("Filing: not started")).toBeInTheDocument();
     expect(screen.getByText("Checking, step 3 of 5.")).toBeInTheDocument();
   });
+
+  it("says what finished or stopped in its own words when given them (not a bare “Finished.”)", () => {
+    const { rerender } = renderWithProviders(<Stepper steps={PIPELINE_STEPS} current={PIPELINE_STEPS.length} live doneText="Filed: “Rent increase”." label="Reading x" />);
+    expect(screen.getByText("Filed: “Rent increase”.")).toHaveAttribute("aria-live", "polite");
+    rerender(<Stepper steps={PIPELINE_STEPS} current={1} status="error" live errorText="Couldn't read “Rent increase”." label="Reading x" />);
+    expect(screen.getByText("Couldn't read “Rent increase”.")).toHaveAttribute("aria-live", "polite");
+  });
 });
 
 describe("Dialog", () => {

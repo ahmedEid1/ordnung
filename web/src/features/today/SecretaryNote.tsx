@@ -59,6 +59,13 @@ export function SecretaryNote({ fallback }: { fallback: string }) {
   const early = Boolean(data?.date && data.generated_at && data.generated_at.slice(0, 10) < data.date);
   const when = early ? "Written for today" : writtenAt(data?.generated_at, profile.data?.timezone);
   const [more, setMore] = useState(false);
+  // what a screen reader is told about the note: that a new one was written, once — the note itself is not a live
+  // region (marking a payment paid rewrites it, and only the changed words were read out, mid-sentence)
+  const [said, setSaid] = useState("");
+  const writeNew = () => {
+    setSaid("");
+    regen.mutate(undefined, { onSuccess: () => setSaid("New note written") });
+  };
 
   return (
     <motion.section variants={fadeUp} aria-labelledby="note-title" className="card relative overflow-hidden p-5 sm:p-7">
@@ -80,8 +87,11 @@ export function SecretaryNote({ fallback }: { fallback: string }) {
           variant="ghost"
           size="sm"
           loading={regen.isPending}
-          onClick={() => regen.mutate()}
+          onClick={writeNew}
         />
+        <p role="status" className="sr-only">
+          {said}
+        </p>
       </div>
 
       {brief.isPending ? (
@@ -91,7 +101,6 @@ export function SecretaryNote({ fallback }: { fallback: string }) {
           {/* phones: three lines, so Top 3 stays in view */}
           <p
             id={noteId}
-            aria-live="polite"
             className={cn("display relative mt-4 max-w-[62ch] text-[18px] leading-[1.6] text-ink/90 sm:text-[20px]", !more && "max-sm:line-clamp-3")}
           >
             <Emphasised text={text} />
