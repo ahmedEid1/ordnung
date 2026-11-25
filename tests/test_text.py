@@ -8,6 +8,7 @@ import random
 import re
 import threading
 import time
+import unicodedata
 from email.message import EmailMessage
 from pathlib import Path
 
@@ -1175,6 +1176,42 @@ def test_a_character_is_judged_from_its_box_s_counts_as_from_its_crops(size: tup
         assert text_module._spans(own_ink, box, "A") == _spans_by_crops(own_ink, box)
         dark = ImageStat.Stat(ground.crop(box)).mean[0] < text_module.DARK_GROUND * 255
         assert text_module._on_dark(counts) == dark
+
+
+def test_the_characters_near_a_place_are_the_ones_a_full_search_finds() -> None:
+    """The characters PDFium draws near a text-layer character are looked up in order of their place
+    (:class:`_DrawnAt`): the same ones, in the same order, as going through all of them, also for places
+    no number can be compared with."""
+    rng = random.Random("near")
+    odd = [float("nan"), float("inf"), -float("inf"), 1e300]
+    drawn: dict[str, list[text_module._DrawnChar]] = {}
+    for text in ["a", "f", "1"]:
+        drawn[text] = [
+            text_module._DrawnChar(
+                text,
+                rng.choice(odd) if rng.random() < 0.05 else rng.uniform(0, 600),
+                rng.choice(odd) if rng.random() < 0.05 else rng.uniform(0, 800),
+                rng.random() < 0.2,
+            )
+            for _ in range(300)
+        ]
+    at = text_module._DrawnAt(drawn)
+    for _ in range(2000):
+        size = rng.choice([0.0, 2.0, 9.0, 12.0, 40.0, None, *odd])
+        x0 = rng.choice(odd) if rng.random() < 0.02 else rng.uniform(-5, 605)
+        top = rng.uniform(-5, 805)
+        char = {"text": rng.choice(["a", "f", "1", "b", "ﬁ"]), "size": size, "x0": x0, "x1": x0 + 5}
+        char |= {"top": top, "bottom": top + 9}
+        x, y = (char["x0"] + char["x1"]) / 2, (top + top + 9) / 2
+        reach_x, reach_y = max(1.0, 0.25 * float(size or 0.0)), max(1.5, 0.5 * float(size or 0.0))
+        texts = dict.fromkeys((char["text"], unicodedata.normalize("NFKC", char["text"])[:1]))
+        everywhere = [
+            other
+            for key in texts
+            for other in drawn.get(key, [])
+            if abs(other.x - x) <= reach_x and abs(other.y - y) <= reach_y
+        ]
+        assert text_module._near(char, at) == everywhere
 
 
 # -- e-mails whose text Pillow's layout couldn't take ---------------------------------------------------

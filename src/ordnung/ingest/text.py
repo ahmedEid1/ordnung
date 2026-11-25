@@ -51,6 +51,7 @@
 
 from __future__ import annotations
 
+import bisect
 import codecs
 import ctypes
 import email
@@ -1032,22 +1033,47 @@ def _in_page_space(drawn: dict[str, list[_DrawnChar]], page: Page) -> dict[str, 
     return {text: [placed(char) for char in chars] for text, chars in drawn.items()}
 
 
-def _near(char: dict[str, Any], drawn: dict[str, list[_DrawnChar]] | None) -> list[_DrawnChar]:
+class _DrawnAt:
+    """PDFium's characters (in pdfplumber's space, :func:`_in_page_space`) by their text, each text's in
+    order of ``x`` too, so the ones near a place are found without going through all of them."""
+
+    def __init__(self, drawn: dict[str, list[_DrawnChar]]) -> None:
+        self.drawn = drawn
+        self.by_x: dict[str, tuple[list[float], list[int], list[int]]] = {}
+        for text, chars in drawn.items():
+            placed = sorted((char.x, index) for index, char in enumerate(chars) if math.isfinite(char.x))
+            unplaced = [index for index, char in enumerate(chars) if not math.isfinite(char.x)]
+            self.by_x[text] = ([x for x, _ in placed], [index for _, index in placed], unplaced)
+
+    def around(self, text: str, x: float, reach: float) -> list[_DrawnChar]:
+        """The characters of ``text``, in their order, among them every one whose ``x`` is within ``reach``
+        of ``x`` (a little more: no rounding may leave one out; the caller checks the distance itself)."""
+        chars = self.drawn.get(text, [])
+        if not chars or not (math.isfinite(x) and math.isfinite(reach)):
+            return chars
+        xs, indices, unplaced = self.by_x[text]
+        margin = reach + 1.0 + 1e-9 * (abs(x) + reach)
+        found = indices[bisect.bisect_left(xs, x - margin) : bisect.bisect_right(xs, x + margin)]
+        return [chars[index] for index in sorted([*found, *unplaced])]
+
+
+def _near(char: dict[str, Any], drawn: _DrawnAt | None) -> list[_DrawnChar]:
     """PDFium's characters of the same text within a fraction of this pdfplumber character's size
     (``drawn`` in pdfplumber's space, :func:`_in_page_space`). PDFium splits a ligature into its
     letters, all at the ligature's place: "ﬁ" is matched by its "f"."""
-    if not drawn:
+    if drawn is None or not drawn.drawn:
         return []
     text = str(char.get("text", ""))
     size = float(char.get("size") or 0.0)
     x = (float(char["x0"]) + float(char["x1"])) / 2
     y = (float(char["top"]) + float(char["bottom"])) / 2
     texts = dict.fromkeys((text, unicodedata.normalize("NFKC", text)[:1]))
+    reach = max(1.0, 0.25 * size)
     return [
         other
         for key in texts
-        for other in drawn.get(key, [])
-        if abs(other.x - x) <= max(1.0, 0.25 * size) and abs(other.y - y) <= max(1.5, 0.5 * size)
+        for other in drawn.around(key, x, reach)
+        if abs(other.x - x) <= reach and abs(other.y - y) <= max(1.5, 0.5 * size)
     ]
 
 
@@ -1101,7 +1127,7 @@ def _extract_page(
         return PageText(page=number, text=""), ""
     frame = _PageFrame.of(page)
     backgrounds = _dark_backgrounds(page, frame)
-    drawn = _in_page_space(drawn, page)
+    drawn_at = _DrawnAt(_in_page_space(drawn, page))
     visible: list[_Glyph] = []
     hidden: list[_Glyph] = []
     invisible: list[_Glyph] = []
@@ -1112,7 +1138,7 @@ def _extract_page(
         glyph = _glyph(char, frame)
         if glyph is None:
             continue
-        near = _near(char, drawn)
+        near = _near(char, drawn_at)
         if glyph.is_space or not (
             _is_hidden(char, glyph, frame, backgrounds, near)
             or _drawn_invisibly(near)
@@ -1124,7 +1150,7 @@ def _extract_page(
         glyph = _glyph(char, frame)
         if glyph is None or glyph.is_space:
             continue
-        near = _near(char, drawn)
+        near = _near(char, drawn_at)
         if _unmatched(char, near):
             unmatched.append(glyph)
         elif _drawn_invisibly(near):
