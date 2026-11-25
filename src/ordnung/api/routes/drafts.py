@@ -16,7 +16,7 @@ from ordnung.api.deps import CtxDep, StoreDep
 from ordnung.api.routes.common import IsoDate, ledger_changed, replay_only, require
 from ordnung.api.routes.documents import CLEAR_CACHE
 from ordnung.db.store import Store
-from ordnung.drafts import pdf, sent
+from ordnung.drafts import sent
 from ordnung.drafts.compose import (
     MAX_INSTRUCTIONS,
     compose,
@@ -192,6 +192,8 @@ async def delete_draft(draft_id: str, ctx: CtxDep, keep_proof_files: bool = Fals
 
 
 def _pdf(store: Store, draft_id: str) -> bytes:
+    from ordnung.drafts import pdf  # the PDF writer loads on first use, not with the server
+
     draft = require(store.get_draft(draft_id), NOT_FOUND)
     body = pdf.render(draft, sent.letter_profile(store, draft))
     remember_own_file(store, body)  # saved into the watched folder, it is not a letter received
@@ -210,6 +212,8 @@ async def draft_pdf(draft_id: str, store: StoreDep) -> Response:
 
 
 def _preview(store: Store, draft_id: str) -> bytes:
+    from ordnung.drafts import pdf
+
     draft = require(store.get_draft(draft_id), NOT_FOUND)
     return pdf.render_preview(draft, sent.letter_profile(store, draft))
 
