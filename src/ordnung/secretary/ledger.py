@@ -72,6 +72,9 @@ except ImportError:  # pragma: no cover - only while the module is absent
     _scam = None  # type: ignore[assignment]
 
 _T = TypeVar("_T")
+#: The changes a letter's reading states that the ledger looks for among every letter (``change.type``).
+_STATED_CHANGES = ("cancellation_confirmation", "price_increase")
+
 #: Item kinds that can be overdue (appointments and milestones simply pass; expiries have their own rule).
 OVERDUE_KINDS = frozenset({"deadline", "payment", "task"})
 IDENTITY_WINDOW_DAYS = 180
@@ -430,6 +433,8 @@ class _Rows:
     scam_checked: frozenset[str] | None = None
     extractions: dict[str, DocumentExtraction | None] = field(default_factory=dict)
     covered: dict[str, Document] | None = None
+    #: the letters whose reading may state a change the ledger looks for (:meth:`Ledger._stating_changes`)
+    stating_changes: frozenset[str] | None = None
     #: whole pages worked out from this state of the database (:meth:`Ledger.kept`), by what they depend on
     pages: dict[tuple[object, ...], object] = field(default_factory=dict)
 
@@ -956,10 +961,23 @@ class Ledger:
         doc = self.document(item.doc_id)
         return doc is not None and self.shows_scam_signs(doc)
 
+    def _stating_changes(self) -> frozenset[str]:
+        """The letters whose reading states a cancellation confirmation or a price increase (or isn't JSON),
+        found once per state of the database by one query (:meth:`Store.letters_stating_changes`): the readers
+        below parse only these, not every letter's reading (at 3,000 letters, most of a second per reload)."""
+        rows = self._rows
+        if rows.stating_changes is None:
+            found = self.store.letters_stating_changes(_STATED_CHANGES)
+            rows.stating_changes = frozenset(found)
+        return rows.stating_changes
+
     def pending_confirmations(self) -> dict[str, tuple[Document, date | None]]:
         """Active contracts with a cancellation confirmation: contract id → (letter, effective day)."""
         found: dict[str, tuple[Document, date | None]] = {}
+        stating = self._stating_changes()
         for doc in sorted(self.documents.values(), key=lambda d: (d.doc_date or "", d.id)):
+            if doc.kind != "cancellation_confirmation" and doc.id not in stating:
+                continue  # its reading states no cancellation confirmation
             extraction = self.extraction(doc.id)
             change = extraction.change if extraction else None
             confirms = doc.kind == "cancellation_confirmation" or (
@@ -986,7 +1004,10 @@ class Ledger:
         """
         if self._price_windows is None:
             self._price_windows = []
+            stating = self._stating_changes()
             for doc in self.documents.values():
+                if doc.id not in stating:
+                    continue  # its reading states no price increase
                 extraction = self.extraction(doc.id)
                 change = extraction.change if extraction else None
                 effective = parse_day(change.effective_date) if change else None

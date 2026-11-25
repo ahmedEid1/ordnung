@@ -541,6 +541,31 @@ def test_the_shared_rows_follow_changes_made_in_other_threads(paths: Paths) -> N
         assert len(triggers.Ledger(store, TODAY).documents) == before + 1
 
 
+def test_only_the_readings_that_state_a_change_are_parsed(
+    paths: Paths, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The cancellation confirmations and price increases are found by one query: the ledger parses those
+    letters' readings, not every letter's (at 3,000 letters, most of a second per reload of the rows)."""
+    with Store.open(paths) as store:
+        ids = seed_ledger(store)
+        for n in range(30):
+            reading = DocumentExtraction(kind="invoice", title=f"Rechnung {n}", summary="s", explanation="e")
+            add_doc(store, f"plain-{n}", kind="invoice", title=f"Rechnung {n}", extraction=reading)
+        parsed: list[str] = []
+        original = DocumentExtraction.model_validate_json
+
+        def counted(data: Any, *args: Any, **kwargs: Any) -> DocumentExtraction:
+            parsed.append("x")
+            return original(data, *args, **kwargs)
+
+        monkeypatch.setattr(DocumentExtraction, "model_validate_json", counted)
+        ledger = triggers.Ledger(store, TODAY)
+        confirmations, windows = ledger.pending_confirmations(), ledger.price_increase_windows()
+        assert [doc.id for doc, _ in confirmations.values()] == [ids["doc_gym_confirm"]]
+        assert [window.letter.id for window in windows] == [ids["doc_power"]]
+        assert len(parsed) == 2
+
+
 def test_the_api_threads_share_one_load_per_change(paths: Paths) -> None:
     """The API answers in a pool of threads, each with its own connection: after a change the rows are
     loaded once for all of them, not once per thread (four threads after one change made four loads,

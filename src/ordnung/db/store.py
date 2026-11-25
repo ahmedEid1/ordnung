@@ -1645,6 +1645,20 @@ class Store:
         )
         return {row["id"]: row["name"] if isinstance(row["name"], str) else None for row in rows}
 
+    def letters_stating_changes(self, types: Collection[str]) -> set[str]:
+        """The letters whose stored reading states a change of one of ``types`` (``change.type``), in one
+        query, without parsing every reading — and those whose reading isn't JSON at all, so a caller that
+        parses only these still meets a broken one. For the ledger's readers that look for one kind of change
+        among every letter (:meth:`ordnung.secretary.ledger.Ledger.pending_confirmations`)."""
+        wanted = sorted(types)
+        marks = ", ".join("?" * len(wanted))
+        rows = self._conn().execute(
+            "SELECT id FROM documents WHERE extraction IS NOT NULL AND (NOT json_valid(extraction) "
+            f"OR json_extract(extraction, '$.change.type') IN ({marks}))",
+            wanted,
+        )
+        return {row["id"] for row in rows}
+
     def get_extraction(self, doc_id: str) -> DocumentExtraction | None:
         """The stored model extraction of a document (``None`` if not extracted yet)."""
         row = self._conn().execute("SELECT extraction FROM documents WHERE id = ?", (doc_id,)).fetchone()
