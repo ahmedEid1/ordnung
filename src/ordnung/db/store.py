@@ -701,6 +701,9 @@ class Store:
         #: the same for the words Ordnung read in its pictures (``picture-text.json``, ADR 0024)
         self._picture_text_cache: dict[str, tuple[tuple[int, int], dict[int, tuple[str, str]]]] = {}
         self._scan_text_lock = threading.Lock()  # guards both
+        #: the connection :meth:`commit_stamp` reads, opened on first use; it never writes
+        self._watch: sqlite3.Connection | None = None
+        self._watch_lock = threading.Lock()
         self._closed = False
         try:
             self.schema_version = self._check_schema() if read_only else self._migrate()
@@ -999,6 +1002,40 @@ class Store:
         data = conn.execute("PRAGMA data_version").fetchone()[0]
         schema = conn.execute("PRAGMA schema_version").fetchone()[0]
         return int(data), conn.total_changes, int(schema)
+
+    def commit_stamp(self) -> tuple[int, int] | None:
+        """A value that moves whenever anything is committed to the database, by any thread or process,
+        and that every thread of this store compares alike — unlike :meth:`change_token`, which only
+        compares within one thread. So rows one thread loaded can serve the others until the next commit
+        (:class:`ordnung.secretary.ledger._RowsCache`), instead of each thread loading its own.
+
+        Read on a connection of its own that never writes: its ``PRAGMA data_version`` moves with every
+        commit of any other connection (the threads' own, hand-off sync's replacement, another process), and
+        ``schema_version`` with "Delete everything". ``None`` while this thread is inside a transaction,
+        whose reads may not be committed."""
+        if self._conn().in_transaction:
+            return None
+        with self._watch_lock:
+            watch = self._watch
+            if watch is None:
+                watch = self._watch = self._open_watch()
+            data = watch.execute("PRAGMA data_version").fetchone()[0]
+            schema = watch.execute("PRAGMA schema_version").fetchone()[0]
+        return int(data), int(schema)
+
+    def _open_watch(self) -> sqlite3.Connection:
+        target = f"{self.db_path.resolve().as_uri()}?mode=ro" if self.read_only else str(self.db_path)
+        watch = sqlite3.connect(
+            target, uri=self.read_only, isolation_level=None, check_same_thread=False, timeout=5.0
+        )
+        for pragma in _READ_ONLY_PRAGMAS:
+            watch.execute(pragma)
+        with self._connections_lock:
+            if self._closed:
+                watch.close()
+                raise RuntimeError("store is closed")
+            self._connections.append(watch)  # closed with the others by close()
+        return watch
 
     def ledger_token(self) -> tuple[int, int, int] | None:
         """Like :meth:`change_token`, but moved only by what Ask's ledger fingerprint can read: this

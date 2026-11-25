@@ -541,6 +541,37 @@ def test_the_shared_rows_follow_changes_made_in_other_threads(paths: Paths) -> N
         assert len(triggers.Ledger(store, TODAY).documents) == before + 1
 
 
+def test_the_api_threads_share_one_load_per_change(paths: Paths) -> None:
+    """The API answers in a pool of threads, each with its own connection: after a change the rows are
+    loaded once for all of them, not once per thread (four threads after one change made four loads,
+    one after the other, a few seconds each at 3,000 letters)."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from ordnung.secretary import ledger as ledger_module
+
+    with Store.open(paths) as store, Store.open(paths) as other:
+        seed_ledger(store)
+        triggers.Ledger(store, TODAY)
+        cache = ledger_module._CACHES[store]
+
+        def loads_in_new_threads(count: int) -> int:
+            before = cache._loads
+            with ThreadPoolExecutor(count) as pool:
+                list(pool.map(lambda _: triggers.Ledger(store, TODAY), range(count)))
+            return cache._loads - before
+
+        assert loads_in_new_threads(4) == 0  # nothing changed: every new thread takes the rows loaded
+        added = add_doc(other, "from-another-connection", title="Another connection")
+        assert loads_in_new_threads(4) == 1
+        store.update_document(added, title="Renamed in this store")
+        assert loads_in_new_threads(6) == 1
+        with ThreadPoolExecutor(4) as pool:  # a pool's threads write too: one load after each change
+            pool.submit(store.update_document, added, title="Renamed in a thread").result()
+            assert loads_in_new_threads(4) == 1
+            titles = pool.map(lambda _: triggers.Ledger(store, TODAY).documents[added].title, range(4))
+            assert set(titles) == {"Renamed in a thread"}
+
+
 def _repeating_to_dos(store: Store, count: int) -> None:
     """``count`` repeating payments, each to a sender of its own and by a rule of its own kind: every month on
     a day, every few months on a working day, every year, every 2 weeks."""

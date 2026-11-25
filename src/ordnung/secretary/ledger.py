@@ -479,30 +479,33 @@ class _RowsStore:
 
 class _RowsCache:
     """The rows last loaded from one store, shared by every Ledger built while the database stays as it
-    was — the Ledgers of one request, and of the requests after it until something changes.
+    was — the Ledgers of one request, and of the requests after it until something changes, in whichever
+    of the API's threads they run.
 
-    Whether it changed is :meth:`Store.change_token`, which only compares within one thread: each thread
-    keeps the token it saw last and which load was current then. An unchanged token means nothing was
-    committed since, so the current load still holds (a newer one was made after the thread looked).
-    Inside a transaction, which may read what isn't committed, the rows are loaded afresh and not kept.
+    Whether it changed is :meth:`Store.commit_stamp`, which every thread compares alike: after a commit the
+    first thread to look loads the rows once, under the lock, and the threads waiting there take them
+    (each thread compared its own token before, so four threads after one change made four loads of a few
+    seconds each at 3,000 letters). The stamp is read before the rows: rows newer than their stamp only
+    cost one load too many. Inside a transaction, which may read what isn't committed, the rows are loaded
+    afresh and not kept.
     """
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._rows: _Rows | None = None
+        self._stamp: tuple[int, int] | None = None
         self._loads = 0
-        self._seen = threading.local()
 
     def rows(self, store: Store) -> _Rows:
-        token = store.change_token()
-        if token is None:
+        if store.commit_stamp() is None:  # inside a transaction
             return _Rows.load(store)
         with self._lock:
-            seen: tuple[tuple[int, int, int], int] | None = getattr(self._seen, "last", None)
-            if self._rows is None or seen is None or seen[0] != token:
+            # read again under the lock: a thread that waited here takes the rows the one before it loaded
+            stamp = store.commit_stamp()
+            if self._rows is None or stamp is None or stamp != self._stamp:
                 self._rows = _Rows.load(store)
+                self._stamp = stamp
                 self._loads += 1
-            self._seen.last = (token, self._loads)
             return self._rows
 
 
