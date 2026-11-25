@@ -726,8 +726,8 @@ you set up before: a copy kept somewhere else, and an encrypted disk.
   Windows the shortcut can't carry it, so set it for your account (`ordnung shortcut` prints the `setx`
   command).
 - Document text is treated as **untrusted**: it is wrapped in `<untrusted_document>` markers, hidden
-  (invisible) text — white, tiny, off the page, or drawn invisibly (a PDF's text render mode 3) — is
-  removed before it reaches the model (a scan's invisible OCR layer never reaches the model: the page is
+  (invisible) text — white, tiny, off the page, drawn invisibly (a PDF's text render mode 3), or leaving no
+  ink on the rendered page (covered, transparent, clipped away, in a layer that is off) — is removed before it reaches the model (a scan's invisible OCR layer never reaches the model: the page is
   read from its picture, and what was read from it is compared with the paper; the OCR text is kept only for
   your letter search, [above](#searchable-scans)), and every extracted fact is checked against the page
   before it is shown as "found in the letter".

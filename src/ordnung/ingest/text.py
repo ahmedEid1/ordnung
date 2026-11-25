@@ -10,8 +10,12 @@
   text is somebody's reading of the picture, not the letter's own text: the page counts as having no
   text layer and is read from its image like a photo (so its values are compared with the paper, ADR
   0012), and the OCR text is neither the page text nor reported as hidden: it is returned apart, as
-  :attr:`PdfText.scan_text`, for search only (ADR 0020). Characters PDFium can't be
-  matched to (the same character within a fraction of its size) count as visible. The text layer is
+  :attr:`PdfText.scan_text`, for search only (ADR 0020). Text that puts no ink on the page counts as
+  hidden too, however it is hidden (covered by a shape or an image, drawn fully transparent, clipped
+  away, in an optional layer that is off, black on black …): PDFium renders each page twice, as it is
+  and with its text objects removed, and a character whose box is the same in both renders was never
+  seen (:func:`_drawn_chars`). Characters PDFium can't be matched to (the same character within a
+  fraction of its size) count as visible. The text layer is
   read with a pdfminer document that gives up after :data:`MAX_REFERENCE_LOOKUPS` lookups answering
   with another reference: an object that refers to itself (``5 0 obj 5 0 R endobj``, in the document
   information, a page's contents or resources …) would otherwise be resolved forever. Such a PDF's pages
@@ -55,7 +59,7 @@ from pdfminer.pdfinterp import PDFResourceManager
 from pdfminer.pdfparser import PDFParser, PDFSyntaxError
 from pdfminer.pdftypes import PDFObjRef
 from pdfplumber.pdf import PDF
-from PIL import ImageFont
+from PIL import Image, ImageChops, ImageFont
 
 from ordnung.config import PACKAGE_DIR
 from ordnung.ingest.email_text import _email_body
@@ -353,7 +357,7 @@ def read_pdf_text(pdf_path: Path, rendered: Sequence[RenderedPage]) -> PdfText:
         log.warning("could not read the pages of %s", pdf_path, exc_info=True)
         pdf.stream.close()  # closing the PDF would read its pages again, and fail again
         return unread
-    invisible = _invisible_chars(pdf_path, [r.page for r in rendered])
+    invisible = _drawn_chars(pdf_path, [r.page for r in rendered])
     texts: list[PageText] = []
     scanned: dict[int, str] = {}
     with pdf:
@@ -366,26 +370,35 @@ def read_pdf_text(pdf_path: Path, rendered: Sequence[RenderedPage]) -> PdfText:
 
 
 class _DrawnChar(NamedTuple):
-    """One character as PDFium reads it: its text, the centre of its box (PDF user space) and whether
-    its text object draws it invisibly (text render mode 3 or 7)."""
+    """One character as PDFium reads it: its text, the centre of its box (PDF user space), whether its
+    text object draws it invisibly (text render mode 3 or 7) and whether it puts ink on the rendered
+    page (:func:`_drawn_chars`)."""
 
     text: str
     x: float
     y: float
     invisible: bool
+    inked: bool = True
 
 
 _INVISIBLE_MODES = frozenset({3, 7})  # FPDF_TEXTRENDERMODE_INVISIBLE, FPDF_TEXTRENDERMODE_CLIP
+#: The long side, in pixels, of the two renders that tell inked text from text nobody can see: a glyph
+#: of :data:`MIN_VISIBLE_FONT_SIZE` on A4 is still four pixels tall.
+INK_RENDER_SIDE = 1200
+#: The least difference (0..255, luminance of the per-channel difference) between the two renders
+#: that counts as ink: the contrast of :data:`NEAR_WHITE` text on white.
+INK_THRESHOLD = 16
 
 
-def _invisible_chars(pdf_path: Path, numbers: Sequence[int]) -> dict[int, dict[str, list[_DrawnChar]]]:
-    """Page number → character → where PDFium draws it, for the pages that draw text invisibly (module
-    docstring); empty when PDFium can't read the file (every character then counts as visible)."""
+def _drawn_chars(pdf_path: Path, numbers: Sequence[int]) -> dict[int, dict[str, list[_DrawnChar]]]:
+    """Page number → character → where PDFium draws it, whether invisibly and whether with ink (module
+    docstring); a page PDFium can't read is left out (its characters then count as visible, as they
+    would on a text layer PDFium can't render either)."""
     with PDFIUM_LOCK:
-        return _invisible_chars_locked(pdf_path, numbers)
+        return _drawn_chars_locked(pdf_path, numbers)
 
 
-def _invisible_chars_locked(pdf_path: Path, numbers: Sequence[int]) -> dict[int, dict[str, list[_DrawnChar]]]:
+def _drawn_chars_locked(pdf_path: Path, numbers: Sequence[int]) -> dict[int, dict[str, list[_DrawnChar]]]:
     found: dict[int, dict[str, list[_DrawnChar]]] = {}
     try:
         document = pdfium.PdfDocument(pdf_path)
@@ -395,28 +408,13 @@ def _invisible_chars_locked(pdf_path: Path, numbers: Sequence[int]) -> dict[int,
     try:
         for number in numbers:
             page = document[number - 1]
-            textpage = page.get_textpage()
             try:
-                chars: dict[str, list[_DrawnChar]] = {}
-                any_invisible = False
-                box = raw.FS_RECTF()
-                for index in range(raw.FPDFText_CountChars(textpage.raw)):
-                    if raw.FPDFText_IsGenerated(textpage.raw, index):
-                        continue
-                    text = chr(raw.FPDFText_GetUnicode(textpage.raw, index))
-                    if text.isspace() or not raw.FPDFText_GetLooseCharBox(
-                        textpage.raw, index, ctypes.byref(box)
-                    ):
-                        continue
-                    obj = raw.FPDFText_GetTextObject(textpage.raw, index)
-                    hidden = bool(obj) and raw.FPDFTextObj_GetTextRenderMode(obj) in _INVISIBLE_MODES
-                    any_invisible = any_invisible or hidden
-                    drawn = _DrawnChar(text, (box.left + box.right) / 2, (box.top + box.bottom) / 2, hidden)
-                    chars.setdefault(text, []).append(drawn)
-                if any_invisible:
-                    found[number] = chars
+                found[number] = _page_chars(page)
+            except Exception:
+                log.warning(
+                    "could not check page %d of %s for invisible text", number, pdf_path, exc_info=True
+                )
             finally:
-                textpage.close()
                 page.close()
     except Exception:
         log.warning("could not check %s for invisible text", pdf_path, exc_info=True)
@@ -425,21 +423,114 @@ def _invisible_chars_locked(pdf_path: Path, numbers: Sequence[int]) -> dict[int,
     return found
 
 
-def _drawn_invisibly(char: dict[str, Any], drawn: dict[str, list[_DrawnChar]] | None) -> bool:
-    """Whether PDFium draws this pdfplumber character only invisibly: every character of the same
-    text within a fraction of its size of it is invisible (none visible), and there is one."""
+def _page_chars(page: pdfium.PdfPage) -> dict[str, list[_DrawnChar]]:
+    """Every character of the page, read before its text objects are removed for the second render."""
+    width, height = page.get_size()
+    scale = INK_RENDER_SIDE / max(width, height, 1.0)
+    size = (round(width * scale), round(height * scale))
+    placed: list[tuple[_DrawnChar, tuple[int, int, int, int] | None]] = []
+    textpage = page.get_textpage()
+    try:
+        loose = raw.FS_RECTF()
+        edges = [ctypes.c_double() for _ in range(4)]
+        for index in range(raw.FPDFText_CountChars(textpage.raw)):
+            if raw.FPDFText_IsGenerated(textpage.raw, index):
+                continue
+            text = chr(raw.FPDFText_GetUnicode(textpage.raw, index))
+            if text.isspace() or not raw.FPDFText_GetLooseCharBox(textpage.raw, index, ctypes.byref(loose)):
+                continue
+            obj = raw.FPDFText_GetTextObject(textpage.raw, index)
+            hidden = bool(obj) and raw.FPDFTextObj_GetTextRenderMode(obj) in _INVISIBLE_MODES
+            drawn = _DrawnChar(text, (loose.left + loose.right) / 2, (loose.top + loose.bottom) / 2, hidden)
+            tight = raw.FPDFText_GetCharBox(textpage.raw, index, *(ctypes.byref(edge) for edge in edges))
+            placed.append((drawn, _device_box(page, size, [e.value for e in edges]) if tight else None))
+    finally:
+        textpage.close()
+    ink = _ink(page, scale) if placed else None
+    chars: dict[str, list[_DrawnChar]] = {}
+    for drawn, box in placed:
+        inked = ink is None or box is None or ink.crop(box).getbbox() is not None
+        chars.setdefault(drawn.text, []).append(drawn._replace(inked=inked))
+    return chars
+
+
+def _device_box(
+    page: pdfium.PdfPage, size: tuple[int, int], edges: Sequence[float]
+) -> tuple[int, int, int, int]:
+    """A character's box (left, right, bottom, top in PDF user space) in render pixels, one pixel wider
+    on every side (so a thin glyph keeps at least one pixel)."""
+    left, right, bottom, top = edges
+    xs: list[int] = []
+    ys: list[int] = []
+    for x, y in ((left, top), (right, bottom)):
+        dx, dy = ctypes.c_int(), ctypes.c_int()
+        raw.FPDF_PageToDevice(page.raw, 0, 0, size[0], size[1], 0, x, y, ctypes.byref(dx), ctypes.byref(dy))
+        xs.append(dx.value)
+        ys.append(dy.value)
+    return (min(xs) - 1, min(ys) - 1, max(xs) + 2, max(ys) + 2)
+
+
+def _ink(page: pdfium.PdfPage, scale: float) -> Image.Image:
+    """Where the page's text objects change its render: a mask (255 = ink) of the difference between the
+    page rendered as it is and rendered again with every text object removed (in memory only; the file
+    is never written). The page is left without its text: the caller closes it."""
+    before = _render(page, scale)
+    _remove_text(page.raw, raw.FPDFPage_CountObjects, raw.FPDFPage_GetObject, raw.FPDFPage_RemoveObject)
+    after = _render(page, scale)
+    difference = ImageChops.difference(before, after).convert("L")
+    return difference.point(lambda value: 255 if value >= INK_THRESHOLD else 0)
+
+
+def _render(page: pdfium.PdfPage, scale: float) -> Image.Image:
+    bitmap = page.render(scale=scale, may_draw_forms=True)  # as the page images are rendered
+    try:
+        image: Image.Image = bitmap.to_pil().convert("RGB")
+        return image
+    finally:
+        bitmap.close()
+
+
+def _remove_text(holder: Any, count: Any, get: Any, remove: Any) -> None:
+    """Remove every text object of a page or form XObject (forms in forms included)."""
+    for index in reversed(range(count(holder))):
+        obj = get(holder, index)
+        kind = raw.FPDFPageObj_GetType(obj)
+        if kind == raw.FPDF_PAGEOBJ_TEXT:
+            if remove(holder, obj):
+                raw.FPDFPageObj_Destroy(obj)
+        elif kind == raw.FPDF_PAGEOBJ_FORM:
+            _remove_text(
+                obj, raw.FPDFFormObj_CountObjects, raw.FPDFFormObj_GetObject, raw.FPDFFormObj_RemoveObject
+            )
+
+
+def _near(char: dict[str, Any], drawn: dict[str, list[_DrawnChar]] | None) -> list[_DrawnChar]:
+    """PDFium's characters of the same text within a fraction of this pdfplumber character's size."""
     if not drawn:
-        return False
+        return []
     text = str(char.get("text", ""))
     size = float(char.get("size") or 0.0)
     x = (float(char["x0"]) + float(char["x1"])) / 2
     y = (float(char["y0"]) + float(char["y1"])) / 2
-    near = [
+    return [
         other
         for other in drawn.get(text, [])
         if abs(other.x - x) <= max(1.0, 0.25 * size) and abs(other.y - y) <= max(1.5, 0.5 * size)
     ]
+
+
+def _drawn_invisibly(char: dict[str, Any], drawn: dict[str, list[_DrawnChar]] | None) -> bool:
+    """Whether PDFium draws this pdfplumber character only invisibly: every character of the same
+    text within a fraction of its size of it is invisible (none visible), and there is one."""
+    near = _near(char, drawn)
     return bool(near) and all(other.invisible for other in near)
+
+
+def _drawn_without_ink(char: dict[str, Any], drawn: dict[str, list[_DrawnChar]] | None) -> bool:
+    """Whether this pdfplumber character leaves no ink on the rendered page: every PDFium character of
+    the same text near it changes nothing in the render, and there is one."""
+    near = _near(char, drawn)
+    return bool(near) and not any(other.inked for other in near)
 
 
 def is_near_white(color: object) -> bool:
@@ -476,7 +567,9 @@ def _extract_page(
         if glyph is None:
             continue
         if glyph.is_space or not (
-            _is_hidden(char, glyph, frame, backgrounds) or _drawn_invisibly(char, drawn)
+            _is_hidden(char, glyph, frame, backgrounds)
+            or _drawn_invisibly(char, drawn)
+            or _drawn_without_ink(char, drawn)
         ):
             visible.append(glyph)
     for char in page.chars:
@@ -485,7 +578,7 @@ def _extract_page(
             continue
         if _drawn_invisibly(char, drawn):
             invisible.append(glyph)
-        elif _is_hidden(char, glyph, frame, backgrounds):
+        elif _is_hidden(char, glyph, frame, backgrounds) or _drawn_without_ink(char, drawn):
             hidden.append(glyph)
     text, words = _assemble(visible, frame)
     meaningful = sum(ch.isalnum() for ch in text)

@@ -681,6 +681,75 @@ def test_text_drawn_invisibly_is_hidden_text_not_the_page_text(tmp_path: Path) -
     assert result.scan_text == {}
 
 
+_SHOWN = b"BT /F1 12 Tf 72 760 Td (Musterfirma GmbH Rechnung 4711 vom 01.09.2026 Betrag 12,34 EUR) Tj ET\n"
+_UNSEEN = b"BT /F1 12 Tf 72 700 Td (Geheimkonto DE02120300000000202051) Tj ET"
+#: Ways to put text on a page that nobody can see, none of them tiny, off-page, white or render mode 3.
+NO_INK = {
+    "covered by a white rectangle": _UNSEEN + b"\n1 1 1 rg 60 690 400 30 re f",
+    "fill alpha 0": b"/Clear gs " + _UNSEEN,
+    "clipped away": b"q 0 0 1 1 re W n " + _UNSEEN + b" Q",
+    "optional content off": b"/OC /off BDC " + _UNSEEN + b" EMC",
+    "black on a black rectangle drawn first": b"0 0 0 rg 60 690 400 30 re f " + _UNSEEN,
+    "an image mask painted over it": _UNSEEN
+    + b"\nq 1 1 1 rg 400 0 0 30 60 690 cm BI /W 1 /H 1 /IM true /BPC 1 ID \x00 EI Q",
+    "covered inside a form XObject": b"/Inner Do 1 1 1 rg 60 690 400 30 re f",
+}
+#: The same line drawn so that it shows: it stays page text.
+INKED = {
+    "white on a dark box": b"0 0 0.5 rg 60 690 400 30 re f 1 1 1 rg " + _UNSEEN,
+    "mid grey": b"0.6 g " + _UNSEEN,
+    "inside a form XObject": b"/Inner Do",
+}
+
+
+def _raw_pdf(content: bytes) -> bytes:
+    """A one-page PDF with Helvetica, an optional content group that is off, a fully transparent graphics
+    state and a form XObject drawing the unseen line."""
+    stream = _SHOWN + content + b"\n"
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R /OCProperties << /OCGs [6 0 R] /D << /OFF [6 0 R] >> >> >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R"
+        b" >> /XObject << /Inner 7 0 R >> /ExtGState << /Clear << /ca 0 /CA 0 >> >> /Properties << /off 6 0 R"
+        b" >> >> >>",
+        b"<< /Length %d >>\nstream\n" % len(stream) + stream + b"\nendstream",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+        b"<< /Type /OCG /Name (Musterstadt) >>",
+        b"<< /Type /XObject /Subtype /Form /BBox [0 0 595 842] /Resources << /Font << /F1 5 0 R >> >> "
+        b"/Length %d >>\nstream\n" % len(_UNSEEN) + _UNSEEN + b"\nendstream",
+    ]
+    out = bytearray(b"%PDF-1.7\n")
+    offsets = []
+    for number, body in enumerate(objects, start=1):
+        offsets.append(len(out))
+        out += b"%d 0 obj\n" % number + body + b"\nendobj\n"
+    xref = len(out)
+    out += b"xref\n0 %d\n0000000000 65535 f \n" % (len(objects) + 1)
+    out += b"".join(b"%010d 00000 n \n" % offset for offset in offsets)
+    out += b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n" % (len(objects) + 1, xref)
+    return bytes(out)
+
+
+@pytest.mark.parametrize("construction", list(NO_INK))
+def test_text_without_ink_on_the_page_is_hidden(tmp_path: Path, construction: str) -> None:
+    """Adversarial: text the rendered page never shows (covered, transparent, clipped, in a layer that is
+    off, black on black, under an image) is hidden text, a scam sign, never the page text a quote or a
+    GiroCode value is grounded in; the letter's visible line stays page text."""
+    _, result = _read(tmp_path, _raw_pdf(NO_INK[construction]))
+    [page] = result.pages
+    assert page.has_text_layer and "Musterfirma GmbH Rechnung 4711" in page.text
+    assert "Geheimkonto" not in page.text and all("DE02" not in word.text for word in page.words)
+    assert "Geheimkonto DE02120300000000202051" in page.hidden_text
+
+
+@pytest.mark.parametrize("construction", list(INKED))
+def test_text_with_ink_on_the_page_stays_page_text(tmp_path: Path, construction: str) -> None:
+    _, result = _read(tmp_path, _raw_pdf(INKED[construction]))
+    [page] = result.pages
+    assert "Geheimkonto DE02120300000000202051" in page.text
+    assert page.hidden_text == ""
+
+
 def _read(tmp_path: Path, data: bytes) -> tuple[list[RenderedPage], text_module.PdfText]:
     source = tmp_path / "doc.pdf"
     source.write_bytes(data)
@@ -845,7 +914,7 @@ def test_the_invisible_text_check_holds_the_pdfium_lock(
     pdf_path = tmp_path / "letter.pdf"
     pdf_path.write_bytes(make_pdf([lines]))
     monkeypatch.setattr(text_module.pdfium, "PdfDocument", spy)
-    found = text_module._invisible_chars(pdf_path, [1])
+    found = text_module._drawn_chars(pdf_path, [1])
     assert opened == [True] and found[1]
 
 
