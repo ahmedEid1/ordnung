@@ -7,12 +7,14 @@
  *   (it was 0.65 on a phone: the whole chart moved down when the calendar button came).
  * - The demo's Inbox: the New-mail tray and the letters come together (when the tray answered first it pushed the
  *   letters' stand-in down: 0.15). The tray is made to answer first here, every time.
+ * - Contracts: "Decide by" keeps its room while the contracts load when this browser last saw a decision or knows
+ *   nothing yet; a household with nothing to decide moves once on a first visit (by less), and never again.
  *
  * The shifts are summed whole (stricter than the browser's own CLS, which keeps only the worst burst). No fixed
  * waits: each page is read once it is loaded and still. Runs in the "layout" project.
  */
 import type { Page, Route } from "@playwright/test";
-import type { MailTrayItem } from "@/api/types";
+import type { Contract, MailTrayItem } from "@/api/types";
 import { expect, open, setTour, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
@@ -62,6 +64,16 @@ async function load(page: Page, path: string, heading: string): Promise<{ cls: n
   return shifted(page);
 }
 
+/** A page opened again in the same browser (what it noted in its storage the first time is there). */
+async function loadAgain(page: Page, path: string, heading: string): Promise<{ cls: number; what: string }> {
+  const again = await page.context().newPage();
+  try {
+    return await load(again, path, heading);
+  } finally {
+    await again.close();
+  }
+}
+
 const PHONE = { width: 390, height: 844 };
 /** The Timeline holds still once fixed (0 in every run, Nov 2026; 0.65 on a phone and 0.03 on a desktop before). */
 const TIMELINE_MAX = 0.01;
@@ -99,6 +111,34 @@ for (const [label, size] of [
       );
       const { cls, what } = await load(page, "/timeline", "Timeline");
       expect(cls, what).toBeLessThanOrEqual(TIMELINE_MAX);
+    });
+
+    test("Contracts with a decision to make: a first visit and a returning one hold still", async ({ page }) => {
+      const first = await load(page, "/contracts", "Contracts");
+      await expect(page.getByRole("heading", { name: /Decide by/ })).toBeVisible();
+      expect(first.cls, first.what).toBeLessThanOrEqual(0.05);
+      const again = await loadAgain(page, "/contracts", "Contracts");
+      expect(again.cls, again.what).toBeLessThanOrEqual(0.05);
+    });
+
+    test("Contracts with nothing to decide: a first visit moves once, by less; a returning one holds still", async ({ page }) => {
+      // the demo's contracts with no date to send a notice by: a household with nothing to decide now
+      await page.context().route(
+        (url) => url.pathname === "/api/contracts",
+        async (route) => {
+          if (route.request().method() !== "GET") return route.fallback();
+          const response = await route.fetch();
+          const contracts = (await response.json()) as Contract[];
+          await route.fulfill({ response, json: contracts.map((c) => (c.computed ? { ...c, computed: { ...c.computed, send_by: null } } : c)) });
+        },
+      );
+      const first = await load(page, "/contracts", "Contracts");
+      await expect(page.getByRole("heading", { name: /Decide by/ })).toHaveCount(0);
+      // the room kept for a decision this browser could not know about goes once: 0.092 at 390 px and 0.076 at 1280 px
+      // in every run (Nov 2026), most of it that room; the rest is the cost summary's stand-in, shorter than the summary
+      expect(first.cls, first.what).toBeLessThanOrEqual(0.1);
+      const again = await loadAgain(page, "/contracts", "Contracts");
+      expect(again.cls, again.what).toBeLessThanOrEqual(0.05);
     });
   });
 }

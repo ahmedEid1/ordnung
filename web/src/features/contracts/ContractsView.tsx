@@ -27,7 +27,7 @@ import { formatMoney } from "@/lib/format";
 import { LanesChart, defaultLaneRange, nextOnLane, type LaneSelection } from "@/features/lanes";
 import { ContractCard } from "./ContractCard";
 import { CostSummary, SUMMARY_GRID } from "./CostSummary";
-import { DecideBy } from "./DecideBy";
+import { DecideBy, DecideByLoading } from "./DecideBy";
 import {
   contractLaneNote,
   contractLanes,
@@ -40,10 +40,13 @@ import {
 } from "./model";
 import { usePhoneCompanion } from "@/features/phone/client";
 import { filesStay } from "@/features/phone/copy";
-import { useStickyError } from "@/lib/hooks";
+import { useLocalStorage, useStickyError } from "@/lib/hooks";
 
 const STATUSES: StatusFilter[] = ["active", "cancelled", "ended", "all"];
 const STATUS_LABEL: Record<StatusFilter, string> = { active: "Active", cancelled: "Cancelled", ended: "Ended", all: "All" };
+/** Whether this browser last saw a contract to decide on (the room of "Decide by" while the contracts load). */
+export const SAW_DECISION = "ordnung.contracts.decideBy";
+
 const DESCRIPTION = "Every contract with what it costs, how it can end — in plain words — and the dates to act by.";
 
 /**
@@ -224,6 +227,12 @@ export function ContractsView() {
   const lastError = useStickyError(contractsQ.error, loaded);
   const failed = !loaded && (contractsQ.isError || Boolean(lastError));
   const loading = !loaded && !failed;
+  // "Decide by" keeps its room while the contracts load when this browser last saw a decision, or knows nothing
+  // yet: only a household with nothing to decide moves, once, on a first visit
+  const [sawDecision, setSawDecision] = useLocalStorage(SAW_DECISION, true);
+  useEffect(() => {
+    if (loaded && sawDecision !== decisions.length > 0) setSawDecision(decisions.length > 0);
+  }, [loaded, decisions.length, sawDecision, setSawDecision]);
 
   if (failed) {
     return (
@@ -323,7 +332,7 @@ export function ContractsView() {
         <CostSummary costs={costs} active={counts.active} inactive={counts.cancelled + counts.ended} next={decisions[0] ?? null} today={today} />
       )}
 
-      <DecideBy contracts={decisions} partyById={partyById} today={today} />
+      {loading ? sawDecision ? <DecideByLoading /> : null : <DecideBy contracts={decisions} partyById={partyById} today={today} />}
 
       <section aria-labelledby="all-contracts-title" aria-busy={loading || undefined}>
         <SectionHeader id="all-contracts-title" icon={Signature} title="Your contracts" count={loading ? undefined : shown.length} />
