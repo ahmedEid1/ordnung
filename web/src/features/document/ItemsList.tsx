@@ -316,15 +316,16 @@ function ItemRow({
     >
       {/* a 24 px target around the 20 px circle; the name says what a press does (no aria-pressed on top of it).
           While a change is saved it is `aria-disabled`, not `disabled`: a disabled button loses focus to the page,
-          and its new name ("Reopen …") is said where the keyboard still is */}
+          and its new name ("Reopen …") is said where the keyboard still is. A second press meanwhile does nothing, also
+          one that comes before it is drawn busy (useItemActions) */}
       <button
         type="button"
         onClick={() => {
-          if (pending) return;
           if (open) markDone(item);
           else reopen(item);
         }}
         aria-disabled={pending || undefined}
+        aria-busy={pending || undefined}
         aria-label={open ? `Mark “${item.title}” as done` : `Reopen “${item.title}”`}
         className="group/check -my-0.5 grid size-6 shrink-0 place-items-center rounded-full"
       >

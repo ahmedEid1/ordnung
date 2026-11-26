@@ -744,7 +744,15 @@ function AsideRow({ entry, detail }: { entry: AsideItem; detail: DocumentDetail 
         </span>
       </span>
       {/* named with what it shows, "Mark done", whole and first (WCAG 2.5.3), then which to-do */}
-      <Button variant="ghost" size="sm" icon={Check} className="ml-auto" aria-label={`Mark done: “${item.title}”`} onClick={() => actions.markDone(item)}>
+      <Button
+        variant="ghost"
+        size="sm"
+        icon={Check}
+        className="ml-auto"
+        aria-label={`Mark done: “${item.title}”`}
+        loading={actions.pressed === item.id}
+        onClick={() => actions.markDone(item)}
+      >
         Mark done
       </Button>
     </li>
@@ -945,7 +953,7 @@ function Actions({
         return phone || !fitsACalendar(main.item) ? null : <CalendarButton item={main.item} primary />;
       case "done":
         return (
-          <Button variant="primary" icon={Check} onClick={() => markDone(main.item)}>
+          <Button variant="primary" icon={Check} loading={actions.pressed === main.item.id} onClick={() => markDone(main.item)}>
             Mark done
           </Button>
         );
@@ -981,7 +989,7 @@ function Actions({
           {showCalendar && primary ? <CalendarButton item={primary} /> : null}
           {/* the quiet one sits apart at the end of the row (it wrapped alone and indented at 320 px) */}
           {showDone && primary ? (
-            <Button variant="ghost" icon={Check} className="ml-auto" onClick={() => markDone(primary)}>
+            <Button variant="ghost" icon={Check} className="ml-auto" loading={actions.pressed === primary.id} onClick={() => markDone(primary)}>
               Mark done
             </Button>
           ) : null}

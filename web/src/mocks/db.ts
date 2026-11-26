@@ -437,15 +437,19 @@ export class MockDb {
    * A repeating date of the person's own follows its schedule as the API's does: marked done it moves on to its next
    * date and stays open, and set open again ("Undo") it goes back; a new rule, or its rule sent with a date, starts the
    * schedule again there. (A repeating to-do read from a letter still closes when marked done: the mock has no engine
-   * to move it.)
+   * to move it.) A "done" or "open again" sent with the date the page showed (`seen_due_date`) for a date that has
+   * moved since changes nothing, as on the server: the same press sent twice moves it once.
    */
   patchItem(id: string, body: unknown): Item | null {
     const it = this.state.items.find((i) => i.id === id);
     if (!it) return null;
     const patch = pick<Item>(body, ITEM_PATCHABLE);
+    const own = it.origin === "manual";
+    const seen = (body as { seen_due_date?: string | null } | null)?.seen_due_date;
+    const steps = own && it.recurrence != null && ((patch.status === "done" && it.status !== "done") || (patch.status === "open" && it.status === "open" && this.marked.has(id)));
+    if (seen !== undefined && steps && seen !== it.due_date) return it;
     const before = { status: it.status, due_date: it.due_date, recurrence: it.recurrence };
     if ("recurrence" in patch) patch.recurrence = asRule(patch.recurrence);
-    const own = it.origin === "manual";
     const restart = own && patch.recurrence != null && ("due_date" in patch || !sameRule(patch.recurrence, before.recurrence));
     Object.assign(it, patch, { updated_at: nowTs(), user_modified: true });
     if (patch.due_date) it.due_date_source = "manual";

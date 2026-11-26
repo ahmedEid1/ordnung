@@ -644,13 +644,16 @@ function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean })
   // the letter's words, in the letter's language
   const quoteLang = useLetterLanguage(ev?.doc_id);
   // while an answer is saved the buttons are `aria-disabled`, not `disabled`: a disabled button drops focus to the
-  // page, and after a failed save the keyboard is still where it was; once saved, the card leaves
-  const unlessBusy = (run: () => void) => () => {
+  // page, and after a failed save the keyboard is still where it was; once saved, the card leaves. The one pressed
+  // says it is busy; a second press before it is drawn so does nothing either (useItemActions)
+  const [answer, setAnswer] = useState<string | null>(null);
+  const unlessBusy = (name: string, run: () => void) => () => {
     if (pending) return;
+    setAnswer(name);
     focusAfterChecked(item.id);
     run();
   };
-  const busy = pending || undefined;
+  const busy = (name: string) => ({ "aria-disabled": pending || undefined, loading: pending && answer === name });
 
   return (
     <CheckCard headingId={checkHeadingId(item.id)}>
@@ -673,10 +676,10 @@ function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean })
       ) : null}
       {scam ? (
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button size="sm" variant="secondary" icon={X} onClick={unlessBusy(() => dismiss(item))} aria-disabled={busy}>
+          <Button size="sm" variant="secondary" icon={X} onClick={unlessBusy("dismiss", () => dismiss(item))} {...busy("dismiss")}>
             Not a real to-do
           </Button>
-          <Button size="sm" variant="ghost" icon={Check} onClick={unlessBusy(() => confirmItem(item))} aria-disabled={busy}>
+          <Button size="sm" variant="ghost" icon={Check} onClick={unlessBusy("confirm", () => confirmItem(item))} {...busy("confirm")}>
             It's a real to-do
           </Button>
         </div>
@@ -705,19 +708,19 @@ function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean })
       ) : (
         <div className="mt-3 flex flex-wrap gap-2">
           {placeholder ? (
-            <Button size="sm" variant="secondary" icon={Check} onClick={unlessBusy(() => markDone(item, { title: "Marked as read" }))} aria-disabled={busy}>
+            <Button size="sm" variant="secondary" icon={Check} onClick={unlessBusy("read", () => markDone(item, { title: "Marked as read" }))} {...busy("read")}>
               I've read it — nothing to do
             </Button>
           ) : own && !item.due_date ? null : (
             // an undated deadline of Ordnung's own has no date to call correct: "Correct" would file it undated for good
-            <Button size="sm" variant="secondary" icon={Check} onClick={unlessBusy(() => confirmItem(item))} aria-disabled={busy}>
+            <Button size="sm" variant="secondary" icon={Check} onClick={unlessBusy("confirm", () => confirmItem(item))} {...busy("confirm")}>
               Correct
             </Button>
           )}
           <Button size="sm" variant="secondary" icon={Pencil} onClick={() => setEditing(true)}>
             {item.due_date ? "Change date" : "Set a date"}
           </Button>
-          <Button size="sm" variant="ghost" icon={X} onClick={unlessBusy(() => dismiss(item))} aria-disabled={busy}>
+          <Button size="sm" variant="ghost" icon={X} onClick={unlessBusy("dismiss", () => dismiss(item))} {...busy("dismiss")}>
             Not a real to-do
           </Button>
         </div>
