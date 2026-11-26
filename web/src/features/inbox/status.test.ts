@@ -48,8 +48,10 @@ describe("the Inbox's result line", () => {
     const kind = resultLine(view({ kindLabel: "Invoice" }), 136, 3000, false, 0, 100);
     expect(kind).toEqual({ text: "136 of 3,000 letters in this view.", visible: true });
     expect(announced(kind, 100, 136)).toBe("136 of 3,000 letters in this view. Showing 100 of 136 letters.");
-    // every row of the view drawn: as always, with the numbers written as the page writes them
-    expect(resultLine(view({ kindLabel: "Invoice" }), 1360, 3000, false, 0, 1360).text).toBe("Showing 1,360 of 3,000 letters");
+    // every row of the view drawn: the numbers written as the page writes them, and still the full stop, so the
+    // line reads the same as the rows come
+    expect(resultLine(view({ kindLabel: "Invoice" }), 1360, 3000, false, 0, 1360).text).toBe("Showing 1,360 of 3,000 letters.");
+    expect(resultLine(view({ year: 2024 }), 362, 3000, false, 0, 362).text).toBe("Showing 362 of 3,000 letters.");
     // the whole inbox: only the rows drawn
     const whole = resultLine(view(), 3000, 3000, false, 0, 200);
     expect(announced(whole, 200, 3000)).toBe("Showing 200 of 3,000 letters.");
@@ -58,6 +60,30 @@ describe("the Inbox's result line", () => {
     expect(announced(search, 100, 250)).toBe("250 letters match “Muster”. Showing 100 of 250 letters.");
     // everything drawn: the line alone
     expect(announced(resultLine(view({ filter: "check" }), 4, 22, false), 4, 4)).toBe("Showing 4 of 22 letters");
+  });
+
+  it("writes a long search's numbers as the rest of the page does, with its full stop", () => {
+    // drawn in part: "2,255", never "2255" beside "Showing 100 of 2,255 letters."
+    const part = resultLine(view({ typed: "Musterstadt", q: "Musterstadt" }), 2255, 3000, false, 0, 100);
+    expect(part).toEqual({ text: "2,255 letters match “Musterstadt”.", visible: true });
+    expect(announced(part, 100, 2255)).toBe("2,255 letters match “Musterstadt”. Showing 100 of 2,255 letters.");
+    // drawn whole: the same line
+    expect(resultLine(view({ typed: "Musterstadt", q: "Musterstadt" }), 2255, 3000, false, 0, 2255).text).toBe("2,255 letters match “Musterstadt”.");
+    expect(resultLine(view({ typed: "Rechnung", q: "Rechnung" }), 1200, 3000, false, 1001, 100).text).toBe(
+      "1,200 letters match “Rechnung”, and 1,001 not read yet (above).",
+    );
+    // a search of 100 letters or fewer reads as it always did
+    expect(resultLine(view({ typed: "Sparkasse", q: "Sparkasse" }), 32, 3000, false).text).toBe("32 letters match “Sparkasse”");
+  });
+
+  it("says once that a long Inbox is drawn whole after Show all, where its line says nothing", () => {
+    const whole = resultLine(view(), 3000, 3000, false, 0, 3000);
+    expect(announced(whole, 3000, 3000, Infinity)).toBe("Showing all 3,000 letters.");
+    // the first 100 of a list of 100 or fewer: nothing, as always
+    expect(announced(resultLine(view(), 80, 80, false), 80, 80, 100)).toBe("");
+    // a narrowed view drawn whole says it in its own line
+    const year = resultLine(view({ year: 2024 }), 362, 3000, false, 0, 362);
+    expect(announced(year, 362, 362, Infinity)).toBe("Showing 362 of 3,000 letters.");
   });
 });
 

@@ -233,7 +233,7 @@ export default function InboxPage() {
   const { rows, setRows } = useDrawnRows(JSON.stringify([filter, kind, year, view.q, who ?? null]));
   const drawn = Math.min(rows, visible.length);
   const now = { ...resultLine(view, visible.length, total, pendingSearch, heldFound?.size, drawn), live: "" };
-  now.live = announced(now, drawn, visible.length);
+  now.live = announced(now, drawn, visible.length, rows);
   // A search that has not answered the words typed yet (still debounced, on its way, or listing the previous
   // words' letters while it runs) keeps the line it had: a count of the old words' letters named the new words
   // ("21 letters match “Zahnarzt”" before "1 letter matches …"), and every keystroke was read out. The first

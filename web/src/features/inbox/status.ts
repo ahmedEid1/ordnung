@@ -5,7 +5,7 @@
  */
 import type { EmptyIllustration } from "@/components/ui/EmptyState";
 import type { InboxFilter } from "./filters";
-import { count } from "./rows";
+import { ROWS_STEP, count } from "./rows";
 
 /** A search starts at this many characters. */
 export const MIN_SEARCH = 2;
@@ -57,24 +57,29 @@ const letters = (n: number) => `${count(n)} ${n === 1 ? "letter" : "letters"}`;
 export function resultLine(v: InboxView, shown: number, total: number, searching: boolean, held = 0, drawn = shown): ResultLine {
   if (v.typed.length > 0 && v.typed.length < MIN_SEARCH) return { text: "Type one more letter to search.", visible: true };
   if (v.q && searching) return { text: "Searching…", visible: true };
+  // a view longer than the rows drawn at first ends its line with a full stop, drawn in part or whole, so the line
+  // reads the same as its rows come and runs into no sentence after it; a shorter list's line is as it always was
+  const stop = shown > ROWS_STEP ? "." : "";
   if (v.q) {
     if (!shown) return { text: held ? heldMatch(held, v.q) : `No letters match “${v.q}”`, visible: false };
-    const also = held ? `, and ${held} not read yet (above)` : "";
-    return { text: `${shown === 1 ? "1 letter matches" : `${shown} letters match`} “${v.q}”${also}`, visible: true };
+    const also = held ? `, and ${count(held)} not read yet (above)` : "";
+    return { text: `${shown === 1 ? "1 letter matches" : `${count(shown)} letters match`} “${v.q}”${also}${stop}`, visible: true };
   }
   if (isNarrowed(v)) {
     if (!shown) return { text: "No letters here", visible: false };
-    return { text: drawn < shown ? `${count(shown)} of ${letters(total)} in this view.` : `Showing ${count(shown)} of ${letters(total)}`, visible: true };
+    return { text: drawn < shown ? `${count(shown)} of ${letters(total)} in this view.` : `Showing ${count(shown)} of ${letters(total)}${stop}`, visible: true };
   }
   return { text: "", visible: false };
 }
 
 /**
  * What the page's live line says: the line under the toolbar, and for a long list the rows drawn of it ("Showing 200
- * of 3,000 letters."), each sentence with its full stop, so the two are never read as one.
+ * of 3,000 letters."), each sentence with its full stop, so the two are never read as one. `asked`: the rows asked
+ * for (`Infinity` after "Show all"): once a long list is drawn whole, the whole Inbox says so too ("Showing all 3,000
+ * letters."), where its line says nothing.
  */
-export function announced(line: ResultLine, drawn: number, shown: number): string {
-  if (drawn >= shown) return line.text;
+export function announced(line: ResultLine, drawn: number, shown: number, asked = drawn): string {
+  if (drawn >= shown) return !line.text && asked > ROWS_STEP && shown > ROWS_STEP ? `Showing all ${letters(shown)}.` : line.text;
   const rows = `Showing ${count(drawn)} of ${letters(shown)}.`;
   if (!line.text) return rows;
   return `${/[.!?…]$/.test(line.text) ? line.text : `${line.text}.`} ${rows}`;

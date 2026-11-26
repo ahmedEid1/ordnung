@@ -105,7 +105,8 @@ describe("a long Inbox draws its first rows", () => {
     expect(rowLink(200)).toHaveAccessibleName("Letter 201");
     expect(screen.queryByRole("button", { name: /^Show / })).toBeNull();
     expect(screen.queryByText(/^Showing \d+ of/)).toBeNull();
-    expect(live()).toHaveTextContent(/^$/);
+    // said once: the whole Inbox's line says nothing itself
+    expect(live()).toHaveTextContent(/^Showing all 250 letters\.$/);
   });
 
   it("with the mouse, focus stays on the button while it stays", async () => {
