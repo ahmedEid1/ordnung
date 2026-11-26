@@ -14,7 +14,7 @@ import { MockBanner } from "@/components/shell/MockBanner";
 import { AddLettersProvider } from "@/components/shell/AddLetters";
 import { PageMetaProvider, useDocumentTitle } from "@/components/shell/page-meta";
 import { useRecordOrigin } from "@/components/shell/origin";
-import { Toaster } from "@/components/ui/Toast";
+import { Toaster, toast } from "@/components/ui/Toast";
 import { StandbyScreen, standbyKeepsPage } from "@/features/sync/StandbyScreen";
 import { useBrowserNotifications } from "@/features/notifications/useBrowserNotifications";
 import { usePartyDrawer } from "@/lib/party-drawer";
@@ -24,7 +24,18 @@ import { lazyPart } from "./lazyPart";
 // the demo's tour loads only in the demo, the People & organisations drawer when it is first opened: neither is in
 // every page's first load
 const DemoTour = lazyPart(() => import("@/features/tour/DemoTour").then((m) => m.DemoTour));
-const PartyDrawer = lazyPart(() => import("@/features/party/PartyDrawer").then((m) => m.PartyDrawer));
+const PartyDrawer = lazyPart(() => import("@/features/party/PartyDrawer").then((m) => m.PartyDrawer), {
+  // its code didn't load and the app did not reload for it (it did a minute ago, or Ordnung doesn't answer): say so,
+  // or a click on a name does nothing
+  failed: () =>
+    toast({
+      id: "party-drawer-failed",
+      tone: "danger",
+      title: "Couldn't open this person or organisation",
+      description: "Ordnung may have been updated or restarted. Reload the page to open it.",
+      action: { label: "Reload", onClick: () => window.location.reload() },
+    }),
+});
 
 /** The drawer from its first open on (it stays, so it can close as it opens); a failed load tries again at the next open. */
 function LazyPartyDrawer() {

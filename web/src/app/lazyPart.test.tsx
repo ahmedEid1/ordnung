@@ -3,10 +3,10 @@
  * reloads for a new build as a page does when Ordnung answers, and loads again the next time it is asked for.
  */
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { lazyPart } from "./lazyPart";
 
-const reloadIfServing = vi.hoisted(() => vi.fn(async () => {}));
+const reloadIfServing = vi.hoisted(() => vi.fn(async (_reload: () => void) => {}));
 vi.mock("./staleChunks", () => ({ reloadIfServing }));
 
 beforeEach(() => reloadIfServing.mockClear());
@@ -48,4 +48,28 @@ it("shows nothing when its code can't load, asks for a reload as a page would, a
   );
   expect(await screen.findByText("Drawer for Stadtwerke")).toBeInTheDocument();
   expect(load).toHaveBeenCalledTimes(2);
+});
+
+it("says it failed when the app did not reload for it, and not when it did", async () => {
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  const failed = vi.fn();
+  const Part = lazyPart(async (): Promise<() => null> => {
+    throw new TypeError("Failed to fetch dynamically imported module");
+  }, { failed });
+  // no reload (one was done a minute ago, or Ordnung doesn't answer)
+  const { rerender } = render(<Part retry="pty_1" />);
+  await waitFor(() => expect(failed).toHaveBeenCalledOnce());
+
+  // the app reloads for a new build: nothing to say
+  reloadIfServing.mockImplementationOnce(async (reload: () => void) => reload());
+  const reload = vi.fn();
+  vi.stubGlobal("location", { ...window.location, reload });
+  try {
+    rerender(<Part retry="pty_2" />);
+    await waitFor(() => expect(reload).toHaveBeenCalledOnce());
+    await act(async () => {});
+    expect(failed).toHaveBeenCalledOnce();
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });
