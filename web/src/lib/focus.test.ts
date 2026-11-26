@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { focusAfterLeaving, focusOrigin, focusWhenReady, revealPlan, revealWhenStill, setToastHandBack } from "./focus";
+import { focusAfterLeaving, focusOrigin, focusWhenReady, freeBand, revealPlan, revealWhenStill, setToastHandBack } from "./focus";
 
 describe("focusAfterLeaving", () => {
   beforeEach(() => {
@@ -125,6 +125,48 @@ describe("revealPlan: in view between the bars, not the window", () => {
     expect(revealPlan({ top: 57, bottom: 57 + 446 }, phone)).toEqual({ shown: true, block: "center" });
     // its bottom under the tab bar is not in view
     expect(revealPlan({ top: 70, bottom: 70 + 446 }, phone).shown).toBe(false);
+  });
+});
+
+describe("freeBand: the room the bars really leave", () => {
+  // a 320×568 phone as Chromium answers it: nothing at all at innerHeight - 0.5, the bars at whole pixels
+  const boxes: { el: HTMLElement; top: number; bottom: number }[] = [];
+  const bar = (tag: string, top: number, bottom: number) => {
+    const el = document.createElement(tag);
+    el.style.position = "fixed";
+    el.getBoundingClientRect = () => ({ top, bottom, height: bottom - top, left: 0, right: 320, width: 320, x: 0, y: top, toJSON: () => null });
+    document.body.append(el);
+    boxes.push({ el, top, bottom });
+  };
+  const height = window.innerHeight;
+  beforeEach(() => {
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 568 });
+    document.elementsFromPoint = (_x: number, y: number) =>
+      y >= window.innerHeight - 0.5 ? [] : boxes.filter((b) => y >= b.top && y < b.bottom).map((b) => b.el);
+  });
+  afterEach(() => {
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: height });
+    // @ts-expect-error -- jsdom has none: put it back as it was
+    delete document.elementsFromPoint;
+    boxes.length = 0;
+    document.body.innerHTML = "";
+  });
+
+  it("finds the tab bar at the window's bottom edge (probed at innerHeight - 0.5 it found nothing)", () => {
+    bar("header", 0, 56);
+    bar("nav", 504, 568);
+    expect(freeBand(160)).toEqual({ top: 56, bottom: 504 });
+  });
+
+  it("finds the demo's tour bar floating just above the tab bar", () => {
+    bar("header", 0, 56);
+    bar("nav", 504, 568);
+    bar("section", 438, 492);
+    expect(freeBand(160)).toEqual({ top: 56, bottom: 438 });
+  });
+
+  it("is the whole window when no bar is there", () => {
+    expect(freeBand(160)).toEqual({ top: 0, bottom: 568 });
   });
 });
 

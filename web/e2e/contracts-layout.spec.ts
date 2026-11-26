@@ -209,8 +209,10 @@ test("a contract opened from the Timeline takes the focus: its card, in view (fo
 
 /**
  * Once nothing has moved for ten frames (the card, the page's height, its scroll): where the card is against the
- * room the bars really leave — below the sticky top bar while it sits at the top of the window, above the phone's
- * tab bar while it shows — and what is really on top just inside its top and bottom edges.
+ * room the bars really leave — below the sticky top bar while it sits at the top of the window, above the fixed
+ * bars at its bottom (the phone's tab bar, and the demo's tour bar floating above it) — and what is really on top
+ * just inside its top and bottom edges. The bars are found the way they are drawn: every pixel row from the
+ * window's bottom up, as long as a fixed bar is hit or one was hit less than 24 px below.
  */
 function cardOnceStill(card: Locator) {
   return card.evaluate(async (el) => {
@@ -225,12 +227,28 @@ function cardOnceStill(card: Locator) {
       still = now === last ? still + 1 : 0;
       last = now;
     }
-    const bar = [...document.querySelectorAll("header")].find((h) => getComputedStyle(h).position === "sticky")?.getBoundingClientRect();
-    const tabs = [...document.querySelectorAll("nav")].find((n) => getComputedStyle(n).position === "fixed" && n.getBoundingClientRect().height > 0)?.getBoundingClientRect();
-    const top = bar && bar.top <= 0.5 && bar.bottom > 0 ? bar.bottom : 0;
-    const bottom = tabs ? tabs.top : window.innerHeight;
     const r = el.getBoundingClientRect();
     const x = r.left + r.width / 2;
+    const h = window.innerHeight;
+    /** The fixed or sticky box drawn at row `y` (not a backdrop: those cover half the window or more). */
+    const barAt = (y: number) => {
+      for (const hit of document.elementsFromPoint(x, y)) {
+        for (let e: Element | null = hit; e && e !== document.body; e = e.parentElement) {
+          if (!["fixed", "sticky"].includes(getComputedStyle(e).position)) continue;
+          const b = e.getBoundingClientRect();
+          if (b.height > 0 && b.height < h / 2) return b;
+          break;
+        }
+      }
+      return null;
+    };
+    const header = barAt(0);
+    const top = header && header.top <= 0.5 ? header.bottom : 0;
+    let bottom = h;
+    for (let y = h - 1; y > top && y >= bottom - 24; y--) {
+      const b = barAt(y);
+      if (b && b.top < bottom) bottom = b.top;
+    }
     const onTop = (y: number) => el.contains(document.elementFromPoint(x, y));
     const room = bottom - top;
     const seen = Math.max(0, Math.min(r.bottom, bottom) - Math.max(r.top, top));
@@ -288,10 +306,9 @@ for (const reducedMotion of ["no-preference", "reduce"] as const) {
         await expect(page).toHaveURL(/\/contracts\?/);
         const card = page.locator(`[id="contract-${id}"]`);
         await expect(card).toBeFocused();
-        const seen = await cardOnceStill(card);
-        // the first is a long card: taller than the room on a small phone, where only its top must show
-        expectWholeInView(seen, { tall: seen.tall });
-        if (viewport.width === 320 && viewport.height === 568) expect(seen.tall, "the Timeline's first contract is taller than the room at 320×568").toBe(true);
+        // the first is a long card (the electricity contract: about 450 px wide, 533 px on a 320 px phone): taller
+        // than the room on a small phone, where only its top must show
+        expectWholeInView(await cardOnceStill(card), { tall: viewport.width === 320 });
       });
 
       for (const how of ["its link", "its bar in the chart"] as const) {
@@ -315,4 +332,29 @@ for (const reducedMotion of ["no-preference", "reduce"] as const) {
       }
     });
   }
+
+  // A fresh demo's state: the tour not finished, its bar floating above the tab bar. The room is the bars' (56 to
+  // 438 px at 320×568), and the gym (446 px) and the current account (403 px) are both taller than it: each starts
+  // just below the top bar. Measured against the tab bar alone, both counted as fitting and were centred, their
+  // names under the top bar and their bottoms under the tour bar.
+  test.describe(`320×568 with the demo tour showing, motion ${reducedMotion}: a contract opened by its link starts below the top bar`, () => {
+    test.use({ viewport: { width: 320, height: 568 }, reducedMotion });
+
+    for (const category of ["gym", "bank"] as const) {
+      test(`the ${category} contract`, async ({ page }) => {
+        try {
+          await setTour(page, 0);
+          const contract = await contractOf(page, category);
+          await open(page, "/timeline", "Timeline");
+          await page.goto(`/contracts?contract=${contract.id}`);
+          await expect(page.getByRole("region", { name: "Demo tour" }), "the tour bar shows").toBeVisible();
+          const card = page.locator(`[id="contract-${contract.id}"]`);
+          await expect(card).toBeFocused();
+          expectWholeInView(await cardOnceStill(card), { tall: true });
+        } finally {
+          await setTour(page, null);
+        }
+      });
+    }
+  });
 }

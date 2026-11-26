@@ -138,12 +138,17 @@ export function freeBand(x: number): Band {
     if (r && r.top <= 0.5) top = Math.max(top, r.bottom);
   }
   let bottom = h;
-  // a bar may sit on top of another (the tour bar over the tab bar): look again just above each one found
+  // a bar may float a little above another (the tour bar 0.75rem over the tab bar): look again in that gap above
+  // each one found. Whole pixels inside the window: Chromium finds nothing at all at innerHeight - 0.5.
+  const gap = parseFloat(getComputedStyle(document.documentElement).fontSize || "16") || 16;
   for (let tries = 0; tries < 4; tries++) {
     let next = bottom;
-    for (const el of at(bottom - 0.5)) {
-      const r = barOf(el);
-      if (r && r.bottom >= bottom - 1 && r.top < next) next = r.top;
+    const from = Math.min(Math.ceil(bottom), h) - 1;
+    for (let y = from; y >= bottom - gap - 1 && next >= bottom; y -= 4) {
+      for (const el of at(y)) {
+        const r = barOf(el);
+        if (r && r.bottom >= bottom - gap - 1 && r.top < next) next = r.top;
+      }
     }
     if (next >= bottom) break;
     bottom = next;
