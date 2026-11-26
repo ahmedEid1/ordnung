@@ -740,6 +740,40 @@ async def test_a_full_sync_folder_is_told_as_full_not_as_one_that_doesn_t_answer
         assert agent.problem is None
 
 
+async def test_a_full_folder_shown_by_a_failing_save_stays_through_looks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """While a save into a full folder keeps failing, a look that answers does not end "full": only a
+    save that succeeds does. Otherwise the message would go and come back at every step."""
+    import asyncio
+
+    from ordnung.sync import agent as agent_module
+    from ordnung.sync.folder import RealFs
+    from sync_faults import FullFs
+
+    monkeypatch.setattr(agent_module, "FAILING_AFTER_S", 0.5)
+    (tmp_path / "Nextcloud").mkdir()
+    async with computer(tmp_path / "desk", engine=RealEngine()) as api:
+        await connect(api, tmp_path / "Nextcloud" / "Vault", "desktop")
+        agent = agent_of(api)
+        await _saved(api)
+        session = agent._session
+        assert session is not None
+        session.inner.folder.fs = FullFs(after_bytes=0)
+        assert (await _add_todo(api, "Pay the gym")).status_code == 201
+        assert (await eventually(lambda: agent.problem, within=15)).code == "folder_full"
+        # from here a failing save alone sets nothing again, so only a look could take "full" away
+        monkeypatch.setattr(agent_module, "FAILING_AFTER_S", 3600.0)
+        for _ in range(5):
+            _look_now(agent)
+            await asyncio.sleep(0.3)
+            assert agent.problem is not None and agent.problem.code == "folder_full"
+
+        session.inner.folder.fs = RealFs()  # room again
+        await _saved(api)
+        assert agent.problem is None
+
+
 async def test_a_request_to_save_into_a_full_folder_is_told_it_is_full(tmp_path: Path) -> None:
     """A "Save now" or "Save and hand over" answers at once, before a full folder is shown on screen
     (FAILING_AFTER_S): with the full folder's own words, not that the folder can't be opened."""
