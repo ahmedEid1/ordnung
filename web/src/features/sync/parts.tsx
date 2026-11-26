@@ -14,6 +14,7 @@ import { toast } from "@/components/ui/Toast";
 import { saveBlob } from "@/features/settings/backup";
 import { ACTION_LABELS, arrivalAdvice, arrivingLine, problemTitle } from "@/features/settings/sync";
 import { formatFileSize } from "@/lib/format";
+import { useOnePress } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
 const failed = (err: unknown) => (err instanceof ApiError ? err.message : "Ordnung didn't answer. Is it still running?");
@@ -107,30 +108,31 @@ export function SyncProblemCallout({ status, problem, onNewComputer, className }
   const update = useUpdateSync();
   const refill = useRefillSync();
   const [error, setError] = useState<string | null>(null);
-  const pending = update.isPending || refill.isPending;
+  // While an answer is saved the answers are `aria-disabled` (not `disabled`, which drops focus to the page), the one
+  // pressed busy with its spinner; one answer at a time, also for a quick double click
+  const { pressed, busy, once } = useOnePress<SyncProblemAction>();
   const answer = (action: SyncProblemAction) => {
-    setError(null);
-    const onError = (err: unknown) => setError(failed(err));
-    switch (action) {
-      case "refill":
-        refill.mutate(undefined, { onSuccess: () => toast.success("The sync folder is filled again"), onError });
-        break;
-      case "same_computer":
-        update.mutate({ confirm_same_computer: true }, { onSuccess: () => toast.success("Sync goes on on this computer"), onError });
-        break;
-      case "keep_as_is":
-        update.mutate({ keep_as_is: true }, { onSuccess: () => toast.success("This computer's data stays as it is"), onError });
-        break;
-      case "abandon":
-        update.mutate({ abandon_pull: true }, { onSuccess: () => toast.success("Bringing it over was given up", { description: "This computer keeps what it has and stands by." }), onError });
-        break;
-      case "new_computer":
-        onNewComputer?.();
-        break;
-      case "passphrase":
-      case "choose_folder":
-        break; // a form of its own, below
-    }
+    if (action === "new_computer") return onNewComputer?.();
+    const send = () => {
+      switch (action) {
+        case "refill":
+          return refill.mutateAsync().then(() => toast.success("The sync folder is filled again"));
+        case "same_computer":
+          return update.mutateAsync({ confirm_same_computer: true }).then(() => toast.success("Sync goes on on this computer"));
+        case "keep_as_is":
+          return update.mutateAsync({ keep_as_is: true }).then(() => toast.success("This computer's data stays as it is"));
+        case "abandon":
+          return update
+            .mutateAsync({ abandon_pull: true })
+            .then(() => toast.success("Bringing it over was given up", { description: "This computer keeps what it has and stands by." }));
+        default:
+          return null; // a form of its own, below
+      }
+    };
+    once(() => {
+      setError(null);
+      return send()?.catch((err: unknown) => setError(failed(err))) ?? Promise.resolve();
+    }, action);
   };
   const buttons = problem.actions.filter((a) => a !== "passphrase" && a !== "choose_folder" && (a !== "new_computer" || onNewComputer));
   const tone = problem.code === "forgotten" || problem.code === "local_damaged" || problem.code === "damaged" ? "danger" : "warn";
@@ -143,7 +145,14 @@ export function SyncProblemCallout({ status, problem, onNewComputer, className }
         buttons.length ? (
           <>
             {buttons.map((action, i) => (
-              <Button key={action} size="sm" variant={i === 0 ? "primary" : "secondary"} loading={pending && i === 0} disabled={pending} onClick={() => answer(action)}>
+              <Button
+                key={action}
+                size="sm"
+                variant={i === 0 ? "primary" : "secondary"}
+                loading={pressed === action}
+                aria-disabled={busy || undefined}
+                onClick={() => answer(action)}
+              >
                 {ACTION_LABELS[action]}
               </Button>
             ))}
