@@ -356,6 +356,10 @@ FULL_MESSAGE = "The sync folder (or the drive or account it is on) is full. Ordn
 class FolderFull(SyncError):
     """ENOSPC or EDQUOT while writing into the sync folder (the problem ``folder_full``)."""
 
+    #: the problem the sync agent shows (:data:`ordnung.sync.SyncProblemCode`): its kind alone,
+    #: ``folder_problem``, would be told as a folder that doesn't answer
+    problem = "folder_full"
+
     def __init__(self, message: str = FULL_MESSAGE) -> None:
         super().__init__("folder_problem", message)
 

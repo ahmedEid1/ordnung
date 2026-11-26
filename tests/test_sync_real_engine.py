@@ -699,3 +699,165 @@ async def test_after_the_computer_in_use_leaves_no_computer_is_in_use(
         taken = await a.client.post("/api/sync/use-here", json={})
         assert taken.status_code == 200 and taken.json()["mode"] == "in_use", taken.text
         assert taken.json()["in_use_on"] == "desktop"
+
+
+async def test_a_full_sync_folder_is_told_as_full_not_as_one_that_doesn_t_answer(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A save into a full folder was shown as "doesn't answer" at once, then as "keeps failing": the
+    folder's own error (``FolderFull``) named no problem, so it fell back to an unreachable folder. A full
+    folder is told after FAILING_AFTER_S, like a save that keeps failing, and the next save ends it."""
+    from ordnung.sync import agent as agent_module
+    from ordnung.sync.folder import RealFs
+    from sync_faults import FullFs
+
+    monkeypatch.setattr(agent_module, "FAILING_AFTER_S", 0.5)
+    (tmp_path / "Nextcloud").mkdir()
+    async with computer(tmp_path / "desk", engine=RealEngine()) as api:
+        await connect(api, tmp_path / "Nextcloud" / "Vault", "desktop")
+        agent = agent_of(api)
+        await _saved(api)
+        shown: list[str] = []
+        set_problem = agent._set_problem
+
+        def record(code: Any, exc: BaseException | None = None) -> None:
+            shown.append(code)
+            set_problem(code, exc)
+
+        monkeypatch.setattr(agent, "_set_problem", record)
+        session = agent._session
+        assert session is not None
+        session.inner.folder.fs = FullFs(after_bytes=0)  # no byte more fits
+        assert (await _add_todo(api, "Pay the gym")).status_code == 201
+        found = await eventually(lambda: agent.problem, within=15)
+        assert found.code == "folder_full"
+        assert "folder_unreachable" not in shown and "save_failing" not in shown, shown
+        told = (await status(api))["problem"]
+        assert told["code"] == "folder_full" and told["title"] == "The sync folder is full"
+
+        session.inner.folder.fs = RealFs()  # room again
+        await _saved(api)
+        assert agent.problem is None
+
+
+async def test_a_full_folder_shown_by_a_failing_save_stays_through_looks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """While a save into a full folder keeps failing, a look that answers does not end "full": only a
+    save that succeeds does. Otherwise the message would go and come back at every step."""
+    import asyncio
+
+    from ordnung.sync import agent as agent_module
+    from ordnung.sync.folder import RealFs
+    from sync_faults import FullFs
+
+    monkeypatch.setattr(agent_module, "FAILING_AFTER_S", 0.5)
+    (tmp_path / "Nextcloud").mkdir()
+    async with computer(tmp_path / "desk", engine=RealEngine()) as api:
+        await connect(api, tmp_path / "Nextcloud" / "Vault", "desktop")
+        agent = agent_of(api)
+        await _saved(api)
+        session = agent._session
+        assert session is not None
+        session.inner.folder.fs = FullFs(after_bytes=0)
+        assert (await _add_todo(api, "Pay the gym")).status_code == 201
+        assert (await eventually(lambda: agent.problem, within=15)).code == "folder_full"
+        # from here a failing save alone sets nothing again, so only a look could take "full" away
+        monkeypatch.setattr(agent_module, "FAILING_AFTER_S", 3600.0)
+        for _ in range(5):
+            _look_now(agent)
+            await asyncio.sleep(0.3)
+            assert agent.problem is not None and agent.problem.code == "folder_full"
+
+        session.inner.folder.fs = RealFs()  # room again
+        await _saved(api)
+        assert agent.problem is None
+
+
+async def test_a_request_to_save_into_a_full_folder_is_told_it_is_full(tmp_path: Path) -> None:
+    """A "Save now" or "Save and hand over" answers at once, before a full folder is shown on screen
+    (FAILING_AFTER_S): with the full folder's own words, not that the folder can't be opened."""
+    from ordnung.sync.folder import RealFs
+    from ordnung.sync.status import PROBLEMS
+    from sync_faults import FullFs
+
+    (tmp_path / "Nextcloud").mkdir()
+    async with computer(tmp_path / "desk", engine=RealEngine()) as api:
+        await connect(api, tmp_path / "Nextcloud" / "Vault", "desktop")
+        agent = agent_of(api)
+        await _saved(api)
+        session = agent._session
+        assert session is not None
+        session.inner.folder.fs = FullFs(after_bytes=0)
+        assert (await _add_todo(api, "Pay the gym")).status_code == 201
+        for hand_over in (False, True):
+            answer = await api.client.post("/api/sync/save", json={"hand_over": hand_over})
+            assert answer.status_code == 409, answer.text
+            assert answer.json()["detail"] == PROBLEMS["folder_full"][1], answer.text
+        assert agent.problem is None  # on screen only once saving has failed for FAILING_AFTER_S
+
+        session.inner.folder.fs = RealFs()
+        await _saved(api)
+
+
+async def test_a_full_folder_met_by_a_look_on_the_computer_standing_by_ends_once_there_is_room(
+    tmp_path: Path,
+) -> None:
+    """A computer standing by never saves, but its look rewrites its own head when the other computer
+    saved. Into a full folder that fails, and the look shows "full". The next look that answers ends
+    it: only a failing save's "full" waits for a save that succeeds."""
+    from ordnung.sync.folder import RealFs
+    from sync_faults import FullFs
+
+    real = RealEngine()
+    (tmp_path / "Nextcloud").mkdir()
+    folder = tmp_path / "Nextcloud" / "Vault"
+    async with computer(tmp_path / "desk", engine=real) as a, computer(tmp_path / "lap", engine=real) as b:
+        await connect(a, folder, "desktop")
+        await connect(b, folder, "laptop")
+        await eventually(lambda: agent_of(a).mode == "standing_by", within=10)
+        lap = agent_of(b)
+        assert (await a.client.post("/api/sync/use-here", json={})).status_code == 200
+        await eventually(lambda: _look_now(lap) and lap.mode == "standing_by", within=10)
+        assert lap._session is not None
+        lap._session.inner.folder.fs = FullFs(after_bytes=0)
+        assert (await _add_todo(a, "Pay the gym")).status_code == 201
+        await _saved(a)
+        found = await eventually(lambda: _look_now(lap) and lap.problem, within=15, step=0.1)
+        assert found.code == "folder_full"
+
+        lap._session.inner.folder.fs = RealFs()  # room again
+        await eventually(lambda: _look_now(lap) and lap.problem is None, within=15, step=0.1)
+        assert lap.mode == "standing_by"
+        assert (await status(b))["problem"] is None
+
+
+async def test_a_full_folder_met_by_a_look_on_the_computer_in_use_ends_once_there_is_room(
+    tmp_path: Path,
+) -> None:
+    """The computer in use with nothing to save writes its own head again when the sync tool lost it.
+    Into a full folder that fails, and the look shows "full"; once there is room the next look writes
+    the head and ends it, with no save needed."""
+    from ordnung.sync.folder import RealFs
+    from sync_faults import FullFs
+
+    (tmp_path / "Nextcloud").mkdir()
+    vault = tmp_path / "Nextcloud" / "Vault"
+    async with computer(tmp_path / "desk", engine=RealEngine()) as api:
+        await connect(api, vault, "desktop")
+        agent = agent_of(api)
+        await _saved(api)
+        session = agent._session
+        assert session is not None
+        session.inner.folder.fs = FullFs(after_bytes=0)
+        heads = list((vault / "h").iterdir())
+        assert heads
+        for head in heads:
+            head.unlink()  # lost by the sync tool: the next look writes it again
+        found = await eventually(lambda: _look_now(agent) and agent.problem, within=15, step=0.1)
+        assert found.code == "folder_full"
+
+        session.inner.folder.fs = RealFs()  # room again
+        await eventually(lambda: _look_now(agent) and agent.problem is None, within=15, step=0.1)
+        assert sorted(path.name for path in (vault / "h").iterdir()) == sorted(head.name for head in heads)
+        assert not agent.status().pending_changes

@@ -181,6 +181,15 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ### Fixed
 
+- **A full sync folder is said to be full.** When the sync folder, or the drive or account it is on, had no
+  room left, Ordnung said the folder "doesn't answer" and, half an hour later, that saving keeps failing; the
+  message that names the cause was never shown. Now a look that meets a full folder says "The sync folder is
+  full" at once and the next look takes the message away once there is room; a save into a full folder says
+  so after it has failed for half an hour; and *Save now* says it straight away.
+- **The model test of two computers no longer takes one computer's kept copy for the other's.** Two copies
+  kept in the same minute on different computers share a file name, and the test's own bookkeeping mixed them
+  up: with one history in many thousands it reported a note as lost although the note was in the kept copy. The
+  app never lost it. That history is now a fast test of its own.
 - **Accessibility, beyond what the automated scans see.** The app was gone through with the keyboard alone, with
   what a screen reader is told, and with the settings people use to see better (zoom, larger text, high contrast,
   reduced motion). What was found and could be fixed where it was is in the next four entries. Two larger gaps
