@@ -30,6 +30,7 @@ import { isStaticDemo } from "@/lib/mode";
 import { LetterTitle, NotReadYet, detailTitleSize } from "../HeldCard";
 import { changeText, compareBase, exportCommand, formatMs, runResult, runTitle } from "./copy";
 import { Waterfall } from "./Waterfall";
+import { useOnePress } from "@/lib/hooks";
 
 /** One figure of the summary: its label, value and sub-line sit on shared rows, so a label that wraps
  * never pushes its value below its neighbours'. */
@@ -55,15 +56,19 @@ function useReadAgain(doc: Document) {
   const cost = health.data?.demo
     ? "In the demo, reading it again replays Claude's recorded answers."
     : "Reading it again asks Claude again, with your Claude account.";
+  // one press at a time: a second one before the button is drawn busy asked again
+  const { busy, once } = useOnePress();
   const start = (onStarted?: () => void, onFailed?: () => void) =>
-    reprocess.mutate(doc.id, {
-      onSuccess: (job) => {
-        seedJob({ job_id: job.id, doc_id: doc.id, stage: "intake", progress: 0, status: "running" });
-        onStarted?.();
-      },
-      onError: () => onFailed?.(),
-    });
-  return { allowed, start, pending: reprocess.isPending, cost };
+    once(() =>
+      reprocess.mutateAsync(doc.id, {
+        onSuccess: (job) => {
+          seedJob({ job_id: job.id, doc_id: doc.id, stage: "intake", progress: 0, status: "running" });
+          onStarted?.();
+        },
+        onError: () => onFailed?.(),
+      }),
+    );
+  return { allowed, start, pending: reprocess.isPending || busy, cost };
 }
 
 /** Keyboard focus was dropped (a pressed button went away) — or is still on one of `ours` (the

@@ -25,6 +25,7 @@ import { DELETE_ON_COMPUTER, theComputer } from "@/features/phone/copy";
 import { isOpenItem, openItemCounts, scamSuggestion } from "./verdict";
 import { useStartDraft } from "./actions";
 import { TaxState, TaxToggle } from "./TaxToggle";
+import { useOnePress } from "@/lib/hooks";
 
 const NOUN: Record<string, string> = {
   deadline: "deadline",
@@ -118,6 +119,9 @@ export function DocumentFooter({ detail }: { detail: DocumentDetail }) {
   const navigate = useNavigate();
   const reprocess = useReprocessDocument();
   const del = useDeleteDocument();
+  // one press at a time (useOnePress): "Read again" and "Delete letter"
+  const reading = useOnePress();
+  const deleting = useOnePress();
   const [confirm, setConfirm] = useState(false);
   const draft = useStartDraft();
   const scam = Boolean(scamSuggestion(detail));
@@ -145,15 +149,17 @@ export function DocumentFooter({ detail }: { detail: DocumentDetail }) {
           <Button
             size="sm"
             icon={RotateCw}
-            loading={reprocess.isPending}
+            loading={reprocess.isPending || reading.busy}
             onClick={() =>
-              reprocess.mutate(doc.id, {
-                onSuccess: (job) => {
-                  seedJob({ job_id: job.id, doc_id: doc.id, stage: "intake", progress: 0, status: "running" });
-                  // the live progress appears at the top of the panel
-                  window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? "auto" : "smooth" });
-                },
-              })
+              reading.once(() =>
+                reprocess.mutateAsync(doc.id, {
+                  onSuccess: (job) => {
+                    seedJob({ job_id: job.id, doc_id: doc.id, stage: "intake", progress: 0, status: "running" });
+                    // the live progress appears at the top of the panel
+                    window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? "auto" : "smooth" });
+                  },
+                }),
+              )
             }
           >
             Read again
@@ -203,15 +209,18 @@ export function DocumentFooter({ detail }: { detail: DocumentDetail }) {
             <Button
               variant="danger"
               icon={Trash2}
-              loading={del.isPending}
+              loading={del.isPending || deleting.busy}
               onClick={() =>
-                del.mutate(doc.id, {
-                  onSuccess: () => {
-                    setConfirm(false);
-                    toast.success("Letter deleted", { description: doc.title ?? doc.filename });
-                    navigate("/inbox");
-                  },
-                })
+                // one press: a second one before the button is drawn busy answered "Unknown letter" after "deleted"
+                deleting.once(() =>
+                  del.mutateAsync(doc.id, {
+                    onSuccess: () => {
+                      setConfirm(false);
+                      toast.success("Letter deleted", { description: doc.title ?? doc.filename });
+                      navigate("/inbox");
+                    },
+                  }),
+                )
               }
             >
               Delete letter

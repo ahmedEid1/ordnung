@@ -151,6 +151,9 @@ export function useStartDraft() {
   const create = useCreateDraft();
   const navigate = useNavigate();
   const [looking, setLooking] = useState(false);
+  // one letter per press: two presses before the button is drawn busy both looked for a letter being drafted, found
+  // none, and wrote two
+  const { busy, once } = useOnePress();
   const start = useCallback(
     async (kind: DraftKind, refs: { doc_id?: string | null; contract_id?: string | null; party_id?: string | null; case_id?: string | null }) => {
       // a second click opens the letter already being drafted for this letter/contract instead of a copy
@@ -169,7 +172,7 @@ export function useStartDraft() {
         navigate(`/letters/${open.id}`);
         return;
       }
-      create.mutate(
+      await create.mutateAsync(
         { kind, ...refs },
         {
           onSuccess: (draft) => {
@@ -181,7 +184,7 @@ export function useStartDraft() {
     },
     [create, navigate],
   );
-  return { start: (...args: Parameters<typeof start>) => void start(...args), pending: create.isPending || looking };
+  return { start: (...args: Parameters<typeof start>) => once(() => start(...args)), pending: create.isPending || looking || busy };
 }
 
 /**

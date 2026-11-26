@@ -16,6 +16,7 @@ import { toast } from "@/components/ui/Toast";
 import { DOCUMENT_KIND_COPY, documentKindLabel } from "@/lib/copy";
 import { softHyphens } from "@/lib/germanTerms";
 import { isStaticDemo } from "@/lib/mode";
+import { useOnePress } from "@/lib/hooks";
 
 const HIGH_STAKES = new Set<string>(HIGH_STAKES_KINDS);
 /** Everyday kinds by name ("Other letter" last). */
@@ -48,9 +49,12 @@ function KindForm({ doc, close }: { doc: Pick<Document, "id" | "kind">; close: (
   const staticDemo = isStaticDemo();
   const [kind, setKind] = useState<DocumentKind>(doc.kind ?? "other");
   const hint = DOCUMENT_KIND_COPY[kind]?.hint;
+  // one press at a time: Enter twice saved it twice (two toasts)
+  const { busy, once } = useOnePress();
   const save = () => {
     if (kind === doc.kind) return close();
-    update.mutate(
+    once(() =>
+    update.mutateAsync(
       { id: doc.id, patch: { kind } },
       {
         onSuccess: () => {
@@ -63,6 +67,7 @@ function KindForm({ doc, close }: { doc: Pick<Document, "id" | "kind">; close: (
           close();
         },
       },
+    ),
     );
   };
   return (
@@ -108,7 +113,7 @@ function KindForm({ doc, close }: { doc: Pick<Document, "id" | "kind">; close: (
         <Button size="sm" onClick={close}>
           Cancel
         </Button>
-        <Button size="sm" type="submit" variant="primary" loading={update.isPending}>
+        <Button size="sm" type="submit" variant="primary" loading={update.isPending || busy}>
           Save
         </Button>
       </div>

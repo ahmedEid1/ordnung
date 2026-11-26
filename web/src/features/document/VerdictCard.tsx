@@ -84,8 +84,8 @@ import { keepCitations, protectRefs } from "@/lib/glue";
 import { DEMO_NOTE } from "@/lib/mode";
 import { AnswerButton } from "@/features/inbox/AnswerButton";
 import { usePhoneCompanion } from "@/features/phone/client";
-import { ignoreFailedRequest } from "@/api/client";
 import { focusIsLost, focusOrigin } from "@/lib/focus";
+import { useOnePress } from "@/lib/hooks";
 
 const countdownTone: Record<Urgency, string> = {
   overdue: "bg-danger text-white dark:text-canvas",
@@ -184,6 +184,7 @@ function CardLink({ text, docId }: { text: string; docId: string }) {
  */
 function NotRead({ doc, canWaitAgain: canWait, onAnswered }: { doc: DocumentDetail["document"]; canWaitAgain: boolean; onAnswered?: (from: DocumentDetail["document"]["status"]) => void }) {
   const wait = useWaitAgain();
+  const waiting = useOnePress();
   // whether Claude may read it is decided on the computer: a paired phone doesn't offer it
   const phone = usePhoneCompanion();
   const canWaitAgain = canWait && !phone;
@@ -202,19 +203,20 @@ function NotRead({ doc, canWaitAgain: canWait, onAnswered }: { doc: DocumentDeta
             id={waitAgainId(doc.id)}
             size="sm"
             icon={Undo2}
-            busy={wait.isPending}
+            busy={wait.isPending || waiting.busy}
             onClick={() =>
-              wait
-                .mutateAsync([doc.id])
-                .then((res) => {
+              // one press at a time (a second one answered "It can't wait again"); a failed request: its own error
+              // toast says what went wrong
+              waiting.once(() =>
+                wait.mutateAsync([doc.id]).then((res) => {
                   if (!res.documents.length) {
                     toast({ title: "It can't wait again", description: "Only a letter kept private from your folder, and not read since, can.", tone: "warn" });
                     return;
                   }
                   toast({ title: "It's back with the letters not read yet", description: "Choose “Read it” to have Claude read it.", tone: "info" });
                   onAnswered?.(doc.status);
-                })
-                .catch(ignoreFailedRequest) // a failed request: its own error toast says what went wrong
+                }),
+              )
             }
           >
             Undo “Keep private”
@@ -762,22 +764,24 @@ function AsideRow({ entry, detail }: { entry: AsideItem; detail: DocumentDetail 
 /** "Keep it": the person decided not to cancel — the decision Idea goes (with undo). */
 function KeepButton({ suggestion }: { suggestion: Suggestion }) {
   const update = useUpdateSuggestion();
+  const { busy, once } = useOnePress();
   return (
     <Button
       variant="ghost"
       icon={Check}
-      loading={update.isPending}
+      loading={update.isPending || busy}
       onClick={() =>
         // the promise, not mutate's callbacks: this button leaves with its Idea once the lists are refreshed, and a
-        // button that has gone gets no callbacks
-        update.mutateAsync({ id: suggestion.id, patch: { status: "dismissed" } }).then(
-          () =>
+        // button that has gone gets no callbacks; one press at a time (a second toast, a second Undo); a failed
+        // request: the error toast comes from the mutation's meta
+        once(() =>
+          update.mutateAsync({ id: suggestion.id, patch: { status: "dismissed" } }).then(() =>
             toast({
               title: "Kept",
               description: "Ordnung won't remind you about this window again.",
               undo: () => update.mutateAsync({ id: suggestion.id, patch: { status: "new" } }).then(() => undefined),
             }),
-          ignoreFailedRequest, // a failed request: the error toast comes from the mutation's meta
+          ),
         )
       }
     >

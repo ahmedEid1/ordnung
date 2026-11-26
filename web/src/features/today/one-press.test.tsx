@@ -1,6 +1,7 @@
 /**
- * Top 3's "Mark done" and "Mark as paid" take one press at a time: two presses before the button is drawn busy send
- * one request (a repeating to-do moved on twice and skipped a date), and a failed one takes the next press.
+ * Today's buttons that change something take one press at a time: two presses before the button is drawn busy send
+ * one request (Top 3's "Mark done" moved a repeating to-do on twice and skipped a date; the note was written twice),
+ * and a failed one takes the next press.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, screen, waitFor, within } from "@testing-library/react";
@@ -10,6 +11,7 @@ import { item } from "@/mocks/data/helpers";
 import { expectOnePressAtATime } from "@/test/busyButton";
 import { holdRequests, useMockApi } from "@/test/mockFetch";
 import { renderWithProviders } from "@/test/render";
+import { SecretaryNote } from "./SecretaryNote";
 import { TodayView } from "./TodayView";
 
 beforeEach(() => {
@@ -57,5 +59,14 @@ describe("Top 3", () => {
     await expectOnePressAtATime({ user, button: () => within(panel).getByRole("button", { name: "Mark as paid" }), held });
     await act(async () => held.release());
     await waitFor(() => expect(calls.filter((c) => c.method === "PATCH").map((c) => c.body)).toEqual([{ status: "done", seen_due_date: due }]));
+  });
+});
+
+describe("the secretary's note", () => {
+  it("“Write a new note” takes one press at a time, and the next once it failed", async () => {
+    useMockApi();
+    const held = holdRequests((call) => call.method === "POST" && call.path === "/brief");
+    renderWithProviders(<SecretaryNote fallback="Nothing due this week." />);
+    await expectOnePressAtATime({ user: userEvent.setup(), button: () => screen.getByRole("button", { name: "Write a new note" }), held });
   });
 });

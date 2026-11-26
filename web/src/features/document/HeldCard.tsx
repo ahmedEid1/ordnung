@@ -28,7 +28,7 @@ import { usePhoneCompanion } from "@/features/phone/client";
 import { OnYourComputer } from "@/features/phone/ComputerOnly";
 import { DECIDE_ONE_ON_COMPUTER, theComputer } from "@/features/phone/copy";
 import { hasLongWord, waitAgainId } from "./verdict";
-import { ignoreFailedRequest } from "@/api/client";
+import { useOnePress } from "@/lib/hooks";
 
 /**
  * "Not read yet" over a waiting letter's title, with the Inbox's icon for it. Its row is as tall as the
@@ -82,23 +82,27 @@ export function HeldCard({ detail, className, onAnswered }: HeldCardProps) {
   const read = useReadHeld();
   const keep = useKeepHeldPrivate();
   const wait = useWaitAgain();
-  const busy = read.isPending || keep.isPending;
+  // one answer at a time, also for two presses before the buttons are drawn busy (`pressed`: which one is on its way)
+  const { pressed, once } = useOnePress<"read" | "keep">();
+  const busy = read.isPending || keep.isPending || pressed !== null;
   const attached = waitingAttachments(detail);
   const title = doc.title ?? doc.filename;
 
+  // a failed request: its own error toast says what went wrong
   const readIt = () =>
-    read
-      .mutateAsync([doc.id])
-      .then((res) => {
-        toast.success("Claude is reading it", { description: "You'll see every step here." });
-        if (answeredFor(res, doc.id)) onAnswered?.(doc.status);
-      })
-      .catch(ignoreFailedRequest); // a failed request: its own error toast says what went wrong
+    once(
+      () =>
+        read.mutateAsync([doc.id]).then((res) => {
+          toast.success("Claude is reading it", { description: "You'll see every step here." });
+          if (answeredFor(res, doc.id)) onAnswered?.(doc.status);
+        }),
+      "read",
+    );
 
   const keepIt = () =>
-    keep
-      .mutateAsync([doc.id])
-      .then((res) => {
+    once(
+      () =>
+        keep.mutateAsync([doc.id]).then((res) => {
         const ids = res.documents.map((d) => d.id);
         toast.success("Kept private", {
           description: "It stays on this computer and is never sent to Claude.",
@@ -112,8 +116,9 @@ export function HeldCard({ detail, className, onAnswered }: HeldCardProps) {
           focusIfUndoFails: () => document.getElementById(waitAgainId(doc.id)),
         });
         if (answeredFor(res, doc.id)) onAnswered?.(doc.status);
-      })
-      .catch(ignoreFailedRequest);
+        }),
+      "keep",
+    );
 
   return (
     // named as written (the heading keeps its hyphens whole with non-breaking ones)
@@ -141,10 +146,10 @@ export function HeldCard({ detail, className, onAnswered }: HeldCardProps) {
         ) : (
           // the same order as the Inbox's group (the main answer last); phones: the two share the row
           <div className="mt-4 flex w-full gap-2 sm:w-auto">
-            <AnswerButton icon={Lock} busy={keep.isPending} blocked={busy} onClick={keepIt} className="max-sm:flex-1">
+            <AnswerButton icon={Lock} busy={keep.isPending || pressed === "keep"} blocked={busy} onClick={keepIt} className="max-sm:flex-1">
               Keep private
             </AnswerButton>
-            <AnswerButton variant="primary" icon={Sparkles} busy={read.isPending} blocked={busy} onClick={readIt} className="max-sm:flex-1">
+            <AnswerButton variant="primary" icon={Sparkles} busy={read.isPending || pressed === "read"} blocked={busy} onClick={readIt} className="max-sm:flex-1">
               <span>
                 Read it <span className="max-sm:sr-only">with Claude</span>
               </span>

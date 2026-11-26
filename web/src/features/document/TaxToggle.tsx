@@ -17,7 +17,7 @@ import { toast } from "@/components/ui/Toast";
 import { forTaxes, letterYear } from "@/features/export/selection";
 import { AnswerButton } from "@/features/inbox/AnswerButton";
 import { focusWhenReady } from "@/lib/focus";
-import { ignoreFailedRequest } from "@/api/client";
+import { useOnePress } from "@/lib/hooks";
 
 /** The toggle's id, and its line's (`aria-describedby`). */
 const toggleId = (docId: string) => `tax-toggle-${docId}`;
@@ -71,6 +71,8 @@ function pressedToast(on: boolean, year: number | null): { title: string; descri
 export function TaxToggle({ detail }: { detail: DocumentDetail }) {
   const doc = detail.document;
   const update = useUpdateDocument();
+  // one press at a time: a second one before the toggle is drawn busy sent the same choice again
+  const { busy, once } = useOnePress();
   if (!taxToggleShown(doc)) return null;
   const choice = detail.tax_choice ?? null;
   const on = forTaxes({ tax_relevant: doc.tax_relevant, tax_choice: choice });
@@ -80,6 +82,7 @@ export function TaxToggle({ detail }: { detail: DocumentDetail }) {
     const before = choice; // exactly what was shown: Undo puts it back, null included
     const next = !on;
     const said = pressedToast(next, letterYear(doc));
+    once(() =>
     update.mutateAsync({ id: doc.id, patch: { tax_choice: next } }).then(
       () =>
         toast.success(said.title, {
@@ -98,7 +101,7 @@ export function TaxToggle({ detail }: { detail: DocumentDetail }) {
           // not undone: back on the toggle all the same, one press from trying again
           focusIfUndoFails: () => document.getElementById(toggleId(doc.id)),
         }),
-      ignoreFailedRequest, // a failed request: the hook's toast says it couldn't be saved
+    ), // a failed request: the hook's toast says it couldn't be saved
     );
   };
 
@@ -112,7 +115,7 @@ export function TaxToggle({ detail }: { detail: DocumentDetail }) {
       icon={Landmark}
       aria-pressed={on}
       aria-describedby={described}
-      busy={update.isPending}
+      busy={update.isPending || busy}
       onClick={press}
     >
       For taxes
