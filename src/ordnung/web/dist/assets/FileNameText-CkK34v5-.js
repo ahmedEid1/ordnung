@@ -1,1 +1,0 @@
-import{a as e,l as t,n,u as r}from"./index-C2ai9Qum.js";var i=r(t(),1),a=n();function o({name:t}){let n=t.split(`_`).map(t=>e(t.replace(/\d+(?:-\d+)+/g,e=>e.replace(/-/g,`‑`))));return(0,a.jsx)(a.Fragment,{children:n.map((e,t)=>(0,a.jsxs)(i.Fragment,{children:[t?(0,a.jsxs)(a.Fragment,{children:[`_`,(0,a.jsx)(`wbr`,{})]}):null,e]},t))})}export{o as t};
