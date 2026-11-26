@@ -145,6 +145,30 @@ describe("a long Inbox draws its first rows", () => {
     expect(screen.getByRole("button", { name: "Show all 150" })).toBeInTheDocument();
   });
 
+  it("keeps the rows in the history entry: the same entry draws them again, a new load of the page starts at 100", async () => {
+    const user = userEvent.setup();
+    const first = renderInbox();
+    await screen.findByRole("link", { name: "Letter 1" });
+    await user.click(screen.getByRole("button", { name: "Show all 250" }));
+    expect(drawnRows()).toHaveLength(250);
+    expect((window.history.state as { inboxRows?: { rows: number } }).inboxRows?.rows).toBe(Infinity);
+    first.unmount();
+
+    // the same entry again (Back, Forward, a reload): all of them
+    const same = renderInbox();
+    await screen.findByRole("link", { name: "Letter 1" });
+    expect(drawnRows()).toHaveLength(250);
+    same.unmount();
+
+    // a new load (a typed address, a bookmark): a new entry, whose router key is "default" again, as every first
+    // entry's is — 100 rows
+    window.history.pushState(null, "", "/inbox");
+    renderInbox();
+    await screen.findByRole("link", { name: "Letter 1" });
+    expect(drawnRows()).toHaveLength(100);
+    expect(sessionStorage.length).toBe(0);
+  });
+
   it("a list of 100 letters or fewer looks as it always did", async () => {
     listed = letters(100);
     renderInbox();
