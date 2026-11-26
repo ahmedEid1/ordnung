@@ -190,7 +190,8 @@ export function Tabs<V extends string>({
                   transition={{ type: "spring", stiffness: 500, damping: 40 }}
                   className={cn(
                     "absolute",
-                    pill ? cn("inset-0", SEGMENT_THUMB) : "inset-x-2 bottom-0 h-0.5 rounded-full bg-ink",
+                    // forced colours paint the underline in the page's colour, over the selected tab's frame
+                    pill ? cn("inset-0", SEGMENT_THUMB) : "inset-x-2 bottom-0 h-0.5 rounded-full bg-ink forced-colors:hidden",
                   )}
                   aria-hidden
                 />

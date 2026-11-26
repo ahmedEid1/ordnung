@@ -356,10 +356,12 @@
   [class~="focus-visible:ring-inset"]:focus-visible {
     outline-offset: -2px;
   }
-  /* the current page, the selected tab and the chosen option get a frame (WCAG 1.4.1, 1.4.11) */
+  /* the current page, the selected tab and the chosen option get a frame (WCAG 1.4.1, 1.4.11): an outline drawn
+     inside them, which takes no room (a border made the selected tab wider, and its neighbours moved) */
   :is(a, button)[aria-current="page"],
   [role="tab"][aria-selected="true"],
   [role="radio"][aria-checked="true"] {
-    border: 2px solid Highlight;
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
   }
 }

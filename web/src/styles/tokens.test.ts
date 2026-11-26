@@ -283,8 +283,11 @@ describe("forced colours (Windows high contrast)", () => {
     expect(forced).toMatch(/\[class~="focus-visible:ring-inset"\]:focus-visible\s*{\s*outline-offset:\s*-2px;\s*}/);
   });
 
-  it("frames the current page, the selected tab and the chosen option (WCAG 1.4.1)", () => {
-    expect(forced).toMatch(/:is\(a, button\)\[aria-current="page"\],\s*\[role="tab"\]\[aria-selected="true"\],\s*\[role="radio"\]\[aria-checked="true"\]\s*{\s*border:\s*2px solid Highlight;/);
+  it("frames the current page, the selected tab and the chosen option (WCAG 1.4.1), inside them: the frame takes no room", () => {
+    expect(forced).toMatch(
+      /:is\(a, button\)\[aria-current="page"\],\s*\[role="tab"\]\[aria-selected="true"\],\s*\[role="radio"\]\[aria-checked="true"\]\s*{\s*outline:\s*2px solid Highlight;\s*outline-offset:\s*-2px;\s*}/,
+    );
+    expect(forced).not.toMatch(/border:\s*2px solid Highlight/);
   });
 });
 

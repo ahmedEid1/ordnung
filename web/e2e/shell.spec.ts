@@ -345,6 +345,13 @@ test.describe("1920 px: drop overlay", () => {
 // ------------------------------------------------------------------------------------------------
 
 /** The computed outline of the focused element (focus moved by script after no pointer use: `:focus-visible`). */
+/** The frame of the current page, a selected tab or a chosen option in forced colours: its outline, drawn inside. */
+const frame = (target: Locator) =>
+  target.evaluate((el) => {
+    const s = getComputedStyle(el);
+    return `${s.outlineStyle} ${s.outlineWidth} ${s.outlineOffset}`;
+  });
+
 async function focusOutline(target: Locator): Promise<string> {
   await target.focus();
   return target.evaluate((el) => {
@@ -370,13 +377,13 @@ test.describe("forced colours: focus, the current page and filled buttons stay v
     expect(await today.evaluate((el) => getComputedStyle(el).outlineOffset)).toBe("-2px");
     expect(await focusOutline(searchField(page))).toBe("solid 2px");
     expect(await focusOutline(page.getByRole("main").locator("a[href^='/documents/']").first())).toBe("solid 2px");
-    // the current page and the selected tab had only a tint or a shadow
+    // the current page and the selected tab had only a tint or a shadow: a frame inside them (it takes no room)
     const edge = (l: Locator) => l.evaluate((el) => `${getComputedStyle(el).borderTopStyle} ${getComputedStyle(el).borderTopWidth}`);
     // (the Inbox entry's name carries its count of letters to check, which the other tests change)
     const current = sidebar.getByRole("navigation", { name: "Primary" }).locator("a[aria-current='page']");
     await expect(current).toHaveAttribute("href", "/inbox");
-    expect(await edge(current)).toBe("solid 2px");
-    expect(await edge(page.getByRole("tab", { selected: true }).first())).toBe("solid 2px");
+    expect(await frame(current)).toBe("solid 2px -2px");
+    expect(await frame(page.getByRole("tab", { selected: true }).first())).toBe("solid 2px -2px");
     // a filled button: its fill is dropped, its edge is not
     expect(await edge(page.getByRole("button", { name: "Add letters" }).first())).toBe("solid 1px");
   });
@@ -390,6 +397,71 @@ test.describe("forced colours: focus, the current page and filled buttons stay v
     });
     expect(colours.knob).not.toBe(colours.track);
     expect(colours.border).toBe("solid 2px");
+  });
+});
+
+/** Every tab of the page's first tab strip, and the strip: their sizes, rounded to a tenth of a pixel. */
+const tabSizes = (page: Page) =>
+  page
+    .getByRole("main")
+    .getByRole("tablist")
+    .first()
+    .evaluate((list) => [list, ...list.querySelectorAll("[role=tab]")].map((el) => `${el.getBoundingClientRect().width.toFixed(1)}×${el.getBoundingClientRect().height.toFixed(1)}`));
+
+for (const width of [320, 1280]) {
+  for (const [path, title] of [
+    ["/inbox", "Inbox"],
+    ["/contracts", "Contracts"],
+  ] as const) {
+    test.describe(`${width} px, forced colours: the ${title} page's tabs`, () => {
+      test.use({ viewport: { width, height: 800 } });
+
+      test("frame the selected tab inside it: nothing changes size, and its thumb does not cover the frame", async ({ page }) => {
+        await open(page, path, title);
+        const before = await tabSizes(page);
+        await page.emulateMedia({ forcedColors: "active" });
+        expect(await tabSizes(page), "the same sizes with forced colours on as off").toEqual(before);
+        const selected = page.getByRole("main").getByRole("tablist").first().getByRole("tab", { selected: true });
+        await selected.focus();
+        await page.keyboard.press("ArrowRight");
+        await expect(page.getByRole("main").getByRole("tablist").first().getByRole("tab", { selected: true })).toBeFocused();
+        expect(await tabSizes(page), "the same sizes once another tab is selected").toEqual(before);
+        const now = page.getByRole("main").getByRole("tablist").first().getByRole("tab", { selected: true });
+        expect(await frame(now)).toBe("solid 2px -2px");
+        expect(await now.evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe("0px");
+        // just inside the frame is the tab (its outline drawn there), not its thumb laid over it
+        const covered = await now.evaluate((el) => {
+          const r = el.getBoundingClientRect();
+          const hits = [
+            [r.left + 1, r.top + r.height / 2],
+            [r.left + r.width / 2, r.top + 1],
+            [r.right - 1, r.top + r.height / 2],
+            [r.left + r.width / 2, r.bottom - 1],
+          ].map(([x, y]) => document.elementFromPoint(x!, y!));
+          return hits.filter((h) => h !== el && h?.closest("[aria-hidden=true]")).length;
+        });
+        expect(covered, "points just inside the frame where the thumb lies over it").toBe(0);
+      });
+    });
+  }
+}
+
+test.describe("forced colours: the chart's chosen zoom", () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+
+  test("is framed inside, and choosing another changes no size", async ({ page }) => {
+    await open(page, "/contracts", "Contracts");
+    await page.emulateMedia({ forcedColors: "active" });
+    const zoom = page.getByRole("radiogroup").first();
+    const sizes = () => zoom.evaluate((g) => [g, ...g.querySelectorAll("[role=radio]")].map((el) => el.getBoundingClientRect().width.toFixed(1)));
+    const before = await sizes();
+    const chosen = zoom.getByRole("radio", { checked: true });
+    expect(await frame(chosen)).toBe("solid 2px -2px");
+    await chosen.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(zoom.getByRole("radio", { checked: true })).toBeFocused();
+    expect(await sizes()).toEqual(before);
+    expect(await frame(zoom.getByRole("radio", { checked: true }))).toBe("solid 2px -2px");
   });
 });
 
