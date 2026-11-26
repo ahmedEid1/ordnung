@@ -212,4 +212,93 @@ describe("revealWhenStill", () => {
     again();
     stop();
   });
+
+  describe("the person's scroll wins over one already under way", () => {
+    let y = 0;
+    let height = 3000;
+    beforeEach(() => {
+      y = 0;
+      height = 3000;
+      Object.defineProperty(window, "scrollY", { configurable: true, get: () => y });
+      Object.defineProperty(document.documentElement, "scrollHeight", { configurable: true, get: () => height });
+      vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+    });
+    afterEach(() => {
+      // @ts-expect-error -- back to jsdom's own
+      delete window.scrollY;
+      // @ts-expect-error -- back to jsdom's own
+      delete document.documentElement.scrollHeight;
+      vi.restoreAllMocks();
+    });
+
+    it("a wheel during its smooth scroll stops that scroll where it is (it went on to the card, against the wheel)", () => {
+      const stop = revealWhenStill(card);
+      // still for four frames after the first: revealed
+      for (let i = 0; i < 5; i++) vi.advanceTimersToNextFrame();
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(1);
+      // the smooth scroll is under way: the page moves
+      y = 100;
+      top = 800;
+      vi.advanceTimersToNextFrame();
+      window.dispatchEvent(new WheelEvent("wheel", { deltaY: -300 }));
+      expect(window.scrollTo).toHaveBeenCalledWith({ top: 100, behavior: "instant" });
+      vi.advanceTimersByTime(2000);
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(1);
+      stop();
+    });
+
+    it("and the wheel's own scroll is done from there (stopping the smooth scroll, Chromium drops it)", () => {
+      y = 400;
+      const stop = revealWhenStill(card);
+      for (let i = 0; i < 5; i++) vi.advanceTimersToNextFrame();
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(1);
+      const wheel = new WheelEvent("wheel", { deltaY: -300, cancelable: true });
+      window.dispatchEvent(wheel);
+      expect(wheel.defaultPrevented).toBe(true);
+      expect(window.scrollTo).toHaveBeenCalledWith({ top: 100, behavior: "instant" });
+      stop();
+    });
+
+    it("a wheel once the page stands still stops nothing that is not there", () => {
+      top = 200;
+      const stop = revealWhenStill(card);
+      vi.advanceTimersByTime(200);
+      expect(card.scrollIntoView).not.toHaveBeenCalled();
+      window.dispatchEvent(new WheelEvent("wheel", { deltaY: -300 }));
+      expect(window.scrollTo).not.toHaveBeenCalled();
+      stop();
+    });
+
+    it("a scroll that comes with no wheel, touch, key or press (the scroll bar dragged) is the person's: not undone", () => {
+      (card.scrollIntoView as ReturnType<typeof vi.fn>).mockImplementation(() => {
+        y = 700;
+        top = 200;
+      });
+      const stop = revealWhenStill(card, { reducedMotion: true });
+      vi.advanceTimersByTime(200);
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(1);
+      // shown, and the page stands still; then the person drags the scroll bar back to the top
+      y = 0;
+      top = 900;
+      vi.advanceTimersByTime(2000);
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(1);
+      stop();
+    });
+
+    it("but the page growing above the card is not a scroll of the person's: the card is brought back (the control)", () => {
+      (card.scrollIntoView as ReturnType<typeof vi.fn>).mockImplementation(() => {
+        y = 700;
+        top = 200;
+      });
+      const stop = revealWhenStill(card, { reducedMotion: true });
+      vi.advanceTimersByTime(200);
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(1);
+      // what is above it loads: the page is taller and the card further down
+      height = 3700;
+      top = 900;
+      vi.advanceTimersByTime(2000);
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(2);
+      stop();
+    });
+  });
 });

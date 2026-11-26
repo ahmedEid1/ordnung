@@ -358,3 +358,47 @@ for (const reducedMotion of ["no-preference", "reduce"] as const) {
     }
   });
 }
+
+test.describe("390×800, motion on: a wheel during the smooth scroll to a contract", () => {
+  test.use({ viewport: { width: 390, height: 800 }, reducedMotion: "no-preference" });
+
+  test("leaves the page where the wheel took it (the smooth scroll went on to the card, against the wheel)", async ({ page }) => {
+    const gym = await contractOf(page, "gym");
+    // the page's scroll every frame, and where it was when the wheel came: recorded before the app's own listener runs
+    await page.addInitScript(() => {
+      const w = window as unknown as { __ys: number[]; __wheel: { at: number; y: number } | null };
+      w.__ys = [];
+      w.__wheel = null;
+      addEventListener("wheel", () => (w.__wheel ??= { at: w.__ys.length, y: window.scrollY }), { capture: true });
+      const look = () => {
+        w.__ys.push(window.scrollY);
+        requestAnimationFrame(look);
+      };
+      requestAnimationFrame(look);
+    });
+    await open(page, "/timeline", "Timeline");
+    await page.goto(`/contracts?contract=${gym.id}`);
+    await page.mouse.move(195, 400);
+    // the smooth scroll to the card is under way: the page moves down from one frame to the next
+    await page.waitForFunction(
+      () => {
+        const ys = (window as unknown as { __ys: number[] }).__ys;
+        return ys.length > 2 && ys.at(-1)! > ys.at(-2)! && ys.at(-1)! > 0;
+      },
+      null,
+      { polling: "raf" },
+    );
+    await page.mouse.wheel(0, -300);
+    const card = page.locator(`[id="contract-${gym.id}"]`);
+    await cardOnceStill(card);
+    const { ys, wheel } = await page.evaluate(() => {
+      const w = window as unknown as { __ys: number[]; __wheel: { at: number; y: number } | null };
+      return { ys: w.__ys, wheel: w.__wheel };
+    });
+    expect(wheel, "the wheel reached the page").not.toBeNull();
+    expect(ys[wheel!.at - 1]!, "the wheel came while the page was still scrolling down to the card").toBeGreaterThan(ys[wheel!.at - 2]!);
+    const after = ys.slice(wheel!.at);
+    expect(Math.max(...after), "the page went no further down after the wheel").toBeLessThanOrEqual(wheel!.y + 1);
+    expect(after.at(-1)!, "it ends above where the wheel came").toBeLessThan(wheel!.y);
+  });
+});

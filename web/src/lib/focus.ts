@@ -156,6 +156,16 @@ export function freeBand(x: number): Band {
   return { top, bottom: Math.max(bottom, top) };
 }
 
+/** Whether a wheel at `target` scrolls a box of its own that can still go that way (a list, a chart), not the page. */
+function scrollsInside(target: EventTarget | null, dy: number): boolean {
+  for (let e = target instanceof Element ? target : null; e && e !== document.body && e !== document.documentElement; e = e.parentElement) {
+    const overflow = getComputedStyle(e).overflowY;
+    if (overflow !== "auto" && overflow !== "scroll") continue;
+    if (dy < 0 ? e.scrollTop > 0 : e.scrollTop + e.clientHeight < e.scrollHeight - 1) return true;
+  }
+  return false;
+}
+
 /** How many frames in a row nothing may move (the element, the page's height, its scroll) before it is revealed. */
 const STILL_FRAMES = 4;
 /** How long a revealed element is kept in view while the page still grows around it. */
@@ -166,36 +176,72 @@ const REVEAL_GIVE_UP_MS = 20_000;
 /**
  * Bring `el` into view once the page has been still for a few frames (a page that opens with it still loads what is
  * above it: scrolled at once, it ended short of it), and again while the page goes on growing, for a few seconds.
- * In view means between the bars ({@link freeBand}, {@link revealPlan}). As soon as the person scrolls (wheel,
- * touch, a key, a press), the watch stops for good: their scroll wins. Returns a stop for the caller (an effect's
- * cleanup).
+ * In view means between the bars ({@link freeBand}, {@link revealPlan}). As soon as the person scrolls, the watch
+ * stops for good: their scroll wins. A wheel, a touch, a key or a press stops it, and a smooth scroll of its own
+ * still under way stops where it is; so does a scroll that comes with none of those (the scroll bar dragged, an
+ * assistive technology scrolling), seen as the page moving while nothing changed its height and no reveal of its
+ * own was under way. Returns a stop for the caller (an effect's cleanup).
  */
 export function revealWhenStill(el: HTMLElement, { reducedMotion = false }: { reducedMotion?: boolean } = {}): () => void {
   let stopped = false;
   let frame = 0;
   const since = performance.now();
+  /** A reveal of its own is under way: from its scrollIntoView until the page is still again. */
+  let revealing = false;
+  /** Where the page stood still last (its scroll and height), while no reveal of its own was under way. */
+  let rest: { y: number; height: number } | null = null;
   const events = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
   const stop = () => {
     stopped = true;
     cancelAnimationFrame(frame);
-    for (const type of events) window.removeEventListener(type, stop, true);
+    for (const type of events) window.removeEventListener(type, byPerson, true);
   };
-  for (const type of events) window.addEventListener(type, stop, { capture: true, passive: true });
+  /**
+   * The person acts: a smooth scroll of its own stops where it is (it went on to the card, against their wheel), then
+   * the watch. Stopping it that way, Chromium drops the wheel's own scroll too, so a wheel that would scroll the page
+   * is done here, from where the page stopped.
+   */
+  const byPerson = (event: Event) => {
+    if (revealing && !reducedMotion) {
+      let top = window.scrollY;
+      if (event instanceof WheelEvent && event.cancelable && !event.ctrlKey && !scrollsInside(event.target, event.deltaY)) {
+        event.preventDefault();
+        top += event.deltaY * (event.deltaMode === WheelEvent.DOM_DELTA_LINE ? 40 : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? window.innerHeight : 1);
+      }
+      window.scrollTo?.({ top, behavior: "instant" });
+    }
+    stop();
+  };
+  // not passive, so that the wheel can be done here (only while the watch runs: a few seconds)
+  for (const type of events) window.addEventListener(type, byPerson, { capture: true, passive: false });
   let last = "";
   let still = 0;
   const tick = () => {
     if (stopped) return;
     if (!el.isConnected || performance.now() - since > REVEAL_GIVE_UP_MS) return stop();
+    const y = window.scrollY;
+    const height = document.documentElement.scrollHeight;
+    if (rest && !revealing) {
+      // the page moved by a scroll it did not make, its height unchanged: the person's
+      if (height === rest.height && Math.abs(y - rest.y) > 1) return stop();
+      if (height !== rest.height) rest = null;
+    }
     const box = el.getBoundingClientRect();
-    const now = `${box.top} ${box.height} ${window.scrollY} ${document.documentElement.scrollHeight}`;
+    const now = `${box.top} ${box.height} ${y} ${height}`;
     still = now === last ? still + 1 : 0;
     last = now;
     if (still >= STILL_FRAMES) {
       still = 0;
+      revealing = false;
+      rest = { y, height };
       const x = Math.min(Math.max(box.left + box.width / 2, 0), window.innerWidth - 1);
       const { shown, block } = revealPlan(box, freeBand(x));
       if (shown && performance.now() - since > REVEAL_WATCH_MS) return stop();
-      if (!shown) el.scrollIntoView?.({ block, behavior: reducedMotion ? "auto" : "smooth" });
+      if (!shown && el.scrollIntoView) {
+        revealing = true;
+        rest = null;
+        el.scrollIntoView({ block, behavior: reducedMotion ? "auto" : "smooth" });
+      }
     }
     frame = requestAnimationFrame(tick);
   };
