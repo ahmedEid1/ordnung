@@ -8,8 +8,9 @@
  * - The demo's Inbox: the New-mail tray and the letters come together (when the tray answered first it pushed the
  *   letters' stand-in down: 0.15). The tray is made to answer first here, every time.
  * - Contracts: "Decide by" keeps its room while the contracts load when this browser last saw a decision or knows
- *   nothing yet; a household with nothing to decide moves once on a first visit (by less), and never again. The cost
- *   summary's stand-in has the summary's own height, so only that room moves anything.
+ *   nothing yet; a household with nothing to decide moves once on a first visit, more than it did before (about
+ *   0.09 at 390 px and 0.08 at 1280 px, where it was 0.03: no room was kept then), and holds still on every later
+ *   visit. The cost summary's stand-in has the summary's own height, so only that room moves anything.
  *
  * The shifts are summed whole (stricter than the browser's own CLS, which keeps only the worst burst). No fixed
  * waits: each page is read once it is loaded and still. The demo's tour is off (beforeEach): on a phone its card,
@@ -124,7 +125,7 @@ for (const [label, size] of [
       expect(again.cls, again.what).toBeLessThanOrEqual(0.05);
     });
 
-    test("Contracts with nothing to decide: a first visit moves once, by less; a returning one holds still", async ({ page }) => {
+    test("Contracts with nothing to decide: a first visit moves once (under 0.1); a returning one holds still", async ({ page }) => {
       // the demo's contracts with no date to send a notice by: a household with nothing to decide now
       await page.context().route(
         (url) => url.pathname === "/api/contracts",
