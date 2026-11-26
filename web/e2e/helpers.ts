@@ -442,13 +442,21 @@ interface FocusWatch {
   stops: FocusStop[];
   /** When focus last left for nothing (a focusout with no new place), to date a drop from then. */
   leftAt: number | null;
+  /** Focus seen on the page by the last look, and since when: a drop once the next look still finds it there. */
+  onPageSince: number | null;
+  /** Focus moved (focusin or focusout) since the last look. */
+  moved: boolean;
 }
 
 /**
- * From now on, note where focus is after every frame is drawn, and each time that changes. Focus that is on the page
- * only within a frame (the button pressed is removed, and the same frame's work moves focus on before it is drawn) is
- * never shown or told to anyone, so it is not a stop. A drop that is drawn is dated from the focusout that left focus
- * to nothing, when there was one. Read the notes with {@link focusStops} and {@link pageDrops}; a page load ends the watch.
+ * From now on, note where focus is after every frame is drawn, and each time that changes. Read the notes with
+ * {@link focusStops} and {@link pageDrops}; a page load ends the watch.
+ *
+ * A look runs right after each frame is drawn, but other tasks can run between the drawing and the look. So focus
+ * found on the page by one look counts as a drop only when the next look finds it still there and focus did not move
+ * in between: a frame was then drawn with it. Focus that is on the page only between two frames (the button pressed
+ * is removed, and the next frame's own work moves focus on before it is drawn) is never shown or told to anyone, and
+ * is not counted. A drop is dated from the focusout that left focus to nothing, when there was one.
  */
 export async function watchFocus(page: Page): Promise<void> {
   await page.evaluate(() => {
@@ -458,20 +466,27 @@ export async function watchFocus(page: Page): Promise<void> {
       const name = (el.getAttribute("aria-label") ?? el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
       return `${el.tagName}${el.id ? `#${el.id}` : ""}${name ? ` "${name}"` : ""}`;
     };
-    const watch: FocusWatch = { since: performance.now(), stops: [], leftAt: null };
+    const watch: FocusWatch = { since: performance.now(), stops: [], leftAt: null, onPageSince: null, moved: false };
     (window as unknown as { __focusWatch: FocusWatch }).__focusWatch = watch;
     const ms = (t: number) => Math.round(t - watch.since);
+    document.addEventListener("focusin", () => (watch.moved = true));
     document.addEventListener("focusout", (e) => {
+      watch.moved = true;
       if (!e.relatedTarget) watch.leftAt = performance.now();
     });
     const look = () => {
       const what = describe(document.activeElement);
       const last = watch.stops[watch.stops.length - 1];
-      if (!last || last[1] !== what) {
-        const onPage = what === "BODY" || what === "nothing";
-        watch.stops.push([ms(onPage && watch.leftAt !== null ? watch.leftAt : performance.now()), what]);
+      if (what === "BODY" || what === "nothing") {
+        if (watch.onPageSince !== null && !watch.moved) {
+          if (last?.[1] !== what) watch.stops.push([ms(watch.onPageSince), what]);
+        } else watch.onPageSince = watch.leftAt ?? performance.now();
+      } else {
+        watch.onPageSince = null;
+        if (last?.[1] !== what) watch.stops.push([ms(performance.now()), what]);
       }
       watch.leftAt = null;
+      watch.moved = false;
       // a timer set in a frame's callback runs once that frame is drawn
       requestAnimationFrame(() => setTimeout(look, 0));
     };

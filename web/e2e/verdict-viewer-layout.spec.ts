@@ -289,6 +289,8 @@ test("“Not a real to-do” hands focus to the next to-do, and Undo gives it ba
     const id = (await menu.getAttribute("id"))!;
     await menu.focus();
     await page.keyboard.press("Enter");
+    // the menu takes focus on its first item in the frame after it opens: End before that went nowhere
+    await expect(page.getByRole("menuitem").first()).toBeFocused();
     await page.keyboard.press("End");
     await expect(page.getByRole("menuitem", { name: "Not a real to-do" })).toBeFocused();
     await page.keyboard.press("Enter");
