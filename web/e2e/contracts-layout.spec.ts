@@ -206,3 +206,113 @@ test("a contract opened from the Timeline takes the focus: its card, in view (fo
   await expect(card).toBeFocused();
   await expect(card).toBeInViewport();
 });
+
+/**
+ * Once nothing has moved for ten frames (the card, the page's height, its scroll): where the card is against the
+ * room the bars really leave — below the sticky top bar while it sits at the top of the window, above the phone's
+ * tab bar while it shows — and what is really on top just inside its top and bottom edges.
+ */
+function cardOnceStill(card: Locator) {
+  return card.evaluate(async (el) => {
+    const look = () => {
+      const r = el.getBoundingClientRect();
+      return `${r.top.toFixed(1)} ${r.height.toFixed(1)} ${window.scrollY} ${document.documentElement.scrollHeight}`;
+    };
+    let last = look();
+    for (let still = 0; still < 10; ) {
+      await new Promise((r) => requestAnimationFrame(r));
+      const now = look();
+      still = now === last ? still + 1 : 0;
+      last = now;
+    }
+    const bar = [...document.querySelectorAll("header")].find((h) => getComputedStyle(h).position === "sticky")?.getBoundingClientRect();
+    const tabs = [...document.querySelectorAll("nav")].find((n) => getComputedStyle(n).position === "fixed" && n.getBoundingClientRect().height > 0)?.getBoundingClientRect();
+    const top = bar && bar.top <= 0.5 && bar.bottom > 0 ? bar.bottom : 0;
+    const bottom = tabs ? tabs.top : window.innerHeight;
+    const r = el.getBoundingClientRect();
+    const x = r.left + r.width / 2;
+    const onTop = (y: number) => el.contains(document.elementFromPoint(x, y));
+    const room = bottom - top;
+    const seen = Math.max(0, Math.min(r.bottom, bottom) - Math.max(r.top, top));
+    return {
+      focused: document.activeElement === el,
+      tall: r.height > room,
+      share: seen / Math.min(r.height, room),
+      topBelowBar: r.top >= top - 1,
+      /** How far below the top bar (or the window's top) it starts. */
+      gapAbove: r.top - top,
+      bottomAboveTabs: r.bottom <= bottom + 1,
+      topEdgeOnTop: onTop(r.top + 2),
+      bottomEdgeOnTop: onTop(r.bottom - 2),
+    };
+  });
+}
+
+type Seen = Awaited<ReturnType<typeof cardOnceStill>>;
+
+/**
+ * A card the room can hold is whole in view, both edges on top; a taller one starts just below the top bar (its
+ * focus ring's 4 px clear of it), so it fills the room.
+ */
+function expectWholeInView(seen: Seen, { tall }: { tall: boolean }) {
+  expect(seen.focused, "the card has the focus").toBe(true);
+  expect(seen.tall, tall ? "the card is taller than the room the bars leave" : "the card fits the room the bars leave").toBe(tall);
+  expect(seen.topBelowBar, "its top is below the top bar").toBe(true);
+  expect(seen.topEdgeOnTop, "just inside its top edge is the card, not a bar").toBe(true);
+  if (tall) {
+    expect(seen.gapAbove, "it starts just below the top bar").toBeLessThanOrEqual(8);
+  } else {
+    expect(seen.share, "it is whole in view").toBeGreaterThanOrEqual(0.99);
+    expect(seen.bottomAboveTabs, "its bottom is above the tab bar").toBe(true);
+    expect(seen.bottomEdgeOnTop, "just inside its bottom edge is the card, not a bar").toBe(true);
+  }
+}
+
+for (const reducedMotion of ["no-preference", "reduce"] as const) {
+  for (const viewport of [
+    { width: 1280, height: 800 },
+    { width: 390, height: 800 },
+    { width: 320, height: 568 },
+    { width: 320, height: 256 },
+  ]) {
+    const size = `${viewport.width}×${viewport.height}`;
+    test.describe(`${size}, motion ${reducedMotion}: a contract opened from elsewhere ends whole in view`, () => {
+      test.use({ viewport, reducedMotion });
+
+      test("the Timeline's first contract", async ({ page }) => {
+        await open(page, "/timeline", "Timeline");
+        const row = page.getByRole("main").locator("a[href*='contract=']").first();
+        const id = new URL((await row.getAttribute("href"))!, "http://x").searchParams.get("contract")!;
+        await row.focus();
+        await page.keyboard.press("Enter");
+        await expect(page).toHaveURL(/\/contracts\?/);
+        const card = page.locator(`[id="contract-${id}"]`);
+        await expect(card).toBeFocused();
+        const seen = await cardOnceStill(card);
+        // the first is a long card: taller than the room on a small phone, where only its top must show
+        expectWholeInView(seen, { tall: seen.tall });
+        if (viewport.width === 320 && viewport.height === 568) expect(seen.tall, "the Timeline's first contract is taller than the room at 320×568").toBe(true);
+      });
+
+      for (const how of ["its link", "its bar in the chart"] as const) {
+        test(`the gym contract (mid-height) by ${how}`, async ({ page }) => {
+          const gym = await contractOf(page, "gym");
+          if (how === "its link") {
+            await open(page, "/timeline", "Timeline");
+            await page.goto(`/contracts?contract=${gym.id}`);
+          } else {
+            await open(page, "/contracts", "Contracts");
+            const chart = page.getByRole("group", { name: "Contract terms and notice windows" });
+            const bar = chart.getByRole("listitem", { name: gym.name, exact: true }).getByRole("button").first();
+            await bar.focus();
+            await page.keyboard.press("Enter");
+          }
+          const card = page.locator(`[id="contract-${gym.id}"]`);
+          await expect(card).toBeFocused();
+          // at 320×256 (400 % zoom) no card fits; elsewhere this one does, also at 320×568 (446 px in 448)
+          expectWholeInView(await cardOnceStill(card), { tall: viewport.height === 256 });
+        });
+      }
+    });
+  }
+}

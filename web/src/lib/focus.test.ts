@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { focusAfterLeaving, focusOrigin, focusWhenReady, setToastHandBack } from "./focus";
+import { focusAfterLeaving, focusOrigin, focusWhenReady, revealPlan, revealWhenStill, setToastHandBack } from "./focus";
 
 describe("focusAfterLeaving", () => {
   beforeEach(() => {
@@ -104,5 +104,70 @@ describe("focusWhenReady from where the action started", () => {
     focusWhenReady(() => el("choice"), 5000, { always: true });
     vi.advanceTimersByTime(50);
     expect(el("choice")).toHaveFocus();
+  });
+});
+
+describe("revealPlan: in view between the bars, not the window", () => {
+  // a 320×568 phone: the top bar to 56, the tab bar from 504 (448 px between them)
+  const phone = { top: 56, bottom: 504 };
+
+  it("a card taller than the room comes in from its top (centred, its name ended under the top bar)", () => {
+    // 533 px fits the 568 px window, but not the room the bars leave
+    expect(revealPlan({ top: 17, bottom: 17 + 533 }, phone)).toEqual({ shown: false, block: "start" });
+    // shown once its top is below the bar, in the upper half of the room
+    expect(revealPlan({ top: 60, bottom: 60 + 533 }, phone)).toEqual({ shown: true, block: "start" });
+    expect(revealPlan({ top: 300, bottom: 300 + 533 }, phone).shown).toBe(false);
+  });
+
+  it("a card the room holds is centred, also one that would not fit the root's scroll padding (446 px in 448)", () => {
+    // the scroll padding (72 top, 80 bottom) leaves 416 px: measured against it, this card was pinned to the top
+    expect(revealPlan({ top: 300, bottom: 300 + 446 }, phone)).toEqual({ shown: false, block: "center" });
+    expect(revealPlan({ top: 57, bottom: 57 + 446 }, phone)).toEqual({ shown: true, block: "center" });
+    // its bottom under the tab bar is not in view
+    expect(revealPlan({ top: 70, bottom: 70 + 446 }, phone).shown).toBe(false);
+  });
+});
+
+describe("revealWhenStill", () => {
+  let card: HTMLElement;
+  let top = 900;
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame", "performance"] });
+    card = document.createElement("article");
+    card.getBoundingClientRect = () => ({ top, bottom: top + 300, height: 300, left: 0, right: 300, width: 300, x: 0, y: top, toJSON: () => null });
+    card.scrollIntoView = vi.fn();
+    document.body.append(card);
+    top = 900;
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    document.body.innerHTML = "";
+  });
+
+  it("waits until the page stands still, then brings the card into view (centred, smoothly unless motion is reduced)", () => {
+    const stop = revealWhenStill(card);
+    // the page above it still grows: the card moves every frame
+    for (let i = 0; i < 10; i++) {
+      top += 40;
+      vi.advanceTimersToNextFrame();
+    }
+    expect(card.scrollIntoView).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(200);
+    expect(card.scrollIntoView).toHaveBeenCalledWith({ block: "center", behavior: "smooth" });
+    stop();
+  });
+
+  it("stops for good when the person scrolls: no scrollIntoView follows their wheel", () => {
+    const stop = revealWhenStill(card, { reducedMotion: true });
+    vi.advanceTimersToNextFrame();
+    window.dispatchEvent(new WheelEvent("wheel", { deltaY: 100 }));
+    vi.advanceTimersByTime(2000);
+    expect(card.scrollIntoView).not.toHaveBeenCalled();
+    // the watch did run, and would have revealed it: without the wheel the same card is brought into view
+    const again = revealWhenStill(card, { reducedMotion: true });
+    vi.advanceTimersByTime(200);
+    expect(card.scrollIntoView).toHaveBeenCalledWith({ block: "center", behavior: "auto" });
+    again();
+    stop();
   });
 });

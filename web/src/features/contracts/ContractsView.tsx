@@ -20,7 +20,7 @@ import { LoadError } from "@/components/ui/LoadError";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Skeleton, SkeletonCard } from "@/components/ui/Skeleton";
 import { Tabs, type TabItem } from "@/components/ui/Tabs";
-import { focusWhenReady } from "@/lib/focus";
+import { focusWhenReady, revealWhenStill } from "@/lib/focus";
 import { useTodayISO } from "@/lib/today";
 import { plural, prefersReducedMotion } from "@/lib/utils";
 import { formatMoney } from "@/lib/format";
@@ -160,7 +160,8 @@ export function ContractsView() {
   useEffect(() => {
     if (!selectedId || !selectedShown) return;
     const el = document.getElementById(`contract-${selectedId}`);
-    el?.scrollIntoView?.({ block: "center", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+    // once the page stands still: scrolled to at once, it stopped short while the page above it still grew
+    const stopReveal = el ? revealWhenStill(el, { reducedMotion: prefersReducedMotion() }) : undefined;
     if (focusNext.current === selectedId) {
       focusNext.current = null;
       el?.focus({ preventScroll: true });
@@ -170,6 +171,7 @@ export function ContractsView() {
       const h1 = document.querySelector("#main h1");
       focusWhenReady(() => document.getElementById(`contract-${selectedId}`), 3000, { from: h1, preventScroll: true });
     }
+    return stopReveal;
   }, [selectedId, selectedShown, picks]);
   // …even when it is filtered out by the status tabs (show it rather than nothing).
   const selected = selectedId ? byId.get(selectedId) : undefined;

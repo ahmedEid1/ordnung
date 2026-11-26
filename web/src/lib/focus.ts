@@ -93,3 +93,107 @@ export function focusAfterLeaving(headings: () => HTMLElement[], leavingId: stri
 
 /** How long a leaving card's successor is waited for (:func:`focusAfterLeaving`). */
 export const LEAVING_WAIT_MS = 30_000;
+
+/** The band of the window the bars leave free, in viewport pixels: below the top bar, above the phone's tab bar. */
+export interface Band {
+  top: number;
+  bottom: number;
+}
+
+/**
+ * Whether an element at `box` (viewport pixels) is in view in `band`, and how to bring it there. One the band can
+ * hold is in view whole; one taller than the band is in view when its top is, in the band's upper half (its name
+ * and first lines show, under no bar). It comes into view centred, or from its top when it is too tall.
+ */
+export function revealPlan(box: { top: number; bottom: number }, band: Band): { shown: boolean; block: "center" | "start" } {
+  const room = band.bottom - band.top;
+  const tall = box.bottom - box.top > room;
+  const shown = tall ? box.top >= band.top - 1 && box.top < band.top + room / 2 : box.top >= band.top - 1 && box.bottom <= band.bottom + 1;
+  return { shown, block: tall ? "start" : "center" };
+}
+
+/**
+ * The room the bars really leave, measured where `x` is: from the bottom of a sticky or fixed bar that sits at the
+ * top of the window (the top bar, 56 px; none once it scrolls away on a short window), to the top of the fixed bars
+ * over its bottom edge (the phone's tab bar, and a tour bar or toast column above it). Not the root's scroll
+ * padding: it keeps 16 px more at each edge, so a card that fits between the bars would count as too tall.
+ */
+export function freeBand(x: number): Band {
+  const h = window.innerHeight;
+  /** The sticky or fixed box `el` is in, unless it covers half the window or more (a backdrop, not a bar). */
+  const barOf = (el: Element): DOMRect | null => {
+    for (let e: Element | null = el; e && e !== document.body; e = e.parentElement) {
+      const position = getComputedStyle(e).position;
+      if (position !== "fixed" && position !== "sticky") continue;
+      const r = e.getBoundingClientRect();
+      return r.height > 0 && r.height < h / 2 ? r : null;
+    }
+    return null;
+  };
+  let top = 0;
+  // (jsdom has no elementsFromPoint: no bars there)
+  const at = (y: number) => document.elementsFromPoint?.(x, y) ?? [];
+  for (const el of at(0.5)) {
+    const r = barOf(el);
+    if (r && r.top <= 0.5) top = Math.max(top, r.bottom);
+  }
+  let bottom = h;
+  // a bar may sit on top of another (the tour bar over the tab bar): look again just above each one found
+  for (let tries = 0; tries < 4; tries++) {
+    let next = bottom;
+    for (const el of at(bottom - 0.5)) {
+      const r = barOf(el);
+      if (r && r.bottom >= bottom - 1 && r.top < next) next = r.top;
+    }
+    if (next >= bottom) break;
+    bottom = next;
+  }
+  return { top, bottom: Math.max(bottom, top) };
+}
+
+/** How many frames in a row nothing may move (the element, the page's height, its scroll) before it is revealed. */
+const STILL_FRAMES = 4;
+/** How long a revealed element is kept in view while the page still grows around it. */
+const REVEAL_WATCH_MS = 6000;
+/** When the watch ends in any case (a page that never stands still). */
+const REVEAL_GIVE_UP_MS = 20_000;
+
+/**
+ * Bring `el` into view once the page has been still for a few frames (a page that opens with it still loads what is
+ * above it: scrolled at once, it ended short of it), and again while the page goes on growing, for a few seconds.
+ * In view means between the bars ({@link freeBand}, {@link revealPlan}). As soon as the person scrolls (wheel,
+ * touch, a key, a press), the watch stops for good: their scroll wins. Returns a stop for the caller (an effect's
+ * cleanup).
+ */
+export function revealWhenStill(el: HTMLElement, { reducedMotion = false }: { reducedMotion?: boolean } = {}): () => void {
+  let stopped = false;
+  let frame = 0;
+  const since = performance.now();
+  const events = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
+  const stop = () => {
+    stopped = true;
+    cancelAnimationFrame(frame);
+    for (const type of events) window.removeEventListener(type, stop, true);
+  };
+  for (const type of events) window.addEventListener(type, stop, { capture: true, passive: true });
+  let last = "";
+  let still = 0;
+  const tick = () => {
+    if (stopped) return;
+    if (!el.isConnected || performance.now() - since > REVEAL_GIVE_UP_MS) return stop();
+    const box = el.getBoundingClientRect();
+    const now = `${box.top} ${box.height} ${window.scrollY} ${document.documentElement.scrollHeight}`;
+    still = now === last ? still + 1 : 0;
+    last = now;
+    if (still >= STILL_FRAMES) {
+      still = 0;
+      const x = Math.min(Math.max(box.left + box.width / 2, 0), window.innerWidth - 1);
+      const { shown, block } = revealPlan(box, freeBand(x));
+      if (shown && performance.now() - since > REVEAL_WATCH_MS) return stop();
+      if (!shown) el.scrollIntoView?.({ block, behavior: reducedMotion ? "auto" : "smooth" });
+    }
+    frame = requestAnimationFrame(tick);
+  };
+  frame = requestAnimationFrame(tick);
+  return stop;
+}
