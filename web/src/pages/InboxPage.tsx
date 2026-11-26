@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type RefObject } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 import { FileUp, Landmark, Lock, Plus } from "lucide-react";
 import type { DocumentKind } from "@/api/types";
@@ -21,7 +21,8 @@ import { LettersList } from "@/features/inbox/LettersList";
 import { InboxToolbar } from "@/features/inbox/InboxToolbar";
 import { BatchRecapDialog } from "@/features/inbox/BatchRecap";
 import { useReadingBatch } from "@/features/inbox/useReadingBatch";
-import { MIN_SEARCH, emptyCopy, isNarrowed, resultLine, type InboxView, type InboxWho } from "@/features/inbox/status";
+import { MIN_SEARCH, announced, emptyCopy, isNarrowed, resultLine, type InboxView, type InboxWho } from "@/features/inbox/status";
+import { ROWS_STEP, count, useDrawnRows } from "@/features/inbox/rows";
 import { useTrayByDoc } from "@/features/tour/newMail";
 import { usePhoneCompanion } from "@/features/phone/client";
 import { filesStay } from "@/features/phone/copy";
@@ -228,14 +229,18 @@ export default function InboxPage() {
   const whoView: InboxWho | null = who === MINE ? { kind: "mine" } : member ? { kind: "person", name: member.name, suggested: toFile.length } : null;
   const view: InboxView = { filter, kindLabel: kind ? documentKindLabel(kind) : null, typed: q, q: searching ? q : "", year, who: whoView };
   const pendingSearch = searching && search.isPending;
-  const now = resultLine(view, visible.length, total, pendingSearch, heldFound?.size);
+  // a long view draws its first 100 rows, then more as asked (features/inbox/rows.ts); another view starts at 100
+  const { rows, setRows } = useDrawnRows(JSON.stringify([filter, kind, year, view.q, who ?? null]));
+  const drawn = Math.min(rows, visible.length);
+  const now = { ...resultLine(view, visible.length, total, pendingSearch, heldFound?.size, drawn), live: "" };
+  now.live = announced(now, drawn, visible.length);
   // A search that has not answered the words typed yet (still debounced, on its way, or listing the previous
   // words' letters while it runs) keeps the line it had: a count of the old words' letters named the new words
   // ("21 letters match “Zahnarzt”" before "1 letter matches …"), and every keystroke was read out. The first
   // search still shows "Searching…" on screen; it is said once there is an answer.
   const searchSettled = !searching || (q === typed && !search.isFetching && !search.isPlaceholderData);
   const [settledLine, setSettledLine] = useState(now);
-  if (searchSettled && (settledLine.text !== now.text || settledLine.visible !== now.visible)) setSettledLine(now);
+  if (searchSettled && (settledLine.text !== now.text || settledLine.visible !== now.visible || settledLine.live !== now.live)) setSettledLine(now);
   const line = searchSettled ? now : settledLine;
   const shownLine = !searchSettled && pendingSearch ? now : line;
   const empty = emptyCopy(view, phone, heldFound?.size);
@@ -243,6 +248,21 @@ export default function InboxPage() {
   // `?for=` waits for the household before it lists anything (never every letter first, then one person's)
   const loading = all.isPending || (Boolean(forParam) && household.isPending) || health.isPending || (demo && tray.isPending);
   const clearSearch = () => setQuery("");
+  /**
+   * Draw more rows. From the keyboard, focus goes to the first new letter; with the mouse it stays on the button —
+   * unless the button went with the last rows: focus never falls to the page.
+   */
+  const drawMore = (next: number, e: MouseEvent<HTMLButtonElement>) => {
+    const first = drawn;
+    const button = e.currentTarget;
+    setRows(next);
+    focusWhenReady(
+      () => lettersRef.current?.querySelectorAll("section[aria-labelledby^='grp-'] > ul > li")[first]?.querySelector<HTMLElement>("a[href^='/documents/']") ?? null,
+      3000,
+      // a click from the keyboard has no pointer: detail 0
+      { from: e.detail === 0 ? button : null },
+    );
+  };
   const clearAll = () => {
     setQuery("");
     setParams(new URLSearchParams(), { replace: true, state: { inboxQuery: "" } });
@@ -334,7 +354,7 @@ export default function InboxPage() {
                 />
                 {/* what the list shows now — announced, and on screen unless an empty state says it */}
                 <p role="status" className="sr-only">
-                  {line.text}
+                  {line.live}
                 </p>
                 {shownLine.visible ? (
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
@@ -365,7 +385,7 @@ export default function InboxPage() {
                   />
                 ) : null}
                 {groups.length ? (
-                  <LettersList groups={groups} parties={partyMap} open={openMap} filedYear={year} filedFor={filedFor} />
+                  <LettersList groups={groups} parties={partyMap} open={openMap} filedYear={year} filedFor={filedFor} limit={rows} />
                 ) : pendingSearch ? null : (
                   <EmptyState
                     size="sm"
@@ -390,6 +410,25 @@ export default function InboxPage() {
                   />
                 )}
               </div>
+
+              {drawn < visible.length ? (
+                <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="max-w-2xl text-sm text-muted">
+                    Showing {count(drawn)} of {count(visible.length)} letters. The search looks through all of them; your browser&rsquo;s own find
+                    only through the ones shown.
+                  </p>
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    {visible.length - drawn > ROWS_STEP ? (
+                      <Button size="sm" onClick={(e) => drawMore(drawn + ROWS_STEP, e)}>
+                        Show {ROWS_STEP} more
+                      </Button>
+                    ) : null}
+                    <Button size="sm" onClick={(e) => drawMore(Infinity, e)}>
+                      Show all {count(visible.length)}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
 
               {/* not under an empty state: that one says what to do */}
               {groups.length ? (

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { emptyCopy, isNarrowed, resultLine, type InboxView } from "./status";
+import { announced, emptyCopy, isNarrowed, resultLine, type InboxView } from "./status";
 
 const view = (v: Partial<InboxView> = {}): InboxView => ({ filter: "all", kindLabel: null, typed: "", q: "", year: null, who: null, ...v });
 
@@ -41,6 +41,23 @@ describe("the Inbox's result line", () => {
     expect(resultLine(view({ year: 2025 }), 4, 22, false)).toEqual({ text: "Showing 4 of 22 letters", visible: true });
     expect(isNarrowed(view({ who: { kind: "mine" } }))).toBe(true);
     expect(resultLine(view({ who: { kind: "person", name: "Alex Rivera", suggested: 0 } }), 3, 22, false).text).toBe("Showing 3 of 22 letters");
+  });
+
+  it("in a long view drawn in part, says what the view holds, and the rows drawn of it in sentences of their own", () => {
+    // 136 letters of a kind, 100 rows drawn: never "Showing 136" then
+    const kind = resultLine(view({ kindLabel: "Invoice" }), 136, 3000, false, 0, 100);
+    expect(kind).toEqual({ text: "136 of 3,000 letters in this view.", visible: true });
+    expect(announced(kind, 100, 136)).toBe("136 of 3,000 letters in this view. Showing 100 of 136 letters.");
+    // every row of the view drawn: as always, with the numbers written as the page writes them
+    expect(resultLine(view({ kindLabel: "Invoice" }), 1360, 3000, false, 0, 1360).text).toBe("Showing 1,360 of 3,000 letters");
+    // the whole inbox: only the rows drawn
+    const whole = resultLine(view(), 3000, 3000, false, 0, 200);
+    expect(announced(whole, 200, 3000)).toBe("Showing 200 of 3,000 letters.");
+    // a search and the rows: two sentences, never run together
+    const search = resultLine(view({ typed: "Muster", q: "Muster" }), 250, 3000, false, 0, 100);
+    expect(announced(search, 100, 250)).toBe("250 letters match “Muster”. Showing 100 of 250 letters.");
+    // everything drawn: the line alone
+    expect(announced(resultLine(view({ filter: "check" }), 4, 22, false), 4, 4)).toBe("Showing 4 of 22 letters");
   });
 });
 
