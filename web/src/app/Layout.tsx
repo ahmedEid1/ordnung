@@ -197,7 +197,8 @@ export function AppLayout() {
           <DemoTour />
           <div className="flex min-w-0 flex-1 flex-col">
             <TopBar />
-            <MockBanner />
+            {/* only a build with the mock world can be in mock mode (vite.config.ts) */}
+            {__ORDNUNG_MOCKS__ ? <MockBanner /> : null}
             <PausedBanner />
             <SyncBanner />
             <main id="main" tabIndex={-1} className="room-for-overlays flex flex-1 flex-col outline-none">

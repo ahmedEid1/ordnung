@@ -2415,7 +2415,7 @@ each on a fresh demo of their own. The tour is a list of captioned beats, each c
 the main column and on screen at least 2.5 s and 0.25 s a word: README's loop (WebP and GIF, 20 to 30 s) is its first
 six, from Today to the date's receipt, and the MP4 the whole tour (70 to 95 s). A still page is held for its planned
 time, whatever the capturing computer's load, the pointer, scrolling and a click's answer are kept for the time the
-browser gives them, and page loads and readings are cut, so the lengths are the same from run to run. The court order, shown only in the video, comes from the mock data (`?mock=full`), since
+browser gives them, and page loads and readings are cut, so the lengths are the same from run to run. The court order, shown only in the video, comes from the mock data (`?mock=full` in a `VITE_MOCKS=1` build of its own under `vite preview`; the released build has no mock data), since
 the recorded demo has none, and the phone pairing and Your computers pictures from the real app
 (`web/e2e/readme-pictures.spec.ts`), since the demo has neither, and the guide says so. `docs/`:
 architecture, deadline-rules (with citations), privacy (data-flow table), evals, evals-ask, decisions/ADRs.

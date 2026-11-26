@@ -204,6 +204,32 @@ test("no raw enum values in the visible text of any page", async ({ page }) => {
   }
 });
 
+test("the released app has no mock mode: ?mock= and a stale session key change nothing", async ({ page }) => {
+  // the letters the Inbox lists, by their links, in order: the demo's own, whatever the address says
+  const rows = async () => {
+    await expect(page.getByRole("main").locator('a[href^="/documents/"]').first()).toBeVisible();
+    return page.getByRole("main").locator('a[href^="/documents/"]').evaluateAll((links) => links.map((a) => a.getAttribute("href")));
+  };
+  const plain = async (what: string) => {
+    await expect(page.getByText("Browser-only sample data"), what).toHaveCount(0);
+    expect(await page.evaluate(() => "__ordnungMock" in window), what).toBe(false);
+  };
+  await open(page, "/inbox", "Inbox");
+  const demo = await rows();
+  expect(demo.length).toBeGreaterThan(10);
+  await plain("no parameter");
+  for (const value of ["1", "on", "full", "0", "off", "true"]) {
+    await open(page, `/inbox?mock=${value}`, "Inbox");
+    expect(await rows(), `?mock=${value}`).toEqual(demo);
+    await plain(`?mock=${value}`);
+  }
+  // the key a build with the mock world kept mock mode on with, left in this tab
+  await page.evaluate(() => sessionStorage.setItem("ordnung.mock", "full"));
+  await open(page, "/inbox", "Inbox");
+  expect(await rows(), "a stale session key").toEqual(demo);
+  await plain("a stale session key");
+});
+
 // each page loaded once and scanned in light, then in dark (the theme switched in place, `html.dark` checked)
 test.describe("accessibility in light and dark", () => {
   for (const p of MAIN_PAGES) {

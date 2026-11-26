@@ -2,7 +2,8 @@
 # Screenshots for the README and the guide (two from the real app), the demo video, its animation and GIF
 # (`make capture`).
 # Needs the Python venv, the web app's node_modules and ffmpeg. PW_CHROMIUM_PATH selects a Chromium.
-# The court payment order comes from the app's mock mode (see web/scripts/capture.mjs).
+# The court payment order comes from the app's mock mode (see web/scripts/capture.mjs): a build of its own with the
+# mock world (VITE_MOCKS=1; the released build has none), under `vite preview` on CAPTURE_MOCK_PORT, removed at the end.
 # Pairing a phone and Your computers come from the real app (see web/e2e/readme-pictures.spec.ts).
 # The media are public and stay in the history: sharp, and within a budget each (tests/test_media_budget.py keeps
 # them there), from replay only, every frame of the video light, and every page and picture checked for a path of this
@@ -13,6 +14,8 @@ set -euo pipefail
 cd -P "$(dirname "$0")/.."
 
 PORT=${CAPTURE_PORT:-8797}
+# the mock world's build (the court order): after the pictures' and the video's demos (PORT, PORT + 1)
+MOCK_PORT=${CAPTURE_MOCK_PORT:-$((PORT + 2))}
 # the pictures and the video each on a fresh demo of their own (the video's in "$DATA-video", on PORT + 1): both read
 # letters and send a cancellation, so what one does would show in the other
 DATA=${CAPTURE_DATA:-$(mktemp -d)/ordnung-capture}
@@ -68,9 +71,25 @@ SCENARIO="$DATA-claude.json"
 export ORDNUNG_CLAUDE_BIN="$PWD/tests/fake_claude.py" FAKE_CLAUDE_SCENARIO="$SCENARIO" ORDNUNG_OCR=off
 export CAPTURE_REVIEW="$REVIEW"
 SERVER=
+MOCK_SERVER=
+MOCK_TMP=$(mktemp -d)
+MOCK_DIR=$MOCK_TMP/ordnung-capture-mock
 # a run that fails leaves no recording in $OUT, and no half-made video (a clean one removes it itself, once the
-# MP4, the WebP and the GIF are made and moved to $OUT)
-trap 'status=$?; kill "$SERVER" 2>/dev/null || true; [ "$status" = 0 ] || rm -rf "$OUT/video"' EXIT
+# MP4, the WebP and the GIF are made and moved to $OUT); the mock world's build and its server go either way
+trap 'status=$?; kill "$SERVER" "$MOCK_SERVER" 2>/dev/null || true; rm -rf "$MOCK_TMP"; [ "$status" = 0 ] || rm -rf "$OUT/video"' EXIT
+# the court order's page: the web app built with its mock world into a folder of its own (never the committed build)
+(cd web && VITE_MOCKS=1 node node_modules/vite/bin/vite.js build --outDir "$MOCK_DIR" --emptyOutDir >"$MOCK_TMP/build.log" 2>&1) || {
+  tail -20 "$MOCK_TMP/build.log" >&2
+  echo "The mock world's build failed." >&2
+  exit 1
+}
+# Vite itself, not npx, so the PID kept is the server's
+(cd web && exec node node_modules/vite/bin/vite.js preview --outDir "$MOCK_DIR" --host 127.0.0.1 --port "$MOCK_PORT" --strictPort) >"$MOCK_TMP/preview.log" 2>&1 &
+MOCK_SERVER=$!
+for _ in $(seq 120); do
+  curl -sf "http://127.0.0.1:$MOCK_PORT/" >/dev/null && break
+  sleep 0.5
+done
 # capture <shots|video> <data folder> <port>: a fresh demo in the data folder, captured, then stopped
 capture() {
   .venv/bin/ordnung demo --serve --no-browser --reset --port "$3" --data-dir "$2" >"$2.log" 2>&1 &
@@ -79,7 +98,7 @@ capture() {
     curl -sf "http://127.0.0.1:$3/api/health" >/dev/null && break
     sleep 0.5
   done
-  (cd web && node scripts/capture.mjs --only "$1" --data "$2" --port "$3" --out "$OUT")
+  (cd web && node scripts/capture.mjs --only "$1" --data "$2" --port "$3" --mock-port "$MOCK_PORT" --out "$OUT")
   kill "$SERVER" 2>/dev/null || true
   wait "$SERVER" 2>/dev/null || true
 }

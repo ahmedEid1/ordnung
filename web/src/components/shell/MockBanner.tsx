@@ -6,7 +6,8 @@ import { SHELL_GUTTERS, shellWidth } from "./layout";
 import { usePageMeta } from "./page-meta";
 
 /**
- * `?mock=1` / `?mock=full` on a served app switch this tab to the browser-only sample data (remembered for
+ * `?mock=1` / `?mock=full` on a build that carries the mock world (the dev server, `VITE_MOCKS=1`; never the
+ * released app, whose layout leaves this banner out) switch this tab to the browser-only sample data (remembered for
  * the tab): a different sample life from the recorded demo, with no sign of it before (once
  * "To pay €1,237.65" instead of the recorded demo's €681.34). Says so, with the way back (`?mock=0`, a full
  * reload: mock mode is chosen when the app starts). Never in the hosted static demo, which is only that.

@@ -11,11 +11,14 @@ async function boot() {
   reloadOnStaleChunks();
   // on-screen glue (non-breaking spaces and hyphens) never ends up in copied text
   document.addEventListener("copy", copyWithoutGlue);
-  // Mock mode (?mock=1, ?mock=full) or the zero-install static demo build: serve /api from memory.
-  const mode = mockMode();
-  if (mode !== "off") {
-    const { installMocks } = await import("@/mocks/install");
-    installMocks({ full: mode === "full" });
+  // Mock mode (?mock=1, ?mock=full) or the zero-install static demo build: serve /api from memory. Only a build
+  // that carries the mock world has this branch (vite.config.ts): the released build has neither it nor the chunk.
+  if (__ORDNUNG_MOCKS__) {
+    const mode = mockMode();
+    if (mode !== "off") {
+      const { installMocks } = await import("@/mocks/install");
+      installMocks({ full: mode === "full" });
+    }
   }
   const { default: App } = await import("./App");
   createRoot(document.getElementById("root")!).render(

@@ -300,7 +300,9 @@ npx vite preview \
 **The README's pictures and video** stay in the history, every version of them. To look at a capture, write it
 into a folder of your own (`CAPTURE_OUT=$(mktemp -d) make capture`). Commit media once per release, after the
 last fix round: the pictures only of screens that changed (`scripts/capture.sh --only shots` takes the pictures
-alone, after `make build-web browser`), and the tour's video, WebP and GIF only when the tour changed.
+alone, after `make build-web browser`), and the tour's video, WebP and GIF only when the tour changed. The court
+order comes from a `VITE_MOCKS=1` build the script makes in a temporary folder and serves on `CAPTURE_MOCK_PORT`
+(the pictures' port + 2): the released build has no mock world.
 
 **The README's diagram** (`docs/assets/pipeline-light.svg` and `pipeline-dark.svg`) is two SVG files kept by hand;
 no script writes them. Change both the same way: they differ only in their colours and ids, and

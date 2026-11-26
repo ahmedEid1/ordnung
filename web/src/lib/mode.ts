@@ -4,7 +4,9 @@
  *
  * `?mock=1` enables mocks for this tab (remembered in sessionStorage), `?mock=full` also opens
  * all New-mail letters, `?mock=0` turns mocks off. A build with `VITE_STATIC_DEMO=1` (the
- * zero-install hosted demo) always uses them.
+ * zero-install hosted demo) always uses them. Only a build that carries the mock world reads either
+ * (`__ORDNUNG_MOCKS__`: the dev server, Vitest, `VITE_MOCKS=1`, the online demo): in the released app
+ * `?mock=` means nothing.
  */
 const KEY = "ordnung.mock";
 
@@ -21,6 +23,7 @@ export function isStaticDemo(): boolean {
 
 /** Decide (and remember for this tab) whether to use mocks. */
 export function mockMode(): "off" | "on" | "full" {
+  if (!__ORDNUNG_MOCKS__) return "off";
   if (isStaticDemo()) return "on";
   if (typeof window === "undefined") return "off";
   const param = new URLSearchParams(window.location.search).get("mock");
