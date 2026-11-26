@@ -276,6 +276,42 @@ describe("A toast on its way out", () => {
     await waitFor(() => expect(screen.getByRole("heading", { name: "Fine" })).toHaveFocus());
   });
 
+  it("after an Undo that works, leaves nothing armed: once the person has clicked elsewhere, a later redraw pulls no focus", async () => {
+    const user = userEvent.setup();
+    let done = () => {};
+    let redraw = () => {};
+    function Card() {
+      const [undone, setUndone] = useState(false);
+      redraw = () => setUndone(true);
+      return (
+        <main>
+          <h2 id="card-title" tabIndex={-1}>
+            Fine
+          </h2>
+          {undone ? <button key="b">Mark done (again)</button> : <button key="a">Mark done</button>}
+          <p>Some text</p>
+          <Toaster />
+        </main>
+      );
+    }
+    renderWithProviders(<Card />);
+    act(() => void toast({ title: "Marked as done", undo: () => new Promise<void>((resolve) => (done = resolve)), focusAfterUndo: () => document.getElementById("card-title") }));
+    screen.getByRole("button", { name: "Mark done" }).focus();
+    fireEvent.keyDown(window, { key: "n", code: "KeyN", altKey: true });
+    await user.tab();
+    await user.keyboard("{Enter}");
+    await act(async () => done());
+    // the refresh kept the button: focus stays there
+    expect(screen.getByRole("button", { name: "Mark done" })).toHaveFocus();
+    // the person clicks on the page's text (focus goes to the page), and later the card is drawn anew
+    await user.click(screen.getByText("Some text"));
+    expect(document.activeElement).toBe(document.body);
+    act(() => redraw());
+    await act(() => new Promise((r) => setTimeout(r, 100)));
+    expect(screen.getByRole("heading", { name: "Fine" })).not.toHaveFocus();
+    expect(document.activeElement).toBe(document.body);
+  });
+
   it("closes after an Undo that fails, hands focus back as after one that works, and lets no rejection escape", async () => {
     // (an escaped rejection fails the run: Vitest reports unhandled rejections as errors)
     const user = userEvent.setup();

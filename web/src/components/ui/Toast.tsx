@@ -145,16 +145,38 @@ function restoreFocus() {
   back?.focus({ preventScroll: true });
 }
 
+/** What the person does that ends a watch for where focus goes next: they have moved on. */
+const MOVED_ON = ["pointerdown", "keydown", "focusin"] as const;
+
 /**
  * After an Undo that works: back where it was, and when the undone change then takes that place away (the card is
- * drawn anew without the button), on to `t.focusAfterUndo` — a place on <main> counts as taken away.
+ * drawn anew without the button), on to `t.focusAfterUndo` — a place on <main> counts as taken away. The watch ends
+ * once it has moved focus, and as soon as the person presses, types or moves focus anywhere: nothing is left armed
+ * that could pull focus into the card later (a click on the page, then a refresh that redraws the card).
  */
 function focusAfterUndo(t: ToastRecord) {
   const back = handBack();
   restoreFocus();
   const after = t.focusAfterUndo;
   if (!after) return;
-  focusWhenReady(() => (back?.isConnected && back.tagName !== "MAIN" ? null : after()), LEAVING_WAIT_MS, { from: back });
+  let ended = false;
+  const end = () => {
+    ended = true;
+    clearTimeout(timer);
+    for (const type of MOVED_ON) window.removeEventListener(type, end, true);
+  };
+  const timer = setTimeout(end, LEAVING_WAIT_MS);
+  for (const type of MOVED_ON) window.addEventListener(type, end, true);
+  focusWhenReady(
+    () => {
+      if (ended || (back?.isConnected && back.tagName !== "MAIN")) return null;
+      const el = after();
+      if (el) end();
+      return el;
+    },
+    LEAVING_WAIT_MS,
+    { from: back },
+  );
 }
 
 /** The last element that had focus outside the toasts (however it then moved in: Alt+N, Tab or a click). */
