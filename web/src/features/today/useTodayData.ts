@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useDashboard, useDocumentTitles, useDocuments, useParties } from "@/api/hooks";
+import { useBrief, useDashboard, useDocumentTitles, useDocuments, useParties } from "@/api/hooks";
 import type { Party } from "@/api/types";
 import { useTodayISO } from "@/lib/today";
 import { movingRows } from "./moving";
@@ -17,6 +17,8 @@ import { ideasFromNewMail, useOpenedTrayDocs } from "@/features/tour/newMail";
 export function useTodayData() {
   const today = useTodayISO();
   const dashboard = useDashboard();
+  // the secretary's note is asked for with the dashboard, not once the page is drawn (SecretaryNote reads it)
+  useBrief();
   const parties = useParties();
   const review = useDocuments({ status: "needs_review" });
   const failed = useDocuments({ status: "failed" });

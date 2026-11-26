@@ -691,11 +691,12 @@ export function useLanes(from?: string, to?: string) {
 // Ideas & brief
 // ------------------------------------------------------------------------------------------------
 
-export function useSuggestions(params: SuggestionListParams = {}) {
+export function useSuggestions(params: SuggestionListParams = {}, opts: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: qk.suggestions.list(params),
     queryFn: () => api.suggestions(params),
     staleTime: 30_000,
+    enabled: opts.enabled,
   });
 }
 

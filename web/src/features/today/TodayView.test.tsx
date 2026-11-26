@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { qk } from "@/api/hooks";
-import type { Brief, Dashboard, Document, Party, Profile } from "@/api/types";
+import type { Brief, Dashboard, Document, DocumentTitle, Party, Profile } from "@/api/types";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { createMockServer } from "@/mocks/server";
 import { holdRequests, useMockApi } from "@/test/mockFetch";
@@ -19,6 +19,8 @@ async function seededClient(mutate?: (d: Dashboard) => Dashboard) {
   qc.setQueryData(qk.parties.list(), await get<Party[]>("/parties"));
   qc.setQueryData(qk.documents.list({ status: "needs_review" }), await get<Document[]>("/documents", "status=needs_review"));
   qc.setQueryData(qk.documents.list({ status: "failed" }), await get<Document[]>("/documents", "status=failed"));
+  // the page names letters from their titles; the tests take letters to change from the list
+  qc.setQueryData(qk.documents.titles, await get<DocumentTitle[]>("/documents/titles"));
   qc.setQueryData(qk.documents.list({}), await get<Document[]>("/documents"));
   qc.setQueryData(qk.brief, await get<Brief>("/brief"));
   qc.setQueryData(qk.profile, await get<Profile>("/profile"));

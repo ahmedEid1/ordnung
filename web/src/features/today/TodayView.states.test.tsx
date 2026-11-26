@@ -11,7 +11,7 @@ import userEvent from "@testing-library/user-event";
 import type { QueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/api/client";
 import { qk } from "@/api/hooks";
-import type { Brief, Dashboard, Document, Party, Profile, Suggestion } from "@/api/types";
+import type { Brief, Dashboard, Document, DocumentTitle, Party, Profile, Suggestion } from "@/api/types";
 import { AddLettersProvider } from "@/components/shell/AddLetters";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { createMockServer } from "@/mocks/server";
@@ -36,6 +36,8 @@ async function seededClient(mutate?: (d: Dashboard) => Dashboard, review?: Docum
   qc.setQueryData(qk.dashboard, mutate ? mutate(dash) : dash);
   qc.setQueryData(qk.parties.list(), await get<Party[]>("/parties"));
   qc.setQueryData(qk.documents.list({ status: "needs_review" }), review ?? (await get<Document[]>("/documents", "status=needs_review")));
+  // the page names letters from their titles; the tests take letters to change from the list
+  qc.setQueryData(qk.documents.titles, await get<DocumentTitle[]>("/documents/titles"));
   qc.setQueryData(qk.documents.list({}), await get<Document[]>("/documents"));
   qc.setQueryData(qk.brief, await get<Brief>("/brief"));
   qc.setQueryData(qk.profile, await get<Profile>("/profile"));

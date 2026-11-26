@@ -11,15 +11,28 @@ import { UploadCenter } from "@/components/shell/UploadCenter";
 import { PausedBanner } from "@/components/shell/PausedBanner";
 import { SyncBanner } from "@/components/shell/SyncBanner";
 import { MockBanner } from "@/components/shell/MockBanner";
-import { PartyDrawer } from "@/features/party/PartyDrawer";
 import { AddLettersProvider } from "@/components/shell/AddLetters";
 import { PageMetaProvider, useDocumentTitle } from "@/components/shell/page-meta";
 import { useRecordOrigin } from "@/components/shell/origin";
 import { Toaster } from "@/components/ui/Toast";
-import { DemoTour } from "@/features/tour/DemoTour";
 import { StandbyScreen, standbyKeepsPage } from "@/features/sync/StandbyScreen";
 import { useBrowserNotifications } from "@/features/notifications/useBrowserNotifications";
+import { usePartyDrawer } from "@/lib/party-drawer";
 import { BootScreen, HealthUnreachable } from "./screens";
+import { lazyPart } from "./lazyPart";
+
+// the demo's tour loads only in the demo, the People & organisations drawer when it is first opened: neither is in
+// every page's first load
+const DemoTour = lazyPart(() => import("@/features/tour/DemoTour").then((m) => m.DemoTour));
+const PartyDrawer = lazyPart(() => import("@/features/party/PartyDrawer").then((m) => m.PartyDrawer));
+
+/** The drawer from its first open on (it stays, so it can close as it opens); a failed load tries again at the next open. */
+function LazyPartyDrawer() {
+  const { partyId } = usePartyDrawer();
+  const [wanted, setWanted] = useState(false);
+  if (partyId && !wanted) setWanted(true);
+  return wanted ? <PartyDrawer retry={partyId} /> : null;
+}
 
 /** Thin progress line while a lazy route loads. */
 function NavigationProgress() {
@@ -194,7 +207,7 @@ export function AppLayout() {
         <div className="flex min-h-dvh bg-canvas">
           <Sidebar />
           {/* fixed over the page, but here in the tab order: after the navigation, before the page */}
-          <DemoTour />
+          {health.data.demo ? <DemoTour /> : null}
           <div className="flex min-w-0 flex-1 flex-col">
             <TopBar />
             {/* only a build with the mock world can be in mock mode (vite.config.ts) */}
@@ -211,7 +224,7 @@ export function AppLayout() {
         <Toaster>
           <UploadCenter />
         </Toaster>
-        <PartyDrawer />
+        <LazyPartyDrawer />
         <ScrollRestoration getKey={(loc) => loc.pathname} />
       </AddLettersProvider>
     </PageMetaProvider>
