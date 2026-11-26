@@ -318,6 +318,38 @@ describe("revealWhenStill", () => {
       stop();
     });
 
+    it("a wheel that goes more sideways than down (a diagonal swipe on a touchpad) is not taken over either", () => {
+      const stop = underWay();
+      const wheel = new WheelEvent("wheel", { deltaX: 300, deltaY: 50, cancelable: true });
+      window.dispatchEvent(wheel);
+      expect(wheel.defaultPrevented).toBe(false);
+      // stopped where it is, without the wheel's 50 px added by hand: the browser does the wheel as it came
+      expect(window.scrollTo).toHaveBeenCalledWith({ top: 100, behavior: "instant" });
+      stop();
+    });
+
+    it.each([
+      ["Control", { ctrlKey: true }],
+      ["Alt", { altKey: true }],
+      ["Meta", { metaKey: true }],
+    ])("an arrow or End with %s held (a shortcut, not a scroll) leaves that scroll to reach the card", (_name, held) => {
+      const stop = underWay();
+      document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, ...held }));
+      document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "End", bubbles: true, ...held }));
+      expect(window.scrollTo).not.toHaveBeenCalled();
+      stop();
+    });
+
+    it("a touch stops that scroll where it is, and the watch (the finger takes the page from there)", () => {
+      const stop = underWay();
+      window.dispatchEvent(new Event("touchstart"));
+      expect(window.scrollTo).toHaveBeenCalledWith({ top: 100, behavior: "instant" });
+      top = 900;
+      vi.advanceTimersByTime(2000);
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(1);
+      stop();
+    });
+
     it("a wheel once the page stands still stops nothing that is not there", () => {
       top = 200;
       const stop = revealWhenStill(card);
