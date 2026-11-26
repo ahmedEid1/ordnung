@@ -520,7 +520,9 @@ export function WeekView() {
           <div className="flex min-w-0 flex-col gap-4">
             <StepPanel step={step} index={index} total={steps.length} focusOnMount={returned} />
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <Button variant="ghost" icon={ArrowLeft} onClick={() => go(index - 1)} disabled={index === 0}>
+              {/* on the first step `aria-disabled`, not `disabled`: Back pressed onto it would drop focus to the page
+                  for a frame before the step's heading takes it. A press there does nothing. */}
+              <Button variant="ghost" icon={ArrowLeft} onClick={() => index > 0 && go(index - 1)} aria-disabled={index === 0 || undefined}>
                 Back
               </Button>
               {last ? (
