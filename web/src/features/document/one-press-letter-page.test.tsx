@@ -131,7 +131,7 @@ describe("the verdict card's other answers", () => {
     const held = holdRequests((call) => call.method === "PATCH" && call.path === "/suggestions/sug_cancel");
     const decision = makeSuggestion({
       id: "sug_cancel",
-      kind: "decision",
+      kind: "opportunity",
       title: "Cancel or keep?",
       rule_id: "price_increase_right",
       action: { type: "draft", draft_kind: "cancellation", target_type: "contract", target_id: "ctr_1", label: "Draft cancellation" } as never,

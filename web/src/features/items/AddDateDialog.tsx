@@ -28,6 +28,7 @@ import { parseMoney } from "@/lib/money";
 import { useTodayISO } from "@/lib/today";
 import { cn } from "@/lib/utils";
 import { DEFAULT_WORKING_DAY, WORKING_DAYS, repeatChoiceLabel, repeatChoiceOf, repeatLabel, repeatOptions, repeatRule, steps, type RepeatChoice } from "./repeat";
+import { useOnePress } from "@/lib/hooks";
 
 /** The letter a date is for: it joins that letter's to-dos, with its sender, thread and area (its kind: a lease's rent). */
 export type DateLetter = Pick<Document, "id" | "title" | "filename" | "party_id" | "case_id" | "area"> & Partial<Pick<Document, "kind">>;
@@ -247,7 +248,9 @@ export function AddDateDialog({ open, onClose, letter = null, item = null, retur
   const shown = tried ? problems : {};
   const set = (k: "title" | "date" | "amount" | "docId") => (e: { target: { value: string } }) => setD((prev) => ({ ...prev, [k]: e.target.value }));
   const chosen = letter ?? letters.data?.find((l) => l.id === d.docId) ?? null;
-  const busy = create.isPending || update.isPending;
+  // one press at a time, also two before the dialog is drawn busy (two dates added; the Undo removed one)
+  const { pressed, once } = useOnePress<"save" | "remove">();
+  const busy = create.isPending || update.isPending || pressed !== null;
   const options = repeatOptions(d.date, item?.recurrence, item ? startOf(item) : null);
   const asksMove = item ? asksWhichMove(d, item) : false;
 
@@ -263,15 +266,19 @@ export function AddDateDialog({ open, onClose, letter = null, item = null, retur
   const save = (own: Item) => {
     const patch = patchFor(d, own);
     if (!Object.keys(patch).length) return onClose();
-    update.mutate(
-      { id: own.id, patch },
-      {
-        onSuccess: (saved) => {
-          // no Undo: a deliberate step with Cancel, and the dialog changes it back
-          toast.success("Date saved", { description: savedLine(saved, today) });
-          onClose();
-        },
-      },
+    once(
+      () =>
+        update.mutateAsync(
+          { id: own.id, patch },
+          {
+            onSuccess: (saved) => {
+              // no Undo: a deliberate step with Cancel, and the dialog changes it back
+              toast.success("Date saved", { description: savedLine(saved, today) });
+              onClose();
+            },
+          },
+        ),
+      "save",
     );
   };
 
@@ -283,18 +290,22 @@ export function AddDateDialog({ open, onClose, letter = null, item = null, retur
       own.status === "snoozed" && own.snoozed_until
         ? { status: "snoozed", snoozed_until: own.snoozed_until }
         : { status: own.status === "done" ? "done" : "open" };
-    update.mutate(
-      { id: own.id, patch: { status: "dismissed" } },
-      {
-        onSuccess: () => {
-          toast({
-            title: "Removed from your dates",
-            description: `“${own.title}” won't remind you any more.`,
-            undo: () => update.mutateAsync({ id: own.id, patch: back }).then(() => undefined),
-          });
-          onClose();
-        },
-      },
+    once(
+      () =>
+        update.mutateAsync(
+          { id: own.id, patch: { status: "dismissed" } },
+          {
+            onSuccess: () => {
+              toast({
+                title: "Removed from your dates",
+                description: `“${own.title}” won't remind you any more.`,
+                undo: () => update.mutateAsync({ id: own.id, patch: back }).then(() => undefined),
+              });
+              onClose();
+            },
+          },
+        ),
+      "remove",
     );
   };
 
@@ -308,7 +319,7 @@ export function AddDateDialog({ open, onClose, letter = null, item = null, retur
       return;
     }
     if (item) save(item);
-    else create.mutate(dateBody(d, chosen), { onSuccess: added });
+    else once(() => create.mutateAsync(dateBody(d, chosen), { onSuccess: added }), "save");
   };
 
   const after =
@@ -336,7 +347,7 @@ export function AddDateDialog({ open, onClose, letter = null, item = null, retur
       footer={
         <>
           {item ? (
-            <Button variant="ghost" icon={CalendarX2} onClick={() => removeIt(item)} className="sm:mr-auto">
+            <Button variant="ghost" icon={CalendarX2} onClick={() => removeIt(item)} loading={pressed === "remove"} className="sm:mr-auto">
               Remove
             </Button>
           ) : null}

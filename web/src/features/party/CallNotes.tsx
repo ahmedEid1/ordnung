@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { focusWhenReady } from "@/lib/focus";
 import { ComputerOnly } from "@/features/phone/ComputerOnly";
 import { CALL_FIELDS, callNoteProblems, clearCallDraft, draftHasText, keepCallDraft, loadCallDraft, promisedAmount, type CallNoteDraft as Draft } from "./calls";
-import { ignoreFailedRequest } from "@/api/client";
+import { useOnePress } from "@/lib/hooks";
 
 const SUMMARY_MAX = 2000;
 const PROMISE_MAX = 300;
@@ -47,6 +47,9 @@ interface NoteFormProps {
 function NoteForm({ partyId, cases, caseId = "", asking, hasTextRef, onCancel, onSaved, onKeepWriting, onDiscard }: NoteFormProps) {
   const today = useTodayISO();
   const create = useCreateCall();
+  // one note per press: a second press before the form is drawn busy noted the call twice (and its promise twice
+  // on Waiting for)
+  const saving = useOnePress();
   // a note half-written before (the drawer closed, a link followed, a reload) comes back as it was
   const [d, setD] = useState<Draft>(() => {
     const kept = loadCallDraft(partyId);
@@ -98,6 +101,7 @@ function NoteForm({ partyId, cases, caseId = "", asking, hasTextRef, onCancel, o
       el?.focus({ preventScroll: true });
       return;
     }
+    saving.once(() =>
     create
       .mutateAsync({
         party_id: partyId,
@@ -119,8 +123,8 @@ function NoteForm({ partyId, cases, caseId = "", asking, hasTextRef, onCancel, o
           });
           if (mounted.current) onSaved();
         },
-        ignoreFailedRequest, // a failed request is said by the mutation; the note stays as typed
-      );
+      ), // a failed request is said by the mutation; the note stays as typed
+    );
   };
 
   const askId = `${ids}-ask`;
@@ -205,7 +209,7 @@ function NoteForm({ partyId, cases, caseId = "", asking, hasTextRef, onCancel, o
       ) : null}
       <div className="flex flex-wrap justify-end gap-2 pt-1">
         <Button onClick={onCancel}>Cancel</Button>
-        <Button type="submit" variant="primary" loading={create.isPending}>
+        <Button type="submit" variant="primary" loading={create.isPending || saving.busy}>
           Save note
         </Button>
       </div>
@@ -247,6 +251,9 @@ function NoteRow({ note, headingId }: { note: CallNote; headingId: string }) {
   const fmt = useFormatDate();
   const update = useUpdateCall();
   const remove = useDeleteCall();
+  // one press at a time ("Delete" answered "not found" after it worked; "They kept it" flipped back)
+  const deleting = useOnePress();
+  const toggling = useOnePress();
   const [confirming, setConfirming] = useState(false);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const trashRef = useRef<HTMLButtonElement>(null);
@@ -284,8 +291,9 @@ function NoteRow({ note, headingId }: { note: CallNote; headingId: string }) {
             ref={deleteRef}
             size="sm"
             variant="danger"
-            loading={remove.isPending}
+            loading={remove.isPending || deleting.busy}
             onClick={() =>
+              deleting.once(() =>
               remove.mutateAsync(note.id).then(
                 () => {
                   toast.success("Note deleted");
@@ -294,6 +302,7 @@ function NoteRow({ note, headingId }: { note: CallNote; headingId: string }) {
                 },
                 // not deleted: back to the question's "Delete" (it was busy, so focus had left it)
                 () => focusWhenReady(() => ready(deleteRef.current)),
+              ),
               )
             }
           >
@@ -319,15 +328,17 @@ function NoteRow({ note, headingId }: { note: CallNote; headingId: string }) {
             variant="link"
             size="sm"
             icon={note.promise_kept_on ? undefined : CircleCheck}
-            loading={update.isPending}
+            loading={update.isPending || toggling.busy}
             onClick={() =>
-              update.mutate(
+              toggling.once(() =>
+              update.mutateAsync(
                 { id: note.id, kept: !note.promise_kept_on },
                 {
                   onSuccess: (n) => toast.success(n.promise_kept_on ? "Marked as kept" : "Waiting for it again", { description: note.promise ?? undefined }),
                   // busy, the button was disabled and focus fell to <body>: it comes back to the button (now saying the opposite)
                   onSettled: () => focusWhenReady(() => ready(toggleRef.current)),
                 },
+              ),
               )
             }
           >

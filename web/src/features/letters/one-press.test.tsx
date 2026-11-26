@@ -12,7 +12,9 @@ import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { expectOnePressAtATime } from "@/test/busyButton";
 import { holdRequests, useMockApi } from "@/test/mockFetch";
 import { makeTestQueryClient, renderWithProviders } from "@/test/render";
+import { PageMetaProvider } from "@/components/shell/page-meta";
 import LetterPage from "@/pages/LetterPage";
+import ProofFilePage from "@/pages/ProofFilePage";
 import LettersPage from "@/pages/LettersPage";
 
 function renderLetter(id: string) {
@@ -124,5 +126,49 @@ describe("a letter", () => {
     await user.click(screen.getByRole("menuitem", { name: "Delete this letter" }));
     const dialog = await screen.findByRole("dialog", { name: "Delete this letter?" });
     await expectOnePressAtATime({ user, button: () => within(dialog).getByRole("button", { name: "Delete" }), held });
+  });
+});
+
+describe("proof of sending", () => {
+  it("“Add proof” takes one press at a time, and the next once it failed", async () => {
+    useMockApi();
+    const held = holdRequests((call) => call.method === "POST" && call.path === "/drafts/drf_gym/proofs");
+    renderLetter("drf_gym");
+    const user = userEvent.setup();
+    const proof = await screen.findByRole("region", { name: "Proof of sending" });
+    await user.click(await within(proof).findByRole("button", { name: "Add proof" }));
+    const dialog = await screen.findByRole("dialog", { name: "Add proof" });
+    await user.upload(within(dialog).getByLabelText("File"), new File(["%PDF-1.4"], "Auslieferungsbeleg.pdf", { type: "application/pdf" }));
+    await user.type(within(dialog).getByLabelText(/Delivered on/), "2026-09-24");
+    await expectOnePressAtATime({ user, button: () => within(dialog).getByRole("button", { name: "Add proof" }), held });
+  });
+
+  it("“Remove” on the proof's own page takes one press at a time, and the next once it failed", async () => {
+    useMockApi();
+    const held = holdRequests((call) => call.method === "DELETE" && call.path === "/drafts/drf_gym/proofs/prf_gym_receipt");
+    const router = createMemoryRouter(
+      [
+        {
+          path: "/letters/:id/proofs/:docId",
+          element: (
+            <PageMetaProvider>
+              <ProofFilePage />
+              <Toaster />
+            </PageMetaProvider>
+          ),
+        },
+        { path: "*", element: <p>elsewhere</p> },
+      ],
+      { initialEntries: ["/letters/drf_gym/proofs/doc_gym_receipt"] },
+    );
+    render(
+      <QueryClientProvider client={makeTestQueryClient()}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Remove this proof" }));
+    const dialog = await screen.findByRole("dialog", { name: "Remove the posting receipt (Einlieferungsbeleg)?" });
+    await expectOnePressAtATime({ user, button: () => within(dialog).getByRole("button", { name: "Remove" }), held });
   });
 });
