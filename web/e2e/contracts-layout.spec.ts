@@ -402,3 +402,46 @@ test.describe("390×800, motion on: a wheel during the smooth scroll to a contra
     expect(after.at(-1)!, "it ends above where the wheel came").toBeLessThan(wheel!.y);
   });
 });
+
+test.describe("390×800, motion on: a modifier key during the smooth scroll to a contract", () => {
+  test.use({ viewport: { width: 390, height: 800 }, reducedMotion: "no-preference" });
+
+  // Shift is the start of Shift+Tab, Control what quiets a screen reader as the new page is read: neither scrolls,
+  // so neither may stop the scroll to the card (it stopped where it was, the card far below the window)
+  for (const key of ["Shift", "Control"]) {
+    test(`${key} on its own: the card still ends whole in view`, async ({ page }) => {
+      const gym = await contractOf(page, "gym");
+      await page.addInitScript(() => {
+        const w = window as unknown as { __ys: number[]; __key: number | null };
+        w.__ys = [];
+        w.__key = null;
+        addEventListener("keydown", () => (w.__key ??= w.__ys.length), { capture: true });
+        const look = () => {
+          w.__ys.push(window.scrollY);
+          requestAnimationFrame(look);
+        };
+        requestAnimationFrame(look);
+      });
+      await open(page, "/timeline", "Timeline");
+      await page.goto(`/contracts?contract=${gym.id}`);
+      await page.waitForFunction(
+        () => {
+          const ys = (window as unknown as { __ys: number[] }).__ys;
+          return ys.length > 2 && ys.at(-1)! > ys.at(-2)! && ys.at(-1)! > 0;
+        },
+        null,
+        { polling: "raf" },
+      );
+      await page.keyboard.press(key);
+      const card = page.locator(`[id="contract-${gym.id}"]`);
+      const seen = await cardOnceStill(card);
+      const { ys, at } = await page.evaluate(() => {
+        const w = window as unknown as { __ys: number[]; __key: number | null };
+        return { ys: w.__ys, at: w.__key };
+      });
+      expect(at, "the key reached the page").not.toBeNull();
+      expect(ys[at! - 1]!, "the key came while the page was still scrolling down to the card").toBeGreaterThan(ys[at! - 2]!);
+      expectWholeInView(seen, { tall: false });
+    });
+  }
+});

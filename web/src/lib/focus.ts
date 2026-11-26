@@ -166,6 +166,21 @@ function scrollsInside(target: EventTarget | null, dy: number): boolean {
   return false;
 }
 
+/** Keys that scroll the page: pressed during a reveal's smooth scroll, the person's scroll wins over it. */
+const SCROLL_KEYS = new Set(["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "]);
+/** Keys that do nothing on their own (the start of Shift+Tab, Control to quiet a screen reader): they change nothing. */
+const MODIFIER_KEYS = new Set(["Shift", "Control", "Alt", "AltGraph", "Meta"]);
+
+/** Whether the person's input scrolls the page: a wheel, a touch, or a key that scrolls when no field takes it. */
+function scrollsThePage(event: Event): boolean {
+  if (event instanceof KeyboardEvent) {
+    if (!SCROLL_KEYS.has(event.key) || event.ctrlKey || event.altKey || event.metaKey) return false;
+    const t = event.target;
+    return !(t instanceof HTMLElement && (t.isContentEditable || t.matches("input, textarea, select")));
+  }
+  return event.type === "wheel" || event.type === "touchstart";
+}
+
 /** How many frames in a row nothing may move (the element, the page's height, its scroll) before it is revealed. */
 const STILL_FRAMES = 4;
 /** How long a revealed element is kept in view while the page still grows around it. */
@@ -177,10 +192,11 @@ const REVEAL_GIVE_UP_MS = 20_000;
  * Bring `el` into view once the page has been still for a few frames (a page that opens with it still loads what is
  * above it: scrolled at once, it ended short of it), and again while the page goes on growing, for a few seconds.
  * In view means between the bars ({@link freeBand}, {@link revealPlan}). As soon as the person scrolls, the watch
- * stops for good: their scroll wins. A wheel, a touch, a key or a press stops it, and a smooth scroll of its own
- * still under way stops where it is; so does a scroll that comes with none of those (the scroll bar dragged, an
- * assistive technology scrolling), seen as the page moving while nothing changed its height and no reveal of its
- * own was under way. Returns a stop for the caller (an effect's cleanup).
+ * stops for good: their scroll wins. A wheel, a touch, a key or a press stops it (a modifier key on its own does
+ * not); a wheel, a touch or a key that scrolls also stops a smooth scroll of its own still under way, where it is.
+ * A scroll that comes with none of those (the scroll bar dragged, an assistive technology scrolling) stops the watch
+ * too, seen as the page moving while nothing changed its height and no reveal of its own was under way. Returns a
+ * stop for the caller (an effect's cleanup).
  */
 export function revealWhenStill(el: HTMLElement, { reducedMotion = false }: { reducedMotion?: boolean } = {}): () => void {
   let stopped = false;
@@ -197,14 +213,24 @@ export function revealWhenStill(el: HTMLElement, { reducedMotion = false }: { re
     for (const type of events) window.removeEventListener(type, byPerson, true);
   };
   /**
-   * The person acts: a smooth scroll of its own stops where it is (it went on to the card, against their wheel), then
-   * the watch. Stopping it that way, Chromium drops the wheel's own scroll too, so a wheel that would scroll the page
-   * is done here, from where the page stopped.
+   * The person acts, and the watch stops. If they scroll (a wheel, a touch, a key that scrolls), a smooth scroll of
+   * its own still under way stops where it is too (it went on to the card, against their scroll). Stopping it that
+   * way, Chromium drops the wheel's own scroll too, so an up-and-down wheel that would scroll the page is done here,
+   * from where the page stopped; a sideways one (the lanes chart) goes on as it came. Any other key or press leaves
+   * that scroll to reach the card, and a modifier on its own changes nothing at all.
    */
   const byPerson = (event: Event) => {
-    if (revealing && !reducedMotion) {
+    if (event instanceof KeyboardEvent && MODIFIER_KEYS.has(event.key)) return;
+    if (revealing && !reducedMotion && scrollsThePage(event)) {
       let top = window.scrollY;
-      if (event instanceof WheelEvent && event.cancelable && !event.ctrlKey && !scrollsInside(event.target, event.deltaY)) {
+      if (
+        event instanceof WheelEvent &&
+        event.cancelable &&
+        !event.ctrlKey &&
+        event.deltaY !== 0 &&
+        Math.abs(event.deltaY) >= Math.abs(event.deltaX) &&
+        !scrollsInside(event.target, event.deltaY)
+      ) {
         event.preventDefault();
         top += event.deltaY * (event.deltaMode === WheelEvent.DOM_DELTA_LINE ? 40 : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? window.innerHeight : 1);
       }

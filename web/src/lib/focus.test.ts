@@ -259,6 +259,65 @@ describe("revealWhenStill", () => {
       stop();
     });
 
+    /** Revealed with motion on, its smooth scroll under way (the page has moved since): the stop it returns. */
+    const underWay = () => {
+      const stop = revealWhenStill(card);
+      for (let i = 0; i < 5; i++) vi.advanceTimersToNextFrame();
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(1);
+      y = 100;
+      top = 800;
+      vi.advanceTimersToNextFrame();
+      return stop;
+    };
+
+    it.each(["Shift", "Control"])("%s on its own (Shift+Tab begun, a screen reader quieted) neither stops that scroll nor the watch", (key) => {
+      const stop = underWay();
+      const press = new KeyboardEvent("keydown", { key, cancelable: true, bubbles: true });
+      document.body.dispatchEvent(press);
+      expect(window.scrollTo).not.toHaveBeenCalled();
+      expect(press.defaultPrevented).toBe(false);
+      // the watch goes on: the smooth scroll ends short (the page still grew), and the card is brought into view again
+      top = 900;
+      vi.advanceTimersByTime(200);
+      expect((card.scrollIntoView as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(1);
+      stop();
+    });
+
+    it("a key that scrolls nothing (Tab) leaves that scroll to reach the card", () => {
+      const stop = underWay();
+      document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true }));
+      expect(window.scrollTo).not.toHaveBeenCalled();
+      stop();
+    });
+
+    it.each(["PageDown", "ArrowUp", " "])("a key that scrolls (%j) stops that scroll where it is, and the watch", (key) => {
+      const stop = underWay();
+      document.body.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+      expect(window.scrollTo).toHaveBeenCalledWith({ top: 100, behavior: "instant" });
+      top = 900;
+      vi.advanceTimersByTime(2000);
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(1);
+      stop();
+    });
+
+    it("but Space in a field types a space: it scrolls nothing", () => {
+      const stop = underWay();
+      const field = document.createElement("input");
+      document.body.append(field);
+      field.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }));
+      expect(window.scrollTo).not.toHaveBeenCalled();
+      stop();
+    });
+
+    it("a sideways wheel (the lanes chart) stops that scroll but goes on as it came: not taken over", () => {
+      const stop = underWay();
+      const wheel = new WheelEvent("wheel", { deltaX: 120, deltaY: 0, cancelable: true });
+      window.dispatchEvent(wheel);
+      expect(wheel.defaultPrevented).toBe(false);
+      expect(window.scrollTo).toHaveBeenCalledWith({ top: 100, behavior: "instant" });
+      stop();
+    });
+
     it("a wheel once the page stands still stops nothing that is not there", () => {
       top = 200;
       const stop = revealWhenStill(card);
