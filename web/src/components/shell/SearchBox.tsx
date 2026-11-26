@@ -311,14 +311,17 @@ function SearchCombobox({ autoFocus, onNavigate, onChoose, opening = false, inli
           <Link
             to={`/inbox?q=${encodeURIComponent(dterm)}`}
             onClick={(e) => {
-              if (onChoose && e.button === 0 && !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)) {
+              /** A click that opens the Inbox elsewhere (a new tab or window): this page stays as it is. */
+              const elsewhere = e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey;
+              if (onChoose && !elsewhere) {
                 e.preventDefault();
                 onChoose(`/inbox?q=${encodeURIComponent(dterm)}`);
                 return;
               }
               reset();
               inputRef.current?.blur();
-              onNavigate?.(true);
+              // no page here takes focus then: the closing sheet hands it back to "Search letters"
+              onNavigate?.(!elsewhere);
             }}
             className={cn(
               "flex min-h-10 items-center gap-2 border-t border-line text-sm font-semibold text-accent transition-colors hover:bg-accent-soft",

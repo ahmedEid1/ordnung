@@ -105,6 +105,26 @@ describe("search results", () => {
     expect(screen.getByRole("status")).toHaveTextContent(`More than ${SEARCH_LIMIT} letters found`);
   });
 
+  it("in the phone sheet, “See all” opened in a new tab (Ctrl+click) hands focus back to “Search letters”", async () => {
+    const many = Array.from({ length: SEARCH_LIMIT + 1 }, (_, i) => ({ ...srv.db.state.documents[0]!, id: `doc_many_${i}`, title: `Musterbrief ${i + 1}` }));
+    searchOverride = () => json(many);
+    const { router } = renderSearch();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Search letters" }));
+    const sheet = await screen.findByRole("dialog", { name: "Search letters" });
+    await user.type(within(sheet).getByRole("combobox", { name: "Search your letters" }), "Muster");
+    const all = await within(sheet).findByRole("link", { name: "See all letters matching “Muster”" });
+    // (jsdom opens no tab: the click's own navigation is kept from happening here)
+    all.addEventListener("click", (e) => e.preventDefault());
+    await user.keyboard("{Control>}");
+    await user.click(all);
+    await user.keyboard("{/Control}");
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Search letters" })).toBeNull());
+    expect(router.state.location.pathname).toBe("/");
+    // (it fell to the page: the sheet handed it to a page that opened elsewhere)
+    await waitFor(() => expect(screen.getByRole("button", { name: "Search letters" })).toHaveFocus());
+  });
+
   it("marks the active option clearly and scrolls it into view with the arrow keys", async () => {
     const many = Array.from({ length: SEARCH_LIMIT }, (_, i) => ({ ...srv.db.state.documents[0]!, id: `doc_many_${i}`, title: `Musterbrief ${i + 1}` }));
     searchOverride = () => json(many);
