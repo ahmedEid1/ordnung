@@ -15,7 +15,7 @@ import { usePartyDrawer } from "@/lib/party-drawer";
 import { cn } from "@/lib/utils";
 import { focusWhenReady } from "@/lib/focus";
 import { WAITING_GROUPS, WRAPPING_BUTTON, asksForACall, closeLabel, groupWaiting } from "./model";
-import { ignoreFailedRequest } from "@/api/client";
+import { useOnePress } from "@/lib/hooks";
 
 const rowHeadingId = (entryId: string) => `waiting-row-${entryId}`;
 
@@ -55,51 +55,51 @@ function Actions({ entry }: { entry: WaitingEntry }) {
   const answered = useMarkAnswered();
   const drawer = usePartyDrawer();
   const focus = useContext(RowFocusContext);
-  // The row leaves the list once settled, so the toast follows the promise (a `mutate` callback
-  // would be dropped with the unmounted row); errors are shown by the mutation's own toast.
+  // One answer at a time: a second press before the button is drawn busy would send it again (a second toast, an
+  // Undo that undoes the wrong one). The row leaves the list once settled, so the toast follows the promise (a
+  // `mutate` callback would be dropped with the unmounted row); errors are shown by the mutation's own toast.
+  const { busy, once } = useOnePress();
   const settle = (what: string) => {
     if (!entry.followup_item_id) return;
     const id = entry.followup_item_id;
-    focus?.leaving(entry.id);
-    item.mutateAsync({ id, patch: { status: "done" } }).then(
-      () =>
+    once(() => {
+      focus?.leaving(entry.id);
+      return item.mutateAsync({ id, patch: { status: "done" } }).then(() =>
         toast.success(what, {
           description: entry.title,
           undo: () => item.mutateAsync({ id, patch: { status: "open" } }).then(() => focus?.returning(entry.id)),
         }),
-      ignoreFailedRequest, // a failed request: the mutation's own toast says so
-    );
+      );
+    });
   };
-  const kept = () => {
-    focus?.leaving(entry.id);
-    call.mutateAsync({ id: entry.ref.id, kept: true }).then(
-      () =>
+  const kept = () =>
+    once(() => {
+      focus?.leaving(entry.id);
+      return call.mutateAsync({ id: entry.ref.id, kept: true }).then(() =>
         toast.success("Marked as kept", {
           description: entry.title,
           undo: () => call.mutateAsync({ id: entry.ref.id, kept: false }).then(() => focus?.returning(entry.id)),
         }),
-      ignoreFailedRequest, // a failed request: the mutation's own toast says so
-    );
-  };
+      );
+    });
   // a letter: the person's word closes it — with the letter that came (answered) or without (by phone, e-mail …)
-  const closeLetter = () => {
-    const draftId = entry.ref.id;
-    focus?.leaving(entry.id);
-    answered
-      .mutateAsync({
-        id: draftId,
-        answered: true,
-        docId: entry.status === "answered" ? (entry.answered_by?.id ?? null) : null,
-      })
-      .then(
-        () =>
+  const closeLetter = () =>
+    once(() => {
+      const draftId = entry.ref.id;
+      focus?.leaving(entry.id);
+      return answered
+        .mutateAsync({
+          id: draftId,
+          answered: true,
+          docId: entry.status === "answered" ? (entry.answered_by?.id ?? null) : null,
+        })
+        .then(() =>
           toast.success("Marked as answered", {
             description: `${entry.title} — the follow-up is closed.`,
             undo: () => answered.mutateAsync({ id: draftId, answered: false }).then(() => focus?.returning(entry.id)),
           }),
-        ignoreFailedRequest,
-      );
-  };
+        );
+    });
   const link = (to: string, label: string, icon?: typeof PenLine) => {
     const Icon = icon;
     return (
@@ -115,17 +115,17 @@ function Actions({ entry }: { entry: WaitingEntry }) {
       {entry.source === "letter" ? link(`/letters/${entry.ref.id}`, "Open your letter") : null}
       {entry.source === "money" && entry.doc_id ? link(`/documents/${entry.doc_id}`, "Open the letter") : null}
       {entry.source === "letter" ? (
-        <Button size="sm" variant="soft" icon={CircleCheck} loading={answered.isPending} onClick={closeLetter} className={WRAPPING_BUTTON}>
+        <Button size="sm" variant="soft" icon={CircleCheck} loading={busy} onClick={closeLetter} className={WRAPPING_BUTTON}>
           <span>{closeLabel(entry)}</span>
         </Button>
       ) : null}
       {entry.source === "money" ? (
-        <Button size="sm" variant="soft" icon={HandCoins} loading={item.isPending} onClick={() => settle("Marked as received")}>
+        <Button size="sm" variant="soft" icon={HandCoins} loading={busy} onClick={() => settle("Marked as received")}>
           It arrived
         </Button>
       ) : null}
       {entry.source === "call" ? (
-        <Button size="sm" variant="soft" icon={CircleCheck} loading={call.isPending} onClick={kept}>
+        <Button size="sm" variant="soft" icon={CircleCheck} loading={busy} onClick={kept}>
           They kept it
         </Button>
       ) : null}

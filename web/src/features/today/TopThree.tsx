@@ -32,6 +32,8 @@ import { doneLine } from "@/features/items/repeat";
 import { actionMember } from "@/features/household/logic";
 import { PersonTag } from "@/features/household/PersonTag";
 import { focusAfterLeaving, focusWhenReady } from "@/lib/focus";
+import { useOnePress } from "@/lib/hooks";
+import { seenAt } from "@/features/document/actions";
 import { fadeUp, stagger } from "./motion";
 import { allClearTitle, composerHref, worthASecondLook, type ActionVerb, type DateRole, type TodayAction } from "./selection";
 import { actionHref } from "./useTodayData";
@@ -42,7 +44,6 @@ import { WhyThisDate } from "./WhyThisDate";
 import { LetterText } from "@/components/ui/LetterText";
 import { GiroCodeSection, canReadLetterAgain } from "@/features/girocode/GiroCode";
 import { IbanCheck, PayFooter, TransferDetails, amountForTransfer, hasTransferDetails } from "@/features/pay/TransferDetails";
-import { ignoreFailedRequest } from "@/api/client";
 import { MarkedGerman } from "@/features/document/Explained";
 
 const VERB: Record<ActionVerb, { label: string; icon: LucideIcon }> = {
@@ -160,6 +161,7 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
   const navigate = useNavigate();
   const focus = useContext(TopFocusContext);
   const today = useTodayISO();
+  const paying = useOnePress();
   const pay = doc.data?.document.payment;
   const item = action.item;
   const code = item ? doc.data?.girocodes.find((g) => g.item_id === item.id) : undefined;
@@ -172,9 +174,11 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
     // watched from now, while the card is in its place; the promise, not mutate's callbacks: the card leaves
     // with the refreshed Top 3, often before every list is refreshed, and a card that has gone gets no callbacks
     // (no "Marked as paid", no Undo, focus lost — on a busy machine)
-    focus?.leaving(action.key);
-    update.mutateAsync({ id: item.id, patch: { status: "done" } }).then(
-      (moved) => {
+    // one press at a time: a second one before the button is drawn busy would mark a repeating payment paid twice
+    // (a failed request: the error toast comes from the mutation's meta)
+    paying.once(() => {
+      focus?.leaving(action.key);
+      return update.mutateAsync({ id: item.id, patch: { status: "done", ...seenAt(item, item.due_date) } }).then((moved) => {
         close();
         toast({
           tone: "success",
@@ -182,13 +186,12 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
           // a repeating one stays open at its next date: "… · Next: Wed 4 Nov"
           description: doneLine(item, moved, today),
           undo: async () => {
-            await update.mutateAsync({ id: item.id, patch: { status: "open" } });
+            await update.mutateAsync({ id: item.id, patch: { status: "open", ...seenAt(item, moved.due_date) } });
             focus?.returning(action.key);
           },
         });
-      },
-      ignoreFailedRequest, // a failed request: the error toast comes from the mutation's meta
-    );
+      });
+    });
   };
 
   return (
@@ -231,7 +234,7 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
           ) : null
         }
         onPaid={item ? markPaid : undefined}
-        pending={update.isPending}
+        pending={paying.busy}
       />
     </div>
   );
@@ -258,6 +261,7 @@ function VerbButton({ action, variant }: { action: TodayAction; variant: ButtonV
   const update = useUpdateItem();
   const focus = useContext(TopFocusContext);
   const today = useTodayISO();
+  const doing = useOnePress();
   const verb = verbFor(action);
   const label = verbLabel(verb.label, action.title);
 
@@ -279,28 +283,30 @@ function VerbButton({ action, variant }: { action: TodayAction; variant: ButtonV
       case "done": {
         const item = action.item;
         if (!item) return;
-        // as for "Mark as paid": the card can leave before the call's callbacks would run
-        const settled = focus?.leaving(action.key);
-        update.mutateAsync({ id: item.id, patch: { status: "done" } }).then(
-          (moved) => {
-            // a to-do of your own every week or every 2 weeks moves on and can stay in Top 3: the busy button
-            // dropped focus, so its own heading takes it
-            settled?.();
-            toast({
-              tone: "success",
-              title: "Marked as done",
-              description: doneLine(item, moved, today),
-              undo: async () => {
-                await update.mutateAsync({ id: item.id, patch: { status: "open" } });
-                focus?.returning(action.key);
-              },
-            });
-          },
-          (err: unknown) => {
-            settled?.(); // the card stays; a failed request's error toast comes from the mutation's meta
-            ignoreFailedRequest(err);
-          },
-        );
+        // as for "Mark as paid": the card can leave before the call's callbacks would run, and one press at a time
+        doing.once(() => {
+          const settled = focus?.leaving(action.key);
+          return update.mutateAsync({ id: item.id, patch: { status: "done", ...seenAt(item, item.due_date) } }).then(
+            (moved) => {
+              // a to-do of your own every week or every 2 weeks moves on and can stay in Top 3: the busy button
+              // dropped focus, so its own heading takes it
+              settled?.();
+              toast({
+                tone: "success",
+                title: "Marked as done",
+                description: doneLine(item, moved, today),
+                undo: async () => {
+                  await update.mutateAsync({ id: item.id, patch: { status: "open", ...seenAt(item, moved.due_date) } });
+                  focus?.returning(action.key);
+                },
+              });
+            },
+            (err: unknown) => {
+              settled?.(); // the card stays; a failed request's error toast comes from the mutation's meta
+              throw err;
+            },
+          );
+        });
         return;
       }
       default:
@@ -309,7 +315,7 @@ function VerbButton({ action, variant }: { action: TodayAction; variant: ButtonV
   };
 
   return (
-    <Button variant={variant} size="sm" icon={verb.icon} onClick={onClick} loading={update.isPending} aria-label={label}>
+    <Button variant={variant} size="sm" icon={verb.icon} onClick={onClick} loading={doing.busy} aria-label={label}>
       {verb.label}
     </Button>
   );
