@@ -9,11 +9,13 @@ import hashlib
 import json
 import threading
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import pytest
 
+import sync_fake_engine
 from fake_caldav import MemorySecrets
 from ordnung import durable
 from ordnung.app_context import build_context
@@ -82,19 +84,25 @@ def _withhold_laptop_s(folder: Path) -> str:
     return withhold(folder, head_of(folder, "laptop")["version"])
 
 
-def _nothing_more_arrives(monkeypatch: pytest.MonkeyPatch, folder: Path, lap: Path) -> None:
-    """From now on no version the laptop saves arrives, for a test whose take-over must keep waiting. CI once
-    failed one: on a slow runner the laptop's day-start work (the daily tick; the desktop's own wasn't done
-    when the laptop brought its data over) landed after its save and went out as a save of its own, which
-    arrived complete with the person's change in it, so the take-over went through, as it should."""
+def _nothing_more_arrives(monkeypatch: pytest.MonkeyPatch, folder: Path, lap: Path) -> Callable[[], None]:
+    """Returns a switch: from when it is called, no version the laptop saves arrives, for a test whose
+    take-over must keep waiting. CI once failed one: on a slow runner the laptop's day-start work (the daily
+    tick; the desktop's own wasn't done when the laptop brought its data over) landed after its save and
+    went out as a save of its own, which arrived complete with the person's change in it, so the take-over
+    went through, as it should. Put in place before the switch, so that a save already under way then
+    goes through it too; and a version is withheld inside the folder's lock it was written under, so
+    that no look sees it complete in between."""
     push = FakeSession.push
+    on = threading.Event()
 
     def withheld(session: FakeSession, store: Store, *, reason: str, hand_over: bool = False) -> None:
-        push(session, store, reason=reason, hand_over=hand_over)
-        if session.paths.data_dir.resolve() == lap.resolve():
-            _withhold_laptop_s(folder)
+        with sync_fake_engine._FOLDER_LOCK:  # an RLock: push takes it again
+            push(session, store, reason=reason, hand_over=hand_over)
+            if on.is_set() and session.paths.data_dir.resolve() == lap.resolve():
+                _withhold_laptop_s(folder)
 
     monkeypatch.setattr(FakeSession, "push", withheld)
+    return on.set
 
 
 def _take_over_cancelled(api: Api) -> bool:
@@ -565,16 +573,28 @@ async def test_a_waiting_take_over_gives_up_after_its_time(
     # long enough that a slow runner can't spend it before use-here answers (the scan loop looks only every
     # WAIT_POLL_S = 5 s, so the give-up still comes at the first look after it): 0.3 s once ran out first
     monkeypatch.setattr(agent_module, "TAKE_OVER_WAIT_MAX_S", 3.0)
+    # the give-up's notice is written while the wait still stands: nobody sees the wait end without a word
+    waiting_at_notice: list[bool] = []
+    notice = agent_module.SyncAgent._notice
+
+    async def noted(agent: agent_module.SyncAgent, code: Any, message: str, kept: str | None = None) -> None:
+        if code == "take_over_cancelled":
+            waiting_at_notice.append(agent._waiting is not None)
+        await notice(agent, code, message, kept)
+
+    monkeypatch.setattr(agent_module.SyncAgent, "_notice", noted)
     engine = FakeEngine()
     desk, lap = _dirs(tmp_path)
     async with computer(desk, engine=engine) as a, computer(lap, engine=engine) as b:
+        arrive_no_more = _nothing_more_arrives(monkeypatch, folder, lap)
         await _switch(a, b, folder)
-        _nothing_more_arrives(monkeypatch, folder, lap)
+        arrive_no_more()
         _withhold_laptop_s(folder)
         assert (await a.client.post("/api/sync/use-here", json={})).json()["take_over_waiting"] is True
         await eventually(lambda: _take_over_cancelled(a))
         assert agent_of(a)._waiting is None
         assert agent_of(a).mode == "standing_by"
+        assert waiting_at_notice == [True]
 
 
 async def test_a_waiting_take_over_gives_up_when_the_other_computer_changes_more(
@@ -583,8 +603,9 @@ async def test_a_waiting_take_over_gives_up_when_the_other_computer_changes_more
     engine = FakeEngine()
     desk, lap = _dirs(tmp_path)
     async with computer(desk, engine=engine) as a, computer(lap, engine=engine) as b:
+        arrive_no_more = _nothing_more_arrives(monkeypatch, folder, lap)
         await _switch(a, b, folder)
-        _nothing_more_arrives(monkeypatch, folder, lap)
+        arrive_no_more()
         assert (await _add_todo(b, "First")).status_code == 201
         await agent_of(b).save()
         _withhold_laptop_s(folder)
