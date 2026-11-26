@@ -5,7 +5,7 @@
  */
 import type { Locator, Page } from "@playwright/test";
 import type { DocumentDetail } from "@/api/types";
-import { apiGet, apiPatch, expect, letterId, letterItem, open, setTour, shownAs, test } from "./helpers";
+import { apiGet, apiPatch, expect, letterId, letterItem, open, pageDrops, setTour, shownAs, test, watchFocus } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -188,40 +188,13 @@ const FINE = "21_verwarnungsgeld_parken.jpg";
 /** A letter with one open to-do: its "Mark done" empties the verdict's band. */
 const PASSPORT = "18_reisepass.jpg";
 
-type FocusWatch = { drops: string[]; since: number; stop: boolean };
-
-/**
- * From now on, note each frame drawn while focus is on the page (<body>, where a screen reader says nothing and Tab
- * starts again at the top): looked at right after every frame, so a drop too short for a look every 100 ms still
- * counts. Focus that is on <body> only within a frame (the button pressed is removed, and the frame's own work moves
- * focus on before it is drawn) is never shown or told to anyone, so it is not a drop. {@link focusStays} reads the notes.
- */
-async function watchFocus(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    const watch: FocusWatch = { drops: [], since: performance.now(), stop: false };
-    (window as unknown as { __focusWatch: FocusWatch }).__focusWatch = watch;
-    const look = () => {
-      if (watch.stop) return;
-      if (!document.activeElement || document.activeElement === document.body) watch.drops.push(`a frame ${Math.round(performance.now() - watch.since)} ms after the key`);
-      requestAnimationFrame(() => setTimeout(look, 0));
-    };
-    // a timer set in a frame's callback runs once that frame is drawn
-    requestAnimationFrame(() => setTimeout(look, 0));
-  });
-}
-
 /** Since {@link watchFocus}, and for 1.5 s more: focus never fell to the page, and it ends where `where` says. */
 async function focusStays(page: Page, where: Locator): Promise<void> {
   // A deliberate observation window, not a wait for a state: the check is that focus never drops
   // during it, and watchFocus looks at every frame until it ends.
   const from = await page.evaluate(() => performance.now());
   await page.waitForFunction((t) => performance.now() - t >= 1500, from);
-  const drops = await page.evaluate(() => {
-    const watch = (window as unknown as { __focusWatch: FocusWatch }).__focusWatch;
-    watch.stop = true;
-    return watch.drops;
-  });
-  expect(drops, "focus fell to the page").toEqual([]);
+  expect(await pageDrops(page), "focus fell to the page").toEqual([]);
   await expect(where).toBeFocused();
 }
 
