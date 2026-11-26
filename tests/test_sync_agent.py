@@ -95,12 +95,12 @@ def _withhold_laptop_s(folder: Path) -> str:
 
 def _nothing_more_arrives(monkeypatch: pytest.MonkeyPatch, folder: Path, lap: Path) -> Callable[[], None]:
     """Returns a switch: from when it is called, no version the laptop saves arrives, for a test whose
-    take-over must keep waiting. CI once failed one: on a slow runner the laptop's day-start work (the daily
-    tick; the desktop's own wasn't done when the laptop brought its data over) landed after its save and
-    went out as a save of its own, which arrived complete with the person's change in it, so the take-over
-    went through, as it should. Put in place before the switch, so that a save already under way then
-    goes through it too; and a version is withheld inside the folder's lock it was written under, so
-    that no look sees it complete in between."""
+    take-over must keep waiting. CI once failed one, most likely this way (its log holds only the failed
+    line): on a slow runner the laptop's day-start work (the daily tick; the desktop's own wasn't done when
+    the laptop brought its data over) landed after its save and went out as a save of its own, which
+    arrived complete with the person's change in it, so the take-over went through, as it should. Put in
+    place before the switch, so that a save already under way then goes through it too; and a version is
+    withheld inside the folder's lock it was written under, so that no look sees it complete in between."""
     push = FakeSession.push
     on = threading.Event()
 
