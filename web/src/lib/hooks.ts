@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { ignoreFailedRequest } from "@/api/client";
 
 /** Subscribe to a CSS media query (e.g. `(min-width: 1024px)`). */
 export function useMediaQuery(query: string): boolean {
@@ -103,4 +104,40 @@ export function useStickyError(error: unknown, loaded: boolean): unknown {
   if (error && error !== last) setLast(error);
   else if (!error && loaded && last !== null) setLast(null);
   return error || last;
+}
+
+/**
+ * One press at a time for buttons busy with their own request. `once(start, key)` runs `start` (which sends the
+ * request and returns its promise) unless an earlier press's request is still on its way; `pressed` is that press's
+ * `key` (`true` when none is given) until its request is done, worked or failed, and the next press goes through.
+ * Show the buttons busy with it (`aria-disabled`, not `disabled`, which drops focus to the page).
+ *
+ * The guard is a ref, set as the press happens: a guard that reads `isPending` from the last render lets a second
+ * press through that comes before React draws the busy button (a quick double click sent two requests). A failed
+ * request has said so itself (its mutation's error toast); anything else that rejects is reported.
+ */
+export function useOnePress<K = true>(): { pressed: K | null; busy: boolean; once: (start: () => Promise<unknown>, key?: K) => void } {
+  const held = useRef(false);
+  const [pressed, setPressed] = useState<K | null>(null);
+  const once = useCallback((start: () => Promise<unknown>, key?: K) => {
+    if (held.current) return;
+    held.current = true;
+    setPressed(() => (key ?? true) as K);
+    const release = () => {
+      held.current = false;
+      setPressed(null);
+    };
+    let request: Promise<unknown>;
+    try {
+      request = start();
+    } catch (err) {
+      release();
+      throw err;
+    }
+    request.then(release, (err: unknown) => {
+      release();
+      ignoreFailedRequest(err);
+    });
+  }, []);
+  return { pressed, busy: pressed !== null, once };
 }

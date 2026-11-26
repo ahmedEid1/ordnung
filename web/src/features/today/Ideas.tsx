@@ -15,6 +15,7 @@ import { daysUntil, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { collapseOut, fadeUp } from "./motion";
 import { focusAfterLeaving, focusOrigin, focusWhenReady } from "@/lib/focus";
+import { useOnePress } from "@/lib/hooks";
 import { ideaActionLabel, ideaHref, payActionFor } from "./helpers";
 import { ReadMore } from "./ReadMore";
 import { ideaFigure, isFreshIdea, type TodayAction } from "./selection";
@@ -69,35 +70,37 @@ function IdeaCard({
   // Focus is watched from the click, while the card is in its place, and the toast follows the call's promise,
   // not mutate's callbacks: the card leaves with the refreshed list, often before every list is refreshed, and a
   // card that has gone gets no callbacks (no toast, no Undo, focus lost).
-  // while a change is saved the quiet buttons are `aria-disabled`, not `disabled` (that drops focus to the page): a press waits
-  const snooze = () => {
-    if (update.isPending) return;
-    const until = format(addDays(parseISO(today), 7), "yyyy-MM-dd");
-    focus.leaving(idea.id);
-    update.mutateAsync({ id: idea.id, patch: { status: "snoozed", snoozed_until: until } }).then(
-      () =>
-        toast({
-          title: `I'll bring this back on ${formatDate(until, { style: "short", today })}`,
-          description: idea.title,
-          undo: undo({ status: "new", snoozed_until: null }),
-        }),
-      ignoreFailedRequest, // a failed request: the error toast comes from the mutation's meta
-    );
-  };
+  // while a change is saved the quiet buttons are `aria-disabled`, not `disabled` (that drops focus to the page), the
+  // one pressed busy, and a press does nothing until it is done
+  const { pressed, busy, once } = useOnePress<"snooze" | "dismiss">();
+  const snooze = () =>
+    once(() => {
+      const until = format(addDays(parseISO(today), 7), "yyyy-MM-dd");
+      focus.leaving(idea.id);
+      return update.mutateAsync({ id: idea.id, patch: { status: "snoozed", snoozed_until: until } }).then(
+        () =>
+          toast({
+            title: `I'll bring this back on ${formatDate(until, { style: "short", today })}`,
+            description: idea.title,
+            undo: undo({ status: "new", snoozed_until: null }),
+          }),
+        ignoreFailedRequest, // a failed request: the error toast comes from the mutation's meta
+      );
+    }, "snooze");
 
-  const dismiss = () => {
-    if (update.isPending) return;
-    focus.leaving(idea.id);
-    update.mutateAsync({ id: idea.id, patch: { status: "dismissed" } }).then(
-      () =>
-        toast({
-          title: scam ? "Warning removed" : "Idea hidden",
-          description: idea.title,
-          undo: undo({ status: "new" }),
-        }),
-      ignoreFailedRequest,
-    );
-  };
+  const dismiss = () =>
+    once(() => {
+      focus.leaving(idea.id);
+      return update.mutateAsync({ id: idea.id, patch: { status: "dismissed" } }).then(
+        () =>
+          toast({
+            title: scam ? "Warning removed" : "Idea hidden",
+            description: idea.title,
+            undo: undo({ status: "new" }),
+          }),
+        ignoreFailedRequest,
+      );
+    }, "dismiss");
 
   const accept = () => {
     if (idea.action?.type === "draft") update.mutate({ id: idea.id, patch: { status: "accepted" } }, { onError: () => undefined });
@@ -161,17 +164,17 @@ function IdeaCard({
         <div className="-mx-1.5 mt-3 flex flex-wrap items-center justify-between gap-x-2 border-t border-line pt-2">
           {scam ? (
             // a scam warning is never snoozed or "not relevant": the person checks it with the sender
-            <button type="button" onClick={dismiss} aria-disabled={update.isPending || undefined} aria-describedby={titleId} className={quiet}>
+            <button type="button" onClick={dismiss} aria-disabled={busy || undefined} aria-busy={pressed === "dismiss" || undefined} aria-describedby={titleId} className={quiet}>
               <ShieldCheck className="size-3.5" aria-hidden />
               I checked — it's genuine
             </button>
           ) : (
             <>
-              <button type="button" onClick={snooze} aria-disabled={update.isPending || undefined} aria-describedby={titleId} className={quiet}>
+              <button type="button" onClick={snooze} aria-disabled={busy || undefined} aria-busy={pressed === "snooze" || undefined} aria-describedby={titleId} className={quiet}>
                 <AlarmClock className="size-3.5" aria-hidden />
                 Remind me in a week
               </button>
-              <button type="button" onClick={dismiss} aria-disabled={update.isPending || undefined} aria-describedby={titleId} className={quiet}>
+              <button type="button" onClick={dismiss} aria-disabled={busy || undefined} aria-busy={pressed === "dismiss" || undefined} aria-describedby={titleId} className={quiet}>
                 <X className="size-3.5" aria-hidden />
                 Not relevant
               </button>

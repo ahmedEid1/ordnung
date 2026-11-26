@@ -3,7 +3,7 @@
  * fails while data is cached (TanStack keeps `data` and sets `error`) never loops ("Too many re-renders").
  */
 import { describe, expect, it, vi } from "vitest";
-import { render, renderHook, screen, waitFor } from "@testing-library/react";
+import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { ApiError } from "@/api/client";
@@ -12,7 +12,7 @@ import { DRAFTS } from "@/mocks/data/drafts";
 import LetterPage from "@/pages/LetterPage";
 import { makeTestQueryClient } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
-import { useStickyError } from "./hooks";
+import { useOnePress, useStickyError } from "./hooks";
 
 describe("useStickyError", () => {
   it("keeps a failed load's error through a retry, and settles when a refetch fails over cached data", () => {
@@ -50,5 +50,30 @@ describe("useStickyError", () => {
     await waitFor(() => expect(spy).toHaveBeenCalled());
     // still the page (the delete dialog navigates away on its own), never React's "Too many re-renders"
     expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
+  });
+});
+
+describe("useOnePress", () => {
+  it("lets one press through until its request is done, worked or failed, also two that come in one go", async () => {
+    const { result } = renderHook(() => useOnePress<string>());
+    const answers: { ok: () => void; fail: (err: unknown) => void }[] = [];
+    const start = vi.fn(() => new Promise<void>((ok, fail) => answers.push({ ok, fail })));
+    act(() => {
+      result.current.once(start, "yes");
+      result.current.once(start, "no");
+    });
+    expect(start).toHaveBeenCalledTimes(1);
+    expect(result.current.pressed).toBe("yes");
+    expect(result.current.busy).toBe(true);
+    // a failed request lets the next press through
+    await act(async () => answers[0].fail(new ApiError(500, "Failed on purpose.")));
+    expect(result.current.busy).toBe(false);
+    act(() => result.current.once(start, "no"));
+    expect(start).toHaveBeenCalledTimes(2);
+    expect(result.current.pressed).toBe("no");
+    // … and so does one that worked
+    await act(async () => answers[1].ok());
+    act(() => result.current.once(start));
+    expect(start).toHaveBeenCalledTimes(3);
   });
 });

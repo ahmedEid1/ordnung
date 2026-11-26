@@ -5,7 +5,8 @@ import { qk } from "@/api/hooks";
 import type { Brief, Dashboard, Document, Party, Profile } from "@/api/types";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { createMockServer } from "@/mocks/server";
-import { useMockApi } from "@/test/mockFetch";
+import { holdRequests, useMockApi } from "@/test/mockFetch";
+import { expectOnePressAtATime } from "@/test/busyButton";
 import { makeTestQueryClient, renderWithProviders } from "@/test/render";
 import { TodayView } from "./TodayView";
 
@@ -160,4 +161,17 @@ describe("Today page", () => {
     expect(card).toHaveTextContent("Ordnung can't tell you what it asks or by when until it's read.");
     expect(within(card).getByRole("link", { name: /Open it/ })).toHaveAttribute("href", `/documents/${doc!.id}`);
   });
+});
+
+describe("Today's Ideas: an answer on its way", () => {
+  for (const name of ["Remind me in a week", "Not relevant"]) {
+    it(`keeps focus on "${name}" while it is saved, takes one press at a time, and the next once it failed`, async () => {
+      useMockApi();
+      const held = holdRequests((call) => call.method === "PATCH" && call.path.startsWith("/suggestions/"));
+      renderWithProviders(<TodayView />, { client: await seededClient() });
+      const ideas = await screen.findByRole("region", { name: "Ideas from your secretary" });
+      const first = () => within(ideas).getAllByRole("article")[0]!;
+      await expectOnePressAtATime({ user: userEvent.setup(), button: () => within(first()).getByRole("button", { name }), held });
+    });
+  }
 });
