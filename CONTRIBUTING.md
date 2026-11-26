@@ -250,7 +250,9 @@ disabled button at once and hides this kind of race.
 These files are written by a command, never by hand: change what they are made from, run the command and
 commit what it writes. The ones most changes touch: the built web app (`make build-web`, in a commit of its own),
 the API's types (`make openapi`) and the demo's snapshot (`.venv/bin/ordnung demo --rebuild --no-serve`). The
-table lists every one; its last column is what fails while one is stale.
+table lists every one; its last column is what fails while one is stale. The built web app also has budgets
+(`tests/test_web_build.py`: the first load, the largest later script, the whole build and its number of
+scripts); a change that needs a higher limit says in its commit what grew and why.
 
 <details>
 <summary>Every generated file: what writes it, and what fails while it is stale</summary>
