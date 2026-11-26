@@ -211,8 +211,9 @@ test("a contract opened from the Timeline takes the focus: its card, in view (fo
  * Once nothing has moved for ten frames (the card, the page's height, its scroll): where the card is against the
  * room the bars really leave — below the sticky top bar while it sits at the top of the window, above the fixed
  * bars at its bottom (the phone's tab bar, and the demo's tour bar floating above it) — and what is really on top
- * just inside its top and bottom edges. The bars are found the way they are drawn: every pixel row from the
- * window's bottom up, as long as a fixed bar is hit or one was hit less than 24 px below.
+ * just inside its top and bottom edges. The bars are found the way they are drawn: at the top, every bar drawn at
+ * the window's first row (the lowest bottom counts); at the bottom, every pixel row from the window's bottom up, as
+ * long as a fixed bar is hit or one was hit less than 24 px below.
  */
 function cardOnceStill(card: Locator) {
   return card.evaluate(async (el) => {
@@ -242,8 +243,17 @@ function cardOnceStill(card: Locator) {
       }
       return null;
     };
-    const header = barAt(0);
-    const top = header && header.top <= 0.5 ? header.bottom : 0;
+    // the top bar: the lowest bottom of every bar at the window's top row, as the app measures it, not the first one
+    // hit (while a page loads, its 2 px progress line is drawn over the header there)
+    let top = 0;
+    for (const hit of document.elementsFromPoint(x, 0)) {
+      for (let e: Element | null = hit; e && e !== document.body; e = e.parentElement) {
+        if (!["fixed", "sticky"].includes(getComputedStyle(e).position)) continue;
+        const b = e.getBoundingClientRect();
+        if (b.height > 0 && b.height < h / 2 && b.top <= 0.5) top = Math.max(top, b.bottom);
+        break;
+      }
+    }
     let bottom = h;
     for (let y = h - 1; y > top && y >= bottom - 24; y--) {
       const b = barAt(y);
@@ -379,9 +389,10 @@ async function holdUntilReleased(page: Page, matches: (url: URL) => boolean) {
 }
 
 for (const reducedMotion of ["no-preference", "reduce"] as const) {
-  // What CI's slower machine did now and then, done every time: something changes AFTER the card was placed. The card
-  // is put back where it belongs (left where it was, the bank contract ended 23 px down with its bottom under the tour
-  // bar, the Timeline's first contract 26 to 58 px down).
+  // What a slower machine does now and then, done every time: something changes AFTER the card was placed (on CI, the
+  // tour bar arriving late). The card is put back where it belongs (left where it was, the bank contract ended 23 px
+  // down with its bottom under the tour bar; the Timeline's first contract 26 px down where the page grows above it
+  // in a browser that does not keep its place).
   test.describe(`320×568, motion ${reducedMotion}: the page changes after a contract was placed`, () => {
     test.use({ viewport: { width: 320, height: 568 }, reducedMotion });
 
@@ -434,6 +445,34 @@ for (const reducedMotion of ["no-preference", "reduce"] as const) {
     });
   });
 }
+
+// The 2 px line drawn over the top bar while a page loads fades out for a quarter of a second after the page came. On
+// CI's slower machine it was now and then still there when the card stood still, and taken for the top bar, the card
+// read as 58 px below it (59.7 - 2), though it sat 4 px below the real one. Its fade slowed down, it is there every
+// time. With motion reduced only: with motion on, the smooth scroll outlasted even the slowed line here.
+test.describe("320×568, motion reduce: the page's progress line still over the top bar", () => {
+  test.use({ viewport: { width: 320, height: 568 }, reducedMotion: "reduce" });
+
+  test("the Timeline's first contract starts just below the top bar, the line not taken for it", async ({ page }) => {
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Animation.enable");
+    await open(page, "/timeline", "Timeline");
+    await cdp.send("Animation.setPlaybackRate", { playbackRate: 0.1 });
+    const row = page.getByRole("main").locator("a[href*='contract=']").first();
+    const id = new URL((await row.getAttribute("href"))!, "http://x").searchParams.get("contract")!;
+    await row.focus();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/contracts\?/);
+    const card = page.locator(`[id="contract-${id}"]`);
+    await expect(card).toBeFocused();
+    const seen = await cardOnceStill(card);
+    const line = await page.evaluate(() =>
+      document.elementsFromPoint(innerWidth / 2, 0).some((e) => getComputedStyle(e).position === "fixed" && e.getBoundingClientRect().height < 8),
+    );
+    expect(line, "the progress line was still over the top bar").toBe(true);
+    expectWholeInView(seen, { tall: true });
+  });
+});
 
 test.describe("390×800, motion on: a wheel during the smooth scroll to a contract", () => {
   test.use({ viewport: { width: 390, height: 800 }, reducedMotion: "no-preference" });
