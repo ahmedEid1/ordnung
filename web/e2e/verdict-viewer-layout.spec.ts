@@ -198,6 +198,24 @@ async function focusStays(page: Page, where: Locator): Promise<void> {
   await expect(where).toBeFocused();
 }
 
+/**
+ * Hold the next `method` request to a URL `match` picks until `release()` is called (a slow server): `sent` resolves
+ * once it has been sent.
+ */
+async function holdRequest(page: Page, match: (url: URL) => boolean, method: string): Promise<{ sent: Promise<void>; release: () => void }> {
+  let release = () => {};
+  let wasSent = () => {};
+  const answer = new Promise<void>((resolve) => (release = resolve));
+  const sent = new Promise<void>((resolve) => (wasSent = resolve));
+  await page.route(match, async (route) => {
+    if (route.request().method() !== method) return route.fallback();
+    wasSent();
+    await answer;
+    await route.fallback();
+  }, { times: 1 });
+  return { sent, release };
+}
+
 /** Put the letter's to-dos back as they were (these tests share the demo). */
 async function reopenAll(page: Page, docId: string, before: { id: string; status: string }[]): Promise<void> {
   const now = await apiGet<DocumentDetail>(page, `/api/documents/${docId}`);
@@ -271,9 +289,48 @@ test("“Not a real to-do” hands focus to the next to-do, and Undo gives it ba
     // (the closing toast hands focus back to the next row's menu first)
     await page.keyboard.press("Alt+KeyN");
     await page.keyboard.press("Tab");
-    await expect(page.getByRole("button", { name: "Undo" })).toBeFocused();
+    const undo = page.getByRole("button", { name: "Undo" });
+    await expect(undo).toBeFocused();
+    // the Undo's request is held: while it runs the Undo is busy and keeps focus (a disabled one dropped it to the page)
+    const undoing = await holdRequest(page, (url) => url.pathname === `/api/items/${id.replace("item-actions-", "")}`, "PATCH");
+    await watchFocus(page);
     await page.keyboard.press("Enter");
+    await undoing.sent;
+    await expect(undo).toBeFocused();
+    await expect(undo).toHaveAttribute("aria-disabled", "true");
+    await expect(undo).toHaveAttribute("aria-busy", "true");
+    await expect(undo).toHaveJSProperty("disabled", false);
+    undoing.release();
     await expect(page.locator(`[id="${id}"]`)).toBeFocused();
+    expect(await pageDrops(page), "focus fell to the page").toEqual([]);
+  } finally {
+    await reopenAll(page, docId, before);
+  }
+});
+
+test("Undo after “Mark done”, from the keyboard, keeps focus in the verdict card", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const docId = await letterId(page, FINE);
+  const before = (await apiGet<DocumentDetail>(page, `/api/documents/${docId}`)).items.map((i) => ({ id: i.id, status: i.status }));
+  const openBefore = before.filter((i) => i.status === "open").length;
+  expect(openBefore, "the fine has more than one open to-do").toBeGreaterThan(1);
+  const openNow = async () => (await apiGet<DocumentDetail>(page, `/api/documents/${docId}`)).items.filter((i) => i.status === "open").length;
+  try {
+    await open(page, `/documents/${docId}`);
+    const card = page.locator("article[aria-labelledby='verdict-title']");
+    await card.getByRole("button", { name: "Mark done", exact: true }).first().focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByText("Marked as done").first()).toBeVisible();
+    await expect.poll(openNow).toBe(openBefore - 1);
+    await expect(card.locator(":focus")).toHaveCount(1);
+    // Undo from the keyboard: the to-do comes back, the card is drawn anew, and focus stays in it
+    await page.keyboard.press("Alt+KeyN");
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("button", { name: "Undo" })).toBeFocused();
+    await watchFocus(page);
+    await page.keyboard.press("Enter");
+    await expect.poll(openNow).toBe(openBefore);
+    await focusStays(page, card.locator(":focus"));
   } finally {
     await reopenAll(page, docId, before);
   }

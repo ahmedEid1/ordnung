@@ -25,9 +25,13 @@ export function useItemActions() {
   /**
    * Done, with Undo; `title` names what was done ("Marked as paid" after the Pay panel, as on Today). `onDone`
    * runs once it is saved and the letter's to-dos are refreshed: where focus goes when the button pressed has gone.
+   * `focusAfterUndo`: where focus goes when the Undo's refresh takes away the place the toast handed it back to.
    */
   const markDone = useCallback(
-    (item: Item, { title = "Marked as done", onDone }: { title?: string; onDone?: () => void } = {}) =>
+    (
+      item: Item,
+      { title = "Marked as done", onDone, focusAfterUndo }: { title?: string; onDone?: () => void; focusAfterUndo?: () => HTMLElement | null } = {},
+    ) =>
       update.mutate(
         { id: item.id, patch: { status: "done" } },
         {
@@ -36,6 +40,7 @@ export function useItemActions() {
             toast.success(title, {
               description: doneLine(item, moved, today),
               undo: () => update.mutateAsync({ id: item.id, patch: { status: "open" } }).then(() => undefined),
+              focusAfterUndo,
             });
           },
         },

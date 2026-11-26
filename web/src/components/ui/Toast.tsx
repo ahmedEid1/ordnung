@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useIsPresent } from "motion/react";
 import { CircleCheck, Info, TriangleAlert, CircleX, X, Undo2 } from "lucide-react";
 import { ignoreFailedRequest } from "@/api/client";
-import { setToastHandBack } from "@/lib/focus";
+import { focusWhenReady, LEAVING_WAIT_MS, setToastHandBack } from "@/lib/focus";
 import { useHotkey, useMediaQuery } from "@/lib/hooks";
 import { cn, IS_APPLE } from "@/lib/utils";
 import { getOverlayRoot, useModalOpen } from "./internal";
@@ -27,6 +27,12 @@ export interface ToastOptions {
    * where it was before it moved into the toasts — never to the top of the page while a control is left.
    */
   focusIfUndoFails?: () => HTMLElement | null;
+  /**
+   * Where focus goes after an Undo that works, when the place the toast hands it back to is taken away by the change
+   * being undone (the card is drawn anew): looked for every frame once that place has gone. Without it focus stays
+   * where the toast handed it back.
+   */
+  focusAfterUndo?: () => HTMLElement | null;
   /**
    * Auto-dismiss after ms (see {@link toastDuration}: 5 s, 10 s with an action, 15 s with Undo;
    * errors stay until dismissed). `Infinity` keeps it open.
@@ -121,7 +127,7 @@ const isToastHotkey = (e: KeyboardEvent) => e.altKey && !e.ctrlKey && !e.metaKey
 
 /** A text-sized toast button that is still a 28 px target, its label aligned with the title. */
 const actionCls =
-  "inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-sm font-semibold text-accent transition-[background-color] hover:bg-accent-soft disabled:opacity-60";
+  "inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-sm font-semibold text-accent transition-[background-color] hover:bg-accent-soft aria-disabled:opacity-60";
 
 /** Where focus was before Alt+N moved it into a toast: it goes back there when that toast closes. */
 let focusBeforeToasts: HTMLElement | null = null;
@@ -137,6 +143,18 @@ function restoreFocus() {
   const back = handBack();
   focusBeforeToasts = null;
   back?.focus({ preventScroll: true });
+}
+
+/**
+ * After an Undo that works: back where it was, and when the undone change then takes that place away (the card is
+ * drawn anew without the button), on to `t.focusAfterUndo` — a place on <main> counts as taken away.
+ */
+function focusAfterUndo(t: ToastRecord) {
+  const back = handBack();
+  restoreFocus();
+  const after = t.focusAfterUndo;
+  if (!after) return;
+  focusWhenReady(() => (back?.isConnected && back.tagName !== "MAIN" ? null : after()), LEAVING_WAIT_MS, { from: back });
 }
 
 /** The last element that had focus outside the toasts (however it then moved in: Alt+N, Tab or a click). */
@@ -175,6 +193,8 @@ function focusAfterFailedUndo(t: ToastRecord) {
 
 function ToastItem({ t, paused }: { t: ToastRecord; paused: boolean }) {
   const [busy, setBusy] = useState(false);
+  /** Set as the Undo is pressed: a second press does nothing, also one that comes before the busy Undo is drawn. */
+  const undoing = useRef(false);
   const ref = useRef<HTMLLIElement>(null);
   /** False once it is closed and only its exit animation keeps it on the page. */
   const present = useIsPresent();
@@ -200,7 +220,7 @@ function ToastItem({ t, paused }: { t: ToastRecord; paused: boolean }) {
     dismissToast(t.id);
     if (!hadFocus) return;
     if (undoFailed) focusAfterFailedUndo(t);
-    else restoreFocus();
+    else focusAfterUndo(t);
   };
 
   const { icon: Icon, cls } = toneIcon[t.tone ?? "info"];
@@ -238,12 +258,16 @@ function ToastItem({ t, paused }: { t: ToastRecord; paused: boolean }) {
           {t.action || t.undo ? (
             <div className="-ml-2 mt-1.5 flex flex-wrap items-center gap-1">
               {t.undo ? (
+                // busy, it is aria-disabled, not disabled: a disabled button drops focus to the page, and a screen
+                // reader is told nothing. It keeps focus until the toast closes and hands it back.
                 <button
                   type="button"
-                  disabled={busy}
+                  aria-disabled={busy || undefined}
+                  aria-busy={busy || undefined}
                   className={actionCls}
                   onClick={async () => {
-                    // (read before the busy button is disabled and loses focus)
+                    if (undoing.current) return;
+                    undoing.current = true;
                     const hadFocus = hasFocus();
                     setBusy(true);
                     let failed = false;

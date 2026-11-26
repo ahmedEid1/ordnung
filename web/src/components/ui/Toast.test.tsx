@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { ApiError } from "@/api/client";
 import { renderWithProviders } from "@/test/render";
 import { Dialog } from "./Dialog";
@@ -191,9 +192,9 @@ describe("A toast on its way out", () => {
     fireEvent.keyDown(window, { key: "n", code: "KeyN", altKey: true });
     await user.tab();
     await user.keyboard("{Enter}");
-    // busy, not leaving: its Undo is disabled but still there to be read
+    // busy, not leaving: its Undo says so but is still there to be read
     const toastItem = item("Tracking number removed");
-    expect(screen.getByRole("button", { name: "Undo" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Undo" })).toHaveAttribute("aria-disabled", "true");
     expect(contents(toastItem)).not.toHaveAttribute("inert");
     await act(async () => done());
     expect(toastItem).toBeInTheDocument();
@@ -201,6 +202,78 @@ describe("A toast on its way out", () => {
     expect(trigger).toHaveFocus();
     expect(screen.queryByRole("button", { name: "Undo" })).not.toBeInTheDocument();
     await waitFor(() => expect(toastItem).not.toBeInTheDocument());
+  });
+
+  it("keeps focus on its busy Undo, says it is busy without being disabled, and takes no second press", async () => {
+    const user = userEvent.setup();
+    let done = () => {};
+    const undo = vi.fn(() => new Promise<void>((resolve) => (done = resolve)));
+    renderWithProviders(
+      <>
+        <button type="button">Mark done</button>
+        <Toaster />
+      </>,
+    );
+    act(() => void toast({ title: "Marked as done", undo }));
+    screen.getByRole("button", { name: "Mark done" }).focus();
+    fireEvent.keyDown(window, { key: "n", code: "KeyN", altKey: true });
+    await user.tab();
+    const button = screen.getByRole("button", { name: "Undo" });
+    await user.keyboard("{Enter}");
+    // a disabled button drops focus to the page: this one keeps it, and says it is busy
+    expect(button).toHaveFocus();
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(button).toHaveAttribute("aria-busy", "true");
+    expect(button).not.toBeDisabled();
+    await user.keyboard("{Enter}");
+    await user.click(button);
+    expect(undo).toHaveBeenCalledTimes(1);
+    await act(async () => done());
+  });
+
+  it("takes one Undo for two presses that come before the busy Undo is drawn", async () => {
+    let done = () => {};
+    const undo = vi.fn(() => new Promise<void>((resolve) => (done = resolve)));
+    renderWithProviders(<Toaster />);
+    act(() => void toast({ title: "Marked as done", undo }));
+    const button = screen.getByRole("button", { name: "Undo" });
+    act(() => {
+      button.click();
+      button.click();
+    });
+    expect(undo).toHaveBeenCalledTimes(1);
+    await act(async () => done());
+  });
+
+  it("after an Undo that works, follows on to `focusAfterUndo` when the place it handed focus back to is taken away", async () => {
+    const user = userEvent.setup();
+    let done = () => {};
+    let redraw = () => {};
+    function Card() {
+      // the card drawn anew by the Undo: the button the toast hands focus back to is a new one
+      const [undone, setUndone] = useState(false);
+      redraw = () => setUndone(true);
+      return (
+        <main>
+          <h2 id="card-title" tabIndex={-1}>
+            Fine
+          </h2>
+          {undone ? <button key="b">Mark done (again)</button> : <button key="a">Mark done</button>}
+          <Toaster />
+        </main>
+      );
+    }
+    renderWithProviders(<Card />);
+    act(() => void toast({ title: "Marked as done", undo: () => new Promise<void>((resolve) => (done = resolve)), focusAfterUndo: () => document.getElementById("card-title") }));
+    screen.getByRole("button", { name: "Mark done" }).focus();
+    fireEvent.keyDown(window, { key: "n", code: "KeyN", altKey: true });
+    await user.tab();
+    await user.keyboard("{Enter}");
+    await act(async () => done());
+    // handed back where it was first
+    expect(screen.getByRole("button", { name: "Mark done" })).toHaveFocus();
+    act(() => redraw());
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Fine" })).toHaveFocus());
   });
 
   it("closes after an Undo that fails, hands focus back as after one that works, and lets no rejection escape", async () => {

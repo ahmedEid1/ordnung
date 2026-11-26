@@ -839,13 +839,14 @@ function Actions({
   // moves to the band's first button (the next to-do's), or to the verdict's title when no button is left, never to
   // the page (as on Today). Chosen any earlier, it went to a button of the to-do that was leaving. A button kept
   // for the next to-do keeps the focus.
+  // Its Undo brings the to-do back and the card is drawn anew: when that takes away the button the toast hands focus
+  // back to, focus goes on to the same place.
   const markDone = (item: Item) => {
     const from = focusOrigin();
-    const next = () => {
-      if (from?.isConnected) return null;
-      return (band.current?.isConnected ? band.current.querySelector<HTMLElement>("button, a[href]") : null) ?? document.getElementById("verdict-title");
-    };
-    actions.markDone(item, { onDone: () => focusWhenReady(next, LEAVING_WAIT_MS, { from }) });
+    const inCard = () =>
+      (band.current?.isConnected ? band.current.querySelector<HTMLElement>("button, a[href]") : null) ?? document.getElementById("verdict-title");
+    const next = () => (from?.isConnected ? null : inCard());
+    actions.markDone(item, { onDone: () => focusWhenReady(next, LEAVING_WAIT_MS, { from }), focusAfterUndo: inCard });
   };
 
   const mainEl: ReactNode = (() => {

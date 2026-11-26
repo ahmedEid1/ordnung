@@ -431,7 +431,7 @@ describe("Proof of sending", () => {
     await waitFor(() => expect(sent.yes).toBe(true));
     // the request is on its way: the toast stays (not on its way out), its Undo busy, like every other Undo
     expect(removed).not.toHaveAttribute("aria-hidden");
-    expect(within(removed).getByRole("button", { name: "Undo" })).toBeDisabled();
+    expect(within(removed).getByRole("button", { name: "Undo" })).toHaveAttribute("aria-disabled", "true");
     expect(screen.queryByText("Tracking number saved")).not.toBeInTheDocument();
     release();
     await waitFor(() => expect(within(proof).getByRole("button", { name: "Change" })).toHaveFocus());
