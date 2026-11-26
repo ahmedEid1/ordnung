@@ -15,7 +15,8 @@ import { __clearToasts, Toaster } from "@/components/ui/Toast";
 import { PHONE_DEMO_MESSAGE, PHONE_STATIC_MESSAGE } from "@/mocks/data/phone";
 import type { MockServer } from "@/mocks/server";
 import SettingsPage from "@/pages/SettingsPage";
-import { useMockApi } from "@/test/mockFetch";
+import { holdRequests, useMockApi } from "@/test/mockFetch";
+import { expectOnePressAtATime } from "@/test/busyButton";
 import { makeTestQueryClient, renderWithProviders, TEST_HEALTH } from "@/test/render";
 import { PHONE_CERTIFICATE_GONE } from "./DataSection";
 import { REMOVE_STEPS } from "./phoneAccess";
@@ -147,6 +148,15 @@ describe("Settings → Phone", () => {
     expect(screen.getByText(/Paired phones stay paired/)).toBeInTheDocument();
     expect(await screen.findByText("Off · 1 phone paired")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Paired phones" })).toHaveTextContent("Anna's iPhone");
+  });
+
+  it("keeps focus on the switch while it turns off, one press at a time, and the next once it failed", async () => {
+    const { srv } = useMockApi();
+    turnedOn(srv);
+    const held = holdRequests((c) => c.method === "PUT" && c.path === "/phone");
+    renderPhone();
+    await screen.findByRole("switch", { name: "Phone access" });
+    await expectOnePressAtATime({ user: userEvent.setup(), button: () => screen.getByRole("switch", { name: "Phone access" }), held, key: " " });
   });
 
   it("moves to another address of this computer on request, offering the other one first", async () => {
@@ -445,7 +455,11 @@ describe("Settings → Phone in the demos", () => {
     srv.phone.makeUnavailable();
     renderPhone();
     const access = await screen.findByRole("region", { name: "Use Ordnung on your phone" });
-    expect(within(access).getByRole("switch", { name: "Phone access" })).toBeDisabled();
+    // reached by the keyboard (a disabled switch is skipped), and it says why it is off
+    const toggle = within(access).getByRole("switch", { name: "Phone access" });
+    expect(toggle).toHaveAttribute("aria-disabled", "true");
+    expect(toggle).not.toBeDisabled();
+    expect(toggle).toHaveAccessibleDescription(PHONE_DEMO_MESSAGE);
     expect(within(access).getByRole("note")).toHaveTextContent(PHONE_DEMO_MESSAGE);
     expect(screen.queryByRole("region", { name: "Certificate" })).toBeNull();
   });
@@ -454,7 +468,11 @@ describe("Settings → Phone in the demos", () => {
     useMockApi({ staticDemo: true });
     renderPhone();
     const access = await screen.findByRole("region", { name: "Use Ordnung on your phone" });
-    expect(within(access).getByRole("switch", { name: "Phone access" })).toBeDisabled();
-    expect(within(access).getByRole("note")).toHaveTextContent(PHONE_STATIC_MESSAGE);
+    const toggle = within(access).getByRole("switch", { name: "Phone access" });
+    expect(toggle).toHaveAttribute("aria-disabled", "true");
+    expect(toggle).toHaveAccessibleDescription(PHONE_STATIC_MESSAGE);
+    await userEvent.setup().click(toggle);
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });

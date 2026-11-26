@@ -32,6 +32,7 @@ beforeEach(() => {
   localStorage.clear();
   FakeNotification.permission = "default";
   FakeNotification.shown = [];
+  FakeNotification.requestPermission.mockReset().mockImplementation(async () => FakeNotification.permission);
   vi.stubGlobal("Notification", FakeNotification);
 });
 afterEach(() => {
@@ -115,12 +116,46 @@ describe("Reminders → notifications in this browser", () => {
     expect(localStorage.getItem(NOTIFY_ENABLED_KEY)).toBeNull();
   });
 
-  it("explains a browser that blocks them", async () => {
+  it("explains a browser that blocks them, on a switch the keyboard still reaches", async () => {
     useMockApi();
     FakeNotification.permission = "denied";
     renderWithProviders(<SettingsPage />, { route: "/settings?section=reminders" });
-    expect(await screen.findByRole("switch", { name: /^Notify me in this browser while Ordnung is open/ })).toBeDisabled();
+    const toggle = await screen.findByRole("switch", { name: /^Notify me in this browser while Ordnung is open/ });
+    expect(toggle).toHaveAttribute("aria-disabled", "true");
+    expect(toggle).not.toBeDisabled();
+    expect(toggle).toHaveAccessibleDescription(/^Notifications are blocked for this site/);
     expect(screen.getByRole("note")).toHaveTextContent("Notifications are blocked for this site");
+    await userEvent.setup().click(toggle);
+    expect(FakeNotification.requestPermission).not.toHaveBeenCalled();
+  });
+
+  it("keeps focus on the switch while the browser asks, asks once at a time, and again once it was not allowed", async () => {
+    useMockApi();
+    const answers: ((answer: NotificationPermission) => void)[] = [];
+    FakeNotification.requestPermission.mockImplementation(() => new Promise<NotificationPermission>((resolve) => answers.push(resolve)));
+    const user = userEvent.setup();
+    renderWithProviders(<SettingsPage />, { route: "/settings?section=reminders" });
+    const toggle = await screen.findByRole("switch", { name: /^Notify me in this browser while Ordnung is open/ });
+    toggle.focus();
+    await user.keyboard(" ");
+    await waitFor(() => expect(toggle).toHaveAttribute("aria-busy", "true"));
+    expect(toggle).toHaveAttribute("aria-disabled", "true");
+    expect(toggle).not.toBeDisabled();
+    expect(toggle).toHaveFocus();
+    await user.keyboard(" ");
+    await user.click(toggle);
+    expect(FakeNotification.requestPermission).toHaveBeenCalledTimes(1);
+    // the person closed the browser's question: the switch is let go and asks again — once for two quick presses
+    await act(async () => answers[0]!("default"));
+    await waitFor(() => expect(toggle).not.toHaveAttribute("aria-disabled"));
+    act(() => {
+      toggle.click();
+      toggle.click();
+    });
+    await waitFor(() => expect(FakeNotification.requestPermission).toHaveBeenCalledTimes(2));
+    await act(async () => {});
+    expect(FakeNotification.requestPermission).toHaveBeenCalledTimes(2);
+    await act(async () => answers[1]!("default"));
   });
 });
 
