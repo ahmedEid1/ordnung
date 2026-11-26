@@ -894,3 +894,109 @@ describe("Settings → Data → Delete everything, with hand-off sync", () => {
     expect(await screen.findByText("Everything was deleted", {}, WAIT)).toBeInTheDocument();
   });
 });
+
+describe("Your computers: a change on its way", () => {
+  const mine = () => screen.findByRole("region", { name: "This computer" }, WAIT);
+
+  it("“Save now” takes one press at a time, and the next once it failed", async () => {
+    const { srv } = useMockApi();
+    srv.sync.setUp();
+    const held = holdRequests((c) => c.method === "POST" && c.path === "/sync/save");
+    openSection();
+    const card = await mine();
+    await expectOnePressAtATime({ user: userEvent.setup(), button: () => within(card).getByRole("button", { name: "Save now" }), held });
+  });
+
+  it("“Use Ordnung here” takes one press at a time, and the next once it failed", async () => {
+    const { srv } = useMockApi();
+    srv.sync.setUp().otherTakesOver();
+    const held = holdRequests((c) => c.method === "POST" && c.path === "/sync/use-here");
+    openSection();
+    const card = await mine();
+    await expectOnePressAtATime({ user: userEvent.setup(), button: () => within(card).getByRole("button", { name: "Use Ordnung here" }), held });
+  });
+
+  it("“Rename” takes one press at a time, and the next once it failed", async () => {
+    const { srv } = useMockApi();
+    srv.sync.setUp();
+    const held = holdRequests((c) => c.method === "PATCH" && c.path === "/sync");
+    const user = userEvent.setup();
+    openSection();
+    await user.click(within(await mine()).getByRole("button", { name: "Rename…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Rename this computer" });
+    await user.type(within(dialog).getByRole("textbox"), "-2");
+    await expectOnePressAtATime({ user, button: () => within(dialog).getByRole("button", { name: "Rename" }), held });
+  });
+
+  it("“Disconnect” takes one press at a time, and the next once it failed", async () => {
+    const { srv } = useMockApi();
+    srv.sync.setUp();
+    const held = holdRequests((c) => c.method === "DELETE" && c.path === "/sync");
+    const user = userEvent.setup();
+    openSection();
+    await user.click(within(await mine()).getByRole("button", { name: "Disconnect…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Disconnect this computer?" });
+    await expectOnePressAtATime({ user, button: () => within(dialog).getByRole("button", { name: "Disconnect" }), held });
+  });
+
+  it("“Forget” of a lost computer takes one press at a time, and the next once it failed", async () => {
+    const { srv } = useMockApi();
+    srv.sync.setUp();
+    srv.sync.addComputer({ name: "old-laptop" });
+    const held = holdRequests((c) => c.method === "DELETE" && c.path.startsWith("/sync/computers/"));
+    const user = userEvent.setup();
+    openSection();
+    const others = await screen.findByRole("region", { name: "Your other computers" }, WAIT);
+    await user.click(within(within(others).getByText("old-laptop").closest("li")!).getByRole("button", { name: "Forget…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Forget old-laptop?" });
+    await expectOnePressAtATime({ user, button: () => within(dialog).getByRole("button", { name: "Forget" }), held });
+  });
+
+  it("deleting a kept copy takes one press at a time, and the next once it failed", async () => {
+    const { srv } = useMockApi();
+    srv.sync.setUp();
+    const kept = srv.sync.addKept();
+    const held = holdRequests((c) => c.method === "DELETE" && c.path.startsWith("/sync/kept"));
+    const user = userEvent.setup();
+    openSection();
+    const card = await screen.findByRole("region", { name: "Kept copies" }, WAIT);
+    await user.click(within(card).getByRole("button", { name: `Delete… ${kept.name}` }));
+    const dialog = await screen.findByRole("dialog", { name: "Delete this kept copy?" });
+    await expectOnePressAtATime({ user, button: () => within(dialog).getByRole("button", { name: "Delete" }), held });
+  });
+
+  it("“Start syncing” takes one press at a time, and the next once it failed", async () => {
+    useMockApi();
+    const user = userEvent.setup();
+    openSection();
+    const card = await screen.findByRole("region", { name: "Use Ordnung on more than one computer" }, WAIT);
+    await user.type(within(card).getByLabelText("Sync folder"), "/home/sam/Nextcloud/Ordnung-new");
+    await user.click(within(card).getByRole("button", { name: "Next" }));
+    await within(card).findByText("A new sync starts in this folder.", {}, WAIT);
+    await user.click(within(card).getByRole("button", { name: /Suggest/ }));
+    const held = holdRequests((c) => c.method === "PUT" && c.path === "/sync");
+    await expectOnePressAtATime({ user, button: () => within(card).getByRole("button", { name: "Start syncing" }), held });
+  });
+});
+
+describe("a sync problem's answers: on their way", () => {
+  it("“Save passphrase” takes one press at a time, and the next once it failed", async () => {
+    const { srv } = useMockApi();
+    srv.sync.setUp().setProblem("passphrase_needed");
+    const held = holdRequests((c) => c.method !== "GET" && c.path.startsWith("/sync"));
+    const user = userEvent.setup();
+    openSection();
+    const mine = await screen.findByRole("region", { name: "This computer" }, WAIT);
+    await user.type(within(mine).getByLabelText("Sync passphrase"), "kirun bodaf sumel tavok perin");
+    await expectOnePressAtATime({ user, button: () => within(mine).getByRole("button", { name: "Save passphrase" }), held });
+  });
+
+  it("“Use this folder” takes one press at a time, and the next once it failed", async () => {
+    const { srv } = useMockApi();
+    srv.sync.setUp().setProblem("folder_missing");
+    const held = holdRequests((c) => c.method !== "GET" && c.path.startsWith("/sync"));
+    openSection();
+    const mine = await screen.findByRole("region", { name: "This computer" }, WAIT);
+    await expectOnePressAtATime({ user: userEvent.setup(), button: () => within(mine).getByRole("button", { name: "Use this folder" }), held });
+  });
+});

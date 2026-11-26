@@ -172,3 +172,25 @@ describe("proof of sending", () => {
     await expectOnePressAtATime({ user, button: () => within(dialog).getByRole("button", { name: "Remove" }), held });
   });
 });
+
+describe("proof of sending: the answer and the tracking number", () => {
+  it("“I got an answer — close this” takes one press at a time, and the next once it failed", async () => {
+    useMockApi();
+    const held = holdRequests((call) => call.method === "POST" && call.path === "/drafts/drf_gym/answered");
+    renderLetter("drf_gym");
+    const proof = await screen.findByRole("region", { name: "Proof of sending" });
+    await within(proof).findByRole("button", { name: "I got an answer — close this" });
+    await expectOnePressAtATime({ user: userEvent.setup(), button: () => within(proof).getByRole("button", { name: "I got an answer — close this" }), held });
+  });
+
+  it("“Save number” takes one press at a time, and the next once it failed", async () => {
+    useMockApi();
+    renderLetter("drf_gym");
+    const user = userEvent.setup();
+    const proof = await screen.findByRole("region", { name: "Proof of sending" });
+    await user.click(await within(proof).findByRole("button", { name: "Remove" }));
+    await user.type(await within(proof).findByLabelText("Tracking number"), "RT 123 456 785 DE");
+    const held = holdRequests((call) => call.method === "PUT" && call.path === "/drafts/drf_gym/tracking");
+    await expectOnePressAtATime({ user, button: () => within(proof).getByRole("button", { name: "Save number" }), held });
+  });
+});

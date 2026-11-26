@@ -22,6 +22,7 @@ import { useTodayISO } from "@/lib/today";
 import { AFTER_TRUST_WARNING, certificateNewsFor, fingerprintParts, TRUST_STEP_WHERE } from "./phoneAccess";
 import { Disclosure, RemoveCertificateSteps } from "./PhoneParts";
 import { SettingsCard } from "./SettingsCard";
+import { useOnePress } from "@/lib/hooks";
 
 /** The card's heading (focus goes here when the card comes back). */
 export const CERTIFICATE_HEADING_ID = "phone-certificate";
@@ -69,6 +70,7 @@ function Fingerprint({ label, value, note }: { label: string; value: string; not
  */
 export function StartOverDialog({ open, onClose, onDone }: { open: boolean; onClose: () => void; onDone: () => void }) {
   const reset = useResetPhone();
+  const resetting = useOnePress(); // one press: a second one started over the phone access it had just set up
   const close = () => {
     if (reset.isPending) return;
     reset.reset();
@@ -88,7 +90,7 @@ export function StartOverDialog({ open, onClose, onDone }: { open: boolean; onCl
           <Button onClick={close} disabled={reset.isPending}>
             Cancel
           </Button>
-          <Button variant="danger" icon={RotateCcw} loading={reset.isPending} onClick={() => reset.mutate(undefined, { onSuccess: () => onDone() })}>
+          <Button variant="danger" icon={RotateCcw} loading={reset.isPending || resetting.busy} onClick={() => resetting.once(() => reset.mutateAsync(undefined, { onSuccess: () => onDone() }))}>
             Start over
           </Button>
         </>

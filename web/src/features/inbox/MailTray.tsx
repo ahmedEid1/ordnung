@@ -59,6 +59,10 @@ export function MailTray({
   const { jobs } = useEvents();
   const openMail = useOpenMail();
   const sectionRef = useRef<HTMLElement>(null);
+  // the envelopes asked to be opened, at once as pressed: a second press on "Let Ordnung read it" (or "Read all")
+  // before the tray is drawn again opened the same mail twice. Not one press at a time for the tray: each envelope
+  // can be opened while others are being read.
+  const asked = useRef(new Set<string>());
   /** mail id → document id (null while the request is in flight) */
   const [started, setStarted] = useState<Record<string, string | null>>({});
   /** documents whose job finished while the tray was on screen */
@@ -145,7 +149,10 @@ export function MailTray({
 
   const anchorOf = (mailId: string) => sectionRef.current?.querySelector<HTMLElement>(`${ANCHOR}[data-mail-id="${CSS.escape(mailId)}"]`);
 
-  const open = async (items: MailTrayItem[]) => {
+  const open = async (pressed: MailTrayItem[]) => {
+    const items = pressed.filter((t) => !asked.current.has(t.id));
+    if (!items.length) return;
+    for (const t of items) asked.current.add(t.id);
     // the button goes when reading starts: its envelope takes focus first (and keeps it)
     if (sectionRef.current?.contains(document.activeElement) && items[0]) anchorOf(items[0].id)?.focus({ preventScroll: true });
     setStarted((s) => ({ ...s, ...Object.fromEntries(items.map((t) => [t.id, null])) }));
@@ -171,6 +178,7 @@ export function MailTray({
       });
       return next;
     });
+    for (const t of items) if (!(t.id in opened)) asked.current.delete(t.id); // and can be pressed again
     if (letters.length && mounted.current) toastHolds.current.push({ docIds: letters.map((l) => l.docId), release });
     else release();
     onOpened(letters);

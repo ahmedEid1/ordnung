@@ -36,6 +36,7 @@ import { usePartyDrawer } from "@/lib/party-drawer";
 import { SenderLandQuestion } from "@/features/party/SenderLandQuestion";
 import { LAND_WAIT_REASON, landWait } from "@/features/party/sender-land";
 import { ignoreFailedRequest } from "@/api/client";
+import { useOnePress } from "@/lib/hooks";
 
 export const SAFE_NOTE = "No warning does not mean it is safe.";
 
@@ -226,6 +227,7 @@ function scamSigns(reasons: string[]): string[] {
 
 function ScamBanner({ suggestion, doc, reasons }: { suggestion: Suggestion; doc: Document; reasons: string[] }) {
   const update = useUpdateSuggestion();
+  const { busy: removing, once } = useOnePress(); // one press: a second one was a second toast, with an Undo of its own
   const [all, setAll] = useState(false);
   const real = suggestion.refs.find((r) => r.type === "document" && r.id !== doc.id);
   const signs = scamSigns(reasons);
@@ -285,17 +287,18 @@ function ScamBanner({ suggestion, doc, reasons }: { suggestion: Suggestion; doc:
           size="sm"
           variant="ghost"
           className="ml-auto"
-          loading={update.isPending}
+          loading={update.isPending || removing}
           onClick={() =>
-            // the promise, not mutate's callbacks: this button leaves with the warning once the lists are refreshed
-            update.mutateAsync({ id: suggestion.id, patch: { status: "dismissed" } }).then(
-              () =>
+            // the promise, not mutate's callbacks: this button leaves with the warning once the lists are refreshed; a
+            // failed request: the error toast comes from the mutation's meta
+            once(() =>
+              update.mutateAsync({ id: suggestion.id, patch: { status: "dismissed" } }).then(() =>
                 toast({
                   title: "Warning removed",
                   description: "You checked it with the sender. We'll keep comparing new letters.",
                   undo: () => update.mutateAsync({ id: suggestion.id, patch: { status: "new" } }).then(() => undefined),
                 }),
-              ignoreFailedRequest, // a failed request: the error toast comes from the mutation's meta
+              ),
             )
           }
         >
@@ -367,6 +370,7 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
   // a court's letter, or an authority's served with a Postzustellungsurkunde: the same envelope, other words
   const sender = isCourtServed(doc, items) ? "the court's letter" : "the letter";
   const update = useUpdateDocument();
+  const saving = useOnePress(); // "Save", one press at a time
   // A court's letter, or an authority's served with a Postzustellungsurkunde, counts from the date the postman
   // wrote on the yellow envelope, often days before it was opened or picked up — and a dismissal, a landlord's notice or a rent increase from the day it was put in the letterbox,
   // even if the person was away: nothing is filled in for these, so one Save can never move a deadline the law
@@ -448,7 +452,12 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
   };
 
   return (
-    <form id="arrival-question" onSubmit={(e) => void submit(e)} className="rounded-2xl border border-warn/30 bg-warn-soft px-4 py-4 sm:px-5">
+    <form
+      id="arrival-question"
+      onSubmit={(e) => {
+        e.preventDefault();
+        saving.once(() => submit(e));
+      }} className="rounded-2xl border border-warn/30 bg-warn-soft px-4 py-4 sm:px-5">
       <div className="flex gap-3">
         <CalendarCheck className="mt-0.5 size-5 shrink-0 text-warn" aria-hidden />
         <div className="min-w-0 flex-1">
@@ -498,7 +507,7 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
               aria-invalid={problem ? true : undefined}
               aria-describedby={problem ? "arrival-date-problem" : undefined}
             />
-            <Button type="submit" size="sm" variant="primary" loading={update.isPending} disabled={!valid}>
+            <Button type="submit" size="sm" variant="primary" loading={update.isPending || saving.busy} disabled={!valid}>
               Save
             </Button>
           </div>

@@ -104,6 +104,7 @@ function AccessDialog({
   onDone: (before: PhoneStatus, after: PhoneStatus) => void;
 }) {
   const update = useChangePhoneAccess();
+  const choosing = useOnePress(); // one press at a time
   const name = useId();
   const choices = [...status.addresses].sort((a, b) => Number(b.recommended) - Number(a.recommended));
   const offered = (address: string | null | undefined) => (address && choices.some((c) => c.address === address) ? address : null);
@@ -122,7 +123,7 @@ function AccessDialog({
   const confirm = () => {
     if (!chosen) return;
     const before = status;
-    update.mutate(
+    choosing.once(() => update.mutateAsync(
       { enabled: true, address: chosen },
       {
         onSuccess: (after) => {
@@ -131,7 +132,7 @@ function AccessDialog({
           onDone(before, after);
         },
       },
-    );
+    ));
   };
   return (
     <Dialog
@@ -145,7 +146,7 @@ function AccessDialog({
           <Button onClick={close} disabled={update.isPending}>
             Cancel
           </Button>
-          <Button variant="primary" loading={update.isPending} disabled={!chosen} onClick={confirm}>
+          <Button variant="primary" loading={update.isPending || choosing.busy} disabled={!chosen} onClick={confirm}>
             {mode === "on" ? "Turn on" : "Use this address"}
           </Button>
         </>
@@ -201,12 +202,14 @@ function AccessDialog({
 /** A pause, in words, with the way on. */
 function ProblemCallout({ status, onUseAddress }: { status: PhoneStatus; onUseAddress: (address: string) => void }) {
   const update = useUpdatePhone();
+  const changing = useOnePress(); // one press at a time
   const [waiting, setWaiting] = useState(false);
   const problem = status.problem;
   if (!problem) return null;
   const pairAgain = status.devices.length ? " Phones paired before will need to pair again." : "";
   const other = [...status.addresses].sort((a, b) => Number(b.recommended) - Number(a.recommended)).find((a) => a.address !== status.address);
-  const change = (body: PhoneAccessChange, done: string) => update.mutate(body, { onSuccess: (s) => (s.listening ? toast.success(done) : undefined) });
+  const change = (body: PhoneAccessChange, done: string) =>
+    changing.once(() => update.mutateAsync(body, { onSuccess: (s) => (s.listening ? toast.success(done) : undefined) }));
   switch (problem.code) {
     case "no_network":
       return (
@@ -243,7 +246,7 @@ function ProblemCallout({ status, onUseAddress }: { status: PhoneStatus; onUseAd
           tone="warn"
           title={problem.detail}
           action={
-            <Button size="sm" variant="primary" loading={update.isPending} onClick={() => change({ enabled: true, home_network: true }, "Phone access is on again")}>
+            <Button size="sm" variant="primary" loading={update.isPending || changing.busy} onClick={() => change({ enabled: true, home_network: true }, "Phone access is on again")}>
               This is my home network
             </Button>
           }
@@ -259,7 +262,7 @@ function ProblemCallout({ status, onUseAddress }: { status: PhoneStatus; onUseAd
           tone="warn"
           title={problem.detail}
           action={
-            <Button size="sm" variant="primary" loading={update.isPending} onClick={() => change({ enabled: true, port }, `Phone access is on at port ${port}`)}>
+            <Button size="sm" variant="primary" loading={update.isPending || changing.busy} onClick={() => change({ enabled: true, port }, `Phone access is on at port ${port}`)}>
               Use port {port}
             </Button>
           }
@@ -274,7 +277,7 @@ function ProblemCallout({ status, onUseAddress }: { status: PhoneStatus; onUseAd
           tone="danger"
           title={problem.detail}
           action={
-            <Button size="sm" icon={RefreshCw} loading={update.isPending} onClick={() => change({ enabled: true }, "Phone access is on")}>
+            <Button size="sm" icon={RefreshCw} loading={update.isPending || changing.busy} onClick={() => change({ enabled: true }, "Phone access is on")}>
               Try again
             </Button>
           }

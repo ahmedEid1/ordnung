@@ -26,6 +26,7 @@ import {
   wizardTitle,
   type OnboardingDraft,
 } from "./wizard";
+import { useOnePress } from "@/lib/hooks";
 
 /**
  * First-run wizard (SPEC §14.9): welcome + privacy → where you live (state, language, student
@@ -40,6 +41,9 @@ export function OnboardingWizard() {
   const health = useHealth();
   const profile = useProfile();
   const complete = useCompleteOnboarding();
+  // the last step's answer goes once: a second press before the button is drawn busy sent it again
+  const finishing = useOnePress();
+  const completing = complete.isPending || finishing.busy;
   const [step, setStep] = useState(0);
   const [edits, setEdits] = useState<Partial<OnboardingDraft>>({});
   const [skippedAi, setSkippedAi] = useState(false);
@@ -78,17 +82,19 @@ export function OnboardingWizard() {
   };
 
   const finish = (skipAi: boolean) => {
-    complete.mutate(buildOnboardingRequest(draft, { skipAi }), {
-      onSuccess: () => {
-        setSkippedAi(skipAi);
-        go(DONE_STEP);
-      },
-    });
+    finishing.once(() =>
+      complete.mutateAsync(buildOnboardingRequest(draft, { skipAi }), {
+        onSuccess: () => {
+          setSkippedAi(skipAi);
+          go(DONE_STEP);
+        },
+      }),
+    );
   };
 
   const onSubmit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (complete.isPending) return;
+    if (completing) return;
     if (!canContinue(step, draft)) {
       // "Continue" stays reachable while no state is chosen: it leads to the question instead
       if (step === 1) regionRef.current?.querySelector<HTMLInputElement>("input[type=radio]")?.focus();
@@ -125,11 +131,11 @@ export function OnboardingWizard() {
     );
   } else if (step === 3) {
     main = aiReady ? (
-      <Button type="submit" variant="primary" size="lg" icon={Check} loading={complete.isPending} className="w-full sm:w-auto">
+      <Button type="submit" variant="primary" size="lg" icon={Check} loading={completing} className="w-full sm:w-auto">
         Finish setup
       </Button>
     ) : (
-      <Button type="submit" variant="secondary" size="lg" loading={complete.isPending} className="w-full sm:w-auto">
+      <Button type="submit" variant="secondary" size="lg" loading={completing} className="w-full sm:w-auto">
         Continue without AI
       </Button>
     );

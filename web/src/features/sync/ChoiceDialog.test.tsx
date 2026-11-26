@@ -13,7 +13,8 @@ import { api } from "@/api/endpoints";
 import { useSync } from "@/api/hooks";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { renderWithProviders } from "@/test/render";
-import { useMockApi } from "@/test/mockFetch";
+import { holdRequests, useMockApi } from "@/test/mockFetch";
+import { expectOnePressAtATime } from "@/test/busyButton";
 import { ChoiceDialog } from "./ChoiceDialog";
 
 beforeEach(() => vi.stubGlobal("scrollTo", () => {}));
@@ -141,5 +142,29 @@ describe("the choice dialog", () => {
     const refusal = await within(dialog).findByText("This computer needs 1.4 GB free to keep its copy first.", {}, WAIT);
     await waitFor(() => expect(refusal.closest("[tabindex]")).toHaveFocus());
     expect(within(dialog).getByText("Nothing was changed")).toBeInTheDocument();
+  });
+});
+
+describe("the choice dialog: an answer on its way", () => {
+  it("“Keep this one” takes one press at a time, and the next once it failed", async () => {
+    const { srv } = useMockApi();
+    srv.sync.setUp().bothChanged();
+    const held = holdRequests((c) => c.method === "POST" && c.path === "/sync/choose");
+    const user = userEvent.setup();
+    const dialog = await openDialog();
+    await user.click(within(dialog).getByRole("radio", { name: /This computer/ }));
+    await expectOnePressAtATime({ user, button: () => within(dialog).getByRole("button", { name: "Keep this one" }), held });
+  });
+
+  it("“Cancel” while it waits for a side takes one press at a time, and the next once it failed", async () => {
+    const { srv } = useMockApi();
+    srv.sync.setUp().bothChanged({ arriving: true });
+    const user = userEvent.setup();
+    const dialog = await openDialog();
+    await user.click(within(dialog).getByRole("radio", { name: /sam-desktop/ }));
+    await user.click(within(dialog).getByRole("button", { name: "Keep this one" }));
+    await within(dialog).findByText("Waiting for sam-desktop's Ordnung", {}, WAIT);
+    const held = holdRequests((c) => c.method === "POST" && c.path === "/sync/use-here");
+    await expectOnePressAtATime({ user, button: () => within(dialog).getByRole("button", { name: "Cancel" }), held });
   });
 });

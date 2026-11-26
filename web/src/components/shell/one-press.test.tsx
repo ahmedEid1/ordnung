@@ -176,3 +176,31 @@ describe("adding letters", () => {
     await act(async () => held.release());
   });
 });
+
+describe("New mail", () => {
+  it("“Let Ordnung read it” opens a letter once for two presses in one go, and again once it failed", async () => {
+    useMockApi();
+    const held = holdRequests((call) => call.method === "POST" && call.path === "/demo/mail");
+    renderWithProviders(
+      <AddLettersProvider>
+        <InboxPage />
+        <Toaster />
+      </AddLettersProvider>,
+      { route: "/inbox" },
+    );
+    const tray = await screen.findByRole("region", { name: /New mail/ });
+    const read = within(tray).getAllByRole("button", { name: "Let Ordnung read it" })[0]!;
+    act(() => {
+      read.click();
+      read.click();
+    });
+    await waitFor(() => expect(held.count).toBe(1));
+    await act(async () => {});
+    expect(held.count).toBe(1);
+    await act(async () => held.fail());
+    // back in the tray, unopened: the same envelope opens again
+    await waitFor(() => expect(within(tray).getAllByRole("button", { name: "Let Ordnung read it" })).toHaveLength(5));
+    act(() => within(tray).getAllByRole("button", { name: "Let Ordnung read it" })[0]!.click());
+    await waitFor(() => expect(held.count).toBe(2));
+  });
+});

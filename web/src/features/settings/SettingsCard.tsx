@@ -5,6 +5,7 @@ import { focusIsLost } from "@/lib/focus";
 import { cn } from "@/lib/utils";
 import { useReportDirty } from "./dirty";
 import { ignoreFailedRequest } from "@/api/client";
+import { useOnePress } from "@/lib/hooks";
 
 /**
  * The width of a settings select or short field: the whole row on phones, from `sm` as wide as a
@@ -162,6 +163,10 @@ export function SaveBar({ dirty, saving = false, onSave, onDiscard, invalid = fa
   const statusRef = useRef<HTMLParagraphElement>(null);
   // Save or Discard was pressed here: once the edits are settled (and both buttons gone), focus the status
   const fromBar = useRef(false);
+  // one save per press: a second one before the bar is drawn busy saved again (a second toast; a save that
+  // compares with what it last read was refused right after the first worked)
+  const pressing = useOnePress();
+  const busy = saving || pressing.busy;
 
   const save = async (): Promise<boolean> => {
     if (invalid) {
@@ -255,7 +260,7 @@ export function SaveBar({ dirty, saving = false, onSave, onDiscard, invalid = fa
                 fromBar.current = true;
                 onDiscard();
               }}
-              disabled={saving}
+              disabled={busy}
             >
               Discard
             </Button>
@@ -266,9 +271,9 @@ export function SaveBar({ dirty, saving = false, onSave, onDiscard, invalid = fa
             icon={Save}
             onClick={() => {
               fromBar.current = true;
-              void save();
+              pressing.once(save);
             }}
-            loading={saving}
+            loading={busy}
           >
             {label}
           </Button>

@@ -14,6 +14,7 @@ import { expectOnePressAtATime } from "@/test/busyButton";
 import { holdRequests, useMockApi } from "@/test/mockFetch";
 import { makeTestQueryClient, renderWithProviders } from "@/test/render";
 import { DocumentFooter } from "./DocumentFooter";
+import { DocumentWarnings } from "./Warnings";
 import { DocumentView } from "./DocumentView";
 import { KindPicker } from "./KindPicker";
 import { LetterAdviceCard } from "./LetterAdvice";
@@ -157,5 +158,27 @@ describe("the verdict card's other answers", () => {
     await screen.findByRole("button", { name: "Undo “Keep private”" });
     const held = holdRequests((call) => call.method === "POST" && call.path === "/documents/held/wait");
     await expectOnePressAtATime({ user: u, button: undo, held });
+  });
+});
+
+describe("the letter's warnings", () => {
+  it("“I checked — it's genuine” takes one press at a time, and the next once it failed", async () => {
+    const { srv } = useMockApi();
+    srv.openAllMail();
+    const detail = await detailOf(srv, "doc_scam");
+    const held = holdRequests((call) => call.method === "PATCH" && call.path.startsWith("/suggestions/"));
+    renderWithProviders(<DocumentWarnings detail={detail} />, { client: client() });
+    await expectOnePressAtATime({ user: user(), button: () => screen.getByRole("button", { name: "I checked — it's genuine" }), held });
+  });
+
+  it("“Save” of when the letter arrived takes one press at a time, and the next once it failed", async () => {
+    const { srv } = useMockApi();
+    srv.openAllMail();
+    const detail = await detailOf(srv, "doc_parking");
+    const held = holdRequests((call) => call.method === "PATCH" && call.path === "/documents/doc_parking");
+    renderWithProviders(<DocumentWarnings detail={detail} />, { client: client() });
+    const u = user();
+    await u.click(screen.getByRole("button", { name: "Yesterday" }));
+    await expectOnePressAtATime({ user: u, button: () => screen.getByRole("button", { name: "Save" }), held });
   });
 });

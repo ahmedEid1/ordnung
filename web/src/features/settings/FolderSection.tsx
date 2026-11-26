@@ -19,7 +19,7 @@ import { Link } from "react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, CircleX, CloudAlert, Copy, FileCheck, Files, FolderOpen, type LucideIcon } from "lucide-react";
 import { api } from "@/api/endpoints";
-import { ApiError, ignoreFailedRequest } from "@/api/client";
+import { ApiError } from "@/api/client";
 import { qk, useFolder } from "@/api/hooks";
 import type { AppSettings, FolderPickup, FolderStatus, SettingsPatch } from "@/api/types";
 import { ACCEPTED_SHORT } from "@/components/shell/AddLetters";
@@ -38,6 +38,7 @@ import { toast } from "@/components/ui/Toast";
 import { copyText } from "@/features/document/actions";
 import { reasonClause } from "@/features/document/EmailParts";
 import { SaveBar, SectionHeading, SettingsCard } from "./SettingsCard";
+import { useOnePress } from "@/lib/hooks";
 
 type FolderForm = { folder: string; autoRead: boolean };
 const pick = (s: AppSettings): FolderForm => ({ folder: s.inbox_dir ?? "", autoRead: s.inbox_auto_read });
@@ -219,6 +220,7 @@ const NotReadYet = MEANING_ICONS.notReadYet;
 
 function FolderState({ status }: { status: FolderStatus }) {
   const stop = useSaveFolder((reason) => toast.error("Couldn't stop watching", { description: reason }));
+  const stopping = useOnePress(); // "Stop watching", one press at a time
   const listId = useId();
   return (
     <div className="space-y-5">
@@ -246,15 +248,15 @@ function FolderState({ status }: { status: FolderStatus }) {
           </div>
           <Button
             size="sm"
-            loading={stop.isPending}
+            loading={stop.isPending || stopping.busy}
             onClick={() =>
-              stop
-                .mutateAsync({ inbox_dir: null })
-                .then(() => {
+              // a failed request: its own error toast says so
+              stopping.once(() =>
+                stop.mutateAsync({ inbox_dir: null }).then(() => {
                   toast.success("Stopped watching the folder", { description: "Files already added stay in Ordnung; the folder is left as it is." });
                   focusFolderField(); // this button goes: focus stays in the section, on the (now empty) folder field
-                })
-                .catch(ignoreFailedRequest) // a failed request: its own error toast says so
+                }),
+              )
             }
           >
             Stop watching

@@ -36,6 +36,7 @@ import {
 } from "./calendarSync";
 import { SaveBar, SettingsCard } from "./SettingsCard";
 import { calendarElsewhereNote, otherComputers } from "./sync";
+import { useOnePress } from "@/lib/hooks";
 
 const TITLE = "Sync with your own calendar";
 const DESCRIPTION =
@@ -245,7 +246,9 @@ function Connect({ status }: { status: CalendarSyncStatus }) {
   const [errors, setErrors] = useState<Errors>({});
   const [found, setFound] = useState("");
   const previewId = useId();
-  const busy = discover.isPending || connect.isPending;
+  // one press at a time, also two before the form is drawn busy (a second search, a second connection)
+  const pressing = useOnePress();
+  const busy = discover.isPending || connect.isPending || pressing.busy;
   // a refusal's field gets focus once the fields are enabled again (they are disabled while asking)
   const focusNext = useRef<SyncField | null>(null);
   useEffect(() => {
@@ -275,7 +278,7 @@ function Connect({ status }: { status: CalendarSyncStatus }) {
     if (!calendars || !chosen) {
       // finding can take seconds: someone who meanwhile went on to another field or choice stays there
       const from = focusOrigin();
-      discover.mutate(
+      pressing.once(() => discover.mutateAsync(
         { url: url.trim(), username: username.trim(), password },
         {
           onSuccess: ({ calendars: list }) => {
@@ -291,10 +294,10 @@ function Connect({ status }: { status: CalendarSyncStatus }) {
             setErrors(next);
           },
         },
-      );
+      ));
       return;
     }
-    connect.mutate(
+    pressing.once(() => connect.mutateAsync(
       { url: chosen, username: username.trim(), password, mode },
       {
         onSuccess: (s) => {
@@ -311,7 +314,7 @@ function Connect({ status }: { status: CalendarSyncStatus }) {
           setErrors(next);
         },
       },
-    );
+    ));
   };
 
   return (
@@ -383,6 +386,7 @@ function Connect({ status }: { status: CalendarSyncStatus }) {
 /** Enter the app password again (after a refused one, or on a computer that doesn't have it). */
 function PasswordAgain({ status, reason }: { status: CalendarSyncStatus; reason: string }) {
   const connect = useConnectCalendarSync();
+  const again = useOnePress(); // "Save and sync", one press at a time
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const submit = (e: SubmitEvent<HTMLFormElement>) => {
@@ -392,7 +396,7 @@ function PasswordAgain({ status, reason }: { status: CalendarSyncStatus; reason:
       document.getElementById("cal-sync-again")?.focus();
       return;
     }
-    connect.mutate(
+    again.once(() => connect.mutateAsync(
       { url: status.url!, username: status.username!, password, mode: status.mode },
       {
         onSuccess: (s) => {
@@ -402,15 +406,15 @@ function PasswordAgain({ status, reason }: { status: CalendarSyncStatus; reason:
         },
         onError: (err) => setError(err instanceof ApiError ? err.message : "Ordnung didn't answer. Is it still running?"),
       },
-    );
+    ));
   };
   return (
     <Callout tone="warn" title={reason} className="mt-4">
       <form onSubmit={submit} noValidate className="mt-2 flex flex-wrap items-end gap-2">
         <Field id="cal-sync-again" label="App password" error={error ?? undefined} className="min-w-0 flex-1 basis-56">
-          <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" readOnly={connect.isPending} />
+          <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" readOnly={connect.isPending || again.busy} />
         </Field>
-        <Button type="submit" variant="primary" icon={RefreshCw} loading={connect.isPending}>
+        <Button type="submit" variant="primary" icon={RefreshCw} loading={connect.isPending || again.busy}>
           Save and sync
         </Button>
       </form>
@@ -421,6 +425,7 @@ function PasswordAgain({ status, reason }: { status: CalendarSyncStatus; reason:
 /** "Disconnect…": forget the calendar, removing Ordnung's events from it first unless asked not to. */
 function DisconnectDialog({ open, onClose, status }: { open: boolean; onClose: () => void; status: CalendarSyncStatus }) {
   const disconnect = useDisconnectCalendarSync();
+  const disconnecting = useOnePress(); // "Disconnect", one press: a second one was refused after it worked
   const [remove, setRemove] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const where = status.calendar_name ?? hostOf(status.url);
@@ -431,7 +436,7 @@ function DisconnectDialog({ open, onClose, status }: { open: boolean; onClose: (
     onClose();
   };
   const confirm = () =>
-    disconnect.mutate(remove, {
+    disconnecting.once(() => disconnect.mutateAsync(remove, {
       onSuccess: ({ removed }) => {
         close();
         // the card becomes the form to connect: its heading takes the focus of the gone "Disconnect…"
@@ -444,7 +449,7 @@ function DisconnectDialog({ open, onClose, status }: { open: boolean; onClose: (
         setError(err instanceof ApiError ? err.message : "Ordnung didn't answer. Is it still running?");
         focusWhenReady(() => document.getElementById("cal-sync-disconnect-error"), 5000, { always: true });
       },
-    });
+    }));
   return (
     <Dialog
       open={open}
@@ -458,7 +463,7 @@ function DisconnectDialog({ open, onClose, status }: { open: boolean; onClose: (
           <Button onClick={close} disabled={disconnect.isPending}>
             Cancel
           </Button>
-          <Button variant="danger" icon={Unplug} loading={disconnect.isPending} onClick={confirm}>
+          <Button variant="danger" icon={Unplug} loading={disconnect.isPending || disconnecting.busy} onClick={confirm}>
             Disconnect
           </Button>
         </>
@@ -487,6 +492,7 @@ function DisconnectDialog({ open, onClose, status }: { open: boolean; onClose: (
 /** Connected: where, the last sync, sync now, the mode (saved like other settings), disconnect. */
 function Connected({ status }: { status: CalendarSyncStatus }) {
   const run = useRunCalendarSync();
+  const syncing = useOnePress(); // "Sync now", one press at a time
   const update = useConnectCalendarSync();
   const [mode, setMode] = useState<CalendarSyncMode>(status.mode);
   const [disconnecting, setDisconnecting] = useState(false);
@@ -511,13 +517,13 @@ function Connected({ status }: { status: CalendarSyncStatus }) {
     );
 
   const syncNow = () =>
-    run.mutate(undefined, {
+    syncing.once(() => run.mutateAsync(undefined, {
       onSuccess: (s) => {
         const line = lastSyncLine(s.last_sync);
         if (line.tone === "warn") toast.warn("Calendar sync didn't finish", { description: s.last_sync?.error ?? undefined });
         else toast.success("Calendar synced", { description: line.text });
       },
-    });
+    }));
 
   return (
     <SettingsCard
@@ -556,7 +562,7 @@ function Connected({ status }: { status: CalendarSyncStatus }) {
       ) : null}
       <div className="mt-4 flex flex-wrap gap-2">
         {/* paused: the refused password would be tried again — "Save and sync" above is the way on */}
-        <Button size="sm" variant="secondary" icon={RefreshCw} onClick={syncNow} loading={run.isPending} disabled={needsPassword}>
+        <Button size="sm" variant="secondary" icon={RefreshCw} onClick={syncNow} loading={run.isPending || syncing.busy} disabled={needsPassword}>
           Sync now
         </Button>
         <Button size="sm" variant="ghost" icon={Link2Off} onClick={() => setDisconnecting(true)}>

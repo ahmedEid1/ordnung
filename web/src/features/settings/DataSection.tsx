@@ -25,6 +25,7 @@ import { PictureTextCard } from "./PictureTextCard";
 import { otherComputers, unreceivedLine } from "./sync";
 import { FOOTER_ACTION, SectionHeading, SettingsCard } from "./SettingsCard";
 import { TourCard } from "./TourCard";
+import { useOnePress } from "@/lib/hooks";
 
 async function buildExport() {
   const [profile, settings, documents, items, contracts, parties, drafts, suggestions, traces, household] = await Promise.all([
@@ -134,6 +135,7 @@ function DeleteEverythingDialog({
 }) {
   const navigate = useNavigate();
   const remove = useDeleteEverything();
+  const removing = useOnePress(); // "Delete everything", one press at a time
   const sync = useCalendarSync(open); // asked only when the dialog opens
   // hand-off sync: this computer stops syncing; the folder and the other computers keep everything
   const handOff = useSync(open);
@@ -172,7 +174,7 @@ function DeleteEverythingDialog({
   const submit = (e?: SubmitEvent<HTMLFormElement>) => {
     e?.preventDefault();
     if (!confirmed || remove.isPending) return;
-    remove.mutate(Boolean(unreceived) && anyway, {
+    removing.once(() => remove.mutateAsync(Boolean(unreceived) && anyway, {
       onSuccess: (result) => {
         setTyped("");
         setAnyway(false);
@@ -212,7 +214,7 @@ function DeleteEverythingDialog({
         // heading; the typed word (still right) is the next Tab
         revealRefusal();
       },
-    });
+    }));
   };
 
   const error = remove.error ? (remove.error instanceof ApiError ? remove.error.message : "Couldn't delete your data. Nothing was changed.") : null;
@@ -231,7 +233,7 @@ function DeleteEverythingDialog({
           <Button onClick={close} disabled={remove.isPending}>
             Keep my data
           </Button>
-          <Button variant="danger" icon={Trash2} onClick={() => submit()} disabled={!confirmed} loading={remove.isPending}>
+          <Button variant="danger" icon={Trash2} onClick={() => submit()} disabled={!confirmed} loading={remove.isPending || removing.busy}>
             Delete everything
           </Button>
         </>

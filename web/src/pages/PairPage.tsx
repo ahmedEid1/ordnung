@@ -33,6 +33,7 @@ import { setClientKind } from "@/features/phone/client";
 import { PHONE_UNREACHABLE } from "@/features/phone/copy";
 import { guessDeviceName, pageLoad, servedToPhone } from "@/features/phone/platform";
 import { NB_HYPHEN } from "@/lib/glue";
+import { useOnePress } from "@/lib/hooks";
 
 /** Characters in a pairing code (Crockford's base 32: no I, L, O or U). */
 export const CODE_LENGTH = 10;
@@ -257,6 +258,9 @@ function PairForm({
 }) {
   const ids = useId();
   const pair = usePairPhone();
+  // one pairing per press: a double tap sent the code twice before the first answer set the phone's cookie, and the
+  // computer took the second for someone else using the code (it unpaired the phone and said the screen was seen)
+  const pairing = useOnePress();
   const [typed, setTyped] = useState("");
   const [name, setName] = useState(() => guessDeviceName());
   const [tried, setTried] = useState(false);
@@ -269,7 +273,7 @@ function PairForm({
 
   const submit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (pair.isPending) return;
+    if (pair.isPending || pairing.busy) return;
     setTried(true);
     if (codeProblem && !linkCode) {
       codeRef.current?.focus();
@@ -279,7 +283,7 @@ function PairForm({
       nameRef.current?.focus();
       return;
     }
-    pair.mutate({ code, name: name.trim().slice(0, NAME_MAX) }, { onSuccess: onPaired });
+    pairing.once(() => pair.mutateAsync({ code, name: name.trim().slice(0, NAME_MAX) }, { onSuccess: onPaired }));
   };
 
   return (
@@ -362,7 +366,7 @@ function PairForm({
         </p>
       ) : null}
 
-      <Button type="submit" variant="primary" size="lg" iconRight={ArrowRight} loading={pair.isPending} className="mt-6 w-full">
+      <Button type="submit" variant="primary" size="lg" iconRight={ArrowRight} loading={pair.isPending || pairing.busy} className="mt-6 w-full">
         Pair this phone
       </Button>
     </form>

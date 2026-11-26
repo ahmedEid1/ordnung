@@ -22,6 +22,7 @@ const failed = (err: unknown) => (err instanceof ApiError ? err.message : "Ordnu
 /** The passphrase typed again (the password store lost it): checked against the folder, then kept there. */
 export function PassphraseAgain({ id = "sync-passphrase-again" }: { id?: string }) {
   const again = useSyncPassphrase();
+  const typing = useOnePress(); // one press at a time
   const [passphrase, setPassphrase] = useState("");
   const [error, setError] = useState<string | null>(null);
   const submit = (e: SubmitEvent<HTMLFormElement>) => {
@@ -31,7 +32,7 @@ export function PassphraseAgain({ id = "sync-passphrase-again" }: { id?: string 
       document.getElementById(id)?.focus();
       return;
     }
-    again.mutate(passphrase, {
+    typing.once(() => again.mutateAsync(passphrase, {
       onSuccess: () => {
         setPassphrase("");
         setError(null);
@@ -41,7 +42,7 @@ export function PassphraseAgain({ id = "sync-passphrase-again" }: { id?: string 
         setError(failed(err));
         document.getElementById(id)?.focus();
       },
-    });
+    }));
   };
   return (
     <form onSubmit={submit} noValidate className="mt-2 flex flex-wrap items-end gap-2">
@@ -57,7 +58,7 @@ export function PassphraseAgain({ id = "sync-passphrase-again" }: { id?: string 
           readOnly={again.isPending}
         />
       </Field>
-      <Button type="submit" variant="primary" icon={KeyRound} loading={again.isPending}>
+      <Button type="submit" variant="primary" icon={KeyRound} loading={again.isPending || typing.busy}>
         Save passphrase
       </Button>
     </form>
@@ -67,6 +68,7 @@ export function PassphraseAgain({ id = "sync-passphrase-again" }: { id?: string 
 /** The folder chosen again (it went missing or moved): only a folder of this very sync is accepted. */
 function FolderAgain({ status }: { status: SyncStatus }) {
   const connect = useConnectSync();
+  const looking = useOnePress(); // one press at a time
   const [folder, setFolder] = useState(status.folder ?? "");
   const [error, setError] = useState<string | null>(null);
   const id = "sync-folder-again";
@@ -77,7 +79,7 @@ function FolderAgain({ status }: { status: SyncStatus }) {
       document.getElementById(id)?.focus();
       return;
     }
-    connect.mutate(
+    looking.once(() => connect.mutateAsync(
       { folder: folder.trim(), name: status.this_computer ?? status.suggested_name, passphrase: "", keep: null },
       {
         onSuccess: () => toast.success("Sync goes on with that folder"),
@@ -86,14 +88,14 @@ function FolderAgain({ status }: { status: SyncStatus }) {
           document.getElementById(id)?.focus();
         },
       },
-    );
+    ));
   };
   return (
     <form onSubmit={submit} noValidate className="mt-2 flex flex-wrap items-end gap-2">
       <Field id={id} label="The sync folder" hint="Where it is now, if you moved it." error={error ?? undefined} className="min-w-0 flex-1 basis-56">
         <Input value={folder} onChange={(e) => setFolder(e.target.value)} autoCapitalize="none" autoCorrect="off" spellCheck={false} readOnly={connect.isPending} />
       </Field>
-      <Button type="submit" icon={FolderSearch} loading={connect.isPending}>
+      <Button type="submit" icon={FolderSearch} loading={connect.isPending || looking.busy}>
         Use this folder
       </Button>
     </form>
