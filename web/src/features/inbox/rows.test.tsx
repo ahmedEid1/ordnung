@@ -170,6 +170,27 @@ describe("a long Inbox draws its first rows", () => {
     expect(sessionStorage.length).toBe(0);
   });
 
+  it("keeps the rows when a link to the page already open replaces its entry (the sidebar's Inbox)", async () => {
+    const user = userEvent.setup();
+    const first = renderInbox();
+    await screen.findByRole("link", { name: "Letter 1" });
+    await user.click(screen.getByRole("button", { name: "Show 100 more" }));
+    expect(drawnRows()).toHaveLength(200);
+    // what the browser's router does for a link to the address already open: the entry's state is its own again
+    await act(async () => {
+      window.history.replaceState({ usr: null, key: "fresh", idx: 0 }, "");
+      await first.router.navigate("/inbox", { replace: true });
+    });
+    expect(drawnRows()).toHaveLength(200);
+    expect((window.history.state as { inboxRows?: { rows: number } }).inboxRows?.rows).toBe(200);
+    first.unmount();
+
+    // that entry again (a reload, Back to it): the rows on screen, not 100
+    renderInbox();
+    await screen.findByRole("link", { name: "Letter 1" });
+    expect(drawnRows()).toHaveLength(200);
+  });
+
   it("a list of 100 letters or fewer looks as it always did", async () => {
     listed = letters(100);
     renderInbox();

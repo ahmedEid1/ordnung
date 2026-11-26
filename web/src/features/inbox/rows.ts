@@ -10,6 +10,7 @@
  * and Forward within the app (the router's own scroll restoration), not always after a reload, while the letters load.
  */
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router";
 import type { LetterGroup } from "./filters";
 
 /** Rows drawn at first, and added by "Show 100 more". */
@@ -92,11 +93,14 @@ function keepRows(view: string, rows: number): void {
  */
 export function useDrawnRows(view: string): { rows: number; setRows: (rows: number) => void } {
   const [drawn, setDrawn] = useState(() => ({ view, rows: keptRows(view) }));
+  // the router's entry: a link to the page already open (the sidebar's Inbox) replaces the entry's state with its
+  // own and keeps the view, so the rows drawn are written into the new entry too, or a reload would draw 100
+  const { key: entry } = useLocation();
   let current = drawn;
   if (drawn.view !== view) {
     current = { view, rows: ROWS_STEP };
     setDrawn(current);
   }
-  useEffect(() => keepRows(current.view, current.rows), [current.view, current.rows]);
+  useEffect(() => keepRows(current.view, current.rows), [current.view, current.rows, entry]);
   return { rows: current.rows, setRows: (rows: number) => setDrawn({ view, rows }) };
 }
