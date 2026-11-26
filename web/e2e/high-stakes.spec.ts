@@ -153,7 +153,21 @@ for (const width of WIDTHS) {
     await page.goto(`/letters?kind=deposit_return&to=${landlord!.id}`);
     const dialog = page.getByRole("dialog", { name: "New letter" });
     await expect(dialog.getByRole("heading", { name: /Who was your landlord/ })).toBeVisible();
-    await page.waitForTimeout(200); // the composer scrolls to its second step after 60 ms
+    // the composer brings its second step up 60 ms after it opens: wait for that scroll, as far as the body can go
+    const step = dialog.locator("section[aria-labelledby='cmp-which']");
+    await expect
+      .poll(() =>
+        step.evaluate((el) => {
+          let body = el.parentElement;
+          while (body && getComputedStyle(body).overflowY !== "auto") body = body.parentElement;
+          if (!body) return true;
+          const margin = parseFloat(getComputedStyle(el).scrollMarginTop) + parseFloat(getComputedStyle(body).scrollPaddingTop);
+          const top = body.scrollTop + el.getBoundingClientRect().top - body.getBoundingClientRect().top - margin;
+          const want = Math.max(0, Math.min(top, body.scrollHeight - body.clientHeight));
+          return Math.abs(body.scrollTop - want) <= 1;
+        }),
+      )
+      .toBe(true);
     await settle(page);
     // the body scrolled to the chosen recipient; the dialog itself never scrolls
     expect(await dialog.evaluate((el) => el.scrollTop)).toBe(0);

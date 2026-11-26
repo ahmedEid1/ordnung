@@ -410,8 +410,18 @@ test.describe("phone: popovers are modal bottom sheets", () => {
     }
     const y = await page.evaluate(() => scrollY);
     await page.mouse.move(195, 200);
+    // once the wheel has reached the page, and two frames later (a scroll it starts moves the page by then): no scroll
+    const scrolls = page.evaluate(
+      () =>
+        new Promise<number>((resolve) => {
+          let n = 0;
+          const count = () => (n += 1);
+          window.addEventListener("scroll", count, { capture: true });
+          window.addEventListener("wheel", () => requestAnimationFrame(() => requestAnimationFrame(() => resolve(n))), { once: true, capture: true, passive: true });
+        }),
+    );
     await page.mouse.wheel(0, 400);
-    await page.waitForTimeout(200);
+    expect(await scrolls, "scroll events on the page behind").toBe(0);
     expect(await page.evaluate(() => scrollY)).toBe(y);
     await close.click();
     await expect(sheet).toHaveCount(0);

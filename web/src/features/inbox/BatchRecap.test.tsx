@@ -42,21 +42,29 @@ describe("the batch recap", () => {
       return mocked(input, init);
     });
     renderWithProviders(<BatchRecapDialog docIds={ids} onClose={() => {}} />, { client });
-    const status = within(screen.getByRole("dialog")).getByRole("status");
+    const dialog = screen.getByRole("dialog");
+    const status = within(dialog).getByRole("status");
     // from the start: empty, as nothing is final yet
     const said: string[] = status.textContent ? [status.textContent] : [];
     const watch = new MutationObserver(() => {
       if (status.textContent && said[said.length - 1] !== status.textContent) said.push(status.textContent);
     });
     watch.observe(status, { subtree: true, childList: true, characterData: true });
+    // the dialog has put together what it has (the letter's details from before its to-dos), and said nothing of it
     await waitFor(() => expect(ids.every((id) => client.getQueryState(qk.documents.detail(id))?.status !== "pending")).toBe(true));
-    await new Promise((r) => setTimeout(r, 50));
+    await waitFor(() => expect(dialog).toHaveAccessibleDescription(/^Here's what I found: .+\.$/));
+    const findings = () => document.getElementById(dialog.getAttribute("aria-describedby")!)?.textContent;
+    const early = findings();
+    expect(status.textContent).toBe("");
     release();
-    // its details fetched again: the findings with its to-dos
+    // its details fetched again: the findings with its to-dos, which differ from what it had before
     await waitFor(() => expect(client.getQueryData<DocumentDetail>(qk.documents.detail("doc_parking"))?.items.length).toBe(full.items.length));
+    await waitFor(() => expect(client.isFetching()).toBe(0));
     await waitFor(() => expect(status).toHaveTextContent(/^Here's what I found: .+\.$/));
-    await new Promise((r) => setTimeout(r, 50));
+    const truth = findings();
+    expect(truth, "what it found once the letter's to-dos are in is not what it had before").not.toBe(early);
     watch.disconnect();
-    expect(said).toEqual([status.textContent]);
+    // said once, and what was said is the true finding
+    expect(said).toEqual([truth]);
   });
 });
