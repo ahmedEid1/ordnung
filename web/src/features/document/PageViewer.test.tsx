@@ -69,10 +69,33 @@ describe("paged (phones and tablets)", () => {
     const images = within(viewer).getByRole("group", { name: "Page images" });
     expect(images.className).not.toMatch(/overscroll-contain|overflow-auto|max-h/);
     const pager = within(viewer).getByRole("navigation", { name: "Turn pages" });
-    expect(within(pager).getByRole("button", { name: "Previous" })).toBeDisabled();
+    expect(within(pager).getByRole("button", { name: "Previous" })).toHaveAttribute("aria-disabled", "true");
     await userEvent.click(within(pager).getByRole("button", { name: "Next" }));
     expect(within(viewer).getByRole("img", { name: "Page 2 of 2" })).toBeInTheDocument();
     expect(within(viewer).getByRole("button", { name: /^Go to page 2/ })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("keeps focus on Next pressed onto the last page, and on Previous onto the first; a press at the end does nothing", async () => {
+    const user = userEvent.setup();
+    renderViewer([], { paged: true });
+    const viewer = screen.getByRole("region", { name: "Letter pages" });
+    const pager = within(viewer).getByRole("navigation", { name: "Turn pages" });
+    const [previous, next] = [within(pager).getByRole("button", { name: "Previous" }), within(pager).getByRole("button", { name: "Next" })];
+    next.focus();
+    await user.keyboard("{Enter}");
+    expect(within(viewer).getByRole("img", { name: "Page 2 of 2" })).toBeInTheDocument();
+    // a disabled Next would drop focus to the page: it stays a button the keyboard is on
+    expect(next).toHaveFocus();
+    expect(next).toHaveAttribute("aria-disabled", "true");
+    expect(next).not.toBeDisabled();
+    await user.keyboard("{Enter}");
+    expect(within(viewer).getByRole("img", { name: "Page 2 of 2" })).toBeInTheDocument();
+    previous.focus();
+    await user.keyboard("{Enter}");
+    expect(within(viewer).getByRole("img", { name: "Page 1 of 2" })).toBeInTheDocument();
+    expect(previous).toHaveFocus();
+    expect(previous).toHaveAttribute("aria-disabled", "true");
+    expect(next).not.toHaveAttribute("aria-disabled");
   });
 
   it("the tall column keeps every page in its scroll box", () => {

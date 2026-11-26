@@ -503,12 +503,14 @@ export function PageViewer({
           aria-label="Turn pages"
           className="flex items-center justify-between gap-2 border-t border-line bg-surface px-2 py-1.5"
         >
+          {/* at the first or last page they are `aria-disabled`, not `disabled`: Next pressed onto the last page would
+              drop focus to the page while it still had it. A press there does nothing, and Tab goes on from it. */}
           <Button
             variant="ghost"
             size="sm"
             icon={ChevronLeft}
-            disabled={current <= 1}
-            onClick={() => goToPage(current - 1)}
+            aria-disabled={current <= 1 || undefined}
+            onClick={() => current > 1 && goToPage(current - 1)}
           >
             Previous
           </Button>
@@ -518,8 +520,8 @@ export function PageViewer({
           <Button
             variant="ghost"
             size="sm"
-            disabled={current >= total}
-            onClick={() => goToPage(current + 1)}
+            aria-disabled={current >= total || undefined}
+            onClick={() => current < total && goToPage(current + 1)}
           >
             Next
             <ChevronRight aria-hidden />

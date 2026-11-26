@@ -159,8 +159,18 @@ test.describe("phone 390 px: what the verdict leads with, and the viewer", () =>
     expect(box.overflowY).not.toMatch(/auto|scroll/);
     expect(box.scroll).toBeLessThanOrEqual(1);
     const pager = pages.getByRole("navigation", { name: "Turn pages" });
-    await pager.getByRole("button", { name: "Next" }).click();
+    // from the keyboard: Next onto the last page keeps focus (a disabled Next dropped it to the page), and Tab goes
+    // on from there
+    const next = pager.getByRole("button", { name: "Next" });
+    await next.focus();
+    await watchFocus(page);
+    await page.keyboard.press("Enter");
     await expect(pages.getByRole("img", { name: "Page 2 of 2" })).toBeVisible();
+    await expect(next).toBeFocused();
+    await expect(next).toHaveAttribute("aria-disabled", "true");
+    expect(await pageDrops(page), "focus fell to the page").toEqual([]);
+    await page.keyboard.press("Shift+Tab");
+    await expect(pager.getByRole("button", { name: "Previous" })).toBeFocused();
   });
 
   test("a fact on a photo: the quote sits under the photo, Escape closes it, and 'Back to …' returns", async ({ page }) => {
