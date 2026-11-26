@@ -6,6 +6,9 @@
  * repeats on a working day is dated by its rule, shows it on Timeline, and is changed in its
  * own "Edit your date" dialog; so is one that repeats every week, whose calendar file is one event at its next date.
  *
+ * "Mark done" pressed twice on a repeating payment read from a letter (Enter twice while its request is on its way)
+ * sends one request, and the payment moves on one period, not two: no payment date is skipped.
+ *
  * It adds to-dos and a letter to the shared demo, so it runs last (its own project) and takes them away again.
  */
 import { readFileSync } from "node:fs";
@@ -200,4 +203,60 @@ test("on a letter kept private: no dates of its own, a deadline added to it, tic
 
   const removed = await page.request.delete(`/api/documents/${docId}?purge=true`, { headers: CLIENT });
   expect(removed.ok(), `DELETE /api/documents/${docId} → ${removed.status()}`).toBe(true);
+});
+
+/** The demo's broadcasting fee: every 3 months, read from its letter. */
+const FEE = "itm_xna048xewpad";
+
+interface RepeatingItem {
+  id: string;
+  doc_id: string;
+  due_date: string;
+  recurrence: { interval: number; unit: string };
+}
+
+/** `date` (YYYY-MM-DD) `months` later, on the same day of the month. */
+function monthsLater(date: string, months: number): string {
+  const [y, m, d] = date.split("-").map(Number) as [number, number, number];
+  const at = new Date(Date.UTC(y, m - 1 + months, d));
+  return at.toISOString().slice(0, 10);
+}
+
+test("“Mark done” pressed twice on a repeating payment: one request, and it moves on one period, not two", async ({ page }) => {
+  const before = (await (await page.request.get(`/api/items/${FEE}`, READ)).json()) as RepeatingItem;
+  expect(before.recurrence).toMatchObject({ interval: 3, unit: "months" });
+  const next = monthsLater(before.due_date, before.recurrence.interval);
+
+  // its request is held until both presses are in
+  const sent: unknown[] = [];
+  let release = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route(`**/api/items/${FEE}`, async (route) => {
+    if (route.request().method() !== "PATCH") return route.fallback();
+    sent.push(route.request().postDataJSON());
+    await held;
+    await route.fallback();
+  });
+
+  await open(page, `/documents/${before.doc_id}`);
+  const done = page.getByRole("main").getByRole("button", { name: "Mark done", exact: true }).first();
+  await done.focus();
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await expect.poll(() => sent.length).toBe(1);
+  await expect(done).toHaveAttribute("aria-busy", "true");
+  await page.keyboard.press("Enter");
+  expect(sent).toHaveLength(1);
+  release();
+  await expect(page.getByText("Marked as done", { exact: true })).toBeVisible();
+  // the press names the occurrence it was for
+  expect(sent).toEqual([{ status: "done", seen_due_date: before.due_date }]);
+  const after = (await (await page.request.get(`/api/items/${FEE}`, READ)).json()) as RepeatingItem;
+  expect(after.due_date).toBe(next);
+  await page.unroute(`**/api/items/${FEE}`);
+
+  // back as the demo had it: the Undo of that one press
+  const undone = await page.request.patch(`/api/items/${FEE}`, { data: { status: "open", seen_due_date: next }, headers: CLIENT });
+  expect(undone.ok(), await undone.text()).toBe(true);
+  expect(((await undone.json()) as RepeatingItem).due_date).toBe(before.due_date);
 });
