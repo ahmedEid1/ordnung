@@ -6,6 +6,7 @@
  *
  * - "Show all", then the Inbox loaded again by its address: 100 rows (a new load starts afresh); a reload of the same
  *   entry keeps them, and nothing about them is in sessionStorage.
+ * - The sidebar's Inbox clicked on the Inbox replaces the entry: the rows on screen are kept in it for a reload.
  * - A letter opened from far down, then Back: the rows and the place are back.
  * - Another view (a kind) starts at 100.
  * - From the keyboard, "Show 100 more" takes focus to the first new letter.
@@ -71,6 +72,8 @@ test("draws 100 rows; Show all draws every one, kept by a reload of the entry, n
   await page.getByRole("button", { name: `Show all ${n}` }).click();
   await expect(rows(page)).toHaveCount(n);
   await expect(page.getByRole("button", { name: /^Show / })).toHaveCount(0);
+  // said once: the whole Inbox's own line says nothing
+  await expect(page.getByRole("status").filter({ hasText: /^Showing/ })).toHaveText(`Showing all ${n} letters.`);
 
   // the same entry, reloaded: every row again
   await page.reload();
@@ -81,6 +84,18 @@ test("draws 100 rows; Show all draws every one, kept by a reload of the entry, n
   await expect(rows(page)).toHaveCount(100);
   const kept = await page.evaluate(() => Object.entries(sessionStorage).filter(([k, v]) => /row/i.test(k) || v.includes("inboxRows")));
   expect(kept, "nothing about the rows in sessionStorage").toEqual([]);
+});
+
+test("the sidebar's Inbox, clicked on the Inbox, keeps the rows on screen for a reload of its entry", async ({ page }) => {
+  await open(page, "/inbox", "Inbox");
+  await page.getByRole("button", { name: "Show 100 more" }).click();
+  await expect(rows(page)).toHaveCount(200);
+  // a link to the address already open: the router replaces the entry's state with its own
+  await page.getByRole("navigation").getByRole("link", { name: /^Inbox/ }).first().click();
+  await expect(rows(page)).toHaveCount(200);
+  await expect.poll(() => page.evaluate(() => (window.history.state as { inboxRows?: { rows: number } } | null)?.inboxRows?.rows)).toBe(200);
+  await page.reload();
+  await expect(rows(page)).toHaveCount(200);
 });
 
 test("a letter opened from far down, then Back: the rows and the place are back", async ({ page }) => {
