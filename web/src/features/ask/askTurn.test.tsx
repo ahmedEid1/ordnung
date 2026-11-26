@@ -234,7 +234,7 @@ describe("linked text (Ideas)", () => {
     // an id as Weekly Ideas writes it (the mock data's short ids are no record ids to the text)
     const doc = { ...srv.db.state.documents[0]!, id: "doc_0b2t88kqsf2n" };
     const title = "Operating and Heating Cost Statement 2025 (Betriebs- und Heizkostenabrechnung)";
-    client.setQueryData(qk.documents.list({}), [{ ...doc, title }]);
+    client.setQueryData(qk.documents.titles, [{ id: doc.id, title, filename: doc.filename, status: doc.status }]);
     renderWithProviders(<RefText text={`${doc.id} describes it.`} />, { client });
     expect(await screen.findByRole("link", { name: `“${title}”` })).toBeInTheDocument();
   });

@@ -270,7 +270,7 @@ describe("Ask page", () => {
     useMockApi();
     const client = makeTestQueryClient();
     client.setQueryData(qk.health, { ...TEST_HEALTH, demo: false, backend: "claude_cli" });
-    client.setQueryData(qk.documents.list({}), []);
+    client.setQueryData(qk.documents.titles, []);
     client.setQueryData(qk.profile, { ...(client.getQueryData(qk.profile) ?? {}), is_student_visa: false });
     renderWithProviders(<AskPage />, { route: "/ask", client });
     expect(screen.getByRole("heading", { name: "Add a few letters first" })).toBeInTheDocument();

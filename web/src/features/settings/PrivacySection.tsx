@@ -18,7 +18,7 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
-import { useActivity, useDocuments, usePhone, useUsage } from "@/api/hooks";
+import { useActivity, useDocumentTitles, usePhone, useUsage } from "@/api/hooks";
 import type { LLMCallRecord } from "@/api/types";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -305,7 +305,7 @@ export function PrivacySection() {
       },
       { preventScrollReset: true },
     );
-  const docs = useDocuments();
+  const docs = useDocumentTitles();
   const roomForChart = useMediaQuery("(min-width: 640px)");
   const [allActivity, setAllActivity] = useState(false);
   const [allCalls, setAllCalls] = useState(false);

@@ -47,6 +47,7 @@ _PHONE = _operations(
     GET /api/household
     PATCH /api/household
     GET /api/documents
+    GET /api/documents/titles
     POST /api/documents
     GET /api/documents/{doc_id}
     PATCH /api/documents/{doc_id}
@@ -56,6 +57,7 @@ _PHONE = _operations(
     GET /api/documents/{doc_id}/trace
     GET /api/documents/{doc_id}/trace/compare
     GET /api/items
+    GET /api/items/titles
     POST /api/items
     GET /api/items/{item_id}
     PATCH /api/items/{item_id}

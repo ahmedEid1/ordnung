@@ -21,6 +21,7 @@ import type {
   Document,
   DocumentDetail,
   DocumentRow,
+  DocumentTitle,
   Draft,
   Evidence,
   DraftCreate,
@@ -35,6 +36,7 @@ import type {
   ItemCreate,
   Job,
   LetterAdvice,
+  ItemTitle,
   LetterRecord,
   ListedItem,
   MailOpenResult,
@@ -1407,6 +1409,12 @@ const routes: [string, string, Handler][] = [
       return docs.slice(offset, offset + limit).map((d): DocumentRow => ({ ...toRow(d, db), found_in: db.foundIn(d, q) }));
     },
   ],
+  // what a page needs to name letters: id, title, file name and status, in the list's order (as the API)
+  [
+    "GET",
+    "/documents/titles",
+    ({ db }) => [...db.liveDocuments()].sort(newestFirst).map((d): DocumentTitle => ({ id: d.id, title: d.title, filename: d.filename, status: d.status })),
+  ],
   // "Download a copy of your records": every letter whole, as stored, with the person's "For taxes" choice (trash
   // and proof files left out, as in the list)
   [
@@ -1696,6 +1704,8 @@ const routes: [string, string, Handler][] = [
       return listed.map((i): ListedItem => ({ ...i, aside: aside.get(i.id) ?? null }));
     },
   ],
+  // what a page needs to name a to-do and lead to its letter (a trashed letter's to-dos are gone already: DELETE below)
+  ["GET", "/items/titles", ({ db }) => db.state.items.map((i): ItemTitle => ({ id: i.id, title: i.title, doc_id: i.doc_id }))],
   [
     "POST",
     "/items",

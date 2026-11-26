@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useReducedMotion } from "motion/react";
 import { Lock, MessagesSquare, Plus, RotateCw, SquarePen } from "lucide-react";
-import { useDemoQuestions, useDocuments, useHealth } from "@/api/hooks";
+import { useDemoQuestions, useDocumentTitles, useHealth } from "@/api/hooks";
 import { isStaticDemo } from "@/lib/mode";
 import { Page } from "@/components/shell/Page";
 import { ACCEPTED_ONE, useOptionalAddLetters } from "@/components/shell/AddLetters";
@@ -39,7 +39,7 @@ export default function AskPage() {
   const health = useHealth();
   const demo = isStaticDemo() || Boolean(health.data?.demo);
   const replayDemo = isStaticDemo() || health.data?.backend === "replay";
-  const documents = useDocuments();
+  const documents = useDocumentTitles();
   const adder = useOptionalAddLetters();
   // nothing to ask about yet: offer to add letters instead of questions about someone else's
   const noLetters = !demo && documents.data?.length === 0;

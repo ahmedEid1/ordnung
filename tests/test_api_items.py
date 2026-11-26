@@ -265,3 +265,25 @@ async def test_calendar_files(data_dir: Path) -> None:
         exported = await api.client.post("/api/calendar/exported")
         assert exported.status_code == 200
         assert exported.json()["last_calendar_export_at"].endswith("Z")
+
+
+async def test_the_titles_name_the_listed_to_dos_and_nothing_more(data_dir: Path) -> None:
+    """``GET /api/items/titles``: every to-do the list has (those of a trashed letter left out; done, dismissed
+    and undated ones kept), in its order, each with its id, title and letter alone: what Ask needs to name a
+    cited to-do and lead to its letter, without every to-do whole."""
+    async with api_for(data_dir) as api:
+        store = api.ctx.store
+        letter = add_doc(store, "letter")
+        gone = add_doc(store, "gone")
+        add_item(store, kind="payment", title="Pay the bill", due_date="2026-05-01", doc_id=letter)
+        add_item(store, kind="task", title="Call back", status="done")
+        add_item(store, kind="deadline", title="Object", due_date="2026-04-01", status="dismissed", doc_id=letter)
+        add_item(store, kind="task", title="Of a trashed letter", doc_id=gone)
+        store.trash_document(gone)
+
+        response = await api.client.get("/api/items/titles")
+        assert response.status_code == 200 and response.headers["cache-control"] == "no-store"
+        titles = response.json()
+        listed = (await api.client.get("/api/items")).json()
+        assert [row["title"] for row in titles] == ["Object", "Pay the bill", "Call back"]
+        assert titles == [{"id": row["id"], "title": row["title"], "doc_id": row["doc_id"]} for row in listed]

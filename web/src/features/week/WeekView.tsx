@@ -10,7 +10,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { ArrowLeft, ArrowRight, Check, CircleCheck, Plus, Sparkles, TriangleAlert } from "lucide-react";
-import { useDocuments, useWeek, useWeekDone } from "@/api/hooks";
+import { useDocumentTitles, useWeek, useWeekDone } from "@/api/hooks";
 import type { BackupCopy, WeekEntry, WeekStep, WeeklySession } from "@/api/types";
 import { useAddLetters } from "@/components/shell/AddLetters";
 import { PageHeader } from "@/components/shell/Page";
@@ -188,11 +188,9 @@ export const isUnreadRow = (entry: WeekEntry): boolean =>
  * couldn't be read — what Today counts as not read (a letter waiting for Claude is queued).
  */
 function useUnreadCount(): number {
-  const held = useDocuments({ status: "held" });
-  const failed = useDocuments({ status: "failed" });
-  const all = useDocuments();
-  const queued = (all.data ?? []).filter((d) => d.status === "queued" || d.status === "processing").length;
-  return (held.data?.length ?? 0) + (failed.data?.length ?? 0) + queued;
+  // one small answer with every letter's status, not every letter's row whole
+  const titles = useDocumentTitles();
+  return (titles.data ?? []).filter((d) => d.status === "held" || d.status === "failed" || d.status === "queued" || d.status === "processing").length;
 }
 
 /** The steps holding rows that match, with how many each holds (in the session's order). */

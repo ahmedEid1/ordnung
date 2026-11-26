@@ -259,6 +259,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/documents/titles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Document Titles
+         * @description Every letter's id, title, file name and status, newest first, as the list has them (the trash and proof
+         *     files left out): what a page needs to name letters, or to tell whether any is still being read, without the
+         *     rest of each row (at 3,000 letters about a seventh of the list's size).
+         */
+        get: operations["document_titles_api_documents_titles_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/documents.json": {
         parameters: {
             query?: never;
@@ -576,6 +598,27 @@ export interface paths {
          *     from today. Any other rule starts on ``due_date``.
          */
         post: operations["create_item_api_items_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/items/titles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Item Titles
+         * @description Every to-do's id, title and letter, as the list orders them (those of a trashed letter left out): what
+         *     a page needs to name a to-do and lead to its letter, without the rest of each to-do.
+         */
+        get: operations["item_titles_api_items_titles_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3533,6 +3576,24 @@ export interface components {
             tax_choice: boolean | null;
         };
         /**
+         * DocumentTitle
+         * @description What a page needs to name a letter, and to tell whether it is still being read (``GET
+         *     /api/documents/titles``): the letter list's other fields stay out.
+         */
+        DocumentTitle: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string | null;
+            /** Filename */
+            filename: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "processing" | "processed" | "needs_review" | "failed" | "held";
+        };
+        /**
          * DocumentTrace
          * @description How a letter was read: the reading shown (the latest unless another was asked for), its steps
          *     and every reading Ordnung keeps (newest first).
@@ -4329,6 +4390,18 @@ export interface components {
             /** Location */
             location?: string | null;
             recurrence?: components["schemas"]["Recurrence-Input"] | null;
+        };
+        /**
+         * ItemTitle
+         * @description What a page needs to name a to-do and lead to its letter (``GET /api/items/titles``).
+         */
+        ItemTitle: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Doc Id */
+            doc_id: string | null;
         };
         /** Job */
         Job: {
@@ -8490,6 +8563,26 @@ export interface operations {
             };
         };
     };
+    document_titles_api_documents_titles_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentTitle"][];
+                };
+            };
+        };
+    };
     records_copy_api_documents_json_get: {
         parameters: {
             query?: never;
@@ -9058,6 +9151,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    item_titles_api_items_titles_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemTitle"][];
                 };
             };
         };

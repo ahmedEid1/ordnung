@@ -5,7 +5,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen, within } from "@testing-library/react";
 import { qk } from "@/api/hooks";
-import type { Brief, Dashboard, Document, Party, Profile } from "@/api/types";
+import type { Brief, Dashboard, Document, DocumentTitle, Party, Profile } from "@/api/types";
 import { createMockServer } from "@/mocks/server";
 import { useMockApi } from "@/test/mockFetch";
 import { makeTestQueryClient, renderWithProviders } from "@/test/render";
@@ -27,8 +27,9 @@ async function dayWithQueuedLetters(status: Document["status"]) {
   qc.setQueryData(qk.parties.list(), await get<Party[]>("/parties"));
   qc.setQueryData(qk.documents.list({ status: "needs_review" }), []);
   qc.setQueryData(qk.documents.list({ status: "failed" }), []);
-  const docs = await get<Document[]>("/documents");
-  qc.setQueryData(qk.documents.list({}), docs.map((d, i) => (i < 2 ? { ...d, status } : d)));
+  // Today counts the letters being read from every letter's status (`/documents/titles`)
+  const docs = await get<DocumentTitle[]>("/documents/titles");
+  qc.setQueryData(qk.documents.titles, docs.map((d, i) => (i < 2 ? { ...d, status } : d)));
   // no note from the server: the code writes one
   qc.setQueryData(qk.brief, { ...(await get<Brief>("/brief")), text: "" });
   qc.setQueryData(qk.profile, await get<Profile>("/profile"));

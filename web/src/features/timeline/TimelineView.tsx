@@ -83,7 +83,9 @@ export function TimelineView() {
   const range = useMemo(() => defaultLaneRange(today), [today]);
   const lanesQ = useLanes(range.from, range.to);
   const timelineQ = useTimeline(range.from, range.to);
-  const itemsQ = useItems();
+  // the to-dos the lanes and the list can show: every entry is dated inside the range (undated to-dos never are),
+  // so the to-dos due before it are left out of the answer
+  const itemsQ = useItems({ from: range.from });
   const contractsQ = useContracts();
   const partiesQ = useParties();
   const [params, setParams] = useSearchParams();

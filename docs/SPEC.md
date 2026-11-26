@@ -1601,7 +1601,7 @@ detached.
   `phone_not_paired`, or 409 `unavailable` when phone access stopped) and lets every other request finish
   — an upload that arrived is answered as filed; a request that isn't a stream runs shielded from the
   listener's own stop, which waits up to 30 s for what is in flight.
-- **What a phone may do** (`phone/scope.py`). `PHONE_ROUTES` (59 operations) and `COMPUTER_ONLY` (61)
+- **What a phone may do** (`phone/scope.py`). `PHONE_ROUTES` (61 operations) and `COMPUTER_ONLY` (61)
   cover every operation of the API; `NEVER_ON_PHONE` (part of `COMPUTER_ONLY`) says why settings,
   profile and household edits, phone access, backups, deleting, originals (a letter's file and the letters ZIP),
   held-letter decisions and hand-off sync stay on the computer, and the calendar files (`calendar.ics`,
@@ -1845,11 +1845,14 @@ an original that is missing, or a link out of the data folder, is listed with an
 followed; `attachment` named `ordnung-letters[-for-taxes][-<year>|-<today>].zip`, `no-store`; `letters_zip.py`;
 computer-only, writes nothing), `documents.json` (GET: every letter whole, as stored, newest first, without
 trash and proof files — the letters of *Download a copy of your records*; computer-only) as `LetterRecord`s,
-each with its `tax_choice`, `documents/{id}/reprocess` (POST), `documents/{id}/trace`
+each with its `tax_choice`, `documents/titles` (GET: each listed letter's id, title, file name and status
+alone, in the list's order: what Today, the weekly review, Ask and the privacy log need to name letters),
+`documents/{id}/reprocess` (POST), `documents/{id}/trace`
 (`?run=` a reading's trace id; default the newest kept: its steps, their model calls and the kept
 readings), `documents/{id}/trace/compare` (`?base&head`: what a later reading decided differently;
 `base` defaults to the newest earlier reading that was done, not a paused or stopped attempt),
-`traces` (every kept reading, for the data export), `items` (GET/POST; a rule with a working day or a day
+`traces` (every kept reading, for the data export), `items/titles` (GET: each listed to-do's id, title and
+letter alone, for Ask's citations), `items` (GET/POST; a rule with a working day or a day
 of the month dates the new to-do at its first occurrence at once),
 `items/{id}` (PATCH/DELETE; PATCH with `due_date` sets `due_date_source=manual`, `user_modified`; for a
 to-do not read from a letter, `recurrence` sent with `due_date` starts its schedule again at that date and

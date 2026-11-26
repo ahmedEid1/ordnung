@@ -37,7 +37,8 @@ async function seededClient(edit?: { lanes?: Lane[]; timeline?: TimelineEntry[];
   const qc = makeTestQueryClient();
   qc.setQueryData(qk.lanes(from, to), edit?.lanes ?? (await get<Lane[]>("/lanes", `from=${from}&to=${to}`)));
   qc.setQueryData(qk.timeline(from, to), edit?.timeline ?? (await get<TimelineEntry[]>("/timeline", `from=${from}&to=${to}`)));
-  qc.setQueryData(qk.items.list({}), await get<Item[]>("/items"));
+  // the page asks for the to-dos from the range's start on (every entry is dated inside it)
+  qc.setQueryData(qk.items.list({ from }), await get<Item[]>("/items", `from=${from}`));
   qc.setQueryData(qk.contracts.list({}), await get<Contract[]>("/contracts"));
   qc.setQueryData(qk.parties.list(), await get<Party[]>("/parties"));
   qc.setQueryData(qk.profile, await get<Profile>("/profile"));

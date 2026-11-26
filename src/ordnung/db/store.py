@@ -64,9 +64,11 @@ from ordnung.models import (
     Document,
     DocumentExtraction,
     DocumentStatus,
+    DocumentTitle,
     Draft,
     Identifier,
     Item,
+    ItemTitle,
     Job,
     LLMCallRecord,
     Note,
@@ -1404,6 +1406,21 @@ class Store:
         tail = f"{where.sql()} ORDER BY COALESCE(doc_date, created_at) DESC, created_at DESC, id{paging}"
         return self._many(_DOCUMENTS, tail, [*where.params, *paging_params])
 
+    def document_titles(self, *, exclude_source: str | None = None) -> list[DocumentTitle]:
+        """Every letter's id, title, file name and status, in :meth:`list_documents`' order, the trash left out
+        and ``exclude_source`` as there: the four columns alone, so naming the letters of a large archive reads
+        no letter whole."""
+        where = _Where()
+        if exclude_source is not None:
+            where.add("source != ?", exclude_source)
+        where.add("deleted_at IS NULL")
+        sql = (
+            f"SELECT id, title, filename, status FROM documents {where.sql()} "
+            "ORDER BY COALESCE(doc_date, created_at) DESC, created_at DESC, id"
+        )
+        rows = self._conn().execute(sql, where.params).fetchall()
+        return [DocumentTitle.model_construct(**dict(row)) for row in rows]
+
     def _add_text_filter(self, where: _Where, q: str, also_ids: Collection[str] = ()) -> bool:
         tokens = search_tokens(q)
         fts, trigram = _fts_expression(tokens), _trigram_expression(tokens)
@@ -2296,6 +2313,16 @@ class Store:
         )
         rows = self._conn().execute(sql, [*where.params, *paging_params]).fetchall()
         return [_ITEMS.decode(row) for row in rows]
+
+    def item_titles(self) -> list[ItemTitle]:
+        """Every to-do's id, title and letter, in :meth:`list_items`' order, those of trashed letters left out
+        as there: three columns, no to-do read whole."""
+        sql = (
+            "SELECT i.id, i.title, i.doc_id FROM items i LEFT JOIN documents d ON d.id = i.doc_id "
+            f"WHERE d.deleted_at IS NULL ORDER BY i.due_date ASC NULLS LAST, {_priority_rank('i.priority')}, "
+            "i.created_at, i.rowid"
+        )
+        return [ItemTitle.model_construct(**dict(row)) for row in self._conn().execute(sql).fetchall()]
 
     def upsert_item_by_slot(self, doc_id: str, slot_key: str, **fields: Any) -> Item:
         """Insert or update the item occupying ``(doc_id, slot_key)``.

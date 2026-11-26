@@ -92,6 +92,7 @@ from ordnung.models import (
     Document,
     DocumentDetail,
     DocumentStatus,
+    DocumentTitle,
     Item,
     Job,
     LetterAdvice,
@@ -321,6 +322,14 @@ def list_documents(
         )
         for doc in docs
     ]
+
+
+@router.get("/documents/titles", response_model=list[DocumentTitle])
+def document_titles(store: StoreDep) -> list[DocumentTitle]:
+    """Every letter's id, title, file name and status, newest first, as the list has them (the trash and proof
+    files left out): what a page needs to name letters, or to tell whether any is still being read, without the
+    rest of each row (at 3,000 letters about a seventh of the list's size)."""
+    return store.document_titles(exclude_source=PROOF_SOURCE)
 
 
 @router.get("/documents.json", response_model=list[LetterRecord], dependencies=[Depends(require_computer)])

@@ -144,6 +144,8 @@ export const api = {
   // -- documents ---------------------------------------------------------------------------------
   /** The letter list: rows without each letter's explanation, key facts, references, bank details and file hash. */
   documents: (params: DocumentListParams = {}) => call("get", "/api/documents", { query: { ...params } }),
+  /** Every letter's id, title, file name and status, in the list's order: to name letters without every row whole. */
+  documentTitles: () => call("get", "/api/documents/titles"),
   /**
    * Every letter whole, as stored, newest first, with the person's `tax_choice` (`LetterRecord`; computer only):
    * the letters of "Download a copy of your records".
@@ -200,6 +202,8 @@ export const api = {
 
   // -- to-dos & dates ----------------------------------------------------------------------------
   items: (params: ItemListParams = {}) => call("get", "/api/items", { query: { ...params } }),
+  /** Every to-do's id, title and letter: to name a to-do without every to-do whole. */
+  itemTitles: () => call("get", "/api/items/titles"),
   createItem: (item: ItemCreate) => call("post", "/api/items", { body: item }),
   updateItem: (id: string, patch: ItemPatch) => call("patch", "/api/items/{item_id}", { params: { item_id: id }, body: patch }),
   deleteItem: (id: string) => call("delete", "/api/items/{item_id}", { params: { item_id: id } }),

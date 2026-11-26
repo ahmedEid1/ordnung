@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useDashboard, useDocuments, useParties } from "@/api/hooks";
+import { useDashboard, useDocumentTitles, useDocuments, useParties } from "@/api/hooks";
 import type { Party } from "@/api/types";
 import { useTodayISO } from "@/lib/today";
 import { movingRows } from "./moving";
@@ -20,7 +20,8 @@ export function useTodayData() {
   const parties = useParties();
   const review = useDocuments({ status: "needs_review" });
   const failed = useDocuments({ status: "failed" });
-  const allDocs = useDocuments();
+  // names and statuses only: every letter's row whole was 3.5 MB of JSON at 3,000 letters
+  const allDocs = useDocumentTitles();
   const trayDocs = useOpenedTrayDocs();
   const dash = dashboard.data;
   const reviewDocs = review.data;
