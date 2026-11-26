@@ -383,7 +383,13 @@ test.describe("forced colours: focus, the current page and filled buttons stay v
     const current = sidebar.getByRole("navigation", { name: "Primary" }).locator("a[aria-current='page']");
     await expect(current).toHaveAttribute("href", "/inbox");
     expect(await frame(current)).toBe("solid 2px -2px");
-    expect(await frame(page.getByRole("tab", { selected: true }).first())).toBe("solid 2px -2px");
+    const tab = page.getByRole("tab", { selected: true }).first();
+    expect(await frame(tab)).toBe("solid 2px -2px");
+    // focused, the frame is the focus ring as well: it must look different (it was the same frame), still inside
+    for (const framed of [current, tab]) {
+      expect(await focusOutline(framed)).toBe("solid 4px");
+      expect(await frame(framed)).toBe("solid 4px -4px");
+    }
     // a filled button: its fill is dropped, its edge is not
     expect(await edge(page.getByRole("button", { name: "Add letters" }).first())).toBe("solid 1px");
   });
@@ -425,9 +431,13 @@ for (const width of [320, 1280]) {
         await selected.focus();
         await page.keyboard.press("ArrowRight");
         await expect(page.getByRole("main").getByRole("tablist").first().getByRole("tab", { selected: true })).toBeFocused();
-        expect(await tabSizes(page), "the same sizes once another tab is selected").toEqual(before);
+        expect(await tabSizes(page), "the same sizes once another tab is selected (and focused)").toEqual(before);
         const now = page.getByRole("main").getByRole("tablist").first().getByRole("tab", { selected: true });
-        expect(await frame(now)).toBe("solid 2px -2px");
+        // focused, its frame is wider than when it is not: focus shows, and still takes no room
+        expect(await frame(now), "the focused selected tab's frame").toBe("solid 4px -4px");
+        await now.blur();
+        expect(await frame(now), "the selected tab's frame, not focused").toBe("solid 2px -2px");
+        expect(await tabSizes(page), "the same sizes once focus has left").toEqual(before);
         expect(await now.evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe("0px");
         // just inside the frame is the tab (its outline drawn there), not its thumb laid over it
         const covered = await now.evaluate((el) => {
@@ -461,7 +471,11 @@ test.describe("forced colours: the chart's chosen zoom", () => {
     await page.keyboard.press("ArrowRight");
     await expect(zoom.getByRole("radio", { checked: true })).toBeFocused();
     expect(await sizes()).toEqual(before);
-    expect(await frame(zoom.getByRole("radio", { checked: true }))).toBe("solid 2px -2px");
+    const now = zoom.getByRole("radio", { checked: true });
+    expect(await frame(now), "focused, its frame is wider").toBe("solid 4px -4px");
+    await now.blur();
+    expect(await frame(now)).toBe("solid 2px -2px");
+    expect(await sizes()).toEqual(before);
   });
 });
 

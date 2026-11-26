@@ -364,4 +364,12 @@
     outline: 2px solid Highlight;
     outline-offset: -2px;
   }
+  /* focused, that frame is the focus ring too: it doubles in width (still inside, still no room), or focusing the
+     selected tab or the current page would change nothing on screen */
+  :is(a, button)[aria-current="page"]:focus-visible,
+  [role="tab"][aria-selected="true"]:focus-visible,
+  [role="radio"][aria-checked="true"]:focus-visible {
+    outline-width: 4px;
+    outline-offset: -4px;
+  }
 }

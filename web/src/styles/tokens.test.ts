@@ -289,6 +289,12 @@ describe("forced colours (Windows high contrast)", () => {
     );
     expect(forced).not.toMatch(/border:\s*2px solid Highlight/);
   });
+
+  it("draws that frame twice as wide when it is focused, or focus there would change nothing on screen (WCAG 2.4.7)", () => {
+    expect(forced).toMatch(
+      /:is\(a, button\)\[aria-current="page"\]:focus-visible,\s*\[role="tab"\]\[aria-selected="true"\]:focus-visible,\s*\[role="radio"\]\[aria-checked="true"\]:focus-visible\s*{\s*outline-width:\s*4px;\s*outline-offset:\s*-4px;\s*}/,
+    );
+  });
 });
 
 describe("scroll shadows", () => {
