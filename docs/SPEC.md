@@ -2024,7 +2024,11 @@ Pages:
    them) shows one person's letters or the person's own; in a person's view, *File these N* lists the letters
    addressed to them and not filed yet and files exactly those, with Undo; in *Everyone*, a letter filed for
    someone has a *For Alex Rivera* tag. Phones: tabs, search, then kind and year on one row, then *Whose
-   letters* on its own. The header links **Letters for taxes** (when a letter counts for taxes — the person's
+   letters* on its own. A view of more than 100 letters draws its first 100 (a group cut short still counts all
+   its letters) and says under them "Showing 100 of 3,000 letters." with **Show 100 more** and **Show all 3,000**;
+   tabs, filters, counts and the search still cover every letter, another view starts at 100 again, and the
+   rows drawn are kept in the browser's history entry, so Back and a reload come back to them and a new visit
+   starts at 100. The header links **Letters for taxes** (when a letter counts for taxes — the person's
    own *For taxes* choice, else Claude's mark —, also on a phone, with the chosen year) to the **Tax year** page
    (`/inbox/taxes?year=YYYY`, its parent the Inbox): a year select (only years with letters for taxes; January–July last year, else this year), "N letters dated Y.", that
    year's letters for taxes by the letter's date (else the day it arrived) grouped by kind, each with Claude's
