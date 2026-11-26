@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { useState } from "react";
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -178,6 +178,57 @@ describe("Button", () => {
     await user.keyboard("{Enter}");
     expect(pressed).toBe(1);
     expect(icon).toHaveFocus();
+  });
+
+  it("is never really disabled while busy, even when also passed `disabled` for the same request", async () => {
+    const user = userEvent.setup();
+    let pressed = 0;
+    function Harness() {
+      const [busy, setBusy] = useState(false);
+      return (
+        <>
+          <Button
+            loading={busy}
+            disabled={busy}
+            onClick={() => {
+              pressed += 1;
+              setBusy(true);
+            }}
+          >
+            Remove
+          </Button>
+          <IconButton icon={X} label="Forget" loading={busy} disabled={busy} />
+          <button type="button" onClick={() => setBusy(false)}>
+            Done
+          </button>
+        </>
+      );
+    }
+    renderWithProviders(<Harness />);
+    const button = screen.getByRole("button", { name: "Remove" });
+    button.focus();
+    await user.keyboard("{Enter}");
+    expect(button).toHaveFocus();
+    expect(button).not.toBeDisabled();
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("button", { name: "Forget" })).not.toBeDisabled();
+    await user.keyboard("{Enter}");
+    expect(pressed).toBe(1);
+    // done: a plain button again
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(button).not.toHaveAttribute("aria-disabled");
+  });
+
+  it("keeps a press on a button that is only aria-disabled (it can say what is missing)", async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    renderWithProviders(
+      <Button aria-disabled onClick={onClick}>
+        Continue
+      </Button>,
+    );
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    expect(onClick).toHaveBeenCalledTimes(1);
   });
 
   it("gives a filled button an edge in forced colours, where its fill is dropped (WCAG 1.4.11)", () => {
