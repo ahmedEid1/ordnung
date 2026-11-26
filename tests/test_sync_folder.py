@@ -359,8 +359,12 @@ def test_a_hung_folder_leaves_few_threads_behind_however_often_it_is_read(anna: 
         hanging.release()
     assert _problem_once_answered(anna) is None
     deadline = time.monotonic() + EVENTUALLY
-    while _folder_threads() > before + 1:  # a released thread takes the next call, or ends
+    # a hung call that returned lets its thread go at the next folder call, as the app's next look does:
+    # the round that answered can come before the last one returned (a round answers while an object's
+    # read still hangs), and nothing else calls the folder here
+    while _folder_threads() > before + 1:
         assert time.monotonic() < deadline
+        anna.round()
         time.sleep(0.01)
 
 
