@@ -53,6 +53,8 @@ interface ComboProps {
   onNavigate?: (page: boolean) => void;
   /** The phone sheet goes to a chosen page itself (`to`), so it can stay open until that page has drawn its heading. */
   onChoose?: (to: string) => void;
+  /** The phone sheet waits for a chosen letter's page: the field is busy, and that is said. */
+  opening?: boolean;
   /** Render results inline (the phone sheet) instead of in a dropdown. */
   inline?: boolean;
   className?: string;
@@ -79,7 +81,7 @@ function PanelMessage({ icon, tone = "muted", children, action }: { icon?: React
  * only in the words Ordnung read from its picture (ADR 0024), says so ("not checked") on a line of its own, read
  * out with its title.
  */
-function SearchCombobox({ autoFocus, onNavigate, onChoose, inline, className }: ComboProps) {
+function SearchCombobox({ autoFocus, onNavigate, onChoose, opening = false, inline, className }: ComboProps) {
   const navigate = useNavigate();
   const { openPicker } = useAddLetters();
   const [q, setQ] = useState("");
@@ -425,6 +427,7 @@ function SearchCombobox({ autoFocus, onNavigate, onChoose, inline, className }: 
           aria-controls={open ? (options.length ? listId : panelId) : undefined}
           aria-activedescendant={activeId}
           aria-autocomplete="list"
+          aria-busy={opening || undefined}
           aria-keyshortcuts={inline ? undefined : "/ Control+K Meta+K"}
           aria-label="Search your letters"
           placeholder="Search letters…"
@@ -448,9 +451,9 @@ function SearchCombobox({ autoFocus, onNavigate, onChoose, inline, className }: 
           )}
         />
         <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" aria-hidden>
-          {search.isFetching && searching ? <Spinner className="size-3.5 text-muted" /> : !q && !inline && !focused ? <Kbd>/</Kbd> : null}
+          {(search.isFetching && searching) || opening ? <Spinner className="size-3.5 text-muted" /> : !q && !inline && !focused ? <Kbd>/</Kbd> : null}
         </span>
-        {q && !(search.isFetching && searching) ? (
+        {q && !(search.isFetching && searching) && !opening ? (
           <button
             type="button"
             onMouseDown={(e) => e.preventDefault()}
@@ -468,7 +471,7 @@ function SearchCombobox({ autoFocus, onNavigate, onChoose, inline, className }: 
       {/* said once the search has answered what is typed now: until then the list holds the previous words'
           matches, and their count is not the new words' */}
       <p role="status" className="sr-only">
-        {open && settled ? announcement : ""}
+        {opening ? "Opening the letter…" : open && settled ? announcement : ""}
       </p>
       {open ? panel : null}
     </div>
@@ -508,20 +511,36 @@ export function SearchBox() {
   });
   /** Counts the choices: a newer one (or opening the sheet again) ends the watch of the one before. */
   const choice = useRef(0);
+  /** The path of the letter the open sheet waits for (its field busy), until its page takes over. */
+  const pending = useRef<string | null>(null);
+  const [opening, setOpening] = useState(false);
+  const settle = () => {
+    pending.current = null;
+    setOpening(false);
+  };
 
   const closeSheet = (toPage: boolean) => {
     chose.current = toPage;
     // drawn now, with its effects: the page is no longer inert when focus moves on in the same frame
-    flushSync(() => setMobileOpen(false));
+    flushSync(() => {
+      settle();
+      setMobileOpen(false);
+    });
   };
   const open = () => {
     choice.current += 1;
     chose.current = false;
+    settle();
     setMobileOpen(true);
   };
   const choose = (to: string) => {
-    const id = ++choice.current;
     const path = new URL(to, window.location.origin).pathname;
+    // the same letter again while its page is on its way (Enter pressed again, a second tap): it is already going
+    // there, and going again would put it in the history once more (Back then took several presses to leave it)
+    if (pending.current === path && sheetOpen.current) return;
+    const id = ++choice.current;
+    pending.current = path;
+    setOpening(true);
     const href = window.location.href;
     void Promise.resolve(navigate(to)).then(() => {
       // held back (the page did not change; a question was asked instead): the sheet goes before the question is drawn
@@ -540,7 +559,8 @@ export function SearchBox() {
       const h1 = drawn.current === path ? document.querySelector<HTMLElement>("#main h1:not([data-loading])") : null;
       if (h1) {
         if (sheetOpen.current) closeSheet(true);
-        else if (!unmoved) return;
+        else if (!unmoved) return settle();
+        settle();
         if (!h1.hasAttribute("tabindex")) h1.tabIndex = -1;
         h1.focus({ preventScroll: true });
         return;
@@ -558,6 +578,7 @@ export function SearchBox() {
       }
       if (performance.now() < until) requestAnimationFrame(tick);
       else if (sheetOpen.current) closeSheet(false);
+      else settle();
     };
     requestAnimationFrame(tick);
   };
@@ -578,7 +599,7 @@ export function SearchBox() {
         size="lg"
         align="top"
       >
-        <SearchCombobox inline autoFocus onNavigate={left} onChoose={choose} className="pb-3" />
+        <SearchCombobox inline autoFocus onNavigate={left} onChoose={choose} opening={opening} className="pb-3" />
       </Dialog>
     </>
   );

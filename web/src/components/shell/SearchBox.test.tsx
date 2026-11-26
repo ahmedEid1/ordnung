@@ -579,4 +579,44 @@ describe("a letter chosen in the phone sheet", () => {
     expect(view.router.state.location.pathname).toMatch(/^\/documents\//);
     expect(seen).toEqual(["field", "h1 A letter"]);
   });
+
+  it("while the letter's page is on its way: the field is busy and says so, and Enter again goes there only once", async () => {
+    // the letter's page draws its heading only once the test lets it (its request held)
+    let release = () => {};
+    function Held() {
+      const { pathname } = useLocation();
+      const [ready, setReady] = useState(false);
+      release = () => setReady(true);
+      const loading = pathname.startsWith("/documents/") && !ready;
+      return (
+        <AddLettersProvider>
+          <SearchBox />
+          <main id="main">
+            <h1 data-loading={loading || undefined}>{pathname === "/settings" ? "Settings" : "A letter"}</h1>
+          </main>
+        </AddLettersProvider>
+      );
+    }
+    const { router } = renderWithProviders(<Held />, { route: "/settings" });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Search letters" }));
+    const sheet = await screen.findByRole("dialog", { name: "Search letters" });
+    const field = within(sheet).getByRole("combobox", { name: "Search your letters" });
+    await waitFor(() => expect(field).toHaveFocus());
+    await user.type(field, "Muster");
+    await within(sheet).findByRole("listbox", { name: "Matching letters" });
+    await user.keyboard("{ArrowDown}{Enter}");
+    await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/documents\//));
+    const letter = router.state.location.pathname;
+    // nothing said for as long as the page took: now the field is busy, and the sheet says what it waits for
+    expect(field).toHaveAttribute("aria-busy", "true");
+    expect(within(sheet).getByRole("status")).toHaveTextContent("Opening the letter…");
+    await user.keyboard("{Enter}{Enter}");
+    act(() => release());
+    await waitFor(() => expect(screen.getByRole("heading", { level: 1, name: "A letter" })).toHaveFocus());
+    expect(router.state.location.pathname).toBe(letter);
+    // one Back leaves the letter: it went into the history once (each Enter pushed it again)
+    await act(() => router.navigate(-1));
+    expect(router.state.location.pathname).toBe("/settings");
+  });
 });
