@@ -8,7 +8,8 @@ import type { Draft } from "@/api/types";
 import { TEST_HEALTH, makeTestQueryClient } from "@/test/render";
 import { createQueryClient } from "@/app/queryClient";
 import { qk } from "@/api/hooks";
-import { useMockApi } from "@/test/mockFetch";
+import { holdRequests, useMockApi } from "@/test/mockFetch";
+import { expectOnePressAtATime } from "@/test/busyButton";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import LetterPage from "@/pages/LetterPage";
@@ -399,6 +400,15 @@ describe("Proof of sending", () => {
     await waitFor(() => expect(calls.filter((c) => c.method === "PUT").at(-1)?.body).toEqual({ tracking_number: "rt 123 456 785 de" }));
     expect(await within(proof).findByText("RT 123 456 785 DE")).toBeInTheDocument();
     expect(await screen.findByText("Tracking number saved")).toBeInTheDocument();
+  });
+
+  it("keeps focus on the tracking number's Remove while it is removed, one press at a time, and the next once it failed", async () => {
+    useMockApi();
+    const held = holdRequests((c) => c.method === "PUT" && (c.body as { tracking_number?: unknown } | undefined)?.tracking_number === null);
+    renderLetter("/letters/drf_gym");
+    const proof = await screen.findByRole("region", { name: "Proof of sending" });
+    await within(proof).findByRole("button", { name: "Remove" });
+    await expectOnePressAtATime({ user: userEvent.setup(), button: () => within(proof).getByRole("button", { name: "Remove" }), held });
   });
 
   /** Hold back the PUT that puts the number back (Undo's request) until the test lets it answer, or fail it. */
