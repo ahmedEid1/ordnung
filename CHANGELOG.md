@@ -7,6 +7,29 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ### Changed
 
+- **A long Inbox draws its first 100 letters.** Under them it says how many it shows ("Showing 100 of 3,000
+  letters") and offers *Show 100 more* and *Show all*; the tabs, the filters, the counts and the search still
+  cover every letter, and a list of 100 or fewer looks as before. Back, Forward and a reload come back to the
+  letters you had drawn; a new visit starts at 100. With 3,000 letters a slowed phone was busy for about 15
+  seconds before the Inbox could be used; now for about 3.
+- **Pages ask for what they show.** Today, the weekly review, Ask and the privacy log fetch the names of your
+  letters and to-dos, not every letter whole (new: `GET /api/documents/titles` and `GET /api/items/titles`, also
+  open to a paired phone); the Timeline fetches the to-dos of its range, and a draft only the letter it answers.
+  With 3,000 letters Ask's first load fell from about 8.2 MB of data to 2.4 MB, Today's from 4.1 MB to 2.1 MB.
+  The demo's tour loads only in the demo and the *People & organisations* panel when you first open one, and
+  Today's note is asked for together with the day.
+- **The web app is a quarter smaller.** Its files take 2.5 MB where they took 3.4 MB, and what every page loads
+  first is about a tenth smaller. *Settings → Privacy* shows cost by purpose as plain rows at every width, with
+  each purpose's calls and tokens on screen (they showed only on hover); the chart library that drew it (about
+  400 kB, 23 packages) is gone. A test now holds the build to budgets for its first load, its largest later
+  script, its size and its number of scripts.
+- **The installed app carries no sample data any more.** An address ending in `?mock=1` swapped your own letters
+  for a made-up sample life in the page, and about 450 kB of it came with every install. It is out of the
+  released build, and `?mock=` does nothing there; the online demo and the developer tools keep it.
+- **The Timeline, Contracts and the Inbox hold still while they load.** On a phone the Timeline jumped by most of
+  a screen when its dates arrived, and Contracts moved when "Decide by" did; both keep the room now. Contracts
+  keeps the room for "Decide by" until it knows there is nothing to decide, so a household with nothing to decide
+  sees one move on its first visit, a little larger than before, and none after.
 - **Years of letters stay quick.** The app was measured with 300 and 3,000 made-up letters, and the requests
   that grew with the archive were fixed on the server. After a change the letters are loaded once for every open
   page, not once for each; Waiting, the weekly review, My numbers, a letter with a bank transfer and Ask's first
@@ -181,6 +204,18 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ### Fixed
 
+- **Accessibility follow-up: the keyboard keeps its place.** A button, a switch or a toast's *Undo* that is busy
+  with its own request no longer drops the keyboard to the top of the page: it stays focused, is announced as
+  busy, and a quick double press sends one request. A switch that can't be used is still reached with Tab and
+  says why it is off. The phone pager's *Previous* and *Next* and the weekly review's *Back* keep focus at the
+  ends, and *Mark done* in a letter's card, and its *Undo*, keep the keyboard in the card.
+- **Accessibility follow-up: on a phone and in high contrast.** A letter chosen in the phone's search sheet takes
+  focus at its title at once and says that it is opening. A contract opened from the Timeline, the chart or
+  Today ends whole in view, also with animations on, on a small phone and at 400 % zoom, never under the top bar
+  or the tab bar, and your own scroll wins over it. In Windows high contrast a selected tab's frame no longer
+  moves its neighbours, a focused one shows its focus, and a control that is off looks off.
+- **A panel that can't load says so.** When the *People & organisations* panel can't load because Ordnung was
+  updated or restarted under an open page, a message says so and offers to reload, where nothing happened.
 - **A full sync folder is said to be full.** When the sync folder, or the drive or account it is on, had no
   room left, Ordnung said the folder "doesn't answer" and, half an hour later, that saving keeps failing; the
   message that names the cause was never shown. Now a look that meets a full folder says "The sync folder is
