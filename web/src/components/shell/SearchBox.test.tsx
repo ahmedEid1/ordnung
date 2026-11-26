@@ -7,12 +7,16 @@
  * checked on real pages in `e2e/shell.spec.ts`.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useState } from "react";
+import { useBlocker, useLocation } from "react-router";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import { focusManager, onlineManager } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "@/test/render";
 import { createMockServer, type MockServer } from "@/mocks/server";
 import { SEARCH_LIMIT } from "@/api/hooks";
+import { Button } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Dialog";
 import { AddLettersProvider } from "./AddLetters";
 import { Highlight, SearchBox } from "./SearchBox";
 
@@ -487,5 +491,92 @@ describe("the empty phone sheet", () => {
     await waitFor(() => expect(field).toHaveFocus());
     await user.keyboard("{ArrowDown}");
     expect(options[0]).toHaveAttribute("aria-selected", "true");
+  });
+});
+
+describe("a letter chosen in the phone sheet", () => {
+  /** The shell as far as the sheet needs it, with a form that holds back leaving it while it has unsaved changes. */
+  function Shell() {
+    const { pathname } = useLocation();
+    const [dirty, setDirty] = useState(true);
+    const blocker = useBlocker(({ currentLocation, nextLocation }) => dirty && currentLocation.pathname !== nextLocation.pathname);
+    return (
+      <AddLettersProvider>
+        <SearchBox />
+        <main id="main">
+          <h1>{pathname === "/settings" ? "Settings" : "A letter"}</h1>
+          <button type="button" onClick={() => setDirty(false)}>
+            Save
+          </button>
+        </main>
+        <Dialog
+          open={blocker.state === "blocked"}
+          onClose={() => blocker.reset?.()}
+          title="Save your changes?"
+          footer={
+            <>
+              <Button onClick={() => blocker.proceed?.()}>Discard changes</Button>
+              <Button onClick={() => blocker.reset?.()}>Keep editing</Button>
+            </>
+          }
+        />
+      </AddLettersProvider>
+    );
+  }
+
+  async function chooseFromSettings() {
+    const view = renderWithProviders(<Shell />, { route: "/settings" });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Search letters" }));
+    const sheet = await screen.findByRole("dialog", { name: "Search letters" });
+    const field = within(sheet).getByRole("combobox", { name: "Search your letters" });
+    await waitFor(() => expect(field).toHaveFocus());
+    await user.type(field, "Muster");
+    await within(sheet).findByRole("listbox", { name: "Matching letters" });
+    await user.keyboard("{ArrowDown}{Enter}");
+    const question = await screen.findByRole("dialog", { name: "Save your changes?" });
+    return { ...view, user, question };
+  }
+
+  it("held back by unsaved changes: the sheet closes, so only the question shows, and “Keep editing” goes back", async () => {
+    const { router, user, question } = await chooseFromSettings();
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Search letters" })).toBeNull());
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    await user.click(within(question).getByRole("button", { name: "Keep editing" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Search letters" })).toHaveFocus());
+    expect(router.state.location.pathname).toBe("/settings");
+  });
+
+  it("held back by unsaved changes: “Discard changes” goes on to the letter, whose heading takes focus", async () => {
+    const { router, user, question } = await chooseFromSettings();
+    await user.click(within(question).getByRole("button", { name: "Discard changes" }));
+    await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/documents\//));
+    await waitFor(() => expect(screen.getByRole("heading", { level: 1, name: "A letter" })).toHaveFocus());
+  });
+
+  it("not held back: the sheet stays open, the field focused, until the letter's heading takes focus", async () => {
+    const view = renderWithProviders(<Shell />, { route: "/settings" });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await user.click(screen.getByRole("button", { name: "Search letters" }));
+    const sheet = await screen.findByRole("dialog", { name: "Search letters" });
+    const field = within(sheet).getByRole("combobox", { name: "Search your letters" });
+    await waitFor(() => expect(field).toHaveFocus());
+    await user.type(field, "Muster");
+    await within(sheet).findByRole("listbox", { name: "Matching letters" });
+    const seen: string[] = [];
+    const look = () => {
+      const a = document.activeElement;
+      const what = a === document.body ? "BODY" : a === field ? "field" : a?.tagName === "H1" ? `h1 ${a.textContent}` : (a?.tagName ?? "nothing");
+      if (seen[seen.length - 1] !== what) seen.push(what);
+    };
+    const watch = setInterval(look, 1);
+    await user.keyboard("{ArrowDown}{Enter}");
+    await waitFor(() => expect(screen.getByRole("heading", { level: 1, name: "A letter" })).toHaveFocus());
+    clearInterval(watch);
+    look();
+    expect(view.router.state.location.pathname).toMatch(/^\/documents\//);
+    expect(seen).toEqual(["field", "h1 A letter"]);
   });
 });

@@ -1,11 +1,12 @@
-import { Fragment, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { Link, useNavigate } from "react-router";
+import { Fragment, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { flushSync } from "react-dom";
+import { Link, useLocation, useNavigate } from "react-router";
 import { ArrowRight, Plus, RotateCw, ScanText, Search, SearchX, TriangleAlert, X } from "lucide-react";
 import { SEARCH_LIMIT, useDocuments, useParties, useSearchDocuments } from "@/api/hooks";
 import type { DocumentRow, ListedLetter } from "@/api/types";
 import { cn, plural } from "@/lib/utils";
 import { useDebounced, useHotkey } from "@/lib/hooks";
-import { focusWhenReady } from "@/lib/focus";
+import { focusIsLost } from "@/lib/focus";
 import { DOCUMENT_STATUS_COPY, documentKindLabel, uncheckedMatch } from "@/lib/copy";
 import { KindIcon } from "@/components/ui/KindBadge";
 import { DateText } from "@/components/ui/DateText";
@@ -50,6 +51,8 @@ interface ComboProps {
   autoFocus?: boolean;
   /** Called after the search took the person somewhere: a page (a letter, the Inbox) or, `page` false, the file picker. */
   onNavigate?: (page: boolean) => void;
+  /** The phone sheet goes to a chosen page itself (`to`), so it can stay open until that page has drawn its heading. */
+  onChoose?: (to: string) => void;
   /** Render results inline (the phone sheet) instead of in a dropdown. */
   inline?: boolean;
   className?: string;
@@ -76,7 +79,7 @@ function PanelMessage({ icon, tone = "muted", children, action }: { icon?: React
  * only in the words Ordnung read from its picture (ADR 0024), says so ("not checked") on a line of its own, read
  * out with its title.
  */
-function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps) {
+function SearchCombobox({ autoFocus, onNavigate, onChoose, inline, className }: ComboProps) {
   const navigate = useNavigate();
   const { openPicker } = useAddLetters();
   const [q, setQ] = useState("");
@@ -136,6 +139,12 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
   };
 
   const go = (d: ListedLetter) => {
+    if (onChoose) {
+      // the sheet stays as it is, the field focused, until the letter's page takes over
+      enterWhenSettled.current = false;
+      onChoose(`/documents/${d.id}`);
+      return;
+    }
     navigate(`/documents/${d.id}`);
     reset();
     inputRef.current?.blur();
@@ -299,7 +308,12 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
         {hasMore ? (
           <Link
             to={`/inbox?q=${encodeURIComponent(dterm)}`}
-            onClick={() => {
+            onClick={(e) => {
+              if (onChoose && e.button === 0 && !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)) {
+                e.preventDefault();
+                onChoose(`/inbox?q=${encodeURIComponent(dterm)}`);
+                return;
+              }
               reset();
               inputRef.current?.blur();
               onNavigate?.(true);
@@ -461,28 +475,110 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
   );
 }
 
-/** Top-bar search: inline input from md up, an icon that opens a search sheet on phones. */
+/** How long a chosen page may take to draw its heading before the phone sheet stops waiting for it. */
+const HEADING_WAIT_MS = 10_000;
+
+/** A modal other than the search sheet is open (Settings' "Save your changes?" over a navigation it held back). */
+const otherModalOpen = () =>
+  Array.from(document.querySelectorAll('[role="dialog"][aria-modal="true"]')).some((d) => !d.querySelector("[data-search-panel]"));
+
+/**
+ * Top-bar search: inline input from md up, an icon that opens a search sheet on phones.
+ *
+ * A letter chosen in the sheet: the sheet stays open, the field focused, until the letter's page has drawn its
+ * heading; then, in one frame, the sheet closes and the heading takes focus — as from the field on a computer, not
+ * back on the header's "Search letters" (two more Tab stops before the letter), and never a frame with focus on the
+ * page or on the old page's heading. A navigation held back (Settings asks "Save your changes?") closes the sheet at
+ * once and hands focus back to "Search letters", so only the question shows: "Keep editing" goes back to the form,
+ * "Discard changes" goes on to the letter, whose heading then takes focus.
+ */
 export function SearchBox() {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  // a letter chosen in the sheet: focus goes to its page's heading, as from the field on a computer, not back to
-  // the header's "Search letters" (two more Tab stops before the letter)
+  const button = useRef<HTMLButtonElement>(null);
+  // a letter chosen in the sheet: its page's heading takes focus, not the button that opened the sheet
   const chose = useRef(false);
+  const sheetOpen = useRef(false);
+  /** The path the page shows now (set as it is drawn): the chosen page is drawn once this is its path. */
+  const drawn = useRef(pathname);
+  useLayoutEffect(() => {
+    sheetOpen.current = mobileOpen;
+    drawn.current = pathname;
+  });
+  /** Counts the choices: a newer one (or opening the sheet again) ends the watch of the one before. */
+  const choice = useRef(0);
+
+  const closeSheet = (toPage: boolean) => {
+    chose.current = toPage;
+    // drawn now, with its effects: the page is no longer inert when focus moves on in the same frame
+    flushSync(() => setMobileOpen(false));
+  };
   const open = () => {
+    choice.current += 1;
     chose.current = false;
     setMobileOpen(true);
+  };
+  const choose = (to: string) => {
+    const id = ++choice.current;
+    const path = new URL(to, window.location.origin).pathname;
+    const href = window.location.href;
+    void Promise.resolve(navigate(to)).then(() => {
+      // held back (the page did not change; a question was asked instead): the sheet goes before the question is drawn
+      if (choice.current === id && sheetOpen.current && window.location.href === href && drawn.current !== path) closeSheet(false);
+    });
+    let until = performance.now() + HEADING_WAIT_MS;
+    /** A question is open over the page (it held the navigation back). */
+    let asking = false;
+    const tick = () => {
+      if (choice.current !== id) return;
+      const active = document.activeElement;
+      // focus has not gone anywhere the person chose: nowhere, on "Search letters", or in the sheet that has closed
+      // (where a question asked over the open sheet hands it back)
+      const unmoved =
+        focusIsLost() || active === button.current || (!sheetOpen.current && Boolean(active?.closest('[role="dialog"]')?.querySelector("[data-search-panel]")));
+      const h1 = drawn.current === path ? document.querySelector<HTMLElement>("#main h1:not([data-loading])") : null;
+      if (h1) {
+        if (sheetOpen.current) closeSheet(true);
+        else if (!unmoved) return;
+        if (!h1.hasAttribute("tabindex")) h1.tabIndex = -1;
+        h1.focus({ preventScroll: true });
+        return;
+      }
+      if (otherModalOpen()) {
+        if (sheetOpen.current) closeSheet(false);
+        asking = true;
+        // the person answers it in their own time: the wait for the page starts once they have
+        until = performance.now() + HEADING_WAIT_MS;
+      } else if (asking) {
+        asking = false;
+        // the question has been answered: focus is back where the search began ("Keep editing" stays there; after
+        // "Discard changes" the letter's heading takes it from there once drawn)
+        if (unmoved && active !== button.current) button.current?.focus();
+      }
+      if (performance.now() < until) requestAnimationFrame(tick);
+      else if (sheetOpen.current) closeSheet(false);
+    };
+    requestAnimationFrame(tick);
   };
   const left = (page: boolean) => {
     chose.current = page;
     setMobileOpen(false);
-    // once the sheet has closed (the page is inert while it is open), and the page has drawn its heading
-    if (page) focusWhenReady(() => (document.getElementById("root")?.inert ? null : document.querySelector<HTMLElement>("#main h1:not([data-loading])")), 10_000);
   };
   return (
     <>
       <SearchCombobox className="hidden w-56 md:block lg:w-72" />
-      <IconButton icon={Search} label="Search letters" className="md:hidden" onClick={open} />
-      <Dialog open={mobileOpen} onClose={() => setMobileOpen(false)} restoreFocus={() => !chose.current} title="Search letters" size="lg" align="top">
-        <SearchCombobox inline autoFocus onNavigate={left} className="pb-3" />
+      <IconButton ref={button} icon={Search} label="Search letters" className="md:hidden" onClick={open} />
+      <Dialog
+        open={mobileOpen}
+        onClose={() => setMobileOpen(false)}
+        restoreFocus={() => !chose.current}
+        returnFocus={button}
+        title="Search letters"
+        size="lg"
+        align="top"
+      >
+        <SearchCombobox inline autoFocus onNavigate={left} onChoose={choose} className="pb-3" />
       </Dialog>
     </>
   );

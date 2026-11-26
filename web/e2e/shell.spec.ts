@@ -8,7 +8,7 @@
  * read on a phone, and the opaque drop overlay.
  */
 import type { Locator, Page, Route } from "@playwright/test";
-import { apiGet, expect, letterId, open, openMail, settle, setTour, test } from "./helpers";
+import { apiGet, expect, focusStops, letterId, open, openMail, pageDrops, settle, setTour, test, watchFocus } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -407,6 +407,64 @@ test.describe("phone: a letter chosen in the search sheet", () => {
     await expect(page).toHaveURL(/\/documents\//);
     await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toBeFocused();
   });
+});
+
+/** Where focus stopped, by kind only (a letter's title is not printed): the field, a page's h1, a button by its name. */
+const stopKinds = async (page: Page) =>
+  (await focusStops(page)).map(([, what]) => (what.startsWith("INPUT") ? "field" : what.startsWith("H1") ? "h1" : what));
+
+/** At 390 px by touch: tap "Search letters", type, ArrowDown and Enter on the first match, watching focus from the field. */
+async function chooseInSheet(page: Page) {
+  await page.getByRole("button", { name: "Search letters" }).tap();
+  const sheet = page.getByRole("dialog", { name: "Search letters" });
+  const field = sheet.getByRole("combobox", { name: "Search your letters" });
+  await expect(field).toBeFocused();
+  await field.fill("Muster");
+  await expect(sheet.getByRole("listbox", { name: "Matching letters" }).getByRole("option").first()).toBeVisible();
+  await watchFocus(page);
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  return sheet;
+}
+
+test.describe("phone 390 px by touch: focus as a letter is chosen in the search sheet", () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
+  test("goes from the field straight to the letter's heading", async ({ page }) => {
+    await open(page, "/", /Sam/);
+    const sheet = await chooseInSheet(page);
+    await expect(page).toHaveURL(/\/documents\//);
+    await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toBeFocused();
+    await expect(sheet).toBeHidden();
+    // no frame on the page, none on Today's heading: the field, then the letter's
+    expect(await stopKinds(page)).toEqual(["field", "h1"]);
+    expect(await pageDrops(page)).toEqual([]);
+  });
+
+  for (const answer of ["Keep editing", "Discard changes"] as const) {
+    test(`from Settings with unsaved changes: only "Save your changes?" shows, and “${answer}” goes on from there`, async ({ page }) => {
+      await open(page, "/settings?section=profile", "Settings");
+      const name = page.getByLabel("Full name");
+      await name.fill("Sam Muster-Probe");
+      await chooseInSheet(page);
+      const question = page.getByRole("dialog", { name: "Save your changes?" });
+      await expect(question).toBeVisible();
+      // the sheet has closed: one dialog, not two (one Escape, not two, to get back)
+      await expect(page.getByRole("dialog")).toHaveCount(1);
+      await question.getByRole("button", { name: answer }).click();
+      if (answer === "Keep editing") {
+        await expect(question).toBeHidden();
+        await expect(page).toHaveURL(/\/settings\?section=profile$/);
+        await expect(name).toHaveValue("Sam Muster-Probe");
+        // back where the search began: the header's search button
+        await expect(page.getByRole("button", { name: "Search letters" })).toBeFocused();
+      } else {
+        await expect(page).toHaveURL(/\/documents\//);
+        await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toBeFocused();
+      }
+      expect(await pageDrops(page)).toEqual([]);
+    });
+  }
 });
 
 test.describe("812×375 (a phone on its side): the rail", () => {
