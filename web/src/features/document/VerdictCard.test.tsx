@@ -4,7 +4,8 @@
  * started drafts, the disclaimer where a law was used and inside the action band.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, screen, within } from "@testing-library/react";
+import { act, cleanup, screen, waitFor, within } from "@testing-library/react";
+import { useState } from "react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders, makeTestQueryClient } from "@/test/render";
 import { labelInName } from "@/test/labelInName";
@@ -290,5 +291,64 @@ describe("a price increase that asks for consent", () => {
     expect(within(verdict).getByText("Decide by")).toBeInTheDocument();
     expect(within(verdict).queryByText("By when")).toBeNull();
     expect(verdict).toHaveTextContent(/If you don't agree/);
+  });
+});
+
+describe("“Mark done” on the letter's last to-do", () => {
+  const last = makeItem({ id: "itm_last", kind: "deadline", title: "Send the form back", action: "Send the signed form back.", due_date: "2026-10-19" });
+  /** Shows `detail`; `show` draws the card anew with another (as a refreshed query does). */
+  let show: (d: DocumentDetail) => void = () => {};
+  function Card({ first }: { first: DocumentDetail }) {
+    const [detail, setDetail] = useState(first);
+    show = setDetail;
+    return <VerdictCard detail={detail} primary={selectPrimaryItem(detail.items, detail.set_aside)} />;
+  }
+  /** The change's request, held until `answer` is called: "Mark done" has not heard back yet. */
+  function holdPatch() {
+    let answer: () => void = () => {};
+    const sent: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.method === "PATCH") {
+          sent.push(String(url));
+          await new Promise<void>((r) => (answer = r));
+          return new Response(JSON.stringify({ ...last, status: "done" }), { status: 200, headers: { "Content-Type": "application/json" } });
+        }
+        return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
+      }),
+    );
+    return { sent, answer: () => answer() };
+  }
+
+  it("focuses the card's title as the card is drawn without the button, before its answer is in: never the page", async () => {
+    const { sent, answer } = holdPatch();
+    const user = userEvent.setup();
+    renderWithProviders(<Card first={makeDetail({ items: [last] })} />, { client: client() });
+    const done = screen.getAllByRole("button", { name: /^Mark done/ })[0]!;
+    done.focus();
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(sent).toHaveLength(1));
+    // the refreshed card, without the to-do and its button, drawn before "Mark done" has heard back
+    act(() => show(makeDetail({ items: [{ ...last, status: "done" }] })));
+    expect(done.isConnected).toBe(false);
+    expect(document.activeElement).toBe(document.getElementById("verdict-title"));
+    await act(async () => answer());
+  });
+
+  it("leaves nothing armed: a later redraw that takes focus from the page does not pull it back", async () => {
+    const { sent, answer } = holdPatch();
+    const user = userEvent.setup();
+    renderWithProviders(<Card first={makeDetail({ items: [last] })} />, { client: client() });
+    screen.getAllByRole("button", { name: /^Mark done/ })[0]!.focus();
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(sent).toHaveLength(1));
+    act(() => show(makeDetail({ items: [{ ...last, status: "done" }] })));
+    await act(async () => answer());
+    // the person clicks elsewhere on the page; the card is drawn again (a refetch, an offline blip)
+    (document.activeElement as HTMLElement).blur();
+    act(() => show(makeDetail({ items: [{ ...last, status: "done" }] })));
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    expect(document.activeElement).toBe(document.body);
   });
 });

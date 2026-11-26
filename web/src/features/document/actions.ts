@@ -30,11 +30,17 @@ export function useItemActions() {
   const markDone = useCallback(
     (
       item: Item,
-      { title = "Marked as done", onDone, focusAfterUndo }: { title?: string; onDone?: () => void; focusAfterUndo?: () => HTMLElement | null } = {},
+      {
+        title = "Marked as done",
+        onDone,
+        onFailed,
+        focusAfterUndo,
+      }: { title?: string; onDone?: () => void; onFailed?: () => void; focusAfterUndo?: () => HTMLElement | null } = {},
     ) =>
       update.mutate(
         { id: item.id, patch: { status: "done" } },
         {
+          onError: () => onFailed?.(),
           onSuccess: (moved) => {
             onDone?.();
             toast.success(title, {
