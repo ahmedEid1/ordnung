@@ -16,6 +16,7 @@ import { Button, buttonVariants } from "@/components/ui/Button";
 import { plural } from "@/lib/utils";
 import { focusAfterLeaving } from "@/lib/focus";
 import { fadeUp } from "./motion";
+import { useOnePress } from "@/lib/hooks";
 
 const TITLE_ID = "failed-card-title";
 /** Top 3's heading (`TopThree`), the next section after Today's cards. */
@@ -43,6 +44,8 @@ export function failedTitle(count: number): string {
 
 export function FailedCard({ docs }: { docs: ListedLetter[] }) {
   const retry = useReprocessDocuments();
+  const trying = useOnePress(); // "Try again", one press at a time (a guard that read the last render let two through)
+  const retrying = retry.isPending || trying.busy;
   const card = useRef<HTMLElement>(null);
   if (!docs.length) return null;
   const one = docs.length === 1;
@@ -71,13 +74,14 @@ export function FailedCard({ docs }: { docs: ListedLetter[] }) {
           variant="primary"
           size="sm"
           icon={RotateCw}
-          aria-disabled={retry.isPending || undefined}
-          aria-busy={retry.isPending || undefined}
-          onClick={() => {
-            if (retry.isPending) return;
-            focusAfterRetry(card.current);
-            retry.mutate(ids);
-          }}
+          aria-disabled={retrying || undefined}
+          aria-busy={retrying || undefined}
+          onClick={() =>
+            trying.once(() => {
+              focusAfterRetry(card.current);
+              return retry.mutateAsync(ids);
+            })
+          }
           className="max-sm:flex-1"
         >
           Try again

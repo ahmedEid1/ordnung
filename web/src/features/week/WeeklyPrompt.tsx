@@ -15,10 +15,12 @@ import { fadeUp } from "@/features/today/motion";
 import { useFormatDate } from "@/lib/today";
 import { cn } from "@/lib/utils";
 import { WEEKLY_REVIEW, sessionHighlights } from "./steps";
+import { useOnePress } from "@/lib/hooks";
 
 export function WeeklyPrompt() {
   const week = useWeek();
   const dismiss = useWeekDismiss();
+  const dismissing = useOnePress(); // "Not now", one press at a time
   const formatDate = useFormatDate();
   const data = week.data;
   if (!data?.due) return null;
@@ -48,16 +50,18 @@ export function WeeklyPrompt() {
           <Button
             variant="ghost"
             size="sm"
-            loading={dismiss.isPending}
+            loading={dismiss.isPending || dismissing.busy}
             onClick={() =>
-              dismiss.mutate(undefined, {
-                onSuccess: (after) => {
-                  const when = after.next_prompt ? `on ${formatDate(after.next_prompt)}` : "when it is due";
-                  toast({ title: "Not now", description: `Today suggests it again ${when} — or open it any time from the foot of this page.` });
-                  // the prompt is gone: the focus goes on to the next section, never to the page's top
-                  focusWhenReady(() => document.getElementById("coming-up-title"));
-                },
-              })
+              dismissing.once(() =>
+                dismiss.mutateAsync(undefined, {
+                  onSuccess: (after) => {
+                    const when = after.next_prompt ? `on ${formatDate(after.next_prompt)}` : "when it is due";
+                    toast({ title: "Not now", description: `Today suggests it again ${when} — or open it any time from the foot of this page.` });
+                    // the prompt is gone: the focus goes on to the next section, never to the page's top
+                    focusWhenReady(() => document.getElementById("coming-up-title"));
+                  },
+                }),
+              )
             }
           >
             Not now

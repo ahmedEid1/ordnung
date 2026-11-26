@@ -209,6 +209,15 @@ export function AddLettersProvider({ children }: { children: ReactNode }) {
   const [chooser, setChooser] = useState(false);
   const [discarding, setDiscarding] = useState(false);
   const [sendNote, setSendNote] = useState<SendNote | null>(null);
+  // The files of one dialog go once: a second press before the dialog closes (the computer) or while they are on
+  // their way (a phone) sent them again. Not one press at a time for the whole upload: on the computer the next
+  // letters can be added while these are still going. After a phone's failed send the same press tries again.
+  const sentFor = useRef<Pending | null>(null);
+  const sendOnce = (p: Pending | null, run: () => void) => {
+    if (!p || sentFor.current === p) return;
+    sentFor.current = p;
+    run();
+  };
 
   /** What an upload's answer says beyond the progress cards: kept private, added before, files that failed. */
   const afterUpload = useCallback(
@@ -243,8 +252,10 @@ export function AddLettersProvider({ children }: { children: ReactNode }) {
             afterUpload(res, priv);
             setPending(null);
           },
-          onError: (err) =>
-            setSendNote(isAbort(err) ? { text: SEND_STOPPED, failed: false } : { text: err instanceof Error ? err.message : "Sending didn't work.", failed: true }),
+          onError: (err) => {
+            sentFor.current = null;
+            setSendNote(isAbort(err) ? { text: SEND_STOPPED, failed: false } : { text: err instanceof Error ? err.message : "Sending didn't work.", failed: true });
+          },
         },
       );
     },
@@ -395,9 +406,7 @@ export function AddLettersProvider({ children }: { children: ReactNode }) {
         onKeepPrivate={setKeepPrivate}
         onRemove={removeFile}
         onClose={close}
-        onAdd={() => {
-          if (pending) send(files, false, keepPrivate);
-        }}
+        onAdd={() => sendOnce(pending, () => send(files, false, keepPrivate))}
         phone={phone}
         sending={sending}
         note={sendNote}
@@ -414,7 +423,7 @@ export function AddLettersProvider({ children }: { children: ReactNode }) {
         onClose={close}
         onChoose={(combine) => {
           // one letter: its pages are sent ("Sending 3 pages…"); separate letters: files
-          if (pending) send(files, combine, keepPrivate, combine);
+          sendOnce(pending, () => send(files, combine, keepPrivate, combine));
         }}
         onTakeAnother={() => cameraRef.current?.click()}
         phone={phone}

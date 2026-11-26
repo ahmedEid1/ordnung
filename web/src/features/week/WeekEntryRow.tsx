@@ -25,6 +25,7 @@ import { useFormatDate, useTodayISO } from "@/lib/today";
 import { cn } from "@/lib/utils";
 import type { DocumentKind, ItemKind } from "@/api/types";
 import { entryHref, type StepId } from "./steps";
+import { useOnePress } from "@/lib/hooks";
 
 type Role = NonNullable<WeekEntry["date_role"]>;
 
@@ -184,22 +185,25 @@ function PayButton({ entry }: { entry: WeekEntry }) {
 
 function ConfirmButton({ entry, step }: { entry: WeekEntry; step: StepId }) {
   const confirm = useConfirmItem();
+  const confirming = useOnePress(); // one press at a time: a second one confirmed it again (a second toast)
   return (
     <Button
       size="sm"
       variant="secondary"
       icon={Check}
-      loading={confirm.isPending}
+      loading={confirm.isPending || confirming.busy}
       // the accessible name starts with the visible words, WCAG 2.5.3; it vouches for the date only — a
       // payment's amount is compared in its Pay panel (ADR 0012, point 3)
       aria-label={`The date looks right: ${entry.title}`}
       onClick={() =>
-        confirm.mutate(entry.ref.id, {
-          onSuccess: () => {
-            toast({ tone: "success", title: "Date confirmed", description: `${entry.title} — its date is marked as checked by you.` });
-            focusAfterRow(step, entry.key);
-          },
-        })
+        confirming.once(() =>
+          confirm.mutateAsync(entry.ref.id, {
+            onSuccess: () => {
+              toast({ tone: "success", title: "Date confirmed", description: `${entry.title} — its date is marked as checked by you.` });
+              focusAfterRow(step, entry.key);
+            },
+          }),
+        )
       }
     >
       The date looks right

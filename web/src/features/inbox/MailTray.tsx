@@ -23,6 +23,7 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { useAddLetters } from "@/components/shell/AddLetters";
 import { holdNewUploadToasts, setUploadToastHidden } from "@/components/shell/UploadCenter";
 import { TOUR_TARGETS } from "@/features/tour/steps";
+import { useOnePress } from "@/lib/hooks";
 
 type CardState =
   | { kind: "idle" }
@@ -400,8 +401,9 @@ function Envelope({ item, state, index, onOpen, live }: { item: MailTrayItem; st
  * sharper photo, or take it out of New mail (it stays in the letters list, under Please check).
  * No `role="alert"`: the "couldn't be read" toast already says so.
  */
-function FailedPanel({ item, docId, message, anchor }: { item: MailTrayItem; docId: string; message: string; anchor: RefObject<HTMLDivElement | null> }) {
+export function FailedPanel({ item, docId, message, anchor }: { item: MailTrayItem; docId: string; message: string; anchor: RefObject<HTMLDivElement | null> }) {
   const reprocess = useReprocessDocument();
+  const trying = useOnePress(); // "Try again", one press at a time
   const { openPicker } = useAddLetters();
   // the buttons go with the panel: the envelope takes focus first (and keeps it)
   const keepFocus = () => {
@@ -418,13 +420,15 @@ function FailedPanel({ item, docId, message, anchor }: { item: MailTrayItem; doc
           size="sm"
           variant="primary"
           icon={RotateCw}
-          loading={reprocess.isPending}
-          onClick={() => {
-            keepFocus();
-            reprocess.mutate(docId, {
-              onSuccess: (j) => seedJob({ job_id: j.id, doc_id: docId, stage: "intake", progress: 0, status: "running" }),
-            });
-          }}
+          loading={reprocess.isPending || trying.busy}
+          onClick={() =>
+            trying.once(() => {
+              keepFocus();
+              return reprocess.mutateAsync(docId, {
+                onSuccess: (j) => seedJob({ job_id: j.id, doc_id: docId, stage: "intake", progress: 0, status: "running" }),
+              });
+            })
+          }
         >
           Try again
         </Button>

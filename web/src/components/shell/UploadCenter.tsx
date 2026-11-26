@@ -10,6 +10,7 @@ import { cn, plural } from "@/lib/utils";
 import { Spinner } from "@/components/ui/Spinner";
 import { Stepper } from "@/components/ui/Stepper";
 import { useModalOpen } from "@/components/ui/internal";
+import { useOnePress } from "@/lib/hooks";
 
 /** How long a filed letter's card stays (its time only runs while it isn't hovered or focused). */
 export const DONE_LINGER_MS = 9000;
@@ -57,6 +58,8 @@ function UploadRow({ job, grouped }: { job: JobProgress; grouped?: boolean }) {
   const docId = job.doc_id ?? "";
   const { data } = useDocument(job.doc_id ?? undefined);
   const reprocess = useReprocessDocument();
+  const trying = useOnePress(); // "Try again", one press at a time (a guard that read the last render let two through)
+  const retrying = reprocess.isPending || trying.busy;
   const doc = data?.document;
   const done = job.status === "done";
   const failed = job.status === "failed";
@@ -139,16 +142,17 @@ function UploadRow({ job, grouped }: { job: JobProgress; grouped?: boolean }) {
               type="button"
               className={actionCls}
               // busy: `aria-disabled`, not `disabled`, so focus stays on it (see Button's `busyProps`)
-              aria-disabled={reprocess.isPending || undefined}
-              aria-busy={reprocess.isPending || undefined}
-              onClick={() => {
-                if (reprocess.isPending) return;
-                reprocess.mutate(docId, {
-                  onSuccess: (j) => seedJob({ job_id: j.id, doc_id: docId, stage: "intake", progress: 0, status: "running" }),
-                });
-              }}
+              aria-disabled={retrying || undefined}
+              aria-busy={retrying || undefined}
+              onClick={() =>
+                trying.once(() =>
+                  reprocess.mutateAsync(docId, {
+                    onSuccess: (j) => seedJob({ job_id: j.id, doc_id: docId, stage: "intake", progress: 0, status: "running" }),
+                  }),
+                )
+              }
             >
-              {reprocess.isPending ? <Spinner className="size-3.5" /> : <RotateCw className="size-3.5" aria-hidden />}
+              {retrying ? <Spinner className="size-3.5" /> : <RotateCw className="size-3.5" aria-hidden />}
               Try again
             </button>
           ) : null}
