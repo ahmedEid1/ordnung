@@ -127,6 +127,12 @@ def _letter_note(ledger: Ledger, draft: Draft, status: WaitingStatus, reply: Doc
     return f"{sent_words}.{proof}{number}{context}{later}"
 
 
+def _closed(draft: Draft, followup: Item | None) -> bool:
+    """A sent letter's entry is closed: the person marked it answered, or its follow-up is done, set aside or
+    gone."""
+    return followup is None or followup.status in ("done", "dismissed") or draft.answered_on is not None
+
+
 def letter_entry(ledger: Ledger, draft: Draft) -> WaitingEntry | None:
     """The waiting entry of a sent letter (policy 1), closed ones included; ``None`` if it waits for nothing."""
     title = waits_for(draft.kind)
@@ -136,7 +142,7 @@ def letter_entry(ledger: Ledger, draft: Draft) -> WaitingEntry | None:
     followup = ledger.followup_item(draft)
     expected = parse_day(followup.due_date) if followup is not None else None
     reply = ledger.reply_to(draft)
-    closed = followup is None or followup.status in ("done", "dismissed") or draft.answered_on is not None
+    closed = _closed(draft, followup)
     status = _status(expected, today, answered=reply is not None, closed=closed)
     return WaitingEntry.model_validate(
         {
@@ -282,7 +288,14 @@ def _sort_key(entry: WaitingEntry) -> tuple[int, str, str]:
 
 def waiting_for(ledger: Ledger, *, include_closed: bool = False) -> list[WaitingEntry]:
     """Every waiting entry (policies 1–3), in the module's order; closed ones only when asked."""
-    entries = [entry for draft in ledger.sent_drafts() if (entry := letter_entry(ledger, draft)) is not None]
+    # a closed letter's entry is left out below whatever its answer, so its answer isn't looked for: that looks
+    # through every letter, for each of the years of sent letters
+    drafts = [
+        draft
+        for draft in ledger.sent_drafts()
+        if include_closed or not _closed(draft, ledger.followup_item(draft))
+    ]
+    entries = [entry for draft in drafts if (entry := letter_entry(ledger, draft)) is not None]
     entries += [_money_entry(ledger, item) for item in ledger.items if _is_money_owed(ledger, item)]
     entries += [entry for call in ledger.call_notes() if (entry := call_entry(ledger, call)) is not None]
     if not include_closed:

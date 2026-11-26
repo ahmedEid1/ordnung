@@ -25,6 +25,7 @@ import asyncio
 import contextlib
 import importlib
 import json
+import logging
 import os
 import re
 import signal
@@ -369,11 +370,13 @@ def _save_to_sync_folder(engine: Any, paths: Paths) -> None:
 
 def reachable_server(data_dir: Path) -> ServerInfo | None:
     """The server of this data folder, if ``server.json`` names a live process that answers for it."""
-    import httpx
-
     info = running_server(data_dir)
     if info is None:
         return None
+    # only a server that seems to run is asked: "ordnung serve" comes through here first, and on its usual start
+    # (no server yet) it must not pay for loading the HTTP client (tests/test_start_imports.py)
+    import httpx
+
     try:
         response = httpx.get(
             info.api_url("health"), headers=info.auth_headers(), timeout=HEALTH_TIMEOUT_S, trust_env=False
@@ -608,6 +611,21 @@ def _stop_on_console_close(
         register(handler, False)
 
 
+class _NoUpgradeWarnings(logging.Filter):
+    """Leaves out the two warnings uvicorn logs for each WebSocket upgrade request it answers as a plain one:
+    any program on the computer could fill the log with them, and one advises installing
+    ``uvicorn[standard]``, which Ordnung leaves out on purpose (see pyproject.toml)."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        message = record.getMessage()
+        return message != "Unsupported upgrade request." and not message.startswith(
+            "No supported WebSocket library detected."
+        )
+
+
+_NO_UPGRADE_WARNINGS = _NoUpgradeWarnings()
+
+
 def _run_server(server: Any) -> None:
     """Run uvicorn's ``server`` until it stops.
 
@@ -817,8 +835,12 @@ def _serve(
                 if open_browser:
                     _open_browser_when_ready(info)
                 # the plain asyncio loop: uvloop runs Python in the child it forks to start `claude`,
-                # where the store's thread cleanup could deadlock (see ordnung.db.store)
-                config = uvicorn.Config(asgi, host=host, port=port, log_level="warning", loop="asyncio")
+                # where the store's thread cleanup could deadlock (see ordnung.db.store). No WebSocket: the app
+                # has none, so an upgrade request is a plain request on every install, as on the phone listener
+                config = uvicorn.Config(
+                    asgi, host=host, port=port, log_level="warning", loop="asyncio", ws="none"
+                )
+                logging.getLogger("uvicorn.error").addFilter(_NO_UPGRADE_WARNINGS)
                 _run_server(uvicorn.Server(config))
         finally:
             context.close()

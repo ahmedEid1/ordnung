@@ -193,17 +193,26 @@ def ledger_fingerprint(store: Store) -> str:
     must join :data:`ordnung.db.store.LEDGER_TABLES`, a ``meta`` row :data:`ordnung.db.store.LEDGER_META_KEYS`,
     an Idea's rule :data:`ordnung.db.store.LEDGER_SUGGESTION_RULES`.
     """
-    profile = store.get_profile()
-    documents = store.list_documents()
+    # The letters (outside the trash), to-dos, contracts, parties and profile are the ledger's rows, the
+    # same records the store would give for this state of the database, already read once per change (Ask's
+    # first question after a change decoded them all again: seconds at 3,000 letters). The day doesn't
+    # matter: a letter is checked or not whatever the day.
+    ledger = Ledger(store, clock.today())
+    profile = ledger.profile
+    documents = [doc for doc in ledger.every_letter() if doc.deleted_at is None]
     shown = {doc.id for doc in documents if not doc.ai_private}
+    texts = store.document_texts()
     basis: dict[str, Any] = {
         "profile": [profile.name, profile.language, profile.region, profile.country],
         "documents": _rows(documents),
-        "texts": {doc.id: stable_hash(store.get_document_text(doc.id)) for doc in documents},
-        "items": _rows(store.list_items()),
-        "contracts": _rows(store.list_contracts()),
+        "texts": {doc.id: stable_hash(texts.get(doc.id, "")) for doc in documents},
+        "items": _rows(ledger.items),
+        "contracts": _rows(ledger.contracts),
         "parties": sorted(
-            (p.model_dump(mode="json", include={*PARTY_FIELDS, "identifiers"}) for p in store.list_parties()),
+            (
+                p.model_dump(mode="json", include={*PARTY_FIELDS, "identifiers"})
+                for p in ledger.parties.values()
+            ),
             key=lambda row: str(row["id"]),
         ),
     }
@@ -213,8 +222,7 @@ def ledger_fingerprint(store: Store) -> str:
     household = ask_view(store, shown)
     if household is not None:
         basis["household"] = household
-    # the day doesn't matter: a letter is checked or not whatever the day
-    checked = Ledger(store, clock.today()).scam_checked
+    checked = ledger.scam_checked
     if checked:
         basis["scam_checked"] = sorted(checked)
     return stable_hash(basis)

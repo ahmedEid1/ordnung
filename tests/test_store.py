@@ -257,6 +257,24 @@ def test_a_threads_connection_is_closed_when_the_thread_ends(store: Store) -> No
     assert store.get_meta("from") == "a new thread" and store._connections == [mine]
 
 
+def test_the_commit_stamp_s_connection_is_not_a_thread_s_and_closes_with_the_store(paths: Paths) -> None:
+    """The connection :meth:`Store.commit_stamp` reads on is the store's own, not a thread's: counted among
+    the threads' connections it took the one leftover place a leak check allows (the replay test of the
+    MCP server failed whenever a worker's connection was still open). It is closed by ``close()`` all the
+    same, and not opened again after."""
+    store = Store.open(paths)
+    mine = store._conn()
+    assert store.commit_stamp() is not None
+    watch = store._watch
+    assert watch is not None and store._connections == [mine]
+    store.close()
+    assert store._watch is None
+    with pytest.raises(sqlite3.ProgrammingError):
+        watch.execute("SELECT 1")
+    with pytest.raises(RuntimeError, match="closed"):
+        store._open_watch()
+
+
 def test_the_ended_thread_finalizer_does_nothing_under_another_pid(store: Store) -> None:
     """Under another pid it runs in a forked child, where SQLite must not be touched."""
     mine = store._conn()

@@ -541,6 +541,109 @@ def test_the_shared_rows_follow_changes_made_in_other_threads(paths: Paths) -> N
         assert len(triggers.Ledger(store, TODAY).documents) == before + 1
 
 
+def test_rows_loaded_behind_an_unfinished_read_are_not_kept_for_the_others(paths: Paths) -> None:
+    """A thread whose connection still has a read open (a cursor read part of the way) sees the database as
+    it was when that read began. Rows it loaded then must not be kept for the commit made since: every other
+    thread would be shown the old rows until the next commit."""
+    with Store.open(paths) as store, Store.open(paths) as other:
+        seed_ledger(store)
+        item = next(item for item in store.list_items() if item.status == "open")
+        triggers.Ledger(store, TODAY)
+        seen: dict[str, str] = {}
+
+        def pinned() -> None:
+            cursor = store._conn().execute("SELECT id FROM documents")
+            cursor.fetchone()  # the read stays open: this connection keeps seeing the database as it was
+            other.update_item(item.id, status="done")
+            seen["pinned"] = next(i.status for i in triggers.Ledger(store, TODAY).items if i.id == item.id)
+            cursor.close()
+
+        def after() -> None:
+            seen["after"] = next(i.status for i in triggers.Ledger(store, TODAY).items if i.id == item.id)
+
+        for target in (pinned, after):
+            worker = threading.Thread(target=target)
+            worker.start()
+            worker.join()
+        assert seen == {"pinned": "done", "after": "done"}
+
+
+def test_a_ledger_of_an_unchanged_database_reads_only_the_commit_stamp(paths: Paths) -> None:
+    """Several Ledgers are built per request: while nothing changed, each looks at the commit stamp once (two
+    PRAGMAs) and takes the kept rows, nothing more."""
+    with Store.open(paths) as store:
+        seed_ledger(store)
+        triggers.Ledger(store, TODAY)
+        assert store._watch is not None
+        ran: list[str] = []
+        connections = (store._conn(), store._watch)
+        for conn in connections:
+            conn.set_trace_callback(ran.append)
+        try:
+            for _ in range(3):
+                triggers.Ledger(store, TODAY)
+        finally:
+            for conn in connections:
+                conn.set_trace_callback(None)
+        assert len(ran) <= 3 * 2, ran
+
+
+def test_only_the_readings_that_state_a_change_are_parsed(
+    paths: Paths, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The cancellation confirmations and price increases are found by one query: the ledger parses those
+    letters' readings, not every letter's (at 3,000 letters, most of a second per reload of the rows)."""
+    with Store.open(paths) as store:
+        ids = seed_ledger(store)
+        for n in range(30):
+            reading = DocumentExtraction(kind="invoice", title=f"Rechnung {n}", summary="s", explanation="e")
+            add_doc(store, f"plain-{n}", kind="invoice", title=f"Rechnung {n}", extraction=reading)
+        parsed: list[str] = []
+        original = DocumentExtraction.model_validate_json
+
+        def counted(data: Any, *args: Any, **kwargs: Any) -> DocumentExtraction:
+            parsed.append("x")
+            return original(data, *args, **kwargs)
+
+        monkeypatch.setattr(DocumentExtraction, "model_validate_json", counted)
+        ledger = triggers.Ledger(store, TODAY)
+        confirmations, windows = ledger.pending_confirmations(), ledger.price_increase_windows()
+        assert [doc.id for doc, _ in confirmations.values()] == [ids["doc_gym_confirm"]]
+        assert [window.letter.id for window in windows] == [ids["doc_power"]]
+        assert len(parsed) == 2
+
+
+def test_the_api_threads_share_one_load_per_change(paths: Paths) -> None:
+    """The API answers in a pool of threads, each with its own connection: after a change the rows are
+    loaded once for all of them, not once per thread (four threads after one change made four loads,
+    one after the other, a few seconds each at 3,000 letters)."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from ordnung.secretary import ledger as ledger_module
+
+    with Store.open(paths) as store, Store.open(paths) as other:
+        seed_ledger(store)
+        triggers.Ledger(store, TODAY)
+        cache = ledger_module._CACHES[store]
+
+        def loads_in_new_threads(count: int) -> int:
+            before = cache._loads
+            with ThreadPoolExecutor(count) as pool:
+                list(pool.map(lambda _: triggers.Ledger(store, TODAY), range(count)))
+            return cache._loads - before
+
+        assert loads_in_new_threads(4) == 0  # nothing changed: every new thread takes the rows loaded
+        added = add_doc(other, "from-another-connection", title="Another connection")
+        assert loads_in_new_threads(4) == 1
+        store.update_document(added, title="Renamed in this store")
+        assert loads_in_new_threads(6) == 1
+        with ThreadPoolExecutor(4) as pool:  # a pool's threads write too: one load after each change
+            pool.submit(store.update_document, added, title="Renamed in a thread").result()
+            assert loads_in_new_threads(4) == 1
+            titles = pool.map(lambda _: triggers.Ledger(store, TODAY).documents[added].title, range(4))
+            assert set(titles) == {"Renamed in a thread"}
+
+
 def _repeating_to_dos(store: Store, count: int) -> None:
     """``count`` repeating payments, each to a sender of its own and by a rule of its own kind: every month on
     a day, every few months on a working day, every year, every 2 weeks."""

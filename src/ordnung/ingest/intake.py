@@ -23,7 +23,6 @@ from pathlib import Path, PurePosixPath
 
 import pillow_heif
 import pypdfium2 as pdfium
-from fpdf import FPDF
 from PIL import Image, ImageDraw, ImageOps, UnidentifiedImageError
 
 from ordnung.durable import write_atomic
@@ -263,6 +262,10 @@ def combine_images_to_pdf(images: Sequence[bytes]) -> bytes:
         raise IntakeError("There are no photos to combine.")
     if len(images) > MAX_PAGES:
         raise IntakeError(f"Please combine at most {MAX_PAGES} photos into one document.")
+    from fpdf import (
+        FPDF,
+    )  # here, not at the top: the PDF writer (with fontTools) is a tenth of the server's start
+
     pdf = FPDF(unit="pt")
     pdf.set_creation_date(_EPOCH)
     pdf.set_auto_page_break(False)

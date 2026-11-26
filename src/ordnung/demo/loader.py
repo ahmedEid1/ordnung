@@ -10,7 +10,10 @@
   tray letters and asks the suggested questions in each, so the demo can answer them whichever
   letters the visitor opened. ``rebuild=True`` then writes the ``demo_db`` snapshot.
 * :func:`prepare_demo` is what ``ordnung demo`` runs: keep a current demo folder, else copy the
-  snapshot (instant), else rebuild from the fixtures.
+  snapshot (instant, :func:`copy_snapshot`), else rebuild from the fixtures. The snapshot carries neither
+  the letters' originals nor the search index: the originals are the samples, which the package ships
+  anyway (each found by its SHA-256, the copy refused if a sample changed), and the index is written again
+  from the letters' rows, so both are in the package once.
 * :func:`check_demo` (``ordnung demo --check``, CI) rebuilds twice with strict replay and checks:
   zero misses, identical canonical dumps, fixtures valid against the current output models and
   referencing sample documents only, every Idea reference and recorded citation resolves, and every
@@ -93,6 +96,11 @@ VERSION_NAME = "VERSION"
 RENDERER_NAME = "RENDERER"
 DB_NAME = "ordnung.db"
 COPIED_DIRS = ("files", "derived")
+#: What the snapshot carries of a data folder's files: the page images. The originals are the samples
+#: (:func:`copy_snapshot` copies them in by their hash).
+SNAPSHOT_DIRS = ("derived",)
+#: The search indexes (FTS5 tables), written again from the letters' rows after a snapshot is copied.
+SEARCH_TABLES = ("documents_fts", "documents_trigram")
 DEFAULT_SNAPSHOT = PACKAGE_DIR / "demo" / "demo_db"
 OUTPUT_MODELS: dict[str, type[BaseModel]] = {
     "extract": DocumentExtraction,
@@ -270,8 +278,10 @@ def _backup_db(source: Path, target: Path, *, compact: bool) -> None:
             dst.execute("VACUUM")
 
 
-def copy_data(source: Path, target: Path, *, compact: bool = False) -> None:
-    """Copy a data folder's database, originals and page images into ``target``.
+def copy_data(
+    source: Path, target: Path, *, compact: bool = False, dirs: Sequence[str] = COPIED_DIRS
+) -> None:
+    """Copy a data folder's database, originals and page images (``dirs``) into ``target``.
 
     ``compact`` writes a single-file database (no WAL) — the form the committed snapshot has.
     """
@@ -280,13 +290,86 @@ def copy_data(source: Path, target: Path, *, compact: bool = False) -> None:
         raise DemoError(f"There is no demo database in {source}.")
     target.mkdir(parents=True, exist_ok=True)
     _backup_db(database, target / DB_NAME, compact=compact)
-    for name in COPIED_DIRS:
+    for name in dirs:
         if (source / name).is_dir():
             shutil.copytree(source / name, target / name, dirs_exist_ok=True)
 
 
+def copy_snapshot(snapshot: Path, target: Path, *, samples: str | Path | None = None) -> None:
+    """Copy the demo snapshot into ``target`` and complete it: the letters' originals from the samples
+    (:func:`_fill_originals`) and the search index from the letters' rows (:func:`_index_search`). A
+    snapshot that still carries either (an older one) keeps what it carries."""
+    copy_data(snapshot, target)
+    _fill_originals(target, samples_root(samples))
+    _index_search(target)
+
+
+def _fill_originals(data_dir: Path, samples: Path) -> None:
+    """Each letter's original that ``data_dir`` lacks, written from the sample with the same bytes: found by
+    its SHA-256, which is also the original's file name, so what is written is what the build stored. A letter
+    no sample has the bytes of (a sample changed since the snapshot was built) is refused, never filled with
+    other bytes."""
+    with contextlib.closing(
+        sqlite3.connect(f"{(data_dir / DB_NAME).resolve().as_uri()}?mode=ro", uri=True)
+    ) as conn:
+        wanted = [
+            (path, sha) for path, sha in conn.execute("SELECT file_path, sha256 FROM documents") if path
+        ]
+    missing = [(path, sha) for path, sha in wanted if not (data_dir / path).is_file()]
+    if not missing:
+        return
+    by_hash: dict[str, bytes] = {}
+    for sample in sorted(samples.rglob("*")):
+        if sample.is_file():
+            data = sample.read_bytes()
+            by_hash[hashlib.sha256(data).hexdigest()] = data
+    for path, sha in missing:
+        data = by_hash.get(sha, b"")
+        if Path(path).stem != sha or hashlib.sha256(data).hexdigest() != sha:
+            raise DemoError(
+                f"The demo's letter {Path(path).name} is not among its samples in {samples}: no sample has its "
+                "bytes (one changed since the demo was built?) — rebuild it with `ordnung demo --rebuild`."
+            )
+        target = data_dir / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+
+
+def _index_search(data_dir: Path) -> None:
+    """Write the search index of every letter of ``data_dir`` again from its rows (:meth:`Store.reindex_document`,
+    what every write of a letter does), when the index is empty: the snapshot ships without it."""
+    with contextlib.closing(
+        sqlite3.connect(f"{(data_dir / DB_NAME).resolve().as_uri()}?mode=ro", uri=True)
+    ) as conn:
+        if conn.execute(f"SELECT count(*) FROM {SEARCH_TABLES[0]}").fetchone()[0]:
+            return
+    with Store.open(Paths(data_dir)) as store:
+        for document in store.list_documents(include_deleted=True):
+            store.reindex_document(document.id)
+
+
+def _search_rows(db_path: Path) -> list[tuple[Any, ...]]:
+    """Every row of the search indexes, sorted: what a search can find."""
+    with contextlib.closing(sqlite3.connect(f"{db_path.resolve().as_uri()}?mode=ro", uri=True)) as conn:
+        return sorted(
+            (table, *row) for table in SEARCH_TABLES for row in conn.execute(f"SELECT * FROM {table}")
+        )
+
+
+def _empty_search(database: Path) -> None:
+    """Leave the search index out of a snapshot's database (``VACUUM``: its pages too)."""
+    with contextlib.closing(sqlite3.connect(database)) as conn:
+        for table in SEARCH_TABLES:
+            conn.execute(f"DELETE FROM {table}")
+            # a delete only marks the index's entries as gone; rebuilt from the (now empty) table they go
+            conn.execute(f"INSERT INTO {table}({table}) VALUES ('rebuild')")
+        conn.commit()
+        conn.execute("VACUUM")
+
+
 def write_snapshot(data_dir: Path, snapshot: Path, version: str) -> Path:
-    """Replace the demo snapshot with a copy of ``data_dir`` and stamp it with ``version``."""
+    """Replace the demo snapshot with a copy of ``data_dir`` — its database without the search index, and its
+    page images — and stamp it with ``version``. The originals stay out: they are the samples."""
     snapshot.mkdir(parents=True, exist_ok=True)
     for name in (DB_NAME, f"{DB_NAME}-wal", f"{DB_NAME}-shm", VERSION_NAME, RENDERER_NAME, *COPIED_DIRS):
         path = snapshot / name
@@ -294,7 +377,8 @@ def write_snapshot(data_dir: Path, snapshot: Path, version: str) -> Path:
             shutil.rmtree(path)
         elif path.exists():
             path.unlink()
-    copy_data(data_dir, snapshot, compact=True)
+    copy_data(data_dir, snapshot, compact=True, dirs=SNAPSHOT_DIRS)
+    _empty_search(snapshot / DB_NAME)
     (snapshot / VERSION_NAME).write_text(version + "\n", encoding="utf-8")
     (snapshot / RENDERER_NAME).write_text(renderer() + "\n", encoding="utf-8")
     return snapshot
@@ -776,7 +860,7 @@ def prepare_demo(
     source = Path(snapshot) if snapshot is not None else snapshot_dir()
     if snapshot_version(source) == version:
         _clear(target)
-        copy_data(source, target)
+        copy_snapshot(source, target, samples=samples)
         refresh_ideas(target)
         draft_example(target)
         _write_marker(target, version)
@@ -940,11 +1024,13 @@ async def _check_builds(
     return states
 
 
-def _check_snapshot(report: DemoCheck, snapshot: Path, plan: _Plan, built: Path) -> None:
-    """The snapshot ``ordnung demo`` copies as it is: its version, and then its content, must be what the
-    fixtures build (``built``): the database row for row (timestamps aside), each cached answer by its key,
-    the originals byte for byte, and the page images byte for byte where the renderer that drew the snapshot's
-    (:data:`RENDERER_NAME`) is this one (by name elsewhere, with a warning)."""
+def _check_snapshot(report: DemoCheck, snapshot: Path, plan: _Plan, built: Path, prepared: Path) -> None:
+    """The snapshot ``ordnung demo`` copies: its version, and then its content, must be what the fixtures
+    build (``built``): the database row for row (timestamps aside), each cached answer by its key, and the
+    page images byte for byte where the renderer that drew the snapshot's (:data:`RENDERER_NAME`) is this one
+    (by name elsewhere, with a warning). What the copy adds is checked on a copy made as ``ordnung demo``
+    makes it (``prepared``, :func:`copy_snapshot`): the originals taken from the samples byte for byte, and
+    the search index written from the letters' rows, row for row."""
     current = demo_version(samples=plan.samples, fixtures=plan.fixtures)
     found = snapshot_version(snapshot)
     if found is None:
@@ -963,8 +1049,19 @@ def _check_snapshot(report: DemoCheck, snapshot: Path, plan: _Plan, built: Path)
     report.problems += [f"the snapshot differs from the build: {line}" for line in differences]
     if _cached_answers(built / DB_NAME) != _cached_answers(snapshot / DB_NAME):
         report.problems.append(f"The cached answers in the demo snapshot {snapshot} differ from the build's.")
-    if _folder_digest(built / "files") != _folder_digest(snapshot / "files"):
-        report.problems.append(f"The originals in the demo snapshot {snapshot} differ from the build's.")
+    try:
+        copy_snapshot(snapshot, prepared, samples=plan.samples)
+    except DemoError as exc:
+        report.problems.append(str(exc))
+    else:
+        if _folder_digest(built / "files") != _folder_digest(prepared / "files"):
+            report.problems.append(
+                f"The originals the demo snapshot {snapshot} is given differ from the build's."
+            )
+        if _search_rows(built / DB_NAME) != _search_rows(prepared / DB_NAME):
+            report.problems.append(
+                f"The search index written for the demo snapshot {snapshot} differs from the build's."
+            )
     images, built_images = _folder_digest(snapshot / "derived"), _folder_digest(built / "derived")
     if images.keys() != built_images.keys():
         report.problems.append(f"The page images in the demo snapshot {snapshot} differ from the build's.")
@@ -1054,6 +1151,10 @@ def check_demo(
         base_problems, report.ideas = _inspect(work / "first", None)
         report.problems += base_problems + _inspect(states[-1], plan.fixtures)[0]
         _check_snapshot(
-            report, Path(snapshot) if snapshot is not None else snapshot_dir(), plan, work / "second"
+            report,
+            Path(snapshot) if snapshot is not None else snapshot_dir(),
+            plan,
+            work / "second",
+            work / "prepared",
         )
     return report

@@ -38,6 +38,7 @@ from ordnung.demo.loader import (
     build_demo,
     canonical_dump,
     check_demo,
+    copy_snapshot,
     demo_version,
     dump_differences,
     is_demo_dir,
@@ -397,6 +398,54 @@ def test_prepare_uses_the_snapshot_then_keeps_the_folder(life: SampleLife, tmp_p
         store.close()
 
 
+def _search_rows(database: Path) -> list[tuple[Any, ...]]:
+    with contextlib.closing(sqlite3.connect(database)) as conn:
+        return sorted(
+            (table, *row)
+            for table in ("documents_fts", "documents_trigram")
+            for row in conn.execute(f"SELECT * FROM {table}")
+        )
+
+
+def test_the_snapshot_carries_no_originals_and_no_search_index_the_copy_adds_both(
+    life: SampleLife, tmp_path: Path
+) -> None:
+    """The originals are the samples (the package ships them anyway) and the search index is written from the
+    letters' rows, so the snapshot carries neither, and a copy gets both: every original byte for byte as the
+    build stored it, found among the samples by its hash, and the build's index row for row. A sample that no
+    longer has a letter's bytes is refused, never copied."""
+    assert not (life.snapshot / "files").exists()
+    assert _search_rows(life.snapshot / "ordnung.db") == []
+    folder = tmp_path / "demo"
+    prepare_demo(folder, samples=life.samples, fixtures=life.fixtures, snapshot=life.snapshot)
+    built = life.snapshot.parent / "replayed"
+    originals = sorted(path for path in (folder / "files").rglob("*") if path.is_file())
+    assert [path.relative_to(folder) for path in originals] == sorted(
+        path.relative_to(built) for path in (built / "files").rglob("*") if path.is_file()
+    )
+    assert all(path.read_bytes() == (built / path.relative_to(folder)).read_bytes() for path in originals)
+    assert _search_rows(folder / "ordnung.db") == _search_rows(built / "ordnung.db") != []
+
+    changed = tmp_path / "samples"
+    shutil.copytree(life.samples, changed)
+    (changed / "01_tax.pdf").write_bytes((changed / "01_tax.pdf").read_bytes() + b"\n%changed")
+    with pytest.raises(DemoError, match="not among its samples"):
+        copy_snapshot(life.snapshot, tmp_path / "refused", samples=changed)
+
+
+def test_the_committed_snapshot_carries_no_originals_and_no_search_index() -> None:
+    """What the wheel ships of the demo (``demo_db/**``): the database without its search index, and the page
+    images; the originals ship once, as the samples."""
+    snapshot = Path(__file__).resolve().parents[1] / "src" / "ordnung" / "demo" / "demo_db"
+    assert sorted(path.name for path in snapshot.iterdir()) == [
+        "RENDERER",
+        "VERSION",
+        "derived",
+        "ordnung.db",
+    ]
+    assert _search_rows(snapshot / "ordnung.db") == []
+
+
 def test_prepare_rebuilds_from_fixtures_when_the_snapshot_is_stale(life: SampleLife, tmp_path: Path) -> None:
     stale = tmp_path / "snapshot"
     shutil.copytree(life.snapshot, stale)
@@ -454,7 +503,8 @@ def test_check_demo_reports_every_kind_of_problem(life: SampleLife, tmp_path: Pa
 
 def test_check_demo_finds_a_snapshot_whose_content_was_changed(life: SampleLife, tmp_path: Path) -> None:
     """``ordnung demo`` copies the committed snapshot as it is, so its version alone is not enough: an amount
-    changed in its database, or an original changed, is a problem though the version still matches."""
+    changed in its database, an original changed, or a search index that isn't the build's is a problem though
+    the version still matches."""
     changed = tmp_path / "snapshot"
     shutil.copytree(life.snapshot, changed)
     with contextlib.closing(sqlite3.connect(changed / "ordnung.db")) as conn:
@@ -463,12 +513,24 @@ def test_check_demo_finds_a_snapshot_whose_content_was_changed(life: SampleLife,
     report = check_demo(samples=life.samples, fixtures=life.fixtures, snapshot=changed, questions=[])
     assert not report.ok
     assert any(problem.startswith("the snapshot differs from the build: ") for problem in report.problems)
+    # what a copy adds is checked on a copy: an original a snapshot still carries (an older one did), and its
+    # search index, must be the build's
     shutil.rmtree(changed)
     shutil.copytree(life.snapshot, changed)
+    built = life.snapshot.parent / "replayed"
+    shutil.copytree(built / "files", changed / "files")
     original = next(path for path in (changed / "files").rglob("*") if path.is_file())
     original.write_bytes(original.read_bytes() + b"\n%changed")
     report = check_demo(samples=life.samples, fixtures=life.fixtures, snapshot=changed, questions=[])
     assert [problem for problem in report.problems if "originals" in problem], report.problems
+    shutil.rmtree(changed / "files")
+    with contextlib.closing(sqlite3.connect(changed / "ordnung.db")) as conn:
+        conn.execute(
+            "INSERT INTO documents_trigram (doc_id, body) VALUES ('doc_x', 'an index row no letter has')"
+        )
+        conn.commit()
+    report = check_demo(samples=life.samples, fixtures=life.fixtures, snapshot=changed, questions=[])
+    assert [problem for problem in report.problems if "search index" in problem], report.problems
 
 
 def test_check_demo_compares_the_snapshot_s_cached_answers_and_page_images(

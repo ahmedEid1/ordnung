@@ -52,7 +52,6 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from ordnung.days import parse_day
 from ordnung.db.store import NotFoundError, Store
 from ordnung.drafts.compose import NO_TRACKING, DraftError
-from ordnung.drafts.pdf import NachweisFacts, NachweisFile, NachweisLine, render_nachweis
 from ordnung.drafts.proof import (
     CAVEAT,
     CAVEAT_DE,
@@ -83,6 +82,7 @@ from ordnung.secretary.waiting import letter_entry
 
 if TYPE_CHECKING:
     from ordnung.app_context import AppContext
+    from ordnung.drafts.pdf import NachweisFile
 
 NOT_SENT = "Mark the letter as sent first — proof belongs to a letter that went out."
 TOO_MANY = f"A letter can hold up to {MAX_PROOFS} proofs. Remove one you don't need first."
@@ -545,6 +545,8 @@ def overview(store: Store, draft_id: str, today: date) -> ProofOverview:
 
 
 def _enclosure(store: Store, proof: Proof, document: Document | None) -> NachweisFile | None:
+    from ordnung.drafts.pdf import NachweisFile
+
     if document is None:
         return None
     info = kind_info(proof.kind)
@@ -592,6 +594,9 @@ def nachweis_file_name(draft: Draft) -> str:
 def nachweis_pdf(store: Store, draft_id: str, today: date) -> bytes:
     """The Nachweis PDF of a sent letter: summary and timeline, the letter (as sent), the proof files.
     A possible answer the person hasn't confirmed is left out; proofs without a day are listed apart."""
+    # the PDF writer (with fontTools) loads on first use, not with the server: a tenth of its start
+    from ordnung.drafts.pdf import NachweisFacts, NachweisLine, render_nachweis
+
     draft = _sent_draft(store, draft_id)
     ledger = Ledger(store, today)
     proofs = ledger.proofs_of(draft.id)

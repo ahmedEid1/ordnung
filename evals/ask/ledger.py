@@ -31,7 +31,7 @@ from ordnung.app_context import SIMULATED_TODAY_KEY, build_context
 from ordnung.config import Paths, fixtures_dir
 from ordnung.db.store import Store
 from ordnung.demo import Manifest, load_manifest, samples_root
-from ordnung.demo.loader import DB_NAME, copy_data, demo_version, snapshot_dir, snapshot_version
+from ordnung.demo.loader import DB_NAME, copy_snapshot, demo_version, snapshot_dir, snapshot_version
 from ordnung.demo.tour import open_tray_item
 from ordnung.llm.replay import ReplayBackend
 
@@ -111,7 +111,7 @@ def build_base(
             f"The demo snapshot in {source} is out of date: rebuild it first "
             "(ordnung demo --rebuild, or ORDNUNG_RECORD=1 ordnung demo --live --rebuild)."
         )
-    copy_data(source, target)
+    copy_snapshot(source, target, samples=life.root)
     asyncio.run(_open_tray(target, life))
     when = day or benchmark_today()
     if when != TODAY:  # the tray letters were read on the sample life's day; the person asks on this one

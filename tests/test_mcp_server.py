@@ -55,6 +55,7 @@ from ordnung.assistant.mcp_server import (
 from ordnung.assistant.support import TurnEvidence, check_answer
 from ordnung.config import Paths
 from ordnung.db.store import Store
+from ordnung.demo.loader import copy_snapshot
 from ordnung.ingest.attachments import EMAIL_MIME, email_source
 from ordnung.models import DocumentExtraction, Evidence, ExtractedChange, Identifier, Recurrence
 from ordnung.secretary.triggers import Ledger
@@ -2395,7 +2396,7 @@ def settled_demo_store(tmp_path: Path) -> Iterator[Store]:
     from evals.ask.ledger import _settle_stamps
 
     data = tmp_path / "demo"
-    shutil.copytree(DEMO_DB, data)
+    copy_snapshot(DEMO_DB, data)  # as the benchmark prepares it: the snapshot alone carries no search index
     _settle_stamps(data)
     store = Store.open(Paths(data))
     yield store
@@ -2487,6 +2488,8 @@ def test_without_a_check_every_tool_answers_as_before_and_a_check_changes_them(
     tools = LedgerTools(store, today=today)
     run_and_reconcile(store, today)
     first = _every_answer(tools, store)
+    # with an empty search index every search finds nothing, and the comparisons below could not fail for it
+    assert sum(len(tools.search(party.name).record["hits"]) for party in store.list_parties()) > 0
     letter = next(
         item.doc_id for item in store.list_items(status="open") if item.kind == "payment" and item.doc_id
     )

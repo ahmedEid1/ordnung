@@ -581,3 +581,32 @@ async def test_filing_a_letter_regroups_my_numbers(data_dir: Path) -> None:
         page = (await api.client.get("/api/numbers")).json()
         assert values(page) == (["A123456780"], {})
         assert (page["household"], page["filed_for"], page["also_for"]) == ([], {}, {})
+
+
+def test_my_numbers_is_worked_out_once_per_change(store: Store, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Opening *My numbers* again with nothing changed answers the page worked out before (building it took
+    most of a second at 3,000 letters); any change, a filed letter among them, works it out again, and each
+    caller gets a copy of its own."""
+    from ordnung import views
+
+    store.save_profile({"name": "Sam Rivera", "onboarded": True})
+    bkk = _party(store, "pty_bkk", "Muster BKK", "health_insurer")
+    letter = _letter(
+        store, "bkk", ("Krankenversichertennummer", "A123456780"), kind="health_insurance", party_id=bkk
+    )
+    built: list[bool] = []
+    original = views.build_my_numbers
+
+    def counted(given: Any) -> NumbersPage:
+        built.append(True)
+        return original(given)
+
+    monkeypatch.setattr(views, "build_my_numbers", counted)
+    first, again = _page(store), _page(store)
+    assert len(built) == 1 and first == again and first is not again
+    _page(store, shareable_only=True)
+    assert len(built) == 2
+    (alex,) = _people(store, "Alex Rivera")
+    household.file(store, {letter: alex.id})
+    assert [person.name for person in _page(store).household] == ["Alex Rivera"]
+    assert len(built) == 3

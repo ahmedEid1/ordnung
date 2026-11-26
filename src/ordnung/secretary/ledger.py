@@ -19,11 +19,11 @@ import json
 import re
 import threading
 import weakref
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from ordnung.clock import now_iso
 from ordnung.days import parse_day
@@ -70,6 +70,10 @@ try:  # the scam checks are optional: the triggers work without them
     from ordnung.secretary import scam as _scam
 except ImportError:  # pragma: no cover - only while the module is absent
     _scam = None  # type: ignore[assignment]
+
+_T = TypeVar("_T")
+#: The changes a letter's reading states that the ledger looks for among every letter (``change.type``).
+_STATED_CHANGES = ("cancellation_confirmation", "price_increase")
 
 #: Item kinds that can be overdue (appointments and milestones simply pass; expiries have their own rule).
 OVERDUE_KINDS = frozenset({"deadline", "payment", "task"})
@@ -410,13 +414,15 @@ class PriceIncreaseWindow:
 @dataclass
 class _Rows:
     """The rows a :class:`Ledger` reads, as of one state of the database: every letter once (in the
-    trash and proof files too, by sender for the scam checks), the to-dos, contracts and parties, the scam
-    warnings the person dismissed — and, once worked out, what depends on nothing else: each letter's scam
-    warning signs and its reading, the letters the person checked, and which payment reminders took over
-    which letters' payments."""
+    trash and proof files too, in the store's order and by sender for the scam checks), the to-dos,
+    contracts and parties, the scam warnings the person dismissed — and, once worked out, what depends on
+    nothing else: each letter's scam warning signs and its reading, the letters the person checked, and
+    which payment reminders took over which letters' payments."""
 
     profile: Profile
     documents: dict[str, Document]
+    #: every letter, in the trash and proof files too, as ``Store.list_documents(include_deleted=True)`` lists them
+    every: tuple[Document, ...]
     by_party: dict[str, list[Document]]
     items: list[Item]
     contracts: list[Contract]
@@ -427,6 +433,10 @@ class _Rows:
     scam_checked: frozenset[str] | None = None
     extractions: dict[str, DocumentExtraction | None] = field(default_factory=dict)
     covered: dict[str, Document] | None = None
+    #: the letters whose reading may state a change the ledger looks for (:meth:`Ledger._stating_changes`)
+    stating_changes: frozenset[str] | None = None
+    #: whole pages worked out from this state of the database (:meth:`Ledger.kept`), by what they depend on
+    pages: dict[tuple[object, ...], object] = field(default_factory=dict)
 
     @classmethod
     def load(cls, store: Store) -> _Rows:
@@ -442,6 +452,7 @@ class _Rows:
                 documents={
                     doc.id: doc for doc in every if doc.deleted_at is None and doc.source != PROOF_SOURCE
                 },
+                every=tuple(every),
                 by_party=by_party,
                 items=store.list_items(),
                 contracts=store.list_contracts(),
@@ -479,31 +490,42 @@ class _RowsStore:
 
 class _RowsCache:
     """The rows last loaded from one store, shared by every Ledger built while the database stays as it
-    was — the Ledgers of one request, and of the requests after it until something changes.
+    was — the Ledgers of one request, and of the requests after it until something changes, in whichever
+    of the API's threads they run.
 
-    Whether it changed is :meth:`Store.change_token`, which only compares within one thread: each thread
-    keeps the token it saw last and which load was current then. An unchanged token means nothing was
-    committed since, so the current load still holds (a newer one was made after the thread looked).
-    Inside a transaction, which may read what isn't committed, the rows are loaded afresh and not kept.
+    Whether it changed is :meth:`Store.commit_stamp`, which every thread compares alike: after a commit the
+    first thread to look loads the rows once, under the lock, and the threads waiting there take them
+    (each thread compared its own token before, so four threads after one change made four loads of a few
+    seconds each at 3,000 letters). The rows are loaded as of the stamp they are kept under
+    (:meth:`Store.as_of_commit_stamp`), never on the thread's own connection, which may still see the
+    database as it was before the last commit (a read left unfinished there) and would keep old rows for
+    every thread. Inside a transaction, which may read what isn't committed, the rows are loaded afresh and
+    not kept.
     """
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._rows: _Rows | None = None
+        #: the rows and the stamp they were loaded as of, kept together so a reader never pairs one with
+        #: the other's predecessor
+        self._kept: tuple[tuple[int, int], _Rows] | None = None
         self._loads = 0
-        self._seen = threading.local()
 
     def rows(self, store: Store) -> _Rows:
-        token = store.change_token()
-        if token is None:
+        stamp = store.commit_stamp()
+        if stamp is None:  # inside a transaction
             return _Rows.load(store)
-        with self._lock:
-            seen: tuple[tuple[int, int, int], int] | None = getattr(self._seen, "last", None)
-            if self._rows is None or seen is None or seen[0] != token:
-                self._rows = _Rows.load(store)
+        kept = self._kept
+        if kept is not None and kept[0] == stamp:
+            return kept[1]
+        with self._lock, store.as_of_commit_stamp() as as_of:
+            kept = self._kept
+            if as_of is not None and kept is not None and kept[0] == as_of:
+                return kept[1]  # a thread that waited here takes the rows the one before it loaded
+            rows = _Rows.load(store)
+            if as_of is not None:
+                self._kept = (as_of, rows)
                 self._loads += 1
-            self._seen.last = (token, self._loads)
-            return self._rows
+            return rows
 
 
 _CACHES: weakref.WeakKeyDictionary[Store, _RowsCache] = weakref.WeakKeyDictionary()
@@ -769,6 +791,21 @@ class Ledger:
             known[doc_id] = self.store.get_extraction(doc_id)
         return known[doc_id]
 
+    def kept(self, key: tuple[object, ...], work: Callable[[], _T]) -> _T:
+        """``work()``, worked out once per state of the database and ``key`` and kept with the rows: for a
+        whole page read from the database alone, ``key`` naming everything else it depends on (the day among
+        them). Any commit replaces the rows, and the page with them. Callers must not change what it gives."""
+        known = self._rows.pages
+        if key not in known:
+            known[key] = work()
+        return cast(_T, known[key])
+
+    def every_letter(self) -> tuple[Document, ...]:
+        """Every letter, in the trash and proof files too, in the store's order
+        (``Store.list_documents(include_deleted=True)``), as of the rows' state of the database: read once
+        per change, not once per question."""
+        return self._rows.every
+
     def sent_drafts(self) -> list[Draft]:
         """Letters marked as sent, newest first."""
         if self._sent_drafts is None:
@@ -798,8 +835,8 @@ class Ledger:
 
     def followup_item(self, draft: Draft) -> Item | None:
         """The follow-up to-do created when the letter was marked as sent (``None`` once deleted)."""
-        wanted = followup_item_id(draft.id)
-        return next((item for item in self.items if item.id == wanted), None)
+        # found by id: a walk over every to-do for each sent letter grew with the square of the archive
+        return self._items_by_id.get(followup_item_id(draft.id))
 
     def letter_after(
         self, case_id: str | None, since: date, *, exclude: str | None = None, contract_id: str | None = None
@@ -932,10 +969,23 @@ class Ledger:
         doc = self.document(item.doc_id)
         return doc is not None and self.shows_scam_signs(doc)
 
+    def _stating_changes(self) -> frozenset[str]:
+        """The letters whose reading states a cancellation confirmation or a price increase (or isn't JSON),
+        found once per state of the database by one query (:meth:`Store.letters_stating_changes`): the readers
+        below parse only these, not every letter's reading (at 3,000 letters, most of a second per reload)."""
+        rows = self._rows
+        if rows.stating_changes is None:
+            found = self.store.letters_stating_changes(_STATED_CHANGES)
+            rows.stating_changes = frozenset(found)
+        return rows.stating_changes
+
     def pending_confirmations(self) -> dict[str, tuple[Document, date | None]]:
         """Active contracts with a cancellation confirmation: contract id → (letter, effective day)."""
         found: dict[str, tuple[Document, date | None]] = {}
+        stating = self._stating_changes()
         for doc in sorted(self.documents.values(), key=lambda d: (d.doc_date or "", d.id)):
+            if doc.kind != "cancellation_confirmation" and doc.id not in stating:
+                continue  # its reading states no cancellation confirmation
             extraction = self.extraction(doc.id)
             change = extraction.change if extraction else None
             confirms = doc.kind == "cancellation_confirmation" or (
@@ -962,7 +1012,10 @@ class Ledger:
         """
         if self._price_windows is None:
             self._price_windows = []
+            stating = self._stating_changes()
             for doc in self.documents.values():
+                if doc.id not in stating:
+                    continue  # its reading states no price increase
                 extraction = self.extraction(doc.id)
                 change = extraction.change if extraction else None
                 effective = parse_day(change.effective_date) if change else None

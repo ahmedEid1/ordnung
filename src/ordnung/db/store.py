@@ -701,6 +701,9 @@ class Store:
         #: the same for the words Ordnung read in its pictures (``picture-text.json``, ADR 0024)
         self._picture_text_cache: dict[str, tuple[tuple[int, int], dict[int, tuple[str, str]]]] = {}
         self._scan_text_lock = threading.Lock()  # guards both
+        #: the connection :meth:`commit_stamp` reads, opened on first use; it never writes
+        self._watch: sqlite3.Connection | None = None
+        self._watch_lock = threading.Lock()
         self._closed = False
         try:
             self.schema_version = self._check_schema() if read_only else self._migrate()
@@ -773,11 +776,15 @@ class Store:
 
         When it returns, none of them is open — also one a thread that is ending was closing meanwhile
         (it closes under the same lock)."""
-        with self._connections_lock:
+        # the watch's lock first, as commit_stamp takes it before _open_watch takes the connections' lock
+        with self._watch_lock, self._connections_lock:
             self._closed = True
             connections, self._connections = self._connections, []
             for conn in connections:
                 conn.close()
+            if self._watch is not None:
+                self._watch.close()
+                self._watch = None
 
     def wipe(self) -> None:
         """Start over with an empty database ("Delete everything").
@@ -999,6 +1006,76 @@ class Store:
         data = conn.execute("PRAGMA data_version").fetchone()[0]
         schema = conn.execute("PRAGMA schema_version").fetchone()[0]
         return int(data), conn.total_changes, int(schema)
+
+    def commit_stamp(self) -> tuple[int, int] | None:
+        """A value that moves whenever anything is committed to the database, by any thread or process,
+        and that every thread of this store compares alike — unlike :meth:`change_token`, which only
+        compares within one thread. So rows one thread loaded can serve the others until the next commit
+        (:class:`ordnung.secretary.ledger._RowsCache`), instead of each thread loading its own.
+
+        Read on a connection of its own that never writes: its ``PRAGMA data_version`` moves with every
+        commit of any other connection (the threads' own, hand-off sync's replacement, another process), and
+        ``schema_version`` with "Delete everything". ``None`` while this thread is inside a transaction,
+        whose reads may not be committed."""
+        if self._conn().in_transaction:
+            return None
+        with self._watch_lock:
+            return self._stamp_of(self._watched())
+
+    @contextmanager
+    def as_of_commit_stamp(self) -> Iterator[tuple[int, int] | None]:
+        """Reads in the block see the database exactly as of the stamp it yields (:meth:`commit_stamp`): they go
+        through the stamp's own connection, in one read transaction begun before the stamp is read. So what
+        is read can be kept under that stamp for every thread. Read on the thread's own connection instead,
+        it could be older than the stamp: a statement left unfinished there (a cursor read part of the way)
+        keeps that connection seeing the database as it was when the statement began.
+
+        Other threads wait for the stamp until the block ends. Only for reads (the connection is
+        ``query_only``). ``None``, and the reads go to this thread's connection as usual, while this thread
+        is inside a transaction, whose reads may not be committed."""
+        state = self._local
+        own = self._conn()
+        if own.in_transaction:
+            yield None
+            return
+        with self._watch_lock:
+            watch = self._watched()
+            watch.execute("BEGIN")
+            state.conn = watch
+            try:
+                yield self._stamp_of(watch)  # its first read begins the read transaction
+            finally:
+                state.conn = own
+                if watch.in_transaction:
+                    watch.execute("ROLLBACK")
+
+    def _watched(self) -> sqlite3.Connection:
+        """The connection the commit stamp is read on (opened on first use). Under ``_watch_lock``."""
+        watch = self._watch
+        if watch is None:
+            watch = self._watch = self._open_watch()
+        return watch
+
+    @staticmethod
+    def _stamp_of(watch: sqlite3.Connection) -> tuple[int, int]:
+        # both read the file's header, so inside a read transaction they are that transaction's
+        data = watch.execute("PRAGMA data_version").fetchone()[0]
+        schema = watch.execute("PRAGMA schema_version").fetchone()[0]
+        return int(data), int(schema)
+
+    def _open_watch(self) -> sqlite3.Connection:
+        target = f"{self.db_path.resolve().as_uri()}?mode=ro" if self.read_only else str(self.db_path)
+        watch = sqlite3.connect(
+            target, uri=self.read_only, isolation_level=None, check_same_thread=False, timeout=5.0
+        )
+        watch.row_factory = sqlite3.Row  # the store's reads go through it in as_of_commit_stamp
+        for pragma in _READ_ONLY_PRAGMAS:
+            watch.execute(pragma)
+        # not one of the threads' connections (close() closes it apart): leak checks count those alone
+        if self._closed:
+            watch.close()
+            raise RuntimeError("store is closed")
+        return watch
 
     def ledger_token(self) -> tuple[int, int, int] | None:
         """Like :meth:`change_token`, but moved only by what Ask's ledger fingerprint can read: this
@@ -1584,6 +1661,17 @@ class Store:
         )
         return "\n\n".join(f"=== Page {row['page']} ===\n{row['text']}" for row in rows)
 
+    def document_texts(self) -> dict[str, str]:
+        """:meth:`get_document_text` of every letter that has text, by letter id, in one query (a letter
+        without is left out: its text is ``""``)."""
+        pages: dict[str, list[str]] = {}
+        rows = self._conn().execute(
+            "SELECT doc_id, page, text FROM pages WHERE trim(text) != '' ORDER BY doc_id, page"
+        )
+        for row in rows:
+            pages.setdefault(row["doc_id"], []).append(f"=== Page {row['page']} ===\n{row['text']}")
+        return {doc_id: "\n\n".join(texts) for doc_id, texts in pages.items()}
+
     def recipient_names(self) -> dict[str, str | None]:
         """Who each letter in the Inbox is addressed to, as read (``DocumentExtraction.recipient_name``), by
         letter id, in one query: every letter outside the trash but proof files; ``None`` unless the letter
@@ -1596,6 +1684,20 @@ class Store:
             (PROOF_SOURCE,),
         )
         return {row["id"]: row["name"] if isinstance(row["name"], str) else None for row in rows}
+
+    def letters_stating_changes(self, types: Collection[str]) -> set[str]:
+        """The letters whose stored reading states a change of one of ``types`` (``change.type``), in one
+        query, without parsing every reading — and those whose reading isn't JSON at all, so a caller that
+        parses only these still meets a broken one. For the ledger's readers that look for one kind of change
+        among every letter (:meth:`ordnung.secretary.ledger.Ledger.pending_confirmations`)."""
+        wanted = sorted(types)
+        marks = ", ".join("?" * len(wanted))
+        rows = self._conn().execute(
+            "SELECT id FROM documents WHERE extraction IS NOT NULL AND (NOT json_valid(extraction) "
+            f"OR json_extract(extraction, '$.change.type') IN ({marks}))",
+            wanted,
+        )
+        return {row["id"] for row in rows}
 
     def get_extraction(self, doc_id: str) -> DocumentExtraction | None:
         """The stored model extraction of a document (``None`` if not extracted yet)."""

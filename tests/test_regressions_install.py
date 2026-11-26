@@ -164,6 +164,26 @@ def test_dependency_floors_install_a_working_app() -> None:
     assert f"uvicorn's floor ({floors['uvicorn']}," in listener
 
 
+def test_uvicorn_comes_without_the_libraries_ordnung_never_runs() -> None:
+    """uvicorn's "standard" extra added 18 MB to every install (uvloop 14 MB, PyYAML, websockets, python-dotenv)
+    that Ordnung never runs: it serves on the plain asyncio loop and no WebSocket. The fast HTTP parser stays a
+    dependency of its own; PyYAML, which only the tests use, is in the dev extras; and the package imports none
+    of the dropped libraries."""
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    needs = {Requirement(line).name: Requirement(line) for line in project["dependencies"]}
+    assert needs["uvicorn"].extras == set()
+    assert "httptools" in needs and "watchfiles" in needs
+    dev = {Requirement(line).name.lower() for line in project["optional-dependencies"]["dev"]}
+    assert "pyyaml" in dev
+    imports = re.compile(r"^\s*(?:import|from)\s+(uvloop|websockets|dotenv|yaml)\b", re.M)
+    found = [
+        f"{path.relative_to(ROOT)}: {match[1]}"
+        for path in (ROOT / "src" / "ordnung").rglob("*.py")
+        for match in imports.finditer(path.read_text(encoding="utf-8"))
+    ]
+    assert found == []
+
+
 # --------------------------------------------------------------------------------------------------
 # the version: one place, above every earlier install, and what an update needs
 # --------------------------------------------------------------------------------------------------
