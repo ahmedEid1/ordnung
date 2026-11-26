@@ -3,7 +3,7 @@
  * Filters live in the URL (`?area=residence&type=payment&with=…&past=0`) so Today's area tiles can
  * link straight into a filtered view; kind, area and person filter the lanes too.
  */
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Lock, Plus, X } from "lucide-react";
 import { useContracts, useHousehold, useItems, useLanes, useParties, useTimeline } from "@/api/hooks";
@@ -45,7 +45,10 @@ import {
 import { TOUR_TARGETS } from "@/features/tour/steps";
 import { usePhoneCompanion } from "@/features/phone/client";
 import { filesStay } from "@/features/phone/copy";
-import { useStickyError } from "@/lib/hooks";
+import { useLocalStorage, useStickyError } from "@/lib/hooks";
+
+/** Whether this browser last saw open dates on the Timeline (the calendar button's room while they load). */
+export const SAW_OPEN_DATES = "ordnung.timeline.openDates";
 
 const DESCRIPTION = "Your year ahead as life lanes — permits, contracts, deadlines and study — and every date, month by month.";
 
@@ -183,6 +186,13 @@ export function TimelineView() {
   const error = lanesQ.error ?? timelineQ.error;
   const lastError = useStickyError(error, loaded);
   const failed = !loaded && (lanesQ.isError || timelineQ.isError || lastError !== null);
+  const openDates = openDateCount(entries);
+  // "Add your dates to your calendar" shows only once there are open dates: while they load, its room is kept
+  // (unseen) when this browser last saw some, or has not been here yet, so the page does not jump when it comes
+  const [sawOpenDates, setSawOpenDates] = useLocalStorage(SAW_OPEN_DATES, true);
+  useEffect(() => {
+    if (loaded && sawOpenDates !== openDates > 0) setSawOpenDates(openDates > 0);
+  }, [loaded, openDates, sawOpenDates, setSawOpenDates]);
 
   if (failed) {
     return (
@@ -213,7 +223,6 @@ export function TimelineView() {
   const rangeText = `${formatDate(range.from, { style: "month" })} – ${formatDate(range.to, { style: "month" })}`;
   const laneFilterCount = [filters.type, filters.area, filters.party].filter(Boolean).length;
   const showAllLabel = laneFilterCount > 1 ? "Show all" : filters.area ? "Show all areas" : filters.type ? "Show all kinds" : "Show everyone";
-  const openDates = openDateCount(entries);
 
   return (
     <>
@@ -223,7 +232,15 @@ export function TimelineView() {
         actions={
           <>
             <AddDateButton />
-            {loaded && openDates > 0 ? <CalendarExport /> : null}
+            {loaded ? (
+              openDates > 0 ? (
+                <CalendarExport />
+              ) : null
+            ) : sawOpenDates ? (
+              <span aria-hidden inert className="invisible flex max-w-full">
+                <CalendarExport />
+              </span>
+            ) : null}
           </>
         }
       />
@@ -270,7 +287,10 @@ export function TimelineView() {
       </section>
 
       {!loaded ? (
-        <SkeletonCard lines={6} className="max-w-4xl" />
+        // the list's stand-in only once the lanes are drawn: under theirs it moved down when they came
+        lanesQ.isPending ? null : (
+          <SkeletonCard lines={6} className="max-w-4xl" />
+        )
       ) : (
         <TimelineList
           className="max-w-4xl"

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } fro
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 import { FileUp, Landmark, Lock, Plus } from "lucide-react";
 import type { DocumentKind } from "@/api/types";
-import { useDocuments, useHousehold, useItems, useParties } from "@/api/hooks";
+import { useDocuments, useHealth, useHousehold, useItems, useMailTray, useParties } from "@/api/hooks";
 import { dismissJob } from "@/api/sse";
 import { useDebounced, useMediaQuery, useStickyError } from "@/lib/hooks";
 import { useTodayISO } from "@/lib/today";
@@ -114,6 +114,11 @@ export default function InboxPage() {
   const items = useItems({ status: "open" });
   const parties = useParties();
   const trayByDoc = useTrayByDoc();
+  // the demo's New-mail tray sits above the list: the two wait for each other, so the tray never pushes the letters
+  // (or their stand-in) down when it comes
+  const health = useHealth();
+  const demo = Boolean(health.data?.demo);
+  const tray = useMailTray(demo);
 
   // A retry of a load that failed starts over as "pending" (and forgets the error), so remember
   // the last error: the message stays on screen, worded the same, while "Try again" runs.
@@ -236,7 +241,7 @@ export default function InboxPage() {
   const empty = emptyCopy(view, phone, heldFound?.size);
   const onlySearch = Boolean(view.q) && filter === "all" && !kind && year == null && who == null;
   // `?for=` waits for the household before it lists anything (never every letter first, then one person's)
-  const loading = all.isPending || (Boolean(forParam) && household.isPending);
+  const loading = all.isPending || (Boolean(forParam) && household.isPending) || health.isPending || (demo && tray.isPending);
   const clearSearch = () => setQuery("");
   const clearAll = () => {
     setQuery("");
@@ -259,7 +264,9 @@ export default function InboxPage() {
         }
       />
 
-      <MailTray onOpened={(opened) => opened.forEach(({ docId, sender }) => fromTray.current.set(docId, sender))} focusFallback={focusLetters} />
+      {loading ? null : (
+        <MailTray onOpened={(opened) => opened.forEach(({ docId, sender }) => fromTray.current.set(docId, sender))} focusFallback={focusLetters} />
+      )}
 
       {failedToLoad ? (
         <LoadError

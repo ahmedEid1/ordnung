@@ -327,14 +327,16 @@ export function LanesChart({
   const hasLanes = lanes.length > 0;
   const Heading = headingLevel === 3 ? "h3" : "h2";
   const headerRow =
-    title || description || actions || (hasLanes && !loading) ? (
+    title || description || actions || hasLanes || loading ? (
       <div className="flex flex-col gap-3 px-4 pb-3 pt-4 sm:flex-row sm:items-end sm:px-5 sm:pt-5">
         <div className="min-w-0 flex-1">
           {title ? <Heading className="display text-[21px] font-semibold leading-tight text-ink sm:text-[23px]">{title}</Heading> : null}
           {description ? <p className="mt-1 text-[13.5px] leading-snug text-muted">{description}</p> : null}
         </div>
-        {hasLanes && !loading ? (
-          <div className="flex flex-wrap items-center gap-2">
+        {hasLanes || loading ? (
+          // while the lanes load, the controls keep their room unseen (on a phone they take a row of their own): the
+          // chart below then stays where it is when the lanes arrive
+          <div aria-hidden={loading || undefined} inert={loading} className={cn("flex flex-wrap items-center gap-2", loading && "invisible")}>
             {actions}
             {scrollable && todayVisible ? (
               <Button variant="ghost" size="sm" icon={Crosshair} onClick={scrollToToday} title="Jump to today">
@@ -626,8 +628,15 @@ export function LanesChart({
           <div className="h-64" aria-hidden />
         )}
       </div>
-      {legend && hasLanes && !loading ? (
-        <div className="flex flex-col gap-3 border-t border-line bg-surface-2/40 px-4 py-3.5 sm:px-5">
+      {legend && loading ? (
+        // the legend's room while the lanes load (a line of it and the note, unseen): what follows the chart moves less
+        // when they arrive, and the note comes with them, not under their stand-in
+        <div key="legend-loading" aria-hidden inert className="flex flex-col gap-3 border-t border-line bg-surface-2/40 px-4 py-3.5 sm:px-5">
+          <Skeleton className="h-4 w-2/3" />
+          <div className="invisible">{footer}</div>
+        </div>
+      ) : legend && hasLanes ? (
+        <div key="legend" className="flex flex-col gap-3 border-t border-line bg-surface-2/40 px-4 py-3.5 sm:px-5">
           <LanesLegend lanes={lanes} />
           {footer}
         </div>

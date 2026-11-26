@@ -280,6 +280,26 @@ describe("LanesChart", () => {
     expect(screen.queryByRole("heading", { name: "Legend" })).not.toBeInTheDocument();
   });
 
+  it("keeps the room of its controls and legend while the lanes load: unseen, out of reach, the note only with the lanes", () => {
+    const loading = renderChart({ loading: true, footer: <p>The note</p> });
+    // the zoom switch and the legend's stand-in are there for their room only: hidden from sight, screen readers and Tab
+    const zoom = screen.getByText("Fit all").closest("[inert]")!;
+    expect(zoom).toHaveClass("invisible");
+    expect(zoom).toHaveAttribute("aria-hidden", "true");
+    expect(screen.queryByRole("button", { name: /Fit all/ })).toBeNull();
+    const note = screen.getByText("The note");
+    expect(note.closest("[inert]")).toHaveAttribute("aria-hidden", "true");
+    expect(note.closest(".invisible")).not.toBeNull();
+    expect(screen.queryByRole("list", { name: "Legend" })).toBeNull();
+
+    loading.unmount();
+    renderChart({ footer: <p>The note</p> });
+    expect(screen.getByRole("list", { name: "Legend" })).toBeInTheDocument();
+    expect(screen.getByText("The note").closest("[inert]")).toBeNull();
+    expect(screen.getByText("The note").closest(".invisible")).toBeNull();
+    expect(screen.getByText("Fit all").closest("[inert]")).toBeNull();
+  });
+
   it("shows a loading state and an empty state", () => {
     const { unmount } = renderChart({ loading: true });
     expect(screen.getByRole("status")).toHaveTextContent("Loading your year");

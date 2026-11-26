@@ -8,7 +8,7 @@ import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { createMockServer, type MockServer } from "@/mocks/server";
 import { makeTestQueryClient, renderWithProviders, TEST_TODAY } from "@/test/render";
 import { defaultLaneRange } from "@/features/lanes/scale";
-import { TimelineView } from "./TimelineView";
+import { SAW_OPEN_DATES, TimelineView } from "./TimelineView";
 
 /** jsdom has no layout: answer `(min-width: …)` queries for a viewport `px` wide. */
 function viewport(px: number) {
@@ -341,6 +341,45 @@ describe("states", () => {
     expect(screen.queryByRole("combobox")).toBeNull();
     expect(screen.queryByRole("button", { name: "Add your dates to your calendar" })).toBeNull();
     expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(1);
+  });
+});
+
+describe("the calendar button's room while the dates load", () => {
+  beforeEach(() => localStorage.removeItem(SAW_OPEN_DATES));
+  afterEach(() => localStorage.removeItem(SAW_OPEN_DATES));
+  /** The button's room (its words, unseen and out of reach), or null. */
+  const room = () => screen.queryByText("Add your dates to your calendar")?.closest("[inert]") ?? null;
+
+  it("is kept, unseen, when this browser has not been here yet or last saw open dates; not when it last saw none", () => {
+    vi.stubGlobal("fetch", () => new Promise<Response>(() => {}));
+    const first = renderWithProviders(<TimelineView />, { route: "/timeline" });
+    expect(room()).toHaveClass("invisible");
+    expect(room()).toHaveAttribute("aria-hidden", "true");
+    expect(screen.queryByRole("button", { name: "Add your dates to your calendar" })).toBeNull();
+    first.unmount();
+
+    localStorage.setItem(SAW_OPEN_DATES, "true");
+    const again = renderWithProviders(<TimelineView />, { route: "/timeline" });
+    expect(room()).not.toBeNull();
+    again.unmount();
+
+    localStorage.setItem(SAW_OPEN_DATES, "false");
+    renderWithProviders(<TimelineView />, { route: "/timeline" });
+    expect(screen.queryByText("Add your dates to your calendar")).toBeNull();
+  });
+
+  it("remembers whether this browser saw open dates", async () => {
+    // lanes, but no open date in the list: no button, and none of its room next time
+    const none = await seededClient({ timeline: [] });
+    const shown = renderWithProviders(<TimelineView />, { client: none, route: "/timeline" });
+    await waitFor(() => expect(localStorage.getItem(SAW_OPEN_DATES)).toBe("false"));
+    expect(screen.queryByText("Add your dates to your calendar")).toBeNull();
+    shown.unmount();
+
+    const client = await seededClient();
+    renderWithProviders(<TimelineView />, { client, route: "/timeline" });
+    expect(screen.getByRole("button", { name: "Add your dates to your calendar" })).toBeInTheDocument();
+    await waitFor(() => expect(localStorage.getItem(SAW_OPEN_DATES)).toBe("true"));
   });
 });
 
