@@ -629,8 +629,10 @@ export function LanesChart({
         )}
       </div>
       {legend && loading ? (
-        // the legend's room while the lanes load (a line of it and the note, unseen): what follows the chart moves less
-        // when they arrive, and the note comes with them, not under their stand-in
+        // the legend's room while the lanes load (a line of it and the note, unseen), so the note comes with the lanes,
+        // not under their stand-in. On today's pages it spares no measurable move (Nov 2026: the demo at 390 and 1280
+        // px with lanes or dates first, 300 and 3,000 letters at 390 px): the Timeline's list waits for the lanes, and
+        // Contracts' list stand-in goes as they come. It keeps the chart's box whole for anything put under it later
         <div key="legend-loading" aria-hidden inert className="flex flex-col gap-3 border-t border-line bg-surface-2/40 px-4 py-3.5 sm:px-5">
           <Skeleton className="h-4 w-2/3" />
           <div className="invisible">{footer}</div>

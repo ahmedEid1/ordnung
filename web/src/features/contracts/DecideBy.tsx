@@ -90,7 +90,7 @@ const Line = ({ className }: { className?: string }) => (
  * decide sees it go once. It is therefore lower than a decision (176 px on a phone, 170 from `sm` up; a decision is
  * about 350 and 224): the room that would spare the first move costs the other one as much, so it sits between them
  * (Nov 2026, 390 px with the processor slowed four times: about 0.04 with a decision, 0.09 with none; 1280 px: 0.01
- * and 0.07). Above it, the cost summary's stand-in has the summary's own height, so only this room moves anything.
+ * and 0.08). Above it, the cost summary's stand-in has the summary's own height, so only this room moves anything.
  */
 export function DecideByLoading() {
   return (
