@@ -123,7 +123,7 @@ describe("the session page", () => {
     expect(await screen.findByRole("heading", { level: 2, name: MOCK_WEEK.steps[0]!.title })).toBeInTheDocument();
   });
 
-  it("Back pressed onto the first step keeps the keyboard's place: off, but not disabled, and a press does nothing", async () => {
+  it("Back pressed onto the first step keeps the keyboard's place: off, but not disabled", async () => {
     useMockApi();
     const { user, router } = await renderWeek("/week?step=check");
     const back = screen.getByRole("button", { name: "Back" });
@@ -134,6 +134,8 @@ describe("the session page", () => {
     expect(back).not.toBeDisabled();
     expect(back).toHaveAttribute("aria-disabled", "true");
     expect(document.activeElement).not.toBe(document.body);
+    // pressed again it stays on the first step (it has no step before it to go to; marking the first step looked at,
+    // which its guard also spares, shows nowhere while that step is the current one)
     const at = router.state.location.search;
     back.focus();
     await user.keyboard("{Enter}");
