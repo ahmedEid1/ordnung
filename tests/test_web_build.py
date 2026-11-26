@@ -37,7 +37,9 @@ def test_the_build_has_no_mock_world() -> None:
     files = _built_files()
     assert any(path.name == "index.html" for path in files), "no committed build"
     assert not [path.name for path in files if re.fullmatch(r"install-[\w-]+\.js", path.name)]
-    mocks = "\n".join(path.read_text(encoding="utf-8") for path in SRC.rglob("*.ts*") if "mocks" in path.parts)
+    mocks = "\n".join(
+        path.read_text(encoding="utf-8") for path in SRC.rglob("*.ts*") if "mocks" in path.parts
+    )
     shell = (SRC / "components" / "shell" / "MockBanner.tsx").read_text(encoding="utf-8")
     mode = (SRC / "lib" / "mode.ts").read_text(encoding="utf-8")
     for marker in MOCK_MARKERS:
@@ -56,7 +58,11 @@ def test_the_build_has_no_source_maps() -> None:
     """A source map would carry every source file, the mock world's too, into the install."""
     files = _built_files()
     assert not [path.name for path in files if path.suffix == ".map"]
-    linked = [path.name for path in files if path.suffix in {".js", ".css"} and "sourceMappingURL" in path.read_text(encoding="utf-8")]
+    linked = [
+        path.name
+        for path in files
+        if path.suffix in {".js", ".css"} and "sourceMappingURL" in path.read_text(encoding="utf-8")
+    ]
     assert not linked, linked
 
 
@@ -67,7 +73,7 @@ def _app_modules() -> list[Path]:
         for path in sorted(SRC.rglob("*"))
         if path.suffix in {".ts", ".tsx"}
         and ".test." not in path.name
-        and not path.relative_to(SRC).parts[0] in {"mocks", "test"}
+        and path.relative_to(SRC).parts[0] not in {"mocks", "test"}
     ]
 
 

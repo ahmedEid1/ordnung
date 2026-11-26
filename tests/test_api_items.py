@@ -277,7 +277,9 @@ async def test_the_titles_name_the_listed_to_dos_and_nothing_more(data_dir: Path
         gone = add_doc(store, "gone")
         add_item(store, kind="payment", title="Pay the bill", due_date="2026-05-01", doc_id=letter)
         add_item(store, kind="task", title="Call back", status="done")
-        add_item(store, kind="deadline", title="Object", due_date="2026-04-01", status="dismissed", doc_id=letter)
+        add_item(
+            store, kind="deadline", title="Object", due_date="2026-04-01", status="dismissed", doc_id=letter
+        )
         add_item(store, kind="task", title="Of a trashed letter", doc_id=gone)
         store.trash_document(gone)
 
