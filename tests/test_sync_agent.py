@@ -82,6 +82,28 @@ def _withhold_laptop_s(folder: Path) -> str:
     return withhold(folder, head_of(folder, "laptop")["version"])
 
 
+def _nothing_more_arrives(monkeypatch: pytest.MonkeyPatch, folder: Path, lap: Path) -> None:
+    """From now on no version the laptop saves arrives, for a test whose take-over must keep waiting. CI once
+    failed one: on a slow runner the laptop's day-start work (the daily tick; the desktop's own wasn't done
+    when the laptop brought its data over) landed after its save and went out as a save of its own, which
+    arrived complete with the person's change in it, so the take-over went through, as it should."""
+    push = FakeSession.push
+
+    def withheld(session: FakeSession, store: Store, *, reason: str, hand_over: bool = False) -> None:
+        push(session, store, reason=reason, hand_over=hand_over)
+        if session.paths.data_dir.resolve() == lap.resolve():
+            _withhold_laptop_s(folder)
+
+    monkeypatch.setattr(FakeSession, "push", withheld)
+
+
+def _take_over_cancelled(api: Api) -> bool:
+    """The notice that a waiting take-over gave up, as the agent's summary shows it. Waited for itself,
+    not for the wait's end: the summary is read again at the next look when reading it failed."""
+    summary = agent_of(api).summary
+    return summary is not None and any(notice["code"] == "take_over_cancelled" for notice in summary.notices)
+
+
 async def _connected_pair(tmp_path: Path, folder: Path, engine: FakeEngine) -> tuple[Path, Path]:
     """desktop sets up (in use, with one to-do saved), and laptop's data folder exists."""
     desk, lap = _dirs(tmp_path)
@@ -547,21 +569,22 @@ async def test_a_waiting_take_over_gives_up_after_its_time(
     desk, lap = _dirs(tmp_path)
     async with computer(desk, engine=engine) as a, computer(lap, engine=engine) as b:
         await _switch(a, b, folder)
+        _nothing_more_arrives(monkeypatch, folder, lap)
         _withhold_laptop_s(folder)
         assert (await a.client.post("/api/sync/use-here", json={})).json()["take_over_waiting"] is True
-        found = await eventually(lambda: agent_of(a)._waiting is None and agent_of(a).summary)
-        notices = [notice["code"] for notice in found.notices]
-        assert "take_over_cancelled" in notices
+        await eventually(lambda: _take_over_cancelled(a))
+        assert agent_of(a)._waiting is None
         assert agent_of(a).mode == "standing_by"
 
 
 async def test_a_waiting_take_over_gives_up_when_the_other_computer_changes_more(
-    tmp_path: Path, folder: Path
+    tmp_path: Path, folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     engine = FakeEngine()
     desk, lap = _dirs(tmp_path)
     async with computer(desk, engine=engine) as a, computer(lap, engine=engine) as b:
         await _switch(a, b, folder)
+        _nothing_more_arrives(monkeypatch, folder, lap)
         assert (await _add_todo(b, "First")).status_code == 201
         await agent_of(b).save()
         _withhold_laptop_s(folder)
@@ -569,9 +592,9 @@ async def test_a_waiting_take_over_gives_up_when_the_other_computer_changes_more
         assert (await _add_todo(b, "Second")).status_code == 201
         await agent_of(b).save()
         _withhold_laptop_s(folder)
-        await eventually(lambda: agent_of(a)._waiting is None)
+        await eventually(lambda: _take_over_cancelled(a))
+        assert agent_of(a)._waiting is None
         assert agent_of(a).mode == "standing_by"
-        assert any(n["code"] == "take_over_cancelled" for n in agent_of(a).summary.notices)  # type: ignore[union-attr]
 
 
 async def test_a_waiting_take_over_waits_for_the_laptop_s_change_when_the_desktop_saved_last(
