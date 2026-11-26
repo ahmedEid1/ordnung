@@ -372,4 +372,11 @@
     outline-width: 4px;
     outline-offset: -4px;
   }
+  /* a control that is off but keeps focus (aria-disabled, not disabled) looks off, as a disabled one does: its
+     dimmed author colour is replaced here, so it is painted in GrayText (the `inactive` variant's selector: a busy
+     one keeps its colour next to its spinner) */
+  :is(button, a, [role="switch"])[aria-disabled="true"]:not([aria-busy="true"]) {
+    color: GrayText;
+    border-color: GrayText;
+  }
 }

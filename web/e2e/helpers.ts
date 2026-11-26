@@ -503,3 +503,37 @@ export async function focusStops(page: Page): Promise<FocusStop[]> {
 export async function pageDrops(page: Page): Promise<FocusStop[]> {
   return (await focusStops(page)).filter(([, what]) => what === "BODY" || what === "nothing");
 }
+
+/**
+ * With forced colours on (Windows high contrast; emulate them first), `off`, a button that is off but keeps focus
+ * (aria-disabled, not disabled), is painted as a natively disabled button is, and not as `on`, an enabled control
+ * beside it. Forced colours replace author colours, so the dimming that marks `off` elsewhere is gone there: on main
+ * an aria-disabled Next looked exactly like the enabled Previous. The disabled button compared with is a copy of
+ * `off` (same classes, so the same border), natively disabled, put beside it for the measurement (new, it has no
+ * fade under way).
+ */
+export async function expectPaintedOff(off: Locator, on: Locator): Promise<void> {
+  const paint = (el: Element) => {
+    const style = getComputedStyle(el);
+    return { color: style.color, border: style.borderTopColor };
+  };
+  // the buttons fade between colours (150 ms): measured once the change to forced colours has faded in
+  const faded = (el: Element) => Promise.all(el.getAnimations().map((a) => a.finished.catch(() => undefined))).then(() => undefined);
+  await off.evaluate(faded);
+  await on.evaluate(faded);
+  const offPaint = await off.evaluate(paint);
+  const disabledPaint = await off.evaluate((el) => {
+    const twin = el.cloneNode(false) as HTMLButtonElement;
+    twin.removeAttribute("id");
+    twin.removeAttribute("aria-disabled");
+    twin.disabled = true;
+    twin.textContent = "Off";
+    el.after(twin);
+    const style = getComputedStyle(twin);
+    const measured = { color: style.color, border: style.borderTopColor };
+    twin.remove();
+    return measured;
+  });
+  expect(offPaint, "painted as a disabled button is").toEqual(disabledPaint);
+  expect(offPaint.color, "painted unlike the enabled control beside it").not.toBe((await on.evaluate(paint)).color);
+}

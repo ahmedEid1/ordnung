@@ -7,7 +7,7 @@
  * "Finish" is answered by the test.
  */
 import type { Page } from "@playwright/test";
-import { expect, expectAccessible, expectNoRawEnums, open, READ, setTheme, setTour, settle, test } from "./helpers";
+import { expect, expectAccessible, expectNoRawEnums, expectPaintedOff, open, READ, setTheme, setTour, settle, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -212,6 +212,15 @@ for (const width of [390, 1280]) {
     await clear("Back");
   });
 }
+
+test("in high contrast the weekly review's Back on its first step looks off, as a disabled button does", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await open(page, "/week", "Weekly review");
+  const back = page.getByRole("button", { name: "Back", exact: true });
+  await expect(back).toHaveAttribute("aria-disabled", "true");
+  await page.emulateMedia({ forcedColors: "active" });
+  await expectPaintedOff(back, page.getByRole("button", { name: /^Next: / }));
+});
 
 test("Pay this week: the amounts end in one column, with a Pay button or without", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });

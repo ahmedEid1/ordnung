@@ -5,7 +5,7 @@
  */
 import type { Locator, Page } from "@playwright/test";
 import type { DocumentDetail } from "@/api/types";
-import { apiGet, apiPatch, expect, letterId, letterItem, open, pageDrops, setTour, shownAs, test, watchFocus } from "./helpers";
+import { apiGet, apiPatch, expect, expectPaintedOff, letterId, letterItem, open, pageDrops, setTour, shownAs, test, watchFocus } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -170,7 +170,11 @@ test.describe("phone 390 px: what the verdict leads with, and the viewer", () =>
     await expect(next).toHaveAttribute("aria-disabled", "true");
     expect(await pageDrops(page), "focus fell to the page").toEqual([]);
     await page.keyboard.press("Shift+Tab");
-    await expect(pager.getByRole("button", { name: "Previous" })).toBeFocused();
+    const previous = pager.getByRole("button", { name: "Previous" });
+    await expect(previous).toBeFocused();
+    // and in high contrast that Next looks off, as the disabled Next did (it looked like the enabled Previous)
+    await page.emulateMedia({ forcedColors: "active" });
+    await expectPaintedOff(next, previous);
   });
 
   test("a fact on a photo: the quote sits under the photo, Escape closes it, and 'Back to …' returns", async ({ page }) => {
