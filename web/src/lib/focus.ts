@@ -101,14 +101,22 @@ export interface Band {
 }
 
 /**
+ * How far below the top bar a card taller than the room may start and still count as in view: its scroll margins
+ * land it 4 px below the bar (room for its focus ring), and this leaves as much again for rounding.
+ */
+export const TALL_START_SLACK = 8;
+
+/**
  * Whether an element at `box` (viewport pixels) is in view in `band`, and how to bring it there. One the band can
- * hold is in view whole; one taller than the band is in view when its top is, in the band's upper half (its name
- * and first lines show, under no bar). It comes into view centred, or from its top when it is too tall.
+ * hold is in view whole; one taller than the band is in view when it starts just below the top bar, so that its name
+ * is the first thing under the bar and it fills the room (anywhere in the upper half was once enough: a card the
+ * page then pushed 50 px down counted as in view and stayed there). It comes into view centred, or from its top
+ * when it is too tall.
  */
 export function revealPlan(box: { top: number; bottom: number }, band: Band): { shown: boolean; block: "center" | "start" } {
   const room = band.bottom - band.top;
   const tall = box.bottom - box.top > room;
-  const shown = tall ? box.top >= band.top - 1 && box.top < band.top + room / 2 : box.top >= band.top - 1 && box.bottom <= band.bottom + 1;
+  const shown = tall ? box.top >= band.top - 1 && box.top <= band.top + TALL_START_SLACK : box.top >= band.top - 1 && box.bottom <= band.bottom + 1;
   return { shown, block: tall ? "start" : "center" };
 }
 
@@ -190,8 +198,11 @@ const REVEAL_GIVE_UP_MS = 20_000;
 
 /**
  * Bring `el` into view once the page has been still for a few frames (a page that opens with it still loads what is
- * above it: scrolled at once, it ended short of it), and again while the page goes on growing, for a few seconds.
- * In view means between the bars ({@link freeBand}, {@link revealPlan}). As soon as the person scrolls, the watch
+ * above it: scrolled at once, it ended short of it), and again while the page goes on changing, for a few seconds:
+ * content arriving above it, or a bar arriving late over the window's edge (the demo's tour bar loads on its own and
+ * can come after the card was placed: a card that fitted then no longer does). In view means between the bars
+ * ({@link freeBand}, {@link revealPlan}), measured again each time the page stands still; where the page cannot
+ * scroll that far (a card near its end), it is left where its own reveal put it until something changes. As soon as the person scrolls, the watch
  * stops for good: their scroll wins. A wheel, a touch, a key or a press stops it (a modifier key on its own does
  * not); a wheel, a touch or a key that scrolls also stops a smooth scroll of its own still under way, where it is.
  * A scroll that comes with none of those (the scroll bar dragged, an assistive technology scrolling) stops the watch
@@ -206,6 +217,8 @@ export function revealWhenStill(el: HTMLElement, { reducedMotion = false }: { re
   let revealing = false;
   /** Where the page stood still last (its scroll and height), while no reveal of its own was under way. */
   let rest: { y: number; height: number } | null = null;
+  /** Where the page stood when it last revealed the card (the card, the scroll, the height and the band). */
+  let triedFrom: string | null = null;
   const events = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
   const stop = () => {
     stopped = true;
@@ -258,14 +271,19 @@ export function revealWhenStill(el: HTMLElement, { reducedMotion = false }: { re
     last = now;
     if (still >= STILL_FRAMES) {
       still = 0;
+      const x = Math.min(Math.max(box.left + box.width / 2, 0), window.innerWidth - 1);
+      const band = freeBand(x);
+      const { shown, block } = revealPlan(box, band);
+      const where = `${now} ${band.top} ${band.bottom}`;
       revealing = false;
       rest = { y, height };
-      const x = Math.min(Math.max(box.left + box.width / 2, 0), window.innerWidth - 1);
-      const { shown, block } = revealPlan(box, freeBand(x));
-      if (shown && performance.now() - since > REVEAL_WATCH_MS) return stop();
-      if (!shown && el.scrollIntoView) {
+      // not where it belongs, but its last reveal from here moved nothing: the page goes no further (until it changes)
+      const asCloseAsCanBe = !shown && where === triedFrom;
+      if ((shown || asCloseAsCanBe) && performance.now() - since > REVEAL_WATCH_MS) return stop();
+      if (!shown && !asCloseAsCanBe && el.scrollIntoView) {
         revealing = true;
         rest = null;
+        triedFrom = where;
         el.scrollIntoView({ block, behavior: reducedMotion ? "auto" : "smooth" });
       }
     }

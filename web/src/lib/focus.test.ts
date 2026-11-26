@@ -114,8 +114,12 @@ describe("revealPlan: in view between the bars, not the window", () => {
   it("a card taller than the room comes in from its top (centred, its name ended under the top bar)", () => {
     // 533 px fits the 568 px window, but not the room the bars leave
     expect(revealPlan({ top: 17, bottom: 17 + 533 }, phone)).toEqual({ shown: false, block: "start" });
-    // shown once its top is below the bar, in the upper half of the room
+    // shown once it starts just below the bar (its scroll margins land it 4 px below)
     expect(revealPlan({ top: 60, bottom: 60 + 533 }, phone)).toEqual({ shown: true, block: "start" });
+    expect(revealPlan({ top: 64, bottom: 64 + 533 }, phone).shown).toBe(true);
+    // pushed 54 px further down by the page, its name is no longer the first thing under the bar: not in view (it
+    // once was, anywhere in the room's upper half, and stayed there)
+    expect(revealPlan({ top: 114, bottom: 114 + 533 }, phone).shown).toBe(false);
     expect(revealPlan({ top: 300, bottom: 300 + 533 }, phone).shown).toBe(false);
   });
 
@@ -389,6 +393,107 @@ describe("revealWhenStill", () => {
       top = 900;
       vi.advanceTimersByTime(2000);
       expect(card.scrollIntoView).toHaveBeenCalledTimes(2);
+      stop();
+    });
+  });
+
+  describe("the page changes after the card was placed: it is put back where it belongs (a 320×568 phone)", () => {
+    let y = 0;
+    let height = 3000;
+    let cardHeight = 403;
+    const bars: { el: HTMLElement; top: number; bottom: number }[] = [];
+    const bar = (tag: string, barTop: number, barBottom: number) => {
+      const el = document.createElement(tag);
+      el.style.position = "fixed";
+      el.getBoundingClientRect = () => ({ top: barTop, bottom: barBottom, height: barBottom - barTop, left: 0, right: 320, width: 320, x: 0, y: barTop, toJSON: () => null });
+      document.body.append(el);
+      bars.push({ el, top: barTop, bottom: barBottom });
+    };
+    const innerHeight = window.innerHeight;
+    /** Where scrollIntoView puts the card: "start" 4 px below the top bar, "center" in the middle of the room. */
+    const lands = (room: { top: number; bottom: number }) => (options?: boolean | ScrollIntoViewOptions) => {
+      const block = typeof options === "object" ? options.block : "start";
+      const to = block === "center" ? room.top + (room.bottom - room.top - cardHeight) / 2 : 60;
+      y += top - to;
+      top = to;
+    };
+    beforeEach(() => {
+      y = 0;
+      height = 3000;
+      cardHeight = 403;
+      top = 900;
+      Object.defineProperty(window, "innerHeight", { configurable: true, value: 568 });
+      Object.defineProperty(window, "scrollY", { configurable: true, get: () => y });
+      Object.defineProperty(document.documentElement, "scrollHeight", { configurable: true, get: () => height });
+      card.getBoundingClientRect = () => ({ top, bottom: top + cardHeight, height: cardHeight, left: 0, right: 320, width: 320, x: 0, y: top, toJSON: () => null });
+      document.elementsFromPoint = (_x: number, at: number) =>
+        at >= window.innerHeight - 0.5 ? [] : bars.filter((b) => at >= b.top && at < b.bottom).map((b) => b.el);
+      bar("header", 0, 56);
+      bar("nav", 504, 568);
+    });
+    afterEach(() => {
+      Object.defineProperty(window, "innerHeight", { configurable: true, value: innerHeight });
+      // @ts-expect-error -- back to jsdom's own
+      delete window.scrollY;
+      // @ts-expect-error -- back to jsdom's own
+      delete document.documentElement.scrollHeight;
+      // @ts-expect-error -- jsdom has none: put it back as it was
+      delete document.elementsFromPoint;
+      bars.length = 0;
+    });
+
+    it("a card that fitted starts below the top bar once a bar that arrived late leaves too little room (the demo's tour bar)", () => {
+      (card.scrollIntoView as ReturnType<typeof vi.fn>).mockImplementation(lands({ top: 56, bottom: 504 }));
+      const stop = revealWhenStill(card, { reducedMotion: true });
+      vi.advanceTimersByTime(200);
+      // 403 px fits the 448 px between the bars: centred, at 78.5
+      expect(card.scrollIntoView).toHaveBeenLastCalledWith({ block: "center", behavior: "auto" });
+      expect(top).toBe(78.5);
+      // the tour bar comes after it (its code loads on its own), floating above the tab bar; the page keeps room for it
+      bar("section", 438, 492);
+      height += 66;
+      vi.advanceTimersByTime(500);
+      // 382 px are left: the card is too tall for them now and starts just below the top bar (centred it stayed
+      // there, its name 23 px down and its bottom under the tour bar)
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(2);
+      expect(card.scrollIntoView).toHaveBeenLastCalledWith({ block: "start", behavior: "auto" });
+      expect(top).toBe(60);
+      stop();
+    });
+
+    it("a tall card the page then pushes down is put back just below the top bar", () => {
+      cardHeight = 533;
+      (card.scrollIntoView as ReturnType<typeof vi.fn>).mockImplementation(lands({ top: 56, bottom: 504 }));
+      const stop = revealWhenStill(card, { reducedMotion: true });
+      vi.advanceTimersByTime(200);
+      expect(card.scrollIntoView).toHaveBeenCalledWith({ block: "start", behavior: "auto" });
+      expect(top).toBe(60);
+      // something above it changes after all and the browser does not keep its place: 54 px further down
+      height += 54;
+      top += 54;
+      vi.advanceTimersByTime(500);
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(2);
+      expect(top).toBe(60);
+      stop();
+    });
+
+    it("a tall card the page cannot bring further up (near its end) is left where its reveal put it: no reveal again and again", () => {
+      cardHeight = 533;
+      // the page is scrolled as far as it goes: the card stays 150 px down
+      (card.scrollIntoView as ReturnType<typeof vi.fn>).mockImplementation(() => {
+        y += top - 150;
+        top = 150;
+      });
+      const stop = revealWhenStill(card, { reducedMotion: true });
+      vi.advanceTimersByTime(3000);
+      // once more from there, which moves nothing: then it is left as it is
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(2);
+      // but once the page changes (it grew below the card), the card can come up and is brought there
+      (card.scrollIntoView as ReturnType<typeof vi.fn>).mockImplementation(lands({ top: 56, bottom: 504 }));
+      height += 400;
+      vi.advanceTimersByTime(500);
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(3);
+      expect(top).toBe(60);
       stop();
     });
   });

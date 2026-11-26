@@ -359,6 +359,82 @@ for (const reducedMotion of ["no-preference", "reduce"] as const) {
   });
 }
 
+/**
+ * Holds every request `matches` picks until the returned `release` is called: the order of events a slow machine
+ * gives now and then, given every time.
+ */
+async function holdUntilReleased(page: Page, matches: (url: URL) => boolean) {
+  let release!: () => void;
+  const released = new Promise<void>((resolve) => (release = resolve));
+  let held = 0;
+  await page.route(
+    (url) => matches(url),
+    async (route) => {
+      held++;
+      await released;
+      await route.continue();
+    },
+  );
+  return { release, held: () => held };
+}
+
+for (const reducedMotion of ["no-preference", "reduce"] as const) {
+  // What CI's slower machine did now and then, done every time: something changes AFTER the card was placed. The card
+  // is put back where it belongs (left where it was, the bank contract ended 23 px down with its bottom under the tour
+  // bar, the Timeline's first contract 26 to 58 px down).
+  test.describe(`320×568, motion ${reducedMotion}: the page changes after a contract was placed`, () => {
+    test.use({ viewport: { width: 320, height: 568 }, reducedMotion });
+
+    test("the tour bar arrives after the card was placed (its code loads on its own): the bank contract starts below the top bar", async ({ page }) => {
+      try {
+        await setTour(page, 0);
+        const bank = await contractOf(page, "bank");
+        await open(page, "/timeline", "Timeline");
+        const tourCode = await holdUntilReleased(page, (url) => /\/assets\/DemoTour-[^/]*\.js$/.test(url.pathname));
+        await page.goto(`/contracts?contract=${bank.id}`);
+        const card = page.locator(`[id="contract-${bank.id}"]`);
+        await expect(card).toBeFocused();
+        // placed with no tour bar: 403 px fit the room above the tab bar
+        expectWholeInView(await cardOnceStill(card), { tall: false });
+        expect(tourCode.held(), "the tour's code was held").toBeGreaterThan(0);
+        await expect(page.getByRole("region", { name: "Demo tour" })).toHaveCount(0);
+        tourCode.release();
+        await expect(page.getByRole("region", { name: "Demo tour" }), "the tour bar shows").toBeVisible();
+        // the room is now the bars' (56 to 438 px): too little for it, so it starts just below the top bar
+        expectWholeInView(await cardOnceStill(card), { tall: true });
+      } finally {
+        await setTour(page, null);
+      }
+    });
+
+    test("the page grows above the card after it was placed, in a browser that does not keep its place: the Timeline's first contract is put back", async ({ page }) => {
+      // scroll anchoring (Chromium keeps what is in view in place when the page grows above it) is not in every
+      // browser: without it the card moves down with the page
+      await page.addInitScript(() => {
+        addEventListener("DOMContentLoaded", () => {
+          const style = document.createElement("style");
+          style.textContent = "* { overflow-anchor: none !important; }";
+          document.head.append(style);
+        });
+      });
+      await open(page, "/timeline", "Timeline");
+      const row = page.getByRole("main").locator("a[href*='contract=']").first();
+      const id = new URL((await row.getAttribute("href"))!, "http://x").searchParams.get("contract")!;
+      // the people and organisations come after the contracts: their names then fill in on the cards above it
+      const people = await holdUntilReleased(page, (url) => url.pathname === "/api/parties");
+      await page.goto(`/contracts?contract=${id}`);
+      const card = page.locator(`[id="contract-${id}"]`);
+      await expect(card).toBeFocused();
+      expectWholeInView(await cardOnceStill(card), { tall: true });
+      expect(people.held(), "the people's request was held").toBeGreaterThan(0);
+      const before = await page.evaluate(() => document.documentElement.scrollHeight);
+      people.release();
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight), { message: "the page grew once the names came" }).toBeGreaterThan(before);
+      expectWholeInView(await cardOnceStill(card), { tall: true });
+    });
+  });
+}
+
 test.describe("390×800, motion on: a wheel during the smooth scroll to a contract", () => {
   test.use({ viewport: { width: 390, height: 800 }, reducedMotion: "no-preference" });
 
