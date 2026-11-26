@@ -184,6 +184,26 @@ describe("Contracts page — fits every width, honest states", () => {
     localStorage.removeItem(SAW_DECISION);
   });
 
+  it("while loading, the cost summary's stand-in is laid out as the summary is, with words as long as its own", () => {
+    vi.stubGlobal("fetch", () => new Promise<Response>(() => {}));
+    localStorage.setItem(SAW_DECISION, "false");
+    const none = renderWithProviders(<ContractsView />, { route: "/contracts" });
+    const standIn = screen.getByTestId("cost-summary-loading");
+    expect(standIn).toHaveAttribute("aria-hidden", "true");
+    // the summary's four figures, each with its label, a figure and a note (unseen: drawn as bars)
+    const cells = standIn.querySelectorAll(":scope > div > div");
+    expect(cells).toHaveLength(4);
+    expect([...cells].map((c) => c.firstElementChild?.textContent)).toEqual(["Fixed costs", "Per year", "Active contracts", "Next decision"]);
+    expect(cells[3]).toHaveTextContent(/no notice window closes in the next 60 days$/);
+    none.unmount();
+
+    // a decision last time: its note, shorter
+    localStorage.setItem(SAW_DECISION, "true");
+    renderWithProviders(<ContractsView />, { route: "/contracts" });
+    expect(screen.getByTestId("cost-summary-loading")).toHaveTextContent(/Send by then to leave your contract$/);
+    localStorage.removeItem(SAW_DECISION);
+  });
+
   it("remembers whether this browser saw a decision", async () => {
     localStorage.removeItem(SAW_DECISION);
     // nothing to decide: noted, so the next visit keeps no room for it

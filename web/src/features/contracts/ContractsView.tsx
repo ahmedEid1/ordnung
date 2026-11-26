@@ -18,7 +18,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { KindIcon } from "@/components/ui/KindBadge";
 import { LoadError } from "@/components/ui/LoadError";
 import { SectionHeader } from "@/components/ui/SectionHeader";
-import { Skeleton, SkeletonCard } from "@/components/ui/Skeleton";
+import { SkeletonCard } from "@/components/ui/Skeleton";
 import { Tabs, type TabItem } from "@/components/ui/Tabs";
 import { focusWhenReady, revealWhenStill } from "@/lib/focus";
 import { useTodayISO } from "@/lib/today";
@@ -26,7 +26,7 @@ import { plural, prefersReducedMotion } from "@/lib/utils";
 import { formatMoney } from "@/lib/format";
 import { LanesChart, defaultLaneRange, nextOnLane, type LaneSelection } from "@/features/lanes";
 import { ContractCard } from "./ContractCard";
-import { CostSummary, SUMMARY_GRID } from "./CostSummary";
+import { CostSummary, CostSummaryLoading } from "./CostSummary";
 import { DecideBy, DecideByLoading } from "./DecideBy";
 import {
   contractLaneNote,
@@ -321,13 +321,7 @@ export function ContractsView() {
       <PageHeader title="Contracts" description={DESCRIPTION} />
 
       {loading ? (
-        <div className="@container mb-8" aria-hidden>
-          <div className={`${SUMMARY_GRID} gap-3`}>
-            {[0, 1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-24 rounded-[var(--radius-card)]" />
-            ))}
-          </div>
-        </div>
+        <CostSummaryLoading decision={sawDecision} />
       ) : (
         <CostSummary costs={costs} active={counts.active} inactive={counts.cancelled + counts.ended} next={decisions[0] ?? null} today={today} />
       )}

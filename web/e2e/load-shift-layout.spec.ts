@@ -8,10 +8,13 @@
  * - The demo's Inbox: the New-mail tray and the letters come together (when the tray answered first it pushed the
  *   letters' stand-in down: 0.15). The tray is made to answer first here, every time.
  * - Contracts: "Decide by" keeps its room while the contracts load when this browser last saw a decision or knows
- *   nothing yet; a household with nothing to decide moves once on a first visit (by less), and never again.
+ *   nothing yet; a household with nothing to decide moves once on a first visit (by less), and never again. The cost
+ *   summary's stand-in has the summary's own height, so only that room moves anything.
  *
  * The shifts are summed whole (stricter than the browser's own CLS, which keeps only the worst burst). No fixed
- * waits: each page is read once it is loaded and still. Runs in the "layout" project.
+ * waits: each page is read once it is loaded and still. The demo's tour is off (beforeEach): on a phone its card,
+ * when it comes, lifts the empty toast column, a move of about 0.009 of its own on any page it shows on, which is not
+ * the page's loading. Runs in the "layout" project.
  */
 import type { Page, Route } from "@playwright/test";
 import type { Contract, MailTrayItem } from "@/api/types";
@@ -134,11 +137,14 @@ for (const [label, size] of [
       );
       const first = await load(page, "/contracts", "Contracts");
       await expect(page.getByRole("heading", { name: /Decide by/ })).toHaveCount(0);
-      // the room kept for a decision this browser could not know about goes once: 0.092 at 390 px and 0.076 at 1280 px
-      // in every run (Nov 2026), most of it that room; the rest is the cost summary's stand-in, shorter than the summary
+      // the room kept for a decision this browser could not know about goes once: 0.090 at 390 px and 0.081 at 1280 px
+      // in every run (Nov 2026: the same each time, the page's geometry). A lower room would cost the first visit
+      // with a decision as much (0.039 at 390 px now, against its 0.05).
       expect(first.cls, first.what).toBeLessThanOrEqual(0.1);
+      // once noted, the summary's stand-in, as high as the summary, keeps the page still: 0 at 390 px, 0.013 at 1280 px
+      // (the lanes' legend, below their lower stand-in) in every run; 0.029 and 0.017 while it was lower
       const again = await loadAgain(page, "/contracts", "Contracts");
-      expect(again.cls, again.what).toBeLessThanOrEqual(0.05);
+      expect(again.cls, again.what).toBeLessThanOrEqual(0.02);
     });
   });
 }

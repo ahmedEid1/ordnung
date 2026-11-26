@@ -87,34 +87,19 @@ const Line = ({ className }: { className?: string }) => (
 /**
  * The room of "Decide by" while the contracts load, so the contracts below move little when it comes. ContractsView
  * shows it only when this browser last saw a decision or has not been here yet, so a household with nothing to
- * decide sees it go once: on a phone it is therefore smaller than a decision (the title's bar, then a card with the
- * countdown, the name, two lines and the button), which keeps both moves small; from `sm` up it has a decision's own
- * shape.
+ * decide sees it go once. It is therefore lower than a decision (176 px on a phone, 170 from `sm` up; a decision is
+ * about 350 and 224): the room that would spare the first move costs the other one as much, so it sits between them
+ * (Nov 2026, 390 px with the processor slowed four times: about 0.04 with a decision, 0.09 with none; 1280 px: 0.01
+ * and 0.07). Above it, the cost summary's stand-in has the summary's own height, so only this room moves anything.
  */
 export function DecideByLoading() {
   return (
     <div aria-hidden data-testid="decide-by-loading" className="mb-8">
-      <Skeleton className="mb-3 h-5 w-28 sm:hidden" />
-      {/* unseen words keep the header's height */}
-      <div className="relative max-sm:hidden">
-        <SectionHeader title={TITLE} description={ABOUT} className="invisible" />
-        <Skeleton className="absolute left-0 top-0 h-4 w-28" />
-      </div>
-      <div className="card flex gap-4 p-4 sm:p-5">
-        <div className="hidden shrink-0 flex-col items-center gap-2 sm:flex">
-          <Skeleton className="h-[60px] w-14 rounded-lg" />
-          <Skeleton className="h-5 w-16 rounded-full" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <Skeleton className="h-6 w-36 rounded-full sm:hidden" />
-          <Line className="mt-2 w-3/4 sm:mt-0" />
-          <div className="mt-1.5">
-            <Line />
-            <Line className="w-2/3 sm:w-full" />
-            <Line className="max-sm:hidden lg:hidden" />
-          </div>
-          <Skeleton className="mt-3.5 h-8 w-48 rounded-lg" />
-        </div>
+      <Skeleton className="mb-3 h-5 w-28" />
+      <div className="card min-h-[144px] p-4 sm:min-h-0 sm:p-5">
+        <Line className="w-3/4" />
+        <Line className="mt-1.5" />
+        <Skeleton className="mt-3.5 h-8 w-48 rounded-lg" />
       </div>
     </div>
   );
