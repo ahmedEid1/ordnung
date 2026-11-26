@@ -299,6 +299,30 @@ describe("Privacy & AI usage", () => {
     expect(within(screen.getByRole("region", { name: "AI usage" })).getByText(`${USAGE.cache_hits} of ${USAGE.calls} calls`)).toBeInTheDocument();
   });
 
+  it("draws cost by purpose as plain rows at every width: cost, calls and tokens on screen, no Tab stop, the table for screen readers", async () => {
+    useMockApi();
+    const { container } = renderWithProviders(<SettingsPage />, { route: "/settings?section=privacy" });
+    const table = await screen.findByRole("table", { name: "API-equivalent cost by purpose" });
+    const rows = within(container).getByTestId("cost-by-purpose");
+    // the same purposes, in the same order, as the table: label, cost, then calls and tokens (once hover-only)
+    const purposes = within(table).getAllByRole("rowheader").map((th) => th.textContent);
+    expect(purposes.length).toBeGreaterThanOrEqual(3);
+    const items = rows.querySelectorAll(":scope > li");
+    expect([...items].map((li) => li.querySelector("span")?.textContent)).toEqual(purposes);
+    within(table)
+      .getAllByRole("row")
+      .slice(1)
+      .forEach((tr, i) => {
+        const [calls, tokens, cost] = [...tr.querySelectorAll("td")].map((td) => td.textContent);
+        expect(items[i]).toHaveTextContent(`${cost}`);
+        expect(items[i]).toHaveTextContent(new RegExp(`^.*${calls} calls? · ${tokens!.replace(".", "\\.")} tokens`));
+      });
+    // seen, not read twice: the rows are hidden from assistive tech and take no Tab stop
+    expect(rows).toHaveAttribute("aria-hidden", "true");
+    expect(rows.querySelectorAll("a, button, input, select, textarea, [tabindex]")).toHaveLength(0);
+    expect(container.querySelector(".recharts-wrapper, svg.recharts-surface")).toBeNull();
+  });
+
   it("names the first two letters of a call, the rest behind “+N more”", async () => {
     useMockApi();
     const call: LLMCallRecord = { ...USAGE.recent[0]!, id: 99, purpose: "review", doc_ids: ["doc_library", "doc_dentist", "doc_parking", "doc_uni", "doc_abh"] };

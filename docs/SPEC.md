@@ -185,7 +185,7 @@ sse-starlette, python-multipart, httpx, mcp v2 (`mcp.server.mcpserver.MCPServer`
 store), ifaddr (phone access: the network interfaces with their netmasks), olefile (Outlook `.msg` files),
 hypothesis (dev).
 Frontend: Vite 8, React 19, TypeScript 5.9, Tailwind 4, React Router 8, TanStack Query, lucide-react,
-date-fns, recharts, motion, @fontsource (Inter, Fraunces). Tooling: uv, ruff, mypy, pytest, vitest,
+date-fns, motion, @fontsource (Inter, Fraunces). Tooling: uv, ruff, mypy, pytest, vitest,
 Playwright + @axe-core/playwright, GitHub Actions.
 
 ## 4. Domain model — `ordnung/models.py` (implemented; the file is authoritative)
