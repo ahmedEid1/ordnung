@@ -21,6 +21,7 @@ import { useReportDirty } from "@/features/settings/dirty";
 import { SettingsCard } from "@/features/settings/SettingsCard";
 import { focusWhenReady } from "@/lib/focus";
 import { backToYours, HOUSEHOLD_CHANGE_TOAST, lettersLabel, membersOf, nameProblem, oneLine, refusal, useChangeHousehold } from "./save";
+import { useOnePress } from "@/lib/hooks";
 
 /** The card's title id: `/settings?section=profile#set-household` opens Settings at it. */
 export const HOUSEHOLD_CARD_ID = "set-household";
@@ -67,7 +68,10 @@ function useSaveList() {
 
 /** The add form: one person at a time. */
 function AddPerson({ household, inputRef }: { household: Household; inputRef: RefObject<HTMLInputElement | null> }) {
-  const { save, busy } = useSaveList();
+  const { save, busy: saving } = useSaveList();
+  // one press at a time: a second "Add" before it is drawn busy was refused as a conflict right after the first worked
+  const adding = useOnePress();
+  const busy = saving || adding.busy;
   const [name, setName] = useState("");
   const [signs, setSigns] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -97,7 +101,7 @@ function AddPerson({ household, inputRef }: { household: Household; inputRef: Re
 
   const submit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
-    void add();
+    adding.once(add);
   };
   return (
     <form onSubmit={submit} noValidate className="mt-5 flex flex-col gap-4 border-t border-line pt-5" aria-label="Add someone to your household">
@@ -122,8 +126,21 @@ function AddPerson({ household, inputRef }: { household: Household; inputRef: Re
 }
 
 /** A person of the household: their name, whether they sign, their letters; Edit and Remove. */
-function PersonRow({ person, household, onRemove }: { person: HouseholdPerson; household: Household; onRemove: (person: HouseholdPerson) => void }) {
-  const { save, busy } = useSaveList();
+function PersonRow({
+  person,
+  household,
+  onRemove,
+  removing = false,
+}: {
+  person: HouseholdPerson;
+  household: Household;
+  onRemove: (person: HouseholdPerson) => void;
+  /** Their removal is on its way. */
+  removing?: boolean;
+}) {
+  const { save, busy: saving } = useSaveList();
+  const saved = useOnePress(); // "Save", one press at a time
+  const busy = saving || saved.busy;
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(person.name);
   const [signs, setSigns] = useState(person.signs);
@@ -179,7 +196,7 @@ function PersonRow({ person, household, onRemove }: { person: HouseholdPerson; h
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            void saveEdit();
+            saved.once(saveEdit);
           }}
           noValidate
           className="flex flex-col gap-4"
@@ -228,7 +245,7 @@ function PersonRow({ person, household, onRemove }: { person: HouseholdPerson; h
         <Button ref={editRef} size="sm" aria-label={`Edit ${person.name}`} onClick={start} data-person-edit>
           Edit
         </Button>
-        <Button size="sm" variant="ghost" aria-label={`Remove ${person.name}`} onClick={() => onRemove(person)}>
+        <Button size="sm" variant="ghost" aria-label={`Remove ${person.name}`} loading={removing} onClick={() => onRemove(person)}>
           Remove
         </Button>
       </div>
@@ -241,6 +258,8 @@ export function HouseholdCard() {
   const household = useHousehold();
   const h = household.data;
   const { save } = useSaveList();
+  // one removal at a time (`pressed`: whose), also for two presses before it is drawn busy
+  const removing = useOnePress<string>();
   const [asking, setAsking] = useState<HouseholdPerson | null>(null);
   const addRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -297,7 +316,7 @@ export function HouseholdCard() {
             {h.members.length ? (
               <ul ref={listRef} aria-label="People in your household" className="-my-3 divide-y divide-line">
                 {h.members.map((person) => (
-                  <PersonRow key={person.id} person={person} household={h} onRemove={(p) => (p.letters ? setAsking(p) : void remove(p))} />
+                  <PersonRow key={person.id} person={person} household={h} onRemove={(p) => (p.letters ? setAsking(p) : removing.once(() => remove(p), p.id))} removing={removing.pressed === person.id} />
                 ))}
               </ul>
             ) : (
@@ -316,7 +335,7 @@ export function HouseholdCard() {
         footer={
           <>
             <Button onClick={() => setAsking(null)}>Cancel</Button>
-            <Button variant="danger" onClick={() => asking && void remove(asking)}>
+            <Button variant="danger" loading={removing.busy} onClick={() => asking && removing.once(() => remove(asking), asking.id)}>
               Remove
             </Button>
           </>

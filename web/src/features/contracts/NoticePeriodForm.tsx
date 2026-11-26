@@ -13,7 +13,7 @@ import { toast } from "@/components/ui/Toast";
 import { NOTICE_BASIS_COPY } from "@/lib/copy";
 import { formatDate } from "@/lib/format";
 import { earlyNoticeCounts, noticeDayCounts, statutoryNoticeCounts, termsUnclear } from "./model";
-import { ignoreFailedRequest } from "@/api/client";
+import { useOnePress } from "@/lib/hooks";
 
 /** The longest notice period the form takes per unit (longer ones are misreadings). */
 export const NOTICE_MAX: Record<NoticeUnit, number> = { days: 730, weeks: 104, months: 24 };
@@ -82,6 +82,7 @@ export function NoticePeriodForm({
   onUndone: (restored: Contract) => void;
 }) {
   const update = useUpdateContract();
+  const saving = useOnePress(); // one press: Enter twice saved it twice (two toasts, two Undos)
   const id = useId();
   const valueRef = useRef<HTMLInputElement>(null);
   const basisRef = useRef<HTMLSelectElement>(null);
@@ -159,6 +160,7 @@ export function NoticePeriodForm({
     };
     // The call's promise, not mutate's callbacks: those never come once this form has gone, and the
     // refreshed contract (dates known now) or the toast's Undo can come after it has.
+    saving.once(() =>
     update.mutateAsync({ id: c.id, patch }).then(
       (fresh) => {
         onClose(fresh);
@@ -169,7 +171,7 @@ export function NoticePeriodForm({
         if (termsUnclear(fresh)) toast.warn("Notice period saved — the dates still need checking", { description, undo });
         else toast.success("Notice period saved", { description, undo });
       },
-      ignoreFailedRequest, // a failed request: the error toast comes from the mutation's meta; the form stays open to try again
+    ), // a failed request: the error toast comes from the mutation's meta; the form stays open to try again
     );
   };
 
@@ -307,7 +309,7 @@ export function NoticePeriodForm({
       )}
       {/* the two buttons stay together ("Cancel" never wraps alone) */}
       <div className="mt-3 flex items-center gap-2">
-        <Button type="submit" size="sm" variant="primary" loading={update.isPending}>
+        <Button type="submit" size="sm" variant="primary" loading={update.isPending || saving.busy}>
           Save notice period
         </Button>
         <Button type="button" size="sm" variant="ghost" onClick={() => onClose(null)}>

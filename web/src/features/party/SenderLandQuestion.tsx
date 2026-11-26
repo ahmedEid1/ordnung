@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { savedStateLine } from "./sender-land";
 import { regionName } from "./timeline";
 import { ignoreFailedRequest } from "@/api/client";
+import { useOnePress } from "@/lib/hooks";
 
 export type PartyUpdate = ReturnType<typeof useUpdateParty>;
 
@@ -69,13 +70,16 @@ export function SenderLandQuestion({
   const update = given ?? own;
   const idea = useUpdateSuggestion();
   const [busy, setBusy] = useState<"yes" | "dont_know" | null>(null);
+  // one answer at a time, also two presses before the answer is drawn busy (a second save, a second toast)
+  const { once } = useOnePress();
   const questionId = useId();
   const groupId = `${questionId}-group`;
   const dontKnowId = `${questionId}-dont-know`;
   const land = regionName(suggestion.region) ?? suggestion.region;
   const ideaId = suggestion.declined ? null : suggestion.idea_id;
 
-  const yes = async () => {
+  const yes = () => once(answerYes);
+  const answerYes = async () => {
     setBusy("yes");
     let saved: Party;
     try {
@@ -100,9 +104,10 @@ export function SenderLandQuestion({
 
   const dontKnow = () => {
     if (!ideaId) return;
+    once(() => {
     onDontKnow?.();
     setBusy("dont_know");
-    idea.mutateAsync({ id: ideaId, patch: { status: "dismissed" } }).then(
+    return idea.mutateAsync({ id: ideaId, patch: { status: "dismissed" } }).then(
       () => {
         setBusy(null);
         toast({
@@ -121,6 +126,7 @@ export function SenderLandQuestion({
         ignoreFailedRequest(err); // a failed request: the hook's toast says so
       },
     );
+    });
   };
 
   return (
@@ -133,7 +139,7 @@ export function SenderLandQuestion({
       </p>
       {children ? <p className="mt-1 text-[13px] leading-5 text-ink/75">{children}</p> : null}
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <AnswerButton size="sm" variant="secondary" icon={Check} busy={busy === "yes"} blocked={busy === "dont_know"} onClick={() => void yes()}>
+        <AnswerButton size="sm" variant="secondary" icon={Check} busy={busy === "yes"} blocked={busy === "dont_know"} onClick={yes}>
           Yes
         </AnswerButton>
         <Button size="sm" variant="ghost" onClick={onOther}>

@@ -5,7 +5,8 @@ import type { DocumentDetail, Item, Party, RegionSuggestion } from "@/api/types"
 import { qk, useDocument } from "@/api/hooks";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { makeTestQueryClient, renderWithProviders } from "@/test/render";
-import { useMockApi } from "@/test/mockFetch";
+import { holdRequests, useMockApi } from "@/test/mockFetch";
+import { expectOnePressAtATime } from "@/test/busyButton";
 import { makeDetail, makeDoc, makeItem, makeReceipt, makeSuggestion } from "./fixtures";
 import { DocumentWarnings } from "./Warnings";
 import { ReceiptView, senderLandUnknown, WhyThisDate } from "./WhyThisDate";
@@ -330,5 +331,35 @@ describe("the letter asks for the sender's state the postcode on it suggests", (
     await user.click(screen.getByRole("button", { name: "Undo" }));
     expect(await screen.findByRole("group", { name: QUESTION })).toBeInTheDocument();
     expect(srv.db.state.suggestions.find((x) => x.id === "sug_land_techmarkt")!.status).toBe("new");
+  });
+});
+
+describe("the postcode question: an answer on its way", () => {
+  it("“Yes” takes one press at a time, and the next once it failed", async () => {
+    const { srv } = useMockApi();
+    serveLandLetter(srv);
+    const held = holdRequests((call) => call.method === "PATCH" && call.path === "/parties/pty_techmarkt");
+    renderWithProviders(<LoadedLetter id="doc_tm_dunning" />);
+    const question = await screen.findByRole("group", { name: QUESTION });
+    await expectOnePressAtATime({ user: userEvent.setup(), button: () => within(question).getByRole("button", { name: "Yes" }), held });
+  });
+
+  it("“Don't know” takes one press at a time, and the next once it failed", async () => {
+    const { srv } = useMockApi();
+    srv.db.state.suggestions.push(
+      makeSuggestion({
+        id: "sug_land_techmarkt",
+        kind: "deadline",
+        title: "Is TechMarkt Online GmbH in Berlin?",
+        rule_id: "sender_land",
+        refs: [{ type: "party", id: "pty_techmarkt" }],
+        action: { type: "open", draft_kind: null, target_type: "party", target_id: "pty_techmarkt", label: "Answer" },
+      }),
+    );
+    serveLandLetter(srv, { idea_id: "sug_land_techmarkt" });
+    const held = holdRequests((call) => call.method === "PATCH" && call.path === "/suggestions/sug_land_techmarkt");
+    renderWithProviders(<LoadedLetter id="doc_tm_dunning" />);
+    const question = await screen.findByRole("group", { name: QUESTION });
+    await expectOnePressAtATime({ user: userEvent.setup(), button: () => within(question).getByRole("button", { name: "Don't know" }), held });
   });
 });

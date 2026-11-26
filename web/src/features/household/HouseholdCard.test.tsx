@@ -9,7 +9,8 @@ import userEvent from "@testing-library/user-event";
 import type { Household } from "@/api/types";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { renderWithProviders } from "@/test/render";
-import { failRequests, useMockApi, type FetchCall } from "@/test/mockFetch";
+import { failRequests, holdRequests, useMockApi, type FetchCall } from "@/test/mockFetch";
+import { expectOnePressAtATime } from "@/test/busyButton";
 import SettingsPage from "@/pages/SettingsPage";
 import { HouseholdCard } from "./HouseholdCard";
 
@@ -282,5 +283,34 @@ describe("Your household on the Settings page", () => {
     await user.click(within(dialog).getByRole("button", { name: "Save and go" }));
     await waitFor(() => expect(puts(calls).at(-1)?.body).toMatchObject({ members: [{ id: null, name: "Alex Rivera", signs: true }] }));
     expect(await screen.findByRole("heading", { level: 2, name: "Reminders" }, { timeout: 5_000 })).toBeInTheDocument();
+  });
+});
+
+describe("Your household: a change on its way", () => {
+  const held = () => holdRequests((call) => call.method === "PUT" && call.path === "/household");
+
+  it("“Add to household” takes one press at a time, and the next once it failed", async () => {
+    const api = useMockApi();
+    const putting = held();
+    const { user } = renderCard(api);
+    await user.type(await screen.findByRole("textbox", { name: "Name" }), "Alex Rivera");
+    await expectOnePressAtATime({ user, button: () => within(card()).getByRole("button", { name: "Add to household" }), held: putting });
+  });
+
+  it("“Save” of a person takes one press at a time, and the next once it failed", async () => {
+    const api = useMockApi();
+    const putting = held();
+    const { user } = renderCard(api, { members: [ALEX] });
+    await user.click(await screen.findByRole("button", { name: "Edit Alex Rivera" }));
+    await user.type(within(people()[0]!).getByRole("textbox", { name: "Name" }), "a");
+    await expectOnePressAtATime({ user, button: () => within(people()[0]!).getByRole("button", { name: "Save" }), held: putting });
+  });
+
+  it("“Remove” of someone without letters takes one press at a time, and the next once it failed", async () => {
+    const api = useMockApi();
+    const putting = held();
+    const { user } = renderCard(api, { members: [ALEX] });
+    await screen.findByRole("button", { name: "Remove Alex Rivera" });
+    await expectOnePressAtATime({ user, button: () => screen.getByRole("button", { name: "Remove Alex Rivera" }), held: putting });
   });
 });
