@@ -13,7 +13,8 @@ import type { HouseholdMember } from "@/api/types";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { ADDRESSEES } from "@/mocks/data/documents";
 import { renderWithProviders } from "@/test/render";
-import { failRequests, useMockApi, type FetchCall } from "@/test/mockFetch";
+import { failRequests, holdRequests, useMockApi, type FetchCall } from "@/test/mockFetch";
+import { expectOnePressAtATime } from "@/test/busyButton";
 import { VerdictCard } from "@/features/document/VerdictCard";
 import { selectPrimaryItem } from "@/features/document/verdict";
 
@@ -128,6 +129,62 @@ describe("the letter's question", () => {
     await toastOf("Filed for Mia Rivera");
     expect(patches(calls)).toEqual([{ letters: { [id]: MIA.id } }]);
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Who is this letter for?" })).toBeNull());
+  });
+});
+
+describe("the letter's question while an answer is saved", () => {
+  for (const name of ["Yes", "No, it's mine"]) {
+    it(`keeps focus on “${name}”, takes one answer at a time, and the next once it failed`, async () => {
+      const api = useMockApi();
+      const held = holdRequests((c) => c.method === "PATCH" && c.path === "/household");
+      const { user } = await openLetter(api, "Alex Rivera", [ALEX]);
+      const question = await screen.findByRole("group", { name: "Is this letter for Alex Rivera?" });
+      await expectOnePressAtATime({ user, button: () => within(question).getByRole("button", { name }), held });
+    });
+  }
+
+  it("“Someone else…” opens no choices while “Yes” is saved", async () => {
+    const api = useMockApi();
+    const held = holdRequests((c) => c.method === "PATCH" && c.path === "/household");
+    const { user } = await openLetter(api, "Alex Rivera", [ALEX, MIA]);
+    const question = await screen.findByRole("group", { name: "Is this letter for Alex Rivera?" });
+    await user.click(within(question).getByRole("button", { name: "Yes" }));
+    await waitFor(() => expect(held.count).toBe(1));
+    const other = within(question).getByRole("button", { name: "Someone else…" });
+    await waitFor(() => expect(other).toHaveAttribute("aria-disabled", "true"));
+    await user.click(other);
+    expect(screen.queryByRole("dialog", { name: "Who is this letter for?" })).toBeNull();
+  });
+
+  it("“Someone else…”: focus comes back to it from the choices, and it opens nothing while the answer is saved", async () => {
+    const api = useMockApi();
+    const held = holdRequests((c) => c.method === "PATCH" && c.path === "/household");
+    const { user } = await openLetter(api, "Alex Rivera", [ALEX, MIA]);
+    const question = await screen.findByRole("group", { name: "Is this letter for Alex Rivera?" });
+    const other = within(question).getByRole("button", { name: "Someone else…" });
+    other.focus();
+    await user.keyboard("{Enter}");
+    const choices = await screen.findByRole("dialog", { name: "Who is this letter for?" });
+    within(choices).getByRole("button", { name: "Mia Rivera" }).focus();
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(held.count).toBe(1));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Who is this letter for?" })).toBeNull());
+    // the closing choices hand focus back to their trigger, which says it is busy and keeps it
+    expect(other).toHaveFocus();
+    expect(other).toHaveAttribute("aria-busy", "true");
+    expect(other).toHaveAttribute("aria-disabled", "true");
+    expect(other).not.toBeDisabled();
+    for (const button of [other, within(question).getByRole("button", { name: "Yes" })]) expect(button).toHaveAttribute("aria-disabled", "true");
+    // pressed while busy: no choices, no second answer
+    await user.keyboard("{Enter}");
+    await user.click(within(question).getByRole("button", { name: "Yes" }));
+    expect(screen.queryByRole("dialog", { name: "Who is this letter for?" })).toBeNull();
+    expect(held.count).toBe(1);
+    // the answer failed: the question takes the next press
+    await act(async () => held.fail());
+    await waitFor(() => expect(other).not.toHaveAttribute("aria-disabled"));
+    await user.click(other);
+    expect(await screen.findByRole("dialog", { name: "Who is this letter for?" })).toBeInTheDocument();
   });
 });
 
