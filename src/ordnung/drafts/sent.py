@@ -261,7 +261,9 @@ async def add_proof(
         source=PROOF_SOURCE,
         with_attachments=False,  # a sent e-mail kept as proof is one file: no letters from its attachments
     )
-    if any(proof.doc_id == document.id for proof in proofs):
+    # asked again after the file is in: the same file sent twice at once was the same document for both, and the
+    # list read before the wait had neither (nothing waits between this and the proof being added)
+    if any(proof.doc_id == document.id for proof in store.list_proofs(draft.id)):
         raise DraftError(ALREADY_PROOF)
     if is_email(document):
         _drop_waiting_attachments(store, document)
@@ -408,6 +410,12 @@ def mark_answered(store: Store, draft_id: str, today: date, *, doc_id: str | Non
         ):
             raise DraftError(UNKNOWN_ANSWER)
     with store.tx():
+        # said twice (a double press, a second tab): the first one closed the follow-up and noted how it stood,
+        # which its "Undo" brings back; a second note would say it was done, and lose a snooze
+        if (current := _sent_draft(store, draft_id)).answered_on is not None:
+            if current.answer_doc_id == doc_id:
+                return current
+            return store.update_draft(draft.id, answer_doc_id=doc_id)  # answered by another letter, named now
         updated = store.update_draft(draft.id, answered_on=today.isoformat(), answer_doc_id=doc_id)
         followup = store.get_item(followup_item_id(draft.id))
         # a snoozed follow-up is closed too: snoozing put off the reminder, the answer ends the wait

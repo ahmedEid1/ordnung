@@ -675,6 +675,10 @@ export interface paths {
          *     working day or a day of the month is dated from there at once. ``{"recurrence": null}`` stops it
          *     repeating and keeps its date. A date sent alone stands in for one occurrence. To-dos read from a
          *     letter keep following their letter's schedule.
+         *
+         *     ``seen_due_date``, sent with ``{"status": "done"}`` or ``{"status": "open"}``, is the date the page showed:
+         *     a repeating to-do that no longer stands there (the same press sent twice) changes nothing, and the answer
+         *     is the to-do as it is. Without it, the to-do moves on (or back) as before.
          */
         patch: operations["update_item_api_items__item_id__patch"];
         trace?: never;
@@ -4390,6 +4394,8 @@ export interface components {
             /** Location */
             location?: string | null;
             recurrence?: components["schemas"]["Recurrence-Input"] | null;
+            /** Seen Due Date */
+            seen_due_date?: string | null;
         };
         /**
          * ItemTitle

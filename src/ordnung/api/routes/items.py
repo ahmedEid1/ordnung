@@ -115,6 +115,10 @@ class ItemPatch(BaseModel):
     area: Area | None = None
     location: str | None = None
     recurrence: Recurrence | None = None
+    # The date the to-do stood at when the person pressed "done" or "open again" (``due_date`` as the page showed
+    # it; never stored). Sent with either, a repeating to-do that has moved since (the same press sent twice, a
+    # second tab, the phone) is left as it is: a "done" is for the occurrence the person saw, not the next one.
+    seen_due_date: IsoDate | None = None
 
     _repeats = field_validator("recurrence")(_repeat_interval)
 
@@ -359,9 +363,26 @@ def _follow_schedule(
     return item
 
 
+def _moved_since(item: Item, patch: ItemPatch, *, steps: bool) -> bool:
+    """Whether a "done" or "open again" that would move a repeating to-do along its schedule (``steps``) was
+    pressed on an occurrence it no longer stands at: the page sent the date it showed (``seen_due_date``), and
+    the to-do has moved on (or back) since. An older page sends no date, and is answered as before."""
+    return steps and "seen_due_date" in patch.model_fields_set and patch.seen_due_date != item.due_date
+
+
 def _update(store: Store, item_id: str, patch: ItemPatch, today: date) -> Item:
+    # read and written in one transaction: two "done"s at the same moment (the phone and the computer) are
+    # then one after the other, and the second sees where the first moved the to-do
+    try:
+        with store.tx():
+            return _update_in_tx(store, item_id, patch, today)
+    except NoNextDate as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, TOO_FAR_BACK) from exc
+
+
+def _update_in_tx(store: Store, item_id: str, patch: ItemPatch, today: date) -> Item:
     item = require(store.get_item(item_id), NOT_FOUND)
-    changes = patch.model_dump(exclude_unset=True)
+    changes = patch.model_dump(exclude_unset=True, exclude={"seen_due_date"})
     fields: dict[str, Any] = {name: changes[name] for name in _CONTENT_FIELDS if name in changes}
     if "recurrence" in fields:  # the rule as read, so the same rule sent again compares equal to it
         fields["recurrence"] = patch.recurrence
@@ -400,15 +421,13 @@ def _update(store: Store, item_id: str, patch: ItemPatch, today: date) -> Item:
     # a rent at its last occurrence, which stays done until set open again: recurrence.py, point 9)
     reopened = item.status in ("open", "done") and fields.get("status") == "open"
     done = item.status != "done" and fields.get("status") == "done"
-    try:
-        with store.tx():
-            updated = store.update_item(item_id, **fields)
-            if restart:
-                updated = _scheduled_start(store, updated, today)
-            updated = _follow_schedule(store, updated, today, done=done, reopened=reopened)
-            refresh_review_status(store, updated.doc_id)
-    except NoNextDate as exc:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, TOO_FAR_BACK) from exc
+    if _moved_since(item, patch, steps=item.recurrence is not None and (done or reopened)):
+        return item  # nothing changes: the answer is the to-do as it stands, at the date it moved to
+    updated = store.update_item(item_id, **fields)
+    if restart:
+        updated = _scheduled_start(store, updated, today)
+    updated = _follow_schedule(store, updated, today, done=done, reopened=reopened)
+    refresh_review_status(store, updated.doc_id)
     return updated
 
 
@@ -420,7 +439,11 @@ async def update_item(item_id: str, patch: ItemPatch, ctx: CtxDep, today: TodayD
     schedule again at that date, and a new rule sent alone starts it again at its current date; a
     working day or a day of the month is dated from there at once. ``{"recurrence": null}`` stops it
     repeating and keeps its date. A date sent alone stands in for one occurrence. To-dos read from a
-    letter keep following their letter's schedule."""
+    letter keep following their letter's schedule.
+
+    ``seen_due_date``, sent with ``{"status": "done"}`` or ``{"status": "open"}``, is the date the page showed:
+    a repeating to-do that no longer stands there (the same press sent twice) changes nothing, and the answer
+    is the to-do as it is. Without it, the to-do moves on (or back) as before."""
     item = await asyncio.to_thread(_update, ctx.store, item_id, patch, today)
     await ledger_changed(ctx, item_id=item.id)
     return item
