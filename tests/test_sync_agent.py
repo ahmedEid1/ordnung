@@ -15,7 +15,6 @@ from typing import Any
 
 import pytest
 
-import sync_fake_engine
 from fake_caldav import MemorySecrets
 from ordnung import durable
 from ordnung.app_context import build_context
@@ -27,7 +26,17 @@ from ordnung.llm.fake import FakeBackend
 from ordnung.models import ClaudeStatus
 from ordnung.sync import agent as agent_module
 from ordnung.sync.push import LocalDamaged, TryAgain
-from sync_fake_engine import FakeEngine, FakeSession, Problem, View, counter, deliver, head_of, withhold
+from sync_fake_engine import (
+    FOLDER_LOCK,
+    FakeEngine,
+    FakeSession,
+    Problem,
+    View,
+    counter,
+    deliver,
+    head_of,
+    withhold,
+)
 from sync_support import (
     PASSPHRASE,
     agent_of,
@@ -96,7 +105,7 @@ def _nothing_more_arrives(monkeypatch: pytest.MonkeyPatch, folder: Path, lap: Pa
     on = threading.Event()
 
     def withheld(session: FakeSession, store: Store, *, reason: str, hand_over: bool = False) -> None:
-        with sync_fake_engine._FOLDER_LOCK:  # an RLock: push takes it again
+        with FOLDER_LOCK:  # an RLock: push takes it again
             push(session, store, reason=reason, hand_over=hand_over)
             if on.is_set() and session.paths.data_dir.resolve() == lap.resolve():
                 _withhold_laptop_s(folder)
@@ -105,11 +114,32 @@ def _nothing_more_arrives(monkeypatch: pytest.MonkeyPatch, folder: Path, lap: Pa
     return on.set
 
 
-def _take_over_cancelled(api: Api) -> bool:
-    """The notice that a waiting take-over gave up, as the agent's summary shows it. Waited for itself,
-    not for the wait's end: the summary is read again at the next look when reading it failed."""
-    summary = agent_of(api).summary
+def _take_over_cancelled_in(agent: agent_module.SyncAgent) -> bool:
+    """The notice that a waiting take-over gave up, as the agent's summary shows it."""
+    summary = agent.summary
     return summary is not None and any(notice["code"] == "take_over_cancelled" for notice in summary.notices)
+
+
+def _take_over_cancelled(api: Api) -> bool:
+    return _take_over_cancelled_in(agent_of(api))
+
+
+def _shown_when_the_wait_ends(monkeypatch: pytest.MonkeyPatch) -> list[bool]:
+    """Notes, each time a take-over's wait is cleared, whether the agent's summary already shows that it gave
+    up. The tests wait for the notice itself, which would also turn up at the next look, so this pins what
+    the agent promises: nobody sees the wait end without a word, not even for one look."""
+    shown: list[bool] = []
+
+    def waiting(agent: agent_module.SyncAgent) -> Any:
+        return agent.__dict__.get("_waiting")
+
+    def set_waiting(agent: agent_module.SyncAgent, value: Any) -> None:
+        if value is None and agent.__dict__.get("_waiting") is not None:
+            shown.append(_take_over_cancelled_in(agent))
+        agent.__dict__["_waiting"] = value
+
+    monkeypatch.setattr(agent_module.SyncAgent, "_waiting", property(waiting, set_waiting), raising=False)
+    return shown
 
 
 async def _connected_pair(tmp_path: Path, folder: Path, engine: FakeEngine) -> tuple[Path, Path]:
@@ -573,16 +603,7 @@ async def test_a_waiting_take_over_gives_up_after_its_time(
     # long enough that a slow runner can't spend it before use-here answers (the scan loop looks only every
     # WAIT_POLL_S = 5 s, so the give-up still comes at the first look after it): 0.3 s once ran out first
     monkeypatch.setattr(agent_module, "TAKE_OVER_WAIT_MAX_S", 3.0)
-    # the give-up's notice is written while the wait still stands: nobody sees the wait end without a word
-    waiting_at_notice: list[bool] = []
-    notice = agent_module.SyncAgent._notice
-
-    async def noted(agent: agent_module.SyncAgent, code: Any, message: str, kept: str | None = None) -> None:
-        if code == "take_over_cancelled":
-            waiting_at_notice.append(agent._waiting is not None)
-        await notice(agent, code, message, kept)
-
-    monkeypatch.setattr(agent_module.SyncAgent, "_notice", noted)
+    shown_when_gone = _shown_when_the_wait_ends(monkeypatch)
     engine = FakeEngine()
     desk, lap = _dirs(tmp_path)
     async with computer(desk, engine=engine) as a, computer(lap, engine=engine) as b:
@@ -594,12 +615,13 @@ async def test_a_waiting_take_over_gives_up_after_its_time(
         await eventually(lambda: _take_over_cancelled(a))
         assert agent_of(a)._waiting is None
         assert agent_of(a).mode == "standing_by"
-        assert waiting_at_notice == [True]
+        assert shown_when_gone == [True]
 
 
 async def test_a_waiting_take_over_gives_up_when_the_other_computer_changes_more(
     tmp_path: Path, folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    shown_when_gone = _shown_when_the_wait_ends(monkeypatch)
     engine = FakeEngine()
     desk, lap = _dirs(tmp_path)
     async with computer(desk, engine=engine) as a, computer(lap, engine=engine) as b:
@@ -616,6 +638,7 @@ async def test_a_waiting_take_over_gives_up_when_the_other_computer_changes_more
         await eventually(lambda: _take_over_cancelled(a))
         assert agent_of(a)._waiting is None
         assert agent_of(a).mode == "standing_by"
+        assert shown_when_gone == [True]
 
 
 async def test_a_waiting_take_over_waits_for_the_laptop_s_change_when_the_desktop_saved_last(

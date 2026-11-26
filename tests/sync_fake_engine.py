@@ -48,6 +48,7 @@ VERSIONS = "versions"
 STATE_FILE = "state.json"
 JOURNAL_FILE = "pull.json"
 _FOLDER_LOCK = threading.RLock()  # two computers' agents in one test process
+FOLDER_LOCK = _FOLDER_LOCK  # for a test that changes the folder in step with the fake's own writes
 _DIGEST_TABLES = ("documents", "items", "contracts", "notes", "chat_messages", "drafts", "parties", "cases")
 _PERSON_TABLES = ("documents", "items", "contracts", "drafts", "notes", "chat_messages")
 _KEEP_LOCAL = tuple(sorted(sync.LOCAL_META | sync.MERGED_META))
