@@ -3,6 +3,7 @@ import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { ApiError } from "@/api/client";
+import { LEAVING_WAIT_MS } from "@/lib/focus";
 import { renderWithProviders } from "@/test/render";
 import { Dialog } from "./Dialog";
 import { TOAST_DURATION, TOAST_SPACE_VAR, Toaster, __clearToasts, toast, toastDuration } from "./Toast";
@@ -277,6 +278,8 @@ describe("A toast on its way out", () => {
   });
 
   it("after an Undo that works, leaves nothing armed: once the person has clicked elsewhere, a later redraw pulls no focus", async () => {
+    // the watch's frames and its clock run on fake time, so the proof covers its whole window, not a moment
+    vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame", "performance"] });
     const user = userEvent.setup();
     let done = () => {};
     let redraw = () => {};
@@ -307,7 +310,8 @@ describe("A toast on its way out", () => {
     await user.click(screen.getByText("Some text"));
     expect(document.activeElement).toBe(document.body);
     act(() => redraw());
-    await act(() => new Promise((r) => setTimeout(r, 100)));
+    // every frame of the watch's window (and a little past it), the card's title free to take focus all along
+    act(() => void vi.advanceTimersByTime(LEAVING_WAIT_MS + 100));
     expect(screen.getByRole("heading", { name: "Fine" })).not.toHaveFocus();
     expect(document.activeElement).toBe(document.body);
   });
