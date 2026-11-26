@@ -433,24 +433,33 @@ for (const width of [320, 1280]) {
         await expect(page.getByRole("main").getByRole("tablist").first().getByRole("tab", { selected: true })).toBeFocused();
         expect(await tabSizes(page), "the same sizes once another tab is selected (and focused)").toEqual(before);
         const now = page.getByRole("main").getByRole("tablist").first().getByRole("tab", { selected: true });
+        /**
+         * Points `inset` px inside each edge where the tab's thumb (the hidden box laid over the tab) lies over its frame
+         * (the outline drawn there). The tab's own label may reach in that far: an outline is drawn over its content.
+         */
+        const covered = (inset: number) =>
+          now.evaluate((el, d) => {
+            const r = el.getBoundingClientRect();
+            const hits = [
+              [r.left + d, r.top + r.height / 2],
+              [r.left + r.width / 2, r.top + d],
+              [r.right - d, r.top + r.height / 2],
+              [r.left + r.width / 2, r.bottom - d],
+            ].map(([x, y]) => document.elementFromPoint(x!, y!));
+            const thumb = (h: Element | null) => {
+              const hidden = h === el ? null : h?.closest("[aria-hidden=true]");
+              return Boolean(hidden && getComputedStyle(hidden).position === "absolute");
+            };
+            return hits.filter(thumb).length;
+          }, inset);
         // focused, its frame is wider than when it is not: focus shows, and still takes no room
         expect(await frame(now), "the focused selected tab's frame").toBe("solid 4px -4px");
+        expect((await covered(1)) + (await covered(3)), "points inside the focused (4 px) frame, 1 and 3 px in, where the thumb lies over it").toBe(0);
         await now.blur();
         expect(await frame(now), "the selected tab's frame, not focused").toBe("solid 2px -2px");
         expect(await tabSizes(page), "the same sizes once focus has left").toEqual(before);
         expect(await now.evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe("0px");
-        // just inside the frame is the tab (its outline drawn there), not its thumb laid over it
-        const covered = await now.evaluate((el) => {
-          const r = el.getBoundingClientRect();
-          const hits = [
-            [r.left + 1, r.top + r.height / 2],
-            [r.left + r.width / 2, r.top + 1],
-            [r.right - 1, r.top + r.height / 2],
-            [r.left + r.width / 2, r.bottom - 1],
-          ].map(([x, y]) => document.elementFromPoint(x!, y!));
-          return hits.filter((h) => h !== el && h?.closest("[aria-hidden=true]")).length;
-        });
-        expect(covered, "points just inside the frame where the thumb lies over it").toBe(0);
+        expect(await covered(1), "points just inside the frame where the thumb lies over it").toBe(0);
       });
     });
   }
