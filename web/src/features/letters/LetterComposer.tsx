@@ -52,6 +52,7 @@ import { scamLetterIds } from "@/features/document/verdict";
 import { ChoiceList, ChosenLetter, ContractOption, DocOption, KindChooser, LIST_PREVIEW, ListSkeleton, OptionRow, PossiblePill, StepLabel, scrollParent } from "./ComposerOptions";
 import { TemplateRecipient } from "./TemplateRecipient";
 import { SignerField } from "./SignerField";
+import { useOnePress } from "@/lib/hooks";
 
 const PLACEHOLDER: Record<"cancellation" | "objection" | "general_reply", string> = {
   cancellation: "e.g. Please confirm by email. I'm moving abroad at the end of the year.",
@@ -186,6 +187,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
   const profileQ = useProfile();
   const suggestionsQ = useSuggestions();
   const create = useCreateDraft();
+  const writing = useOnePress();
 
   const [kind, setKind] = useState<DraftKind | null>(prefill?.kind ?? null);
   const [contractId, setContractId] = useState<string | null>(prefill?.contractId ?? null);
@@ -405,10 +407,13 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
     setValues({});
   };
 
+  // one letter per press: a second press before the button is drawn busy would write a second letter (and ask
+  // Claude twice)
   const submit = () => {
     if (!kind || !ready) return;
     const templated = template !== null;
-    create.mutate(
+    writing.once(() =>
+      create.mutateAsync(
       {
         kind,
         contract_id: kind === "cancellation" ? effContractId : templated ? (contract?.id ?? null) : null,
@@ -434,6 +439,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
           navigate(`/letters/${draft.id}`);
         },
       },
+      ),
     );
   };
 
@@ -512,12 +518,12 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
               icon={Sparkles}
               onClick={submit}
               disabled={!ready}
-              loading={create.isPending}
+              loading={writing.busy}
               className="max-sm:h-11"
               // the reason travels with the disabled button, for a screen reader that lands on it
               aria-describedby={disabledReason && !ready ? "cmp-why" : undefined}
             >
-              {create.isPending ? "Writing…" : "Write the letter"}
+              {writing.busy ? "Writing…" : "Write the letter"}
             </Button>
           </div>
         </>
