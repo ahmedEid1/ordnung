@@ -1653,12 +1653,11 @@ def _compute_relative(
     # envelope (§ 3 VwZG with §§ 180, 181 ZPO) — asked for as that, never as the day the person opened it
     envelope = not served and ctx.formal_service and spec.anchor == "receipt"
     # a posting day the letter's page states may start only an authority's deemed delivery by post — never a
-    # private sender's (from_arrival made it a period from arrival), a court's, a fine's or a letter served with a
-    # yellow envelope (formal service), nor one whose sender's procedure law is unknown (the earliest plausible
-    # date) or sent electronically: a shop's "versandt am" on its invoice never moves a date
+    # private sender's (from_arrival has made its period one from arrival: no deemed_delivery anchor is left), a
+    # court's, a fine's or a letter served with a yellow envelope (formal service), nor one whose sender's procedure
+    # law is unknown (the earliest plausible date) or sent electronically: a shop's "versandt am" never moves a date
     posting = (
         not formal
-        and not no_delivery
         and ctx.delivery_scope is not None
         and spec.anchor == "deemed_delivery"
         and spec.delivery_rule in ("de_admin_post", "none")

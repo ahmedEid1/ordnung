@@ -17,9 +17,10 @@ import pytest
 from fixtures_llm import Letter
 from helpers_tables import check_rows
 from ordnung import clock
-from ordnung.ingest.plan import needs_check
+from ordnung.ingest.plan import compute_item, needs_check, verify_extraction
 from ordnung.ingest.posting import posting_statement
-from ordnung.rules.deadlines import POSTED_ON_LETTER, TWO_POSTING_DAYS, PostingStatement
+from ordnung.models import DateSpec, DocumentExtraction, ExtractedItem
+from ordnung.rules.deadlines import POSTED_ON_LETTER, TWO_POSTING_DAYS, PostingStatement, RuleContext
 from test_api_support import ApiRouter, api_for
 
 D = date.fromisoformat
@@ -117,6 +118,11 @@ NEVER = [
     ("a-copy", "Eine Abschrift dieses Bescheids wurde am 19.10.2026 an Ihren Steuerberater versandt."),
     ("a-payment", "Bitte überweisen Sie den Betrag bis zum 19.11.2026."),
     ("a-deadline", "Senden Sie die Unterlagen spätestens am 30.10.2026 zur Post."),
+    (
+        "a-deadline-to-post-by",
+        "Der Antrag gilt als rechtzeitig, wenn er spätestens am 30.10.2026 zur Post gegeben wurde.",
+    ),
+    ("a-payment-s-due-day", "Der Betrag ist am 19.10.2026 fällig und wurde zur Post gegeben."),
     ("the-future", "Der Bescheid wird am 19.10.2026 zur Post gegeben."),
     ("a-request", "Bitte geben Sie Ihre Erklärung bis 30.10.2026 zur Post."),
     ("negated", "Der Bescheid wurde nicht vor dem 19.10.2026 zur Post gegeben."),
@@ -151,6 +157,51 @@ def test_a_photo_s_transcription_is_model_read_unless_a_text_page_says_it_too() 
     assert photo is not None and (photo.day, photo.grounding) == (D("2026-10-19"), "model_read")
     both = posting_statement([(1, field, [], "transcript"), (2, field, [], "text")], LETTER)
     assert both is not None and both.grounding == "verified"
+
+
+def test_a_photo_s_doubt_counts_once_for_its_to_do() -> None:
+    """A photo letter: the to-do's quote and the posting day both come from the transcript. The posting day keeps
+    the date at most ``medium`` and the quote read from a transcript lowers it one level: counted once, ``medium``
+    — not ``low`` for one photo (``ingest.plan.compute_item``)."""
+    page = (
+        1,
+        "Tag der Aufgabe zur Post: 19.10.2026\nDer Einspruch ist innerhalb eines Monats einzulegen.",
+        [],
+        "transcript",
+    )
+    item = ExtractedItem(
+        kind="deadline",
+        title="Object",
+        date=DateSpec(
+            type="relative",
+            anchor="deemed_delivery",
+            amount=1,
+            unit="months",
+            delivery_rule="de_admin_post",
+            nature="objection",
+        ),
+        quote="Der Einspruch ist innerhalb eines Monats einzulegen.",
+    )
+    extraction = DocumentExtraction(
+        kind="tax_assessment",
+        title="Tax",
+        summary="Tax.",
+        explanation="Object.",
+        document_date="2026-10-16",
+        items=[item],
+    )
+    [verified] = verify_extraction("doc", extraction, [page]).items
+    assert verified.evidence.grounding == "model_read"
+    context = RuleContext(
+        today=D("2026-10-22"),
+        region="NW",
+        document_date=LETTER,
+        delivery_scope="ao",
+        posting=posting_statement([page], LETTER),
+    )
+    computed = compute_item(verified, context, postal_buffer_days=4)
+    assert computed.due_date == "2026-11-23"
+    assert computed.receipt is not None and computed.receipt.confidence == "medium"
 
 
 def test_two_posting_days_that_differ_are_both_kept() -> None:

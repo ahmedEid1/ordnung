@@ -136,14 +136,8 @@ _NOT_DONE = re.compile(
     r"|schicken\s+sie|nicht|kein\w*|will|shall|would|not|never)\b",
     re.IGNORECASE,
 )
-#: The day a letter counts as delivered, not the day it was posted, between the posting's words and its date
-#: ("Aufgabe zur Post gilt der Bescheid am … als bekannt gegeben") or just before them ("am vierten Tag nach
-#: Aufgabe zur Post", "Tag nach der Aufgabe zur Post").
-_DELIVERED = re.compile(
-    r"\bbekannt\s*gegeben\b|\bbekanntgabe\b|\bzugestellt\b|\bzugegangen\b|\bgilt\b|\bgelten\b"
-    r"|\bdeemed\b|\bdelivered\b|\bnach\b|\bafter\b",
-    re.IGNORECASE,
-)
+#: The day a letter counts as delivered, not the day it was posted: the statutes' words right after "nach" ("am
+#: vierten Tag nach Aufgabe zur Post: 23.10.2026").
 _DELIVERED_BEFORE = re.compile(r"\b(?:nach|after)\s+(?:der\s+|dem\s+)?$", re.IGNORECASE)
 #: An enclosure or a copy sent: its own posting.
 _ENCLOSURE = re.compile(
@@ -157,7 +151,6 @@ _DEADLINE_BEFORE = re.compile(
     rf"(?:\s+(?:zum|am|spätestens))*\s*{_DAY}(?:den\s+)?$",
     re.IGNORECASE,
 )
-_DATE_OF = re.compile(r"\b(?:vom|of|dated)\s*$", re.IGNORECASE)
 #: Goods sent: a shop's dispatch, never a letter's posting.
 _GOODS = re.compile(
     r"\b(?:bestellung\w*|ware\w*|artikel|lieferung\w*|paket\w*|päckchen|sendungsnummer|sendungsverfolgung"
@@ -241,7 +234,7 @@ def _sentences(text: str, grounding: Grounding, letter_date: date | None) -> lis
             hi = dates[index + 1][0] if index + 1 < len(dates) else len(clause)
             before = clause[max(lo, start - _REACH) : start]
             after = clause[end : min(hi, end + _REACH)]
-            if _DEADLINE_BEFORE.search(before) or _DATE_OF.search(before):
+            if _DEADLINE_BEFORE.search(before):
                 continue
             cue = (
                 _STATUTE_BEFORE.search(before)
@@ -256,7 +249,6 @@ def _sentences(text: str, grounding: Grounding, letter_date: date | None) -> lis
             line_start = clause.rfind("\n", 0, first) + 1
             line_end = clause.find("\n", last)
             own = clause[line_start : len(clause) if line_end < 0 else line_end]
-            between = clause[first:start] if ahead else clause[end:last]
             statute = cue.re in (_STATUTE_BEFORE, _STATUTE_AFTER)
             if (
                 _NOT_THIS.search(own)
@@ -264,7 +256,6 @@ def _sentences(text: str, grounding: Grounding, letter_date: date | None) -> lis
                 or _ENCLOSURE.search(own)
                 or _PAYMENT_CUE.search(own)
                 or _names_another(own, letter_date)
-                or _DELIVERED.search(between)
                 or _DELIVERED_BEFORE.search(clause[max(0, first - 30) : first])
             ):
                 continue
