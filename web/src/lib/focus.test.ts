@@ -613,6 +613,76 @@ describe("revealWhenStill", () => {
       });
     });
 
+    describe("a reveal that scrolls up (a card that ends above its place without anyone scrolling)", () => {
+      /** A tall card placed below the top bar; a block above it goes, the browser does not keep its place: it is 45 px up. */
+      const placeThenShrink = () => {
+        cardHeight = 533;
+        const start = lands({ top: 56, bottom: 504 });
+        let calls = 0;
+        // its first reveal lands at once; the later ones are smooth and moved frame by frame by each case
+        (card.scrollIntoView as ReturnType<typeof vi.fn>).mockImplementation((options?: boolean | ScrollIntoViewOptions) => {
+          if (++calls === 1) start(options);
+        });
+        const stop = revealWhenStill(card);
+        vi.advanceTimersByTime(200);
+        expect(top).toBe(60);
+        height -= 45;
+        top -= 45;
+        for (let i = 0; i < 30 && calls < 2; i++) vi.advanceTimersToNextFrame();
+        expect(card.scrollIntoView).toHaveBeenLastCalledWith({ block: "start", behavior: "smooth" });
+        return stop;
+      };
+
+      it("its own scroll goes up to the card, and the watch survives it: a later change is still put right", () => {
+        const stop = placeThenShrink();
+        // its smooth scroll moves the page up, 3 px a frame, until the card is 4 px below the top bar again
+        for (let i = 0; i < 15; i++) {
+          y -= 3;
+          top += 3;
+          vi.advanceTimersToNextFrame();
+        }
+        expect(top).toBe(60);
+        vi.advanceTimersByTime(500);
+        expect(card.scrollIntoView).toHaveBeenCalledTimes(2);
+        // something above it grows after all: the card is pushed down, and brought back
+        height += 54;
+        top += 54;
+        vi.advanceTimersByTime(500);
+        expect(card.scrollIntoView).toHaveBeenCalledTimes(3);
+        stop();
+      });
+
+      it("a scroll down against it is someone else's: the watch stops, though the page then changes", () => {
+        const stop = placeThenShrink();
+        // in its first frame, before its own scroll has moved: a script scrolls down, then the late tour bar comes
+        // and the page keeps room for it
+        y += 15;
+        top -= 15;
+        vi.advanceTimersToNextFrame();
+        bar("section", 438, 492);
+        height += 66;
+        vi.advanceTimersByTime(2000);
+        expect(card.scrollIntoView).toHaveBeenCalledTimes(2);
+        stop();
+      });
+
+      it("and a scroll on up past the card is someone else's too: the page stays where it was taken", () => {
+        const stop = placeThenShrink();
+        for (let i = 0; i < 3; i++) {
+          y -= 3;
+          top += 3;
+          vi.advanceTimersToNextFrame();
+        }
+        // a script scrolls on up by 300 px: the card ends far below where it belongs
+        y -= 300;
+        top += 300;
+        vi.advanceTimersByTime(2000);
+        expect(card.scrollIntoView).toHaveBeenCalledTimes(2);
+        expect(top).toBe(324);
+        stop();
+      });
+    });
+
     it("a tall card the page then pushes down is put back just below the top bar", () => {
       cardHeight = 533;
       (card.scrollIntoView as ReturnType<typeof vi.fn>).mockImplementation(lands({ top: 56, bottom: 504 }));
