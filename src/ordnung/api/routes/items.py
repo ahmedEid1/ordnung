@@ -377,7 +377,12 @@ UNCHANGED_HEADER = "X-Ordnung-Unchanged"
 MOVED_ON = "moved-on"
 
 
-def _update(store: Store, item_id: str, patch: ItemPatch, today: date) -> tuple[Item, bool]:
+def _update(store: Store, item_id: str, patch: ItemPatch, today: date) -> Item:
+    """The to-do after ``patch``."""
+    return _update_answer(store, item_id, patch, today)[0]
+
+
+def _update_answer(store: Store, item_id: str, patch: ItemPatch, today: date) -> tuple[Item, bool]:
     """The to-do after ``patch``, and whether it had moved on since the page showed it (nothing changed)."""
     # read and written in one transaction: two "done"s at the same moment (the phone and the computer) are
     # then one after the other, and the second sees where the first moved the to-do
@@ -455,7 +460,7 @@ async def update_item(
     a repeating to-do that no longer stands there (the same press sent twice) changes nothing, and the answer
     is the to-do as it is, with the header ``X-Ordnung-Unchanged: moved-on``. Without it, the to-do moves on
     (or back) as before."""
-    item, moved_on = await asyncio.to_thread(_update, ctx.store, item_id, patch, today)
+    item, moved_on = await asyncio.to_thread(_update_answer, ctx.store, item_id, patch, today)
     if moved_on:
         response.headers[UNCHANGED_HEADER] = MOVED_ON
     await ledger_changed(ctx, item_id=item.id)
