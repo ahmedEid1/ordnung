@@ -463,7 +463,7 @@ describe("revealWhenStill", () => {
 
     describe("a scroll back during its smooth reveal, with motion on", () => {
       /** Centred at once; its smooth "start" moves nothing by itself: each case moves the page frame by frame. */
-      const placeThenTourBar = () => {
+      const placeThenTourBar = (setOff = 3) => {
         const centre = lands({ top: 56, bottom: 504 });
         (card.scrollIntoView as ReturnType<typeof vi.fn>).mockImplementation((options?: boolean | ScrollIntoViewOptions) => {
           if (typeof options === "object" && options.block === "center") centre(options);
@@ -479,7 +479,7 @@ describe("revealWhenStill", () => {
         expect(card.scrollIntoView).toHaveBeenCalledTimes(2);
         expect(card.scrollIntoView).toHaveBeenLastCalledWith({ block: "start", behavior: "smooth" });
         // its smooth scroll sets off towards the card
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < setOff; i++) {
           y += 3;
           top -= 3;
           vi.advanceTimersToNextFrame();
@@ -497,6 +497,15 @@ describe("revealWhenStill", () => {
         }
         vi.advanceTimersByTime(2000);
         // (it was fought before: revealed again each time the page stood still)
+        expect(card.scrollIntoView).toHaveBeenCalledTimes(2);
+        stop();
+      });
+
+      it("also in its first frame, before its own scroll has moved", () => {
+        const stop = placeThenTourBar(0);
+        y -= 150;
+        top += 150;
+        vi.advanceTimersByTime(2000);
         expect(card.scrollIntoView).toHaveBeenCalledTimes(2);
         stop();
       });

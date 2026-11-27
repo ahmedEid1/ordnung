@@ -222,8 +222,8 @@ export function revealWhenStill(el: HTMLElement, { reducedMotion = false }: { re
   let triedFrom: string | null = null;
   /**
    * During a reveal of its own: the page's height when it began, its scroll a frame ago, and which way the reveal
-   * scrolls (1 down, -1 up; 0 until it has moved). Null once the height changed: the browser may then keep the
-   * card's place by scrolling either way.
+   * scrolls (1 down, -1 up). Null once the height changed: the browser may then keep the card's place by scrolling
+   * either way.
    */
   let own: { height: number; y: number; way: number } | null = null;
   const events = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
@@ -278,8 +278,7 @@ export function revealWhenStill(el: HTMLElement, { reducedMotion = false }: { re
         const dy = y - own.y;
         // a scroll of its own goes one way to the card: one that goes back, with no input event (an assistive
         // technology, a script), is someone else's, and wins as the person's wheel does
-        if (own.way !== 0 && dy * own.way < -1) return stop();
-        if (own.way === 0 && dy !== 0) own.way = Math.sign(dy);
+        if (dy * own.way < -1) return stop();
         own.y = y;
       }
     }
@@ -302,7 +301,10 @@ export function revealWhenStill(el: HTMLElement, { reducedMotion = false }: { re
         revealing = true;
         rest = null;
         triedFrom = where;
-        own = { height, y, way: 0 };
+        // which way it goes, known before it moves (a scroll in its first frame is seen too): a card below where it
+        // belongs comes up (the page scrolls down), one above it comes down
+        const below = block === "start" ? box.top > band.top : box.top >= band.top - 1;
+        own = { height, y, way: below ? 1 : -1 };
         el.scrollIntoView({ block, behavior: reducedMotion ? "auto" : "smooth" });
       }
     }
