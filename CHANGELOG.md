@@ -391,9 +391,10 @@ entry.
 - `?mock=1` does nothing in the installed app any more: an address ending in it opens your own letters. The
   online demo and `ordnung demo` show the sample life.
 - `ordnung brief` on a data folder without an Ordnung database says so and exits 1, where it said *All clear*.
-- An install no longer has uvicorn's "standard" extra, and nothing needs what it brought: `pipx reinstall`, as in
-  [Updating](docs/guide.md#updating), builds the environment afresh without it. In a source checkout PyYAML is in
-  the dev extras now (`make install`), and building the web app needs Node.js 22.22.2+, 24.15+ or 26+.
+- An install no longer has uvicorn's "standard" extra, and nothing needs what it brought: `uv tool upgrade
+  ordnung` and `pipx reinstall ordnung`, as in [Updating](docs/guide.md#updating), each leave the environment
+  without it. In a source checkout PyYAML is in the dev extras now (`make install`), and building the web app
+  needs Node.js 22.22.2+, 24.15+ or 26+.
 - Scripts that use the API: nothing was taken away, and every answer now says `Cache-Control: no-store`.
 
 ## 0.4.0 — 2026-11-17
