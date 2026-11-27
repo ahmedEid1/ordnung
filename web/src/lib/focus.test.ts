@@ -620,7 +620,7 @@ describe("revealWhenStill", () => {
         stop();
       });
 
-      it("but cut short of the card it is revealed again: on a slow machine the router's scroll to the top does that too", () => {
+      it("but cut short of the card it is revealed again, whatever cut it short: a scroll short of the card is not told apart", () => {
         const stop = placeThenTourBar();
         // its smooth scroll stops 9 px down, and the page stands still there, the card short of where it belongs
         for (let i = 0; i < 3; i++) {

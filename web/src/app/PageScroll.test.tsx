@@ -83,10 +83,9 @@ describe("in the shell, with a page that scrolls to its card as soon as it is dr
     );
     await screen.findByRole("heading", { name: "Contracts" });
     // the router's own restoration put its saved place through a transition, drawn after the page's effect: the
-    // page was taken back to the top after the card was in view ([..., 6140, 0])
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 50));
-    });
+    // page was taken back to the top after the card was in view ([..., 6140, 0]); act flushes that transition, so
+    // whatever the router still had to draw has been drawn before the expectations
+    await act(async () => {});
     expect(calls.at(-1), "the last scroll is the page's own, to its card").toEqual(["scrollTo", 6140]);
     expect(calls.map(([, y]) => y)).toEqual([0, 6140]);
   });
