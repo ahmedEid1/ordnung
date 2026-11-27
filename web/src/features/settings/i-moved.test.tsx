@@ -318,8 +318,9 @@ describe("I moved: focus goes where it belongs as the change is drawn, not a fra
   it("“Start the checklist” with nothing filled in: the address before, its mistake already said", async () => {
     useMockApi();
     const { user } = await openProfile();
-    await user.click(lateMove()!);
+    // held from the open on: the open's own focus, put off by a frame, could otherwise land after Start was pressed
     holdFrames();
+    await user.click(lateMove()!);
     await user.click(screen.getByRole("button", { name: "Start the checklist" }));
     const before = screen.getByLabelText("Your previous address");
     expect(before).toHaveFocus();
