@@ -461,6 +461,57 @@ describe("revealWhenStill", () => {
       stop();
     });
 
+    describe("a scroll back during its smooth reveal, with motion on", () => {
+      /** Centred at once; its smooth "start" moves nothing by itself: each case moves the page frame by frame. */
+      const placeThenTourBar = () => {
+        const centre = lands({ top: 56, bottom: 504 });
+        (card.scrollIntoView as ReturnType<typeof vi.fn>).mockImplementation((options?: boolean | ScrollIntoViewOptions) => {
+          if (typeof options === "object" && options.block === "center") centre(options);
+        });
+        const stop = revealWhenStill(card);
+        vi.advanceTimersByTime(200);
+        expect(top).toBe(78.5);
+        // the tour bar arrives late, the page keeps room for it, and the card is too tall for what is left
+        bar("section", 438, 492);
+        height += 66;
+        // (frame by frame: its smooth scroll starts in the frame after the call)
+        for (let i = 0; i < 30 && (card.scrollIntoView as ReturnType<typeof vi.fn>).mock.calls.length < 2; i++) vi.advanceTimersToNextFrame();
+        expect(card.scrollIntoView).toHaveBeenCalledTimes(2);
+        expect(card.scrollIntoView).toHaveBeenLastCalledWith({ block: "start", behavior: "smooth" });
+        // its smooth scroll sets off towards the card
+        for (let i = 0; i < 3; i++) {
+          y += 3;
+          top -= 3;
+          vi.advanceTimersToNextFrame();
+        }
+        return stop;
+      };
+
+      it("with no input event (an assistive technology, a script) is someone else's: it wins, no reveal follows", () => {
+        const stop = placeThenTourBar();
+        // the page goes back up, its height unchanged: a scroll of its own never turns round
+        for (let i = 0; i < 3; i++) {
+          y -= 15;
+          top += 15;
+          vi.advanceTimersToNextFrame();
+        }
+        vi.advanceTimersByTime(2000);
+        // (it was fought before: revealed again each time the page stood still)
+        expect(card.scrollIntoView).toHaveBeenCalledTimes(2);
+        stop();
+      });
+
+      it("but the page shrinking above the card moves it back without anyone scrolling: it is brought there again (the control)", () => {
+        const stop = placeThenTourBar();
+        // a block above it goes: the page is shorter and the browser keeps the card's place by scrolling up
+        height -= 45;
+        y -= 45;
+        vi.advanceTimersByTime(2000);
+        expect(card.scrollIntoView).toHaveBeenCalledTimes(3);
+        stop();
+      });
+    });
+
     it("a tall card the page then pushes down is put back just below the top bar", () => {
       cardHeight = 533;
       (card.scrollIntoView as ReturnType<typeof vi.fn>).mockImplementation(lands({ top: 56, bottom: 504 }));

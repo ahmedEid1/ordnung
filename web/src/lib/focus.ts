@@ -206,8 +206,9 @@ const REVEAL_GIVE_UP_MS = 20_000;
  * stops for good: their scroll wins. A wheel, a touch, a key or a press stops it (a modifier key on its own does
  * not); a wheel, a touch or a key that scrolls also stops a smooth scroll of its own still under way, where it is.
  * A scroll that comes with none of those (the scroll bar dragged, an assistive technology scrolling) stops the watch
- * too, seen as the page moving while nothing changed its height and no reveal of its own was under way. Returns a
- * stop for the caller (an effect's cleanup).
+ * too, seen as the page moving while nothing changed its height and no reveal of its own was under way, or, during
+ * one, moving back against it (a scroll of its own never turns round). Returns a stop for the caller (an effect's
+ * cleanup).
  */
 export function revealWhenStill(el: HTMLElement, { reducedMotion = false }: { reducedMotion?: boolean } = {}): () => void {
   let stopped = false;
@@ -219,6 +220,12 @@ export function revealWhenStill(el: HTMLElement, { reducedMotion = false }: { re
   let rest: { y: number; height: number } | null = null;
   /** Where the page stood when it last revealed the card (the card, the scroll, the height and the band). */
   let triedFrom: string | null = null;
+  /**
+   * During a reveal of its own: the page's height when it began, its scroll a frame ago, and which way the reveal
+   * scrolls (1 down, -1 up; 0 until it has moved). Null once the height changed: the browser may then keep the
+   * card's place by scrolling either way.
+   */
+  let own: { height: number; y: number; way: number } | null = null;
   const events = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
   const stop = () => {
     stopped = true;
@@ -265,6 +272,17 @@ export function revealWhenStill(el: HTMLElement, { reducedMotion = false }: { re
       if (height === rest.height && Math.abs(y - rest.y) > 1) return stop();
       if (height !== rest.height) rest = null;
     }
+    if (own && revealing) {
+      if (height !== own.height) own = null;
+      else {
+        const dy = y - own.y;
+        // a scroll of its own goes one way to the card: one that goes back, with no input event (an assistive
+        // technology, a script), is someone else's, and wins as the person's wheel does
+        if (own.way !== 0 && dy * own.way < -1) return stop();
+        if (own.way === 0 && dy !== 0) own.way = Math.sign(dy);
+        own.y = y;
+      }
+    }
     const box = el.getBoundingClientRect();
     const now = `${box.top} ${box.height} ${y} ${height}`;
     still = now === last ? still + 1 : 0;
@@ -284,6 +302,7 @@ export function revealWhenStill(el: HTMLElement, { reducedMotion = false }: { re
         revealing = true;
         rest = null;
         triedFrom = where;
+        own = { height, y, way: 0 };
         el.scrollIntoView({ block, behavior: reducedMotion ? "auto" : "smooth" });
       }
     }
