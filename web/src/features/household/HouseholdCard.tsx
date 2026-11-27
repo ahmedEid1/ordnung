@@ -147,10 +147,12 @@ function PersonRow({
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const editRef = useRef<HTMLButtonElement>(null);
-  // after Save or Cancel, the keyboard goes back to the row's Edit button
+  // Edit hands the keyboard to the name as the editor is drawn (put off by a frame, the focus landed after a quick
+  // keyboard had already typed and gone on to Save, and took it back); after Save or Cancel it goes back to Edit
   const backToEdit = useRef(false);
   useEffect(() => {
-    if (!editing && backToEdit.current) {
+    if (editing) inputRef.current?.focus();
+    else if (backToEdit.current) {
       backToEdit.current = false;
       editRef.current?.focus();
     }
@@ -162,7 +164,6 @@ function PersonRow({
     setSigns(person.signs);
     setError(null);
     setEditing(true);
-    requestAnimationFrame(() => inputRef.current?.focus());
   };
   const stop = () => {
     backToEdit.current = true;

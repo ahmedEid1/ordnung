@@ -11,6 +11,7 @@ import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { renderWithProviders } from "@/test/render";
 import { failRequests, holdRequests, useMockApi, type FetchCall } from "@/test/mockFetch";
 import { expectOnePressAtATime } from "@/test/busyButton";
+import { holdFrames } from "@/test/frames";
 import SettingsPage from "@/pages/SettingsPage";
 import { HouseholdCard } from "./HouseholdCard";
 
@@ -129,6 +130,28 @@ describe("Your household (Settings)", () => {
     expect(puts(calls).at(-1)?.body).toMatchObject({ members: [{ id: ALEX.id, name: "Alexandra Rivera", signs: false }] });
     await waitFor(() => expect(people()[0]).toHaveTextContent("Doesn't sign letters"));
     expect(screen.getByRole("button", { name: "Edit Alexandra Rivera" })).toHaveFocus();
+  });
+
+  it("Edit hands the keyboard to the name as the editor is drawn, not a frame later", async () => {
+    const { user } = renderCard(useMockApi(), { members: [ALEX] });
+    const edit = await screen.findByRole("button", { name: "Edit Alex Rivera" });
+    holdFrames(); // no frame comes: the focus must not wait for one
+    await user.click(edit);
+    expect(within(people()[0]!).getByRole("textbox", { name: "Name" })).toHaveFocus();
+  });
+
+  it("a quick keyboard that typed and went on to Save keeps it when the next frame comes", async () => {
+    // main went red on this once (27 Nov): Edit, a letter typed and Save reached inside one frame, and the focus
+    // Edit had put off until that frame took the keyboard back to the name
+    const { user } = renderCard(useMockApi(), { members: [ALEX] });
+    const edit = await screen.findByRole("button", { name: "Edit Alex Rivera" });
+    const frames = holdFrames();
+    await user.click(edit);
+    await user.type(within(people()[0]!).getByRole("textbox", { name: "Name" }), "a");
+    const save = within(people()[0]!).getByRole("button", { name: "Save" });
+    save.focus();
+    frames.run(5);
+    expect(save).toHaveFocus();
   });
 
   it("cancels an edit without saving, and shows an edit's mistake under its own field", async () => {
