@@ -2,6 +2,7 @@
  * Where keyboard focus goes when a Today card leaves (paid, done, hidden, snoozed) or comes back
  * (Undo): Top 3 and Ideas both hand it to the card now in its place, never to <body>.
  */
+import { useCallback, useLayoutEffect, useState } from "react";
 
 /**
  * Focus sits on nothing in particular: <body>, <main> (where a closing toast hands it back), a
@@ -48,6 +49,20 @@ export function focusWhenReady(
     el.focus({ preventScroll });
   };
   requestAnimationFrame(tick);
+}
+
+/**
+ * Focus what a change of state draws, in the commit that draws it, never a frame later: put off by a frame, the
+ * focus landed after a quick keyboard had already gone on (Edit, a letter typed, on to Save) and took it back. Call
+ * it beside the change; `find` is asked once the change is on the page, so an error drawn with it is read out with
+ * its field.
+ */
+export function useFocusWhenDrawn(): (find: () => HTMLElement | null | undefined, options?: FocusOptions) => void {
+  const [asked, setAsked] = useState<{ find: () => HTMLElement | null | undefined; options?: FocusOptions } | null>(null);
+  useLayoutEffect(() => {
+    asked?.find()?.focus(asked.options);
+  }, [asked]);
+  return useCallback((find, options) => setAsked({ find, options }), []);
 }
 
 /** Where a toast that holds focus hands it back when it closes (told by `components/ui/Toast`). */
