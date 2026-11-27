@@ -176,13 +176,13 @@ skims.
 - The end-to-end tests hold one behaviour each too. Tests that repeated one check per width or per theme are one
   test that resizes the page or switches the theme in place; fixed waits wait for the thing itself; and every
   layout file sets up what it needs instead of relying on a letter an earlier file left open, so the files run in
-  any split. Playwright listed 479 tests where it listed 539 (571 now, with the tests added since), with every bug
+  any split. Playwright listed 479 tests where it listed 539 (573 now, with the tests added since), with every bug
   planted behind a merged or removed test still caught. The README's count of Playwright tests follows.
 - The web app's unit tests are about a tenth faster: the 47 files that touch no DOM run in node instead of jsdom,
   two tests move the clock instead of waiting seconds, and nine tests that repeated another are gone or merged
   into it, each with a planted bug to show the remaining test still fails for it. One test is new: moving to
   another Settings section while the settings still load. Vitest ran 2,868 tests where it ran 2,853, with the
-  new tests of the fixes below (3,140 now).
+  new tests of the fixes below (3,191 now).
 - The code's layers are tighter, with nothing a person, an API client or a file on disk can observe changing. In the
   backend, the helpers for the person's day live in a module of their own (`ordnung/days.py`), the replay key beside
   the request it keys, the postal buffer in the rules engine, the ledger's facts and the Idea helpers in
@@ -261,7 +261,12 @@ skims.
   its own request stays focused and is announced as busy; the phone pager's *Previous* and *Next* and the weekly
   review's *Back* keep focus at the ends; and a switch that can't be used is still reached with Tab and says why it
   is off. Before, focus fell back to the top of the page. The arrow keys in *New letter* no longer scroll the
-  chosen kind out of view.
+  chosen kind out of view. Where the app itself moves focus for you (to the name after *Edit* in *Your household*,
+  to the address after *Moved recently?*, to a field a save refused, to Ask's box after *New chat*, to a letter's
+  card opened by its link), it does so as the change is drawn, and leaves you where you are if you have already
+  gone on with the keyboard. Before, that focus came a moment later, or once a request had answered, and could take
+  the keyboard back from where you had gone. A field the app focused stays in the Tab order; the sync passphrase
+  did not.
 - **A screen reader is told what happened, once.** A search's count is said when it is true and not on every key;
   the secretary's note is no longer read in fragments; *Read all* says one line and then what it found, a possible
   scam included; a letter chosen in the phone's search says that it is opening; an upload says which letter it
@@ -272,7 +277,14 @@ skims.
   sidebar's sections scroll; the calendar button and the demo badge stay on screen with wider text spacing or
   larger text; the search field in the top bar has an edge you can see. A contract opened from the
   Timeline, the contracts chart or Today ends whole in view, also with animations on, on a small phone and at
-  400 % zoom, never under the top bar or the tab bar, and your own scroll wins over it.
+  400 % zoom, never under the top bar or the tab bar, and your own scroll wins over it, also one that an
+  assistive technology makes on past the contract.
+- **A link to a contract, a Settings card or a letter's card lands there on a slow phone too.** In a tab that had
+  shown the page before, the app's scroll back to the place it remembered for that page could come after the page
+  had scrolled to what the link asked for, and took it back: with the processor slowed eight times, the last
+  contract often ended out of view. The app now scrolls for a new page only as it draws it, so nothing comes after.
+  Back, Forward and a reload bring a page back where you left it, as before; a link opened whole in a tab that
+  showed the page before starts at the page's top, or at what the link asks for.
 - **Hand-off sync looks at a folder that answers again at the usual pace.** While the sync folder doesn't answer,
   Ordnung looks at it every three minutes instead of every 15 seconds. A save that went through showed the folder
   was back, but the next look still came up to three minutes later, so the other computer's change could wait

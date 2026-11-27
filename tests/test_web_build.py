@@ -131,8 +131,8 @@ def test_only_main_loads_the_mock_world_and_only_behind_the_flag() -> None:
 
 # Budgets over the committed build, so its costs cannot creep back unseen (a phone on the home network fetches,
 # parses and runs every byte of the first load before a page shows). Each limit is about a tenth over the build
-# of 27 Nov 2026 (gzip at level 9): first load 315,906 B in 38 files, the largest later script
-# 52,922 B (the Settings page), the whole build 2,509,292 B in 150 files, 134 scripts. Raise one only with the
+# of 27 Nov 2026 (gzip at level 9): first load 315,688 B in 38 files, the largest later script
+# 52,957 B (the Settings page), the whole build 2,509,049 B in 150 files, 134 scripts. Raise one only with the
 # reason in the commit: what grew, and why it is worth it.
 FIRST_LOAD_GZIP = 345_000
 LATER_SCRIPT_GZIP = 58_000
