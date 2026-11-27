@@ -20,10 +20,19 @@ import { IbanCheck, PayFooter, TransferDetails, hasTransferDetails } from "@/fea
 /**
  * Once paid, the to-do leaves the verdict and its Pay button with it: keyboard focus goes on to the
  * verdict's heading (brought into view), never to the page's <body> — on the next frame, after the
- * panel handed it back to the Pay button.
+ * panel handed it back to the Pay button (a sheet does so as it closes). A key or a press in that frame is the
+ * person going on: their place stands.
  */
 export function focusVerdictAfterPaying(): void {
+  let wentOn = false;
+  const goingOn = () => {
+    wentOn = true;
+  };
+  const events = ["keydown", "pointerdown"] as const;
+  for (const type of events) window.addEventListener(type, goingOn, true);
   requestAnimationFrame(() => {
+    for (const type of events) window.removeEventListener(type, goingOn, true);
+    if (wentOn) return;
     const title = document.getElementById("verdict-title");
     if (!title) return;
     title.focus({ preventScroll: true });
