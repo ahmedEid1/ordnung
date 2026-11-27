@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, timedelta
 from typing import Final, Literal, NamedTuple
 
@@ -133,6 +133,19 @@ ENTER_ENVELOPE_DATE: Final = "enter the envelope date for the exact deadline"
 OLDER_MATTER_RULE: Final = "vwvfg_land_old_procedures"
 #: How that note names the matter, before the Land's switch day ("In Bayern a matter begun before 1 January 2025 …").
 OLDER_MATTER: Final = "a matter begun before"
+#: The rule a receipt cites when its deemed delivery runs from a posting day the letter's own page states
+#: (:class:`PostingStatement`, :func:`_stated_posting`).
+POSTED_ON_LETTER: Final = "posting_day_stated"
+#: The rule a receipt cites when the letter's page states two different posting days for itself (the earlier counts).
+TWO_POSTING_DAYS: Final = "conflicting_dates"
+#: How many days after its own date a posting day the letter states may lie and still start the deemed delivery.
+#: An authority posts a decision on the day it is dated or within the next working days; a week covers a weekend
+#: with the longest run of holidays (24 December to 1 January: 25 and 26 December, a weekend, New Year's Day). A
+#: later day is more likely another letter's date or a misprint than this letter's posting, and the further a
+#: start moves the more a wrong one costs: beyond a week the letter's date stays the start and a note names the
+#: later deadline. (The two-dates check accepts 14 days for a letter's own date, but it only ever keeps the
+#: earlier date; this one moves a date later.)
+POSTING_REACH: Final = 7
 
 
 #: Why confirming a sender's Land may change a date (:func:`waits_for_sender_land`).
@@ -290,6 +303,22 @@ class RentDue:
 
 
 @dataclass(frozen=True, kw_only=True)
+class PostingStatement:
+    """What a letter's pages say about the day *this* letter was handed to the post
+    (:func:`ordnung.ingest.posting.posting_statement`): ``day`` the posting day they state (the earlier of two that
+    differ), ``None`` when they state none; ``quote`` the sentence or field it was read from; ``grounding`` how the
+    page it stands on was read (a text layer: ``verified``; an AI transcript of a photo: ``model_read``).
+    ``other``: a second, later posting day the pages also state for this letter, with its ``other_quote`` — the
+    letter contradicts itself."""
+
+    day: date | None = None
+    quote: str = ""
+    grounding: Literal["verified", "model_read"] = "verified"
+    other: date | None = None
+    other_quote: str = ""
+
+
+@dataclass(frozen=True, kw_only=True)
 class RuleContext:
     """Facts outside the DateSpec that a computation needs.
 
@@ -340,6 +369,11 @@ class RuleContext:
     ZPO; :func:`ordnung.ingest.gaps.formally_served`): a period from its arrival runs from the date the postman
     wrote on the envelope, so the receipt cites ``pzu`` and the app asks for that date ("When was it delivered?"),
     never for the day the person opened it or picked it up.
+    ``posting``: what code found on the letter's pages about the day this letter was posted
+    (:class:`PostingStatement`; ``None`` when no page was read — the rules tools, a to-do added by hand). A posting
+    day the page states starts an authority's deemed delivery, also when it is later than the letter's date, within
+    the guards of :func:`_stated_posting`; with the pages read and none stated, a later posting day only the reading
+    names keeps the letter's date as the start, and the receipt names the later deadline (:func:`_read_posting_note`).
     """
 
     today: date
@@ -365,6 +399,7 @@ class RuleContext:
     rent: bool = False
     rent_due: RentDue | None = None
     formal_service: bool = False
+    posting: PostingStatement | None = None
 
 
 @dataclass
@@ -387,6 +422,11 @@ class Trace:
     #: A step's citation by the procedure its deadline follows, where the catalog's names several (a court's
     #: period is counted under § 222 ZPO, not the AO or the VwVfG: :data:`_COURT_COUNTING`).
     cite: dict[str, str] = field(default_factory=dict)
+    #: The start rests on a fact read from a photo's transcription (a posting day the page states,
+    #: :func:`_stated_posting`): the date is at most ``medium``, as every fact read from a photo.
+    read_from_photo: bool = False
+    #: A later posting day the start did not run from, and why (:func:`_read_posting_note`).
+    later_posting: tuple[date, str] | None = None
 
     def step(self, label: str, d: date | None, rule_id: str) -> None:
         self.steps.append(
@@ -427,7 +467,7 @@ class Trace:
     def confidence(self) -> Confidence:
         if self.hard_failure or self.soft_failures >= 2:
             return "low"
-        return "medium" if self.soft_failures == 1 else "high"
+        return "medium" if self.soft_failures == 1 or self.read_from_photo else "high"
 
 
 @dataclass(frozen=True)
@@ -436,6 +476,8 @@ class _Anchor:
     source: Literal["document_date", "posted", "explicit", "receipt", "stated_receipt", "today", "deemed"]
     #: the letter was served formally: its arrival is "the day it was delivered" (the envelope's date)
     served: bool = False
+    #: a posting day the letter's page states (:func:`_stated_posting`): its words there
+    stated: str = ""
 
     @property
     def phrase(self) -> str:
@@ -889,8 +931,11 @@ def _compute_notice_for_end(
 
 
 def _resolve_anchor(
-    spec: DateSpec, ctx: RuleContext, trace: Trace, *, served: bool = False
+    spec: DateSpec, ctx: RuleContext, trace: Trace, *, served: bool = False, posting: bool = False
 ) -> _Anchor | None:
+    """The day a period starts from. ``posting``: the period is an authority's deemed delivery by post
+    (:func:`_compute_relative` says when), so a posting day the letter's page states may start it
+    (:func:`_stated_posting`)."""
     anchor = spec.anchor
     if anchor is None:
         if ctx.document_date is None:
@@ -927,7 +972,15 @@ def _resolve_anchor(
         posted = parse_date(spec.anchor_date)
         if posted is not None and (ctx.document_date is None or posted < ctx.document_date):
             return _Anchor(posted, "posted")
+        on_page = _stated_posting(ctx, trace) if posting else None
+        if on_page is not None:
+            return on_page
         if posted is not None and ctx.document_date is not None and posted > ctx.document_date:
+            if posting and ctx.posting is not None:
+                # the letter's pages were read and don't state it: only the reading names it — the date stays the
+                # letter's, and the receipt names the later deadline (_read_posting_note)
+                trace.later_posting = trace.later_posting or (posted, _READ_ONLY)
+                return _Anchor(ctx.document_date, "document_date")
             trace.warnings.append(
                 f"The letter mentions {fmt_date(posted)} as the posting day, later than its date "
                 f"({fmt_date(ctx.document_date)}). If that is when it was really posted, the deadline may be "
@@ -937,6 +990,131 @@ def _resolve_anchor(
         trace.hard("The letter's date is missing, so this date can't be computed.")
         return None
     return _Anchor(ctx.document_date, "document_date")
+
+
+#: Why a later posting day the reading names did not start the period (:func:`_read_posting_note`).
+_READ_ONLY: Final = "Claude's reading of the letter names it, but we didn't find it on the letter"
+#: How many characters of a posting day's sentence a step or a warning quotes.
+_QUOTE_CHARS: Final = 90
+
+
+def _short(text: str) -> str:
+    text = re.sub(r"\s+", " ", text).strip()
+    return text if len(text) <= _QUOTE_CHARS else text[: _QUOTE_CHARS - 1].rstrip() + "…"
+
+
+def _stated_posting(ctx: RuleContext, trace: Trace) -> _Anchor | None:
+    """The posting day the letter's page states for itself (``ctx.posting``), when it starts the deemed delivery.
+
+    The law counts from the day the letter was handed to the post (§ 122 Abs. 2 Nr. 1 AO, § 41 Abs. 2 S. 1 VwVfG,
+    § 37 Abs. 2 S. 1 SGB X: "am vierten Tag nach der Aufgabe zur Post"), and a posting day the authority prints on
+    its own letter is its own record of that day: code found it on the page (:mod:`ordnung.ingest.posting`), so it
+    is the start, also when it is later than the letter's date. Only when it is (each a guard, in code):
+
+    * after the letter's date — an earlier posting day is the reading's ``anchor_date`` path, and one on the
+      letter's date changes nothing;
+    * not after today, the day the letter is read: a letter can't have been posted later than it arrived;
+    * at most :data:`POSTING_REACH` days after the letter's date (beyond that a note names the later deadline).
+
+    Two different posting days on the page: the earlier counts (where it passes the guards; else the letter's
+    date), the receipt names both, cites ``conflicting_dates`` and is ``low`` — the to-do is "Please check"
+    (:func:`ordnung.ingest.plan.compute_item`). A posting day read from a photo's transcription keeps the date at
+    most ``medium``. The step names the day and its words on the page."""
+    found = ctx.posting
+    letter = ctx.document_date
+    if found is None or found.day is None or letter is None:
+        return None
+    day = found.day
+    usable = letter < day <= ctx.today and (day - letter).days <= POSTING_REACH
+    if found.other is not None:
+        trace.use(TWO_POSTING_DAYS)
+        start = fmt_date(day) if usable else f"the letter's date ({fmt_date(letter)})"
+        trace.hard(
+            f"The letter gives two posting days for itself: {fmt_date(day)} (“{_short(found.quote)}”) and "
+            f"{fmt_date(found.other)} (“{_short(found.other_quote)}”). We count from {start}, the earlier — "
+            "please check which day it was posted."
+        )
+    if day <= letter:
+        return None
+    if not usable:
+        why = (
+            "the letter states it, but that is after today"
+            if day > ctx.today
+            else f"the letter states it, but that is more than {POSTING_REACH} days after its date"
+        )
+        trace.later_posting = (day, why)
+        return None
+    if found.grounding == "model_read":
+        trace.read_from_photo = True
+    trace.step(
+        f"The letter says it was handed to the post on {fmt_date(day)} (“{_short(found.quote)}”), after its date "
+        f"({fmt_date(letter)}): deemed delivery counts from that day",
+        day,
+        POSTED_ON_LETTER,
+    )
+    return _Anchor(day, "posted", stated=found.quote)
+
+
+def _due_from(spec: DateSpec, ctx: RuleContext, posted: date | None, postal_buffer_days: int) -> date | None:
+    """The date ``spec`` gives counted from posting on ``posted`` (``None``: from the letter's date), as the
+    receipt counts it, without its notes: what the other start would have given."""
+    counted = spec.model_copy(update={"anchor_date": posted.isoformat() if posted else None})
+    # no letter's date when counted from ``posted``: the anchor is then that day, whatever the guards say
+    variant = replace(ctx, posting=None, document_date=None if posted else ctx.document_date)
+    return parse_date(_compute_relative(counted, variant, Trace(), postal_buffer_days).due_date)
+
+
+def _stated_posting_note(
+    spec: DateSpec, ctx: RuleContext, trace: Trace, anchor: _Anchor, due: date, postal_buffer_days: int
+) -> date | None:
+    """The receipt's last words on a period counted from a posting day the letter states (:func:`_stated_posting`):
+    what the letter's own date would have given, and that date as the safe date — acting by it is on time even if
+    the posting day printed were wrong. ``None`` (no safe date) when both give the same date."""
+    letter = ctx.document_date
+    earlier = _due_from(spec, ctx, None, postal_buffer_days) if letter is not None else None
+    if letter is None or earlier is None or earlier >= due:
+        trace.step(
+            "Counted from the letter's date the deadline is the same",
+            due,
+            POSTED_ON_LETTER,
+        )
+        return None
+    trace.step(
+        f"Counted from the letter's date ({fmt_date(letter)}) instead, it would be {fmt_date(earlier)}: acting by "
+        "then is on time either way",
+        earlier,
+        POSTED_ON_LETTER,
+    )
+    trace.warnings.append(
+        f"The letter says it was posted on {fmt_date(anchor.day)}, after its date ({fmt_date(letter)}), so the "
+        f"deadline counts from that day: {fmt_date(due)}. Counted from the letter's date it would be "
+        f"{fmt_date(earlier)} — act by then if you want to be safe whatever the posting day."
+    )
+    return earlier
+
+
+def _read_posting_note(
+    spec: DateSpec, ctx: RuleContext, trace: Trace, due: date, postal_buffer_days: int
+) -> None:
+    """The note on a later posting day the period did not start from (``trace.later_posting``): only the reading
+    names it, or the letter states it beyond a guard of :func:`_stated_posting`. The date stays the letter's
+    date's, the note names the deadline from the later day, and the confidence is one level lower — the later
+    date may be the right one. A later day that gives the same deadline only gets the note."""
+    if trace.later_posting is None or ctx.document_date is None:
+        return
+    posted, why = trace.later_posting
+    later = _due_from(spec, ctx, posted, postal_buffer_days)
+    start = (
+        f"{fmt_date(posted)} may be the day the letter was posted, later than its date "
+        f"({fmt_date(ctx.document_date)}): {why}."
+    )
+    if later is None or later <= due:
+        trace.warnings.append(f"{start} Counted from that day the deadline is the same.")
+        return
+    trace.soft(
+        f"{start} If it was posted then, the deadline is {fmt_date(later)} — we count from the letter's date "
+        f"to be safe ({fmt_date(due)}). Check the posting day on the letter."
+    )
 
 
 def from_arrival(spec: DateSpec, ctx: RuleContext) -> DateSpec:
@@ -1474,7 +1652,23 @@ def _compute_relative(
     # a letter served with a Postzustellungsurkunde: a period from its arrival runs from the date on the yellow
     # envelope (§ 3 VwZG with §§ 180, 181 ZPO) — asked for as that, never as the day the person opened it
     envelope = not served and ctx.formal_service and spec.anchor == "receipt"
-    anchor = _served(spec, ctx, trace) if served else _resolve_anchor(spec, ctx, trace, served=envelope)
+    # a posting day the letter's page states may start only an authority's deemed delivery by post — never a
+    # private sender's (from_arrival made it a period from arrival), a court's, a fine's or a letter served with a
+    # yellow envelope (formal service), nor one whose sender's procedure law is unknown (the earliest plausible
+    # date) or sent electronically: a shop's "versandt am" on its invoice never moves a date
+    posting = (
+        not formal
+        and not no_delivery
+        and ctx.delivery_scope is not None
+        and spec.anchor == "deemed_delivery"
+        and spec.delivery_rule in ("de_admin_post", "none")
+        and amount >= 0
+    )
+    anchor = (
+        _served(spec, ctx, trace)
+        if served
+        else _resolve_anchor(spec, ctx, trace, served=envelope, posting=posting)
+    )
     if envelope:
         trace.use("pzu")
     if anchor is None:
@@ -1601,6 +1795,12 @@ def _compute_relative(
         _older_matter_note(ctx, trace, due, periods, place, shift, spec.nature, postal_buffer_days)
     if late is not None:
         _private_late_note(trace, ctx, late, due)
+    # the safe date of a period from a posting day the letter states: the date from the letter's own date
+    earlier: date | None = None
+    if anchor.stated:
+        earlier = _stated_posting_note(read, ctx, trace, anchor, due, postal_buffer_days)
+    elif posting:
+        _read_posting_note(read, ctx, trace, due, postal_buffer_days)
 
     send_by = (
         _send_by(trace, ctx, due, spec.nature, place, postal_buffer_days)
@@ -1619,4 +1819,5 @@ def _compute_relative(
     )
     end = _end_clause(raw_end, due, place, safe=safe, backward=backward and spec.nature != "notice")
     summary = due_sentence(lead, period, relation, end)
-    return _receipt(trace, ctx, due=due, summary=summary, send_by=send_by, safe_date=safe, region=place)
+    safe_date = min(day for day in (safe, earlier) if day is not None) if safe or earlier else None
+    return _receipt(trace, ctx, due=due, summary=summary, send_by=send_by, safe_date=safe_date, region=place)

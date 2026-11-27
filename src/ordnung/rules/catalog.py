@@ -405,6 +405,17 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         None,
     ),
     (
+        "posting_day_stated",
+        "A posting day the letter states",
+        "§ 122 Abs. 2 Nr. 1 AO; § 41 Abs. 2 S. 1 VwVfG; § 37 Abs. 2 S. 1 SGB X",
+        "When an authority's letter states on its page the day it was handed to the post (\"Tag der Aufgabe zur "
+        "Post\"), the 4 days count from that day, also when it is later than the letter's date: it is the "
+        "authority's own record of the day the law counts from. Only up to a week after the letter's date and "
+        "never after the day you read it; the date counted from the letter's date is shown as the safe date.",
+        f"{_GII}/ao_1977/__122.html",
+        None,
+    ),
+    (
         "delivery_scope_unknown",
         "Unknown kind of sender",
         "Ordnung safety policy (earliest plausible delivery day)",
