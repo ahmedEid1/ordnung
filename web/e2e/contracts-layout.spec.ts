@@ -506,7 +506,7 @@ test.describe("320×568, motion on: a scroll with no input during the second rev
         return { siv: w.__siv, fight: w.__fight, top: document.getElementById(`contract-${id}`)!.getBoundingClientRect().top };
       }, bank.id);
       expect(fight.gaveUp, "the second reveal's smooth scroll moved the page within 120 frames").toBeUndefined();
-      expect(fight.yAtStart, "the scroll came while the reveal's own smooth scroll was moving down to the card").toBeGreaterThan(fight.yAtReveal);
+      expect(fight.yAtStart, "the page had not turned back before the script scrolled").toBeGreaterThan(fight.yAtReveal);
       expect(siv, "no reveal after the second").toBe(2);
       expect(top, "the page stays where the scroll took it, not back at the card").toBeGreaterThan(300);
     } finally {
@@ -573,7 +573,7 @@ for (const reducedMotion of ["no-preference", "reduce"] as const) {
         }, bank.id);
         expect(on.gaveUp, "the second reveal's smooth scroll moved the page within 120 frames").toBeUndefined();
         if (reducedMotion === "no-preference") {
-          expect(on.yAtStart, "the scroll came while the reveal's own smooth scroll was moving down to the card").toBeGreaterThan(on.yAtReveal);
+          expect(on.yAtStart, "the page had not turned back before the script scrolled").toBeGreaterThan(on.yAtReveal);
         }
         expect(on.yAfter, "the script took the page further down").toBeGreaterThan(on.yAtStart);
         expect(siv, "no reveal after the second").toBe(2);
