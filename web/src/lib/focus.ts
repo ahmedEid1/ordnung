@@ -364,9 +364,11 @@ export function revealWhenStill(el: HTMLElement, { reducedMotion = false }: { re
       const where = `${now} ${band.top} ${band.bottom}`;
       // a reveal of its own, the page's height and its bars as they were, never takes the card well past where it
       // belongs: standing still beyond it, the page was scrolled on by someone else, and that scroll wins as the
-      // person's wheel does. Going down, "well past" means more than TALL_START_SLACK above the top bar: the browser
-      // centres a card in the room the root's scroll padding leaves, not in the bars' room, and one nearly as tall as
-      // that room lands up to 4 px under the top bar with nobody scrolling (it is then revealed again, as before).
+      // person's wheel does. "Well past" means more than TALL_START_SLACK beyond the room's edge, either way: the
+      // browser centres a card in the room the root's scroll padding leaves, not in the bars' room, and one nearly as
+      // tall as that room lands up to 4 px under the top bar with nobody scrolling (it is then revealed again, as
+      // before). Going up, a centred card's bottom is given the same few pixels over the bars below; a "start" card
+      // within them of the top bar is in view (revealPlan), so there the slack only names the same line.
       // (Short of it is not told apart: a scroll that only cuts the reveal short leaves the card to be revealed
       // again.)
       if (revealing && own && !shown && sameRoom(own.band, band)) {
@@ -375,7 +377,7 @@ export function revealWhenStill(el: HTMLElement, { reducedMotion = false }: { re
             ? box.top < band.top - TALL_START_SLACK
             : block === "start"
               ? box.top > band.top + TALL_START_SLACK
-              : box.bottom > band.bottom + 1;
+              : box.bottom > band.bottom + TALL_START_SLACK;
         if (past) return stop();
       }
       revealing = false;

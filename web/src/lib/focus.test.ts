@@ -778,6 +778,36 @@ describe("revealWhenStill", () => {
         expect(top).toBe(53);
         stop();
       });
+
+      it("a centred one going up that lands a few px over the tab bar: a later change is still put right", () => {
+        // a 300 px card is centred at 130; a block above it goes and the browser does not keep its place, so it comes
+        // back down centred, and lands with its bottom 3 px over the tab bar, with nobody scrolling
+        cardHeight = 300;
+        const centre = lands({ top: 56, bottom: 504 });
+        let calls = 0;
+        (card.scrollIntoView as ReturnType<typeof vi.fn>).mockImplementation((options?: boolean | ScrollIntoViewOptions) => {
+          if (++calls === 1) return centre(options);
+          y += top - 207;
+          top = 207;
+        });
+        const stop = revealWhenStill(card, { reducedMotion: true });
+        vi.advanceTimersByTime(200);
+        expect(top).toBe(130);
+        height -= 120;
+        top -= 120;
+        vi.advanceTimersByTime(500);
+        expect(card.scrollIntoView).toHaveBeenLastCalledWith({ block: "center", behavior: "auto" });
+        expect(top).toBe(207);
+        const placed = (card.scrollIntoView as ReturnType<typeof vi.fn>).mock.calls.length;
+        // what is above it grows again: the card is further down, and brought back
+        height += 54;
+        top += 54;
+        vi.advanceTimersByTime(500);
+        // (with "past" at 1 px below the room, it was taken for a scroll on up, and the watch stopped)
+        expect((card.scrollIntoView as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(placed);
+        expect(top).toBe(207);
+        stop();
+      });
     });
 
     it("a tall card the page then pushes down is put back just below the top bar", () => {
