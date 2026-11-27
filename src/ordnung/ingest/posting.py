@@ -53,7 +53,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Literal
 
-from ordnung.ingest.conflicts import _PAYMENT_CUE, _WEEKDAY, _clauses, _one_date, _page_text
+from ordnung.ingest.conflicts import _PAYMENT_CUE, _clauses, _one_date, _page_text
 from ordnung.ingest.normalize import fold_punctuation
 from ordnung.ingest.verify import PageInput, date_spans
 from ordnung.models import Grounding
@@ -61,18 +61,26 @@ from ordnung.rules.deadlines import PostingStatement
 
 #: How far (characters) a posting cue may stand from its date in a sentence.
 _REACH = 80
+#: A weekday before the date, written out or short, as a field often prints it: "Sa.,
+#: 19.12.2026", "Mo 19.10.2026", "Sat, 19 Dec 2026".
+_DAY = (
+    r"(?:(?:montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag|monday|tuesday|wednesday|thursday"
+    r"|friday|saturday|sunday),?\s*|(?:mo|di|mi|do|fr|sa|so|mon|tue|wed|thu|fri|sat|sun)\.?,?\s+)?"
+)
 
 #: The labels of a posting day's field, right before its date. The statutes' own words and the labels for the
 #: posting day stand anywhere in a line ("Steuernummer 123/456/78901 Tag der Aufgabe zur Post: 19.10.2026");
 #: plainer words only where a cell starts (a line's start, a column's gap, "|" or "·": "Versandt am: …"), so that
 #: a sentence about something sent is read as a sentence.
 _STRONG_LABEL = (
-    r"(?:(?:tag|datum)\s+der\s+(?:aufgabe\s+zur\s+post|postaufgabe|absendung|versendung)"
+    r"(?:(?:tag|datum)\s+(?:der\s+(?:aufgabe\s+zur\s+post|postaufgabe|absendung|versendung)|des\s+versand(?:e)?s)"
     r"|aufgabe\s+zur\s+post|zur\s+post\s+(?:auf)?gegeben|postaufgabe|absende(?:datum|tag)|versand(?:datum|tag)"
     r"|date\s+of\s+(?:posting|dispatch)|posting\s+date)"
 )
-_WEAK_LABEL = r"(?:abgesandt|abgeschickt|versandt|postausgang|date\s+posted|posted|mailed)"
-_LABEL_END = rf"(?:\s+(?:am|on))?\s*:?\s*{_WEEKDAY}(?:den\s+)?$"
+_WEAK_LABEL = r"(?:abgesandt|abgeschickt|versandt|versendet|postausgang|date\s+posted|posted|mailed)"
+#: What may stand between a label and its date: "am", a short note in brackets ("Aufgabe zur Post (Absendetag):"),
+#: a colon, "ist der" ("Tag der Aufgabe zur Post ist der 19.10.2026").
+_LABEL_END = rf"(?:\s*\([^()\n]{{1,30}}\))?(?:\s+(?:am|on|ist\s+(?:der|am)|is))?\s*:?\s*{_DAY}(?:den\s+)?$"
 _FIELD_BEFORE = re.compile(
     rf"(?:(?<!\w){_STRONG_LABEL}|(?:^|\s{{2,}}|\t|[|·])\s*{_WEAK_LABEL}){_LABEL_END}", re.IGNORECASE
 )
@@ -86,9 +94,9 @@ _LABEL_NOT_THIS = re.compile(
 #: The statutes' words just before the date: "Aufgabe zur Post am …", "Tag der Aufgabe zur Post ist der …",
 #: "zur Post gegeben am …", "der Post übergeben am …".
 _STATUTE_BEFORE = re.compile(
-    r"(?:aufgabe\s+zur\s+post(?:\s+(?:am|ist\s+(?:der|am)|erfolgte\s+am))?\s*:?"
+    r"(?:aufgabe\s+zur\s+post(?:\s+(?:am|ist\s+(?:der|am)|erfolgte?\s+am))?\s*:?"
     r"|zur\s+post\s+(?:auf)?gegeben(?:\s+worden)?\s+am|der\s+post\s+übergeben(?:\s+worden)?\s+am)"
-    rf"\s*{_WEEKDAY}(?:den\s+)?$",
+    rf"\s*{_DAY}(?:den\s+)?$",
     re.IGNORECASE,
 )
 #: The statutes' words after the date: "am 19.10.2026 zur Post gegeben", "… der Post übergeben".
@@ -101,11 +109,9 @@ _SENT_WORDS = (
     r"(?:versandt|versendet|abgesandt|abgesendet|abgeschickt|verschickt|postalisch\s+übersandt|übersandt"
     r"|posted|mailed|sent(?:\s+by\s+post)?)"
 )
-_SENT_BEFORE = re.compile(
-    rf"\b{_SENT_WORDS}(?:\s+worden)?\s+(?:am|on)\s*{_WEEKDAY}(?:den\s+)?$", re.IGNORECASE
-)
+_SENT_BEFORE = re.compile(rf"\b{_SENT_WORDS}(?:\s+worden)?\s+(?:am|on)\s*{_DAY}(?:den\s+)?$", re.IGNORECASE)
 _SENT_AFTER = re.compile(rf"^\W*(?:\S+\s+){{0,3}}?{_SENT_WORDS}\b", re.IGNORECASE)
-_ON_BEFORE = re.compile(rf"\b(?:am|on)\s*{_WEEKDAY}(?:den\s+)?$", re.IGNORECASE)
+_ON_BEFORE = re.compile(rf"\b(?:am|on)\s*{_DAY}(?:den\s+)?$", re.IGNORECASE)
 #: The letter naming itself: "dieser Bescheid", "dieses Schreiben", "vorliegende Mitteilung", "this letter".
 _THIS_LETTER = re.compile(
     r"\b(?:dies(?:e[mnrs]?)?|vorliegende[mnrs]?)\s+\w*(?:bescheid|schreiben|brief|mitteilung|entscheidung"
@@ -123,10 +129,11 @@ _NOT_THIS = re.compile(
     r"|\bvon\s+Ihnen\b|\b(?:unser|unsere|unseren|unserem|unseres)\s+\w*(?:schreiben|brief|bescheid|mitteilung)"
     r"|\b(?:your|our)\s+(?:letter|notice|objection|application|appeal)|\byou\s+(?:posted|sent|mailed)\b",
 )
-#: A future posting, a request or a negation: "wird … zur Post gegeben", "bitte", "nicht".
+#: A future posting, a request or a negation: "wird … zur Post gegeben", "geben Sie … zur Post", "nicht" (a mere
+#: "Bitte beachten Sie:" before a statement asks nothing of the posting).
 _NOT_DONE = re.compile(
-    r"\b(?:wird|werden|würde|würden|soll|sollen|sollte|sollten|voraussichtlich|bitte|geben\s+sie|senden\s+sie"
-    r"|schicken\s+sie|nicht|kein\w*|will|shall|would|please|not|never)\b",
+    r"\b(?:wird|werden|würde|würden|soll|sollen|sollte|sollten|voraussichtlich|geben\s+sie|senden\s+sie"
+    r"|schicken\s+sie|nicht|kein\w*|will|shall|would|not|never)\b",
     re.IGNORECASE,
 )
 #: The day a letter counts as delivered, not the day it was posted, between the posting's words and its date
@@ -147,7 +154,7 @@ _ENCLOSURE = re.compile(
 #: A date that is a deadline, not a day past: "bis", "spätestens", "innerhalb", "by", "until".
 _DEADLINE_BEFORE = re.compile(
     rf"\b(?:bis|spätestens|innerhalb|binnen|ab|seit|vor|by|before|until|from|since|no\s+later\s+than)"
-    rf"(?:\s+(?:zum|am|spätestens))*\s*{_WEEKDAY}(?:den\s+)?$",
+    rf"(?:\s+(?:zum|am|spätestens))*\s*{_DAY}(?:den\s+)?$",
     re.IGNORECASE,
 )
 _DATE_OF = re.compile(r"\b(?:vom|of|dated)\s*$", re.IGNORECASE)

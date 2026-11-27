@@ -38,25 +38,58 @@ def found(text: str, source: str = "text") -> PostingStatement | None:
 
 #: (id, page text, the posting day it states). Each a way an authority writes it.
 CUES = [
-    ("field-in-the-header", f"{HEADER}Tag der Aufgabe zur Post: 19.10.2026\n\nSehr geehrte Frau Beispiel,", "2026-10-19"),
-    ("field-in-a-column", "Steuernummer 123/456   Datum 16.10.2026   Aufgabe zur Post: 19.10.2026", "2026-10-19"),
-    ("field-on-a-single-spaced-line", "Steuernummer 123/456/78901 Tag der Aufgabe zur Post 19.10.2026", "2026-10-19"),
+    (
+        "field-in-the-header",
+        f"{HEADER}Tag der Aufgabe zur Post: 19.10.2026\n\nSehr geehrte Frau Beispiel,",
+        "2026-10-19",
+    ),
+    (
+        "field-in-a-column",
+        "Steuernummer 123/456   Datum 16.10.2026   Aufgabe zur Post: 19.10.2026",
+        "2026-10-19",
+    ),
+    (
+        "field-on-a-single-spaced-line",
+        "Steuernummer 123/456/78901 Tag der Aufgabe zur Post 19.10.2026",
+        "2026-10-19",
+    ),
     ("field-datum-der-aufgabe", "Datum der Aufgabe zur Post: Montag, 19. Oktober 2026", "2026-10-19"),
     ("field-under-its-label", "Tag der Aufgabe zur Post\n19.10.2026\n", "2026-10-19"),
-    ("field-in-the-footer", "Seite 1 von 2 · Absendedatum: 19.10.2026 · Bankverbindung siehe Rückseite", "2026-10-19"),
+    (
+        "field-in-the-footer",
+        "Seite 1 von 2 · Absendedatum: 19.10.2026 · Bankverbindung siehe Rückseite",
+        "2026-10-19",
+    ),
     ("field-versandt-am", "Bescheid über Grundbesitzabgaben\nVersandt am: 19.10.2026", "2026-10-19"),
     ("field-tag-der-absendung", "Tag der Absendung: 19.10.2026", "2026-10-19"),
+    ("field-datum-des-versands", "Datum des Versands: 19.10.2026", "2026-10-19"),
+    ("field-short-weekday", "Tag der Aufgabe zur Post: Mo., 19.10.2026", "2026-10-19"),
+    ("sentence-erfolgt", "Die Aufgabe zur Post erfolgt am Mo 19.10.2026.", "2026-10-19"),
+    ("field-with-a-note", "Aufgabe zur Post (Absendevermerk): 19.10.2026", "2026-10-19"),
+    ("field-ist-der", "Bitte beachten Sie: Tag der Aufgabe zur Post ist der 19.10.2026.", "2026-10-19"),
     (
         "sentence-zur-post-gegeben",
         "Sehr geehrter Herr Muster,\nDieser Bescheid wurde am 19.10.2026 zur Post gegeben. Er ergeht unter Vorbehalt.",
         "2026-10-19",
     ),
-    ("sentence-zur-post-gegeben-worden", "Der Bescheid ist am Montag, den 19.10.2026 zur Post gegeben worden.", "2026-10-19"),
+    (
+        "sentence-zur-post-gegeben-worden",
+        "Der Bescheid ist am Montag, den 19.10.2026 zur Post gegeben worden.",
+        "2026-10-19",
+    ),
     ("sentence-wrapped", "Dieser Bescheid wurde am 19.10.2026 zur\nPost gegeben.", "2026-10-19"),
     ("sentence-aufgabe-am", "Die Aufgabe zur Post erfolgte am 19.10.2026.", "2026-10-19"),
-    ("sentence-der-post-uebergeben", "Dieses Schreiben wurde am 19.10.2026 der Post übergeben.", "2026-10-19"),
+    (
+        "sentence-der-post-uebergeben",
+        "Dieses Schreiben wurde am 19.10.2026 der Post übergeben.",
+        "2026-10-19",
+    ),
     ("sentence-versandt-this-letter", "Dieser Bescheid wurde am 19.10.2026 versandt.", "2026-10-19"),
-    ("sentence-versandt-own-date", "Der Bescheid vom 16.10.2026 wurde am 19. Oktober 2026 abgesandt.", "2026-10-19"),
+    (
+        "sentence-versandt-own-date",
+        "Der Bescheid vom 16.10.2026 wurde am 19. Oktober 2026 abgesandt.",
+        "2026-10-19",
+    ),
     ("with-its-delivery-day", "Tag der Aufgabe zur Post: 19.10.2026 (Bekanntgabe: 23.10.2026)", "2026-10-19"),
     ("english-field", "Date of posting: 19 October 2026", "2026-10-19"),
     ("english-sentence", "This letter was posted on 19 October 2026.", "2026-10-19"),
@@ -87,7 +120,10 @@ NEVER = [
     ("the-future", "Der Bescheid wird am 19.10.2026 zur Post gegeben."),
     ("a-request", "Bitte geben Sie Ihre Erklärung bis 30.10.2026 zur Post."),
     ("negated", "Der Bescheid wurde nicht vor dem 19.10.2026 zur Post gegeben."),
-    ("the-delivery-day", "Dieser Bescheid gilt am 23.10.2026 als bekannt gegeben (vierter Tag nach Aufgabe zur Post)."),
+    (
+        "the-delivery-day",
+        "Dieser Bescheid gilt am 23.10.2026 als bekannt gegeben (vierter Tag nach Aufgabe zur Post).",
+    ),
     ("the-delivery-formula", "Er gilt am vierten Tag nach Aufgabe zur Post: 23.10.2026 als bekannt gegeben."),
     ("a-letter-s-date", "Ihr Schreiben vom 12.10.2026 haben wir erhalten."),
     ("a-shop-s-dispatch", "Ihre Bestellung wurde am 19.10.2026 versandt. Sendungsnummer 00340434"),
@@ -95,7 +131,10 @@ NEVER = [
     ("versandt-without-the-letter", "Der Bescheid wurde am 19.10.2026 versandt."),
     ("reads-two-ways", "Tag der Aufgabe zur Post: 03/05/2026"),
     ("no-year", "Tag der Aufgabe zur Post: 19.10."),
-    ("the-letter-s-own-date-only", f"{HEADER}\nSehr geehrte Frau Beispiel,\nhiermit setzen wir die Steuer fest."),
+    (
+        "the-letter-s-own-date-only",
+        f"{HEADER}\nSehr geehrte Frau Beispiel,\nhiermit setzen wir die Steuer fest.",
+    ),
 ]
 
 
@@ -115,12 +154,16 @@ def test_a_photo_s_transcription_is_model_read_unless_a_text_page_says_it_too() 
 
 
 def test_two_posting_days_that_differ_are_both_kept() -> None:
-    statement = found("Tag der Aufgabe zur Post: 21.10.2026\n\nDieser Bescheid wurde am 19.10.2026 zur Post gegeben.")
+    statement = found(
+        "Tag der Aufgabe zur Post: 21.10.2026\n\nDieser Bescheid wurde am 19.10.2026 zur Post gegeben."
+    )
     assert statement is not None
     assert (statement.day, statement.other) == (D("2026-10-19"), D("2026-10-21"))
     assert statement.quote == "Dieser Bescheid wurde am 19.10.2026 zur Post gegeben."
     assert statement.other_quote == "Tag der Aufgabe zur Post: 21.10.2026"
-    agree = found("Tag der Aufgabe zur Post: 19.10.2026\n\nDieser Bescheid wurde am 19.10.2026 zur Post gegeben.")
+    agree = found(
+        "Tag der Aufgabe zur Post: 19.10.2026\n\nDieser Bescheid wurde am 19.10.2026 zur Post gegeben."
+    )
     assert agree is not None and (agree.day, agree.other) == (D("2026-10-19"), None)
 
 
