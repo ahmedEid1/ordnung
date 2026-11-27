@@ -17,7 +17,9 @@ export function focusIsLost(): boolean {
  * focus is lost by then, so someone who has moved on is not pulled back. `from` (read with
  * {@link focusOrigin} as the action starts): focus also moves while it is still there (the button
  * they pressed), but not once they have gone on to type or choose somewhere else while the answer
- * was on its way. `always`: focus moves wherever it is — only for a failed action's error, which
+ * was on its way — nor once they went somewhere and came back to it (the step's button that now reads "Start
+ * syncing" is the "Next" they pressed: back on it to press again, they would have lost it to the field that came).
+ * `always`: focus moves wherever it is — only for a failed action's error, which
  * needs reading before anything else (as a refused form's field takes focus). `preventScroll`: the page scrolls
  * to it by itself (smoothly), which a focus scroll would cut short.
  */
@@ -27,13 +29,21 @@ export function focusWhenReady(
   { always = false, from = null, preventScroll = false }: { always?: boolean; from?: Element | null; preventScroll?: boolean } = {},
 ): void {
   const until = performance.now() + ms;
+  // focus that went somewhere of the person's own since (not a lost place: a closing toast hands it to <main>)
+  let wentOn = false;
+  const onFocusIn = () => {
+    if (!focusIsLost() && !from?.contains(document.activeElement)) wentOn = true;
+  };
+  if (from) document.addEventListener("focusin", onFocusIn, true);
   const tick = () => {
     const el = find();
     if (!el) {
       if (performance.now() < until) requestAnimationFrame(tick);
+      else document.removeEventListener("focusin", onFocusIn, true);
       return;
     }
-    if (!always && !focusIsLost() && !(from && document.activeElement === from)) return;
+    document.removeEventListener("focusin", onFocusIn, true);
+    if (!always && !focusIsLost() && !(from && !wentOn && document.activeElement === from)) return;
     if (!el.hasAttribute("tabindex")) el.tabIndex = -1;
     el.focus({ preventScroll });
   };

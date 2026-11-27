@@ -87,6 +87,34 @@ describe("focusWhenReady from where the action started", () => {
     expect(document.activeElement?.id).toBe(focused);
   });
 
+  it("leaves someone who went elsewhere and came back to the control where they are", () => {
+    // the step's button that read "Next" reads "Start syncing" once the folder is looked at: back on it to press it,
+    // the person must keep it
+    el("find").focus();
+    const from = focusOrigin();
+    let drawn = false;
+    focusWhenReady(() => (drawn ? el("choice") : null), 5000, { from });
+    el("name").focus();
+    el("find").focus();
+    drawn = true;
+    vi.advanceTimersByTime(50);
+    expect(el("find")).toHaveFocus();
+  });
+
+  it.each([
+    ["back to the control that was used", "find"],
+    ["to <main>, where nothing is", "main"],
+  ])("still moves focus after a closing toast handed it %s", (_, to) => {
+    document.body.insertAdjacentHTML("beforeend", `<main id="main" tabindex="-1"></main>`);
+    setToastHandBack(() => el(to));
+    el("undo").focus();
+    const from = focusOrigin();
+    focusWhenReady(() => el("choice"), 5000, { from });
+    el(to).focus();
+    vi.advanceTimersByTime(50);
+    expect(el("choice")).toHaveFocus();
+  });
+
   it("starts an Undo pressed in a toast from where the closing toast hands focus back", () => {
     setToastHandBack(() => el("name"));
     el("undo").focus();
