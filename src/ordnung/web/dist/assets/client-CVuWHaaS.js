@@ -1,1 +1,0 @@
-import{Z as e}from"./hooks-Cmmrptnx.js";function t(){return e().data?.client===`phone`}export{t};
