@@ -17,6 +17,7 @@ import { SuggestedQuestions } from "@/features/ask/SuggestedQuestions";
 import { useAskThread } from "@/features/ask/useAskThread";
 import { useRefResolver } from "@/features/ask/refs";
 import { TOUR_TARGETS } from "@/features/tour/steps";
+import { focusOrigin, focusWhenReady, useFocusWhenDrawn } from "@/lib/focus";
 
 /** The "Started a new chat" toast (asking the next question closes it: its Undo would drop that question). */
 const NEW_CHAT_TOAST = "ask-new-chat";
@@ -35,6 +36,7 @@ export default function AskPage() {
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const startRef = useRef<HTMLHeadingElement | null>(null);
+  const focusWhenDrawn = useFocusWhenDrawn();
   const reduce = useReducedMotion();
   const health = useHealth();
   const demo = isStaticDemo() || Boolean(health.data?.demo);
@@ -77,15 +79,18 @@ export default function AskPage() {
   const startNewChat = () => {
     const undo = thread.newChat();
     setDraft("");
-    const focusStart = () => requestAnimationFrame(() => (finePointer() ? inputRef.current?.focus({ preventScroll: true }) : startRef.current?.focus()));
-    focusStart();
+    // as the start is drawn, not a frame later (a quick keyboard gone on by then was pulled back)
+    if (finePointer()) focusWhenDrawn(() => inputRef.current, { preventScroll: true });
+    else focusWhenDrawn(() => startRef.current);
     toast({
       id: NEW_CHAT_TOAST,
       title: "Started a new chat",
       description: "Your last conversation is closed.",
       undo: () => {
+        // the toast hands focus back as it closes: the box takes it from there, not from where the person went since
+        const from = focusOrigin();
         undo();
-        requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
+        focusWhenReady(() => inputRef.current, 5000, { from, preventScroll: true });
       },
     });
   };
