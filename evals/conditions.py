@@ -85,6 +85,7 @@ from ordnung.ingest.plan import (
     remedy_warnings,
     verify_extraction,
 )
+from ordnung.ingest.posting import posting_statement
 from ordnung.ingest.text import PageText, extract_pdf_pages, page_delimited
 from ordnung.ingest.transcribe import PageTranscript, transcribe_page
 from ordnung.ingest.verify import parse_amounts
@@ -350,7 +351,9 @@ def ordnung_rule_context(
     all — follows the sender's kind, name and remedy notice; the letter's kind and the end a termination
     announces (graded against the letter's ``pages``) route the dates of high-stakes letters
     (``rules.routing``); and a court's letter is marked as one, and a labour court's, from the sender's
-    name. Of what the app learns from the person, the benchmark has no confirmed arrival day; the Land the
+    name; and the posting day the letter's pages state for it, found as the app finds it
+    (``ingest.posting.posting_statement``), may start an authority's deemed delivery. Of what the app learns
+    from the person, the benchmark has no confirmed arrival day; the Land the
     letterhead names stands in for the sender's Land, which the app knows only once the person sets it
     (``scripts.eval_without_land`` replays the benchmark without it).
     """
@@ -377,6 +380,7 @@ def ordnung_rule_context(
         court=is_court(name),
         labour_court=is_labour_court(name),
         formal_service=formally_served(pages),
+        posting=posting_statement(pages, parse_iso(extraction.document_date)),
     )
 
 

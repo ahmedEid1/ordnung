@@ -60,6 +60,7 @@ from ordnung.ingest.gaps import (
 from ordnung.ingest.gaps import needs_check as needs_check
 from ordnung.ingest.link import LinkResult
 from ordnung.ingest.normalize import normalise_with_map
+from ordnung.ingest.posting import posting_statement
 from ordnung.ingest.verify import (
     AMOUNT_NOT_IN_QUOTE,
     DATE_NOT_IN_QUOTE,
@@ -123,7 +124,7 @@ from ordnung.rules.advice import (
     statement_arrival,
     statement_late,
 )
-from ordnung.rules.deadlines import parse_date
+from ordnung.rules.deadlines import TWO_POSTING_DAYS, parse_date
 from ordnung.rules.explain import fmt_date
 from ordnung.rules.routing import (
     DerivedDeadline,
@@ -656,7 +657,10 @@ def rule_context(
     date comes with it, graded against the letter's ``pages`` (:func:`end_date_grounding`; without pages
     it counts as not written). A court's letter is marked as one (and a labour court's), whatever kind it
     was filed as: its dates never use a delivery fiction and are never ``high``. A lease's payments are
-    rent (``RuleContext.rent``, :mod:`ordnung.recurrence` point 8).
+    rent (``RuleContext.rent``, :mod:`ordnung.recurrence` point 8). The posting day the letter's ``pages`` state
+    for it (:func:`~ordnung.ingest.posting.posting_statement`) may start an authority's deemed delivery
+    (``RuleContext.posting``); without pages nothing was read, and a later posting day only the reading names
+    stays a note, as in the rules tools.
     """
     sender = extraction.sender
     kind = party.kind if party else (sender.kind if sender else None)
@@ -691,6 +695,7 @@ def rule_context(
         social_court=is_social_court(name, kind),
         rent=(filed_as or letter_kind(extraction)) == "rent_lease",
         formal_service=formally_served(pages),
+        posting=posting_statement(pages, parse_date(extraction.document_date)),
     )
 
 
@@ -796,6 +801,14 @@ def compute_item(verified: VerifiedItem, ctx: RuleContext, *, postal_buffer_days
     if spec.type == "none":
         return ComputedDate(receipt=None, due_date=None, send_by=None, source="none")
     ctx = replace(ctx, quote=verified.item.quote)
+    if (
+        ctx.posting is not None
+        and ctx.posting.grounding == "model_read"
+        and verified.evidence.grounding == "model_read"
+    ):
+        # a photo's posting day keeps the date at most medium (the engine's cap); a quote read from the same
+        # transcript lowers it once already (grade_receipt): the photo's doubt counts once
+        ctx = replace(ctx, posting=replace(ctx.posting, grounding="verified"))
     if verified.slot_key == CHECK_SLOT:
         receipt = _check_receipt(verified, ctx, postal_buffer_days=postal_buffer_days)
     else:
@@ -821,7 +834,8 @@ def compute_item(verified: VerifiedItem, ctx: RuleContext, *, postal_buffer_days
         due_date=receipt.due_date,
         send_by=receipt.send_by,
         source=source,
-        conflict=settled is not None,
+        # two posting days on the page are two dates for the letter, as a rival is: "Please check"
+        conflict=settled is not None or TWO_POSTING_DAYS in receipt.rule_ids,
         notice=bool(notice) and settled is not None,
     )
 
