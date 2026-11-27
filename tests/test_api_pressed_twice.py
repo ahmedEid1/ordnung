@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import shutil
+import threading
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,7 @@ import pytest
 
 from helpers_docs import photo
 from ordnung import clock
+from ordnung.api.routes.items import MOVED_ON, UNCHANGED_HEADER
 from test_api_proof import _sent
 from test_api_support import TODAY, Api, api_for
 
@@ -92,10 +94,55 @@ async def test_an_older_page_that_sends_no_date_is_answered_as_before(data_dir: 
         assert (await _patch(api, fee["id"], status="done"))["due_date"] == "2026-12-01"
 
 
-async def test_done_twice_at_the_same_moment_moves_on_once(data_dir: Path) -> None:
-    """The phone and the computer at once: read and written in one transaction, the second sees the first."""
+async def test_the_answer_says_when_nothing_changed(data_dir: Path) -> None:
+    """The second "done" is answered 200 with the to-do as it stands, as before, and says it changed nothing, so the
+    page tells the person instead of "Marked as done" with an Undo that would take back the first one."""
     async with api_for(data_dir) as api:
         fee = await _club_fee(api)
+        url = f"/api/items/{fee['id']}"
+        first = await api.client.patch(url, json={"status": "done", "seen_due_date": "2026-10-01"})
+        assert UNCHANGED_HEADER not in first.headers
+        again = await api.client.patch(url, json={"status": "done", "seen_due_date": "2026-10-01"})
+        assert again.status_code == 200 and again.headers[UNCHANGED_HEADER] == MOVED_ON
+        assert again.json()["due_date"] == "2026-11-01"
+        # a stale "open again" too, and a "done" for a date another tab changed: nothing was marked
+        stale_undo = await api.client.patch(url, json={"status": "open", "seen_due_date": "2026-12-01"})
+        assert stale_undo.headers[UNCHANGED_HEADER] == MOVED_ON
+        await _patch(api, fee["id"], due_date="2026-11-20")
+        moved = await api.client.patch(url, json={"status": "done", "seen_due_date": "2026-11-01"})
+        assert moved.headers[UNCHANGED_HEADER] == MOVED_ON
+        assert (moved.json()["status"], moved.json()["due_date"]) == ("open", "2026-11-20")
+        # an honest press, and an older page that sends no date, are answered without it
+        honest = await api.client.patch(url, json={"status": "done", "seen_due_date": "2026-11-20"})
+        assert UNCHANGED_HEADER not in honest.headers
+        assert UNCHANGED_HEADER not in (await api.client.patch(url, json={"status": "done"})).headers
+
+
+async def test_done_twice_at_the_same_moment_moves_on_once(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The phone and the computer at once: read and written in one transaction, the second sees the first.
+
+    The first two reads of the to-do wait for each other once they have read (briefly): read outside the
+    transaction, both read it at 1 Oct and both move it on; read inside, the second can only read once the first
+    has written, so the first goes on alone when the wait runs out."""
+    async with api_for(data_dir) as api:
+        fee = await _club_fee(api)
+        store = api.ctx.store
+        get_item = store.get_item
+        meet = threading.Barrier(2, timeout=2)
+        reads = iter(range(2))
+
+        def read_together(item_id: str) -> Any:
+            read = get_item(item_id)
+            if item_id == fee["id"] and next(reads, None) is not None:
+                try:
+                    meet.wait()  # each has read before either goes on
+                except threading.BrokenBarrierError:
+                    pass  # the other read is behind the write lock (or came after the wait ran out)
+            return read
+
+        monkeypatch.setattr(store, "get_item", read_together)
         body = {"status": "done", "seen_due_date": "2026-10-01"}
         one, two = await asyncio.gather(
             api.client.patch(f"/api/items/{fee['id']}", json=body),
