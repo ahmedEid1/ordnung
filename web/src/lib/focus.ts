@@ -30,27 +30,52 @@ export function focusWhenReady(
   { always = false, from = null, preventScroll = false }: { always?: boolean; from?: Element | null; preventScroll?: boolean } = {},
 ): void {
   const until = performance.now() + ms;
-  // focus that went somewhere of the person's own since (not a lost place: a closing toast hands it to <main>)
-  let wentOn = false;
-  const onFocusIn = () => {
-    if (!focusIsLost() && !from?.contains(document.activeElement)) wentOn = true;
-  };
-  if (from) document.addEventListener("focusin", onFocusIn, true);
+  const away = watchGoingOn(from);
   const tick = () => {
     const el = find();
     if (!el) {
       if (performance.now() < until) requestAnimationFrame(tick);
-      else document.removeEventListener("focusin", onFocusIn, true);
+      else away.stop();
       return;
     }
-    document.removeEventListener("focusin", onFocusIn, true);
-    if (!always && !focusIsLost() && !(from && !wentOn && document.activeElement === from)) return;
+    away.stop();
+    if (!always && !mayStillMove(from, away.wentOn())) return;
     // a heading is made focusable from a script only; a field or a button already is, and -1 would take it out of
     // the Tab order (the sync passphrase field was)
     if (!el.hasAttribute("tabindex") && el.tabIndex < 0) el.tabIndex = -1;
     el.focus({ preventScroll });
   };
   requestAnimationFrame(tick);
+}
+
+/** From now on, whether focus went somewhere of the person's own away from `from` (not a lost place: a closing toast hands it to <main>). */
+function watchGoingOn(from: Element | null): { wentOn: () => boolean; stop: () => void } {
+  let wentOn = false;
+  const onFocusIn = () => {
+    if (!focusIsLost() && !from?.contains(document.activeElement)) wentOn = true;
+  };
+  if (from) document.addEventListener("focusin", onFocusIn, true);
+  return { wentOn: () => wentOn, stop: () => document.removeEventListener("focusin", onFocusIn, true) };
+}
+
+/** Whether focus may be moved for the person: it is lost, or still on `from` and never went anywhere of theirs since. */
+function mayStillMove(from: Element | null, wentOn: boolean): boolean {
+  return focusIsLost() || (from !== null && !wentOn && document.activeElement === from);
+}
+
+/**
+ * For a focus moved as soon as a request is answered (no element to wait for, so no frame): call it as the action
+ * starts, and what it returns once the answer is in. That says whether focus may move — by {@link focusWhenReady}'s
+ * `from` rule, from where focus was at the start — so someone who went elsewhere while the request ran keeps their
+ * place. Call it once on every path: it stops watching then.
+ */
+export function focusMayMoveOnceAnswered(): () => boolean {
+  const from = focusOrigin();
+  const away = watchGoingOn(from);
+  return () => {
+    away.stop();
+    return mayStillMove(from, away.wentOn());
+  };
 }
 
 /**

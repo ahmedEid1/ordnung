@@ -329,6 +329,39 @@ describe("Your household: a change on its way", () => {
     await expectOnePressAtATime({ user, button: () => within(people()[0]!).getByRole("button", { name: "Save" }), held: putting });
   });
 
+  it("an add answered after the person went elsewhere leaves them there, not on the Name field", async () => {
+    // the field took focus back once the change was saved, wherever the person had gone while it was on its way
+    const api = useMockApi();
+    const putting = held();
+    const { user } = renderCard(api, { members: [ALEX] });
+    await user.type(await screen.findByRole("textbox", { name: "Name" }), "Mia Rivera");
+    await user.click(within(card()).getByRole("button", { name: "Add to household" }));
+    await waitFor(() => expect(putting.waiting).toBe(1));
+    const edit = screen.getByRole("button", { name: "Edit Alex Rivera" });
+    edit.focus();
+    putting.release();
+    await waitFor(() => expect(people()).toHaveLength(2));
+    expect(await screen.findByText("Added Mia Rivera")).toBeInTheDocument();
+    expect(edit).toHaveFocus();
+  });
+
+  it("an add answered after the person went elsewhere and came back to “Add” leaves them on “Add”", async () => {
+    // gone and back counts as gone on, as for every focus that waits (lib/focus): they came back to press something
+    const api = useMockApi();
+    const putting = held();
+    const { user } = renderCard(api, { members: [ALEX] });
+    await user.type(await screen.findByRole("textbox", { name: "Name" }), "Mia Rivera");
+    const add = within(card()).getByRole("button", { name: "Add to household" });
+    await user.click(add);
+    await waitFor(() => expect(putting.waiting).toBe(1));
+    screen.getByRole("button", { name: "Edit Alex Rivera" }).focus();
+    add.focus();
+    putting.release();
+    await waitFor(() => expect(people()).toHaveLength(2));
+    expect(await screen.findByText("Added Mia Rivera")).toBeInTheDocument();
+    expect(add).toHaveFocus();
+  });
+
   it("“Remove” of someone without letters takes one press at a time, and the next once it failed", async () => {
     const api = useMockApi();
     const putting = held();

@@ -19,7 +19,7 @@ import { SkeletonText } from "@/components/ui/Skeleton";
 import { toast } from "@/components/ui/Toast";
 import { useReportDirty } from "@/features/settings/dirty";
 import { SettingsCard } from "@/features/settings/SettingsCard";
-import { focusWhenReady } from "@/lib/focus";
+import { focusMayMoveOnceAnswered, focusWhenReady } from "@/lib/focus";
 import { backToYours, HOUSEHOLD_CHANGE_TOAST, lettersLabel, membersOf, nameProblem, oneLine, refusal, useChangeHousehold } from "./save";
 import { useOnePress } from "@/lib/hooks";
 
@@ -86,14 +86,17 @@ function AddPerson({ household, inputRef }: { household: Household; inputRef: Re
       refuse(problem);
       return false;
     }
+    // back to the Name field for the next person, unless they went elsewhere while the change was on its way
+    const mayFocus = focusMayMoveOnceAnswered();
     const after = await save(household, [...membersOf(household), { id: null, name: oneLine(name), signs }], refuse);
+    const focusNext = mayFocus();
     if (!after) return false;
     const added = after.members.find((m) => !household.members.some((before) => before.id === m.id));
     toast.success(`Added ${added?.name ?? name.trim()}`, { id: HOUSEHOLD_CHANGE_TOAST });
     setName("");
     setSigns(true);
     setError(null);
-    inputRef.current?.focus();
+    if (focusNext) inputRef.current?.focus();
     return true;
   };
   // a name typed but not added yet is an unsaved change ("Save and go" adds it)

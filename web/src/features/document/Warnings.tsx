@@ -24,7 +24,7 @@ import { Glossary } from "@/components/ui/Glossary";
 import { Input } from "@/components/ui/Field";
 import { quoteLanguage } from "@/components/ui/Receipt";
 import { toast } from "@/components/ui/Toast";
-import { focusAfterLeaving } from "@/lib/focus";
+import { focusAfterLeaving, focusMayMoveOnceAnswered } from "@/lib/focus";
 import { useLetterLanguage } from "./WhyThisDate";
 import { actionDate, arrivalSavedNote, isCourtServed, isOpenItem, isServed, MAY_BE_PUBLIC_KINDS, needsArrivalDate, needsCheck, scamSuggestion } from "./verdict";
 import { HIGH_STAKES_KINDS } from "@/api/types";
@@ -415,16 +415,21 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
     // Awaited here, not in mutate()'s own onSuccess: the hook refetches the letter first, which answers the
     // question and unmounts this form — TanStack Query then drops a per-call callback, so the toast and the
     // focus never came. This closure outlives the form.
+    const mayFocus = focusMayMoveOnceAnswered();
     try {
       await update.mutateAsync({ id: doc.id, patch: { received_date: date } });
     } catch (err) {
+      mayFocus();
       ignoreFailedRequest(err); // a failed request: its own error toast says what went wrong; the form stays for another try
       return;
     }
-    // the question goes away once answered: keyboard focus moves to the verdict and its new date, in view
-    const title = document.getElementById("verdict-title");
-    title?.focus({ preventScroll: true });
-    title?.scrollIntoView({ block: "start" });
+    // the question goes away once answered: keyboard focus moves to the verdict and its new date, in view — unless
+    // the person went elsewhere while it was saved (scrolled away too, where they went would be out of sight)
+    if (mayFocus()) {
+      const title = document.getElementById("verdict-title");
+      title?.focus({ preventScroll: true });
+      title?.scrollIntoView({ block: "start" });
+    }
     if (served) {
       // an authority's letter served with a Postzustellungsurkunde: a date more than two weeks after the letter's own
       // is no envelope date of this letter's — the letter's date is kept (`envelope_start` in src/ordnung/ingest/gaps/)

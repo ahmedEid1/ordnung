@@ -207,6 +207,59 @@ describe("warnings & Please check", () => {
     expect(JSON.parse(String(init.body))).toEqual({ received_date: "2026-09-27" });
   });
 
+  describe("once the arrival day is saved", () => {
+    let success: ReturnType<typeof vi.spyOn> | undefined;
+    /** The question beside the verdict's heading, its PATCH held until `answer` is called. */
+    async function held() {
+      let answer: () => void = () => {};
+      fetchSpy.mockImplementation(async (_url: string, init?: RequestInit) => {
+        if (init?.method === "PATCH") await new Promise<void>((r) => (answer = r));
+        return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
+      });
+      // jsdom has no scrollIntoView
+      const scrolled = vi.fn();
+      Element.prototype.scrollIntoView = scrolled;
+      success = vi.spyOn(toast, "success");
+      renderWithProviders(
+        <>
+          <h2 id="verdict-title" tabIndex={-1}>
+            Parking fine
+          </h2>
+          <DocumentWarnings detail={await detailFromMock("doc_parking")} />
+          <button type="button">Elsewhere</button>
+        </>,
+        { client: client() },
+      );
+      const user = userEvent.setup();
+      await user.click(screen.getByRole("button", { name: "Yesterday" }));
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(fetchSpy.mock.calls.some(([, i]) => (i as RequestInit | undefined)?.method === "PATCH")).toBe(true));
+      return { answer: () => answer(), scrolled };
+    }
+    afterEach(() => {
+      delete (Element.prototype as Partial<Element>).scrollIntoView;
+      success?.mockRestore();
+    });
+
+    it("hands focus to the verdict's heading, in view", async () => {
+      const { answer, scrolled } = await held();
+      answer();
+      await waitFor(() => expect(document.getElementById("verdict-title")).toHaveFocus());
+      expect(scrolled).toHaveBeenCalled();
+    });
+
+    it("leaves someone who went elsewhere while it was saved where they went, and the page where it was", async () => {
+      // the heading took focus (and the page scrolled to it) whatever the person had done meanwhile
+      const { answer, scrolled } = await held();
+      const elsewhere = screen.getByRole("button", { name: "Elsewhere" });
+      elsewhere.focus();
+      answer();
+      await waitFor(() => expect(success).toHaveBeenCalled());
+      expect(elsewhere).toHaveFocus();
+      expect(scrolled).not.toHaveBeenCalled();
+    });
+  });
+
   it("says a late arrival may not move a company's date, and what saving the day did", async () => {
     // the engine still counted from the day the letter usually counts as delivered,
     // but the toast said "Counting from <arrival>, when the letter arrived"
