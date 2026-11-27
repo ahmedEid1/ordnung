@@ -38,9 +38,15 @@ async function letterPage(srv: ReturnType<typeof useMockApi>["srv"]) {
   const qc = makeTestQueryClient();
   qc.setQueryData(qk.rules, []);
   const { router } = renderWithProviders(
-    <main id="main" tabIndex={-1}>
-      <DocumentView detail={detail} />
-    </main>,
+    <>
+      <main id="main" tabIndex={-1}>
+        <DocumentView detail={detail} />
+      </main>
+      {/* something of the shell's, outside the page */}
+      <button type="button" id="elsewhere">
+        Elsewhere
+      </button>
+    </>,
     { client: qc },
   );
   const frames = holdFrames();
@@ -78,6 +84,16 @@ describe("opened at its advice card", () => {
     page.frames.run();
     expect(page.title()).toHaveFocus();
     expect(scrolled).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves focus the person had put elsewhere before the page drew where it is, and the page too", async () => {
+    const page = await letterPage(useMockApi().srv);
+    const elsewhere = document.getElementById("elsewhere")!;
+    act(() => elsewhere.focus());
+    await page.arrive();
+    page.frames.run(3);
+    expect(elsewhere).toHaveFocus();
+    expect(scrolled).not.toHaveBeenCalled();
   });
 
   it("leaves a Tab pressed inside the arrival frame where it went, and the page where it was", async () => {
