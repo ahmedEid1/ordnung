@@ -454,21 +454,27 @@ test.describe("320×568, motion on: a scroll with no input during the second rev
   test.use({ viewport: { width: 320, height: 568 }, reducedMotion: "no-preference" });
 
   test("is the person's: the card is not revealed again, the page stays where it was taken", async ({ page }) => {
-    // every scrollIntoView on the Contracts page counted; two frames into the second one (its smooth scroll under
-    // way), a script scrolls up 15 px a frame, three bursts of 10 frames with 6 still frames between
+    // every scrollIntoView on the Contracts page counted; a frame after the second one's smooth scroll has moved the
+    // page (a fixed count of frames was too few on a loaded machine), a script scrolls up 15 px a frame, three bursts
+    // of 10 frames with 6 still frames between
     await page.addInitScript(() => {
-      const w = window as unknown as { __siv: number; __fight: { yAtReveal: number; yAtStart: number; done: boolean } | null };
+      const w = window as unknown as { __siv: number; __fight: { yAtReveal: number; yAtStart: number; done: boolean; gaveUp?: true } | null };
       w.__siv = 0;
       w.__fight = null;
       const own = Element.prototype.scrollIntoView;
       Element.prototype.scrollIntoView = function (this: Element, options?: boolean | ScrollIntoViewOptions) {
         if (location.pathname === "/contracts" && ++w.__siv === 2) {
-          const fight = { yAtReveal: window.scrollY, yAtStart: 0, done: false };
+          const fight: { yAtReveal: number; yAtStart: number; done: boolean; gaveUp?: true } = { yAtReveal: window.scrollY, yAtStart: 0, done: false };
           w.__fight = fight;
+          let waited = 0;
           let frame = 0;
           const step = () => {
-            if (frame === 2) fight.yAtStart = window.scrollY;
-            const k = frame - 2;
+            if (frame === 0 && window.scrollY <= fight.yAtReveal) {
+              if (++waited > 120) return void Object.assign(fight, { gaveUp: true, done: true });
+              return void requestAnimationFrame(step);
+            }
+            if (frame === 1) fight.yAtStart = window.scrollY;
+            const k = frame - 1;
             if (k >= 0 && k % 16 < 10) window.scrollBy(0, -15);
             frame++;
             if (k < 16 * 2 + 10) requestAnimationFrame(step);
@@ -496,9 +502,10 @@ test.describe("320×568, motion on: a scroll with no input during the second rev
       // counted (and move the page) before this ends
       await cardOnceStill(card);
       const { siv, fight, top } = await page.evaluate((id) => {
-        const w = window as unknown as { __siv: number; __fight: { yAtReveal: number; yAtStart: number } };
+        const w = window as unknown as { __siv: number; __fight: { yAtReveal: number; yAtStart: number; gaveUp?: true } };
         return { siv: w.__siv, fight: w.__fight, top: document.getElementById(`contract-${id}`)!.getBoundingClientRect().top };
       }, bank.id);
+      expect(fight.gaveUp, "the second reveal's smooth scroll moved the page within 120 frames").toBeUndefined();
       expect(fight.yAtStart, "the scroll came while the reveal's own smooth scroll was moving down to the card").toBeGreaterThan(fight.yAtReveal);
       expect(siv, "no reveal after the second").toBe(2);
       expect(top, "the page stays where the scroll took it, not back at the card").toBeGreaterThan(300);
@@ -508,16 +515,20 @@ test.describe("320×568, motion on: a scroll with no input during the second rev
   });
 });
 
-// The same, going the same way as the reveal: a script scrolls on by 300 px while the second reveal is under way (two
-// frames into its smooth scroll; with motion reduced, in the frame after it landed). The page went past the card, and
+// The same, going the same way as the reveal: a script scrolls on by 300 px while the second reveal is under way (a
+// frame after its smooth scroll moved the page; with motion reduced, in the frame after it landed). The page went past the card, and
 // once it stood still the card was revealed again and the page pulled back to it (three reveals).
 for (const reducedMotion of ["no-preference", "reduce"] as const) {
   test.describe(`320×568, motion ${reducedMotion}: a scroll with no input the same way as the second reveal of a contract`, () => {
     test.use({ viewport: { width: 320, height: 568 }, reducedMotion });
 
     test("is the person's: the card is not revealed again, the page stays where the scroll took it", async ({ page }) => {
-      await page.addInitScript((after) => {
-        const w = window as unknown as { __siv: number; __on: { yAtReveal: number; yAtStart: number; yAfter: number } | null };
+      // with motion on, the script waits until the reveal's smooth scroll has moved the page, then scrolls a frame
+      // later (a fixed count of frames was too few on a loaded machine: the smooth scroll had not begun); with motion
+      // reduced, in the frame after the reveal landed
+      await page.addInitScript((smooth) => {
+        type On = { yAtReveal: number; yAtStart: number; yAfter: number } | { gaveUp: true };
+        const w = window as unknown as { __siv: number; __on: On | null };
         w.__siv = 0;
         w.__on = null;
         const own = Element.prototype.scrollIntoView;
@@ -525,8 +536,14 @@ for (const reducedMotion of ["no-preference", "reduce"] as const) {
           if (location.pathname === "/contracts" && ++w.__siv === 2) {
             const yAtReveal = window.scrollY;
             let frame = 0;
+            let moved = false;
             const step = () => {
-              if (++frame < after) return requestAnimationFrame(step);
+              frame++;
+              if (smooth && !moved) {
+                if (frame > 120) return void (w.__on = { gaveUp: true });
+                moved = window.scrollY > yAtReveal;
+                return void requestAnimationFrame(step);
+              }
               const yAtStart = window.scrollY;
               window.scrollBy(0, 300);
               w.__on = { yAtReveal, yAtStart, yAfter: window.scrollY };
@@ -535,7 +552,7 @@ for (const reducedMotion of ["no-preference", "reduce"] as const) {
           }
           return own.call(this, options);
         };
-      }, reducedMotion === "reduce" ? 1 : 2);
+      }, reducedMotion === "no-preference");
       try {
         await setTour(page, 0);
         const bank = await contractOf(page, "bank");
@@ -551,9 +568,10 @@ for (const reducedMotion of ["no-preference", "reduce"] as const) {
         // ten still frames: a further reveal comes after four, and would be counted (and move the page) before this ends
         await cardOnceStill(card);
         const { siv, on, y, top } = await page.evaluate((id) => {
-          const w = window as unknown as { __siv: number; __on: { yAtReveal: number; yAtStart: number; yAfter: number } };
+          const w = window as unknown as { __siv: number; __on: { yAtReveal: number; yAtStart: number; yAfter: number; gaveUp?: true } };
           return { siv: w.__siv, on: w.__on, y: window.scrollY, top: document.getElementById(`contract-${id}`)!.getBoundingClientRect().top };
         }, bank.id);
+        expect(on.gaveUp, "the second reveal's smooth scroll moved the page within 120 frames").toBeUndefined();
         if (reducedMotion === "no-preference") {
           expect(on.yAtStart, "the scroll came while the reveal's own smooth scroll was moving down to the card").toBeGreaterThan(on.yAtReveal);
         }
