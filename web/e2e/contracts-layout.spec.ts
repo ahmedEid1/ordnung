@@ -507,6 +507,66 @@ test.describe("320×568, motion on: a scroll with no input during the second rev
   });
 });
 
+// The same, going the same way as the reveal: a script scrolls on by 300 px while the second reveal is under way (two
+// frames into its smooth scroll; with motion reduced, in the frame after it landed). The page went past the card, and
+// once it stood still the card was revealed again and the page pulled back to it (three reveals).
+for (const reducedMotion of ["no-preference", "reduce"] as const) {
+  test.describe(`320×568, motion ${reducedMotion}: a scroll with no input the same way as the second reveal of a contract`, () => {
+    test.use({ viewport: { width: 320, height: 568 }, reducedMotion });
+
+    test("is the person's: the card is not revealed again, the page stays where the scroll took it", async ({ page }) => {
+      await page.addInitScript((after) => {
+        const w = window as unknown as { __siv: number; __on: { yAtReveal: number; yAtStart: number; yAfter: number } | null };
+        w.__siv = 0;
+        w.__on = null;
+        const own = Element.prototype.scrollIntoView;
+        Element.prototype.scrollIntoView = function (this: Element, options?: boolean | ScrollIntoViewOptions) {
+          if (location.pathname === "/contracts" && ++w.__siv === 2) {
+            const yAtReveal = window.scrollY;
+            let frame = 0;
+            const step = () => {
+              if (++frame < after) return requestAnimationFrame(step);
+              const yAtStart = window.scrollY;
+              window.scrollBy(0, 300);
+              w.__on = { yAtReveal, yAtStart, yAfter: window.scrollY };
+            };
+            requestAnimationFrame(step);
+          }
+          return own.call(this, options);
+        };
+      }, reducedMotion === "reduce" ? 1 : 2);
+      try {
+        await setTour(page, 0);
+        const bank = await contractOf(page, "bank");
+        await open(page, "/timeline", "Timeline");
+        const tourCode = await holdUntilReleased(page, (url) => /\/assets\/DemoTour-[^/]*\.js$/.test(url.pathname));
+        await page.goto(`/contracts?contract=${bank.id}`);
+        const card = page.locator(`[id="contract-${bank.id}"]`);
+        await expect(card).toBeFocused();
+        await cardOnceStill(card);
+        expect(tourCode.held(), "the tour's code was held").toBeGreaterThan(0);
+        tourCode.release();
+        await page.waitForFunction(() => (window as unknown as { __on: unknown }).__on, null, { polling: "raf" });
+        // ten still frames: a further reveal comes after four, and would be counted (and move the page) before this ends
+        await cardOnceStill(card);
+        const { siv, on, y, top } = await page.evaluate((id) => {
+          const w = window as unknown as { __siv: number; __on: { yAtReveal: number; yAtStart: number; yAfter: number } };
+          return { siv: w.__siv, on: w.__on, y: window.scrollY, top: document.getElementById(`contract-${id}`)!.getBoundingClientRect().top };
+        }, bank.id);
+        if (reducedMotion === "no-preference") {
+          expect(on.yAtStart, "the scroll came while the reveal's own smooth scroll was moving down to the card").toBeGreaterThan(on.yAtReveal);
+        }
+        expect(on.yAfter, "the script took the page further down").toBeGreaterThan(on.yAtStart);
+        expect(siv, "no reveal after the second").toBe(2);
+        expect(Math.abs(y - on.yAfter), "the page stays where the scroll took it, not pulled back to the card").toBeLessThanOrEqual(1);
+        expect(top, "past the card: it went up out of view").toBeLessThan(0);
+      } finally {
+        await setTour(page, null);
+      }
+    });
+  });
+}
+
 // The 2 px line drawn over the top bar while a page loads fades out for a quarter of a second after the page came. On
 // CI's slower machine it was now and then still there when the card stood still, and taken for the top bar, the card
 // read as 58 px below it (59.7 - 2), though it sat 4 px below the real one. Its fade slowed down, it is there every

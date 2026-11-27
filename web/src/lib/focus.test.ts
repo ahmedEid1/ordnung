@@ -521,6 +521,98 @@ describe("revealWhenStill", () => {
       });
     });
 
+    describe("a scroll the same way as its reveal, during it, with no input event (an assistive technology, a script)", () => {
+      /** Centred at once, then the late tour bar: a second reveal ("start"), whose smooth scroll each case moves. */
+      const placeThenTourBar = ({ reducedMotion = false } = {}) => {
+        const centre = lands({ top: 56, bottom: 504 });
+        (card.scrollIntoView as ReturnType<typeof vi.fn>).mockImplementation((options?: boolean | ScrollIntoViewOptions) => {
+          // with motion reduced the second reveal lands at once, 4 px below the top bar
+          if (typeof options === "object" && (options.block === "center" || reducedMotion)) centre(options);
+        });
+        const stop = revealWhenStill(card, { reducedMotion });
+        vi.advanceTimersByTime(200);
+        bar("section", 438, 492);
+        height += 66;
+        for (let i = 0; i < 30 && (card.scrollIntoView as ReturnType<typeof vi.fn>).mock.calls.length < 2; i++) vi.advanceTimersToNextFrame();
+        expect(card.scrollIntoView).toHaveBeenLastCalledWith({ block: "start", behavior: reducedMotion ? "auto" : "smooth" });
+        return stop;
+      };
+
+      it("taking the page past the card is someone else's: it wins, the page is not pulled back to the card", () => {
+        const stop = placeThenTourBar();
+        // two frames of its own smooth scroll, then a script scrolls on by 300 px
+        for (let i = 0; i < 2; i++) {
+          y += 3;
+          top -= 3;
+          vi.advanceTimersToNextFrame();
+        }
+        y += 300;
+        top -= 300;
+        vi.advanceTimersByTime(2000);
+        // (a reveal of its own ends where it aimed: it was revealed again, and the page pulled back)
+        expect(card.scrollIntoView).toHaveBeenCalledTimes(2);
+        expect(top).toBe(-227.5);
+        stop();
+      });
+
+      it("also with motion reduced, the scroll coming in the frame after its reveal landed", () => {
+        const stop = placeThenTourBar({ reducedMotion: true });
+        expect(top).toBe(60);
+        y += 300;
+        top -= 300;
+        vi.advanceTimersByTime(2000);
+        expect(card.scrollIntoView).toHaveBeenCalledTimes(2);
+        expect(top).toBe(-240);
+        stop();
+      });
+
+      it("the tour bar still settling into place meanwhile (its last 4 px) leaves the same room: that scroll still wins", () => {
+        const stop = placeThenTourBar();
+        y += 3;
+        top -= 3;
+        bars.pop()!.el.remove();
+        bar("section", 434, 488);
+        vi.advanceTimersToNextFrame();
+        y += 300;
+        top -= 300;
+        vi.advanceTimersByTime(2000);
+        expect(card.scrollIntoView).toHaveBeenCalledTimes(2);
+        stop();
+      });
+
+      it("but cut short of the card it is revealed again: on a slow machine the router's scroll to the top does that too", () => {
+        const stop = placeThenTourBar();
+        // its smooth scroll stops 9 px down, and the page stands still there, the card short of where it belongs
+        for (let i = 0; i < 3; i++) {
+          y += 3;
+          top -= 3;
+          vi.advanceTimersToNextFrame();
+        }
+        vi.advanceTimersByTime(2000);
+        // (a scroll by script that stops it there is not told apart from that, and is undone)
+        expect(card.scrollIntoView).toHaveBeenCalledTimes(3);
+        stop();
+      });
+
+      it("and a bar arriving during its smooth scroll leaves the card past a top that moved: it is revealed again (the control)", () => {
+        const stop = placeThenTourBar();
+        for (let i = 0; i < 6; i++) {
+          y += 3;
+          top -= 3;
+          vi.advanceTimersToNextFrame();
+        }
+        // a banner comes under the top bar, the page's height the same: the card is above the room's new top, though its
+        // own scroll ended where it aimed
+        bar("div", 0, 116);
+        y += 0.5;
+        top -= 0.5;
+        vi.advanceTimersByTime(2000);
+        expect(top).toBe(60);
+        expect(card.scrollIntoView).toHaveBeenCalledTimes(3);
+        stop();
+      });
+    });
+
     it("a tall card the page then pushes down is put back just below the top bar", () => {
       cardHeight = 533;
       (card.scrollIntoView as ReturnType<typeof vi.fn>).mockImplementation(lands({ top: 56, bottom: 504 }));

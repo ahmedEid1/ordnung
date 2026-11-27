@@ -189,6 +189,15 @@ function scrollsThePage(event: Event): boolean {
   return event.type === "wheel" || event.type === "touchstart";
 }
 
+/**
+ * Whether the bars leave the same room as before: each edge within a rem of where it was. A bar still settling into
+ * place moves a few pixels (the demo's tour bar slides the last 9 px in while a reveal is under way); one that comes
+ * or goes moves an edge by its whole height (54 px for the tour bar).
+ */
+function sameRoom(a: Band, b: Band): boolean {
+  return Math.abs(a.top - b.top) <= 16 && Math.abs(a.bottom - b.bottom) <= 16;
+}
+
 /** How many frames in a row nothing may move (the element, the page's height, its scroll) before it is revealed. */
 const STILL_FRAMES = 4;
 /** How long a revealed element is kept in view while the page still grows around it. */
@@ -206,9 +215,10 @@ const REVEAL_GIVE_UP_MS = 20_000;
  * stops for good: their scroll wins. A wheel, a touch, a key or a press stops it (a modifier key on its own does
  * not); a wheel, a touch or a key that scrolls also stops a smooth scroll of its own still under way, where it is.
  * A scroll that comes with none of those (the scroll bar dragged, an assistive technology scrolling) stops the watch
- * too, seen as the page moving while nothing changed its height and no reveal of its own was under way, or, during
- * one, moving back against it (a scroll of its own never turns round). Returns a stop for the caller (an effect's
- * cleanup).
+ * too, seen as the page moving while nothing changed its height and no reveal of its own was under way. During one,
+ * it is seen as the page moving back against it (a scroll of its own never turns round), or as the page standing still
+ * past the card, its height and its bars as they were (a scroll of its own goes no further than the card): someone else
+ * scrolled on. Returns a stop for the caller (an effect's cleanup).
  */
 export function revealWhenStill(el: HTMLElement, { reducedMotion = false }: { reducedMotion?: boolean } = {}): () => void {
   let stopped = false;
@@ -221,11 +231,11 @@ export function revealWhenStill(el: HTMLElement, { reducedMotion = false }: { re
   /** Where the page stood when it last revealed the card (the card, the scroll, the height and the band). */
   let triedFrom: string | null = null;
   /**
-   * During a reveal of its own: the page's height when it began, its scroll a frame ago, and which way the reveal
-   * scrolls (1 down, -1 up). Null once the height changed: the browser may then keep the card's place by scrolling
-   * either way.
+   * During a reveal of its own: the page's height when it began, its scroll a frame ago, which way the reveal scrolls
+   * (1 down, -1 up) and the room the bars left when it began. Null once the height changed: the browser may then keep
+   * the card's place by scrolling either way.
    */
-  let own: { height: number; y: number; way: number } | null = null;
+  let own: { height: number; y: number; way: number; band: Band } | null = null;
   const events = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
   const stop = () => {
     stopped = true;
@@ -292,6 +302,15 @@ export function revealWhenStill(el: HTMLElement, { reducedMotion = false }: { re
       const band = freeBand(x);
       const { shown, block } = revealPlan(box, band);
       const where = `${now} ${band.top} ${band.bottom}`;
+      // a reveal of its own, the page's height and its bars as they were, never takes the card past where it belongs:
+      // standing still beyond it, the page was scrolled on by someone else, and that scroll wins as the person's wheel
+      // does. (Short of it is not told apart: on a slow machine the router's own scroll to the top cuts a reveal short
+      // too, and the card is then revealed again.)
+      if (revealing && own && !shown && sameRoom(own.band, band)) {
+        const past =
+          own.way > 0 ? box.top < band.top - 1 : block === "start" ? box.top > band.top + TALL_START_SLACK : box.bottom > band.bottom + 1;
+        if (past) return stop();
+      }
       revealing = false;
       rest = { y, height };
       // not where it belongs, but its last reveal from here moved nothing: the page goes no further (until it changes)
@@ -304,7 +323,7 @@ export function revealWhenStill(el: HTMLElement, { reducedMotion = false }: { re
         // which way it goes, known before it moves (a scroll in its first frame is seen too): a card below where it
         // belongs comes up (the page scrolls down), one above it comes down
         const below = block === "start" ? box.top > band.top : box.top >= band.top - 1;
-        own = { height, y, way: below ? 1 : -1 };
+        own = { height, y, way: below ? 1 : -1, band };
         el.scrollIntoView({ block, behavior: reducedMotion ? "auto" : "smooth" });
       }
     }
