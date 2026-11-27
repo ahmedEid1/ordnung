@@ -10,7 +10,8 @@ import userEvent from "@testing-library/user-event";
 import type { Draft, Suggestion } from "@/api/types";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { renderWithProviders, TEST_TODAY } from "@/test/render";
-import { useMockApi } from "@/test/mockFetch";
+import { holdRequests, useMockApi } from "@/test/mockFetch";
+import { expectOnePressAtATime } from "@/test/busyButton";
 import type { MockServer } from "@/mocks/server";
 import { MOVING_RULE, moveDayError, moveDayRange, movedLine, moveStanding, movingRows, openDraftFor } from "./moving";
 import { selectIdeas } from "./selection";
@@ -182,6 +183,24 @@ describe("the Moving checklist card", () => {
     await user.click(within(toast.closest("[data-toast]") as HTMLElement).getByRole("button", { name: "Undo" }));
     await waitFor(() => expect(calls.filter((c) => c.path === `/suggestions/${bank.id}`).map((c) => c.body)).toEqual([{ status: "dismissed" }, { status: "new" }]));
     expect(await within(card()).findByRole("checkbox", { name: bank.title })).not.toBeChecked();
+  });
+
+  it("keeps focus on “Not needed” while it is saved, one press at a time, and takes the next row's once it is done", async () => {
+    const { srv } = useMockApi();
+    await moved(srv);
+    const held = holdRequests((call) => call.method === "PATCH" && call.path.startsWith("/suggestions/"));
+    const { user } = await renderToday();
+    await screen.findByRole("region", { name: "Moving checklist" });
+    const first = checks()[0]!.closest("li")!;
+    const notNeeded = () => within(first).getByRole("button", { name: "Not needed" });
+    await expectOnePressAtATime({ user, button: notNeeded, held });
+    // the answer is saved: the row leaves, and another row's "Not needed" is not held back by it
+    const name = within(first).getByRole("checkbox").getAttribute("id")!;
+    await act(async () => held.release());
+    await waitFor(() => expect(document.getElementById(name)).not.toBeInTheDocument());
+    const count = held.count;
+    await user.click(within(card()).getAllByRole("button", { name: "Not needed" })[0]!);
+    await waitFor(() => expect(held.count).toBe(count + 1));
   });
 
   it("opens a new-address letter to the sender, or the one already started", async () => {

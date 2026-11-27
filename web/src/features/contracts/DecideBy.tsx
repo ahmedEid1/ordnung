@@ -7,6 +7,7 @@ import { Countdown } from "@/components/ui/Countdown";
 import { DateLeaf, type DateLeafTone } from "@/components/ui/DateLeaf";
 import { Glossary } from "@/components/ui/Glossary";
 import { SectionHeader } from "@/components/ui/SectionHeader";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { MEANING_ICONS } from "@/lib/copy";
 import { formatDate, protectRefs, urgencyOf, urgencyTone, type UrgencyLevel } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -73,6 +74,37 @@ function DecideCard({ contract: c, party, today }: { contract: Contract; party: 
   );
 }
 
+const TITLE = "Decide by";
+const ABOUT = "The window to cancel closes soon. Keeping a contract is fine too — then there is nothing to do.";
+
+/** A line of the card's words while it loads: a bar at the words' own line height. */
+const Line = ({ className }: { className?: string }) => (
+  <div className={cn("flex h-[22px] items-center", className)}>
+    <Skeleton className="h-3 w-full" />
+  </div>
+);
+
+/**
+ * The room of "Decide by" while the contracts load, so the contracts below move little when it comes. ContractsView
+ * shows it only when this browser last saw a decision or has not been here yet, so a household with nothing to
+ * decide sees it go once. It is therefore lower than a decision (176 px on a phone, 170 from `sm` up; a decision is
+ * about 350 and 224): the room that would spare the first move costs the other one as much, so it sits between them
+ * (Nov 2026, 390 px with the processor slowed four times: about 0.04 with a decision, 0.09 with none; 1280 px: 0.01
+ * and 0.08). Above it, the cost summary's stand-in has the summary's own height, so only this room moves anything.
+ */
+export function DecideByLoading() {
+  return (
+    <div aria-hidden data-testid="decide-by-loading" className="mb-8">
+      <Skeleton className="mb-3 h-5 w-28" />
+      <div className="card min-h-[144px] p-4 sm:min-h-0 sm:p-5">
+        <Line className="w-3/4" />
+        <Line className="mt-1.5" />
+        <Skeleton className="mt-3.5 h-8 w-48 rounded-lg" />
+      </div>
+    </div>
+  );
+}
+
 export function DecideBy({ contracts, partyById, today }: { contracts: Contract[]; partyById: Map<string, Party>; today: string }) {
   if (!contracts.length) return null;
   return (
@@ -80,9 +112,9 @@ export function DecideBy({ contracts, partyById, today }: { contracts: Contract[
       <SectionHeader
         id="decide-by-title"
         icon={MEANING_ICONS.decideBy}
-        title="Decide by"
+        title={TITLE}
         count={contracts.length}
-        description="The window to cancel closes soon. Keeping a contract is fine too — then there is nothing to do."
+        description={ABOUT}
       />
       {/* two side by side only when the content column has room for two (not by the window's width) */}
       <ul className={cn("grid gap-3", contracts.length > 1 && "grid-cols-[repeat(auto-fit,minmax(min(100%,28rem),1fr))]")}>

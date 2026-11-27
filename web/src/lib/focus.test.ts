@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { focusAfterLeaving, focusOrigin, focusWhenReady, setToastHandBack } from "./focus";
+import { focusAfterLeaving, focusOrigin, focusWhenReady, freeBand, revealPlan, revealWhenStill, setToastHandBack } from "./focus";
 
 describe("focusAfterLeaving", () => {
   beforeEach(() => {
@@ -104,5 +104,397 @@ describe("focusWhenReady from where the action started", () => {
     focusWhenReady(() => el("choice"), 5000, { always: true });
     vi.advanceTimersByTime(50);
     expect(el("choice")).toHaveFocus();
+  });
+});
+
+describe("revealPlan: in view between the bars, not the window", () => {
+  // a 320×568 phone: the top bar to 56, the tab bar from 504 (448 px between them)
+  const phone = { top: 56, bottom: 504 };
+
+  it("a card taller than the room comes in from its top (centred, its name ended under the top bar)", () => {
+    // 533 px fits the 568 px window, but not the room the bars leave
+    expect(revealPlan({ top: 17, bottom: 17 + 533 }, phone)).toEqual({ shown: false, block: "start" });
+    // shown once it starts just below the bar (its scroll margins land it 4 px below)
+    expect(revealPlan({ top: 60, bottom: 60 + 533 }, phone)).toEqual({ shown: true, block: "start" });
+    expect(revealPlan({ top: 64, bottom: 64 + 533 }, phone).shown).toBe(true);
+    // pushed 54 px further down by the page, its name is no longer the first thing under the bar: not in view (it
+    // once was, anywhere in the room's upper half, and stayed there)
+    expect(revealPlan({ top: 114, bottom: 114 + 533 }, phone).shown).toBe(false);
+    expect(revealPlan({ top: 300, bottom: 300 + 533 }, phone).shown).toBe(false);
+  });
+
+  it("a card the room holds is centred, also one that would not fit the root's scroll padding (446 px in 448)", () => {
+    // the scroll padding (72 top, 80 bottom) leaves 416 px: measured against it, this card was pinned to the top
+    expect(revealPlan({ top: 300, bottom: 300 + 446 }, phone)).toEqual({ shown: false, block: "center" });
+    expect(revealPlan({ top: 57, bottom: 57 + 446 }, phone)).toEqual({ shown: true, block: "center" });
+    // its bottom under the tab bar is not in view
+    expect(revealPlan({ top: 70, bottom: 70 + 446 }, phone).shown).toBe(false);
+  });
+});
+
+describe("freeBand: the room the bars really leave", () => {
+  // a 320×568 phone as Chromium answers it: nothing at all at innerHeight - 0.5, the bars at whole pixels
+  const boxes: { el: HTMLElement; top: number; bottom: number }[] = [];
+  const bar = (tag: string, top: number, bottom: number) => {
+    const el = document.createElement(tag);
+    el.style.position = "fixed";
+    el.getBoundingClientRect = () => ({ top, bottom, height: bottom - top, left: 0, right: 320, width: 320, x: 0, y: top, toJSON: () => null });
+    document.body.append(el);
+    boxes.push({ el, top, bottom });
+  };
+  const height = window.innerHeight;
+  beforeEach(() => {
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 568 });
+    document.elementsFromPoint = (_x: number, y: number) =>
+      y >= window.innerHeight - 0.5 ? [] : boxes.filter((b) => y >= b.top && y < b.bottom).map((b) => b.el);
+  });
+  afterEach(() => {
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: height });
+    // @ts-expect-error -- jsdom has none: put it back as it was
+    delete document.elementsFromPoint;
+    boxes.length = 0;
+    document.body.innerHTML = "";
+  });
+
+  it("finds the tab bar at the window's bottom edge (probed at innerHeight - 0.5 it found nothing)", () => {
+    bar("header", 0, 56);
+    bar("nav", 504, 568);
+    expect(freeBand(160)).toEqual({ top: 56, bottom: 504 });
+  });
+
+  it("finds the demo's tour bar floating just above the tab bar", () => {
+    bar("header", 0, 56);
+    bar("nav", 504, 568);
+    bar("section", 438, 492);
+    expect(freeBand(160)).toEqual({ top: 56, bottom: 438 });
+  });
+
+  it("is the whole window when no bar is there", () => {
+    expect(freeBand(160)).toEqual({ top: 0, bottom: 568 });
+  });
+});
+
+describe("revealWhenStill", () => {
+  let card: HTMLElement;
+  let top = 900;
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame", "performance"] });
+    card = document.createElement("article");
+    card.getBoundingClientRect = () => ({ top, bottom: top + 300, height: 300, left: 0, right: 300, width: 300, x: 0, y: top, toJSON: () => null });
+    card.scrollIntoView = vi.fn();
+    document.body.append(card);
+    top = 900;
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    document.body.innerHTML = "";
+  });
+
+  it("waits until the page stands still, then brings the card into view (centred, smoothly unless motion is reduced)", () => {
+    const stop = revealWhenStill(card);
+    // the page above it still grows: the card moves every frame
+    for (let i = 0; i < 10; i++) {
+      top += 40;
+      vi.advanceTimersToNextFrame();
+    }
+    expect(card.scrollIntoView).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(200);
+    expect(card.scrollIntoView).toHaveBeenCalledWith({ block: "center", behavior: "smooth" });
+    stop();
+  });
+
+  it("stops for good when the person scrolls: no scrollIntoView follows their wheel", () => {
+    const stop = revealWhenStill(card, { reducedMotion: true });
+    vi.advanceTimersToNextFrame();
+    window.dispatchEvent(new WheelEvent("wheel", { deltaY: 100 }));
+    vi.advanceTimersByTime(2000);
+    expect(card.scrollIntoView).not.toHaveBeenCalled();
+    // the watch did run, and would have revealed it: without the wheel the same card is brought into view
+    const again = revealWhenStill(card, { reducedMotion: true });
+    vi.advanceTimersByTime(200);
+    expect(card.scrollIntoView).toHaveBeenCalledWith({ block: "center", behavior: "auto" });
+    again();
+    stop();
+  });
+
+  describe("the person's scroll wins over one already under way", () => {
+    let y = 0;
+    let height = 3000;
+    beforeEach(() => {
+      y = 0;
+      height = 3000;
+      Object.defineProperty(window, "scrollY", { configurable: true, get: () => y });
+      Object.defineProperty(document.documentElement, "scrollHeight", { configurable: true, get: () => height });
+      vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+    });
+    afterEach(() => {
+      // @ts-expect-error -- back to jsdom's own
+      delete window.scrollY;
+      // @ts-expect-error -- back to jsdom's own
+      delete document.documentElement.scrollHeight;
+      vi.restoreAllMocks();
+    });
+
+    it("a wheel during its smooth scroll stops that scroll where it is (it went on to the card, against the wheel)", () => {
+      const stop = revealWhenStill(card);
+      // still for four frames after the first: revealed
+      for (let i = 0; i < 5; i++) vi.advanceTimersToNextFrame();
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(1);
+      // the smooth scroll is under way: the page moves
+      y = 100;
+      top = 800;
+      vi.advanceTimersToNextFrame();
+      window.dispatchEvent(new WheelEvent("wheel", { deltaY: -300 }));
+      expect(window.scrollTo).toHaveBeenCalledWith({ top: 100, behavior: "instant" });
+      vi.advanceTimersByTime(2000);
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(1);
+      stop();
+    });
+
+    it("and the wheel's own scroll is done from there (stopping the smooth scroll, Chromium drops it)", () => {
+      y = 400;
+      const stop = revealWhenStill(card);
+      for (let i = 0; i < 5; i++) vi.advanceTimersToNextFrame();
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(1);
+      const wheel = new WheelEvent("wheel", { deltaY: -300, cancelable: true });
+      window.dispatchEvent(wheel);
+      expect(wheel.defaultPrevented).toBe(true);
+      expect(window.scrollTo).toHaveBeenCalledWith({ top: 100, behavior: "instant" });
+      stop();
+    });
+
+    /** Revealed with motion on, its smooth scroll under way (the page has moved since): the stop it returns. */
+    const underWay = () => {
+      const stop = revealWhenStill(card);
+      for (let i = 0; i < 5; i++) vi.advanceTimersToNextFrame();
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(1);
+      y = 100;
+      top = 800;
+      vi.advanceTimersToNextFrame();
+      return stop;
+    };
+
+    it.each(["Shift", "Control"])("%s on its own (Shift+Tab begun, a screen reader quieted) neither stops that scroll nor the watch", (key) => {
+      const stop = underWay();
+      const press = new KeyboardEvent("keydown", { key, cancelable: true, bubbles: true });
+      document.body.dispatchEvent(press);
+      expect(window.scrollTo).not.toHaveBeenCalled();
+      expect(press.defaultPrevented).toBe(false);
+      // the watch goes on: the smooth scroll ends short (the page still grew), and the card is brought into view again
+      top = 900;
+      vi.advanceTimersByTime(200);
+      expect((card.scrollIntoView as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(1);
+      stop();
+    });
+
+    it("a key that scrolls nothing (Tab) leaves that scroll to reach the card", () => {
+      const stop = underWay();
+      document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true }));
+      expect(window.scrollTo).not.toHaveBeenCalled();
+      stop();
+    });
+
+    it.each(["PageDown", "ArrowUp", " "])("a key that scrolls (%j) stops that scroll where it is, and the watch", (key) => {
+      const stop = underWay();
+      document.body.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+      expect(window.scrollTo).toHaveBeenCalledWith({ top: 100, behavior: "instant" });
+      top = 900;
+      vi.advanceTimersByTime(2000);
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(1);
+      stop();
+    });
+
+    it("but Space in a field types a space: it scrolls nothing", () => {
+      const stop = underWay();
+      const field = document.createElement("input");
+      document.body.append(field);
+      field.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }));
+      expect(window.scrollTo).not.toHaveBeenCalled();
+      stop();
+    });
+
+    it("a sideways wheel (the lanes chart) stops that scroll but goes on as it came: not taken over", () => {
+      const stop = underWay();
+      const wheel = new WheelEvent("wheel", { deltaX: 120, deltaY: 0, cancelable: true });
+      window.dispatchEvent(wheel);
+      expect(wheel.defaultPrevented).toBe(false);
+      expect(window.scrollTo).toHaveBeenCalledWith({ top: 100, behavior: "instant" });
+      stop();
+    });
+
+    it("a wheel that goes more sideways than down (a diagonal swipe on a touchpad) is not taken over either", () => {
+      const stop = underWay();
+      const wheel = new WheelEvent("wheel", { deltaX: 300, deltaY: 50, cancelable: true });
+      window.dispatchEvent(wheel);
+      expect(wheel.defaultPrevented).toBe(false);
+      // stopped where it is, without the wheel's 50 px added by hand: the browser does the wheel as it came
+      expect(window.scrollTo).toHaveBeenCalledWith({ top: 100, behavior: "instant" });
+      stop();
+    });
+
+    it.each([
+      ["Control", { ctrlKey: true }],
+      ["Alt", { altKey: true }],
+      ["Meta", { metaKey: true }],
+    ])("an arrow or End with %s held (a shortcut, not a scroll) leaves that scroll to reach the card", (_name, held) => {
+      const stop = underWay();
+      document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, ...held }));
+      document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "End", bubbles: true, ...held }));
+      expect(window.scrollTo).not.toHaveBeenCalled();
+      stop();
+    });
+
+    it("a touch stops that scroll where it is, and the watch (the finger takes the page from there)", () => {
+      const stop = underWay();
+      window.dispatchEvent(new Event("touchstart"));
+      expect(window.scrollTo).toHaveBeenCalledWith({ top: 100, behavior: "instant" });
+      top = 900;
+      vi.advanceTimersByTime(2000);
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(1);
+      stop();
+    });
+
+    it("a wheel once the page stands still stops nothing that is not there", () => {
+      top = 200;
+      const stop = revealWhenStill(card);
+      vi.advanceTimersByTime(200);
+      expect(card.scrollIntoView).not.toHaveBeenCalled();
+      window.dispatchEvent(new WheelEvent("wheel", { deltaY: -300 }));
+      expect(window.scrollTo).not.toHaveBeenCalled();
+      stop();
+    });
+
+    it("a scroll that comes with no wheel, touch, key or press (the scroll bar dragged) is the person's: not undone", () => {
+      (card.scrollIntoView as ReturnType<typeof vi.fn>).mockImplementation(() => {
+        y = 700;
+        top = 200;
+      });
+      const stop = revealWhenStill(card, { reducedMotion: true });
+      vi.advanceTimersByTime(200);
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(1);
+      // shown, and the page stands still; then the person drags the scroll bar back to the top
+      y = 0;
+      top = 900;
+      vi.advanceTimersByTime(2000);
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(1);
+      stop();
+    });
+
+    it("but the page growing above the card is not a scroll of the person's: the card is brought back (the control)", () => {
+      (card.scrollIntoView as ReturnType<typeof vi.fn>).mockImplementation(() => {
+        y = 700;
+        top = 200;
+      });
+      const stop = revealWhenStill(card, { reducedMotion: true });
+      vi.advanceTimersByTime(200);
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(1);
+      // what is above it loads: the page is taller and the card further down
+      height = 3700;
+      top = 900;
+      vi.advanceTimersByTime(2000);
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(2);
+      stop();
+    });
+  });
+
+  describe("the page changes after the card was placed: it is put back where it belongs (a 320×568 phone)", () => {
+    let y = 0;
+    let height = 3000;
+    let cardHeight = 403;
+    const bars: { el: HTMLElement; top: number; bottom: number }[] = [];
+    const bar = (tag: string, barTop: number, barBottom: number) => {
+      const el = document.createElement(tag);
+      el.style.position = "fixed";
+      el.getBoundingClientRect = () => ({ top: barTop, bottom: barBottom, height: barBottom - barTop, left: 0, right: 320, width: 320, x: 0, y: barTop, toJSON: () => null });
+      document.body.append(el);
+      bars.push({ el, top: barTop, bottom: barBottom });
+    };
+    const innerHeight = window.innerHeight;
+    /** Where scrollIntoView puts the card: "start" 4 px below the top bar, "center" in the middle of the room. */
+    const lands = (room: { top: number; bottom: number }) => (options?: boolean | ScrollIntoViewOptions) => {
+      const block = typeof options === "object" ? options.block : "start";
+      const to = block === "center" ? room.top + (room.bottom - room.top - cardHeight) / 2 : 60;
+      y += top - to;
+      top = to;
+    };
+    beforeEach(() => {
+      y = 0;
+      height = 3000;
+      cardHeight = 403;
+      top = 900;
+      Object.defineProperty(window, "innerHeight", { configurable: true, value: 568 });
+      Object.defineProperty(window, "scrollY", { configurable: true, get: () => y });
+      Object.defineProperty(document.documentElement, "scrollHeight", { configurable: true, get: () => height });
+      card.getBoundingClientRect = () => ({ top, bottom: top + cardHeight, height: cardHeight, left: 0, right: 320, width: 320, x: 0, y: top, toJSON: () => null });
+      document.elementsFromPoint = (_x: number, at: number) =>
+        at >= window.innerHeight - 0.5 ? [] : bars.filter((b) => at >= b.top && at < b.bottom).map((b) => b.el);
+      bar("header", 0, 56);
+      bar("nav", 504, 568);
+    });
+    afterEach(() => {
+      Object.defineProperty(window, "innerHeight", { configurable: true, value: innerHeight });
+      // @ts-expect-error -- back to jsdom's own
+      delete window.scrollY;
+      // @ts-expect-error -- back to jsdom's own
+      delete document.documentElement.scrollHeight;
+      // @ts-expect-error -- jsdom has none: put it back as it was
+      delete document.elementsFromPoint;
+      bars.length = 0;
+    });
+
+    it("a card that fitted starts below the top bar once a bar that arrived late leaves too little room (the demo's tour bar)", () => {
+      (card.scrollIntoView as ReturnType<typeof vi.fn>).mockImplementation(lands({ top: 56, bottom: 504 }));
+      const stop = revealWhenStill(card, { reducedMotion: true });
+      vi.advanceTimersByTime(200);
+      // 403 px fits the 448 px between the bars: centred, at 78.5
+      expect(card.scrollIntoView).toHaveBeenLastCalledWith({ block: "center", behavior: "auto" });
+      expect(top).toBe(78.5);
+      // the tour bar comes after it (its code loads on its own), floating above the tab bar; the page keeps room for it
+      bar("section", 438, 492);
+      height += 66;
+      vi.advanceTimersByTime(500);
+      // 382 px are left: the card is too tall for them now and starts just below the top bar (centred it stayed
+      // there, its name 23 px down and its bottom under the tour bar)
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(2);
+      expect(card.scrollIntoView).toHaveBeenLastCalledWith({ block: "start", behavior: "auto" });
+      expect(top).toBe(60);
+      stop();
+    });
+
+    it("a tall card the page then pushes down is put back just below the top bar", () => {
+      cardHeight = 533;
+      (card.scrollIntoView as ReturnType<typeof vi.fn>).mockImplementation(lands({ top: 56, bottom: 504 }));
+      const stop = revealWhenStill(card, { reducedMotion: true });
+      vi.advanceTimersByTime(200);
+      expect(card.scrollIntoView).toHaveBeenCalledWith({ block: "start", behavior: "auto" });
+      expect(top).toBe(60);
+      // something above it changes after all and the browser does not keep its place: 54 px further down
+      height += 54;
+      top += 54;
+      vi.advanceTimersByTime(500);
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(2);
+      expect(top).toBe(60);
+      stop();
+    });
+
+    it("a tall card the page cannot bring further up (near its end) is left where its reveal put it: no reveal again and again", () => {
+      cardHeight = 533;
+      // the page is scrolled as far as it goes: the card stays 150 px down
+      (card.scrollIntoView as ReturnType<typeof vi.fn>).mockImplementation(() => {
+        y += top - 150;
+        top = 150;
+      });
+      const stop = revealWhenStill(card, { reducedMotion: true });
+      vi.advanceTimersByTime(3000);
+      // once more from there, which moves nothing: then it is left as it is
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(2);
+      // but once the page changes (it grew below the card), the card can come up and is brought there
+      (card.scrollIntoView as ReturnType<typeof vi.fn>).mockImplementation(lands({ top: 56, bottom: 504 }));
+      height += 400;
+      vi.advanceTimersByTime(500);
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(3);
+      expect(top).toBe(60);
+      stop();
+    });
   });
 });

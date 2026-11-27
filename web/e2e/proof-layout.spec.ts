@@ -403,6 +403,7 @@ test("adding a proof file says so once — never as a letter being read in the u
   const { draftId } = setup!;
   await open(page, `/letters/${draftId}`);
   const proof = page.getByRole("region", { name: "Proof of sending" });
+  const jobsBefore = new Set((await apiGet<{ id: string }[]>(page, "/api/jobs")).map((j) => j.id));
   await proof.getByRole("button", { name: "Add proof" }).click();
   const dialog = page.getByRole("dialog", { name: "Add proof" });
   // new bytes each run: the same file twice on one letter is refused
@@ -411,8 +412,11 @@ test("adding a proof file says so once — never as a letter being read in the u
   await dialog.getByRole("button", { name: "Add proof" }).click();
   await expect(page.getByText(/kept private, never sent to Claude\./)).toBeVisible();
   await expect(proof.getByText("IMG_Einlieferungsbeleg.pdf")).toBeVisible();
-  // its private job runs at once: give a card time to show up, then check none did
-  await page.waitForTimeout(1500);
+  // its private job runs at once: once it has ended (and the page has drawn what it was told), no card showed up
+  await expect
+    .poll(async () => (await apiGet<{ id: string; status: string }[]>(page, "/api/jobs")).filter((j) => !jobsBefore.has(j.id)).map((j) => j.status))
+    .toEqual(["done"]);
+  await settle(page);
   const corner = page.getByRole("list", { name: "Letters being read" });
   await expect(corner).toBeAttached();
   await expect(corner.getByRole("listitem")).toHaveCount(0);

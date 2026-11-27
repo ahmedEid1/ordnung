@@ -1,0 +1,1 @@
+var e=`Online demo:`;function t(){return!1}function n(){return`off`}function r(){return n()!==`off`}export{t as n,r,e as t};

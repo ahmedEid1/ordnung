@@ -26,6 +26,7 @@ import { Popover } from "@/components/ui/Popover";
 import { toast } from "@/components/ui/Toast";
 import { usePhoneCompanion } from "@/features/phone/client";
 import { focusWhenReady } from "@/lib/focus";
+import { useOnePress } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { answerOf, memberById, MINE } from "./logic";
 import { HOUSEHOLD_CHANGE_TOAST, MANAGE_HOUSEHOLD_HREF, MAX_PEOPLE, membersOf, nameProblem, oneLine, refusal, useChangeHousehold } from "./save";
@@ -226,10 +227,18 @@ export function useLetterFor(detail: DocumentDetail, editable: boolean): LetterF
     focusWhenReady(() => (asks ? (questionRef.current?.querySelector("button") ?? null) : changeRef.current?.isConnected ? changeRef.current : null));
   };
 
+  // While an answer is saved the question's buttons are `aria-disabled` (not `disabled`, which drops focus to the
+  // page), the one pressed busy; one answer at a time, also for two presses that come before they are drawn busy.
+  const { pressed, busy, once } = useOnePress<"yes" | "mine" | "other">();
+
   /** File the letter (a person's id, or {@link MINE}); the toast's Undo puts back the answer it had. */
-  const answer = (next: string, name: string | null) => {
-    const before = h ? answerOf(h, doc.id) : current;
-    if (next === before) return;
+  const answer = (next: string, name: string | null, by: "yes" | "mine" | "other") =>
+    once(() => {
+      const before = h ? answerOf(h, doc.id) : current;
+      if (next === before) return Promise.resolve();
+      return fileAs(next, name, before);
+    }, by);
+  const fileAs = (next: string, name: string | null, before: string | null) =>
     file.mutateAsync({ letters: { [doc.id]: next } }).then(
       () => {
         // the pressed button is gone with the question: the keyboard goes on from Change
@@ -243,7 +252,6 @@ export function useLetterFor(detail: DocumentDetail, editable: boolean): LetterF
       },
       ignoreFailedRequest, // a failed request: the mutation's error toast says what went wrong
     );
-  };
   const choices = (close: () => void) => (
     <Choices
       current={current}
@@ -252,7 +260,7 @@ export function useLetterFor(detail: DocumentDetail, editable: boolean): LetterF
       manage={!phone}
       onChoose={(next, name) => {
         close();
-        answer(next, name);
+        answer(next, name, "other");
       }}
     />
   );
@@ -318,15 +326,16 @@ export function useLetterFor(detail: DocumentDetail, editable: boolean): LetterF
           Is this letter for {suggested.name}?
         </p>
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="primary" onClick={() => answer(suggested.id, suggested.name)} disabled={file.isPending}>
+          <Button size="sm" variant="primary" onClick={() => answer(suggested.id, suggested.name, "yes")} loading={pressed === "yes"} aria-disabled={busy || undefined}>
             Yes
           </Button>
-          <Button size="sm" onClick={() => answer(MINE, null)} disabled={file.isPending}>
+          <Button size="sm" onClick={() => answer(MINE, null, "mine")} loading={pressed === "mine"} aria-disabled={busy || undefined}>
             No, it's mine
           </Button>
           {people.length >= 2 ? (
             <Popover label={CHOICES_LABEL} placement="bottom-start" className="w-[20rem] p-4" content={choices}>
-              <Button size="sm" variant="ghost" disabled={file.isPending}>
+              {/* a press while an answer is saved opens nothing (the popover opens on a click nobody prevented) */}
+              <Button size="sm" variant="ghost" loading={pressed === "other"} aria-disabled={busy || undefined} onClick={(e) => busy && e.preventDefault()}>
                 Someone else…
               </Button>
             </Popover>

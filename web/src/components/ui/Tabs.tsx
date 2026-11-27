@@ -91,15 +91,19 @@ export function Tabs<V extends string>({
     setEdges((prev) => (prev.start === start && prev.end === end ? prev : { start, end }));
   }, []);
 
-  // every render (labels and counts change the row's width) and whenever the row resizes
-  useLayoutEffect(measure);
+  // when the row is drawn, and when it or one of its tabs changes size (a label or a count changes a tab's width) —
+  // not on every render: reading the row's widths makes the browser lay out the whole page first, which a page
+  // that renders as you type (the Inbox's search) paid on every key
+  const tabsKey = items.map((t) => t.value).join("\u0000");
+  useLayoutEffect(measure, [measure, tabsKey]);
   useEffect(() => {
     const el = listRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver(measure);
     ro.observe(el);
+    for (const tab of el.children) ro.observe(tab);
     return () => ro.disconnect();
-  }, [measure]);
+  }, [measure, tabsKey]);
 
   // keep the selected tab in view (clear of the fades) when it changes or the row starts to
   // overflow — not on every scroll, so a swipe along the row isn't undone
@@ -190,7 +194,8 @@ export function Tabs<V extends string>({
                   transition={{ type: "spring", stiffness: 500, damping: 40 }}
                   className={cn(
                     "absolute",
-                    pill ? cn("inset-0", SEGMENT_THUMB) : "inset-x-2 bottom-0 h-0.5 rounded-full bg-ink",
+                    // forced colours paint the underline in the page's colour, over the selected tab's frame
+                    pill ? cn("inset-0", SEGMENT_THUMB) : "inset-x-2 bottom-0 h-0.5 rounded-full bg-ink forced-colors:hidden",
                   )}
                   aria-hidden
                 />

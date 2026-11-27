@@ -828,6 +828,33 @@
         "x-ordnung-phone": true
       }
     },
+    "/api/documents/titles": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Document Titles",
+        "description": "Every letter's id, title, file name and status, newest first, as the list has them (the trash and proof\nfiles left out): what a page needs to name letters, or to tell whether any is still being read, without the\nrest of each row (at 3,000 letters about a seventh of the list's size).",
+        "operationId": "document_titles_api_documents_titles_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentTitle"
+                  },
+                  "type": "array",
+                  "title": "Response Document Titles Api Documents Titles Get"
+                }
+              }
+            }
+          }
+        },
+        "x-ordnung-phone": true
+      }
+    },
     "/api/documents.json": {
       "get": {
         "tags": [
@@ -1856,6 +1883,33 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-ordnung-phone": true
+      }
+    },
+    "/api/items/titles": {
+      "get": {
+        "tags": [
+          "items"
+        ],
+        "summary": "Item Titles",
+        "description": "Every to-do's id, title and letter, as the list orders them (those of a trashed letter left out): what\na page needs to name a to-do and lead to its letter, without the rest of each to-do.",
+        "operationId": "item_titles_api_items_titles_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ItemTitle"
+                  },
+                  "type": "array",
+                  "title": "Response Item Titles Api Items Titles Get"
                 }
               }
             }
@@ -9819,6 +9873,50 @@
         "title": "DocumentRow",
         "description": "A letter as the list (``GET /api/documents``) returns it: every ``Document`` field but\n``LEFT_OUT_OF_LIST``, plus ``found_in``, where a search (``q``) found the letter\n(``LetterFoundIn``; ``None`` when the list wasn't searched). A view model made by the route,\nnever stored: ``Document`` stays the table's model and what Ask's ledger fingerprint hashes.\n\nIts fields are copied from ``Document`` by name, so a field the letter gains reaches the list by\nitself."
       },
+      "DocumentTitle": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "processing",
+              "processed",
+              "needs_review",
+              "failed",
+              "held"
+            ],
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "filename",
+          "status"
+        ],
+        "title": "DocumentTitle",
+        "description": "What a page needs to name a letter, and to tell whether it is still being read (``GET\n/api/documents/titles``): the letter list's other fields stay out."
+      },
       "DocumentTrace": {
         "properties": {
           "doc_id": {
@@ -12065,6 +12163,37 @@
         "type": "object",
         "title": "ItemPatch",
         "description": "Edits to a to-do."
+      },
+      "ItemTitle": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "doc_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "doc_id"
+        ],
+        "title": "ItemTitle",
+        "description": "What a page needs to name a to-do and lead to its letter (``GET /api/items/titles``)."
       },
       "Job": {
         "properties": {

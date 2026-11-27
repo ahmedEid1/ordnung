@@ -11,15 +11,39 @@ import { UploadCenter } from "@/components/shell/UploadCenter";
 import { PausedBanner } from "@/components/shell/PausedBanner";
 import { SyncBanner } from "@/components/shell/SyncBanner";
 import { MockBanner } from "@/components/shell/MockBanner";
-import { PartyDrawer } from "@/features/party/PartyDrawer";
 import { AddLettersProvider } from "@/components/shell/AddLetters";
 import { PageMetaProvider, useDocumentTitle } from "@/components/shell/page-meta";
 import { useRecordOrigin } from "@/components/shell/origin";
-import { Toaster } from "@/components/ui/Toast";
-import { DemoTour } from "@/features/tour/DemoTour";
+import { Toaster, toast } from "@/components/ui/Toast";
 import { StandbyScreen, standbyKeepsPage } from "@/features/sync/StandbyScreen";
 import { useBrowserNotifications } from "@/features/notifications/useBrowserNotifications";
+import { usePartyDrawer } from "@/lib/party-drawer";
 import { BootScreen, HealthUnreachable } from "./screens";
+import { lazyPart } from "./lazyPart";
+
+// the demo's tour loads only in the demo, the People & organisations drawer when it is first opened: neither is in
+// every page's first load
+const DemoTour = lazyPart(() => import("@/features/tour/DemoTour").then((m) => m.DemoTour));
+const PartyDrawer = lazyPart(() => import("@/features/party/PartyDrawer").then((m) => m.PartyDrawer), {
+  // its code didn't load and the app did not reload for it (it did a minute ago, or Ordnung doesn't answer): say so,
+  // or a click on a name does nothing
+  failed: () =>
+    toast({
+      id: "party-drawer-failed",
+      tone: "danger",
+      title: "Couldn't open this person or organisation",
+      description: "Ordnung may have been updated or restarted. Reload the page to open it.",
+      action: { label: "Reload", onClick: () => window.location.reload() },
+    }),
+});
+
+/** The drawer from its first open on (it stays, so it can close as it opens); a failed load tries again at the next open. */
+function LazyPartyDrawer() {
+  const { partyId } = usePartyDrawer();
+  const [wanted, setWanted] = useState(false);
+  if (partyId && !wanted) setWanted(true);
+  return wanted ? <PartyDrawer retry={partyId} /> : null;
+}
 
 /** Thin progress line while a lazy route loads. */
 function NavigationProgress() {
@@ -194,10 +218,11 @@ export function AppLayout() {
         <div className="flex min-h-dvh bg-canvas">
           <Sidebar />
           {/* fixed over the page, but here in the tab order: after the navigation, before the page */}
-          <DemoTour />
+          {health.data.demo ? <DemoTour /> : null}
           <div className="flex min-w-0 flex-1 flex-col">
             <TopBar />
-            <MockBanner />
+            {/* only a build with the mock world can be in mock mode (vite.config.ts) */}
+            {__ORDNUNG_MOCKS__ ? <MockBanner /> : null}
             <PausedBanner />
             <SyncBanner />
             <main id="main" tabIndex={-1} className="room-for-overlays flex flex-1 flex-col outline-none">
@@ -210,7 +235,7 @@ export function AppLayout() {
         <Toaster>
           <UploadCenter />
         </Toaster>
-        <PartyDrawer />
+        <LazyPartyDrawer />
         <ScrollRestoration getKey={(loc) => loc.pathname} />
       </AddLettersProvider>
     </PageMetaProvider>

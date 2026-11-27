@@ -10,6 +10,7 @@ import { toast } from "@/components/ui/Toast";
 import { formatIban, ibanLooksValid, normalizeIban } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
 import { focusWhenReady } from "@/lib/focus";
+import { useOnePress } from "@/lib/hooks";
 import { MOVING_CHECKLIST_ID, moveDayError, moveDayRange, movedLine, movingRows, moveStanding } from "@/features/today/moving";
 import { HouseholdCard } from "@/features/household/HouseholdCard";
 import { SaveBar, SectionHeading, SettingsCard } from "./SettingsCard";
@@ -49,7 +50,7 @@ export function profileErrors(f: ProfileForm): Partial<Record<keyof ProfileForm,
 
 /** The stored move's link and button: text-sized, in the line's flow. */
 const MOVE_ACTION =
-  "inline-flex min-h-6 items-center rounded font-medium text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60";
+  "inline-flex min-h-6 items-center rounded font-medium text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60 aria-disabled:opacity-60";
 
 /** An address as it is saved: each line trimmed, no empty lines around it. */
 const cleanAddress = (address: string) => cleanProfile({ name: "", address, email: "", phone: "", iban: "" }).address;
@@ -229,9 +230,13 @@ export function ProfileSection({ profile }: { profile: Profile }) {
   // left there is no card to go to
   const dashboard = useDashboard({ enabled: standing });
   const rowsLeft = dashboard.data && !dashboard.isFetching ? movingRows(dashboard.data.suggestions).length : null;
+  // "Stop the checklist" is busy while it is saved (`aria-disabled`, not `disabled`, which drops focus to the page) and
+  // takes one press at a time, also for a quick double click; it waits while the profile is saved too
+  const stopping = useOnePress();
   const stopChecklist = () => {
+    if (update.isPending) return;
     const back = { moved_on: profile.moved_on ?? "", old_address: profile.old_address };
-    update.mutateAsync({ moved_on: "", old_address: "" }).then(
+    stopping.once(() => update.mutateAsync({ moved_on: "", old_address: "" }).then(
       () => {
         focusWhenReady(() => addressRef.current);
         toast({
@@ -242,7 +247,7 @@ export function ProfileSection({ profile }: { profile: Profile }) {
         });
       },
       ignoreFailedRequest, // a failed request: the error toast comes from the mutation's meta
-    );
+    ));
   };
   // "Moved recently?": the new address was saved first, so the move goes alone (the address stays); once it
   // stands, focus goes on to its line. Undo clears it again
@@ -333,7 +338,8 @@ export function ProfileSection({ profile }: { profile: Profile }) {
               <button
                 type="button"
                 onClick={stopChecklist}
-                disabled={update.isPending}
+                aria-disabled={update.isPending || stopping.busy || undefined}
+                aria-busy={stopping.busy || undefined}
                 className={MOVE_ACTION}
               >
                 Stop the checklist

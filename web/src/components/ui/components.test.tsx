@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { useState } from "react";
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -178,6 +178,57 @@ describe("Button", () => {
     await user.keyboard("{Enter}");
     expect(pressed).toBe(1);
     expect(icon).toHaveFocus();
+  });
+
+  it("is never really disabled while busy, even when also passed `disabled` for the same request", async () => {
+    const user = userEvent.setup();
+    let pressed = 0;
+    function Harness() {
+      const [busy, setBusy] = useState(false);
+      return (
+        <>
+          <Button
+            loading={busy}
+            disabled={busy}
+            onClick={() => {
+              pressed += 1;
+              setBusy(true);
+            }}
+          >
+            Remove
+          </Button>
+          <IconButton icon={X} label="Forget" loading={busy} disabled={busy} />
+          <button type="button" onClick={() => setBusy(false)}>
+            Done
+          </button>
+        </>
+      );
+    }
+    renderWithProviders(<Harness />);
+    const button = screen.getByRole("button", { name: "Remove" });
+    button.focus();
+    await user.keyboard("{Enter}");
+    expect(button).toHaveFocus();
+    expect(button).not.toBeDisabled();
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("button", { name: "Forget" })).not.toBeDisabled();
+    await user.keyboard("{Enter}");
+    expect(pressed).toBe(1);
+    // done: a plain button again
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(button).not.toHaveAttribute("aria-disabled");
+  });
+
+  it("keeps a press on a button that is only aria-disabled (it can say what is missing)", async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    renderWithProviders(
+      <Button aria-disabled onClick={onClick}>
+        Continue
+      </Button>,
+    );
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    expect(onClick).toHaveBeenCalledTimes(1);
   });
 
   it("gives a filled button an edge in forced colours, where its fill is dropped (WCAG 1.4.11)", () => {
@@ -375,6 +426,46 @@ describe("Switch and Checkbox", () => {
     // inside the border, the knob sits 2 px from either end, as before
     rerender(<Switch checked onCheckedChange={() => {}} label="Keep private — no AI" />);
     expect(screen.getByRole("switch", { name: "Keep private — no AI" }).querySelector("span")).toHaveClass("translate-x-4");
+  });
+
+  it("a busy switch keeps focus, says it is busy, looks it, and takes no press — not on its label either", async () => {
+    const user = userEvent.setup();
+    const onCheckedChange = vi.fn();
+    renderWithProviders(<Switch checked onCheckedChange={onCheckedChange} label="Phone access" busy />);
+    const track = screen.getByRole("switch", { name: "Phone access" });
+    track.focus();
+    await user.keyboard(" ");
+    await user.keyboard("{Enter}");
+    await user.click(track);
+    await user.click(screen.getByText("Phone access"));
+    expect(onCheckedChange).not.toHaveBeenCalled();
+    expect(track).toHaveFocus();
+    expect(track).toHaveAttribute("aria-busy", "true");
+    expect(track).toHaveAttribute("aria-disabled", "true");
+    expect(track).not.toBeDisabled();
+    expect(track).toHaveClass("aria-disabled:opacity-60", "aria-busy:cursor-progress");
+    expect(screen.getByText("Phone access").closest("label")).toHaveClass("cursor-progress");
+  });
+
+  it("a switch that can't be used now is reached by the keyboard, says why, and takes no press", async () => {
+    const user = userEvent.setup();
+    const onCheckedChange = vi.fn();
+    renderWithProviders(
+      <>
+        <Switch checked={false} onCheckedChange={onCheckedChange} label="Phone access" aria-disabled aria-describedby="why" />
+        <p id="why">Phone access can't be used in the online demo.</p>
+      </>,
+    );
+    const track = screen.getByRole("switch", { name: "Phone access" });
+    await user.tab();
+    expect(track).toHaveFocus();
+    expect(track).toHaveAccessibleDescription("Phone access can't be used in the online demo.");
+    expect(track).toHaveAttribute("aria-disabled", "true");
+    expect(track).not.toHaveAttribute("aria-busy");
+    await user.keyboard(" ");
+    await user.click(screen.getByText("Phone access"));
+    expect(onCheckedChange).not.toHaveBeenCalled();
+    expect(track).toHaveAttribute("aria-checked", "false");
   });
 
   it("wrap their descriptions without a one-word last line", () => {

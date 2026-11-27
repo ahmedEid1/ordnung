@@ -5,7 +5,7 @@
  */
 import type { Locator, Page } from "@playwright/test";
 import type { DocumentDetail } from "@/api/types";
-import { apiGet, apiPatch, expect, letterId, letterItem, open, setTour, shownAs, test } from "./helpers";
+import { apiGet, apiPatch, expect, expectPaintedOff, letterId, letterItem, open, pageDrops, setTour, shownAs, test, watchFocus } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -159,8 +159,22 @@ test.describe("phone 390 px: what the verdict leads with, and the viewer", () =>
     expect(box.overflowY).not.toMatch(/auto|scroll/);
     expect(box.scroll).toBeLessThanOrEqual(1);
     const pager = pages.getByRole("navigation", { name: "Turn pages" });
-    await pager.getByRole("button", { name: "Next" }).click();
+    // from the keyboard: Next onto the last page keeps focus (a disabled Next dropped it to the page), and Tab goes
+    // on from there
+    const next = pager.getByRole("button", { name: "Next" });
+    await next.focus();
+    await watchFocus(page);
+    await page.keyboard.press("Enter");
     await expect(pages.getByRole("img", { name: "Page 2 of 2" })).toBeVisible();
+    await expect(next).toBeFocused();
+    await expect(next).toHaveAttribute("aria-disabled", "true");
+    expect(await pageDrops(page), "focus fell to the page").toEqual([]);
+    await page.keyboard.press("Shift+Tab");
+    const previous = pager.getByRole("button", { name: "Previous" });
+    await expect(previous).toBeFocused();
+    // and in high contrast that Next looks off, as the disabled Next did (it looked like the enabled Previous)
+    await page.emulateMedia({ forcedColors: "active" });
+    await expectPaintedOff(next, previous);
   });
 
   test("a fact on a photo: the quote sits under the photo, Escape closes it, and 'Back to …' returns", async ({ page }) => {
@@ -188,41 +202,32 @@ const FINE = "21_verwarnungsgeld_parken.jpg";
 /** A letter with one open to-do: its "Mark done" empties the verdict's band. */
 const PASSPORT = "18_reisepass.jpg";
 
-type FocusWatch = { drops: string[]; since: number; stop: boolean };
-
-/**
- * From now on, note each frame drawn while focus is on the page (<body>, where a screen reader says nothing and Tab
- * starts again at the top): looked at right after every frame, so a drop too short for a look every 100 ms still
- * counts. Focus that is on <body> only within a frame (the button pressed is removed, and the frame's own work moves
- * focus on before it is drawn) is never shown or told to anyone, so it is not a drop. {@link focusStays} reads the notes.
- */
-async function watchFocus(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    const watch: FocusWatch = { drops: [], since: performance.now(), stop: false };
-    (window as unknown as { __focusWatch: FocusWatch }).__focusWatch = watch;
-    const look = () => {
-      if (watch.stop) return;
-      if (!document.activeElement || document.activeElement === document.body) watch.drops.push(`a frame ${Math.round(performance.now() - watch.since)} ms after the key`);
-      requestAnimationFrame(() => setTimeout(look, 0));
-    };
-    // a timer set in a frame's callback runs once that frame is drawn
-    requestAnimationFrame(() => setTimeout(look, 0));
-  });
-}
-
 /** Since {@link watchFocus}, and for 1.5 s more: focus never fell to the page, and it ends where `where` says. */
 async function focusStays(page: Page, where: Locator): Promise<void> {
   // A deliberate observation window, not a wait for a state: the check is that focus never drops
   // during it, and watchFocus looks at every frame until it ends.
   const from = await page.evaluate(() => performance.now());
   await page.waitForFunction((t) => performance.now() - t >= 1500, from);
-  const drops = await page.evaluate(() => {
-    const watch = (window as unknown as { __focusWatch: FocusWatch }).__focusWatch;
-    watch.stop = true;
-    return watch.drops;
-  });
-  expect(drops, "focus fell to the page").toEqual([]);
+  expect(await pageDrops(page), "focus fell to the page").toEqual([]);
   await expect(where).toBeFocused();
+}
+
+/**
+ * Hold the next `method` request to a URL `match` picks until `release()` is called (a slow server): `sent` resolves
+ * once it has been sent.
+ */
+async function holdRequest(page: Page, match: (url: URL) => boolean, method: string): Promise<{ sent: Promise<void>; release: () => void }> {
+  let release = () => {};
+  let wasSent = () => {};
+  const answer = new Promise<void>((resolve) => (release = resolve));
+  const sent = new Promise<void>((resolve) => (wasSent = resolve));
+  await page.route(match, async (route) => {
+    if (route.request().method() !== method) return route.fallback();
+    wasSent();
+    await answer;
+    await route.fallback();
+  }, { times: 1 });
+  return { sent, release };
 }
 
 /** Put the letter's to-dos back as they were (these tests share the demo). */
@@ -288,6 +293,8 @@ test("“Not a real to-do” hands focus to the next to-do, and Undo gives it ba
     const id = (await menu.getAttribute("id"))!;
     await menu.focus();
     await page.keyboard.press("Enter");
+    // the menu takes focus on its first item in the frame after it opens: End before that went nowhere
+    await expect(page.getByRole("menuitem").first()).toBeFocused();
     await page.keyboard.press("End");
     await expect(page.getByRole("menuitem", { name: "Not a real to-do" })).toBeFocused();
     await page.keyboard.press("Enter");
@@ -298,9 +305,48 @@ test("“Not a real to-do” hands focus to the next to-do, and Undo gives it ba
     // (the closing toast hands focus back to the next row's menu first)
     await page.keyboard.press("Alt+KeyN");
     await page.keyboard.press("Tab");
-    await expect(page.getByRole("button", { name: "Undo" })).toBeFocused();
+    const undo = page.getByRole("button", { name: "Undo" });
+    await expect(undo).toBeFocused();
+    // the Undo's request is held: while it runs the Undo is busy and keeps focus (a disabled one dropped it to the page)
+    const undoing = await holdRequest(page, (url) => url.pathname === `/api/items/${id.replace("item-actions-", "")}`, "PATCH");
+    await watchFocus(page);
     await page.keyboard.press("Enter");
+    await undoing.sent;
+    await expect(undo).toBeFocused();
+    await expect(undo).toHaveAttribute("aria-disabled", "true");
+    await expect(undo).toHaveAttribute("aria-busy", "true");
+    await expect(undo).toHaveJSProperty("disabled", false);
+    undoing.release();
     await expect(page.locator(`[id="${id}"]`)).toBeFocused();
+    expect(await pageDrops(page), "focus fell to the page").toEqual([]);
+  } finally {
+    await reopenAll(page, docId, before);
+  }
+});
+
+test("Undo after “Mark done”, from the keyboard, keeps focus in the verdict card", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const docId = await letterId(page, FINE);
+  const before = (await apiGet<DocumentDetail>(page, `/api/documents/${docId}`)).items.map((i) => ({ id: i.id, status: i.status }));
+  const openBefore = before.filter((i) => i.status === "open").length;
+  expect(openBefore, "the fine has more than one open to-do").toBeGreaterThan(1);
+  const openNow = async () => (await apiGet<DocumentDetail>(page, `/api/documents/${docId}`)).items.filter((i) => i.status === "open").length;
+  try {
+    await open(page, `/documents/${docId}`);
+    const card = page.locator("article[aria-labelledby='verdict-title']");
+    await card.getByRole("button", { name: "Mark done", exact: true }).first().focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByText("Marked as done").first()).toBeVisible();
+    await expect.poll(openNow).toBe(openBefore - 1);
+    await expect(card.locator(":focus")).toHaveCount(1);
+    // Undo from the keyboard: the to-do comes back, the card is drawn anew, and focus stays in it
+    await page.keyboard.press("Alt+KeyN");
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("button", { name: "Undo" })).toBeFocused();
+    await watchFocus(page);
+    await page.keyboard.press("Enter");
+    await expect.poll(openNow).toBe(openBefore);
+    await focusStays(page, card.locator(":focus"));
   } finally {
     await reopenAll(page, docId, before);
   }

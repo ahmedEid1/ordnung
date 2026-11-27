@@ -212,7 +212,8 @@ test("short laptops (1280×720, 1024×768): the tour is never cut off — docked
 test("“Read all”: a screen reader hears the tray's one line, then the recap — nothing from the corner's progress card", async ({ page }) => {
   await setTour(page, null);
   const unread = (await apiGet<{ opened: boolean }[]>(page, "/api/demo/mail")).filter((t) => !t.opened).length;
-  test.skip(unread < 2, "New mail was read already (a rerun on the same demo): no “Read all” to press");
+  // never skipped: a demo whose New mail was read already (a rerun on the same server) is a failure to look at
+  expect(unread, "letters left unread in New mail, for “Read all” (start a fresh demo)").toBeGreaterThanOrEqual(2);
   await open(page, "/inbox");
   // every text that any live or status region on the page takes from now on, and where it is
   await page.evaluate(() => {

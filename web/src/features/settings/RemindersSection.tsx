@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Field, Select, Switch } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
 import { setBrowserNotifications, showNotification, useNotifyState } from "@/features/notifications/useBrowserNotifications";
+import { useOnePress } from "@/lib/hooks";
 import { isStaticDemo } from "@/lib/mode";
 import { DesktopNotificationsCard } from "./DesktopNotificationsCard";
 import { completeReminderDays, leadDaysError, leadLabel, normalizeLeadDays, REMINDER_KINDS, sameReminderDays } from "./logic";
@@ -126,20 +127,19 @@ const TEST_NOTIFICATION = {
 /** Opt-in browser notifications (SPEC §12): a per-browser switch that asks for permission. */
 function BrowserNotificationsCard() {
   const state = useNotifyState();
-  const [busy, setBusy] = useState(false);
+  // while the browser asks, the switch is busy (`aria-disabled`, not `disabled`, which drops focus to the page) and
+  // takes one press at a time, also for a quick double click
+  const { busy, once } = useOnePress();
 
-  const toggle = async (on: boolean) => {
-    setBusy(true);
-    try {
+  const toggle = (on: boolean) =>
+    once(async () => {
       const next = await setBrowserNotifications(on);
       if (on && next.enabled) showNotification(TEST_NOTIFICATION);
       else if (on && next.permission === "denied")
         toast.warn("Your browser blocked notifications", { description: "Allow notifications for this site in your browser's site settings, then turn this on again." });
-    } finally {
-      setBusy(false);
-    }
-  };
+    });
 
+  const noteId = useId();
   const note = !state.available
     ? isStaticDemo()
       ? "Not available in the online demo — install Ordnung to get notifications."
@@ -154,15 +154,18 @@ function BrowserNotificationsCard() {
       id="set-notify"
       description="A gentle nudge on this computer — Ordnung has no cloud server and sends nothing anywhere; your browser shows it."
     >
+      {/* off for a reason: still reached by the keyboard, and the note says why */}
       <Switch
         checked={state.enabled}
-        onCheckedChange={(on) => void toggle(on)}
-        disabled={busy || !state.available || (state.permission === "denied" && !state.enabled)}
+        onCheckedChange={toggle}
+        busy={busy}
+        aria-disabled={!state.available || (state.permission === "denied" && !state.enabled) || undefined}
+        aria-describedby={note ? noteId : undefined}
         label="Notify me in this browser while Ordnung is open"
         description="Dates due today or tomorrow, and urgent Ideas that are overdue — each at most once a day."
       />
       {note ? (
-        <p className="mt-3 rounded-lg bg-surface-2/70 px-3 py-2 text-[12.5px] leading-5 text-muted" role="note">
+        <p id={noteId} className="mt-3 rounded-lg bg-surface-2/70 px-3 py-2 text-[12.5px] leading-5 text-muted" role="note">
           {note}
         </p>
       ) : null}

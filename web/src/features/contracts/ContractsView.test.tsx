@@ -10,7 +10,7 @@ import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { createMockServer } from "@/mocks/server";
 import { useMockApi } from "@/test/mockFetch";
 import { makeTestQueryClient, renderWithProviders } from "@/test/render";
-import { ContractsView } from "./ContractsView";
+import { ContractsView, SAW_DECISION } from "./ContractsView";
 import { BY_LAW, NoticePeriodForm, noticeBases, noticeDayError, noticeValueError } from "./NoticePeriodForm";
 
 async function seededClient(mutate?: (c: Contract[]) => Contract[]) {
@@ -162,6 +162,62 @@ describe("Contracts page — fits every width, honest states", () => {
     expect(screen.queryByRole("tablist")).toBeNull();
     expect(screen.queryByText("0")).toBeNull();
     expect(screen.getByRole("heading", { level: 2, name: "Your contracts" })).toHaveTextContent(/^Your contracts$/);
+  });
+
+  it("while loading keeps the room of 'Decide by' when this browser last saw a decision or knows nothing yet", () => {
+    localStorage.removeItem(SAW_DECISION);
+    vi.stubGlobal("fetch", () => new Promise<Response>(() => {}));
+    const first = renderWithProviders(<ContractsView />, { route: "/contracts" });
+    // a stand-in only: nothing a screen reader meets, no heading in the page's outline
+    expect(screen.getByTestId("decide-by-loading")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.queryByRole("heading", { name: /Decide by/ })).toBeNull();
+    first.unmount();
+
+    localStorage.setItem(SAW_DECISION, "true");
+    const again = renderWithProviders(<ContractsView />, { route: "/contracts" });
+    expect(screen.getByTestId("decide-by-loading")).toBeInTheDocument();
+    again.unmount();
+
+    localStorage.setItem(SAW_DECISION, "false");
+    renderWithProviders(<ContractsView />, { route: "/contracts" });
+    expect(screen.queryByTestId("decide-by-loading")).toBeNull();
+    localStorage.removeItem(SAW_DECISION);
+  });
+
+  it("while loading, the cost summary's stand-in is laid out as the summary is, with words as long as its own", () => {
+    vi.stubGlobal("fetch", () => new Promise<Response>(() => {}));
+    localStorage.setItem(SAW_DECISION, "false");
+    const none = renderWithProviders(<ContractsView />, { route: "/contracts" });
+    const standIn = screen.getByTestId("cost-summary-loading");
+    expect(standIn).toHaveAttribute("aria-hidden", "true");
+    // the summary's four figures, each with its label, a figure and a note (unseen: drawn as bars)
+    const cells = standIn.querySelectorAll(":scope > div > div");
+    expect(cells).toHaveLength(4);
+    expect([...cells].map((c) => c.firstElementChild?.textContent)).toEqual(["Fixed costs", "Per year", "Active contracts", "Next decision"]);
+    expect(cells[3]).toHaveTextContent(/no notice window closes in the next 60 days$/);
+    none.unmount();
+
+    // a decision last time: its note, shorter
+    localStorage.setItem(SAW_DECISION, "true");
+    renderWithProviders(<ContractsView />, { route: "/contracts" });
+    expect(screen.getByTestId("cost-summary-loading")).toHaveTextContent(/Send by then to leave your contract$/);
+    localStorage.removeItem(SAW_DECISION);
+  });
+
+  it("remembers whether this browser saw a decision", async () => {
+    localStorage.removeItem(SAW_DECISION);
+    // nothing to decide: noted, so the next visit keeps no room for it
+    const none = await seededClient((cs) => cs.map((c) => (c.computed ? { ...c, computed: { ...c.computed, send_by: null } } : c)));
+    const shown = renderWithProviders(<ContractsView />, { client: none, route: "/contracts" });
+    expect(screen.queryByRole("region", { name: /Decide by/ })).toBeNull();
+    await waitFor(() => expect(localStorage.getItem(SAW_DECISION)).toBe("false"));
+    shown.unmount();
+
+    const client = await seededClient();
+    renderWithProviders(<ContractsView />, { client, route: "/contracts" });
+    expect(screen.getByRole("region", { name: /Decide by/ })).toBeInTheDocument();
+    await waitFor(() => expect(localStorage.getItem(SAW_DECISION)).toBe("true"));
+    localStorage.removeItem(SAW_DECISION);
   });
 
   it("a load error replaces the page (no 'No contracts yet') and stays put while retrying", async () => {

@@ -17,7 +17,8 @@
  * The Inbox asks for two more things: while it shows one year (`filedYear`), a row that arrived in another
  * year says its own (" · dated 2025"; in the table's date column on a line under the date), and in its
  * Everyone view a letter filed for someone in the household carries a tag ("For Alex Rivera", `filedFor`),
- * with the status. Other pages (the Tax year page) leave both out.
+ * with the status. Other pages (the Tax year page) leave both out. A long Inbox draws only its first rows (`limit`,
+ * ./rows.ts); a group cut short still counts all of its letters.
  */
 import { Link } from "react-router";
 import { useId, useMemo, type ReactNode } from "react";
@@ -44,6 +45,7 @@ import { PersonTag } from "@/features/household/PersonTag";
 import { scamLetterIds } from "@/features/document/verdict";
 import { inboxDateInfo, isReading, otherYearDated, pinJustRead, type LetterGroup, type OpenSummary } from "./filters";
 import { useSeenLetters } from "./seen";
+import { firstRows } from "./rows";
 import { MarkedGerman } from "@/features/document/Explained";
 
 /** A next step this close (in days) is spelled out under the letter. */
@@ -63,6 +65,7 @@ export function LettersList({
   dated = false,
   filedYear = null,
   filedFor,
+  limit = Infinity,
 }: {
   groups: LetterGroup[];
   parties: Map<string, Party>;
@@ -75,6 +78,8 @@ export function LettersList({
   filedYear?: number | null;
   /** Whom a letter is filed for in the household (the Inbox's Everyone view), shown as a tag; null: nobody. */
   filedFor?: (doc: ListedLetter) => string | null;
+  /** How many letters to draw, in order (the Inbox's long lists); the rest are left out. */
+  limit?: number;
 }) {
   const tray = useTrayByDoc();
   const justRead = useOpenedTrayDocs();
@@ -84,7 +89,7 @@ export function LettersList({
   const scams = useMemo(() => scamLetterIds(suggestions.data ?? []), [suggestions.data]);
   // until the warnings are known, no letter does: any of them may be one (fail closed)
   const scamsKnown = suggestions.data !== undefined;
-  const shown = useMemo(() => pinJustRead(groups, justRead), [groups, justRead]);
+  const shown = useMemo(() => firstRows(pinJustRead(groups, justRead), limit), [groups, justRead, limit]);
   // letters that wait for Claude aren't being read: their group says what they wait for
   const { jobs } = useEvents();
   const groupLabel = (g: LetterGroup) => (g.key === "reading" && g.docs.every((d) => claudeWaitReason(jobs[d.id])) ? "Waiting for Claude" : g.label);
@@ -113,9 +118,9 @@ export function LettersList({
             <h3 id={`grp-${g.key}`} className="eyebrow mb-2 flex items-center gap-1.5">
               {groupLabel(g)}
               <span aria-hidden className="font-medium tabular-nums">
-                · {g.docs.length}
+                · {g.count}
               </span>
-              <span className="sr-only">{` (${g.docs.length} ${g.docs.length === 1 ? "letter" : "letters"})`}</span>
+              <span className="sr-only">{` (${g.count} ${g.count === 1 ? "letter" : "letters"})`}</span>
             </h3>
             <ul className="card divide-y divide-line overflow-hidden">
               {g.docs.map((d) => {

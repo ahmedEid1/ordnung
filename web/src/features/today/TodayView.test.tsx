@@ -2,10 +2,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { qk } from "@/api/hooks";
-import type { Brief, Dashboard, Document, Party, Profile } from "@/api/types";
+import type { Brief, Dashboard, Document, DocumentTitle, Party, Profile } from "@/api/types";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { createMockServer } from "@/mocks/server";
-import { useMockApi } from "@/test/mockFetch";
+import { holdRequests, useMockApi } from "@/test/mockFetch";
+import { expectOnePressAtATime } from "@/test/busyButton";
 import { makeTestQueryClient, renderWithProviders } from "@/test/render";
 import { TodayView } from "./TodayView";
 
@@ -18,6 +19,8 @@ async function seededClient(mutate?: (d: Dashboard) => Dashboard) {
   qc.setQueryData(qk.parties.list(), await get<Party[]>("/parties"));
   qc.setQueryData(qk.documents.list({ status: "needs_review" }), await get<Document[]>("/documents", "status=needs_review"));
   qc.setQueryData(qk.documents.list({ status: "failed" }), await get<Document[]>("/documents", "status=failed"));
+  // the page names letters from their titles; the tests take letters to change from the list
+  qc.setQueryData(qk.documents.titles, await get<DocumentTitle[]>("/documents/titles"));
   qc.setQueryData(qk.documents.list({}), await get<Document[]>("/documents"));
   qc.setQueryData(qk.brief, await get<Brief>("/brief"));
   qc.setQueryData(qk.profile, await get<Profile>("/profile"));
@@ -160,4 +163,17 @@ describe("Today page", () => {
     expect(card).toHaveTextContent("Ordnung can't tell you what it asks or by when until it's read.");
     expect(within(card).getByRole("link", { name: /Open it/ })).toHaveAttribute("href", `/documents/${doc!.id}`);
   });
+});
+
+describe("Today's Ideas: an answer on its way", () => {
+  for (const name of ["Remind me in a week", "Not relevant"]) {
+    it(`keeps focus on "${name}" while it is saved, takes one press at a time, and the next once it failed`, async () => {
+      useMockApi();
+      const held = holdRequests((call) => call.method === "PATCH" && call.path.startsWith("/suggestions/"));
+      renderWithProviders(<TodayView />, { client: await seededClient() });
+      const ideas = await screen.findByRole("region", { name: "Ideas from your secretary" });
+      const first = () => within(ideas).getAllByRole("article")[0]!;
+      await expectOnePressAtATime({ user: userEvent.setup(), button: () => within(first()).getByRole("button", { name }), held });
+    });
+  }
 });

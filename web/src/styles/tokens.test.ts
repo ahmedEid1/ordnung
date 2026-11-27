@@ -283,8 +283,25 @@ describe("forced colours (Windows high contrast)", () => {
     expect(forced).toMatch(/\[class~="focus-visible:ring-inset"\]:focus-visible\s*{\s*outline-offset:\s*-2px;\s*}/);
   });
 
-  it("frames the current page, the selected tab and the chosen option (WCAG 1.4.1)", () => {
-    expect(forced).toMatch(/:is\(a, button\)\[aria-current="page"\],\s*\[role="tab"\]\[aria-selected="true"\],\s*\[role="radio"\]\[aria-checked="true"\]\s*{\s*border:\s*2px solid Highlight;/);
+  it("frames the current page, the selected tab and the chosen option (WCAG 1.4.1), inside them: the frame takes no room", () => {
+    expect(forced).toMatch(
+      /:is\(a, button\)\[aria-current="page"\],\s*\[role="tab"\]\[aria-selected="true"\],\s*\[role="radio"\]\[aria-checked="true"\]\s*{\s*outline:\s*2px solid Highlight;\s*outline-offset:\s*-2px;\s*}/,
+    );
+    expect(forced).not.toMatch(/border:\s*2px solid Highlight/);
+  });
+
+  it("draws that frame twice as wide when it is focused, or focus there would change nothing on screen (WCAG 2.4.7)", () => {
+    expect(forced).toMatch(
+      /:is\(a, button\)\[aria-current="page"\]:focus-visible,\s*\[role="tab"\]\[aria-selected="true"\]:focus-visible,\s*\[role="radio"\]\[aria-checked="true"\]:focus-visible\s*{\s*outline-width:\s*4px;\s*outline-offset:\s*-4px;\s*}/,
+    );
+  });
+
+  it("paints a control that is off but keeps focus (aria-disabled) in GrayText, as a disabled one; a busy one keeps its colour", () => {
+    expect(forced).toMatch(
+      /:is\(button, a, \[role="switch"\]\)\[aria-disabled="true"\]:not\(\[aria-busy="true"\]\)\s*{\s*color:\s*GrayText;\s*border-color:\s*GrayText;\s*}/,
+    );
+    // a busy one is left out as in the `inactive` variant, which dims these controls without forced colours
+    expect(css).toContain('@custom-variant inactive (&:is(:disabled, [aria-disabled="true"]):not([aria-busy="true"]));');
   });
 });
 

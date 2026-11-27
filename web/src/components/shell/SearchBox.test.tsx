@@ -7,12 +7,16 @@
  * checked on real pages in `e2e/shell.spec.ts`.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useState } from "react";
+import { useBlocker, useLocation } from "react-router";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import { focusManager, onlineManager } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "@/test/render";
 import { createMockServer, type MockServer } from "@/mocks/server";
 import { SEARCH_LIMIT } from "@/api/hooks";
+import { Button } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Dialog";
 import { AddLettersProvider } from "./AddLetters";
 import { Highlight, SearchBox } from "./SearchBox";
 
@@ -99,6 +103,26 @@ describe("search results", () => {
     expect(all).toHaveAttribute("href", "/inbox?q=Muster");
     expect(screen.getAllByRole("option")).toHaveLength(SEARCH_LIMIT);
     expect(screen.getByRole("status")).toHaveTextContent(`More than ${SEARCH_LIMIT} letters found`);
+  });
+
+  it("in the phone sheet, “See all” opened in a new tab (Ctrl+click) hands focus back to “Search letters”", async () => {
+    const many = Array.from({ length: SEARCH_LIMIT + 1 }, (_, i) => ({ ...srv.db.state.documents[0]!, id: `doc_many_${i}`, title: `Musterbrief ${i + 1}` }));
+    searchOverride = () => json(many);
+    const { router } = renderSearch();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Search letters" }));
+    const sheet = await screen.findByRole("dialog", { name: "Search letters" });
+    await user.type(within(sheet).getByRole("combobox", { name: "Search your letters" }), "Muster");
+    const all = await within(sheet).findByRole("link", { name: "See all letters matching “Muster”" });
+    // (jsdom opens no tab: the click's own navigation is kept from happening here)
+    all.addEventListener("click", (e) => e.preventDefault());
+    await user.keyboard("{Control>}");
+    await user.click(all);
+    await user.keyboard("{/Control}");
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Search letters" })).toBeNull());
+    expect(router.state.location.pathname).toBe("/");
+    // (it fell to the page: the sheet handed it to a page that opened elsewhere)
+    await waitFor(() => expect(screen.getByRole("button", { name: "Search letters" })).toHaveFocus());
   });
 
   it("marks the active option clearly and scrolls it into view with the arrow keys", async () => {
@@ -487,5 +511,132 @@ describe("the empty phone sheet", () => {
     await waitFor(() => expect(field).toHaveFocus());
     await user.keyboard("{ArrowDown}");
     expect(options[0]).toHaveAttribute("aria-selected", "true");
+  });
+});
+
+describe("a letter chosen in the phone sheet", () => {
+  /** The shell as far as the sheet needs it, with a form that holds back leaving it while it has unsaved changes. */
+  function Shell() {
+    const { pathname } = useLocation();
+    const [dirty, setDirty] = useState(true);
+    const blocker = useBlocker(({ currentLocation, nextLocation }) => dirty && currentLocation.pathname !== nextLocation.pathname);
+    return (
+      <AddLettersProvider>
+        <SearchBox />
+        <main id="main">
+          <h1>{pathname === "/settings" ? "Settings" : "A letter"}</h1>
+          <button type="button" onClick={() => setDirty(false)}>
+            Save
+          </button>
+        </main>
+        <Dialog
+          open={blocker.state === "blocked"}
+          onClose={() => blocker.reset?.()}
+          title="Save your changes?"
+          footer={
+            <>
+              <Button onClick={() => blocker.proceed?.()}>Discard changes</Button>
+              <Button onClick={() => blocker.reset?.()}>Keep editing</Button>
+            </>
+          }
+        />
+      </AddLettersProvider>
+    );
+  }
+
+  async function chooseFromSettings() {
+    const view = renderWithProviders(<Shell />, { route: "/settings" });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Search letters" }));
+    const sheet = await screen.findByRole("dialog", { name: "Search letters" });
+    const field = within(sheet).getByRole("combobox", { name: "Search your letters" });
+    await waitFor(() => expect(field).toHaveFocus());
+    await user.type(field, "Muster");
+    await within(sheet).findByRole("listbox", { name: "Matching letters" });
+    await user.keyboard("{ArrowDown}{Enter}");
+    const question = await screen.findByRole("dialog", { name: "Save your changes?" });
+    return { ...view, user, question };
+  }
+
+  it("held back by unsaved changes: the sheet closes, so only the question shows, and “Keep editing” goes back", async () => {
+    const { router, user, question } = await chooseFromSettings();
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Search letters" })).toBeNull());
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    await user.click(within(question).getByRole("button", { name: "Keep editing" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Search letters" })).toHaveFocus());
+    expect(router.state.location.pathname).toBe("/settings");
+  });
+
+  it("held back by unsaved changes: “Discard changes” goes on to the letter, whose heading takes focus", async () => {
+    const { router, user, question } = await chooseFromSettings();
+    await user.click(within(question).getByRole("button", { name: "Discard changes" }));
+    await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/documents\//));
+    await waitFor(() => expect(screen.getByRole("heading", { level: 1, name: "A letter" })).toHaveFocus());
+  });
+
+  it("not held back: the sheet stays open, the field focused, until the letter's heading takes focus", async () => {
+    const view = renderWithProviders(<Shell />, { route: "/settings" });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await user.click(screen.getByRole("button", { name: "Search letters" }));
+    const sheet = await screen.findByRole("dialog", { name: "Search letters" });
+    const field = within(sheet).getByRole("combobox", { name: "Search your letters" });
+    await waitFor(() => expect(field).toHaveFocus());
+    await user.type(field, "Muster");
+    await within(sheet).findByRole("listbox", { name: "Matching letters" });
+    const seen: string[] = [];
+    const look = () => {
+      const a = document.activeElement;
+      const what = a === document.body ? "BODY" : a === field ? "field" : a?.tagName === "H1" ? `h1 ${a.textContent}` : (a?.tagName ?? "nothing");
+      if (seen[seen.length - 1] !== what) seen.push(what);
+    };
+    const watch = setInterval(look, 1);
+    await user.keyboard("{ArrowDown}{Enter}");
+    await waitFor(() => expect(screen.getByRole("heading", { level: 1, name: "A letter" })).toHaveFocus());
+    clearInterval(watch);
+    look();
+    expect(view.router.state.location.pathname).toMatch(/^\/documents\//);
+    expect(seen).toEqual(["field", "h1 A letter"]);
+  });
+
+  it("while the letter's page is on its way: the field is busy and says so, and Enter again goes there only once", async () => {
+    // the letter's page draws its heading only once the test lets it (its request held)
+    let release = () => {};
+    function Held() {
+      const { pathname } = useLocation();
+      const [ready, setReady] = useState(false);
+      release = () => setReady(true);
+      const loading = pathname.startsWith("/documents/") && !ready;
+      return (
+        <AddLettersProvider>
+          <SearchBox />
+          <main id="main">
+            <h1 data-loading={loading || undefined}>{pathname === "/settings" ? "Settings" : "A letter"}</h1>
+          </main>
+        </AddLettersProvider>
+      );
+    }
+    const { router } = renderWithProviders(<Held />, { route: "/settings" });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Search letters" }));
+    const sheet = await screen.findByRole("dialog", { name: "Search letters" });
+    const field = within(sheet).getByRole("combobox", { name: "Search your letters" });
+    await waitFor(() => expect(field).toHaveFocus());
+    await user.type(field, "Muster");
+    await within(sheet).findByRole("listbox", { name: "Matching letters" });
+    await user.keyboard("{ArrowDown}{Enter}");
+    await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/documents\//));
+    const letter = router.state.location.pathname;
+    // nothing said for as long as the page took: now the field is busy, and the sheet says what it waits for
+    expect(field).toHaveAttribute("aria-busy", "true");
+    expect(within(sheet).getByRole("status")).toHaveTextContent("Opening the letter…");
+    await user.keyboard("{Enter}{Enter}");
+    act(() => release());
+    await waitFor(() => expect(screen.getByRole("heading", { level: 1, name: "A letter" })).toHaveFocus());
+    expect(router.state.location.pathname).toBe(letter);
+    // one Back leaves the letter: it went into the history once (each Enter pushed it again)
+    await act(() => router.navigate(-1));
+    expect(router.state.location.pathname).toBe("/settings");
   });
 });

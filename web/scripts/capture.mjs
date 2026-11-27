@@ -3,8 +3,9 @@
  * Screenshots for the README and the guide, the demo video and GIF, captured from a running demo (`make capture`).
  *
  *   ordnung demo --serve --no-browser --reset --port 8797 --data-dir /tmp/ordnung-capture
- *   node web/scripts/capture.mjs --only shots --data /tmp/ordnung-capture --port 8797 --out docs/assets
- *   (then a second fresh demo for `--only video`)
+ *   VITE_MOCKS=1 npx vite build --outDir /tmp/ordnung-capture-mock && npx vite preview --outDir /tmp/ordnung-capture-mock --port 8799
+ *   node web/scripts/capture.mjs --only shots --data /tmp/ordnung-capture --port 8797 --mock-port 8799 --out docs/assets
+ *   (then a second fresh demo for `--only video`; scripts/capture.sh does all of it)
  *
  * The pictures (`--only shots`) and the video (`--only video`) each start from a fresh demo of their own (--reset,
  * a data folder each: `make capture` starts both): both read letters from the New-mail tray and send the phone
@@ -14,7 +15,8 @@
  * `ordnung demo`'s recorded letters include no court letter, so the court payment order comes from the
  * app's mock mode (`?mock=full`, the static web demo's data): the same app on hand-written sample
  * letters whose dates, receipts and advice card come from the rules engine
- * (scripts/gen_mock_high_stakes.py, scripts/gen_mock_advice.py). `?mock=0` returns to the demo.
+ * (scripts/gen_mock_high_stakes.py, scripts/gen_mock_advice.py). The released build carries no mock world, so
+ * that page comes from a build of its own (`VITE_MOCKS=1`) served by `vite preview` on `--mock-port`.
  *
  * Every picture and the video are drawn at CAPTURE_SCALE device pixels to the CSS pixel (2: a 1440×900 window gives
  * a 2880×1800 picture), so their text is sharp on high-density screens. The video, in a window of its own (VIDEO), is the page's own frames
@@ -46,13 +48,20 @@ const { values: opts } = parseArgs({
     port: { type: "string", default: "8797" },
     out: { type: "string", default: "docs/assets" },
     only: { type: "string" }, // "video" or "shots": each on a fresh demo of its own
+    // a `VITE_MOCKS=1` build under `vite preview`: the court payment order's page (the released build has no mock world)
+    "mock-port": { type: "string" },
   },
 });
 if (opts.only !== "shots" && opts.only !== "video") {
   throw new Error('--only shots or --only video: the pictures and the video each need a fresh demo of their own (scripts/capture.sh starts both)');
 }
 
+if (!opts["mock-port"]) {
+  throw new Error("--mock-port: the court order comes from a VITE_MOCKS=1 build under vite preview on that port (scripts/capture.sh starts one)");
+}
 const BASE = `http://127.0.0.1:${opts.port}`;
+/** The mock world's own build (`--mock-port`), where `?mock=full` opens the sample life. */
+const MOCK_BASE = `http://127.0.0.1:${opts["mock-port"]}`;
 const OUT = resolve(opts.out);
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 /** Where a failed run's screenshot goes: it may show what the guard found, so never into `<out>`. */
@@ -70,8 +79,8 @@ const MONEY_QUESTION = "What do I have to pay in the next four weeks?";
 const STATEMENT_FILE = "13_nebenkostenabrechnung_2025.pdf";
 /** An Einschreiben number with a correct check digit (the e2e suite's). */
 const TRACKING = "RT 123 456 785 DE";
-/** The mock world's court payment order (web/src/mocks/data/documents.ts), opened by `?mock=full`. */
-const COURT_ORDER = `/documents/doc_mahnbescheid?mock=full`;
+/** The mock world's court payment order (web/src/mocks/data/documents.ts), opened by `?mock=full` in its own build. */
+const COURT_ORDER = `${MOCK_BASE}/documents/doc_mahnbescheid?mock=full`;
 /** A whole number from the environment (`name`), `fallback` when unset, else stops the capture. */
 function setting(name, fallback, { min, max }) {
   const value = Number(process.env[name] || fallback);
@@ -283,6 +292,31 @@ function overlay() {
   };
   if (document.body) install();
   else document.addEventListener("DOMContentLoaded", install);
+}
+
+let carried = 0;
+/**
+ * The pointer and the caption are kept in the tab's sessionStorage, which is the page's origin's own: before a load on
+ * another origin (the demo and the mock world's build are two), they go with it, so the scene starts with the pointer
+ * where it was. Each carry is used once, by the first page of that origin that loads after it.
+ */
+async function carryPointer(page, url) {
+  const to = new URL(url).origin;
+  if (page.url().startsWith("http") && new URL(page.url()).origin === to) return;
+  const state = await page.evaluate(() => [sessionStorage.getItem("cap-xy"), sessionStorage.getItem("cap-text")]).catch(() => [null, null]);
+  if (state[0] === null) return;
+  carried += 1;
+  await page.addInitScript(
+    ([origin, xy, text, mark]) => {
+      if (location.origin !== origin) return;
+      const used = (sessionStorage.getItem("cap-carried") ?? "").split(",");
+      if (used.includes(mark)) return;
+      sessionStorage.setItem("cap-carried", [...used, mark].join(","));
+      sessionStorage.setItem("cap-xy", xy);
+      sessionStorage.setItem("cap-text", text ?? "");
+    },
+    [to, state[0], state[1], String(carried)],
+  );
 }
 
 /** The demo tour's card stays out of the pictures: the API ends it in the demo, but mock mode starts its own. */
@@ -905,6 +939,7 @@ async function tour(page, frames) {
   /** A full page load (into or out of mock mode, or a page the sidebar has no link to): left out of the video. */
   const load = async (url, ready) => {
     await caption(page, "");
+    await carryPointer(page, url);
     await page.goto(url);
     await (ready ? ready().waitFor({ timeout: 60_000 }) : shown(page));
     await settle(page, 400);
@@ -1075,7 +1110,7 @@ async function tour(page, frames) {
 
   mark("13 a court order (mock mode)");
   const advice = () => page.getByText("Act now — and get advice", { exact: false }).first();
-  await load(`${BASE}${COURT_ORDER}`, advice);
+  await load(COURT_ORDER, advice);
   await beat(page, TOUR[7], 0);
   await rest(140);
   await hold(page, 1600);
@@ -1090,7 +1125,7 @@ async function tour(page, frames) {
 
   mark("14 how it was read");
   // the tax assessment read at the start, back in the demo
-  await load(`${BASE}/documents/${taxId}?view=trace&mock=0`);
+  await load(`${BASE}/documents/${taxId}?view=trace`);
   await beat(page, TOUR[8], 400);
   const steps = page.getByRole("list", { name: "Steps of this reading" });
   await click(page, steps.getByRole("button", { name: /^Claude reads the letter/ }).first());
@@ -1344,7 +1379,7 @@ async function screenshots(browser) {
   const court = await newContext(browser);
   await court.addInitScript(hideDemoTour);
   const courtPage = await court.newPage();
-  await courtPage.goto(`${BASE}${COURT_ORDER}`);
+  await courtPage.goto(COURT_ORDER);
   await settle(courtPage, 1200);
   const byWhen = courtPage.getByRole("main").getByText("By when", { exact: true }).first();
   await byWhen.evaluate((el) => window.scrollBy(0, el.getBoundingClientRect().top - 90));

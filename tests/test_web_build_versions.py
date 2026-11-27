@@ -40,7 +40,8 @@ def test_every_bundled_package_is_the_version_the_lockfile_pins() -> None:
     notices finds every section, so the comparison is not empty by accident."""
     listed = _built_from()
     names = [name for name, _ in listed]
-    assert len(listed) >= 40, listed
+    # about 20 since the chart library (recharts and its d3 packages) left the build
+    assert len(listed) >= 15, listed
     assert len(set(names)) == len(names), names
     for name in ("react", "react-dom", "@tanstack/react-query", "lucide-react", "motion", "vite"):
         assert name in names, name

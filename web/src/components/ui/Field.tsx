@@ -108,26 +108,38 @@ export interface SwitchProps extends Omit<ComponentProps<"button">, "onChange"> 
   /** Visible label (also the accessible name). */
   label?: ReactNode;
   description?: ReactNode;
+  /** Its own change is on its way: it says so (`aria-busy`), looks it, and takes no press until it is done. */
+  busy?: boolean;
 }
 
 /**
  * On/off switch (`role="switch"`). With `label` it renders a full clickable row.
  *
+ * A switch that is busy (`busy`) or can't be used now (`aria-disabled`, with `aria-describedby` on the words that say
+ * why) is `aria-disabled`, not `disabled`: a disabled one drops keyboard focus to the page, and can't be reached to
+ * hear why it is off. It ignores presses, also a click on its label.
+ *
  * @example <Switch checked={priv} onCheckedChange={setPriv} label="Keep private — no AI" />
  */
-export function Switch({ checked, onCheckedChange, label, description, className, id, ...rest }: SwitchProps) {
+export function Switch({ checked, onCheckedChange, label, description, className, id, busy = false, "aria-disabled": ariaDisabled, ...rest }: SwitchProps) {
   const sid = useStableId(id, "sw");
+  const off = busy || ariaDisabled === true || ariaDisabled === "true";
   const btn = (
     <button
       id={sid}
       type="button"
       role="switch"
       aria-checked={checked}
-      onClick={() => onCheckedChange(!checked)}
+      aria-disabled={off || undefined}
+      aria-busy={busy || undefined}
+      onClick={() => {
+        if (!off) onCheckedChange(!checked);
+      }}
       className={cn(
         // the transparent border is what forced colours paint, where the track's fill is dropped (WCAG 1.4.11);
         // the knob sits inside it, 2 px from either end as before
         "relative inline-flex h-6 w-10 shrink-0 items-center rounded-full border-2 border-transparent transition-colors duration-200",
+        "aria-disabled:opacity-60 aria-disabled:cursor-not-allowed aria-busy:cursor-progress",
         checked ? "bg-accent" : "bg-faint",
         !label && className,
       )}
@@ -146,7 +158,7 @@ export function Switch({ checked, onCheckedChange, label, description, className
   if (!label) return btn;
   return (
     <div className={cn("flex items-start justify-between gap-4", className)}>
-      <label htmlFor={sid} className="min-w-0 flex-1 cursor-pointer">
+      <label htmlFor={sid} className={cn("min-w-0 flex-1", busy ? "cursor-progress" : off ? "cursor-not-allowed" : "cursor-pointer")}>
         <span className="block text-base font-medium text-ink">{label}</span>
         {description ? <span className="mt-0.5 block text-sm leading-5 text-pretty text-muted">{description}</span> : null}
       </label>

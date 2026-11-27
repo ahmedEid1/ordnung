@@ -32,6 +32,7 @@ from ordnung.models import (
     Item,
     ItemKind,
     ItemStatus,
+    ItemTitle,
     ListedItem,
     Priority,
     Recurrence,
@@ -157,6 +158,13 @@ def list_items(
     )
     aside = {entry.item_id: entry for entry in set_aside(store, items, today)}
     return [ListedItem.model_construct(**dict(item), aside=aside.get(item.id)) for item in items]
+
+
+@router.get("/items/titles", response_model=list[ItemTitle])
+def item_titles(store: StoreDep) -> list[ItemTitle]:
+    """Every to-do's id, title and letter, as the list orders them (those of a trashed letter left out): what
+    a page needs to name a to-do and lead to its letter, without the rest of each to-do."""
+    return store.item_titles()
 
 
 @router.get("/items/{item_id}.ics", response_class=Response)

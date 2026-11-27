@@ -428,3 +428,112 @@ export function phoneContext(browser: Browser, options: BrowserContextOptions = 
     ...options,
   });
 }
+
+// ------------------------------------------------------------------------------------------------
+// Where keyboard focus is, frame by frame (it must never fall to the page: a screen reader then says nothing and
+// Tab starts again at the top)
+// ------------------------------------------------------------------------------------------------
+
+/** A place focus stopped at: ms since {@link watchFocus}, and what had it (`BODY` or `nothing`: the page). */
+export type FocusStop = [ms: number, what: string];
+
+interface FocusWatch {
+  since: number;
+  stops: FocusStop[];
+  /** When focus last left for nothing (a focusout with no new place), to date a drop from then. */
+  leftAt: number | null;
+  /** Focus seen on the page by the last look, and since when: a drop once the next look still finds it there. */
+  onPageSince: number | null;
+  /** Focus moved (focusin or focusout) since the last look. */
+  moved: boolean;
+}
+
+/**
+ * From now on, note where focus is after every frame is drawn, and each time that changes. Read the notes with
+ * {@link focusStops} and {@link pageDrops}; a page load ends the watch.
+ *
+ * A look runs right after each frame is drawn, but other tasks can run between the drawing and the look. So focus
+ * found on the page by one look counts as a drop only when the next look finds it still there and focus did not move
+ * in between: a frame was then drawn with it. Focus that is on the page only between two frames (the button pressed
+ * is removed, and the next frame's own work moves focus on before it is drawn) is never shown or told to anyone, and
+ * is not counted. A drop is dated from the focusout that left focus to nothing, when there was one.
+ */
+export async function watchFocus(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const describe = (el: Element | null): string => {
+      if (!el) return "nothing";
+      if (el === document.body) return "BODY";
+      const name = (el.getAttribute("aria-label") ?? el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
+      return `${el.tagName}${el.id ? `#${el.id}` : ""}${name ? ` "${name}"` : ""}`;
+    };
+    const watch: FocusWatch = { since: performance.now(), stops: [], leftAt: null, onPageSince: null, moved: false };
+    (window as unknown as { __focusWatch: FocusWatch }).__focusWatch = watch;
+    const ms = (t: number) => Math.round(t - watch.since);
+    document.addEventListener("focusin", () => (watch.moved = true));
+    document.addEventListener("focusout", (e) => {
+      watch.moved = true;
+      if (!e.relatedTarget) watch.leftAt = performance.now();
+    });
+    const look = () => {
+      const what = describe(document.activeElement);
+      const last = watch.stops[watch.stops.length - 1];
+      if (what === "BODY" || what === "nothing") {
+        if (watch.onPageSince !== null && !watch.moved) {
+          if (last?.[1] !== what) watch.stops.push([ms(watch.onPageSince), what]);
+        } else watch.onPageSince = watch.leftAt ?? performance.now();
+      } else {
+        watch.onPageSince = null;
+        if (last?.[1] !== what) watch.stops.push([ms(performance.now()), what]);
+      }
+      watch.leftAt = null;
+      watch.moved = false;
+      // a timer set in a frame's callback runs once that frame is drawn
+      requestAnimationFrame(() => setTimeout(look, 0));
+    };
+    look();
+  });
+}
+
+/** Every place focus stopped at since {@link watchFocus}, in order (the first is where it was when the watch began). */
+export async function focusStops(page: Page): Promise<FocusStop[]> {
+  return page.evaluate(() => (window as unknown as { __focusWatch?: FocusWatch }).__focusWatch?.stops ?? []);
+}
+
+/** The stops since {@link watchFocus} where focus was on the page (`BODY`) or nowhere: none is the goal. */
+export async function pageDrops(page: Page): Promise<FocusStop[]> {
+  return (await focusStops(page)).filter(([, what]) => what === "BODY" || what === "nothing");
+}
+
+/**
+ * With forced colours on (Windows high contrast; emulate them first), `off`, a button that is off but keeps focus
+ * (aria-disabled, not disabled), is painted as a natively disabled button is, and not as `on`, an enabled control
+ * beside it. Forced colours replace author colours, so the dimming that marks `off` elsewhere is gone there: on main
+ * an aria-disabled Next looked exactly like the enabled Previous. The disabled button compared with is a copy of
+ * `off` (same classes, so the same border), natively disabled, put beside it for the measurement (new, it has no
+ * fade under way).
+ */
+export async function expectPaintedOff(off: Locator, on: Locator): Promise<void> {
+  const paint = (el: Element) => {
+    const style = getComputedStyle(el);
+    return { color: style.color, border: style.borderTopColor };
+  };
+  // the buttons fade between colours (150 ms): measured once the change to forced colours has faded in
+  const faded = (el: Element) => Promise.all(el.getAnimations().map((a) => a.finished.catch(() => undefined))).then(() => undefined);
+  await off.evaluate(faded);
+  await on.evaluate(faded);
+  const offPaint = await off.evaluate(paint);
+  const disabledPaint = await off.evaluate((el) => {
+    const twin = el.cloneNode(false) as HTMLButtonElement;
+    twin.removeAttribute("id");
+    twin.removeAttribute("aria-disabled");
+    twin.disabled = true;
+    twin.textContent = "Off";
+    el.after(twin);
+    const style = getComputedStyle(twin);
+    const measured = { color: style.color, border: style.borderTopColor };
+    twin.remove();
+    return measured;
+  });
+  expect(offPaint, "painted as a disabled button is").toEqual(disabledPaint);
+  expect(offPaint.color, "painted unlike the enabled control beside it").not.toBe((await on.evaluate(paint)).color);
+}

@@ -4,8 +4,8 @@
  */
 import { useCallback, useMemo } from "react";
 import { FileText, ListTodo, Signature, Users, type LucideIcon } from "lucide-react";
-import { useContracts, useDocuments, useItems, useParties } from "@/api/hooks";
-import type { Contract, Item, ListedLetter, Party } from "@/api/types";
+import { useContracts, useDocumentTitles, useItemTitles, useParties } from "@/api/hooks";
+import type { Contract, DocumentTitle, ItemTitle, Party } from "@/api/types";
 import type { CitationRef, CiteType } from "./citations";
 import { contractHref } from "@/features/contracts/links";
 
@@ -29,8 +29,8 @@ const KIND: Record<CiteType, { label: string; icon: LucideIcon }> = {
 };
 
 export interface RefSources {
-  documents?: ListedLetter[];
-  items?: Item[];
+  documents?: Pick<DocumentTitle, "id" | "title" | "filename">[];
+  items?: Pick<ItemTitle, "id" | "title" | "doc_id">[];
   contracts?: Contract[];
   parties?: Party[];
 }
@@ -71,10 +71,10 @@ export function makeRefResolver(src: RefSources) {
   return { resolve, titleOf };
 }
 
-/** Hook version of {@link makeRefResolver} over the cached ledger lists. */
+/** Hook version of {@link makeRefResolver} over the cached ledger lists (letters and to-dos by their names alone). */
 export function useRefResolver() {
-  const documents = useDocuments();
-  const items = useItems();
+  const documents = useDocumentTitles();
+  const items = useItemTitles();
   const contracts = useContracts();
   const parties = useParties();
   const resolver = useMemo(

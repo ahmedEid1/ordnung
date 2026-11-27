@@ -87,3 +87,48 @@ export function failRequests(match: (call: FetchCall) => boolean): { failed: num
   });
   return seen;
 }
+
+/** Requests {@link holdRequests} keeps unanswered, and how the test answers them. */
+export interface HeldRequests {
+  /** How many requests it picked so far (answered or not). */
+  readonly count: number;
+  /** How many of them are still unanswered. */
+  readonly waiting: number;
+  /** Answer the waiting ones as the mock server would. */
+  release(): void;
+  /** Answer the waiting ones with 500, as a server that broke would (see {@link failRequests}). */
+  fail(): void;
+}
+
+/**
+ * After {@link useMockApi}: the requests `match` picks stay unanswered until the test answers them with `release()` or
+ * `fail()` — to see a button while its own request is on its way (busy, keeping focus, taking no second press). Every
+ * later request it picks waits too, until the next `release()` or `fail()`. A held request reaches the mock server (and
+ * `useMockApi`'s `calls`) only when it is released; `count` counts it from the start.
+ */
+export function holdRequests(match: (call: FetchCall) => boolean): HeldRequests {
+  const mocked = globalThis.fetch;
+  const waiting: ((answer: "ok" | "fail") => void)[] = [];
+  let count = 0;
+  vi.stubGlobal("fetch", (input: RequestInfo | URL, init?: RequestInit) => {
+    if (!match(request(input, init))) return mocked(input, init);
+    count += 1;
+    return new Promise<Response>((resolve, reject) => {
+      waiting.push((answer) => {
+        if (answer === "fail") resolve(new Response(JSON.stringify({ detail: "Failed on purpose." }), { status: 500, headers: { "Content-Type": "application/json" } }));
+        else mocked(input, init).then(resolve, reject);
+      });
+    });
+  });
+  const answer = (how: "ok" | "fail") => waiting.splice(0).forEach((reply) => reply(how));
+  return {
+    get count() {
+      return count;
+    },
+    get waiting() {
+      return waiting.length;
+    },
+    release: () => answer("ok"),
+    fail: () => answer("fail"),
+  };
+}

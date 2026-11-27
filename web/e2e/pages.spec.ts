@@ -204,6 +204,49 @@ test("no raw enum values in the visible text of any page", async ({ page }) => {
   }
 });
 
+test("the released app has no mock mode: ?mock= and a stale session key change nothing", async ({ page }) => {
+  // the letters the Inbox lists, by their links, in order: the demo's own, whatever the address says
+  const rows = async () => {
+    await expect(page.getByRole("main").locator('a[href^="/documents/"]').first()).toBeVisible();
+    return page.getByRole("main").locator('a[href^="/documents/"]').evaluateAll((links) => links.map((a) => a.getAttribute("href")));
+  };
+  const plain = async (what: string) => {
+    await expect(page.getByText("Browser-only sample data"), what).toHaveCount(0);
+    expect(await page.evaluate(() => "__ordnungMock" in window), what).toBe(false);
+  };
+  await open(page, "/inbox", "Inbox");
+  const demo = await rows();
+  expect(demo.length).toBeGreaterThan(10);
+  await plain("no parameter");
+  for (const value of ["1", "on", "full", "0", "off", "true"]) {
+    await open(page, `/inbox?mock=${value}`, "Inbox");
+    expect(await rows(), `?mock=${value}`).toEqual(demo);
+    await plain(`?mock=${value}`);
+  }
+  // the key a build with the mock world kept mock mode on with, left in this tab
+  await page.evaluate(() => sessionStorage.setItem("ordnung.mock", "full"));
+  await open(page, "/inbox", "Inbox");
+  expect(await rows(), "a stale session key").toEqual(demo);
+  await plain("a stale session key");
+});
+
+test("pages that only name letters and to-dos never ask for every letter or every to-do whole", async ({ page }) => {
+  // GET /api/documents or /api/items with nothing to narrow it: every row whole (3.5 MB and 11 MB of JSON at 3,000
+  // letters); the titles' answers (/titles), one status's letters and a range's to-dos are fine
+  const whole: string[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    const narrowed = ["status", "q", "limit", "from", "to", "doc_id", "party_id", "kind"].some((key) => url.searchParams.has(key));
+    if (request.method() === "GET" && (url.pathname === "/api/documents" || url.pathname === "/api/items") && !narrowed) whole.push(`${page.url()} → ${url.pathname}${url.search}`);
+  });
+  const drafts = await apiGet<{ id: string }[]>(page, "/api/drafts");
+  expect(drafts.length).toBeGreaterThan(0);
+  for (const path of ["/", "/week", "/ask", "/timeline", "/settings?section=privacy", `/letters/${drafts[0]!.id}`]) {
+    await open(page, path);
+  }
+  expect(whole).toEqual([]);
+});
+
 // each page loaded once and scanned in light, then in dark (the theme switched in place, `html.dark` checked)
 test.describe("accessibility in light and dark", () => {
   for (const p of MAIN_PAGES) {

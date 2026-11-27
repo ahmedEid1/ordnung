@@ -225,6 +225,9 @@ async def test_every_get_endpoint_matches_the_openapi_schema(
         assert [row["id"] for row in records] == [row["id"] for row in listed]
         assert all(documents.LEFT_OUT_OF_LIST <= set(row) for row in records)
         assert all(row["explanation"] and row["sha256"] for row in records)
+        # the letters named: the list's letters, four fields each
+        titles = await _get(api, contract, "/api/documents/titles")
+        assert [row["id"] for row in titles] == [row["id"] for row in listed]
         detail = await _get(api, contract, f"/api/documents/{ids['doc']}")
         assert detail["items"] and detail["pages"]
         await api.client.post(f"/api/documents/{ids['doc']}/reprocess")
@@ -234,6 +237,7 @@ async def test_every_get_endpoint_matches_the_openapi_schema(
         await _get(api, contract, f"/api/documents/{ids['doc']}/trace/compare")
         await _get(api, contract, "/api/traces")
         await _get(api, contract, "/api/items", status="open", include_undated="true")
+        assert await _get(api, contract, "/api/items/titles")
         await _get(api, contract, f"/api/items/{ids['item']}")
         await _get(api, contract, "/api/contracts")
         await _get(api, contract, "/api/parties")

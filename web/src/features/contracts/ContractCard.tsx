@@ -131,7 +131,10 @@ export function ContractCard({
       // focusable from script only: a contract picked in the chart takes the focus with it
       tabIndex={-1}
       className={cn(
-        "card flex w-full min-w-0 flex-col p-4 transition-[box-shadow,border-color] duration-300 sm:p-5",
+        // brought into view from its top (too tall to show whole), it stops just below the top bar, its ring clear of
+        // it, or at the top of a window so short that the bar scrolls away; centred, it is centred between the bars
+        // (the root's scroll padding keeps 1 rem more at each edge, and the whole bar's height where it scrolls away)
+        "card flex w-full min-w-0 -scroll-my-3 flex-col p-4 transition-[box-shadow,border-color] duration-300 sm:p-5 [@media(max-height:30rem)]:scroll-mt-[-4.25rem]",
         selected && "border-accent shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-accent)_22%,transparent)]",
         !active && "bg-surface/70",
       )}

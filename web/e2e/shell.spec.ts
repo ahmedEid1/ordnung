@@ -8,7 +8,7 @@
  * read on a phone, and the opaque drop overlay.
  */
 import type { Locator, Page, Route } from "@playwright/test";
-import { apiGet, expect, letterId, open, openMail, settle, setTour, test } from "./helpers";
+import { apiGet, expect, focusStops, letterId, open, openMail, pageDrops, settle, setTour, test, watchFocus } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -345,6 +345,13 @@ test.describe("1920 px: drop overlay", () => {
 // ------------------------------------------------------------------------------------------------
 
 /** The computed outline of the focused element (focus moved by script after no pointer use: `:focus-visible`). */
+/** The frame of the current page, a selected tab or a chosen option in forced colours: its outline, drawn inside. */
+const frame = (target: Locator) =>
+  target.evaluate((el) => {
+    const s = getComputedStyle(el);
+    return `${s.outlineStyle} ${s.outlineWidth} ${s.outlineOffset}`;
+  });
+
 async function focusOutline(target: Locator): Promise<string> {
   await target.focus();
   return target.evaluate((el) => {
@@ -370,13 +377,19 @@ test.describe("forced colours: focus, the current page and filled buttons stay v
     expect(await today.evaluate((el) => getComputedStyle(el).outlineOffset)).toBe("-2px");
     expect(await focusOutline(searchField(page))).toBe("solid 2px");
     expect(await focusOutline(page.getByRole("main").locator("a[href^='/documents/']").first())).toBe("solid 2px");
-    // the current page and the selected tab had only a tint or a shadow
+    // the current page and the selected tab had only a tint or a shadow: a frame inside them (it takes no room)
     const edge = (l: Locator) => l.evaluate((el) => `${getComputedStyle(el).borderTopStyle} ${getComputedStyle(el).borderTopWidth}`);
     // (the Inbox entry's name carries its count of letters to check, which the other tests change)
     const current = sidebar.getByRole("navigation", { name: "Primary" }).locator("a[aria-current='page']");
     await expect(current).toHaveAttribute("href", "/inbox");
-    expect(await edge(current)).toBe("solid 2px");
-    expect(await edge(page.getByRole("tab", { selected: true }).first())).toBe("solid 2px");
+    expect(await frame(current)).toBe("solid 2px -2px");
+    const tab = page.getByRole("tab", { selected: true }).first();
+    expect(await frame(tab)).toBe("solid 2px -2px");
+    // focused, the frame is the focus ring as well: it must look different (it was the same frame), still inside
+    for (const framed of [current, tab]) {
+      expect(await focusOutline(framed)).toBe("solid 4px");
+      expect(await frame(framed)).toBe("solid 4px -4px");
+    }
     // a filled button: its fill is dropped, its edge is not
     expect(await edge(page.getByRole("button", { name: "Add letters" }).first())).toBe("solid 1px");
   });
@@ -390,6 +403,88 @@ test.describe("forced colours: focus, the current page and filled buttons stay v
     });
     expect(colours.knob).not.toBe(colours.track);
     expect(colours.border).toBe("solid 2px");
+  });
+});
+
+/** Every tab of the page's first tab strip, and the strip: their sizes, rounded to a tenth of a pixel. */
+const tabSizes = (page: Page) =>
+  page
+    .getByRole("main")
+    .getByRole("tablist")
+    .first()
+    .evaluate((list) => [list, ...list.querySelectorAll("[role=tab]")].map((el) => `${el.getBoundingClientRect().width.toFixed(1)}×${el.getBoundingClientRect().height.toFixed(1)}`));
+
+for (const width of [320, 1280]) {
+  for (const [path, title] of [
+    ["/inbox", "Inbox"],
+    ["/contracts", "Contracts"],
+  ] as const) {
+    test.describe(`${width} px, forced colours: the ${title} page's tabs`, () => {
+      test.use({ viewport: { width, height: 800 } });
+
+      test("frame the selected tab inside it: nothing changes size, and its thumb does not cover the frame", async ({ page }) => {
+        await open(page, path, title);
+        const before = await tabSizes(page);
+        await page.emulateMedia({ forcedColors: "active" });
+        expect(await tabSizes(page), "the same sizes with forced colours on as off").toEqual(before);
+        const selected = page.getByRole("main").getByRole("tablist").first().getByRole("tab", { selected: true });
+        await selected.focus();
+        await page.keyboard.press("ArrowRight");
+        await expect(page.getByRole("main").getByRole("tablist").first().getByRole("tab", { selected: true })).toBeFocused();
+        expect(await tabSizes(page), "the same sizes once another tab is selected (and focused)").toEqual(before);
+        const now = page.getByRole("main").getByRole("tablist").first().getByRole("tab", { selected: true });
+        /**
+         * Points `inset` px inside each edge where the tab's thumb (the hidden box laid over the tab) lies over its frame
+         * (the outline drawn there). The tab's own label may reach in that far: an outline is drawn over its content.
+         */
+        const covered = (inset: number) =>
+          now.evaluate((el, d) => {
+            const r = el.getBoundingClientRect();
+            const hits = [
+              [r.left + d, r.top + r.height / 2],
+              [r.left + r.width / 2, r.top + d],
+              [r.right - d, r.top + r.height / 2],
+              [r.left + r.width / 2, r.bottom - d],
+            ].map(([x, y]) => document.elementFromPoint(x!, y!));
+            const thumb = (h: Element | null) => {
+              const hidden = h === el ? null : h?.closest("[aria-hidden=true]");
+              return Boolean(hidden && getComputedStyle(hidden).position === "absolute");
+            };
+            return hits.filter(thumb).length;
+          }, inset);
+        // focused, its frame is wider than when it is not: focus shows, and still takes no room
+        expect(await frame(now), "the focused selected tab's frame").toBe("solid 4px -4px");
+        expect((await covered(1)) + (await covered(3)), "points inside the focused (4 px) frame, 1 and 3 px in, where the thumb lies over it").toBe(0);
+        await now.blur();
+        expect(await frame(now), "the selected tab's frame, not focused").toBe("solid 2px -2px");
+        expect(await tabSizes(page), "the same sizes once focus has left").toEqual(before);
+        expect(await now.evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe("0px");
+        expect(await covered(1), "points just inside the frame where the thumb lies over it").toBe(0);
+      });
+    });
+  }
+}
+
+test.describe("forced colours: the chart's chosen zoom", () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+
+  test("is framed inside, and choosing another changes no size", async ({ page }) => {
+    await open(page, "/contracts", "Contracts");
+    await page.emulateMedia({ forcedColors: "active" });
+    const zoom = page.getByRole("radiogroup").first();
+    const sizes = () => zoom.evaluate((g) => [g, ...g.querySelectorAll("[role=radio]")].map((el) => el.getBoundingClientRect().width.toFixed(1)));
+    const before = await sizes();
+    const chosen = zoom.getByRole("radio", { checked: true });
+    expect(await frame(chosen)).toBe("solid 2px -2px");
+    await chosen.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(zoom.getByRole("radio", { checked: true })).toBeFocused();
+    expect(await sizes()).toEqual(before);
+    const now = zoom.getByRole("radio", { checked: true });
+    expect(await frame(now), "focused, its frame is wider").toBe("solid 4px -4px");
+    await now.blur();
+    expect(await frame(now)).toBe("solid 2px -2px");
+    expect(await sizes()).toEqual(before);
   });
 });
 
@@ -407,6 +502,64 @@ test.describe("phone: a letter chosen in the search sheet", () => {
     await expect(page).toHaveURL(/\/documents\//);
     await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toBeFocused();
   });
+});
+
+/** Where focus stopped, by kind only (a letter's title is not printed): the field, a page's h1, a button by its name. */
+const stopKinds = async (page: Page) =>
+  (await focusStops(page)).map(([, what]) => (what.startsWith("INPUT") ? "field" : what.startsWith("H1") ? "h1" : what));
+
+/** At 390 px by touch: tap "Search letters", type, ArrowDown and Enter on the first match, watching focus from the field. */
+async function chooseInSheet(page: Page) {
+  await page.getByRole("button", { name: "Search letters" }).tap();
+  const sheet = page.getByRole("dialog", { name: "Search letters" });
+  const field = sheet.getByRole("combobox", { name: "Search your letters" });
+  await expect(field).toBeFocused();
+  await field.fill("Muster");
+  await expect(sheet.getByRole("listbox", { name: "Matching letters" }).getByRole("option").first()).toBeVisible();
+  await watchFocus(page);
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  return sheet;
+}
+
+test.describe("phone 390 px by touch: focus as a letter is chosen in the search sheet", () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
+  test("goes from the field straight to the letter's heading", async ({ page }) => {
+    await open(page, "/", /Sam/);
+    const sheet = await chooseInSheet(page);
+    await expect(page).toHaveURL(/\/documents\//);
+    await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toBeFocused();
+    await expect(sheet).toBeHidden();
+    // no frame on the page, none on Today's heading: the field, then the letter's
+    expect(await stopKinds(page)).toEqual(["field", "h1"]);
+    expect(await pageDrops(page)).toEqual([]);
+  });
+
+  for (const answer of ["Keep editing", "Discard changes"] as const) {
+    test(`from Settings with unsaved changes: only "Save your changes?" shows, and “${answer}” goes on from there`, async ({ page }) => {
+      await open(page, "/settings?section=profile", "Settings");
+      const name = page.getByLabel("Full name");
+      await name.fill("Sam Muster-Probe");
+      await chooseInSheet(page);
+      const question = page.getByRole("dialog", { name: "Save your changes?" });
+      await expect(question).toBeVisible();
+      // the sheet has closed: one dialog, not two (one Escape, not two, to get back)
+      await expect(page.getByRole("dialog")).toHaveCount(1);
+      await question.getByRole("button", { name: answer }).click();
+      if (answer === "Keep editing") {
+        await expect(question).toBeHidden();
+        await expect(page).toHaveURL(/\/settings\?section=profile$/);
+        await expect(name).toHaveValue("Sam Muster-Probe");
+        // back where the search began: the header's search button
+        await expect(page.getByRole("button", { name: "Search letters" })).toBeFocused();
+      } else {
+        await expect(page).toHaveURL(/\/documents\//);
+        await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toBeFocused();
+      }
+      expect(await pageDrops(page)).toEqual([]);
+    });
+  }
 });
 
 test.describe("812×375 (a phone on its side): the rail", () => {

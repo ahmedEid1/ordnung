@@ -10,7 +10,8 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { renderWithProviders } from "@/test/render";
-import { useMockApi } from "@/test/mockFetch";
+import { holdRequests, useMockApi } from "@/test/mockFetch";
+import { expectOnePressAtATime } from "@/test/busyButton";
 import { refreshMovingIdeas } from "@/mocks/moving";
 import SettingsPage from "@/pages/SettingsPage";
 
@@ -144,6 +145,16 @@ describe("I moved", () => {
     await user.click(within(toast.closest("[data-toast]") as HTMLElement).getByRole("button", { name: "Undo" }));
     await waitFor(() => expect(calls.filter((c) => c.method === "PUT").at(-1)?.body).toEqual({ moved_on: "2026-09-21", old_address: OLD }));
     expect(await screen.findByText(/You moved in on Mon 21 Sep\./)).toBeInTheDocument();
+  });
+
+  it("keeps focus on “Stop the checklist” while it is saved, one press at a time, and the next once it failed", async () => {
+    const { srv } = useMockApi();
+    srv.db.state.profile = { ...srv.db.state.profile, address: NEW, moved_on: "2026-09-21", old_address: OLD };
+    refreshMovingIdeas(srv.db);
+    const held = holdRequests((c) => c.method === "PUT" && c.path === "/profile");
+    const { user } = await openProfile();
+    const line = (await screen.findByText(/You moved in on Mon 21 Sep\./)).closest("p")!;
+    await expectOnePressAtATime({ user, button: () => within(line).getByRole("button", { name: "Stop the checklist" }), held });
   });
 
   it("once everyone on the checklist has the new address, says so instead of linking to it", async () => {

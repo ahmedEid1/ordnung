@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
 import {
   Activity as ActivityIcon,
@@ -18,7 +18,7 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
-import { useActivity, useDocuments, usePhone, useUsage } from "@/api/hooks";
+import { useActivity, useDocumentTitles, usePhone, useUsage } from "@/api/hooks";
 import type { LLMCallRecord } from "@/api/types";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -27,7 +27,6 @@ import { LoadError } from "@/components/ui/LoadError";
 import { Skeleton, SkeletonText } from "@/components/ui/Skeleton";
 import { PRIVACY_STATEMENT } from "@/features/onboarding/options";
 import { formatCompact, formatDateTime, formatFileSize, formatPercent, formatUsd } from "@/lib/format";
-import { useMediaQuery } from "@/lib/hooks";
 import { cn, plural } from "@/lib/utils";
 import {
   activityHref,
@@ -42,9 +41,6 @@ import {
   type PurposeRow,
 } from "./logic";
 import { SectionHeading, SettingsCard } from "./SettingsCard";
-
-// recharts is only needed here — load it with this section, not with the whole Settings page
-const UsageChart = lazy(() => import("./UsageChart").then((m) => ({ default: m.UsageChart })));
 
 /** Letters a call names before "+N more". */
 const DOCS_SHOWN = 2;
@@ -143,18 +139,25 @@ function Statement() {
   );
 }
 
-/** Phones: cost by purpose as rows (label and value above a full-width bar) — the chart has no room. */
+/**
+ * Cost by purpose as rows, at every width: the label and the cost above a bar as long as the cost (one series, one
+ * hue: the accent), with the calls and tokens under the label (a chart once showed them only on hover). Plain
+ * rows, nothing to focus: the table under them has the same numbers for screen readers.
+ */
 function UsageBars({ rows }: { rows: PurposeRow[] }) {
   const max = Math.max(0, ...rows.map((r) => r.cost));
   return (
     // hidden from assistive tech: the table below has the same numbers
-    <ul aria-hidden className="space-y-3">
+    <ul aria-hidden className="space-y-3" data-testid="cost-by-purpose">
       {rows.map((r) => (
         <li key={r.purpose}>
           <div className="flex items-baseline justify-between gap-3 text-sm">
             <span className="min-w-0 text-ink wrap-anywhere">{r.label}</span>
             <span className="shrink-0 font-medium tabular-nums text-ink">{formatUsd(r.cost)}</span>
           </div>
+          <p className="text-[12.5px] leading-5 text-muted">
+            {plural(r.calls, "call")} · {formatCompact(r.tokens)} tokens
+          </p>
           <div className="mt-1 h-2 overflow-hidden rounded-full bg-surface-2">
             <div className="h-full rounded-full bg-accent" style={{ width: `${max > 0 ? Math.max((r.cost / max) * 100, r.cost > 0 ? 1.5 : 0) : 0}%` }} />
           </div>
@@ -305,8 +308,7 @@ export function PrivacySection() {
       },
       { preventScrollReset: true },
     );
-  const docs = useDocuments();
-  const roomForChart = useMediaQuery("(min-width: 640px)");
+  const docs = useDocumentTitles();
   const [allActivity, setAllActivity] = useState(false);
   const [allCalls, setAllCalls] = useState(false);
   const rows = useMemo(() => purposeRows(usage.data), [usage.data]);
@@ -351,13 +353,7 @@ export function PrivacySection() {
               </dl>
 
               <h4 className="eyebrow mb-2 mt-6">Cost by purpose</h4>
-              {roomForChart ? (
-                <Suspense fallback={<Skeleton className="h-60 w-full rounded-lg" />}>
-                  <UsageChart rows={rows} />
-                </Suspense>
-              ) : (
-                <UsageBars rows={rows} />
-              )}
+              <UsageBars rows={rows} />
               {/* a table can't be `sr-only` itself: it keeps its content width and widens the page */}
               <div className="sr-only">
                 <table>

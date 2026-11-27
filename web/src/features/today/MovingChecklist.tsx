@@ -11,6 +11,7 @@ import { toast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
 import { RefText } from "@/features/ask/RefText";
 import { focusAfterLeaving, focusOrigin, focusWhenReady } from "@/lib/focus";
+import { useOnePress } from "@/lib/hooks";
 import { ideaHref } from "./helpers";
 import { collapseOut, fadeUp } from "./motion";
 import { MOVING_CHECKLIST_ID, MOVING_SHOWN, openDraftFor } from "./moving";
@@ -20,7 +21,7 @@ const TITLE_ID = `${MOVING_CHECKLIST_ID}-title`;
 const checkId = (id: string) => `moving-check-${id}`;
 
 const quiet =
-  "inline-flex h-8 items-center gap-1.5 rounded-md px-1.5 text-[12.5px] font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent";
+  "inline-flex h-8 items-center gap-1.5 rounded-md px-1.5 text-[12.5px] font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink aria-disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent";
 
 /**
  * Today's "Moving checklist" (after the person said they moved, Settings → Profile): who needs the new address,
@@ -83,13 +84,20 @@ function ChecklistCard({ rows }: { rows: Suggestion[] }) {
   const answer = (row: Suggestion, status: "done" | "dismissed") => {
     if (status === "done") mark(row.id, true);
     focusAfterLeaving(checksOnPage, checkId(row.id), TITLE_ID);
-    update.mutateAsync({ id: row.id, patch: { status } }).then(
+    return update.mutateAsync({ id: row.id, patch: { status } }).then(
       () => toast({ title: status === "done" ? "Ticked off" : "Hidden", description: row.title, undo: undo(row) }),
       (err: unknown) => {
         mark(row.id, false); // a failed request's error toast comes from the mutation's meta
         ignoreFailedRequest(err);
       },
     );
+  };
+  // "Not needed" waits while a row's answer is saved: `aria-disabled`, not `disabled` (that drops focus to the page),
+  // the one pressed busy. One press at a time, also two that come before it is drawn busy.
+  const { pressed, once } = useOnePress<string>();
+  const notNeeded = (row: Suggestion) => {
+    if (update.isPending) return; // a row being ticked off
+    once(() => answer(row, "dismissed"), row.id);
   };
 
   return (
@@ -107,7 +115,16 @@ function ChecklistCard({ rows }: { rows: Suggestion[] }) {
           <ul ref={list} id={listId} className="mt-2 divide-y divide-line">
             <AnimatePresence initial={false}>
               {shown.map((row) => (
-                <MovingRow key={row.id} row={row} ticked={ticking.has(row.id)} busy={update.isPending} draftId={openDraftFor(row, drafts.data)?.id ?? null} onAnswer={answer} />
+                <MovingRow
+                  key={row.id}
+                  row={row}
+                  ticked={ticking.has(row.id)}
+                  waiting={update.isPending || pressed !== null}
+                  busy={pressed === row.id}
+                  draftId={openDraftFor(row, drafts.data)?.id ?? null}
+                  onTick={() => void answer(row, "done")}
+                  onNotNeeded={() => notNeeded(row)}
+                />
               ))}
             </AnimatePresence>
           </ul>
@@ -142,15 +159,21 @@ function ChecklistCard({ rows }: { rows: Suggestion[] }) {
 function MovingRow({
   row,
   ticked,
+  waiting,
   busy,
   draftId,
-  onAnswer,
+  onTick,
+  onNotNeeded,
 }: {
   row: Suggestion;
   ticked: boolean;
+  /** An answer is being saved: "Not needed" waits. */
+  waiting: boolean;
+  /** This row's "Not needed" is the answer being saved. */
   busy: boolean;
   draftId: string | null;
-  onAnswer: (row: Suggestion, status: "done" | "dismissed") => void;
+  onTick: () => void;
+  onNotNeeded: () => void;
 }) {
   const href = draftId ? `/letters/${encodeURIComponent(draftId)}` : ideaHref(row);
   // the buttons name the row they are about: its title
@@ -163,7 +186,7 @@ function MovingRow({
           data-moving-check=""
           checked={ticked}
           onChange={() => {
-            if (!ticked) onAnswer(row, "done");
+            if (!ticked) onTick();
           }}
           label={
             <span id={titleId} className="text-[14.5px] leading-snug [overflow-wrap:anywhere]">
@@ -194,7 +217,14 @@ function MovingRow({
               {draftId ? "Open your draft" : "Write the letter"}
             </Link>
           ) : null}
-          <button type="button" onClick={() => onAnswer(row, "dismissed")} disabled={busy} aria-describedby={titleId} className={quiet}>
+          <button
+            type="button"
+            onClick={onNotNeeded}
+            aria-disabled={waiting || undefined}
+            aria-busy={busy || undefined}
+            aria-describedby={titleId}
+            className={quiet}
+          >
             <X className="size-3.5" aria-hidden />
             Not needed
           </button>

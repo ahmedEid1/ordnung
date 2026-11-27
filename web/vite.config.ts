@@ -12,6 +12,16 @@ import { sourceHash } from "./scripts/source-hash.mjs";
 import { thirdPartyNotices } from "./scripts/third-party-notices.mjs";
 
 const API = process.env.ORDNUNG_API ?? "http://127.0.0.1:8765";
+
+/**
+ * Whether this build carries the mock world (web/src/mocks: an in-memory API and its sample life). Only the dev
+ * server, Vitest, a `VITE_MOCKS=1` build (the capture script's) and the online demo (`VITE_STATIC_DEMO=1`) do: the
+ * released build leaves it out, so it ships no test data and no address turns a person's data into the sample
+ * life (`__ORDNUNG_MOCKS__` in src/vite-env.d.ts).
+ */
+function mocksOn(command: string, mode: string): boolean {
+  return command === "serve" || mode === "test" || Boolean(process.env.VITEST) || process.env.VITE_MOCKS === "1" || process.env.VITE_STATIC_DEMO === "1";
+}
 const OUT_DIR = "../src/ordnung/web/dist";
 
 /** Record what the build was made from, so CI can tell a stale committed build (scripts/source-hash.mjs). */
@@ -30,7 +40,8 @@ function buildInfo(): Plugin {
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ command, mode }) => ({
+  define: { __ORDNUNG_MOCKS__: JSON.stringify(mocksOn(command, mode)) },
   // thirdPartyNotices writes THIRD-PARTY-NOTICES.txt: the licences of what the build bundles
   plugins: [react(), tailwindcss(), buildInfo(), thirdPartyNotices()],
   resolve: {
@@ -53,4 +64,4 @@ export default defineConfig({
     // the composer's flows take about 1.5 s alone and timed out at the 5 s default on a busy machine (review round 2)
     testTimeout: 20_000,
   },
-});
+}));

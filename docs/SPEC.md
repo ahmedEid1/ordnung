@@ -185,7 +185,7 @@ sse-starlette, python-multipart, httpx, mcp v2 (`mcp.server.mcpserver.MCPServer`
 store), ifaddr (phone access: the network interfaces with their netmasks), olefile (Outlook `.msg` files),
 hypothesis (dev).
 Frontend: Vite 8, React 19, TypeScript 5.9, Tailwind 4, React Router 8, TanStack Query, lucide-react,
-date-fns, recharts, motion, @fontsource (Inter, Fraunces). Tooling: uv, ruff, mypy, pytest, vitest,
+date-fns, motion, @fontsource (Inter, Fraunces). Tooling: uv, ruff, mypy, pytest, vitest,
 Playwright + @axe-core/playwright, GitHub Actions.
 
 ## 4. Domain model — `ordnung/models.py` (implemented; the file is authoritative)
@@ -1601,7 +1601,7 @@ detached.
   `phone_not_paired`, or 409 `unavailable` when phone access stopped) and lets every other request finish
   — an upload that arrived is answered as filed; a request that isn't a stream runs shielded from the
   listener's own stop, which waits up to 30 s for what is in flight.
-- **What a phone may do** (`phone/scope.py`). `PHONE_ROUTES` (59 operations) and `COMPUTER_ONLY` (61)
+- **What a phone may do** (`phone/scope.py`). `PHONE_ROUTES` (61 operations) and `COMPUTER_ONLY` (61)
   cover every operation of the API; `NEVER_ON_PHONE` (part of `COMPUTER_ONLY`) says why settings,
   profile and household edits, phone access, backups, deleting, originals (a letter's file and the letters ZIP),
   held-letter decisions and hand-off sync stay on the computer, and the calendar files (`calendar.ics`,
@@ -1845,11 +1845,14 @@ an original that is missing, or a link out of the data folder, is listed with an
 followed; `attachment` named `ordnung-letters[-for-taxes][-<year>|-<today>].zip`, `no-store`; `letters_zip.py`;
 computer-only, writes nothing), `documents.json` (GET: every letter whole, as stored, newest first, without
 trash and proof files — the letters of *Download a copy of your records*; computer-only) as `LetterRecord`s,
-each with its `tax_choice`, `documents/{id}/reprocess` (POST), `documents/{id}/trace`
+each with its `tax_choice`, `documents/titles` (GET: each listed letter's id, title, file name and status
+alone, in the list's order: what Today, the weekly review, Ask and the privacy log need to name letters),
+`documents/{id}/reprocess` (POST), `documents/{id}/trace`
 (`?run=` a reading's trace id; default the newest kept: its steps, their model calls and the kept
 readings), `documents/{id}/trace/compare` (`?base&head`: what a later reading decided differently;
 `base` defaults to the newest earlier reading that was done, not a paused or stopped attempt),
-`traces` (every kept reading, for the data export), `items` (GET/POST; a rule with a working day or a day
+`traces` (every kept reading, for the data export), `items/titles` (GET: each listed to-do's id, title and
+letter alone, for Ask's citations), `items` (GET/POST; a rule with a working day or a day
 of the month dates the new to-do at its first occurrence at once),
 `items/{id}` (PATCH/DELETE; PATCH with `due_date` sets `due_date_source=manual`, `user_modified`; for a
 to-do not read from a letter, `recurrence` sent with `due_date` starts its schedule again at that date and
@@ -2021,7 +2024,11 @@ Pages:
    them) shows one person's letters or the person's own; in a person's view, *File these N* lists the letters
    addressed to them and not filed yet and files exactly those, with Undo; in *Everyone*, a letter filed for
    someone has a *For Alex Rivera* tag. Phones: tabs, search, then kind and year on one row, then *Whose
-   letters* on its own. The header links **Letters for taxes** (when a letter counts for taxes — the person's
+   letters* on its own. A view of more than 100 letters draws its first 100 (a group cut short still counts all
+   its letters) and says under them "Showing 100 of 3,000 letters." with **Show 100 more** and **Show all 3,000**;
+   tabs, filters, counts and the search still cover every letter, another view starts at 100 again, and the
+   rows drawn are kept in the browser's history entry, so Back and a reload come back to them and a new visit
+   starts at 100. The header links **Letters for taxes** (when a letter counts for taxes — the person's
    own *For taxes* choice, else Claude's mark —, also on a phone, with the chosen year) to the **Tax year** page
    (`/inbox/taxes?year=YYYY`, its parent the Inbox): a year select (only years with letters for taxes; January–July last year, else this year), "N letters dated Y.", that
    year's letters for taxes by the letter's date (else the day it arrived) grouped by kind, each with Claude's
@@ -2415,7 +2422,7 @@ each on a fresh demo of their own. The tour is a list of captioned beats, each c
 the main column and on screen at least 2.5 s and 0.25 s a word: README's loop (WebP and GIF, 20 to 30 s) is its first
 six, from Today to the date's receipt, and the MP4 the whole tour (70 to 95 s). A still page is held for its planned
 time, whatever the capturing computer's load, the pointer, scrolling and a click's answer are kept for the time the
-browser gives them, and page loads and readings are cut, so the lengths are the same from run to run. The court order, shown only in the video, comes from the mock data (`?mock=full`), since
+browser gives them, and page loads and readings are cut, so the lengths are the same from run to run. The court order, shown only in the video, comes from the mock data (`?mock=full` in a `VITE_MOCKS=1` build of its own under `vite preview`; the released build has no mock data), since
 the recorded demo has none, and the phone pairing and Your computers pictures from the real app
 (`web/e2e/readme-pictures.spec.ts`), since the demo has neither, and the guide says so. `docs/`:
 architecture, deadline-rules (with citations), privacy (data-flow table), evals, evals-ask, decisions/ADRs.

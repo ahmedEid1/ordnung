@@ -9,5 +9,8 @@ export const SEGMENT_TRACK = "rounded-xl bg-surface-2 p-1";
 export const SEGMENT_GAP = "gap-1";
 /** The item's shape (the thumb takes the same one). */
 export const SEGMENT_ITEM = "rounded-lg focus-visible:-outline-offset-2";
-/** The selected item's raised thumb. */
-export const SEGMENT_THUMB = "rounded-lg bg-surface shadow-[var(--shadow-card)] ring-1 ring-line";
+/**
+ * The selected item's raised thumb. Forced colours paint it in the page's colour and drop its shadow: it only
+ * covered the item's frame there (index.css), so it is not drawn.
+ */
+export const SEGMENT_THUMB = "rounded-lg bg-surface shadow-[var(--shadow-card)] ring-1 ring-line forced-colors:hidden";

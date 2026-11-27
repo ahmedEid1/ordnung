@@ -56,8 +56,9 @@ key) gets a test that proves its answer is never compressed, or it isn't a `GET`
 On a copy of the demo (22 letters), by the rules above: the letter list went from about 91 KB of JSON to about
 25 KB as `DocumentRow`s, and to about 5.7 KB gzipped, 94 % less on the wire; the five fields left out were
 nearly three quarters of its bytes. The JSON answers to the app's `GET`s without parameters went from about
-840 KB to about 140 KB, about 6 times less, and the web app's text files from about 2.9 MB to about 0.89 MB,
-about 3 times less. These are bytes; how much faster a page feels on a real phone over home Wi-Fi wasn't
+840 KB to about 140 KB, about 6 times less, and the web app's text files from about 2.2 MB to about 0.71 MB,
+about 3 times less (the committed build's: 2.9 MB when this was decided, before the mock world and the chart
+library left the build). These are bytes; how much faster a page feels on a real phone over home Wi-Fi wasn't
 measured.
 
 ## Rejected

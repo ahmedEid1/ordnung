@@ -7,6 +7,7 @@ import { Link } from "react-router";
 import { AlarmClock, ArrowRight, FilePen, Layers, Lightbulb, Signature, X } from "lucide-react";
 import type { Contract, Document, DocumentDetail, Draft, Item, Suggestion } from "@/api/types";
 import { useUpdateSuggestion } from "@/api/hooks";
+import { useOnePress } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { CONTRACT_CATEGORY_COPY, DRAFT_KIND_COPY, SUGGESTION_KIND_COPY, TONES, copyFor, documentKindLabel } from "@/lib/copy";
 import { addDays } from "date-fns";
@@ -178,7 +179,7 @@ export function DraftsSection({ drafts }: { drafts: Draft[] }) {
 }
 
 const quiet =
-  "inline-flex min-h-8 items-center gap-1.5 rounded-md px-1.5 text-[12.5px] font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent";
+  "inline-flex min-h-8 items-center gap-1.5 rounded-md px-1.5 text-[12.5px] font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink aria-disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent";
 
 const ideaHeadingId = (id: string) => `letter-idea-${id}`;
 
@@ -193,9 +194,12 @@ function LetterIdea({ idea, docId, items, onLeave }: { idea: Suggestion; docId: 
   const action = href && href !== `/documents/${docId}` && !href.startsWith(`/documents/${docId}?`) ? ideaActionLabel(idea) : null;
   const text = (s: string) => onThisLetter(s, docId, items);
 
+  // while an answer is saved both buttons are `aria-disabled` (not `disabled`, which drops focus to the page), the one
+  // pressed busy, and a second press does nothing
+  const { pressed, busy, once } = useOnePress<"snooze" | "dismiss">();
   const answer = (patch: { status: "snoozed"; snoozed_until: string } | { status: "dismissed" }, title: string) => {
     onLeave(idea.id);
-    update.mutateAsync({ id: idea.id, patch }).then(
+    return update.mutateAsync({ id: idea.id, patch }).then(
       () =>
         toast({
           title,
@@ -208,10 +212,11 @@ function LetterIdea({ idea, docId, items, onLeave }: { idea: Suggestion; docId: 
       ignoreFailedRequest, // a failed request: the error toast comes from the mutation's meta
     );
   };
-  const snooze = () => {
-    const until = toISODate(addDays(today, 7));
-    answer({ status: "snoozed", snoozed_until: until }, `I'll bring this back on ${formatDate(until, { style: "short", today })}`);
-  };
+  const snooze = () =>
+    once(() => {
+      const until = toISODate(addDays(today, 7));
+      return answer({ status: "snoozed", snoozed_until: until }, `I'll bring this back on ${formatDate(until, { style: "short", today })}`);
+    }, "snooze");
 
   return (
     <li className="card flex gap-3 px-4 pt-3.5 pb-2 sm:px-5">
@@ -244,11 +249,25 @@ function LetterIdea({ idea, docId, items, onLeave }: { idea: Suggestion; docId: 
           </Link>
         ) : null}
         <div className="-mx-1.5 mt-2.5 flex flex-wrap items-center gap-x-2 border-t border-line pt-1.5">
-          <button type="button" onClick={snooze} disabled={update.isPending} aria-describedby={titleId} className={quiet}>
+          <button
+            type="button"
+            onClick={snooze}
+            aria-disabled={busy || undefined}
+            aria-busy={pressed === "snooze" || undefined}
+            aria-describedby={titleId}
+            className={quiet}
+          >
             <AlarmClock className="size-3.5" aria-hidden />
             Remind me in a week
           </button>
-          <button type="button" onClick={() => answer({ status: "dismissed" }, "Idea hidden")} disabled={update.isPending} aria-describedby={titleId} className={quiet}>
+          <button
+            type="button"
+            onClick={() => once(() => answer({ status: "dismissed" }, "Idea hidden"), "dismiss")}
+            aria-disabled={busy || undefined}
+            aria-busy={pressed === "dismiss" || undefined}
+            aria-describedby={titleId}
+            className={quiet}
+          >
             <X className="size-3.5" aria-hidden />
             Not relevant
           </button>

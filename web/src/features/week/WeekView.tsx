@@ -10,7 +10,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { ArrowLeft, ArrowRight, Check, CircleCheck, Plus, Sparkles, TriangleAlert } from "lucide-react";
-import { useDocuments, useWeek, useWeekDone } from "@/api/hooks";
+import { useDocumentTitles, useWeek, useWeekDone } from "@/api/hooks";
 import type { BackupCopy, WeekEntry, WeekStep, WeeklySession } from "@/api/types";
 import { useAddLetters } from "@/components/shell/AddLetters";
 import { PageHeader } from "@/components/shell/Page";
@@ -188,11 +188,9 @@ export const isUnreadRow = (entry: WeekEntry): boolean =>
  * couldn't be read — what Today counts as not read (a letter waiting for Claude is queued).
  */
 function useUnreadCount(): number {
-  const held = useDocuments({ status: "held" });
-  const failed = useDocuments({ status: "failed" });
-  const all = useDocuments();
-  const queued = (all.data ?? []).filter((d) => d.status === "queued" || d.status === "processing").length;
-  return (held.data?.length ?? 0) + (failed.data?.length ?? 0) + queued;
+  // one small answer with every letter's status, not every letter's row whole
+  const titles = useDocumentTitles();
+  return (titles.data ?? []).filter((d) => d.status === "held" || d.status === "failed" || d.status === "queued" || d.status === "processing").length;
 }
 
 /** The steps holding rows that match, with how many each holds (in the session's order). */
@@ -522,7 +520,9 @@ export function WeekView() {
           <div className="flex min-w-0 flex-col gap-4">
             <StepPanel step={step} index={index} total={steps.length} focusOnMount={returned} />
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <Button variant="ghost" icon={ArrowLeft} onClick={() => go(index - 1)} disabled={index === 0}>
+              {/* on the first step `aria-disabled`, not `disabled`: Back pressed onto it would drop focus to the page
+                  for a frame before the step's heading takes it. A press there does nothing. */}
+              <Button variant="ghost" icon={ArrowLeft} onClick={() => index > 0 && go(index - 1)} aria-disabled={index === 0 || undefined}>
                 Back
               </Button>
               {last ? (

@@ -12,7 +12,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { ArrowRightLeft, Hourglass, Laptop, ShieldCheck, X } from "lucide-react";
-import { ApiError } from "@/api/client";
+import { ApiError, ignoreFailedRequest } from "@/api/client";
 import { useTakeOver } from "@/api/hooks";
 import type { SyncStatus } from "@/api/types";
 import { LogoMark } from "@/components/shell/Logo";
@@ -21,6 +21,7 @@ import { Callout } from "@/components/ui/Callout";
 import { toast } from "@/components/ui/Toast";
 import { inUseName, olderCopyLabel, reassuranceLine, standbyHeading, standbyStatusLine, waitingLine } from "@/features/settings/sync";
 import { focusWhenReady } from "@/lib/focus";
+import { useOnePress } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { ChoiceDialog } from "./ChoiceDialog";
 import { ArrivingNote, ProgressLine, SyncNotices, SyncProblemCallout } from "./parts";
@@ -58,12 +59,22 @@ export function StandbyScreen({ status }: { status: SyncStatus }) {
     document.title = `Standing by · Ordnung`;
   }, []);
 
+  // While it is asked the buttons are `aria-disabled` (not `disabled`, which drops focus to the page), the one pressed
+  // busy with its spinner; one press at a time, also for a quick double click
+  const { pressed, busy, once } = useOnePress<"here" | "older" | "cancel">();
   const takeOverHere = (older = false) =>
-    takeOver.mutate(older ? { older_copy: true } : {}, {
-      onSuccess: (after) => tookOverToast(after, name),
-      onError: () => focusWhenReady(() => document.getElementById(ERROR_ID), 5000, { always: true }),
-    });
-  const stopWaiting = () => takeOver.mutate({ cancel: true });
+    once(
+      () =>
+        takeOver.mutateAsync(older ? { older_copy: true } : {}).then(
+          (after) => tookOverToast(after, name),
+          (err: unknown) => {
+            focusWhenReady(() => document.getElementById(ERROR_ID), 5000, { always: true });
+            ignoreFailedRequest(err); // a failed request: it is said below
+          },
+        ),
+      older ? "older" : "here",
+    );
+  const stopWaiting = () => once(() => takeOver.mutateAsync({ cancel: true }), "cancel");
 
   return (
     <main id="main" tabIndex={-1} className="grid min-h-dvh place-items-center bg-canvas px-4 py-8 outline-none">
@@ -100,7 +111,7 @@ export function StandbyScreen({ status }: { status: SyncStatus }) {
             <ProgressLine progress={status.progress} what={status.activity === "keeping" ? "Keeping a copy of this computer's data" : `Bringing Ordnung over from ${name}`} />
           ) : null}
           {waiting ? (
-            <Callout title={`Waiting for ${arriving?.from_computer ?? name}'s latest changes`} icon={Hourglass} action={<Button size="sm" icon={X} onClick={stopWaiting} loading={takeOver.isPending}>Cancel</Button>}>
+            <Callout title={`Waiting for ${arriving?.from_computer ?? name}'s latest changes`} icon={Hourglass} action={<Button size="sm" icon={X} onClick={stopWaiting} loading={pressed === "cancel"}>Cancel</Button>}>
               {arriving ? <ArrivingNote arriving={arriving} /> : null}
               <p className={cn(arriving && "mt-2")}>{waitingLine(arriving?.from_computer ?? name)}</p>
             </Callout>
@@ -113,7 +124,8 @@ export function StandbyScreen({ status }: { status: SyncStatus }) {
                   size="lg"
                   icon={ArrowRightLeft}
                   autoFocus
-                  loading={takeOver.isPending}
+                  loading={pressed === "here"}
+                  aria-disabled={busy || undefined}
                   onClick={() => takeOverHere()}
                   // its longer label wraps on a narrow phone instead of widening the page (320 px): a label of
                   // its own, not the button's one-line one
@@ -124,7 +136,14 @@ export function StandbyScreen({ status }: { status: SyncStatus }) {
               ) : null}
               {arriving && !status.choice ? (
                 <div className="text-[13.5px] leading-5">
-                  <Button variant="link" size="sm" onClick={() => takeOverHere(true)} disabled={takeOver.isPending} className="shrink whitespace-normal text-left">
+                  <Button
+                    variant="link"
+                    size="sm"
+                    onClick={() => takeOverHere(true)}
+                    loading={pressed === "older"}
+                    aria-disabled={busy || undefined}
+                    className="shrink whitespace-normal text-left"
+                  >
                     <span className="min-w-0">{olderCopyLabel(status)}</span>
                   </Button>
                   <p className="mt-1 text-muted">

@@ -75,6 +75,7 @@ export const qk = {
   documents: {
     all: ["documents"] as const,
     list: (params: DocumentListParams = {}) => ["documents", "list", params] as const,
+    titles: ["documents", "titles"] as const,
     detail: (id: string) => ["documents", "detail", id] as const,
     /** Under `documents`, so a new reading (any ledger write) refreshes it. */
     trace: (id: string, run: string | null = null) => ["documents", "trace", id, run] as const,
@@ -83,6 +84,7 @@ export const qk = {
   items: {
     all: ["items"] as const,
     list: (params: ItemListParams = {}) => ["items", "list", params] as const,
+    titles: ["items", "titles"] as const,
   },
   contracts: {
     all: ["contracts"] as const,
@@ -351,6 +353,14 @@ export function useDocuments(params: DocumentListParams = {}, opts: { enabled?: 
   });
 }
 
+/**
+ * Every letter's id, title, file name and status (`GET /api/documents/titles`): for a page that names letters or
+ * counts those being read, without fetching every letter's row (3.5 MB of JSON at 3,000 letters).
+ */
+export function useDocumentTitles() {
+  return useQuery({ queryKey: qk.documents.titles, queryFn: api.documentTitles, staleTime: 30_000 });
+}
+
 /** How many matches the letter search lists before it links to all of them in the Inbox. */
 export const SEARCH_LIMIT = 8;
 
@@ -520,6 +530,11 @@ export function useItems(params: ItemListParams = {}) {
   return useQuery({ queryKey: qk.items.list(params), queryFn: () => api.items(params), staleTime: 30_000 });
 }
 
+/** Every to-do's id, title and letter (`GET /api/items/titles`): to name a to-do without every to-do whole. */
+export function useItemTitles() {
+  return useQuery({ queryKey: qk.items.titles, queryFn: api.itemTitles, staleTime: 30_000 });
+}
+
 export function useCreateItem() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: (item: ItemCreate) => api.createItem(item), meta: { errorTitle: "Couldn't add the to-do" }, onSuccess: () => invalidateLedger(qc) });
@@ -676,11 +691,12 @@ export function useLanes(from?: string, to?: string) {
 // Ideas & brief
 // ------------------------------------------------------------------------------------------------
 
-export function useSuggestions(params: SuggestionListParams = {}) {
+export function useSuggestions(params: SuggestionListParams = {}, opts: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: qk.suggestions.list(params),
     queryFn: () => api.suggestions(params),
     staleTime: 30_000,
+    enabled: opts.enabled,
   });
 }
 

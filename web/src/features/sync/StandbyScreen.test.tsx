@@ -10,7 +10,8 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { qk } from "@/api/hooks";
 import { __clearToasts } from "@/components/ui/Toast";
-import { useMockApi } from "@/test/mockFetch";
+import { holdRequests, useMockApi } from "@/test/mockFetch";
+import { expectOnePressAtATime } from "@/test/busyButton";
 import { renderAppAt, stubShellGlobals } from "@/test/app";
 import { TAKE_OVER_WAIT_MINUTES } from "@/features/settings/sync";
 import { standbyKeepsPage } from "./StandbyScreen";
@@ -111,6 +112,16 @@ describe("the standing-by screen", () => {
     await user.click(screen.getByRole("button", { name: /^Use the copy this computer has now \(from .+\)$/ }));
     await waitFor(() => expect(screen.queryByRole("heading", { level: 1, name: HEADING })).toBeNull(), WAIT);
     expect(srv.sync.mode).toBe("in_use");
+  });
+
+  it.each([["Use Ordnung here"], ["Use the copy this computer has now"]])("“%s” keeps focus while it is asked, one press at a time, and the next once it failed", async (name) => {
+    const { srv } = useMockApi();
+    srv.sync.setUp().otherTakesOver();
+    if (name !== "Use Ordnung here") srv.sync.arriving(5, 9);
+    const held = holdRequests((c) => c.method === "POST" && c.path === "/sync/use-here");
+    await renderAppAt("/", HEADING);
+    const button = () => screen.getByRole("button", { name: new RegExp(`^${name}`) });
+    await expectOnePressAtATime({ user: userEvent.setup(), button, held });
   });
 
   it("says when files are online only on this computer, or nothing arrives any more", async () => {

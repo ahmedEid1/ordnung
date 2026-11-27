@@ -393,6 +393,24 @@ class Document(_Model):
     deleted_at: str | None = None  # set while the document is in the trash
 
 
+class DocumentTitle(_Model):
+    """What a page needs to name a letter, and to tell whether it is still being read (``GET
+    /api/documents/titles``): the letter list's other fields stay out."""
+
+    id: str
+    title: str | None = None
+    filename: str
+    status: DocumentStatus
+
+
+class ItemTitle(_Model):
+    """What a page needs to name a to-do and lead to its letter (``GET /api/items/titles``)."""
+
+    id: str
+    title: str
+    doc_id: str | None = None
+
+
 class ContractComputation(_Model):
     regime: ContractRegime = "as_written"
     current_term_end: str | None = None

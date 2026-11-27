@@ -3,6 +3,7 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { QueryClient } from "@tanstack/react-query";
 import { renderWithProviders } from "@/test/render";
+import { qk } from "@/api/hooks";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { dismissJob, handleServerEvent, __resetEventsForTests } from "@/api/sse";
 import type { DocumentRow, Household, HouseholdFiling, JobProgressEvent } from "@/api/types";
@@ -153,6 +154,29 @@ describe("Inbox", () => {
     expect(within(row).getByRole("button", { name: /Ordnungsamt Musterstadt/ })).toBeInTheDocument();
     expect(within(row).getAllByText("1 to-do").length).toBeGreaterThan(0);
     assertNoRawEnumsInElement(container);
+  });
+
+  it("waits for the demo's New-mail tray with the letters: the tray never pushes the list down when it comes", async () => {
+    // the tray answers last (as it sometimes did in the demo): until then the stand-in stays, with no tray above it
+    let answerTray = () => {};
+    const tray = new Promise<void>((resolve) => (answerTray = resolve));
+    const served = globalThis.fetch;
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (new URL(String(input), "http://localhost").pathname === "/api/demo/mail") await tray;
+      return served(input, init);
+    });
+    const { client } = renderInbox();
+    await waitFor(() => expect(client.getQueryState(qk.documents.list({}))?.status).toBe("success"));
+    // the letters are in (and the page has heard so: react-query tells it on the next task), the tray is not: still
+    // the stand-in alone
+    await act(() => new Promise<void>((resolve) => setTimeout(resolve, 0)));
+    expect(screen.getByText("Loading your letters…")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /New mail/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Parking fine (Verwarnungsgeld)" })).toBeNull();
+    act(() => answerTray());
+    expect(await screen.findByRole("region", { name: /New mail/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Parking fine (Verwarnungsgeld)" })).toBeInTheDocument();
+    expect(screen.queryByText("Loading your letters…")).toBeNull();
   });
 
   it("stamps each New-mail envelope with the day it arrived, and says it in words", async () => {

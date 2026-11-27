@@ -195,6 +195,7 @@ const CASES = {
 
   documents: { run: () => api.documents({ q: "Rechnung", status: "processed", limit: 20, offset: 0 }) },
   documentsFull: { run: () => api.documentsFull() },
+  documentTitles: { run: () => api.documentTitles() },
   uploadDocuments: { run: () => api.uploadDocuments([pdf()], { combine: false, private: false }) },
   document: { run: (ids) => api.document(ids.doc) },
   updateDocument: { run: (ids) => api.updateDocument(ids.doc, { title: "Renamed letter", tags: ["kept"] }) },
@@ -214,6 +215,7 @@ const CASES = {
   traces: { run: () => api.traces() },
 
   items: { run: () => api.items({ status: "open", from: "2026-09-01", to: "2026-12-31", include_undated: true, limit: 50 }) },
+  itemTitles: { run: () => api.itemTitles() },
   createItem: { run: () => api.createItem({ kind: "task", title: "Call the bank", due_date: "2026-10-05", area: "money" }) },
   updateItem: { run: (ids) => api.updateItem(ids.item, { status: "done" }) },
   deleteItem: { run: (ids) => api.deleteItem(ids.otherItem) },

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { Link, useBlocker, useNavigate } from "react-router";
 import { Check, ChevronRight, CircleCheck, Download, Ellipsis, FilePen, FileCheck2, ListChecks, PenLine, Save, Send, Trash2, TriangleAlert, Undo2 } from "lucide-react";
 import { api } from "@/api/endpoints";
-import { useDeleteDraft, useDocuments, useContracts, useDraftProof, useMarkDraftSent, useParties, useProfile, useTranslateDraft, useUpdateDraft } from "@/api/hooks";
+import { useDeleteDraft, useDocument, useContracts, useDraftProof, useMarkDraftSent, useParties, useProfile, useTranslateDraft, useUpdateDraft } from "@/api/hooks";
 import { ApiError, ignoreFailedRequest } from "@/api/client";
 import type { Draft, SendChannelKind } from "@/api/types";
 import { Button, IconButton, buttonVariants } from "@/components/ui/Button";
@@ -189,7 +189,8 @@ export function LetterView({ draft }: { draft: Draft }) {
   // "sent", tracking and proof photos all work here
   const phone = usePhoneCompanion();
   const parties = useParties();
-  const docs = useDocuments();
+  // the letter it answers, alone (not every letter): one in the trash is not named, as the list never named it
+  const answers = useDocument(draft.doc_id ?? undefined);
   const contracts = useContracts();
   const update = useUpdateDraft();
   const markSent = useMarkDraftSent();
@@ -219,7 +220,8 @@ export function LetterView({ draft }: { draft: Draft }) {
   useFocusClearOf(saveBarRef, saveBarShown);
 
   const party = draft.party_id ? (parties.data ?? []).find((p) => p.id === draft.party_id) ?? null : null;
-  const doc = draft.doc_id ? (docs.data ?? []).find((d) => d.id === draft.doc_id) ?? null : null;
+  const answered = answers.data?.document;
+  const doc = draft.doc_id && answered && !answered.deleted_at ? answered : null;
   // who sent the letter it objects to (its advice follows the sender's kind, as on the letter's page)
   const sender = doc?.party_id ? (parties.data ?? []).find((p) => p.id === doc.party_id) ?? null : party;
   const contract = draft.contract_id ? (contracts.data ?? []).find((c) => c.id === draft.contract_id) ?? null : null;

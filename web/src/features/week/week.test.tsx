@@ -110,7 +110,7 @@ describe("the session page", () => {
     useMockApi();
     const { user, router } = await renderWeek();
     expect(screen.getByText("Step 1 of 7")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Back" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Back" })).toHaveAttribute("aria-disabled", "true");
     // the accessible name starts with the visible words (WCAG 2.5.3)
     const next = screen.getByRole("button", { name: "Next: Compare — Compare with the letter" });
     expect(next).toHaveTextContent(/^Next: Compare/);
@@ -121,6 +121,26 @@ describe("the session page", () => {
     expect(screen.getByText("Step 2 of 7")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Back" }));
     expect(await screen.findByRole("heading", { level: 2, name: MOCK_WEEK.steps[0]!.title })).toBeInTheDocument();
+  });
+
+  it("Back pressed onto the first step keeps the keyboard's place: off, but not disabled", async () => {
+    useMockApi();
+    const { user, router } = await renderWeek("/week?step=check");
+    const back = screen.getByRole("button", { name: "Back" });
+    back.focus();
+    await user.keyboard("{Enter}");
+    expect(await screen.findByRole("heading", { level: 2, name: MOCK_WEEK.steps[0]!.title })).toBeInTheDocument();
+    // a disabled button that has focus drops it to the page (for a frame, before the step's heading takes it)
+    expect(back).not.toBeDisabled();
+    expect(back).toHaveAttribute("aria-disabled", "true");
+    expect(document.activeElement).not.toBe(document.body);
+    // pressed again it stays on the first step (it has no step before it to go to; marking the first step looked at,
+    // which its guard also spares, shows nowhere while that step is the current one)
+    const at = router.state.location.search;
+    back.focus();
+    await user.keyboard("{Enter}");
+    expect(router.state.location.search).toBe(at);
+    expect(screen.getByText("Step 1 of 7")).toBeInTheDocument();
   });
 
   it("pays and confirms right in the rows", async () => {

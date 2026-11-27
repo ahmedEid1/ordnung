@@ -63,14 +63,18 @@ export function buttonVariants({
 /**
  * A busy button (`loading`) is `aria-disabled`, not `disabled`: a disabled button drops keyboard focus to the
  * page, and a screen reader is then told nothing. It keeps focus, and a press (a click, Enter, or Enter in its
- * form) does nothing until it is done.
+ * form) does nothing until it is done. That holds when the caller also passes `disabled` while it is busy (the
+ * same request, or a reason that came up meanwhile): `disabled` counts again once it is done.
+ *
+ * Only a busy button ignores presses: one that is only `aria-disabled` keeps its `onClick` (the onboarding's
+ * Continue takes the person to the answer still missing).
  */
 function busyProps(
   loading: boolean,
   { disabled, onClick, "aria-disabled": ariaDisabled }: Pick<ComponentProps<"button">, "disabled" | "onClick" | "aria-disabled">,
 ) {
   return {
-    disabled,
+    disabled: loading ? undefined : disabled,
     "aria-disabled": loading || ariaDisabled || undefined,
     "aria-busy": loading || undefined,
     onClick: loading ? (e: MouseEvent<HTMLButtonElement>) => e.preventDefault() : onClick,

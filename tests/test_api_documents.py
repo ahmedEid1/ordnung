@@ -868,3 +868,29 @@ def test_a_letter_asks_about_its_sender_s_land_with_its_own_dates(store: Store) 
 
     store.update_party(party.id, region="BY")
     assert document_detail(store, first, TODAY_DATE).region_suggestion is None
+
+
+async def test_the_titles_name_the_listed_letters_and_nothing_more(data_dir: Path) -> None:
+    """``GET /api/documents/titles``: the letters the list has (trash and proof files left out), in its order,
+    each with its id, title, file name and status alone, so Today, the weekly review and Ask can name letters
+    without fetching every row whole; never cached, as no answer of the API is."""
+    async with api_for(data_dir) as api:
+        store = api.ctx.store
+        tax = add_doc(store, "tax", title="Steuerbescheid 2025", doc_date="2026-03-01")
+        queued = add_doc(store, "queued", status="queued", doc_date="2026-04-01")
+        untitled = add_doc(store, "untitled", doc_date="2026-02-01")
+        trashed = add_doc(store, "trashed", title="Im Papierkorb", doc_date="2026-05-01")
+        store.trash_document(trashed)
+        proof = add_doc(store, "proof", doc_date="2026-06-01")
+        store.update_document(proof, source=PROOF_SOURCE)
+
+        response = await api.client.get("/api/documents/titles")
+        assert response.status_code == 200 and response.headers["cache-control"] == "no-store"
+        titles = response.json()
+        listed = (await api.client.get("/api/documents")).json()
+        assert [row["id"] for row in titles] == [row["id"] for row in listed] == [queued, tax, untitled]
+        assert titles == [
+            {"id": row["id"], "title": row["title"], "filename": row["filename"], "status": row["status"]}
+            for row in listed
+        ]
+        assert titles[0]["status"] == "queued" and titles[2]["title"] is None

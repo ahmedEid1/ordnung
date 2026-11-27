@@ -4,7 +4,8 @@
  * `XMLHttpRequest` with the same request `api.uploadDocuments` makes: the same multipart form (`files` repeated,
  * `combine`, `private`), `X-Ordnung-Client: web`, the same cookies, the same answers and errors ({@link toApiError}).
  *
- * With the mock API installed (`?mock=1`, which answers `fetch` only) it is `api.uploadDocuments`, without progress.
+ * With the mock API installed (`?mock=1` in a build that carries it, which answers `fetch` only) it is
+ * `api.uploadDocuments`, without progress.
  */
 import { ApiError, apiPath, PHONE_UNREACHABLE, toApiError, UNREADABLE_ANSWER, UNREADABLE_CODE } from "@/api/client";
 import { api, type UploadOptions } from "@/api/endpoints";
@@ -15,7 +16,7 @@ export type OnProgress = (fraction: number) => void;
 
 /** The mock API answers `fetch`, never `XMLHttpRequest` (`mocks/install.ts`). */
 function mocked(): boolean {
-  return typeof window !== "undefined" && "__ordnungMock" in window;
+  return __ORDNUNG_MOCKS__ && typeof window !== "undefined" && "__ordnungMock" in window;
 }
 
 /** The form `api.uploadDocuments` sends. */

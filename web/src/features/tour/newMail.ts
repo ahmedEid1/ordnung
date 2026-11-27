@@ -65,7 +65,8 @@ export function useOpenedTrayDocs(): Set<string> {
 export function useNewMailIdeas(enabled = true): { ideas: Suggestion[]; ready: boolean } {
   const demo = Boolean(useHealth().data?.demo);
   const tray = useMailTray(demo);
-  const suggestions = useSuggestions();
+  // only the demo has new mail: anywhere else no Idea is fetched for it
+  const suggestions = useSuggestions({}, { enabled: demo });
   const ready = demo && tray.isSuccess && suggestions.isSuccess;
   const ideas = useMemo(
     () => (enabled && ready ? ideasFromNewMail(suggestions.data, openedTrayDocIds(tray.data)) : []),

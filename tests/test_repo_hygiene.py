@@ -90,8 +90,6 @@ def test_a_web_build_ships_the_licence_of_every_package_it_bundles(web_build: Pa
         "react": "MIT",
         "react-dom": "MIT",
         "@tanstack/react-query": "MIT",
-        "recharts": "MIT",
-        "d3-scale": "ISC",
         "lucide-react": "ISC",
         "tailwindcss": "MIT",
         "vite": "MIT",
@@ -100,7 +98,8 @@ def test_a_web_build_ships_the_licence_of_every_package_it_bundles(web_build: Pa
     assert "Permission is hereby granted, free of charge" in notices  # MIT's text
     assert "Permission to use, copy, modify, and/or distribute this software" in notices  # ISC's
     # only what the build bundles: not the test tools, not the licences of Vite's own Node code
-    for name in ("vitest", "@playwright/test", "typescript", "eslint", "rollup"):
+    # and no chart library: Settings draws its cost by purpose as rows
+    for name in ("vitest", "@playwright/test", "typescript", "eslint", "rollup", "recharts", "d3-scale"):
         assert name not in listed, name
     assert "# Licenses of bundled dependencies" not in notices
     assert "Python packages" in notices and "not bundled" in notices

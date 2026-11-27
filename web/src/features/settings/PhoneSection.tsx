@@ -29,6 +29,7 @@ import { LoadingLabel, SkeletonText } from "@/components/ui/Skeleton";
 import { toast } from "@/components/ui/Toast";
 import { copyText } from "@/features/document/actions";
 import { focusOrigin, focusWhenReady } from "@/lib/focus";
+import { useOnePress } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { PairPhoneDialog } from "./PairPhoneDialog";
 import { PhoneCertificateCard, StartOverDialog } from "./PhoneCertificateCard";
@@ -47,6 +48,8 @@ const FACTS: { icon: LucideIcon; text: string }[] = [
 ];
 
 const ADVICE_ID = "phone-certificate-advice";
+/** Why phone access can't be used here: the switch is described by it. */
+const UNAVAILABLE_ID = "phone-access-unavailable";
 
 /** Why to remove the old certificate from phones now: phone access started over, or a new address made a new one. */
 type Advice = "reset" | "address";
@@ -359,19 +362,20 @@ function PhoneAccess({ status }: { status: PhoneStatus }) {
     setPairKey((k) => k + 1);
     setPairOpen(true);
   };
+  // turning it off: the switch is busy until it is off (`aria-disabled`, not `disabled`, which drops focus to the
+  // page), one press at a time, also for a quick double click
+  const turningOff = useOnePress();
   const onSwitch = (on: boolean) => {
     if (on) {
       openAccess("on");
       return;
     }
-    update.mutate(
-      { enabled: false },
-      {
-        onSuccess: (s) =>
-          toast.success("Phone access is off", {
-            description: s.devices.length ? "Paired phones stay paired: they reach Ordnung again when you turn it back on." : "No phone can reach Ordnung now.",
-          }),
-      },
+    turningOff.once(() =>
+      update.mutateAsync({ enabled: false }).then((s) =>
+        toast.success("Phone access is off", {
+          description: s.devices.length ? "Paired phones stay paired: they reach Ordnung again when you turn it back on." : "No phone can reach Ordnung now.",
+        }),
+      ),
     );
   };
   const accessDone = (before: PhoneStatus, after: PhoneStatus) => {
@@ -404,9 +408,17 @@ function PhoneAccess({ status }: { status: PhoneStatus }) {
           ))}
         </ul>
         <div className="mt-5 space-y-3 border-t border-line pt-5">
-          <Switch checked={status.enabled} onCheckedChange={onSwitch} disabled={!status.available || update.isPending} label="Phone access" />
+          {/* can't be used here: still reached by the keyboard, and it says why */}
+          <Switch
+            checked={status.enabled}
+            onCheckedChange={onSwitch}
+            busy={turningOff.busy}
+            aria-disabled={!status.available || undefined}
+            aria-describedby={status.available ? undefined : UNAVAILABLE_ID}
+            label="Phone access"
+          />
           {!status.available ? (
-            <p role="note" className="rounded-lg bg-surface-2/70 px-3 py-2 text-[13px] leading-5 text-muted">
+            <p id={UNAVAILABLE_ID} role="note" className="rounded-lg bg-surface-2/70 px-3 py-2 text-[13px] leading-5 text-muted">
               {status.unavailable_reason ?? "Phone access can't be used here."}
             </p>
           ) : (

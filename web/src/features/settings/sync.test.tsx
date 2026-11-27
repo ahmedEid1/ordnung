@@ -19,7 +19,9 @@ import { assertNoRawEnums, assertNoRawEnumsInElement } from "@/lib/copy";
 import { SYNC_EXISTING_FOLDER, SYNC_OTHER_NAME, SYNC_STATIC_MESSAGE, WRONG_PASSPHRASE_MESSAGE } from "@/mocks/data/sync";
 import SettingsPage from "@/pages/SettingsPage";
 import { makeTestQueryClient, renderWithProviders, TEST_HEALTH } from "@/test/render";
-import { useMockApi } from "@/test/mockFetch";
+import { holdRequests, useMockApi } from "@/test/mockFetch";
+import { expectOnePressAtATime } from "@/test/busyButton";
+import { SyncProblemCallout } from "@/features/sync/parts";
 import { deleteSyncNote, SYNC_STOPPED } from "./DataSection";
 import {
   ACTION_LABELS,
@@ -696,6 +698,38 @@ describe("Settings → Your computers: connected", () => {
     await waitFor(() => expect(srv.sync.problem).toBeNull());
     await waitFor(() => expect(within(screen.getByRole("region", { name: "This computer" })).queryByText(PROBLEM_TITLES[code])).toBeNull());
     assertNoRawEnumsInElement(section());
+  });
+
+  it.each([
+    ["copied_folder", "This is the same computer"],
+    ["folder_empty", "Fill it again from this computer"],
+    ["local_rollback", "Keep this computer's data as it is"],
+    ["pull_unfinished", "Give up bringing it over"],
+  ] as const)("%s: “%s” keeps focus while it is saved, one press at a time, and the next once it failed", async (code, action) => {
+    const { srv } = useMockApi();
+    srv.sync.setUp().setProblem(code);
+    const held = holdRequests((c) => c.method !== "GET" && c.path.startsWith("/sync"));
+    openSection();
+    await screen.findByRole("region", { name: "This computer" }, WAIT);
+    await expectOnePressAtATime({ user: userEvent.setup(), button: () => within(screen.getByRole("region", { name: "This computer" })).getByRole("button", { name: action }), held });
+  });
+
+  it("an answer that is not the first shows the spinner on itself, not on the first", async () => {
+    const { srv } = useMockApi();
+    srv.sync.setUp();
+    const held = holdRequests((c) => c.method !== "GET" && c.path.startsWith("/sync"));
+    const problem = { code: "local_rollback" as const, title: "", message: "Made up for this test.", actions: ["same_computer" as const, "keep_as_is" as const] };
+    renderWithProviders(<SyncProblemCallout status={srv.sync.status()} problem={problem} />);
+    const user = userEvent.setup();
+    const [first, second] = [screen.getByRole("button", { name: "This is the same computer" }), screen.getByRole("button", { name: "Keep this computer's data as it is" })];
+    second.focus();
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(held.count).toBe(1));
+    await waitFor(() => expect(second).toHaveAttribute("aria-busy", "true"));
+    expect(second).toHaveFocus();
+    expect(first).not.toHaveAttribute("aria-busy");
+    expect(first).toHaveAttribute("aria-disabled", "true");
+    expect(first).not.toBeDisabled();
   });
 
   it("a copied data folder can also be set up as a new computer (it disconnects first)", async () => {

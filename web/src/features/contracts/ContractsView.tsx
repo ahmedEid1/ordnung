@@ -18,16 +18,16 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { KindIcon } from "@/components/ui/KindBadge";
 import { LoadError } from "@/components/ui/LoadError";
 import { SectionHeader } from "@/components/ui/SectionHeader";
-import { Skeleton, SkeletonCard } from "@/components/ui/Skeleton";
+import { SkeletonCard } from "@/components/ui/Skeleton";
 import { Tabs, type TabItem } from "@/components/ui/Tabs";
-import { focusWhenReady } from "@/lib/focus";
+import { focusWhenReady, revealWhenStill } from "@/lib/focus";
 import { useTodayISO } from "@/lib/today";
 import { plural, prefersReducedMotion } from "@/lib/utils";
 import { formatMoney } from "@/lib/format";
 import { LanesChart, defaultLaneRange, nextOnLane, type LaneSelection } from "@/features/lanes";
 import { ContractCard } from "./ContractCard";
-import { CostSummary, SUMMARY_GRID } from "./CostSummary";
-import { DecideBy } from "./DecideBy";
+import { CostSummary, CostSummaryLoading } from "./CostSummary";
+import { DecideBy, DecideByLoading } from "./DecideBy";
 import {
   contractLaneNote,
   contractLanes,
@@ -40,10 +40,13 @@ import {
 } from "./model";
 import { usePhoneCompanion } from "@/features/phone/client";
 import { filesStay } from "@/features/phone/copy";
-import { useStickyError } from "@/lib/hooks";
+import { useLocalStorage, useStickyError } from "@/lib/hooks";
 
 const STATUSES: StatusFilter[] = ["active", "cancelled", "ended", "all"];
 const STATUS_LABEL: Record<StatusFilter, string> = { active: "Active", cancelled: "Cancelled", ended: "Ended", all: "All" };
+/** Whether this browser last saw a contract to decide on (the room of "Decide by" while the contracts load). */
+export const SAW_DECISION = "ordnung.contracts.decideBy";
+
 const DESCRIPTION = "Every contract with what it costs, how it can end — in plain words — and the dates to act by.";
 
 /**
@@ -160,7 +163,8 @@ export function ContractsView() {
   useEffect(() => {
     if (!selectedId || !selectedShown) return;
     const el = document.getElementById(`contract-${selectedId}`);
-    el?.scrollIntoView?.({ block: "center", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+    // once the page stands still: scrolled to at once, it stopped short while the page above it still grew
+    const stopReveal = el ? revealWhenStill(el, { reducedMotion: prefersReducedMotion() }) : undefined;
     if (focusNext.current === selectedId) {
       focusNext.current = null;
       el?.focus({ preventScroll: true });
@@ -170,6 +174,7 @@ export function ContractsView() {
       const h1 = document.querySelector("#main h1");
       focusWhenReady(() => document.getElementById(`contract-${selectedId}`), 3000, { from: h1, preventScroll: true });
     }
+    return stopReveal;
   }, [selectedId, selectedShown, picks]);
   // …even when it is filtered out by the status tabs (show it rather than nothing).
   const selected = selectedId ? byId.get(selectedId) : undefined;
@@ -222,6 +227,12 @@ export function ContractsView() {
   const lastError = useStickyError(contractsQ.error, loaded);
   const failed = !loaded && (contractsQ.isError || Boolean(lastError));
   const loading = !loaded && !failed;
+  // "Decide by" keeps its room while the contracts load when this browser last saw a decision, or knows nothing
+  // yet: only a household with nothing to decide moves, once, on a first visit
+  const [sawDecision, setSawDecision] = useLocalStorage(SAW_DECISION, true);
+  useEffect(() => {
+    if (loaded && sawDecision !== decisions.length > 0) setSawDecision(decisions.length > 0);
+  }, [loaded, decisions.length, sawDecision, setSawDecision]);
 
   if (failed) {
     return (
@@ -310,18 +321,12 @@ export function ContractsView() {
       <PageHeader title="Contracts" description={DESCRIPTION} />
 
       {loading ? (
-        <div className="@container mb-8" aria-hidden>
-          <div className={`${SUMMARY_GRID} gap-3`}>
-            {[0, 1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-24 rounded-[var(--radius-card)]" />
-            ))}
-          </div>
-        </div>
+        <CostSummaryLoading decision={sawDecision} />
       ) : (
         <CostSummary costs={costs} active={counts.active} inactive={counts.cancelled + counts.ended} next={decisions[0] ?? null} today={today} />
       )}
 
-      <DecideBy contracts={decisions} partyById={partyById} today={today} />
+      {loading ? sawDecision ? <DecideByLoading /> : null : <DecideBy contracts={decisions} partyById={partyById} today={today} />}
 
       <section aria-labelledby="all-contracts-title" aria-busy={loading || undefined}>
         <SectionHeader id="all-contracts-title" icon={Signature} title="Your contracts" count={loading ? undefined : shown.length} />

@@ -19,6 +19,7 @@ import { displayTracking } from "@/lib/tracking";
 import { cn } from "@/lib/utils";
 import { composerHref } from "@/features/today/selection";
 import { focusOrigin, focusWhenReady } from "@/lib/focus";
+import { useOnePress } from "@/lib/hooks";
 import { WRAPPING_BUTTON, asksForACall, closeLabel } from "@/features/waiting/model";
 import { usePhoneCompanion } from "@/features/phone/client";
 import { OnYourComputer } from "@/features/phone/ComputerOnly";
@@ -172,10 +173,13 @@ function Tracking({ draft, overview }: { draft: Draft; overview: ProofOverview }
         return false;
       },
     );
+  // Remove is busy while it is saved (`aria-disabled`, not `disabled`, which drops focus to the page) and takes one
+  // press at a time, also for a quick double click
+  const removing = useOnePress();
   const remove = () => {
     if (!saved) return;
     const previous = saved.number;
-    void store(null, {
+    removing.once(() => store(null, {
       then: () => {
         focusId(TRACKING_INPUT);
         toast.success("Tracking number removed", {
@@ -195,7 +199,7 @@ function Tracking({ draft, overview }: { draft: Draft; overview: ProofOverview }
           focusIfUndoFails: () => document.getElementById(TRACKING_INPUT),
         });
       },
-    });
+    }));
   };
 
   if (saved && !editing) {
@@ -215,7 +219,7 @@ function Tracking({ draft, overview }: { draft: Draft; overview: ProofOverview }
           <Button id={TRACKING_CHANGE} variant="link" size="sm" onClick={() => (setValue(displayTracking(saved.number)), setEditing(true))}>
             Change
           </Button>
-          <Button variant="link" size="sm" onClick={remove} disabled={save.isPending}>
+          <Button variant="link" size="sm" onClick={remove} loading={removing.busy}>
             Remove
           </Button>
         </div>

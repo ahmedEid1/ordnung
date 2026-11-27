@@ -57,6 +57,47 @@ function costsNote(costs: FixedCosts): string {
   return parts.join(" · ");
 }
 
+/** Words the stand-in takes its height from, unseen: the labels, a figure and notes as long as the summary's. */
+const STAND_IN: [label: string, note: string][] = [
+  ["Fixed costs", "from 10 contracts"],
+  ["Per year", "yearly and quarterly fees included"],
+  ["Active contracts", "none cancelled or ended"],
+];
+const NEXT_NOTE = { decision: "Send by then to leave your contract", none: "no notice window closes in the next 60 days" };
+
+/** Words laid out as the summary lays out its own, drawn as bars: each line of them is a bar of its length. */
+function Ghost({ className, children }: { className: string; children: string }) {
+  return (
+    <span className={cn("block text-transparent select-none", className)}>
+      <span className="animate-pulse rounded-md bg-surface-3/80 [box-decoration-break:clone] motion-reduce:animate-none">{children}</span>
+    </span>
+  );
+}
+
+/**
+ * The summary while the contracts load, at the summary's own height (its labels, a figure and notes of the same
+ * length, unseen), so the page below it doesn't move when the figures come. `decision`: this browser last saw one,
+ * whose note ("Send by then to leave …") is shorter than "no notice window closes …".
+ */
+export function CostSummaryLoading({ decision }: { decision: boolean }) {
+  const stats: [string, string][] = [...STAND_IN, ["Next decision", decision ? NEXT_NOTE.decision : NEXT_NOTE.none]];
+  return (
+    <div className="@container mb-8" aria-hidden data-testid="cost-summary-loading">
+      <div className={cn("card gap-px overflow-hidden bg-line", SUMMARY_GRID)}>
+        {stats.map(([label, note]) => (
+          <div key={label} className="row-span-2 grid min-w-0 grid-rows-subgrid gap-y-1 bg-surface px-4 py-4 sm:px-5">
+            <Ghost className="text-[12.5px] font-medium leading-snug">{label}</Ghost>
+            <div className="min-w-0">
+              <Ghost className="display text-[clamp(1.25rem,6.5cqi,1.875rem)] font-semibold leading-tight">€00.00</Ghost>
+              <Ghost className="mt-0.5 text-[12.5px] leading-snug">{note}</Ghost>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function CostSummary({
   costs,
   active,

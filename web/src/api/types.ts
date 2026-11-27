@@ -552,6 +552,10 @@ export type Contract = Schemas["Contract"];
 export type Item = Schemas["Item"];
 /** A to-do as `GET /api/items` lists it: with `aside`, why it is not one to act on (null: it is). */
 export type ListedItem = Schemas["ListedItem"];
+/** A to-do named, and its letter (`GET /api/items/titles`): what a page needs where the whole to-do is not shown. */
+export type ItemTitle = Schemas["ItemTitle"];
+/** A letter named, with its status (`GET /api/documents/titles`): what a page needs where the letter is not listed. */
+export type DocumentTitle = Schemas["DocumentTitle"];
 export type SuggestionRef = Schemas["SuggestionRef"];
 export type SuggestionAction = Schemas["SuggestionAction"];
 /** An "Idea" from the secretary. */
