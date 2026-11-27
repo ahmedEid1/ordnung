@@ -1,11 +1,11 @@
-import type { Variants } from "motion/react";
+import { stagger as staggerBy, type Variants } from "motion/react";
 
 const EASE = [0.2, 0.8, 0.2, 1] as const;
 
 /** Parent of a staggered fade-in (children use {@link fadeUp}). */
 export const stagger: Variants = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.07, delayChildren: 0.02 } },
+  show: { transition: { delayChildren: staggerBy(0.07, { startDelay: 0.02 }) } },
 };
 
 /**

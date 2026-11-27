@@ -1,1 +1,0 @@
-import{Z as e}from"./hooks-DnD4xD4d.js";function t(){return e().data?.client===`phone`}export{t};

@@ -216,7 +216,7 @@ FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 
 --------------------------------------------------------------------------------
-@tanstack/query-core 5.108.1
+@tanstack/query-core 5.108.4
 Licence: MIT
 
 MIT License
@@ -242,7 +242,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-@tanstack/react-query 5.108.1
+@tanstack/react-query 5.108.4
 Licence: MIT
 
 MIT License
@@ -334,7 +334,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-lucide-react 1.76.0
+lucide-react 1.78.0
 Licence: ISC
 
 ISC License

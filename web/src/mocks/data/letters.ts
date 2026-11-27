@@ -6,6 +6,10 @@
 import type { LetterSpec } from "../pages";
 import { RECIPIENT, SAM } from "./constants";
 
+// A block is a string or an object with a `bold` of its own (../pages), and the rule reads that property as
+// String.prototype.bold, which browsers mark deprecated. This file holds data only: nothing here can be a real use.
+/* eslint-disable @typescript-eslint/no-deprecated */
+
 /** Verbatim evidence quotes per document. */
 export const Q = {
   lease: {
