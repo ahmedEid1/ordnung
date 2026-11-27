@@ -31,7 +31,7 @@ import {
 import { composerHrefFor, endingLetterLabel, offersEndingLetter } from "./links";
 import { NoticePeriodForm } from "./NoticePeriodForm";
 import { dayNumber } from "@/features/lanes/scale";
-import { focusWhenReady } from "@/lib/focus";
+import { focusWhenReady, useFocusWhenDrawn } from "@/lib/focus";
 
 /**
  * A label and its value on one line; when both don't fit (a narrow card, a long label) the value
@@ -94,6 +94,7 @@ export function ContractCard({
   const [editingNotice, setEditingNotice] = useState(false);
   const cardRef = useRef<HTMLElement>(null);
   const noticeButtonRef = useRef<HTMLButtonElement>(null);
+  const focusWhenDrawn = useFocusWhenDrawn();
   // Saved or undone: the focus goes to the button where those terms put it — first while the dates
   // are unknown, last once they are — as soon as the list has them (the card itself if none is left)
   const focusNoticeButtonFor = (terms: Contract) => {
@@ -103,7 +104,7 @@ export function ContractCard({
   const closeNotice = (saved: Contract | null) => {
     setEditingNotice(false);
     if (saved) focusNoticeButtonFor(saved);
-    else requestAnimationFrame(() => noticeButtonRef.current?.focus()); // Cancel, Escape: back to the button
+    else focusWhenDrawn(() => noticeButtonRef.current); // Cancel, Escape: back to the button, as it is drawn again
   };
 
   // the main step while the dates are unknown; once they are, a quiet way to correct the period

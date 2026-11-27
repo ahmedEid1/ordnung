@@ -30,7 +30,7 @@ import { fitsACalendar, icsFileName, icsHref, useItemActions } from "./actions";
 import { englishInline, isGermanText } from "./fact-text";
 import { daysUntil, formatMoney, glueText } from "@/lib/format";
 import { plainText } from "@/lib/glue";
-import { focusAfterLeaving, focusWhenReady } from "@/lib/focus";
+import { focusAfterLeaving, focusIsLost, focusOrigin, focusWhenReady, useFocusWhenDrawn } from "@/lib/focus";
 import { useToday } from "@/lib/today";
 import { asideNote } from "@/features/party/model";
 import { itemDateRole, undatedNote } from "./item-meta";
@@ -295,11 +295,13 @@ function ItemRow({
     dismiss(it, { onUndone: (from) => focusWhenReady(() => document.getElementById(menuId), 5000, { from }) });
   };
 
-  // back to the "More actions" button the editor was opened from (not <body>)
-  const closeEditor = () => {
+  // back to the "More actions" button the editor was opened from (not <body>), as the editor goes; after a saved
+  // date (`from`: where focus was as it was sent), only if focus is still there, not somewhere the person went since
+  const focusWhenDrawn = useFocusWhenDrawn();
+  const closeEditor = (from: Element | null = null) => {
     setEditing(false);
     setDate(item.due_date ?? "");
-    requestAnimationFrame(() => document.getElementById(menuId)?.focus());
+    if (!from || focusIsLost() || document.activeElement === from) focusWhenDrawn(() => document.getElementById(menuId));
   };
   const onEditorKey = (e: KeyboardEvent<HTMLFormElement>) => {
     if (e.key !== "Escape") return;
@@ -404,7 +406,8 @@ function ItemRow({
             onKeyDown={onEditorKey}
             onSubmit={(e) => {
               e.preventDefault();
-              if (date) changeDate(item, date, closeEditor);
+              const from = focusOrigin();
+              if (date) changeDate(item, date, () => closeEditor(from));
             }}
           >
             <label className="sr-only" htmlFor={`due-${item.id}`}>
@@ -416,7 +419,7 @@ function ItemRow({
               <Button type="submit" size="sm" variant="primary" disabled={!date} loading={pending}>
                 Save date
               </Button>
-              <Button type="button" size="sm" variant="ghost" onClick={closeEditor}>
+              <Button type="button" size="sm" variant="ghost" onClick={() => closeEditor()}>
                 Cancel
               </Button>
             </span>

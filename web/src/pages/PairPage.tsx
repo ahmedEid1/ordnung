@@ -34,6 +34,7 @@ import { PHONE_UNREACHABLE } from "@/features/phone/copy";
 import { guessDeviceName, pageLoad, servedToPhone } from "@/features/phone/platform";
 import { NB_HYPHEN } from "@/lib/glue";
 import { useOnePress } from "@/lib/hooks";
+import { useFocusWhenDrawn } from "@/lib/focus";
 
 /** Characters in a pairing code (Crockford's base 32: no I, L, O or U). */
 export const CODE_LENGTH = 10;
@@ -257,6 +258,7 @@ function PairForm({
   onPaired: (result: PairResult) => void;
 }) {
   const ids = useId();
+  const focusWhenDrawn = useFocusWhenDrawn();
   const pair = usePairPhone();
   // one pairing per press: a double tap sent the code twice before the first answer set the phone's cookie, and the
   // computer took the second for someone else using the code (it unpaired the phone and said the screen was seen)
@@ -318,7 +320,7 @@ function PairForm({
                 onClick={() => {
                   onForgetLinkCode();
                   pair.reset();
-                  requestAnimationFrame(() => codeRef.current?.focus());
+                  focusWhenDrawn(() => codeRef.current);
                 }}
               >
                 Type a code instead
