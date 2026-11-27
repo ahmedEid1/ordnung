@@ -13,6 +13,7 @@ from typing import Any
 
 import pytest
 
+import helpers_proof
 from helpers_docs import photo
 from ordnung import clock
 from ordnung.api.routes.items import MOVED_ON, UNCHANGED_HEADER
@@ -202,6 +203,34 @@ async def test_said_answered_twice_keeps_a_snoozed_follow_up_snoozed_after_undo(
         assert undone.status_code == 200, undone.text
         back = api.ctx.store.get_item(followup.id)
         assert back is not None and (back.status, back.snoozed_until) == ("snoozed", "2026-10-30")
+
+
+async def test_said_answered_again_later_is_a_new_answer(data_dir: Path) -> None:
+    """Only the same answer said twice changes nothing: another letter named later is the answer from that day, and
+    a follow-up opened again since is closed again."""
+    async with api_for(data_dir) as api:
+        draft_id, gym = await _sent(api)
+        url = f"/api/drafts/{draft_id}/answered"
+        (followup,) = [
+            i for i in api.ctx.store.list_items() if i.origin != "extracted" and i.kind != "appointment"
+        ]
+        assert (await api.client.post(url, json={"doc_id": None})).status_code == 200
+        await _patch(api, followup.id, status="open")  # the answer didn't settle it after all
+        clock.set_today("2026-10-02")
+        assert (await api.client.post(url, json={"doc_id": None})).status_code == 200
+        assert api.ctx.store.get_item(followup.id).status == "done"  # type: ignore[union-attr]
+        clock.set_today("2026-10-09")
+        letter = helpers_proof.incoming(
+            api.ctx,
+            "reply",
+            kind="other",
+            title="Kündigungsbestätigung",
+            party_id=gym.party,
+            case_id=gym.case,
+        )
+        assert (await api.client.post(url, json={"doc_id": letter})).status_code == 200
+        (draft,) = [d for d in api.ctx.store.list_drafts() if d.id == draft_id]
+        assert (draft.answered_on, draft.answer_doc_id) == ("2026-10-09", letter)
 
 
 async def test_the_same_proof_sent_twice_at_once_is_added_once(data_dir: Path) -> None:
