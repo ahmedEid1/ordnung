@@ -47,7 +47,7 @@ ASSETS_BYTES = 28_000_000
 #: still page is held for its planned time and a motion for the time the browser gave it, whatever the computer's
 #: load. A visitor gives it about half a minute: a beat added to it must make room, not stretch it
 LOOP_SECONDS = (20, 30)
-#: the whole tour (the MP4): 88.3 s; a visitor who clicks gives it about a minute and a half
+#: the whole tour (the MP4): 92.6 s; a visitor who clicks gives it about a minute and a half
 TOUR_SECONDS = (70, 95)
 #: mean luma (0 black, 255 white): a picture in the light theme is at least this bright, one in the dark theme at
 #: most :data:`DARK`

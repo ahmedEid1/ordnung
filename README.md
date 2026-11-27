@@ -6,7 +6,7 @@
   Claude reads your letters; tested code works out each deadline and shows the law behind it. Ordnung
   reminds you before things matter, drafts the replies and runs on your own computer.</p>
 
-<p align="center"><a href="https://ahmedeid1.github.io/ordnung/"><b>Open the online demo</b></a> (nothing to install) · <a href="docs/assets/demo.mp4">Watch the whole tour (MP4, 1 min 28 s)</a> · <a href="#install-and-run">Install</a> · <a href="#privacy">Privacy</a></p>
+<p align="center"><a href="https://ahmedeid1.github.io/ordnung/"><b>Open the online demo</b></a> (nothing to install) · <a href="docs/assets/demo.mp4">Watch the whole tour (MP4, 1 min 33 s)</a> · <a href="#install-and-run">Install</a> · <a href="#privacy">Privacy</a></p>
 
 <p align="center"><picture><source type="image/webp" srcset="docs/assets/demo.webp"><img src="docs/assets/demo.gif" width="880" alt="Ordnung demo: a photographed tax assessment arrives as new mail and is read; Ordnung says what it is, what to do and by when, shows the sentence the objection deadline came from, and each legal step behind the date"></picture><br>
   <sub>The court order in the video (not in the animation) is a sample letter written for the online demo, not one Claude read; its date and advice card come from the rules engine.</sub></p>
