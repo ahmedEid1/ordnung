@@ -722,6 +722,8 @@ test.describe("320×568, motion on: a finger put on the screen during the smooth
       requestAnimationFrame(look);
     });
     await open(page, "/timeline", "Timeline");
+    // the session is ready before the page moves: the finger then comes one round trip after the scroll is seen
+    const cdp = await page.context().newCDPSession(page);
     await page.goto(`/contracts?contract=${bank.id}`);
     await page.waitForFunction(
       () => {
@@ -731,7 +733,6 @@ test.describe("320×568, motion on: a finger put on the screen during the smooth
       null,
       { polling: "raf" },
     );
-    const cdp = await page.context().newCDPSession(page);
     await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 160, y: 300 }] });
     try {
       const card = page.locator(`[id="contract-${bank.id}"]`);
@@ -747,7 +748,8 @@ test.describe("320×568, motion on: a finger put on the screen during the smooth
       const after = ys.slice(touch!.at);
       expect(Math.max(...after), "the page went no further after the frame the finger came in").toBeLessThanOrEqual(next + 1);
       expect(Math.abs(after.at(-1)! - next), "and it stays there").toBeLessThanOrEqual(1);
-      expect(seen.gapAbove, "the card is still far below: not brought into view after all").toBeGreaterThan(1000);
+      // however late the finger came on a slow machine: the card (5,700 px down) was not brought into the window
+      expect(seen.gapAbove, "the card is still below the window: not brought into view after all").toBeGreaterThan(568);
     } finally {
       await cdp.send("Input.dispatchTouchEvent", { type: "touchCancel", touchPoints: [] });
     }
