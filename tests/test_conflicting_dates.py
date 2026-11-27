@@ -1374,3 +1374,204 @@ async def test_a_deadline_the_law_adds_counts_from_the_earlier_of_the_letters_tw
             assert not needs_check(after)
     finally:
         clock.set_today(None)
+
+
+# --------------------------------------------------------------------------------------------------
+# How a decision names its own date, and how it names another's
+# --------------------------------------------------------------------------------------------------
+
+
+def _own_dates(sentence: str) -> list[date]:
+    """The dates a made-up letter of the Stadt Musterstadt gives for itself in its text (its header has none)."""
+    page = (1, f"Stadt Musterstadt\nSehr geehrte Frau Beispiel,\n{sentence}\n", [], "text")
+    return [statement.letter_date for statement in letter_statements([page]) if statement.letter_date]
+
+
+#: The ways a German authority's letter names its own decision with its date: the clause's finite verb in the
+#: present tense, right after the date or before "mit" with the verb at the end, and the English letters' forms.
+A_DECISION_NAMING_ITS_OWN_DATE = [
+    pytest.param("Mit Bescheid vom 09.06.2026 setzen wir die Gebühr auf 80,00 EUR fest.", id="setzen-wir"),
+    pytest.param(
+        "Mit Bescheid vom 09.06.2026 wird die Grundsteuer auf 312,00 EUR festgesetzt.", id="passive"
+    ),
+    pytest.param(
+        "Mit Gebührenbescheid vom 09.06.2026 werden Gebühren von 80,00 EUR erhoben.",
+        id="compound-noun-plural",
+    ),
+    pytest.param("Mit dem Bescheid vom 09.06.2026 wird Ihr Antrag abgelehnt.", id="mit-dem"),
+    pytest.param("Mit Bescheid vom 09.06.2026 ergeht folgende Entscheidung:", id="ergeht"),
+    pytest.param(
+        "Der Bescheid vom 09.06.2026 ergeht unter dem Vorbehalt der Nachprüfung.", id="der-bescheid-ergeht"
+    ),
+    pytest.param(
+        "Die Gebühr wird mit Bescheid vom 09.06.2026 auf 80,00 EUR festgesetzt.", id="verb-at-the-end"
+    ),
+    pytest.param("Hiermit setzen wir mit Bescheid vom 09.06.2026 die Gebühr fest.", id="hiermit"),
+    pytest.param("Mit Bescheid vom 09.06.2026 wird hiermit ein Zwangsgeld angedroht.", id="wird-hiermit"),
+    pytest.param("Mit Bescheid vom 09.06.2026 setze ich das Zwangsgeld auf 200,00 EUR fest.", id="ich"),
+    pytest.param("Mit Schreiben vom 09.06.2026 bitten wir Sie um Zahlung.", id="schreiben-bitten"),
+    pytest.param("Mit Schreiben vom 09.06.2026 erhalten Sie die Abrechnung.", id="erhalten-sie"),
+    pytest.param("By our decision dated 9 June 2026, we hereby set the fee at EUR 80.00.", id="en-hereby"),
+    pytest.param("By decision dated 9 June 2026 we refuse your application.", id="en-present"),
+    pytest.param("With the notice dated 9 June 2026 the fee is hereby set at EUR 80.00.", id="en-passive"),
+]
+
+
+def test_a_decision_naming_its_own_date_is_a_date_the_letter_gives_for_itself() -> None:
+    check_rows(
+        A_DECISION_NAMING_ITS_OWN_DATE,
+        lambda sentence: _assert_equal(_own_dates(sentence), [date(2026, 6, 9)]),
+    )
+
+
+def _assert_equal(found: object, expected: object) -> None:
+    assert found == expected
+
+
+#: What must never count as the letter's own date: an earlier decision that the letter changes, revokes, refers
+#: to or names in the past; the decision an objection decision rules on; the invoice a reminder names; the
+#: person's own letter.
+ANOTHER_DECISIONS_DATE = [
+    pytest.param("Der Bescheid vom 09.06.2026 wird aufgehoben.", id="revoked"),
+    pytest.param("Hiermit heben wir den Bescheid vom 09.06.2026 auf.", id="hiermit-revoked"),
+    pytest.param(
+        "Mit Bescheid vom 09.06.2026 wurde die Steuer auf 900,00 EUR festgesetzt.", id="past-passive"
+    ),
+    pytest.param("Mit Bescheid vom 09.06.2026 hatten wir die Steuer festgesetzt.", id="pluperfect"),
+    pytest.param("Mit Bescheid vom 09.06.2026 haben wir die Steuer festgesetzt.", id="perfect"),
+    pytest.param("Mit Bescheid vom 09.06.2026 ist die Steuer festgesetzt worden.", id="perfect-passive"),
+    pytest.param("Mit Bescheid vom 09.06.2026 setzte die Stadt die Gebühr fest.", id="narrated-past"),
+    pytest.param(
+        "Die mit Bescheid vom 09.06.2026 festgesetzte Steuer wird auf 800,00 EUR herabgesetzt.",
+        id="attribute",
+    ),
+    pytest.param(
+        "Mit Bescheid vom 09.06.2026 bewilligte Leistungen werden aufgehoben.", id="attribute-no-article"
+    ),
+    pytest.param(
+        "Der Betrag wird mit den mit Bescheid vom 09.06.2026 festgesetzten Zinsen verrechnet.",
+        id="attribute-after-a-verb",
+    ),
+    pytest.param(
+        "Die Zahlung wird auf mit Bescheid vom 09.06.2026 festgesetzte Gebühren angerechnet.",
+        id="attribute-without-an-article",
+    ),
+    pytest.param(
+        "Die Steuer wird in Abänderung des Bescheides vom 09.06.2026 auf 800,00 EUR festgesetzt.",
+        id="abaenderung",
+    ),
+    pytest.param(
+        "Unter Bezugnahme auf den Bescheid vom 09.06.2026 wird die Steuer neu festgesetzt.", id="bezug"
+    ),
+    pytest.param(
+        "Die Steuer wird unter Bezugnahme mit Bescheid vom 09.06.2026 erhoben.", id="bezug-before-mit"
+    ),
+    pytest.param(
+        "Ihr Widerspruch vom 20.06.2026 gegen den Bescheid vom 09.06.2026 wird zurückgewiesen.",
+        id="objection-decision",
+    ),
+    pytest.param("Die Steuer wird wie mit Bescheid vom 09.06.2026 mitgeteilt erhoben.", id="wie"),
+    pytest.param(
+        "Die Leistung wird in Verbindung mit dem Bescheid vom 09.06.2026 gezahlt.", id="in-verbindung"
+    ),
+    pytest.param("Der Zuschlag wird zusammen mit dem Bescheid vom 09.06.2026 erhoben.", id="zusammen-mit"),
+    pytest.param("Die Gebühr wird bereits mit Bescheid vom 09.06.2026 erhoben.", id="bereits"),
+    pytest.param("Die Bewilligung wird mit Wirkung vom 09.06.2026 aufgehoben.", id="mit-wirkung-vom"),
+    pytest.param("Mit Schreiben vom 09.06.2026 wurden Sie zur Zahlung aufgefordert.", id="reminder-past"),
+    pytest.param("Unsere Rechnung vom 09.06.2026 ist noch offen.", id="reminder-invoice"),
+    pytest.param(
+        "Wir bitten um Zahlung des mit Bescheid vom 09.06.2026 festgesetzten Betrags.", id="reminder-amount"
+    ),
+    pytest.param(
+        "Mit Ihrem Schreiben vom 09.06.2026 haben Sie Widerspruch erhoben.", id="the-persons-letter"
+    ),
+    pytest.param("Mit Schreiben vom 09.06.2026 beantragen Sie Wohngeld.", id="the-persons-application"),
+    pytest.param("Mit unserem Bescheid vom 09.06.2026 setzen wir die Steuer fest.", id="unserem"),
+    pytest.param("By our decision dated 9 June 2026 we granted the benefit.", id="en-past"),
+    pytest.param("Our decision of 9 June 2026 is hereby revoked.", id="en-revoked"),
+    pytest.param(
+        "By decision dated 9 June 2026, which is hereby amended, the fee was set.", id="en-relative-clause"
+    ),
+]
+
+
+def test_another_decisions_date_is_not_the_letters_own() -> None:
+    check_rows(ANOTHER_DECISIONS_DATE, lambda sentence: _assert_equal(_own_dates(sentence), []))
+
+
+def test_a_decision_that_revokes_an_earlier_one_gives_only_its_own_date() -> None:
+    """The new decision's date is its own; the old decision's, named in the same sentence, is not."""
+    assert _own_dates(
+        "Mit Bescheid vom 10.06.2026 werden die mit Bescheid vom 05.06.2026 bewilligten Leistungen aufgehoben."
+    ) == [date(2026, 6, 10)]
+    assert _own_dates("Mit Bescheid vom 10.06.2026 wird der Bescheid vom 05.06.2026 aufgehoben.") == [
+        date(2026, 6, 10)
+    ]
+
+
+def test_a_decision_dated_a_day_before_its_header_counts_from_the_earlier_date() -> None:
+    """A made-up municipal fee decision dated Wed 10 Jun 2026 in its header names its decision Tue 9 Jun 2026 in
+    its text ("Mit Bescheid vom … wird … festgesetzt"): the objection month counts from the earlier date, the
+    receipt names both and the to-do is "Please check"."""
+    from ordnung.ingest.plan import checked_evidence
+
+    text = (
+        "Stadt Musterstadt · Ordnungsamt\nDatum: 10.06.2026\nSehr geehrte Frau Beispiel,\n"
+        "mit Bescheid vom 09.06.2026 wird für die Sondernutzung eine Gebühr von 80,00 EUR festgesetzt.\n"
+        "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.\n"
+    )
+    objection = item(
+        "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.",
+        kind="deadline",
+        type="relative",
+        amount=1,
+        unit="months",
+        anchor="deemed_delivery",
+        delivery_rule="de_admin_post",
+        nature="objection",
+    )
+    [verified] = read(text, objection, kind="authority_letter")
+    assert {rival.letter_date for rival in verified.rivals} == {date(2026, 6, 9), date(2026, 6, 10)}
+    ctx = RuleContext(
+        today=date(2026, 6, 12), document_date=date(2026, 6, 10), delivery_scope="vwvfg", region="NW"
+    )
+    alone = _alone(verified, ctx)
+    result = computed(verified, ctx)
+    # posted Tue 9 Jun: delivered Sat 13 Jun (no move under the VwVfG), one month → Mon 13 Jul;
+    # posted Wed 10 Jun: delivered Sun 14 Jun → Tue 14 Jul
+    assert alone.due_date == "2026-07-14"
+    assert result.due_date == "2026-07-13"
+    assert result.conflict
+    assert not checked_evidence(verified, result).value_consistent  # "Please check"
+    receipt = result.receipt
+    assert receipt is not None and receipt.confidence == "low" and CONFLICTING_DATES in receipt.rule_ids
+    [warning] = [w for w in receipt.warnings if "gives two dates for itself" in w]
+    assert "Tue 9 Jun 2026" in warning and "Wed 10 Jun 2026" in warning
+
+
+def test_an_earlier_decision_named_a_day_before_the_letter_is_no_second_date() -> None:
+    """The same letter that changes a decision of the day before ("Der Bescheid vom … wird geändert", "Mit
+    Bescheid vom … wurde …"): one date, its own, nothing to check."""
+    text = (
+        "Stadt Musterstadt · Ordnungsamt\nDatum: 10.06.2026\nSehr geehrte Frau Beispiel,\n"
+        "der Bescheid vom 09.06.2026 wird geändert. Mit Bescheid vom 09.06.2026 wurde die Gebühr auf 90,00 EUR "
+        "festgesetzt. Die mit Bescheid vom 09.06.2026 festgesetzte Gebühr wird auf 80,00 EUR herabgesetzt.\n"
+        "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.\n"
+    )
+    objection = item(
+        "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.",
+        kind="deadline",
+        type="relative",
+        amount=1,
+        unit="months",
+        anchor="deemed_delivery",
+        delivery_rule="de_admin_post",
+        nature="objection",
+    )
+    [verified] = read(text, objection, kind="authority_letter")
+    assert {rival.letter_date for rival in verified.rivals} == {date(2026, 6, 10)}
+    ctx = RuleContext(
+        today=date(2026, 6, 12), document_date=date(2026, 6, 10), delivery_scope="vwvfg", region="NW"
+    )
+    result = computed(verified, ctx)
+    assert result.due_date == "2026-07-14" and not result.conflict

@@ -629,7 +629,10 @@ for a notice the cancellation named before the date in its own clause, or "bis �
 date of how long something lasts ("gilt bis", "ist bis … gültig", "läuft bis", "verlängert sich bis",
 "weiter beliefert", "continues until") or a relative clause's ("Unterlagen, die bis … eingehen, …") —
 and for a period counted from the letter a date the letter gives for itself ("mit diesem Bescheid vom
-…", or the first "Datum:" / "Date:" label of its header: on the label's line, or right under it on the
+…"; "mit Bescheid vom …" with the clause's verb in the present tense — "… wird … festgesetzt", "… setzen wir",
+"… ergeht" — never an earlier decision named in the past, as a thing, by reference or to be revoked: "wurde",
+"die mit Bescheid vom … festgesetzte", "unter Bezugnahme auf", "der Bescheid vom … wird aufgehoben"; or the
+first "Datum:" / "Date:" label of its header: on the label's line, or right under it on the
 page; never a table's, an event's — "Tatort", "Uhrzeit", "Termin" — or another decision's "Datum des
 Bescheids") — never its own sentence, another to-do's date, a statement naming another amount, another
 kind of payment (instalments, a prepayment, a fee, a direct debit, "erstmals am …"), another remedy,
