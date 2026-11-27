@@ -651,6 +651,30 @@ describe("revealWhenStill", () => {
         expect(card.scrollIntoView).toHaveBeenCalledTimes(3);
         stop();
       });
+
+      it("a centred reveal of its own that lands a few px under the top bar is not taken for one: a later change is still put right", () => {
+        // the browser centres in the room the root's scroll padding leaves (72 px at the top, 24 at the bottom, less
+        // the cards' 12 px scroll margin), not in the bars' room: a card nearly as tall as the room lands 3 px under the
+        // top bar, with nobody scrolling
+        cardHeight = 440;
+        (card.scrollIntoView as ReturnType<typeof vi.fn>).mockImplementation(() => {
+          y += top - 53;
+          top = 53;
+        });
+        const stop = revealWhenStill(card, { reducedMotion: true });
+        vi.advanceTimersByTime(500);
+        expect(card.scrollIntoView).toHaveBeenLastCalledWith({ block: "center", behavior: "auto" });
+        expect(top).toBe(53);
+        const placed = (card.scrollIntoView as ReturnType<typeof vi.fn>).mock.calls.length;
+        // what is above it loads later: the page is taller and the card further down
+        height += 300;
+        top += 300;
+        vi.advanceTimersByTime(500);
+        // (it was taken for a scroll past the card, and the watch stopped after the first reveal)
+        expect((card.scrollIntoView as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(placed);
+        expect(top).toBe(53);
+        stop();
+      });
     });
 
     describe("a reveal that scrolls up (a card that ends above its place without anyone scrolling)", () => {

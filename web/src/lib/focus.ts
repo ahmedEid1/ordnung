@@ -218,8 +218,8 @@ function scrollsThePage(event: Event): boolean {
 
 /**
  * Whether the bars leave the same room as before: each edge within a rem of where it was. A bar still settling into
- * place moves a few pixels (the demo's tour bar slides the last 9 px in while a reveal is under way); one that comes
- * or goes moves an edge by its whole height (54 px for the tour bar).
+ * place moves a few pixels (the demo's tour bar slides its last few in while a reveal is under way: 3.3 px measured);
+ * one that comes or goes moves an edge by its whole height (54 px for the tour bar).
  */
 function sameRoom(a: Band, b: Band): boolean {
   return Math.abs(a.top - b.top) <= 16 && Math.abs(a.bottom - b.bottom) <= 16;
@@ -244,8 +244,8 @@ const REVEAL_GIVE_UP_MS = 20_000;
  * A scroll that comes with none of those (the scroll bar dragged, an assistive technology scrolling) stops the watch
  * too, seen as the page moving while nothing changed its height and no reveal of its own was under way. During one,
  * it is seen as the page moving back against it (a scroll of its own never turns round), or as the page standing still
- * past the card, its height and its bars as they were (a scroll of its own goes no further than the card): someone else
- * scrolled on. Returns a stop for the caller (an effect's cleanup).
+ * well past the card, its height and its bars as they were (a scroll of its own ends where it aimed, give or take a few
+ * pixels): someone else scrolled on. Returns a stop for the caller (an effect's cleanup).
  */
 export function revealWhenStill(el: HTMLElement, { reducedMotion = false }: { reducedMotion?: boolean } = {}): () => void {
   let stopped = false;
@@ -329,13 +329,20 @@ export function revealWhenStill(el: HTMLElement, { reducedMotion = false }: { re
       const band = freeBand(x);
       const { shown, block } = revealPlan(box, band);
       const where = `${now} ${band.top} ${band.bottom}`;
-      // a reveal of its own, the page's height and its bars as they were, never takes the card past where it belongs:
-      // standing still beyond it, the page was scrolled on by someone else, and that scroll wins as the person's wheel
-      // does. (Short of it is not told apart: a scroll that only cuts the reveal short leaves the card to be revealed
+      // a reveal of its own, the page's height and its bars as they were, never takes the card well past where it
+      // belongs: standing still beyond it, the page was scrolled on by someone else, and that scroll wins as the
+      // person's wheel does. Going down, "well past" means more than TALL_START_SLACK above the top bar: the browser
+      // centres a card in the room the root's scroll padding leaves, not in the bars' room, and one nearly as tall as
+      // that room lands up to 4 px under the top bar with nobody scrolling (it is then revealed again, as before).
+      // (Short of it is not told apart: a scroll that only cuts the reveal short leaves the card to be revealed
       // again.)
       if (revealing && own && !shown && sameRoom(own.band, band)) {
         const past =
-          own.way > 0 ? box.top < band.top - 1 : block === "start" ? box.top > band.top + TALL_START_SLACK : box.bottom > band.bottom + 1;
+          own.way > 0
+            ? box.top < band.top - TALL_START_SLACK
+            : block === "start"
+              ? box.top > band.top + TALL_START_SLACK
+              : box.bottom > band.bottom + 1;
         if (past) return stop();
       }
       revealing = false;
