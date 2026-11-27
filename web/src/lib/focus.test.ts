@@ -127,6 +127,18 @@ describe("focusWhenReady from where the action started", () => {
     expect(el("choice")).toHaveFocus();
   });
 
+  it("leaves a field in the Tab order, and makes a heading focusable from a script only", () => {
+    document.body.insertAdjacentHTML("beforeend", `<h2 id="title">Title</h2>`);
+    focusWhenReady(() => el("choice"));
+    vi.advanceTimersByTime(50);
+    expect(el("choice")).toHaveFocus();
+    expect(el("choice")).not.toHaveAttribute("tabindex");
+    focusWhenReady(() => el("title"), 5000, { always: true });
+    vi.advanceTimersByTime(50);
+    expect(el("title")).toHaveFocus();
+    expect(el("title")).toHaveAttribute("tabindex", "-1");
+  });
+
   it("moves focus to a failed action's error wherever it is (`always`)", () => {
     el("name").focus();
     focusWhenReady(() => el("choice"), 5000, { always: true });

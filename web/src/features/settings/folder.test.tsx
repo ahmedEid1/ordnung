@@ -180,6 +180,8 @@ describe("Settings → Watched folder", () => {
     await waitFor(() => expect(screen.getByLabelText("Folder")).toHaveValue(""));
     // the button went: focus is on the (now empty) folder field, not lost to the page
     await waitFor(() => expect(screen.getByLabelText("Folder")).toHaveFocus());
+    // and it is still in the Tab order
+    expect(screen.getByLabelText("Folder")).not.toHaveAttribute("tabindex");
   });
 
   it("with no folder and nothing picked up, the list says what it will show", async () => {

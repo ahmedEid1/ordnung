@@ -45,7 +45,9 @@ export function focusWhenReady(
     }
     document.removeEventListener("focusin", onFocusIn, true);
     if (!always && !focusIsLost() && !(from && !wentOn && document.activeElement === from)) return;
-    if (!el.hasAttribute("tabindex")) el.tabIndex = -1;
+    // a heading is made focusable from a script only; a field or a button already is, and -1 would take it out of
+    // the Tab order (the sync passphrase field was)
+    if (!el.hasAttribute("tabindex") && el.tabIndex < 0) el.tabIndex = -1;
     el.focus({ preventScroll });
   };
   requestAnimationFrame(tick);
