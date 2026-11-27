@@ -72,6 +72,16 @@ function readQr(svg: Element): string {
   return decodeQR({ width, height: width, data });
 }
 
+/**
+ * The clock stands still (timers still run), so a new code reads "10:00". On a running clock it read "9:59" whenever
+ * a second turned between the server making the code and the dialog reading its answer: the expiry is sent to the
+ * second, the dialog counts from when the answer came and rounds up (a busy machine, a few runs in a hundred).
+ * `PairPhoneDialog.test.tsx` moves this clock by hand to see the countdown run.
+ */
+function pinClock() {
+  vi.useFakeTimers({ toFake: ["Date"] });
+}
+
 /** Phone access on at the recommended address (192.168.178.23:8767), as if turned on before. */
 function turnedOn(srv: MockServer) {
   srv.phone.change({ enabled: true });
@@ -177,6 +187,7 @@ describe("Settings → Phone", () => {
   });
 
   it("pairs a phone: a QR code that reads back to the link, the code, the phone reaching it, then its two words", async () => {
+    pinClock();
     const { srv } = useMockApi();
     turnedOn(srv);
     const user = userEvent.setup();
@@ -221,22 +232,26 @@ describe("Settings → Phone", () => {
   });
 
   it("“Not you? Remove” signs a phone out at once and offers a new code", async () => {
+    pinClock();
     const { srv } = useMockApi();
     turnedOn(srv);
     const user = userEvent.setup();
     const { client } = renderPhone();
     const dialog = await openPairing(user);
-    srv.phone.pair({ code: srv.phone.code!, name: "iPhone" }, "192.168.178.66");
+    const first = srv.phone.code!;
+    srv.phone.pair({ code: first, name: "iPhone" }, "192.168.178.66");
     await poll(client);
     await within(dialog).findByText("Paired: iPhone");
     await user.click(within(dialog).getByRole("button", { name: "Not you? Remove" }));
     expect(await within(dialog).findByText("Removed iPhone")).toBeInTheDocument();
     expect(srv.phone.devices).toEqual([]);
-    const first = srv.phone.code;
     await user.click(within(dialog).getByRole("button", { name: "Make a new code" }));
-    await within(dialog).findByText("10:00");
-    expect(srv.phone.code).not.toBeNull();
-    expect(srv.phone.code).not.toBe(first);
+    // the new code itself, drawn: the old one's page comes back for a moment first, with its own countdown
+    await waitFor(() => expect(srv.phone.code).not.toBeNull());
+    const next = srv.phone.code!;
+    expect(next).not.toBe(first);
+    expect(await within(dialog).findByText(`${next.slice(0, 5)}‑${next.slice(5)}`)).toBeInTheDocument();
+    expect(within(dialog).getByText("10:00")).toBeInTheDocument();
   });
 
   it("a code used twice: neither phone stays paired, and the danger notice names the addresses", async () => {

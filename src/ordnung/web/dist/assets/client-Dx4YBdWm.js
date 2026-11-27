@@ -1,1 +1,0 @@
-import{Z as e}from"./hooks-DhaVvB87.js";function t(){return e().data?.client===`phone`}export{t};

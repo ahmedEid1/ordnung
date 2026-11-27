@@ -176,13 +176,13 @@ skims.
 - The end-to-end tests hold one behaviour each too. Tests that repeated one check per width or per theme are one
   test that resizes the page or switches the theme in place; fixed waits wait for the thing itself; and every
   layout file sets up what it needs instead of relying on a letter an earlier file left open, so the files run in
-  any split. Playwright listed 479 tests where it listed 539 (573 now, with the tests added since), with every bug
+  any split. Playwright listed 479 tests where it listed 539 (574 now, with the tests added since), with every bug
   planted behind a merged or removed test still caught. The README's count of Playwright tests follows.
 - The web app's unit tests are about a tenth faster: the 47 files that touch no DOM run in node instead of jsdom,
   two tests move the clock instead of waiting seconds, and nine tests that repeated another are gone or merged
   into it, each with a planted bug to show the remaining test still fails for it. One test is new: moving to
   another Settings section while the settings still load. Vitest ran 2,868 tests where it ran 2,853, with the
-  new tests of the fixes below (3,191 now).
+  new tests of the fixes below (3,194 now).
 - The code's layers are tighter, with nothing a person, an API client or a file on disk can observe changing. In the
   backend, the helpers for the person's day live in a module of their own (`ordnung/days.py`), the replay key beside
   the request it keys, the postal buffer in the rules engine, the ledger's facts and the Idea helpers in
@@ -273,12 +273,13 @@ skims.
   filed or couldn't read. German quotes and German terms in titles are read in German. Saving a draft letter says
   when a check now fails ("1 thing needs a look before you send it"), not that everything is up to date.
 - **Room for the page at high zoom and on small screens.** At 400 % zoom the top bar, Ask's question box and a
-  drawer's header and footer no longer leave the content a slit; a phone turned sideways shows that the
-  sidebar's sections scroll; the calendar button and the demo badge stay on screen with wider text spacing or
-  larger text; the search field in the top bar has an edge you can see. A contract opened from the
-  Timeline, the contracts chart or Today ends whole in view, also with animations on, on a small phone and at
-  400 % zoom, never under the top bar or the tab bar, and your own scroll wins over it, also one that an
-  assistive technology makes on past the contract.
+  drawer's header and footer no longer leave the content a slit; a phone turned sideways shows that the sidebar's
+  sections scroll; the calendar button and the demo badge stay on screen with wider text spacing or larger text;
+  the search field in the top bar has an edge you can see. A contract opened from the Timeline, the contracts chart
+  or Today ends whole in view, also with animations on, on a small phone and at 400 % zoom, never under the top bar
+  or the tab bar, and your own scroll wins over it, also one that an assistive technology makes on past the
+  contract. A finger put on the screen stops that scroll at the next frame, and your drag takes the page from
+  there; before, the scroll went on to the contract under your finger.
 - **A link to a contract, a Settings card or a letter's card lands there on a slow phone too.** In a tab that had
   shown the page before, the app's scroll back to the place it remembered for that page could come after the page
   had scrolled to what the link asked for, and took it back: with the processor slowed eight times, the last

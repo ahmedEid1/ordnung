@@ -1,0 +1,1 @@
+import{Z as e}from"./hooks-C138mwKS.js";function t(){return e().data?.client===`phone`}export{t};

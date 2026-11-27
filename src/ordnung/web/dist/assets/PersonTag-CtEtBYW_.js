@@ -1,0 +1,1 @@
+import{tt as e}from"./copy-BCFBr1QB.js";import{gn as t}from"./App-0boEIjkf.js";import{qn as n}from"./hooks-C138mwKS.js";import{n as r}from"./index-Cq5dJxo0.js";var i=r();function a({name:r,className:a}){let o=`For ${r}`;return(0,i.jsx)(t,{tone:`neutral`,icon:e,title:o,className:n(`min-w-0`,a),"data-person-tag":!0,children:o})}export{a as t};

@@ -700,3 +700,58 @@ test.describe("390×800, motion on: a modifier key during the smooth scroll to a
     });
   }
 });
+
+// Chromium sends a finger's pointerdown before its touchstart: the watch took it for a plain press and stopped
+// without stopping its smooth scroll, which went on to the card under the finger (5,700 px down for the bank
+// contract at 320 px). The finger is held still and lifted only at the end, so that no tap follows.
+test.describe("320×568, motion on: a finger put on the screen during the smooth scroll to a contract", () => {
+  test.use({ viewport: { width: 320, height: 568 }, reducedMotion: "no-preference", hasTouch: true });
+
+  test("stops that scroll where it is: the page goes no further than the frame the finger came in", async ({ page }) => {
+    const bank = await contractOf(page, "bank");
+    // the page's scroll every frame, and where it was when the finger came: recorded before the app's own listener runs
+    await page.addInitScript(() => {
+      const w = window as unknown as { __ys: number[]; __touch: { at: number; y: number } | null };
+      w.__ys = [];
+      w.__touch = null;
+      addEventListener("pointerdown", () => (w.__touch ??= { at: w.__ys.length, y: window.scrollY }), { capture: true });
+      const look = () => {
+        w.__ys.push(window.scrollY);
+        requestAnimationFrame(look);
+      };
+      requestAnimationFrame(look);
+    });
+    await open(page, "/timeline", "Timeline");
+    // the session is ready before the page moves: the finger then comes one round trip after the scroll is seen
+    const cdp = await page.context().newCDPSession(page);
+    await page.goto(`/contracts?contract=${bank.id}`);
+    await page.waitForFunction(
+      () => {
+        const ys = (window as unknown as { __ys: number[] }).__ys;
+        return ys.length > 2 && ys.at(-1)! > ys.at(-2)! && ys.at(-1)! > 0;
+      },
+      null,
+      { polling: "raf" },
+    );
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 160, y: 300 }] });
+    try {
+      const card = page.locator(`[id="contract-${bank.id}"]`);
+      const seen = await cardOnceStill(card);
+      const { ys, touch } = await page.evaluate(() => {
+        const w = window as unknown as { __ys: number[]; __touch: { at: number; y: number } | null };
+        return { ys: w.__ys, touch: w.__touch };
+      });
+      expect(touch, "the finger reached the page").not.toBeNull();
+      expect(ys[touch!.at - 1]!, "the finger came while the page was still scrolling down to the card").toBeGreaterThan(ys[touch!.at - 2]!);
+      // the step of the smooth scroll already under way when the finger came is kept (18 to 42 px measured)
+      const next = ys[touch!.at]!;
+      const after = ys.slice(touch!.at);
+      expect(Math.max(...after), "the page went no further after the frame the finger came in").toBeLessThanOrEqual(next + 1);
+      expect(Math.abs(after.at(-1)! - next), "and it stays there").toBeLessThanOrEqual(1);
+      // however late the finger came on a slow machine: the card (5,700 px down) was not brought into the window
+      expect(seen.gapAbove, "the card is still below the window: not brought into view after all").toBeGreaterThan(568);
+    } finally {
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchCancel", touchPoints: [] });
+    }
+  });
+});
