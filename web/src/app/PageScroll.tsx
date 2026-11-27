@@ -12,6 +12,9 @@
  *
  * Places are kept by pathname (as the router's `getKey` here kept them) in sessionStorage, under the router's own
  * key, so places saved before this change still come back.
+ *
+ * The router's `preventScrollReset` is no longer read: every navigation that passes it stays on the same pathname,
+ * and a change within the same pathname never scrolls here.
  */
 import { useLayoutEffect, useRef } from "react";
 import { useLocation } from "react-router";
