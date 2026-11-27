@@ -331,8 +331,8 @@ export function revealWhenStill(el: HTMLElement, { reducedMotion = false }: { re
       const where = `${now} ${band.top} ${band.bottom}`;
       // a reveal of its own, the page's height and its bars as they were, never takes the card past where it belongs:
       // standing still beyond it, the page was scrolled on by someone else, and that scroll wins as the person's wheel
-      // does. (Short of it is not told apart: on a slow machine the router's own scroll to the top cuts a reveal short
-      // too, and the card is then revealed again.)
+      // does. (Short of it is not told apart: a scroll that only cuts the reveal short leaves the card to be revealed
+      // again.)
       if (revealing && own && !shown && sameRoom(own.band, band)) {
         const past =
           own.way > 0 ? box.top < band.top - 1 : block === "start" ? box.top > band.top + TALL_START_SLACK : box.bottom > band.bottom + 1;

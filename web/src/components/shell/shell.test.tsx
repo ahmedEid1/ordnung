@@ -528,7 +528,7 @@ describe("skip link and main", () => {
     }
     const router = createMemoryRouter([{ path: "/", element: <AppLayout />, children: [{ path: "*", element: <Nav /> }] }], { initialEntries: ["/x"] });
     vi.stubGlobal("EventSource", class { addEventListener() {} close() {} });
-    vi.stubGlobal("scrollTo", () => {}); // ScrollRestoration
+    vi.stubGlobal("scrollTo", () => {}); // PageScroll
     render(
       <QueryClientProvider client={client}>
         <RouterProvider router={router} />
