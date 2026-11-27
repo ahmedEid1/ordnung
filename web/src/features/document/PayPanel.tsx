@@ -8,6 +8,7 @@ import { useState } from "react";
 import { Landmark } from "lucide-react";
 import type { Document, GiroCode, Item } from "@/api/types";
 import { daysUntil, formatMoney } from "@/lib/format";
+import { focusIsLost } from "@/lib/focus";
 import { useIsTabletUp, useMediaQuery } from "@/lib/hooks";
 import { isTransfer } from "@/lib/payments";
 import { useToday } from "@/lib/today";
@@ -20,19 +21,23 @@ import { IbanCheck, PayFooter, TransferDetails, hasTransferDetails } from "@/fea
 /**
  * Once paid, the to-do leaves the verdict and its Pay button with it: keyboard focus goes on to the
  * verdict's heading (brought into view), never to the page's <body> — on the next frame, after the
- * panel handed it back to the Pay button (a sheet does so as it closes). A key or a press in that frame is the
- * person going on: their place stands.
+ * panel handed it back to the Pay button (a sheet does so as it closes). A key or a press in that frame that
+ * takes focus somewhere else is the person going on: their place stands. One that leaves focus where it was (a bare
+ * Shift, a Ctrl to quiet a screen reader, a press on empty page) does not count.
  */
 export function focusVerdictAfterPaying(): void {
   let wentOn = false;
+  // where focus was when the person first pressed something in that frame
+  let heldBy: Element | null = null;
   const goingOn = () => {
+    if (!wentOn) heldBy = document.activeElement;
     wentOn = true;
   };
   const events = ["keydown", "pointerdown"] as const;
   for (const type of events) window.addEventListener(type, goingOn, true);
   requestAnimationFrame(() => {
     for (const type of events) window.removeEventListener(type, goingOn, true);
-    if (wentOn) return;
+    if (wentOn && document.activeElement !== heldBy && !focusIsLost()) return;
     const title = document.getElementById("verdict-title");
     if (!title) return;
     title.focus({ preventScroll: true });
