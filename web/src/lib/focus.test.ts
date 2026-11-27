@@ -394,6 +394,35 @@ describe("revealWhenStill", () => {
       stop();
     });
 
+    it("a finger's press that comes before its touchstart (Chromium) stops that scroll where it is too, and the watch", () => {
+      const stop = underWay();
+      window.dispatchEvent(new PointerEvent("pointerdown", { pointerType: "touch" }));
+      window.dispatchEvent(new Event("touchstart"));
+      expect(window.scrollTo).toHaveBeenCalledTimes(1);
+      expect(window.scrollTo).toHaveBeenCalledWith({ top: 100, behavior: "instant" });
+      // nothing is revealed again, however the page changes after
+      top = 900;
+      vi.advanceTimersByTime(500);
+      height = 3700;
+      top = 1500;
+      vi.advanceTimersByTime(2000);
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(1);
+      stop();
+    });
+
+    it.each(["mouse", "pen"])("a %s press leaves that scroll to reach the card, and stops the watch", (pointerType) => {
+      const stop = underWay();
+      window.dispatchEvent(new PointerEvent("pointerdown", { pointerType }));
+      expect(window.scrollTo).not.toHaveBeenCalled();
+      top = 900;
+      vi.advanceTimersByTime(500);
+      height = 3700;
+      top = 1500;
+      vi.advanceTimersByTime(2000);
+      expect(card.scrollIntoView).toHaveBeenCalledTimes(1);
+      stop();
+    });
+
     it("a wheel once the page stands still stops nothing that is not there", () => {
       top = 200;
       const stop = revealWhenStill(card);

@@ -239,13 +239,17 @@ const SCROLL_KEYS = new Set(["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home
 /** Keys that do nothing on their own (the start of Shift+Tab, Control to quiet a screen reader): they change nothing. */
 const MODIFIER_KEYS = new Set(["Shift", "Control", "Alt", "AltGraph", "Meta"]);
 
-/** Whether the person's input scrolls the page: a wheel, a touch, or a key that scrolls when no field takes it. */
+/**
+ * Whether the person's input scrolls the page: a wheel, a touch, or a key that scrolls when no field takes it. A
+ * finger's press counts as its touch: Chromium sends it before the touchstart, and the watch stops on the first.
+ */
 function scrollsThePage(event: Event): boolean {
   if (event instanceof KeyboardEvent) {
     if (!SCROLL_KEYS.has(event.key) || event.ctrlKey || event.altKey || event.metaKey) return false;
     const t = event.target;
     return !(t instanceof HTMLElement && (t.isContentEditable || t.matches("input, textarea, select")));
   }
+  if (event.type === "pointerdown") return (event as PointerEvent).pointerType === "touch";
   return event.type === "wheel" || event.type === "touchstart";
 }
 
