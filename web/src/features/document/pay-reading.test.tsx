@@ -169,6 +169,24 @@ describe("the letter's Pay panel", () => {
     expect(document.activeElement).toBe(document.getElementById("verdict-title"));
   });
 
+  it("after “Mark as paid”, a Tab and a Shift+Tab back in that frame keep their place: gone and back is gone on", async () => {
+    // the same rule as every focus that waits (lib/focus): back where they pressed, they came back to press it
+    const { srv } = useMockApi();
+    const user = userEvent.setup();
+    renderWithProviders(<DocumentView detail={await detail(srv, "doc_nebenkosten")} />, { client: client() });
+    await user.click(screen.getByRole("button", { name: /^Pay €184\.30/ }));
+    const panel = await screen.findByRole("dialog", { name: "Pay" });
+    const frames = holdFrames();
+    await user.click(within(panel).getByRole("button", { name: "Mark as paid" }));
+    const pressedFrom = document.activeElement;
+    await user.tab();
+    expect(document.activeElement).not.toBe(pressedFrom);
+    await user.tab({ shift: true });
+    expect(document.activeElement).toBe(pressedFrom);
+    frames.run(5);
+    expect(document.activeElement).toBe(pressedFrom);
+  });
+
   it("is titled “Pay” on a phone and says “Marked as paid” with Undo, as on Today", async () => {
     const { srv } = useMockApi();
     const user = userEvent.setup();
