@@ -8,6 +8,7 @@ import { useMockApi } from "@/test/mockFetch";
 import type { DocumentDetail, DocumentTrace, TraceRun } from "@/api/types";
 import { DocumentView } from "../DocumentView";
 import { TracePanel } from "./TracePanel";
+import { holdFrames } from "@/test/frames";
 
 const mode = vi.hoisted(() => ({ staticDemo: false }));
 vi.mock("@/lib/mode", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/mode")>()), isStaticDemo: () => mode.staticDemo }));
@@ -109,8 +110,11 @@ describe("How it was read", () => {
     const repair = within(steps()).getByRole("button", { name: /^Claude, asked again/ });
     await userEvent.click(repair);
     const retried = screen.getByRole("button", { name: "the call above" });
+    holdFrames();
     await userEvent.click(retried);
     await waitFor(() => expect(within(steps()).getByRole("button", { name: /^Claude reads the letter/ })).toHaveAttribute("aria-expanded", "true"));
+    // centred and focused as it is drawn, with no frame let through (a focus put off by one took a quick keyboard back)
+    expect(within(steps()).getByRole("button", { name: /^Claude reads the letter/ })).toHaveFocus();
     // no earlier reading to compare reading 1 with
     expect(screen.queryByRole("button", { name: /^Compare with reading/ })).toBeNull();
 

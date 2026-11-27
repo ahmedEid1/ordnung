@@ -15,6 +15,7 @@ import { formatDate } from "@/lib/format";
 import { isTransfer } from "@/lib/payments";
 import { cn } from "@/lib/utils";
 import { useTodayISO } from "@/lib/today";
+import { useFocusWhenDrawn } from "@/lib/focus";
 import { WhyThisDate } from "../WhyThisDate";
 import { barTone, formatMs, isCompletion, spanCopy, spanDetails } from "./copy";
 
@@ -282,6 +283,7 @@ export interface WaterfallProps {
 /** The reading's steps (its root is the summary above them): every stage, then its steps when opened. */
 export function Waterfall({ spans, recorded, items, rules, partyName }: WaterfallProps) {
   const [open, setOpen] = useState<Set<string>>(() => new Set(initiallyOpen(spans)));
+  const focusWhenDrawn = useFocusWhenDrawn();
   const today = useTodayISO();
   const childrenOf = useMemo(() => {
     const map = new Map<string, TraceSpan[]>();
@@ -316,11 +318,15 @@ export function Waterfall({ spans, recorded, items, rules, partyName }: Waterfal
       const path: string[] = [];
       for (let s = byId.get(id); s; s = s.parent_id ? byId.get(s.parent_id) : undefined) path.push(s.id);
       setOpen((prev) => new Set([...prev, ...path]));
-      requestAnimationFrame(() => {
-        const row = document.getElementById(`step-${id}`);
-        if (typeof row?.scrollIntoView === "function") row.scrollIntoView({ block: "center" });
-        row?.querySelector<HTMLButtonElement>(":scope > button")?.focus({ preventScroll: true });
-      });
+      // centred and focused as the opened steps are drawn, not a frame later (a quick keyboard gone on was pulled back)
+      focusWhenDrawn(
+        () => {
+          const row = document.getElementById(`step-${id}`);
+          if (typeof row?.scrollIntoView === "function") row.scrollIntoView({ block: "center" });
+          return row?.querySelector<HTMLButtonElement>(":scope > button");
+        },
+        { preventScroll: true },
+      );
     },
   };
   if (!root) return null;
