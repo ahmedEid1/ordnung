@@ -70,7 +70,15 @@ function mayStillMove(from: Element | null, wentOn: boolean): boolean {
  * place. Call it once on every path: it stops watching then.
  */
 export function focusMayMoveOnceAnswered(): () => boolean {
-  const from = focusOrigin();
+  return focusMayMoveLater(focusOrigin());
+}
+
+/**
+ * The same, for a focus put off until later (a frame) from a place other than where focus is now: `from` is where
+ * focus stands when the move is asked for, or is about to (a new page's heading, given a focus that was lost). Call
+ * what it returns when the move is due, or to stop watching (the move called off).
+ */
+export function focusMayMoveLater(from: Element | null): () => boolean {
   const away = watchGoingOn(from);
   return () => {
     away.stop();
