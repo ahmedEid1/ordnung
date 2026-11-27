@@ -31,7 +31,7 @@ import { useFormatDate, useTodayISO } from "@/lib/today";
 import { cn, plural, prefersReducedMotion } from "@/lib/utils";
 import { STEP_META, WEEKLY_REVIEW, entryHref, stepCount, type StepId } from "./steps";
 import { WeekEntryRow } from "./WeekEntryRow";
-import { useStickyError } from "@/lib/hooks";
+import { useStickyError, useOnePress } from "@/lib/hooks";
 
 /** The header's line: how long, not how many steps — "Act now" comes and goes (the card says "Step 1 of 8"). */
 export const describeSession = (minutes = 10) => `About ${minutes} minutes, one short step at a time through your paperwork. Nothing is paid, sent or closed for you.`;
@@ -400,6 +400,7 @@ function WeekSkeleton() {
 export function WeekView() {
   const q = useWeek();
   const done = useWeekDone();
+  const finishing = useOnePress(); // "Done for this week", one press at a time
   // loaded with the steps, so the ending says it from its first word
   const unread = useUnreadCount();
   const formatDate = useFormatDate();
@@ -434,7 +435,7 @@ export function WeekView() {
     );
   };
 
-  const finish = () => done.mutate(undefined, { onSuccess: () => setFinished(true) });
+  const finish = () => finishing.once(() => done.mutateAsync(undefined, { onSuccess: () => setFinished(true) }));
 
   const header = (
     <PageHeader
@@ -526,7 +527,7 @@ export function WeekView() {
                 Back
               </Button>
               {last ? (
-                <Button variant="primary" icon={Sparkles} onClick={finish} loading={done.isPending}>
+                <Button variant="primary" icon={Sparkles} onClick={finish} loading={done.isPending || finishing.busy}>
                   Finish — all done
                 </Button>
               ) : (

@@ -34,6 +34,7 @@ import {
   type DesktopSetting,
 } from "./desktop";
 import { SaveBar, SettingsCard } from "./SettingsCard";
+import { useOnePress } from "@/lib/hooks";
 
 const TOOL_NAMES: Record<string, string> = { "notify-send": "notify-send", osascript: "macOS notifications", powershell: "Windows notifications" };
 
@@ -209,6 +210,7 @@ function Editor({ settings }: { settings: AppSettings }) {
   const status = useDesktopReminders();
   const update = useUpdateSettings();
   const test = useTestDesktopNotification();
+  const testing = useOnePress(); // "Show a test notification", one press: a second one showed a second one
   const staticDemo = isStaticDemo();
   // `ordnung demo` never notifies on its own (the static demo can't at all)
   const demo = Boolean(status.data?.demo);
@@ -229,13 +231,13 @@ function Editor({ settings }: { settings: AppSettings }) {
 
   const [tested, setTested] = useState(false);
   const sendTest = () =>
-    test.mutate(testMode(mode), {
+    testing.once(() => test.mutateAsync(testMode(mode), {
       onSuccess: (result) => {
         const outcome = testOutcome(result.shown, result.detail, { system: status.data?.system, saved: saved.mode, dirty, time });
         toast[outcome.tone](outcome.title, { description: outcome.description });
         setTested(result.shown);
       },
-    });
+    }));
 
   const data = status.data;
   const tool = data?.tool ? (TOOL_NAMES[data.tool] ?? data.tool) : null;
@@ -312,7 +314,7 @@ function Editor({ settings }: { settings: AppSettings }) {
         </Callout>
       ) : mode === "off" ? null : (
         <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
-          <Button size="sm" variant="secondary" icon={BellRing} onClick={sendTest} loading={test.isPending} disabled={status.isPending}>
+          <Button size="sm" variant="secondary" icon={BellRing} onClick={sendTest} loading={test.isPending || testing.busy} disabled={status.isPending}>
             Show a test notification
           </Button>
           {tool ? (

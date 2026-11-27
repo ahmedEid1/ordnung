@@ -11,6 +11,7 @@ import { ChoiceDialog } from "@/features/sync/ChoiceDialog";
 import { cn } from "@/lib/utils";
 import { SHELL_GUTTERS, shellWidth } from "./layout";
 import { usePageMeta } from "./page-meta";
+import { useOnePress } from "@/lib/hooks";
 
 /** What the banner says now (null: nothing). */
 export function bannerKind(status: SyncStatus | undefined): "standby" | "choice" | "bringing" | null {
@@ -38,6 +39,7 @@ export function SyncBanner() {
   const { data: status } = useSync(!phone);
   const { width } = usePageMeta();
   const takeOver = useTakeOver();
+  const taking = useOnePress(); // "Use it here", one press at a time
   const [choosing, setChoosing] = useState(false);
   const kind = phone ? null : bannerKind(status);
   // always there while there is a status, so it closes itself when the choice goes (and a later choice never
@@ -48,12 +50,14 @@ export function SyncBanner() {
   const warn = kind !== "bringing";
   const Icon = kind === "choice" ? Split : kind === "standby" ? Laptop : Hourglass;
   const takeOverHere = () =>
-    takeOver.mutate(
-      {},
-      {
-        onSuccess: (after) => (after.mode === "in_use" ? toast.success("Ordnung is in use here now") : undefined),
-        onError: (err) => toast.error("Ordnung isn't in use here yet", { description: err instanceof Error ? err.message : undefined }),
-      },
+    taking.once(() =>
+      takeOver.mutateAsync(
+        {},
+        {
+          onSuccess: (after) => (after.mode === "in_use" ? toast.success("Ordnung is in use here now") : undefined),
+          onError: (err) => toast.error("Ordnung isn't in use here yet", { description: err instanceof Error ? err.message : undefined }),
+        },
+      ),
     );
   return (
     <>
@@ -83,7 +87,7 @@ export function SyncBanner() {
               Choose…
             </Button>
           ) : kind === "standby" ? (
-            <Button size="sm" variant="primary" icon={ArrowRightLeft} loading={takeOver.isPending} onClick={takeOverHere}>
+            <Button size="sm" variant="primary" icon={ArrowRightLeft} loading={takeOver.isPending || taking.busy} onClick={takeOverHere}>
               Use Ordnung here
             </Button>
           ) : null}

@@ -19,6 +19,7 @@ import { focusWhenReady } from "@/lib/focus";
 import { chosenMessage, choiceSideLine, sideArrivingLine, sideContentsLine, sideLatestLine, sideName, waitingLine } from "@/features/settings/sync";
 import { formatDate, formatDateTime, formatTimeAgo } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useOnePress } from "@/lib/hooks";
 
 const ERROR_ID = "sync-choice-error";
 
@@ -104,7 +105,9 @@ export function ChoiceDialog({ open, onClose, status }: { open: boolean; onClose
   const choice: SyncChoice | null = status.choice;
   const sides = choice?.sides ?? [];
   const waitingFor = choice?.chosen != null ? sides.find((s) => s.key === choice.chosen) : undefined;
-  const pending = choose.isPending || cancel.isPending;
+  // one answer at a time, also two presses before the dialog is drawn busy (`pressed`: which one is on its way)
+  const { pressed, once } = useOnePress<"keep" | "stop">();
+  const pending = choose.isPending || cancel.isPending || pressed !== null;
 
   const close = () => {
     if (pending) return;
@@ -116,19 +119,23 @@ export function ChoiceDialog({ open, onClose, status }: { open: boolean; onClose
   const keep = () => {
     const side = sides.find((s) => s.key === picked);
     if (!side) return;
-    choose.mutate(side.key, {
-      onSuccess: (after) => {
-        if (after.choice?.chosen === side.key) return; // it is still arriving: the dialog waits for it
-        setPicked(null);
-        onClose();
-        const said = chosenMessage(side, sides);
-        toast.success(said.title, { description: said.description });
-      },
-      onError: () => focusWhenReady(() => document.getElementById(ERROR_ID), 5000, { always: true }),
-    });
+    once(
+      () =>
+        choose.mutateAsync(side.key, {
+          onSuccess: (after) => {
+            if (after.choice?.chosen === side.key) return; // it is still arriving: the dialog waits for it
+            setPicked(null);
+            onClose();
+            const said = chosenMessage(side, sides);
+            toast.success(said.title, { description: said.description });
+          },
+          onError: () => focusWhenReady(() => document.getElementById(ERROR_ID), 5000, { always: true }),
+        }),
+      "keep",
+    );
   };
 
-  const stopWaiting = () => cancel.mutate({ cancel: true }, { onSuccess: () => setPicked(null) });
+  const stopWaiting = () => once(() => cancel.mutateAsync({ cancel: true }, { onSuccess: () => setPicked(null) }), "stop");
 
   // the choice went (answered here or on the other computer, or its waiting side arrived): the dialog goes with it,
   // so a later choice doesn't open it by itself
@@ -151,7 +158,7 @@ export function ChoiceDialog({ open, onClose, status }: { open: boolean; onClose
       dismissible={!pending}
       footer={
         waitingFor ? (
-          <Button icon={X} onClick={stopWaiting} loading={cancel.isPending}>
+          <Button icon={X} onClick={stopWaiting} loading={cancel.isPending || pressed === "stop"}>
             Cancel
           </Button>
         ) : (
@@ -159,7 +166,7 @@ export function ChoiceDialog({ open, onClose, status }: { open: boolean; onClose
             <Button onClick={close} disabled={pending}>
               Not now
             </Button>
-            <Button variant="primary" icon={Check} disabled={picked === null} loading={choose.isPending} onClick={keep}>
+            <Button variant="primary" icon={Check} disabled={picked === null} loading={choose.isPending || pressed === "keep"} onClick={keep}>
               Keep this one
             </Button>
           </>

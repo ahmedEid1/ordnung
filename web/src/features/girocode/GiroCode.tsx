@@ -26,7 +26,7 @@ import { setUploadToastHidden } from "@/components/shell/UploadCenter";
 import { Button } from "@/components/ui/Button";
 import { usePhoneCompanion } from "@/features/phone/client";
 import { formatMoney } from "@/lib/format";
-import { useIsTabletUp, useMediaQuery } from "@/lib/hooks";
+import { useIsTabletUp, useMediaQuery, useOnePress } from "@/lib/hooks";
 import { cn, prefersReducedMotion } from "@/lib/utils";
 import { isStaticDemo } from "@/lib/mode";
 import { qrMatrix, qrPath, readPayload } from "./qr";
@@ -138,6 +138,9 @@ export function GiroCodeSection({ code, docId, collapsible = false, canReadAgain
   // the mutation lives here, not in the "compare" block: that block is gone once the code is ready,
   // and the feedback must still follow
   const confirm = useConfirmGiroCode();
+  // one press: a second "These match the letter" before it is drawn busy was refused ("nothing to compare") right
+  // after the first one worked
+  const confirming = useOnePress();
   const [confirmed, setConfirmed] = useState(false);
   if (!showsGiroCode(code)) return null;
 
@@ -156,20 +159,23 @@ export function GiroCodeSection({ code, docId, collapsible = false, canReadAgain
   } else if (code.reason === "check_letter") {
     const onConfirm = () => {
       if (!code.values) return;
-      confirm.mutate(
-        { itemId: code.item_id, docId, values: code.values },
-        {
-          // the button is gone: the code's heading takes focus in its place (`Ready`); refused, the
-          // reason shows under the button, which gets focus back (`CompareFirst`)
-          onSuccess: (next) => setConfirmed(next.status === "ready"),
-        },
+      const values = code.values;
+      confirming.once(() =>
+        confirm.mutateAsync(
+          { itemId: code.item_id, docId, values },
+          {
+            // the button is gone: the code's heading takes focus in its place (`Ready`); refused, the
+            // reason shows under the button, which gets focus back (`CompareFirst`)
+            onSuccess: (next) => setConfirmed(next.status === "ready"),
+          },
+        ),
       );
     };
     body = (
       <CompareFirst
         code={code}
         docId={docId}
-        pending={confirm.isPending}
+        pending={confirm.isPending || confirming.busy}
         error={confirm.error}
         onConfirm={onConfirm}
         headingRef={headingRef}
@@ -416,6 +422,7 @@ function CompareFirst({
     scrollClear(refusedRef.current);
   }, [error, confirmRef]);
   const reprocess = useReadLetterAgain();
+  const asking = useOnePress(); // "Read the letter again", one press at a time
   const answered = reprocess.isSuccess || reprocess.isError;
   useEffect(() => {
     if (!answered) return;
@@ -455,9 +462,11 @@ function CompareFirst({
   }, [doneHere, docId]);
   const readAgain = () => {
     if (reprocess.isPending || reading) return;
-    setFollows(true);
-    reprocess.mutate(docId, {
-      onSuccess: (started) => seedJob({ job_id: started.id, doc_id: docId, stage: "intake", progress: 0, status: "running" }),
+    asking.once(() => {
+      setFollows(true);
+      return reprocess.mutateAsync(docId, {
+        onSuccess: (started) => seedJob({ job_id: started.id, doc_id: docId, stage: "intake", progress: 0, status: "running" }),
+      });
     });
   };
   // once asked, the button and its answer stay while the letter is read (the panel stops offering it)
@@ -491,7 +500,7 @@ function CompareFirst({
                 variant="secondary"
                 size="sm"
                 icon={RotateCw}
-                loading={reprocess.isPending}
+                loading={reprocess.isPending || asking.busy}
                 aria-disabled={reading || undefined}
                 onClick={readAgain}
               >

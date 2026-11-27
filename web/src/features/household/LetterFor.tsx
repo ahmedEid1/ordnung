@@ -115,6 +115,8 @@ function AddForm({
 }) {
   const qc = useQueryClient();
   const change = useChangeHousehold();
+  // one press at a time: a second one before the button is drawn busy sent the household twice
+  const adding = useOnePress();
   const [name, setName] = useState(addressee);
   const [signs, setSigns] = useState(true);
   const [alsoFile, setAlsoFile] = useState(true);
@@ -129,18 +131,20 @@ function AddForm({
       inputRef.current?.focus();
       return;
     }
-    change.mutateAsync({ base: household.version, members: [...membersOf(household), { id: null, name: oneLine(name), signs }], also_file: alsoFile ? [docId] : [] }).then(
-      (after) => {
-        const added = after.members.find((m) => !household.members.some((before) => before.id === m.id));
-        close();
-        if (added) onAdded(added, alsoFile, household, after);
-      },
-      (err: unknown) => {
-        const reason = refusal(err, qc);
-        if (!reason) return;
-        setError(reason);
-        inputRef.current?.focus();
-      },
+    adding.once(() =>
+      change.mutateAsync({ base: household.version, members: [...membersOf(household), { id: null, name: oneLine(name), signs }], also_file: alsoFile ? [docId] : [] }).then(
+        (after) => {
+          const added = after.members.find((m) => !household.members.some((before) => before.id === m.id));
+          close();
+          if (added) onAdded(added, alsoFile, household, after);
+        },
+        (err: unknown) => {
+          const reason = refusal(err, qc);
+          if (!reason) return;
+          setError(reason);
+          inputRef.current?.focus();
+        },
+      ),
     );
   };
   return (
@@ -171,7 +175,7 @@ function AddForm({
         <Button size="sm" onClick={close}>
           Cancel
         </Button>
-        <Button size="sm" type="submit" variant="primary" loading={change.isPending} disabled={!household}>
+        <Button size="sm" type="submit" variant="primary" loading={change.isPending || adding.busy} disabled={!household}>
           Add
         </Button>
       </div>

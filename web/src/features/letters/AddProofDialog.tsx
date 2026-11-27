@@ -11,6 +11,7 @@ import { theComputer } from "@/features/phone/copy";
 import { PROOF_KIND_COPY, copyFor } from "@/lib/copy";
 import { useTodayISO } from "@/lib/today";
 import { PROOF_DAY_LABEL, SENDING_DAY_KINDS, proofKindsFor } from "./proof";
+import { useOnePress } from "@/lib/hooks";
 
 const NOTE_MAX = 500;
 /** From this many characters left, the note says how many remain. */
@@ -68,7 +69,10 @@ export function AddProofDialog({ open, onClose, draftId, channel, sentOn, sugges
   const noteOk = note.length <= NOTE_MAX;
   const noteLeft = NOTE_MAX - note.length;
   const fileMissing = !editing && !file;
-  const pending = add.isPending || update.isPending;
+  // one proof per press: a second press before the dialog is drawn busy sent the file again (attached twice, or
+  // refused as already a proof right after it was added)
+  const { busy, once } = useOnePress();
+  const pending = add.isPending || update.isPending || busy;
   const hint = copyFor(PROOF_KIND_COPY, kind).hint;
 
   const chooseKind = (next: ProofKind) => {
@@ -85,28 +89,32 @@ export function AddProofDialog({ open, onClose, draftId, channel, sentOn, sugges
       return;
     }
     if (editing) {
-      update.mutate(
-        { id: draftId, proofId: editing.proof.id, patch: { kind, on_date: onDate || null, note: note.trim() || null } },
-        {
-          onSuccess: () => {
-            toast.success("Proof updated", { description: copyFor(PROOF_KIND_COPY, kind).label });
-            onClose();
+      once(() =>
+        update.mutateAsync(
+          { id: draftId, proofId: editing.proof.id, patch: { kind, on_date: onDate || null, note: note.trim() || null } },
+          {
+            onSuccess: () => {
+              toast.success("Proof updated", { description: copyFor(PROOF_KIND_COPY, kind).label });
+              onClose();
+            },
           },
-        },
+        ),
       );
       return;
     }
-    add.mutate(
-      { id: draftId, upload: { file: file!, kind, onDate: onDate || null, note } },
-      {
-        onSuccess: (overview) => {
-          const label = copyFor(PROOF_KIND_COPY, kind).label;
-          // a file already in Ordnung is what it is: the server says whether Claude read it
-          if (overview.notice) toast({ tone: "info", title: "Proof added", description: `${label} — ${overview.notice}` });
-          else toast.success("Proof added", { description: `${label} — kept private, never sent to Claude.` });
-          onClose();
+    once(() =>
+      add.mutateAsync(
+        { id: draftId, upload: { file: file!, kind, onDate: onDate || null, note } },
+        {
+          onSuccess: (overview) => {
+            const label = copyFor(PROOF_KIND_COPY, kind).label;
+            // a file already in Ordnung is what it is: the server says whether Claude read it
+            if (overview.notice) toast({ tone: "info", title: "Proof added", description: `${label} — ${overview.notice}` });
+            else toast.success("Proof added", { description: `${label} — kept private, never sent to Claude.` });
+            onClose();
+          },
         },
-      },
+      ),
     );
   };
 

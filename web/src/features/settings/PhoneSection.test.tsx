@@ -476,3 +476,76 @@ describe("Settings → Phone in the demos", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 });
+
+describe("Settings → Phone: a change on its way", () => {
+  it("“Turn on” takes one press at a time, and the next once it failed", async () => {
+    useMockApi();
+    const held = holdRequests((c) => c.method === "PUT" && c.path === "/phone");
+    const user = userEvent.setup();
+    renderPhone();
+    await user.click(await screen.findByRole("switch", { name: "Phone access" }));
+    const dialog = await screen.findByRole("dialog", { name: "Turn on phone access?" });
+    await expectOnePressAtATime({ user, button: () => within(dialog).getByRole("button", { name: "Turn on" }), held });
+  });
+
+  it("“Make a new code” makes one code for two presses in one go (the button goes with the old code)", async () => {
+    const { srv } = useMockApi();
+    turnedOn(srv);
+    const user = userEvent.setup();
+    const { client } = renderPhone();
+    const dialog = await openPairing(user);
+    srv.phone.pair({ code: srv.phone.code!, name: "iPhone" }, "192.168.178.66");
+    await poll(client);
+    await within(dialog).findByText("Paired: iPhone");
+    await user.click(within(dialog).getByRole("button", { name: "Not you? Remove" }));
+    await within(dialog).findByText("Removed iPhone");
+    const held = holdRequests((c) => c.method === "POST" && c.path === "/phone/pairing");
+    const again = within(dialog).getByRole("button", { name: "Make a new code" });
+    act(() => {
+      again.click();
+      again.click();
+    });
+    await waitFor(() => expect(held.count).toBe(1));
+    await act(async () => {});
+    expect(held.count).toBe(1);
+    await act(async () => held.release());
+  });
+
+  it("“Not you? Remove” takes one press at a time, and the next once it failed", async () => {
+    const { srv } = useMockApi();
+    turnedOn(srv);
+    const user = userEvent.setup();
+    const { client } = renderPhone();
+    const dialog = await openPairing(user);
+    srv.phone.pair({ code: srv.phone.code!, name: "iPhone" }, "192.168.178.66");
+    await poll(client);
+    await within(dialog).findByText("Paired: iPhone");
+    const held = holdRequests((c) => c.method === "DELETE" && c.path.startsWith("/phone/devices/"));
+    await expectOnePressAtATime({ user, button: () => within(dialog).getByRole("button", { name: "Not you? Remove" }), held });
+  });
+
+  it("removing a paired phone takes one press at a time, and the next once it failed", async () => {
+    const { srv } = useMockApi();
+    turnedOn(srv);
+    const anna = srv.phone.addPhone({ name: "Anna's iPhone" });
+    const held = holdRequests((c) => c.method === "DELETE" && c.path === `/phone/devices/${anna.id}`);
+    const user = userEvent.setup();
+    renderPhone();
+    const phones = await screen.findByRole("region", { name: "Paired phones" });
+    await user.click(within(phones).getByRole("button", { name: "Remove Anna's iPhone…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Remove Anna's iPhone?" });
+    await expectOnePressAtATime({ user, button: () => within(dialog).getByRole("button", { name: "Remove" }), held });
+  });
+
+  it("“Start over” takes one press at a time, and the next once it failed", async () => {
+    const { srv } = useMockApi();
+    turnedOn(srv);
+    const held = holdRequests((c) => c.method === "POST" && c.path.startsWith("/phone/reset"));
+    const user = userEvent.setup();
+    renderPhone();
+    const certificate = await screen.findByRole("region", { name: "Certificate" });
+    await user.click(within(certificate).getByRole("button", { name: "Start over…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Start over with phone access?" });
+    await expectOnePressAtATime({ user, button: () => within(dialog).getByRole("button", { name: "Start over" }), held });
+  });
+});

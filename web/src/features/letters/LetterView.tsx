@@ -20,7 +20,7 @@ import { StatusPill } from "@/components/ui/StatusPill";
 import { toast } from "@/components/ui/Toast";
 import { DRAFT_KIND_COPY, PROOF_KIND_COPY, SEND_CHANNEL_COPY, copyFor } from "@/lib/copy";
 import { formatDate } from "@/lib/format";
-import { useHotkey } from "@/lib/hooks";
+import { useHotkey, useOnePress } from "@/lib/hooks";
 import { useTodayISO } from "@/lib/today";
 import { cn, IS_APPLE, prefersReducedMotion } from "@/lib/utils";
 import { usePhoneCompanion } from "@/features/phone/client";
@@ -235,6 +235,15 @@ export function LetterView({ draft }: { draft: Draft }) {
   const summary = checksSummary(draft.checks);
   const counts = channelCounts(draft.send_guidance, draft.sent_channel);
 
+  // Each change the letter's buttons make takes one press at a time (a second press before the button is drawn busy
+  // would send it again: a second translation by Claude, a second "Marked as sent", a 404 after "deleted"); each on
+  // its own, so one on its way doesn't hold up another
+  const saving = useOnePress();
+  const translating = useOnePress();
+  const sentPress = useOnePress();
+  const marking = useOnePress();
+  const removing = useOnePress();
+
   const save = useCallback(async () => {
     if (!dirty) return draft;
     const updated = await update.mutateAsync({ id: draft.id, patch: changes });
@@ -248,7 +257,6 @@ export function LetterView({ draft }: { draft: Draft }) {
 
   // "Re-translate": save pending edits first, then translate the letter as it now stands
   const retranslate = useCallback(async () => {
-    if (translate.isPending) return;
     let current: Draft;
     try {
       current = await save();
@@ -282,11 +290,13 @@ export function LetterView({ draft }: { draft: Draft }) {
     if (!dirty || update.isPending) return;
     // the checks as the save left them: an edit can make one fail (a placeholder left in), and the chip that
     // says so changes silently
-    void save().then((saved) => {
-      const checks = checksSummary(saved.checks);
-      toast.success("Letter saved", { description: checks.failed ? `${checks.text} before you send it.` : "Checks and the PDF are up to date." });
-    });
-  }, [dirty, save, update.isPending]);
+    saving.once(() =>
+      save().then((saved) => {
+        const checks = checksSummary(saved.checks);
+        toast.success("Letter saved", { description: checks.failed ? `${checks.text} before you send it.` : "Checks and the PDF are up to date." });
+      }),
+    );
+  }, [dirty, save, update.isPending, saving]);
 
   const discard = () => {
     const edits = form;
@@ -323,7 +333,8 @@ export function LetterView({ draft }: { draft: Draft }) {
       ? `This letter must be signed by hand on paper: also post a signed copy${when ? ` by ${formatDate(when, { style: "short", today })}` : ""}, ideally by Einschreiben, and keep the receipt.`
       : `This way isn't accepted for this letter: also send it one of the ways under “How to send it”${when ? ` by ${formatDate(when, { style: "short", today })}` : ""}.`;
 
-  const confirmSent = async (channel: SendChannelKind, date: string, trackingNumber: string | null) => {
+  const confirmSent = (channel: SendChannelKind, date: string, trackingNumber: string | null) => sentPress.once(() => markAsSent(channel, date, trackingNumber));
+  const markAsSent = async (channel: SendChannelKind, date: string, trackingNumber: string | null) => {
     const again = isSent;
     try {
       if (dirty) await save();
@@ -350,17 +361,19 @@ export function LetterView({ draft }: { draft: Draft }) {
 
   const setStatus = (status: "draft" | "final") => {
     const back = status === "draft" ? "final" : "draft";
-    update.mutate(
-      { id: draft.id, patch: { status } },
-      {
-        onSuccess: () =>
-          toast.success(status === "final" ? "Marked as ready to send" : "Back to draft", {
-            description: status === "final" ? "It shows as ready in your letters." : undefined,
-            undo: async () => {
-              await update.mutateAsync({ id: draft.id, patch: { status: back } });
-            },
-          }),
-      },
+    marking.once(() =>
+      update.mutateAsync(
+        { id: draft.id, patch: { status } },
+        {
+          onSuccess: () =>
+            toast.success(status === "final" ? "Marked as ready to send" : "Back to draft", {
+              description: status === "final" ? "It shows as ready in your letters." : undefined,
+              undo: async () => {
+                await update.mutateAsync({ id: draft.id, patch: { status: back } });
+              },
+            }),
+        },
+      ),
     );
   };
 
@@ -403,8 +416,8 @@ export function LetterView({ draft }: { draft: Draft }) {
         language={draft.language}
         enclosures={draft.enclosures}
         translationStale={bodyEdited || form.body !== saved.body || form.subject !== saved.subject}
-        onRetranslate={() => void retranslate()}
-        retranslating={translate.isPending}
+        onRetranslate={() => translating.once(retranslate)}
+        retranslating={translate.isPending || translating.busy}
         readOnly={isSent}
         // a letter that goes out in someone else's name: its sender isn't "you"
         senderLabel={ownName && firstLine(form.sender_block) && !sameName(firstLine(form.sender_block), ownName) ? "From" : "From (you)"}
@@ -539,7 +552,7 @@ export function LetterView({ draft }: { draft: Draft }) {
                 icon={dirty ? Save : Check}
                 onClick={saveWithToast}
                 aria-disabled={!dirty || undefined}
-                loading={update.isPending}
+                loading={update.isPending || saving.busy}
                 title={dirty ? `Unsaved changes — save (${MOD_KEY}+S)` : "All changes saved"}
                 className="min-w-0 max-[359px]:px-2.5"
               >
@@ -629,7 +642,7 @@ export function LetterView({ draft }: { draft: Draft }) {
               <Button variant="ghost" size="sm" onClick={discard}>
                 Discard
               </Button>
-              <Button variant="primary" size="sm" icon={Save} onClick={saveWithToast} loading={update.isPending}>
+              <Button variant="primary" size="sm" icon={Save} onClick={saveWithToast} loading={update.isPending || saving.busy}>
                 Save
               </Button>
             </div>
@@ -643,7 +656,7 @@ export function LetterView({ draft }: { draft: Draft }) {
         onClose={() => setSentOpen(false)}
         draft={draft}
         onConfirm={confirmSent}
-        pending={markSent.isPending || update.isPending}
+        pending={markSent.isPending || update.isPending || sentPress.busy}
       />
 
       <Dialog
@@ -662,17 +675,19 @@ export function LetterView({ draft }: { draft: Draft }) {
             <Button
               variant="danger"
               icon={Trash2}
-              loading={remove.isPending}
+              loading={remove.isPending || removing.busy}
               onClick={() =>
-                remove.mutate(
-                  { id: draft.id, keepProofFiles: proofFiles.length > 0 && keepProofFiles },
-                  {
-                    onSuccess: () => {
-                      setDeleteOpen(false);
-                      toast.success("Letter deleted", { description: proofFiles.length && keepProofFiles ? "Its proof files stay in Ordnung, in your Inbox." : undefined });
-                      navigate("/letters", { replace: true });
+                removing.once(() =>
+                  remove.mutateAsync(
+                    { id: draft.id, keepProofFiles: proofFiles.length > 0 && keepProofFiles },
+                    {
+                      onSuccess: () => {
+                        setDeleteOpen(false);
+                        toast.success("Letter deleted", { description: proofFiles.length && keepProofFiles ? "Its proof files stay in Ordnung, in your Inbox." : undefined });
+                        navigate("/letters", { replace: true });
+                      },
                     },
-                  },
+                  ),
                 )
               }
             >
@@ -721,11 +736,13 @@ export function LetterView({ draft }: { draft: Draft }) {
             <Button
               variant="primary"
               icon={Save}
-              loading={update.isPending}
+              loading={update.isPending || saving.busy}
               onClick={() =>
-                void save().then(
-                  () => blocker.proceed?.(),
-                  () => blocker.reset?.(),
+                saving.once(() =>
+                  save().then(
+                    () => blocker.proceed?.(),
+                    () => blocker.reset?.(),
+                  ),
                 )
               }
             >

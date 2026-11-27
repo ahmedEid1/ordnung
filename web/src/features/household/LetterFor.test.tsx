@@ -304,6 +304,14 @@ describe("Add … to your household", () => {
     expect(name).toHaveAttribute("aria-invalid", "true");
   });
 
+  it("“Add” takes one press at a time, and the next once it failed", async () => {
+    const { user } = await openLetter(useMockApi(), "Alex Rivera", []);
+    await user.click(await screen.findByRole("button", { name: "Add Alex Rivera to your household" }));
+    const form = await screen.findByRole("dialog", { name: "Add to your household" });
+    const held = holdRequests((c) => c.method === "PUT" && c.path === "/household");
+    await expectOnePressAtATime({ user, button: () => within(form).getByRole("button", { name: "Add" }), held });
+  });
+
   it("is offered beside “For you” when the household has people but none could be the addressee", async () => {
     await openLetter(useMockApi(), "Kim Rivera", [ALEX]);
     expect(await screen.findByRole("button", { name: "Add Kim Rivera to your household" })).toBeInTheDocument();

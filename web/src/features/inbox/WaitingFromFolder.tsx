@@ -36,7 +36,7 @@ import { AnswerButton } from "./AnswerButton";
 import { isHeld } from "./filters";
 import { Thumb } from "./LettersList";
 import { fileKindLabel, readLabel, waitingRows, type WaitingRow } from "./waiting";
-import { ignoreFailedRequest } from "@/api/client";
+import { useOnePress } from "@/lib/hooks";
 
 export function WaitingFromFolder({
   docs,
@@ -55,14 +55,18 @@ export function WaitingFromFolder({
   const read = useReadHeld();
   const keep = useKeepHeldPrivate();
   const wait = useWaitAgain();
+  // one answer at a time, also for two presses before the buttons are drawn busy (`pressed`: which one is on its way);
+  // a failed request: its own error toast says what went wrong
+  const { pressed, once } = useOnePress<"read" | "keep">();
   // the demo that only replays its recordings can't read new letters: say so before "Read these" is tried
   const canRead = useFolder({ enabled: !phone }).data?.can_read ?? true;
   if (!rows.length) return null;
   const ids = rows.map((r) => r.doc.id);
   const n = ids.length;
-  const busy = read.isPending || keep.isPending;
+  const busy = read.isPending || keep.isPending || pressed !== null;
 
   const readThem = () =>
+    once(() =>
     read
       .mutateAsync(ids)
       .then((res) => {
@@ -78,9 +82,11 @@ export function WaitingFromFolder({
             tone: "info",
           });
         onAnswered?.();
-      })
-      .catch(ignoreFailedRequest); // a failed request: its own error toast says what went wrong
+      }),
+      "read",
+    );
   const keepThem = () =>
+    once(() =>
     keep
       .mutateAsync(ids)
       .then((res) => {
@@ -98,8 +104,9 @@ export function WaitingFromFolder({
           focusIfUndoFails: () => (count ? document.querySelector<HTMLElement>(`a[href="/documents/${kept[0]}"]`) : null),
         });
         onAnswered?.();
-      })
-      .catch(ignoreFailedRequest);
+      }),
+      "keep",
+    );
 
   return (
     <section aria-labelledby="waiting-title" className="mb-10">
@@ -141,10 +148,10 @@ export function WaitingFromFolder({
             </p>
             {/* phones: the two answers share the row */}
             <div className="flex w-full gap-2 sm:w-auto">
-              <AnswerButton size="sm" icon={Lock} onClick={keepThem} busy={keep.isPending} blocked={busy} className="max-sm:flex-1">
+              <AnswerButton size="sm" icon={Lock} onClick={keepThem} busy={keep.isPending || pressed === "keep"} blocked={busy} className="max-sm:flex-1">
                 Keep private
               </AnswerButton>
-              <AnswerButton size="sm" variant="primary" icon={Sparkles} onClick={readThem} busy={read.isPending} blocked={busy} className="max-sm:flex-1">
+              <AnswerButton size="sm" variant="primary" icon={Sparkles} onClick={readThem} busy={read.isPending || pressed === "read"} blocked={busy} className="max-sm:flex-1">
                 {readLabel(n)}
                 {" "}
                 <span className="sr-only">with Claude</span>

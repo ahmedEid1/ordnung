@@ -16,6 +16,7 @@ import { OnYourComputer } from "@/features/phone/ComputerOnly";
 import { OPEN_ON_COMPUTER, PROOF_ON_COMPUTER } from "@/features/phone/copy";
 import { hasPicture } from "./proof";
 import { RemoveProofDialog } from "./RemoveProofDialog";
+import { useOnePress } from "@/lib/hooks";
 
 /** "Proof: Posting receipt" — the proof page's name in the top bar and the tab: its kind, never the file's name. */
 export function proofPageTitle(kind: ProofKind): string {
@@ -34,6 +35,7 @@ export function ProofFileView({ detail, draftId }: { detail: DocumentDetail; dra
   const link = detail.proof_of.find((l) => l.draft_id === draftId) ?? detail.proof_of[0]!;
   const copy = copyFor(PROOF_KIND_COPY, link.kind);
   const remove = useRemoveProof();
+  const removing = useOnePress(); // one press: a second "Remove" answered "not found" after it worked
   const navigate = useNavigate();
   const [confirm, setConfirm] = useState(false);
   // a paired phone shows the proof; downloading and removing it are done on the computer
@@ -115,17 +117,19 @@ export function ProofFileView({ detail, draftId }: { detail: DocumentDetail; dra
         onClose={() => setConfirm(false)}
         kind={link.kind}
         document={doc}
-        pending={remove.isPending}
+        pending={remove.isPending || removing.busy}
         onRemove={() =>
-          remove.mutate(
-            { id: link.draft_id, proofId: link.proof_id },
-            {
-              onSuccess: () => {
-                setConfirm(false);
-                toast.success("Proof removed", { description: copy.label });
-                navigate(letterHref, { replace: true });
+          removing.once(() =>
+            remove.mutateAsync(
+              { id: link.draft_id, proofId: link.proof_id },
+              {
+                onSuccess: () => {
+                  setConfirm(false);
+                  toast.success("Proof removed", { description: copy.label });
+                  navigate(letterHref, { replace: true });
+                },
               },
-            },
+            ),
           )
         }
       />

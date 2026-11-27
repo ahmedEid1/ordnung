@@ -25,6 +25,7 @@ import { BreakablePath } from "./DataSection";
 import { SettingsCard } from "./SettingsCard";
 import { DataFolderSyncedWarning, SETUP_HEADING_ID } from "./SyncSetupCard";
 import { inUseName, lastSavedLine, modeLabel, nameProblem, standbyStatusLine, unreceivedLine } from "./sync";
+import { useOnePress } from "@/lib/hooks";
 
 export const THIS_COMPUTER_ID = "sync-this-computer";
 const DISCONNECT_ERROR_ID = "sync-disconnect-error";
@@ -46,6 +47,7 @@ const PROGRESS_WHAT: Record<SyncStatus["activity"], string> = {
  */
 export function DisconnectDialog({ open, onClose, status }: { open: boolean; onClose: () => void; status: SyncStatus }) {
   const disconnect = useDisconnectSync();
+  const disconnecting = useOnePress(); // one press: a second one was refused after it worked
   const [forget, setForget] = useState(true);
   const [anyway, setAnyway] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
@@ -61,7 +63,7 @@ export function DisconnectDialog({ open, onClose, status }: { open: boolean; onC
     onClose();
   };
   const confirm = () =>
-    disconnect.mutate(
+    disconnecting.once(() => disconnect.mutateAsync(
       { forget_passphrase: forget, unreceived_ok: Boolean(second) && anyway },
       {
         onSuccess: () => {
@@ -78,7 +80,7 @@ export function DisconnectDialog({ open, onClose, status }: { open: boolean; onC
           focusWhenReady(() => document.getElementById(DISCONNECT_ERROR_ID), 5000, { always: true });
         },
       },
-    );
+    ));
   return (
     <Dialog
       open={open}
@@ -93,7 +95,7 @@ export function DisconnectDialog({ open, onClose, status }: { open: boolean; onC
           <Button ref={cancelRef} onClick={close} disabled={disconnect.isPending}>
             Cancel
           </Button>
-          <Button variant="danger" icon={Link2Off} loading={disconnect.isPending} disabled={Boolean(second) && !anyway} onClick={confirm}>
+          <Button variant="danger" icon={Link2Off} loading={disconnect.isPending || disconnecting.busy} disabled={Boolean(second) && !anyway} onClick={confirm}>
             {second ? "Disconnect anyway" : "Disconnect"}
           </Button>
         </>
@@ -129,6 +131,7 @@ export function DisconnectDialog({ open, onClose, status }: { open: boolean; onC
 /** "Rename this computer" (how the other computers name it). */
 function RenameDialog({ open, onClose, status }: { open: boolean; onClose: () => void; status: SyncStatus }) {
   const update = useUpdateSync();
+  const renaming = useOnePress(); // "Save", one press at a time
   const [name, setName] = useState(status.this_computer ?? "");
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -146,7 +149,7 @@ function RenameDialog({ open, onClose, status }: { open: boolean; onClose: () =>
       inputRef.current?.focus();
       return;
     }
-    update.mutate(
+    renaming.once(() => update.mutateAsync(
       { name: name.trim() },
       {
         onSuccess: (after) => {
@@ -159,7 +162,7 @@ function RenameDialog({ open, onClose, status }: { open: boolean; onClose: () =>
           inputRef.current?.focus();
         },
       },
-    );
+    ));
   };
   return (
     <Dialog
@@ -175,7 +178,7 @@ function RenameDialog({ open, onClose, status }: { open: boolean; onClose: () =>
           <Button onClick={close} disabled={update.isPending}>
             Cancel
           </Button>
-          <Button variant="primary" type="submit" form="sync-rename-form" loading={update.isPending}>
+          <Button variant="primary" type="submit" form="sync-rename-form" loading={update.isPending || renaming.busy}>
             Rename
           </Button>
         </>
@@ -194,6 +197,9 @@ function RenameDialog({ open, onClose, status }: { open: boolean; onClose: () =>
 export function ThisComputerCard({ status }: { status: SyncStatus }) {
   const save = useSaveSync();
   const takeOver = useTakeOver();
+  // one press at a time: "Save now" and "Use Ordnung here"
+  const saving = useOnePress();
+  const taking = useOnePress();
   const [disconnecting, setDisconnecting] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [choosing, setChoosing] = useState(false);
@@ -202,15 +208,15 @@ export function ThisComputerCard({ status }: { status: SyncStatus }) {
   const standing = status.mode === "standing_by";
   const progress = status.progress && status.activity !== "idle" ? status.progress : null;
 
-  const saveNow = () => save.mutate({}, { onSuccess: (after) => toast.success("Saved to the sync folder", { description: after.computers.some((c) => !c.this) ? "Your sync tool takes it to your other computers." : undefined }) });
+  const saveNow = () => saving.once(() => save.mutateAsync({}, { onSuccess: (after) => toast.success("Saved to the sync folder", { description: after.computers.some((c) => !c.this) ? "Your sync tool takes it to your other computers." : undefined }) }));
   const takeOverHere = () =>
-    takeOver.mutate(
+    taking.once(() => takeOver.mutateAsync(
       {},
       {
         onSuccess: (after) => (after.mode === "in_use" ? toast.success("Ordnung is in use here now") : undefined),
         onError: (err) => toast.error("Ordnung isn't in use here yet", { description: failed(err) }),
       },
-    );
+    ));
 
   return (
     <SettingsCard title="This computer" id={THIS_COMPUTER_ID} description="Ordnung is in use on one computer at a time; the others stand by and change nothing.">
@@ -249,11 +255,11 @@ export function ThisComputerCard({ status }: { status: SyncStatus }) {
         {status.problem ? <SyncProblemCallout status={status} problem={status.problem} onNewComputer={() => setDisconnecting(true)} /> : null}
         <div className="flex flex-wrap gap-2">
           {inUse ? (
-            <Button size="sm" variant="secondary" icon={CloudUpload} onClick={saveNow} loading={save.isPending}>
+            <Button size="sm" variant="secondary" icon={CloudUpload} onClick={saveNow} loading={save.isPending || saving.busy}>
               Save now
             </Button>
           ) : standing ? (
-            <Button size="sm" variant="primary" icon={ArrowRightLeft} onClick={takeOverHere} loading={takeOver.isPending} disabled={Boolean(status.choice)}>
+            <Button size="sm" variant="primary" icon={ArrowRightLeft} onClick={takeOverHere} loading={takeOver.isPending || taking.busy} disabled={Boolean(status.choice)}>
               Use Ordnung here
             </Button>
           ) : null}

@@ -36,6 +36,7 @@ import { usePartyDrawer } from "@/lib/party-drawer";
 import { SenderLandQuestion } from "@/features/party/SenderLandQuestion";
 import { LAND_WAIT_REASON, landWait } from "@/features/party/sender-land";
 import { ignoreFailedRequest } from "@/api/client";
+import { useOnePress } from "@/lib/hooks";
 
 export const SAFE_NOTE = "No warning does not mean it is safe.";
 
@@ -226,6 +227,7 @@ function scamSigns(reasons: string[]): string[] {
 
 function ScamBanner({ suggestion, doc, reasons }: { suggestion: Suggestion; doc: Document; reasons: string[] }) {
   const update = useUpdateSuggestion();
+  const { busy: removing, once } = useOnePress(); // one press: a second one was a second toast, with an Undo of its own
   const [all, setAll] = useState(false);
   const real = suggestion.refs.find((r) => r.type === "document" && r.id !== doc.id);
   const signs = scamSigns(reasons);
@@ -285,17 +287,18 @@ function ScamBanner({ suggestion, doc, reasons }: { suggestion: Suggestion; doc:
           size="sm"
           variant="ghost"
           className="ml-auto"
-          loading={update.isPending}
+          loading={update.isPending || removing}
           onClick={() =>
-            // the promise, not mutate's callbacks: this button leaves with the warning once the lists are refreshed
-            update.mutateAsync({ id: suggestion.id, patch: { status: "dismissed" } }).then(
-              () =>
+            // the promise, not mutate's callbacks: this button leaves with the warning once the lists are refreshed; a
+            // failed request: the error toast comes from the mutation's meta
+            once(() =>
+              update.mutateAsync({ id: suggestion.id, patch: { status: "dismissed" } }).then(() =>
                 toast({
                   title: "Warning removed",
                   description: "You checked it with the sender. We'll keep comparing new letters.",
                   undo: () => update.mutateAsync({ id: suggestion.id, patch: { status: "new" } }).then(() => undefined),
                 }),
-              ignoreFailedRequest, // a failed request: the error toast comes from the mutation's meta
+              ),
             )
           }
         >
@@ -367,6 +370,7 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
   // a court's letter, or an authority's served with a Postzustellungsurkunde: the same envelope, other words
   const sender = isCourtServed(doc, items) ? "the court's letter" : "the letter";
   const update = useUpdateDocument();
+  const saving = useOnePress(); // "Save", one press at a time
   // A court's letter, or an authority's served with a Postzustellungsurkunde, counts from the date the postman
   // wrote on the yellow envelope, often days before it was opened or picked up — and a dismissal, a landlord's notice or a rent increase from the day it was put in the letterbox,
   // even if the person was away: nothing is filled in for these, so one Save can never move a deadline the law
@@ -448,7 +452,12 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
   };
 
   return (
-    <form id="arrival-question" onSubmit={(e) => void submit(e)} className="rounded-2xl border border-warn/30 bg-warn-soft px-4 py-4 sm:px-5">
+    <form
+      id="arrival-question"
+      onSubmit={(e) => {
+        e.preventDefault();
+        saving.once(() => submit(e));
+      }} className="rounded-2xl border border-warn/30 bg-warn-soft px-4 py-4 sm:px-5">
       <div className="flex gap-3">
         <CalendarCheck className="mt-0.5 size-5 shrink-0 text-warn" aria-hidden />
         <div className="min-w-0 flex-1">
@@ -498,7 +507,7 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
               aria-invalid={problem ? true : undefined}
               aria-describedby={problem ? "arrival-date-problem" : undefined}
             />
-            <Button type="submit" size="sm" variant="primary" loading={update.isPending} disabled={!valid}>
+            <Button type="submit" size="sm" variant="primary" loading={update.isPending || saving.busy} disabled={!valid}>
               Save
             </Button>
           </div>
@@ -644,13 +653,16 @@ function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean })
   // the letter's words, in the letter's language
   const quoteLang = useLetterLanguage(ev?.doc_id);
   // while an answer is saved the buttons are `aria-disabled`, not `disabled`: a disabled button drops focus to the
-  // page, and after a failed save the keyboard is still where it was; once saved, the card leaves
-  const unlessBusy = (run: () => void) => () => {
+  // page, and after a failed save the keyboard is still where it was; once saved, the card leaves. The one pressed
+  // says it is busy; a second press before it is drawn so does nothing either (useItemActions)
+  const [answer, setAnswer] = useState<string | null>(null);
+  const unlessBusy = (name: string, run: () => void) => () => {
     if (pending) return;
+    setAnswer(name);
     focusAfterChecked(item.id);
     run();
   };
-  const busy = pending || undefined;
+  const busy = (name: string) => ({ "aria-disabled": pending || undefined, loading: pending && answer === name });
 
   return (
     <CheckCard headingId={checkHeadingId(item.id)}>
@@ -673,10 +685,10 @@ function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean })
       ) : null}
       {scam ? (
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button size="sm" variant="secondary" icon={X} onClick={unlessBusy(() => dismiss(item))} aria-disabled={busy}>
+          <Button size="sm" variant="secondary" icon={X} onClick={unlessBusy("dismiss", () => dismiss(item))} {...busy("dismiss")}>
             Not a real to-do
           </Button>
-          <Button size="sm" variant="ghost" icon={Check} onClick={unlessBusy(() => confirmItem(item))} aria-disabled={busy}>
+          <Button size="sm" variant="ghost" icon={Check} onClick={unlessBusy("confirm", () => confirmItem(item))} {...busy("confirm")}>
             It's a real to-do
           </Button>
         </div>
@@ -705,19 +717,19 @@ function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean })
       ) : (
         <div className="mt-3 flex flex-wrap gap-2">
           {placeholder ? (
-            <Button size="sm" variant="secondary" icon={Check} onClick={unlessBusy(() => markDone(item, { title: "Marked as read" }))} aria-disabled={busy}>
+            <Button size="sm" variant="secondary" icon={Check} onClick={unlessBusy("read", () => markDone(item, { title: "Marked as read" }))} {...busy("read")}>
               I've read it — nothing to do
             </Button>
           ) : own && !item.due_date ? null : (
             // an undated deadline of Ordnung's own has no date to call correct: "Correct" would file it undated for good
-            <Button size="sm" variant="secondary" icon={Check} onClick={unlessBusy(() => confirmItem(item))} aria-disabled={busy}>
+            <Button size="sm" variant="secondary" icon={Check} onClick={unlessBusy("confirm", () => confirmItem(item))} {...busy("confirm")}>
               Correct
             </Button>
           )}
           <Button size="sm" variant="secondary" icon={Pencil} onClick={() => setEditing(true)}>
             {item.due_date ? "Change date" : "Set a date"}
           </Button>
-          <Button size="sm" variant="ghost" icon={X} onClick={unlessBusy(() => dismiss(item))} aria-disabled={busy}>
+          <Button size="sm" variant="ghost" icon={X} onClick={unlessBusy("dismiss", () => dismiss(item))} {...busy("dismiss")}>
             Not a real to-do
           </Button>
         </div>

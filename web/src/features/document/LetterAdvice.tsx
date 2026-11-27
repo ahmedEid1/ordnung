@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { useStartDraft } from "./actions";
 import { needsTypedCourt } from "@/features/letters/logic";
 import { composerHref } from "@/features/today/selection";
+import { useOnePress } from "@/lib/hooks";
 
 /** The tag a letter carries once the person said they dealt with a card no to-do can close (the server's `DEALT_WITH_TAG`). */
 export const DEALT_WITH_TAG = "dealt-with";
@@ -50,8 +51,11 @@ const CARD_ACTION: Partial<Record<DraftKind, { label: string; icon: LucideIcon }
 function DealtWith({ advice, doc, onDone }: { advice: LetterAdvice; doc: Pick<Document, "id" | "tags">; onDone: (dealt: boolean) => void }) {
   const update = useUpdateDocument();
   const tags = doc.tags ?? [];
+  // one press at a time: a second one before the button is drawn busy sent it again (a second toast)
+  const { busy, once } = useOnePress();
   const mark = (dealt: boolean) =>
-    update.mutate(
+    once(() =>
+    update.mutateAsync(
       { id: doc.id, patch: { tags: dealt ? [...tags.filter((t) => t !== DEALT_WITH_TAG), DEALT_WITH_TAG] : tags.filter((t) => t !== DEALT_WITH_TAG) } },
       {
         onSuccess: () => {
@@ -64,10 +68,11 @@ function DealtWith({ advice, doc, onDone }: { advice: LetterAdvice; doc: Pick<Do
             : toast.success("Back to “get advice now”");
         },
       },
+    ),
     );
   if (advice.handled) {
     return tags.includes(DEALT_WITH_TAG) ? (
-      <Button size="sm" variant="ghost" loading={update.isPending} onClick={() => mark(false)}>
+      <Button size="sm" variant="ghost" loading={update.isPending || busy} onClick={() => mark(false)}>
         Not dealt with yet
       </Button>
     ) : null;
@@ -75,7 +80,7 @@ function DealtWith({ advice, doc, onDone }: { advice: LetterAdvice; doc: Pick<Do
   return (
     <div className="space-y-1.5">
       <p className="text-[13px] leading-snug text-ink/80">Had advice, moved out, or settled it? No to-do can close this letter — say so here. Nothing is sent.</p>
-      <Button size="sm" variant="secondary" icon={CircleCheckBig} loading={update.isPending} onClick={() => mark(true)}>
+      <Button size="sm" variant="secondary" icon={CircleCheckBig} loading={update.isPending || busy} onClick={() => mark(true)}>
         I've dealt with this
       </Button>
     </div>

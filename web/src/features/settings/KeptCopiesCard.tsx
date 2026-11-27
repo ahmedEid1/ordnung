@@ -17,19 +17,21 @@ import { CopyCommand } from "@/components/ui/CopyCommand";
 import { saveBlob } from "./backup";
 import { SettingsCard } from "./SettingsCard";
 import { keptLine, keptRestoreCommand } from "./sync";
+import { useOnePress } from "@/lib/hooks";
 
 /** "Delete this kept copy?" — for good. */
 function DeleteKeptDialog({ kept, onClose }: { kept: SyncKept | null; onClose: () => void }) {
   const remove = useDeleteKept();
+  const removing = useOnePress(); // one press: a second "Delete" answered "not found" after it worked
   const cancelRef = useRef<HTMLButtonElement>(null);
   const confirm = () => {
     if (!kept) return;
-    remove.mutate(kept.name, {
+    removing.once(() => remove.mutateAsync(kept.name, {
       onSuccess: () => {
         onClose();
         toast.success("The kept copy was deleted");
       },
-    });
+    }));
   };
   return (
     <Dialog
@@ -45,7 +47,7 @@ function DeleteKeptDialog({ kept, onClose }: { kept: SyncKept | null; onClose: (
           <Button ref={cancelRef} onClick={onClose} disabled={remove.isPending}>
             Keep it
           </Button>
-          <Button variant="danger" icon={Trash2} loading={remove.isPending} onClick={confirm}>
+          <Button variant="danger" icon={Trash2} loading={remove.isPending || removing.busy} onClick={confirm}>
             Delete
           </Button>
         </>

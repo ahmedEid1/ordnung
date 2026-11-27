@@ -4,7 +4,7 @@
  */
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router";
-import type { DraftKind, Item } from "@/api/types";
+import type { DraftKind, Item, ItemAnswer } from "@/api/types";
 import { api } from "@/api/endpoints";
 import { useConfirmItem, useCreateDraft, useUpdateItem } from "@/api/hooks";
 import { toast } from "@/components/ui/Toast";
@@ -13,11 +13,41 @@ import { formatDate } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
 import { ignoreFailedRequest } from "@/api/client";
 import { focusOrigin } from "@/lib/focus";
+import { useOnePress } from "@/lib/hooks";
 
+/**
+ * The date a repeating to-do stood at when "done" or "open again" was pressed (`seen_due_date`): the server leaves it
+ * as it is when it has moved since, so the same press sent twice moves it once. Only a repeating to-do moves on: one
+ * that doesn't sends what it always sent.
+ */
+export function seenAt(item: Pick<Item, "recurrence">, date: string | null): { seen_due_date?: string | null } {
+  return item.recurrence ? { seen_due_date: date } : {};
+}
+
+/**
+ * Says so when a "done" or "open again" changed nothing (`movedOn`: another window or the phone had marked the
+ * repeating to-do, or moved its date, since this page showed it), instead of "Marked as done" with an Undo: that Undo
+ * would take back the other one's change. True when it said so; the to-do is refreshed as after any change.
+ */
+export function saidMovedOn(item: Pick<Item, "title">, answer: ItemAnswer): boolean {
+  if (!answer.movedOn) return false;
+  const now = answer.due_date ? ` It's now due ${formatDate(answer.due_date, { style: "short" })}.` : "";
+  toast({ title: "Nothing changed", description: `“${item.title}” had already changed in another window or on your phone.${now}` });
+  return true;
+}
+
+/**
+ * The to-do actions of one place (a list row, the verdict card, a letter's warnings), one press at a time: a second
+ * press while the first one's request is on its way does nothing, also one that comes before the button is drawn
+ * busy (`useOnePress`). `pressed` is the to-do whose change is on its way (show its buttons busy), until the answer
+ * is in, worked or failed. A "done" and its "open again" name the date the to-do stood at (`seenAt`): the server then
+ * moves a repeating to-do on once, however often the same press reaches it (another tab, the phone).
+ */
 export function useItemActions() {
   const update = useUpdateItem();
   const confirm = useConfirmItem();
   const today = useTodayISO();
+  const { pressed, once } = useOnePress<string>();
 
   // Each Undo returns its request's promise: the toast stays busy until it is done, and knows when it failed (focus
   // then stays near the change instead of dropping to the top of the page).
@@ -37,24 +67,44 @@ export function useItemActions() {
         focusAfterUndo,
       }: { title?: string; onDone?: () => void; onFailed?: () => void; focusAfterUndo?: () => HTMLElement | null } = {},
     ) =>
-      update.mutate(
-        { id: item.id, patch: { status: "done" } },
-        {
-          onError: () => onFailed?.(),
-          onSuccess: (moved) => {
-            onDone?.();
-            toast.success(title, {
-              description: doneLine(item, moved, today),
-              undo: () => update.mutateAsync({ id: item.id, patch: { status: "open" } }).then(() => undefined),
-              focusAfterUndo,
-            });
-          },
-        },
+      once(
+        () =>
+          update.mutateAsync(
+            { id: item.id, patch: { status: "done", ...seenAt(item, item.due_date) } },
+            {
+              onError: () => onFailed?.(),
+              onSuccess: (moved) => {
+                onDone?.();
+                if (saidMovedOn(item, moved)) return;
+                toast.success(title, {
+                  description: doneLine(item, moved, today),
+                  // back from the date it moved to: an Undo that comes again once it is back changes nothing
+                  undo: () =>
+                    update.mutateAsync({ id: item.id, patch: { status: "open", ...seenAt(item, moved.due_date) } }).then((back) => {
+                      saidMovedOn(item, back);
+                    }),
+                  focusAfterUndo,
+                });
+              },
+            },
+          ),
+        item.id,
       ),
-    [update, today],
+    [update, today, once],
   );
 
-  const reopen = useCallback((item: Item) => update.mutate({ id: item.id, patch: { status: "open" } }), [update]);
+  const reopen = useCallback(
+    (item: Item) =>
+      once(
+        () =>
+          update.mutateAsync({ id: item.id, patch: { status: "open", ...seenAt(item, item.due_date) } }).then((back) => {
+            saidMovedOn(item, back);
+            return back;
+          }),
+        item.id,
+      ),
+    [update, once],
+  );
 
   /**
    * "Not a real to-do", with Undo; `onUndone` runs once the Undo is saved (to give the to-do back its focus), with
@@ -62,50 +112,62 @@ export function useItemActions() {
    */
   const dismiss = useCallback(
     (item: Item, { onUndone }: { onUndone?: (from: Element | null) => void } = {}) =>
-      update.mutate(
-        { id: item.id, patch: { status: "dismissed" } },
-        {
-          onSuccess: () =>
-            toast({
-              title: "Removed from your to-dos",
-              description: `“${item.title}” won't remind you. The letter stays filed.`,
-              undo: () => {
-                const from = focusOrigin();
-                return update.mutateAsync({ id: item.id, patch: { status: "open" } }).then(() => onUndone?.(from));
-              },
-            }),
-        },
+      once(
+        () =>
+          update.mutateAsync(
+            { id: item.id, patch: { status: "dismissed" } },
+            {
+              onSuccess: () =>
+                toast({
+                  title: "Removed from your to-dos",
+                  description: `“${item.title}” won't remind you. The letter stays filed.`,
+                  undo: () => {
+                    const from = focusOrigin();
+                    return update.mutateAsync({ id: item.id, patch: { status: "open" } }).then(() => onUndone?.(from));
+                  },
+                }),
+            },
+          ),
+        item.id,
       ),
-    [update],
+    [update, once],
   );
 
   const changeDate = useCallback(
     (item: Item, date: string, onDone?: () => void) =>
-      update.mutate(
-        { id: item.id, patch: { due_date: date } },
-        {
-          onSuccess: () => {
-            onDone?.();
-            toast.success(`Date changed to ${formatDate(date, { style: "short" })}`, {
-              // a repeating to-do's new date stands in for this one only (ordnung.recurrence, point 7)
-              description: item.recurrence ? "Only this one moves — the ones after keep their day." : "You set this date yourself, so Ordnung won't overwrite it.",
-              undo: item.due_date ? () => update.mutateAsync({ id: item.id, patch: { due_date: item.due_date } }).then(() => undefined) : undefined,
-            });
-          },
-        },
+      once(
+        () =>
+          update.mutateAsync(
+            { id: item.id, patch: { due_date: date } },
+            {
+              onSuccess: () => {
+                onDone?.();
+                toast.success(`Date changed to ${formatDate(date, { style: "short" })}`, {
+                  // a repeating to-do's new date stands in for this one only (ordnung.recurrence, point 7)
+                  description: item.recurrence ? "Only this one moves — the ones after keep their day." : "You set this date yourself, so Ordnung won't overwrite it.",
+                  undo: item.due_date ? () => update.mutateAsync({ id: item.id, patch: { due_date: item.due_date } }).then(() => undefined) : undefined,
+                });
+              },
+            },
+          ),
+        item.id,
       ),
-    [update],
+    [update, once],
   );
 
   const confirmItem = useCallback(
     (item: Item) =>
-      confirm.mutate(item.id, {
-        onSuccess: () => toast.success("Thanks — confirmed", { description: `“${item.title}” is marked as checked by you.` }),
-      }),
-    [confirm],
+      once(
+        () =>
+          confirm.mutateAsync(item.id, {
+            onSuccess: () => toast.success("Thanks — confirmed", { description: `“${item.title}” is marked as checked by you.` }),
+          }),
+        item.id,
+      ),
+    [confirm, once],
   );
 
-  return { markDone, reopen, dismiss, changeDate, confirmItem, pending: update.isPending || confirm.isPending };
+  return { markDone, reopen, dismiss, changeDate, confirmItem, pressed, pending: pressed !== null };
 }
 
 /** Create a draft letter (objection / cancellation / reply) and open it in Letters. */
@@ -113,6 +175,9 @@ export function useStartDraft() {
   const create = useCreateDraft();
   const navigate = useNavigate();
   const [looking, setLooking] = useState(false);
+  // one letter per press: two presses before the button is drawn busy both looked for a letter being drafted, found
+  // none, and wrote two
+  const { busy, once } = useOnePress();
   const start = useCallback(
     async (kind: DraftKind, refs: { doc_id?: string | null; contract_id?: string | null; party_id?: string | null; case_id?: string | null }) => {
       // a second click opens the letter already being drafted for this letter/contract instead of a copy
@@ -131,7 +196,7 @@ export function useStartDraft() {
         navigate(`/letters/${open.id}`);
         return;
       }
-      create.mutate(
+      await create.mutateAsync(
         { kind, ...refs },
         {
           onSuccess: (draft) => {
@@ -143,7 +208,7 @@ export function useStartDraft() {
     },
     [create, navigate],
   );
-  return { start: (...args: Parameters<typeof start>) => void start(...args), pending: create.isPending || looking };
+  return { start: (...args: Parameters<typeof start>) => once(() => start(...args)), pending: create.isPending || looking || busy };
 }
 
 /**

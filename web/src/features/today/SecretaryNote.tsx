@@ -6,6 +6,7 @@ import { LogoMark } from "@/components/shell/Logo";
 import { IconButton } from "@/components/ui/Button";
 import { SkeletonText } from "@/components/ui/Skeleton";
 import { useTodayISO } from "@/lib/today";
+import { useOnePress } from "@/lib/hooks";
 import { fadeUp } from "./motion";
 import { noteText, writtenAt } from "./helpers";
 import { stripGreeting } from "./selection";
@@ -62,10 +63,14 @@ export function SecretaryNote({ fallback }: { fallback: string }) {
   // what a screen reader is told about the note: that a new one was written, once — the note itself is not a live
   // region (marking a payment paid rewrites it, and only the changed words were read out, mid-sentence)
   const [said, setSaid] = useState("");
-  const writeNew = () => {
-    setSaid("");
-    regen.mutate(undefined, { onSuccess: () => setSaid("New note written") });
-  };
+  // one note per press: a second press before the button is drawn busy wrote it twice (two model calls with the
+  // note by Claude on)
+  const writing = useOnePress();
+  const writeNew = () =>
+    writing.once(() => {
+      setSaid("");
+      return regen.mutateAsync(undefined, { onSuccess: () => setSaid("New note written") });
+    });
 
   return (
     <motion.section variants={fadeUp} aria-labelledby="note-title" className="card relative overflow-hidden p-5 sm:p-7">
@@ -86,7 +91,7 @@ export function SecretaryNote({ fallback }: { fallback: string }) {
           label="Write a new note"
           variant="ghost"
           size="sm"
-          loading={regen.isPending}
+          loading={regen.isPending || writing.busy}
           onClick={writeNew}
         />
         <p role="status" className="sr-only">

@@ -11,6 +11,7 @@ import { JOB_STAGE_COPY, PIPELINE_STEPS, copyFor, stageToStep } from "@/lib/copy
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { Stepper } from "@/components/ui/Stepper";
 import { WithCode } from "@/components/ui/WithCode";
+import { useOnePress } from "@/lib/hooks";
 
 /**
  * The letter was read before: its verdict — the earlier reading — stays on the page below this card
@@ -69,6 +70,7 @@ function ClaudeWaitCard({ reason, again }: { reason: string; again: boolean }) {
 export function ProcessingCard({ doc }: { doc: Document }) {
   const job = useJobProgress(doc.id);
   const reprocess = useReprocessDocument();
+  const trying = useOnePress(); // "Try again", one press at a time
   const jobRef = useRef(job);
   useEffect(() => {
     jobRef.current = job;
@@ -109,11 +111,13 @@ export function ProcessingCard({ doc }: { doc: Document }) {
             <Button
               size="sm"
               icon={RotateCw}
-              loading={reprocess.isPending}
+              loading={reprocess.isPending || trying.busy}
               onClick={() =>
-                reprocess.mutate(doc.id, {
-                  onSuccess: (j) => seedJob({ job_id: j.id, doc_id: doc.id, stage: "intake", progress: 0, status: "running" }),
-                })
+                trying.once(() =>
+                  reprocess.mutateAsync(doc.id, {
+                    onSuccess: (j) => seedJob({ job_id: j.id, doc_id: doc.id, stage: "intake", progress: 0, status: "running" }),
+                  }),
+                )
               }
             >
               Try again

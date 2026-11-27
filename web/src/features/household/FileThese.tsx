@@ -23,6 +23,7 @@ import { inboxDateInfo } from "@/features/inbox/filters";
 import { Thumb } from "@/features/inbox/LettersList";
 import { focusWhenReady } from "@/lib/focus";
 import { fileTheseLabel, undoLetters } from "./logic";
+import { useOnePress } from "@/lib/hooks";
 
 /** The card's button: after an Undo, focus comes back to it. */
 export const FILE_THESE_BUTTON_ID = "file-these-button";
@@ -45,6 +46,7 @@ export function FileThese({
   onFiled?: () => void;
 }) {
   const file = useFileLetters();
+  const filing = useOnePress(); // one press: a second one filed them again and showed a second toast
   if (!letters.length) return null;
   const n = letters.length;
   const title = `Addressed to ${member.name}, not filed yet`;
@@ -62,6 +64,7 @@ export function FileThese({
       // still filed: the button when the card stays (some weren't filed), else the first of them among the letters
       focusIfUndoFails: () => document.getElementById(FILE_THESE_BUTTON_ID) ?? document.querySelector<HTMLElement>(`a[href="/documents/${filed[0]}"]`),
     });
+    filing.once(() =>
     file
       .mutateAsync({ letters: Object.fromEntries(ids.map((id) => [id, member.id])) })
       .then(() => {
@@ -76,7 +79,8 @@ export function FileThese({
         if (filed.length) {
           toast.warn(`Filed ${filed.length} of ${plural(n, "letter")} for ${member.name}`, { description: "The others weren't filed.", ...undo(filed) });
         }
-      });
+      }),
+    );
   };
 
   return (
@@ -108,7 +112,7 @@ export function FileThese({
             variant="primary"
             icon={UserCheck}
             onClick={fileThem}
-            busy={file.isPending}
+            busy={file.isPending || filing.busy}
             className="max-w-full max-sm:w-full"
           >
             {fileTheseLabel(n, member.name)}

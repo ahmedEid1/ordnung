@@ -16,6 +16,7 @@ import { claudeState, type ClaudeState } from "@/features/onboarding/wizard";
 import { cn } from "@/lib/utils";
 import { BreakablePath } from "./DataSection";
 import { FIELD_WIDTH, SaveBar, SectionHeading, SettingsCard } from "./SettingsCard";
+import { useOnePress } from "@/lib/hooks";
 
 /** The model every call runs on until another is chosen (`ordnung.llm.base.DEFAULT_MODEL`: Sonnet 5, pinned). */
 export const DEFAULT_MODEL = "claude-sonnet-5";
@@ -43,15 +44,19 @@ function unansweredProbe(health: Health): DoctorCheck | null {
 /** "Run check": `GET /api/health?probe=1` — the doctor's checks plus one tiny live call to Claude. */
 function useProbe() {
   const probe = useProbeHealth();
+  // one check per press: each one asks Claude, through the person's account
+  const checking = useOnePress();
   const mutate = () =>
-    probe.mutate(undefined, {
-      onSuccess: (h) => {
-        const failed = h.checks.find((c) => c.id.startsWith("claude") && c.status === "fail");
-        if (h.claude.ok && !failed) toast.success("Claude answered", { description: "Reading letters and Ask are ready." });
-        else toast.warn("Claude didn't answer", { description: (failed && checkWords(failed)) || h.claude.detail || "See the steps below." });
-      },
-    });
-  return { mutate, isPending: probe.isPending };
+    checking.once(() =>
+      probe.mutateAsync(undefined, {
+        onSuccess: (h) => {
+          const failed = h.checks.find((c) => c.id.startsWith("claude") && c.status === "fail");
+          if (h.claude.ok && !failed) toast.success("Claude answered", { description: "Reading letters and Ask are ready." });
+          else toast.warn("Claude didn't answer", { description: (failed && checkWords(failed)) || h.claude.detail || "See the steps below." });
+        },
+      }),
+    );
+  return { mutate, isPending: probe.isPending || checking.busy };
 }
 
 const focusModelField = () => document.getElementById("claude-model")?.focus();

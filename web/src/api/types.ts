@@ -834,6 +834,12 @@ export type MemberIn = Schemas["MemberIn"];
 export type HouseholdFiling = Schemas["HouseholdFiling"];
 export type ItemCreate = Schemas["ItemCreate"];
 export type ItemPatch = Schemas["ItemPatch"];
+/**
+ * A to-do as `PATCH /api/items/{id}` answered: `movedOn` when a "done" or "open again" changed nothing, because the
+ * repeating to-do no longer stood at the date the page sent (`seen_due_date`): another tab or the phone had marked it,
+ * or moved its date (the answer's `X-Ordnung-Unchanged: moved-on`).
+ */
+export type ItemAnswer = Item & { movedOn?: true };
 export type ContractPatch = Schemas["ContractPatch"];
 /** `PATCH /api/parties/{id}`: the Land a sender is in (`null`: "Don't know"). */
 export type PartyPatch = Schemas["PartyPatch"];

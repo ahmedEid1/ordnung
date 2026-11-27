@@ -204,6 +204,15 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ### Fixed
 
+- **One press, one change.** *Mark done*, *Mark as paid* or a to-do's tick pressed twice quickly (a double click
+  is enough) sent the request twice. For a to-do that repeats, each "done" moves it on one period, so a monthly
+  payment went from 1 October straight to 1 December: a date skipped without a word, and *Undo* brought back only
+  one of the two. *Write the letter* pressed twice drafted two letters. Every button that changes something now
+  sends one request per press, shows that it is busy, and works again when the answer is in.
+- **A "done" is for the date you saw.** The server also holds a "done" on a repeating to-do to the date the page
+  showed (`PATCH /api/items/{id}` takes an optional `seen_due_date`). A second one for a date that has already
+  moved on, from another window or from the phone and the computer at once, changes nothing, and the page says
+  "Nothing changed" and when the to-do is due now, without an *Undo* that would take back the other "done".
 - **Accessibility follow-up: the keyboard keeps its place.** A button, a switch or a toast's *Undo* that is busy
   with its own request no longer drops the keyboard to the top of the page: it stays focused, is announced as
   busy, and a quick double press sends one request. A switch that can't be used is still reached with Tab and

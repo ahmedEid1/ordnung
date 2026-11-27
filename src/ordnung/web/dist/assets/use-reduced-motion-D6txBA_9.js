@@ -1,0 +1,1 @@
+import{_ as e,v as t,y as n}from"./Toast-D0kSfAw0.js";import{l as r,u as i}from"./index-Xj1scB2D.js";var a=i(r(),1);function o(){!t.current&&e();let[r]=(0,a.useState)(n.current);return r}export{o as t};

@@ -23,6 +23,7 @@ import { plural } from "@/lib/utils";
 import { deviceActivityHref } from "./logic";
 import { RECENT_CHANGES_DAYS } from "./phoneAccess";
 import { SettingsCard } from "./SettingsCard";
+import { useOnePress } from "@/lib/hooks";
 
 export const DEVICES_HEADING_ID = "phone-devices";
 
@@ -41,6 +42,7 @@ function usedLine(d: PhoneDevice, today: string): string {
 /** "Remove Anna's iPhone?": what it changed lately, and the refusal in place. */
 function RemovePhoneDialog({ device, onClose }: { device: PhoneDevice | null; onClose: () => void }) {
   const remove = useRemovePhone();
+  const removing = useOnePress(); // one press: a second "Remove" answered "not found" after it worked
   // the phone stays named while the dialog closes
   const [shown, setShown] = useState(device);
   if (device && device !== shown) setShown(device);
@@ -52,7 +54,7 @@ function RemovePhoneDialog({ device, onClose }: { device: PhoneDevice | null; on
   const confirm = () => {
     if (!shown) return;
     const name = shown.name;
-    remove.mutate(shown.id, {
+    removing.once(() => remove.mutateAsync(shown.id, {
       onSuccess: () => {
         remove.reset();
         onClose();
@@ -60,7 +62,7 @@ function RemovePhoneDialog({ device, onClose }: { device: PhoneDevice | null; on
         // the row (and its button) went: the list's heading takes the focus
         focusWhenReady(() => document.getElementById(DEVICES_HEADING_ID));
       },
-    });
+    }));
   };
   const error = remove.error ? (remove.error instanceof ApiError ? remove.error.message : "Ordnung didn't answer. Is it still running?") : null;
   const changes = shown?.recent_changes ?? 0;
@@ -77,7 +79,7 @@ function RemovePhoneDialog({ device, onClose }: { device: PhoneDevice | null; on
           <Button onClick={close} disabled={remove.isPending}>
             Cancel
           </Button>
-          <Button variant="danger" icon={Unlink} loading={remove.isPending} onClick={confirm}>
+          <Button variant="danger" icon={Unlink} loading={remove.isPending || removing.busy} onClick={confirm}>
             Remove
           </Button>
         </>

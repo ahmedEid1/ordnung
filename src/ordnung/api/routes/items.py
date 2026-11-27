@@ -115,6 +115,10 @@ class ItemPatch(BaseModel):
     area: Area | None = None
     location: str | None = None
     recurrence: Recurrence | None = None
+    # The date the to-do stood at when the person pressed "done" or "open again" (``due_date`` as the page showed
+    # it; never stored). Sent with either, a repeating to-do that has moved since (the same press sent twice, a
+    # second tab, the phone) is left as it is: a "done" is for the occurrence the person saw, not the next one.
+    seen_due_date: IsoDate | None = None
 
     _repeats = field_validator("recurrence")(_repeat_interval)
 
@@ -359,9 +363,39 @@ def _follow_schedule(
     return item
 
 
+def _moved_since(item: Item, patch: ItemPatch, *, steps: bool) -> bool:
+    """Whether a "done" or "open again" that would move a repeating to-do along its schedule (``steps``) was
+    pressed on an occurrence it no longer stands at: the page sent the date it showed (``seen_due_date``), and
+    the to-do has moved on (or back) since. An older page sends no date, and is answered as before."""
+    return steps and "seen_due_date" in patch.model_fields_set and patch.seen_due_date != item.due_date
+
+
+#: The answer's header when a "done" or "open again" changed nothing because the to-do had moved on since the page
+#: showed it (:func:`_moved_since`): still 200 with the to-do as it stands, so the page can say so instead of
+#: "Marked as done" with an Undo (which would take back the other tab's, or the phone's, real "done").
+UNCHANGED_HEADER = "X-Ordnung-Unchanged"
+MOVED_ON = "moved-on"
+
+
 def _update(store: Store, item_id: str, patch: ItemPatch, today: date) -> Item:
+    """The to-do after ``patch``."""
+    return _update_answer(store, item_id, patch, today)[0]
+
+
+def _update_answer(store: Store, item_id: str, patch: ItemPatch, today: date) -> tuple[Item, bool]:
+    """The to-do after ``patch``, and whether it had moved on since the page showed it (nothing changed)."""
+    # read and written in one transaction: two "done"s at the same moment (the phone and the computer) are
+    # then one after the other, and the second sees where the first moved the to-do
+    try:
+        with store.tx():
+            return _update_in_tx(store, item_id, patch, today)
+    except NoNextDate as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, TOO_FAR_BACK) from exc
+
+
+def _update_in_tx(store: Store, item_id: str, patch: ItemPatch, today: date) -> tuple[Item, bool]:
     item = require(store.get_item(item_id), NOT_FOUND)
-    changes = patch.model_dump(exclude_unset=True)
+    changes = patch.model_dump(exclude_unset=True, exclude={"seen_due_date"})
     fields: dict[str, Any] = {name: changes[name] for name in _CONTENT_FIELDS if name in changes}
     if "recurrence" in fields:  # the rule as read, so the same rule sent again compares equal to it
         fields["recurrence"] = patch.recurrence
@@ -395,33 +429,40 @@ def _update(store: Store, item_id: str, patch: ItemPatch, today: date) -> Item:
         fields["user_modified"] = True
     fields |= _status_fields(item, changes, today)
     if not fields:
-        return item
+        return item, False
     # an open recurring to-do set open again: the "Undo" of marking it done, which moved it on (or closed
     # a rent at its last occurrence, which stays done until set open again: recurrence.py, point 9)
     reopened = item.status in ("open", "done") and fields.get("status") == "open"
     done = item.status != "done" and fields.get("status") == "done"
-    try:
-        with store.tx():
-            updated = store.update_item(item_id, **fields)
-            if restart:
-                updated = _scheduled_start(store, updated, today)
-            updated = _follow_schedule(store, updated, today, done=done, reopened=reopened)
-            refresh_review_status(store, updated.doc_id)
-    except NoNextDate as exc:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, TOO_FAR_BACK) from exc
-    return updated
+    if _moved_since(item, patch, steps=item.recurrence is not None and (done or reopened)):
+        return item, True  # nothing changes: the answer is the to-do as it stands, at the date it moved to
+    updated = store.update_item(item_id, **fields)
+    if restart:
+        updated = _scheduled_start(store, updated, today)
+    updated = _follow_schedule(store, updated, today, done=done, reopened=reopened)
+    refresh_review_status(store, updated.doc_id)
+    return updated, False
 
 
 @router.patch("/items/{item_id}", response_model=Item)
-async def update_item(item_id: str, patch: ItemPatch, ctx: CtxDep, today: TodayDep) -> Item:
+async def update_item(
+    item_id: str, patch: ItemPatch, ctx: CtxDep, today: TodayDep, response: Response
+) -> Item:
     """Edit a to-do: done / snoozed / dismissed, a date of your own, how it repeats, title and notes.
 
     For a to-do not read from a letter, ``recurrence`` sent together with ``due_date`` starts its
     schedule again at that date, and a new rule sent alone starts it again at its current date; a
     working day or a day of the month is dated from there at once. ``{"recurrence": null}`` stops it
     repeating and keeps its date. A date sent alone stands in for one occurrence. To-dos read from a
-    letter keep following their letter's schedule."""
-    item = await asyncio.to_thread(_update, ctx.store, item_id, patch, today)
+    letter keep following their letter's schedule.
+
+    ``seen_due_date``, sent with ``{"status": "done"}`` or ``{"status": "open"}``, is the date the page showed:
+    a repeating to-do that no longer stands there (the same press sent twice) changes nothing, and the answer
+    is the to-do as it is, with the header ``X-Ordnung-Unchanged: moved-on``. Without it, the to-do moves on
+    (or back) as before."""
+    item, moved_on = await asyncio.to_thread(_update_answer, ctx.store, item_id, patch, today)
+    if moved_on:
+        response.headers[UNCHANGED_HEADER] = MOVED_ON
     await ledger_changed(ctx, item_id=item.id)
     return item
 

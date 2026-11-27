@@ -18,12 +18,14 @@ import { focusWhenReady } from "@/lib/focus";
 import { cn } from "@/lib/utils";
 import { SettingsCard } from "./SettingsCard";
 import { calendarLine, computerBadge, computerLine, latestLine, otherComputers } from "./sync";
+import { useOnePress } from "@/lib/hooks";
 
 const FORGET_ERROR_ID = "sync-forget-error";
 
 /** "Forget anna-thinkpad?": a copy of its changes that are nowhere else is kept here first; it still knows the passphrase. */
 function ForgetDialog({ computer, onClose }: { computer: SyncComputer | null; onClose: () => void }) {
   const forget = useForgetComputer();
+  const forgetting = useOnePress(); // one press: a second "Forget it" was refused after it worked
   const cancelRef = useRef<HTMLButtonElement>(null);
   const name = computer?.name ?? "";
   const close = () => {
@@ -33,14 +35,14 @@ function ForgetDialog({ computer, onClose }: { computer: SyncComputer | null; on
   };
   const confirm = () => {
     if (!computer) return;
-    forget.mutate(computer.key, {
+    forgetting.once(() => forget.mutateAsync(computer.key, {
       onSuccess: () => {
         forget.reset();
         onClose();
         toast.success(`${name} was removed from sync`, { description: "It still knows the passphrase: a new sync folder with a new passphrase locks it out." });
       },
       onError: () => focusWhenReady(() => document.getElementById(FORGET_ERROR_ID), 5000, { always: true }),
-    });
+    }));
   };
   return (
     <Dialog
@@ -56,7 +58,7 @@ function ForgetDialog({ computer, onClose }: { computer: SyncComputer | null; on
           <Button ref={cancelRef} onClick={close} disabled={forget.isPending}>
             Cancel
           </Button>
-          <Button variant="danger" icon={UserX} loading={forget.isPending} onClick={confirm}>
+          <Button variant="danger" icon={UserX} loading={forget.isPending || forgetting.busy} onClick={confirm}>
             Forget
           </Button>
         </>

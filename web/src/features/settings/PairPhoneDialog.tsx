@@ -20,6 +20,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { CircleCheck, Hourglass, RefreshCw, Smartphone, Unlink } from "lucide-react";
 import { ApiError } from "@/api/client";
 import { PHONE_POLL_MS, qk, useCancelPhonePairing, useCreatePhonePairing, usePhone, useRemovePhone } from "@/api/hooks";
+import { ignoreFailedRequest } from "@/api/client";
 import type { PhonePairing, PhoneStatus } from "@/api/types";
 import { Button } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
@@ -46,6 +47,7 @@ import {
   type ComputerOs,
 } from "./phoneAccess";
 import { Disclosure, PlatformTabs } from "./PhoneParts";
+import { useOnePress } from "@/lib/hooks";
 
 /** A clock that ticks every second while `active` (the countdown, and when to offer help). */
 function useNow(active: boolean): number {
@@ -185,7 +187,7 @@ export function PairPhoneDialog({ open, onClose }: { open: boolean; onClose: () 
   const qc = useQueryClient();
   const phone = usePhone({ poll: open });
   const status = phone.data;
-  const { mutate: createCode, ...create } = useCreatePhonePairing();
+  const { mutateAsync: createCode, ...create } = useCreatePhonePairing();
   const cancel = useCancelPhonePairing();
   const remove = useRemovePhone();
   const [session, setSession] = useState<Session | null>(null);
@@ -194,7 +196,7 @@ export function PairPhoneDialog({ open, onClose }: { open: boolean; onClose: () 
   const [troubleOffered, setTroubleOffered] = useState(false);
   const now = useNow(open && session !== null);
 
-  const start = useCallback(
+  const makeCode = useCallback(
     () =>
       createCode(undefined, {
         onSuccess: (pairing) => {
@@ -205,6 +207,12 @@ export function PairPhoneDialog({ open, onClose }: { open: boolean; onClose: () 
       }),
     [createCode, qc],
   );
+  // a failed request: the dialog says why (`createError`)
+  const start = useCallback(() => void makeCode().catch(ignoreFailedRequest), [makeCode]);
+  // one press at a time: "Make a new code" pressed twice made two, and the server replaces the open one, so the
+  // dialog could show a code that no longer works; "Not you? Remove" a second time was refused after it worked
+  const making = useOnePress();
+  const removing = useOnePress();
 
   // one code per opening (the dialog is mounted anew for each)
   const started = useRef(false);
@@ -235,13 +243,14 @@ export function PairPhoneDialog({ open, onClose }: { open: boolean; onClose: () 
     setTroubleOpen(true);
   }
 
-  const again = () => {
-    setRemovedName(null);
-    setTroubleOpen(false);
-    setTroubleOffered(false);
-    remove.reset();
-    start();
-  };
+  const again = () =>
+    making.once(() => {
+      setRemovedName(null);
+      setTroubleOpen(false);
+      setTroubleOffered(false);
+      remove.reset();
+      return makeCode();
+    });
   const close = () => {
     // a code nobody used ends now (one that paired, or that the server stopped, has nothing to cancel)
     if (session && !paired && !removedName && !notice && !expired && !ended) cancel.mutate();
@@ -250,7 +259,7 @@ export function PairPhoneDialog({ open, onClose }: { open: boolean; onClose: () 
   const notMe = () => {
     if (!paired) return;
     const name = paired.name;
-    remove.mutate(paired.id, { onSuccess: () => setRemovedName(name) });
+    removing.once(() => remove.mutateAsync(paired.id, { onSuccess: () => setRemovedName(name) }));
   };
 
   const createError = create.error ? (create.error instanceof ApiError ? create.error.message : "Ordnung didn't answer. Is it still running?") : null;
@@ -276,7 +285,7 @@ export function PairPhoneDialog({ open, onClose }: { open: boolean; onClose: () 
 
   const footer = paired ? (
     <>
-      <Button variant="ghost" icon={Unlink} className="text-danger-ink hover:bg-danger-soft hover:text-danger-ink sm:mr-auto" loading={remove.isPending} onClick={notMe}>
+      <Button variant="ghost" icon={Unlink} className="text-danger-ink hover:bg-danger-soft hover:text-danger-ink sm:mr-auto" loading={remove.isPending || removing.busy} onClick={notMe}>
         Not you? Remove
       </Button>
       <Button variant="primary" onClick={onClose}>
@@ -286,7 +295,7 @@ export function PairPhoneDialog({ open, onClose }: { open: boolean; onClose: () 
   ) : over || createError ? (
     <>
       <Button onClick={close}>Done</Button>
-      <Button variant="primary" icon={RefreshCw} loading={create.isPending} onClick={again}>
+      <Button variant="primary" icon={RefreshCw} loading={create.isPending || making.busy} onClick={again}>
         {createError && !session ? "Try again" : "Make a new code"}
       </Button>
     </>

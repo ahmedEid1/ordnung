@@ -17,6 +17,7 @@ import { backupContents, backupStrengthLine, backupSummary, failureSentence, las
 import { suggestPassphrase } from "./passphrase";
 import { PassphraseFields } from "./PassphraseFields";
 import { FOOTER_ACTION, SettingsCard } from "./SettingsCard";
+import { useOnePress } from "@/lib/hooks";
 
 const ERROR_ID = "backup-error";
 
@@ -56,7 +57,9 @@ function BackupDialog({
   const stopRef = useRef<HTMLButtonElement>(null);
   const min = info?.min_passphrase ?? MIN_PASSPHRASE;
   const strength = suggested ? null : backupStrengthLine(passphrase, min);
-  const busy = download.isPending;
+  // one backup per press: a second press before the form is drawn busy made a second file
+  const making = useOnePress();
+  const busy = download.isPending || making.busy;
 
   const reset = () => {
     setPassphrase("");
@@ -93,11 +96,12 @@ function BackupDialog({
       document.getElementById(wrong.field === "passphrase" ? "backup-passphrase" : "backup-repeat")?.focus();
       return;
     }
+    making.once(() => {
     const controller = new AbortController();
     abort.current = controller;
     // the pressed button turns into "Encrypting…" (disabled): focus goes to "Stop", inside the dialog
     if (document.activeElement === submitRef.current) stopRef.current?.focus();
-    download.mutate(
+    return download.mutateAsync(
       { passphrase, signal: controller.signal },
       {
         onSuccess: (blob) => {
@@ -119,6 +123,7 @@ function BackupDialog({
         },
       },
     );
+    });
   };
 
   const failed = download.error && !(download.error instanceof DOMException) && !(download.error instanceof ApiError && download.error.status === 422);

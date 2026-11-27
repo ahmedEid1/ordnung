@@ -31,6 +31,7 @@ import { PassphraseFields } from "./PassphraseFields";
 import { SettingsCard } from "./SettingsCard";
 import { suggestPassphrase } from "./passphrase";
 import { fieldFor, looksAbsolute, PASSPHRASE_WORDING, strengthLine, syncFormProblem, type SetupField } from "./sync";
+import { useOnePress } from "@/lib/hooks";
 
 /** The card's heading, in both its places: where focus goes after disconnecting. */
 export const SETUP_HEADING_ID = "set-sync";
@@ -131,7 +132,10 @@ export function SyncSetupCard({ status, join = false, onConnected }: { status: S
   const [choice, setChoice] = useState<SyncChoice | null>(null);
   const [picked, setPicked] = useState<number | null>(null);
   const firstPassphrase = useRef<HTMLInputElement>(null);
-  const busy = inspect.isPending || connect.isPending;
+  // joining goes once per press: a second press before the form is drawn busy sent it again. Looking at the folder
+  // writes nothing, and leaving its field looks at it too, so Next pressed meanwhile still goes on
+  const sending = useOnePress();
+  const busy = inspect.isPending || connect.isPending || sending.busy;
   // what the folder is decides what is asked (joining from /join expects a folder that holds a sync)
   const kind = info && checked === folder.trim() && info.kind !== "refused" && !(join && info.kind === "new") ? info.kind : null;
   const newSync = kind === "new" && !join;
@@ -208,7 +212,7 @@ export function SyncSetupCard({ status, join = false, onConnected }: { status: S
 
   const send = (keep: "this" | "folder" | null, found: SyncFolderInfo) => {
     const from = focusOrigin();
-    connect.mutate(
+    sending.once(() => connect.mutateAsync(
       { folder: found.folder, name: name.trim(), passphrase, keep },
       {
         onSuccess: (result) => {
@@ -228,7 +232,7 @@ export function SyncSetupCard({ status, join = false, onConnected }: { status: S
           setErrors(next);
         },
       },
-    );
+    ));
   };
 
   const submit = (e?: SubmitEvent<HTMLFormElement>) => {

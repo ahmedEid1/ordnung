@@ -54,6 +54,7 @@ const focusId = (id: string, from: Element | null = null) => focusWhenReady(() =
  */
 function WaitingBox({ entry, draft }: { entry: WaitingEntry; draft: Draft }) {
   const answered = useMarkAnswered();
+  const answering = useOnePress(); // one answer at a time: a second one was a second toast, with an Undo of its own
   const drawer = usePartyDrawer();
   const title = waitingTitle(entry);
   const set = (value: boolean) => {
@@ -61,6 +62,7 @@ function WaitingBox({ entry, draft }: { entry: WaitingEntry; draft: Draft }) {
     // the box changes once saved (its buttons go): the toast follows the promise, focus the box — unless the
     // person went on to something else while it was saved
     const from = focusOrigin();
+    answering.once(() =>
     answered.mutateAsync({ id: draft.id, answered: value, docId }).then(
       () => {
         focusId(BOX_ID, from);
@@ -79,6 +81,7 @@ function WaitingBox({ entry, draft }: { entry: WaitingEntry; draft: Draft }) {
           });
       },
       ignoreFailedRequest, // a failed request: the hook's toast says so
+    ),
     );
   };
   const reminder =
@@ -104,11 +107,11 @@ function WaitingBox({ entry, draft }: { entry: WaitingEntry; draft: Draft }) {
               </Link>
             ) : null}
             {open ? (
-              <Button size="sm" variant={entry.status === "answered" ? "primary" : "soft"} icon={CircleCheck} loading={answered.isPending} onClick={() => set(true)} className={WRAPPING_BUTTON}>
+              <Button size="sm" variant={entry.status === "answered" ? "primary" : "soft"} icon={CircleCheck} loading={answered.isPending || answering.busy} onClick={() => set(true)} className={WRAPPING_BUTTON}>
                 <span>{closeLabel(entry)}</span>
               </Button>
             ) : draft.answered_on ? (
-              <Button size="sm" variant="secondary" icon={Undo2} loading={answered.isPending} onClick={() => set(false)}>
+              <Button size="sm" variant="secondary" icon={Undo2} loading={answered.isPending || answering.busy} onClick={() => set(false)}>
                 Not answered after all
               </Button>
             ) : null}
@@ -136,6 +139,7 @@ function WaitingBox({ entry, draft }: { entry: WaitingEntry; draft: Draft }) {
 /** The saved number with Change / Remove (with Undo), or the field to enter it. */
 function Tracking({ draft, overview }: { draft: Draft; overview: ProofOverview }) {
   const save = useSetTracking();
+  const saving = useOnePress(); // "Save number", one press at a time
   const qc = useQueryClient();
   const saved = overview.tracking;
   const [editing, setEditing] = useState(false);
@@ -246,13 +250,13 @@ function Tracking({ draft, overview }: { draft: Draft; overview: ProofOverview }
       onSubmit={(e) => {
         e.preventDefault();
         setTried(true);
-        if (value.trim() && trackingSavable(value)) void store(value);
+        if (value.trim() && trackingSavable(value)) saving.once(() => store(value));
         else document.getElementById(TRACKING_INPUT)?.focus();
       }}
     >
       <TrackingField id={TRACKING_INPUT} value={value} onChange={setValue} autoFocus={editing} showError={tried} required />
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" size="sm" variant="soft" loading={save.isPending}>
+        <Button type="submit" size="sm" variant="soft" loading={save.isPending || saving.busy}>
           Save number
         </Button>
         {editing ? (
@@ -420,6 +424,7 @@ export function ProofPanel({ draft, onChangeSending }: { draft: Draft; onChangeS
   // a paired phone adds proofs (a photo of the receipt) but removes and downloads them on the computer
   const phone = usePhoneCompanion();
   const remove = useRemoveProof();
+  const removingPress = useOnePress(); // "Remove", one press: a second one answered "not found" after it worked
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<ProofEntry | null>(null);
   const [removing, setRemoving] = useState<ProofEntry | null>(null);
@@ -558,10 +563,10 @@ export function ProofPanel({ draft, onChangeSending }: { draft: Draft; onChangeS
             returnFocus={listHeading}
             kind={removing?.proof.kind ?? null}
             document={removing?.document ?? null}
-            pending={remove.isPending}
+            pending={remove.isPending || removingPress.busy}
             onRemove={() =>
               removing &&
-              remove.mutate(
+              removingPress.once(() => remove.mutateAsync(
                 { id: draft.id, proofId: removing.proof.id },
                 {
                   onSuccess: () => {
@@ -571,7 +576,7 @@ export function ProofPanel({ draft, onChangeSending }: { draft: Draft; onChangeS
                     setRemoving(null);
                   },
                 },
-              )
+              ))
             }
           />
         </>

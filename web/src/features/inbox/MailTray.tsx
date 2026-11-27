@@ -23,6 +23,7 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { useAddLetters } from "@/components/shell/AddLetters";
 import { holdNewUploadToasts, setUploadToastHidden } from "@/components/shell/UploadCenter";
 import { TOUR_TARGETS } from "@/features/tour/steps";
+import { useOnePress } from "@/lib/hooks";
 
 type CardState =
   | { kind: "idle" }
@@ -58,6 +59,10 @@ export function MailTray({
   const { jobs } = useEvents();
   const openMail = useOpenMail();
   const sectionRef = useRef<HTMLElement>(null);
+  // the envelopes asked to be opened, at once as pressed: a second press on "Let Ordnung read it" (or "Read all")
+  // before the tray is drawn again opened the same mail twice. Not one press at a time for the tray: each envelope
+  // can be opened while others are being read.
+  const asked = useRef(new Set<string>());
   /** mail id → document id (null while the request is in flight) */
   const [started, setStarted] = useState<Record<string, string | null>>({});
   /** documents whose job finished while the tray was on screen */
@@ -144,7 +149,10 @@ export function MailTray({
 
   const anchorOf = (mailId: string) => sectionRef.current?.querySelector<HTMLElement>(`${ANCHOR}[data-mail-id="${CSS.escape(mailId)}"]`);
 
-  const open = async (items: MailTrayItem[]) => {
+  const open = async (pressed: MailTrayItem[]) => {
+    const items = pressed.filter((t) => !asked.current.has(t.id));
+    if (!items.length) return;
+    for (const t of items) asked.current.add(t.id);
     // the button goes when reading starts: its envelope takes focus first (and keeps it)
     if (sectionRef.current?.contains(document.activeElement) && items[0]) anchorOf(items[0].id)?.focus({ preventScroll: true });
     setStarted((s) => ({ ...s, ...Object.fromEntries(items.map((t) => [t.id, null])) }));
@@ -170,6 +178,7 @@ export function MailTray({
       });
       return next;
     });
+    for (const t of items) if (!(t.id in opened)) asked.current.delete(t.id); // and can be pressed again
     if (letters.length && mounted.current) toastHolds.current.push({ docIds: letters.map((l) => l.docId), release });
     else release();
     onOpened(letters);
@@ -400,8 +409,9 @@ function Envelope({ item, state, index, onOpen, live }: { item: MailTrayItem; st
  * sharper photo, or take it out of New mail (it stays in the letters list, under Please check).
  * No `role="alert"`: the "couldn't be read" toast already says so.
  */
-function FailedPanel({ item, docId, message, anchor }: { item: MailTrayItem; docId: string; message: string; anchor: RefObject<HTMLDivElement | null> }) {
+export function FailedPanel({ item, docId, message, anchor }: { item: MailTrayItem; docId: string; message: string; anchor: RefObject<HTMLDivElement | null> }) {
   const reprocess = useReprocessDocument();
+  const trying = useOnePress(); // "Try again", one press at a time
   const { openPicker } = useAddLetters();
   // the buttons go with the panel: the envelope takes focus first (and keeps it)
   const keepFocus = () => {
@@ -418,13 +428,15 @@ function FailedPanel({ item, docId, message, anchor }: { item: MailTrayItem; doc
           size="sm"
           variant="primary"
           icon={RotateCw}
-          loading={reprocess.isPending}
-          onClick={() => {
-            keepFocus();
-            reprocess.mutate(docId, {
-              onSuccess: (j) => seedJob({ job_id: j.id, doc_id: docId, stage: "intake", progress: 0, status: "running" }),
-            });
-          }}
+          loading={reprocess.isPending || trying.busy}
+          onClick={() =>
+            trying.once(() => {
+              keepFocus();
+              return reprocess.mutateAsync(docId, {
+                onSuccess: (j) => seedJob({ job_id: j.id, doc_id: docId, stage: "intake", progress: 0, status: "running" }),
+              });
+            })
+          }
         >
           Try again
         </Button>

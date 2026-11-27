@@ -1,1 +1,0 @@
-import{D as e,E as t,O as n}from"./Toast-DzuliwnZ.js";import{l as r,u as i}from"./index-DixAa5_o.js";var a=i(r(),1);function o(){!e.current&&t();let[r]=(0,a.useState)(n.current);return r}export{o as t};
