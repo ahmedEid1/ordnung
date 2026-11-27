@@ -2,6 +2,7 @@
  * Where keyboard focus goes when a Today card leaves (paid, done, hidden, snoozed) or comes back
  * (Undo): Top 3 and Ideas both hand it to the card now in its place, never to <body>.
  */
+import { useCallback, useLayoutEffect, useState } from "react";
 
 /**
  * Focus sits on nothing in particular: <body>, <main> (where a closing toast hands it back), a
@@ -17,7 +18,9 @@ export function focusIsLost(): boolean {
  * focus is lost by then, so someone who has moved on is not pulled back. `from` (read with
  * {@link focusOrigin} as the action starts): focus also moves while it is still there (the button
  * they pressed), but not once they have gone on to type or choose somewhere else while the answer
- * was on its way. `always`: focus moves wherever it is — only for a failed action's error, which
+ * was on its way — nor once they went somewhere and came back to it (the step's button that now reads "Start
+ * syncing" is the "Next" they pressed: back on it to press again, they would have lost it to the field that came).
+ * `always`: focus moves wherever it is — only for a failed action's error, which
  * needs reading before anything else (as a refused form's field takes focus). `preventScroll`: the page scrolls
  * to it by itself (smoothly), which a focus scroll would cut short.
  */
@@ -27,17 +30,74 @@ export function focusWhenReady(
   { always = false, from = null, preventScroll = false }: { always?: boolean; from?: Element | null; preventScroll?: boolean } = {},
 ): void {
   const until = performance.now() + ms;
+  const away = watchGoingOn(from);
   const tick = () => {
     const el = find();
     if (!el) {
       if (performance.now() < until) requestAnimationFrame(tick);
+      else away.stop();
       return;
     }
-    if (!always && !focusIsLost() && !(from && document.activeElement === from)) return;
-    if (!el.hasAttribute("tabindex")) el.tabIndex = -1;
+    away.stop();
+    if (!always && !mayStillMove(from, away.wentOn())) return;
+    // a heading is made focusable from a script only; a field or a button already is, and -1 would take it out of
+    // the Tab order (the sync passphrase field was)
+    if (!el.hasAttribute("tabindex") && el.tabIndex < 0) el.tabIndex = -1;
     el.focus({ preventScroll });
   };
   requestAnimationFrame(tick);
+}
+
+/** From now on, whether focus went somewhere of the person's own away from `from` (not a lost place: a closing toast hands it to <main>). */
+function watchGoingOn(from: Element | null): { wentOn: () => boolean; stop: () => void } {
+  let wentOn = false;
+  const onFocusIn = () => {
+    if (!focusIsLost() && !from?.contains(document.activeElement)) wentOn = true;
+  };
+  if (from) document.addEventListener("focusin", onFocusIn, true);
+  return { wentOn: () => wentOn, stop: () => document.removeEventListener("focusin", onFocusIn, true) };
+}
+
+/** Whether focus may be moved for the person: it is lost, or still on `from` and never went anywhere of theirs since. */
+function mayStillMove(from: Element | null, wentOn: boolean): boolean {
+  return focusIsLost() || (from !== null && !wentOn && document.activeElement === from);
+}
+
+/**
+ * For a focus moved as soon as a request is answered (no element to wait for, so no frame): call it as the action
+ * starts, and what it returns once the answer is in. That says whether focus may move — by {@link focusWhenReady}'s
+ * `from` rule, from where focus was at the start — so someone who went elsewhere while the request ran keeps their
+ * place. Call it once on every path: it stops watching then.
+ */
+export function focusMayMoveOnceAnswered(): () => boolean {
+  return focusMayMoveLater(focusOrigin());
+}
+
+/**
+ * The same, for a focus put off until later (a frame) from a place other than where focus is now: `from` is where
+ * focus stands when the move is asked for, or is about to (a new page's heading, given a focus that was lost). Call
+ * what it returns when the move is due, or to stop watching (the move called off).
+ */
+export function focusMayMoveLater(from: Element | null): () => boolean {
+  const away = watchGoingOn(from);
+  return () => {
+    away.stop();
+    return mayStillMove(from, away.wentOn());
+  };
+}
+
+/**
+ * Focus what a change of state draws, in the commit that draws it, never a frame later: put off by a frame, the
+ * focus landed after a quick keyboard had already gone on (Edit, a letter typed, on to Save) and took it back. Call
+ * it beside the change; `find` is asked once the change is on the page, so an error drawn with it is read out with
+ * its field.
+ */
+export function useFocusWhenDrawn(): (find: () => HTMLElement | null | undefined, options?: FocusOptions) => void {
+  const [asked, setAsked] = useState<{ find: () => HTMLElement | null | undefined; options?: FocusOptions } | null>(null);
+  useLayoutEffect(() => {
+    asked?.find()?.focus(asked.options);
+  }, [asked]);
+  return useCallback((find, options) => setAsked({ find, options }), []);
 }
 
 /** Where a toast that holds focus hands it back when it closes (told by `components/ui/Toast`). */
@@ -189,6 +249,15 @@ function scrollsThePage(event: Event): boolean {
   return event.type === "wheel" || event.type === "touchstart";
 }
 
+/**
+ * Whether the bars leave the same room as before: each edge within a rem of where it was. A bar still settling into
+ * place moves a few pixels (the demo's tour bar slides its last few in while a reveal is under way: 3.3 px measured);
+ * one that comes or goes moves an edge by its whole height (54 px for the tour bar).
+ */
+function sameRoom(a: Band, b: Band): boolean {
+  return Math.abs(a.top - b.top) <= 16 && Math.abs(a.bottom - b.bottom) <= 16;
+}
+
 /** How many frames in a row nothing may move (the element, the page's height, its scroll) before it is revealed. */
 const STILL_FRAMES = 4;
 /** How long a revealed element is kept in view while the page still grows around it. */
@@ -206,9 +275,10 @@ const REVEAL_GIVE_UP_MS = 20_000;
  * stops for good: their scroll wins. A wheel, a touch, a key or a press stops it (a modifier key on its own does
  * not); a wheel, a touch or a key that scrolls also stops a smooth scroll of its own still under way, where it is.
  * A scroll that comes with none of those (the scroll bar dragged, an assistive technology scrolling) stops the watch
- * too, seen as the page moving while nothing changed its height and no reveal of its own was under way, or, during
- * one, moving back against it (a scroll of its own never turns round). Returns a stop for the caller (an effect's
- * cleanup).
+ * too, seen as the page moving while nothing changed its height and no reveal of its own was under way. During one,
+ * it is seen as the page moving back against it (a scroll of its own never turns round), or as the page standing still
+ * well past the card, its height and its bars as they were (a scroll of its own ends where it aimed, give or take a few
+ * pixels): someone else scrolled on. Returns a stop for the caller (an effect's cleanup).
  */
 export function revealWhenStill(el: HTMLElement, { reducedMotion = false }: { reducedMotion?: boolean } = {}): () => void {
   let stopped = false;
@@ -221,11 +291,11 @@ export function revealWhenStill(el: HTMLElement, { reducedMotion = false }: { re
   /** Where the page stood when it last revealed the card (the card, the scroll, the height and the band). */
   let triedFrom: string | null = null;
   /**
-   * During a reveal of its own: the page's height when it began, its scroll a frame ago, and which way the reveal
-   * scrolls (1 down, -1 up). Null once the height changed: the browser may then keep the card's place by scrolling
-   * either way.
+   * During a reveal of its own: the page's height when it began, its scroll a frame ago, which way the reveal scrolls
+   * (1 down, -1 up) and the room the bars left when it began. Null once the height changed: the browser may then keep
+   * the card's place by scrolling either way.
    */
-  let own: { height: number; y: number; way: number } | null = null;
+  let own: { height: number; y: number; way: number; band: Band } | null = null;
   const events = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
   const stop = () => {
     stopped = true;
@@ -292,6 +362,24 @@ export function revealWhenStill(el: HTMLElement, { reducedMotion = false }: { re
       const band = freeBand(x);
       const { shown, block } = revealPlan(box, band);
       const where = `${now} ${band.top} ${band.bottom}`;
+      // a reveal of its own, the page's height and its bars as they were, never takes the card well past where it
+      // belongs: standing still beyond it, the page was scrolled on by someone else, and that scroll wins as the
+      // person's wheel does. "Well past" means more than TALL_START_SLACK beyond the room's edge, either way: the
+      // browser centres a card in the room the root's scroll padding leaves, not in the bars' room, and one nearly as
+      // tall as that room lands up to 4 px under the top bar with nobody scrolling (it is then revealed again, as
+      // before). Going up, a centred card's bottom is given the same few pixels over the bars below; a "start" card
+      // within them of the top bar is in view (revealPlan), so there the slack only names the same line.
+      // (Short of it is not told apart: a scroll that only cuts the reveal short leaves the card to be revealed
+      // again.)
+      if (revealing && own && !shown && sameRoom(own.band, band)) {
+        const past =
+          own.way > 0
+            ? box.top < band.top - TALL_START_SLACK
+            : block === "start"
+              ? box.top > band.top + TALL_START_SLACK
+              : box.bottom > band.bottom + TALL_START_SLACK;
+        if (past) return stop();
+      }
       revealing = false;
       rest = { y, height };
       // not where it belongs, but its last reveal from here moved nothing: the page goes no further (until it changes)
@@ -304,7 +392,7 @@ export function revealWhenStill(el: HTMLElement, { reducedMotion = false }: { re
         // which way it goes, known before it moves (a scroll in its first frame is seen too): a card below where it
         // belongs comes up (the page scrolls down), one above it comes down
         const below = block === "start" ? box.top > band.top : box.top >= band.top - 1;
-        own = { height, y, way: below ? 1 : -1 };
+        own = { height, y, way: below ? 1 : -1, band };
         el.scrollIntoView({ block, behavior: reducedMotion ? "auto" : "smooth" });
       }
     }

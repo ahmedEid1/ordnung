@@ -1340,7 +1340,15 @@ async function screenshots(browser) {
   await page.getByRole("region", { name: "GiroCode (EPC-QR)" }).waitFor();
   const compare = page.getByRole("button", { name: "These match the letter" });
   if (await compare.isVisible()) await compare.click();
-  await page.getByRole("img", { name: /^GiroCode: transfer/ }).waitFor();
+  const code = page.getByRole("img", { name: /^GiroCode: transfer/ });
+  await code.waitFor();
+  // the code scrolls smoothly into view once compared, which leaves the panel's heading above its top: once that
+  // scroll is over, back at the panel's top the picture shows the heading too, and the code with its "You
+  // compared" line still fits under it
+  await settle(page, 800);
+  await code.evaluate((el) => {
+    for (let box = el.parentElement; box && box !== document.body; box = box.parentElement) box.scrollTop = 0;
+  });
   await settle(page, 800);
   await shot(page, "pay");
   await page.keyboard.press("Escape");

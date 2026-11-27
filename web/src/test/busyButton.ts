@@ -34,6 +34,9 @@ export async function expectOnePressAtATime({ user, button, held, key = "{Enter}
   await waitFor(() => expect(button()).toHaveAttribute("aria-disabled", "true"));
   if (busy) expect(button()).toHaveAttribute("aria-busy", "true");
   expect(button()).not.toBeDisabled();
+  // a frame goes by first: a focus put off until then (by the press that opened the editor, say) lands now and is
+  // caught every time, not only when the steps before happened to fit in one frame
+  await act(() => new Promise<void>((done) => requestAnimationFrame(() => done())));
   expect(button()).toHaveFocus();
   await user.keyboard(key);
   await user.click(button());

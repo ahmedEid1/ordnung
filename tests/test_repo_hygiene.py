@@ -168,7 +168,8 @@ def test_a_change_to_the_notices_script_makes_the_committed_build_stale(tmp_path
 def test_the_wheel_s_licence_expression_names_every_licence_it_ships() -> None:
     """The notices are in the committed build, which the wheel carries (and so its licence files). The wheel said
     ``License-Expression: MIT`` beside notices for ISC and OFL-1.1 code and fonts, the DejaVu fonts (Bitstream Vera)
-    and GeoNames' postcodes (CC BY 4.0)."""
+    and GeoNames' postcodes (CC BY 4.0). It names nothing else either: BSD-3-Clause stayed in it after the charts
+    library that brought it was gone."""
     pyproject = tomllib.loads(_text("pyproject.toml"))
     assert f"src/ordnung/web/dist/{NOTICES}" in pyproject["project"]["license-files"]
     assert "src/ordnung/web/dist/**" in pyproject["tool"]["hatch"]["build"]["targets"]["wheel"]["artifacts"]
@@ -180,11 +181,12 @@ def test_the_wheel_s_licence_expression_names_every_licence_it_ships() -> None:
     assert "Bitstream-Vera" in expression
     assert "CC BY 4.0" in _text("src/ordnung/rules/data/LICENSE-GeoNames.txt")
     assert "CC-BY-4.0" in expression
+    assert expression == named | {"MIT", "Bitstream-Vera", "CC-BY-4.0"}, expression - named
 
 
 def test_the_readme_says_where_the_bundled_licences_are() -> None:
-    """The README names each licence the web build's notices carry (a new one comes with a package update) and
-    where the notices are."""
+    """The README names each licence the web build's notices carry (a new one comes with a package update), and
+    no other, and where the notices are."""
     readme = _text("README.md")
     disclaimer = " ".join(readme.split("## Disclaimer", 1)[1].split())
     assert f"src/ordnung/web/dist/{NOTICES}" in disclaimer
@@ -193,6 +195,8 @@ def test_the_readme_says_where_the_bundled_licences_are() -> None:
     words = {"OFL-1.1": "SIL Open Font License 1.1"}
     (listed,) = re.findall(r"under their own licences \(([^)]*)\)", disclaimer)
     assert named and all(words.get(name, name) in listed for name in named), (named, listed)
+    said = {name.removeprefix("the ") for name in re.split(r", | and ", listed)}
+    assert said == {words.get(name, name) for name in named}, (said, named)
 
 
 # --------------------------------------------------------------------------------------------------

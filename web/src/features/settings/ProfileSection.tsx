@@ -9,7 +9,7 @@ import { Checkbox, Field, Input, Textarea } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
 import { formatIban, ibanLooksValid, normalizeIban } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
-import { focusWhenReady } from "@/lib/focus";
+import { focusWhenReady, useFocusWhenDrawn } from "@/lib/focus";
 import { useOnePress } from "@/lib/hooks";
 import { MOVING_CHECKLIST_ID, moveDayError, moveDayRange, movedLine, movingRows, moveStanding } from "@/features/today/moving";
 import { HouseholdCard } from "@/features/household/HouseholdCard";
@@ -106,6 +106,7 @@ function StartMove({
   const oldRef = useRef<HTMLTextAreaElement>(null);
   const dayRef = useRef<HTMLInputElement>(null);
   const panelId = useId();
+  const focusWhenDrawn = useFocusWhenDrawn();
   const addressError = oldAddressError(oldAddress, savedAddress);
   const dayError = moveDayError(movedOn, today);
 
@@ -121,13 +122,13 @@ function StartMove({
       return;
     }
     setOpen(true);
-    requestAnimationFrame(() => oldRef.current?.focus());
+    focusWhenDrawn(() => oldRef.current);
   };
   const start = () => {
     setAttempted(true);
     if (addressError || dayError) {
       const first = addressError ? oldRef : dayRef;
-      requestAnimationFrame(() => first.current?.focus());
+      focusWhenDrawn(() => first.current);
       return;
     }
     // once saved the move stands, and its line takes this one's place
@@ -204,6 +205,7 @@ export function ProfileSection({ profile }: { profile: Profile }) {
   const emailRef = useRef<HTMLInputElement>(null);
   const ibanRef = useRef<HTMLInputElement>(null);
   const dayRef = useRef<HTMLInputElement>(null);
+  const focusWhenDrawn = useFocusWhenDrawn();
 
   const set = (k: keyof ProfileForm) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const leave = (k: keyof ProfileForm) => () => setTouched((t) => (t.has(k) ? t : new Set(t).add(k)));
@@ -221,7 +223,7 @@ export function ProfileSection({ profile }: { profile: Profile }) {
   const showErrors = () => {
     setAttempted(true);
     const first = errors.name ? nameRef : errors.email ? emailRef : errors.iban ? ibanRef : dayRef;
-    requestAnimationFrame(() => first.current?.focus());
+    focusWhenDrawn(() => first.current);
   };
 
   // the off switch for a move told by mistake (or done with): the rows still open expire; Undo puts it back

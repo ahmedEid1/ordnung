@@ -11,6 +11,7 @@ import { qk } from "@/api/hooks";
 import { __clearToasts } from "@/components/ui/Toast";
 import { makeTestQueryClient, renderWithProviders, TEST_HEALTH } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
+import { holdFrames } from "@/test/frames";
 import SettingsPage from "@/pages/SettingsPage";
 import { DEFAULT_MODEL } from "./ClaudeSection";
 
@@ -120,5 +121,20 @@ describe("Settings → Claude → Model", () => {
       await waitFor(() => expect(srv.db.state.settings.model).toBe(accepted));
       expect(field).not.toHaveAttribute("aria-invalid");
     }
+  });
+});
+
+describe("Settings → Claude → Model: a refused name", () => {
+  it("focuses the field as its reason is drawn, not a frame later (a quick keyboard gone on keeps its place)", async () => {
+    useMockApi();
+    const user = userEvent.setup();
+    renderClaude();
+    const field = await screen.findByRole("textbox", { name: "Model" });
+    await user.clear(field);
+    await user.type(field, "-bad");
+    holdFrames();
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(field).toHaveAttribute("aria-invalid", "true"));
+    expect(field).toHaveFocus();
   });
 });

@@ -12,6 +12,7 @@ import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { renderWithProviders } from "@/test/render";
 import { holdRequests, useMockApi } from "@/test/mockFetch";
 import { expectOnePressAtATime } from "@/test/busyButton";
+import { holdFrames } from "@/test/frames";
 import { refreshMovingIdeas } from "@/mocks/moving";
 import SettingsPage from "@/pages/SettingsPage";
 
@@ -298,5 +299,46 @@ describe("Moved recently? Start the moving checklist", () => {
     expect(calls.filter((c) => c.method === "PUT")).toHaveLength(1);
     expect(screen.getByLabelText(/^Phone/)).toHaveValue(`${phone}9`);
     expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+  });
+});
+
+// a focus put off by a frame landed after a quick keyboard had gone on, and took it back: these move it as the
+// change is drawn, with no frame let through at all
+describe("I moved: focus goes where it belongs as the change is drawn, not a frame later", () => {
+  it("“Moved recently?” opens on the address before", async () => {
+    useMockApi();
+    const { user } = await openProfile();
+    const toggle = lateMove()!;
+    toggle.focus();
+    holdFrames();
+    await user.keyboard("{Enter}");
+    expect(screen.getByLabelText("Your previous address")).toHaveFocus();
+  });
+
+  it("“Start the checklist” with nothing filled in: the address before, its mistake already said", async () => {
+    useMockApi();
+    const { user } = await openProfile();
+    // held from the open on: the open's own focus, put off by a frame, could otherwise land after Start was pressed
+    holdFrames();
+    await user.click(lateMove()!);
+    await user.click(screen.getByRole("button", { name: "Start the checklist" }));
+    const before = screen.getByLabelText("Your previous address");
+    expect(before).toHaveFocus();
+    expect(before).toHaveAccessibleDescription("Enter the address you moved from.");
+  });
+
+  it("“Save changes” with a day out of range: the day, its mistake already said", async () => {
+    useMockApi();
+    const { user, address } = await openProfile();
+    await user.clear(address);
+    await user.type(address, NEW);
+    await user.click(moveBox()!);
+    const day = screen.getByLabelText("Moved in on");
+    await user.clear(day);
+    await user.type(day, "2026-01-15");
+    holdFrames();
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(day).toHaveFocus();
+    expect(day).toHaveAccessibleDescription(/last six months or the next three/);
   });
 });

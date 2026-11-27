@@ -8,6 +8,7 @@ import { useState } from "react";
 import { Landmark } from "lucide-react";
 import type { Document, GiroCode, Item } from "@/api/types";
 import { daysUntil, formatMoney } from "@/lib/format";
+import { focusIsLost } from "@/lib/focus";
 import { useIsTabletUp, useMediaQuery } from "@/lib/hooks";
 import { isTransfer } from "@/lib/payments";
 import { useToday } from "@/lib/today";
@@ -20,10 +21,28 @@ import { IbanCheck, PayFooter, TransferDetails, hasTransferDetails } from "@/fea
 /**
  * Once paid, the to-do leaves the verdict and its Pay button with it: keyboard focus goes on to the
  * verdict's heading (brought into view), never to the page's <body> — on the next frame, after the
- * panel handed it back to the Pay button.
+ * panel handed it back to the Pay button (a sheet does so as it closes). A key or a press in that frame that
+ * takes focus somewhere else is the person going on: their place stands, even once they come back to where they
+ * pressed it (gone and back counts as gone on, as in `focusWhenReady`). One that leaves focus where it was (a bare
+ * Shift, a Ctrl to quiet a screen reader, a press on empty page) does not count.
  */
 export function focusVerdictAfterPaying(): void {
+  // where focus was when the person first pressed something in that frame (by then the panel has handed it back)
+  let heldBy: Element | null | undefined;
+  let wentOn = false;
+  const pressed = () => {
+    if (heldBy === undefined) heldBy = document.activeElement;
+  };
+  const moved = () => {
+    if (heldBy !== undefined && document.activeElement !== heldBy && !focusIsLost()) wentOn = true;
+  };
+  const events = ["keydown", "pointerdown"] as const;
+  for (const type of events) window.addEventListener(type, pressed, true);
+  document.addEventListener("focusin", moved, true);
   requestAnimationFrame(() => {
+    for (const type of events) window.removeEventListener(type, pressed, true);
+    document.removeEventListener("focusin", moved, true);
+    if (wentOn && !focusIsLost()) return;
     const title = document.getElementById("verdict-title");
     if (!title) return;
     title.focus({ preventScroll: true });

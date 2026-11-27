@@ -23,6 +23,7 @@ import type { DocumentDetail, DocumentStatus } from "@/api/types";
 import { Skeleton, SkeletonCard, SkeletonText } from "@/components/ui/Skeleton";
 import { TabPanel, Tabs } from "@/components/ui/Tabs";
 import { cn } from "@/lib/utils";
+import { focusMayMoveLater } from "@/lib/focus";
 import { EvidenceProvider } from "./EvidenceContext";
 import { collectAnchors } from "./evidence";
 import { decisionSuggestion, leadsWithDecision, selectPrimaryItem, scamSuggestion } from "./verdict";
@@ -135,13 +136,23 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
     });
     return () => window.cancelAnimationFrame(frame);
   }, [toTitle, doc.id, doc.status, busy]);
+  // The move waits a frame (the page laid out for its smooth scroll), and someone who went on in that frame stays
+  // where they went, the page with them: a Tab pressed meanwhile was taken back to the card. Focus is lost as the
+  // page is drawn (the composer's link went with its dialog), and the new page's heading takes it at once
+  // (PageAnnouncer, before this frame): from there, or from nowhere, the card still takes it. From anywhere else it
+  // does not: focus is only there because the person put it there, before the page drew or since.
   useEffect(() => {
     if (!toCard) return;
+    const mayMove = focusMayMoveLater(document.querySelector("main h1:not([data-loading])"));
     const frame = window.requestAnimationFrame(() => {
+      if (!mayMove()) return;
       document.getElementById(`advice-card-${doc.id}`)?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
       document.getElementById(`advice-${doc.id}`)?.focus({ preventScroll: true });
     });
-    return () => window.cancelAnimationFrame(frame);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      mayMove(); // stops watching
+    };
   }, [toCard, doc.id, reduced]);
   const [view, setView] = useDocView();
   const trace = view === "trace";

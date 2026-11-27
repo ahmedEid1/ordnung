@@ -3,7 +3,30 @@
 What changed in each version of Ordnung, newest first. `ordnung --version` shows the one you have, and
 [Updating](docs/guide.md#updating) says how to get the newest.
 
-## Unreleased
+## 0.5.0 — 2026-11-27
+
+The fourth numbered release. [Updating](docs/guide.md#updating) says how to install it; *Upgrading* below says
+what a computer still on 0.4.0 does with what this version adds, if you use hand-off sync between the two.
+The evaluation in the README is still 0.4.0's pre-registered final run: this version changes none of its numbers,
+and `make eval-reproduce` replays every one of them on this version's code.
+
+In short: what a security review found, fixed, among them hidden text in a PDF kept from Claude and a first
+payment code to a new account that waits until you have compared it with the letter; one press, one change, so
+a double click no longer skips a repeating payment; years of letters that stay quick, a long Inbox drawn 100 at a
+time and a web app a quarter smaller; the app gone through with the keyboard, a screen reader, high contrast and
+zoom; fewer stumbles in the first minutes; and a README, a guide and other documents built for a reader who
+skims.
+
+### Added
+
+- **Two lists of names for pages and scripts.** `GET /api/documents/titles` and `GET /api/items/titles` give the
+  names of your letters and to-dos without the letters whole, also to a paired phone; Today, the weekly review,
+  Ask and the privacy log use them.
+- **A "done" can name the date it is for.** `PATCH /api/items/{id}` takes an optional `seen_due_date`, the date
+  the page showed: a "done" for a repeating to-do whose date has moved on since changes nothing, and its answer
+  carries the header `X-Ordnung-Unchanged: moved-on`. Without it a "done" works as before.
+- **The demo tour can be resumed where you left it.** A tour you ended part of the way through can be resumed at
+  its step from Settings → Data and from the Demo badge.
 
 ### Changed
 
@@ -13,12 +36,12 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   letters you had drawn; a new visit starts at 100. With 3,000 letters a slowed phone was busy for about 15
   seconds before the Inbox could be used; now for about 3.
 - **Pages ask for what they show.** Today, the weekly review, Ask and the privacy log fetch the names of your
-  letters and to-dos, not every letter whole (new: `GET /api/documents/titles` and `GET /api/items/titles`, also
-  open to a paired phone); the Timeline fetches the to-dos of its range, and a draft only the letter it answers.
-  With 3,000 letters Ask's first load fell from about 8.2 MB of data to 2.4 MB, Today's from 4.1 MB to 2.1 MB.
-  The demo's tour loads only in the demo and the *People & organisations* panel when you first open one, and
-  Today's note is asked for together with the day.
-- **The web app is a quarter smaller.** Its files take 2.5 MB where they took 3.4 MB, and what every page loads
+  letters and to-dos, not every letter whole (the two lists under *Added*); the Timeline fetches the to-dos of its
+  range, and a draft only the letter it answers. With 3,000 letters Ask's first load fell from about 8.2 MB of data
+  to 2.4 MB, Today's from 4.1 MB to 2.1 MB. The demo's tour loads only in the demo and the *People & organisations*
+  panel when you first open one (if it can't load because Ordnung was updated or restarted under an open page, it
+  says so and offers to reload), and Today's note is asked for together with the day.
+- **The web app is a quarter smaller.** Its files take 2.5 MB where 0.4.0's took 3.3 MB, and what every page loads
   first is about a tenth smaller. *Settings → Privacy* shows cost by purpose as plain rows at every width, with
   each purpose's calls and tokens on screen (they showed only on hover); the chart library that drew it (about
   400 kB, 23 packages) is gone. A test now holds the build to budgets for its first load, its largest later
@@ -26,10 +49,6 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - **The installed app carries no sample data any more.** An address ending in `?mock=1` swapped your own letters
   for a made-up sample life in the page, and about 450 kB of it came with every install. It is out of the
   released build, and `?mock=` does nothing there; the online demo and the developer tools keep it.
-- **The Timeline, Contracts and the Inbox hold still while they load.** On a phone the Timeline jumped by most of
-  a screen when its dates arrived, and Contracts moved when "Decide by" did; both keep the room now. Contracts
-  keeps the room for "Decide by" until it knows there is nothing to decide, so a household with nothing to decide
-  sees one move on its first visit, a little larger than before, and none after.
 - **Years of letters stay quick.** The app was measured with 300 and 3,000 made-up letters, and the requests
   that grew with the archive were fixed on the server. After a change the letters are loaded once for every open
   page, not once for each; Waiting, the weekly review, My numbers, a letter with a bank transfer and Ask's first
@@ -39,58 +58,56 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   letter with a bank transfer in 0.06 s (1.2 s); Ask reaches Claude about 1.5 seconds sooner. Every answer is
   the same as before, compared byte for byte on the demo and on both archives.
 - **A smaller install and a slightly quicker start.** The demo's letters and its search index are in the package
-  once, not twice (the download is 12.9 MB, was 15.2), and Ordnung no longer installs three libraries it never
-  used (17.8 MB less on disk). `ordnung serve` loads the PDF writer and the HTTP client when they are first
-  needed, not at start.
-- **A payment code to a new account asks you to compare once.** The first GiroCode to a payee and IBAN waits
-  until you have compared its details with the letter (*Security* below says why). After this update an account
-  asks once unless you compared a payment to it before, and deleting the letter you compared for good makes its
-  account new again. The demo's bills ask too.
+  once, not twice (the download is 12.6 MB, was 15.2), and Ordnung no longer installs uvicorn's "standard" extra
+  (17.8 MB less on disk): uvloop, websockets and python-dotenv, which it never used, are gone, PyYAML is needed
+  by the tests alone, and httptools, the one part it used, is a dependency of its own. A WebSocket upgrade request,
+  which Ordnung has no use for, is answered as a plain request, without two warnings in the log. `ordnung serve`
+  loads the PDF writer and the HTTP client when they are first needed, not at start.
 - **The guide and the other documents are built for a reader who skims**, as the README is. Each opens with one
   sentence on what it is and who it is for, then *In one minute* (at most six plain statements, each linked to its
   section) and its contents. Headings are the questions a reader brings, and what most readers skip is one click
-  away in a fold. Nothing was dropped to get there: every fact is still on its page or in a fold on it.
-  - **The guide** puts installing first. The install command is on the second screen where it was on the ninth
-    (on a phone the fourth, where it was the eleventh), and the update command is in *In one minute*. Its visible
-    text went from about 6,400 words to about 5,100 (about 7,100 with every fold open) and its longest paragraph
-    from 444 words to 243. The comments beside its commands are short enough for a phone; the install command
-    itself, with its long address, still scrolls sideways there.
-  - **The privacy page** answers at its top what people come for: what leaves your computer, what Anthropic
-    keeps, what is stored where, how to delete for good, what is encrypted, and who else can see what, each with
-    the limit that belongs to it. Every sentence of the page as it was is still there, word for word.
-  - **CONTRIBUTING.md** opens with a contributor's first hour: set up, run the checks, the rules that fail a pull
-    request, where things live (about 2,700 visible words where there were 4,100). **SECURITY.md** leads with how
-    to report, and **docs/releasing.md** with its five steps; no step changed.
-  - The spec, the deadline rules and the architecture page got a top each (what the page is for, six points, its
-    sections as links) and are otherwise as they were. The evaluation pages are unchanged.
-  - Two lists of what reaches Claude left out the secretary's note (the guide's and the privacy page's at-a-glance
-    row); both name it now, and a test reads the list from the privacy page's own table.
+  away in a fold. Nothing was dropped to get there: every fact is still on its page or in a fold on it. What
+  changed on each page is in the next five entries.
+- **The guide puts installing first.** The install command is on the second screen where it was on the ninth
+  (on a phone the fourth, where it was the eleventh), and the update command is in *In one minute*. Its visible
+  text went from about 6,400 words to about 5,100 (about 7,100 with every fold open) and its longest paragraph
+  from 444 words to 243. The comments beside its commands are short enough for a phone; the install command
+  itself, with its long address, still scrolls sideways there.
+- **The privacy page answers at its top what people come for:** what leaves your computer, what Anthropic
+  keeps, what is stored where, how to delete for good, what is encrypted, and who else can see what, each with
+  the limit that belongs to it. Every sentence of the page as it was is still there, word for word.
+- **CONTRIBUTING.md opens with a contributor's first hour:** set up, run the checks, the rules that fail a pull
+  request, where things live (about 2,700 visible words where there were 4,100). **SECURITY.md** leads with how
+  to report, and **docs/releasing.md** with its five steps; no step changed.
+- The spec, the deadline rules and the architecture page got a top each (what the page is for, six points, its
+  sections as links) and are otherwise as they were. The evaluation pages are unchanged.
+- Two lists of what reaches Claude left out the secretary's note (the guide's and the privacy page's at-a-glance
+  row); both name it now, and a test reads the list from the privacy page's own table.
 - **The first minutes with Ordnung have fewer stumbles.** Someone followed the README from an empty computer, by
-  the book, and what tripped them is fixed:
-  - **No address that leads nowhere.** The README and the guide named `http://127.0.0.1:8765`, which only shows
-    *Please open Ordnung from its link*. They now say what the commands do: open your browser, signed in. The
-    README's install block holds the commands alone and fits a phone's width, and the guide's Updating names uv
-    first.
-  - **Letters that wait for Claude say so.** With no Claude installed they stood under *Being read* with a moving
-    stepper, beside a banner that said nothing could be read. They are grouped under *Waiting for Claude*, and
-    the progress card says *3 letters waiting for Claude*.
-  - **A Claude that fails says how to check it.** When Claude Code ends without an answer, the letter says to run
-    `ordnung doctor --probe` (the plain `ordnung doctor` does not find such a Claude) and links to Settings →
-    Claude connection, beside *Try again*; `ordnung add` says it once. Its footer no longer says in the past tense
-    that the letter was sent to Anthropic: it may have reached Anthropic.
-  - **The demo tour.** The docked card's link stays inside the card. On a phone the card folds back to its bar
-    once its page opens, so it no longer covers the letter it just opened, and *More to try* stays folded until
-    asked for. A tour you ended part of the way through can be resumed at its step from Settings → Data and the
-    Demo badge. The letter the tour opens gives its title the keyboard focus, which had fallen to the top of the
-    page.
-  - **One name per letter**, in the list, the progress card, the breadcrumb and the browser tab. The demo's tabs
-    say *Ordnung demo*, so they are told apart from your own Ordnung's. An empty file is left out before *Add 2
-    letters?*, and a Word file's message says to save it as a PDF first.
-  - **The command line.** `--help` no longer shows Python types (`--version <bool>`, `<list[Path]>`), and
-    `ordnung eval`'s help no longer points to options an installed copy lacks. A mistyped `--data-dir` no longer
-    leaves a new data folder behind: `serve` on a busy port, `brief` and `sync status` create nothing. `ordnung
-    brief` on a folder without an Ordnung database now says so and exits 1, also on a computer where Ordnung has
-    never run, where it used to say *All clear*.
+  the book, and what tripped them is fixed, as the next six entries say.
+- **No address that leads nowhere.** The README and the guide named `http://127.0.0.1:8765`, which only shows
+  *Please open Ordnung from its link*. They now say what the commands do: open your browser, signed in. The
+  README's install block holds the commands alone and fits a phone's width, and the guide's Updating names uv
+  first.
+- **Letters that wait for Claude say so.** With no Claude installed they stood under *Being read* with a moving
+  stepper, beside a banner that said nothing could be read. They are grouped under *Waiting for Claude*, and
+  the progress card says *3 letters waiting for Claude*.
+- **A Claude that fails says how to check it.** When Claude Code ends without an answer, the letter says to run
+  `ordnung doctor --probe` (the plain `ordnung doctor` does not find such a Claude) and links to Settings →
+  Claude connection, beside *Try again*; `ordnung add` says it once. Its footer no longer says in the past tense
+  that the letter was sent to Anthropic: it may have reached Anthropic.
+- **The demo tour gets in the way less.** The docked card's link stays inside the card. On a phone the card folds
+  back to its bar once its page opens, so it no longer covers the letter it just opened, and *More to try* stays
+  folded until asked for. The letter the tour opens gives its title the keyboard focus, which had fallen to the top
+  of the page.
+- **One name per letter**, in the list, the progress card, the breadcrumb and the browser tab. The demo's tabs
+  say *Ordnung demo*, so they are told apart from your own Ordnung's. An empty file is left out before *Add 2
+  letters?*, and a Word file's message says to save it as a PDF first.
+- **The command line says less that misleads.** `--help` no longer shows Python types (`--version <bool>`,
+  `<list[Path]>`), and `ordnung eval`'s help no longer points to options an installed copy lacks. A mistyped
+  `--data-dir` no longer leaves a new data folder behind: `serve` on a busy port, `brief` and `sync status` create
+  nothing. `ordnung brief` on a folder without an Ordnung database now says so and exits 1, also on a computer
+  where Ordnung has never run, where it used to say *All clear*.
 - **The README is shorter and in the order a visitor asks.** Under the animation it opens with one worked example:
   a sentence of the demo's tax assessment and the steps from it to the date, each with its law. Then come three
   ways to try it and the install commands, what it does in four pictures, privacy and the limitations. How it
@@ -109,7 +126,7 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   columns with the photographed letter beside what Ordnung made of it: a letter arrives, Ordnung says what it is,
   what to do and by when, shows the sentence the date came from, and each step behind the date with its law. It is
   an animated WebP (1280×960), with the GIF kept for a browser without WebP. The whole tour (MP4, 1920×1440, 1 min
-  28 s) goes on to the weekly review, paying by GiroCode, the timeline, Ask, contracts with a cancellation's proof
+  33 s) goes on to the weekly review, paying by GiroCode, the timeline, Ask, contracts with a cancellation's proof
   of sending, a scam letter, a court payment order (a sample letter) and how a letter was read. `make capture`
   records the page's own frames instead of a compressed screen video, holds each caption for its reading time and
   keeps every movement at its real length, so the recording is as long on a busy machine as on a quiet one, and it
@@ -144,10 +161,14 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - The backend tests hold one behaviour each. The examples of one rule are now the rows of one table test
   (`check_rows` in `tests/helpers_tables.py`, which names every failing row) instead of one collected test per
   example, and tests and rows that only repeated another were removed. That is now every family: the suite went
-  from 13,788 collected tests to about 6,440, with every covered branch still covered and every planted bug the
-  old tests caught still caught. Where tests rebuilt what none of them changes, they build it once: Ask's tests
-  take under half the time (its largest file an eighth), the evaluation's about two thirds. The README's count
-  of backend tests follows.
+  from 13,788 collected tests to about 6,440 (6,739 with the tests added since), with every covered branch still
+  covered and every planted bug the old tests caught still caught. Where tests rebuilt what none of them changes,
+  they build it once: Ask's tests take under half the time (its largest file an eighth), the evaluation's about two
+  thirds. The README's count of backend tests follows.
+- The model test of two computers no longer takes one computer's kept copy for the other's. Two copies kept in
+  the same minute on different computers share a file name, and the test's own bookkeeping mixed them up: with
+  one history in many thousands it reported a note as lost although the note was in the kept copy. The app never
+  lost it. That history is now a fast test of its own.
 - The backend tests are about a tenth faster again. A test's store starts from a copy of one migrated database
   instead of migrating its own, tests that only read the API's schema share one build of it, and the app no
   longer builds every route twice when it starts (`create_app` took a tenth of a second and now takes a few
@@ -155,13 +176,13 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - The end-to-end tests hold one behaviour each too. Tests that repeated one check per width or per theme are one
   test that resizes the page or switches the theme in place; fixed waits wait for the thing itself; and every
   layout file sets up what it needs instead of relying on a letter an earlier file left open, so the files run in
-  any split. Playwright lists 479 tests where it listed 539, with every bug planted behind a merged or removed
-  test still caught. The README's count of Playwright tests follows.
+  any split. Playwright listed 479 tests where it listed 539 (573 now, with the tests added since), with every bug
+  planted behind a merged or removed test still caught. The README's count of Playwright tests follows.
 - The web app's unit tests are about a tenth faster: the 47 files that touch no DOM run in node instead of jsdom,
   two tests move the clock instead of waiting seconds, and nine tests that repeated another are gone or merged
   into it, each with a planted bug to show the remaining test still fails for it. One test is new: moving to
-  another Settings section while the settings still load. Vitest runs 2,868 tests where it ran 2,853, with the
-  new tests of the fixes below.
+  another Settings section while the settings still load. Vitest ran 2,868 tests where it ran 2,853, with the
+  new tests of the fixes below (3,191 now).
 - The code's layers are tighter, with nothing a person, an API client or a file on disk can observe changing. In the
   backend, the helpers for the person's day live in a module of their own (`ordnung/days.py`), the replay key beside
   the request it keys, the postal buffer in the rules engine, the ledger's facts and the Idea helpers in
@@ -208,53 +229,62 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   is enough) sent the request twice. For a to-do that repeats, each "done" moves it on one period, so a monthly
   payment went from 1 October straight to 1 December: a date skipped without a word, and *Undo* brought back only
   one of the two. *Write the letter* pressed twice drafted two letters. Every button that changes something now
-  sends one request per press, shows that it is busy, and works again when the answer is in.
+  sends one request per press, shows that it is busy, and works again when the answer is in. On the server,
+  *It's answered* said twice no longer writes a second note that made its *Undo* lose a follow-up's snooze, and
+  the same proof file sent twice at once is attached once.
 - **A "done" is for the date you saw.** The server also holds a "done" on a repeating to-do to the date the page
-  showed (`PATCH /api/items/{id}` takes an optional `seen_due_date`). A second one for a date that has already
-  moved on, from another window or from the phone and the computer at once, changes nothing, and the page says
-  "Nothing changed" and when the to-do is due now, without an *Undo* that would take back the other "done".
-- **Accessibility follow-up: the keyboard keeps its place.** A button, a switch or a toast's *Undo* that is busy
-  with its own request no longer drops the keyboard to the top of the page: it stays focused, is announced as
-  busy, and a quick double press sends one request. A switch that can't be used is still reached with Tab and
-  says why it is off. The phone pager's *Previous* and *Next* and the weekly review's *Back* keep focus at the
-  ends, and *Mark done* in a letter's card, and its *Undo*, keep the keyboard in the card.
-- **Accessibility follow-up: on a phone and in high contrast.** A letter chosen in the phone's search sheet takes
-  focus at its title at once and says that it is opening. A contract opened from the Timeline, the chart or
-  Today ends whole in view, also with animations on, on a small phone and at 400 % zoom, never under the top bar
-  or the tab bar, and your own scroll wins over it. In Windows high contrast a selected tab's frame no longer
-  moves its neighbours, a focused one shows its focus, and a control that is off looks off.
-- **A panel that can't load says so.** When the *People & organisations* panel can't load because Ordnung was
-  updated or restarted under an open page, a message says so and offers to reload, where nothing happened.
+  showed (`seen_due_date`, under *Added*). A second one for a date that has already moved on, from another window
+  or from the phone and the computer at once, changes nothing, and the page says "Nothing changed" and when the
+  to-do is due now, without an *Undo* that would take back the other "done".
+- **The Timeline, Contracts and the Inbox hold still while they load.** On a phone the Timeline jumped by most of
+  a screen when its dates arrived, and Contracts moved when "Decide by" did; both keep the room now. Contracts
+  keeps the room for "Decide by" until it knows there is nothing to decide, so a household with nothing to decide
+  sees one move on its first visit, a little larger than before, and none after.
 - **A full sync folder is said to be full.** When the sync folder, or the drive or account it is on, had no
   room left, Ordnung said the folder "doesn't answer" and, half an hour later, that saving keeps failing; the
   message that names the cause was never shown. Now a look that meets a full folder says "The sync folder is
   full" at once and the next look takes the message away once there is room; a save into a full folder says
   so after it has failed for half an hour; and *Save now* says it straight away.
-- **The model test of two computers no longer takes one computer's kept copy for the other's.** Two copies
-  kept in the same minute on different computers share a file name, and the test's own bookkeeping mixed them
-  up: with one history in many thousands it reported a note as lost although the note was in the kept copy. The
-  app never lost it. That history is now a fast test of its own.
 - **Accessibility, beyond what the automated scans see.** The app was gone through with the keyboard alone, with
   what a screen reader is told, and with the settings people use to see better (zoom, larger text, high contrast,
   reduced motion). What was found and could be fixed where it was is in the next four entries. Two larger gaps
   are written up for a later version, not fixed: text set in fixed sizes doesn't grow with the browser's text
   size (zoom does work), and the picture of a letter has no text alternative for its content.
 - **Windows high contrast keeps what was shown by colour alone.** Every focused control, the current page, the
-  selected tab, filled buttons, the on/off switches and the notice windows in the contracts chart stay visible.
+  selected tab (framed without moving its neighbours), filled buttons, the on/off switches, a control that is
+  off, and the notice windows in the contracts chart stay visible.
   Before, many Tab stops showed no focus mark at all: every sidebar link, the search field, the Inbox's filters
   and rows.
-- **Keyboard focus stays where you are** after *Mark done*, *Not a real to-do* and its *Undo*, *Save*, a button
-  that is busy, a link to one contract, and a search result chosen on a phone. Before, focus fell back to the top
-  of the page. The arrow keys in *New letter* no longer scroll the chosen kind out of view.
+- **Keyboard focus stays where you are** after *Mark done* (in a letter's card, it and its *Undo* keep the keyboard
+  in the card), *Not a real to-do* and its *Undo*, *Save*, a link to one contract, and a search result chosen on a
+  phone, whose letter takes focus at its title at once. A button, a switch or a toast's *Undo* that is busy with
+  its own request stays focused and is announced as busy; the phone pager's *Previous* and *Next* and the weekly
+  review's *Back* keep focus at the ends; and a switch that can't be used is still reached with Tab and says why it
+  is off. Before, focus fell back to the top of the page. The arrow keys in *New letter* no longer scroll the
+  chosen kind out of view. Where the app itself moves focus for you (to the name after *Edit* in *Your household*,
+  to the address after *Moved recently?*, to a field a save refused, to Ask's box after *New chat*, to a letter's
+  card opened by its link), it does so as the change is drawn, and leaves you where you are if you have already
+  gone on with the keyboard. Before, that focus came a moment later, or once a request had answered, and could take
+  the keyboard back from where you had gone. A field the app focused stays in the Tab order; the sync passphrase
+  did not.
 - **A screen reader is told what happened, once.** A search's count is said when it is true and not on every key;
-  the secretary's note is no longer read in fragments; *Read all* says one line and then what it found, a
-  possible scam included; an upload says which letter it filed or couldn't read. German quotes and German terms
-  in titles are read in German. Saving a draft letter says when a check now fails ("1 thing needs a look before
-  you send it"), not that everything is up to date.
+  the secretary's note is no longer read in fragments; *Read all* says one line and then what it found, a possible
+  scam included; a letter chosen in the phone's search says that it is opening; an upload says which letter it
+  filed or couldn't read. German quotes and German terms in titles are read in German. Saving a draft letter says
+  when a check now fails ("1 thing needs a look before you send it"), not that everything is up to date.
 - **Room for the page at high zoom and on small screens.** At 400 % zoom the top bar, Ask's question box and a
   drawer's header and footer no longer leave the content a slit; a phone turned sideways shows that the
   sidebar's sections scroll; the calendar button and the demo badge stay on screen with wider text spacing or
-  larger text; the search field in the top bar has an edge you can see.
+  larger text; the search field in the top bar has an edge you can see. A contract opened from the
+  Timeline, the contracts chart or Today ends whole in view, also with animations on, on a small phone and at
+  400 % zoom, never under the top bar or the tab bar, and your own scroll wins over it, also one that an
+  assistive technology makes on past the contract.
+- **A link to a contract, a Settings card or a letter's card lands there on a slow phone too.** In a tab that had
+  shown the page before, the app's scroll back to the place it remembered for that page could come after the page
+  had scrolled to what the link asked for, and took it back: with the processor slowed eight times, the last
+  contract often ended out of view. The app now scrolls for a new page only as it draws it, so nothing comes after.
+  Back, Forward and a reload bring a page back where you left it, as before; a link opened whole in a tab that
+  showed the page before starts at the page's top, or at what the link asks for.
 - **Hand-off sync looks at a folder that answers again at the usual pace.** While the sync folder doesn't answer,
   Ordnung looks at it every three minutes instead of every 15 seconds. A save that went through showed the folder
   was back, but the next look still came up to three minutes later, so the other computer's change could wait
@@ -302,15 +332,11 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - CONTRIBUTING and the guide said building the web app from source needs Node.js 20.19+ or 22.12+. Its packages
   ask for 22.22.2+, 24.15+ or 26+ (the router and jsdom under the unit tests; Node 20 has reached its end of life),
   and they now say so, as `web/package.json` does.
-- The wheel's licence expression names BSD-3-Clause too: the charts library's copy of d3 now declares it, for
-  d3-ease, and the wheel ships its notice. The README lists it with the others.
 - A release tag on a commit with changes above its version is refused with the right advice: tag the merge of the
   pull request that dated the version's section. It named the commit that first named the section, which for a
   version named before its tag still says the tag is to follow, and is refused too. CONTRIBUTING and
   docs/releasing.md say where a change goes once that pull request is merged but the tag is not yet pushed:
   under `## Unreleased`.
-- **Download all letters works when a link in the data folder points in a circle.** The ZIP of all letters
-  failed on such a file; it is now listed as missing, as it was before.
 
 ### Security
 
@@ -358,6 +384,30 @@ entry.
   What stays open there: a later letter to an account you compared whose text changes the amount or the
   reference, or that repeats a compared payee's name and IBAN in full. The money then still goes to the account
   you confirmed, and your banking app shows the amount before you approve it.
+
+### Upgrading
+
+- This version keeps your data as 0.4.0 does: nothing is migrated, a computer still on 0.4.0 and an updated one
+  bring each other's changes over by hand-off sync, and going back to 0.4.0 needs no restore.
+- A computer still on 0.4.0 makes the first GiroCode to an account at once, without asking you to compare it with
+  the letter, and reads PDFs and e-mails without the new checks for hidden text; a letter it read keeps that
+  reading on an updated computer. Update both computers.
+- Letters read before the update keep their reading: the hidden-text and e-mail checks run when a letter is read.
+  *Read again* on a letter's page reads it again, through Claude.
+- After the update, the first GiroCode to each payee and IBAN asks you once to compare it with the letter, also
+  for a bill whose code came at once before, unless you compared a payment to that account before (on 0.4.0
+  too). Deleting the letter you compared for good makes its account new again. The demo's bills ask too.
+- `ordnung serve` and `ordnung demo` stop with an error for a `--host` other than 127.0.0.1, localhost or ::1,
+  where they warned: take the option out of a script or a start entry you wrote yourself. Phone access is the way
+  in from your network.
+- `?mock=1` does nothing in the installed app any more: an address ending in it opens your own letters. The
+  online demo and `ordnung demo` show the sample life.
+- `ordnung brief` on a data folder without an Ordnung database says so and exits 1, where it said *All clear*.
+- An install no longer has uvicorn's "standard" extra, and nothing needs what it brought: `uv tool upgrade
+  ordnung` and `pipx reinstall ordnung`, as in [Updating](docs/guide.md#updating), each leave the environment
+  without it. In a source checkout PyYAML is in the dev extras now (`make install`), and building the web app
+  needs Node.js 22.22.2+, 24.15+ or 26+.
+- Scripts that use the API: nothing was taken away, and every answer now says `Cache-Control: no-store`.
 
 ## 0.4.0 — 2026-11-17
 

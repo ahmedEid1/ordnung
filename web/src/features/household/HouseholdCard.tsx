@@ -19,7 +19,7 @@ import { SkeletonText } from "@/components/ui/Skeleton";
 import { toast } from "@/components/ui/Toast";
 import { useReportDirty } from "@/features/settings/dirty";
 import { SettingsCard } from "@/features/settings/SettingsCard";
-import { focusWhenReady } from "@/lib/focus";
+import { focusMayMoveOnceAnswered, focusWhenReady } from "@/lib/focus";
 import { backToYours, HOUSEHOLD_CHANGE_TOAST, lettersLabel, membersOf, nameProblem, oneLine, refusal, useChangeHousehold } from "./save";
 import { useOnePress } from "@/lib/hooks";
 
@@ -86,14 +86,17 @@ function AddPerson({ household, inputRef }: { household: Household; inputRef: Re
       refuse(problem);
       return false;
     }
+    // back to the Name field for the next person, unless they went elsewhere while the change was on its way
+    const mayFocus = focusMayMoveOnceAnswered();
     const after = await save(household, [...membersOf(household), { id: null, name: oneLine(name), signs }], refuse);
+    const focusNext = mayFocus();
     if (!after) return false;
     const added = after.members.find((m) => !household.members.some((before) => before.id === m.id));
     toast.success(`Added ${added?.name ?? name.trim()}`, { id: HOUSEHOLD_CHANGE_TOAST });
     setName("");
     setSigns(true);
     setError(null);
-    inputRef.current?.focus();
+    if (focusNext) inputRef.current?.focus();
     return true;
   };
   // a name typed but not added yet is an unsaved change ("Save and go" adds it)
@@ -147,10 +150,12 @@ function PersonRow({
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const editRef = useRef<HTMLButtonElement>(null);
-  // after Save or Cancel, the keyboard goes back to the row's Edit button
+  // Edit hands the keyboard to the name as the editor is drawn (put off by a frame, the focus landed after a quick
+  // keyboard had already typed and gone on to Save, and took it back); after Save or Cancel it goes back to Edit
   const backToEdit = useRef(false);
   useEffect(() => {
-    if (!editing && backToEdit.current) {
+    if (editing) inputRef.current?.focus();
+    else if (backToEdit.current) {
       backToEdit.current = false;
       editRef.current?.focus();
     }
@@ -162,7 +167,6 @@ function PersonRow({
     setSigns(person.signs);
     setError(null);
     setEditing(true);
-    requestAnimationFrame(() => inputRef.current?.focus());
   };
   const stop = () => {
     backToEdit.current = true;

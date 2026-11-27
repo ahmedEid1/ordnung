@@ -9,6 +9,7 @@ import userEvent from "@testing-library/user-event";
 import { toast } from "@/components/ui/Toast";
 import { holdRequests, useMockApi } from "@/test/mockFetch";
 import { expectOnePressAtATime } from "@/test/busyButton";
+import { holdFrames } from "@/test/frames";
 import { renderWithProviders, makeTestQueryClient } from "@/test/render";
 import { qk } from "@/api/hooks";
 import type { Contract, DocumentDetail, Draft, Evidence, Item } from "@/api/types";
@@ -262,6 +263,58 @@ describe("To-dos & dates", () => {
     await user.keyboard("{Escape}");
     expect(screen.queryByLabelText("New date for Pay the fee")).toBeNull();
     await waitFor(() => expect(more).toHaveFocus());
+  });
+
+  // a focus put off by a frame landed after a quick keyboard had gone on, and took it back
+  it("hands focus back to the menu button as the editor goes, with no frame let through", async () => {
+    const item = makeItem({ id: "itm_x", title: "Pay the fee", kind: "payment", ...due("2026-10-09") });
+    renderWithProviders(<ItemsList items={[item]} docId="doc_1" />, { client: client() });
+    const user = userEvent.setup();
+    const more = screen.getByRole("button", { name: "More actions for Pay the fee" });
+    await user.click(more);
+    await user.click(await screen.findByRole("menuitem", { name: "Change date" }));
+    (await screen.findByLabelText("New date for Pay the fee")).focus();
+    holdFrames();
+    await user.keyboard("{Escape}");
+    expect(more).toHaveFocus();
+  });
+
+  it("after a saved date, leaves someone who went elsewhere while it was saved where they are", async () => {
+    const { srv } = useMockApi();
+    const a = makeItem({ id: "itm_a", title: "Pay the fee", kind: "payment", ...due("2026-10-09") });
+    const b = makeItem({ id: "itm_b", title: "Send the form", kind: "task", ...due("2026-10-12") });
+    srv.db.state.items.push(a, b);
+    const saving = holdRequests((c) => c.method === "PATCH");
+    renderWithProviders(<ItemsList items={[a, b]} docId="doc_1" />, { client: client() });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "More actions for Pay the fee" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Change date" }));
+    fireEvent.change(await screen.findByLabelText("New date for Pay the fee"), { target: { value: "2026-10-08" } });
+    await user.click(screen.getByRole("button", { name: "Save date" }));
+    await waitFor(() => expect(saving.count).toBe(1));
+    const elsewhere = screen.getByRole("button", { name: "More actions for Send the form" });
+    elsewhere.focus();
+    const frames = holdFrames();
+    await act(async () => saving.release());
+    await waitFor(() => expect(screen.queryByLabelText("New date for Pay the fee")).toBeNull());
+    frames.run(5);
+    expect(elsewhere).toHaveFocus();
+  });
+
+  it("after a saved date, hands focus from Save back to the menu button as the editor goes", async () => {
+    const { srv } = useMockApi();
+    const a = makeItem({ id: "itm_a", title: "Pay the fee", kind: "payment", ...due("2026-10-09") });
+    srv.db.state.items.push(a);
+    renderWithProviders(<ItemsList items={[a]} docId="doc_1" />, { client: client() });
+    const user = userEvent.setup();
+    const more = screen.getByRole("button", { name: "More actions for Pay the fee" });
+    await user.click(more);
+    await user.click(await screen.findByRole("menuitem", { name: "Change date" }));
+    fireEvent.change(await screen.findByLabelText("New date for Pay the fee"), { target: { value: "2026-10-08" } });
+    holdFrames();
+    await user.click(screen.getByRole("button", { name: "Save date" }));
+    await waitFor(() => expect(screen.queryByLabelText("New date for Pay the fee")).toBeNull());
+    expect(more).toHaveFocus();
   });
 
   describe("repeating dates", () => {

@@ -39,11 +39,12 @@ import { copyText } from "@/features/document/actions";
 import { reasonClause } from "@/features/document/EmailParts";
 import { SaveBar, SectionHeading, SettingsCard } from "./SettingsCard";
 import { useOnePress } from "@/lib/hooks";
+import { focusOrigin, focusWhenReady, useFocusWhenDrawn } from "@/lib/focus";
 
 type FolderForm = { folder: string; autoRead: boolean };
 const pick = (s: AppSettings): FolderForm => ({ folder: s.inbox_dir ?? "", autoRead: s.inbox_auto_read });
 
-const focusFolderField = () => requestAnimationFrame(() => document.getElementById("folder-path")?.focus());
+const folderField = () => document.getElementById("folder-path");
 
 /** The note after saving: what changed (the folder, or only whether new files wait or are read). */
 export function savedNote(before: FolderForm, after: FolderForm): string {
@@ -89,10 +90,11 @@ export function FolderSection({ settings }: { settings: AppSettings }) {
     }));
   }
   const [refused, setRefused] = useState<string | null>(null);
+  const focusWhenDrawn = useFocusWhenDrawn();
   // the server's reason goes under the field, and focus with it (like any other mistake in Settings)
   const save = useSaveFolder((reason) => {
     setRefused(reason);
-    focusFolderField();
+    focusWhenDrawn(folderField);
   });
   const dirty = form.folder.trim() !== saved.folder || form.autoRead !== saved.autoRead;
   const suggested = status.data?.suggested ?? "";
@@ -151,7 +153,7 @@ export function FolderSection({ settings }: { settings: AppSettings }) {
                     onClick={() => {
                       setForm((f) => ({ ...f, folder: suggested }));
                       setRefused(null);
-                      focusFolderField(); // the button goes once the field holds its folder
+                      focusWhenDrawn(folderField); // the button goes once the field holds its folder
                     }}
                     className="inline-flex min-h-7 min-w-0 items-start gap-1.5 rounded-md text-left text-sm text-accent hover:underline"
                   >
@@ -249,15 +251,18 @@ function FolderState({ status }: { status: FolderStatus }) {
           <Button
             size="sm"
             loading={stop.isPending || stopping.busy}
-            onClick={() =>
+            onClick={() => {
+              const from = focusOrigin();
               // a failed request: its own error toast says so
               stopping.once(() =>
                 stop.mutateAsync({ inbox_dir: null }).then(() => {
                   toast.success("Stopped watching the folder", { description: "Files already added stay in Ordnung; the folder is left as it is." });
-                  focusFolderField(); // this button goes: focus stays in the section, on the (now empty) folder field
+                  // this button goes: focus stays in the section, on the (now empty) folder field — unless the person
+                  // went somewhere else while it was saved
+                  focusWhenReady(folderField, 5000, { from });
                 }),
-              )
-            }
+              );
+            }}
           >
             Stop watching
           </Button>

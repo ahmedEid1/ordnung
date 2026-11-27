@@ -3,6 +3,7 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { makeTestQueryClient, renderWithProviders, TEST_HEALTH } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
+import { holdFrames } from "@/test/frames";
 import { qk } from "@/api/hooks";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
@@ -246,6 +247,36 @@ describe("Ask page", () => {
     await user.click(within(note.closest("li")!).getByRole("button", { name: /Undo/ }));
     expect(await screen.findByRole("article", { name: `Question: ${question}` })).toBeInTheDocument();
     expect(localStorage.getItem(THREAD_STORAGE_KEY)).toBe(thread);
+  }, 20_000);
+
+  // a focus put off by a frame landed after a quick keyboard had gone on, and took it back
+  it.each([
+    ["the box takes focus after an Undo", false],
+    ["someone who went elsewhere before the next frame stays there", true],
+  ])("“New chat” waits at the start as it is drawn; %s", async (_, wentOn) => {
+    useMockApi();
+    const user = userEvent.setup();
+    renderWithProviders(
+      <>
+        <AskPage />
+        <Toaster />
+      </>,
+      { route: "/ask" },
+    );
+    const question = "Which deadlines are coming up in October?";
+    await user.click(screen.getByRole("button", { name: question }));
+    await screen.findByText("Answer ready.", {}, { timeout: 6000 });
+    const frames = holdFrames();
+    await user.click(screen.getByRole("button", { name: "New chat" }));
+    // touch here (no fine pointer): the start's heading, with no frame let through
+    expect(screen.getByRole("heading", { level: 1, name: "Ask about your letters" })).toHaveFocus();
+    const note = await screen.findByText("Started a new chat");
+    await user.click(within(note.closest("li")!).getByRole("button", { name: /Undo/ }));
+    await screen.findByRole("article", { name: `Question: ${question}` });
+    const elsewhere = screen.getByRole("button", { name: "New chat" });
+    if (wentOn) elsewhere.focus();
+    frames.run(5);
+    expect(wentOn ? elsewhere : screen.getByLabelText("Your question")).toHaveFocus();
   }, 20_000);
 
   it("says so when the stored conversation can't be loaded, with Try again and Start a new chat", async () => {

@@ -28,6 +28,7 @@ import { PayPanel } from "./PayPanel";
 import { ProcessingCard, wasReadBefore } from "./ProcessingCard";
 import { TracePanel } from "./trace/TracePanel";
 import { makeDetail, makeDoc, makeItem } from "./fixtures";
+import { holdFrames } from "@/test/frames";
 
 beforeEach(() => {
   vi.stubGlobal("scrollTo", () => {});
@@ -136,6 +137,54 @@ describe("the letter's Pay panel", () => {
     await waitFor(() => expect(document.activeElement).toBe(document.getElementById("verdict-title")));
     expect(document.activeElement?.tagName).toBe("H1");
     await waitFor(() => expect(calls.some((c) => c.method === "PATCH" && c.path.startsWith("/items/") && (c.body as { status?: string }).status === "done")).toBe(true));
+  });
+
+  it("after “Mark as paid”, a key pressed before the next frame keeps the person where they went", async () => {
+    // a focus put off by a frame landed after a quick keyboard had gone on, and took it back
+    const { srv } = useMockApi();
+    const user = userEvent.setup();
+    renderWithProviders(<DocumentView detail={await detail(srv, "doc_nebenkosten")} />, { client: client() });
+    await user.click(screen.getByRole("button", { name: /^Pay €184\.30/ }));
+    const panel = await screen.findByRole("dialog", { name: "Pay" });
+    const frames = holdFrames();
+    await user.click(within(panel).getByRole("button", { name: "Mark as paid" }));
+    await user.tab();
+    const went = document.activeElement;
+    frames.run(5);
+    expect(document.activeElement).toBe(went);
+    expect(document.activeElement).not.toBe(document.getElementById("verdict-title"));
+  });
+
+  it("after “Mark as paid”, a key that moves nothing (a bare Shift) in that frame still lands on the verdict", async () => {
+    // only a key or press that takes focus somewhere else is the person going on
+    const { srv } = useMockApi();
+    const user = userEvent.setup();
+    renderWithProviders(<DocumentView detail={await detail(srv, "doc_nebenkosten")} />, { client: client() });
+    await user.click(screen.getByRole("button", { name: /^Pay €184\.30/ }));
+    const panel = await screen.findByRole("dialog", { name: "Pay" });
+    const frames = holdFrames();
+    await user.click(within(panel).getByRole("button", { name: "Mark as paid" }));
+    await user.keyboard("{Shift}");
+    frames.run(5);
+    expect(document.activeElement).toBe(document.getElementById("verdict-title"));
+  });
+
+  it("after “Mark as paid”, a Tab and a Shift+Tab back in that frame keep their place: gone and back is gone on", async () => {
+    // the same rule as every focus that waits (lib/focus): back where they pressed, they came back to press it
+    const { srv } = useMockApi();
+    const user = userEvent.setup();
+    renderWithProviders(<DocumentView detail={await detail(srv, "doc_nebenkosten")} />, { client: client() });
+    await user.click(screen.getByRole("button", { name: /^Pay €184\.30/ }));
+    const panel = await screen.findByRole("dialog", { name: "Pay" });
+    const frames = holdFrames();
+    await user.click(within(panel).getByRole("button", { name: "Mark as paid" }));
+    const pressedFrom = document.activeElement;
+    await user.tab();
+    expect(document.activeElement).not.toBe(pressedFrom);
+    await user.tab({ shift: true });
+    expect(document.activeElement).toBe(pressedFrom);
+    frames.run(5);
+    expect(document.activeElement).toBe(pressedFrom);
   });
 
   it("is titled “Pay” on a phone and says “Marked as paid” with Undo, as on Today", async () => {

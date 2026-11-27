@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Outlet, ScrollRestoration, useLocation, useNavigate, useNavigation } from "react-router";
+import { Outlet, useLocation, useNavigate, useNavigation } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import { useHealth, useProfile, useSync } from "@/api/hooks";
 import { useEventsConnection } from "@/api/sse";
@@ -20,6 +20,7 @@ import { useBrowserNotifications } from "@/features/notifications/useBrowserNoti
 import { usePartyDrawer } from "@/lib/party-drawer";
 import { BootScreen, HealthUnreachable } from "./screens";
 import { lazyPart } from "./lazyPart";
+import { PageScroll } from "./PageScroll";
 
 // the demo's tour loads only in the demo, the People & organisations drawer when it is first opened: neither is in
 // every page's first load
@@ -210,6 +211,8 @@ export function AppLayout() {
   return (
     <PageMetaProvider>
       <AddLettersProvider>
+        {/* first: the window is scrolled for a new address before anything of the page runs (PageScroll.tsx) */}
+        <PageScroll />
         <DocumentTitleSync />
         <BrowserNotifications />
         <PageAnnouncer />
@@ -236,7 +239,6 @@ export function AppLayout() {
           <UploadCenter />
         </Toaster>
         <LazyPartyDrawer />
-        <ScrollRestoration getKey={(loc) => loc.pathname} />
       </AddLettersProvider>
     </PageMetaProvider>
   );

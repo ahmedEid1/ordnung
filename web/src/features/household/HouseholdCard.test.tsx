@@ -11,6 +11,7 @@ import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { renderWithProviders } from "@/test/render";
 import { failRequests, holdRequests, useMockApi, type FetchCall } from "@/test/mockFetch";
 import { expectOnePressAtATime } from "@/test/busyButton";
+import { holdFrames } from "@/test/frames";
 import SettingsPage from "@/pages/SettingsPage";
 import { HouseholdCard } from "./HouseholdCard";
 
@@ -129,6 +130,28 @@ describe("Your household (Settings)", () => {
     expect(puts(calls).at(-1)?.body).toMatchObject({ members: [{ id: ALEX.id, name: "Alexandra Rivera", signs: false }] });
     await waitFor(() => expect(people()[0]).toHaveTextContent("Doesn't sign letters"));
     expect(screen.getByRole("button", { name: "Edit Alexandra Rivera" })).toHaveFocus();
+  });
+
+  it("Edit hands the keyboard to the name as the editor is drawn, not a frame later", async () => {
+    const { user } = renderCard(useMockApi(), { members: [ALEX] });
+    const edit = await screen.findByRole("button", { name: "Edit Alex Rivera" });
+    holdFrames(); // no frame comes: the focus must not wait for one
+    await user.click(edit);
+    expect(within(people()[0]!).getByRole("textbox", { name: "Name" })).toHaveFocus();
+  });
+
+  it("a quick keyboard that typed and went on to Save keeps it when the next frame comes", async () => {
+    // main went red on this once (27 Nov): Edit, a letter typed and Save reached inside one frame, and the focus
+    // Edit had put off until that frame took the keyboard back to the name
+    const { user } = renderCard(useMockApi(), { members: [ALEX] });
+    const edit = await screen.findByRole("button", { name: "Edit Alex Rivera" });
+    const frames = holdFrames();
+    await user.click(edit);
+    await user.type(within(people()[0]!).getByRole("textbox", { name: "Name" }), "a");
+    const save = within(people()[0]!).getByRole("button", { name: "Save" });
+    save.focus();
+    frames.run(5);
+    expect(save).toHaveFocus();
   });
 
   it("cancels an edit without saving, and shows an edit's mistake under its own field", async () => {
@@ -304,6 +327,39 @@ describe("Your household: a change on its way", () => {
     await user.click(await screen.findByRole("button", { name: "Edit Alex Rivera" }));
     await user.type(within(people()[0]!).getByRole("textbox", { name: "Name" }), "a");
     await expectOnePressAtATime({ user, button: () => within(people()[0]!).getByRole("button", { name: "Save" }), held: putting });
+  });
+
+  it("an add answered after the person went elsewhere leaves them there, not on the Name field", async () => {
+    // the field took focus back once the change was saved, wherever the person had gone while it was on its way
+    const api = useMockApi();
+    const putting = held();
+    const { user } = renderCard(api, { members: [ALEX] });
+    await user.type(await screen.findByRole("textbox", { name: "Name" }), "Mia Rivera");
+    await user.click(within(card()).getByRole("button", { name: "Add to household" }));
+    await waitFor(() => expect(putting.waiting).toBe(1));
+    const edit = screen.getByRole("button", { name: "Edit Alex Rivera" });
+    edit.focus();
+    putting.release();
+    await waitFor(() => expect(people()).toHaveLength(2));
+    expect(await screen.findByText("Added Mia Rivera")).toBeInTheDocument();
+    expect(edit).toHaveFocus();
+  });
+
+  it("an add answered after the person went elsewhere and came back to “Add” leaves them on “Add”", async () => {
+    // gone and back counts as gone on, as for every focus that waits (lib/focus): they came back to press something
+    const api = useMockApi();
+    const putting = held();
+    const { user } = renderCard(api, { members: [ALEX] });
+    await user.type(await screen.findByRole("textbox", { name: "Name" }), "Mia Rivera");
+    const add = within(card()).getByRole("button", { name: "Add to household" });
+    await user.click(add);
+    await waitFor(() => expect(putting.waiting).toBe(1));
+    screen.getByRole("button", { name: "Edit Alex Rivera" }).focus();
+    add.focus();
+    putting.release();
+    await waitFor(() => expect(people()).toHaveLength(2));
+    expect(await screen.findByText("Added Mia Rivera")).toBeInTheDocument();
+    expect(add).toHaveFocus();
   });
 
   it("“Remove” of someone without letters takes one press at a time, and the next once it failed", async () => {

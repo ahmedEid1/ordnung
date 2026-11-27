@@ -19,6 +19,7 @@ import { CODE_USED_MESSAGE, MAX_PHONES, PHONE_OFF_MESSAGE, THIS_PHONE_ADDRESS, T
 import type { MockServer } from "@/mocks/server";
 import { pageLoad } from "@/features/phone/platform";
 import { CODE_REUSED_NOTE, COMPUTER_NOTE, PAIR_TITLE, REMOVED_NOTE, TOKEN_REUSE_NOTE, UNUSED_NOTE, codeFromHash, compactCode, formatCode, removedNote } from "./PairPage";
+import { holdFrames } from "@/test/frames";
 
 const IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1";
 
@@ -88,6 +89,16 @@ describe("the code", () => {
     await user.click(await screen.findByRole("button", { name: "Type a code instead" }));
     expect(screen.getByRole("textbox", { name: "Code from your computer" })).toHaveValue("");
     expect(screen.queryByText(formatCode(code))).toBeNull();
+  });
+
+  it("“Type a code instead” focuses the code field as it is drawn, not a frame later", async () => {
+    // a focus put off by a frame landed after a quick keyboard had gone on, and took it back
+    const { code } = useUnpairedPhone();
+    const { user } = openPair(`/pair#${code}`);
+    const instead = await screen.findByRole("button", { name: "Type a code instead" });
+    holdFrames();
+    await user.click(instead);
+    expect(screen.getByRole("textbox", { name: "Code from your computer" })).toHaveFocus();
   });
 
   it("reads and normalises like the API", () => {

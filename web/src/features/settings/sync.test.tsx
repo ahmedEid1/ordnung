@@ -21,6 +21,7 @@ import SettingsPage from "@/pages/SettingsPage";
 import { makeTestQueryClient, renderWithProviders, TEST_HEALTH } from "@/test/render";
 import { holdRequests, useMockApi } from "@/test/mockFetch";
 import { expectOnePressAtATime } from "@/test/busyButton";
+import { holdFrames } from "@/test/frames";
 import { SyncProblemCallout } from "@/features/sync/parts";
 import { deleteSyncNote, SYNC_STOPPED } from "./DataSection";
 import {
@@ -976,6 +977,24 @@ describe("Your computers: a change on its way", () => {
     await user.click(within(card).getByRole("button", { name: /Suggest/ }));
     const held = holdRequests((c) => c.method === "PUT" && c.path === "/sync");
     await expectOnePressAtATime({ user, button: () => within(card).getByRole("button", { name: "Start syncing" }), held });
+  });
+
+  it("a quick keyboard back on “Start syncing” keeps it when the frame that looks for the passphrase comes late", async () => {
+    // the button that read "Next" is the one that now reads "Start syncing": the focus put off for the passphrase
+    // field, still waiting, took it from someone who had gone to "Suggest" and come back to press it
+    useMockApi();
+    const user = userEvent.setup();
+    openSection();
+    const card = await screen.findByRole("region", { name: "Use Ordnung on more than one computer" }, WAIT);
+    await user.type(within(card).getByLabelText("Sync folder"), "/home/sam/Nextcloud/Ordnung-new");
+    const frames = holdFrames();
+    await user.click(within(card).getByRole("button", { name: "Next" }));
+    await within(card).findByText("A new sync starts in this folder.", {}, WAIT);
+    await user.click(within(card).getByRole("button", { name: /Suggest/ }));
+    const start = within(card).getByRole("button", { name: "Start syncing" });
+    start.focus();
+    frames.run(5);
+    expect(start).toHaveFocus();
   });
 });
 

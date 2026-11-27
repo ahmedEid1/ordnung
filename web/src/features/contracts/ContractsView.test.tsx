@@ -9,6 +9,7 @@ import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { createMockServer } from "@/mocks/server";
 import { useMockApi } from "@/test/mockFetch";
+import { holdFrames } from "@/test/frames";
 import { makeTestQueryClient, renderWithProviders } from "@/test/render";
 import { ContractsView, SAW_DECISION } from "./ContractsView";
 import { BY_LAW, NoticePeriodForm, noticeBases, noticeDayError, noticeValueError } from "./NoticePeriodForm";
@@ -402,6 +403,20 @@ describe("Contracts page — adding a notice period by hand", () => {
   });
 
   const card = (name: string | RegExp) => screen.getAllByRole("article").find((a) => within(a).queryByRole("heading", { name }))!;
+
+  it("Cancel hands focus back to the button as it is drawn again, not a frame later", async () => {
+    // a focus put off by a frame landed after a quick keyboard had gone on, and took it back
+    const { srv } = useMockApi();
+    const bank = srv.db.state.contracts.find((c) => c.id === "ctr_bank")!;
+    bank.computed = { ...bank.computed!, confidence: "low", summary: "We couldn't compute a cancellation date: the contract's notice period is missing." };
+    renderWithProviders(<ContractsView />, { route: "/contracts" });
+    await screen.findByRole("heading", { level: 3, name: "Musterbank Girokonto" });
+    fireEvent.click(within(card("Musterbank Girokonto")).getByRole("button", { name: /^Add notice period/ }));
+    const form = within(card("Musterbank Girokonto")).getByRole("form", { name: "Notice period for Musterbank Girokonto" });
+    holdFrames();
+    fireEvent.click(within(form).getByRole("button", { name: "Cancel" }));
+    expect(within(card("Musterbank Girokonto")).getByRole("button", { name: /^Add notice period/ })).toHaveFocus();
+  });
 
   it("checks the number and offers only the ways that give dates", () => {
     expect(noticeValueError("", "months")).toBe("Enter the notice period, e.g. 1 or 3");

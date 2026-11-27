@@ -7,7 +7,7 @@
  * Forward and a reload of that entry come back to them, while a typed address, a bookmark or any new load of the page
  * starts at 100. Not in sessionStorage by the router's location key: every page load shares the key "default", so one
  * "Show all" drew every letter on every later load. A reload keeps the rows; the place on the page comes back on Back
- * and Forward within the app (the router's own scroll restoration), not always after a reload, while the letters load.
+ * and Forward within the app (app/PageScroll.tsx), not always after a reload, while the letters load.
  */
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router";
