@@ -188,7 +188,7 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - `make eval-reproduce` holds every CI gate to its own replay, each read of holdout4 and of Ask's new questions
   on the demo household included, and `evals/results/INDEX.json` names the gate of each such cell.
 - The web app is built with newer minor and patch versions of its packages (React Query 5.108, lucide-react
-  1.76, React Router 8.5.2, tailwind-merge 3.7.1, motion 14.14, Recharts 3.11, Vite 8.3.8, Tailwind CSS 4.3.5;
+  1.78, React Router 8.5.2, tailwind-merge 3.7.1, motion 14.14, Vite 8.3.8, Tailwind CSS 4.3.5;
   with tailwind-merge 3.7.1 the demo tour's heading sits a little tighter, as its styles always asked, and the
   small badges were adjusted so that they look as before), and `constraints.txt` pins the newest
   versions of the Python packages within `pyproject.toml`'s ranges (among them FastAPI 0.163, Starlette 1.10,
