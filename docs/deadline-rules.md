@@ -78,7 +78,7 @@ computes the **earliest plausible date**, lowers the confidence and says why. Co
 | Payment to a company or person, payer's Land unknown | Uses only nationwide holidays (money is owed at the payer's home, §§ 269, 270 Abs. 4 BGB). |
 | Posting day unknown | Uses the date printed on the letter (the real posting day can only be the same or later). |
 | Letter arrived later than the deemed delivery day | Keeps the earlier deadline; shows the later one as "only if you can show it" (keep the envelope). |
-| Letter says a later posting day than its date | Keeps the letter's date; mentions the later deadline. |
+| Letter says a later posting day than its date | Found on the letter's page in words that say *this* letter was posted then ("Tag der Aufgabe zur Post: …", "Dieser Bescheid wurde am … zur Post gegeben"): an authority's deemed delivery counts from it — at most 7 days after the letter's date and never after the day it is read — and the receipt names the day, its words and, as the safe date, the deadline from the letter's date (`posting_day_stated`; read only from a photo's transcription: at most `medium`). Two different posting days on the page: the earlier, `low`, "Please check" (`conflicting_dates`). Named only by the reading, or beyond those guards: keeps the letter's date, names the later deadline, one level less sure (`medium`). Until ADR 0026 the letter's date was always kept. |
 | Letter counts from "today" | Reads it as the letter's date, never the (later) day it is processed (`medium`). |
 | Fine or penal order without the envelope date | Counts from the letter's date — no 4-day fiction, which could be later than a yellow-envelope delivery. |
 | Period counted backwards ("one month before …") on a weekend/holiday | Never moves to a later day + a `safe_date` on the working day before. |
@@ -345,10 +345,27 @@ without it, Ordnung scores 85.7 % on the test split, 89.3 % on the holdout split
 split instead of 98.2 %, with no late date; with the state the postcode on their letter suggests confirmed,
 it scores 98.2 % on each ([evals.md](evals.md#64-the-app-as-it-ships-without-the-senders-land)).
 
-**Posting day.** The day the letter was handed to the post counts, not the printed date — but the
-printed date is the conservative stand-in, because posting can only be the same day or later. If a
-letter names a later posting day, Ordnung keeps the letter's date and mentions the later deadline
-(legal research verdict: never replace the anchor with a later date for the primary result).
+**Posting day.** The day the letter was handed to the post counts, not the printed date (§ 122 Abs. 2 Nr. 1
+AO, § 41 Abs. 2 S. 1 VwVfG, § 37 Abs. 2 S. 1 SGB X: "am vierten Tag nach der Aufgabe zur Post"). Without a
+stated posting day the printed date is the conservative stand-in, because posting can only be the same day or
+later. When the letter states a later posting day on its own page — a field in its header or footer ("Tag der
+Aufgabe zur Post: 19.10.2026", "Absendedatum", "Versandt am:"), or a sentence ("Dieser Bescheid wurde am
+19.10.2026 zur Post gegeben") — that is the authority's own record of the day the law counts from, and Ordnung
+counts from it ([ADR 0026](decisions/0026-a-posting-day-the-letter-states-is-the-start.md)). Code finds it on the
+page (`ingest/posting.py`), never the model alone, and holds it to guards: it is after the letter's date (an
+earlier posting day the reading names is used as before), not after the day the letter is read, at most 7 days
+after the letter's date (a week covers a weekend with the run of holidays from 24 December to 1 January; beyond
+it a misprint or another letter's date is likelier, and a later start costs more the further it moves), stated
+for this letter (never another decision's, the person's own letter's, an enclosure's, a payment's or a deadline's,
+the day a letter counts as delivered, a future or requested posting, goods sent, nor a date that reads two ways),
+and only for an authority's deemed delivery by post (never a company's period from arrival, a fine's or a court's
+formal service, a letter whose sender's law is unknown, or an e-mailed decision). The receipt names the posting day
+and its words (`posting_day_stated`), and gives the deadline from the letter's date as the safe date: acting by it
+is on time even if the printed posting day were wrong. Two different posting days on the page count from the
+earlier, `low` and "Please check". A later posting day only the reading names (or one beyond a guard) keeps the
+letter's date, and the receipt names the later deadline, one level less sure. This replaces the rule "never replace
+the anchor with a later date for the primary result", kept from the first version until 0.5.0 as a safety rule for
+a posting day only the model named: the rules tools, which have no page to check, still follow it.
 
 **Early receipt changes nothing** (BFH X R 96/98; BSG B 14 AS 12/09 R) — except an e-mailed decision of a
 Brandenburg authority, which counts from the day it arrived when that can be shown (§ 7 VwVfGBbg). **Late receipt** only helps
@@ -1346,7 +1363,7 @@ action, contracts, sending and form, price increases).
 | `vwvfg_land_old_procedures` | Baden-Württemberg, Bavaria, Mecklenburg-Vorpommern: the 3rd day for a matter begun before the switch (a note, section 5) | § 102b LVwVfG; Art. 98 BayVwVfG; § 120a VwVfG M-V | 2025-01-01 (BW: 2025-02-07) | [landesrecht-bw.de](https://www.landesrecht-bw.de/perma?d=jlr-NNLBW00007E83), [gesetze-bayern.de](https://www.gesetze-bayern.de/Content/Document/BayVwVfG-98), [dokumentation.landtag-mv.de](https://www.dokumentation.landtag-mv.de/parldok/dokument/63481) |
 | `vwvfg_bb_7` | Brandenburg: an e-mailed decision counts from the day it arrived (section 5) | § 7 VwVfGBbg; § 41 Abs. 2 S. 2 VwVfG | — | [bravors.brandenburg.de](https://bravors.brandenburg.de/gesetze/vwvfgbbg) |
 | `sgbx_37_2` / `sgbx_37_2a` | Social law: 4th day, no shift / portal | § 37 Abs. 2, 2a SGB X; BSG B 14 AS 12/09 R | 2025-01-01 | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/sgb_10/__37.html) |
-| `posting_day`, `early_receipt`, `late_receipt`, `pzu`, `delivery_scope_unknown`, `private_sender_arrival`, `private_sender_late_arrival`, `private_sender_no_delivery` | Posting day, early/late arrival, yellow envelope, unknown sender, private sender (from arrival; a late arrival no later than deemed delivery; from the date it names) | § 122 AO; § 41 VwVfG; § 37 SGB X; BFH X R 96/98; BFH VI R 18/22; § 3 VwZG; §§ 130, 187 BGB | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/vwzg_2005/__3.html) |
+| `posting_day`, `posting_day_stated`, `early_receipt`, `late_receipt`, `pzu`, `delivery_scope_unknown`, `private_sender_arrival`, `private_sender_late_arrival`, `private_sender_no_delivery` | Posting day (the letter's date, or the one its page states), early/late arrival, yellow envelope, unknown sender, private sender (from arrival; a late arrival no later than deemed delivery; from the date it names) | § 122 AO; § 41 VwVfG; § 37 SGB X; BFH X R 96/98; BFH VI R 18/22; § 3 VwZG; §§ 130, 187 BGB | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/vwzg_2005/__3.html) |
 | `ao_355`, `vwgo_70`, `sgg_84`, `owig_67`, `stpo_410`, `klage_1_month`, `owig_55`, `rbb_one_year` | Remedies (section 6) | see section 6 | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/ao_1977/__355.html) |
 | `bgb_309_9_new` / `bgb_309_9_old` | Consumer contracts | § 309 Nr. 9 BGB; Art. 229 § 60 EGBGB | 2022-03-01 | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__309.html) |
 | `tkg_56` / `tkg_57` | Telecom term / price changes | §§ 56, 57 TKG | 2021-12-01 | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/tkg_2021/__56.html) |

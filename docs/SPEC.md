@@ -312,7 +312,9 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   4th day after posting (3rd day before 2025) — § 122 Abs. 2 Nr. 1 AO / § 41 Abs. 2 VwVfG /
   § 37 Abs. 2 SGB X (PostModG; Land authorities: § 21). For tax letters (AO) that day moves to the next working day when it is a
   Saturday, Sunday or holiday (BFH IX R 68/98; AEAO zu § 108 Nr. 2). Under § 41 VwVfG and § 37 SGB X it
-  does not move (OVG NRW 19 A 4216/99; BSG B 14 AS 12/09 R) — see `docs/deadline-rules.md` § 5. If the
+  does not move (OVG NRW 19 A 4216/99; BSG B 14 AS 12/09 R) — see `docs/deadline-rules.md` § 5. The posting
+  day is the letter's date unless the letter's page states a later one, which code finds and the engine starts
+  from within its guards (**The posting day the letter states**, § 8; ADR 0026). If the
   person entered a later actual arrival date, the receipt keeps the conservative (earlier) deadline and
   adds a note that late receipt may extend it.
 - **contracts** (cancel_by = last day the cancellation must be *received*; send_by = cancel_by minus
@@ -649,6 +651,30 @@ and also when the date read is already the earlier (a header date later than the
 the same). The deadlines the law adds to a high-stakes letter (§ 4 KSchG, § 692 ZPO, § 558b BGB …) count
 from the earlier of the letter's two dates for itself in the same way, with the same receipt step,
 warning and "Please check" (its evidence the page's line with the other date).
+
+**The posting day the letter states** (`ingest/posting.py`, code only; [ADR 0026](decisions/0026-a-posting-day-the-letter-states-is-the-start.md)).
+When the rules context is built (the app's `rule_context`, the benchmark's Ordnung condition: the same
+function), code reads on the letter's pages the day *this* letter was handed to the post: a field — a posting
+label right before one date ("Tag der Aufgabe zur Post: …", "Datum der Aufgabe zur Post", "Absendedatum",
+"Absendetag", "Tag der Absendung", "Datum des Versands", "Versanddatum", "Date of posting"; plainer words such as
+"Versandt am", "Abgesandt am", "Posted" only where a cell starts), or the label alone on its line and the date
+alone on the next — or a sentence in the statutes' words ("am … zur Post gegeben / aufgegeben", "der Post
+übergeben", "Aufgabe zur Post am / erfolgte am …") or that this letter was sent on a day ("versandt",
+"abgesandt", "posted" … only with "dieser Bescheid", "dieses Schreiben", "this letter" or the decision of the
+letter's own date). Never another decision's or the sender's earlier letter ("Bescheid vom <another date>",
+"unser Schreiben"), the person's letter or act ("Ihr Widerspruch", "Sie haben …"), an enclosure or a copy, a
+date after "bis", "spätestens", "by", "until", a payment's due day, the day a letter counts as delivered ("vierten
+Tag nach Aufgabe zur Post"), a future, requested or negated posting, goods sent (a shop's "versandt am"), a date
+that reads two ways or has no year; what makes a sentence's posting another's is read in its own lines (a
+header's "Ihr Zeichen" says nothing about it). Several statements that agree give one day, its first sentence or
+field as the quote, `verified` when a text page says it and `model_read` when only a photo's transcript does;
+two that differ give the earlier and the later (`RuleContext.posting`). At **compute** the engine starts an
+authority's deemed delivery by post from that day when it is after the letter's date, not after today and at
+most 7 days on: the receipt names it with its words (`posting_day_stated`), says what the letter's date would
+have given and gives that date as the `safe_date`; a photo's posting day keeps the date at most `medium`; two
+different days count from the earlier, `low` and "Please check" (`conflicting_dates`). With the pages read and
+none stated, a later posting day only the reading names keeps the letter's date, and the receipt names the later
+deadline one level less sure; without pages (the rules tools) a later posting day stays a note.
 
 **Incomplete reading** (`ingest/gaps/`, code only). The extraction schema requires only a letter's kind,
 title, summary and explanation, so a valid answer can leave out everything a person acts on (a prompt

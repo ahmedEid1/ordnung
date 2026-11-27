@@ -386,7 +386,8 @@ flowchart LR
   fiction or `high`, one week at a labour court), and so
   is the warning about a holiday of only part of a Land (15 August in Bavaria) that a date is counted
   back over. A stated posting or delivery day without the letter's date cannot be checked, so the
-  result says so and asks for it. Warnings are in the tools' voice (no "tell us"); what to pass is a
+  result says so and asks for it. The tools have no page: a posting day later than the letter's date stays a
+  note there, while the app starts from one its page states ([ADR 0026](decisions/0026-a-posting-day-the-letter-states-is-the-start.md)). Warnings are in the tools' voice (no "tell us"); what to pass is a
   hint. Next to the ledger, a letter in the ledger keeps its stored date: the full server's
   instructions say so.
 - `ordnung mcp install --client claude-desktop|claude-code` adds the rules tools unless the ledger

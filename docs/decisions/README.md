@@ -32,3 +32,4 @@ status.
 | [0023](0023-letters-for-your-household-are-suggested-never-filed.md) | Letters for your household are suggested, never filed | accepted · 2026-10-27, amended by [0025](0025-ask-and-the-ideas-say-whose-it-is.md) |
 | [0024](0024-words-ordnung-reads-in-a-picture-are-for-finding-not-reading.md) | Words Ordnung reads in a picture are for finding, not reading | accepted · 2026-10-28, amended in 0.4.0 |
 | [0025](0025-ask-and-the-ideas-say-whose-it-is.md) | Ask and the Ideas say whose it is | accepted · 2026-10-29, amends [0023](0023-letters-for-your-household-are-suggested-never-filed.md) |
+| [0026](0026-a-posting-day-the-letter-states-is-the-start.md) | A posting day the letter states is the start | accepted · 2026-11-27 |
