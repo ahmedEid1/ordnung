@@ -4,7 +4,7 @@
  */
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router";
-import type { DraftKind, Item } from "@/api/types";
+import type { DraftKind, Item, ItemAnswer } from "@/api/types";
 import { api } from "@/api/endpoints";
 import { useConfirmItem, useCreateDraft, useUpdateItem } from "@/api/hooks";
 import { toast } from "@/components/ui/Toast";
@@ -22,6 +22,18 @@ import { useOnePress } from "@/lib/hooks";
  */
 export function seenAt(item: Pick<Item, "recurrence">, date: string | null): { seen_due_date?: string | null } {
   return item.recurrence ? { seen_due_date: date } : {};
+}
+
+/**
+ * Says so when a "done" or "open again" changed nothing (`movedOn`: another window or the phone had marked the
+ * repeating to-do, or moved its date, since this page showed it), instead of "Marked as done" with an Undo: that Undo
+ * would take back the other one's change. True when it said so; the to-do is refreshed as after any change.
+ */
+export function saidMovedOn(item: Pick<Item, "title">, answer: ItemAnswer): boolean {
+  if (!answer.movedOn) return false;
+  const now = answer.due_date ? ` It's now due ${formatDate(answer.due_date, { style: "short" })}.` : "";
+  toast({ title: "Nothing changed", description: `“${item.title}” had already changed in another window or on your phone.${now}` });
+  return true;
 }
 
 /**
@@ -63,10 +75,14 @@ export function useItemActions() {
               onError: () => onFailed?.(),
               onSuccess: (moved) => {
                 onDone?.();
+                if (saidMovedOn(item, moved)) return;
                 toast.success(title, {
                   description: doneLine(item, moved, today),
                   // back from the date it moved to: an Undo that comes again once it is back changes nothing
-                  undo: () => update.mutateAsync({ id: item.id, patch: { status: "open", ...seenAt(item, moved.due_date) } }).then(() => undefined),
+                  undo: () =>
+                    update.mutateAsync({ id: item.id, patch: { status: "open", ...seenAt(item, moved.due_date) } }).then((back) => {
+                      saidMovedOn(item, back);
+                    }),
                   focusAfterUndo,
                 });
               },
@@ -78,7 +94,15 @@ export function useItemActions() {
   );
 
   const reopen = useCallback(
-    (item: Item) => once(() => update.mutateAsync({ id: item.id, patch: { status: "open", ...seenAt(item, item.due_date) } }), item.id),
+    (item: Item) =>
+      once(
+        () =>
+          update.mutateAsync({ id: item.id, patch: { status: "open", ...seenAt(item, item.due_date) } }).then((back) => {
+            saidMovedOn(item, back);
+            return back;
+          }),
+        item.id,
+      ),
     [update, once],
   );
 

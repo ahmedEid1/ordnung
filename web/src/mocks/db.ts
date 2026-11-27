@@ -443,11 +443,9 @@ export class MockDb {
   patchItem(id: string, body: unknown): Item | null {
     const it = this.state.items.find((i) => i.id === id);
     if (!it) return null;
+    if (this.movedOn(id, body)) return it;
     const patch = pick<Item>(body, ITEM_PATCHABLE);
     const own = it.origin === "manual";
-    const seen = (body as { seen_due_date?: string | null } | null)?.seen_due_date;
-    const steps = own && it.recurrence != null && ((patch.status === "done" && it.status !== "done") || (patch.status === "open" && it.status === "open" && this.marked.has(id)));
-    if (seen !== undefined && steps && seen !== it.due_date) return it;
     const before = { status: it.status, due_date: it.due_date, recurrence: it.recurrence };
     if ("recurrence" in patch) patch.recurrence = asRule(patch.recurrence);
     const restart = own && patch.recurrence != null && ("due_date" in patch || !sameRule(patch.recurrence, before.recurrence));
@@ -480,6 +478,20 @@ export class MockDb {
       this.markedStandsFor.delete(id);
     }
     return it;
+  }
+
+  /**
+   * Whether a "done" or "open again" would move a repeating date of the person's own along its schedule, but the page
+   * sent a date it no longer stands at (`seen_due_date`): {@link patchItem} then changes nothing, and the API's answer
+   * says so (`X-Ordnung-Unchanged: moved-on`).
+   */
+  movedOn(id: string, body: unknown): boolean {
+    const it = this.state.items.find((i) => i.id === id);
+    if (!it || it.origin !== "manual" || it.recurrence == null) return false;
+    const { status } = pick<Item>(body, ITEM_PATCHABLE);
+    const steps = (status === "done" && it.status !== "done") || (status === "open" && it.status === "open" && this.marked.has(id));
+    const seen = (body as { seen_due_date?: string | null } | null)?.seen_due_date;
+    return seen !== undefined && steps && seen !== it.due_date;
   }
 
   log(kind: string, message: string, ref_type: string | null = null, ref_id: string | null = null, data: Record<string, unknown> = {}) {

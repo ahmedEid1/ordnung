@@ -47,6 +47,35 @@ describe("Top 3", () => {
     await act(async () => held.release());
   });
 
+  it("“Mark done” on a to-do another window has marked says nothing changed, with no Undo", async () => {
+    const { srv } = useMockApi();
+    srv.db.state.items = srv.db.state.items.filter((i) => i.id === "itm_tm_dunning");
+    srv.db.state.items.push(
+      item({ id: "itm_weekly", kind: "task", title: "Water the plants", due_date: "2026-09-28", origin: "manual", recurrence: { interval: 1, unit: "weeks", working_day: null, day_of_month: null } }),
+    );
+    const top = await renderToday();
+    srv.db.patchItem("itm_weekly", { status: "done" }); // the other window: on to 5 Oct
+    await userEvent.setup().click(within(top).getByRole("button", { name: "Mark done: Water the plants" }));
+    const toast = (await screen.findByText("Nothing changed")).closest<HTMLElement>("[data-toast]")!;
+    expect(within(toast).queryByRole("button", { name: "Undo" })).toBeNull();
+    expect(screen.queryByText("Marked as done")).toBeNull();
+    expect(srv.db.state.items.find((i) => i.id === "itm_weekly")!.due_date).toBe("2026-10-05");
+  });
+
+  it("“Mark as paid” on a payment another window has marked paid says nothing changed, with no Undo", async () => {
+    const { srv } = useMockApi();
+    Object.assign(srv.db.state.items.find((i) => i.id === "itm_tm_dunning")!, { origin: "manual", recurrence: { interval: 1, unit: "months", working_day: null, day_of_month: null } });
+    const top = await renderToday();
+    srv.db.patchItem("itm_tm_dunning", { status: "done" }); // the other window
+    const user = userEvent.setup();
+    await user.click(within(top).getByRole("button", { name: "Pay: TechMarkt reminder" }));
+    const panel = await screen.findByRole("dialog", { name: "Pay: TechMarkt reminder" });
+    await user.click(within(panel).getByRole("button", { name: "Mark as paid" }));
+    const toast = (await screen.findByText("Nothing changed")).closest<HTMLElement>("[data-toast]")!;
+    expect(within(toast).queryByRole("button", { name: "Undo" })).toBeNull();
+    expect(screen.queryByText("Marked as paid")).toBeNull();
+  });
+
   it("“Mark as paid” takes one press at a time, and names the date a repeating payment was paid for", async () => {
     const { srv, calls } = useMockApi();
     Object.assign(srv.db.state.items.find((i) => i.id === "itm_tm_dunning")!, { origin: "manual", recurrence: { interval: 1, unit: "months", working_day: null, day_of_month: null } });

@@ -213,7 +213,11 @@ export async function requestRaw(path: string, opts: RequestOptions = {}): Promi
 
 /** Perform a JSON request. 204 / empty bodies resolve to `undefined`. */
 export async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
-  const res = await requestRaw(path, opts);
+  return readJson<T>(await requestRaw(path, opts));
+}
+
+/** A 2xx answer's JSON (204 / an empty body: `undefined`), for a request that also reads the answer's headers. */
+export async function readJson<T>(res: Response): Promise<T> {
   if (res.status === 204) return undefined as T;
   const text = await res.text();
   if (!text) return undefined as T;

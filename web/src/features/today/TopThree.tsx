@@ -33,7 +33,7 @@ import { actionMember } from "@/features/household/logic";
 import { PersonTag } from "@/features/household/PersonTag";
 import { focusAfterLeaving, focusWhenReady } from "@/lib/focus";
 import { useOnePress } from "@/lib/hooks";
-import { seenAt } from "@/features/document/actions";
+import { saidMovedOn, seenAt } from "@/features/document/actions";
 import { fadeUp, stagger } from "./motion";
 import { allClearTitle, composerHref, worthASecondLook, type ActionVerb, type DateRole, type TodayAction } from "./selection";
 import { actionHref } from "./useTodayData";
@@ -180,13 +180,14 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
       focus?.leaving(action.key);
       return update.mutateAsync({ id: item.id, patch: { status: "done", ...seenAt(item, item.due_date) } }).then((moved) => {
         close();
+        if (saidMovedOn(item, moved)) return; // no "Marked as paid", and no Undo of the other one's
         toast({
           tone: "success",
           title: "Marked as paid",
           // a repeating one stays open at its next date: "… · Next: Wed 4 Nov"
           description: doneLine(item, moved, today),
           undo: async () => {
-            await update.mutateAsync({ id: item.id, patch: { status: "open", ...seenAt(item, moved.due_date) } });
+            saidMovedOn(item, await update.mutateAsync({ id: item.id, patch: { status: "open", ...seenAt(item, moved.due_date) } }));
             focus?.returning(action.key);
           },
         });
@@ -291,12 +292,13 @@ function VerbButton({ action, variant }: { action: TodayAction; variant: ButtonV
               // a to-do of your own every week or every 2 weeks moves on and can stay in Top 3: the busy button
               // dropped focus, so its own heading takes it
               settled?.();
+              if (saidMovedOn(item, moved)) return;
               toast({
                 tone: "success",
                 title: "Marked as done",
                 description: doneLine(item, moved, today),
                 undo: async () => {
-                  await update.mutateAsync({ id: item.id, patch: { status: "open", ...seenAt(item, moved.due_date) } });
+                  saidMovedOn(item, await update.mutateAsync({ id: item.id, patch: { status: "open", ...seenAt(item, moved.due_date) } }));
                   focus?.returning(action.key);
                 },
               });

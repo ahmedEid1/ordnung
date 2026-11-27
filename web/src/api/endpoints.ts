@@ -6,7 +6,7 @@
  * path, the query parameters, the JSON body and the response type all come from the generated
  * schema (`./schema.d.ts`): a route the backend renames or removes fails `tsc`.
  */
-import { API_BASE, ApiError, assetUrl, request, requestRaw, type QueryValue, type RequestOptions } from "./client";
+import { API_BASE, ApiError, assetUrl, readJson, request, requestRaw, type QueryValue, type RequestOptions } from "./client";
 import { readStreamEvents } from "./sse-parser";
 import type {
   ApiBody,
@@ -32,6 +32,8 @@ import type {
   HouseholdChange,
   HouseholdFiling,
   ItemCreate,
+  Item,
+  ItemAnswer,
   ItemListParams,
   ItemPatch,
   LetterRecord,
@@ -205,7 +207,12 @@ export const api = {
   /** Every to-do's id, title and letter: to name a to-do without every to-do whole. */
   itemTitles: () => call("get", "/api/items/titles"),
   createItem: (item: ItemCreate) => call("post", "/api/items", { body: item }),
-  updateItem: (id: string, patch: ItemPatch) => call("patch", "/api/items/{item_id}", { params: { item_id: id }, body: patch }),
+  /** `movedOn`: a "done" or "open again" for a date the to-do no longer stands at changed nothing ({@link ItemAnswer}). */
+  updateItem: async (id: string, patch: ItemPatch): Promise<ItemAnswer> => {
+    const res = await requestRaw(apiRoute("/api/items/{item_id}", { item_id: id }), { method: "PATCH", body: patch });
+    const item = await readJson<Item>(res);
+    return res.headers.get("X-Ordnung-Unchanged") === "moved-on" ? { ...item, movedOn: true } : item;
+  },
   deleteItem: (id: string) => call("delete", "/api/items/{item_id}", { params: { item_id: id } }),
   /** "Yes, that's right" — sets grounding to `user`. */
   confirmItem: (id: string) => call("post", "/api/items/{item_id}/confirm", { params: { item_id: id } }),

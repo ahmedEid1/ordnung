@@ -158,6 +158,7 @@ class Reply {
   constructor(
     readonly status: number,
     readonly body: unknown = null,
+    readonly headers: Record<string, string> = {},
   ) {}
 }
 type Handler = (ctx: Ctx) => unknown | Promise<unknown>;
@@ -1719,7 +1720,12 @@ const routes: [string, string, Handler][] = [
   [
     "PATCH",
     "/items/:id",
-    ({ db, params, body }) => db.patchItem(params.id!, body) ?? notFound("Unknown to-do."),
+    ({ db, params, body }) => {
+      // a "done" for a date the to-do has moved on from changes nothing, and says so (as the API does)
+      const moved = db.movedOn(params.id!, body);
+      const item = db.patchItem(params.id!, body) ?? notFound("Unknown to-do.");
+      return moved ? new Reply(200, item, { "X-Ordnung-Unchanged": "moved-on" }) : item;
+    },
   ],
   [
     "DELETE",
@@ -2193,8 +2199,8 @@ const compiled = routes.map(([method, pattern, handler]) => {
 /** A ZIP with no entries: only its 22-byte end record (`PK\x05\x06` and zeros), which any unzip tool opens. */
 const EMPTY_ZIP_URL = "data:application/zip;base64,UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA==";
 
-const json = (status: number, body: unknown) =>
-  new Response(status === 204 ? null : JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
+  new Response(status === 204 ? null : JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...headers } });
 
 export interface MockServer {
   db: MockDb;
@@ -2240,7 +2246,7 @@ export function createMockServer(opts: MockOptions): MockServer {
       try {
         const out = await r.handler({ db, params, query, body, signal, opts, phone, sync });
         if (out instanceof Response) return out;
-        if (out instanceof Reply) return json(out.status, out.body);
+        if (out instanceof Reply) return json(out.status, out.body, out.headers);
         return json(200, out ?? null);
       } catch (err) {
         if (err instanceof HttpError) return json(err.status, { detail: err.message, code: err.code });

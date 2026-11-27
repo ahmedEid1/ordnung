@@ -8,7 +8,7 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { qk } from "@/api/hooks";
 import type { Item } from "@/api/types";
-import { Toaster } from "@/components/ui/Toast";
+import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { expectOnePressAtATime } from "@/test/busyButton";
 import { holdRequests, useMockApi } from "@/test/mockFetch";
 import { makeTestQueryClient, renderWithProviders } from "@/test/render";
@@ -31,6 +31,7 @@ const patchOf = (id: string) => (call: { method: string; path: string }) => call
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+  act(() => __clearToasts());
 });
 
 describe("a to-do's tick", () => {
@@ -67,6 +68,28 @@ describe("a to-do's tick", () => {
         { status: "open", seen_due_date: "2026-11-01" },
       ]),
     );
+  });
+});
+
+describe("a “done” that changed nothing", () => {
+  it("says so, with no “Marked as done” and no Undo that would take back the other one", async () => {
+    // another window (or the phone) marked the monthly ticket done: it stands at 1 Nov, this page still shows 1 Oct
+    const { srv, calls } = useMockApi();
+    const ticket = makeItem({ id: "itm_ticket", kind: "payment", title: "Monthly ticket", due_date: "2026-10-01", origin: "manual", recurrence: MONTHLY });
+    srv.db.state.items.push({ ...ticket, due_date: "2026-11-01" });
+    renderWithProviders(
+      <>
+        <ItemsList items={[ticket]} docId="doc_1" />
+        <Toaster />
+      </>,
+      { client: client() },
+    );
+    await userEvent.setup().click(screen.getByRole("button", { name: "Mark “Monthly ticket” as done" }));
+    const toast = (await screen.findByText("Nothing changed")).closest<HTMLElement>("[data-toast]")!;
+    expect(toast).toHaveTextContent("“Monthly ticket” had already changed in another window or on your phone. It's now due");
+    expect(within(toast).queryByRole("button", { name: "Undo" })).toBeNull();
+    expect(screen.queryByText("Marked as done")).toBeNull();
+    expect(calls.filter((c) => c.method === "PATCH").map((c) => c.body)).toEqual([{ status: "done", seen_due_date: "2026-10-01" }]);
   });
 });
 
