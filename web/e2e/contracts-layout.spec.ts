@@ -492,8 +492,9 @@ test.describe("320×568, motion on: a scroll with no input during the second rev
       tourCode.release();
       await expect(page.getByRole("region", { name: "Demo tour" }), "the tour bar shows").toBeVisible();
       await page.waitForFunction(() => (window as unknown as { __fight: { done: boolean } | null }).__fight?.done, null, { polling: "raf" });
-      // the reveal's watch would have looked again within this time (it ran on for 6 s)
-      await page.waitForTimeout(1500);
+      // ten still frames once the script's last scroll is done: a further reveal comes after four, and would be
+      // counted (and move the page) before this ends
+      await cardOnceStill(card);
       const { siv, fight, top } = await page.evaluate((id) => {
         const w = window as unknown as { __siv: number; __fight: { yAtReveal: number; yAtStart: number } };
         return { siv: w.__siv, fight: w.__fight, top: document.getElementById(`contract-${id}`)!.getBoundingClientRect().top };
