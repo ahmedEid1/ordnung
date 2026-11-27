@@ -352,7 +352,7 @@ def test_the_readme_shows_the_phones_the_recording_clock_and_the_credits_unfolde
         "Recorded on real 17 Nov 2026 with the clock 7 days ahead (K29): recording and analysis dates are the day "
         "the model was told; deviation times, commits and PRs are real.",
         "Postcode data © [GeoNames](https://www.geonames.org/)",
-        "under their own licences (MIT, ISC, BSD-3-Clause and the SIL Open Font License 1.1)",
+        "under their own licences (MIT, ISC and the SIL Open Font License 1.1)",
         "MIT licensed",
         "<b>Light and dark.</b>",
     ):

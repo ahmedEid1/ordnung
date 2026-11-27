@@ -5,9 +5,9 @@ name = "ordnung"
 # README.md with its links pointing to GitHub ([tool.hatch.metadata.hooks.fancy-pypi-readme])
 dynamic = ["version", "readme"]
 description = "Your private AI secretary for life admin in Germany. Claude reads your letters; tested code works out each deadline and shows the law behind it. Runs on your own computer with your own Claude Code."
-# Ordnung's own code is MIT; the wheel also ships the web app's bundled code and fonts (ISC, BSD-3-Clause,
-# OFL-1.1: the notices below), the DejaVu fonts of drafted letters (Bitstream Vera) and GeoNames' postcodes (CC BY 4.0)
-license = "MIT AND ISC AND BSD-3-Clause AND OFL-1.1 AND Bitstream-Vera AND CC-BY-4.0"
+# Ordnung's own code is MIT; the wheel also ships the web app's bundled code and fonts (ISC, OFL-1.1: the
+# notices below), the DejaVu fonts of drafted letters (Bitstream Vera) and GeoNames' postcodes (CC BY 4.0)
+license = "MIT AND ISC AND OFL-1.1 AND Bitstream-Vera AND CC-BY-4.0"
 # the web build's notices: the licences of the code and fonts it bundles (web/scripts/third-party-notices.mjs)
 license-files = [
   "LICENSE",
