@@ -9,6 +9,7 @@ import userEvent from "@testing-library/user-event";
 import { __clearToasts } from "@/components/ui/Toast";
 import { renderWithProviders } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
+import { holdFrames } from "@/test/frames";
 import SettingsPage from "@/pages/SettingsPage";
 import { SECTION_IDS, SECTION_LABELS } from "./logic";
 
@@ -211,5 +212,45 @@ describe("Settings → Watched folder", () => {
     const waiting = await within(status).findByRole("link", { name: /letters not read yet in the Inbox/ });
     expect(waiting.querySelector("svg.lucide-folder-input")).not.toBeNull();
     expect(waiting.querySelector("svg.lucide-hourglass")).toBeNull();
+  });
+});
+
+// a focus put off by a frame landed after a quick keyboard had gone on, and took it back
+describe("Settings → Watched folder: focus never lands after the person went on", () => {
+  it("a refused folder: the field is focused as its reason is drawn", async () => {
+    useMockApi();
+    const user = userEvent.setup();
+    renderFolder();
+    const field = await screen.findByLabelText("Folder");
+    await user.clear(field);
+    await user.type(field, "Scans");
+    holdFrames();
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(field).toHaveAttribute("aria-invalid", "true"));
+    expect(field).toHaveFocus();
+  });
+
+  it("“Use Ordnung's own inbox folder”: the field it filled is focused as the button goes", async () => {
+    useMockApi();
+    const user = userEvent.setup();
+    renderFolder();
+    const use = await screen.findByRole("button", { name: /Use Ordnung's own inbox folder/ });
+    holdFrames();
+    await user.click(use);
+    expect(screen.getByLabelText("Folder")).toHaveFocus();
+  });
+
+  it("“Stop watching”: someone who went elsewhere while it was saved stays there", async () => {
+    useMockApi();
+    const user = userEvent.setup();
+    renderFolder();
+    const status = await screen.findByRole("region", { name: "Status" });
+    const frames = holdFrames();
+    await user.click(await within(status).findByRole("button", { name: "Stop watching" }));
+    expect(await within(status).findByText(/No folder is watched/)).toBeInTheDocument();
+    const elsewhere = screen.getByRole("switch", { name: /Read new files with Claude straight away/ });
+    elsewhere.focus();
+    frames.run(5);
+    expect(elsewhere).toHaveFocus();
   });
 });

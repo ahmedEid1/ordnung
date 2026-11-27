@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { BreakablePath } from "./DataSection";
 import { FIELD_WIDTH, SaveBar, SectionHeading, SettingsCard } from "./SettingsCard";
 import { useOnePress } from "@/lib/hooks";
+import { useFocusWhenDrawn } from "@/lib/focus";
 
 /** The model every call runs on until another is chosen (`ordnung.llm.base.DEFAULT_MODEL`: Sonnet 5, pinned). */
 export const DEFAULT_MODEL = "claude-sonnet-5";
@@ -89,9 +90,10 @@ function ModelCard({ settings, pinned }: { settings: AppSettings; pinned: string
   const saved = settings.model;
   const [model, setModel] = useState(saved);
   const [refused, setRefused] = useState<string | null>(null);
+  const focusWhenDrawn = useFocusWhenDrawn();
   const save = useSaveModel((reason) => {
     setRefused(reason);
-    requestAnimationFrame(focusModelField);
+    focusWhenDrawn(() => document.getElementById("claude-model"));
   });
   const dirty = model.trim() !== saved;
   const onSave = () =>
