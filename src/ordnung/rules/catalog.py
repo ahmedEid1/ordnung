@@ -398,9 +398,10 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "posting_day",
         "The posting day",
         "§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07",
-        "Deemed delivery counts from the day the letter was handed to the post. Unless a posting date is "
-        "stated, Ordnung uses the date printed on the letter: the real posting day can only be the same "
-        "day or later, so the computed deadline is never too late.",
+        "Deemed delivery counts from the day the letter was handed to the post. Unless the letter's page "
+        'states a later posting day (see "A posting day the letter states"), Ordnung uses the date printed on '
+        "the letter: the real posting day can only be the same day or later, so the computed deadline is never "
+        "too late.",
         f"{_GII}/ao_1977/__122.html",
         None,
     ),

@@ -21,6 +21,7 @@ import pytest
 from helpers_tables import check_rows
 from ordnung.models import DateSpec, Profile
 from ordnung.rules.calendar_de import REGION_NAMES
+from ordnung.rules.catalog import get_rule
 from ordnung.rules.deadlines import (
     ASSUMED_RECEIPT_WARNING,
     DECLARATION_ARRIVAL_WARNING,
@@ -949,6 +950,15 @@ def test_a_later_posting_day_among_the_reading_s_key_facts_is_named_too() -> Non
     assert "the deadline is Mon 23 Nov 2026" in receipt.warnings[0]
     tools = compute_due(notice_spec(), replace(context, posting=None))
     assert (tools.due_date, tools.confidence, tools.warnings) == ("2026-11-20", "high", [])
+
+
+def test_the_catalog_s_posting_day_says_what_the_engine_does() -> None:
+    """The person-facing catalog says one thing with the engine (ADR 0026): the letter's date is the start unless
+    the letter's page states a later posting day — not "unless a posting date is stated", which a posting day only
+    the reading names, or one beyond the guards, is too, and still leaves the letter's date as the start."""
+    text = get_rule("posting_day").summary
+    assert "Unless the letter's page states a later posting day" in text
+    assert get_rule(POSTED_ON_LETTER).title in text
 
 
 def test_earlier_posting_date_is_used() -> None:

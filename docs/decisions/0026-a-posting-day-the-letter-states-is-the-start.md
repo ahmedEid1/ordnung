@@ -26,11 +26,16 @@ the model names is a reading; one that code finds on the letter's own page is th
 ## Decision
 **Code reads the posting day on the page** (`ingest/posting.py`, `posting_statement`, no model call): a field in
 the header or the footer ("Tag der Aufgabe zur Post: …", "Absendedatum", "Datum des Versands", "Versandt am:"
-where a cell starts, "Date of posting"), or a sentence in the statutes' words ("am … zur Post gegeben",
-"Aufgabe zur Post am …") or that *this* letter was sent on a day ("Dieser Bescheid wurde am … versandt"). Never
-another decision's or the person's letter, an enclosure or a copy, a payment's or a deadline's date, the day a
-letter counts as delivered, a future, requested or negated posting, goods sent, or a date that reads two ways
-(the module's docstring lists each, and a test holds each). The app (`ingest.plan.rule_context`) and the
+where a cell starts, "Date of posting"), its date beside the label or under it — under it as the header's "Datum"
+is read: on the page right under the label by the words' boxes, or, without boxes, label and date each alone on
+their line, never another column's date or a table's row —, or a sentence in the statutes' words ("am … zur Post
+gegeben", "Aufgabe zur Post am …") with no subject or about this letter, or that *this* letter was sent on a day
+("Dieser Bescheid wurde am … versandt"). Never another decision's or the person's letter, another document named
+by its own noun or sent to someone else ("Die Zahlungsaufforderung …", "Eine Mitteilung an den Arbeitgeber …"),
+a line that dates another letter, an enclosure or a copy, a card, an ID or documents sent, a payment's or a
+deadline's date, the day a letter counts as delivered, a future, planned ("voraussichtlich", "geplant"),
+requested or negated posting, an e-mail or a portal, goods sent, or a date that reads two ways — in a field as in
+a sentence (the module's docstring lists each, and a test holds each). The app (`ingest.plan.rule_context`) and the
 benchmark's Ordnung condition call the same function, so the benchmark measures what ships. It reaches the
 engine as `RuleContext.posting`, never through the model's `anchor_date`.
 
@@ -45,22 +50,27 @@ later than the letter's date, under guards in code:
   1 January). Beyond it a misprint or another letter's date is likelier, and the further a start moves, the more
   a wrong one costs: the letter's date stays the start and a note names the later deadline. (The two-dates
   check accepts 14 days for a letter's own date, but it only ever keeps the earlier date.);
-- only for an authority's deemed delivery by post: never a company's period (it runs from arrival), a court's,
-  a fine's or a letter served with a yellow envelope (formal service), a letter whose sender's procedure law is
-  unknown, or an e-mailed decision;
+- only for an authority's deemed delivery by post, counted forward: never a company's period (it runs from
+  arrival), a court's, a fine's (a letter filed as one, whether or not its reading cites § 67 OWiG) or a letter
+  served with a yellow envelope (formal service), a letter whose sender's procedure law is unknown, an e-mailed
+  decision, or a period counted back from delivery;
 - two different posting days on the page: the earlier counts, both are named, `low` and "Please check"
   (`conflicting_dates`);
 - found only in a photo's transcription: the date is at most `medium`, as every fact read from a photo (counted
   once with a quote read from the same transcript).
 
 The receipt names the posting day and its words on the page (rule `posting_day_stated`), says what the letter's
-own date would have given, and gives that earlier date as the **safe date**: acting by it is on time even if the
-printed posting day were wrong. The send-by date follows the due date, as everywhere.
+own date would have given, and gives that earlier date as the **safe date** — that count's own safe date where it
+has one (a notice, which never moves, may end on a weekend: the working day before it): acting by it is on time
+even if the printed posting day were wrong. The send-by date follows the due date, as everywhere.
 
 **A later posting day only the reading names** — the pages were read and state none — changes nothing in the
 date, as before. It is no longer silent: the receipt names the later deadline it would give, and the
-confidence is one level lower (`medium`), since the later date may be the right one. A posting day the page
-states beyond a guard is named the same way.
+confidence is one level lower (`medium`), since the later date may be the right one. That holds whether the
+reading gives it as the period's start (`anchor_date`) or only among its key facts (a fact labelled as a posting
+day, read in code: `read_posting_day`, `RuleContext.posting_read`). A posting day the page states beyond a guard
+is named the same way — except one after the day the letter is read: it can't be the posting day, so the note
+says so and names no deadline.
 
 **The rules tools do not change**, in behaviour or in a word of their instructions: a tool caller has no page,
 so `RuleContext.posting` stays unset and a later posting day stays the note it was.

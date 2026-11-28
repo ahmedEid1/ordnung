@@ -78,7 +78,7 @@ computes the **earliest plausible date**, lowers the confidence and says why. Co
 | Payment to a company or person, payer's Land unknown | Uses only nationwide holidays (money is owed at the payer's home, §§ 269, 270 Abs. 4 BGB). |
 | Posting day unknown | Uses the date printed on the letter (the real posting day can only be the same or later). |
 | Letter arrived later than the deemed delivery day | Keeps the earlier deadline; shows the later one as "only if you can show it" (keep the envelope). |
-| Letter says a later posting day than its date | Found on the letter's page in words that say *this* letter was posted then ("Tag der Aufgabe zur Post: …", "Dieser Bescheid wurde am … zur Post gegeben"): an authority's deemed delivery counts from it — at most 7 days after the letter's date and never after the day it is read — and the receipt names the day, its words and, as the safe date, the deadline from the letter's date (`posting_day_stated`; read only from a photo's transcription: at most `medium`). Two different posting days on the page: the earlier, `low`, "Please check" (`conflicting_dates`). Named only by the reading, or beyond those guards: keeps the letter's date, names the later deadline, one level less sure (`medium`). Until ADR 0026 the letter's date was always kept. |
+| Letter says a later posting day than its date | Found on the letter's page in words that say *this* letter was posted then ("Tag der Aufgabe zur Post: …", "Dieser Bescheid wurde am … zur Post gegeben"): an authority's deemed delivery counts from it — at most 7 days after the letter's date and never after the day it is read — and the receipt names the day, its words and, as the safe date, the deadline from the letter's date (`posting_day_stated`; read only from a photo's transcription: at most `medium`). Two different posting days on the page: the earlier, `low`, "Please check" (`conflicting_dates`). Named only by the reading (as the period's start or among its key facts), or beyond those guards: keeps the letter's date, names the later deadline (none for a day after the day it is read: it can't be the posting day), one level less sure (`medium`). Until ADR 0026 the letter's date was always kept. |
 | Letter counts from "today" | Reads it as the letter's date, never the (later) day it is processed (`medium`). |
 | Fine or penal order without the envelope date | Counts from the letter's date — no 4-day fiction, which could be later than a yellow-envelope delivery. |
 | Period counted backwards ("one month before …") on a weekend/holiday | Never moves to a later day + a `safe_date` on the working day before. |
@@ -356,14 +356,17 @@ page (`ingest/posting.py`), never the model alone, and holds it to guards: it is
 earlier posting day the reading names is used as before), not after the day the letter is read, at most 7 days
 after the letter's date (a week covers a weekend with the run of holidays from 24 December to 1 January; beyond
 it a misprint or another letter's date is likelier, and a later start costs more the further it moves), stated
-for this letter (never another decision's, the person's own letter's, an enclosure's, a payment's or a deadline's,
-the day a letter counts as delivered, a future or requested posting, goods sent, nor a date that reads two ways),
-and only for an authority's deemed delivery by post (never a company's period from arrival, a fine's or a court's
-formal service, a letter whose sender's law is unknown, or an e-mailed decision). The receipt names the posting day
-and its words (`posting_day_stated`), and gives the deadline from the letter's date as the safe date: acting by it
-is on time even if the printed posting day were wrong. Two different posting days on the page count from the
-earlier, `low` and "Please check". A later posting day only the reading names (or one beyond a guard) keeps the
-letter's date, and the receipt names the later deadline, one level less sure. This replaces the rule "never replace
+for this letter (never another decision's or another document's, the person's own letter's, an enclosure's, a
+card's or an ID's, a payment's or a deadline's, the day a letter counts as delivered, a future, planned or requested
+posting, an e-mail, goods sent, nor a date that reads two ways — in a field as in a sentence; a field's date under
+its label only right under it on the page, never another column's), and only for an authority's deemed delivery by
+post, counted forward (never a company's period from arrival, a fine's or a court's formal service, a letter whose
+sender's law is unknown, an e-mailed decision, or a period counted back). The receipt names the posting day and its
+words (`posting_day_stated`), and gives the deadline from the letter's date as the safe date (that count's own safe
+date where it ends on a weekend): acting by it is on time even if the printed posting day were wrong. Two different
+posting days on the page count from the earlier, `low` and "Please check". A later posting day only the reading
+names — as the period's start or among its key facts — (or one beyond a guard) keeps the letter's date, and the
+receipt names the later deadline, one level less sure; a day after the day the letter is read names none. This replaces the rule "never replace
 the anchor with a later date for the primary result", kept from the first version until 0.5.0 as a safety rule for
 a posting day only the model named: the rules tools, which have no page to check, still follow it.
 
