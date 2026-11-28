@@ -314,6 +314,8 @@ _NOUNS_EN = frozenset({"fee", "fees", "tax", "amount"})
 _CURRENCY = frozenset({"eur", "euro", "€"})
 #: A file number's label, in an aside between the date and its verb ("…, Az. 32-117/2026, wird …").
 _FILE_LABELS = frozenset({"az", "gz", "aktenzeichen", "geschäftszeichen", "kassenzeichen"})
+#: The last word of every cue, right before its date: checked before a sentence is split into words.
+_CUE_END = re.compile(r"\b(?:vom|dated|of)\s*$", re.IGNORECASE)
 #: The words of a sentence: a bracket read whole, an amount ("80,00"), a number or a file number ("32-117/2026"), a
 #: word, or one sign.
 _TOKEN = re.compile(
@@ -749,8 +751,11 @@ def _opens(before: str, first: str) -> bool:
     under a line that ends in a date or a number (a header's field or a table's row, no sentence's words); or right
     after a salutation's comma ("Sehr geehrte Frau Beispiel,\\nmit Bescheid vom …"). Anywhere else the words before
     it decide whose date it is ("Nach Anhörung\\nmit Schreiben vom …"), and a form has no place for them."""
-    if not before.strip():
-        return True
+    tail = before[-_CUE_REACH:]  # only the words just before it decide (and a long line stays fast)
+    if not tail.strip():
+        # a capital after a line break opens its sentence; the line above is too far back to read
+        return not before.strip() or (first[:1].isupper() and "\n" in tail)
+    before = tail
     if re.search(r"\n[ \t]*$", before) and (first[:1].isupper() or re.search(r"\d[ \t]*\n[ \t]*$", before)):
         return True
     line = re.search(r"([^\n]*),[ \t]*\n?[ \t]*$", before)
@@ -852,7 +857,14 @@ def _own_decision(clause: str, start: int, end: int, stop: int) -> _Own | None:
        auf 80,00 EUR festgesetzt." An inflected participle or an adjective there ("… festgesetzte Steuer", "…
        vorläufig bewilligte Leistungen") makes the date part of a thing named, an earlier decision's.
     """
-    head = _tokens(clause[:start])
+    if not _CUE_END.search(clause, max(0, start - 12), start):
+        return None
+    reach = max(
+        0, start - 2 * _CUE_REACH
+    )  # the cue and a passive's opening words; a cut first word is dropped
+    head = [replace(token, start=token.start + reach) for token in _tokens(clause[reach:start])][
+        1 if reach else 0 :
+    ]
     found = _cue(head)
     if found is None:
         return None
