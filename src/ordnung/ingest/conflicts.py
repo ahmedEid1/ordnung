@@ -273,7 +273,7 @@ _PRESENT = rf"(?:{_WE})\s+wir|wir\s+(?:{_WE})|(?:{_I})\s+ich|ich\s+(?:{_I})"
 #: … ergeht" (``issued``). Never "mit Ihrem Schreiben vom …" (the person's) nor "unserem" (an earlier letter's).
 _OWN_DECISION_BEFORE = re.compile(
     r"(?:\bmit\s+(?:dem\s+)?(?:\w*bescheid|schreiben)\s+vom"
-    r"|\b(?:by|with|in)\s+(?:our\s+|the\s+)?(?:decision|notice|assessment|letter)\s+(?:dated|of)"
+    r"|(?P<english>\b(?:by|with|in)\s+(?:our\s+|the\s+)?(?:decision|notice|assessment|letter)\s+(?:dated|of))"
     r"|(?P<issued>\bder\s+\w*bescheid\s+vom))\s*$",
     re.IGNORECASE,
 )
@@ -286,12 +286,15 @@ _ASIDE = r"(?:\s*,\s*(?:az|gz|aktenzeichen|geschäftszeichen|kassenzeichen)\b[^,
 #: A past or perfect form ("wurde", "hatten wir", "haben wir … festgesetzt", "ist … worden", "we granted") names
 #: an earlier decision and is not here. In German the verb follows the date directly (or after a file number):
 #: after a comma it is the main clause's verb, and the date belongs to a phrase set off by commas ("Die Gebühr,
-#: festgesetzt mit Bescheid vom …, wird ermäßigt": an earlier decision's). English sets a comma there anyway.
+#: festgesetzt mit Bescheid vom …, wird ermäßigt": an earlier decision's). English sets a comma there anyway. In
+#: English "… is hereby" counts only after a subject of plain words: a preposition, a number or "EUR" there tells
+#: what the earlier notice did ("In the notice of … fees at EUR 80 are hereby reduced": the 80 EUR are its).
 _OWN_DECISION_AFTER = re.compile(
     rf"^{_ASIDE}?\s*(?:{_PRESENT}|wird|werden|ergeh(?:t|en)|erhalten\s+sie)\b"
     r"|^\s*,?\s*(?:we\s+(?:hereby\s+\w+|assess|refuse|reject|grant|approve|decide|determine|demand|order|revoke|amend"
     r"|confirm|inform|notify|ask|request|impose|levy|award|withdraw|fix)"
-    r"|(?:(?!which\b|that\b)\w+\s+){1,4}?(?:is|are)\s+hereby)\b",
+    r"|(?:(?!which\b|that\b|at\b|in\b|to\b|for\b|of\b|by\b|on\b|from\b|with\b|eur\b|\d)\w+\s+){1,4}?(?:is|are)"
+    r"\s+hereby)\b",
     re.IGNORECASE,
 )
 #: "Der Bescheid vom … ergeht …": issued now, so this letter's.
@@ -336,6 +339,11 @@ _REPORTED_LEAD = re.compile(
     r"|outlined|referred\s+to)\s*$",
     re.IGNORECASE,
 )
+#: In English a letter names its own decision at the head of its clause ("By decision dated …, we …", "With our
+#: notice dated … we …", "Hereby, by decision dated …"). Any other word before "by / with / in" makes the notice
+#: one the sentence refers to or compares with ("In accordance with the notice dated …", "In connection with our
+#: letter of …", "Compared with the assessment of …", "Unlike in the notice of …"): an earlier one.
+_ENGLISH_OWN_LEAD = re.compile(r"^\s*(?:(?:hereby|herewith)\s*)?$", re.IGNORECASE)
 #: Words of an earlier time or a reference between the verb and "mit Bescheid vom …" ("Der Betrag wird nach
 #: Bezugnahme auf …", "… wird unter Hinweis auf …"), or a past auxiliary: not this letter's decision.
 _EARLIER = re.compile(
@@ -740,6 +748,10 @@ def _own_decision(before: str, after: str) -> re.Match[str] | None:
         return None
     lead = re.split(r"[,;:]", before[: cue.start()])[-1]  # the clause's words before "mit"
     if _NOT_OWN_LEAD.search(lead) or _REPORTED_LEAD.search(lead):
+        return None
+    # A capital "By / With / In" at the start of a line opens its sentence: a heading line above it is no lead.
+    english_lead = lead.rsplit("\n", 1)[-1] if before[cue.start()].isupper() else lead
+    if cue.group("english") and not _ENGLISH_OWN_LEAD.match(english_lead):
         return None
     if _INSERTED_PHRASE.search(before[: cue.start()]) and not _FINITE_BEFORE.search(lead):
         return None

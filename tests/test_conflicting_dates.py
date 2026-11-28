@@ -1415,6 +1415,14 @@ A_DECISION_NAMING_ITS_OWN_DATE = [
     pytest.param("By decision dated 9 June 2026 we refuse your application.", id="en-present"),
     pytest.param("With the notice dated 9 June 2026 the fee is hereby set at EUR 80.00.", id="en-passive"),
     pytest.param(
+        "Hereby, by decision dated 9 June 2026, we refuse your application.",
+        id="en-hereby-before-the-decision",
+    ),
+    pytest.param(
+        "Notice of assessment\nIn the notice of 9 June 2026 the fees are hereby assessed as follows.",
+        id="en-under-a-heading-line",
+    ),
+    pytest.param(
         "Mit Bescheid vom 09.06.2026, Az. 32-117/2026, wird die Gebühr festgesetzt.", id="file-number-aside"
     ),
     pytest.param(
@@ -1584,6 +1592,35 @@ ANOTHER_DECISIONS_DATE = [
     pytest.param("Our decision of 9 June 2026 is hereby revoked.", id="en-revoked"),
     pytest.param(
         "By decision dated 9 June 2026, which is hereby amended, the fee was set.", id="en-relative-clause"
+    ),
+    pytest.param(
+        "In accordance with the notice dated 9 June 2026 we hereby request payment of the outstanding amount.",
+        id="en-in-accordance-with",
+    ),
+    pytest.param(
+        "In connection with our letter of 9 June 2026 we inform you that the hearing is postponed.",
+        id="en-in-connection-with",
+    ),
+    pytest.param(
+        "Compared with the assessment of 9 June 2026, the tax is hereby increased by EUR 40.",
+        id="en-compared-with",
+    ),
+    pytest.param("Unlike in the notice of 9 June 2026, the fee is hereby set at EUR 50.", id="en-unlike-in"),
+    pytest.param(
+        "In addition to the amount set in the notice of 9 June 2026, a late fee is hereby charged.",
+        id="en-in-addition-to",
+    ),
+    pytest.param(
+        "The fee assessed in the notice of 9 June 2026 at EUR 80 is hereby reduced to EUR 50.",
+        id="en-the-fee-assessed-in",
+    ),
+    pytest.param(
+        "Following up on the matter dealt with in our letter of 9 June 2026, the fee is hereby reduced.",
+        id="en-following-up-on",
+    ),
+    pytest.param(
+        "In the notice of 9 June 2026 fees at EUR 80 are hereby reduced to EUR 50.",
+        id="en-the-earlier-notices-amount-before-is-hereby",
     ),
 ]
 
