@@ -1489,6 +1489,34 @@ ANOTHER_DECISIONS_DATE = [
         "Mit Ihrem Schreiben vom 09.06.2026 haben Sie Widerspruch erhoben.", id="the-persons-letter"
     ),
     pytest.param("Mit Schreiben vom 09.06.2026 beantragen Sie Wohngeld.", id="the-persons-application"),
+    pytest.param(
+        "Ihr Widerspruch mit Schreiben vom 09.06.2026 wird als unbegründet zurückgewiesen.",
+        id="the-persons-objection-named-by-its-letter",
+    ),
+    pytest.param(
+        "Ihrem Antrag mit Schreiben vom 09.06.2026 wird stattgegeben.", id="the-persons-application-granted"
+    ),
+    pytest.param(
+        "Auf Ihren Antrag mit Schreiben vom 09.06.2026 werden Ihnen Leistungen bewilligt.",
+        id="auf-ihren-antrag-mit-schreiben",
+    ),
+    pytest.param(
+        "Wir bestätigen den Eingang Ihres Antrags mit Schreiben vom 09.06.2026.", id="eingang-bestaetigt"
+    ),
+    pytest.param(
+        "Wir nehmen Stellung zu Ihrem Widerspruch mit Schreiben vom 09.06.2026 und weisen ihn zurück.",
+        id="stellung-zum-widerspruch",
+    ),
+    pytest.param(
+        "Hiermit stunden wir die Forderung aus der Rechnung mit Schreiben vom 09.06.2026.",
+        id="the-invoice-named-by-its-letter",
+    ),
+    pytest.param(
+        "Nach Anhörung mit Schreiben vom 09.06.2026 ergeht folgender Bescheid.", id="hearing-ergeht"
+    ),
+    pytest.param(
+        "Nach Anhörung mit Schreiben vom 09.06.2026 setzen wir die Gebühr fest.", id="hearing-setzen-wir"
+    ),
     pytest.param("Mit unserem Bescheid vom 09.06.2026 setzen wir die Steuer fest.", id="unserem"),
     pytest.param(
         "Die Gebühr, festgesetzt mit Bescheid vom 09.06.2026, wird auf 50,00 EUR ermäßigt.",

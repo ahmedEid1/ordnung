@@ -305,6 +305,12 @@ _NOT_OWN_LEAD = re.compile(
     r"|verglichen|übereinstimmung|the|as|already|previously|which|that|together|along)\s*$",
     re.IGNORECASE,
 )
+#: A noun right before a "mit Bescheid vom …" inside the sentence ("Ihr Widerspruch mit Schreiben vom …", "Ihrem
+#: Antrag mit Schreiben vom …", "Nach Anhörung mit Schreiben vom …", "die Forderung aus der Rechnung mit Schreiben
+#: vom …"): the date tells which objection, application, hearing or invoice is meant, often the person's own
+#: letter, not the act of this one. The polite pronouns are no nouns ("Ihnen wird mit Bescheid vom … eine Frist
+#: gesetzt"). Case-sensitive, and only for a lower-case "mit": a capital "Mit" opens the sentence.
+_NOUN_BEFORE = re.compile(r"\b(?!(?:Ihnen|Sie|Ihr|Euch|Dir)\b)[A-ZÄÖÜ]\w*\s+$")
 #: The words before "mit" after a comma, with no finite verb, ending in a participle ("Der Betrag, zuletzt
 #: geändert mit Bescheid vom …"): a phrase set off by commas that names an earlier decision, also when the scan
 #: lost the comma after its date.
@@ -703,6 +709,8 @@ def _own_decision(before: str, after: str) -> re.Match[str] | None:
     if _NOT_OWN_LEAD.search(lead):
         return None
     if _INSERTED_PHRASE.search(before[: cue.start()]) and not _FINITE_BEFORE.search(lead):
+        return None
+    if before.startswith("mit", cue.start()) and _NOUN_BEFORE.search(lead):
         return None
     if cue.group("issued"):
         return cue if _ISSUED_AFTER.match(after) else None
