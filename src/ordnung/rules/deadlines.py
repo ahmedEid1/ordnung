@@ -258,6 +258,9 @@ _STATUTE_PERIODS = {rule_id: periods for _, rule_id, periods in _STATUTES}
 #: Kündigungsschutzklage run from the dismissal's receipt (§ 4 S. 1 KSchG) — a public employer's too —,
 #: never from a delivery fiction (:func:`from_arrival`).
 _PRIVATE_LAW_STATUTES = ("kschg_4",)
+#: Letter kinds that are declarations under private law, whoever sends them: they take effect on arrival (§ 130
+#: Abs. 1 BGB), so a posting day the page states never starts their periods.
+_PRIVATE_LAW_KINDS = ("dismissal", "landlord_notice", "rent_increase", "operating_costs")
 #: The court rules only bind the dates they are about: the objection or court action (and, for a
 #: Mahnbescheid, paying instead). A hearing or a severance payment whose wording mentions the court
 #: action doesn't follow them.
@@ -1691,10 +1694,13 @@ def _compute_relative(
     # court's, a fine's or a letter served with a yellow envelope (formal service), nor one whose sender's procedure
     # law is unknown (the earliest plausible date) or sent electronically: a shop's "versandt am" never moves a date.
     # A fine is served formally (§ 51 OWiG with the VwZG) whether or not the reading cites § 67 OWiG: a letter
-    # filed as one never starts from a posting day
+    # filed as one never starts from a posting day. Nor does a declaration under private law — a dismissal, a
+    # landlord's notice, a rent increase, an operating-cost statement —, from a public employer or a city's housing
+    # company as from anyone: it counts from its arrival (§ 130 Abs. 1 BGB), never from a delivery fiction, so a
+    # posting day must not move it later even where the reading kept deemed delivery
     posting = (
         not formal
-        and ctx.letter_kind != "fine"
+        and ctx.letter_kind not in ("fine", *_PRIVATE_LAW_KINDS)
         and ctx.delivery_scope is not None
         and spec.anchor == "deemed_delivery"
         and spec.delivery_rule in ("de_admin_post", "none")

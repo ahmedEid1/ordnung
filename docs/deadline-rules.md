@@ -364,7 +364,9 @@ a copy or another document; a field's date under its label only right under it o
 row with at most a weekday before it in the label's column, never another column's, another field's date stacked
 under the label or two dates in the cell; without the page's word boxes, a photo's transcript, only a date alone on
 its line under a label alone on its line), and only for an authority's deemed delivery by
-post, counted forward (never a company's period from arrival, a fine's or a court's formal service, a letter whose
+post, counted forward (never a company's period from arrival, a declaration under private law — a dismissal, a
+landlord's notice, a rent increase, an operating-cost statement: from arrival, § 130 BGB, also from a public body —, a
+fine's or a court's formal service, a letter whose
 sender's law is unknown, an e-mailed decision, or a period counted back). The receipt names the posting day and its
 words (`posting_day_stated`), and gives the deadline from the letter's date as the safe date (that count's own safe
 date where it ends on a weekend): acting by it is on time even if the printed posting day were wrong. Two different

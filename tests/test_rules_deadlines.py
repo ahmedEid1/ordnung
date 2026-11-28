@@ -731,6 +731,12 @@ POSTING_GUARDS = [
     ("formal-service", "2026-10-19", "2026-10-22", {"formal_service": True}, None),
     # a fine is served formally (§ 51 OWiG), also when the reading cites no § 67 OWiG
     ("fine-without-statute", "2026-10-19", "2026-10-22", {"letter_kind": "fine"}, None),
+    # a declaration under private law counts from arrival (§ 130 BGB), also a public employer's or a city's housing
+    # company's read with deemed delivery and no § 4 KSchG
+    *(
+        (f"private-law-{kind}", "2026-10-19", "2026-10-22", {"letter_kind": kind}, None)
+        for kind in ("dismissal", "landlord_notice", "rent_increase", "operating_costs")
+    ),
 ]
 
 
