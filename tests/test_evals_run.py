@@ -900,6 +900,48 @@ def test_the_benchmark_rule_context_follows_the_sender_as_the_app_does(tmp_path:
         assert ours.sender_kind == sender["kind"]
 
 
+def test_the_benchmark_rule_context_reads_the_posting_day_as_the_app_does(tmp_path: Path) -> None:
+    """The benchmark measures what ships: its context reads the posting day the letter's page states, and a later
+    one only the reading's key facts name, exactly as the app's (``ingest.plan.rule_context``). Made-up pages of a
+    tax office's letter dated Fri 16 Oct 2026."""
+    from evals.conditions import ordnung_rule_context
+
+    from ordnung.db.store import Store
+    from ordnung.ingest.plan import rule_context
+    from ordnung.ingest.text import PageText
+    from ordnung.llm.schemas import DocumentExtraction
+
+    entry = {e.id: e for e in load_manifest(MANIFEST)}["dev-tax_assessment-A1"]
+    store = Store(tmp_path / "ordnung.db")
+    document = store.add_document(sha256="f" * 64, filename="x", mime="application/pdf", file_path="x")
+    header = "Finanzamt Musterstadt · Postfach 10 20 30 · 12345 Musterstadt\nSteuernummer 123/456/78901   Datum 16.10.2026"
+    cases = (
+        (f"{header}\nTag der Aufgabe zur Post: 19.10.2026", [], date(2026, 10, 19), None),
+        (
+            header,
+            [{"label": "Posting date", "value": "19.10.2026", "quote": "19.10.2026"}],
+            None,
+            date(2026, 10, 19),
+        ),
+    )
+    for text, facts, stated, read in cases:
+        extraction = DocumentExtraction(
+            kind="tax_assessment",
+            title="t",
+            summary="s",
+            explanation="e",
+            sender={"name": "Finanzamt Musterstadt", "kind": "tax_office"},
+            document_date="2026-10-16",
+            key_facts=facts,
+        )
+        pages = [PageText(page=1, text=text, has_text_layer=True)]
+        ours = ordnung_rule_context(entry, extraction, pages)
+        app = rule_context(None, document, extraction, entry.today_date, pages=pages)
+        assert ours.posting is not None and ours.posting.day == stated
+        assert ours.posting_read == read
+        assert (ours.posting, ours.posting_read) == (app.posting, app.posting_read)
+
+
 # --------------------------------------------------------------------------------------------------
 # Regression tests: cache validity, stale recordings, failure isolation, docs only from complete runs
 # --------------------------------------------------------------------------------------------------
