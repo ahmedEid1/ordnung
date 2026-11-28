@@ -1533,9 +1533,10 @@ def test_a_form_opens_its_sentence_under_a_heading_or_a_table_row_but_not_inside
             "mit Schreiben vom 09.06.2026 bestätigen wir den Eingang.",
         ),
     ):
-        assert [day for day in _own_dates(sentence, above=above) if day.month == 6 and day.day > 3] == [], (
-            above
-        )
+        found = re.search(r"vom (\d{2})\.(\d{2})\.(\d{4})", sentence)
+        assert found is not None
+        day, month, year = (int(part) for part in found.groups())
+        assert date(year, month, day) not in _own_dates(sentence, above=above), above
 
 
 #: Words of no listed place in the form, one of each kind it must refuse: an inflected participle, an adjective, a
