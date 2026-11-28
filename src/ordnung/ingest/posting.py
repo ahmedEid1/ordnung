@@ -455,7 +455,7 @@ def _under_labels(
             elif line.strip() != name or not re.fullmatch(
                 rf"\s*{_DAY}{_DEN}{re.escape(value)}\s*", following, re.IGNORECASE
             ):
-                continue  # without the page's word boxes: only a label and a date each alone on its line
+                continue  # without boxes: a label alone over a date alone on its line (a weekday allowed)
             if _another_s([line, following], previous, f"{name} {following[lo:hi]}") or _dates_another(
                 following, (start, end), letter_date
             ):

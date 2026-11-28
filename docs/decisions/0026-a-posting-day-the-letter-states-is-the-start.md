@@ -27,15 +27,19 @@ the model names is a reading; one that code finds on the letter's own page is th
 **Code reads the posting day on the page** (`ingest/posting.py`, `posting_statement`, no model call): a field in
 the header or the footer ("Tag der Aufgabe zur Post: …", "Absendedatum", "Datum des Versands", "Versandt am:"
 where a cell starts, "Date of posting"), its date beside the label or under it — under it as the header's "Datum"
-is read: on the page right under the label by the words' boxes, or, without boxes, label and date each alone on
-their line, never another column's date or a table's row —, or a sentence in the statutes' words ("am … zur Post
-gegeben", "Aufgabe zur Post am …") with no subject or about this letter, or that *this* letter was sent on a day
-("Dieser Bescheid wurde am … versandt"). Never another decision's or the person's letter, another document named
-by its own noun or sent to someone else ("Die Zahlungsaufforderung …", "Eine Mitteilung an den Arbeitgeber …"),
-a line that dates another letter, an enclosure or a copy, a card, an ID or documents sent, a payment's or a
-deadline's date, the day a letter counts as delivered, a future, planned ("voraussichtlich", "geplant"),
-requested or negated posting, an e-mail or a portal, goods sent, or a date that reads two ways — in a field as in
-a sentence (the module's docstring lists each, and a test holds each). The app (`ingest.plan.rule_context`) and the
+is read: on the page right under the label by the words' boxes, the last thing on its row and, in the label's
+column, the only words there but a weekday ("Mo., 19.10.2026"; the address column's words to its left are another
+column's); or, without boxes, a label alone on its line over a date alone on its line (a weekday allowed); never
+another column's date, another field's date stacked under the label ("Bekanntgabetag …", "Zahlungsfrist …"), two
+dates in the cell or a table's row —, or a sentence in the statutes' words ("am … zur Post gegeben", "Aufgabe zur
+Post am …") with no subject or about this letter, or that *this* letter was sent on a day ("Dieser Bescheid wurde
+am … versandt"). Never another decision's or the person's letter, another document named by its own noun or sent
+to someone else ("Die Zahlungsaufforderung …", "Eine Mitteilung an den Arbeitgeber …"), a line that dates another
+letter, an enclosure, a copy or a second posting, a card, an ID or documents sent, a payment's or a deadline's
+date, the day a letter counts as delivered, a future, planned ("voraussichtlich", "geplant", "(vsl.)"),
+supposed or example ("Wenn dieser Bescheid am … zur Post gegeben wurde …", "Beispiel:"), requested or negated
+posting, an e-mail or a portal, goods sent, or a date that reads two ways — in a field as in a sentence (the
+module's docstring lists each, and a test holds each). The app (`ingest.plan.rule_context`) and the
 benchmark's Ordnung condition call the same function, so the benchmark measures what ships. It reaches the
 engine as `RuleContext.posting`, never through the model's `anchor_date`.
 
@@ -51,7 +55,9 @@ later than the letter's date, under guards in code:
   a wrong one costs: the letter's date stays the start and a note names the later deadline. (The two-dates
   check accepts 14 days for a letter's own date, but it only ever keeps the earlier date.);
 - only for an authority's deemed delivery by post, counted forward: never a company's period (it runs from
-  arrival), a court's, a fine's (a letter filed as one, whether or not its reading cites § 67 OWiG) or a letter
+  arrival), a declaration under private law (a dismissal, a landlord's notice, a rent increase, an operating-cost
+  statement: from arrival, § 130 BGB, whoever sends it), a court's, a fine's (a letter filed as one, whether or not
+  its reading cites § 67 OWiG) or a letter
   served with a yellow envelope (formal service), a letter whose sender's procedure law is unknown, an e-mailed
   decision, or a period counted back from delivery;
 - two different posting days on the page: the earlier counts, both are named, `low` and "Please check"
@@ -83,9 +89,13 @@ so `RuleContext.posting` stays unset and a later posting day stays the note it w
 - An earlier date is never moved: a posting day before the letter's date, a confirmed arrival, the two-dates
   check and the letter's own notice still keep the earlier date.
 - Nothing sent to the model changed (no prompt, schema or re-ask wording; the completeness re-ask decides on the
-  reading alone), so every recorded answer replays. Replayed with this code, the dev split's and the test
-  split's one tax-assessment error turn right and no other date moves. On the holdout, holdout2 and final
-  splits the check finds no posting day on the letters whose label counts from one, so their dates are as
-  before; why is not known (the letters may not be read to write a cue). Every number obtained on a split
-  already seen is re-scored, not held-out.
+  reading alone), so every recorded answer replays. Replayed with this code, the one tax-assessment error of each
+  of the dev, test, holdout and holdout2 splits turns right (24 → 25 of 25, 55 → 56 of 56 three times), and on
+  the final split seven of the eight wrong dates in each of its three reads (104 → 111 of 112; the eighth is the
+  letter that gives two dates for itself). No right date turned wrong and no date became late (one read's late
+  date turned right); holdout3 and newkinds are as before. The reading of a field's date under its label (a
+  weekday before it, and the value read by the words' boxes beside the address column's words) was written after
+  the final split's layout had been diagnosed in codes (no letter's text read); every number it changes on
+  holdout, holdout2 and the final split is re-scored, not held-out, as is every number obtained on a split
+  already seen.
 - The rule it replaces stays in force where no page was read (the rules tools, a to-do added by hand).

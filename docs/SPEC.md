@@ -661,11 +661,14 @@ warning and "Please check" (its evidence the page's line with the other date).
 When the rules context is built (the app's `rule_context`, the benchmark's Ordnung condition: the same
 function), code reads on the letter's pages the day *this* letter was handed to the post: a field — a posting
 label right before one date ("Tag der Aufgabe zur Post: …", "Datum der Aufgabe zur Post", "Aufgegeben zur Post
-am", "Absendedatum", "Absendetag", "Tag der Absendung", "Datum des Versands", "Datum des Postausgangs",
-"Versanddatum", "Date of posting"; plainer words such as "Versandt am", "Abgesandt am", "Abgesendet am",
-"Absendung am", "Posted" only where a cell starts), or a label above its date as a letterhead's information
-block prints it — the date right under the label on the page by the words' boxes (as the header's "Datum" is
-read), or, without boxes, label and date each alone on their line; never another column's date or a table's row
+am", "Absendedatum", "Absendetag", "Absendevermerk", "Tag der Absendung", "Datum des Versands", "Datum des
+Postausgangs", "Versanddatum", "Date of posting"; plainer words such as "Versandt am", "Versand am", "Aufgegeben
+am", "Abgesandt am", "Abgesendet am", "Absendung am", "Posted" only where a cell starts), or a label above its date
+as a letterhead's information block prints it — the date right under the label on the page by the words' boxes (as
+the header's "Datum" is read), the last thing on its row and alone in the label's column there but for a weekday,
+or, without boxes, a label alone on its line over a date alone on its line (a weekday allowed); never another
+column's date, another field's date stacked under the label, two dates in the cell or a table's row; never a
+supposition or an example ("Wenn dieser Bescheid am … zur Post gegeben wurde …")
 — or a sentence in the statutes' words ("am … zur Post gegeben / aufgegeben", "der Post übergeben", "Aufgabe zur
 Post am / erfolgte am …"; with no subject or about this letter, never a document named by its own noun or sent to
 someone else) or that this letter was sent on a day ("versandt",
