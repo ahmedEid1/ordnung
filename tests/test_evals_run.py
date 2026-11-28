@@ -914,17 +914,39 @@ def test_the_benchmark_rule_context_reads_the_posting_day_as_the_app_does(tmp_pa
     entry = {e.id: e for e in load_manifest(MANIFEST)}["dev-tax_assessment-A1"]
     store = Store(tmp_path / "ordnung.db")
     document = store.add_document(sha256="f" * 64, filename="x", mime="application/pdf", file_path="x")
+    from ordnung.ingest.text import Word
+
     header = "Finanzamt Musterstadt · Postfach 10 20 30 · 12345 Musterstadt\nSteuernummer 123/456/78901   Datum 16.10.2026"
+    salutation = "Sehr geehrte Frau Beispiel,"
+
+    def boxes(y: float, *cells: tuple[float, str]) -> list[Word]:
+        words = []
+        for x, text in cells:
+            for word in text.split():
+                words.append(Word(word, x, y, x + 0.01 * len(word), y + 0.012))
+                x += 0.01 * len(word) + 0.005
+        return words
+
+    # the information block's value row holds the letter's own date in the address column ("Datum 16.10.2026"):
+    # the posting day under its label is found only when the letter's date is passed, as both contexts must
+    block = f"{'Frau Erika Beispiel':<30}Tag der Aufgabe zur Post\n{'Datum 16.10.2026':<30}19.10.2026\n{salutation}"
+    block_words = [
+        *boxes(0.20, (0.10, "Frau Erika Beispiel"), (0.65, "Tag der Aufgabe zur Post")),
+        *boxes(0.215, (0.10, "Datum 16.10.2026"), (0.65, "19.10.2026")),
+        *boxes(0.35, (0.10, salutation)),
+    ]
     cases = (
-        (f"{header}\nTag der Aufgabe zur Post: 19.10.2026", [], date(2026, 10, 19), None),
+        (f"{header}\nTag der Aufgabe zur Post: 19.10.2026\n{salutation}", [], [], date(2026, 10, 19), None),
         (
             header,
+            [],
             [{"label": "Posting date", "value": "19.10.2026", "quote": "19.10.2026"}],
             None,
             date(2026, 10, 19),
         ),
+        (block, block_words, [], date(2026, 10, 19), None),
     )
-    for text, facts, stated, read in cases:
+    for text, words, facts, stated, read in cases:
         extraction = DocumentExtraction(
             kind="tax_assessment",
             title="t",
@@ -934,7 +956,7 @@ def test_the_benchmark_rule_context_reads_the_posting_day_as_the_app_does(tmp_pa
             document_date="2026-10-16",
             key_facts=facts,
         )
-        pages = [PageText(page=1, text=text, has_text_layer=True)]
+        pages = [PageText(page=1, text=text, words=words, has_text_layer=True)]
         ours = ordnung_rule_context(entry, extraction, pages)
         app = rule_context(None, document, extraction, entry.today_date, pages=pages)
         assert ours.posting is not None and ours.posting.day == stated
