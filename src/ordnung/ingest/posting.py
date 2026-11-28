@@ -143,7 +143,7 @@ _INFO_BLOCK_LEFT = 0.5
 
 #: A future posting, a request or a negation in a field's rows: "wird … zur Post gegeben", "nicht".
 _NOT_DONE = re.compile(
-    r"\b(?:wird|werden|würde|würden|soll|sollen|sollte|sollten|voraussichtlich|geben\s+sie|senden\s+sie"
+    r"\b(?:wird|werden|würde|würden|soll|sollen|sollte|sollten|geben\s+sie|senden\s+sie"
     r"|schicken\s+sie|nicht|kein\w*|will|shall|would|not|never)\b",
     re.IGNORECASE,
 )
@@ -360,12 +360,8 @@ def _opens_a_field(label: str, previous: str, words: list[Box]) -> bool:
     if words and _in_info_block(words, label):
         return True
     previous = previous.rstrip()
-    return label[:1].isupper() and (
-        not previous
-        or previous[-1] in ".:"
-        or previous[-1].isdigit()
-        or any(end == len(previous) for _, end, _ in date_spans(previous))
-    )
+    # a date ends in a number or a full stop ("19.10."), so it needs no test of its own
+    return label[:1].isupper() and (not previous or previous[-1] in ".:" or previous[-1].isdigit())
 
 
 def _another_s(lines: Sequence[str], previous: str) -> bool:
@@ -545,10 +541,10 @@ def _under_labels(
             if words:
                 if not _under_label(words, name, value):
                     continue  # under another column, or not its column's only value
-            elif line.strip() != name or not re.fullmatch(
-                rf"\s*{_DAY}{_DEN}{re.escape(value)}\s*", following, re.IGNORECASE
-            ):
-                continue  # without boxes: a label alone over a date alone on its line (a weekday allowed)
+            elif not re.fullmatch(rf"\s*{_DAY}{_DEN}{re.escape(value)}\s*", following, re.IGNORECASE):
+                # without boxes: a date alone on its line (a weekday allowed), under a label alone on its line (a
+                # label in a cell needs the boxes, above)
+                continue
             if _another_s([line, following], previous) or _dates_another(
                 following, (start, end), letter_date
             ):

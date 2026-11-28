@@ -858,6 +858,29 @@ WRAPPED = [
 ]
 
 
+#: A field in the letterhead under a closed line (it ends in a number, a colon or a full stop, so the field opens)
+#: that names what makes the posting day another thing's: each decided by one list of :func:`posting._another_s`
+#: or by :data:`posting._DOCUMENT_ABOVE`. (id, the letterhead's lines.)
+ABOVE_A_FIELD = [
+    ("a-plan-above", "Voraussichtlich:\nVersanddatum: 19.10.2026"),
+    ("a-negation-above", "Nicht zugestellt:\nVersanddatum: 19.10.2026"),
+    ("an-id-card-above", "Ersatzausweis Nr. 4711\nVersanddatum: 19.10.2026"),
+    ("an-enclosure-above", "Anlage 1\nTag der Aufgabe zur Post: 19.10.2026"),
+    ("an-order-above", "Ihre Bestellung 4711\nVersanddatum: 19.10.2026"),
+    ("another-decision-above", "Bescheid für 2023\nAufgabe zur Post: 19.10.2026"),
+    ("an-enclosure-above-a-label-over-its-value", "Anlage 1\nVersanddatum\n19.10.2026"),
+    ("a-future-above-a-label-over-its-value", "Wird nachgereicht:\nVersanddatum\n19.10.2026"),
+]
+
+
+def test_what_stands_above_a_field_can_make_it_another_s() -> None:
+    def check(_id: str, top: str) -> None:
+        assert found(head(top)) == PostingStatement(), top
+        assert due(head(top)) == "2026-11-20", top
+
+    check_rows(ABOVE_A_FIELD, check)
+
+
 def test_a_field_counts_only_in_the_first_page_s_letterhead() -> None:
     """In the body (after the salutation) a field never counts, nor on a page without a salutation, where nothing
     shows where its letterhead ends: the letter's date's deadline, Fri 20 Nov (AO, NW; VwVfG, BY)."""
@@ -974,6 +997,13 @@ TWO_LETTERS = [
         "Seite 2\nHinweis: Dieser Bescheid wurde am 19.10.2026 zur Post gegeben.",
         "2026-10-19",
     ),
+    # a date in this letter's second page's header after no letter's date label: not another letter's
+    (
+        "a-reference-date-on-this-letter-s-second-page",
+        "Seite 2 zum Bescheid, Ihr Schreiben vom 12.10.2026\n"
+        "Hinweis: Dieser Bescheid wurde am 19.10.2026 zur Post gegeben.",
+        "2026-10-19",
+    ),
     (
         "this-letter-s-date-on-its-second-page",
         "Datum 16.10.2026   Seite 2\nHinweis: Dieser Bescheid wurde am 19.10.2026 zur Post gegeben.",
@@ -1007,10 +1037,19 @@ def test_only_this_letter_s_pages_are_read() -> None:
         assert compute_due(spec, context).due_date == ("2026-11-23" if day else "2026-11-20")
 
     check_rows(TWO_LETTERS, check)
-    # without the letter's date as read, the first page's header date is this letter's
-    pages = [(1, f"Finanzamt Musterstadt   Datum: 16.10.2026\n{SALUTATION}", [], "text")]
-    pages.append((2, TWO_LETTERS[1][1], [], "text"))
-    assert posting_statement(pages, None) == PostingStatement()
+    # without the letter's date as read, the first page's header date is this letter's: a page with that date is
+    # read, a page with another ends the reading
+    first_page = (1, f"Finanzamt Musterstadt   Datum: 16.10.2026\n{SALUTATION}", [], "text")
+    own = (
+        2,
+        "Datum 16.10.2026   Seite 2\nHinweis: Dieser Bescheid wurde am 19.10.2026 zur Post gegeben.",
+        [],
+        "text",
+    )
+    other = (2, TWO_LETTERS[0][1], [], "text")
+    statement = posting_statement([first_page, own], None)
+    assert statement is not None and statement.day == D("2026-10-19"), statement
+    assert posting_statement([first_page, other], None) == PostingStatement()
 
 
 def test_reviewed_wordings_never_count_as_this_letter_s_posting_day() -> None:
@@ -1283,17 +1322,34 @@ def test_an_unlisted_word_in_the_heading_s_slot_refuses_the_sentence() -> None:
 
 
 def _letterhead_block(
-    label_x: float, *, salutation: bool = True, value: str = "19.10.2026"
+    label_x: float,
+    *,
+    salutation: str | None = "below",
+    value: str = "19.10.2026",
+    field: str = "Tag der Aufgabe zur Post: {value}",
+    above: str = "Datum: 16.10.2026",
+    left: str = "Lindenweg 4",
+    above_left: str = "Frau Erika Beispiel",
 ) -> tuple[str, list[list[Any]]]:
     """A made-up first page: the address column on the left and, on the same text line, the information block's
-    posting field ``Tag der Aufgabe zur Post: <value>`` starting at ``label_x``; below, the salutation."""
-    field = f"Tag der Aufgabe zur Post: {value}"
-    text = f"{'Frau Erika Beispiel':<40}Datum: 16.10.2026\n{'Lindenweg 4':<40}{field}\n"
-    words = _row(0.20, (0.10, "Frau Erika Beispiel"), (label_x, "Datum: 16.10.2026"))
-    words += _row(0.215, (0.10, "Lindenweg 4"), (label_x, field))
-    if salutation:
-        text += "\nSehr geehrte Frau Beispiel,\n"
-        words += _row(0.35, (0.10, "Sehr geehrte Frau Beispiel,"))
+    posting ``field`` (``Tag der Aufgabe zur Post: <value>``) starting at ``label_x``, under the block's ``above``
+    row; the salutation ``below`` the block and left of it, ``right`` of the label, ``above`` it, or none."""
+    field = field.format(value=value)
+    text = f"{above_left:<40}{above}\n{left:<40}{field}\n"
+    words = _row(0.20, (0.10, above_left), (label_x, above))
+    words += _row(0.215, (0.10, left), (label_x, field))
+    greeting = "Sehr geehrte Frau Beispiel,"
+    if salutation == "below":
+        text += f"\n{greeting}\n"
+        words += _row(0.35, (0.10, greeting))
+    elif salutation == "right":
+        text += f"\n{greeting}\n"
+        words += _row(0.35, (label_x + 0.05, greeting))
+    elif salutation == "above":
+        # the text layer reads the salutation after the block, its box stands above it; the body's first line
+        # below the block, left of it, is no salutation
+        text += f"\n{greeting}\ndie Steuer wird festgesetzt.\n"
+        words = _row(0.10, (0.10, greeting)) + words + _row(0.35, (0.10, "die Steuer wird festgesetzt."))
     return text, words
 
 
@@ -1304,9 +1360,60 @@ INFO_BLOCK = [
     ("in-the-block-with-a-weekday", *_letterhead_block(0.62, value="Mo., 19.10.2026"), 0, "2026-10-19"),
     ("without-boxes", _letterhead_block(0.62)[0], [], 0, None),
     ("left-of-the-block", *_letterhead_block(0.42), 0, None),
-    ("no-salutation-below", *_letterhead_block(0.62, salutation=False), 0, None),
+    ("no-salutation-below", *_letterhead_block(0.62, salutation=None), 0, None),
     ("on-a-later-page", *_letterhead_block(0.62), 1, None),
     ("words-after-the-date", *_letterhead_block(0.62, value="19.10.2026 (Montag)"), 0, None),
+    # the salutation must stand below the block and start left of it: right of the label, or above it, the label
+    # is not in a letterhead's information block (the text layer reads the salutation's line first or last)
+    ("the-salutation-right-of-the-label", *_letterhead_block(0.62, salutation="right"), 0, None),
+    ("the-salutation-above-the-label", *_letterhead_block(0.62, salutation="above"), 0, None),
+    # the block's row above dates another letter in the label's column: the field may be that letter's; the
+    # letter's own date there is the block's own "Datum" field (the first row)
+    (
+        "another-letter-s-date-above",
+        *_letterhead_block(0.62, above="Ihre Nachricht vom 12.10.2026", field="Abgesandt am: {value}"),
+        0,
+        None,
+    ),
+    # another letter's date on the label's row ("Ihr Schreiben vom 12.10.2026" in the address column), and the
+    # letter's own date there (counts)
+    (
+        "another-letter-s-date-on-the-row",
+        *_letterhead_block(0.62, left="Ihr Schreiben vom 12.10.2026"),
+        0,
+        None,
+    ),
+    # the dispatch note right above the label in the block's column: the way it is sent, not a document
+    ("einschreiben-above-the-label", *_letterhead_block(0.62, above="Einschreiben"), 0, "2026-10-19"),
+    # a company's name in the address column above the label's row: only the label's column above is read
+    (
+        "a-company-s-name-in-the-address-column-above",
+        *_letterhead_block(0.62, above_left="Kartenhaus GmbH"),
+        0,
+        "2026-10-19",
+    ),
+    (
+        "the-letter-s-own-date-on-the-row",
+        *_letterhead_block(0.62, left="Ihr Schreiben vom 16.10.2026"),
+        0,
+        "2026-10-19",
+    ),
+    # a word before the label in its cell (after one space, not a column's gap)
+    (
+        "a-word-before-the-label-in-its-cell",
+        *_letterhead_block(0.62, field="Bestrittener Versandtag: {value}"),
+        0,
+        None,
+    ),
+    # a three-cell row in the block: a table's row, never a field
+    (
+        "a-table-s-row-in-the-block",
+        *_letterhead_block(
+            0.62, left="Lindenweg 4   Zimmer 12   Raum 3", field="Tag der Aufgabe zur Post: {value}"
+        ),
+        0,
+        None,
+    ),
 ]
 
 
@@ -1394,13 +1501,22 @@ def test_a_letter_served_formally_never_counts_from_its_posting() -> None:
     check_rows(SERVICE, check)
 
 
-def _letterhead(value: str, left: str = "Lindenweg 4") -> tuple[str, list[list[Any]]]:
-    """A made-up DIN 5008 letterhead's two rows: the address column on the left, the posting label alone in the
-    information block's column on the right, and on the next row the address's ``left`` words beside the
-    ``value`` under the label — the text layer reads each row as one line."""
-    text = f"{'Frau Erika Beispiel':<29}Tag der Aufgabe zur Post\n{left:<29}{value}\n"
-    words = _row(0.20, (0.10, "Frau Erika Beispiel"), (0.65, "Tag der Aufgabe zur Post"))
-    return text, words + _row(0.215, (0.10, left), (0.65, value))
+def _letterhead(
+    value: str,
+    left: str = "Lindenweg 4",
+    *,
+    label: str = "Tag der Aufgabe zur Post",
+    top: str = "Frau Erika Beispiel",
+    value_x: float = 0.65,
+    value_y: float = 0.215,
+) -> tuple[str, list[list[Any]]]:
+    """A made-up DIN 5008 letterhead's two rows: the address column on the left (``top``, then ``left``), the
+    posting ``label`` alone in the information block's column on the right, and on the next row the address's
+    ``left`` words beside the ``value`` under the label (its box at ``value_x``, ``value_y``) — the text layer reads
+    each row as one line."""
+    text = f"{top:<29}{label}\n{left:<29}{value}\n"
+    words = _row(0.20, (0.10, top), (0.65, label))
+    return text, words + _row(0.215, (0.10, left)) + _row(value_y, (value_x, value))
 
 
 #: A letterhead's information block: labels in one row, their values in the next (made up). (id, page text, the
@@ -1456,6 +1572,24 @@ TWO_ROWS = [
         "2026-10-19",
     ),
     ("alone-under-its-label-without-boxes", "Versanddatum\n19.10.2026\n", [], "2026-10-19"),
+    # the label alone on its text line in the block, the address column's name on the line above (the text layer
+    # reads the label's row as the label alone): the boxes put it in the information block, so it opens its field
+    (
+        "the-label-alone-on-its-text-line-in-the-block",
+        "Frau Erika Beispiel\nTag der Aufgabe zur Post\nLindenweg 4                  19.10.2026\n",
+        _row(0.20, (0.10, "Frau Erika Beispiel"))
+        + _row(0.215, (0.65, "Tag der Aufgabe zur Post"))
+        + _row(0.23, (0.10, "Lindenweg 4"), (0.65, "19.10.2026")),
+        "2026-10-19",
+    ),
+    (
+        "the-label-alone-on-its-text-line-left-of-the-block",
+        "Frau Erika Beispiel\nTag der Aufgabe zur Post\nLindenweg 4                  19.10.2026\n",
+        _row(0.20, (0.10, "Frau Erika Beispiel"))
+        + _row(0.215, (0.40, "Tag der Aufgabe zur Post"))
+        + _row(0.23, (0.10, "Lindenweg 4"), (0.40, "19.10.2026")),
+        None,
+    ),
     # form A: a weekday (and "den") before the value, with and without boxes
     ("a-weekday-under-the-label", *_letterhead("Mo., 19.10.2026"), "2026-10-19"),
     ("a-weekday-and-den-under-the-label", *_letterhead("Montag, den 19.10.2026"), "2026-10-19"),
@@ -1484,6 +1618,33 @@ TWO_ROWS = [
     ("another-column-s-vom", *_letterhead("12.10.2026", left="Ihr Schreiben vom"), None),
     ("another-column-s-seit", *_letterhead("12.10.2026", left="Versichert seit"), None),
     ("another-letter-s-date-on-the-row", *_letterhead("19.10.2026", left="Datum 12.10.2026"), None),
+    # a future or a negation in the value row's other column: the posting is not done
+    ("a-future-in-the-row-s-other-column", *_letterhead("19.10.2026", left="Wird nachgereicht"), None),
+    ("a-negation-in-the-row-s-other-column", *_letterhead("19.10.2026", left="Nicht zugestellt"), None),
+    # a date in the label's column whose box stands above the label (the text layer put it on the next line)
+    ("a-date-above-the-label-by-its-box", *_letterhead("19.10.2026", value_y=0.19), None),
+    # a label after a word in its cell (no column's gap before it): never its cell's label
+    (
+        "a-word-before-the-label-ending-its-line",
+        *_letterhead("19.10.2026", label="Bestrittener Versandtag", value_x=0.78),
+        None,
+    ),
+    # a label alone in the first cell of a row of labels, the other column with no value on the value's row
+    (
+        "a-label-in-the-first-cell-of-a-row-of-labels",
+        "Tag der Aufgabe zur Post    Bekanntgabetag\n19.10.2026\n",
+        _row(0.20, (0.62, "Tag der Aufgabe zur Post"), (0.85, "Bekanntgabetag"))
+        + _row(0.215, (0.62, "19.10.2026")),
+        "2026-10-19",
+    ),
+    # a label in a cell left of the information block, its value right under it: not the block's
+    (
+        "a-cell-s-label-left-of-the-block",
+        "Termin   Aufgabe zur Post\n22.10.2026   19.10.2026",
+        _row(0.20, (0.25, "Termin"), (0.40, "Aufgabe zur Post"))
+        + _row(0.215, (0.25, "22.10.2026"), (0.40, "19.10.2026")),
+        None,
+    ),
     # never: a value beyond the reach under its label, nor the next column's only value
     (
         "a-date-far-below-the-label",
@@ -1527,8 +1688,8 @@ TWO_ROWS = [
     (
         "a-table-s-row",
         "Steuerart   Zeitraum   Aufgabe zur Post\nESt   2025   19.10.2026",
-        _row(0.40, (0.10, "Steuerart"), (0.40, "Zeitraum"), (0.65, "Aufgabe zur Post"))
-        + _row(0.415, (0.10, "ESt"), (0.40, "2025"), (0.65, "19.10.2026")),
+        _row(0.20, (0.10, "Steuerart"), (0.40, "Zeitraum"), (0.65, "Aufgabe zur Post"))
+        + _row(0.215, (0.10, "ESt"), (0.40, "2025"), (0.65, "19.10.2026")),
         None,
     ),
 ]
